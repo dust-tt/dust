@@ -65,13 +65,11 @@ function resolvePoolLimitForUser({
   }
   // Remaining seat types (pro/max/workspace) have pool access following the
   // shared ladder: per-user override > max group cap > workspace default.
-  return (
-    resolveEffectiveSpendLimitAwuCredits({
-      overrideAwuCredits: membership.poolCapOverrideAwuCredits,
-      groupCapAwuCredits,
-      defaultAwuCredits: defaultPoolCapAwuCredits,
-    }) ?? defaultPoolCapAwuCredits
-  );
+  return resolveEffectiveSpendLimitAwuCredits({
+    overrideAwuCredits: membership.poolCapOverrideAwuCredits,
+    groupCapAwuCredits,
+    defaultAwuCredits: defaultPoolCapAwuCredits,
+  });
 }
 
 // Max group cap (pool-only, excluding seat allowance) across a single user's

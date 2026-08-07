@@ -22,7 +22,8 @@ import type {
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
-import { Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 
 const SANDBOX_RUNTIME_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -108,11 +109,11 @@ async function ensureOwnerSandboxReady(
       if (freshlyCreated) {
         // The image seeds /etc/dust/ca-bundle.pem with system roots, and
         // gcsfuse runs as root to storage.googleapis.com, which the in-sandbox
-        // nftables ruleset never touches: every rule is scoped to the agent uid
-        // (1003) and the chains default to accept, so root egress is never
-        // dropped, even mid-setup. The dev-unrestricted branch tears down the
-        // general table but recreates the dedicated GCS broker drop, so it's
-        // safe to overlap too.
+        // nftables ruleset never touches: every rule is scoped to the
+        // non-root Front exec UIDs (1002 and 1003) and the chains default to
+        // accept, so root egress is never dropped, even mid-setup. The
+        // dev-unrestricted branch tears down the general table but recreates
+        // the dedicated GCS broker drops, so it's safe to overlap too.
         // Egress prep can therefore run alongside the GCS mount, with egress
         // errors still taking precedence.
         const [prepResult, mountResult] = await Promise.all([
@@ -210,23 +211,26 @@ export async function ensureConversationSandboxReady(
     ensureActive: () =>
       ConversationSandboxAdapter.ensureSandboxActive(auth, conversation),
     getFileSystem: () => DustFileSystem.forConversation(auth, conversation),
+    // Pod-level sandbox config applies to everything running in the Pod: a
+    // conversation inside a Pod uses the Pod's shared egress policy file and
+    // receives the Pod's env vars and HTTPS secrets at creation.
     runtimeOwner: {
       kind: "conversation",
       conversationId: conversation.sId,
+      spaceId: conversation.spaceId ?? null,
     },
-    // Pod network settings apply to everything running in the Pod: a
-    // conversation inside a Pod uses the Pod's shared policy file, not a
-    // per-conversation one.
     egressPolicyOwnerId: conversation.spaceId ?? conversation.sId,
   });
 }
 
 export async function ensurePodSandboxReady(
   auth: Authenticator,
-  pod: SpaceResource
+  pod: SpaceResource,
+  { requireRunning = false }: { requireRunning?: boolean } = {}
 ): Promise<Result<EnsureSandboxReadyResult, Error>> {
   return ensureOwnerSandboxReady(auth, {
-    ensureActive: () => PodSandboxAdapter.ensureSandboxActive(auth, pod),
+    ensureActive: () =>
+      PodSandboxAdapter.ensureSandboxActive(auth, pod, { requireRunning }),
     getFileSystem: () =>
       DustFileSystem.forPod(auth, pod, {
         sandboxOnlyMounts: podSandboxOnlyMounts(pod),

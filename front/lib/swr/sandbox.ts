@@ -1,6 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import type { PatchSandboxEnvVarResponseBody } from "@app/lib/resources/workspace_sandbox_env_var_resource";
+import type { PatchSandboxEnvVarResponseBody } from "@app/lib/resources/sandbox_env_var_resource";
 import {
   emptyArray,
   getErrorFromResponse,

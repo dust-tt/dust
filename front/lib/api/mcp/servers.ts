@@ -1,9 +1,10 @@
-import { isCustomResourceIconType } from "@app/components/resources/resources_icons";
+import { isCustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/constants";
 import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
 import {
   allowsMultipleInstancesOfInternalMCPServerByName,
   getInternalMCPServerInfo,
+  getInternalMCPServerMetadata,
   isInternalMCPServerName,
   matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -14,7 +15,9 @@ import { getMCPConnectionAccessToken } from "@app/lib/actions/mcp_oauth_access_t
 import type {
   MCPServerType,
   MCPServerTypeWithViews,
+  MCPServerViewNameConflict,
   MCPServerViewType,
+  MCPToolType,
 } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
@@ -31,6 +34,7 @@ import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
 
 const MAX_URL_LENGTH = 2048;
 const MAX_NAME_LENGTH = 2048;
+const MAX_VIEW_NAME_LENGTH = 255;
 
 type CustomHeader = { key: string; value: string };
 
@@ -90,14 +94,22 @@ interface CreateRemoteMCPServerInput {
   useCase?: MCPOAuthUseCase;
   connectionId?: string;
   customHeaders?: CustomHeader[];
+  viewName?: string;
 }
 
 export async function createRemoteMCPServer(
   auth: Authenticator,
   input: CreateRemoteMCPServerInput
-): Promise<Result<MCPServerType, Error>> {
-  const { url, sharedSecret, customHeaders, connectionId, includeGlobal } =
-    input;
+): Promise<Result<MCPServerType, Error | MCPServerViewNameConflict>> {
+  const {
+    url,
+    sharedSecret,
+    customHeaders,
+    connectionId,
+    includeGlobal,
+    viewName,
+  } = input;
+  const normalizedViewName = viewName?.trim();
 
   if (!url) {
     return new Err(new Error("URL is required"));
@@ -108,6 +120,18 @@ export async function createRemoteMCPServer(
         `MCP server URL exceeds maximum length (${MAX_URL_LENGTH} characters).`
       )
     );
+  }
+  if (viewName !== undefined) {
+    if (
+      !normalizedViewName ||
+      normalizedViewName.length > MAX_VIEW_NAME_LENGTH
+    ) {
+      return new Err(
+        new Error(
+          `viewName must be a non-empty string of at most ${MAX_VIEW_NAME_LENGTH} characters.`
+        )
+      );
+    }
   }
 
   // Default to the shared secret if it exists.
@@ -164,9 +188,13 @@ export async function createRemoteMCPServer(
   }
 
   if (includeGlobal) {
-    const conflict = await checkNameConflictInGlobalSpace(auth, name);
-    if (conflict.isErr()) {
-      return conflict;
+    const nameConflict = await checkNameConflictInGlobalSpace(
+      auth,
+      normalizedViewName ?? name,
+      metadata.tools
+    );
+    if (nameConflict) {
+      return new Err({ nameConflict });
     }
   }
 
@@ -187,6 +215,7 @@ export async function createRemoteMCPServer(
     customHeaders: headersArrayToRecord(customHeaders),
     authorization,
     oAuthUseCase: input.useCase ?? null,
+    viewName: normalizedViewName,
   });
 
   if (connectionId) {
@@ -279,12 +308,17 @@ export async function createInternalMCPServer(
   // otherwise fall back to the internal server name.
   const nameForConflictCheck = viewName ?? name;
   if (includeGlobal) {
-    const conflict = await checkNameConflictInGlobalSpace(
+    const nameConflict = await checkNameConflictInGlobalSpace(
       auth,
-      nameForConflictCheck
+      nameForConflictCheck,
+      getInternalMCPServerMetadata(name).tools
     );
-    if (conflict.isErr()) {
-      return conflict;
+    if (nameConflict) {
+      return new Err(
+        new Error(
+          `An existing Tool is already using the name "${nameConflict}"`
+        )
+      );
     }
   }
 
@@ -360,21 +394,18 @@ export async function createInternalMCPServer(
 
 async function checkNameConflictInGlobalSpace(
   auth: Authenticator,
-  name: string
-): Promise<Result<void, Error>> {
+  name: string,
+  tools: readonly MCPToolType[]
+): Promise<string | null> {
   const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   const { hasConflict } =
     await MCPServerViewResource.hasNameConflictInSpaceByName(
       auth,
       name,
-      globalSpace
+      globalSpace,
+      tools
     );
-  if (hasConflict) {
-    return new Err(
-      new Error(`An existing Tool is already using the name "${name}"`)
-    );
-  }
-  return new Ok(undefined);
+  return hasConflict ? name : null;
 }
 
 async function createGlobalSpaceView(

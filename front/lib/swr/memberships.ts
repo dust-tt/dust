@@ -20,6 +20,7 @@ import type { MembershipSeatType, PaidSeatType } from "@app/types/memberships";
 import { MEMBERSHIP_SEAT_TYPES, PAID_SEAT_TYPES } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
+  ActiveRoleType,
   LightUserTypeWithWorkspace,
   LightWorkspaceType,
 } from "@app/types/user";
@@ -128,6 +129,7 @@ export function useSearchMembers<
   pageIndex,
   pageSize,
   groupKind,
+  role,
   disabled,
 }: {
   workspaceId: string;
@@ -135,6 +137,7 @@ export function useSearchMembers<
   pageIndex: number;
   pageSize: number;
   groupKind?: Exclude<GroupKind, "system">;
+  role?: ActiveRoleType;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -161,6 +164,10 @@ export function useSearchMembers<
 
   if (groupKind && isGroupKind(groupKind)) {
     searchParams.set("groupKind", groupKind);
+  }
+
+  if (role) {
+    searchParams.set("role", role);
   }
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =

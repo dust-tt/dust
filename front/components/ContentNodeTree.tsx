@@ -4,13 +4,13 @@ import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { classNames } from "@app/lib/utils";
 import type { ContentNode } from "@app/types/connectors/connectors_api";
 import type { APIError } from "@app/types/error";
+import type { NotificationType } from "@dust-tt/sparkle";
 import {
   Brackets,
   Button,
   CheckDone01,
   IconButton,
   LinkExternal01,
-  type NotificationType,
   SearchInput,
   Spinner,
   Tree,

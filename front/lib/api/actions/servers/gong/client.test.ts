@@ -1,7 +1,5 @@
-import {
-  type GongClient,
-  getGongClient,
-} from "@app/lib/api/actions/servers/gong/client";
+import type { GongClient } from "@app/lib/api/actions/servers/gong/client";
+import { getGongClient } from "@app/lib/api/actions/servers/gong/client";
 import { untrustedFetch } from "@app/lib/egress/server";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { Response } from "undici";

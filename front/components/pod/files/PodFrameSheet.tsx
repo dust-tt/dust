@@ -2,8 +2,10 @@ import { AuthenticatedVisualizationActionIframe } from "@app/components/assistan
 import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
 import { ShareFrameSheet } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSheet";
 import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { PodFrameTabButton } from "@app/components/pod/files/PodFrameTabButton";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
+import type { PodFrameTab } from "@app/types/pod_frame_tab";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -26,6 +28,8 @@ interface PodFrameSheetProps {
   fileName?: string;
   podId: string;
   pinnedFramePath: string | null;
+  frameTabs: PodFrameTab[];
+  tabsOrder?: string[];
   isEditor: boolean;
   isArchived: boolean;
   isOpen: boolean;
@@ -39,6 +43,8 @@ export function PodFrameSheet({
   fileName,
   podId,
   pinnedFramePath,
+  frameTabs,
+  tabsOrder,
   isEditor,
   isArchived,
   isOpen,
@@ -46,6 +52,8 @@ export function PodFrameSheet({
   owner,
 }: PodFrameSheetProps) {
   const { vizUrl } = useAuth();
+  const { hasFeature } = useFeatureFlags();
+  const hasFrameTabs = hasFeature("pod_frame_tabs");
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -79,12 +87,12 @@ export function PodFrameSheet({
         }}
       >
         <SheetHeader hideButton>
-          <div className="flex items-center gap-2">
-            <SheetTitle className="flex-1 truncate">
+          <div className="flex min-w-0 items-center gap-2">
+            <SheetTitle className="min-w-0 flex-1 truncate">
               {fileMetadata?.fileName}
             </SheetTitle>
             {fileId && (
-              <div className="flex shrink-0 items-center gap-1">
+              <div className="flex max-w-[60%] shrink-0 items-center justify-end gap-1 overflow-x-auto">
                 <ExportContentDropdown
                   iframeRef={iframeRef}
                   owner={owner}
@@ -102,6 +110,18 @@ export function PodFrameSheet({
                   fileName={fileName}
                   hidden={isArchived}
                 />
+                {hasFrameTabs && (
+                  <PodFrameTabButton
+                    owner={owner}
+                    spaceId={podId}
+                    frameTabs={frameTabs}
+                    tabsOrder={tabsOrder}
+                    isEditor={isEditor}
+                    framePath={framePath}
+                    fileName={fileName}
+                    hidden={isArchived}
+                  />
+                )}
                 <Button
                   icon={isFullscreen ? Minimize01 : Maximize01}
                   variant="ghost"

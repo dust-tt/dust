@@ -25,11 +25,8 @@ import {
 } from "@app/lib/invitations";
 import { useSeatPlan } from "@app/lib/swr/credits";
 import { isEmailValid } from "@app/lib/utils";
-import {
-  isMembershipSeatType,
-  type MembershipSeatType,
-  toBaseSeatType,
-} from "@app/types/memberships";
+import type { MembershipSeatType } from "@app/types/memberships";
+import { isMembershipSeatType, toBaseSeatType } from "@app/types/memberships";
 import type { SubscriptionPerSeatPricing } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { pluralize } from "@app/types/shared/utils/string_utils";

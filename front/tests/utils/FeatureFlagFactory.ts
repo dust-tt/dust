@@ -1,4 +1,5 @@
-import { type Authenticator, invalidateFeatureFlagsCache } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
+import { invalidateFeatureFlagsCache } from "@app/lib/auth";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 

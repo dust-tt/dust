@@ -402,12 +402,11 @@ async function handlePerUserSpendThresholdEvent({
     ).get(membership.userId) ?? null;
   const defaultPoolCapAwuCredits =
     creditUsageConfig?.defaultPoolCapAwuCredits ?? 0;
-  const poolCap =
-    resolveEffectiveSpendLimitAwuCredits({
-      overrideAwuCredits: membership.poolCapOverrideAwuCredits,
-      groupCapAwuCredits,
-      defaultAwuCredits: defaultPoolCapAwuCredits,
-    }) ?? defaultPoolCapAwuCredits;
+  const poolCap = resolveEffectiveSpendLimitAwuCredits({
+    overrideAwuCredits: membership.poolCapOverrideAwuCredits,
+    groupCapAwuCredits,
+    defaultAwuCredits: defaultPoolCapAwuCredits,
+  });
   const capSource = resolveEffectiveSpendLimitSource({
     overrideAwuCredits: membership.poolCapOverrideAwuCredits,
     groupCapAwuCredits,

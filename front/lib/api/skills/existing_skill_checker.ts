@@ -5,6 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import chunk from "lodash/chunk";
@@ -181,11 +182,19 @@ ${existingSkills}
   return new Ok(similar_skills);
 }
 
+// By default we compare against all existing published custom skills: unpublished
+// (editors-only) skills should not prevent someone else from creating a similar skill.
+export const DEFAULT_SIMILAR_SKILLS_AVAILABILITIES: SkillAvailability[] = [
+  "workspace_users",
+  "users_and_agents",
+];
+
 export async function getSimilarSkills(
   auth: Authenticator,
   inputs: {
     naturalDescription: string;
     excludeSkillId: string | null;
+    availabilities?: SkillAvailability[];
   }
 ): Promise<Result<{ similar_skills: string[] }, Error>> {
   const model = await getSmallWhitelistedModel(auth);
@@ -195,11 +204,10 @@ export async function getSimilarSkills(
     );
   }
 
-  // Retrieve all existing published custom skills: unpublished (editors-only) skills
-  // should not prevent someone else from creating a similar skill.
   const allSkills: SkillResource[] = await SkillResource.listByWorkspace(auth, {
     onlyCustom: true,
-    availability: ["workspace_users", "users_and_agents"],
+    availability:
+      inputs.availabilities ?? DEFAULT_SIMILAR_SKILLS_AVAILABILITIES,
   });
 
   const skills = inputs.excludeSkillId

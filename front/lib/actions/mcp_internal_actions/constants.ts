@@ -1,8 +1,6 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
-import {
-  type MCPToolStakeLevelType,
-  RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
-} from "@app/lib/actions/constants";
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import { RUN_AGENT_CALL_TOOL_TIMEOUT_MS } from "@app/lib/actions/constants";
 import type {
   ServerMetadata,
   ToolMeta,
@@ -109,10 +107,8 @@ import type {
 import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type { PlanType } from "@app/types/plan";
-import {
-  isComputerFeatureEnabled,
-  type WhitelistableFeature,
-} from "@app/types/shared/feature_flags";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -1578,6 +1574,17 @@ export function isInternalMCPServerName(
 ): name is InternalMCPServerNameType {
   return AVAILABLE_INTERNAL_MCP_SERVER_NAMES.includes(
     name as InternalMCPServerNameType
+  );
+}
+
+export function isInternalMCPToolName<N extends InternalMCPServerNameType>(
+  serverName: N,
+  toolName: string
+): toolName is InternalMCPToolNameType<N> {
+  return (
+    INTERNAL_MCP_SERVERS[serverName]?.metadata?.tools?.some(
+      (tool) => tool.name === toolName
+    ) ?? false
   );
 }
 

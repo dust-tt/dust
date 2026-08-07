@@ -1,13 +1,13 @@
 import type { TaskOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
+import { PodConnectedDataTab } from "@app/components/pod/connected_data/PodConnectedDataTab";
 import { PodConversationsTab } from "@app/components/pod/conversation/PodConversationsTab";
 import { PodFilesTab } from "@app/components/pod/files/PodFilesTab";
+import { PodFrameTabContent } from "@app/components/pod/PodFrameTabContent";
 import { PodSettingsTab } from "@app/components/pod/settings/PodSettingsTab";
 import { PodTasksTab } from "@app/components/pod/tasks/PodTasksTab";
-import {
-  type PodConversationListFilter,
-  usePodConversations,
-} from "@app/hooks/conversations/usePodConversations";
+import type { PodConversationListFilter } from "@app/hooks/conversations/usePodConversations";
+import { usePodConversations } from "@app/hooks/conversations/usePodConversations";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { PodUiScopedPreferences } from "@app/hooks/useScopedUIPreferences";
@@ -21,6 +21,8 @@ import type { RichMention } from "@app/types/assistant/mentions";
 import { toMentionType } from "@app/types/assistant/mentions";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
+import type { PodFrameTab } from "@app/types/pod_frame_tab";
+import { makePodFrameTabValue } from "@app/types/pod_frame_tab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { NavTabPillContent } from "@dust-tt/sparkle";
@@ -35,6 +37,7 @@ interface PodPageContentProps {
   setPodUiPreferences: (value: PodUiScopedPreferences) => void;
   mutatePodInfo: () => Promise<unknown>;
   clientSideMCPServerIds?: string[];
+  frameTabs?: PodFrameTab[];
 }
 
 export function PodPageContent({
@@ -44,6 +47,7 @@ export function PodPageContent({
   setPodUiPreferences,
   mutatePodInfo,
   clientSideMCPServerIds,
+  frameTabs = [],
 }: PodPageContentProps) {
   const owner = useWorkspace();
   const { user } = useAuth();
@@ -59,6 +63,8 @@ export function PodPageContent({
   const conversationFilter: PodConversationListFilter = isSingleMemberPod
     ? "all"
     : podUiPreferences.conversationsFilter;
+  const hideTriggeredConversations =
+    podUiPreferences.hideTriggeredConversations;
 
   const {
     conversations,
@@ -72,6 +78,7 @@ export function PodPageContent({
     workspaceId: owner.sId,
     podId: podInfo.sId,
     filter: conversationFilter,
+    excludeTriggered: hideTriggeredConversations,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -84,6 +91,13 @@ export function PodPageContent({
     setPodUiPreferences({
       ...podUiPreferences,
       conversationsFilter: filter,
+    });
+  };
+
+  const handleHideTriggeredConversationsChange = (hideTriggered: boolean) => {
+    setPodUiPreferences({
+      ...podUiPreferences,
+      hideTriggeredConversations: hideTriggered,
     });
   };
 
@@ -186,6 +200,10 @@ export function PodPageContent({
           isPodEmpty={isPodEmpty}
           conversationFilter={conversationFilter}
           onConversationFilterChange={handleConversationFilterChange}
+          hideTriggeredConversations={hideTriggeredConversations}
+          onHideTriggeredConversationsChange={
+            handleHideTriggeredConversationsChange
+          }
           onSubmit={handleConversationCreation}
           onNavigateToTasks={() => onTabChange("tasks")}
         />
@@ -201,6 +219,19 @@ export function PodPageContent({
       <NavTabPillContent value="files">
         <PodFilesTab owner={owner} pod={podInfo} />
       </NavTabPillContent>
+      {podInfo.isAdminControlled && (
+        <NavTabPillContent value="connected_data">
+          <PodConnectedDataTab owner={owner} pod={podInfo} />
+        </NavTabPillContent>
+      )}
+      {frameTabs.map((tab) => (
+        <NavTabPillContent
+          key={tab.path}
+          value={makePodFrameTabValue(tab.path)}
+        >
+          <PodFrameTabContent owner={owner} podInfo={podInfo} tab={tab} />
+        </NavTabPillContent>
+      ))}
       <NavTabPillContent value="settings">
         <PodSettingsTab
           key={podInfo.sId}

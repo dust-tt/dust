@@ -3,12 +3,12 @@ import type {
   StreamModelConfiguration,
 } from "@app/lib/model_constructors/stream/configuration";
 import type { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
-import {
-  type ResponseChecker,
-  TEST_CASES,
-  type TestCase,
-  type TestKey,
+import type {
+  ResponseChecker,
+  TestCase,
+  TestKey,
 } from "@app/lib/model_constructors/test/cases";
+import { TEST_CASES } from "@app/lib/model_constructors/test/cases";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 import { runStream } from "@app/lib/model_constructors/test/stream";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";

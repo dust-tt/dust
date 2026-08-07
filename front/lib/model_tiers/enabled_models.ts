@@ -1,8 +1,6 @@
 import { pickPreferredLargeModel } from "@app/lib/api/assistant/model_preferences";
-import {
-  type ModelsTierName,
-  STATIC_MODEL_TIERS,
-} from "@app/lib/api/assistant/token_pricing/tiers";
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
+import { STATIC_MODEL_TIERS } from "@app/lib/api/assistant/token_pricing/tiers";
 import { getAvailableModelsForWorkspace } from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";

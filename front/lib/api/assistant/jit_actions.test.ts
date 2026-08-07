@@ -926,7 +926,9 @@ describe("getJITServers", () => {
   });
 
   describe("attachment-based servers", () => {
-    it("should include query_tables server when queryable attachments exist", async () => {
+    it("should include query_tables server when queryable file attachments exist and Computer is disabled", async () => {
+      await FeatureFlagFactory.basic(auth, "disable_computer_feature");
+
       const user = auth.getNonNullableUser();
       const file = await FileFactory.csv(auth, user, {
         useCase: "conversation",
@@ -976,6 +978,97 @@ describe("getJITServers", () => {
       expect(queryTablesServer?.tables).toBeDefined();
       // Note: tables array may be empty if conversation datasource view is not set up,
       // but the server should still be created with the correct structure.
+    });
+
+    it("should not include query_tables server for queryable file attachments when Computer is available", async () => {
+      const user = auth.getNonNullableUser();
+      const file = await FileFactory.csv(auth, user, {
+        useCase: "conversation",
+        useCaseMetadata: {
+          conversationId: conversation.sId,
+        },
+        status: "ready",
+      });
+
+      const attachments: ConversationAttachmentType[] = [
+        {
+          fileId: file.sId,
+          path: null,
+          source: "user",
+          title: "test.csv",
+          contentType: "text/csv",
+          contentFragmentVersion: "latest",
+          snippet: "test snippet",
+          generatedTables: [file.sId],
+          isIncludable: true,
+          isSearchable: true,
+          isQueryable: true,
+          isInProjectContext: false,
+          hidden: false,
+          creator: null,
+        },
+      ];
+
+      const jitServers = await getJITServers(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+        attachments,
+      });
+
+      const queryTablesServer = jitServers.find(
+        (server) =>
+          server.name === DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME
+      );
+
+      expect(queryTablesServer).toBeUndefined();
+      expect(
+        jitServers.some(
+          (server) => server.name === CONVERSATION_FILES_SERVER_NAME
+        )
+      ).toBe(true);
+    });
+
+    it("should include query_tables server for queryable content nodes even when Computer is available", async () => {
+      const attachments: ConversationAttachmentType[] = [
+        {
+          contentFragmentId: "cf_queryable_node",
+          nodeId: "table_node_1",
+          nodeDataSourceViewId: "dsv_test",
+          nodeType: "table",
+          sourceUrl: null,
+          title: "Sales sheet",
+          contentType: "text/csv",
+          contentFragmentVersion: "latest",
+          snippet: null,
+          generatedTables: ["table_node_1"],
+          isIncludable: true,
+          isSearchable: false,
+          isQueryable: true,
+          isInProjectContext: false,
+          hidden: false,
+          creator: null,
+        },
+      ];
+
+      const jitServers = await getJITServers(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+        attachments,
+      });
+
+      const queryTablesServer = jitServers.find(
+        (server) =>
+          server.name === DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME
+      );
+
+      expect(queryTablesServer).toBeDefined();
+      expect(queryTablesServer?.tables).toEqual([
+        {
+          workspaceId: workspace.sId,
+          dataSourceViewId: "dsv_test",
+          tableId: "table_node_1",
+        },
+      ]);
     });
 
     it("should include search server when searchable attachments exist", async () => {
@@ -1177,6 +1270,8 @@ describe("getJITServers", () => {
 
   describe("multiple servers", () => {
     it("should return multiple servers when conditions are met", async () => {
+      await FeatureFlagFactory.basic(auth, "disable_computer_feature");
+
       // Create attachments.
       const user = auth.getNonNullableUser();
       const file = await FileFactory.csv(auth, user, {

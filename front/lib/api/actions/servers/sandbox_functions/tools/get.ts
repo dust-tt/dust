@@ -11,6 +11,7 @@ export function formatSandboxFunction(fn: SandboxFunctionResource): string {
   return [
     `${fn.slug}: ${fn.description}`,
     `userIdentity: ${fn.userIdentity ?? "optional"}`,
+    `executionMode: ${fn.executionMode}`,
     `input: ${JSON.stringify(fn.inputSchema)}`,
     `output: ${JSON.stringify(fn.outputSchema)}`,
   ].join("\n");

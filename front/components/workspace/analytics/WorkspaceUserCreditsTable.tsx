@@ -1,4 +1,5 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
+import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import type { AnalyticsEntityFilter } from "@app/components/workspace/analytics/analyticsFilter";
 import { CreditsTableCard } from "@app/components/workspace/analytics/CreditsTableCard";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
@@ -13,23 +14,32 @@ import type {
   UserCreditAgent,
   UserCreditRow,
 } from "@app/lib/api/assistant/observability/user_credits";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useWorkspaceUserCredits } from "@app/lib/swr/workspaces";
-import { Avatar, DataTable, Tooltip } from "@dust-tt/sparkle";
+import { isAdmin } from "@app/types/user";
+import { Avatar, DataTable, Hoverable, Tooltip } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import { useState } from "react";
 
 interface UserCreditRowData extends UserCreditRow {
   onClick?: () => void;
   onDoubleClick?: () => void;
+  onAgentClick?: (agentId: string) => void;
 }
 
 type UserCreditInfo = CellContext<UserCreditRowData, unknown>;
 
-function TopAgentsCell({ agents }: { agents: UserCreditAgent[] }) {
+interface TopAgentsCellProps {
+  agents: UserCreditAgent[];
+  onAgentClick?: (agentId: string) => void;
+}
+
+function TopAgentsCell({ agents, onAgentClick }: TopAgentsCellProps) {
   return (
     <EntityList
       items={agents}
       renderItem={(agent) => {
-        const row = (
+        const label = (
           <div className="flex items-center gap-1.5">
             <Avatar
               name={agent.name}
@@ -44,6 +54,20 @@ function TopAgentsCell({ agents }: { agents: UserCreditAgent[] }) {
               </span>
             </span>
           </div>
+        );
+        const row = onAgentClick ? (
+          <Hoverable
+            variant="primary"
+            className="flex min-w-0 items-center text-left"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAgentClick(agent.agentId);
+            }}
+          >
+            {label}
+          </Hoverable>
+        ) : (
+          label
         );
         return agent.description ? (
           <Tooltip
@@ -106,7 +130,10 @@ const columns: ColumnDef<UserCreditRowData>[] = [
     meta: { sizeRatio: 44 },
     cell: (info: UserCreditInfo) => (
       <DataTable.CellContent>
-        <TopAgentsCell agents={info.row.original.topAgents} />
+        <TopAgentsCell
+          agents={info.row.original.topAgents}
+          onAgentClick={info.row.original.onAgentClick}
+        />
       </DataTable.CellContent>
     ),
   },
@@ -123,6 +150,10 @@ export function WorkspaceUserCreditsTable({
   period,
   onSelectUser,
 }: WorkspaceUserCreditsTableProps) {
+  const { user, workspace } = useAuth();
+  const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
+  const canOpenAgentDetails = isAdmin(workspace);
+
   const { inputValue, debouncedValue, setValue } = useDebounce("", {
     delay: 300,
   });
@@ -136,12 +167,15 @@ export function WorkspaceUserCreditsTable({
       disabled: !workspaceId,
     });
 
-  const rows: UserCreditRowData[] = onSelectUser
-    ? userCredits.map((row) => ({
-        ...row,
-        onClick: () => onSelectUser({ id: row.userId, name: row.name }),
-      }))
-    : userCredits;
+  const rows: UserCreditRowData[] = userCredits.map((row) => ({
+    ...row,
+    ...(canOpenAgentDetails
+      ? { onAgentClick: (agentId: string) => setDetailedAgentId(agentId) }
+      : {}),
+    ...(onSelectUser
+      ? { onClick: () => onSelectUser({ id: row.userId, name: row.name }) }
+      : {}),
+  }));
 
   const exportParams = new URLSearchParams({
     days: period.toString(),
@@ -161,24 +195,34 @@ export function WorkspaceUserCreditsTable({
   });
 
   return (
-    <CreditsTableCard<UserCreditRowData>
-      actions={<CsvDownloadButton {...csvDownload} />}
-      title="Users by credits"
-      description={`Top 100 users by credits over the last ${period} days, with their most-used agents.`}
-      searchName="user-credits-search"
-      searchPlaceholder="Search a user…"
-      searchValue={inputValue}
-      onSearchChange={setValue}
-      isLoading={isUserCreditsLoading}
-      isError={Boolean(isUserCreditsError)}
-      errorMessage="Failed to load user credits."
-      emptyMessage={
-        debouncedValue
-          ? `No user matches "${inputValue}".`
-          : "No user activity for this selection."
-      }
-      columns={columns}
-      data={rows}
-    />
+    <>
+      {canOpenAgentDetails && (
+        <AgentDetailsSheet
+          owner={workspace}
+          user={user}
+          agentId={detailedAgentId}
+          onClose={() => setDetailedAgentId(null)}
+        />
+      )}
+      <CreditsTableCard<UserCreditRowData>
+        actions={<CsvDownloadButton {...csvDownload} />}
+        title="Users by credits"
+        description={`Top 100 users by credits over the last ${period} days, with their most-used agents.`}
+        searchName="user-credits-search"
+        searchPlaceholder="Search a user…"
+        searchValue={inputValue}
+        onSearchChange={setValue}
+        isLoading={isUserCreditsLoading}
+        isError={Boolean(isUserCreditsError)}
+        errorMessage="Failed to load user credits."
+        emptyMessage={
+          debouncedValue
+            ? `No user matches "${inputValue}".`
+            : "No user activity for this selection."
+        }
+        columns={columns}
+        data={rows}
+      />
+    </>
   );
 }

@@ -3,7 +3,8 @@ import { updateConversationRequirements } from "@app/lib/api/assistant/conversat
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import { resolveModel } from "@app/lib/api/assistant/resolve_model";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import {
   AgentMessageModel,
   CompactionMessageModel,
@@ -17,6 +18,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   AgenticMessageData,
   AgentMessageType,
@@ -196,6 +198,30 @@ export async function createUserMessage(
     );
   }
 
+  // An agent posts this message to answer the origin message, so it inherits the authorship of the
+  // message the origin answers: nothing Dust posted on someone's behalf turns into a message of
+  // theirs one run down. Keeps the whole tree off their personal credentials and out of approval
+  // prompts nobody would answer.
+  if (originMessage?.parentId) {
+    const parentMessage = await MessageModel.findOne({
+      attributes: ["userMessageId"],
+      where: { workspaceId: workspace.id, id: originMessage.parentId },
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: true,
+          attributes: ["userId"],
+        },
+      ],
+      transaction,
+    });
+
+    if (parentMessage?.userMessage?.userId === null) {
+      user = null;
+    }
+  }
+
   // Only set agenticMessageType and agenticOriginMessageId if originMessage exists
   // The model validation requires both to be set together
   const agenticMessageType = originMessage ? agenticMessageData?.type : null;
@@ -280,7 +306,27 @@ export async function resolveModelForMentionedAgent(
 ): Promise<AgentMessageModelResolution> {
   const featureFlags = await getFeatureFlags(auth);
 
-  return resolveModel(auth, { selection, configuration, featureFlags });
+  // Sidekick picks its own model server-side. Never honor a user-supplied
+  // model override for it
+  let effectiveSelection = selection;
+  if (configuration.sId === GLOBAL_AGENTS_SID.SIDEKICK && selection) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        userId: auth.user()?.sId,
+        requestedProviderId: selection.providerId,
+        requestedModelId: selection.modelId,
+      },
+      "Ignoring user model selection for the sidekick agent."
+    );
+    effectiveSelection = undefined;
+  }
+
+  return resolveModel(auth, {
+    selection: effectiveSelection,
+    configuration,
+    featureFlags,
+  });
 }
 
 export const createAgentMessages = async (

@@ -1,8 +1,8 @@
+import type { UserDayCell } from "@app/lib/api/activation/evaluator";
 import {
   computeActivationFromCells,
   MIN_DISTINCT_WEEKS,
   MIN_HVUC_DAYS,
-  type UserDayCell,
 } from "@app/lib/api/activation/evaluator";
 import { describe, expect, it } from "vitest";
 

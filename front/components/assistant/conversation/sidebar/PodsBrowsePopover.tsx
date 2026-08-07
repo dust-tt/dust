@@ -45,6 +45,7 @@ function PodBrowseItemSkeleton({ count = 5 }: { count?: number }) {
 }
 
 function PodBrowseItem({ pod, onClick }: PodBrowseItemProps) {
+  const description = pod.description ? pod.description : "No description";
   return (
     <div
       className="flex cursor-pointer items-start gap-2 rounded-lg p-2 hover:bg-muted-background"
@@ -53,22 +54,20 @@ function PodBrowseItem({ pod, onClick }: PodBrowseItemProps) {
       <Icon visual={getSpaceIcon(pod)} size="sm" className="mt-0.5 shrink-0" />
       <div className="min-w-0 flex-1">
         <div className="flex flex-row items-center justify-between gap-1.5">
-          <div className="truncate font-medium">{pod.name}</div>
+          <div className="truncate text-sm">{pod.name}</div>
           {pod.archivedAt && (
             <Chip size="mini" color="primary" label="Archived" />
           )}
         </div>
-        {pod.description && (
-          <Tooltip
-            label={pod.description}
-            tooltipTriggerAsChild
-            trigger={
-              <div className="truncate text-xs text-muted-foreground">
-                {pod.description}
-              </div>
-            }
-          />
-        )}
+        <Tooltip
+          label={description}
+          tooltipTriggerAsChild
+          trigger={
+            <div className="truncate text-xs text-muted-foreground">
+              {description}
+            </div>
+          }
+        />
       </div>
     </div>
   );

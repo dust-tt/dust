@@ -1,11 +1,19 @@
 import { getSimilarSkills } from "@app/lib/api/skills/existing_skill_checker";
 import logger from "@app/logger/logger";
-import { isString } from "@app/types/shared/utils/general";
+import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 // Mounted at /api/w/:wId/skills/similar.
 const app = workspaceApp();
+
+const PostSimilarSkillsBodySchema = z.object({
+  naturalDescription: z.string(),
+  excludeSkillId: z.string().optional(),
+  availabilities: z.array(z.enum(SKILL_AVAILABILITIES)).nonempty().optional(),
+});
 
 /** @ignoreswagger */
 app.post("/", async (ctx) => {
@@ -13,32 +21,25 @@ app.post("/", async (ctx) => {
   const owner = auth.getNonNullableWorkspace();
 
   const body = await ctx.req.json().catch(() => null);
-  const naturalDescription = body?.naturalDescription;
-  const excludeSkillId = body?.excludeSkillId;
+  const bodyValidation = PostSimilarSkillsBodySchema.safeParse(body);
 
-  if (!isString(naturalDescription)) {
+  if (!bodyValidation.success) {
     return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "naturalDescription is required and must be a string.",
+        message: fromError(bodyValidation.error).toString(),
       },
     });
   }
 
-  if (excludeSkillId !== undefined && !isString(excludeSkillId)) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "excludeSkillId must be a string if provided.",
-      },
-    });
-  }
+  const { naturalDescription, excludeSkillId, availabilities } =
+    bodyValidation.data;
 
   const result = await getSimilarSkills(auth, {
     naturalDescription,
     excludeSkillId: excludeSkillId ?? null,
+    availabilities,
   });
 
   if (result.isErr()) {

@@ -34,7 +34,13 @@ const meta: Meta<ContentMessageStoryProps> = {
 - To explain a state ("This agent is read-only") or surface a non-urgent warning.
 
 **Guidelines**
-- Match the **variant** to the intent — \`warning\`, \`success\`, \`info\`.
+- Color should signal the *consequence for the user*, not the message's topic:
+  - \`primary\` — neutral context, no action needed.
+  - \`blue\` — useful info, guidance, or discoverability.
+  - \`warning\` / \`rose\` — a blocking error or failed action that needs the user to intervene.
+  - \`info\` / \`golden\` — a risk or degraded capability; the user can usually continue.
+- Despite the name, \`info\` renders the **orange** tokens, not blue — use \`blue\` for informational messages and \`primary\` for a neutral gray one.
+- Pair color with a clear title and icon; never rely on color alone.
 - For transient feedback after an action, use a **Notification** (toast) instead.
 - For a decision that must block the flow, use a **Dialog**.`,
       },

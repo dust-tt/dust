@@ -18,13 +18,15 @@ import {
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
+import type {
+  MembershipOriginType,
+  MembershipRoleType,
+  MembershipSeatType,
+  UserCreditState,
+} from "@app/types/memberships";
 import {
   initialCreditStateForSeatType,
   isMembershipSeatType,
-  type MembershipOriginType,
-  type MembershipRoleType,
-  type MembershipSeatType,
-  type UserCreditState,
 } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -41,7 +43,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op } from "sequelize";
+import { col, fn, Op } from "sequelize";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   users: UserResource[];
@@ -50,6 +52,7 @@ type GetMembershipsOptions = RequireAtLeastOne<{
   roles?: MembershipRoleType[];
   seatTypes?: MembershipSeatType[];
   transaction?: Transaction;
+  at?: Date;
 };
 
 export type MembershipsPaginationParams = {
@@ -57,6 +60,11 @@ export type MembershipsPaginationParams = {
   orderDirection: "asc" | "desc";
   lastValue?: number;
   limit: number;
+};
+
+export type PoolCapOverrideSnapshot = {
+  poolCapOverrideAwuCredits: number | null;
+  poolCapOverrideExpiresAt: Date | null;
 };
 
 type MembershipsWithTotal = {
@@ -140,6 +148,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     seatTypes,
     transaction,
     paginationParams,
+    at = new Date(),
   }: GetMembershipsOptions & {
     paginationParams?: MembershipsPaginationParams;
   }): Promise<MembershipsWithTotal> {
@@ -149,10 +158,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
     const whereClause: WhereOptions<InferAttributes<MembershipModel>> = {
       startAt: {
-        [Op.lte]: new Date(),
+        [Op.lte]: at,
       },
       endAt: {
-        [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }],
+        [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: at }],
       },
     };
 
@@ -640,15 +649,18 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     user,
     workspace,
     transaction,
+    at,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     transaction?: Transaction;
+    at?: Date;
   }): Promise<MembershipResource | null> {
     const { memberships, total } = await this.getActiveMemberships({
       users: [user],
       workspace,
       transaction,
+      at,
     });
     if (total === 0) {
       return null;
@@ -677,18 +689,20 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace,
     userModelId,
     transaction,
+    at = new Date(),
   }: {
     workspace: LightWorkspaceType;
     userModelId: ModelId;
     transaction?: Transaction;
+    at?: Date;
   }): Promise<MembershipSeatType | null> {
     const row = await this.model.findOne({
       attributes: ["seatType"],
       where: {
         workspaceId: workspace.id,
         userId: userModelId,
-        startAt: { [Op.lte]: new Date() },
-        endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
+        startAt: { [Op.lte]: at },
+        endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: at }] },
       },
       transaction,
     });
@@ -1621,6 +1635,74 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       },
       transaction
     );
+  }
+
+  /**
+   * Snapshot of the current pool cap override
+   */
+  get poolCapOverrideSnapshot(): PoolCapOverrideSnapshot {
+    return {
+      poolCapOverrideAwuCredits: this.poolCapOverrideAwuCredits,
+      poolCapOverrideExpiresAt: this.poolCapOverrideExpiresAt,
+    };
+  }
+
+  /**
+   * Restore a pool cap override from a snapshot
+   */
+  async revertPoolCapOverride(
+    snapshot: PoolCapOverrideSnapshot,
+    transaction?: Transaction
+  ): Promise<void> {
+    await this.updatePoolCapOverride(snapshot, transaction);
+  }
+
+  /**
+   * Model ids of workspaces that have at least one active membership whose
+   * pool cap override has expired. Global, cross-workspace.
+   */
+  static async dangerouslyGetWorkspaceModelIdsWithExpiredMembershipPoolCapOverride(
+    nowMs: number
+  ): Promise<ModelId[]> {
+    const rows = await this.model.findAll({
+      attributes: [[fn("DISTINCT", col("workspaceId")), "workspaceId"]],
+      where: {
+        poolCapOverrideExpiresAt: { [Op.lte]: new Date(nowMs) },
+        poolCapOverrideAwuCredits: { [Op.ne]: null },
+        endAt: null,
+      },
+      order: [["workspaceId", "ASC"]],
+      raw: true,
+      // WORKSPACE_ISOLATION_BYPASS: hourly sweep across every workspace to
+      // find which ones have a membership whose pool cap override just expired.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+
+    return rows.map((row) => row.workspaceId);
+  }
+
+  /**
+   * Active memberships within `auth`'s workspace whose pool cap override has
+   * expired as of `nowMs`.
+   */
+  static async listActiveWithExpiredPoolCapOverride({
+    auth,
+    nowMs,
+  }: {
+    auth: Authenticator;
+    nowMs: number;
+  }): Promise<MembershipResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+    const rows = await MembershipModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        endAt: null,
+        poolCapOverrideAwuCredits: { [Op.ne]: null },
+        poolCapOverrideExpiresAt: { [Op.lte]: new Date(nowMs) },
+      },
+    });
+    return rows.map((row) => new this(this.model, row.get()));
   }
 
   /**

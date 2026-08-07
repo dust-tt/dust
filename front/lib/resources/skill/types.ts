@@ -33,6 +33,7 @@ export type SkillConfigurationFindOptions = (
   | Omit<CustomSkillConfigurationFindOptions, "attributes">
 ) & {
   withTools?: boolean;
+  withToolMetadata?: boolean;
   withInstructions?: boolean;
   withFileAttachments?: boolean;
 };

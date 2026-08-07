@@ -1,15 +1,17 @@
 import { randomBytes } from "node:crypto";
 
 import { renderEgressSecretPlaceholder } from "@app/lib/api/sandbox/env_vars";
+import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import {
   getSandboxOwnerEnvManifestEntries,
-  type SandboxRuntimeOwner,
+  resolvePodForRuntimeOwner,
 } from "@app/lib/api/sandbox/owner";
 import { rootCommand } from "@app/lib/api/sandbox/root_command";
 import type { Authenticator } from "@app/lib/auth";
+import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export const SANDBOX_ENV_MANIFEST_PATH = "/run/dust/sandbox-env-manifest.json";
 
@@ -38,7 +40,32 @@ export async function buildSandboxEnvManifest(
   auth: Authenticator,
   owner: SandboxRuntimeOwner
 ): Promise<Result<SandboxEnvManifest, Error>> {
-  const allVars = await WorkspaceSandboxEnvVarResource.listForWorkspace(auth);
+  const workspaceVars = await SandboxEnvVarResource.listForScope(auth, {
+    kind: "workspace",
+    workspace: auth.getNonNullableWorkspace(),
+  });
+
+  // Sandboxes running in a pod also receive the pod's vars — list them too,
+  // pod winning on name collision, mirroring the injection and
+  // egress-secrets merges.
+  const podResult = await resolvePodForRuntimeOwner(auth, owner);
+  if (podResult.isErr()) {
+    return podResult;
+  }
+  const podVars = podResult.value
+    ? await SandboxEnvVarResource.listForScope(auth, {
+        kind: "pod",
+        pod: podResult.value,
+      })
+    : [];
+
+  const byEnvName = new Map(
+    workspaceVars.map((resource) => [resource.envName, resource])
+  );
+  for (const resource of podVars) {
+    byEnvName.set(resource.envName, resource);
+  }
+  const allVars = [...byEnvName.values()];
 
   const httpsSecrets: SandboxEnvManifest["httpsSecrets"] = [];
   for (const resource of allVars) {

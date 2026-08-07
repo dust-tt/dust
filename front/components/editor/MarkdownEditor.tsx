@@ -20,7 +20,7 @@ const editorVariants = cva(
   [
     "overflow-auto p-2 resize-y min-h-60",
     "rounded-xl border transition-all duration-200",
-    "bg-muted-background",
+    "bg-muted-background text-foreground",
     "focus-within:ring-highlight-300",
     "focus-within:outline-highlight-200",
     "focus-within:border-highlight-300",

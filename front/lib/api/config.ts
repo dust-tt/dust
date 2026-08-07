@@ -554,10 +554,6 @@ const config = {
   getTemporalFrontNamespace: () => {
     return EnvironmentConfig.getOptionalEnvVariable("TEMPORAL_NAMESPACE");
   },
-  // Deployment component name. Set via DD_SERVICE in helm values per deployment.
-  getServiceName: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable("DD_SERVICE");
-  },
   // Email.
   getEmailWebhookSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("EMAIL_WEBHOOK_SECRET");

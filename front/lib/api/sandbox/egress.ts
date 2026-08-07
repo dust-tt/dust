@@ -7,11 +7,11 @@ import {
   writeEgressSecretsFile,
 } from "@app/lib/api/sandbox/egress_secrets";
 import { writeSandboxEnvManifestFile } from "@app/lib/api/sandbox/env_manifest";
-import { SANDBOX_AGENT_PROXIED_UID } from "@app/lib/api/sandbox/image/types";
+import { SANDBOX_EGRESS_CONTROLLED_UIDS } from "@app/lib/api/sandbox/image/types";
 import { traceSandboxStartupPhase } from "@app/lib/api/sandbox/instrumentation";
 import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
+import type { RootCommand } from "@app/lib/api/sandbox/root_command";
 import {
-  type RootCommand,
   renderRootCommand,
   rootCommand,
 } from "@app/lib/api/sandbox/root_command";
@@ -21,7 +21,8 @@ import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
@@ -29,7 +30,6 @@ import { fromError } from "zod-validation-error";
 
 const EGRESS_FORWARDER_LISTEN_ADDR = "127.0.0.1:9990";
 const EGRESS_RESOLVER_LISTEN_ADDR = "127.0.0.1:1053";
-const EGRESS_PROXIED_UID = SANDBOX_AGENT_PROXIED_UID;
 const EGRESS_TOKEN_DIR = "/etc/dust";
 const EGRESS_TOKEN_PATH = "/etc/dust/egress-token";
 const EGRESS_DENY_LOG_PATH = "/tmp/dust-egress-denied.log";
@@ -195,6 +195,67 @@ const FAILED_EGRESS_HEALTH_STATE: EgressHealthState = {
   bundleOk: false,
 };
 
+function buildEgressHealthcheckCommand(): RootCommand {
+  const commands = SANDBOX_EGRESS_CONTROLLED_UIDS.map((uid) =>
+    rootCommand.exec("/opt/bin/dsbx", [
+      "healthcheck",
+      "--forwarder-listen",
+      EGRESS_FORWARDER_LISTEN_ADDR,
+      "--resolver-listen",
+      EGRESS_RESOLVER_LISTEN_ADDR,
+      "--proxied-uid",
+      uid,
+      "--ca-bundle",
+      MITM_CA_BUNDLE_PATH,
+      "--ca-bundle-marker",
+      MITM_CA_BUNDLE_MARKER_PATH,
+    ])
+  );
+  const finalCommand = commands[commands.length - 1];
+  if (!finalCommand) {
+    throw new Error("At least one sandbox egress-controlled UID is required.");
+  }
+
+  // The trust bundle is installed only after the first forwarder/nftables
+  // health pass. It is global rather than UID-specific, so prerequisite UIDs
+  // validate only the shared listeners and their own nftables enforcement.
+  // The final UID's full JSON is parsed below, where bundleOk remains a
+  // separate signal for the existing install/self-heal flow.
+  const jqEgressBoundaryOkCommand = renderRootCommand(
+    rootCommand.exec("/usr/bin/jq", [
+      "-e",
+      [
+        ".forwarder_port_ok == true",
+        ".resolver_udp_ok == true",
+        ".resolver_tcp_ok == true",
+        ".nft_dns_udp_redirect_ok == true",
+        ".nft_dns_tcp_redirect_ok == true",
+        ".nft_dns_udp_accept_ok == true",
+        ".nft_tcp_forward_redirect_ok == true",
+        ".nft_loopback_ssh_drop_ok == true",
+        ".nft_udp_drop_ok == true",
+        ".nft_icmp_drop_ok == true",
+        ".nft_ipv6_drop_ok == true",
+      ].join(" and "),
+    ])
+  );
+  const prerequisiteChecks = commands.slice(0, -1).map((command, index) => {
+    const resultVariable = `_dust_egress_health_${index}`;
+    return [
+      `${resultVariable}=$(${renderRootCommand(command)}) || exit $?;`,
+      `if ! /usr/bin/printf %s "$${resultVariable}" | ${jqEgressBoundaryOkCommand} >/dev/null; then`,
+      `/usr/bin/printf '%s\\n' "$${resultVariable}" >&2;`,
+      "exit 1;",
+      "fi;",
+    ].join(" ");
+  });
+
+  return rootCommand.unsafeShell(
+    [...prerequisiteChecks, renderRootCommand(finalCommand)].join(" "),
+    "validate the complete fixed set of sandbox egress-controlled UIDs in one healthcheck exec"
+  );
+}
+
 function parseEgressHealthcheckOutput(
   stdout: string,
   logContext: Record<string, unknown>
@@ -264,28 +325,15 @@ async function checkEgressForwarderHealth(
     event: "egress.healthcheck_parse",
     providerId: sandbox.providerId,
     sandboxId: sandbox.sId,
+    controlledUids: SANDBOX_EGRESS_CONTROLLED_UIDS,
   };
 
   // Root is required: `nft list table` needs CAP_NET_ADMIN, and the probe also
   // reads /proc/net/{tcp,udp} which is fine non-root but pointless to split.
   const result = await traceSandboxStartupPhase("egress.healthcheck", () =>
-    sandbox.execRoot(
-      auth,
-      rootCommand.exec("/opt/bin/dsbx", [
-        "healthcheck",
-        "--forwarder-listen",
-        EGRESS_FORWARDER_LISTEN_ADDR,
-        "--resolver-listen",
-        EGRESS_RESOLVER_LISTEN_ADDR,
-        "--proxied-uid",
-        EGRESS_PROXIED_UID,
-        "--ca-bundle",
-        MITM_CA_BUNDLE_PATH,
-        "--ca-bundle-marker",
-        MITM_CA_BUNDLE_MARKER_PATH,
-      ]),
-      { timeoutMs: 1_000 }
-    )
+    sandbox.execRoot(auth, buildEgressHealthcheckCommand(), {
+      timeoutMs: 1_000,
+    })
   );
 
   if (result.isErr()) {
@@ -443,7 +491,7 @@ export async function ensureSandboxEgressOnExec(
 }
 
 // Dev-only: tear down the in-sandbox nftables redirect baked into the image
-// (see egress-nftables.sh in the image registry) so agent-proxied traffic
+// (see egress-nftables.sh in the image registry) so controlled non-root traffic
 // flows direct out of the (now permissive) E2B network, instead of being
 // redirected to the local forwarder port that has no listener in this mode.
 // Keep the dedicated GCS broker drop in place: that credential boundary must
@@ -577,7 +625,7 @@ export async function setupEgressForwarder(
 
   const secretsWriteResult = await traceSandboxStartupPhase(
     "egress.write_secrets",
-    () => writeEgressSecretsFile(auth, sandbox)
+    () => writeEgressSecretsFile(auth, sandbox, runtimeOwner)
   );
   if (secretsWriteResult.isErr()) {
     return secretsWriteResult;

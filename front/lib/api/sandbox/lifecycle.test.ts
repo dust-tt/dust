@@ -1,4 +1,5 @@
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -136,6 +137,7 @@ describe("ensureConversationSandboxReady", () => {
   let conversationOwner: {
     kind: "conversation";
     conversationId: string;
+    spaceId: string | null;
   };
   const pod = { sId: "space-id" };
   const podOwner = {
@@ -162,6 +164,7 @@ describe("ensureConversationSandboxReady", () => {
     conversationOwner = {
       kind: "conversation",
       conversationId: conversation.sId,
+      spaceId: null,
     };
     sandbox = await SandboxFactory.create(auth, conversation);
 
@@ -231,15 +234,19 @@ describe("ensureConversationSandboxReady", () => {
     );
 
     expect(result.isOk()).toBe(true);
-    // runtimeOwner stays the conversation (env vars, logs, file system)...
+    // The runtime owner stays the conversation but carries its pod, and the
+    // egress policy is scoped to the Pod's shared file.
+    const podConversationOwner = {
+      ...conversationOwner,
+      spaceId: "space-id",
+    };
     expect(mockPrepareSandboxEgressBeforeMount).toHaveBeenCalledWith(
       auth,
       sandbox,
-      // ...but the egress policy is scoped to the Pod's shared file.
-      { runtimeOwner: conversationOwner, egressPolicyOwnerId: "space-id" }
+      { runtimeOwner: podConversationOwner, egressPolicyOwnerId: "space-id" }
     );
     expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
-      runtimeOwner: conversationOwner,
+      runtimeOwner: podConversationOwner,
       egressPolicyOwnerId: "space-id",
       wokeFromSleep: false,
     });
@@ -347,7 +354,9 @@ describe("ensureConversationSandboxReady", () => {
     const result = await ensurePodSandboxReady(auth as never, pod as never);
 
     expect(result.isOk()).toBe(true);
-    expect(mockEnsurePodSandboxActive).toHaveBeenCalledWith(auth, pod);
+    expect(mockEnsurePodSandboxActive).toHaveBeenCalledWith(auth, pod, {
+      requireRunning: false,
+    });
     expect(mockEnsureSandboxActive).not.toHaveBeenCalled();
     // The pod's published bundles are mounted read-only under a pod-scoped
     // path; the litestream replica prefix is mounted rw for the in-sandbox

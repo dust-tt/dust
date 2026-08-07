@@ -1,6 +1,7 @@
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { revokeAllExecTokensForSandbox } from "@app/lib/api/sandbox/access_tokens";
 import { deleteLegacySandboxPolicy } from "@app/lib/api/sandbox/egress_policy";
+import { SandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import {
   recordLifecycleOperation,
@@ -19,6 +20,7 @@ import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import {
   SandboxModel,
@@ -28,7 +30,6 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { PokeSandboxType } from "@app/types/poke";
@@ -71,7 +72,13 @@ export type SandboxPreSleepCheck = (
 
 type SandboxCreateOwner = SandboxLifecycleOwner & {
   createSandbox: (blob: SandboxCreateBlob) => Promise<SandboxResource>;
-  envVars: Record<string, string>;
+  // Owner env vars are only consumed when a sandbox is actually created.
+  // Owners whose env requires DB reads (e.g. pod env vars) should pass the
+  // factory form so ensureActive calls on an already-running sandbox don't
+  // pay for loads that would be discarded.
+  envVars:
+    | Record<string, string>
+    | (() => Promise<Result<Record<string, string>, Error>>);
   logLabel: string;
 };
 
@@ -88,6 +95,11 @@ export type SandboxDeleteOwner = SandboxLifecycleOwner & {
     transaction: Transaction
   ) => Promise<void>;
 };
+
+// Activity writes are throttled to this granularity; the reaper's inactivity
+// thresholds are minutes-scale, so a lastActivityAt up to 30s stale is
+// indistinguishable to it.
+const LAST_ACTIVITY_WRITE_INTERVAL_MS = 30_000;
 
 // Owner identity env vars are reserved for owner adapters. SandboxResource
 // only enforces the env contract and does not interpret owner types.
@@ -312,6 +324,13 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   }: {
     transaction?: Transaction;
   } = {}): Promise<[affectedCount: number]> {
+    // Throttled: every operation on a busy sandbox calls this, which makes the sandbox row a
+    // hot write under concurrent invocations. The reaper compares lastActivityAt against
+    // inactivity thresholds measured in minutes, so a value up to 30s stale changes nothing.
+    const lastActivityAtMs = this.lastActivityAt?.getTime() ?? 0;
+    if (Date.now() - lastActivityAtMs < LAST_ACTIVITY_WRITE_INTERVAL_MS) {
+      return [0];
+    }
     return this.update({ lastActivityAt: new Date() }, transaction);
   }
 
@@ -422,8 +441,26 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       `sandbox:lifecycle:${lockKey}`,
       () => fn(provider),
       undefined,
-      { traceAcquireResource: "sandbox:lifecycle" }
+      {
+        traceAcquireResource: "sandbox:lifecycle",
+        // Contended by concurrent invocations of the same pod: transitions
+        // hold this lock from milliseconds (status checks) to seconds
+        // (wake/create), and waiters on the fast side of that range should
+        // not lose in 100ms quanta.
+        retryIntervalMs: 25,
+      }
     );
+  }
+
+  // Owner env vars come either as a plain record or as a factory for owners
+  // whose env requires DB reads — the factory only runs on the create paths,
+  // so ensure calls on an already-running sandbox pay nothing.
+  private static async resolveOwnerEnvVars(
+    owner: SandboxCreateOwner
+  ): Promise<Result<Record<string, string>, Error>> {
+    return typeof owner.envVars === "function"
+      ? owner.envVars()
+      : new Ok(owner.envVars);
   }
 
   // Compose the env vars passed to provider.create. Precedence (lowest →
@@ -436,13 +473,22 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     ownerEnvVars: Record<string, string>,
     imageEnvVars: Record<string, string> | undefined
   ): Promise<Result<Record<string, string>, Error>> {
-    const workspaceEnvResult =
-      await WorkspaceSandboxEnvVarResource.loadEnv(auth);
+    const workspaceScope = {
+      kind: "workspace" as const,
+      workspace: auth.getNonNullableWorkspace(),
+    };
+    const workspaceEnvResult = await SandboxEnvVarResource.loadEnv(
+      auth,
+      workspaceScope
+    );
     if (workspaceEnvResult.isErr()) {
       return workspaceEnvResult;
     }
     const httpsSecretEnvResult =
-      await WorkspaceSandboxEnvVarResource.loadHttpsSecretPlaceholderEnv(auth);
+      await SandboxEnvVarResource.loadHttpsSecretPlaceholderEnv(
+        auth,
+        workspaceScope
+      );
     if (httpsSecretEnvResult.isErr()) {
       return httpsSecretEnvResult;
     }
@@ -488,12 +534,56 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   static async ensureActive(
     auth: Authenticator,
     owner: SandboxCreateOwner,
-    opts: { beforeSleep?: SandboxPreSleepCheck } = {}
+    opts: {
+      beforeSleep?: SandboxPreSleepCheck;
+      // Use the sandbox only if it is already running: do not create, wake, or recreate one.
+      // Creating and waking take seconds to minutes, which a caller running inside a request
+      // cannot wait for.
+      requireRunning?: boolean;
+    } = {}
   ): Promise<Result<EnsureSandboxResult, Error>> {
     assert(
       auth.getNonNullableWorkspace().id !== undefined,
       "Cannot ensure sandbox without a workspace"
     );
+
+    // Lock-free fast path: `requireRunning` never creates, wakes, or recreates, so a running,
+    // not-kill-requested sandbox can be used off a plain read. The lock exists to serialize
+    // lifecycle transitions, and this path performs none; taking it here made every concurrent
+    // invocation of a busy pod queue behind a blind-polling Redis lock for work that reads two
+    // rows.
+    //
+    // The read is a snapshot, so a concurrent kill or sleep can invalidate the sandbox between
+    // this check and the caller's exec. That race is accepted, not converged: the exec fails
+    // with a provider error and the invocation fails (escalation to the durable path only
+    // happens on SandboxNotRunningError, and escalating on an arbitrary exec failure would risk
+    // re-running a function that partially executed). The lock never protected running execs —
+    // it only serialized admission — so an exec racing a sleep's pre-pause flush was already
+    // possible for any exec admitted before the reaper took the lock; this path widens
+    // admission into that window but does not create it. Both windows need the reaper to pick
+    // an actively-used pod, which the activity touch below makes minutes-rare.
+    //
+    // A sandbox that is NOT running never takes the fast path: the error return below preserves
+    // requireRunning's contract without touching the lock, since waiting behind an in-flight
+    // multi-second wake would defeat the caller's latency bound anyway.
+    if (opts.requireRunning) {
+      const existing = await owner.fetchSandbox();
+      if (
+        !existing ||
+        existing.killRequestedAt !== null ||
+        existing.status !== "running"
+      ) {
+        return new Err(new SandboxNotRunningError());
+      }
+      // Same touch the locked path performs, so the reaper's inactivity clock keeps running for
+      // sandboxes served entirely through the fast path. Throttled internally to one write/30s.
+      await existing.updateLastActivityAt();
+      return new Ok({
+        sandbox: existing,
+        freshlyCreated: false,
+        wokeFromSleep: false,
+      });
+    }
 
     return this.withLifecycleLock(owner.lockKey, async (provider) => {
       const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
@@ -506,9 +596,14 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         }
 
         const createConfig = imageResult.value.toCreateConfig();
+        const ownerEnvVarsResult = await this.resolveOwnerEnvVars(owner);
+        if (ownerEnvVarsResult.isErr()) {
+          return ownerEnvVarsResult;
+        }
+
         const envVarsResult = await this.buildSandboxEnvVars(
           auth,
-          owner.envVars,
+          ownerEnvVarsResult.value,
           createConfig.envVars
         );
         if (envVarsResult.isErr()) {
@@ -645,9 +740,14 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           }
 
           const createConfig = imageResult.value.toCreateConfig();
+          const ownerEnvVarsResult = await this.resolveOwnerEnvVars(owner);
+          if (ownerEnvVarsResult.isErr()) {
+            return ownerEnvVarsResult;
+          }
+
           const envVarsResult = await this.buildSandboxEnvVars(
             auth,
-            owner.envVars,
+            ownerEnvVarsResult.value,
             createConfig.envVars
           );
           if (envVarsResult.isErr()) {

@@ -26,16 +26,22 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type {
   PostSandboxFunctionInvocationRequestBody,
+  SandboxFunctionExecutionMode,
   SandboxFunctionInvocationOrigin,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
-import { isValidSandboxFunctionSlug } from "@app/types/api/sandbox_functions";
+import {
+  DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
+  isValidSandboxFunctionSlug,
+} from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
+import { createHash } from "crypto";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { Attributes, Transaction } from "sequelize";
 
@@ -43,7 +49,21 @@ import type { Attributes, Transaction } from "sequelize";
 export interface SandboxFunctionResource
   extends ReadonlyAttributesType<SandboxFunctionModel> {}
 
-const SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS = 5 * 60_000;
+export const SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS = 5 * 60_000;
+
+/**
+ * Sha256 hex of a published bundle's utf8 bytes — the same bytes uploadContent writes and the
+ * in-sandbox warm server hashes off disk, so the two sides can compare (see the runner's serve.ts).
+ */
+export function computeSandboxFunctionBundleSha256(bundleCode: string): string {
+  return createHash("sha256").update(bundleCode, "utf8").digest("hex");
+}
+
+export function getSandboxFunctionPublishLockName(
+  sandboxFunctionSId: string
+): string {
+  return `sandbox_function:publish:${sandboxFunctionSId}`;
+}
 
 function userIdentityPolicyStrength(
   policy: SandboxFunctionUserIdentityPolicy
@@ -104,6 +124,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       slug,
       description,
       userIdentity = "optional",
+      executionMode = DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
+      bundleSha256 = null,
       inputSchema,
       outputSchema,
     }: {
@@ -112,6 +134,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       slug: string;
       description: string;
       userIdentity?: SandboxFunctionUserIdentityPolicy;
+      executionMode?: SandboxFunctionExecutionMode;
+      bundleSha256?: string | null;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
     },
@@ -151,6 +175,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         slug,
         description,
         userIdentity,
+        executionMode,
+        bundleSha256,
         inputSchema,
         outputSchema,
       },
@@ -172,19 +198,21 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       bundleCode,
       description,
       userIdentity = this.userIdentity ?? "optional",
+      executionMode = DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
       inputSchema,
       outputSchema,
     }: {
       bundleCode: string;
       description: string;
       userIdentity?: SandboxFunctionUserIdentityPolicy;
+      executionMode?: SandboxFunctionExecutionMode;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
     }
   ): Promise<Result<undefined, Error>> {
     try {
       return await executeWithLock(
-        `sandbox_function:publish:${this.sId}`,
+        getSandboxFunctionPublishLockName(this.sId),
         async () => {
           const currentFunction = await this.model.findOne({
             where: {
@@ -209,9 +237,23 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
           }
 
           await this.file.uploadContent(auth, bundleCode);
+          // The execution mode is restated by every publish, like the description and the schemas:
+          // a re-publish that does not name it gets the default. Carrying the old mode forward
+          // would keep a function fast after the publish that added a tool call to it, which only
+          // shows up as a refused tool call at run time.
+          //
+          // It moves after the upload, and unlike the user identity policy there is no window to
+          // guard: whichever mode is in effect while the upload lands, a fast bundle running as
+          // durable is harmless and a durable bundle running as fast just fails its tool calls.
           await this.update({
             description,
             userIdentity,
+            executionMode,
+            // Derived from the exact code the upload above wrote. Landing with the row update
+            // (not before the upload) means a warm server can never be told to expect a bundle
+            // that is not on disk yet; invocations racing this publish carry the old hash and
+            // settle against whichever bundle they were issued for.
+            bundleSha256: computeSandboxFunctionBundleSha256(bundleCode),
             inputSchema,
             outputSchema,
           });
@@ -226,11 +268,19 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     }
   }
 
+  // `includeDeletedSpace` refers to the pod, not to the functions themselves: pods are
+  // soft-deleted before being scrubbed, and without it every function of a pod being deleted
+  // resolves to no space and is silently dropped here.
   private static async baseFetch(
     auth: Authenticator,
-    options?: ResourceFindOptions<SandboxFunctionModel>
+    {
+      includeDeletedSpace,
+      ...options
+    }: ResourceFindOptions<SandboxFunctionModel> & {
+      includeDeletedSpace?: boolean;
+    } = {}
   ): Promise<SandboxFunctionResource[]> {
-    const { where, ...rest } = options ?? {};
+    const { where, ...rest } = options;
     const sandboxFunctions = await this.model.findAll({
       where: {
         ...where,
@@ -247,7 +297,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
             (sandboxFunction) => sandboxFunction.get().spaceId
           )
         )
-      )
+      ),
+      { includeDeleted: includeDeletedSpace }
     );
     const accessibleSpacesById = new Map(
       spaces
@@ -397,7 +448,11 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   ): Promise<Result<number, Error>> {
     assert(space.isProject(), "Sandbox functions can only belong to pods.");
 
-    const sandboxFunctions = await this.listBySpace(auth, space);
+    // The pod is already soft-deleted when the scrub runs, hence `includeDeletedSpace`.
+    const sandboxFunctions = await this.baseFetch(auth, {
+      where: { spaceId: space.id },
+      includeDeletedSpace: true,
+    });
     for (const sandboxFunction of sandboxFunctions) {
       // TODO(spolu): potentially optimize as this may be quite slow (each delete calls file delete
       // which deletes a whole bunch of records).
@@ -407,7 +462,66 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       }
     }
 
+    // `baseFetch` drops rows it cannot fully hydrate, so a partial list would leave rows behind and
+    // surface much later as a foreign key violation on the pod hard delete. Fail here instead, with
+    // the ids an operator needs to unblock the scrub.
+    const remaining = await this.model.findAll({
+      attributes: ["id"],
+      where: {
+        spaceId: space.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    if (remaining.length > 0) {
+      return new Err(
+        new Error(
+          `Sandbox function(s) of pod ${space.sId} could not be deleted: ` +
+            `${remaining.map(({ id }) => id).join(", ")}.`
+        )
+      );
+    }
+
     return new Ok(sandboxFunctions.length);
+  }
+
+  /**
+   * Make a fast function durable, after it did something only a durable function can do.
+   *
+   * A fast function is published on the promise that it does not call Dust tools. When it breaks
+   * that promise the invocation fails, and without this the next one fails the same way: the
+   * publisher's declaration is wrong and nothing on the platform knows it. Recording durable here
+   * costs that function its fast path and makes every later invocation work.
+   *
+   * The update is guarded on the mode still being fast, so concurrent invocations that each break
+   * the promise converge on one write, and a function whose publisher has already moved it is left
+   * alone. Returns whether this call is the one that moved it.
+   *
+   * A re-publish restates the mode, so this is an override the publisher can clear rather than a
+   * permanent verdict. If the republished bundle still calls tools, it is simply made durable
+   * again.
+   */
+  async makeDurable(auth: Authenticator): Promise<boolean> {
+    const [affectedCount, rows] = await this.model.update(
+      { executionMode: "durable" },
+      {
+        where: {
+          id: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          executionMode: "fast",
+        },
+        returning: true,
+      }
+    );
+    if (affectedCount === 0) {
+      return false;
+    }
+
+    const row = rows[0];
+    if (row) {
+      Object.assign(this, row.get());
+    }
+
+    return true;
   }
 
   async invoke(
@@ -457,6 +571,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       ...this.toPokeJSON(author),
       fileId: this.file.sId,
       userIdentity: this.userIdentity,
+      executionMode: this.executionMode,
       inputSchema: this.inputSchema,
       outputSchema: this.outputSchema,
     };

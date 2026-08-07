@@ -9,7 +9,8 @@
  * Keys are extensionless, content type lives in GCS object metadata.
  */
 
-import { type Authenticator, getFeatureFlagsForWorkspace } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlagsForWorkspace } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import type { FileResource } from "@app/lib/resources/file_resource";

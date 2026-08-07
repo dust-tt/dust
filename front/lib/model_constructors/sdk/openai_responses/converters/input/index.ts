@@ -1,5 +1,6 @@
 import type { Client } from "@app/lib/model_constructors/client";
 import { includesOpenAIToolSearchTool } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/tool_search";
+import type { MessageItemConverters } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
 import {
   assistantProviderPassthroughMessageToInputItems,
   assistantReasoningMessageToInputItems,
@@ -7,7 +8,6 @@ import {
   assistantToolCallRequestToInputItem,
   conversationToInput,
   forceToolToToolChoice,
-  type MessageItemConverters,
   outputFormatToResponseFormat,
   promptCacheBreakpointFor,
   reasoningToOpenAIResponsesReasoning,

@@ -3,6 +3,7 @@ import type { InputBarSlashCommand } from "@app/components/editor/extensions/inp
 import { AttachContextSubMenuDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSubMenuDropdown";
 import { applyAttachContextSelection } from "@app/components/editor/extensions/shared/slash_suggestion/applyAttachContextSelection";
 import { buildSlashCommandSections } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
+import { PickModelSubMenuDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/PickModelSubMenuDropdown";
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
@@ -11,16 +12,18 @@ import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/s
 import {
   ATTACH_CONTEXT_SUB_MENU_ID,
   clearSlashSubMenuStack,
+  PICK_MODEL_SUB_MENU_ID,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { SLASH_COMMAND_CAPABILITIES_LOADING_MESSAGE } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import { useInputBarSlashCommandCapabilities } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashCommandCapabilities";
 import { useSlashMenuStack } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashMenuStack";
+import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { SuggestionProps } from "@tiptap/suggestion";
+import type { RefObject } from "react";
 import {
   forwardRef,
-  type RefObject,
   useCallback,
   useImperativeHandle,
   useMemo,
@@ -35,15 +38,17 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
   > & {
     attachedNodesRef: RefObject<DataSourceViewContentNode[]>;
     conversationIdRef?: RefObject<string | null>;
+    includeAttachKnowledgeRef: RefObject<boolean>;
+    includePickModelRef: RefObject<boolean>;
     onClose: () => void;
     onDetailsRef?: RefObject<((item: SlashCommand) => void) | undefined>;
+    onModelSelectRef: RefObject<((selection: Selection) => void) | undefined>;
     onNodeSelectRef: RefObject<
       ((node: DataSourceViewContentNode) => void) | undefined
     >;
     owner: LightWorkspaceType;
     selectedMCPServerViewIdsRef: RefObject<Set<string>>;
     slashCommandsRef: RefObject<InputBarSlashCommand[]>;
-    includeAttachKnowledgeRef: RefObject<boolean>;
     spaceIdRef: RefObject<string | null | undefined>;
   }
 >(
@@ -54,15 +59,17 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       command,
       conversationIdRef,
       editor,
+      includeAttachKnowledgeRef,
+      includePickModelRef,
       onClose,
       onDetailsRef,
+      onModelSelectRef,
       onNodeSelectRef,
       owner,
       query,
       range,
       selectedMCPServerViewIdsRef,
       slashCommandsRef,
-      includeAttachKnowledgeRef,
       spaceIdRef,
     },
     ref
@@ -107,14 +114,25 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       [editor, onClose, onNodeSelectRef, range, storage]
     );
 
+    const handleModelSelect = useCallback(
+      (selection: Selection) => {
+        clearSlashSubMenuStack(storage);
+        editor.chain().focus().deleteRange(range).run();
+        onModelSelectRef.current?.(selection);
+        onClose();
+      },
+      [editor, onClose, onModelSelectRef, range, storage]
+    );
+
     const commandItems = useMemo(
       () =>
         buildInputBarSlashCommandItems({
           commands: slashCommandsRef.current ?? [],
           includeAttachKnowledge: includeAttachKnowledgeRef.current ?? false,
+          includePickModel: includePickModelRef.current ?? false,
           query,
         }),
-      [includeAttachKnowledgeRef, query, slashCommandsRef]
+      [includeAttachKnowledgeRef, includePickModelRef, query, slashCommandsRef]
     );
 
     const { capabilityItems, isLoading } = useInputBarSlashCommandCapabilities({
@@ -141,7 +159,10 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       ref,
       () => ({
         onKeyDown: ({ event }) => {
-          if (activeFrame?.subMenuId === ATTACH_CONTEXT_SUB_MENU_ID) {
+          if (
+            activeFrame?.subMenuId === ATTACH_CONTEXT_SUB_MENU_ID ||
+            activeFrame?.subMenuId === PICK_MODEL_SUB_MENU_ID
+          ) {
             return subMenuRef.current?.onKeyDown({ event }) ?? false;
           }
 
@@ -182,6 +203,23 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           range={range}
           spaceId={spaceIdRef.current ?? null}
           useCase="conversation-input"
+        />
+      );
+    }
+
+    if (activeFrame?.subMenuId === PICK_MODEL_SUB_MENU_ID) {
+      return (
+        <PickModelSubMenuDropdown
+          ref={subMenuRef}
+          activeFrame={activeFrame}
+          clientRect={clientRect}
+          editor={editor}
+          onBack={() => pop(range)}
+          onClose={onClose}
+          onSelect={handleModelSelect}
+          owner={owner}
+          query={query}
+          range={range}
         />
       );
     }

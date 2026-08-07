@@ -21,7 +21,8 @@ import type {
   SharingGrantType,
 } from "@app/types/files";
 import { DUST_FILE_ID_HEADER } from "@app/types/files";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher, SWRConfiguration } from "swr";
@@ -90,6 +91,47 @@ export async function fetchFileIdFromPath({
   }
 
   return response.headers.get(DUST_FILE_ID_HEADER);
+}
+
+/**
+ * Resolve the FileResource sId linked to a canonical scoped path.
+ * Returns null when the path exists but has no linked FileResource, or when
+ * the path is not found.
+ */
+export function useFileIdFromPath({
+  owner,
+  filePath,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  filePath: string | null | undefined;
+  disabled?: boolean;
+}) {
+  const path = filePath ?? null;
+  const swrKey =
+    disabled || path === null
+      ? null
+      : (`file-id-from-path:${owner.sId}:${path}` as const);
+
+  const { data, error } = useSWRWithDefaults(
+    swrKey,
+    async (): Promise<string | null> => {
+      if (path === null) {
+        return null;
+      }
+      return fetchFileIdFromPath({ owner, filePath: path });
+    },
+    { disabled: swrKey === null }
+  );
+
+  const isLoading = swrKey !== null && !error && data === undefined;
+
+  return {
+    fileId: data ?? null,
+    isFileIdLoading: isLoading,
+    isFileIdNotFound: swrKey !== null && !isLoading && data === null,
+    fileIdError: error ? normalizeError(error) : null,
+  };
 }
 
 type FileContentByUrlData =

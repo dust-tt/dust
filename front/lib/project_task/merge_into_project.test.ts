@@ -9,11 +9,11 @@ import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { TakeawaysWithSource } from "@app/lib/resources/takeaways_resource";
 import { TakeawaysResource } from "@app/lib/resources/takeaways_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import type { Logger } from "@app/logger/logger";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { PodTaskSourceInfo } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { TaskVersionedActionItem } from "@app/types/takeaways";
-import type { Logger } from "pino";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Shared fixtures ───────────────────────────────────────────────────────────

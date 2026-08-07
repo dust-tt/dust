@@ -8,6 +8,7 @@ import { TagsSection } from "@app/components/agent_builder/settings/TagsSection"
 
 interface AgentBuilderSettingsBlockProps {
   agentConfigurationId: string | null;
+  initialRequestedSpaceIds?: string[];
   isEditorGateVisible: boolean;
   isAddingSelfAsEditor: boolean;
   onAddSelfAsEditor: () => void;
@@ -15,6 +16,7 @@ interface AgentBuilderSettingsBlockProps {
 
 export function AgentBuilderSettingsBlock({
   agentConfigurationId,
+  initialRequestedSpaceIds,
   isEditorGateVisible,
   isAddingSelfAsEditor,
   onAddSelfAsEditor,
@@ -34,6 +36,7 @@ export function AgentBuilderSettingsBlock({
           agentConfigurationId={agentConfigurationId}
         />
         <AccessSection
+          initialRequestedSpaceIds={initialRequestedSpaceIds}
           isEditorGateVisible={isEditorGateVisible}
           isAddingSelfAsEditor={isAddingSelfAsEditor}
           onAddSelfAsEditor={onAddSelfAsEditor}

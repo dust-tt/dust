@@ -1,7 +1,9 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   POD_DATABASE_NAME_REGEX,
+  SANDBOX_FUNCTION_EXECUTION_MODES,
   SANDBOX_FUNCTION_SLUG_REGEX,
+  SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX,
 } from "@app/types/api/sandbox_functions";
 import { z } from "zod";
 
@@ -49,14 +51,17 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
       "`schema` with zod `input` and `output`. Set `schema.userIdentity` to `optional`, " +
       "`workspace_user_required`, or `interactive_workspace_user_required`. It is bundled on the " +
       "pod sandbox (only `zod` is available to import), and its contract is extracted from the " +
-      "`schema` export. Re-publishing the same slug replaces the previous version.",
+      "`schema` export. The published slug is prefixed with the app the source lives in, so " +
+      "re-publishing the same name from the same app replaces the previous version while another " +
+      "app's function of the same name is left alone.",
     schema: {
       slug: z
         .string()
-        .regex(SANDBOX_FUNCTION_SLUG_REGEX)
+        .regex(SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX)
         .describe(
-          "Unique function identifier within the pod: lowercase alphanumeric with single hyphen " +
-            "separators (e.g. `send-slack-message`)."
+          "The function's name within its app: lowercase alphanumeric with single hyphen " +
+            "separators (e.g. `send-slack-message`). Do not include the app prefix; publish " +
+            "derives it from `path` and reports the full slug back."
         ),
       description: z
         .string()
@@ -69,13 +74,47 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
         .min(1)
         .describe(
           "Scoped path to the function's TypeScript source in the pod, as shown by the files " +
-            "tools (e.g. `pod-<id>/greet.ts`)."
+            "tools. It lives in its app's `functions` folder (e.g. " +
+            "`pod-<id>/MyApp/functions/greet.ts`). The app folder's name becomes the published " +
+            "slug's prefix; a source at the pod root keeps its bare name."
+        ),
+      executionMode: z
+        .enum(SANDBOX_FUNCTION_EXECUTION_MODES)
+        .describe(
+          "`fast` runs synchronously and returns in a fraction of the time, but cannot call Dust " +
+            "tools through `dsbx tools`. It can still read and write pod state, run local " +
+            "binaries and make outbound HTTP calls, though those count against its execution " +
+            "ceiling. `durable` is for a function that calls `dsbx tools`, which may wait on the " +
+            "user for approval or authentication. Keep the functions a Frame calls on user " +
+            "interaction or on a poll `fast`, and isolate `dsbx tools` calls in their own " +
+            "`durable` functions."
         ),
     },
     stake: "low",
     displayLabels: {
       running: "Publishing pod function...",
       done: "Published pod function",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: "unpublish",
+    description:
+      "Unpublish a pod function by its slug. Permanently delete the published bundle and all " +
+      "invocation and tool-action history. The editable source file in the pod remains unchanged.",
+    schema: {
+      slug: z
+        .string()
+        .regex(SANDBOX_FUNCTION_SLUG_REGEX)
+        .describe(
+          "The slug of the pod function to unpublish, as shown by the list tool."
+        ),
+    },
+    stake: "high",
+    displayLabels: {
+      running: "Unpublishing pod function...",
+      done: "Unpublished pod function",
     },
     toolCostCategory: "basic",
     freeUsage: true,
@@ -203,7 +242,7 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
         .min(1)
         .describe(
           "Scoped path to the database's drizzle schema file in the pod, as shown by the " +
-            "files tools (e.g. `pod-<id>/databases/chat.db.ts`)."
+            "files tools (e.g. `pod-<id>/MyApp/databases/chat.db.ts`)."
         ),
     },
     stake: "never_ask",

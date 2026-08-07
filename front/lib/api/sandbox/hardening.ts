@@ -1,6 +1,18 @@
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 
 export const SANDBOX_ROOT_SAFE_PATH = "/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin";
+export const SANDBOX_AGENT_SAFE_PATH = SANDBOX_ROOT_SAFE_PATH;
+export const SANDBOX_AGENT_SERVICE_HOME = "/var/empty";
+export const SANDBOX_AGENT_PROXIED_SAFE_PATH = [
+  "/opt/venv/bin",
+  "/opt/bin",
+  "/usr/local/sbin",
+  "/usr/local/bin",
+  "/usr/sbin",
+  "/usr/bin",
+  "/sbin",
+  "/bin",
+].join(":");
 export const SANDBOX_STATIC_ROOT_CONSUMED_DIRS = [
   "/opt/bin",
   "/usr/local",
@@ -51,6 +63,46 @@ export const SANDBOX_ROOT_INVOKED_HELPERS = [
 const ROOT_SAFE_PATH_PROFILE = "/etc/profile.d/zz-dust-root-safe-path.sh";
 const STATIC_ROOT_CONSUMED_DIRS = SANDBOX_STATIC_ROOT_CONSUMED_DIRS.join(" ");
 const ROOT_INVOKED_HELPERS = SANDBOX_ROOT_INVOKED_HELPERS.join(" ");
+
+export function getSandboxServicePathHardeningCommand(): string {
+  const hardenAgentHome = [
+    `/usr/bin/install -d -o root -g root -m 755 ${SANDBOX_AGENT_SERVICE_HOME}`,
+    `/usr/sbin/usermod --home ${SANDBOX_AGENT_SERVICE_HOME} agent`,
+    "/bin/rm -f /home/agent/.bash_profile /home/agent/.bash_login /home/agent/.profile /home/agent/.bashrc",
+    "/usr/bin/chown -R root:agent /home/agent",
+    "/bin/chmod -R go-w /home/agent",
+    "/usr/bin/find /home/agent -type d -exec /bin/chmod 2750 {} +",
+  ].join(" && ");
+  const hardenPythonVenv = [
+    "/usr/bin/chown -R root:root /opt/venv",
+    "/bin/chmod -R go-w /opt/venv",
+    "/usr/bin/find /opt/venv -type d -exec /bin/chmod 755 {} +",
+  ].join(" && ");
+  const hardenDustProfiles = [
+    "/usr/bin/chown -R root:root /opt/dust/profile",
+    "/bin/chmod -R go-w /opt/dust/profile",
+    "/usr/bin/find /opt/dust/profile -type d -exec /bin/chmod 755 {} +",
+    "/bin/chmod 644 /opt/dust/profile/*.sh",
+    "/bin/chmod 755 /opt/dust/profile/dust-tools /opt/dust/profile/soffice/*.py",
+  ].join(" && ");
+  const assertPermissions = [
+    `if [ "$(/usr/bin/getent passwd agent | /usr/bin/cut -d: -f6)" != ${SANDBOX_AGENT_SERVICE_HOME} ]; then`,
+    "echo 'agent service account must use the root-owned empty home' >&2;",
+    "exit 1;",
+    "fi;",
+    "if /usr/bin/find /home/agent /opt/venv /opt/dust/profile \\( -type f -o -type d \\) -perm /022 -print -quit | /usr/bin/grep -q .; then",
+    "echo 'sandbox service paths must not be group/other writable' >&2;",
+    "exit 1;",
+    "fi",
+  ].join(" ");
+
+  return [
+    hardenAgentHome,
+    hardenPythonVenv,
+    hardenDustProfiles,
+    assertPermissions,
+  ].join(" && ");
+}
 
 export function getRootConsumedPathHardeningCommand(): string {
   const hardenStaticRootConsumedDirs = [

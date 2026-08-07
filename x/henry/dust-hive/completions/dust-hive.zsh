@@ -533,9 +533,17 @@ function _dust_hive_base_port {
 }
 
 function dhb {
-  local query="${1:?usage: dhb <worktree-name-query>}"
+  local query="${1:-}"
   local offset="${DHB_PORT_OFFSET:-11}"
   local base port url
+
+  if (( $# == 0 )); then
+    query="$(_dust_hive_current_env_from_metadata)"
+  fi
+  if [[ -z "$query" ]]; then
+    echo "usage: dhb <worktree-name-query>" >&2
+    return 1
+  fi
 
   base="$(_dust_hive_base_port "$query")" || return
   port=$((base + offset))
@@ -547,11 +555,20 @@ function dhb {
 
 function dhdb {
   local usage="usage: dhdb <worktree-name-query> [front|connectors|core|dust_front|dust_connectors|dust_api|dust_oauth] [psql-args...]"
-  local query="${1:?$usage}"
-  shift
+  local query="${1:-}"
   local db="dust_front"
   local offset="${DHDB_PORT_OFFSET:-432}"
   local base port
+
+  if (( $# == 0 )); then
+    query="$(_dust_hive_current_env_from_metadata)"
+  else
+    shift
+  fi
+  if [[ -z "$query" ]]; then
+    echo "$usage" >&2
+    return 1
+  fi
 
   if (( $# > 0 )); then
     case "$1" in

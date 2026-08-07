@@ -21,17 +21,18 @@ export function formatSandboxImageId(id: SandboxImageId): string {
 // sandbox tool manifest by name when sandbox tools are off.
 export const DSBX_TOOL_NAME = "dsbx";
 
-// UID of the `agent-proxied` user that runs untrusted agent code. Egress
-// enforcement (nftables redirect to dsbx forward + DNS stub) is scoped to
-// this UID; every other process in the sandbox bypasses it.
+// Stable UIDs of the service account and the untrusted workload account.
+export const SANDBOX_AGENT_UID = 1002;
 export const SANDBOX_AGENT_PROXIED_UID = 1003;
 
-// UIDs that can execute untrusted workspace or model-driven code inside the
-// sandbox. Every UID in this list must be covered by the egress nftables
-// ruleset, otherwise it inherits provider DNS/networking. Today this is just
-// agent-proxied; if a future feature adds another untrusted UID, extend this
-// list AND update egress-nftables.sh so the new UID is covered there too.
-export const SANDBOX_UNTRUSTED_UIDS = [SANDBOX_AGENT_PROXIED_UID] as const;
+// Every non-root account reachable from a Front-triggered exec must stay
+// behind the same DNS and TCP egress boundary. `agent` is included even
+// though it only runs service commands: this keeps a future service-command
+// compromise from bypassing the workload policy.
+export const SANDBOX_EGRESS_CONTROLLED_UIDS = [
+  SANDBOX_AGENT_UID,
+  SANDBOX_AGENT_PROXIED_UID,
+] as const;
 
 // ---------------------------------------------------------------------------
 // Tool Runtime & Profile
@@ -109,9 +110,10 @@ export interface NetworkPolicy {
   readonly allowlist?: readonly string[];
 }
 
-// Agent commands run as agent-proxied (uid 1003) whose traffic is redirected
-// by nftables to the in-sandbox egress proxy. The E2B-level allowlist covers
-// services that root processes access directly (bypassing the proxy).
+// Front-triggered non-root commands run as agent (uid 1002) or agent-proxied
+// (uid 1003); both are redirected by nftables to the in-sandbox egress proxy.
+// The E2B-level allowlist covers services that root processes access directly
+// (bypassing the proxy).
 export const PROXY_ONLY_NETWORK_POLICY: NetworkPolicy = {
   mode: "deny_all",
   allowlist: [

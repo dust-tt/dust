@@ -1,8 +1,5 @@
-import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
-import { DustError } from "@app/lib/error";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
-import { Err } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -20,21 +17,6 @@ vi.mock("@app/lib/api/files/processing", async (importOriginal) => {
     processAndStoreFile: vi.fn().mockResolvedValue({ isErr: () => false }),
   };
 });
-
-vi.mock("@app/lib/api/files/upsert", () => ({
-  isFileTypeUpsertableForUseCase: vi.fn().mockReturnValue(true),
-  processAndUpsertToDataSource: vi
-    .fn()
-    .mockResolvedValue({ isErr: () => false }),
-}));
-
-vi.mock("@app/lib/api/data_sources", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@app/lib/api/data_sources")>()),
-  getOrCreateConversationDataSourceFromFile: vi.fn().mockResolvedValue({
-    isErr: () => false,
-    value: { id: "test_data_source" },
-  }),
-}));
 
 vi.mock("@app/lib/resources/conversation_resource", () => ({
   ConversationResource: {
@@ -224,27 +206,6 @@ describe("POST /api/v1/w/[wId]/files/[fileId]", () => {
       method: "POST",
     });
     expect(response.status).toBe(200);
-  });
-
-  it("should return a 400 with the upsert error message on invalid CSV content", async () => {
-    const { workspace, key } = await createPublicApiMockRequest();
-    setupMockFile(workspace, { useCase: "conversation" });
-
-    const csvErrorMessage = "This CSV file is not UTF-8 encoded.";
-    vi.mocked(processAndUpsertToDataSource).mockResolvedValueOnce(
-      new Err(new DustError("invalid_csv_content", csvErrorMessage))
-    );
-
-    const response = await request(workspace, key, "test_file_id", {
-      method: "POST",
-    });
-
-    expect(response.status).toBe(400);
-    const data = await response.json();
-    expect(data.error).toEqual({
-      type: "invalid_request_error",
-      message: csvErrorMessage,
-    });
   });
 });
 

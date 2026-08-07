@@ -1,11 +1,11 @@
 import type { Client } from "@app/lib/model_constructors/client";
+import type { OutputEventConverters } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
 import {
   accumulatedReasoningToReasoningEvent,
   accumulatedTextToTextEvent,
   argumentsDeltaToToolCallDeltaEvent,
   functionCallToToolCallEvent,
   functionCallToToolCallStartedEvent,
-  type OutputEventConverters,
   reasoningSummaryDeltaToReasoningDeltaEvent,
   responseCreatedToResponseIdEvent,
   streamErrorToErrorEvent,

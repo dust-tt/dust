@@ -41,6 +41,14 @@ export type MCPToolRetryPolicyType =
 export const DEFAULT_MCP_TOOL_RETRY_POLICY =
   "no_retry" as const satisfies MCPToolRetryPolicyType;
 
+export type MCPServerViewNameConflict = { nameConflict: string };
+
+export function isMCPServerViewNameConflict(
+  input: Error | MCPServerViewNameConflict
+): input is MCPServerViewNameConflict {
+  return !(input instanceof Error) && typeof input.nameConflict === "string";
+}
+
 export function getRetryPolicyFromToolConfiguration(
   toolConfiguration: MCPToolConfigurationType | LightMCPToolConfigurationType
 ): MCPToolRetryPolicyType {
@@ -76,6 +84,7 @@ export type MCPToolType = {
   // being deferred behind tool search. Absent for remote/client-side tools, which
   // therefore default to deferred.
   eager?: boolean;
+  editableArguments?: readonly string[];
 };
 
 export type MCPServerType = {

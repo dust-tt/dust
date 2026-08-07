@@ -57,7 +57,7 @@ const avatarVariants = cva(
       {
         rounded: false,
         size: "xxs",
-        className: "rounded",
+        className: "rounded-sm",
       },
       {
         rounded: false,
@@ -82,16 +82,17 @@ const avatarVariants = cva(
       {
         rounded: false,
         size: "xl",
-        className: "rounded-[22px]",
+        className: "rounded-3xl",
       },
       {
         rounded: false,
         size: "2xl",
-        className: "rounded-[32px]",
+        className: "rounded-4xl",
       },
       {
         rounded: false,
         size: "auto",
+        // Keep the corner proportional when the avatar has no fixed dimensions.
         className: "rounded-[24%]",
       },
     ],

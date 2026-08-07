@@ -1,11 +1,18 @@
 import { randomBytes } from "node:crypto";
 
-import { renderEgressSecretPlaceholder } from "@app/lib/api/sandbox/env_vars";
+import {
+  renderEgressSecretPlaceholder,
+  scopeEncryptionKey,
+} from "@app/lib/api/sandbox/env_vars";
+import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
+import { resolvePodForRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import { rootCommand } from "@app/lib/api/sandbox/root_command";
 import type { Authenticator } from "@app/lib/auth";
+import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { decrypt } from "@app/types/shared/utils/encryption";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -25,32 +32,25 @@ type EgressSecretFileEntry = {
 export async function buildEgressSecretFileEntries(
   auth: Authenticator
 ): Promise<Result<EgressSecretFileEntry[], Error>> {
-  const owner = auth.getNonNullableWorkspace();
-  const resources =
-    await WorkspaceSandboxEnvVarResource.listHttpsSecretsForEgress(auth);
+  const scope = {
+    kind: "workspace" as const,
+    workspace: auth.getNonNullableWorkspace(),
+  };
+  const secretsResult = await SandboxEnvVarResource.listHttpsSecretsForEgress(
+    auth,
+    scope
+  );
+  if (secretsResult.isErr()) {
+    return secretsResult;
+  }
 
   const entries: EgressSecretFileEntry[] = [];
-  for (const resource of resources) {
-    if (!resource.placeholderNonce) {
-      return new Err(
-        new Error(
-          `HTTPS secret sandbox environment variable ${resource.envName} is missing its placeholder nonce.`
-        )
-      );
-    }
-    if (!resource.allowedDomains) {
-      return new Err(
-        new Error(
-          `HTTPS secret sandbox environment variable ${resource.envName} is missing allowed domains.`
-        )
-      );
-    }
-
+  for (const resource of secretsResult.value) {
     let value: string;
     try {
       value = decrypt({
         encrypted: resource.encryptedValue,
-        key: owner.sId,
+        key: scopeEncryptionKey(scope),
         useCase: "developer_secret",
       });
     } catch (error) {
@@ -74,11 +74,116 @@ export async function buildEgressSecretFileEntries(
   return new Ok(entries);
 }
 
+export async function buildPodEgressSecretEntries(
+  auth: Authenticator,
+  pod: SpaceResource,
+  runtimeOwner: SandboxRuntimeOwner
+): Promise<Result<EgressSecretFileEntry[], Error>> {
+  const scope = { kind: "pod" as const, pod };
+  const secretsResult = await SandboxEnvVarResource.listHttpsSecretsForEgress(
+    auth,
+    scope,
+    runtimeOwner
+  );
+  if (secretsResult.isErr()) {
+    return secretsResult;
+  }
+
+  const entries: EgressSecretFileEntry[] = [];
+  for (const resource of secretsResult.value) {
+    let value: string;
+    try {
+      value = decrypt({
+        encrypted: resource.encryptedValue,
+        key: scopeEncryptionKey(scope),
+        useCase: "developer_secret",
+      });
+    } catch (error) {
+      return new Err(
+        new Error(
+          `Failed to decrypt pod sandbox HTTPS secret ${resource.envName}: ${
+            normalizeError(error).message
+          }`
+        )
+      );
+    }
+
+    entries.push({
+      name: resource.name,
+      placeholder: renderEgressSecretPlaceholder(resource.placeholderNonce),
+      value,
+      allowedDomains: Array.from(resource.allowedDomains),
+    });
+  }
+
+  return new Ok(entries);
+}
+
+// Pod entries shadow workspace entries of the same name, mirroring the env
+// injection precedence (owner env layer beats the workspace layer).
+export function mergeEgressSecretFileEntries({
+  workspaceEntries,
+  podEntries,
+}: {
+  workspaceEntries: EgressSecretFileEntry[];
+  podEntries: EgressSecretFileEntry[];
+}): EgressSecretFileEntry[] {
+  const byName = new Map(workspaceEntries.map((entry) => [entry.name, entry]));
+  for (const entry of podEntries) {
+    byName.set(entry.name, entry);
+  }
+  return [...byName.values()];
+}
+
+// Builds the full entry set for a sandbox given its runtime owner: workspace
+// entries for every sandbox, plus pod entries (pod wins on name collision)
+// for every sandbox running in a pod — pod-owned or a conversation inside
+// the pod (resolvePodForRuntimeOwner is the shared rule). Any resolution
+// failure aborts the whole build — we never write a partial or empty-valued
+// entry.
+export async function buildEgressSecretFileEntriesForOwner(
+  auth: Authenticator,
+  runtimeOwner: SandboxRuntimeOwner
+): Promise<Result<EgressSecretFileEntry[], Error>> {
+  const workspaceEntriesResult = await buildEgressSecretFileEntries(auth);
+  if (workspaceEntriesResult.isErr()) {
+    return workspaceEntriesResult;
+  }
+
+  const podResult = await resolvePodForRuntimeOwner(auth, runtimeOwner);
+  if (podResult.isErr()) {
+    return podResult;
+  }
+  if (!podResult.value) {
+    return workspaceEntriesResult;
+  }
+
+  const podEntriesResult = await buildPodEgressSecretEntries(
+    auth,
+    podResult.value,
+    runtimeOwner
+  );
+  if (podEntriesResult.isErr()) {
+    return podEntriesResult;
+  }
+
+  return new Ok(
+    mergeEgressSecretFileEntries({
+      workspaceEntries: workspaceEntriesResult.value,
+      podEntries: podEntriesResult.value,
+    })
+  );
+}
+
 export async function writeEgressSecretsFile(
   auth: Authenticator,
-  sandbox: SandboxResource
+  sandbox: SandboxResource,
+  runtimeOwner: SandboxRuntimeOwner
 ): Promise<Result<void, Error>> {
-  const entriesResult = await buildEgressSecretFileEntries(auth);
+  const entriesResult = await buildEgressSecretFileEntriesForOwner(
+    auth,
+    runtimeOwner
+  );
   if (entriesResult.isErr()) {
     return entriesResult;
   }

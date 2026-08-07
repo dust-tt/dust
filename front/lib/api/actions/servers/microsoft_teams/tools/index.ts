@@ -673,6 +673,9 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
       );
     }
 
+    let meetingId: string | undefined;
+    let transcriptId: string | undefined;
+
     try {
       // Resolve the online meeting from its join URL.
       const meetingResponse = await client
@@ -689,7 +692,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
         );
       }
 
-      const meetingId = onlineMeetings[0].id;
+      meetingId = onlineMeetings[0].id;
 
       // List transcripts for this meeting.
       const transcriptsResponse = await client
@@ -718,53 +721,89 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
           : 0;
         return bMs - aMs;
       })[0];
-      const transcriptId = latestTranscript.id;
-      const contentResponse = await client
-        .api(
-          `/me/onlineMeetings/${meetingId}/transcripts/${transcriptId}/content`
-        )
-        .query({ $format: "text/vtt" })
-        .responseType("text" as any)
-        .get();
-
-      let text: string;
-      if (typeof contentResponse === "string") {
-        text = contentResponse;
-      } else if (
-        contentResponse &&
-        typeof contentResponse.text === "function"
-      ) {
-        text = await contentResponse.text();
-      } else if (contentResponse instanceof ReadableStream) {
-        const reader = contentResponse.getReader();
-        const chunks: string[] = [];
-        const decoder = new TextDecoder();
-        let done = false;
-        while (!done) {
-          const result = await reader.read();
-          done = result.done;
-          if (result.value) {
-            chunks.push(decoder.decode(result.value, { stream: !done }));
-          }
-        }
-        text = chunks.join("");
-      } else {
-        text = String(contentResponse);
-      }
-
-      return new Ok([
-        {
-          type: "text" as const,
-          text,
-        },
-      ]);
+      transcriptId = latestTranscript.id;
     } catch (err) {
       return new Err(
         new MCPError(
-          normalizeError(err).message || "Failed to get transcript content"
+          normalizeError(err).message ||
+            "Failed to get transcript id from meeting"
         )
       );
     }
+
+    // See: https://learn.microsoft.com/en-us/graph/api/calltranscript-get?view=graph-rest-1.0&tabs=http#transcript-content-formats
+    const formats = [
+      "text/vtt", // With speaker-attributed content - Requires extra permission on the tenant.
+      "application/vnd.microsoft.graph.transcript+text", // Without speaker-attributed content
+    ] as const;
+    for (const format of formats) {
+      try {
+        const contentResponse = await client
+          .api(
+            `/me/onlineMeetings/${meetingId}/transcripts/${transcriptId}/content`
+          )
+          .query({ $format: format })
+          // The SDK infers the response type from Content-Type, preserving messages
+          // in JSON error bodies and returning successful text/vtt bodies as
+          // ReadableStreams handled below.
+          .get();
+
+        let text: string;
+        if (typeof contentResponse === "string") {
+          text = contentResponse;
+        } else if (
+          contentResponse &&
+          typeof contentResponse.text === "function"
+        ) {
+          text = await contentResponse.text();
+        } else if (contentResponse instanceof ReadableStream) {
+          const reader = contentResponse.getReader();
+          const chunks: string[] = [];
+          const decoder = new TextDecoder();
+          let done = false;
+          while (!done) {
+            const result = await reader.read();
+            done = result.done;
+            if (result.value) {
+              chunks.push(decoder.decode(result.value, { stream: !done }));
+            }
+          }
+          text = chunks.join("");
+        } else {
+          text = String(contentResponse);
+        }
+
+        return new Ok([
+          {
+            type: "text" as const,
+            text:
+              format === "application/vnd.microsoft.graph.transcript+text"
+                ? "Note: this Office 365 tenant has disabled speaker-attributed transcript content retrieval. Here is the transcript without speaker-attributed content:\n\n" +
+                  text
+                : text,
+          },
+        ]);
+      } catch (err) {
+        const normalizedError = normalizeError(err);
+        // If the error is because the tenant has disabled speaker-attributed transcript content, skip and try the next format without speaker-attributed content.
+        if (
+          format === "text/vtt" &&
+          normalizedError.message.includes(
+            "Speaker-attributed transcript content is disabled for this tenant"
+          )
+        ) {
+          continue;
+        }
+
+        return new Err(
+          new MCPError(
+            normalizedError.message || "Failed to get transcript content"
+          )
+        );
+      }
+    }
+    // Typescript can't infer that we've tried all formats, so we need to return an error.
+    return new Err(new MCPError("Failed to get transcript content"));
   },
 };
 

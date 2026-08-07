@@ -32,12 +32,13 @@ import {
   getPodRoute,
   setQueryParam,
 } from "@app/lib/utils/router";
+import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import {
-  type ConversationListItemType,
   getConversationDisplayTitle,
   getConversationUrlAccessMode,
   isPodConversation,
 } from "@app/types/assistant/conversation";
+import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ArrowRight,
@@ -47,6 +48,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuPortal,
+  DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -243,9 +245,13 @@ export function ConversationMenu({
     options: { disabled: shouldWaitBeforeFetching },
   });
 
+  const [podSearchText, setPodSearchText] = useState<string>("");
   const filteredPods = summary
     .map(({ space }) => space)
-    .filter((space) => space.sId !== conversation?.spaceId);
+    .filter((space) => space.sId !== conversation?.spaceId)
+    .filter((space) =>
+      space.name.toLowerCase().includes(podSearchText.toLowerCase().trim())
+    );
 
   const conversationSpaceId =
     conversation && isPodConversation(conversation)
@@ -264,6 +270,16 @@ export function ConversationMenu({
   const moveConversationOutOfPod = useMoveConversationOutOfPod(
     owner,
     activeConversationId
+  );
+
+  const moveToPod = useCallback(
+    async (pod: SpaceType) => {
+      if (!conversation) {
+        return;
+      }
+      await moveConversationToPod(conversation, pod);
+    },
+    [conversation, moveConversationToPod]
   );
 
   const joinConversation = useJoinConversation({
@@ -429,7 +445,13 @@ export function ConversationMenu({
             disabled={isBranching}
           />
           <DropdownMenuSeparator />
-          <DropdownMenuSub>
+          <DropdownMenuSub
+            onOpenChange={(open) => {
+              if (!open) {
+                setPodSearchText("");
+              }
+            }}
+          >
             <DropdownMenuSubTrigger
               icon={ArrowRight}
               label={canMoveOutOfPod ? "Move to..." : "Move to Pod"}
@@ -438,6 +460,15 @@ export function ConversationMenu({
               <DropdownMenuSubContent
                 collisionPadding={16}
                 className="max-w-60"
+                dropdownHeaders={
+                  <DropdownMenuSearchbar
+                    name="pod-search"
+                    placeholder="Search Pods"
+                    value={podSearchText}
+                    onChange={setPodSearchText}
+                    autoFocus
+                  />
+                }
               >
                 <DropdownMenuItem
                   icon={Plus}
@@ -456,24 +487,22 @@ export function ConversationMenu({
                     />
                   </>
                 )}
-                {filteredPods.length > 0 && (
-                  <>
-                    <DropdownMenuSeparator />
-                    {canMoveOutOfPod && <DropdownMenuLabel label="Pods" />}
-                    {filteredPods.map((pod) => (
-                      <DropdownMenuItem
-                        key={pod.sId}
-                        icon={getSpaceIcon(pod)}
-                        label={pod.name}
-                        truncateText
-                        onClick={async () =>
-                          conversation
-                            ? moveConversationToPod(conversation, pod)
-                            : Promise.resolve(false)
-                        }
-                      />
-                    ))}
-                  </>
+                <DropdownMenuSeparator />
+                {canMoveOutOfPod && <DropdownMenuLabel label="Pods" />}
+                {filteredPods.length > 0 ? (
+                  filteredPods.map((pod) => (
+                    <DropdownMenuItem
+                      key={pod.sId}
+                      icon={getSpaceIcon(pod)}
+                      label={pod.name}
+                      truncateText
+                      onClick={async () => moveToPod(pod)}
+                    />
+                  ))
+                ) : (
+                  <div className="px-3 py-4 text-center text-xs italic text-muted-foreground">
+                    {!!podSearchText ? "No matches" : "No Pods"}
+                  </div>
                 )}
               </DropdownMenuSubContent>
             </DropdownMenuPortal>

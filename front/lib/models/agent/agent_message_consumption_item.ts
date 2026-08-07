@@ -5,10 +5,8 @@ import {
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import {
-  AGENT_MESSAGE_CONSUMPTION_ITEM_TYPES,
-  type AgentMessageConsumptionItemType,
-} from "@app/types/assistant/agent_message_consumption";
+import type { AgentMessageConsumptionItemType } from "@app/types/assistant/agent_message_consumption";
+import { AGENT_MESSAGE_CONSUMPTION_ITEM_TYPES } from "@app/types/assistant/agent_message_consumption";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { CreationOptional, ForeignKey } from "sequelize";
@@ -21,9 +19,6 @@ function validateConsumptionItemShape(
 
   if (isTool && this.agentMCPActionId === null) {
     throw new Error("Tool attribution items require an agent MCP action");
-  }
-  if (!isTool && this.runUsageId === null) {
-    throw new Error("Non-tool attribution items require a run usage");
   }
   if (!isTool && this.agentMCPActionId !== null) {
     throw new Error("Only tool attribution items may reference an action");
@@ -84,7 +79,7 @@ export class AgentMessageConsumptionItemModel extends WorkspaceAwareModel<AgentM
 
   declare conversationId: ForeignKey<ConversationModel["id"]>;
   declare agentMessageId: ForeignKey<AgentMessageModel["id"]>;
-  declare runUsageId: ModelId | null;
+  declare runUsageId: ModelId;
   declare agentMCPActionId: ModelId | null;
   declare itemKey: string;
   declare itemType: AgentMessageConsumptionItemType;
@@ -126,7 +121,7 @@ AgentMessageConsumptionItemModel.init(
     },
     runUsageId: {
       type: DataTypes.BIGINT,
-      allowNull: true,
+      allowNull: false,
     },
     agentMCPActionId: {
       type: DataTypes.BIGINT,

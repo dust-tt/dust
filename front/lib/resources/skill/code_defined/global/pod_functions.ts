@@ -1,8 +1,15 @@
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
-  SANDBOX_FUNCTIONS_SERVER_NAME,
-  type SANDBOX_FUNCTIONS_TOOLS_METADATA,
-} from "@app/lib/api/actions/servers/sandbox_functions/metadata";
+  FILES_MOVE_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
+import {
+  CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  INTERACTIVE_CONTENT_SERVER_NAME,
+  PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+} from "@app/lib/api/actions/servers/interactive_content/metadata";
+import type { SANDBOX_FUNCTIONS_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
+import { SANDBOX_FUNCTIONS_SERVER_NAME } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
@@ -14,16 +21,36 @@ function toolName(
   return getPrefixedToolName(SANDBOX_FUNCTIONS_SERVER_NAME, name);
 }
 
+const FILES_MOVE_TOOL = getPrefixedToolName(
+  FILES_SERVER_NAME,
+  FILES_MOVE_ACTION_NAME
+);
+const CREATE_FRAME_TOOL = getPrefixedToolName(
+  INTERACTIVE_CONTENT_SERVER_NAME,
+  CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME
+);
+const PUBLISH_FRAME_TOOL = getPrefixedToolName(
+  INTERACTIVE_CONTENT_SERVER_NAME,
+  PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME
+);
+
+export const POD_FUNCTIONS_SKILL_NAME = "Pod Functions";
+
 export const podFunctionsSkill = {
   sId: "pod_functions",
   kind: "global",
-  name: "Pod Functions",
+  name: POD_FUNCTIONS_SKILL_NAME,
   userFacingDescription:
     "Run hosted functions on the Pod's Computer that can persist data and call other tools.",
   agentFacingDescription:
     "A pod function is a hosted function that runs on the Pod's own Computer, shared across " +
     "every conversation in the Pod, with the ability to persist data and call other tools. It's " +
-    "callable by slug from this conversation or from a Frame's own runtime.",
+    "callable by slug from this conversation or from a Frame's own runtime. This is how a Frame " +
+    "stores data: use it whenever a Frame's content must survive a reload and be the same for " +
+    "everyone who opens it (a task list, tracker, backlog, inventory, log, notes app, or any " +
+    "Frame whose entries users add and expect to find again), or whenever a Frame needs a " +
+    "server-side capability it cannot hold itself, such as calling another tool or using a " +
+    "workspace secret.",
   instructions: `Pod functions are versioned, typed functions published on the Pod's own
 Computer: a persistent environment shared across every conversation in the Pod, not the one
 scoped to this conversation. Each one is a TypeScript module with zod-typed input and output,
@@ -39,11 +66,40 @@ Reach for a pod function instead of inline code or an ad hoc tool call when any 
   there on the next call and visible to a Frame that always reflects the latest state (see
   "Persisting state across calls" below).
 
+#### Laying out a Pod app
+
+A Frame and the pod functions behind it are one app. Keep the whole app in a single folder on the
+Pod file system rather than splitting it between the conversation and the Pod root:
+
+\`\`\`
+/files/pod-<podId>/
+  MyApp/
+    MyApp.tsx          the Frame's source; its directory is the Frame's bundling root
+    functions/
+      list-notes.ts    one file per function, named after the function; the app folder
+                       above becomes the published slug's prefix (myapp__list-notes)
+      post-note.ts
+      lib/
+        notes.ts       helpers shared by several functions
+    databases/
+      notes.db.ts      one shared drizzle schema file per database
+\`\`\`
+
+Nothing the app owns stays in the conversation file system: a conversation file belongs to one
+conversation, while the app is shared by every conversation in the Pod, exactly like the functions
+it publishes. If the app's Frame does not exist yet, or still sits in the conversation, the Frames
+skill covers creating it and moving it into the app folder with \`${FILES_MOVE_TOOL}\` before
+\`${PUBLISH_FRAME_TOOL}\`; \`${CREATE_FRAME_TOOL}\` always creates it in the conversation first.
+
+Functions that no Frame calls still get an app folder, named after what they do together.
+
 #### Authoring a function
 
-Write the source as a TypeScript file on the Pod file system (the Computer's mount at
-\`/files/pod-<podId>\`, or through the \`files\` MCP server under a \`pod-<podId>/<rel>\` path). The module
-must:
+Write the source as a TypeScript file in the app's \`functions\` folder, at
+\`pod-<podId>/<AppName>/functions/<name>.ts\` (the Computer mounts it at
+\`/files/pod-<podId>/<AppName>/functions/<name>.ts\`; the \`files\` MCP server reaches it under the
+same scoped path). Keep it in an app folder: that folder is what namespaces the function, and a
+source left at the Pod root publishes under its bare name instead. The module must:
 
 - export a \`schema\` object with a \`description\` and zod \`input\` and \`output\` schemas,
 - default-export an object with a \`fetch(request: Request): Promise<Response>\` method (the Bun and
@@ -70,10 +126,18 @@ export default {
 };
 \`\`\`
 
-You can split the implementation across several files on the Pod and import them with relative paths
-(e.g. \`import { parse } from "./lib/parse.ts"\`). Publishing bundles the entrypoint and all of its
-relative imports into one module. The bundle is a snapshot taken at publish time, so editing an
-imported helper has no effect until you re-publish.
+Keep a function file to its own endpoint and put anything two functions both need in
+\`functions/lib/\`: validation, formatting, an external API client, a query several endpoints run.
+Import helpers with relative paths (\`import { parse } from "./lib/parse.ts"\`). Before writing a
+helper, read what \`functions/lib/\` already has and extend it rather than adding a near-duplicate;
+when a second function needs logic that currently sits inline in the first, move it to
+\`functions/lib/\` instead of copying it.
+
+Publishing bundles the entrypoint and all of its relative imports into one module, so each
+published function carries its own copy of the helpers it uses. The bundle is a snapshot taken at
+publish time: editing a helper changes nothing until you re-publish, and re-publishing one consumer
+leaves the others on the old copy. After changing a shared helper, re-publish every function that
+imports it.
 
 The external packages you can import are \`zod\`, \`drizzle-orm\` and \`@dust/pod\`. Other npm packages
 are not available at build time.
@@ -86,10 +150,12 @@ written there persists across calls and conversations, not just for the duration
 invocation.
 
 Functions of the same Pod can share durable SQLite databases (via \`drizzle-orm\`):
-- **One schema file per database** at \`databases/{db}.db.ts\`, relative to the sources: the single
-  source of truth declaring that database's full schema with drizzle's \`sqliteTable\` DSL. Every
-  function imports its table objects from it (never hand-write tables in a function file), so
-  functions sharing a database must live in the same source directory.
+- **One schema file per database** at \`<AppName>/databases/{db}.db.ts\`: the single source of truth
+  declaring that database's full schema with drizzle's \`sqliteTable\` DSL. Every function imports
+  its table objects from it as \`../databases/{db}.db.ts\` (never hand-write tables in a function
+  file), so functions sharing a database belong to the same app. The database name itself is
+  Pod-wide rather than app-scoped, so pick one that will not collide with another app's
+  (\`${toolName("db_list")}\` shows what the Pod already has).
 - **Name functions that use this db.ts by writting a comment a the top** 
 - **Apply the schema file with \`${toolName("db_reconcile")}\`**; it creates the database and
   applies additive DDL after edits, and enforces the rules below. Publishing does not touch
@@ -98,7 +164,7 @@ Functions of the same Pod can share durable SQLite databases (via \`drizzle-orm\
   table objects.
 
 \`\`\`ts
-// databases/chat.db.ts; the full intended schema, shared by every chat function
+// MyApp/databases/chat.db.ts; the full intended schema, shared by every chat function
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const messages = sqliteTable("messages", {
@@ -108,9 +174,9 @@ export const messages = sqliteTable("messages", {
   createdAt: integer("created_at", { mode: "timestamp" }),
 }, (t) => [index("messages_created_idx").on(t.createdAt)]);
 
-// post-message.ts; declares schema.databases: ["chat"], then inside fetch:
+// MyApp/functions/post-message.ts; declares schema.databases: ["chat"], then inside fetch:
 import { db } from "@dust/pod";
-import { messages } from "./databases/chat.db.ts";
+import { messages } from "../databases/chat.db.ts";
 const row = db("chat").insert(messages)
   .values({ author, body, createdAt: new Date() })
   .returning({ id: messages.id }).get();
@@ -141,15 +207,60 @@ are available under the same substitution rules as the Computer.
 Computer: shell out to \`dsbx tools --json [SERVER_NAME] [TOOL_NAME] [ARGS]...\` and parse its
 stdout (\`{ content, isError }\`) for the result.
 Run \`dsbx tools --help\` from the Computer to explore available
-servers and tools before writing the function.
+servers and tools before writing the function. A function that calls \`dsbx tools\` must be
+published as \`durable\`, see below.
+
+#### Fast and durable functions
+
+Every function is published in one of two execution modes, and which one it needs shapes how you
+split functions up.
+
+- \`fast\`: runs synchronously and returns several times quicker, but **cannot call Dust tools**:
+  \`dsbx tools\` is refused inside it. Everything else still works, including Pod state, local
+  binaries and outbound HTTP calls, but those count against the invocation's execution ceiling, so
+  a fast function that waits on a slow endpoint will fail rather than return late.
+- \`durable\`: required for any function that calls \`dsbx tools\`. A tool call can wait on the user
+  for approval or authentication, for as long as they take, so the invocation runs in the
+  background and its result reaches the caller when it is ready.
+
+So the shape of your functions is the real decision:
+
+- The mode follows one question: does the function call \`dsbx tools\`? If it does it is \`durable\`,
+  if it does not it is \`fast\`. You do not get to choose that, but you do choose how to arrange
+  functions, and the aim is that the paths a Frame polls land on the fast side.
+- When a path the Frame polls needs data from an external system, do not fetch it inline and make
+  the whole path \`durable\`. Split it: a \`durable\` function calls \`dsbx tools\` and writes what it
+  gets into a database, and a \`fast\` function serves that database to the Frame. The Frame keeps
+  polling at full speed and the data refreshes on its own schedule, or on an explicit user action.
+- Some paths are \`durable\` and that is correct: a read that must be live on every call, or an
+  interaction that *is* a tool call, like sending a message to a teammate. Reach for the split
+  above when the data can tolerate being a little stale, not when it cannot.
+- Publishing a function that calls \`dsbx tools\` as \`fast\` is a bug: its tool call is refused at
+  run time and the invocation fails.
+
+The Frame API is identical for both, but a \`durable\` call takes visibly longer, so give it a
+loading state.
 
 #### Publishing, discovering, and invoking
 
-Once the source is on the Pod, use \`${toolName("publish")}\` to build it. Publishing bundles and
-type-checks the source on the Computer and extracts the input and output JSON schemas from the
-\`schema\` export. Publishing again under the same name replaces the previous version. The stored
-bundle is owned by the platform and runs from a read-only mount, so a published function can be
-executed but never overwritten from within the Computer.
+Once the source is on the Pod, use \`${toolName("publish")}\` to build it. It requires you to state
+\`executionMode\` on every publish. Publishing bundles and type-checks the source on the Computer
+and extracts the input and output JSON schemas from the \`schema\` export. The stored bundle is owned
+by the platform and runs from a read-only mount, so a published function can be executed but never
+overwritten from within the Computer.
+
+**The published slug is \`<app>__<name>\`.** You pass the bare \`<name>\`; publish derives the prefix
+from the app folder in \`path\` (\`TaskList\` becomes \`tasklist\`, \`Task List\` becomes \`task-list\`) and
+reports the full slug back. Use that reported slug everywhere afterwards: \`${toolName("get")}\`,
+\`${toolName("call")}\`, \`${toolName("unpublish")}\`, and a Frame's reference. Only the app folder
+contributes, so \`functions/\` and any folder nested under it never appear in the slug, and moving a
+source inside its app does not rename the function. A source at the Pod root has no app folder and
+keeps its bare name; moving it into one later *does* rename its function, leaving the old slug
+published and stale, so put it in its app folder from the start.
+
+Publishing again under the same app and name replaces that version. Two different apps can each
+publish a \`refresh\` and they stay separate functions, so you never have to invent
+\`refresh-tasklist\` to dodge a clash.
 
 Use \`${toolName("list")}\` and \`${toolName("get")}\` to see what the Pod has already
 published and to inspect a function's contract before relying on it or publishing a near-duplicate.
@@ -172,7 +283,9 @@ return inline is written to a pod file whose path it reports), and \`${toolName(
 A Frame calls published functions through the injected \`@dust/react-hooks\` module, not the
 \`call\` tool. Always pass the fully qualified \`<podId>/<slug>\` reference reported by
 \`${toolName("get")}\`. Never pass a bare slug or infer the function from the Frame's current Pod.
-This keeps the reference stable if the Frame is moved.
+This keeps the reference stable if the Frame is moved. The slug in that reference is the full
+published slug, app prefix included (\`<podId>/tasklist__add-task\`), never the bare name you passed
+to \`${toolName("publish")}\`.
 
 ##### Designing functions for a Frame
 
@@ -299,7 +412,7 @@ Frames. That single column is what turns a shared Pod database into per-user sta
 you create the table rather than retrofitting it later (schema evolution is additive-only).
 
 \`\`\`ts
-// databases/notes.db.ts
+// MyApp/databases/notes.db.ts
 export const notes = sqliteTable("notes", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   userId: text("user_id"),        // currentUser().sId
@@ -307,7 +420,7 @@ export const notes = sqliteTable("notes", {
   createdAt: integer("created_at", { mode: "timestamp" }),
 }, (t) => [index("notes_user_idx").on(t.userId)]);
 
-// list-notes.ts, declared "workspace_user_required"
+// MyApp/functions/list-notes.ts, declared "workspace_user_required"
 const user = currentUser();
 const rows = db("notes").select().from(notes).where(eq(notes.userId, user.sId)).all();
 \`\`\`

@@ -9,15 +9,17 @@ import {
   CREDIT_TYPE_EUR_ID,
   CREDIT_TYPE_USD_ID,
 } from "@app/lib/metronome/constants";
+import type {
+  MetricDef,
+  PackageDef,
+  RateCardDef,
+  RecurringCreditDef,
+} from "@app/lib/metronome/setup_common";
 import {
   BILLING_CYCLE_CONFIG,
   getCreditTypeProgrammaticUsdId,
   getFreeExcessRecurringCredits,
-  type MetricDef,
   makeSeatSubscriptions,
-  type PackageDef,
-  type RateCardDef,
-  type RecurringCreditDef,
   USAGE_TAG,
   WORKSPACE_SEAT_PRODUCT_NAME,
 } from "@app/lib/metronome/setup_common";

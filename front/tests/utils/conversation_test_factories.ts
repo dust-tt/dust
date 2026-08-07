@@ -133,6 +133,7 @@ export function mockAction(params: {
   functionCallName: string;
   status: "succeeded" | "failed";
   params?: Record<string, unknown>;
+  userEditedInputs?: Record<string, unknown> | null;
   output?: string | CallToolResult["content"] | null;
   internalMCPServerName?: AgentMCPActionWithOutputType["internalMCPServerName"];
   toolName?: string;
@@ -158,6 +159,7 @@ export function mockAction(params: {
     functionCallName: params.functionCallName,
     functionCallId: params.functionCallId ?? "",
     params: params.params ?? {},
+    userEditedInputs: params.userEditedInputs ?? null,
     citationsAllocated: params.citationsAllocated ?? 0,
     status,
     step: params.step ?? 0,

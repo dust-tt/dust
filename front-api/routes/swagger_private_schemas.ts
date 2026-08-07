@@ -101,6 +101,105 @@
  *           type: object
  *           nullable: true
  *           additionalProperties: true
+ *     PrivateConversationConsumptionToolDetails:
+ *       type: object
+ *       required:
+ *         - label
+ *         - internalMCPServerName
+ *         - toolName
+ *         - callCount
+ *         - attributedCredits
+ *         - directCredits
+ *         - pending
+ *       properties:
+ *         label:
+ *           type: string
+ *         internalMCPServerName:
+ *           type: string
+ *           nullable: true
+ *         toolName:
+ *           type: string
+ *         callCount:
+ *           type: integer
+ *         attributedCredits:
+ *           type: number
+ *           description: Share of billed credits after reconciling exclusively through model input rows.
+ *         directCredits:
+ *           type: number
+ *         pending:
+ *           type: boolean
+ *     PrivateConversationConsumptionModelDetails:
+ *       type: object
+ *       required:
+ *         - providerId
+ *         - modelId
+ *         - displayName
+ *         - attributedCredits
+ *       properties:
+ *         providerId:
+ *           type: string
+ *         modelId:
+ *           type: string
+ *         displayName:
+ *           type: string
+ *         attributedCredits:
+ *           type: number
+ *           description: Model attribution after reconciling exclusively through its input rows.
+ *     PrivateConversationConsumptionAgentDetails:
+ *       type: object
+ *       required:
+ *         - agentId
+ *         - name
+ *         - pictureUrl
+ *         - billedCredits
+ *         - agentWorkCredits
+ *         - tools
+ *         - models
+ *       properties:
+ *         agentId:
+ *           type: string
+ *         name:
+ *           type: string
+ *         pictureUrl:
+ *           type: string
+ *           nullable: true
+ *         billedCredits:
+ *           type: number
+ *         agentWorkCredits:
+ *           type: number
+ *           description: Agent work after assigning billing reconciliation exclusively to model input rows.
+ *         tools:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/PrivateConversationConsumptionToolDetails'
+ *         models:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/PrivateConversationConsumptionModelDetails'
+ *     PrivateConversationConsumptionDetails:
+ *       type: object
+ *       description: Additive attribution reconciled to the authoritative bill exclusively through model input rows. Each message uses its newest complete stored attribution version. Null when any billed message has no complete stored attribution.
+ *       required:
+ *         - agentWorkCredits
+ *         - tools
+ *         - models
+ *         - agents
+ *       properties:
+ *         agentWorkCredits:
+ *           type: number
+ *           description: Agent work after assigning billing reconciliation exclusively to model input rows.
+ *         tools:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/PrivateConversationConsumptionToolDetails'
+ *         models:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/PrivateConversationConsumptionModelDetails'
+ *         agents:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/PrivateConversationConsumptionAgentDetails'
  *     PrivateConversation:
  *       type: object
  *       description: Conversation without content, used in list responses.
@@ -412,7 +511,7 @@
  *         subAgentCostCredits:
  *           type: number
  *           nullable: true
- *           description: Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise.
+ *           description: Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches. Null otherwise.
  *         resolvedModel:
  *           type: object
  *           nullable: true
@@ -537,7 +636,7 @@
  *         subAgentCostCredits:
  *           type: number
  *           nullable: true
- *           description: Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise.
+ *           description: Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches. Null otherwise.
  *         resolvedModel:
  *           type: object
  *           nullable: true
@@ -664,9 +763,6 @@
  *           type: string
  *           nullable: true
  *           description: Path of the plain-text sibling of this file inside the sandbox conversation mount (e.g. an audio transcript), when it has one.
- *         skipDataSourceIndexing:
- *           type: boolean
- *           description: Whether data source indexing was skipped for this file.
  *         skipFileProcessing:
  *           type: boolean
  *           description: Whether upload-time file processing was skipped.
@@ -998,6 +1094,33 @@
  *               type: string
  *               nullable: true
  *               description: Scoped path to the frame file pinned as the Pod banner (e.g. project/banner.html).
+ *             frameTabs:
+ *               type: array
+ *               description: Frames promoted as custom Pod tabs (shared for all members).
+ *               items:
+ *                 type: object
+ *                 required:
+ *                   - path
+ *                   - title
+ *                   - icon
+ *                 properties:
+ *                   path:
+ *                     type: string
+ *                     description: Canonical scoped path to the frame file in the Pod filesystem.
+ *                   title:
+ *                     type: string
+ *                     description: Display title for the tab.
+ *                   icon:
+ *                     type: string
+ *                     description: Action icon name (e.g. ActionDashboardIcon).
+ *             tabsOrder:
+ *               type: array
+ *               description: Interleaved system tab ids and frame paths before Settings.
+ *               items:
+ *                 type: string
+ *             isAdminControlled:
+ *               type: boolean
+ *               description: Whether workspace admins control membership and connected data for this Pod.
  *     PrivateDataSourceView:
  *       type: object
  *       description: A view on a data source within a space.

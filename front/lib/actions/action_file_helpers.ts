@@ -1,11 +1,8 @@
 import type { CSVRecord } from "@app/lib/api/csv";
 import { generateCSVSnippet, toCsv } from "@app/lib/api/csv";
-import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
-import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
-import logger from "@app/logger/logger";
 import type { CoreAPIDataSourceDocumentSection } from "@app/types/core/data_source";
 
 /**
@@ -140,7 +137,6 @@ export async function generateSectionFile(
     useCase: "tool_output",
     useCaseMetadata: {
       conversationId,
-      skipDataSourceIndexing: true,
     },
   });
 
@@ -153,45 +149,4 @@ export async function generateSectionFile(
   });
 
   return sectionFile;
-}
-
-/**
- * Upload a file to a conversation data source.
- * If a section is provided, we will pass it to the process file function as upsertArgs.
- */
-export async function uploadFileToConversationDataSource({
-  auth,
-  file,
-}: {
-  auth: Authenticator;
-  file: FileResource;
-}) {
-  const jitDataSource = await getOrCreateConversationDataSourceFromFile(
-    auth,
-    file
-  );
-  if (jitDataSource.isErr()) {
-    logger.error(
-      {
-        workspaceId: auth.workspace()?.sId,
-        code: jitDataSource.error.code,
-        message: jitDataSource.error.message,
-      },
-      "Failed to get or create JIT data source"
-    );
-  } else {
-    const r = await processAndUpsertToDataSource(auth, jitDataSource.value, {
-      file,
-    });
-    if (r.isErr()) {
-      logger.error(
-        {
-          workspaceId: auth.workspace()?.sId,
-          code: r.error.code,
-          message: r.error.message,
-        },
-        "Failed to process and upsert to data source"
-      );
-    }
-  }
 }

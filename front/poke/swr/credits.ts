@@ -10,7 +10,12 @@ import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_u
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
+import type { GetAwuTopUpsHistoryResponseBody } from "@app/types/api/credits/top_ups_history";
 import type { PokeListCreditsResponseBody } from "@app/types/api/poke/credits";
+import type {
+  MembershipSeatType,
+  UserCreditState,
+} from "@app/types/memberships";
 import type { Fetcher } from "swr";
 
 export type PokeCreditsData = {
@@ -162,6 +167,27 @@ export function usePokeAwuPoolSummary({
   };
 }
 
+export function usePokeTopUpsHistory({
+  owner,
+  disabled,
+}: PokeConditionalFetchProps) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<GetAwuTopUpsHistoryResponseBody> = fetcher;
+
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    disabled ? null : `/api/poke/workspaces/${owner.sId}/credits/top-ups`,
+    fetcherFn
+  );
+
+  return {
+    topUps: data?.topUps ?? emptyArray(),
+    isTopUpsHistoryLoading: !error && !data && !disabled,
+    isTopUpsHistoryError: error,
+    isTopUpsHistoryValidating: isValidating,
+    mutateTopUpsHistory: mutate,
+  };
+}
+
 export function usePokeMembersUsage({
   owner,
   disabled,
@@ -170,12 +196,21 @@ export function usePokeMembersUsage({
   search,
   orderColumn,
   orderDirection,
+  seatType,
+  creditState,
 }: PokeConditionalFetchProps & {
   pageIndex: number;
   pageSize: number;
   search?: string;
-  orderColumn?: "name" | "email";
+  orderColumn?:
+    | "name"
+    | "email"
+    | "consumedAwuCredits"
+    | "seatType"
+    | "creditState";
   orderDirection?: "asc" | "desc";
+  seatType?: MembershipSeatType;
+  creditState?: UserCreditState;
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetMembersUsageResponseBody> = fetcher;
@@ -189,6 +224,12 @@ export function usePokeMembersUsage({
   }
   if (orderColumn) {
     params.set("orderColumn", orderColumn);
+  }
+  if (seatType) {
+    params.set("seatType", seatType);
+  }
+  if (creditState) {
+    params.set("creditState", creditState);
   }
   if (orderDirection) {
     params.set("orderDirection", orderDirection);

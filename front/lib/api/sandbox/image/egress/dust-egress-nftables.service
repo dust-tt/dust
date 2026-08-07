@@ -1,6 +1,6 @@
 [Unit]
-Description=Dust egress nftables rules for agent-proxied
-After=network.target
+Description=Dust egress nftables rules for sandbox-controlled accounts
+After=network.target systemd-resolved.service dust-egress-resolver.service
 
 [Service]
 Type=oneshot

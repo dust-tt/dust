@@ -1,7 +1,7 @@
+import type { PlanType } from "@app/types/plan";
 import {
   MAX_AWU_CREDITS_TIMEFRAMES,
   MAX_MESSAGE_TIMEFRAMES,
-  type PlanType,
 } from "@app/types/plan";
 import { z } from "zod";
 

@@ -24,38 +24,35 @@ const CONTENT_MESSAGE_SIZES = ["sm", "md", "lg"] as const;
 type ContentMessageSizeType = (typeof CONTENT_MESSAGE_SIZES)[number];
 
 const sharedVariantStyles = {
-  primary: "bg-muted-background",
-  success: "bg-success-100",
-  warning: "bg-warning-100",
-  highlight: "bg-highlight-100",
-  info: "bg-info-100",
-  green: "bg-success-100",
-  blue: "bg-highlight-100",
-  rose: "bg-warning-100",
-  golden: "bg-info-100",
-  outline: "bg-transparent border border-border",
+  primary: "bg-stone-50 border-stone-150",
+  success: "bg-success-50 border-success-200",
+  warning: "bg-red-50 border-rose-100",
+  highlight: "bg-highlight-50 border-highlight-100",
+  info: "bg-orange-50 border-orange-100",
+  green: "bg-success-50 border-success-200",
+  blue: "bg-highlight-50 border-highlight-100",
+  rose: "bg-red-50 border-rose-100",
+  golden: "bg-orange-50 border-orange-100",
+  outline: "bg-transparent border-stone-150",
 };
 
-const contentMessageVariants = cva(
-  "flex flex-col gap-1 rounded-2xl p-4 pl-5 min-h-[52px]",
-  {
-    variants: {
-      variant: sharedVariantStyles,
-      size: {
-        lg: "",
-        md: "max-w-xl",
-        sm: "max-w-sm",
-      },
+const contentMessageVariants = cva("flex flex-col gap-3 border", {
+  variants: {
+    variant: sharedVariantStyles,
+    size: {
+      lg: "rounded-2xl p-4",
+      md: "rounded-2xl p-4 max-w-xl",
+      sm: "rounded-xl p-3 max-w-sm",
     },
-    defaultVariants: {
-      variant: "info",
-      size: "md",
-    },
-  }
-);
+  },
+  defaultVariants: {
+    variant: "info",
+    size: "md",
+  },
+});
 
 const contentMessageInlineVariants = cva(
-  "flex items-center gap-3 rounded-xl p-3 pl-4 min-h-[52px]",
+  "flex items-center gap-2 rounded-xl border p-3",
   {
     variants: {
       variant: sharedVariantStyles,
@@ -69,53 +66,90 @@ const contentMessageInlineVariants = cva(
 const iconVariants = cva("shrink-0", {
   variants: {
     variant: {
-      primary: "text-muted-foreground",
-      warning: "text-warning-900",
-      success: "text-success-900",
-      highlight: "text-highlight-900",
-      info: "text-info-900",
-      green: "text-success-900",
-      blue: "text-highlight-900",
-      rose: "text-warning-900",
-      golden: "text-info-900",
+      primary: "text-stone-800",
+      warning: "text-red-800",
+      success: "text-success-800",
+      highlight: "text-highlight-800",
+      info: "text-orange-800",
+      green: "text-success-800",
+      blue: "text-highlight-800",
+      rose: "text-red-800",
+      golden: "text-orange-800",
       outline: "text-muted-foreground",
     },
   },
 });
 
-const titleVariants = cva("heading-sm", {
+const titleVariants = cva("", {
   variants: {
     variant: {
-      primary: "text-foreground",
-      warning: "text-warning-900",
-      success: "text-success-900",
-      highlight: "text-highlight-900",
-      info: "text-info-900",
-      green: "text-success-900",
-      blue: "text-highlight-900",
-      rose: "text-warning-900",
-      golden: "text-info-900",
+      primary: "text-stone-800",
+      warning: "text-red-800",
+      success: "text-success-800",
+      highlight: "text-highlight-800",
+      info: "text-orange-800",
+      green: "text-success-800",
+      blue: "text-highlight-800",
+      rose: "text-red-800",
+      golden: "text-orange-800",
       outline: "text-foreground",
     },
   },
 });
 
-const textVariants = cva("text-sm", {
+const textVariants = cva("", {
   variants: {
     variant: {
-      primary: "text-muted-foreground",
-      warning: "text-warning-900",
-      success: "text-success-900",
-      highlight: "text-highlight-900",
-      info: "text-info-900",
-      green: "text-success-900",
-      blue: "text-highlight-900",
-      rose: "text-warning-900",
-      golden: "text-info-900",
+      primary: "text-stone-800",
+      warning: "text-red-800",
+      success: "text-success-800",
+      highlight: "text-highlight-800",
+      info: "text-orange-800",
+      green: "text-success-800",
+      blue: "text-highlight-800",
+      rose: "text-red-800",
+      golden: "text-orange-800",
       outline: "text-muted-foreground",
     },
   },
 });
+
+const contentMessageSizeConfig: Record<
+  ContentMessageSizeType,
+  {
+    iconSize: "xs" | "sm";
+    headerGap: string;
+    headerHeight: string;
+    stackGap: string;
+    titleClassName: string;
+    textClassName: string;
+  }
+> = {
+  sm: {
+    iconSize: "xs",
+    headerGap: "gap-1",
+    headerHeight: "h-5",
+    stackGap: "gap-1.5",
+    titleClassName: "heading-xs",
+    textClassName: "text-xs",
+  },
+  md: {
+    iconSize: "sm",
+    headerGap: "gap-1.5",
+    headerHeight: "h-6",
+    stackGap: "gap-2",
+    titleClassName: "heading-sm",
+    textClassName: "text-sm",
+  },
+  lg: {
+    iconSize: "sm",
+    headerGap: "gap-1.5",
+    headerHeight: "h-6",
+    stackGap: "gap-2",
+    titleClassName: "heading-sm",
+    textClassName: "text-sm",
+  },
+};
 
 export interface ContentMessageProps {
   title?: string;
@@ -136,6 +170,15 @@ function ContentMessage({
   icon,
   action,
 }: ContentMessageProps) {
+  const {
+    iconSize,
+    headerGap,
+    headerHeight,
+    stackGap,
+    titleClassName,
+    textClassName,
+  } = contentMessageSizeConfig[size];
+
   return (
     <div className={cn(contentMessageVariants({ variant, size }), className)}>
       <div
@@ -144,23 +187,27 @@ function ContentMessage({
           action ? "items-center justify-between" : "flex-col"
         )}
       >
-        <div className="flex flex-col gap-1">
+        <div className={cn("flex flex-col", stackGap)}>
           {(icon || title) && (
-            <div className="flex items-center gap-1.5">
+            <div className={cn("flex items-center", headerGap, headerHeight)}>
               {icon && (
                 <Icon
-                  size="sm"
+                  size={iconSize}
                   visual={icon}
                   className={iconVariants({ variant })}
                 />
               )}
               {title && (
-                <div className={titleVariants({ variant })}>{title}</div>
+                <div className={cn(titleClassName, titleVariants({ variant }))}>
+                  {title}
+                </div>
               )}
             </div>
           )}
           {children && (
-            <div className={textVariants({ variant })}>{children}</div>
+            <div className={cn(textClassName, textVariants({ variant }))}>
+              {children}
+            </div>
           )}
         </div>
         {action && <div className="shrink-0">{action}</div>}
@@ -210,13 +257,19 @@ function ContentMessageInline({
 
   return (
     <div className={cn(contentMessageInlineVariants({ variant }), className)}>
-      {icon && (
-        <Icon size="sm" visual={icon} className={iconVariants({ variant })} />
-      )}
-      <div className={cn("flex-1 min-w-0", textVariants({ variant }))}>
-        {title && <span className={titleVariants({ variant })}>{title}</span>}
-        {title && contentChildren.length > 0 && ": "}
-        {contentChildren}
+      <div className="flex min-w-0 flex-1 items-center gap-1">
+        {icon && (
+          <Icon size="xs" visual={icon} className={iconVariants({ variant })} />
+        )}
+        <div className={cn("min-w-0 text-xs", textVariants({ variant }))}>
+          {title && (
+            <span className={cn("heading-xs", titleVariants({ variant }))}>
+              {title}
+            </span>
+          )}
+          {title && contentChildren.length > 0 && ": "}
+          {contentChildren}
+        </div>
       </div>
       {actionChilds}
     </div>

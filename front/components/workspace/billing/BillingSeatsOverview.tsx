@@ -4,11 +4,8 @@ import {
 } from "@app/components/workspace/billing/seatTypeUtils";
 import type { SeatTypeInfo } from "@app/lib/api/credits/seat_plan";
 import { useMembersSeats, useSeatPlan } from "@app/lib/swr/credits";
-import {
-  isMembershipSeatType,
-  type MembershipSeatType,
-  SEAT_TYPE_ORDER,
-} from "@app/types/memberships";
+import type { MembershipSeatType } from "@app/types/memberships";
+import { isMembershipSeatType, SEAT_TYPE_ORDER } from "@app/types/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Avatar, Chip, Cube01, Icon, Spinner, User01 } from "@dust-tt/sparkle";
 

@@ -11,16 +11,14 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
-import {
-  type ModelProviderPostCredentialsBody,
-  OAuthAPI,
-} from "@app/types/oauth/oauth_api";
-import {
-  ApiKeyCredentialContentSchema,
-  type ApiKeyCredentialsType,
-  type ProviderCredentialType,
-  type ProvidersHealth,
+import type { ModelProviderPostCredentialsBody } from "@app/types/oauth/oauth_api";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import type {
+  ApiKeyCredentialsType,
+  ProviderCredentialType,
+  ProvidersHealth,
 } from "@app/types/provider_credential";
+import { ApiKeyCredentialContentSchema } from "@app/types/provider_credential";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

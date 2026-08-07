@@ -1,11 +1,11 @@
 import type { Authenticator } from "@app/lib/auth";
-import {
-  getTestCaseUserMessageForDisplay,
-  type JudgeResult,
-  type MockAgentState,
-  type TestCase,
-  type ToolCall,
+import type {
+  JudgeResult,
+  MockAgentState,
+  TestCase,
+  ToolCall,
 } from "@app/tests/sidekick-evals/lib/types";
+import { getTestCaseUserMessageForDisplay } from "@app/tests/sidekick-evals/lib/types";
 import { getJudgeLLM } from "@app/tests/utils/eval_llm";
 
 const JUDGE_PROMPT = `You are evaluating the quality of an Agent Builder Sidekick's response.

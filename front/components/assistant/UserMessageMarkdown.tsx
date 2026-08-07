@@ -14,9 +14,9 @@ import {
   PastedAttachmentBlock,
   pastedAttachmentDirective,
 } from "@app/components/markdown/PastedAttachmentBlock";
+import type { SkillDirectiveProps } from "@app/components/markdown/SkillBlock";
 import {
   SkillBlock,
-  type SkillDirectiveProps,
   skillDirective,
 } from "@app/components/markdown/SkillBlock";
 import {
@@ -59,7 +59,6 @@ export const UserMessageMarkdown = ({
       file_preview: getFilePreviewPlugin(),
       skill: ({ skillIcon, skillId, skillName }: SkillDirectiveProps) => (
         <SkillBlock
-          owner={owner}
           skillIcon={skillIcon ?? null}
           skillId={skillId}
           skillName={skillName}

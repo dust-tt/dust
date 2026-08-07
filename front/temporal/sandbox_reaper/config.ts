@@ -11,7 +11,13 @@ const ONE_MINUTE_MS = 60 * 1_000;
 const ONE_HOUR_MS = 60 * ONE_MINUTE_MS;
 const ONE_DAY_MS = 24 * ONE_HOUR_MS;
 
-/** Sleep sandboxes that have been inactive for this long. Default: 5 min. */
+/**
+ * Sleep sandboxes that have been inactive for this long. Default: 5 min.
+ *
+ * Floor: lastActivityAt writes are throttled to 30s granularity
+ * (LAST_ACTIVITY_WRITE_INTERVAL_MS in sandbox_resource.ts), so an override
+ * anywhere near that value would sleep sandboxes that are actively in use.
+ */
 const sleepThresholdEnv = EnvironmentConfig.getOptionalEnvVariable(
   "SANDBOX_SLEEP_THRESHOLD_MS"
 );

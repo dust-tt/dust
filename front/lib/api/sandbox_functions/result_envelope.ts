@@ -15,7 +15,7 @@ export const SUPPORTED_SANDBOX_FUNCTION_RESULT_PROTOCOL_VERSIONS = [
 // Cap on the rejected-payload snippet included in logs.
 const REJECTED_ENVELOPE_LOG_SNIPPET_MAX_CHARS = 512;
 
-type NormalizedSandboxFunctionOutcome =
+export type NormalizedSandboxFunctionOutcome =
   | { ok: true; output: unknown }
   | { ok: false; error: SandboxFunctionCallError };
 
@@ -85,6 +85,30 @@ const ResultEnvelopeV3Schema = z.object({
 const ProtocolVersionProbeSchema = z.object({
   protocolVersion: z.number(),
 });
+
+// Lenient by design: timings are diagnostics from whatever dsbx version runs in the sandbox, and
+// absence or new shapes must never affect result handling. Only the consumed field is modeled.
+const ResultTimingsSchema = z.object({
+  runnerKind: z.enum(["warm", "cold"]).optional(),
+});
+
+export type SandboxFunctionResultTimings = z.infer<typeof ResultTimingsSchema>;
+
+/**
+ * Extract the timings block from an already-parsed stdout envelope value. Purely observational:
+ * used to tag latency metrics with the runner kind (warm server vs cold spawn); never affects the
+ * outcome, and never throws.
+ */
+export function extractResultEnvelopeTimings(
+  parsedEnvelope: unknown
+): SandboxFunctionResultTimings | null {
+  const envelope = ResultEnvelopeV3Schema.safeParse(parsedEnvelope);
+  if (!envelope.success) {
+    return null;
+  }
+  const timings = ResultTimingsSchema.safeParse(envelope.data.timingsMs);
+  return timings.success ? timings.data : null;
+}
 
 function invalidResultEnvelope(
   reason: string,
@@ -206,7 +230,7 @@ export function normalizeSandboxFunctionResult(
       });
     }
 
-    // timingsMs is accepted on the wire for forward compatibility but not consumed yet.
+    // timingsMs is not consumed here: extractResultEnvelopeTimings reads it for metrics.
     return normalizeRunnerOutcome(v3.data.outcome);
   }
 

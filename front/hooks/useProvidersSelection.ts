@@ -2,10 +2,10 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import type { ProvidersSelection } from "@app/types/provider_selection";
 import {
   ALL_PROVIDERS_SELECTED,
   NO_PROVIDERS_SELECTED,
-  type ProvidersSelection,
 } from "@app/types/provider_selection";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useMemo, useState } from "react";

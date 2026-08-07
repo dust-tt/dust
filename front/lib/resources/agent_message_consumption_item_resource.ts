@@ -1,11 +1,14 @@
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import type { AgentMessageConsumptionItemType } from "@app/types/assistant/agent_message_consumption";
+import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
@@ -14,13 +17,22 @@ import assert from "assert";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
+export type ConversationConsumptionMessageFacts = {
+  agentConfigurationId: string;
+  billedCredits: number | null;
+  dustRunIds: string[];
+  status: AgentMessageStatus;
+  items: AgentMessageConsumptionItemResource[];
+  actions: AgentMCPActionResource[];
+};
+
 type ConsumptionItemEvidenceBase = {
   grossAttributedCreditAmountMicro: number;
 };
 
 export type CompletedToolConsumptionItem = ConsumptionItemEvidenceBase & {
   itemType: "tool";
-  runUsageModelId: ModelId | null;
+  runUsageModelId: ModelId;
   action: AgentMCPActionResource;
   /** Estimated tokens in the result returned by this tool execution */
   inputTokensCount: number | null;
@@ -31,7 +43,7 @@ export type CompletedToolConsumptionItem = ConsumptionItemEvidenceBase & {
 
 export type PendingToolConsumptionItem = ConsumptionItemEvidenceBase & {
   action: AgentMCPActionResource;
-  runUsageModelId: ModelId | null;
+  runUsageModelId: ModelId;
   /** Estimated tokens in the model output that emitted the tool name and arguments */
   outputTokensCount: number | null;
 };
@@ -68,6 +80,20 @@ type ConsumptionItemCreationAttributes =
 export interface AgentMessageConsumptionItemResource
   extends ReadonlyAttributesType<AgentMessageConsumptionItemModel> {}
 
+export interface AgentMessageModelConsumptionItemResource
+  extends AgentMessageConsumptionItemResource {
+  readonly itemType: Exclude<AgentMessageConsumptionItemType, "tool">;
+  readonly agentMCPActionId: null;
+  readonly directCreditAmountMicro: null;
+  readonly completedAt: Date;
+}
+
+export interface AgentMessageToolConsumptionItemResource
+  extends AgentMessageConsumptionItemResource {
+  readonly itemType: "tool";
+  readonly agentMCPActionId: ModelId;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessageConsumptionItemModel> {
   static model: ModelStaticWorkspaceAware<AgentMessageConsumptionItemModel> =
@@ -78,6 +104,40 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     blob: Attributes<AgentMessageConsumptionItemModel>
   ) {
     super(model, blob);
+  }
+
+  isModelItem(): this is AgentMessageModelConsumptionItemResource {
+    switch (this.itemType) {
+      case "system":
+      case "input":
+      case "output":
+      case "reasoning":
+        assert(
+          this.agentMCPActionId === null &&
+            this.directCreditAmountMicro === null &&
+            this.completedAt !== null,
+          "Model consumption item has invalid shape"
+        );
+        return true;
+
+      case "tool":
+        return false;
+
+      default:
+        return assertNever(this.itemType);
+    }
+  }
+
+  isToolItem(): this is AgentMessageToolConsumptionItemResource {
+    if (this.itemType !== "tool") {
+      return false;
+    }
+
+    assert(
+      this.agentMCPActionId !== null,
+      "Tool consumption item is missing its action"
+    );
+    return true;
   }
 
   private static itemKey(record: CompletedAgentMessageConsumptionItem): string {
@@ -435,11 +495,11 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     auth: Authenticator,
     {
       agentMessageModelIds,
-      attributionVersion,
+      maxAttributionVersion,
       transaction,
     }: {
       agentMessageModelIds: ModelId[];
-      attributionVersion: number;
+      maxAttributionVersion: number;
       transaction?: Transaction;
     }
   ): Promise<AgentMessageConsumptionItemResource[]> {
@@ -451,7 +511,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         agentMessageId: { [Op.in]: agentMessageModelIds },
-        attributionVersion,
+        attributionVersion: { [Op.lte]: maxAttributionVersion },
       },
       order: [
         ["agentMessageId", "ASC"],
@@ -464,6 +524,106 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
   }
 
   /**
+   * Fetches every agent message and persisted attribution facts belonging directly to a
+   * user-visible conversation. Superseded and deleted message versions are retained because any
+   * execution that ran remains part of the conversation's bill.
+   *
+   * TODO(2026-08-04 FLAV) Include run-agent descendants once their lineage can be traversed without
+   * a recursive read-time query.
+   */
+  static async fetchConversationConsumptionFacts(
+    auth: Authenticator,
+    {
+      conversation,
+      maxAttributionVersion,
+    }: {
+      conversation: ConversationResource;
+      maxAttributionVersion: number;
+    }
+  ): Promise<{
+    messages: ConversationConsumptionMessageFacts[];
+  }> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    // Agent messages own the authoritative bill and the execution metadata needed to explain it.
+    const agentMessages = await AgentMessageModel.findAll({
+      attributes: [
+        "id",
+        "agentConfigurationId",
+        "costCredits",
+        "runIds",
+        "status",
+      ],
+      where: {
+        workspaceId,
+        conversationId: conversation.id,
+      },
+      order: [["id", "ASC"]],
+    });
+    const messageFacts = agentMessages.map((agentMessage) => ({
+      agentMessageModelId: agentMessage.id,
+      agentConfigurationId: agentMessage.agentConfigurationId,
+      billedCredits: agentMessage.costCredits,
+      dustRunIds: agentMessage.runIds ?? [],
+      status: agentMessage.status,
+    }));
+    const agentMessageModelIds = messageFacts.map(
+      (message) => message.agentMessageModelId
+    );
+
+    // Attribution rows are conversation-scoped. Actions are still attached through their message.
+    const [itemModels, actions] = await Promise.all([
+      this.model.findAll({
+        where: {
+          workspaceId,
+          conversationId: conversation.id,
+          attributionVersion: { [Op.lte]: maxAttributionVersion },
+        },
+        order: [
+          ["agentMessageId", "ASC"],
+          ["id", "ASC"],
+        ],
+      }),
+      AgentMCPActionResource.listByAgentMessageIds(auth, agentMessageModelIds),
+    ]);
+    const items = itemModels.map((item) => new this(this.model, item.get()));
+
+    // Rebuild per-message facts because reconciliation happens independently for each bill.
+    const itemsByMessageModelId = new Map<
+      ModelId,
+      AgentMessageConsumptionItemResource[]
+    >();
+    for (const item of items) {
+      const messageItems = itemsByMessageModelId.get(item.agentMessageId) ?? [];
+      messageItems.push(item);
+      itemsByMessageModelId.set(item.agentMessageId, messageItems);
+    }
+
+    const actionsByMessageModelId = new Map<
+      ModelId,
+      AgentMCPActionResource[]
+    >();
+    for (const action of actions) {
+      const messageActions =
+        actionsByMessageModelId.get(action.agentMessageId) ?? [];
+      messageActions.push(action);
+      actionsByMessageModelId.set(action.agentMessageId, messageActions);
+    }
+
+    return {
+      messages: messageFacts.map(
+        ({
+          agentMessageModelId,
+          ...message
+        }): ConversationConsumptionMessageFacts => ({
+          ...message,
+          items: itemsByMessageModelId.get(agentMessageModelId) ?? [],
+          actions: actionsByMessageModelId.get(agentMessageModelId) ?? [],
+        })
+      ),
+    };
+  }
+
+  /**
    * Resolves one public message identity to the persisted facts needed by the consumption reader.
    * Keeping that resolution here prevents Sequelize models and numeric IDs from leaking into the
    * read module or route.
@@ -473,11 +633,11 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     {
       conversation,
       agentMessageId,
-      attributionVersion,
+      maxAttributionVersion,
     }: {
       conversation: ConversationResource;
       agentMessageId: string;
-      attributionVersion: number;
+      maxAttributionVersion: number;
     }
   ): Promise<{
     billedCredits: number | null;
@@ -494,7 +654,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     const [items, actions] = await Promise.all([
       this.listByAgentMessageModelIds(auth, {
         agentMessageModelIds: [agentMessage.id],
-        attributionVersion,
+        maxAttributionVersion,
       }),
       AgentMCPActionResource.listByAgentMessageIds(auth, [agentMessage.id]),
     ]);

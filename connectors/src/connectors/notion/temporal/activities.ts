@@ -68,6 +68,7 @@ import {
 } from "@connectors/lib/models/notion";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
+import type { Logger } from "@connectors/logger/logger";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
@@ -96,7 +97,6 @@ import {
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { Context } from "@temporalio/activity";
 import chunk from "lodash/chunk";
-import type { Logger } from "pino";
 import { Op } from "sequelize";
 
 const logger = mainLogger.child({ provider: "notion" });

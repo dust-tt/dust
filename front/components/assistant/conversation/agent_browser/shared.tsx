@@ -1,9 +1,8 @@
 import { AgentDetailsDropdownMenu } from "@app/components/assistant/details/AgentDetailsButtonBar";
+import type { TrackingAction, TrackingExtra } from "@app/lib/tracking";
 import {
   TRACKING_ACTIONS,
   TRACKING_AREAS,
-  type TrackingAction,
-  type TrackingExtra,
   trackEvent,
 } from "@app/lib/tracking";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";

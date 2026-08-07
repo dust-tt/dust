@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-
+import type {
+  FontFamilyOverrides,
+  TypoOverrides,
+  TypoProp,
+  TypoToken,
+  TypoTokenOverride,
+} from "./devModeConfig";
 import {
-  type FontFamilyOverrides,
   POPULAR_FONTS,
   POPULAR_MONO_FONTS,
   TYPO_GROUPS,
   TYPO_PROP_LABELS,
   TYPO_PROPS,
-  type TypoOverrides,
-  type TypoProp,
-  type TypoToken,
-  type TypoTokenOverride,
 } from "./devModeConfig";
 import { S } from "./devPanelStyles";
 import {
@@ -96,7 +97,7 @@ function TypoPropInput({
           textAlign: "right" as const,
           background: "transparent",
           border: isOverridden ? "1px solid #00897B55" : "1px solid #333",
-          borderRadius: 3,
+          borderRadius: 4,
           padding: "2px 4px",
           outline: "none",
         }}
@@ -324,7 +325,7 @@ function FontFamilySection({
                   fontOverrides.sans === f
                     ? "1px solid #00897B"
                     : "1px solid #333",
-                borderRadius: 3,
+                borderRadius: 4,
                 background:
                   fontOverrides.sans === f ? "#00897B22" : "transparent",
                 color: fontOverrides.sans === f ? "#00897B" : "#888",
@@ -418,7 +419,7 @@ function FontFamilySection({
                   fontOverrides.mono === f
                     ? "1px solid #00897B"
                     : "1px solid #333",
-                borderRadius: 3,
+                borderRadius: 4,
                 background:
                   fontOverrides.mono === f ? "#00897B22" : "transparent",
                 color: fontOverrides.mono === f ? "#00897B" : "#888",

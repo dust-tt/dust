@@ -6,8 +6,8 @@ import {
 } from "@app/lib/api/subscription";
 import { ensureWorkOSOrganizationForPaidPlan } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
+import type { CheckoutPayment } from "@app/lib/credits/checkout_payment_status";
 import {
-  type CheckoutPayment,
   getCheckoutPaymentStatus,
   getCheckoutPaymentStatusBySession,
   markCheckoutPaymentActivating,
@@ -63,10 +63,8 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import {
-  isSupportedCurrency,
-  type SupportedCurrency,
-} from "@app/types/currency";
+import type { SupportedCurrency } from "@app/types/currency";
+import { isSupportedCurrency } from "@app/types/currency";
 import type { MembershipSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -74,12 +72,8 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import { z } from "zod";
-import {
-  type CheckoutBillingPeriod,
-  CheckoutBillingPeriodSchema,
-  type CheckoutSeatType,
-  CheckoutSeatTypeSchema,
-} from "./types";
+import type { CheckoutBillingPeriod, CheckoutSeatType } from "./types";
+import { CheckoutBillingPeriodSchema, CheckoutSeatTypeSchema } from "./types";
 
 type BusinessActivationError =
   | { type: "not_on_free_plan" }
@@ -444,7 +438,7 @@ export async function handleSubscriptionActivationSuccess({
       {
         workspaceId: workspace.sId,
         contractId,
-        status: checkoutPayment.status,
+        paymentStatus: checkoutPayment.status,
       },
       "[Business Activation] payment_gate success: unexpected Redis status, skipping"
     );
@@ -646,7 +640,7 @@ export async function handleSubscriptionActivationSuccess({
         );
       } else {
         logger.info(
-          { workspaceId: workspace.sId, status: syncResult.value.status },
+          { workspaceId: workspace.sId, syncStatus: syncResult.value.status },
           "[Business Activation] Immediate seat sync completed"
         );
       }

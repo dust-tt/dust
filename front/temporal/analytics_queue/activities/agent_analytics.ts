@@ -1,11 +1,11 @@
-import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   getInternalMCPServerNameFromSId,
-  type InternalMCPServerNameType,
   SEARCH_SERVER_NAME,
   SEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
@@ -18,11 +18,14 @@ import { addTraceToLangfuseDataset } from "@app/lib/api/instrumentation/langfuse
 import { isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import type {
+  AgentMessageBillingAction,
+  AgentMessageToolBillingLine,
+} from "@app/lib/credits/agent_message_billing";
 import {
+  buildAgentMessageBillingPlan,
   computeRunKey,
-  intelligenceAwuFromRunUsagesGroupedByRunKey,
-  toolAwuFromAction,
-} from "@app/lib/metronome/events";
+} from "@app/lib/credits/agent_message_billing";
 import type { AgentMessageFeedbackModel } from "@app/lib/models/agent/conversation";
 import {
   AgentMessageModel,
@@ -209,7 +212,9 @@ export async function storeAgentAnalytics(
     });
   }
 
-  // Seat type at index time, to stamp `is_free_seat`. Mirrors Metronome's
+  const messageCreatedAt = new Date(agentMessageRow.createdAt);
+
+  // Seat type as of the message time, to stamp `is_free_seat`. Mirrors Metronome's
   // free-seat user-id split: free-seat usage is dropped from a user's consumed
   // credits once they upgrade to a paid seat. Defaults to non-free when the
   // message has no associated user (system/doNotAssociateUser messages).
@@ -217,6 +222,7 @@ export async function storeAgentAnalytics(
     ? await MembershipResource.getActiveSeatTypeForUserModelId({
         workspace: auth.getNonNullableWorkspace(),
         userModelId: userModel.id,
+        at: messageCreatedAt,
       })
     : null;
   const isFreeSeat = seatType === "free";
@@ -232,12 +238,25 @@ export async function storeAgentAnalytics(
     agentAgentMessageRow.id
   );
 
-  // Collect tool usage data (with per-tool credit cost).
-  const toolsUsed = await collectToolUsageFromMessage(
-    auth,
-    actions,
-    contextOrigin
-  );
+  const billingPlan = buildAgentMessageBillingPlan({
+    actions: actions.map((actionResource) => {
+      const action = actionResource.toJSON();
+
+      return {
+        actionResource,
+        internalMCPServerName: action.internalMCPServerName,
+        status: action.status,
+        toolName: getToolNameFromFunctionCallName(
+          actionResource.functionCallName
+        ),
+      };
+    }),
+    contextOrigin,
+    runUsages,
+  });
+
+  // Collect tool usage data from the same billing lines used for the totals.
+  const toolsUsed = await collectToolUsageFromMessage(auth, billingPlan.tools);
 
   // Collect the agent's tag ids at message time.
   // NOTE: may not be stable over time, see `collectAgentTagIds` for details.
@@ -246,11 +265,8 @@ export async function storeAgentAnalytics(
   // Model that actually ran the message (resolved at message creation).
   const model = collectResolvedModel(agentAgentMessageRow);
 
-  const llmAwu = intelligenceAwuFromRunUsagesGroupedByRunKey(
-    runUsages,
-    contextOrigin
-  );
-  const toolAwu = toolsUsed.reduce((sum, tool) => sum + tool.cost_awu, 0);
+  const llmAwu = billingPlan.totals.llmBilledCredits;
+  const toolAwu = billingPlan.totals.toolBilledCredits;
 
   const isBillable = AGENT_MESSAGE_STATUSES_TO_TRACK.includes(
     agentAgentMessageRow.status
@@ -317,7 +333,7 @@ export async function storeAgentAnalytics(
     skills_used: skillsUsed,
     status: agentAgentMessageRow.status,
     is_free_seat: isFreeSeat,
-    timestamp: new Date(agentMessageRow.createdAt).toISOString(),
+    timestamp: messageCreatedAt.toISOString(),
     tokens,
     tools_used: toolsUsed,
     // Fall back to the authenticated user when the UserMessage row has no
@@ -397,11 +413,17 @@ function aggregateTokenUsage(
 /**
  * Collect tool usage data from agent message actions.
  */
+type AnalyticsBillingAction = AgentMessageBillingAction & {
+  actionResource: AgentMCPActionResource;
+};
+
 async function collectToolUsageFromMessage(
   auth: Authenticator,
-  actionResources: AgentMCPActionResource[],
-  contextOrigin: UserMessageOrigin | null
+  billingLines: AgentMessageToolBillingLine<AnalyticsBillingAction>[]
 ): Promise<AgentMessageAnalyticsToolUsed[]> {
+  const actionResources = billingLines.map(
+    ({ action }) => action.actionResource
+  );
   const uniqueConfigIds = Array.from(
     new Set(actionResources.map((a) => a.mcpServerConfigurationId))
   );
@@ -435,22 +457,14 @@ async function collectToolUsageFromMessage(
     mcpServerIds
   );
 
-  return actionResources.map((actionResource) => {
+  return billingLines.map(({ action, billedCredits }) => {
+    const { actionResource, toolName } = action;
     const { internalMCPServerName, mcpServerId } = actionResource.metadata;
     const serverName =
       internalMCPServerName ??
       (mcpServerId && remoteServerNameMap.get(mcpServerId)) ??
       mcpServerId ??
       "unknown";
-
-    const toolName =
-      actionResource.functionCallName.split(TOOL_NAME_SEPARATOR).pop() ??
-      actionResource.functionCallName;
-    // Same pricing gate as the billing pipeline, so this snapshot matches what was emitted.
-    const cost_awu = toolAwuFromAction(
-      { toolName, internalMCPServerName, status: actionResource.status },
-      contextOrigin
-    );
 
     return {
       step_index: actionResource.stepContent.step,
@@ -460,7 +474,7 @@ async function collectToolUsageFromMessage(
         configIdToSId.get(actionResource.mcpServerConfigurationId) ?? undefined,
       execution_time_ms: actionResource.executionDurationMs,
       status: actionResource.status,
-      cost_awu,
+      cost_awu: billedCredits,
     };
   });
 }

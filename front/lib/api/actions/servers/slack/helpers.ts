@@ -1,10 +1,13 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import type { AgentLoopRunContext, ToolContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
-  type AgentLoopRunContext,
-  isAgentLoopRunContext,
-  type ToolContext,
-} from "@app/lib/actions/types";
+  MAX_SLACK_MESSAGE_LENGTH,
+  makeMarkdownBlocks,
+  makeSentByFooterBlock,
+  makeSentByFooterText,
+} from "@app/lib/api/actions/servers/slack/block";
 import {
   formatSlackMessageForLLM,
   renderFormattedMessage,
@@ -18,7 +21,8 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { WebAPICallResult } from "@slack/web-api";
+import { truncate } from "@app/types/shared/utils/string_utils";
+import type { KnownBlock, WebAPICallResult } from "@slack/web-api";
 import { WebClient } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/types/response/ConversationsListResponse";
 import type { Usergroup } from "@slack/web-api/dist/types/response/UsergroupsListResponse";
@@ -793,7 +797,15 @@ export async function executePostMessage(
     return new Err(new MCPError("Failed to open group DM"));
   }
 
-  const originalMessage = message;
+  // The regular path renders the message as a `markdown` block and appends the
+  // footer as a separate context block (so it is never absorbed into a markdown
+  // table). The file-upload path uses legacy Slack mrkdwn via `initial_comment`
+  // (a plain string, no blocks), so the footer is concatenated inline there — we
+  // reserve room for it in the truncation so message + footer stays within
+  // MAX_SLACK_MESSAGE_LENGTH.
+  let footerBlock: KnownBlock | undefined;
+  let bodyMaxLength = MAX_SLACK_MESSAGE_LENGTH;
+  let mrkdwnMessage = truncate(slackifyMarkdown(message), bodyMaxLength);
 
   if (
     showSentByFooter !== false &&
@@ -805,9 +817,12 @@ export async function executePostMessage(
       `agentDetails=${toolContext.runContext?.agentConfiguration.sId}`,
       config.getAppUrl()
     );
-    message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${toolContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
-  } else {
-    message = slackifyMarkdown(originalMessage);
+    const agentName = toolContext.runContext?.agentConfiguration.name;
+    const footerText = makeSentByFooterText(agentName, agentUrl);
+    // -1 for the newline joining the message and the footer in the string path.
+    bodyMaxLength = MAX_SLACK_MESSAGE_LENGTH - footerText.length - 1;
+    mrkdwnMessage = `${truncate(slackifyMarkdown(message), bodyMaxLength)}\n${footerText}`;
+    footerBlock = makeSentByFooterBlock(agentName, agentUrl);
   }
 
   const canUploadFile = await hasSlackScope(accessToken, "files:write");
@@ -852,7 +867,7 @@ export async function executePostMessage(
       file: fileBuffer,
       filename,
       filetype,
-      initial_comment: message,
+      initial_comment: mrkdwnMessage,
     };
     const uploadResp = threadTs
       ? await slackClient.filesUploadV2({
@@ -874,10 +889,17 @@ export async function executePostMessage(
     ]);
   }
 
-  // No file provided: regular message.
+  // No file provided: regular message. Sent as a `markdown` block so full GFM
+  // (tables, headers, lists) renders, with the footer as a separate context
+  // block; `text` is a plain fallback for places that cannot render blocks
+  // (e.g. push notifications).
   const response = await slackClient.chat.postMessage({
     channel: resolvedTo,
-    text: message,
+    blocks: [
+      ...makeMarkdownBlocks(message, false),
+      ...(footerBlock ? [footerBlock] : []),
+    ],
+    text: truncate(message, MAX_SLACK_MESSAGE_LENGTH),
     mrkdwn: true,
     thread_ts: threadTs,
     unfurl_links: unfurlLinks,
@@ -906,12 +928,11 @@ export async function executeUpdateMessage({
   message: string;
 }) {
   const slackClient = await getSlackClient(accessToken);
-  const slackFormattedMessage = slackifyMarkdown(message);
-
   const response = await slackClient.chat.update({
     channel,
     ts: timestamp,
-    text: slackFormattedMessage,
+    text: truncate(message, MAX_SLACK_MESSAGE_LENGTH),
+    blocks: makeMarkdownBlocks(message),
   });
 
   if (!response.ok) {
@@ -950,7 +971,9 @@ export async function executeScheduleMessage(
   }
 ) {
   const slackClient = await getSlackClient(accessToken);
-  const originalMessage = message;
+  // The message is rendered as a `markdown` block; the footer is appended as a
+  // separate context block so it is never absorbed into a markdown table.
+  let footerBlock: KnownBlock | undefined;
 
   if (
     showSentByFooter !== false &&
@@ -962,9 +985,8 @@ export async function executeScheduleMessage(
       `agentDetails=${toolContext.runContext?.agentConfiguration.sId}`,
       config.getAppUrl()
     );
-    message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${toolContext.runContext?.agentConfiguration.name} Agent> on Dust_`;
-  } else {
-    message = slackifyMarkdown(originalMessage);
+    const agentName = toolContext.runContext?.agentConfiguration.name;
+    footerBlock = makeSentByFooterBlock(agentName, agentUrl);
   }
 
   // Convert post_at to Unix timestamp in seconds.
@@ -1009,7 +1031,11 @@ export async function executeScheduleMessage(
 
   const response = await slackClient.chat.scheduleMessage({
     channel: to,
-    text: message,
+    blocks: [
+      ...makeMarkdownBlocks(message, false),
+      ...(footerBlock ? [footerBlock] : []),
+    ],
+    text: truncate(message, MAX_SLACK_MESSAGE_LENGTH),
     post_at: timestampSeconds.toString(),
     thread_ts: threadTs,
     unfurl_links: unfurlLinks,

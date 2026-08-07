@@ -1,5 +1,8 @@
 import { isRemoteMCPServerError } from "@app/lib/actions/mcp_errors";
-import type { GetMCPServersResponseBody } from "@app/lib/api/mcp";
+import {
+  type GetMCPServersResponseBody,
+  isMCPServerViewNameConflict,
+} from "@app/lib/api/mcp";
 import {
   createInternalMCPServer,
   createRemoteMCPServer,
@@ -42,6 +45,7 @@ const PostBodySchema = z.discriminatedUnion("serverType", [
     useCase: UseCaseSchema,
     connectionId: z.string().optional(),
     customHeaders: CustomHeadersSchema,
+    viewName: z.string().optional(),
   }),
   z.object({
     serverType: z.literal("internal"),
@@ -77,6 +81,20 @@ app.post("/", validate("json", PostBodySchema), async (ctx) => {
       : await createInternalMCPServer(auth, body);
 
   if (result.isErr()) {
+    if (isMCPServerViewNameConflict(result.error)) {
+      const { nameConflict } = result.error;
+      return ctx.json(
+        {
+          error: {
+            type: "invalid_request_error",
+            message: `An existing Tool is already using the name "${nameConflict}"`,
+          },
+          nameConflict: { name: nameConflict },
+        },
+        400
+      );
+    }
+
     const message = result.error.message;
     if (isRemoteMCPServerError(result.error)) {
       // Non-standard envelope: callers rely on the `isRemoteServerError` flag.

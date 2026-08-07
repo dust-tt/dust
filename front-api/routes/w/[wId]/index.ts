@@ -27,7 +27,8 @@ import { validate } from "@front-api/middlewares/validator";
 import { workspaceAuth } from "@front-api/middlewares/workspace_auth";
 import { escape } from "html-escaper";
 import { z } from "zod";
-import actionRecommendations from "./action-recommendations";
+import activationPod from "./activation-pod";
+import actionRecommendations from "./activation-recommendations";
 import analytics from "./analytics";
 import assistant from "./assistant";
 import auditLogs from "./audit-logs";
@@ -952,7 +953,8 @@ app.post(
 
 // Sub-apps using the catch-all default + the partial-subtree exception
 // targets declared above.
-app.route("/action-recommendations", actionRecommendations);
+app.route("/activation-recommendations", actionRecommendations);
+app.route("/activation-pod", activationPod);
 app.route("/analytics", analytics);
 app.route("/model_tiers", modelTiers);
 app.route("/assistant", assistant);

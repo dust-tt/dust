@@ -14,16 +14,16 @@ import {
   makeMCPToolExit,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { HandledToolAbortClassification } from "@app/lib/actions/tool_interruptions";
 import {
   classifyToolAbortSignal,
-  type HandledToolAbortClassification,
   makeToolInterruptionError,
 } from "@app/lib/actions/tool_interruptions";
-import {
-  type ActionGeneratedFileType,
-  isAgentLoopRunContext,
-  type ToolContext,
+import type {
+  ActionGeneratedFileType,
+  ToolContext,
 } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,

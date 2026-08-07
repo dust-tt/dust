@@ -12,19 +12,13 @@ import {
   normalizeOAuthUrl,
 } from "@app/lib/api/mcp_server/urls";
 import { getWorkOSConnectApplication } from "@app/lib/api/workos";
-import {
-  getAuthenticatorFromWorkOSClaims,
-  type WorkOSWorkspaceAuthenticator,
-} from "@app/lib/api/workos_authenticator";
+import type { WorkOSWorkspaceAuthenticator } from "@app/lib/api/workos_authenticator";
+import { getAuthenticatorFromWorkOSClaims } from "@app/lib/api/workos_authenticator";
 import logger from "@app/logger/logger";
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
-import {
-  createRemoteJWKSet,
-  decodeJwt,
-  type JWTPayload,
-  jwtVerify,
-} from "jose";
+import type { JWTPayload } from "jose";
+import { createRemoteJWKSet, decodeJwt, jwtVerify } from "jose";
 
 type McpServerAuthVariables = {
   mcpAuth: WorkOSWorkspaceAuthenticator;

@@ -2,10 +2,8 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAuthContext } from "@app/lib/swr/workspaces";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import {
-  getWorkspaceDefaultAgentId,
-  type LightWorkspaceType,
-} from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
+import { getWorkspaceDefaultAgentId } from "@app/types/user";
 import { useState } from "react";
 
 interface UseWorkspaceDefaultAgentProps {

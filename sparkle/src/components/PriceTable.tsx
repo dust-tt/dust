@@ -107,14 +107,8 @@ export function PriceTable({
         </div>
       </div>
       <div
-        style={{
-          borderBottomRightRadius: "15px",
-          borderBottomLeftRadius: "15px",
-          borderTopRightRadius: "4px",
-          borderTopLeftRadius: "4px",
-        }}
         className={cn(
-          "flex h-full flex-col overflow-hidden shadow-md",
+          "flex h-full flex-col overflow-hidden rounded-b-2xl rounded-t-sm shadow-md",
           "bg-background"
         )}
       >

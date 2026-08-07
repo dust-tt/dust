@@ -78,6 +78,24 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
     return activationPod ?? null;
   }
 
+  // Fetches the calling user's activation Pod. A user can technically have more
+  // than one over time; we return the most recent, treated as "their" learning
+  // space for surfaces like the Get Started page.
+  static async fetchByUser(
+    auth: Authenticator
+  ): Promise<ActivationPodResource | null> {
+    const user = auth.getNonNullableUser();
+    const activationPod = await this.model.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user.id,
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return activationPod ? new this(this.model, activationPod.get()) : null;
+  }
+
   // Batch variant of fetchBySpace, avoiding one query per pod (e.g. when the
   // scheduler processes many pods at once).
   static async fetchBySpaceModelIds(

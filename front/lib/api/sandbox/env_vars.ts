@@ -1,6 +1,27 @@
+import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { normalizeEgressPolicyDomains } from "@app/types/sandbox/egress_policy";
 import type { SandboxEnvVarKind } from "@app/types/sandbox/env_var";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
+
+// The scope owning a sandbox env var row. The encryption key is derived from
+// the same typed object the call site used to fetch the row, so "key matches
+// row scope" stays a type-level guarantee. This is NOT an authorization
+// point: row scoping in the resources decides access before any decryption
+// runs.
+export type SandboxEnvVarScope =
+  | { kind: "workspace"; workspace: LightWorkspaceType }
+  | { kind: "pod"; pod: SpaceResource };
+
+// Values are encrypted under the scope key — workspace sId for workspace
+// rows, pod space sId for pod rows. Pod-scoped rows would break if a pod
+// ever moved across workspaces with a workspace-derived key; hence the
+// per-scope key, NOT always the workspace sId.
+export function scopeEncryptionKey(scope: SandboxEnvVarScope): string {
+  return scope.kind === "pod" ? scope.pod.sId : scope.workspace.sId;
+}
 
 export const SANDBOX_ENV_VAR_PREFIX = "DST_";
 const SANDBOX_HTTPS_SECRET_ENV_VAR_PREFIX = "DSEC_";
@@ -16,6 +37,7 @@ export const MAX_VALUE_BYTES = 32 * 1_024;
 // rest of the request line + other headers.
 export const MAX_HTTPS_SECRET_VALUE_BYTES = 4 * 1_024;
 export const MAX_VARS_PER_WORKSPACE = 50;
+export const MAX_VARS_PER_POD = 50;
 
 const ENV_VAR_PREFIX_BY_KIND: Record<SandboxEnvVarKind, string> = {
   config: SANDBOX_ENV_VAR_PREFIX,
@@ -90,6 +112,91 @@ export function validateEnvVarValueForKind({
 
 export function envVarPrefixForKind(kind: SandboxEnvVarKind): string {
   return ENV_VAR_PREFIX_BY_KIND[kind];
+}
+
+// Domains are compared as sets so reordering the same domains does not count
+// as a change (e.g. does not trigger an `allowed_domains_updated` audit
+// emission or a no-op row update).
+export function areAllowedDomainsEqual(
+  left: string[] | null | undefined,
+  right: string[] | null | undefined
+): boolean {
+  const leftSet = new Set(left ?? []);
+  const rightSet = new Set(right ?? []);
+
+  if (leftSet.size !== rightSet.size) {
+    return false;
+  }
+
+  for (const domain of leftSet) {
+    if (!rightSet.has(domain)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+export type NormalizedAllowedDomains = string[] | null | undefined;
+
+// Validates the allowedDomains input against the row kind: config rows must
+// not carry domains, https_secret rows must carry at least one (unless the
+// caller passes none on an update, when `requiredForSecret` is false and the
+// stored value is kept — signalled by `undefined`).
+export function normalizeAllowedDomainsForKind({
+  kind,
+  allowedDomains,
+  requiredForSecret,
+}: {
+  kind: SandboxEnvVarKind;
+  allowedDomains: string[] | null | undefined;
+  requiredForSecret: boolean;
+}): Result<NormalizedAllowedDomains, Error> {
+  switch (kind) {
+    case "config": {
+      if (allowedDomains && allowedDomains.length > 0) {
+        return new Err(
+          new Error("allowedDomains can only be set for HTTPS secrets.")
+        );
+      }
+
+      return new Ok(null);
+    }
+
+    case "https_secret": {
+      if (!allowedDomains) {
+        if (requiredForSecret) {
+          return new Err(
+            new Error("HTTPS secrets require at least one allowed domain.")
+          );
+        }
+
+        return new Ok(undefined);
+      }
+
+      if (allowedDomains.length === 0) {
+        return new Err(
+          new Error("HTTPS secrets require at least one allowed domain.")
+        );
+      }
+
+      const normalized = normalizeEgressPolicyDomains(allowedDomains);
+      if (normalized.isErr()) {
+        return normalized;
+      }
+
+      if (normalized.value.length === 0) {
+        return new Err(
+          new Error("HTTPS secrets require at least one allowed domain.")
+        );
+      }
+
+      return normalized;
+    }
+
+    default:
+      assertNever(kind);
+  }
 }
 
 // Format used both as the agent-visible env var (DSEC_*) for HTTPS secrets

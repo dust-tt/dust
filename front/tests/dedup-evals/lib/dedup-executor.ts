@@ -1,8 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
-import {
-  type DeduplicateCandidate,
-  runDeduplicationLLMCall,
-} from "@app/lib/project_task/deduplicate_candidates";
+import type { DeduplicateCandidate } from "@app/lib/project_task/deduplicate_candidates";
+import { runDeduplicationLLMCall } from "@app/lib/project_task/deduplicate_candidates";
 import type { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import logger from "@app/logger/logger";
 import { MODEL_ID } from "@app/tests/dedup-evals/lib/config";

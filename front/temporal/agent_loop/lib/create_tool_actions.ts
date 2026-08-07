@@ -6,6 +6,7 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { makeMCPApproveExecutionEventBase } from "@app/lib/actions/tool_approval_events";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import type { StepContext } from "@app/lib/actions/types";
+import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import {
   buildAuditLogTarget,
   emitAuditLogEventDirect,
@@ -312,6 +313,11 @@ async function createActionForTool(
             })),
             configurationId: agentConfiguration.sId,
             conversationId: conversation.sId,
+            editableArguments: isServerSideMCPToolConfiguration(
+              actionConfiguration
+            )
+              ? actionConfiguration.editableArguments
+              : undefined,
             messageId: agentMessage.sId,
           }
         : undefined,

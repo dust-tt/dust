@@ -1,4 +1,5 @@
 import { Button } from "@dust-tt/sparkle";
+import type { SVGComponentProps } from "react-svg-credit-card-payment-icons";
 import {
   AmericanExpressFlatIcon,
   DinersClubFlatIcon,
@@ -7,7 +8,6 @@ import {
   JCBFlatIcon,
   MaestroFlatIcon,
   MastercardFlatIcon,
-  type SVGComponentProps,
   UnionPayFlatIcon,
   VisaFlatIcon,
 } from "react-svg-credit-card-payment-icons";
@@ -82,7 +82,7 @@ export function PaymentMethodRow({
   return (
     <div className="flex w-full items-center justify-between rounded-xl bg-muted-background p-3">
       <div className="flex items-center gap-2">
-        <div className="overflow-hidden rounded-[4px] border border-border">
+        <div className="overflow-hidden rounded-sm border border-border">
           {paymentMethod.type === "card" ? (
             <CardBrandIcon brand={paymentMethod.brand} width={34} height={24} />
           ) : (

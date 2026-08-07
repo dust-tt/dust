@@ -1,9 +1,15 @@
 import type { IntegrationEnrichment } from "../types";
 
+import { tailoredEnrichments } from "./tailored_enrichments";
+
 // Integration enrichment configs
 // Each key should match the integration slug from integrationRegistry.ts
+//
+// `baseEnrichments` holds the original per-listing copy (taglines, legacy
+// useCases, FAQs). The tool-grounded chatStoryline + benefits for every listing
+// live in `./tailored_enrichments` and are merged in at the bottom of this file.
 
-export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
+const baseEnrichments: Record<string, IntegrationEnrichment> = {
   // ===== COMMUNICATION =====
   slack: {
     tagline:
@@ -1020,3 +1026,27 @@ export const integrationEnrichments: Record<string, IntegrationEnrichment> = {
     relatedIntegrations: ["slack"],
   },
 };
+
+// Merge the tool-grounded chat storylines + benefit cards over the base copy.
+// When a listing ships tailored `benefits`, its legacy `useCases` is cleared so
+// the new BenefitsSection renders (IntegrationTemplate suppresses benefits while
+// useCases is present).
+function buildIntegrationEnrichments(): Record<string, IntegrationEnrichment> {
+  const merged: Record<string, IntegrationEnrichment> = { ...baseEnrichments };
+  for (const [slug, tailored] of Object.entries(tailoredEnrichments)) {
+    const base = merged[slug] ?? {};
+    if (tailored.benefits !== undefined && tailored.benefits.length > 0) {
+      // Tailored benefits supersede legacy useCases. Omit the key entirely
+      // rather than setting it to `undefined` — getStaticProps cannot
+      // serialize `undefined`, only `null` or an absent key.
+      const { useCases: _useCases, ...baseWithoutUseCases } = base;
+      merged[slug] = { ...baseWithoutUseCases, ...tailored };
+    } else {
+      merged[slug] = { ...base, ...tailored };
+    }
+  }
+  return merged;
+}
+
+export const integrationEnrichments: Record<string, IntegrationEnrichment> =
+  buildIntegrationEnrichments();

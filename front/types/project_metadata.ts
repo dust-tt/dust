@@ -1,3 +1,5 @@
+import type { PodFrameTab } from "@app/types/pod_frame_tab";
+
 export interface PodMetadataType {
   sId: string;
   createdAt: number;
@@ -8,6 +10,10 @@ export interface PodMetadataType {
   todoGenerationEnabled: boolean;
   lastTodoAnalysisAt: number | null;
   pinnedFramePath: string | null;
+  frameTabs: PodFrameTab[];
+  /** System tab ids + frame paths before Settings. */
+  tabsOrder: string[];
   defaultAgentId: string | null;
   defaultSkillIds: string[];
+  isAdminControlled: boolean;
 }

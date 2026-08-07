@@ -109,7 +109,6 @@ describe("POST /api/v1/w/[wId]/files", () => {
     const data = await response.json();
     const file = await FileResource.fetchById(auth, data.file.sId);
     expect(file?.useCaseMetadata?.skipFileProcessing).toBe(true);
-    expect(file?.useCaseMetadata?.skipDataSourceIndexing).toBe(true);
   });
 
   it("keeps the 50 MB CSV limit when disable_computer_feature is enabled", async () => {

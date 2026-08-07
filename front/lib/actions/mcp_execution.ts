@@ -1,4 +1,3 @@
-import { uploadFileToConversationDataSource } from "@app/lib/actions/action_file_helpers";
 import { FILE_OFFLOAD_SNIPPET_LENGTH } from "@app/lib/actions/action_output_limits";
 import type {
   MCPToolConfigurationType,
@@ -28,6 +27,7 @@ import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { Logger } from "@app/logger/logger";
 import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
 import {
   extensionsForContentType,
@@ -42,7 +42,6 @@ import {
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { extname } from "path";
-import type { Logger } from "pino";
 
 /**
  * Recursively sanitizes all string values in an object by removing null bytes and lone surrogates.
@@ -308,7 +307,6 @@ export async function processToolResults(
                   conversationId: conversation.sId,
                 });
               }
-              await uploadFileToConversationDataSource({ auth, file });
             }
             return {
               content: {
@@ -479,8 +477,6 @@ export async function processToolResults(
           updatedAt: c.file.updatedAt.getTime(),
           isInProjectContext: c.file.useCase === "project_context",
           hidden: c.file.useCaseMetadata?.hideFromUser ?? false,
-          skipDataSourceIndexing:
-            c.file.useCaseMetadata?.skipDataSourceIndexing ?? false,
         } satisfies ActionGeneratedFileType;
       }
 

@@ -18,6 +18,7 @@ import type {
   GetMCPServerViewsNotActivatedResponseBody,
   MCPServerType,
   MCPServerTypeWithViews,
+  MCPServerViewNameConflict,
   MCPServerViewType,
   SyncMCPServerResponseBody,
 } from "@app/lib/api/mcp";
@@ -398,6 +399,7 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       sharedSecret,
       oauthConnection,
       customHeaders,
+      viewName,
     }: {
       url: string;
       defaultServerId?: number;
@@ -405,7 +407,10 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       sharedSecret?: string;
       oauthConnection?: MCPConnectionType;
       customHeaders?: { key: string; value: string }[];
-    }): Promise<Result<CreateMCPServerResponseBody, Error>> => {
+      viewName?: string;
+    }): Promise<
+      Result<CreateMCPServerResponseBody, Error | MCPServerViewNameConflict>
+    > => {
       const body: any = { url, serverType: "remote", includeGlobal };
       if (defaultServerId !== undefined) {
         body.defaultServerId = defaultServerId;
@@ -421,6 +426,9 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       if (customHeaders) {
         body.customHeaders = customHeaders;
       }
+      if (viewName !== undefined) {
+        body.viewName = viewName;
+      }
       const response = await clientFetch(`/api/w/${owner.sId}/mcp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -429,6 +437,9 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
 
       if (!response.ok) {
         const body = await response.json();
+        if (body.nameConflict?.name) {
+          return new Err({ nameConflict: body.nameConflict.name });
+        }
         return new Err(
           new MCPCreateServerError(
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

@@ -39,7 +39,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 
-const TRAINING_POD_NAME_SUFFIX = "'s Training Pod";
+const LEARNING_SPACE_NAME_SUFFIX = "'s Learning Space";
 
 const activationManagementLogger = logger.child({
   activity: "activation-management",
@@ -77,7 +77,7 @@ function parsePushedResource(
 
 // Pod is named after its owner. If several owners share a full name in the same
 // run, the colliding pods fall back to the owner's email for disambiguation.
-function trainingPodNameForCreator(
+function learningSpaceNameForCreator(
   creator: UserResource,
   otherUsers: UserResource[]
 ): string {
@@ -87,7 +87,7 @@ function trainingPodNameForCreator(
   );
 
   const label = hasNameCollision ? creator.email : creatorFullName;
-  return `${label}${TRAINING_POD_NAME_SUFFIX}`;
+  return `${label}${LEARNING_SPACE_NAME_SUFFIX}`;
 }
 
 // Resolves the encoded picker value to the pushed skill/agent, reading its
@@ -196,7 +196,7 @@ async function setAgentMdFile(
   return new Ok({ written: true });
 }
 
-// Provisions a fresh Training Pod owned by `creator`: creates the restricted
+// Provisions a fresh Learning Space owned by `creator`: creates the restricted
 // project, pins the Activation skill, writes user context to AGENTS.md, stars
 // it for the owner, creates the user-owned activation trigger, and records the
 // canonical ActivationPod row.
@@ -219,7 +219,7 @@ async function provisionTrainingPod(
   const podName =
     podNameOverride && podNameOverride.length > 0
       ? podNameOverride
-      : trainingPodNameForCreator(creator, otherUsers);
+      : learningSpaceNameForCreator(creator, otherUsers);
 
   const creatorAuth = await Authenticator.fromUserIdAndWorkspaceId(
     creator.sId,
@@ -334,7 +334,7 @@ export const activationManagementPlugin = createPlugin({
     name: "Activation Management",
     description:
       "Activation gets dormant or low-fluency users real value from Dust. " +
-      "Each targeted user gets a personal Training Pod, and the system " +
+      "Each targeted user gets a personal Learning Space, and the system " +
       "periodically checks who still isn't activated and automatically sends " +
       "them an async nudge — a message that opens a guided conversation moving " +
       "them one concrete step forward. " +
@@ -349,7 +349,7 @@ export const activationManagementPlugin = createPlugin({
         label: "Users",
         description:
           "Search by name or email. Each selected user gets their own " +
-          "Training Pod (or is nudged if they already have one).",
+          "Learning Space (or is nudged if they already have one).",
         async: true,
         values: [],
         multiple: true,
@@ -405,7 +405,7 @@ export const activationManagementPlugin = createPlugin({
         label: "[Optional] Pod name",
         description:
           "Only applied when provisioning a single new Pod. " +
-          `Defaults to "<user>${TRAINING_POD_NAME_SUFFIX}".`,
+          `Defaults to "<user>${LEARNING_SPACE_NAME_SUFFIX}".`,
       },
       forceRecreate: {
         type: "boolean",

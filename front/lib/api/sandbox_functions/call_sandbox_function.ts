@@ -8,6 +8,7 @@ import type {
 } from "@app/types/api/sandbox_functions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 // Safety ceiling on waiting for the result event delivered over the invocation stream.
@@ -40,6 +41,20 @@ export async function callSandboxFunction(
   }
   const invocation = invocationResult.value;
   const { sId: invocationId } = invocation;
+
+  // An inline execution settles the instance it ran on: return from memory rather than
+  // subscribing to the stream to read back an outcome this process just produced.
+  const settled = invocation.settledOutcome();
+  if (settled) {
+    switch (settled.status) {
+      case "succeeded":
+        return new Ok(settled.result);
+      case "errored":
+        return new Err(settled.error);
+      default:
+        assertNever(settled);
+    }
+  }
 
   try {
     for await (const { data } of getSandboxFunctionInvocationEvents({

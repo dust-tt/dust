@@ -57,6 +57,7 @@ app.get(
 
     const pagination = paginationRes.value;
     const conversationFilter = parseFilter(ctx.req.query("filter"));
+    const excludeTriggered = ctx.req.query("excludeTriggered") === "true";
 
     // Fetch and verify space access.
     const space = await SpaceResource.fetchById(auth, spaceId);
@@ -84,6 +85,7 @@ app.get(
         orderDirection: pagination.orderDirection,
       },
       filter: conversationFilter,
+      excludeTriggered,
     });
 
     let isEmpty = spaceConversations.length === 0;

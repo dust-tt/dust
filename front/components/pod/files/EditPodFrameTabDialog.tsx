@@ -1,0 +1,246 @@
+import { isCustomResourceIconType } from "@app/components/resources/resources_icon_names";
+import { getIcon } from "@app/components/resources/resources_icons";
+import { usePodFrameTabs } from "@app/hooks/usePodFrameTabs";
+import type { PodFrameTab } from "@app/types/pod_frame_tab";
+import {
+  buildPodNavItemsBeforeSettings,
+  DEFAULT_POD_FRAME_TAB_ICON,
+  MAX_POD_FRAME_TAB_TITLE_LENGTH,
+} from "@app/types/pod_frame_tab";
+import type { LightWorkspaceType } from "@app/types/user";
+import {
+  ActionIcons,
+  ArrowLeft,
+  ArrowRight,
+  Button,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  IconPicker,
+  Input,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+} from "@dust-tt/sparkle";
+import { useMemo, useState } from "react";
+
+interface EditPodFrameTabDialogProps {
+  owner: LightWorkspaceType;
+  podId: string;
+  frameTabs: PodFrameTab[];
+  tabsOrder?: string[];
+  isEditor: boolean;
+  includeConnectedData?: boolean;
+  tab: PodFrameTab;
+  mode?: "create" | "edit";
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function EditPodFrameTabDialog({
+  owner,
+  podId,
+  frameTabs,
+  tabsOrder,
+  isEditor,
+  includeConnectedData = false,
+  tab,
+  mode = "edit",
+  isOpen,
+  onClose,
+}: EditPodFrameTabDialogProps) {
+  const isCreate = mode === "create";
+  const {
+    addFrameTab,
+    updateFrameTab,
+    removeFrameTab,
+    moveFrameTab,
+    tabsOrder: navOrder,
+  } = usePodFrameTabs({
+    owner,
+    podId,
+    frameTabs,
+    tabsOrder,
+    isEditor,
+  });
+
+  const [title, setTitle] = useState(tab.title);
+  const [icon, setIcon] = useState(tab.icon);
+  const [isIconPickerOpen, setIsIconPickerOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
+
+  const navItems = useMemo(
+    () =>
+      buildPodNavItemsBeforeSettings(frameTabs, navOrder, {
+        includeConnectedData,
+      }),
+    [frameTabs, includeConnectedData, navOrder]
+  );
+  const tabIndex = navItems.findIndex(
+    (item) => item.kind === "frame" && item.tab.path === tab.path
+  );
+  const canMoveLeft = !isCreate && isEditor && tabIndex > 0;
+  const canMoveRight =
+    !isCreate && isEditor && tabIndex >= 0 && tabIndex < navItems.length - 1;
+
+  const selectedIcon = isCustomResourceIconType(icon)
+    ? icon
+    : DEFAULT_POD_FRAME_TAB_ICON;
+  const IconComponent = getIcon(selectedIcon);
+
+  const handleSave = async () => {
+    if (!isEditor) {
+      return;
+    }
+    setIsSaving(true);
+    const nextTitle = title.trim() || tab.title;
+    const ok = isCreate
+      ? await addFrameTab(tab.path, {
+          title: nextTitle,
+          icon: selectedIcon,
+          skipConfirm: true,
+        })
+      : await updateFrameTab(tab.path, {
+          title: nextTitle,
+          icon: selectedIcon,
+        });
+    setIsSaving(false);
+    if (ok) {
+      onClose();
+    }
+  };
+
+  const handleRemove = async () => {
+    if (!isEditor || isCreate) {
+      return;
+    }
+    setIsSaving(true);
+    const ok = await removeFrameTab(tab.path, {
+      fileName: tab.title,
+      skipConfirm: true,
+    });
+    setIsSaving(false);
+    if (ok) {
+      onClose();
+    }
+  };
+
+  const handleMove = async (direction: "left" | "right") => {
+    if (!isEditor || isCreate) {
+      return;
+    }
+    setIsMoving(true);
+    await moveFrameTab(tab.path, direction, { includeConnectedData });
+    setIsMoving(false);
+  };
+
+  return (
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          setIsIconPickerOpen(false);
+          onClose();
+        }
+      }}
+    >
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>
+            {isCreate ? "Add frame tab" : "Edit frame tab"}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContainer>
+          <div className="flex items-center gap-2">
+            <PopoverRoot
+              modal
+              open={isIconPickerOpen}
+              onOpenChange={(open) => {
+                if (isEditor) {
+                  setIsIconPickerOpen(open);
+                }
+              }}
+            >
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  icon={IconComponent}
+                  disabled={!isEditor}
+                  tooltip="Change icon"
+                />
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-fit p-0"
+                mountPortalContainer={
+                  typeof document !== "undefined" ? document.body : undefined
+                }
+                onOpenAutoFocus={(e) => e.preventDefault()}
+              >
+                <IconPicker
+                  icons={ActionIcons}
+                  selectedIcon={selectedIcon}
+                  onIconSelect={(iconName: string) => {
+                    if (isCustomResourceIconType(iconName)) {
+                      setIcon(iconName);
+                    }
+                    setIsIconPickerOpen(false);
+                  }}
+                />
+              </PopoverContent>
+            </PopoverRoot>
+            <Input
+              id="frame-tab-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              maxLength={MAX_POD_FRAME_TAB_TITLE_LENGTH}
+              disabled={!isEditor}
+              placeholder="Tab title"
+              containerClassName="flex-1"
+            />
+            {(canMoveLeft || canMoveRight) && (
+              <div className="flex shrink-0 items-center gap-0.5">
+                <Button
+                  variant="ghost"
+                  icon={ArrowLeft}
+                  tooltip="Move left"
+                  disabled={!canMoveLeft || isMoving || isSaving}
+                  onClick={() => void handleMove("left")}
+                />
+                <Button
+                  variant="ghost"
+                  icon={ArrowRight}
+                  tooltip="Move right"
+                  disabled={!canMoveRight || isMoving || isSaving}
+                  onClick={() => void handleMove("right")}
+                />
+              </div>
+            )}
+          </div>
+        </DialogContainer>
+        <DialogFooter
+          leftButtonProps={
+            isCreate
+              ? undefined
+              : {
+                  label: "Remove tab",
+                  variant: "warning",
+                  onClick: () => void handleRemove(),
+                  disabled: !isEditor || isSaving || isMoving,
+                }
+          }
+          rightButtonProps={{
+            label: isCreate ? "Add tab" : "Save",
+            variant: "primary",
+            onClick: () => void handleSave(),
+            disabled: !isEditor || isSaving || isMoving || !title.trim(),
+            isLoading: isSaving,
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}

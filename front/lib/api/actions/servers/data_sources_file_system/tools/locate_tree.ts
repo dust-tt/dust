@@ -9,9 +9,11 @@ import type { DataSourceFilesystemLocateTreeInputType } from "@app/lib/actions/m
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import type {
+  ContentNodeType,
+  CoreAPIContentNode,
+} from "@app/types/core/content_node";
 import {
-  type ContentNodeType,
-  type CoreAPIContentNode,
   DATA_SOURCE_NODE_ID,
   extractDataSourceIdFromNodeId,
   isDataSourceNodeId,

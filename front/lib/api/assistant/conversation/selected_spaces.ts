@@ -3,19 +3,20 @@ import {
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
-import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type { ConversationSelectedSpaceOrigin } from "@app/lib/models/agent/conversation_selected_space";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import {
-  type ConversationSelectedSpacesResponse,
-  type ConversationWithoutContentType,
-  isPodConversation,
-  type SelectableConversationSpaceType,
+import type {
+  ConversationSelectedSpacesResponse,
+  ConversationWithoutContentType,
+  SelectableConversationSpaceType,
 } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";

@@ -1,6 +1,61 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
 
+const conferenceEntryPointsSchema = z
+  .array(
+    z.object({
+      entryPointType: z
+        .enum(["video", "phone", "sip", "more"])
+        .describe("How attendees join the conference."),
+      uri: z
+        .string()
+        .max(1300)
+        .describe(
+          "The entry point URI. Use http(s): for video/more, tel: for phone, or sip: for SIP."
+        ),
+      label: z
+        .string()
+        .max(512)
+        .optional()
+        .describe("The user-visible label for the entry point."),
+    })
+  )
+  .min(1)
+  .describe(
+    "Ways to join the conference. All must belong to the same conference."
+  );
+
+const googleMeetConferenceSchema = z.object({
+  type: z
+    .literal("google_meet")
+    .describe("Create a new Google Meet conference."),
+});
+
+const customConferenceSchema = z.object({
+  type: z.literal("custom").describe("Use a custom or third-party conference."),
+  name: z.string().describe("The user-visible conference solution name."),
+  entryPoints: conferenceEntryPointsSchema,
+});
+
+const noConferenceSchema = z.object({
+  type: z.literal("none").describe("Create the event without a conference."),
+});
+
+const createEventConferenceSchema = z.discriminatedUnion("type", [
+  googleMeetConferenceSchema,
+  customConferenceSchema,
+  noConferenceSchema,
+]);
+
+const updateEventConferenceSchema = z.discriminatedUnion("type", [
+  googleMeetConferenceSchema,
+  customConferenceSchema,
+]);
+
+export type GoogleCalendarConference = z.infer<
+  typeof createEventConferenceSchema
+>;
+
 const sharedEventFields = {
   transparency: z
     .enum(["opaque", "transparent"])
@@ -37,6 +92,20 @@ const sharedEventFields = {
       "Private key-value metadata visible only to this application. Keys and values must be plain strings."
     ),
 };
+
+const eventStartSchema = z.union([
+  z.object({ dateTime: z.string().describe("RFC3339 start time") }),
+  z.object({
+    date: z.string().describe("All-day start date (YYYY-MM-DD)"),
+  }),
+]);
+
+const eventEndSchema = z.union([
+  z.object({ dateTime: z.string().describe("RFC3339 end time") }),
+  z.object({
+    date: z.string().describe("Exclusive all-day end date (YYYY-MM-DD)"),
+  }),
+]);
 
 export const GOOGLE_CALENDAR_TOOLS_METADATA = [
   {
@@ -115,7 +184,9 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = [
   {
     name: "create_event",
     description:
-      "Create a new event on a Google Calendar to schedule a meeting or appointment. By default: (1) add the calling user as both organizer and attendee, (2) call check_availability to verify attendee availability beforehand, (3) call get_user_timezones first to determine attendee timezones for accurate scheduling.",
+      "Create and schedule a meeting, event, or appointment on Google Calendar. " +
+      "By default, add the calling user as organizer and attendee, call " +
+      "check_availability first, and call get_user_timezones before scheduling.",
     schema: {
       calendarId: z
         .string()
@@ -128,23 +199,20 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = [
         .describe(
           "Description of the event. Supports basic HTML tags (<b>, <i>, <br>, <ul>, <li>, <a href='...'>). Use raw HTML tags — never escape them as entities. Use plain text only when no formatting is needed."
         ),
-      start: z
-        .object({ dateTime: z.string().describe("RFC3339 start time") })
-        .describe("Start time object."),
-      end: z
-        .object({ dateTime: z.string().describe("RFC3339 end time") })
-        .describe("End time object."),
+      start: eventStartSchema.describe("Timed or all-day event start."),
+      end: eventEndSchema.describe("Timed or all-day event end (exclusive)."),
       attendees: z
         .array(z.string())
         .optional()
         .describe("List of attendee email addresses."),
       location: z.string().optional().describe("Location of the event."),
       colorId: z.string().optional().describe("Color ID for the event."),
-      createConference: z
-        .boolean()
-        .default(true)
+      conference: createEventConferenceSchema
+        .default({ type: "google_meet" })
         .describe(
-          "Whether to create a conference (Google Meet) for the event. Defaults to true."
+          "Conference setup. Defaults to a new Google Meet conference. Use " +
+            "'custom' for phone, SIP, video, or third-party conferencing, or " +
+            "'none' to create the event without a conference."
         ),
       eventType: z
         .enum(["default", "focusTime", "outOfOffice"])
@@ -165,7 +233,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = [
   {
     name: "update_event",
     description:
-      "Update or reschedule an existing event on a Google Calendar to a new time, location, or set of attendees.",
+      "Update or reschedule a Google Calendar event or meeting to a new time, " +
+      "location, set of attendees, or conference.",
     schema: {
       calendarId: z
         .string()
@@ -179,25 +248,24 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = [
         .describe(
           "Description of the event. Only include this field when intentionally changing the description. Supports basic HTML tags (<b>, <i>, <br>, <ul>, <li>, <a href='...'>). Use raw HTML tags — never escape them as entities. Use plain text only when no formatting is needed."
         ),
-      start: z
-        .object({ dateTime: z.string().describe("RFC3339 start time") })
+      start: eventStartSchema
         .optional()
-        .describe("Start time object."),
-      end: z
-        .object({ dateTime: z.string().describe("RFC3339 end time") })
+        .describe("Timed or all-day event start."),
+      end: eventEndSchema
         .optional()
-        .describe("End time object."),
+        .describe("Timed or all-day event end (exclusive)."),
       attendees: z
         .array(z.string())
         .optional()
         .describe("List of attendee email addresses."),
       location: z.string().optional().describe("Location of the event."),
       colorId: z.string().optional().describe("Color ID for the event."),
-      createConference: z
-        .boolean()
+      conference: updateEventConferenceSchema
         .optional()
         .describe(
-          "Whether to create a conference (Google Meet) for the event. If not provided, existing conference settings are preserved."
+          "Conference setup. Use 'google_meet' to create a new Google Meet " +
+            "conference or 'custom' for phone, SIP, video, or third-party " +
+            "conferencing. Omit to preserve the existing conference."
         ),
       ...sharedEventFields,
     },

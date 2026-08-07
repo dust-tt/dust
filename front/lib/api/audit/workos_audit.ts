@@ -51,6 +51,7 @@ export const AUDIT_ACTIONS = [
   "membership.bulk_role_updated",
   "membership.bulk_seat_updated",
   "member.spend_limit_updated",
+  "membership.pool_cap_override_expired",
   "group.advanced_model_access_updated",
   "group.member_added",
   "group.member_removed",
@@ -84,7 +85,6 @@ export const AUDIT_ACTIONS = [
   "self_improvement.batch_mode_updated",
   "skill.self_improvement_updated",
   // Sandbox.
-  "pod_function.published",
   "sandbox_egress_policy.agent_requests_setting_updated",
   "sandbox_egress_policy.sandbox_updated",
   "sandbox_egress_policy.updated",
@@ -416,7 +416,6 @@ type AuditTargetType =
   | "credential"
   | "mcp_connection"
   | "sandbox_env_var"
-  | "pod_function"
   | "frame";
 
 /**

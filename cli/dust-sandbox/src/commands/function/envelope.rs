@@ -21,11 +21,24 @@ pub struct ResultEnvelope {
     pub timings_ms: Option<TimingsMs>,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum RunnerKind {
+    /// Served by a resident warm server over its unix socket.
+    Warm,
+    /// Fresh runner process spawn, today's default behavior.
+    Cold,
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct TimingsMs {
     pub total: u64,
     pub runner: u64,
+    /// Additive: absent on envelopes from older dsbx versions, and front
+    /// treats timingsMs as opaque, so this cannot break the wire contract.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub runner_kind: Option<RunnerKind>,
 }
 
 impl ResultEnvelope {
@@ -70,6 +83,7 @@ mod tests {
             Some(TimingsMs {
                 total: 12,
                 runner: 8,
+                runner_kind: Some(RunnerKind::Warm),
             }),
         );
 
@@ -80,7 +94,7 @@ mod tests {
                 "protocolVersion": 3,
                 "delivery": "stdout",
                 "outcome": { "ok": true, "output": { "hello": "world" } },
-                "timingsMs": { "total": 12, "runner": 8 },
+                "timingsMs": { "total": 12, "runner": 8, "runnerKind": "warm" },
             })
         );
     }

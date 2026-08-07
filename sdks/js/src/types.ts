@@ -732,6 +732,7 @@ export type RetrievalDocumentPublicType = z.infer<
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "activation_scheduler"
   | "activation_skill"
+  | "admin_controlled_pods"
   | "advanced_notion_management"
   | "allow_scim"
   | "allow_sso"
@@ -776,11 +777,14 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "self_improvement_beta_tester"
   | "legacy_billing"
   | "plan_mode"
+  | "pod_frame_tabs"
   | "skill_favorites"
   | "poke_mcp"
   | "restricted_spaces_in_input_bar"
   | "salesforce_synced_queries"
   | "salesforce_tool"
+  | "sandbox_function_fast_execution"
+  | "sandbox_function_stdout_result"
   | "sandbox_functions"
   | "self_created_slack_app_connector_rollout"
   | "servicenow_tool"
@@ -790,6 +794,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "run_tools_from_prompt"
   | "usage_data_api"
   | "usage_page_read_only"
+  | "enable_analytics_consumption"
   | "pricing_groups"
   | "workspace_analytics"
   | "xai_feature"
@@ -807,6 +812,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "user_memory"
   | "similar_agents_check"
   | "enforce_user_spend_limit_rate_cap"
+  | "editable_tool_inputs"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

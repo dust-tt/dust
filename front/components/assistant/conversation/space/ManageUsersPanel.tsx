@@ -1,11 +1,11 @@
-import {
-  type MemberRowData,
-  MemberSelectionTable,
-  type SearchMemberType,
+import type {
+  MemberRowData,
+  SearchMemberType,
 } from "@app/components/members/MemberSelectionTable";
+import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
-import type { SpaceType } from "@app/types/space";
+import type { RichSpaceType } from "@app/types/api/spaces";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 import {
   Button,
@@ -29,7 +29,7 @@ interface BaseManageUsersPanelProps {
 
 interface SpaceMembersMode extends BaseManageUsersPanelProps {
   mode: "space-members";
-  space: SpaceType;
+  space: RichSpaceType;
   currentProjectMembers: SpaceUserType[];
   onSuccess?: () => void | Promise<void>;
 }
@@ -54,17 +54,17 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
   const [currentEditors, setCurrentEditors] = useState<Set<string>>(new Set());
   const [selectedUsers, setSelectedUsers] = useState<SearchMemberType[]>([]);
 
+  const isAdminControlled =
+    mode === "space-members" && props.space.isAdminControlled;
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset state when panel opens
   useEffect(() => {
     if (mode === "space-members") {
+      const editorIds = props.currentProjectMembers
+        .filter((m) => m.isEditor)
+        .map((m) => m.sId);
       setCurrentMembers(new Set(props.currentProjectMembers.map((m) => m.sId)));
-      setCurrentEditors(
-        new Set(
-          props.currentProjectMembers
-            .filter((m) => m.isEditor)
-            .map((m) => m.sId)
-        )
-      );
+      setCurrentEditors(new Set(editorIds));
     } else if (mode === "editors-only") {
       setCurrentMembers(new Set(props.editors.map((e) => e.sId)));
       setSelectedUsers(props.editors);
@@ -73,7 +73,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
 
   const toggleEditor = useCallback(
     (userId: string) => {
-      if (!currentMembers.has(userId)) {
+      if (isAdminControlled || !currentMembers.has(userId)) {
         return;
       }
       setCurrentEditors((prev) => {
@@ -86,7 +86,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
         return next;
       });
     },
-    [currentMembers]
+    [isAdminControlled, currentMembers]
   );
 
   const handleSave = async () => {
@@ -98,7 +98,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
       );
       const editorIds = Array.from(currentEditors);
 
-      if (editorIds.length === 0) {
+      if (!isAdminControlled && editorIds.length === 0) {
         setIsOpen(false);
         sendNotification({
           title: "At least one editor is required.",
@@ -161,7 +161,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
   };
 
   const editorColumn: ColumnDef<MemberRowData>[] = useMemo(() => {
-    if (mode !== "space-members") {
+    if (mode !== "space-members" || isAdminControlled) {
       return [];
     }
     return [
@@ -197,13 +197,14 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
         },
       },
     ];
-  }, [mode, currentMembers, currentEditors, toggleEditor]);
+  }, [mode, isAdminControlled, currentMembers, currentEditors, toggleEditor]);
 
   const initialMembers =
     mode === "editors-only" ? props.editors : props.currentProjectMembers;
 
   const canSave =
-    !isSaving && (mode !== "space-members" || currentEditors.size > 0);
+    !isSaving &&
+    (mode !== "space-members" || isAdminControlled || currentEditors.size > 0);
 
   const sheetTitle =
     mode === "space-members"
@@ -238,7 +239,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
             disabled: !canSave,
             isLoading: isSaving,
             tooltip:
-              !canSave && mode === "space-members"
+              !canSave && mode === "space-members" && !isAdminControlled
                 ? "Please select at least one editor to save."
                 : undefined,
           }}

@@ -106,10 +106,8 @@ import { triggerConversationUnreadNotifications } from "@app/lib/notifications/w
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
-import {
-  ConversationResource,
-  type RunningAgentMessageContext,
-} from "@app/lib/resources/conversation_resource";
+import type { RunningAgentMessageContext } from "@app/lib/resources/conversation_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -158,8 +156,8 @@ import {
   ConversationError,
   isAgentMessageType,
   isPodConversation,
-  isSystemAuthoredUserMessage,
   isUserMessageType,
+  isUserMessageWithoutConcreteUser,
   UNRESUMABLE_AGENT_MESSAGE_STATUSES,
 } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
@@ -1084,14 +1082,14 @@ function canAccessAgent(
 
 class UserMessageError extends Error {}
 
-// A system-authored message has no author to be, so nobody passes this. Testing
-// that first also stops an API key, which has no `auth.user()` either, from
-// matching null against null.
+// A message with no concrete user has no author to be, so nobody passes this.
+// Testing that first also stops an API key, which has no `auth.user()` either,
+// from matching null against null.
 function isUserMessageAuthor(
   auth: Authenticator,
   message: UserMessageType
 ): boolean {
-  if (isSystemAuthoredUserMessage(message)) {
+  if (isUserMessageWithoutConcreteUser(message)) {
     return false;
   }
 
@@ -1770,7 +1768,7 @@ export async function retryAgentMessage(
 
   // Retrying would replay the parent's server-set origin, which can carry free
   // usage.
-  if (isSystemAuthoredUserMessage(parentUserMessage)) {
+  if (isUserMessageWithoutConcreteUser(parentUserMessage)) {
     return new Err({
       status_code: 403,
       api_error: {

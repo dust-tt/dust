@@ -55,10 +55,9 @@ import {
   getConversationDisplayTitle,
   getConversationUrlAccessMode,
 } from "@app/types/assistant/conversation";
-import {
-  ACTIVE_WAKE_UP_STATUSES,
-  type WakeUpScheduleConfig,
-} from "@app/types/assistant/wakeups";
+import type { ModelResolutionMethodType } from "@app/types/assistant/models/types";
+import type { WakeUpScheduleConfig } from "@app/types/assistant/wakeups";
+import { ACTIVE_WAKE_UP_STATUSES } from "@app/types/assistant/wakeups";
 import type { ContentFragmentVersion } from "@app/types/content_fragment";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -109,6 +108,34 @@ export type RunningAgentMessageContext = {
   agentMessageId: number;
   agentConfigurationId: string;
   rank: number;
+};
+
+export type AgentMessageConsumptionAnalyticsContext = {
+  agentMessage: {
+    agentConfigurationId: string;
+    agentConfigurationVersion: number;
+    completedAt: Date | null;
+    costCredits: number | null;
+    agentMessageModelId: ModelId;
+    modelResolutionMethod: ModelResolutionMethodType | null;
+    resolvedModelId: string | null;
+    resolvedProviderId: string | null;
+    resolvedReasoningEffort: string | null;
+    runIds: string[] | null;
+    status: AgentMessageStatus;
+    version: number;
+  };
+  conversation: {
+    depth: number;
+    conversationId: string;
+    spaceModelId: ModelId | null;
+    triggerModelId: ModelId | null;
+  };
+  triggeringUserMessage: {
+    apiKeyModelId: ModelId | null;
+    origin: UserMessageOrigin;
+    userId: string | null;
+  };
 };
 
 type RunningCompactionMessageContext = {
@@ -771,6 +798,88 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       runIds: agentMessage.runIds,
       triggeringUserMessageOrigin,
       previousCostCredits: agentMessage.costCredits,
+    };
+  }
+
+  /**
+   * Loads the message graph needed to build consumption analytics without exposing Sequelize rows
+   * outside the Resource layer.
+   *
+   * // TODO(2026-08-06 FLAV): I wish we had a MessageResource layer.
+   */
+  static async fetchAgentMessageConsumptionAnalyticsContext(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<AgentMessageConsumptionAnalyticsContext | null> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const messageRow = await MessageModel.findOne({
+      where: { sId: agentMessageId, workspaceId },
+      include: [
+        { model: AgentMessageModel, as: "agentMessage", required: true },
+        { model: ConversationModel, as: "conversation", required: true },
+      ],
+    });
+    const agentMessage = messageRow?.agentMessage;
+    const conversation = messageRow?.conversation;
+    if (!messageRow || !agentMessage || !conversation) {
+      return null;
+    }
+
+    const triggeringMessageRow =
+      messageRow.parentId === null
+        ? null
+        : await MessageModel.findOne({
+            where: {
+              id: messageRow.parentId,
+              conversationId: conversation.id,
+              workspaceId,
+            },
+            include: [
+              {
+                model: UserMessageModel,
+                as: "userMessage",
+                required: true,
+                include: [
+                  {
+                    model: UserModel,
+                    required: false,
+                    attributes: ["sId"],
+                  },
+                ],
+              },
+            ],
+          });
+    const triggeringUserMessage = triggeringMessageRow?.userMessage;
+    if (!triggeringUserMessage) {
+      return null;
+    }
+
+    return {
+      agentMessage: {
+        agentConfigurationId: agentMessage.agentConfigurationId,
+        agentConfigurationVersion: agentMessage.agentConfigurationVersion,
+        completedAt: agentMessage.completedAt,
+        costCredits: agentMessage.costCredits,
+        agentMessageModelId: agentMessage.id,
+        modelResolutionMethod: agentMessage.modelResolutionMethod,
+        resolvedModelId: agentMessage.resolvedModelId,
+        resolvedProviderId: agentMessage.resolvedProviderId,
+        resolvedReasoningEffort: agentMessage.resolvedReasoningEffort,
+        runIds: agentMessage.runIds,
+        status: agentMessage.status,
+        version: messageRow.version,
+      },
+      conversation: {
+        depth: conversation.depth,
+        conversationId: conversation.sId,
+        spaceModelId: conversation.spaceId,
+        triggerModelId: conversation.triggerId,
+      },
+      triggeringUserMessage: {
+        apiKeyModelId: triggeringUserMessage.userContextApiKeyId,
+        origin: triggeringUserMessage.userContextOrigin,
+        userId: triggeringUserMessage.user?.sId ?? null,
+      },
     };
   }
 
@@ -2253,6 +2362,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       pagination,
       restrictToConversationModelIds,
       filter = "all",
+      excludeTriggered = false,
     }: {
       spaceId: string;
       options?: FetchConversationOptions;
@@ -2263,6 +2373,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       };
       restrictToConversationModelIds?: ModelId[];
       filter?: SpaceConversationsFilter;
+      /**
+       * When true, conversations created by a trigger (`triggerId IS NOT NULL`)
+       * are excluded in SQL so pagination stays dense under heavy automation.
+       * Orthogonal to `filter` (participation scope).
+       */
+      excludeTriggered?: boolean;
     }
   ): Promise<{
     conversations: ConversationResource[];
@@ -2290,6 +2406,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       ...(restrictToConversationModelIds && {
         id: { [Op.in]: restrictToConversationModelIds },
       }),
+      ...(excludeTriggered && { triggerId: null }),
     };
 
     if (pagination.lastValue) {
@@ -3051,7 +3168,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   async findAgenticParent(
     auth: Authenticator,
     { agentMessageId }: { agentMessageId: string }
-  ): Promise<MessageModel | null> {
+  ): Promise<{
+    agentConfigurationId: string;
+    agentMessageId: string;
+    conversationModelId: ModelId;
+  } | null> {
     const owner = auth.getNonNullableWorkspace();
 
     const agentMessage = await MessageModel.findOne({
@@ -3095,9 +3216,27 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId: owner.id,
         sId: agenticOriginMessageId,
       },
+      attributes: ["sId", "conversationId"],
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: ["agentConfigurationId"],
+        },
+      ],
     });
 
-    return agenticOriginMessage;
+    if (!agenticOriginMessage?.agentMessage) {
+      return null;
+    }
+
+    return {
+      agentConfigurationId:
+        agenticOriginMessage.agentMessage.agentConfigurationId,
+      agentMessageId: agenticOriginMessage.sId,
+      conversationModelId: agenticOriginMessage.conversationId,
+    };
   }
 
   /**

@@ -12,6 +12,7 @@ import type {
   GetLatencyResponse,
   GetUsageMetricsResponse,
 } from "@app/lib/api/assistant/observability/messages_metrics";
+import type { GetPodUsageResponse } from "@app/lib/api/assistant/observability/pod_usage";
 import type { GetSkillExecutionResponse } from "@app/lib/api/assistant/observability/skill_execution";
 import type { GetToolExecutionResponse } from "@app/lib/api/assistant/observability/tool_execution";
 import type {
@@ -992,6 +993,38 @@ export function useAgentContextOrigin(params: {
     isContextOriginLoading: !error && !data && !disabled,
     isContextOriginError: error,
     isContextOriginValidating: isValidating,
+  };
+}
+
+export function useAgentPodUsage(params: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  version?: string;
+  disabled?: boolean;
+}) {
+  const {
+    workspaceId,
+    agentConfigurationId,
+    days = DEFAULT_PERIOD_DAYS,
+    version,
+    disabled,
+  } = params;
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<GetPodUsageResponse> = fetcher;
+  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/pods?days=${days}${versionParam}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    podUsage: data ?? { total: 0, buckets: emptyArray(), otherPodsCount: 0 },
+    isPodUsageLoading: !error && !data && !disabled,
+    isPodUsageError: error,
+    isPodUsageValidating: isValidating,
   };
 }
 

@@ -1,3 +1,7 @@
+import type {
+  TestSuite,
+  WorkspaceContext,
+} from "@app/tests/reinforcement-evals/lib/types";
 import {
   editSkillCallCount,
   editSkillCallsWithSources,
@@ -7,8 +11,6 @@ import {
   mockTool,
   noSuggestion,
   rejectSuggestion,
-  type TestSuite,
-  type WorkspaceContext,
 } from "@app/tests/reinforcement-evals/lib/types";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 

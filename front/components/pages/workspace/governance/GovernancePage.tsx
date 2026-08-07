@@ -2,6 +2,7 @@ import { GovernancePageLayout } from "@app/components/pages/workspace/governance
 import { GovernancePageSkeleton } from "@app/components/pages/workspace/governance/GovernancePageSkeleton";
 import { GovernanceSettingRow } from "@app/components/pages/workspace/governance/GovernanceSettingRow";
 import { GovernanceSettingSection } from "@app/components/pages/workspace/governance/GovernanceSettingSection";
+import { SkillDiscoverabilityWarning } from "@app/components/pages/workspace/governance/SkillDiscoverabilityWarning";
 import { ExtensionMcpToolsSection } from "@app/components/workspace/ExtensionMcpToolsSection";
 import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
 import { AuditLogsGovernanceSection } from "@app/components/workspace/settings/AuditLogsToggle";
@@ -196,31 +197,45 @@ export const GovernancePage = () => {
         onLinkClick={handleNavigateToGroups}
       />
       <div className="flex w-full flex-col gap-8">
-        {sections.map(({ id, label, icon, governancePermissions }) => (
-          <GovernanceSettingSection key={id} label={label} icon={icon}>
-            {id === "frame" && isAdmin && (
-              <InteractiveContentSharing
-                sharingPolicy={sharingPolicy}
-                doUpdateSharingPolicy={doUpdateSharingPolicy}
-                isChanging={isChanging}
-              />
-            )}
-            {governancePermissions.map((governancePermission) => (
-              <GovernanceSettingRow
-                key={capabilityKey(governancePermission)}
-                governancePermission={governancePermission}
-                groups={groups}
-                onChange={(newConfiguration) =>
-                  onPermissionChange({
-                    grantType: governancePermission.grantType,
-                    resourceType: governancePermission.resourceType,
-                    configuration: newConfiguration,
-                  })
-                }
-              />
-            ))}
-          </GovernanceSettingSection>
-        ))}
+        {sections.map(
+          ({ id, label, icon, governancePermissions: sectionPermissions }) => (
+            <GovernanceSettingSection
+              key={id}
+              label={label}
+              icon={icon}
+              footer={
+                id === "skills" ? (
+                  <SkillDiscoverabilityWarning
+                    governancePermissions={governancePermissions}
+                    groups={groups}
+                  />
+                ) : undefined
+              }
+            >
+              {id === "frame" && isAdmin && (
+                <InteractiveContentSharing
+                  sharingPolicy={sharingPolicy}
+                  doUpdateSharingPolicy={doUpdateSharingPolicy}
+                  isChanging={isChanging}
+                />
+              )}
+              {sectionPermissions.map((governancePermission) => (
+                <GovernanceSettingRow
+                  key={capabilityKey(governancePermission)}
+                  governancePermission={governancePermission}
+                  groups={groups}
+                  onChange={(newConfiguration) =>
+                    onPermissionChange({
+                      grantType: governancePermission.grantType,
+                      resourceType: governancePermission.resourceType,
+                      configuration: newConfiguration,
+                    })
+                  }
+                />
+              ))}
+            </GovernanceSettingSection>
+          )
+        )}
 
         {isAdmin && (
           <>

@@ -3,15 +3,11 @@ import type {
   PodTasksUpdateTaskItemInput,
   PodTasksUpdateTasksInput,
 } from "@app/lib/api/actions/servers/pod_tasks/types";
-import {
-  type MemberDisplayInfo,
-  useMemberDetails,
-} from "@app/lib/swr/assistants";
+import type { MemberDisplayInfo } from "@app/lib/swr/assistants";
+import { useMemberDetails } from "@app/lib/swr/assistants";
 import { useWorkspacePodTask } from "@app/lib/swr/pods";
-import {
-  POD_TASK_NO_ASSIGNEE_LABEL,
-  type PodTaskStatus,
-} from "@app/types/project_task";
+import type { PodTaskStatus } from "@app/types/project_task";
+import { POD_TASK_NO_ASSIGNEE_LABEL } from "@app/types/project_task";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { Avatar, Checkbox, Chip, Spinner } from "@dust-tt/sparkle";

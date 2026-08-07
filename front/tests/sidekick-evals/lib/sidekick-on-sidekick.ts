@@ -1,12 +1,12 @@
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { executeSidekick } from "@app/tests/sidekick-evals/lib/sidekick-executor";
-import {
-  type EvalResult,
-  getTestCaseUserMessageForDisplay,
-  type MockAgentState,
-  type SidekickConfig,
+import type {
+  EvalResult,
+  MockAgentState,
+  SidekickConfig,
 } from "@app/tests/sidekick-evals/lib/types";
+import { getTestCaseUserMessageForDisplay } from "@app/tests/sidekick-evals/lib/types";
 
 const MAX_SCENARIOS = 10;
 

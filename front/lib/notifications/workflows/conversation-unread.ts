@@ -1,18 +1,20 @@
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
+import type { NotificationAllowedTags } from "@app/lib/notifications";
 import {
   ensureSlackNotificationsReady,
   getNovuClient,
   getUserNotificationDelay,
-  type NotificationAllowedTags,
 } from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/conversations-unread";
+import type {
+  ConversationDetailsPayload,
+  ConversationDetailsType,
+} from "@app/lib/notifications/helpers";
 import {
-  type ConversationDetailsPayload,
   ConversationDetailsPayloadSchema,
   ConversationDetailsSchema,
-  type ConversationDetailsType,
   getConversationDetails,
   getEmailSummary,
 } from "@app/lib/notifications/helpers";

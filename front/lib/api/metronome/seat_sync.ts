@@ -6,10 +6,10 @@ import { syncDefaultPoolCapAlertsForWorkspace } from "@app/lib/api/workspace/def
 import { Authenticator } from "@app/lib/auth";
 import { getMetronomeContractById } from "@app/lib/metronome/client";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
+import type { SyncSeatCountSummary } from "@app/lib/metronome/seats";
 import {
   hasContractSeatSubscription,
   remapMembershipSeatTypesForContract,
-  type SyncSeatCountSummary,
   syncSeatCount,
 } from "@app/lib/metronome/seats";
 import { isProPlanPrefix } from "@app/lib/plans/plan_codes";

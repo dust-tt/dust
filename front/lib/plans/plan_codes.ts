@@ -65,10 +65,6 @@ export const isProPlanPrefix = (planCode: string) =>
 export const isFriendsAndFamilyPlan = (planCode: string) =>
   planCode === "FREE_FRIENDSAMILY";
 
-export const isCreditPricedBusinessPlan = (planCode: string) =>
-  planCode === CREDIT_PRICED_BUSINESS_PLAN_CODE ||
-  planCode === CREDIT_PRICED_BUSINESS_LEGACY_LARGE_PLAN_CODE;
-
 export const isCreditPricedFreePlan = (planCode: string) =>
   planCode === CREDIT_PRICED_FREE_PLAN_CODE;
 
@@ -80,7 +76,7 @@ export const isFreePlan = (planCode: string) =>
   !isEnterprisePlanPrefix(planCode) &&
   !isDustCompanyPlan(planCode) &&
   !isProPlanPrefix(planCode) &&
-  !isCreditPricedBusinessPlan(planCode);
+  !isBusinessPlanPrefix(planCode);
 
 export const isFreeTrialPhonePlan = (planCode: string) =>
   planCode === FREE_TRIAL_PHONE_PLAN_CODE;

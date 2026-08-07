@@ -119,7 +119,15 @@ describe("ProjectMetadataResource", () => {
       expect(json.todoGenerationEnabled).toBe(false);
       expect(json.lastTodoAnalysisAt).toBeNull();
       expect(json.pinnedFramePath).toBeNull();
+      expect(json.frameTabs).toEqual([]);
+      expect(json.tabsOrder).toEqual([
+        "conversations",
+        "tasks",
+        "files",
+        "connected_data",
+      ]);
       expect(json.defaultSkillIds).toEqual([]);
+      expect(json.isAdminControlled).toBe(false);
     });
   });
 

@@ -4,12 +4,10 @@ import {
   getNovuClient,
   getUserNotificationDelay,
 } from "@app/lib/notifications";
+import type { ConversationDetailsType } from "@app/lib/notifications/helpers";
+import { getEmailSummary } from "@app/lib/notifications/helpers";
+import type { ConversationUnreadPayloadType } from "@app/lib/notifications/workflows/conversation-unread";
 import {
-  type ConversationDetailsType,
-  getEmailSummary,
-} from "@app/lib/notifications/helpers";
-import {
-  type ConversationUnreadPayloadType,
   filterParticipantsByNotifyCondition,
   getMessagePreviewSlack,
   getMessagePreviewText,

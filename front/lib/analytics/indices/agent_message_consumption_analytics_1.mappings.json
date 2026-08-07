@@ -42,7 +42,13 @@
         "tag_ids": {
           "type": "keyword"
         },
-        "root_agent_id": {
+        "parent_ids": {
+          "type": "keyword"
+        },
+        "direct_parent_id": {
+          "type": "keyword"
+        },
+        "root_id": {
           "type": "keyword"
         },
         "depth": {
@@ -93,10 +99,13 @@
         "server_name": {
           "type": "keyword"
         },
+        "parent_server_name": {
+          "type": "keyword"
+        },
         "action_id": {
           "type": "keyword"
         },
-        "enabled_by_skill_ids": {
+        "attributed_skill_ids": {
           "type": "keyword"
         }
       }

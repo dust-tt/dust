@@ -1,9 +1,9 @@
-import {
-  VOICE_LANGUAGES,
-  type VoiceGender,
-  type VoiceLanguage,
-  type VoiceUseCase,
+import type {
+  VoiceGender,
+  VoiceLanguage,
+  VoiceUseCase,
 } from "@app/lib/api/actions/servers/speech_generator/metadata";
+import { VOICE_LANGUAGES } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import logger from "@app/logger/logger";
 import { dustManagedServiceCredentials } from "@app/types/api/credentials";

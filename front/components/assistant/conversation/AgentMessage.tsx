@@ -8,7 +8,7 @@ import { AttachmentCitation } from "@app/components/assistant/conversation/attac
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { BlockedAction } from "@app/components/assistant/conversation/BlockedAction";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
-import { CreditCostSubmenu } from "@app/components/assistant/conversation/CreditCostSubmenu";
+import { CreditCostPopover } from "@app/components/assistant/conversation/CreditCostPopover";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -27,10 +27,6 @@ import {
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
 import { useAutoOpenSidePanel } from "@app/components/assistant/conversation/useAutoOpenSidePanel";
-import {
-  CREDIT_COST_ITEM_CLASS_NAME,
-  useCreditCostMenuItem,
-} from "@app/components/assistant/conversation/useCreditCostMenuItem";
 import { ConfirmContext } from "@app/components/Confirm";
 import { getActionCardPlugin } from "@app/components/markdown/ActionCardDirective";
 import {
@@ -48,7 +44,6 @@ import { getModelWithReasoningEffortLabel } from "@app/components/model_picker/m
 import {
   useBranchConversation,
   useCancelMessage,
-  useConversationMessage,
   usePostOnboardingFollowUp,
 } from "@app/hooks/conversations";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
@@ -63,6 +58,7 @@ import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/out
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { formatCredits } from "@app/lib/client/credits";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
@@ -100,13 +96,14 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
+import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
   Button,
-  ButtonGroup,
   ButtonGroupDropdown,
   Chip,
   Clipboard,
   ClipboardCheck,
+  CoinsStacked01,
   ConversationMessageAvatar,
   ConversationMessageContainer,
   ConversationMessageContent,
@@ -115,8 +112,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  type DropdownMenuItemProps,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
   GitBranch01,
   InfoCircle,
@@ -134,21 +129,11 @@ import {
 } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
-import {
-  type MutableRefObject,
-  type ReactElement,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import type { MutableRefObject, ReactElement } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { mutate } from "swr";
-
-const RUN_AGENT_TOOL_NAME = "run_agent";
 
 // Popover (not Tooltip) so the "Learn more" link inside stays reachable.
 function PrunedContextChip() {
@@ -200,21 +185,6 @@ function PrunedContextChip() {
         </div>
       </PopoverContent>
     </PopoverRoot>
-  );
-}
-
-function hasMessageSpawnedSubAgent(
-  agentMessage: AgentMessageWithStreaming
-): boolean {
-  return (
-    agentMessage.actions.some(
-      (action) => action.internalMCPServerName === RUN_AGENT_TOOL_NAME
-    ) ||
-    agentMessage.activitySteps.some(
-      (step) =>
-        step.type === "action" &&
-        step.internalMCPServerName === RUN_AGENT_TOOL_NAME
-    )
   );
 }
 
@@ -274,63 +244,6 @@ export function AgentMessage({
     { index: number; document: MCPReferenceCitation }[]
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  // Latches to true the first time the menu opens. We use this rather than
-  // `isMenuOpen` to gate the cost fetch so the query stays enabled after the
-  // menu closes: otherwise disabling it nulls the SWR key, dropping
-  // `refreshedMessage` back to the prop values (which never carry
-  // `subAgentCostCredits`) and flickering the displayed total during the close
-  // animation.
-  const [hasOpenedMenu, setHasOpenedMenu] = useState(false);
-  // Set once this message finishes a run live in this session (terminal stream
-  // event). Credits are computed in the finalize activity *after* the terminal
-  // event is published, so the streamed `costCredits` is never the authoritative
-  // total: it is `null` on a first run, and the *previous* run's total after an
-  // `ask_user` resume. So we keep the authoritative single-message fetch enabled
-  // and revalidate it when the menu opens (see below), rather than trusting the
-  // streamed value. Never reset: flipping `needsCostFetch` back to false would
-  // null the SWR key and revert the display to the stale streamed prop.
-  const [hasCompletedRunThisSession, setHasCompletedRunThisSession] =
-    useState(false);
-  // Owed revalidation, consumed on menu open: set on each terminal event,
-  // cleared once the mutate is fired, so reopening the menu with no new run in
-  // between does not refetch.
-  const pendingCostRevalidationRef = useRef(false);
-  // Re-fetch (on menu open) if a cost we want to show is still missing or may be
-  // stale:
-  // - Own cost: null until the agentic loop finishes; absent while streaming/listed.
-  // - Sub-agent cost: only aggregated by the single-message fetch, and only exists
-  //   when a `run_agent` action is present (it triggers both run_agent and handover).
-  // - Live completion: the streamed cost is pre-recompute (see above), so any
-  //   message that completed a run this session needs the authoritative fetch.
-  const needsCostFetch =
-    hasCompletedRunThisSession ||
-    agentMessage.costCredits == null ||
-    (hasMessageSpawnedSubAgent(agentMessage) &&
-      agentMessage.subAgentCostCredits == null);
-  const {
-    message: refreshedMessage,
-    isMessageLoading,
-    mutateMessage,
-  } = useConversationMessage({
-    conversationId,
-    workspaceId: owner.sId,
-    messageId: agentMessage.sId,
-    options: {
-      disabled: !hasOpenedMenu || !needsCostFetch,
-    },
-  });
-  const refreshedAgentMessage =
-    refreshedMessage?.type === "agent_message" ? refreshedMessage : null;
-  const creditCostItem = useCreditCostMenuItem({
-    credits: refreshedAgentMessage?.costCredits ?? agentMessage.costCredits,
-    subAgentCredits:
-      refreshedAgentMessage?.subAgentCostCredits ??
-      agentMessage.subAgentCostCredits,
-  });
-  // Keep the cost section visible while the fetch is in flight (showing a
-  // loader) rather than popping it in once it resolves.
-  const isCreditCostLoading = needsCostFetch && isMessageLoading;
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
@@ -389,6 +302,7 @@ export function AgentMessage({
                 conversationId: eventPayload.data.conversationId,
                 created: eventPayload.data.created,
                 inputs: eventPayload.data.inputs,
+                editableArguments: eventPayload.data.editableArguments,
                 messageId: eventPayload.data.messageId,
                 metadata: eventPayload.data.metadata,
                 stake: eventPayload.data.stake,
@@ -472,12 +386,6 @@ export function AgentMessage({
 
           case "agent_message_success":
           case "agent_message_gracefully_stopped":
-            // A run finished live: its terminal event carries a pre-recompute
-            // cost (credits are computed in the finalize activity after the event
-            // is published), so mark the cost for revalidation on the next menu
-            // open.
-            setHasCompletedRunThisSession(true);
-            pendingCostRevalidationRef.current = true;
             // We can remove all blocked actions for this message (especially useful to let other users see the message updates)
             void removeAllBlockedActionsForMessage({
               messageId: sId,
@@ -713,7 +621,6 @@ export function AgentMessage({
   });
 
   const alwaysVisibleButtons: ReactElement[] = [];
-  const hoverButtons: ReactElement[] = [];
 
   const hasMultiAgents =
     getConversationGeneratingMessages(conversationId).length > 1;
@@ -890,7 +797,7 @@ export function AgentMessage({
     }
   }, [streamError, reloadMessage, conversationId, agentMessage.sId]);
 
-  // Add feedback buttons (always visible)
+  // Add feedback buttons.
   if (shouldShowFeedback) {
     alwaysVisibleButtons.push(
       <FeedbackSelector
@@ -904,7 +811,7 @@ export function AgentMessage({
     );
   }
 
-  // Add copy button or split button with dropdown (hover only)
+  // Add the remaining footer actions.
   if (shouldShowMessageActions) {
     const dropdownItems: DropdownMenuItemProps[] = [
       {
@@ -947,79 +854,71 @@ export function AgentMessage({
       });
     }
 
-    hoverButtons.push(
-      <ButtonGroup key="split-button-group">
+    alwaysVisibleButtons.push(
+      <Button
+        key="copy-message"
+        tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
+        variant="ghost-secondary"
+        size="xs"
+        onClick={handleCopyToClipboard}
+        icon={isCopied ? ClipboardCheck : Clipboard}
+      />
+    );
+
+    if (agentMessage.costCredits !== null && agentMessage.costCredits > 0) {
+      const formattedCredits = formatCredits(agentMessage.costCredits);
+      const creditCostTrigger = (
         <Button
-          tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-          variant="outline"
+          variant="ghost-secondary"
           size="xs"
-          onClick={handleCopyToClipboard}
-          icon={isCopied ? ClipboardCheck : Clipboard}
-          className="text-muted-foreground"
+          label={formattedCredits}
+          iconRight={CoinsStacked01}
+          className="gap-1 px-1 tracking-normal"
+          aria-label={`${formattedCredits} credits used for this message. View credit breakdown`}
         />
-        <DropdownMenu
-          onOpenChange={(open) => {
-            setIsMenuOpen(open);
-            if (open) {
-              setHasOpenedMenu(true);
-              // The streamed cost is stale after a live completion (computed
-              // post-event). Revalidate the authoritative value once per
-              // completion so the total (e.g. summed across an `ask_user`
-              // resume) is correct without a page refresh.
-              if (pendingCostRevalidationRef.current) {
-                pendingCostRevalidationRef.current = false;
-                void mutateMessage();
-              }
-            }
-          }}
-        >
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="xs"
-              icon={DotsHorizontal}
-              className="text-muted-foreground"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {(creditCostItem || isCreditCostLoading) && (
-              <>
-                {hasConsumptionDetails ? (
-                  <CreditCostSubmenu
-                    credits={
-                      refreshedAgentMessage?.costCredits ??
-                      agentMessage.costCredits
-                    }
-                    subAgentCredits={
-                      refreshedAgentMessage?.subAgentCostCredits ??
-                      agentMessage.subAgentCostCredits
-                    }
-                    conversationId={conversationId}
-                    messageId={agentMessage.sId}
-                    workspaceId={owner.sId}
-                    isCostLoading={isCreditCostLoading}
-                  />
-                ) : creditCostItem ? (
-                  <DropdownMenuItem {...creditCostItem} />
-                ) : (
-                  <DropdownMenuItem
-                    label="Credit cost"
-                    endComponent={
-                      <div className="h-3 w-8 animate-pulse rounded bg-muted-foreground/20" />
-                    }
-                    className={CREDIT_COST_ITEM_CLASS_NAME}
-                    onSelect={(e) => e.preventDefault()}
-                  />
-                )}
-                <DropdownMenuSeparator />
-              </>
-            )}
-            {dropdownItems.map((item, index) => (
-              <DropdownMenuItem key={index} {...item} />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </ButtonGroup>
+      );
+
+      alwaysVisibleButtons.push(
+        hasConsumptionDetails ? (
+          <CreditCostPopover
+            key="message-credit-cost"
+            credits={agentMessage.costCredits}
+            subAgentCredits={agentMessage.subAgentCostCredits}
+            conversationId={conversationId}
+            messageId={agentMessage.sId}
+            workspaceId={owner.sId}
+            trigger={creditCostTrigger}
+          />
+        ) : (
+          <span
+            key="message-credit-cost"
+            role="status"
+            aria-label={`${formattedCredits} credits used for this message`}
+            className="inline-flex h-6 items-center gap-1 rounded-lg px-1 text-sm font-medium leading-5 text-muted-foreground"
+          >
+            {formattedCredits}
+            <CoinsStacked01 className="h-4 w-4" />
+          </span>
+        )
+      );
+    }
+
+    alwaysVisibleButtons.push(
+      <DropdownMenu key="message-actions">
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost-secondary"
+            size="xs"
+            icon={DotsHorizontal}
+            aria-label="More message actions"
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {dropdownItems.map((item, index) => (
+            <DropdownMenuItem key={index} {...item} />
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   }
 
@@ -1174,17 +1073,8 @@ export function AgentMessage({
 
   const footerButtons = !isDeleted &&
     !isGracefullyStopped &&
-    (alwaysVisibleButtons.length > 0 || hoverButtons.length > 0) && (
-      <div className="flex items-center gap-2">
-        {alwaysVisibleButtons}
-        {hoverButtons.length > 0 && (
-          <div
-            className={`flex gap-2 transition-opacity duration-150 ${isMenuOpen ? "opacity-100" : "@xs:opacity-0 @xs:group-hover:opacity-100"}`}
-          >
-            {hoverButtons}
-          </div>
-        )}
-      </div>
+    alwaysVisibleButtons.length > 0 && (
+      <div className="flex items-center gap-1">{alwaysVisibleButtons}</div>
     );
 
   const renderMessageContent = () => {

@@ -1,10 +1,16 @@
+import {
+  DEFAULT_MCP_ACTION_VERSION,
+  DEFAULT_MCP_SERVER_ICON,
+} from "@app/lib/actions/constants";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   allowsMultipleInstancesOfInternalMCPServerByName,
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -252,24 +258,50 @@ describe("POST /api/w/:wId/mcp/ — creation", () => {
 });
 
 describe("POST /api/w/:wId/mcp/ — name conflict", () => {
-  it("returns 400 when creating a remote server with includeGlobal and name conflicts in global space", async () => {
+  it("allows a custom view name to resolve a cropped tool name conflict", async () => {
     const { workspace, auth } = await setup();
+    const sharedPrefix = "a".repeat(80);
+    const existingName = `${sharedPrefix}-existing`;
+    const candidateName = `${sharedPrefix}-candidate`;
+    const tools = [
+      {
+        name: "test-tool",
+        description: "Test tool description",
+        inputSchema: undefined,
+      },
+    ];
 
     const existingServer = await RemoteMCPServerFactory.create(workspace, {
-      name: "Test Server",
+      name: existingName,
       url: "https://existing.example.com",
+      tools,
     });
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
         existingServer.sId
       );
-    expect(systemView).not.toBeNull();
+    expect(systemView).toBeDefined();
+
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     await MCPServerViewResource.create(auth, {
       systemView: systemView!,
       space: globalSpace,
     });
+
+    vi.mocked(fetchRemoteServerMetaDataByURL).mockResolvedValueOnce(
+      new Ok({
+        name: candidateName,
+        version: DEFAULT_MCP_ACTION_VERSION,
+        description: "Test description",
+        icon: DEFAULT_MCP_SERVER_ICON,
+        authorization: null,
+        tools,
+        availability: "manual",
+        allowMultipleInstances: true,
+        documentationUrl: null,
+      })
+    );
 
     const response = await postMcp(workspace, {
       serverType: "remote",
@@ -279,7 +311,111 @@ describe("POST /api/w/:wId/mcp/ — name conflict", () => {
 
     expect(response.status).toBe(400);
     const body = await response.json();
-    expect(body.error.message).toContain("Test Server");
+    expect(body.error.message).toContain(candidateName);
+    expect(body.nameConflict).toEqual({ name: candidateName });
+
+    vi.mocked(fetchRemoteServerMetaDataByURL).mockResolvedValueOnce(
+      new Ok({
+        name: candidateName,
+        version: DEFAULT_MCP_ACTION_VERSION,
+        description: "Test description",
+        icon: DEFAULT_MCP_SERVER_ICON,
+        authorization: null,
+        tools,
+        availability: "manual",
+        allowMultipleInstances: true,
+        documentationUrl: null,
+      })
+    );
+
+    const customName = "custom-view-name";
+    const retryResponse = await postMcp(workspace, {
+      serverType: "remote",
+      url: "https://new-server.example.com",
+      includeGlobal: true,
+      viewName: ` ${customName} `,
+    });
+
+    expect(retryResponse.status).toBe(201);
+    const retryBody = await retryResponse.json();
+    expect(retryBody.server.name).toBe(candidateName);
+    const createdSystemView =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        auth,
+        retryBody.server.sId
+      );
+    expect(createdSystemView?.name).toBe(customName);
+
+    const globalViews = await MCPServerViewResource.listBySpace(
+      auth,
+      globalSpace
+    );
+    expect(
+      globalViews.find((view) => view.mcpServerId === retryBody.server.sId)
+        ?.name
+    ).toBe(customName);
+  });
+
+  it("normalizes custom view names before checking exact conflicts", async () => {
+    const { workspace, auth } = await setup();
+    const existingName = "existing-name";
+    const existingServer = await RemoteMCPServerFactory.create(workspace, {
+      name: existingName,
+      url: "https://existing.example.com",
+      tools: [],
+    });
+    const systemView =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        auth,
+        existingServer.sId
+      );
+    expect(systemView).toBeDefined();
+
+    await MCPServerViewResource.create(auth, {
+      systemView: systemView!,
+      space: await SpaceResource.fetchWorkspaceGlobalSpace(auth),
+    });
+
+    vi.mocked(fetchRemoteServerMetaDataByURL).mockResolvedValueOnce(
+      new Ok({
+        name: "candidate-name",
+        version: DEFAULT_MCP_ACTION_VERSION,
+        description: "Test description",
+        icon: DEFAULT_MCP_SERVER_ICON,
+        authorization: null,
+        tools: [],
+        availability: "manual",
+        allowMultipleInstances: true,
+        documentationUrl: null,
+      })
+    );
+
+    const response = await postMcp(workspace, {
+      serverType: "remote",
+      url: "https://new-server.example.com",
+      includeGlobal: true,
+      viewName: ` ${existingName} `,
+    });
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error.message).toContain(existingName);
+    expect(body.nameConflict).toEqual({ name: existingName });
+  });
+
+  it("rejects custom view names longer than the database column", async () => {
+    const { workspace, auth } = await setup();
+
+    const response = await postMcp(workspace, {
+      serverType: "remote",
+      url: "https://new-server.example.com",
+      includeGlobal: true,
+      viewName: "a".repeat(256),
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain("255");
+    expect(await RemoteMCPServerResource.listByWorkspace(auth)).toHaveLength(0);
   });
 
   it("succeeds when creating a remote server with includeGlobal and no name conflict", async () => {

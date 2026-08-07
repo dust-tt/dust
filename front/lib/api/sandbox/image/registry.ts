@@ -1,6 +1,7 @@
 import {
   getLocalAccountPrivilegeHardeningCommand,
   getRootConsumedPathHardeningCommand,
+  getSandboxServicePathHardeningCommand,
 } from "@app/lib/api/sandbox/hardening";
 import {
   buildPodPackage,
@@ -11,11 +12,11 @@ import {
 import { PROFILE_DIR } from "@app/lib/api/sandbox/image/profile";
 import { buildDustToolsBinary } from "@app/lib/api/sandbox/image/profile/build";
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
+import type { ToolEntry } from "@app/lib/api/sandbox/image/types";
 import {
   DSBX_TOOL_NAME,
   PROXY_ONLY_NETWORK_POLICY,
   SANDBOX_AGENT_PROXIED_UID,
-  type ToolEntry,
 } from "@app/lib/api/sandbox/image/types";
 import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import logger from "@app/logger/logger";
@@ -25,11 +26,11 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.64";
-const DSBX_CLI_VERSION = "0.1.41";
+const DUST_BASE_IMAGE_VERSION = "0.8.68";
+const DSBX_CLI_VERSION = "0.1.43";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
-// nftables ruleset covers SANDBOX_UNTRUSTED_UIDS as a set; reordering that
-// list must not silently change this user's UID.
+// nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
+// the stable identity used when creating the workload account.
 const AGENT_PROXIED_UID = SANDBOX_AGENT_PROXIED_UID;
 // Built from https://github.com/openai/codex at tag rust-v0.115.0 (Apache-2.0).
 // Released via the "Release sandbox tool" GitHub Actions workflow.
@@ -196,17 +197,15 @@ function getLocalDirContent(
 }
 
 function getAgentProxiedSetupCommand(): string {
-  // setgid bit on shared dirs + default POSIX ACLs ensures files created
-  // by either agent or agent-proxied are group-owned by `agent` and
-  // group-writable, regardless of the creating process's umask - avoids
-  // a perms handoff footgun during the PR1→PR2 rollout window.
+  // agent-proxied has its own primary group. Supplementary membership in
+  // agent is limited to explicit shared state such as /files and pod DBs.
   return [
-    "install -d -o agent -g agent -m 2775 /home/agent/.local /home/agent/.local/bin",
-    `useradd --create-home --uid ${AGENT_PROXIED_UID} --gid agent --shell /bin/bash agent-proxied`,
-    "chgrp agent /home/agent /home/agent/.local /home/agent/.local/bin /files",
-    "chmod g+ws /home/agent /home/agent/.local /home/agent/.local/bin /files",
-    "setfacl -R -d -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files",
-    "setfacl -R -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files",
+    `groupadd --gid ${AGENT_PROXIED_UID} agent-proxied`,
+    `useradd --create-home --uid ${AGENT_PROXIED_UID} --gid agent-proxied --groups agent --shell /bin/bash agent-proxied`,
+    "chgrp agent /files",
+    "chmod 2775 /files",
+    "setfacl -R -d -m g::rwx /files",
+    "setfacl -R -m g::rwx /files",
   ].join(" && ");
 }
 
@@ -221,8 +220,8 @@ function getDustStateUserSetupCommand(): string {
   // dust-state runs the litestream replication daemon (pod state). Primary
   // group dust-state owns the replica mount point; supplementary membership
   // in `agent` grants rw on the live databases dir shared with agent-proxied
-  // function code. Deliberately NOT in SANDBOX_UNTRUSTED_UIDS: it never
-  // executes workload code.
+  // function code. Deliberately not egress-controlled: it never executes
+  // workload code.
   return [
     "groupadd --system dust-state",
     "useradd --system --no-create-home --gid dust-state --groups agent --shell /usr/sbin/nologin dust-state",
@@ -341,9 +340,12 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   .runCmd(getDustStateUserSetupCommand(), { user: "root" })
   .runCmd(getPodStateSetupCommand(), { user: "root" })
   // Hidden tools: installed but not in manifest (back profile functions)
-  .runCmd("apt-get update && apt-get install -y ripgrep fd-find sd", {
-    user: "root",
-  })
+  .runCmd(
+    "apt-get update && apt-get install -y ripgrep fd-find sd systemd-resolved",
+    {
+      user: "root",
+    }
+  )
   // Create profile directory and copy profile scripts
   // The other tools are installed in bedrock
   // Bump LibreOffice past the distro's 24.2 to a current release so the
@@ -583,24 +585,29 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   .runCmd(`chmod +x ${PROFILE_DIR}/dust-tools`, { user: "root" })
   .copy(
     getLocalContent(PROFILE_LOCAL_DIR, "common.sh"),
-    `${PROFILE_DIR}/common.sh`
+    `${PROFILE_DIR}/common.sh`,
+    { user: "root" }
   )
   .copy(
     getLocalContent(PROFILE_LOCAL_DIR, "shell.sh"),
-    `${PROFILE_DIR}/shell.sh`
+    `${PROFILE_DIR}/shell.sh`,
+    { user: "root" }
   )
   // Provider-specific profiles (sourced by common.sh based on DUST_PROFILE)
   .copy(
     getLocalContent(PROFILE_LOCAL_DIR, "anthropic.sh"),
-    `${PROFILE_DIR}/anthropic.sh`
+    `${PROFILE_DIR}/anthropic.sh`,
+    { user: "root" }
   )
   .copy(
     getLocalContent(PROFILE_LOCAL_DIR, "openai.sh"),
-    `${PROFILE_DIR}/openai.sh`
+    `${PROFILE_DIR}/openai.sh`,
+    { user: "root" }
   )
   .copy(
     getLocalContent(PROFILE_LOCAL_DIR, "gemini.sh"),
-    `${PROFILE_DIR}/gemini.sh`
+    `${PROFILE_DIR}/gemini.sh`,
+    { user: "root" }
   )
   .copy(
     getLocalDirContent(PROFILE_LOCAL_DIR, "soffice"),
@@ -687,12 +694,35 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     "/etc/systemd/system/dust-egress-resolver.service",
     { user: "root" }
   )
+  // The system resolver must remain available to root-owned services without
+  // becoming a DNS escape hatch for the two egress-controlled accounts.
   .runCmd(
-    "systemctl daemon-reload && systemctl enable dust-egress-resolver.service dust-egress-nftables.service",
+    "mkdir -p /etc/dbus-1/system.d /etc/systemd/system/systemd-resolved.service.d",
+    { user: "root" }
+  )
+  .copy(
+    getLocalContent(EGRESS_LOCAL_DIR, "dust-resolve1.conf"),
+    "/etc/dbus-1/system.d/dust-resolve1.conf",
+    { user: "root" }
+  )
+  .copy(
+    getLocalContent(EGRESS_LOCAL_DIR, "systemd-resolved-ipc.conf"),
+    "/etc/systemd/system/systemd-resolved.service.d/dust-ipc.conf",
+    { user: "root" }
+  )
+  .runCmd(
+    "mkdir -p /etc/systemd/resolved.conf.d && " +
+      "printf '%s\\n' '[Resolve]' 'DNS=8.8.8.8' 'FallbackDNS=' 'DNSStubListener=yes' > /etc/systemd/resolved.conf.d/dust-sandbox.conf && " +
+      "ln -sfn /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf",
+    { user: "root" }
+  )
+  .runCmd(
+    "systemctl daemon-reload && systemctl enable systemd-resolved.service dust-egress-resolver.service dust-egress-nftables.service",
     { user: "root" }
   )
   // Run after all apt/npm installs as a final guard against a dependency
   // reintroducing sudo or privileged account state.
+  .runCmd(getSandboxServicePathHardeningCommand(), { user: "root" })
   .runCmd(getLocalAccountPrivilegeHardeningCommand(), { user: "root" })
   .runCmd(getRootConsumedPathHardeningCommand(), { user: "root" })
   // Profile functions (no install needed, provided by profile scripts)

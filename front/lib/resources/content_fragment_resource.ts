@@ -28,10 +28,8 @@ import { isPastedFile } from "@app/lib/files";
 import type { MessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import {
-  FileResource,
-  type FileVersion,
-} from "@app/lib/resources/file_resource";
+import type { FileVersion } from "@app/lib/resources/file_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
@@ -766,7 +764,6 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
           expiredReason: fr.expiredReason,
           path: null,
           processedPath: null,
-          skipDataSourceIndexing: false,
           skipFileProcessing: false,
           fileId: null,
           snippet: null,
@@ -826,7 +823,6 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       let hidden = true;
       let path: string | null = null;
       let processedPath: string | null = null;
-      let skipDataSourceIndexing = false;
       let skipFileProcessing = false;
 
       if (fileResource) {
@@ -838,8 +834,6 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         sourceIcon = fileResource.useCaseMetadata?.sourceIcon ?? null;
         isInProjectContext = !!fileResource.useCaseMetadata?.spaceId;
         hidden = !!fileResource.useCaseMetadata?.hideFromUser;
-        skipDataSourceIndexing =
-          fileResource.useCaseMetadata?.skipDataSourceIndexing === true;
         skipFileProcessing =
           fileResource.useCaseMetadata?.skipFileProcessing === true;
         path = getConversationFilePath({
@@ -868,7 +862,6 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         expiredReason: null,
         path,
         processedPath,
-        skipDataSourceIndexing,
         skipFileProcessing,
         fileId: fileStringId,
         snippet,

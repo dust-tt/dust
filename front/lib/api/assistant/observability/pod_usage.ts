@@ -11,7 +11,7 @@ const MISSING_SPACE_ID = "__none__";
 
 // Cardinality guard: a workspace is not expected to have anywhere near this
 // many pods with activity on a single agent over the selected window.
-const MAX_POD_BUCKETS = 100;
+const MAX_POD_BUCKETS = 200;
 
 type PodUsageBucket = {
   // Pod (project space) sId, or null for messages outside of any pod.
@@ -22,10 +22,19 @@ type PodUsageBucket = {
 };
 
 type PodUsageAggs = {
-  by_space?: estypes.AggregationsMultiBucketAggregateBase<{
+  // Terms aggregate: also carries sum_other_doc_count for buckets beyond size.
+  by_space?: estypes.AggregationsTermsAggregateBase<{
     key: string;
     doc_count: number;
   }>;
+};
+
+export type PodUsageBreakdown = {
+  buckets: PodUsageBucket[];
+  // Messages counted in space buckets beyond the top MAX_POD_BUCKETS returned
+  // by the terms aggregation (sum_other_doc_count). Must be included in totals
+  // so they match the other analytics charts on high-cardinality workspaces.
+  otherPodsCount: number;
 };
 
 /**
@@ -37,7 +46,7 @@ type PodUsageAggs = {
 export async function fetchPodUsageBreakdown(
   auth: Authenticator,
   baseQuery: estypes.QueryDslQueryContainer
-): Promise<Result<PodUsageBucket[], Error>> {
+): Promise<Result<PodUsageBreakdown, Error>> {
   const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
     by_space: {
       terms: {
@@ -61,6 +70,9 @@ export async function fetchPodUsageBreakdown(
     key: string;
     doc_count: number;
   }>(result.value.aggregations?.by_space?.buckets);
+
+  const otherPodsCount =
+    result.value.aggregations?.by_space?.sum_other_doc_count ?? 0;
 
   const spaceIds = rawBuckets
     .map((b) => String(b.key))
@@ -92,10 +104,11 @@ export async function fetchPodUsageBreakdown(
     podBuckets.push({ podId: null, name: null, count: noPodCount });
   }
 
-  return new Ok(podBuckets);
+  return new Ok({ buckets: podBuckets, otherPodsCount });
 }
 
 export type GetPodUsageResponse = {
   total: number;
   buckets: PodUsageBucket[];
+  otherPodsCount: number;
 };

@@ -390,7 +390,7 @@ export async function runCompaction(
           sourceConversationId: sourceConversation?.conversationId,
           compactionMessageId,
           historyFilePath: historyFileRes.value.path,
-          status,
+          generationStatus: status,
         },
         "Compaction generation succeeded"
       );

@@ -16,10 +16,12 @@ export class MembershipFactory {
       role,
       origin = "invited",
       seatType,
+      startAt,
     }: {
       role: MembershipRoleType;
       origin?: MembershipOriginType;
       seatType?: MembershipSeatType;
+      startAt?: Date;
     },
     t?: Transaction
   ) {
@@ -29,6 +31,7 @@ export class MembershipFactory {
       role,
       origin,
       seatType,
+      startAt,
       transaction: t,
     });
   }

@@ -1,5 +1,7 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { validatePodFrameTabs } from "@app/lib/api/projects/frame_tabs";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import {
@@ -77,6 +79,42 @@ app.patch(
 
     const body = ctx.req.valid("json");
 
+    if (body.isAdminControlled !== undefined) {
+      if (!(await hasFeatureFlag(auth, "admin_controlled_pods"))) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "feature_flag_not_found",
+            message:
+              "Admin-controlled Pods are not enabled for this workspace.",
+          },
+        });
+      }
+
+      // biome-ignore lint/plugin/noDirectRoleCheck: endpoint can be called by any authenticated user.
+      if (!auth.isAdmin()) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Only workspace admins can change admin-controlled Pod mode.",
+          },
+        });
+      }
+
+      if (space.managementMode !== "manual") {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Admin-controlled mode requires manual membership management.",
+          },
+        });
+      }
+    }
+
     if (body.pinnedFramePath !== undefined) {
       const validation = await validatePinnedFramePath(
         auth,
@@ -92,6 +130,49 @@ app.patch(
           },
         });
       }
+    }
+
+    let resolvedFrameTabs: {
+      frameTabs: NonNullable<typeof body.frameTabs>;
+      tabsOrder: string[];
+    } | null = null;
+    if (body.frameTabs !== undefined || body.tabsOrder !== undefined) {
+      if (body.frameTabs === undefined || body.tabsOrder === undefined) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "frameTabs and tabsOrder must be provided together.",
+          },
+        });
+      }
+
+      if (!(await hasFeatureFlag(auth, "pod_frame_tabs"))) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "feature_flag_not_found",
+            message: "Pod frame tabs are not enabled for this workspace.",
+          },
+        });
+      }
+
+      const validation = await validatePodFrameTabs(
+        auth,
+        space,
+        body.frameTabs,
+        body.tabsOrder
+      );
+      if (validation.isErr()) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: validation.error.message,
+          },
+        });
+      }
+      resolvedFrameTabs = validation.value;
     }
 
     // Validate the default agent exists and is usable (handles both global agents like
@@ -139,6 +220,45 @@ app.patch(
 
     const priorLastTodoAnalysisAt = metadata?.lastTodoAnalysisAt ?? null;
     const priorTodoGenerationEnabled = metadata?.todoGenerationEnabled ?? false;
+    const priorIsAdminControlled = metadata?.isAdminControlled ?? false;
+
+    if (
+      body.isAdminControlled !== undefined &&
+      body.isAdminControlled !== priorIsAdminControlled
+    ) {
+      const membershipRes = await space.applyAdminControlledMembershipChange(
+        auth,
+        body.isAdminControlled
+      );
+      if (membershipRes.isErr()) {
+        switch (membershipRes.error.code) {
+          case "unauthorized":
+            return apiError(ctx, {
+              status_code: 403,
+              api_error: {
+                type: "workspace_auth_error",
+                message: membershipRes.error.message,
+              },
+            });
+          case "group_requirements_not_met":
+            return apiError(ctx, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: membershipRes.error.message,
+              },
+            });
+          default:
+            return apiError(ctx, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: membershipRes.error.message,
+              },
+            });
+        }
+      }
+    }
 
     const shouldTriggerFirstImmediateSync =
       body.todoGenerationEnabled === true &&
@@ -152,7 +272,10 @@ app.patch(
         todoGenerationEnabled: body.todoGenerationEnabled ?? false,
         initialTodoAnalysisLookback: body.initialTodoAnalysisLookback ?? null,
         pinnedFramePath: body.pinnedFramePath ?? null,
+        frameTabs: resolvedFrameTabs?.frameTabs ?? [],
+        tabsOrder: resolvedFrameTabs?.tabsOrder ?? [],
         defaultAgentId: body.defaultAgentId ?? null,
+        isAdminControlled: body.isAdminControlled ?? false,
       });
       if (resolvedDefaultSkills) {
         await metadata.setDefaultSkills(resolvedDefaultSkills);
@@ -202,8 +325,17 @@ app.patch(
       if (body.pinnedFramePath !== undefined) {
         await metadata.updatePinnedFramePath(body.pinnedFramePath);
       }
+      if (resolvedFrameTabs) {
+        await metadata.updateFrameTabs(
+          resolvedFrameTabs.frameTabs,
+          resolvedFrameTabs.tabsOrder
+        );
+      }
       if (body.defaultAgentId !== undefined) {
         await metadata.updateDefaultAgentId(body.defaultAgentId);
+      }
+      if (body.isAdminControlled !== undefined) {
+        await metadata.updateIsAdminControlled(body.isAdminControlled);
       }
       if (resolvedDefaultSkills) {
         await metadata.setDefaultSkills(resolvedDefaultSkills);

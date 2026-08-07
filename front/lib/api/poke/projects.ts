@@ -2,6 +2,7 @@ import type { ProjectKnowledgeFromConnectorItem } from "@app/lib/api/projects/co
 import type { ProjectWithAdminMetadata } from "@app/lib/api/projects/list";
 import type { StoredSandboxFunctionCallError } from "@app/lib/resources/sandbox_function_invocation_resource";
 import type {
+  SandboxFunctionExecutionMode,
   SandboxFunctionInvocationOrigin,
   SandboxFunctionInvocationStatus,
   SandboxFunctionMCPActionType,
@@ -69,6 +70,7 @@ export type PokeListProjectPodFunctions = {
 export type PokePodFunctionDetails = PokePodFunction & {
   fileId: string;
   userIdentity: SandboxFunctionUserIdentityPolicy | null;
+  executionMode: SandboxFunctionExecutionMode;
   inputSchema: JSONSchema;
   outputSchema: JSONSchema;
 };

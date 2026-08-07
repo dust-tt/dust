@@ -1,10 +1,10 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useEffect, useState } from "react";
-
-import { ALL_TOKENS, COLOR_GROUPS, type ColorToken } from "./devModeConfig";
+import type { ColorToken } from "./devModeConfig";
+import { ALL_TOKENS, COLOR_GROUPS } from "./devModeConfig";
 import { S } from "./devPanelStyles";
+import type { ColorOverrides } from "./devStyleOverrides";
 import {
-  type ColorOverrides,
   injectColorStyles,
   readColorOverrides,
   writeColorOverrides,
@@ -135,7 +135,7 @@ function ColorTokenRow({
           flexShrink: 0,
           background: "transparent",
           border: "1px solid transparent",
-          borderRadius: 3,
+          borderRadius: 4,
           padding: "1px 4px",
           outline: "none",
         }}

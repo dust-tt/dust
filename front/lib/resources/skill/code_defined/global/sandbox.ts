@@ -42,20 +42,54 @@ function buildSandboxInstructionProse({
   return instructions.join(" ");
 }
 
-function buildConversationFilesSection(): string {
-  return `#### Sandbox Conversation File System
+function buildFilesSection({ hasPod }: { hasPod: boolean }): string {
+  const podMountLine = hasPod
+    ? `
+- \`/files/pod\` — the Pod's file system, shared across every conversation
+  in the same Pod. Anything you write or delete here is visible to the
+  other conversations of that Pod.`
+    : "";
 
-The conversation file system is mounted read-write inside the sandbox at
-\`/files/conversation\`. This is the canonical surface for navigating,
-inspecting, and producing conversation files — strongly prefer it over the
-\`files\` MCP server when the sandbox is available.
+  const podUsageSection = hasPod
+    ? `
 
-Layout:
+This conversation belongs to a Pod. \`/files/pod\` holds what belongs to the
+Pod as a whole (specs, knowledge bases, shared scripts, recurring data
+sets) and outlives this conversation; \`/files/conversation\` holds this
+conversation's own artifacts. Pod files are also exposed by the \`files\`
+MCP server under scoped paths like \`pod-{podId}/<rel>\`.`
+    : "";
 
-- \`/files/conversation/\` — files uploaded by the user and files you write
-  for the user (scripts, exports, reports, charts). Anything you write here
-  is delivered to the user as a conversation file. Put deliverables
-  directly in this directory; do not write your own files into
+  return `#### Sandbox File System
+
+${hasPod ? "Two paths are" : "One path is"} mounted read-write and ${hasPod ? "hold" : "holds"} persistent files:
+
+- \`/files/conversation\` — files uploaded by the user and files you write
+  for the user. This is the canonical surface for navigating, inspecting,
+  and producing conversation files — strongly prefer it over the \`files\`
+  MCP server when the sandbox is available.${podMountLine}
+
+${
+  hasPod
+    ? "Both paths are symlinks to the actual mount points\n(`/files/conversation-<conversationId>` and `/files/pod-<podId>`)"
+    : "That path is a symlink to the actual mount point\n(`/files/conversation-<conversationId>`)"
+}, so tools that do not follow symlinks by default need to be told to:
+\`find -L /files/conversation ...\`, \`rg --follow\`, \`ls -L\`.
+
+These mounts are backed by GCS: their contents persist and are visible
+to the user, but reads and writes are much slower than the local file
+system. For heavy or repeated I/O, copy what you need to a local path such
+as \`/tmp\`, work there, and write the result back.
+
+Everything outside ${hasPod ? "these two mounts" : "this mount"} is temporary, including other
+paths under \`/files/\`: it is deleted when the sandbox is recycled and is
+never shown to the user.${podUsageSection}
+
+Conversation layout:
+
+- \`/files/conversation/\` — put deliverables (scripts, exports, reports,
+  charts) directly in this directory; anything you write here is delivered
+  to the user as a conversation file. Do not write your own files into
   \`${TOOL_OUTPUTS_FOLDER_NAME}/\`, that path is managed automatically.
 - \`/files/conversation/${TOOL_OUTPUTS_FOLDER_NAME}/\` — **tool outputs are automatically
   persisted here as a side effect of every tool call you make.** Two cases
@@ -97,27 +131,6 @@ For tabular files (CSV, TSV, Excel) under \`/files/conversation\`, code is
 the preferred way to interact with them: analyze them with pandas, DuckDB,
 or the standard csv module. For very large files prefer chunked reads
 (\`pandas.read_csv(..., chunksize=...)\`) or DuckDB to keep memory bounded.`;
-}
-
-function buildProjectFilesSection(): string {
-  return `#### Sandbox Project File System
-
-This conversation belongs to a Pod, so the Pod's file system is also
-mounted read-write inside the sandbox at \`/files/pod\`. These files are
-shared across every conversation in the same Pod and **persist beyond
-this conversation** — anything you write or delete here is visible to other
-conversations in the same Pod.
-
-Use this surface for files that belong to the Pod as a whole (specs,
-knowledge bases, shared scripts, recurring data sets), and use
-\`/files/conversation\` for ephemeral or per-conversation artifacts. When
-both are relevant, prefer reading from \`/files/pod\` and writing
-deliverables to \`/files/conversation\` unless the user has asked you to
-update the Pod's files specifically.
-
-The same files are also exposed by the \`files\` MCP server under scoped
-paths like \`pod-{podId}/<rel>\`. Sandbox writes and MCP writes are two views on
-the same underlying storage.`;
 }
 
 function formatWorkspaceAllowlist(domains: string[]): string {
@@ -317,15 +330,10 @@ async function buildSandboxInstructions(
 ): Promise<string> {
   const networkAccessSection = await buildNetworkAccessSection(auth);
   const environmentVariablesSection = buildEnvironmentVariablesSection();
-  const conversationFilesSection = buildConversationFilesSection();
-  const projectFilesSection = isProject ? buildProjectFilesSection() : null;
+  const filesSection = buildFilesSection({ hasPod: isProject });
   const sandboxInstructions = buildSandboxInstructionProse({ hasDsbxTools });
 
   let toolsResult;
-
-  const filesSections = [conversationFilesSection, projectFilesSection]
-    .filter((s): s is string => s !== null)
-    .join("\n\n");
 
   if (providerId) {
     toolsResult = getToolsForProvider(auth, providerId, {
@@ -334,7 +342,7 @@ async function buildSandboxInstructions(
   } else {
     const imageResult = getSandboxImage(auth);
     if (imageResult.isErr()) {
-      return `${sandboxInstructions}\n\n${filesSections}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
+      return `${sandboxInstructions}\n\n${filesSection}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
     }
     toolsResult = new Ok(
       filterDsbxToolEntries(imageResult.value.tools, {
@@ -344,7 +352,7 @@ async function buildSandboxInstructions(
   }
 
   if (toolsResult.isErr()) {
-    return `${sandboxInstructions}\n\n${filesSections}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
+    return `${sandboxInstructions}\n\n${filesSection}\n\n${networkAccessSection}\n\n${environmentVariablesSection}`;
   }
 
   const manifest = createToolManifest(toolsResult.value);
@@ -356,7 +364,7 @@ async function buildSandboxInstructions(
 
   return `${sandboxInstructions}
 
-${filesSections}
+${filesSection}
 
 ${networkAccessSection}
 

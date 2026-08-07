@@ -5,11 +5,11 @@ import {
   useSkillVersionData,
 } from "@app/components/agent_builder/observability/hooks";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
-import {
-  type ChartDatum,
-  isSkillSourceItem,
-  type SkillChartModeType,
+import type {
+  ChartDatum,
+  SkillChartModeType,
 } from "@app/components/agent_builder/observability/types";
+import { isSkillSourceItem } from "@app/components/agent_builder/observability/types";
 import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { RoundedBarShape } from "@app/components/charts/ChartShapes";

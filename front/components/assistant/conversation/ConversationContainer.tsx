@@ -3,7 +3,6 @@ import {
   getWorkspaceLimitForSubmitError,
   ReachedLimitPopup,
 } from "@app/components/app/ReachedLimitPopup";
-import { ActivationNextSteps } from "@app/components/assistant/conversation/ActivationNextSteps";
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -273,9 +272,6 @@ export function ConversationContainerVirtuoso({
             className="flex h-fit w-full max-w-conversation flex-col items-center justify-end gap-4 py-4 md:min-h-[20vh]"
             ref={startConversationRef}
           >
-            <div className="flex w-full justify-center">
-              <ActivationNextSteps owner={owner} />
-            </div>
             <Page.Header
               title={
                 <h3 className="heading-2xl font-medium text-foreground">

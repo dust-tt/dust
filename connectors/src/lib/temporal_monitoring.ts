@@ -3,6 +3,7 @@ import type logger from "@connectors/logger/logger";
 import type { Logger } from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ConnectorErrorType } from "@connectors/types";
 import { WithRetriesError } from "@connectors/types";
 import type { ConnectorProvider } from "@dust-tt/client";
 import type { Context } from "@temporalio/activity";
@@ -26,6 +27,60 @@ import { getConnectorId } from "./temporal";
 
 const TRACK_SUCCESSFUL_ACTIVITIES_FOR_CONNECTOR_IDS = [145];
 const TRANSIENT_ERROR_PRE_BACKOFF_RETRY_ATTEMPTS = 19;
+
+// Dust API errors reach the interceptor as opaque errors whose message embeds
+// the serialized API response, so we match on the error type in the message.
+function isWorkspacePlanNoApiAccessError(err: unknown): err is Error {
+  return (
+    err instanceof Error &&
+    err.message.includes("workspace_can_use_product_required_error")
+  );
+}
+
+// Errors the connector cannot make progress on without a human action: it gets
+// marked as failed and paused instead of being retried.
+function categorizeFinalConnectorError(err: unknown): {
+  connectorErrorType: ConnectorErrorType;
+  logMessage: string;
+  pauseReason: string;
+} | null {
+  if (err instanceof ExternalOAuthTokenError) {
+    return {
+      connectorErrorType: "oauth_token_revoked",
+      logMessage: "Stopping connector manager because of expired token.",
+      pauseReason: `Stopped on ${err.name}`,
+    };
+  }
+
+  if (err instanceof RemoteDatabaseConnectionNotReadonlyError) {
+    return {
+      connectorErrorType: "remote_database_connection_not_readonly",
+      logMessage:
+        "Stopping connector manager because the remote database connection is not read-only.",
+      pauseReason: `Stopped on ${err.name}`,
+    };
+  }
+
+  if (err instanceof WorkspaceQuotaExceededError) {
+    return {
+      connectorErrorType: "workspace_quota_exceeded",
+      logMessage:
+        "Stopping connector manager because of quota exceeded for the workspace.",
+      pauseReason: `Stopped on ${err.name}`,
+    };
+  }
+
+  if (isWorkspacePlanNoApiAccessError(err)) {
+    return {
+      connectorErrorType: "workspace_plan_no_api_access",
+      logMessage:
+        "Stopping connector manager because the workspace plan does not allow API access.",
+      pauseReason: "Stopped on workspace_can_use_product_required_error",
+    };
+  }
+
+  return null;
+}
 
 function redactErrorForLogs(err: unknown) {
   if (err instanceof WithRetriesError) {
@@ -208,11 +263,8 @@ export class ActivityInboundLogInterceptor
         );
       }
 
-      if (
-        err instanceof ExternalOAuthTokenError ||
-        err instanceof RemoteDatabaseConnectionNotReadonlyError ||
-        err instanceof WorkspaceQuotaExceededError
-      ) {
+      const finalConnectorError = categorizeFinalConnectorError(err);
+      if (finalConnectorError) {
         // The connector cannot make progress without a human action, so pause it
         // and stop its workflow.
         if (connectorId) {
@@ -222,43 +274,16 @@ export class ActivityInboundLogInterceptor
             );
           }
 
-          if (err instanceof ExternalOAuthTokenError) {
-            await syncFailed(connectorId, "oauth_token_revoked");
-            this.logger.info(
-              {
-                connectorId,
-                dataSourceId,
-                error: err,
-                workspaceId,
-              },
-              `Stopping connector manager because of expired token.`
-            );
-          } else if (err instanceof RemoteDatabaseConnectionNotReadonlyError) {
-            await syncFailed(
+          await syncFailed(connectorId, finalConnectorError.connectorErrorType);
+          this.logger.info(
+            {
               connectorId,
-              "remote_database_connection_not_readonly"
-            );
-            this.logger.info(
-              {
-                connectorId,
-                dataSourceId,
-                error: err,
-                workspaceId,
-              },
-              `Stopping connector manager because the remote database connection is not read-only.`
-            );
-          } else {
-            await syncFailed(connectorId, "workspace_quota_exceeded");
-            this.logger.info(
-              {
-                connectorId,
-                dataSourceId,
-                error: err,
-                workspaceId,
-              },
-              `Stopping connector manager because of quota exceeded for the workspace.`
-            );
-          }
+              dataSourceId,
+              error: err,
+              workspaceId,
+            },
+            finalConnectorError.logMessage
+          );
 
           const connectorManager = getConnectorManager({
             connectorId: connector.id,
@@ -267,7 +292,7 @@ export class ActivityInboundLogInterceptor
 
           if (connectorManager) {
             await connectorManager.pauseAndStop({
-              reason: `Stopped on ${err.name}`,
+              reason: finalConnectorError.pauseReason,
             });
           } else {
             this.logger.error(

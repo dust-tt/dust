@@ -2,6 +2,7 @@ import {
   makeSpendLimitAwuCreditsRateLimitKeyForUser,
   makeSpendLimitCycleWindowBounds,
 } from "@app/lib/api/assistant/rate_limits";
+import { computeCreditUsageStatus } from "@app/lib/api/credits/usage_status";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import type { BillingCycle } from "@app/lib/client/subscription";
@@ -35,10 +36,10 @@ import {
 } from "@app/lib/metronome/per_user_usage";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
+import type { SeatData } from "@app/lib/metronome/seats";
 import {
   buildSeatDataByUserId,
   getCachedSeatDataByUserId,
-  type SeatData,
 } from "@app/lib/metronome/seats";
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import { isUserAwuWarned } from "@app/lib/metronome/user_block";
@@ -58,6 +59,7 @@ import {
   setFixedWindowCount,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
+import type { CreditUsageStatus } from "@app/types/api/credits/usage_status";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type {
   MembershipSeatType,
@@ -70,7 +72,9 @@ import {
   NORMALIZED_POOL_LIMIT_SEAT_TYPES,
   normalizeToPoolLimitSeatType,
   toBaseSeatType,
+  USER_CREDIT_STATES,
 } from "@app/types/memberships";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -192,15 +196,20 @@ export const MembersUsagePaginationSchema = z.object({
   search: z.string().optional().catch(undefined),
   // Members are ordered by name (ascending) by default, giving a stable order
   // for pagination instead of relevance ranking. "name"/"email" are sorted by
-  // the search index; "consumedAwuCredits" is sorted in-app over the full
+  // the search index; every other column is sorted in-app over the full
   // matching set (see resolveMembersUsagePageUsers).
-  orderColumn: z.enum(["name", "email", "consumedAwuCredits"]).catch("name"),
+  orderColumn: z
+    .enum(["name", "email", "consumedAwuCredits", "seatType", "creditState"])
+    .catch("name"),
   orderDirection: z.enum(["asc", "desc"]).catch("asc"),
   // Optional seat-type filter. A base seat type (e.g. "pro") matches its
   // monthly and yearly variants; "none" matches members with no seat.
   seatType: z.enum(MEMBERSHIP_SEAT_TYPES).optional().catch(undefined),
+  // Optional credit-state filter (the per-user credit state machine state).
+  creditState: z.enum(USER_CREDIT_STATES).optional().catch(undefined),
   // Optional group filter (group sId). Restricts the table to the active
-  // members of that group. Combined with `seatType` as an intersection.
+  // members of that group. Combined with `seatType`/`creditState` as an
+  // intersection.
   groupId: z.string().optional().catch(undefined),
 });
 
@@ -1055,6 +1064,9 @@ export async function resyncSpendLimitCountersFromEsUsage(
 
 export type GetMemberUsageResponseBody = {
   member: MemberUsageType | null;
+  // Optional for backward compatibility with clients deployed before pace
+  // information was added to this endpoint.
+  creditUsageStatus?: CreditUsageStatus | null;
 };
 
 export async function getMemberUsage({
@@ -1073,6 +1085,14 @@ export async function getMemberUsage({
   const { metronomeCustomerId } = workspace;
   const metronomeContractId = subscription?.metronomeContractId ?? null;
   const userId = userResource.sId;
+  const plan = auth.plan();
+  const cycleOverride = spendLimitCycleOverrideForAuth(auth);
+  const billingCyclePromise =
+    plan && isCreditPricedPlan(plan)
+      ? cycleOverride
+        ? Promise.resolve(cycleOverride)
+        : resolveMetronomeCycle(workspace)
+      : Promise.resolve(null);
 
   // The workspace-wide default pool cap lives on the credit-usage
   // configuration row (created lazily; absent → no default configured).
@@ -1084,6 +1104,7 @@ export async function getMemberUsage({
     perUserTotalConsumedCredits,
     seatDataByUserId,
     perUserSpendLimits,
+    billingCycle,
   ] = await Promise.all([
     MembershipResource.getActiveMemberships({
       workspace,
@@ -1108,6 +1129,7 @@ export async function getMemberUsage({
         creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
       includeAlertLinks: false,
     }),
+    billingCyclePromise,
   ]);
 
   const { defaultCapAwuCreditsBySeatType, seatAllowanceBySeatType } =
@@ -1210,41 +1232,54 @@ export async function getMemberUsage({
     defaultAwuCredits: effectiveDefaultAwuCredits,
   });
 
+  const spendLimitAwuCredits = resolveEffectiveSpendLimitAwuCredits({
+    overrideAwuCredits,
+    groupCapAwuCredits,
+    defaultAwuCredits: effectiveDefaultAwuCredits,
+  });
+
+  const member: MemberUsageType = {
+    sId: userId,
+    name: userResource.fullName() || userResource.name,
+    email: userResource.email ?? null,
+    image: userResource.imageUrl ?? null,
+    groups: groupNamesByUserModelId.get(userResource.id) ?? [],
+    seatType: membership.seatType ?? null,
+    memberUsageLimit:
+      effectiveAllocationAwu > 0 ? effectiveAllocationAwu : null,
+    seatBalanceAwu: freeSeatBalanceAwu,
+    consumedAwuCredits: totalConsumedCredits,
+    consumedFromAllowanceAwuCredits,
+    consumedFromPoolAwuCredits,
+    billingFrequency:
+      seatData?.billingFrequency ??
+      deriveWorkspaceSeatBillingFrequency(membership.seatType ?? null),
+    nextCreditResetAt: seatData?.nextCreditResetAt ?? null,
+    scheduledSeatType: null,
+    scheduledSeatChangeAt: null,
+    spendLimitAwuCredits,
+    rateLimiterSpendAwuCredits: null,
+    metronomeConsumedAwuCredits: null,
+    spendLimitSource,
+    spendLimitAlertId: null,
+    spendLimitWarningAlertId: null,
+    freeCreditLowAlert: null,
+    freeCreditEmptyAlert: null,
+    creditState: membership.creditState,
+    nearLimit: false,
+  };
+
   return {
-    member: {
-      sId: userId,
-      name: userResource.fullName() || userResource.name,
-      email: userResource.email ?? null,
-      image: userResource.imageUrl ?? null,
-      groups: groupNamesByUserModelId.get(userResource.id) ?? [],
-      seatType: membership.seatType ?? null,
-      memberUsageLimit:
-        effectiveAllocationAwu > 0 ? effectiveAllocationAwu : null,
-      seatBalanceAwu: freeSeatBalanceAwu,
-      consumedAwuCredits: totalConsumedCredits,
-      consumedFromAllowanceAwuCredits,
-      consumedFromPoolAwuCredits,
-      billingFrequency:
-        seatData?.billingFrequency ??
-        deriveWorkspaceSeatBillingFrequency(membership.seatType ?? null),
-      nextCreditResetAt: seatData?.nextCreditResetAt ?? null,
-      scheduledSeatType: null,
-      scheduledSeatChangeAt: null,
-      spendLimitAwuCredits: resolveEffectiveSpendLimitAwuCredits({
-        overrideAwuCredits,
-        groupCapAwuCredits,
-        defaultAwuCredits: effectiveDefaultAwuCredits,
-      }),
-      rateLimiterSpendAwuCredits: null,
-      metronomeConsumedAwuCredits: null,
-      spendLimitSource,
-      spendLimitAlertId: null,
-      spendLimitWarningAlertId: null,
-      freeCreditLowAlert: null,
-      freeCreditEmptyAlert: null,
-      creditState: membership.creditState,
-      nearLimit: false,
-    },
+    member,
+    creditUsageStatus:
+      billingCycle && spendLimitAwuCredits !== null
+        ? computeCreditUsageStatus({
+            consumedAwuCredits: totalConsumedCredits,
+            limitAwuCredits: spendLimitAwuCredits,
+            billingCycle,
+            nowMs: Date.now(),
+          })
+        : null,
   };
 }
 
@@ -1297,16 +1332,37 @@ async function resolveGroupFilterUserIds({
   return members.map((u) => u.sId);
 }
 
+// Resolve the member user sIds matching a credit-state filter. `creditState`
+// isn't a DB-indexed or search-indexed field, so — like the seat-type filter —
+// we fetch every active membership and filter in JS to build an allowlist.
+async function resolveCreditStateFilterUserIds({
+  workspace,
+  creditState,
+}: {
+  workspace: LightWorkspaceType;
+  creditState: UserCreditState;
+}): Promise<string[]> {
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace,
+  });
+  return memberships
+    .filter((m) => m.creditState === creditState)
+    .map((m) => m.user?.sId)
+    .filter((sId): sId is string => Boolean(sId));
+}
+
 async function resolveSeatAndGroupRestriction({
   auth,
   workspace,
   seatType,
   groupId,
+  creditState,
 }: {
   auth: Authenticator;
   workspace: LightWorkspaceType;
   seatType?: MembershipSeatType;
   groupId?: string;
+  creditState?: UserCreditState;
 }): Promise<string[] | undefined> {
   const restrictionSets: string[][] = [];
   if (seatType) {
@@ -1316,6 +1372,11 @@ async function resolveSeatAndGroupRestriction({
   }
   if (groupId) {
     restrictionSets.push(await resolveGroupFilterUserIds({ auth, groupId }));
+  }
+  if (creditState) {
+    restrictionSets.push(
+      await resolveCreditStateFilterUserIds({ workspace, creditState })
+    );
   }
   if (restrictionSets.length === 0) {
     return undefined;
@@ -1332,7 +1393,12 @@ export async function resolveMatchingMemberUserIds({
   filter,
 }: {
   auth: Authenticator;
-  filter: { seatType?: MembershipSeatType; groupId?: string; search?: string };
+  filter: {
+    seatType?: MembershipSeatType;
+    groupId?: string;
+    search?: string;
+    creditState?: UserCreditState;
+  };
 }): Promise<Result<string[], Error>> {
   const workspace = auth.getNonNullableWorkspace();
   const restrictToUserIds = await resolveSeatAndGroupRestriction({
@@ -1340,6 +1406,7 @@ export async function resolveMatchingMemberUserIds({
     workspace,
     seatType: filter.seatType,
     groupId: filter.groupId,
+    creditState: filter.creditState,
   });
   if (restrictToUserIds !== undefined && restrictToUserIds.length === 0) {
     return new Ok([]);
@@ -1358,10 +1425,9 @@ export async function resolveMatchingMemberUserIds({
 }
 
 // "name"/"email" live in the user search index, which owns sort + pagination
-// for those columns. "consumedAwuCredits" is not indexed, so to sort by it we
+// for those columns. Every other column is not indexed, so to sort by it we
 // fetch the full matching set with Elasticsearch `search_after`, rank it by
-// consumed AWU (the same analytics-index signal the table displays, see
-// fetchConsumedAwuCreditsByUserId), sort in-app, then slice the requested page.
+// the relevant signal, sort in-app, then slice the requested page.
 async function resolveMembersUsagePageUsers({
   auth,
   workspace,
@@ -1396,20 +1462,23 @@ async function resolveMembersUsagePageUsers({
   }
   const { users: allUsers, total } = allUsersResult.value;
 
-  const sortKeyByUserId = new Map<string, number>();
+  // Every remaining sort column derives its key from the active membership
+  // (seat type, credit state, or the seat-type split for consumed credits).
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace,
+    users: allUsers,
+  });
+  const membershipByUserModelId = new Map(
+    memberships.map((m) => [m.userId, m])
+  );
+
+  const sortKeyByUserId = new Map<string, number | string>();
   switch (orderColumn) {
     case "consumedAwuCredits": {
       // Split consumed credits on seat type so free-seat users sort by their
       // free-seat usage and everyone else by their paid-seat usage.
-      const { memberships } = await MembershipResource.getActiveMemberships({
-        workspace,
-        users: allUsers,
-      });
-      const seatTypeByUserModelId = new Map(
-        memberships.map((m) => [m.userId, m.seatType])
-      );
       const freeSeatUserIds = allUsers.flatMap((u) =>
-        seatTypeByUserModelId.get(u.id) === "free" ? [u.sId] : []
+        membershipByUserModelId.get(u.id)?.seatType === "free" ? [u.sId] : []
       );
       const creditsByUserId = await fetchConsumedAwuCreditsByUserId({
         workspace,
@@ -1421,6 +1490,24 @@ async function resolveMembersUsagePageUsers({
       }
       break;
     }
+    case "seatType": {
+      for (const u of allUsers) {
+        sortKeyByUserId.set(
+          u.sId,
+          membershipByUserModelId.get(u.id)?.seatType ?? "none"
+        );
+      }
+      break;
+    }
+    case "creditState": {
+      for (const u of allUsers) {
+        sortKeyByUserId.set(
+          u.sId,
+          membershipByUserModelId.get(u.id)?.creditState ?? ""
+        );
+      }
+      break;
+    }
     default:
       assertNever(orderColumn);
   }
@@ -1429,8 +1516,12 @@ async function resolveMembersUsagePageUsers({
   const sortedUsers = [...allUsers].sort((a, b) => {
     const keyA = sortKeyByUserId.get(a.sId) ?? 0;
     const keyB = sortKeyByUserId.get(b.sId) ?? 0;
-    if (keyA !== keyB) {
-      return (keyA - keyB) * directionFactor;
+    const cmp =
+      typeof keyA === "number" && typeof keyB === "number"
+        ? keyA - keyB
+        : String(keyA).localeCompare(String(keyB));
+    if (cmp !== 0) {
+      return cmp * directionFactor;
     }
     // Stable, direction-independent tiebreaker so pages don't reshuffle.
     const nameA = (a.fullName() || a.name).toLowerCase();
@@ -1475,6 +1566,7 @@ export async function getMembersUsage({
     workspace,
     seatType: paginationParams.seatType,
     groupId: paginationParams.groupId,
+    creditState: paginationParams.creditState,
   });
   if (restrictToUserIds !== undefined && restrictToUserIds.length === 0) {
     return { members: [], total: 0, creditsResetAt };

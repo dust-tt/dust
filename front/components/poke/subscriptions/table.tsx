@@ -16,12 +16,7 @@ import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { getMetronomeContractUrl } from "@app/lib/metronome/urls";
-import {
-  FREE_NO_PLAN_CODE,
-  isDustCompanyPlan,
-  isEnterprisePlanPrefix,
-  isProPlanPrefix,
-} from "@app/lib/plans/plan_codes";
+import { FREE_NO_PLAN_CODE, isProPlanPrefix } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { usePokeCancelPendingContract, usePokePlans } from "@app/lib/swr/poke";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
@@ -546,12 +541,11 @@ export function PlanLimitationsTable({
               </PokeTableRow>
 
               <PokeTableRow>
-                <PokeTableCell>Is Opus enabled?</PokeTableCell>
                 <PokeTableCell>
-                  {isDustCompanyPlan(activePlan.code) ||
-                  isEnterprisePlanPrefix(activePlan.code)
-                    ? "✅"
-                    : "❌"}
+                  Has advanced model access (Opus...)
+                </PokeTableCell>
+                <PokeTableCell>
+                  {activePlan.hasAdvancedModelAccess ? "✅" : "❌"}
                 </PokeTableCell>
               </PokeTableRow>
 

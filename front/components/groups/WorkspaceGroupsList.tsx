@@ -1,13 +1,14 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { GroupDialog } from "@app/components/groups/GroupDialog";
+import { getGroupKindChip } from "@app/components/groups/GroupKinds";
 import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isSCIMEnabled } from "@app/lib/plans/scim";
 import { useAppRouter } from "@app/lib/platform";
 import { useDeleteGroup, useGroups } from "@app/lib/swr/groups";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
+import type { GroupKind } from "@app/types/groups";
 import {
-  type GroupKind,
   isRegularManualGroupKind,
   MANAGEABLE_GROUP_KINDS,
 } from "@app/types/groups";
@@ -34,20 +35,6 @@ import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { useCallback, useContext, useMemo, useState } from "react";
 
 const DEFAULT_PAGE_SIZE = 25;
-
-type ChipColor = NonNullable<React.ComponentProps<typeof Chip>["color"]>;
-
-function getGroupKindChip(kind: GroupKind): {
-  label: string;
-  color: ChipColor;
-} {
-  switch (kind) {
-    case "provisioned":
-      return { label: "Provisioned", color: "success" };
-    default:
-      return { label: "Manual", color: "info" };
-  }
-}
 
 type GroupRowData = {
   groupId: string;

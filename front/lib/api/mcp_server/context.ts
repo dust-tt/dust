@@ -1,7 +1,5 @@
-import {
-  isWorkOSWorkspaceAuthenticator,
-  type WorkOSWorkspaceAuthenticator,
-} from "@app/lib/api/workos_authenticator";
+import type { WorkOSWorkspaceAuthenticator } from "@app/lib/api/workos_authenticator";
+import { isWorkOSWorkspaceAuthenticator } from "@app/lib/api/workos_authenticator";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 
 export type { WorkOSWorkspaceAuthenticator } from "@app/lib/api/workos_authenticator";

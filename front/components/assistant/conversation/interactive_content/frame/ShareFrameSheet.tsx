@@ -12,11 +12,8 @@ import {
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { isEmailValid } from "@app/lib/utils";
-import {
-  type FileShareScope,
-  MAX_EMAILS_PER_INVITE,
-  type SharingGrantType,
-} from "@app/types/files";
+import type { FileShareScope, SharingGrantType } from "@app/types/files";
+import { MAX_EMAILS_PER_INVITE } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,

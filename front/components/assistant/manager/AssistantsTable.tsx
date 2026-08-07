@@ -9,6 +9,7 @@ import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { useAppRouter } from "@app/lib/platform";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useTags } from "@app/lib/swr/tags";
 import {
   classNames,
@@ -27,6 +28,7 @@ import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { TagType } from "@app/types/tag";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Avatar,
   Brackets,
@@ -36,7 +38,6 @@ import {
   DataTable,
   Edit04,
   Eye,
-  type MenuItem,
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
@@ -62,6 +63,7 @@ type RowData = {
   agentTagsAsString: string;
   action?: ReactNode;
   canArchive: boolean;
+  canEdit: boolean;
 };
 
 // Global agents (canArchive: false) cannot be edited, so we disable them in batch edit.
@@ -267,13 +269,15 @@ const getTableColumns = ({
                 trigger={<span>{info.getValue()}</span>}
               />
             </div>
-            <TableTagSelector
-              tags={tags}
-              agentTags={info.row.original.agentTags}
-              agentConfigurationId={info.row.original.sId}
-              owner={owner}
-              onChange={mutateAgentConfigurations}
-            />
+            {info.row.original.canEdit && (
+              <TableTagSelector
+                tags={tags}
+                agentTags={info.row.original.agentTags}
+                agentConfigurationId={info.row.original.sId}
+                owner={owner}
+                onChange={mutateAgentConfigurations}
+              />
+            )}
           </div>
         </DataTable.CellContent>
       ),
@@ -339,7 +343,11 @@ const getTableColumns = ({
       cell: (info: CellContext<RowData, number>) => (
         <DataTable.BasicCellContent
           disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
-          tooltip={formatTimestampToFriendlyDate(info.getValue(), "long")}
+          tooltip={
+            info.getValue()
+              ? formatTimestampToFriendlyDate(info.getValue(), "long")
+              : undefined
+          }
           label={
             info.getValue()
               ? formatTimestampToFriendlyDate(info.getValue(), "compact")
@@ -422,6 +430,9 @@ export function AssistantsTable({
   const { providersHealth } = useAuth();
   const noHealthyProviders = !hasHealthyProviders(providersHealth);
 
+  const { hasPermission } = useWorkspacePermissions();
+  const canCreateAgent = hasPermission("create", "agent");
+
   const [showDeleteDialog, setShowDeleteDialog] = useState<{
     open: boolean;
     agentConfiguration: LightAgentConfigurationType | undefined;
@@ -443,8 +454,11 @@ export function AssistantsTable({
   const rows: RowData[] = useMemo(
     () =>
       agents.map((agentConfiguration) => {
+        // Editing an agent (settings, tags, archive) is reserved to its
+        // editors and to workspace admins.
+        const canEdit = agentConfiguration.canEdit || isAdmin(owner);
         const canArchive =
-          (agentConfiguration.canEdit || isAdmin(owner)) &&
+          canEdit &&
           agentConfiguration.status !== "archived" &&
           agentConfiguration.scope !== "global";
 
@@ -475,6 +489,7 @@ export function AssistantsTable({
               ? agentConfiguration.tags.map((t) => t.name).join(", ")
               : "",
           canArchive,
+          canEdit,
           action:
             agentConfiguration.scope === "global" ? (
               <GlobalAgentAction
@@ -503,9 +518,7 @@ export function AssistantsTable({
                     "data-gtm-label": "assistantEditButton",
                     "data-gtm-location": "assistantDetails",
                     icon: Edit04,
-                    disabled:
-                      (!agentConfiguration.canEdit && !isAdmin(owner)) ||
-                      noHealthyProviders,
+                    disabled: !canEdit || noHealthyProviders,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
                       void router.push(
@@ -554,14 +567,14 @@ export function AssistantsTable({
                       );
                     },
                     kind: "item" as const,
-                    disabled: noHealthyProviders,
+                    disabled: !canCreateAgent || noHealthyProviders,
                   },
                   {
                     label: "Archive",
                     "data-gtm-label": "assistantDeletionButton",
                     "data-gtm-location": "assistantDetails",
                     icon: Trash01,
-                    disabled: !agentConfiguration.canEdit && !isAdmin(owner),
+                    disabled: !canEdit,
                     variant: "warning" as const,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
@@ -582,6 +595,7 @@ export function AssistantsTable({
       showDisabledFreeWorkspacePopup,
       isBatchEdit,
       isDark,
+      canCreateAgent,
     ]
   );
 

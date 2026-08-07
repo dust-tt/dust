@@ -54,6 +54,8 @@ vi.mock("@app/lib/lock", () => ({
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
+import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
+import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import {
   SandboxModel,
@@ -64,6 +66,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { Ok } from "@app/types/shared/result";
 import { encrypt } from "@app/types/shared/utils/encryption";
@@ -954,6 +957,139 @@ describe("SandboxResource.ensureActive", () => {
     expect(mockProviderExec).not.toHaveBeenCalled();
   });
 
+  it("pod env vars win over workspace env vars in provider.create", async () => {
+    const workspace = authenticator.getNonNullableWorkspace();
+    const user = authenticator.getNonNullableUser();
+    const pod = await SpaceFactory.project(workspace, user.id);
+
+    const workspaceVarResult = await SandboxEnvVarResource.makeNew(
+      authenticator,
+      { kind: "workspace", workspace },
+      {
+        name: "COLLIDE_TOKEN",
+        value: "workspace-collide-value",
+      }
+    );
+    expect(workspaceVarResult.isOk()).toBe(true);
+
+    const workspaceSecretResult = await SandboxEnvVarResource.makeNew(
+      authenticator,
+      { kind: "workspace", workspace },
+      {
+        name: "COLLIDE_SECRET",
+        kind: "https_secret",
+        value: "workspace-secret",
+        allowedDomains: ["api.example.com"],
+      }
+    );
+    expect(workspaceSecretResult.isOk()).toBe(true);
+
+    const podVarResult = await SandboxEnvVarResource.makeNew(
+      authenticator,
+      { kind: "pod", pod },
+      {
+        name: "COLLIDE_TOKEN",
+        value: "pod-collide-value",
+      }
+    );
+    expect(podVarResult.isOk()).toBe(true);
+
+    const podSecretResult = await SandboxEnvVarResource.makeNew(
+      authenticator,
+      { kind: "pod", pod },
+      {
+        name: "COLLIDE_SECRET",
+        kind: "https_secret",
+        value: "pod-secret",
+        allowedDomains: ["api.example.com"],
+      }
+    );
+    expect(podSecretResult.isOk()).toBe(true);
+    if (podSecretResult.isErr()) {
+      throw podSecretResult.error;
+    }
+
+    const result = await PodSandboxAdapter.ensureSandboxActive(
+      authenticator,
+      pod
+    );
+    expect(result.isOk()).toBe(true);
+
+    // The owner env layer beats the workspace layer in buildSandboxEnvVars,
+    // so a pod var shadows a workspace var of the same name — for cleartext
+    // config vars and DSEC placeholders alike, matching the egress-secrets
+    // file merge precedence.
+    expect(mockProviderCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        envVars: expect.objectContaining({
+          DST_COLLIDE_TOKEN: "pod-collide-value",
+          DSEC_COLLIDE_SECRET: `__DSEC_${podSecretResult.value.toJSON().placeholderNonce}__`,
+          SPACE_ID: pod.sId,
+        }),
+      }),
+      { workspaceId: workspace.sId }
+    );
+  });
+
+  it("conversation sandboxes running in a pod receive the pod env vars", async () => {
+    const workspace = authenticator.getNonNullableWorkspace();
+    const user = authenticator.getNonNullableUser();
+    const pod = await SpaceFactory.project(workspace, user.id);
+
+    const workspaceVarResult = await SandboxEnvVarResource.makeNew(
+      authenticator,
+      { kind: "workspace", workspace },
+      { name: "COLLIDE_TOKEN", value: "workspace-collide-value" }
+    );
+    expect(workspaceVarResult.isOk()).toBe(true);
+
+    const podVarResult = await SandboxEnvVarResource.makeNew(
+      authenticator,
+      { kind: "pod", pod },
+      { name: "COLLIDE_TOKEN", value: "pod-collide-value" }
+    );
+    expect(podVarResult.isOk()).toBe(true);
+
+    const podSecretResult = await SandboxEnvVarResource.makeNew(
+      authenticator,
+      { kind: "pod", pod },
+      {
+        name: "POD_SECRET",
+        kind: "https_secret",
+        value: "pod-secret",
+        allowedDomains: ["api.example.com"],
+      }
+    );
+    expect(podSecretResult.isOk()).toBe(true);
+    if (podSecretResult.isErr()) {
+      throw podSecretResult.error;
+    }
+
+    const result = await ConversationSandboxAdapter.ensureSandboxActive(
+      authenticator,
+      { id: conversation.id, sId: conversation.sId, spaceId: pod.sId }
+    );
+    expect(result.isOk()).toBe(true);
+
+    // Pod config applies to every Computer running in the Pod: the
+    // conversation sandbox gets the pod vars (pod wins on collision) and
+    // DSEC placeholders, but not the pod-owner SPACE_ID marker.
+    expect(mockProviderCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        envVars: expect.objectContaining({
+          DST_COLLIDE_TOKEN: "pod-collide-value",
+          DSEC_POD_SECRET: `__DSEC_${podSecretResult.value.toJSON().placeholderNonce}__`,
+          CONVERSATION_ID: conversation.sId,
+        }),
+      }),
+      { workspaceId: workspace.sId }
+    );
+    const createEnvVars =
+      mockProviderCreate.mock.calls[mockProviderCreate.mock.calls.length - 1][0]
+        .envVars;
+    expect(createEnvVars.SPACE_ID).toBeUndefined();
+  });
+
   it("records baseImage and version from the registered image on fresh create", async () => {
     const result = await ConversationSandboxAdapter.ensureSandboxActive(
       authenticator,
@@ -1023,6 +1159,121 @@ describe("SandboxResource.ensureActive", () => {
     expect(persisted?.lastRuntimeRefreshAt).toBeNull();
   });
 
+  // requireRunning is what lets a caller running inside a request use a sandbox without ever
+  // waiting on one being made ready. It runs entirely off a lock-free read: it performs no
+  // lifecycle transition, and queueing concurrent invocations of a busy pod behind the lifecycle
+  // lock was measured as their dominant latency under load. A kill-requested sandbox reports
+  // itself as running right up until it is destroyed and recreated, so the kill marker is part
+  // of the check.
+  describe("with requireRunning", () => {
+    it("refuses a running sandbox that has a kill requested", async () => {
+      const pod = await SpaceFactory.project(
+        authenticator.getNonNullableWorkspace()
+      );
+      await SandboxFactory.createForPod(authenticator, pod, {
+        status: "running",
+        killRequestedAt: new Date(),
+      });
+
+      const result = await PodSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        pod,
+        { requireRunning: true }
+      );
+
+      expect(result.isErr()).toBe(true);
+      expect(mockProviderDestroy).not.toHaveBeenCalled();
+      expect(mockProviderCreate).not.toHaveBeenCalled();
+    });
+
+    it("refuses a sleeping sandbox instead of waking it", async () => {
+      const pod = await SpaceFactory.project(
+        authenticator.getNonNullableWorkspace()
+      );
+      await SandboxFactory.createForPod(authenticator, pod, {
+        status: "sleeping",
+      });
+
+      const result = await PodSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        pod,
+        { requireRunning: true }
+      );
+
+      expect(result.isErr()).toBe(true);
+      expect(mockProviderWake).not.toHaveBeenCalled();
+    });
+
+    it("refuses to create a sandbox when the pod has none", async () => {
+      const pod = await SpaceFactory.project(
+        authenticator.getNonNullableWorkspace()
+      );
+
+      const result = await PodSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        pod,
+        { requireRunning: true }
+      );
+
+      expect(result.isErr()).toBe(true);
+      expect(mockProviderCreate).not.toHaveBeenCalled();
+    });
+
+    it("uses a running sandbox without taking the lifecycle lock", async () => {
+      const pod = await SpaceFactory.project(
+        authenticator.getNonNullableWorkspace()
+      );
+      const running = await SandboxFactory.createForPod(authenticator, pod, {
+        status: "running",
+        // Old enough that the fast path's throttled activity touch writes.
+        lastActivityAt: new Date(Date.now() - 60_000),
+      });
+
+      mockExecuteWithLock.mockClear();
+      const result = await PodSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        pod,
+        { requireRunning: true }
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        return;
+      }
+      expect(result.value.sandbox.sId).toBe(running.sId);
+      expect(mockExecuteWithLock).not.toHaveBeenCalled();
+
+      // The reaper's inactivity clock must keep running for sandboxes served
+      // entirely through the fast path.
+      const persisted = await PodSandboxAdapter.fetchSandbox(
+        authenticator,
+        pod
+      );
+      expect(persisted?.lastActivityAt?.getTime()).toBeGreaterThan(
+        Date.now() - 5_000
+      );
+    });
+
+    it("refuses without taking the lifecycle lock", async () => {
+      const pod = await SpaceFactory.project(
+        authenticator.getNonNullableWorkspace()
+      );
+      await SandboxFactory.createForPod(authenticator, pod, {
+        status: "sleeping",
+      });
+
+      mockExecuteWithLock.mockClear();
+      const result = await PodSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        pod,
+        { requireRunning: true }
+      );
+
+      expect(result.isErr()).toBe(true);
+      expect(mockExecuteWithLock).not.toHaveBeenCalled();
+    });
+  });
+
   it("destroys and recreates when killRequestedAt is set on the existing row", async () => {
     const stale = await SandboxFactory.create(authenticator, conversation, {
       status: "running",
@@ -1051,5 +1302,28 @@ describe("SandboxResource.ensureActive", () => {
     expect(persisted?.version).toBe("0.0.1");
     expect(persisted?.killRequestedAt).toBeNull();
     expect(persisted?.status).toBe("running");
+  });
+});
+
+describe("SandboxResource.updateLastActivityAt", () => {
+  it("skips the write while the recorded activity is fresh", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const sandbox = await SandboxResource.makeNew(authenticator, {
+      providerId: "throttle-test-provider",
+      status: "running",
+      baseImage: "dust-base",
+      version: "0.0.0-test",
+    });
+
+    // makeNew stamps lastActivityAt with now, so an immediate touch is within
+    // the throttle window and must not issue a write.
+    const [affectedFresh] = await sandbox.updateLastActivityAt();
+    expect(affectedFresh).toBe(0);
+
+    // Backdate the in-memory timestamp past the 30s window: the next touch
+    // writes through.
+    Object.assign(sandbox, { lastActivityAt: new Date(Date.now() - 60_000) });
+    const [affectedStale] = await sandbox.updateLastActivityAt();
+    expect(affectedStale).toBe(1);
   });
 });

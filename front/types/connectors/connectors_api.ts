@@ -1,5 +1,7 @@
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
-import { type ConnectorsAPIError, isConnectorsAPIError } from "@dust-tt/client";
+import type { ConnectorsAPIError } from "@dust-tt/client";
+// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+import { isConnectorsAPIError } from "@dust-tt/client";
 import { z } from "zod";
 import type { ContentNodeType } from "../core/content_node";
 import type { ConnectorProvider, DataSourceType } from "../data_source";
@@ -62,6 +64,7 @@ export const CONNECTORS_ERROR_TYPES = [
   "webcrawling_synchronization_limit_reached",
   "remote_database_connection_not_readonly",
   "remote_database_network_error",
+  "workspace_plan_no_api_access",
 ] as const;
 
 export type ConnectorErrorType = (typeof CONNECTORS_ERROR_TYPES)[number];
@@ -270,6 +273,20 @@ export class ConnectorsAPI {
   ): Promise<ConnectorsAPIResponse<{ workflowId: string }>> {
     const res = await this._fetchWithError(
       `${this._url}/connectors/sync/${encodeURIComponent(connectorId)}`,
+      {
+        method: "POST",
+        headers: this.getDefaultHeaders(),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
+  async requestIncrementalSync(
+    connectorId: string
+  ): Promise<ConnectorsAPIResponse<{ workflowId: string }>> {
+    const res = await this._fetchWithError(
+      `${this._url}/connectors/sync/${encodeURIComponent(connectorId)}/incremental`,
       {
         method: "POST",
         headers: this.getDefaultHeaders(),

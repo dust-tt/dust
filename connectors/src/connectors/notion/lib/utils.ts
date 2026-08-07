@@ -4,11 +4,11 @@ import {
   NotionDatabaseModel,
   NotionPageModel,
 } from "@connectors/lib/models/notion";
+import type { Logger } from "@connectors/logger/logger";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
-import type { Logger } from "pino";
 
 // Define the type codec for the Notion OAuth response
 export const NotionOAuthResponse = t.type({

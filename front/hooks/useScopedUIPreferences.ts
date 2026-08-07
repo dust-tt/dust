@@ -4,10 +4,20 @@ import { z } from "zod";
 
 const SCOPED_UI_PREFERENCES_KEY_PREFIX = "scopedUIPreferences";
 
+const SYSTEM_POD_TABS = [
+  "conversations",
+  "tasks",
+  "files",
+  "connected_data",
+  "settings",
+] as const;
+
 const scopedUIPreferencesSchemaByScope = {
   podUi: z.object({
-    tab: z.enum(["conversations", "tasks", "files", "settings"]),
+    tab: z.union([z.enum(SYSTEM_POD_TABS), z.string().regex(/^frame:.+/)]),
     conversationsFilter: z.enum(["all", "group", "with_me"]),
+    // Default false so older persisted blobs without this field still parse.
+    hideTriggeredConversations: z.boolean().default(false),
     tasksOwnerFilter: z
       .unknown()
       .transform(normalizeTasksOwnerFilterFromPersistedBlob),
@@ -15,7 +25,7 @@ const scopedUIPreferencesSchemaByScope = {
   podPinnedBanner: z.object({
     collapsed: z.boolean().default(false),
   }),
-} as const;
+};
 
 export type PodPinnedBannerScopedPreferences = z.infer<
   (typeof scopedUIPreferencesSchemaByScope)["podPinnedBanner"]

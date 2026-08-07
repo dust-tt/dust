@@ -36,6 +36,10 @@ const SandboxTokenPayloadSchema = z
     spaceId: z.string().optional(),
     sandboxFunctionId: z.string().optional(),
     invocationId: z.string().optional(),
+    // Set for a fast Pod function, published on the promise that it does not call tools. A tool
+    // call can wait on the user for as long as they take, which a fast invocation has no way to
+    // survive, so the token it runs under cannot make one.
+    noTools: z.literal(true).optional(),
   })
   .superRefine((payload, ctx) => {
     const actionClaims = [payload.aId, payload.mId, payload.actionId];
@@ -281,6 +285,7 @@ export async function generateSandboxFunctionInvocationToken(
     sandboxFunction,
     invocationId,
     execId,
+    noTools,
     expiryMs = 2 * 60 * 1000, // Default to 2 minutes
   }: {
     conversationId?: string;
@@ -288,6 +293,9 @@ export async function generateSandboxFunctionInvocationToken(
     sandboxFunction: { sId: string; space: { sId: string } };
     invocationId: string;
     execId: string;
+    // Required rather than defaulted: a minting site that forgets it would silently hand out tool
+    // access.
+    noTools: boolean;
     expiryMs?: number;
   }
 ): Promise<string> {
@@ -300,6 +308,7 @@ export async function generateSandboxFunctionInvocationToken(
     spaceId: sandboxFunction.space.sId,
     sandboxFunctionId: sandboxFunction.sId,
     invocationId,
+    ...(noTools ? { noTools: true as const } : {}),
   };
 
   await registerExecToken(payload);

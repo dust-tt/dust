@@ -1,14 +1,16 @@
+import type {
+  MockMcpDescription,
+  TestSuite,
+  WorkspaceContext,
+} from "@app/tests/reinforcement-evals/lib/types";
 import {
   calledDescribeMcp,
   editSkillWithAgentFacingDescription,
   editSkillWithInlineToolReference,
   editSkillWithInstructions,
   editSkillWithoutInlineToolReference,
-  type MockMcpDescription,
   mockTool,
   noSuggestion,
-  type TestSuite,
-  type WorkspaceContext,
 } from "@app/tests/reinforcement-evals/lib/types";
 
 const LINKEDIN_MCP_DESCRIPTION: MockMcpDescription = {

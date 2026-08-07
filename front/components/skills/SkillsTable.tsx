@@ -56,7 +56,7 @@ export const SKILL_AVAILABILITY_DISPLAY: Record<
     tooltip: "Only editors can find it via the input bar and agent builder",
   },
   workspace_users: {
-    label: "All members",
+    label: "Members",
     color: "success",
     tooltip: "All members can find it via the input bar and agent builder",
   },

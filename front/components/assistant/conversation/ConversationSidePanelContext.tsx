@@ -5,6 +5,7 @@ import { useHashParam } from "@app/hooks/useHashParams";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
+  CREDITS_SIDE_PANEL_TYPE,
   FILE_PREVIEW_SIDE_PANEL_TYPE,
   FILES_SIDE_PANEL_TYPE,
   FULL_SCREEN_HASH_PARAM,
@@ -12,6 +13,7 @@ import {
   PLAN_SIDE_PANEL_TYPE,
   SIDE_PANEL_HASH_PARAM,
   SIDE_PANEL_TYPE_HASH_PARAM,
+  SKILL_SIDE_PANEL_TYPE,
 } from "@app/types/conversation_side_panel";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import React, { useCallback, useEffect, useMemo } from "react";
@@ -36,17 +38,26 @@ type OpenPanelParams =
       type: "files";
     }
   | {
+      type: "credits";
+    }
+  | {
       type: "plan";
+    }
+  | {
+      type: "skill";
+      skillId: string;
     };
 
 const isSupportedPanelType = (
   type: string | undefined
 ): type is ConversationSidePanelType =>
   type === "actions" ||
+  type === "credits" ||
   type === "interactive_content" ||
   type === "file_preview" ||
   type === "files" ||
-  type === "plan";
+  type === "plan" ||
+  type === "skill";
 
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;
@@ -173,12 +184,29 @@ export function ConversationSidePanelProvider({
           setData("files");
           break;
 
+        case CREDITS_SIDE_PANEL_TYPE:
+          if (toggle && currentPanel === CREDITS_SIDE_PANEL_TYPE) {
+            closePanel();
+            return;
+          }
+          setData("credits");
+          break;
+
         case PLAN_SIDE_PANEL_TYPE:
           if (toggle && currentPanel === PLAN_SIDE_PANEL_TYPE) {
             closePanel();
             return;
           }
           setData("plan");
+          break;
+
+        case SKILL_SIDE_PANEL_TYPE:
+          // A different skill switches content; only the same skill toggles closed.
+          if (toggle && params.skillId === data) {
+            closePanel();
+            return;
+          }
+          setData(params.skillId);
           break;
 
         default:

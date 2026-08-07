@@ -1,7 +1,5 @@
-import {
-  type MistralInputConfig,
-  mistralConfigSchema,
-} from "@app/lib/model_constructors/providers/mistral/inputConfig";
+import type { MistralInputConfig } from "@app/lib/model_constructors/providers/mistral/inputConfig";
+import { mistralConfigSchema } from "@app/lib/model_constructors/providers/mistral/inputConfig";
 import { WithMistralAIInputConverter } from "@app/lib/model_constructors/sdk/mistralai/converters/input";
 import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/mistralai/converters/output/utils";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";

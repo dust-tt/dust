@@ -1,16 +1,14 @@
 import { spawnSync } from "node:child_process";
 import { GCSFileSystemBackend } from "@app/lib/api/file_system/backends/gcs_file_system_backend";
+import type { GCSMountTarget } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import {
   buildMountCommand,
-  type GCSMountTarget,
   GCSSandboxMountAdapter,
 } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import { podSandboxOnlyMounts } from "@app/lib/api/sandbox/pod_mounts";
-import {
-  type RootCommand,
-  renderRootCommand,
-} from "@app/lib/api/sandbox/root_command";
+import type { RootCommand } from "@app/lib/api/sandbox/root_command";
+import { renderRootCommand } from "@app/lib/api/sandbox/root_command";
 import { setupPlainConversation } from "@app/tests/utils/conversation_test_factories";
 import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { Err, Ok } from "@app/types/shared/result";
@@ -245,6 +243,10 @@ describe("GCS credential lifecycle", () => {
     const command = getRootCommandCall(execRoot, 1);
     expect(command).toContain(
       "/usr/local/bin/dust-gcs-token-firewall.sh; firewall_exit=$?"
+    );
+    expect(command).toContain("/usr/sbin/runuser -u agent -- /usr/bin/curl");
+    expect(command).toContain(
+      "/usr/sbin/runuser -u agent-proxied -- /usr/bin/curl"
     );
     expect(command).toContain("--connect-timeout 0.3 --max-time 1");
     expect(command).toContain("deny_check_exit -ne 28");

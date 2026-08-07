@@ -1,11 +1,11 @@
 import { COMMIT_HASH } from "@app/lib/commit-hash";
 import { clientEventSource } from "@app/lib/egress/client";
 import logger from "@app/logger/logger";
-import {
-  EventSourcePolyfill,
-  type Event as PolyfillEvent,
-  type MessageEvent as PolyfillMessageEvent,
+import type {
+  Event as PolyfillEvent,
+  MessageEvent as PolyfillMessageEvent,
 } from "event-source-polyfill";
+import { EventSourcePolyfill } from "event-source-polyfill";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const RECONNECT_DELAY_BASE_MS = 3000; // 3 seconds base delay

@@ -12,12 +12,12 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
+import type { NotificationCondition } from "@app/types/notification_preferences";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
   CONVERSATION_UNREAD_TRIGGER_ID,
   DEFAULT_NOTIFICATION_CONDITION,
   isNotificationCondition,
-  type NotificationCondition,
 } from "@app/types/notification_preferences";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -253,11 +253,6 @@ export async function notifyActivationConversationAgentReplied(
     { excludeTest: true }
   );
   if (!conversationResource) {
-    return;
-  }
-
-  // Skip sub-conversations
-  if (conversationResource.depth > 0) {
     return;
   }
 

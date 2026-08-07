@@ -557,9 +557,8 @@ export const POD_MANAGER_TOOLS_METADATA = [
     schema: {
       conversationId: z
         .string()
-        .optional()
         .describe(
-          "Conversation id to post to; defaults to the conversation this agent run is in when omitted"
+          "Conversation id to post to, cannot be the same as the current conversation"
         ),
       message: z
         .string()

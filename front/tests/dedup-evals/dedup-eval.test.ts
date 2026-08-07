@@ -12,10 +12,8 @@ import {
 import { executeDedup } from "@app/tests/dedup-evals/lib/dedup-executor";
 import { evaluateWithJudge } from "@app/tests/dedup-evals/lib/judge";
 import { filterTestCases } from "@app/tests/dedup-evals/lib/suite-loader";
-import {
-  type CategorizedDedupTestCase,
-  formatMatchMap,
-} from "@app/tests/dedup-evals/lib/types";
+import type { CategorizedDedupTestCase } from "@app/tests/dedup-evals/lib/types";
+import { formatMatchMap } from "@app/tests/dedup-evals/lib/types";
 import { allTestSuites } from "@app/tests/dedup-evals/test-suites";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 

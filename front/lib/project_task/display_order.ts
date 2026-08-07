@@ -1,9 +1,11 @@
+import type {
+  PodTaskAssigneeType,
+  PodTaskStatus,
+  PodTaskType,
+} from "@app/types/project_task";
 import {
   POD_TASK_NO_ASSIGNEE_LABEL,
   POD_TASK_UNASSIGNED_GROUP_KEY,
-  type PodTaskAssigneeType,
-  type PodTaskStatus,
-  type PodTaskType,
 } from "@app/types/project_task";
 
 const POD_TASK_STATUS_SORT_RANK: Record<PodTaskStatus, number> = {

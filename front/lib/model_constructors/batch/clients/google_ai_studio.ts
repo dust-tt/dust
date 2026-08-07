@@ -1,8 +1,8 @@
-import {
-  BatchEndpoint,
-  type BatchRequest,
-  type BatchStatus,
+import type {
+  BatchRequest,
+  BatchStatus,
 } from "@app/lib/model_constructors/batch/endpoint";
+import { BatchEndpoint } from "@app/lib/model_constructors/batch/endpoint";
 import type { GoogleAiStudioInputConfig } from "@app/lib/model_constructors/providers/google_ai_studio/inputConfig";
 import { WithGoogleGenAIInputConverter } from "@app/lib/model_constructors/sdk/google_genai/converters/input";
 import { WithGoogleGenAIOutputConverter } from "@app/lib/model_constructors/sdk/google_genai/converters/output";

@@ -1156,18 +1156,28 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.filter((group) => group.canRead(auth));
   }
 
+  /**
+   * Group model ids the user was a member of at `at`, defaulting to now.
+   *
+   * Two caveats:
+   * - `global` groups are included regardless of `at` if requested (they are not historized).
+   * - `status` is mutated in place by suspend/restore, so a membership
+   *   suspended today is filtered out even for a past `at`.
+   */
   private static async listUserGroupModelIdsInWorkspace({
     user,
     workspace,
     groupKinds = GROUP_KINDS.filter((k) => k !== "system"),
     transaction,
     dangerouslySkipMembershipCheck = false,
+    at = new Date(),
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     groupKinds?: Exclude<GroupKind, "system">[];
     transaction?: Transaction;
     dangerouslySkipMembershipCheck?: boolean;
+    at?: Date;
   }): Promise<ModelId[]> {
     if (!dangerouslySkipMembershipCheck) {
       const workspaceMembership =
@@ -1175,6 +1185,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           user,
           workspace,
           transaction,
+          at,
         });
       if (!workspaceMembership) {
         return [];
@@ -1209,7 +1220,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           workspaceId: workspace.id,
           groupKinds,
           userId: user.id,
-          now: new Date(),
+          now: at,
         },
         type: QueryTypes.SELECT,
         raw: true,
@@ -1231,17 +1242,20 @@ export class GroupResource extends BaseResource<GroupModel> {
     workspace,
     groupKinds = GROUP_KINDS.filter((k) => k !== "system"),
     transaction,
+    at,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     groupKinds?: Exclude<GroupKind, "system">[];
     transaction?: Transaction;
+    at?: Date;
   }): Promise<GroupResource[]> {
     const groupIds = await this.listUserGroupModelIdsInWorkspace({
       user,
       workspace,
       groupKinds,
       transaction,
+      at,
     });
 
     const groups = await GroupModel.findAll({
@@ -1310,6 +1324,51 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     for (const names of result.values()) {
       names.sort((a, b) => a.localeCompare(b));
+    }
+
+    return result;
+  }
+
+  /**
+   * For each user, the subset of `groupModelIds` they are an active member of.
+   * Users with no matching membership are absent from the map. Restricting the
+   * query to the caller's group ids keeps this to a single row-bounded query
+   * regardless of how many groups the workspace has.
+   */
+  static async listGroupModelIdsByUserModelIdInWorkspace({
+    workspace,
+    userModelIds,
+    groupModelIds,
+  }: {
+    workspace: LightWorkspaceType;
+    userModelIds: ModelId[];
+    groupModelIds: ModelId[];
+  }): Promise<Map<ModelId, Set<ModelId>>> {
+    const result = new Map<ModelId, Set<ModelId>>();
+    if (userModelIds.length === 0 || groupModelIds.length === 0) {
+      return result;
+    }
+
+    const now = new Date();
+    const memberships = await GroupMembershipModel.findAll({
+      attributes: ["userId", "groupId"],
+      where: {
+        workspaceId: workspace.id,
+        userId: userModelIds,
+        groupId: groupModelIds,
+        status: "active",
+        startAt: { [Op.lte]: now },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+      },
+    });
+
+    for (const membership of memberships) {
+      const existing = result.get(membership.userId);
+      if (existing) {
+        existing.add(membership.groupId);
+      } else {
+        result.set(membership.userId, new Set([membership.groupId]));
+      }
     }
 
     return result;
@@ -2270,6 +2329,86 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok({ addedUsers: [], removedUsers: [] });
   }
 
+  /**
+   * Adds and/or removes members of a manually-managed group, leaving the other members untouched.
+   */
+  async updateRegularManualGroupMembers(
+    auth: Authenticator,
+    {
+      addUserIds,
+      removeUserIds,
+    }: { addUserIds: string[]; removeUserIds: string[] }
+  ): Promise<
+    Result<
+      { addedUsers: UserType[]; removedUsers: UserType[] },
+      DustError<
+        | "unauthorized"
+        | "group_not_found"
+        | "user_not_found"
+        | "user_not_member"
+        | "user_already_member"
+        | "group_requirements_not_met"
+        | "system_or_global_group"
+      >
+    >
+  > {
+    if (!auth.isManager()) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          `Only workspace admins and ${MANAGER_ROLE_NAME}s can update groups.`
+        )
+      );
+    }
+
+    if (!this.isRegularManual()) {
+      return new Err(new DustError("group_not_found", "Group not found."));
+    }
+
+    // Both sides are fetched at once, then split back by id.
+    const uniqueAddUserIds = [...new Set(addUserIds)];
+    const uniqueRemoveUserIds = [...new Set(removeUserIds)];
+    const users = await UserResource.fetchByIds([
+      ...new Set([...uniqueAddUserIds, ...uniqueRemoveUserIds]),
+    ]);
+    const usersById = new Map(users.map((u) => [u.sId, u.toJSON()]));
+
+    const addedUsers = removeNulls(
+      uniqueAddUserIds.map((userId) => usersById.get(userId))
+    );
+    const removedUsers = removeNulls(
+      uniqueRemoveUserIds.map((userId) => usersById.get(userId))
+    );
+    if (
+      addedUsers.length !== uniqueAddUserIds.length ||
+      removedUsers.length !== uniqueRemoveUserIds.length
+    ) {
+      return new Err(
+        new DustError("user_not_found", "Some users were not found.")
+      );
+    }
+
+    if (addedUsers.length > 0) {
+      const addRes = await this.dangerouslyAddMembers(auth, {
+        users: addedUsers,
+      });
+      if (addRes.isErr()) {
+        return addRes;
+      }
+    }
+
+    if (removedUsers.length > 0) {
+      const removeRes = await this.dangerouslyRemoveMembers(auth, {
+        users: removedUsers,
+      });
+      if (removeRes.isErr()) {
+        return removeRes;
+      }
+    }
+
+    return new Ok({ addedUsers, removedUsers });
+  }
+
   async deleteRegularManualGroup(
     auth: Authenticator
   ): Promise<
@@ -2305,8 +2444,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     poolCapAwuCredits: number | null
   ): Promise<Result<undefined, Error>> {
-    if (!auth.canAdministrate(this.requestedPermissions())) {
-      return new Err(new Error("Only admins can update group spend limits."));
+    if (!auth.isManager()) {
+      return new Err(
+        new Error("Only admins and managers can update group spend limits.")
+      );
     }
 
     await this.update({ poolCapAwuCredits });
@@ -2798,5 +2939,24 @@ export class GroupResource extends BaseResource<GroupModel> {
       memberCount,
       poolCapAwuCredits: this.poolCapAwuCredits,
     };
+  }
+
+  /**
+   * Batched counterpart of `toJSONWithMemberCount`: resolves the member counts of all the groups in
+   * a single query instead of one per group.
+   */
+  static async toJSONWithMemberCounts(
+    auth: Authenticator,
+    groups: GroupResource[]
+  ): Promise<GroupType[]> {
+    const memberCounts = await GroupResource.getMemberCountsForGroups(
+      auth,
+      groups
+    );
+
+    return groups.map((group) => ({
+      ...group.toJSON(),
+      memberCount: memberCounts.get(group.id) ?? 0,
+    }));
   }
 }

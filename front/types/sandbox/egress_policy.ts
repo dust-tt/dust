@@ -1,4 +1,5 @@
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { z } from "zod";
 
 export type EgressPolicy = {

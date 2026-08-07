@@ -7,6 +7,7 @@ import { PodMembersUpdateValidationDetails } from "@app/components/assistant/con
 import { PodTasksCreateValidationDetails } from "@app/components/assistant/conversation/tool_validation/PodTasksCreateValidationDetails";
 import { PodTasksUpdateValidationDetails } from "@app/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails";
 import { SandboxFunctionPublishValidationDetails } from "@app/components/assistant/conversation/tool_validation/SandboxFunctionPublishValidationDetails";
+import { SandboxFunctionUnpublishValidationDetails } from "@app/components/assistant/conversation/tool_validation/SandboxFunctionUnpublishValidationDetails";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import {
   ASHBY_SERVER_NAME,
@@ -237,6 +238,20 @@ export function ToolValidationDetails({
   ) {
     return (
       <SandboxFunctionPublishValidationDetails input={blockedAction.inputs} />
+    );
+  }
+
+  if (
+    blockedAction.metadata.mcpServerName === SANDBOX_FUNCTIONS_SERVER_NAME &&
+    blockedAction.metadata.toolName === "unpublish" &&
+    validateToolInputs(
+      SANDBOX_FUNCTIONS_SERVER_NAME,
+      "unpublish",
+      blockedAction.inputs
+    )
+  ) {
+    return (
+      <SandboxFunctionUnpublishValidationDetails input={blockedAction.inputs} />
     );
   }
 

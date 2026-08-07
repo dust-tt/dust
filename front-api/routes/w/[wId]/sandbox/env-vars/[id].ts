@@ -1,6 +1,6 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
-import type { PatchSandboxEnvVarResponseBody } from "@app/lib/resources/workspace_sandbox_env_var_resource";
-import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
+import type { PatchSandboxEnvVarResponseBody } from "@app/lib/resources/sandbox_env_var_resource";
+import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import { SANDBOX_ENV_VAR_KINDS } from "@app/types/sandbox/env_var";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -40,7 +40,12 @@ app.patch(
       });
     }
 
-    const envVar = await WorkspaceSandboxEnvVarResource.fetchById(auth, id);
+    const scope = {
+      kind: "workspace" as const,
+      workspace: auth.getNonNullableWorkspace(),
+    };
+    // Scope-filtered: pod-scoped rows in the table resolve to null here.
+    const envVar = await SandboxEnvVarResource.fetchById(auth, scope, id);
     if (!envVar) {
       return apiError(ctx, {
         status_code: 404,
@@ -76,7 +81,7 @@ app.patch(
         });
       }
 
-      const promoteResult = await envVar.promoteToHttpsSecret(auth, {
+      const promoteResult = await envVar.promoteToHttpsSecret(auth, scope, {
         allowedDomains,
         context: getAuditLogContext(auth),
       });
@@ -94,7 +99,7 @@ app.patch(
     }
 
     if (allowedDomains !== undefined) {
-      const updateResult = await envVar.updateAllowedDomains(auth, {
+      const updateResult = await envVar.updateAllowedDomains(auth, scope, {
         allowedDomains,
         context: getAuditLogContext(auth),
       });
@@ -122,7 +127,12 @@ app.delete(
     const auth = ctx.get("auth");
     const { id } = ctx.req.valid("param");
 
-    const envVar = await WorkspaceSandboxEnvVarResource.fetchById(auth, id);
+    // Scope-filtered: pod-scoped rows in the table resolve to null here.
+    const envVar = await SandboxEnvVarResource.fetchById(
+      auth,
+      { kind: "workspace", workspace: auth.getNonNullableWorkspace() },
+      id
+    );
     if (!envVar) {
       return apiError(ctx, {
         status_code: 404,

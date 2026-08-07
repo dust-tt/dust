@@ -1,4 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { stripMarkdown } from "@app/types/shared/utils/markdown";
 import { z } from "zod";
 
 export const ACTIVATION_RECOMMENDATIONS_SERVER_NAME =
@@ -46,6 +47,60 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
             "'Catch every review request without watching Slack all day'. " +
             "Bad: 'A useful HubSpot recommendation'. " +
             "Bad: 'Learn more about frames and agents'."
+        ),
+      body: z
+        .string()
+        .max(500)
+        .optional()
+        .describe(
+          "Optional 1-3 sentence explanation of the recommendation. " +
+            "Explain the 'why' in more depth than content: what context makes this " +
+            "the right suggestion right now for this user. Omit if the title+content " +
+            "are already self-explanatory."
+        ),
+      steps: z
+        .array(z.string().max(100))
+        .max(8)
+        .optional()
+        .describe(
+          "Optional ordered list of concrete steps to complete the recommendation. " +
+            "Each step is a short imperative sentence (< 60 chars). " +
+            "Only include when the action needs more than one step to complete. " +
+            "Omit for single-action recommendations."
+        ),
+      ctaLabel: z
+        .string()
+        .max(40)
+        .transform((label) => stripMarkdown(label).trim())
+        .optional()
+        .describe(
+          "Optional label for the primary call-to-action button on the recommendation card. " +
+            "Defaults to 'Get started' when omitted. Use when a more specific verb fits, " +
+            "e.g. 'Create agent', 'Set up trigger', 'Share frame'."
+        ),
+      sourceIcon: z
+        .string()
+        .max(255)
+        .optional()
+        .describe(
+          "Optional icon identifier for the source of this recommendation. " +
+            "Two namespaces are accepted. " +
+            "ConnectorProvider — use when the recommendation is driven by a specific " +
+            "data source: 'slack', 'github', 'notion', 'google_drive', 'confluence', " +
+            "'microsoft_teams', 'intercom', 'salesforce', 'hubspot'. " +
+            "Sparkle icon name — use for Dust-native features: 'Brain' (agents/AI), " +
+            "'Zap' (triggers/automation), 'PuzzlePiece01' (skills), " +
+            "'ActionFrame' (frames), 'Dataflow01' (workflows), " +
+            "'Database01' (knowledge bases). " +
+            "Omit if no specific source applies."
+        ),
+      sourceLabel: z
+        .string()
+        .max(40)
+        .optional()
+        .describe(
+          "Optional short label shown alongside the source icon (e.g. 'Slack', 'GitHub'). " +
+            "Can be set independently of sourceIcon."
         ),
     },
     stake: "never_ask",

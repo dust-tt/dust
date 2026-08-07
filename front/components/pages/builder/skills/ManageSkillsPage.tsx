@@ -1,16 +1,18 @@
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
+import type {
+  AvailabilityFilter,
+  SkillManagerTabType,
+} from "@app/components/pages/builder/skills/utils";
 import {
   AVAILABILITY_FILTER_OPTIONS,
   AVAILABILITY_QUERY_PARAMS,
-  type AvailabilityFilter,
   filterByAvailability,
   filterBySearch,
   getAvailabilityFilterLabel,
   isAvailabilityFilter,
   isValidTab,
   SKILL_MANAGER_TABS,
-  type SkillManagerTabType,
   sortSkillsByName,
 } from "@app/components/pages/builder/skills/utils";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
@@ -52,6 +54,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  EmptyCTA,
+  EmptyCTAButton,
   FolderOpen,
   InfoCircle,
   ListSelect,
@@ -118,6 +122,7 @@ export function ManageSkillsPage() {
   const { updateSkillFavorite } = useUpdateSkillFavorite({ owner });
 
   const isSearchActive = !isEmptyString(skillSearch);
+  const isFilterActive = isSearchActive || availabilityFilter !== "all";
 
   const activeTab = useMemo<SkillManagerTabType>(() => {
     if (
@@ -129,6 +134,8 @@ export function ManageSkillsPage() {
     }
     return "active";
   }, [selectedTab, skillManagerTabs]);
+
+  const canCreateSkill = hasPermission("create", "skill");
 
   const canBypassEditorVisibility = isAdmin;
   const isBypassEditorVisibilityEnabled =
@@ -161,7 +168,9 @@ export function ManageSkillsPage() {
   } = useSkillsWithRelations({
     owner,
     status: "suggested",
-    disabled: activeTab !== "active",
+    // Suggestions are only ever listed to users who can create skills, since
+    // adopting one means becoming its editor.
+    disabled: activeTab !== "active" || !canCreateSkill,
   });
 
   const sortedActiveSkills = useMemo(
@@ -234,6 +243,10 @@ export function ManageSkillsPage() {
         .filter(([, selected]) => selected)
         .map(([sId]) => sId),
     [rowSelection]
+  );
+  const selectedSkills = useMemo(
+    () => activeSkills.filter((skill) => rowSelection[skill.sId]),
+    [activeSkills, rowSelection]
   );
 
   const closeBatchEdition = () => {
@@ -356,6 +369,35 @@ export function ManageSkillsPage() {
   useSetPageTitle("Dust - Manage Skills");
   useSetNavChildren(navChildren);
 
+  const isActiveTabEmpty = skillsByTab[activeTab].length === 0;
+
+  const renderEmptyTabState = () => {
+    if (isFilterActive) {
+      return (
+        <EmptyCTA
+          message="No skill matches your search or filters."
+          action={null}
+        />
+      );
+    }
+    // Nothing to create into from the archived tab.
+    if (activeTab === "archived" || !canCreateSkill) {
+      return null;
+    }
+    return (
+      <EmptyCTA
+        action={
+          <EmptyCTAButton
+            label="Create a skill"
+            icon={Plus}
+            variant="primary"
+            href={getSkillBuilderRoute(owner.sId, "new")}
+          />
+        }
+      />
+    );
+  };
+
   return (
     <>
       <SkillDetailsSheet
@@ -415,29 +457,32 @@ export function ManageSkillsPage() {
                 onClick={() => setIsBatchEditing(true)}
               />
             )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button label="Create skill" icon={Plus} isSelect />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem
-                  label="From scratch"
-                  icon={SKILL_ICON}
-                  href={getSkillBuilderRoute(owner.sId, "new")}
-                />
-                <DropdownMenuItem
-                  label="From existing"
-                  icon={FolderOpen}
-                  onClick={() => setIsImportDialogOpen(true)}
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {canCreateSkill && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button label="Create skill" icon={Plus} isSelect />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem
+                    label="From scratch"
+                    icon={SKILL_ICON}
+                    href={getSkillBuilderRoute(owner.sId, "new")}
+                  />
+                  <DropdownMenuItem
+                    label="From existing"
+                    icon={FolderOpen}
+                    onClick={() => setIsImportDialogOpen(true)}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
           {isBatchEditionAvailable && isBatchEditing && (
             <SkillsBatchEditBar
-              selectedCount={selectedSkillIds.length}
+              selectedSkills={selectedSkills}
               isUpdating={isBatchUpdating}
               canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
+              owner={owner}
               onClose={closeBatchEdition}
               onSelectAction={setPendingBatchAction}
             />
@@ -515,17 +560,21 @@ export function ManageSkillsPage() {
                       user={user}
                     />
                   )}
-                <SkillsTable
-                  owner={owner}
-                  skills={skillsByTab[activeTab]}
-                  onSkillClick={handleSkillSelect}
-                  onAgentClick={setAgentId}
-                  onUsedBySkillClick={handleUsedBySkillSelect}
-                  canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
-                  {...(isBatchEditionAvailable && isBatchEditing
-                    ? { rowSelection, setRowSelection }
-                    : {})}
-                />
+                {isActiveTabEmpty ? (
+                  <div className="pt-2">{renderEmptyTabState()}</div>
+                ) : (
+                  <SkillsTable
+                    owner={owner}
+                    skills={skillsByTab[activeTab]}
+                    onSkillClick={handleSkillSelect}
+                    onAgentClick={setAgentId}
+                    onUsedBySkillClick={handleUsedBySkillSelect}
+                    canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
+                    {...(isBatchEditionAvailable && isBatchEditing
+                      ? { rowSelection, setRowSelection }
+                      : {})}
+                  />
+                )}
               </>
             )}
           </div>

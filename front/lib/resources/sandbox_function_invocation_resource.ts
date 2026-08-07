@@ -12,15 +12,19 @@ import {
   generateExecId,
   generateSandboxFunctionInvocationToken,
 } from "@app/lib/api/sandbox/access_tokens";
+import { isSandboxNotRunningError } from "@app/lib/api/sandbox/errors";
+import { recordSandboxFunctionRun } from "@app/lib/api/sandbox/instrumentation";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
+import { parseStdoutResultEnvelope } from "@app/lib/api/sandbox_functions/result_delivery";
 import {
   authorizeSandboxFunctionInvocation,
   getAuthenticatedWorkspaceUser,
 } from "@app/lib/api/sandbox_functions/workspace_user";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
@@ -47,22 +51,30 @@ import type {
   SandboxFunctionCallError,
   SandboxFunctionInvocationContext,
   SandboxFunctionInvocationOrigin,
+  SandboxFunctionInvocationOutcome,
   SandboxFunctionInvocationStatus,
   SandboxFunctionInvocationType,
 } from "@app/types/api/sandbox_functions";
 import { isDevelopment } from "@app/types/shared/env";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { truncate } from "@app/types/shared/utils/string_utils";
 import type { Attributes, Transaction } from "sequelize";
+import { col, fn, Op } from "sequelize";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 const SANDBOX_FUNCTION_WORKING_DIRECTORY = "/home/agent";
 const SANDBOX_FUNCTION_EXEC_TIMEOUT_MS = 2 * 60 * 1000;
+// A fast function is contractually short, and an inline invocation holds a request for as long as
+// it runs. Bound it well below the workflow's ceiling: past this the invocation is failed rather
+// than handed to the workflow, since by then the function may already have written to pod state
+// and re-running it would repeat those writes.
+const SANDBOX_FUNCTION_INLINE_EXEC_TIMEOUT_MS = 10 * 1000;
 const DSBX_BIN_PATH = "/opt/bin/dsbx";
 // Caps on runner output surfaced on failure: a small head for the error forwarded to the agent,
 // a larger one for the log fields.
@@ -104,6 +116,14 @@ const StoredCallErrorSchema = z.object({
 export type StoredSandboxFunctionCallError = z.infer<
   typeof StoredCallErrorSchema
 >;
+
+// A `findAll` carrying an aggregate attribute returns plain rows rather than model instances, so
+// the model's declared types do not describe them. Parsed instead of cast so a shape change fails
+// loudly. `count` is coerced because aggregates arrive as strings from some drivers.
+const InvocationCountByUserRowSchema = z.object({
+  userId: z.number().nullable(),
+  count: z.coerce.number(),
+});
 
 const InvocationDataBaseSchema = z.object({
   input: z.unknown().optional(),
@@ -196,10 +216,35 @@ function dustAPIBaseUrlForSandbox(): string {
     : config.getApiBaseUrl();
 }
 
-function buildSandboxFunctionRunCommand(slug: string): string {
+function buildSandboxFunctionRunCommand(
+  slug: string,
+  { stdoutResultDelivery }: { stdoutResultDelivery: boolean }
+): string {
   // dsbx resolves `function run <slug>` as `${DUST_FUNCTIONS_DIR}/<slug>.ts`, which is the
   // read-only mount of the pod's published bundles.
+  if (stdoutResultDelivery) {
+    return `${DSBX_BIN_PATH} function run --result-delivery stdout -- ${shellEscape(slug)}`;
+  }
   return `${DSBX_BIN_PATH} function run ${shellEscape(slug)}`;
+}
+
+/**
+ * Whether an invocation runs inline, in the request that creates it, instead of through the
+ * invocation workflow.
+ *
+ * Only a fast function qualifies. A durable one may call a tool that waits on the user for
+ * approval or authentication, and holding the request there would deadlock: the approval card
+ * only renders once the client holds the invocation.
+ */
+async function shouldExecuteInline(
+  auth: Authenticator,
+  sandboxFunction: SandboxFunctionResource
+): Promise<boolean> {
+  if (sandboxFunction.executionMode !== "fast") {
+    return false;
+  }
+
+  return hasFeatureFlag(auth, "sandbox_function_fast_execution");
 }
 
 function getSandboxFunctionUserIdentity(
@@ -239,6 +284,33 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
   readonly sandboxFunction: SandboxFunctionResource;
   private data: SandboxFunctionInvocationData;
+
+  /**
+   * In-flight initial persistence (blob write + created event) for an inline execution. Terminal
+   * transitions await it so the terminal blob write cannot be overwritten by the initial one and
+   * the result event cannot outrun the created event. Only ever set on the instance that runs the
+   * invocation inline; instances rehydrated from the DB never have one, and never need one.
+   */
+  private pendingInitialPersistence: Promise<void> | undefined;
+
+  async settleInitialPersistence(): Promise<void> {
+    if (this.pendingInitialPersistence) {
+      await this.pendingInitialPersistence;
+      this.pendingInitialPersistence = undefined;
+    }
+  }
+
+  /**
+   * The outcome recorded by a terminal transition that ran on this instance, kept with its
+   * original types (the stored blob deliberately widens error codes to plain strings). Callers
+   * use it to skip the event-stream read-back after an inline execution: subscribing to Redis
+   * would only re-fetch what this process just produced.
+   */
+  private lastSettledOutcome: SandboxFunctionInvocationOutcome | undefined;
+
+  settledOutcome(): SandboxFunctionInvocationOutcome | null {
+    return this.lastSettledOutcome ?? null;
+  }
 
   constructor(
     model: ModelStaticWorkspaceAware<SandboxFunctionInvocationModel>,
@@ -362,6 +434,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       return false;
     }
 
+    // A deferred initial persistence (inline path) must land before the terminal blob write
+    // overwrites the same object, and before the result event can outrun the created event.
+    await this.settleInitialPersistence();
+
     this.data = {
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
@@ -386,6 +462,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       },
       { invocationId: this.sId }
     );
+    this.lastSettledOutcome = { status: "errored", error: callError };
     return true;
   }
 
@@ -411,6 +488,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       return false;
     }
 
+    // A deferred initial persistence (inline path) must land before the terminal blob write
+    // overwrites the same object, and before the result event can outrun the created event.
+    await this.settleInitialPersistence();
+
     this.data = {
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
@@ -432,16 +513,30 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       },
       { invocationId: this.sId }
     );
+    this.lastSettledOutcome = { status: "succeeded", result };
     return true;
   }
-  async execute(auth: Authenticator): Promise<Result<undefined, Error>> {
+  /**
+   * Run the invocation on the pod sandbox and record its outcome.
+   *
+   * `inline` marks an invocation running inside the request that created it, which constrains it
+   * twice. The sandbox is used only if it is already running, never created, woken, or recreated,
+   * all of which take seconds to minutes, which the lifecycle enforces under its own lock and
+   * reports as `SandboxNotRunningError`. Nothing has executed when that happens, so the caller is
+   * free to restart the invocation durably. And execution is bounded by a much shorter timeout, so
+   * a function that never returns cannot hold the request open for the workflow's ceiling.
+   */
+  async execute(
+    auth: Authenticator,
+    { inline = false }: { inline?: boolean } = {}
+  ): Promise<Result<undefined, Error>> {
     if (this.status !== "created") {
       logger.info(
         {
           workspaceId: auth.getNonNullableWorkspace().sId,
           sandboxFunctionId: this.sandboxFunction.sId,
           invocationId: this.sId,
-          status: this.status,
+          invocationStatus: this.status,
         },
         "Skipping execution of a terminal Pod function invocation"
       );
@@ -457,44 +552,88 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           )
         );
       }
-      const persistedFunction = await SandboxFunctionModel.findOne({
-        where: {
-          id: this.sandboxFunctionId,
-          workspaceId: this.workspaceId,
-        },
-      });
-      if (!persistedFunction) {
+      // The function re-fetch (it guards a re-publish race on `noTools` below) and its dependent
+      // authorization are independent of the sandbox readiness check. On the inline path
+      // (requireRunning) readiness is a read with no side effect, so the two chains overlap to
+      // take the slower one off the critical path. On the durable path readiness may create or
+      // wake a sandbox, a paid side effect that stays gated behind the checks.
+      const runFunctionCheck = async () => {
+        const persistedFunction = await SandboxFunctionModel.findOne({
+          where: {
+            id: this.sandboxFunctionId,
+            workspaceId: this.workspaceId,
+          },
+        });
+        if (!persistedFunction) {
+          return null;
+        }
+        const authorization = await authorizeSandboxFunctionInvocation(auth, {
+          userIdentity: persistedFunction.userIdentity,
+          origin: this.origin ?? "delegated",
+        });
+        return { persistedFunction, authorization };
+      };
+      const runEnsure = () =>
+        ensurePodSandboxReady(auth, sandboxFunction.space, {
+          requireRunning: inline,
+        });
+
+      let functionCheck;
+      let ensureResult;
+      if (inline) {
+        [functionCheck, ensureResult] = await Promise.all([
+          runFunctionCheck(),
+          runEnsure(),
+        ]);
+      } else {
+        functionCheck = await runFunctionCheck();
+        if (functionCheck === null || !functionCheck.authorization.authorized) {
+          ensureResult = null;
+        } else {
+          ensureResult = await runEnsure();
+        }
+      }
+      if (!functionCheck) {
         return new Err(new Error("The Pod Function no longer exists."));
       }
-      const authorization = await authorizeSandboxFunctionInvocation(auth, {
-        userIdentity: persistedFunction.userIdentity,
-        origin: this.origin ?? "delegated",
-      });
+      const { persistedFunction, authorization } = functionCheck;
       if (!authorization.authorized) {
         return new Err(
           new SandboxFunctionInvocationError(authorization.errorMessage)
         );
       }
-
-      const ensureResult = await ensurePodSandboxReady(
-        auth,
-        sandboxFunction.space
-      );
+      if (!ensureResult) {
+        // Unreachable: ensureResult is only null when a check above already returned.
+        return new Err(new Error("The Pod sandbox could not be prepared."));
+      }
       if (ensureResult.isErr()) {
         return ensureResult;
       }
 
-      await ensureResult.value.sandbox.updateLastActivityAt();
+      // No updateLastActivityAt here: ensurePodSandboxReady's ensureActive just wrote it.
+      const sandbox = ensureResult.value.sandbox;
+      const stdoutResultDelivery = await hasFeatureFlag(
+        auth,
+        "sandbox_function_stdout_result"
+      );
 
       const execId = generateExecId();
+      // The mode, not the transport, decides this: a fast function is denied tools however it
+      // ends up running, so it behaves the same whether it ran inline or through the workflow.
+      // Read from the persisted row rather than the in-memory copy, which may predate a
+      // re-publish, since this one gates tool access.
+      const noTools = persistedFunction.executionMode === "fast";
       const token = await generateSandboxFunctionInvocationToken(auth, {
-        sandbox: ensureResult.value.sandbox,
+        sandbox,
         sandboxFunction,
         invocationId: this.sId,
         execId,
+        noTools,
       });
 
-      const command = buildSandboxFunctionRunCommand(sandboxFunction.slug);
+      const command = buildSandboxFunctionRunCommand(sandboxFunction.slug, {
+        stdoutResultDelivery,
+      });
       const inputEnvelope = {
         method: "POST",
         url: `https://dust.local/sandbox-functions/${sandboxFunction.sId}/invocations/${this.sId}`,
@@ -507,6 +646,13 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           ? {}
           : { body: JSON.stringify(this.input) }),
         encoding: "utf8",
+        // From the persisted row, like the mode above: the warm server refuses to serve a
+        // bundle that does not hash to this, so a republished function is never run from a
+        // stale warm import. Null only for functions last published before hashes existed —
+        // those keep the server's stat/lifetime backstops.
+        ...(persistedFunction.bundleSha256 === null
+          ? {}
+          : { bundleSha256: persistedFunction.bundleSha256 }),
       };
       const userIdentity = getSandboxFunctionUserIdentity(
         auth,
@@ -514,7 +660,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         this
       );
 
-      const execResult = await ensureResult.value.sandbox.exec(auth, command, {
+      const execStartedAtMs = Date.now();
+      const execResult = await sandbox.exec(auth, command, {
         workingDirectory: SANDBOX_FUNCTION_WORKING_DIRECTORY,
         envVars: {
           DUST_API_URL: `${dustAPIBaseUrlForSandbox()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
@@ -529,12 +676,92 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
             : "",
         },
         stdin: JSON.stringify(inputEnvelope),
-        timeoutMs: SANDBOX_FUNCTION_EXEC_TIMEOUT_MS,
+        // The envelope is this function's own input, and the same exec already hands it a token
+        // through the environment, so there is nothing here that the environment newly exposes.
+        // Worth two fewer round trips to the sandbox on the latency-sensitive path.
+        allowStdinInEnvironment: true,
+        timeoutMs: inline
+          ? SANDBOX_FUNCTION_INLINE_EXEC_TIMEOUT_MS
+          : SANDBOX_FUNCTION_EXEC_TIMEOUT_MS,
         user: "agent-proxied",
       });
       if (execResult.isErr()) {
+        // Exec-level failures (timeouts included) must land in the same metric as served runs,
+        // or the duration distribution silently drops the slowest attempts.
+        recordSandboxFunctionRun({
+          runnerKind: "unknown",
+          status: "error",
+          durationMs: Date.now() - execStartedAtMs,
+        });
+        if (inline) {
+          // An inline exec that fails is usually one that ran past its ceiling, but nothing in the
+          // provider result says so: the timeout is handed to the sandbox provider and comes back
+          // as an ordinary failure. Log the whole class rather than guess, so we can see how often
+          // a fast function is simply too slow before deciding whether that should move it to
+          // durable the way a refused tool call does.
+          logger.info(
+            {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              sandboxFunctionId: sandboxFunction.sId,
+              slug: sandboxFunction.slug,
+              invocationId: this.sId,
+              timeoutMs: SANDBOX_FUNCTION_INLINE_EXEC_TIMEOUT_MS,
+              error: execResult.error.message,
+            },
+            "Inline Pod function execution failed"
+          );
+        }
         return execResult;
       }
+
+      if (stdoutResultDelivery) {
+        const { exitCode, stdout, stderr } = execResult.value;
+        logger.info(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            sandboxFunctionId: sandboxFunction.sId,
+            invocationId: this.sId,
+            exitCode,
+            stdoutBytes: Buffer.byteLength(stdout, "utf8"),
+            deliveryMode: "stdout",
+          },
+          "Pod function stdout result delivery"
+        );
+        // Persist from the envelope even on non-zero exit: dsbx may still have
+        // written a well-formed invocation_failed envelope the worker should keep.
+        const { outcome: normalized, timings } =
+          parseStdoutResultEnvelope(stdout);
+        recordSandboxFunctionRun({
+          runnerKind: timings?.runnerKind ?? "unknown",
+          status: normalized.ok ? "success" : "error",
+          durationMs: Date.now() - execStartedAtMs,
+        });
+        if (!normalized.ok || exitCode !== 0) {
+          // Mirror the callback path's failure logging: without the raw
+          // stdout/stderr there is no way to diagnose a rejected envelope.
+          logger.error(
+            {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              spaceId: sandboxFunction.space.sId,
+              sandboxFunctionId: sandboxFunction.sId,
+              slug: sandboxFunction.slug,
+              invocationId: this.sId,
+              exitCode,
+              stdout: truncate(stdout, SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS),
+              stderr: truncate(stderr, SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS),
+              deliveryMode: "stdout",
+            },
+            "Sandbox function invocation failed"
+          );
+        }
+        if (normalized.ok) {
+          await this.succeed(normalized.output);
+        } else {
+          await this.fail(normalized.error);
+        }
+        return new Ok(undefined);
+      }
+
       if (execResult.value.exitCode !== 0) {
         const { exitCode, stdout, stderr } = execResult.value;
         logger.error(
@@ -651,7 +878,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       context?: SandboxFunctionInvocationContext;
       origin?: SandboxFunctionInvocationOrigin;
     },
-    transaction?: Transaction
+    transaction?: Transaction,
+    // Inline executions defer the initial blob write (see createAndStartExecution): the terminal
+    // transition rewrites the full blob anyway, so the upload only needs to finish before that
+    // write, not before execution starts.
+    { deferInitialWrite = false }: { deferInitialWrite?: boolean } = {}
   ): Promise<SandboxFunctionInvocationResource> {
     const resource = await withTransaction(async (t) => {
       const invocation = await this.model.create(
@@ -685,9 +916,29 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       return resource;
     }, transaction);
 
-    const writeResult = await resource.writeDataToGcs();
-    if (writeResult.isErr()) {
-      throw writeResult.error;
+    if (deferInitialWrite) {
+      resource.pendingInitialPersistence = resource
+        .writeDataToGcs()
+        .then((result) => {
+          if (result.isErr()) {
+            // Surfaced here rather than thrown: the terminal transition rewrites the full blob,
+            // so a failed initial upload only matters if the invocation never settles.
+            logger.error(
+              {
+                workspaceModelId: resource.workspaceId,
+                sandboxFunctionId: sandboxFunction.sId,
+                invocationId: resource.sId,
+                err: result.error,
+              },
+              "Deferred Pod function invocation blob write failed"
+            );
+          }
+        });
+    } else {
+      const writeResult = await resource.writeDataToGcs();
+      if (writeResult.isErr()) {
+        throw writeResult.error;
+      }
     }
     return resource;
   }
@@ -704,20 +955,90 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       origin?: SandboxFunctionInvocationOrigin;
     }
   ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
-    const invocation = await this.makeNew(auth, {
-      sandboxFunction,
-      input: body.input,
-      context: body.context,
-      origin,
-    });
-    await publishSandboxFunctionInvocationEvent(
+    const inline = await shouldExecuteInline(auth, sandboxFunction);
+    // Deferring is only safe when no other process reads the blob during execution: with stdout
+    // delivery the result comes back on the exec's own stdout, but callback delivery has dsbx
+    // POST to a route that fetches the invocation (and its blob) mid-execution.
+    const deferInitialWrite =
+      inline && (await hasFeatureFlag(auth, "sandbox_function_stdout_result"));
+    const invocation = await this.makeNew(
+      auth,
       {
-        type: "sandbox_function_invocation_created",
-        created: invocation.createdAt.getTime(),
-        invocation: invocation.toJSON(),
+        sandboxFunction,
+        input: body.input,
+        context: body.context,
+        origin,
       },
-      { invocationId: invocation.sId }
+      undefined,
+      { deferInitialWrite }
     );
+    const publishCreated = () =>
+      publishSandboxFunctionInvocationEvent(
+        {
+          type: "sandbox_function_invocation_created",
+          created: invocation.createdAt.getTime(),
+          invocation: invocation.toJSON(),
+        },
+        { invocationId: invocation.sId }
+      );
+
+    if (inline) {
+      // The created event rides with the deferred blob write: nothing before the terminal
+      // transition consumes either, and succeed()/fail() await the combined promise before
+      // publishing the result, which keeps the created event ahead of the result event.
+      const pendingBlobWrite = invocation.pendingInitialPersistence;
+      invocation.pendingInitialPersistence = Promise.allSettled([
+        pendingBlobWrite,
+        Promise.resolve(publishCreated()).catch((error) => {
+          // Stream consumers tolerate a missing created event (they stop at the first terminal
+          // event), but losing one must be visible.
+          logger.error(
+            {
+              workspaceModelId: invocation.workspaceId,
+              sandboxFunctionId: sandboxFunction.sId,
+              invocationId: invocation.sId,
+              err: normalizeError(error),
+            },
+            "Deferred Pod function invocation created-event publish failed"
+          );
+        }),
+      ]).then(() => undefined);
+    } else {
+      await publishCreated();
+    }
+
+    if (inline) {
+      const executionResult = await invocation.execute(auth, { inline: true });
+      if (executionResult.isOk()) {
+        return new Ok(invocation);
+      }
+      if (!isSandboxNotRunningError(executionResult.error)) {
+        // The invocation ran and failed. Record the outcome here, as the invocation workflow's
+        // activity does, so listeners settle instead of waiting for a workflow that never ran.
+        await invocation.fail(executionResult.error);
+        return new Ok(invocation);
+      }
+      // The sandbox has to be resumed first. Nothing has executed, so hand the invocation to the
+      // workflow, which owns waits that outlive a request.
+      logger.info(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          sandboxFunctionId: sandboxFunction.sId,
+          invocationId: invocation.sId,
+          reason: "sandbox_not_running",
+        },
+        "Escalating a fast Pod function invocation to the invocation workflow"
+      );
+    }
+
+    // The workflow activity re-reads the invocation, blob included, from another process: a
+    // deferred initial write must be durable before the workflow can be allowed to start. The
+    // rewrite is idempotent (same object, same content) and this is already the slow path.
+    await invocation.settleInitialPersistence();
+    const persistResult = await invocation.writeDataToGcs();
+    if (persistResult.isErr()) {
+      throw persistResult.error;
+    }
 
     const launchResult = await launchSandboxFunctionInvocationWorkflow(auth, {
       sandboxFunction,
@@ -929,6 +1250,43 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       updatedAt: invocation.updatedAt,
       mcpActionCount: mcpActionCounts.get(invocation.id) ?? 0,
     }));
+  }
+
+  // Invocation counts per triggering user across a set of functions, since a cutoff. Grouped in
+  // SQL rather than counted in JS: the window can span many rows and none of them are needed
+  // individually. The `null` key holds invocations with no human actor (API keys, bots).
+  static async countByUserSince(
+    auth: Authenticator,
+    {
+      sandboxFunctionIds,
+      since,
+    }: {
+      sandboxFunctionIds: ModelId[];
+      since: Date;
+    }
+  ): Promise<Map<ModelId | null, number>> {
+    const counts = new Map<ModelId | null, number>();
+    if (sandboxFunctionIds.length === 0) {
+      return counts;
+    }
+
+    const rows = await this.model.findAll({
+      attributes: ["userId", [fn("COUNT", col("id")), "count"]],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sandboxFunctionId: sandboxFunctionIds,
+        createdAt: { [Op.gte]: since },
+      },
+      group: ["userId"],
+      raw: true,
+    });
+
+    for (const row of rows) {
+      const { userId, count } = InvocationCountByUserRowSchema.parse(row);
+      counts.set(userId, count);
+    }
+
+    return counts;
   }
 
   static async deleteAllForSandboxFunction(

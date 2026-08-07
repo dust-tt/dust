@@ -1,7 +1,5 @@
-import {
-  type InputConfig,
-  inputConfigSchema,
-} from "@app/lib/model_constructors/types/input/configuration";
+import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
+import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
 import { GPT_5_MINI } from "@app/lib/model_constructors/types/models";
 
 import { z } from "zod";

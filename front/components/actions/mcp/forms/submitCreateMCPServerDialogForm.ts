@@ -4,11 +4,11 @@ import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction
 import type {
   CreateMCPServerResponseBody,
   MCPServerType,
+  MCPServerViewNameConflict,
 } from "@app/lib/api/mcp";
-import {
-  isMCPCreateServerError,
-  type MCPConnectionType,
-} from "@app/lib/swr/mcp_servers";
+import { isMCPServerViewNameConflict } from "@app/lib/api/mcp";
+import type { MCPConnectionType } from "@app/lib/swr/mcp_servers";
+import { isMCPCreateServerError } from "@app/lib/swr/mcp_servers";
 import type { DiscoverOAuthMetadataResponseBody } from "@app/types/api/oauth/providers/mcp";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
@@ -28,6 +28,12 @@ type CreateMCPServerDialogSubmitResult =
   | {
       type: "server_created";
       server: MCPServerType;
+      remoteMCPServerOAuthDiscoveryDone: boolean;
+    }
+  | {
+      type: "name_conflict";
+      name: string;
+      oauthConnectionId: string | null;
       remoteMCPServerOAuthDiscoveryDone: boolean;
     };
 
@@ -81,7 +87,10 @@ type CreateRemoteMCPServerFn = (args: {
   sharedSecret?: string;
   oauthConnection?: MCPConnectionType;
   customHeaders?: { key: string; value: string }[];
-}) => Promise<Result<CreateMCPServerResponseBody, Error>>;
+  viewName?: string;
+}) => Promise<
+  Result<CreateMCPServerResponseBody, Error | MCPServerViewNameConflict>
+>;
 
 type CreateInternalMCPServerFn = (
   args: {
@@ -107,6 +116,7 @@ interface SubmitCreateMCPServerDialogFormParams {
   // These are server-derived values, not user input.
   authorization: AuthorizationInfo | null;
   remoteMCPServerOAuthDiscoveryDone: boolean;
+  oauthConnectionId: string | null;
   discoverOAuthMetadata: DiscoverOAuthMetadataFn;
   createWithURL: CreateRemoteMCPServerFn;
   createInternalMCPServer: CreateInternalMCPServerFn;
@@ -121,6 +131,7 @@ export async function submitCreateMCPServerDialogForm({
   values,
   authorization,
   remoteMCPServerOAuthDiscoveryDone,
+  oauthConnectionId,
   discoverOAuthMetadata,
   createWithURL,
   createInternalMCPServer,
@@ -207,33 +218,40 @@ export async function submitCreateMCPServerDialogForm({
       : authorization?.scope;
 
   if (authorization && oauthUseCase) {
-    const cRes = await setupOAuthConnection({
-      owner,
-      provider: authorization.provider,
-      // During setup, the use case is always "platform_actions".
-      useCase: "platform_actions",
-      extraConfig: {
-        ...(values.authCredentials ?? {}),
-        ...(effectiveScope ? { scope: effectiveScope } : {}),
-      },
-      regionInfo,
-    });
+    if (oauthConnectionId) {
+      oauthConnection = {
+        useCase: oauthUseCase,
+        connectionId: oauthConnectionId,
+      };
+    } else {
+      const cRes = await setupOAuthConnection({
+        owner,
+        provider: authorization.provider,
+        // During setup, the use case is always "platform_actions".
+        useCase: "platform_actions",
+        extraConfig: {
+          ...(values.authCredentials ?? {}),
+          ...(effectiveScope ? { scope: effectiveScope } : {}),
+        },
+        regionInfo,
+      });
 
-    if (cRes.isErr()) {
-      return new Err(
-        new CreateMCPServerDialogSubmitError({
-          kind: "oauth_connection",
-          message: cRes.error.message,
-          remoteMCPServerOAuthDiscoveryDone:
-            nextRemoteMCPServerOAuthDiscoveryDone,
-        })
-      );
+      if (cRes.isErr()) {
+        return new Err(
+          new CreateMCPServerDialogSubmitError({
+            kind: "oauth_connection",
+            message: cRes.error.message,
+            remoteMCPServerOAuthDiscoveryDone:
+              nextRemoteMCPServerOAuthDiscoveryDone,
+          })
+        );
+      }
+
+      oauthConnection = {
+        useCase: oauthUseCase,
+        connectionId: cRes.value.connection_id,
+      };
     }
-
-    oauthConnection = {
-      useCase: oauthUseCase,
-      connectionId: cRes.value.connection_id,
-    };
   }
 
   onBeforeCreateServer();
@@ -295,10 +313,12 @@ export async function submitCreateMCPServerDialogForm({
   }
 
   if (values.remoteServerUrl) {
+    const viewName = values.viewName?.trim();
     const createRes = await createWithURL({
       url: values.remoteServerUrl,
       defaultServerId,
       includeGlobal: true,
+      ...(viewName ? { viewName } : {}),
       sharedSecret:
         values.authMethod === "bearer" ? values.sharedSecret : undefined,
       oauthConnection,
@@ -309,6 +329,15 @@ export async function submitCreateMCPServerDialogForm({
 
     if (createRes.isErr()) {
       const err = createRes.error;
+      if (isMCPServerViewNameConflict(err)) {
+        return new Ok({
+          type: "name_conflict",
+          name: err.nameConflict,
+          oauthConnectionId: oauthConnection?.connectionId ?? null,
+          remoteMCPServerOAuthDiscoveryDone:
+            nextRemoteMCPServerOAuthDiscoveryDone,
+        });
+      }
       return new Err(
         new CreateMCPServerDialogSubmitError({
           kind: "create_server",

@@ -1,5 +1,5 @@
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
-import { buildMessageConsumptionDetails } from "@app/lib/api/assistant/agent_message_consumption_attribution/message_details";
+import { buildLatestAvailableMessageConsumptionDetails } from "@app/lib/api/assistant/agent_message_consumption_attribution/message_details";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionItemResource as ConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -8,8 +8,9 @@ import type { AgentMessageConsumptionResponse } from "@app/types/assistant/agent
 
 /**
  * Builds the end-user explanation for one agent message. Provider and token facts stay behind this
- * interface. If the active attribution version does not cover the message's current runs and tools,
- * the exact bill remains available while details are withheld.
+ * interface. It uses the newest complete attribution version stored for the message. If no version
+ * covers the message's current runs and tools, the exact bill remains available while details are
+ * withheld.
  */
 export async function getAgentMessageConsumption(
   auth: Authenticator,
@@ -26,7 +27,7 @@ export async function getAgentMessageConsumption(
     {
       conversation,
       agentMessageId,
-      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
     }
   );
   if (!facts) {
@@ -49,7 +50,7 @@ export async function getAgentMessageConsumption(
     return unavailableResponse;
   }
 
-  const details = buildMessageConsumptionDetails({
+  const details = buildLatestAvailableMessageConsumptionDetails({
     actions: facts.actions,
     billedCredits: facts.billedCredits,
     dustRunIds: facts.dustRunIds,

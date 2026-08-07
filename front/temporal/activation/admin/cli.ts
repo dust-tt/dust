@@ -1,4 +1,5 @@
 import { runActivationForWorkspace } from "@app/lib/api/activation/orchestrator";
+import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import parseArgs from "minimist";
 
@@ -41,11 +42,10 @@ const main = async () => {
 
   cliLogger.info({ workspaceId, userId, dryRun }, "starting run");
 
-  const planResult = await runActivationForWorkspace({
-    workspaceId,
-    userId,
-    dryRun,
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId, {
+    dangerouslyRequestAllGroups: true,
   });
+  const planResult = await runActivationForWorkspace(auth, { userId, dryRun });
   if (planResult.isErr()) {
     cliLogger.error(
       { workspaceId, userId, error: planResult.error.message },

@@ -1,4 +1,3 @@
-import { ActivationNextSteps } from "@app/components/assistant/conversation/ActivationNextSteps";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
@@ -27,11 +26,8 @@ import type { RichMention } from "@app/types/assistant/mentions";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
-import {
-  resolveDefaultAgentId,
-  type UserType,
-  type WorkspaceType,
-} from "@app/types/user";
+import type { UserType, WorkspaceType } from "@app/types/user";
+import { resolveDefaultAgentId } from "@app/types/user";
 import {
   Button,
   ButtonsSwitch,
@@ -46,6 +42,8 @@ import {
   LoadingBlock,
   SearchInputWithPopover,
   Spinner,
+  Zap,
+  ZapOff,
 } from "@dust-tt/sparkle";
 import moment from "moment";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -71,6 +69,8 @@ interface PodConversationsTabProps {
   isPodEmpty: boolean;
   conversationFilter: PodConversationListFilter;
   onConversationFilterChange: (filter: PodConversationListFilter) => void;
+  hideTriggeredConversations: boolean;
+  onHideTriggeredConversationsChange: (hide: boolean) => void;
   onSubmit: (
     input: string,
     mentions: RichMention[],
@@ -94,6 +94,8 @@ export function PodConversationsTab({
   isPodEmpty,
   conversationFilter,
   onConversationFilterChange,
+  hideTriggeredConversations,
+  onHideTriggeredConversationsChange,
   onSubmit,
   onNavigateToTasks,
 }: PodConversationsTabProps) {
@@ -201,9 +203,6 @@ export function PodConversationsTab({
         >
           <div className="flex w-full flex-col gap-3">
             <PodPinnedBanner owner={owner} podInfo={podInfo} />
-            <div className="flex w-full justify-center">
-              <ActivationNextSteps owner={owner} podId={podInfo.sId} />
-            </div>
             <div className="flex w-full items-center gap-2">
               <Icon visual={getSpaceIcon(podInfo)} />
               <h2
@@ -296,6 +295,22 @@ export function PodConversationsTab({
                       />
                     </ButtonsSwitchList>
                   )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    icon={hideTriggeredConversations ? Zap : ZapOff}
+                    tooltip={
+                      hideTriggeredConversations
+                        ? "Show triggered"
+                        : "Hide triggered"
+                    }
+                    className="shrink-0"
+                    onClick={() =>
+                      onHideTriggeredConversationsChange(
+                        !hideTriggeredConversations
+                      )
+                    }
+                  />
                   <SearchInputWithPopover
                     name="conversation-search"
                     value={searchText}

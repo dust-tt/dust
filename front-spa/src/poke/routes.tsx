@@ -36,6 +36,7 @@ import { WebhookSourceDetailsPage } from "@dust-tt/front/components/poke/pages/W
 import { WorkspacePage } from "@dust-tt/front/components/poke/pages/WorkspacePage";
 import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
 import { RootRouterLayout } from "@spa/app/layouts/RootRouterLayout";
+import { UnauthenticatedPage } from "@spa/app/layouts/UnauthenticatedPage";
 import { PokePage } from "@spa/poke/layouts/PokePage";
 import { PokeWorkspacePage } from "@spa/poke/layouts/PokeWorkspacePage";
 import type { RouteObject } from "react-router-dom";
@@ -163,7 +164,11 @@ export const routes: RouteObject[] = [
       },
       // Redirect /poke/* to /* (strip /poke prefix)
       { path: "poke/*", element: <PokeRedirect /> },
-      { path: "*", element: <Custom404 /> },
+      { path: "w/*", element: <PokeRedirect /> },
+      {
+        element: <UnauthenticatedPage />,
+        children: [{ path: "*", element: <Custom404 /> }],
+      },
     ],
   },
 ];

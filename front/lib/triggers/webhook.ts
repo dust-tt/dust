@@ -18,7 +18,6 @@ import {
   checkTriggerForExecutionPerDayLimit,
   checkWebhookRequestForRateLimit,
 } from "@app/lib/triggers/rate_limits";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { verifySignature } from "@app/lib/webhook_source_server";
 import logger from "@app/logger/logger";
@@ -425,48 +424,29 @@ function matchesPayloadFilter({
   return false;
 }
 
-async function filterTriggers({
-  auth,
-  webhookSource,
-  receivedEventValue,
-  webhookRequest,
-  body,
-}: {
-  auth: Authenticator;
-  webhookSource: { id: number; provider: WebhookProvider | null };
-  receivedEventValue: string | null;
-  webhookRequest: WebhookRequestResource;
-  body: Record<string, unknown>;
-}): Promise<Result<WebhookTriggerType[], Error>> {
+async function filterTriggers(
+  auth: Authenticator,
+  {
+    enabledWebhookTriggers,
+    webhookSource,
+    receivedEventValue,
+    webhookRequest,
+    body,
+  }: {
+    enabledWebhookTriggers: TriggerResource[];
+    webhookSource: WebhookSourceResource;
+    receivedEventValue: string | null;
+    webhookRequest: WebhookRequestResource;
+    body: Record<string, unknown>;
+  }
+): Promise<Result<WebhookTriggerType[], Error>> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
-  const webhookRequestId = webhookRequest.id;
   const { provider } = webhookSource;
-  // Fetch all webhook source views for this webhook source.
-  // We use the internal method that skips space permission filtering because:
-  // 1. The webhook request was already authorized via the URL secret.
-  // 2. Webhook source views in private spaces should still trigger their associated agents.
-  const views =
-    await WebhookSourcesViewResource.listByWebhookSourceForInternalProcessing(
-      auth,
-      webhookSource.id
-    );
 
-  // Fetch all triggers based on the webhook source id and flatten the result.
-  const triggers = (
-    await concurrentExecutor(
-      views,
-      async (view) => {
-        return TriggerResource.listByWebhookSourceViewId(auth, view.id);
-      },
-      { concurrency: 10 }
-    )
-  )
-    .flat()
+  const triggers = enabledWebhookTriggers
     .map((t) => t.toJSON())
     // Filter here to avoid a lot of type checking later.
-    .filter(isWebhookTrigger)
-    // Filter out disabled triggers
-    .filter((t) => t.status === "enabled");
+    .filter(isWebhookTrigger);
 
   const filteredTriggers: WebhookTriggerType[] = [];
 
@@ -502,7 +482,7 @@ async function filterTriggers({
       auth,
       trigger,
       workspaceId,
-      webhookRequestId,
+      webhookRequestId: webhookRequest.id,
       provider,
     });
     if (workspaceRateLimitResult.rateLimited) {
@@ -520,7 +500,7 @@ async function filterTriggers({
       auth,
       trigger,
       workspaceId,
-      webhookRequestId,
+      webhookRequestId: webhookRequest.id,
       provider,
     });
     if (triggerRateLimitResult.rateLimited) {
@@ -718,8 +698,42 @@ export async function processWebhookRequest(
     return new Ok({ triggerIds: [] });
   }
 
-  const filteredTriggersResult = await filterTriggers({
+  // Fetch all webhook source views for this webhook source.
+  // We use the internal method that skips space permission filtering because:
+  // 1. The webhook request was already authorized via the URL secret.
+  // 2. Webhook source views in private spaces should still trigger their associated agents.
+  const views =
+    await WebhookSourcesViewResource.listByWebhookSourceForInternalProcessing(
+      auth,
+      webhookSource.id
+    );
+
+  // Fetch all triggers based on the webhook source id and flatten the result.
+  const webhookTriggers = await TriggerResource.listByWebhookSourceViewIds(
     auth,
+    views.map((view) => view.id)
+  );
+  const enabledWebhookTriggers = webhookTriggers.filter(
+    ({ status }) => status === "enabled"
+  );
+
+  if (
+    enabledWebhookTriggers.some(
+      (t) =>
+        "includePayload" in t.configuration && t.configuration.includePayload
+    )
+  ) {
+    await storePayloadInGCS(auth, {
+      webhookSource,
+      webhookRequest,
+      headers,
+      body,
+      provider: webhookSource.provider ?? "custom",
+    });
+  }
+
+  const filteredTriggersResult = await filterTriggers(auth, {
+    enabledWebhookTriggers,
     webhookSource,
     receivedEventValue,
     webhookRequest,
@@ -737,16 +751,6 @@ export async function processWebhookRequest(
     localLogger.info("No triggers matched the webhook request.");
     await webhookRequest.markAsProcessed();
     return new Ok({ triggerIds: [] });
-  }
-
-  if (filteredTriggers.some((t) => t.configuration.includePayload)) {
-    await storePayloadInGCS(auth, {
-      webhookSource,
-      webhookRequest,
-      headers,
-      body,
-      provider: webhookSource.provider ?? "custom",
-    });
   }
 
   const launchResult = await launchTriggersWorkflows(auth, {

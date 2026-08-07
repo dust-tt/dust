@@ -1,4 +1,5 @@
-import { getRedisStreamClient, type RedisClientType } from "@app/lib/api/redis";
+import type { RedisClientType } from "@app/lib/api/redis";
+import { getRedisStreamClient } from "@app/lib/api/redis";
 import tracer from "@app/logger/tracer";
 
 // Distributed lock implementation using Redis
@@ -48,7 +49,7 @@ export async function distributedUnlock(
   });
 }
 
-const WAIT_BETWEEN_RETRIES = 100;
+const DEFAULT_RETRY_INTERVAL_MS = 100;
 
 export const executeWithLock = async <T>(
   lockName: string,
@@ -60,8 +61,17 @@ export const executeWithLock = async <T>(
   // existing callers are unchanged and we don't span every lock app-wide.
   {
     lockTtlMs = 5_000,
+    retryIntervalMs = DEFAULT_RETRY_INTERVAL_MS,
     traceAcquireResource,
-  }: { lockTtlMs?: number; traceAcquireResource?: string } = {}
+  }: {
+    lockTtlMs?: number;
+    // How long a waiter sleeps between acquisition attempts. The wait is blind
+    // (no notification on release), so on a contended lock every waiter loses
+    // in quanta of this interval — locks with short hold times on
+    // latency-sensitive paths should pass something well under the default.
+    retryIntervalMs?: number;
+    traceAcquireResource?: string;
+  } = {}
 ): Promise<T> => {
   const client = await getRedisStreamClient({ origin: "lock" });
 
@@ -74,8 +84,11 @@ export const executeWithLock = async <T>(
       if (acquired) {
         break;
       }
-      // Wait a bit before retrying
-      await new Promise((resolve) => setTimeout(resolve, WAIT_BETWEEN_RETRIES));
+      // Wait before retrying, jittered to half..full interval so concurrent
+      // waiters spread out instead of stampeding the same retry tick.
+      const jitteredWaitMs =
+        retryIntervalMs / 2 + Math.random() * (retryIntervalMs / 2);
+      await new Promise((resolve) => setTimeout(resolve, jitteredWaitMs));
     }
     return acquired;
   };

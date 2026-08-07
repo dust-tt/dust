@@ -6,12 +6,12 @@ import { useBatchUpdateMembers } from "@app/components/poke/members/useBatchUpda
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { PokeWorkspaceMember } from "@app/lib/api/poke/memberships";
 import { useAppRouter } from "@app/lib/platform";
+import type { MembershipSeatType } from "@app/types/memberships";
 import {
   isMembershipSeatType,
   MEMBERSHIP_ORIGIN_TYPES,
   MEMBERSHIP_ROLE_TYPES,
   MEMBERSHIP_SEAT_TYPES,
-  type MembershipSeatType,
 } from "@app/types/memberships";
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 

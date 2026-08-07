@@ -2,11 +2,11 @@ import type { ImportFormValues } from "@app/components/skills/import/formSchema"
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { ImportSkillsResponseBody } from "@app/lib/api/skills/detection/github/import_skills";
-import {
-  type DetectedSkillSummary,
-  type DetectSkillsResponseBody,
-  parseGitHubRepoUrl,
+import type {
+  DetectedSkillSummary,
+  DetectSkillsResponseBody,
 } from "@app/lib/skill_detection";
+import { parseGitHubRepoUrl } from "@app/lib/skill_detection";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetSkillHistoryResponseBody } from "@app/types/api/assistant/skills/history";
 import type {
@@ -263,6 +263,8 @@ export function useSimilarSkills({ owner }: { owner: LightWorkspaceType }) {
       naturalDescription: string,
       options: {
         excludeSkillId: string | null;
+        // Restricts the skills to compare against. Defaults server-side to all published skills.
+        availabilities?: SkillAvailability[];
         signal?: AbortSignal;
       }
     ) => {
@@ -276,6 +278,7 @@ export function useSimilarSkills({ owner }: { owner: LightWorkspaceType }) {
           body: JSON.stringify({
             naturalDescription,
             excludeSkillId: options?.excludeSkillId ?? undefined,
+            availabilities: options?.availabilities,
           }),
           signal: options?.signal,
         }
@@ -340,6 +343,56 @@ export function useArchiveSkill({
       sendNotification({
         type: "error",
         title: `Error archiving ${skill.name}`,
+        description: `Error: ${isAPIErrorResponse(err) ? err.error.message : "An unexpected error occurred."}`,
+      });
+      return false;
+    }
+  };
+
+  return doArchive;
+}
+
+export function useBatchArchiveSkills({
+  owner,
+  skillIds,
+}: {
+  owner: LightWorkspaceType;
+  skillIds: string[];
+}) {
+  const { fetcher } = useFetcher();
+  const sendNotification = useSendNotification();
+  const {
+    mutateSkillsWithRelationsRegardlessOfQueryParams: mutateSkillsWithRelations,
+  } = useSkillsWithRelations({
+    owner,
+    status: "active",
+    disabled: true,
+  });
+
+  const doArchive = async () => {
+    if (skillIds.length === 0) {
+      return false;
+    }
+
+    try {
+      await fetcher(`/api/w/${owner.sId}/skills/archive`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ skillIds }),
+      });
+
+      void mutateSkillsWithRelations();
+
+      sendNotification({
+        type: "success",
+        title: "Successfully archived skills",
+        description: `${skillIds.length} skill${pluralize(skillIds.length)} ${skillIds.length === 1 ? "was" : "were"} successfully archived.`,
+      });
+      return true;
+    } catch (err) {
+      sendNotification({
+        type: "error",
+        title: "Error archiving skills",
         description: `Error: ${isAPIErrorResponse(err) ? err.error.message : "An unexpected error occurred."}`,
       });
       return false;

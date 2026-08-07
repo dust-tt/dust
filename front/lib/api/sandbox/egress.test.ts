@@ -2,10 +2,8 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  type RootCommand,
-  renderRootCommand,
-} from "@app/lib/api/sandbox/root_command";
+import type { RootCommand } from "@app/lib/api/sandbox/root_command";
+import { renderRootCommand } from "@app/lib/api/sandbox/root_command";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { Err, Ok } from "@app/types/shared/result";
 import jwt from "jsonwebtoken";
@@ -133,6 +131,7 @@ describe("sandbox egress helpers", () => {
   const runtimeOwner = {
     kind: "conversation" as const,
     conversationId: "conversation-id",
+    spaceId: null,
   };
 
   beforeEach(() => {
@@ -229,7 +228,11 @@ describe("sandbox egress helpers", () => {
       "/usr/bin/install -o root -g root -m 600 /dev/stdin"
     );
     expect(tokenCall).toContain("/etc/dust/egress-token");
-    expect(mockWriteEgressSecretsFile).toHaveBeenCalledWith(auth, sandbox);
+    expect(mockWriteEgressSecretsFile).toHaveBeenCalledWith(
+      auth,
+      sandbox,
+      runtimeOwner
+    );
     expect(mockWriteSandboxEnvManifestFile).toHaveBeenCalledWith(
       auth,
       sandbox,
@@ -254,7 +257,12 @@ describe("sandbox egress helpers", () => {
     expect(healthCall).toContain("/opt/bin/dsbx healthcheck");
     expect(healthCall).toContain("--forwarder-listen 127.0.0.1:9990");
     expect(healthCall).toContain("--resolver-listen 127.0.0.1:1053");
+    expect(healthCall).toContain("--proxied-uid 1002");
     expect(healthCall).toContain("--proxied-uid 1003");
+    expect(healthCall).toContain("/usr/bin/jq -e '.forwarder_port_ok == true");
+    expect(healthCall).toContain(".nft_ipv6_drop_ok == true'");
+    expect(healthCall).not.toContain(".bundle_ok == true");
+    expect(healthCall).not.toContain(".ok == true");
     // The healthcheck inspects nftables, which requires CAP_NET_ADMIN, so it
     // must run as root. Pin the exec options to prevent silent regression.
     expect(sandbox.execRoot).toHaveBeenNthCalledWith(
@@ -520,7 +528,11 @@ describe("sandbox egress helpers", () => {
     const result = await ensure(sandbox, { wokeFromSleep: true });
 
     expect(result).toEqual(new Ok(undefined));
-    expect(mockWriteEgressSecretsFile).toHaveBeenCalledWith(auth, sandbox);
+    expect(mockWriteEgressSecretsFile).toHaveBeenCalledWith(
+      auth,
+      sandbox,
+      runtimeOwner
+    );
     expect(mockWriteSandboxEnvManifestFile).toHaveBeenCalledWith(
       auth,
       sandbox,

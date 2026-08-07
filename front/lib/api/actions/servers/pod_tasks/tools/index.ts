@@ -4,10 +4,8 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import {
-  isAgentLoopRunContext,
-  type ToolContext,
-} from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   getPod,
   withErrorHandling,
@@ -24,16 +22,15 @@ import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { startAgentForProjectTask } from "@app/lib/project_task/start_agent";
-import {
-  ProjectTaskResource,
-  type UpdateBlob,
-} from "@app/lib/resources/project_task_resource";
+import type { UpdateBlob } from "@app/lib/resources/project_task_resource";
+import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { PodTaskActorType, PodTaskStatus } from "@app/types/project_task";
 import { POD_TASK_NO_ASSIGNEE_LABEL } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;

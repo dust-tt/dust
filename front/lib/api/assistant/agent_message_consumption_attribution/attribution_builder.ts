@@ -4,6 +4,7 @@
 // expected to sum to the billed amount. Their job is to rank what drove the cost, not to
 // reconcile euros.
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
+import { MICRO_CREDITS_PER_CREDIT } from "@app/lib/credits/units";
 import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import assert from "assert";
@@ -11,10 +12,10 @@ import assert from "assert";
 // Version 1 attributed the model token buckets only. Version 2 added per-tool rows and netted the
 // tool-call emission out of the assistant output bucket. Version 3 expands an enabled skill's tool
 // input footprint with the instructions and tool definitions that the action adds to later model
-// requests. Each version remains a separate, self-consistent set of rows.
-export const AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION = 3;
-
-const CREDIT_AMOUNT_MICRO_PER_CREDIT = 1_000_000;
+// requests. Version 4 keeps sandbox-child actions as direct-charge-only rows because their calls
+// and results reach the outer model through their parent Computer action. Each version remains a
+// separate, self-consistent set of rows.
+export const AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION = 4;
 
 export type RunUsageForAttribution = Pick<
   RunUsageType,
@@ -91,7 +92,7 @@ function assertValidRunUsage(usage: RunUsageForAttribution): void {
 /** Converts provider cost into millionths of a Dust credit. */
 function creditAmountMicroFromCostMicroUsd(costMicroUsd: number): number {
   return Math.round(
-    (costMicroUsd * CREDIT_AMOUNT_MICRO_PER_CREDIT) /
+    (costMicroUsd * MICRO_CREDITS_PER_CREDIT) /
       MODEL_COST_MICRO_USD_PER_AWU_CREDIT
   );
 }

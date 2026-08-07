@@ -23,6 +23,7 @@ import {
   normalizeMountParentRelativePath,
   validateMountFolderName,
 } from "@app/lib/api/files/mount_path";
+import { requestDustProjectIncrementalSync } from "@app/lib/api/projects/request_incremental_sync";
 import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import type { DustError } from "@app/lib/error";
@@ -422,6 +423,8 @@ export async function addFileToProject(
     });
   }
 
+  requestDustProjectIncrementalSync(auth, space);
+
   return new Ok(fragmentRes.value);
 }
 
@@ -574,6 +577,8 @@ export async function removeFileFromProject(
   if (deleteRes.isErr()) {
     return new Err(deleteRes.error);
   }
+
+  requestDustProjectIncrementalSync(auth, space);
 
   return new Ok(undefined);
 }
@@ -837,11 +842,15 @@ export async function deleteProjectFile(
     });
   }
 
-  return deleteGCSMountFile(
+  const deleteRes = await deleteGCSMountFile(
     auth,
     { useCase: "pod", podId: space.sId },
     { relativeFilePath: normalized }
   );
+  if (deleteRes.isOk()) {
+    requestDustProjectIncrementalSync(auth, space);
+  }
+  return deleteRes;
 }
 
 /**

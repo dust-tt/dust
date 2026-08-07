@@ -1,15 +1,16 @@
+import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import {
   encodeMCPToolNameForForm,
   getMCPServerFormDefaults,
   getMCPServerFormSchema,
-  type MCPServerFormValues,
 } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { MCPServerViewTypeFactory } from "@app/tests/utils/MCPServerViewTypeFactory";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { FormProvider, type UseFormReturn, useForm } from "react-hook-form";
+import type { UseFormReturn } from "react-hook-form";
+import { FormProvider, useForm } from "react-hook-form";
 import { describe, expect, it, vi } from "vitest";
 
 // Stub Sparkle UI primitives so they render plain DOM and let us click the checkbox.

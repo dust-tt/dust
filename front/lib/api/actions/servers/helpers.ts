@@ -1,7 +1,5 @@
-import {
-  isAgentLoopRunContext,
-  type ToolContext,
-} from "@app/lib/actions/types";
+import type { ToolContext } from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import type { ConversationMetadata } from "@app/types/assistant/conversation";
 
 // TODO(sidekick 2026-01-23): move all sidekick mcp servers and these helpers in dedicated folder

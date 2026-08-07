@@ -1,12 +1,10 @@
-import {
-  BatchEndpoint,
-  type BatchRequest,
-  type BatchStatus,
+import type {
+  BatchRequest,
+  BatchStatus,
 } from "@app/lib/model_constructors/batch/endpoint";
-import {
-  type MistralInputConfig,
-  mistralConfigSchema,
-} from "@app/lib/model_constructors/providers/mistral/inputConfig";
+import { BatchEndpoint } from "@app/lib/model_constructors/batch/endpoint";
+import type { MistralInputConfig } from "@app/lib/model_constructors/providers/mistral/inputConfig";
+import { mistralConfigSchema } from "@app/lib/model_constructors/providers/mistral/inputConfig";
 import { WithMistralAIInputConverter } from "@app/lib/model_constructors/sdk/mistralai/converters/input";
 import { responseToEvents } from "@app/lib/model_constructors/sdk/mistralai/converters/output/utils";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
@@ -16,11 +14,13 @@ import type { NonDeltaResponseEvent } from "@app/lib/model_constructors/types/ou
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Mistral } from "@mistralai/mistralai";
+import type {
+  ChatCompletionResponse,
+  ChatCompletionStreamRequest,
+} from "@mistralai/mistralai/models/components";
 import {
   ApiEndpoint,
   BatchJobStatus,
-  type ChatCompletionResponse,
-  type ChatCompletionStreamRequest,
   ChatCompletionStreamRequest$outboundSchema,
   chatCompletionResponseFromJSON,
 } from "@mistralai/mistralai/models/components";

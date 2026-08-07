@@ -1,8 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
-import {
-  filterSkillDefinitions,
-  type SystemSkillDefinition,
-} from "@app/lib/resources/skill/code_defined/shared";
+import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import { filterSkillDefinitions } from "@app/lib/resources/skill/code_defined/shared";
 import { SYSTEM_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/system";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 

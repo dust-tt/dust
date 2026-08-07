@@ -1,4 +1,3 @@
-import { shouldSkipDataSourceIndexing } from "@app/lib/api/files/should_skip_indexing";
 import type {
   AllSupportedFileContentType,
   FileUseCase,
@@ -22,10 +21,6 @@ export function buildEffectiveUseCaseMetadata({
   providedMetadata: FileUseCaseMetadata | undefined;
   useCase: FileUseCase;
 }): FileUseCaseMetadata | undefined {
-  const skipDataSourceIndexing = shouldSkipDataSourceIndexing({
-    contentType,
-    fileName,
-  });
   const category = getFileFormatCategory(contentType);
   const isSandboxRaw =
     category !== null &&
@@ -35,16 +30,14 @@ export function buildEffectiveUseCaseMetadata({
       useCase,
     });
 
-  if (!skipDataSourceIndexing && !isSandboxRaw) {
+  if (!isSandboxRaw) {
     return providedMetadata;
   }
 
   return {
     ...(providedMetadata ?? {}),
-    ...(skipDataSourceIndexing ? { skipDataSourceIndexing: true } : {}),
     ...(isSandboxRaw
       ? {
-          skipDataSourceIndexing: true,
           skipFileProcessing: true,
         }
       : {}),

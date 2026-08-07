@@ -1,8 +1,8 @@
 import config from "@app/lib/api/config";
+import type { SandboxImageId } from "@app/lib/api/sandbox/image";
 import {
   formatSandboxImageId,
   getSandboxImageFromRegistry,
-  type SandboxImageId,
 } from "@app/lib/api/sandbox/image";
 import {
   buildSandboxImage,

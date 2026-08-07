@@ -1,4 +1,5 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
+import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import {
   AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
   buildRunUsageAttribution,
@@ -6,6 +7,7 @@ import {
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { measureToolCallFootprints } from "@app/lib/api/assistant/agent_message_consumption_attribution/tool_footprint";
 import type { Authenticator } from "@app/lib/auth";
+import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import { toolAwuFromAction } from "@app/lib/metronome/events";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type {
@@ -18,21 +20,18 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { removeNulls } from "@app/types/shared/utils/general";
 import assert from "assert";
-
-// AWU (the credit unit tool charges are denominated in) expressed in micro-credits, matching how the
-// model token buckets store their attributed credits.
-const CREDIT_AMOUNT_MICRO_PER_CREDIT = 1_000_000;
 
 /**
  * Records the per-run consumption attribution breakdown for one settled agent message.
  *
  * This is analytics, not billing: the authoritative charge is computed and stored separately by the
  * credit pipeline. Here we explain the relative composition of that cost by writing, per run usage,
- * one row per model token bucket (input, output, reasoning) and one row per tool call. A tool row
- * carries the output tokens the model spent emitting the call, the input tokens its result would
- * occupy if carried into a later prompt, and the tool's direct credit charge.
+ * one row per model token bucket (input, output, reasoning) and one row per tool call. A directly
+ * model-visible tool row carries the output tokens the model spent emitting the call, the input
+ * tokens its result would occupy if carried into a later prompt, and the tool's direct credit
+ * charge. Sandbox-child calls are direct-charge-only: the outer model emits only the parent
+ * Computer call and receives the child's result through the Computer output.
  *
  * Runs once the message has settled, launched from the analytics queue by the finalize activities.
  * It is idempotent by (agent message, attribution version, run usage, item type) for model rows and
@@ -141,24 +140,35 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
   for (const usage of usages) {
     const dustRunId = dustRunIdByRunModelId.get(usage.runModelId);
     const runActions = (dustRunId && actionsByDustRunId.get(dustRunId)) || [];
-    const enrichedRunActions = removeNulls(
-      runActions.map((action) => enrichedActionById.get(action.id))
+    const runActionPairs = runActions.map((action) => {
+      const enrichedAction = enrichedActionById.get(action.id);
+      assert(enrichedAction, "Every action must have an enriched counterpart");
+      return { action, enrichedAction };
+    });
+    // Sandbox-child actions are invoked by the in-sandbox dsbx CLI, not by the outer model. They
+    // reuse their parent's function-call step content, so measuring them here would tokenize the
+    // parent Computer call a second time and separately count a result already carried in the
+    // Computer output.
+    const modelVisibleRunActionPairs = runActionPairs.filter(
+      ({ action }) =>
+        !isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)
     );
-    assert(
-      enrichedRunActions.length === runActions.length,
-      "Every action must have an enriched counterpart"
+    const sandboxChildRunActionPairs = runActionPairs.filter(({ action }) =>
+      isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)
     );
 
-    // Token footprints of this run's tool calls: the output the model spent emitting each call and
-    // the input its result occupied. Everything is priced against this one usage below.
+    // Token footprints of this run's model-visible tool calls: the output the model spent emitting
+    // each call and the input its result occupied. Everything is priced against this one usage below.
     const footprintsRes = await measureToolCallFootprints(auth, {
       modelId: usage.modelId,
       // TODO(2026-07-31 FLAV) Refactor `enrichActionsWithOutputItems` so it still returns the
       // resource.
-      toolCalls: runActions.map((action, index) => ({
-        action: enrichedRunActions[index],
-        functionCallArguments: action.functionCallArguments,
-      })),
+      toolCalls: modelVisibleRunActionPairs.map(
+        ({ action, enrichedAction }) => ({
+          action: enrichedAction,
+          functionCallArguments: action.functionCallArguments,
+        })
+      ),
     });
     if (footprintsRes.isErr()) {
       throw new Error(
@@ -169,14 +179,16 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
 
     // Pair each tool call with its enriched form and measured footprint once, here. This is the only
     // place alignment is assumed: measureToolCallFootprints returns counts positioned by the actions
-    // it received, and enrichedRunActions is aligned with runActions (the length assert above proves
-    // removeNulls dropped nothing), so index i is the same tool call across all three. From here each
-    // call carries its own data through the builder, so nothing downstream re-derives the position.
-    const measuredToolCalls = runActions.map((action, index) => ({
-      action,
-      enrichedAction: enrichedRunActions[index],
-      footprint: footprints[index],
-    }));
+    // it received, and modelVisibleRunActionPairs is aligned with the measured footprints, so index
+    // i is the same tool call across both. From here each call carries its own data through the
+    // builder, so nothing downstream re-derives the position.
+    const measuredToolCalls = modelVisibleRunActionPairs.map(
+      ({ action, enrichedAction }, index) => ({
+        action,
+        enrichedAction,
+        footprint: footprints[index],
+      })
+    );
 
     // A single partition of the usage: the tool calls take their share of the output budget, and the
     // model buckets take the rest (so the output row here is net of tool emission).
@@ -234,7 +246,7 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
 
       // Zero for a denied call, which billing does not charge. Its emitted output tokens stay
       // attributed here.
-      const directCreditAmountMicro = Math.round(
+      const directCreditAmountMicro = roundCreditsToMicroCredits(
         toolAwuFromAction(
           {
             toolName: enrichedAction.toolName,
@@ -242,7 +254,7 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
             status: action.status,
           },
           triggeringUserMessageOrigin
-        ) * CREDIT_AMOUNT_MICRO_PER_CREDIT
+        )
       );
 
       const toolAttribution = buildToolAttribution({
@@ -263,6 +275,41 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
           toolAttribution.grossAttributedCreditAmountMicro,
       });
     });
+
+    for (const { action, enrichedAction } of sandboxChildRunActionPairs) {
+      // A blocked child has not reached the nested tool yet. Unlike a directly model-emitted call,
+      // it contributes no output footprint while pending.
+      if (!isToolExecutionStatusFinal(action.status)) {
+        pendingToolItems.push({
+          action,
+          runUsageModelId: usage.runUsageModelId,
+          outputTokensCount: 0,
+          grossAttributedCreditAmountMicro: 0,
+        });
+        continue;
+      }
+
+      const directCreditAmountMicro = roundCreditsToMicroCredits(
+        toolAwuFromAction(
+          {
+            toolName: enrichedAction.toolName,
+            internalMCPServerName: enrichedAction.internalMCPServerName,
+            status: action.status,
+          },
+          triggeringUserMessageOrigin
+        )
+      );
+
+      records.push({
+        itemType: "tool",
+        runUsageModelId: usage.runUsageModelId,
+        action,
+        inputTokensCount: 0,
+        outputTokensCount: 0,
+        directCreditAmountMicro,
+        grossAttributedCreditAmountMicro: directCreditAmountMicro,
+      });
+    }
   }
 
   // One atomic write for the whole pass. The resource inserts the model buckets and the final tools,

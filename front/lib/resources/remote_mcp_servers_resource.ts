@@ -228,6 +228,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       | "cachedToolsRequireConfiguration"
     > & {
       oAuthUseCase: MCPOAuthUseCase | null;
+      viewName?: string;
     },
     transaction?: Transaction
   ) {
@@ -238,13 +239,14 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       "The user is not authorized to create a remote MCP server"
     );
 
+    const { oAuthUseCase, viewName, ...serverBlob } = blob;
     const serverData: CreationAttributes<RemoteMCPServerModel> = {
-      ...blob,
-      sharedSecret: blob.sharedSecret,
+      ...serverBlob,
+      sharedSecret: serverBlob.sharedSecret,
       lastSyncAt: new Date(),
-      authorization: blob.authorization,
+      authorization: serverBlob.authorization,
       cachedToolsRequireConfiguration: mcpToolsRequireConfiguration(
-        blob.cachedTools
+        serverBlob.cachedTools
       ),
     };
 
@@ -263,8 +265,9 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
         vaultId: systemSpace.id,
         editedAt: new Date(),
         editedByUserId: auth.user()?.id,
-        oAuthUseCase: blob.oAuthUseCase,
+        oAuthUseCase,
         isRestrictedToSkills: false,
+        ...(viewName ? { name: viewName } : {}),
       },
       {
         transaction,

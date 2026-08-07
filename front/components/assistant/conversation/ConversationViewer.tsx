@@ -7,10 +7,8 @@ import {
   useConversationSidePanelContext,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import {
-  InputBarContext,
-  type PendingConversationMessage,
-} from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import type { PendingConversationMessage } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
   createPlaceholderAgentMessage,
   createPlaceholderUserMessage,
@@ -67,9 +65,11 @@ import { useConversationWakeUps } from "@app/lib/swr/wakeups";
 import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import logger from "@app/logger/logger";
 import type { GetConversationPlanModeResponseBody } from "@app/types/api/assistant/plan_mode";
+import type {
+  ConversationForkedChildType,
+  ConversationListItemType,
+} from "@app/types/assistant/conversation";
 import {
-  type ConversationForkedChildType,
-  type ConversationListItemType,
   isLightAgentMessageType,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
@@ -815,7 +815,16 @@ export const ConversationViewer = ({
                   exists.sId === agentMessage.sId &&
                   !isAtInitialStreamState(exists);
 
-                if (!shouldSkipReplace) {
+                if (shouldSkipReplace && agentMessage.richMentions.length > 0) {
+                  // User mentions are resolved after the agent finishes and
+                  // arrive through a second agent_message_new event. Keep the
+                  // streamed message state, but apply the resolved mentions.
+                  virtuosoMessageListRef.current.data.map((m) =>
+                    isAgentMessageWithStreaming(m) && m.sId === agentMessage.sId
+                      ? { ...m, richMentions: agentMessage.richMentions }
+                      : m
+                  );
+                } else if (!shouldSkipReplace) {
                   virtuosoMessageListRef.current.data.map((m) =>
                     predicate(m) ? agentMessage : m
                   );

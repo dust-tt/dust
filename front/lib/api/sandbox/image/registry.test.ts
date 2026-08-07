@@ -18,10 +18,8 @@ import {
   SANDBOX_STATIC_ROOT_CONSUMED_DIRS,
 } from "@app/lib/api/sandbox/hardening";
 import { getSandboxImageFromRegistry } from "@app/lib/api/sandbox/image/registry";
-import {
-  type Operation,
-  SANDBOX_UNTRUSTED_UIDS,
-} from "@app/lib/api/sandbox/image/types";
+import type { Operation } from "@app/lib/api/sandbox/image/types";
+import { SANDBOX_EGRESS_CONTROLLED_UIDS } from "@app/lib/api/sandbox/image/types";
 import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import { describe, expect, test } from "vitest";
 
@@ -96,7 +94,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.64",
+      tag: "0.8.68",
     });
   });
 
@@ -106,28 +104,54 @@ describe("sandbox image registry", () => {
 
     expect(runCommands).toEqual(
       expect.arrayContaining([
+        expect.stringContaining("groupadd --gid 1003 agent-proxied"),
         expect.stringContaining(
-          "install -d -o agent -g agent -m 2775 /home/agent/.local /home/agent/.local/bin"
+          "useradd --create-home --uid 1003 --gid agent-proxied --groups agent --shell /bin/bash agent-proxied"
         ),
-        expect.stringContaining(
-          "useradd --create-home --uid 1003 --gid agent --shell /bin/bash agent-proxied"
-        ),
-        expect.stringContaining(
-          "chgrp agent /home/agent /home/agent/.local /home/agent/.local/bin /files"
-        ),
-        expect.stringContaining(
-          "chmod g+ws /home/agent /home/agent/.local /home/agent/.local/bin /files"
-        ),
-        expect.stringContaining(
-          "setfacl -R -d -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files"
-        ),
-        expect.stringContaining(
-          "setfacl -R -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files"
-        ),
+        expect.stringContaining("chgrp agent /files"),
+        expect.stringContaining("chmod 2775 /files"),
+        expect.stringContaining("setfacl -R -d -m g::rwx /files"),
+        expect.stringContaining("setfacl -R -m g::rwx /files"),
         expect.stringContaining(
           "useradd --system --no-create-home --gid dust-egress-resolver --shell /usr/sbin/nologin dust-egress-resolver"
         ),
       ])
+    );
+
+    expect(runCommands.join("\n")).not.toContain("chmod g+ws /home/agent");
+    expect(runCommands.join("\n")).not.toContain(
+      "setfacl -R -d -m g::rwx /home/agent"
+    );
+  });
+
+  test("locks service-owned runtime paths after all package installs", () => {
+    const runCommands = getRunCommands(getDustBaseImageOperations());
+    const permissionCommand = runCommands.find((command) =>
+      command.includes("sandbox service paths must not be group/other writable")
+    );
+
+    expect(permissionCommand).toBeDefined();
+    expect(permissionCommand).toContain(
+      "/usr/bin/chown -R root:agent /home/agent"
+    );
+    expect(permissionCommand).toContain(
+      "/usr/sbin/usermod --home /var/empty agent"
+    );
+    expect(permissionCommand).toContain(
+      "/bin/rm -f /home/agent/.bash_profile /home/agent/.bash_login /home/agent/.profile /home/agent/.bashrc"
+    );
+    expect(permissionCommand).toContain(
+      "/usr/bin/find /home/agent -type d -exec /bin/chmod 2750 {} +"
+    );
+    expect(permissionCommand).toContain(
+      "/usr/bin/chown -R root:root /opt/venv"
+    );
+    expect(permissionCommand).toContain("/bin/chmod -R go-w /opt/venv");
+    expect(permissionCommand).toContain(
+      "/usr/bin/chown -R root:root /opt/dust/profile"
+    );
+    expect(permissionCommand).toContain(
+      "/bin/chmod 644 /opt/dust/profile/*.sh"
     );
   });
 
@@ -239,13 +263,26 @@ describe("sandbox image registry", () => {
       copyOperations,
       "/etc/systemd/system/dust-egress-resolver.service"
     );
+    const resolve1Policy = getCopiedContent(
+      copyOperations,
+      "/etc/dbus-1/system.d/dust-resolve1.conf"
+    );
+    const resolvedIpcDropIn = getCopiedContent(
+      copyOperations,
+      "/etc/systemd/system/systemd-resolved.service.d/dust-ipc.conf"
+    );
 
     expect(runCommands).toEqual(
       expect.arrayContaining([
         "chmod 755 /etc/dust/egress-nftables.sh",
-        "systemctl daemon-reload && systemctl enable dust-egress-resolver.service dust-egress-nftables.service",
+        "mkdir -p /etc/dbus-1/system.d /etc/systemd/system/systemd-resolved.service.d",
+        "systemctl daemon-reload && systemctl enable systemd-resolved.service dust-egress-resolver.service dust-egress-nftables.service",
       ])
     );
+    expect(runCommands.join("\n")).toContain(
+      "ln -sfn /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf"
+    );
+    expect(runCommands.join("\n")).toContain("DNSStubListener=yes");
 
     expect(runCommands.join("\n")).not.toContain(
       "chmod 755 /etc/dust/egress-nftables.sh && /etc/dust/egress-nftables.sh"
@@ -253,7 +290,10 @@ describe("sandbox image registry", () => {
     expect(runCommands.join("\n")).not.toContain("iptables");
 
     expect(serviceUnit).toContain(
-      "Description=Dust egress nftables rules for agent-proxied"
+      "Description=Dust egress nftables rules for sandbox-controlled accounts"
+    );
+    expect(serviceUnit).toContain(
+      "After=network.target systemd-resolved.service"
     );
     expect(serviceUnit).toContain("Type=oneshot");
     expect(serviceUnit).toContain("RemainAfterExit=yes");
@@ -262,8 +302,9 @@ describe("sandbox image registry", () => {
     expect(serviceUnit).not.toContain("Requires=dust-egress-resolver.service");
 
     expect(resolverUnit).toContain(
-      "Description=Dust local DNS resolver for agent-proxied"
+      "Description=Dust synthetic DNS resolver for sandbox-controlled accounts"
     );
+    expect(resolverUnit).toContain("Wants=systemd-resolved.service");
     expect(resolverUnit).toContain("Before=dust-egress-nftables.service");
     expect(resolverUnit).toContain("User=dust-egress-resolver");
     expect(resolverUnit).toContain("Group=dust-egress-resolver");
@@ -278,9 +319,29 @@ describe("sandbox image registry", () => {
     expect(resolverUnit).toContain("RestrictAddressFamilies=AF_INET");
     expect(resolverUnit).toContain("MemoryDenyWriteExecute=yes");
 
+    for (const user of ["agent", "agent-proxied"]) {
+      expect(resolve1Policy).toContain(`<policy user="${user}">`);
+    }
+    expect(
+      resolve1Policy.match(
+        /<deny send_destination="org\.freedesktop\.resolve1"\/>/g
+      )
+    ).toHaveLength(2);
+    expect(resolvedIpcDropIn).toContain("[Service]");
+    expect(resolvedIpcDropIn).toContain(
+      "ExecStartPost=/bin/chmod 0600 /run/systemd/resolve/io.systemd.Resolve"
+    );
+
     expect(nftablesScript).toContain("nft add table ip dust-egress");
+    expect(nftablesScript).toContain('CONTROLLED_UIDS="1002 1003"');
     expect(nftablesScript).toContain("DNS_STUB_PORT=1053");
     expect(nftablesScript).toContain("GCS_TOKEN_SERVER_PORT=987");
+    expect(nftablesScript).toContain(
+      "SYSTEM_RESOLV_CONF=/run/systemd/resolve/stub-resolv.conf"
+    );
+    expect(nftablesScript).toContain(
+      '/bin/ln -sfn "$SYSTEM_RESOLV_CONF" /etc/resolv.conf'
+    );
     expect(nftablesScript).toContain(
       "nft add chain ip dust-egress nat_output '{ type nat hook output priority -100 ; policy accept ; }'"
     );
@@ -288,33 +349,32 @@ describe("sandbox image registry", () => {
       "nft add chain ip dust-egress filter_output '{ type filter hook output priority 0 ; policy accept ; }'"
     );
     expect(nftablesScript).toContain(
-      "nft add rule ip dust-egress nat_output meta skuid $PROXIED_UID ip daddr 127.0.0.0/8 return"
+      "nft add rule ip dust-egress nat_output meta skuid $CONTROLLED_UID ip daddr 127.0.0.0/8 return"
     );
     expect(nftablesScript).toContain(
-      "nft add rule ip dust-egress nat_output meta skuid $PROXIED_UID udp dport 53 redirect to :$DNS_STUB_PORT"
+      "nft add rule ip dust-egress nat_output meta skuid $CONTROLLED_UID udp dport 53 redirect to :$DNS_STUB_PORT"
     );
     expect(nftablesScript).toContain(
-      "nft add rule ip dust-egress nat_output meta skuid $PROXIED_UID tcp dport 53 redirect to :$DNS_STUB_PORT"
+      "nft add rule ip dust-egress nat_output meta skuid $CONTROLLED_UID tcp dport 53 redirect to :$DNS_STUB_PORT"
     );
     expect(nftablesScript).toContain(
-      "nft add rule ip dust-egress nat_output meta skuid $PROXIED_UID tcp dport != 0 redirect to :9990"
+      "nft add rule ip dust-egress nat_output meta skuid $CONTROLLED_UID tcp dport != 0 redirect to :9990"
     );
     expect(nftablesScript).toContain(
-      "nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 127.0.0.1 udp dport $DNS_STUB_PORT accept"
+      "nft add rule ip dust-egress filter_output meta skuid $CONTROLLED_UID ip daddr 127.0.0.1 udp dport $DNS_STUB_PORT accept"
     );
     expect(nftablesScript).toContain(
-      "nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 127.0.0.0/8 tcp dport $GCS_TOKEN_SERVER_PORT drop"
+      "nft add rule ip dust-egress filter_output meta skuid $CONTROLLED_UID ip daddr 127.0.0.0/8 tcp dport $GCS_TOKEN_SERVER_PORT drop"
     );
     expect(nftablesScript).toContain(
-      "nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 127.0.0.0/8 tcp dport 22 drop"
+      "nft add rule ip dust-egress filter_output meta skuid $CONTROLLED_UID ip daddr 127.0.0.0/8 tcp dport 22 drop"
     );
     expect(nftablesScript).toContain(
-      "nft add rule ip dust-egress filter_output meta skuid $PROXIED_UID ip daddr 169.254.169.254 drop"
+      "nft add rule ip dust-egress filter_output meta skuid $CONTROLLED_UID ip daddr 169.254.169.254 drop"
     );
     expect(nftablesScript).toContain(
-      "nft add rule ip6 dust-egress filter_output meta skuid $PROXIED_UID drop"
+      "nft add rule ip6 dust-egress filter_output meta skuid $CONTROLLED_UID drop"
     );
-    expect(nftablesScript).not.toContain("/etc/resolv.conf");
     expect(nftablesScript).not.toContain('ip daddr "$NS"');
 
     expectContentInOrder(
@@ -383,8 +443,11 @@ describe("sandbox image registry", () => {
     expect(writer).toContain("mv -f");
     expect(firewall).toContain("dust-gcs-token");
     expect(firewall).toContain("/usr/bin/flock -x 9");
-    expect(firewall).toContain("meta skuid 1003");
-    expect(firewall).toContain("tcp dport 987 drop");
+    expect(firewall).toContain('CONTROLLED_UIDS="1002 1003"');
+    expect(firewall).toContain("for CONTROLLED_UID in $CONTROLLED_UIDS");
+    expect(firewall).toContain(
+      'meta skuid "$CONTROLLED_UID" ip daddr 127.0.0.0/8 tcp dport 987 drop'
+    );
     expect(firewall).not.toContain("delete table ip dust-gcs-token");
   });
 
@@ -394,7 +457,7 @@ describe("sandbox image registry", () => {
     expect(runCommands).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.41/dsbx-linux-x86_64"
+          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.43/dsbx-linux-x86_64"
         ),
         expect.stringContaining(
           "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx"
@@ -622,16 +685,31 @@ describe("sandbox image registry", () => {
     }
   });
 
-  test("keeps the nftables UID filter aligned with untrusted sandbox UIDs", () => {
+  test("keeps the nftables UID filter aligned with controlled sandbox UIDs", () => {
     const copyOperations = getCopyOperations(getDustBaseImageOperations());
     const nftablesScript = getCopiedContent(
       copyOperations,
       "/etc/dust/egress-nftables.sh"
     );
-    const proxiedUidMatch = /^PROXIED_UID=(\d+)$/m.exec(nftablesScript);
-    const configuredUids = proxiedUidMatch ? [Number(proxiedUidMatch[1])] : [];
+    const tokenFirewallScript = getCopiedContent(
+      copyOperations,
+      "/usr/local/bin/dust-gcs-token-firewall.sh"
+    );
+    const controlledUidsMatch = /^CONTROLLED_UIDS="([\d ]+)"$/m.exec(
+      nftablesScript
+    );
+    const tokenFirewallUidsMatch = /^CONTROLLED_UIDS="([\d ]+)"$/m.exec(
+      tokenFirewallScript
+    );
+    const configuredUids = controlledUidsMatch
+      ? controlledUidsMatch[1].split(" ").map(Number)
+      : [];
+    const tokenFirewallUids = tokenFirewallUidsMatch
+      ? tokenFirewallUidsMatch[1].split(" ").map(Number)
+      : [];
 
-    expect(configuredUids).toEqual([...SANDBOX_UNTRUSTED_UIDS]);
+    expect(configuredUids).toEqual([...SANDBOX_EGRESS_CONTROLLED_UIDS]);
+    expect(tokenFirewallUids).toEqual([...SANDBOX_EGRESS_CONTROLLED_UIDS]);
   });
 
   test("installs trust env defaults and the runtime trust helper", () => {

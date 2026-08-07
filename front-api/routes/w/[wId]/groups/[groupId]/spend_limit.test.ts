@@ -100,7 +100,7 @@ beforeEach(() => {
 
 describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
   describe("auth", () => {
-    it("returns 403 when caller is not an admin", async () => {
+    it("returns 403 when caller is neither an admin nor a manager", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
       const group = await makeProvisionedGroup(workspace);
       await createPrivateApiMockRequest({
@@ -118,10 +118,10 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
       expect((await response.json()).error.type).toBe("workspace_auth_error");
     });
 
-    it("returns 403 for a manager (admin-only write)", async () => {
+    it("lets a manager set the cap on a provisioned group", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
       const group = await makeProvisionedGroup(workspace);
-      await createPrivateApiMockRequest({
+      const { auth } = await createPrivateApiMockRequest({
         method: "PUT",
         role: "manager",
         workspace,
@@ -132,8 +132,13 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
         awuCredits: 1500,
       });
 
-      expect(response.status).toBe(403);
-      expect((await response.json()).error.type).toBe("workspace_auth_error");
+      expect(response.status).toBe(200);
+
+      const reloaded = await GroupResource.fetchById(auth, group.sId);
+      if (reloaded.isErr()) {
+        throw reloaded.error;
+      }
+      expect(reloaded.value.poolCapAwuCredits).toBe(1500);
     });
   });
 

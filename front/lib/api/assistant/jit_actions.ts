@@ -1,6 +1,9 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import {
+  isContentNodeAttachmentType,
+  isFileAttachmentType,
+} from "@app/lib/api/assistant/conversation/attachments";
 import { getAskUserQuestionServer } from "@app/lib/api/assistant/jit/ask_user_question";
 import { getCommonUtilitiesServer } from "@app/lib/api/assistant/jit/common_utilities";
 import {
@@ -14,10 +17,12 @@ import { getSchedulesManagementServer } from "@app/lib/api/assistant/jit/schedul
 import { getSkillManagementServer } from "@app/lib/api/assistant/jit/skills";
 import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 const ALWAYS_PREFETCHED_MCP_SERVERS: AutoInternalMCPServerNameType[] = [
@@ -27,6 +32,41 @@ const ALWAYS_PREFETCHED_MCP_SERVERS: AutoInternalMCPServerNameType[] = [
   "schedules_management",
   "skill_management",
 ];
+
+type ConditionalMCPServerContext = {
+  attachments: ConversationAttachmentType[];
+  hasSandboxTools: boolean;
+};
+
+const CONDITIONAL_MCP_SERVER_NAMES = [
+  "conversation_files",
+  "query_tables_v2",
+  "search",
+] as const;
+
+type ConditionalMCPServerName = (typeof CONDITIONAL_MCP_SERVER_NAMES)[number];
+
+/**
+ * Eligibility for attachment-dependent JIT servers. Decided once in getJITServers;
+ * getConditionalJITServers only materializes servers whose views were prefetched.
+ */
+const CONDITIONAL_MCP_SERVERS: Record<
+  ConditionalMCPServerName,
+  (ctx: ConditionalMCPServerContext) => boolean
+> = {
+  // Note there is an additional filtering on the tools (see: front/lib/api/actions/servers/conversation_files/index.ts)
+  conversation_files: ({ attachments }) => attachments.length > 0,
+  // Queryable content nodes always use query_tables. File attachments only do when Computer
+  // is unavailable (otherwise the sandbox handles tabular files).
+  query_tables_v2: ({ attachments, hasSandboxTools }) =>
+    attachments.some((a) => isContentNodeAttachmentType(a) && a.isQueryable) ||
+    (!hasSandboxTools &&
+      attachments.some((a) => isFileAttachmentType(a) && a.isQueryable)),
+  search: ({ attachments }) =>
+    attachments.some(
+      (a) => isContentNodeAttachmentType(a) && isSearchableFolder(a)
+    ),
+};
 
 /**
  * Servers whose tool specifications are mostly always added or never added.
@@ -82,6 +122,7 @@ async function getUnconditionalJITServers(
 
 /**
  * Servers whose presence depends heavily on the conversation state and may change mid-conversation.
+ * Prefetch via CONDITIONAL_MCP_SERVERS is the source of truth for which of these to build.
  */
 async function getConditionalJITServers(
   auth: Authenticator,
@@ -90,6 +131,7 @@ async function getConditionalJITServers(
     conversation,
     attachments,
     autoInternalViews,
+    hasSandboxTools,
   }: {
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
     conversation: ConversationWithoutContentType;
@@ -98,6 +140,7 @@ async function getConditionalJITServers(
       AutoInternalMCPServerNameType,
       MCPServerViewResource
     >;
+    hasSandboxTools: boolean;
   }
 ): Promise<ServerSideMCPServerConfigurationType[]> {
   const servers: (ServerSideMCPServerConfigurationType | null)[] = [];
@@ -119,33 +162,27 @@ async function getConditionalJITServers(
   );
   servers.push(schedulesManagementServer);
 
-  // Add tools to manipulate conversation files, if any.
-
-  if (attachments.length === 0) {
-    return removeNulls(servers);
+  if (autoInternalViews.has("conversation_files")) {
+    servers.push(await getConversationFilesServer(auth, autoInternalViews));
   }
 
-  const conversationFilesServer = await getConversationFilesServer(
-    auth,
-    attachments,
-    autoInternalViews
-  );
-  servers.push(conversationFilesServer);
+  if (autoInternalViews.has("query_tables_v2")) {
+    servers.push(
+      await getQueryTablesServer(
+        auth,
+        conversation,
+        attachments,
+        autoInternalViews,
+        { hasSandboxTools }
+      )
+    );
+  }
 
-  const queryTablesServer = await getQueryTablesServer(
-    auth,
-    conversation,
-    attachments,
-    autoInternalViews
-  );
-  servers.push(queryTablesServer);
-
-  const folderSearchServers = await getFolderSearchServers(
-    auth,
-    attachments,
-    autoInternalViews
-  );
-  servers.push(...folderSearchServers);
+  if (autoInternalViews.has("search")) {
+    servers.push(
+      ...(await getFolderSearchServers(auth, attachments, autoInternalViews))
+    );
+  }
 
   return removeNulls(servers);
 }
@@ -162,21 +199,20 @@ export async function getJITServers(
     attachments: ConversationAttachmentType[];
   }
 ): Promise<ServerSideMCPServerConfigurationType[]> {
+  const featureFlags = await getFeatureFlags(auth);
+  const hasSandboxTools = isComputerFeatureEnabled(featureFlags);
+
   const mcpServersToFetch = new Set<AutoInternalMCPServerNameType>(
     ALWAYS_PREFETCHED_MCP_SERVERS
   );
 
-  if (attachments.length > 0) {
-    mcpServersToFetch.add("conversation_files");
-    if (attachments.some((a) => a.isQueryable)) {
-      mcpServersToFetch.add("query_tables_v2");
-    }
-    if (
-      attachments.some(
-        (a) => isContentNodeAttachmentType(a) && isSearchableFolder(a)
-      )
-    ) {
-      mcpServersToFetch.add("search");
+  const conditionalContext: ConditionalMCPServerContext = {
+    attachments,
+    hasSandboxTools,
+  };
+  for (const name of CONDITIONAL_MCP_SERVER_NAMES) {
+    if (CONDITIONAL_MCP_SERVERS[name](conditionalContext)) {
+      mcpServersToFetch.add(name);
     }
   }
 
@@ -197,6 +233,7 @@ export async function getJITServers(
       conversation,
       attachments,
       autoInternalViews,
+      hasSandboxTools,
     }),
   ]);
 

@@ -1,20 +1,47 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { ActivationRecommendationStatus } from "@app/lib/models/activation/activation_recommendation";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 
 const NEXT_STEPS_WINDOW_DAYS = 30;
-const NEXT_STEPS_LIMIT = 5;
+const SUGGESTED_LIMIT = 5;
+const EXECUTED_LIMIT = 20;
 
 export interface ActivationRecommendationForUserType {
   sId: string;
   title: string;
   content: string;
+  body: string | null;
+  steps: string[] | null;
+  ctaLabel: string | null;
+  sourceIcon: string | null;
+  sourceLabel: string | null;
   conversationId: string | null;
+  createdAt: number;
 }
 
 export interface GetActivationRecommendationsResponseBody {
   recommendations: ActivationRecommendationForUserType[];
+}
+
+export interface GetActivationPodResponseBody {
+  podId: string | null;
+}
+
+export async function getActivationPodId(
+  auth: Authenticator
+): Promise<string | null> {
+  const activationPod = await ActivationPodResource.fetchByUser(auth);
+  if (!activationPod) {
+    return null;
+  }
+
+  const [space] = await SpaceResource.fetchByModelIds(auth, [
+    activationPod.spaceId,
+  ]);
+
+  return space?.sId ?? null;
 }
 
 export interface UpdateActivationRecommendationResponseBody {
@@ -23,7 +50,10 @@ export interface UpdateActivationRecommendationResponseBody {
 
 export async function listActivationRecommendationsForUser(
   auth: Authenticator,
-  { podId }: { podId?: string } = {}
+  {
+    podId,
+    status = "suggested",
+  }: { podId?: string; status?: ActivationRecommendationStatus } = {}
 ): Promise<ActivationRecommendationForUserType[]> {
   let spaceModelId: number | undefined;
   if (podId !== undefined) {
@@ -34,10 +64,11 @@ export async function listActivationRecommendationsForUser(
     spaceModelId = space.id;
   }
 
-  const recs = await ActivationRecommendationResource.listSuggestedByUser(
+  const recs = await ActivationRecommendationResource.listByUserAndStatus(
     auth,
     {
-      limit: NEXT_STEPS_LIMIT,
+      status,
+      limit: status === "executed" ? EXECUTED_LIMIT : SUGGESTED_LIMIT,
       sinceDaysAgo: NEXT_STEPS_WINDOW_DAYS,
       spaceModelId,
     }
@@ -47,7 +78,13 @@ export async function listActivationRecommendationsForUser(
     sId: resource.sId,
     title: resource.title,
     content: resource.content,
+    body: resource.body,
+    steps: resource.steps,
+    ctaLabel: resource.ctaLabel,
+    sourceIcon: resource.sourceIcon,
+    sourceLabel: resource.sourceLabel,
     conversationId: conversationSId,
+    createdAt: resource.createdAt.getTime(),
   }));
 }
 
@@ -65,7 +102,11 @@ export async function updateActivationRecommendationForUser(
     auth,
     recommendationId
   );
-  if (!rec) {
+  // fetchById only scopes to the workspace, so also enforce ownership: a
+  // recommendation may only be updated by the user it belongs to. Return
+  // "not_found" rather than a distinct error so we don't leak the existence of
+  // another user's recommendation.
+  if (!rec || rec.userId !== auth.getNonNullableUser().id) {
     return "not_found";
   }
 

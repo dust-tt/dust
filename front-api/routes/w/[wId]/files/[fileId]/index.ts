@@ -1,10 +1,4 @@
-import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
-import { isSandboxRawDelimitedConversationFile } from "@app/lib/api/files/sandbox_raw";
-import {
-  isFileTypeUpsertableForUseCase,
-  processAndUpsertToDataSource,
-} from "@app/lib/api/files/upsert";
 import { addFileToProject } from "@app/lib/api/projects/context";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -409,74 +403,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  // For files with useCase "conversation" that support upsert, directly add
-  // them to the data source.
-  if (
-    file.useCase === "conversation" &&
-    !isSandboxRawDelimitedConversationFile(file) &&
-    isFileTypeUpsertableForUseCase(file)
-  ) {
-    const jitDataSource = await getOrCreateConversationDataSourceFromFile(
-      auth,
-      file
-    );
-    if (jitDataSource.isErr()) {
-      logger.warn({
-        fileModelId: file.id,
-        workspaceId: auth.workspace()?.sId,
-        contentType: file.contentType,
-        useCase: file.useCase,
-        useCaseMetadata: file.useCaseMetadata,
-        message: "Failed to get or create JIT data source.",
-        error: jitDataSource.error,
-      });
-    } else {
-      const rUpsert = await processAndUpsertToDataSource(
-        auth,
-        jitDataSource.value,
-        { file }
-      );
-
-      if (rUpsert.isErr()) {
-        // Invalid CSV content is a user error (e.g. unsupported encoding); surface the
-        // actionable message instead of a generic 500.
-        if (rUpsert.error.code === "invalid_csv_content") {
-          logger.warn({
-            fileModelId: file.id,
-            workspaceId: auth.workspace()?.sId,
-            contentType: file.contentType,
-            useCase: file.useCase,
-            useCaseMetadata: file.useCaseMetadata,
-            message: "Invalid CSV content on file upsert.",
-            error: rUpsert.error,
-          });
-          return apiError(ctx, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: rUpsert.error.message,
-            },
-          });
-        }
-        logger.error({
-          fileModelId: file.id,
-          workspaceId: auth.workspace()?.sId,
-          contentType: file.contentType,
-          useCase: file.useCase,
-          useCaseMetadata: file.useCaseMetadata,
-          message: "Failed to upsert the file.",
-          error: rUpsert.error,
-        });
-        return apiError(ctx, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to upsert the file.",
-          },
-        });
-      }
-    }
-  } else if (file.useCase === "project_context" && space) {
+  if (file.useCase === "project_context" && space) {
     const addFileToProjectRes = await addFileToProject(auth, {
       file,
       space,

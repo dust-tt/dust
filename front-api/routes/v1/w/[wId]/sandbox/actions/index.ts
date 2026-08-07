@@ -1,4 +1,5 @@
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
@@ -31,13 +32,23 @@ app.use(
   sandboxAuth({ allowedTokenKinds: ["action", "function_invocation"] })
 );
 
+// Servers the sandbox must never see: `sandbox` is the server that runs the sandbox itself, and
+// the file system the `files` server exposes is mounted in the sandbox under `/files`, so direct
+// file operations always beat a round-trip through the tool.
+const SANDBOX_HIDDEN_SERVER_NAMES: string[] = [
+  SANDBOX_TOOL_NAME,
+  FILES_SERVER_NAME,
+];
+
 // Response shaping shared by both token kinds: `?server=` name filtering and `?light=true`
 // inputSchema stripping.
 function filterServerViews(
   views: MCPServerViewType[],
   { server, light }: { server?: string; light?: string }
 ): MCPServerViewType[] {
-  let serverViews = views.filter((sv) => sv.server.name !== SANDBOX_TOOL_NAME);
+  let serverViews = views.filter(
+    (sv) => !SANDBOX_HIDDEN_SERVER_NAMES.includes(sv.server.name)
+  );
 
   if (server !== undefined) {
     serverViews = serverViews.filter((sv) => sv.server.name === server);

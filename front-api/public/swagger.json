@@ -6442,6 +6442,75 @@
         }
       }
     },
+    "/api/w/{wId}/assistant/conversations/{cId}/consumption": {
+      "get": {
+        "summary": "Get a conversation credit attribution",
+        "description": "Returns the latest stable credits billed for completed messages belonging directly to a conversation, plus an additive attribution reconciled exclusively through model input rows. In-progress messages are included after they reach a terminal state.",
+        "tags": [
+          "Private Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Conversation credit attribution",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "billedCredits",
+                    "details"
+                  ],
+                  "properties": {
+                    "billedCredits": {
+                      "type": "number",
+                      "description": "Latest stable credits billed across completed messages belonging directly to the conversation."
+                    },
+                    "details": {
+                      "type": "object",
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/PrivateConversationConsumptionDetails"
+                        }
+                      ],
+                      "nullable": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The workspace does not have access to consumption details"
+          },
+          "404": {
+            "description": "Conversation not found"
+          }
+        }
+      }
+    },
     "/api/w/{wId}/assistant/conversations/{cId}/content_fragment": {
       "post": {
         "summary": "Create a content fragment",
@@ -6998,7 +7067,7 @@
                     "details": {
                       "type": "object",
                       "nullable": true,
-                      "description": "Additive attribution reconciled to the bill through model input rows. Null when the active attribution version is unavailable or incomplete.",
+                      "description": "Additive attribution reconciled to the bill through model input rows, using the newest complete stored attribution version. Null when no stored version is complete.",
                       "required": [
                         "attributionVersion",
                         "agentWorkCredits",
@@ -7006,7 +7075,8 @@
                       ],
                       "properties": {
                         "attributionVersion": {
-                          "type": "integer"
+                          "type": "integer",
+                          "description": "Attribution version used for this breakdown."
                         },
                         "agentWorkCredits": {
                           "type": "number",
@@ -9502,6 +9572,35 @@
                               "type": "string",
                               "nullable": true,
                               "description": "Scoped path to the frame file pinned as the Pod banner."
+                            },
+                            "frameTabs": {
+                              "type": "array",
+                              "description": "Frames promoted as custom Pod tabs.",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "path": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "icon": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            },
+                            "tabsOrder": {
+                              "type": "array",
+                              "description": "Interleaved system tab ids and frame paths before Settings.",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "isAdminControlled": {
+                              "type": "boolean",
+                              "description": "Whether workspace admins control membership and connected data for this Pod."
                             }
                           }
                         }
@@ -10337,6 +10436,144 @@
           }
         }
       },
+      "PrivateConversationConsumptionToolDetails": {
+        "type": "object",
+        "required": [
+          "label",
+          "internalMCPServerName",
+          "toolName",
+          "callCount",
+          "attributedCredits",
+          "directCredits",
+          "pending"
+        ],
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "internalMCPServerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "toolName": {
+            "type": "string"
+          },
+          "callCount": {
+            "type": "integer"
+          },
+          "attributedCredits": {
+            "type": "number",
+            "description": "Share of billed credits after reconciling exclusively through model input rows."
+          },
+          "directCredits": {
+            "type": "number"
+          },
+          "pending": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PrivateConversationConsumptionModelDetails": {
+        "type": "object",
+        "required": [
+          "providerId",
+          "modelId",
+          "displayName",
+          "attributedCredits"
+        ],
+        "properties": {
+          "providerId": {
+            "type": "string"
+          },
+          "modelId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "attributedCredits": {
+            "type": "number",
+            "description": "Model attribution after reconciling exclusively through its input rows."
+          }
+        }
+      },
+      "PrivateConversationConsumptionAgentDetails": {
+        "type": "object",
+        "required": [
+          "agentId",
+          "name",
+          "pictureUrl",
+          "billedCredits",
+          "agentWorkCredits",
+          "tools",
+          "models"
+        ],
+        "properties": {
+          "agentId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "pictureUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "billedCredits": {
+            "type": "number"
+          },
+          "agentWorkCredits": {
+            "type": "number",
+            "description": "Agent work after assigning billing reconciliation exclusively to model input rows."
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrivateConversationConsumptionToolDetails"
+            }
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrivateConversationConsumptionModelDetails"
+            }
+          }
+        }
+      },
+      "PrivateConversationConsumptionDetails": {
+        "type": "object",
+        "description": "Additive attribution reconciled to the authoritative bill exclusively through model input rows. Each message uses its newest complete stored attribution version. Null when any billed message has no complete stored attribution.",
+        "required": [
+          "agentWorkCredits",
+          "tools",
+          "models",
+          "agents"
+        ],
+        "properties": {
+          "agentWorkCredits": {
+            "type": "number",
+            "description": "Agent work after assigning billing reconciliation exclusively to model input rows."
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrivateConversationConsumptionToolDetails"
+            }
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrivateConversationConsumptionModelDetails"
+            }
+          },
+          "agents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrivateConversationConsumptionAgentDetails"
+            }
+          }
+        }
+      },
       "PrivateConversation": {
         "type": "object",
         "description": "Conversation without content, used in list responses.",
@@ -10812,7 +11049,7 @@
           "subAgentCostCredits": {
             "type": "number",
             "nullable": true,
-            "description": "Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise."
+            "description": "Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches. Null otherwise."
           },
           "resolvedModel": {
             "type": "object",
@@ -11000,7 +11237,7 @@
           "subAgentCostCredits": {
             "type": "number",
             "nullable": true,
-            "description": "Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches; null otherwise."
+            "description": "Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned recursively by this message. Computed only on single-message fetches. Null otherwise."
           },
           "resolvedModel": {
             "type": "object",
@@ -11196,10 +11433,6 @@
             "type": "string",
             "nullable": true,
             "description": "Path of the plain-text sibling of this file inside the sandbox conversation mount (e.g. an audio transcript), when it has one."
-          },
-          "skipDataSourceIndexing": {
-            "type": "boolean",
-            "description": "Whether data source indexing was skipped for this file."
           },
           "skipFileProcessing": {
             "type": "boolean",
@@ -11711,6 +11944,43 @@
                 "type": "string",
                 "nullable": true,
                 "description": "Scoped path to the frame file pinned as the Pod banner (e.g. project/banner.html)."
+              },
+              "frameTabs": {
+                "type": "array",
+                "description": "Frames promoted as custom Pod tabs (shared for all members).",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "path",
+                    "title",
+                    "icon"
+                  ],
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "description": "Canonical scoped path to the frame file in the Pod filesystem."
+                    },
+                    "title": {
+                      "type": "string",
+                      "description": "Display title for the tab."
+                    },
+                    "icon": {
+                      "type": "string",
+                      "description": "Action icon name (e.g. ActionDashboardIcon)."
+                    }
+                  }
+                }
+              },
+              "tabsOrder": {
+                "type": "array",
+                "description": "Interleaved system tab ids and frame paths before Settings.",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "isAdminControlled": {
+                "type": "boolean",
+                "description": "Whether workspace admins control membership and connected data for this Pod."
               }
             }
           }
@@ -14051,10 +14321,6 @@
             "nullable": true,
             "description": "Path of the plain-text sibling of this file inside the sandbox conversation mount (e.g. an audio transcript), when it has one.",
             "example": "conversation/voice.processed.txt"
-          },
-          "skipDataSourceIndexing": {
-            "type": "boolean",
-            "description": "Whether data source indexing was skipped for this file."
           },
           "skipFileProcessing": {
             "type": "boolean",

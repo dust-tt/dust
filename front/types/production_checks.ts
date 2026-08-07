@@ -1,4 +1,4 @@
-import type pino from "pino";
+import type { Logger } from "@app/logger/logger";
 import { z } from "zod";
 
 // Action links for check results
@@ -20,7 +20,7 @@ export type CheckSuccessPayload = Record<string, unknown>;
 
 export type CheckFunction = (
   checkName: string,
-  logger: pino.Logger,
+  logger: Logger,
   reportSuccess: (payload?: CheckSuccessPayload) => void,
   reportFailure: (payload: CheckFailurePayload, message: string) => void,
   heartbeat: () => void

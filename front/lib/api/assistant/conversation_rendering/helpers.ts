@@ -9,10 +9,8 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
 import { getEnableSkillIdFromOutputBlock } from "@app/lib/api/actions/servers/skill_management/rendering";
-import {
-  type EnabledSkill,
-  renderEnabledSkillUserMessageFromInstructions,
-} from "@app/lib/api/assistant/skills_rendering";
+import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
+import { renderEnabledSkillUserMessageFromInstructions } from "@app/lib/api/assistant/skills_rendering";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { getConversationFileMountSignedUrl } from "@app/lib/api/files/gcs_mount/files";
 import type { Authenticator } from "@app/lib/auth";
@@ -144,6 +142,27 @@ export type Step = {
   }[];
 };
 
+function formatToolInputValueForModel(value: unknown): string {
+  return JSON.stringify(value);
+}
+
+function renderUserEditedInputsNote(
+  action: AgentMCPActionWithOutputType
+): string | null {
+  if (!action.userEditedInputs) {
+    return null;
+  }
+
+  const editedInputLines = Object.entries(action.userEditedInputs)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([key, value]) => `- ${key}: ${formatToolInputValueForModel(value)}`);
+  if (editedInputLines.length === 0) {
+    return null;
+  }
+
+  return `The tool was executed with these user-edited input values:\n${editedInputLines.join("\n")}.`;
+}
+
 function renderEnabledSkillMessagesForAction(
   action: AgentMCPActionWithOutputType,
   {
@@ -198,6 +217,10 @@ async function renderActionForMultiActionsModel(
     action.output?.map(rewriteContentForModel) ?? []
   );
 
+  // When the user edited the tool inputs before approving, the result is prepended with a note so
+  // the model knows which input values the tool actually ran with.
+  const editedInputsNote = renderUserEditedInputsNote(action);
+
   // Vision-capable models receive images as a structured payload with the text interleaved. This is
   // the one case that needs async signed URLs, so it stays here rather than in the shared text view.
   // Every other case delegates to renderToolResultForModelAsText below.
@@ -205,7 +228,9 @@ async function renderActionForMultiActionsModel(
     model.supportsVision &&
     outputItems.some((item) => isModelVisionImage(item))
   ) {
-    const contentArray: Content[] = [];
+    const contentArray: Content[] = editedInputsNote
+      ? [{ type: "text", text: editedInputsNote }]
+      : [];
     for (const item of outputItems) {
       if (isTextContent(item)) {
         contentArray.push({ type: "text", text: item.text });
@@ -246,11 +271,15 @@ async function renderActionForMultiActionsModel(
     };
   }
 
+  const resultText = renderToolResultForModelAsText(action);
+
   return {
     role: "function" as const,
     name: action.functionCallName,
     function_call_id: action.functionCallId,
-    content: renderToolResultForModelAsText(action),
+    content: editedInputsNote
+      ? `${editedInputsNote}\n${resultText}`
+      : resultText,
   };
 }
 

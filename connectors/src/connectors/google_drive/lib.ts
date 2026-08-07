@@ -27,6 +27,7 @@ import {
   GoogleDriveFoldersModel,
   GoogleDriveSheetModel,
 } from "@connectors/lib/models/google_drive";
+import type { Logger } from "@connectors/logger/logger";
 import { getLoggerArgs } from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
@@ -44,7 +45,6 @@ import {
 } from "@connectors/types";
 import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
 import { removeNulls } from "@dust-tt/client";
-import type { Logger } from "pino";
 import type { InferAttributes, WhereOptions } from "sequelize";
 
 const SHEET_PARENT_UPDATES_CONCURRENCY = 8;

@@ -1,8 +1,6 @@
 import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
-import {
-  getInternalMCPServerNameFromSId,
-  type InternalMCPServerNameType,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isToolGeneratedFilePath } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
@@ -445,6 +443,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       )
         ? mcpServerViewMap.get(action.toolConfiguration.mcpServerViewId)
         : null;
+      const editableArguments = isLightServerSideMCPToolConfiguration(
+        action.toolConfiguration
+      )
+        ? action.toolConfiguration.editableArguments
+        : undefined;
 
       const authorizationInfo = mcpServerView?.getAuthorization() ?? null;
 
@@ -622,6 +625,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         blockedActionsList.push({
           ...baseActionParams,
           status: action.status,
+          editableArguments,
           metadata: {
             ...baseActionParams.metadata,
           },
@@ -884,8 +888,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         updatedAt: file.updatedAt.getTime(),
         isInProjectContext: file.useCase === "project_context",
         hidden: file.useCaseMetadata?.hideFromUser ?? false,
-        skipDataSourceIndexing:
-          file.useCaseMetadata?.skipDataSourceIndexing ?? false,
         creator,
         rank: agentMessageIdToRank.get(agentMessage.id) ?? 0,
       });
@@ -1401,8 +1403,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
                     updatedAt: file.updatedAt.getTime(),
                     isInProjectContext: file.useCase === "project_context",
                     hidden: file.useCaseMetadata?.hideFromUser ?? false,
-                    skipDataSourceIndexing:
-                      file.useCaseMetadata?.skipDataSourceIndexing ?? false,
                   };
                 }
 
@@ -1471,6 +1471,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       toolName,
       mcpServerId,
       params: this.augmentedInputs,
+      userEditedInputs: this.userEditedInputs,
       status: this.status,
       step: this.stepContent.step,
       executionDurationMs: this.executionDurationMs,
@@ -1487,12 +1488,16 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     internalMCPServerName: InternalMCPServerNameType | null,
     toolName: string
   ): ToolDisplayLabels | null {
+    const inputs = {
+      ...this.augmentedInputs,
+      ...(this.userEditedInputs ?? {}),
+    };
     return (
       getToolDisplayLabels({
         internalMCPServerName,
         mcpServerName: this.toolConfiguration.mcpServerName,
         toolName,
-        inputs: this.augmentedInputs,
+        inputs,
       }) ??
       this.toolConfiguration.displayLabels ??
       null
@@ -1592,6 +1597,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   ): Promise<[affectedCount: number]> {
     return this.update({
       stepContext,
+    });
+  }
+
+  async updateUserEditedInputs(
+    userEditedInputs: Record<string, unknown> | null
+  ): Promise<[affectedCount: number]> {
+    return this.update({
+      userEditedInputs,
     });
   }
 

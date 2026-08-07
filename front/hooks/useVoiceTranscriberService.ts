@@ -1,13 +1,15 @@
 /// <reference types="chrome" />
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type {
+  VoiceTranscriberService,
+  VoiceTranscriberStatus,
+} from "@app/hooks/utils/voice";
 import {
   hasWebkitAudioContext,
   quackingVoiceTranscriptService,
   startLevelMeteringInterval,
   useElapsedSeconds,
-  type VoiceTranscriberService,
-  type VoiceTranscriberStatus,
 } from "@app/hooks/utils/voice";
 import { clientFetch } from "@app/lib/egress/client";
 import {

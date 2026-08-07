@@ -1,10 +1,10 @@
 import type { Client } from "@app/lib/model_constructors/client";
 import type { GoogleAiStudioInputConfig } from "@app/lib/model_constructors/providers/google_ai_studio/inputConfig";
+import type { ContentBlockConverters } from "@app/lib/model_constructors/sdk/google_genai/converters/input/utils";
 import {
   assistantReasoningMessageToPart,
   assistantTextMessageToPart,
   assistantToolCallRequestToPart,
-  type ContentBlockConverters,
   conversationToContents,
   effortToThinkingConfig,
   forceToolNameToToolConfig,

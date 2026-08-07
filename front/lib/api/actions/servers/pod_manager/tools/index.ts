@@ -6,10 +6,10 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import type { ToolContext } from "@app/lib/actions/types";
 import {
   isAgentLoopRunContext,
   isSandboxFunctionRunContext,
-  type ToolContext,
 } from "@app/lib/actions/types";
 import {
   FILES_LIST_ACTION_NAME,
@@ -76,10 +76,8 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
-import {
-  isUserMessageType,
-  type UserMessageOrigin,
-} from "@app/types/assistant/conversation";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import { isUserMessageType } from "@app/types/assistant/conversation";
 import { extractDataSourceIdFromNodeId } from "@app/types/core/content_node";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -1240,8 +1238,6 @@ export function createProjectManagerTools(
         // Get origin and timezone from the current conversation
         let origin: UserMessageOrigin = "web";
         let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        // Sub-conversations created on behalf of an agent are nested one level below their parent
-        let parentConversationDepth = 0;
         let originMessageId: string | null = null;
 
         if (isAgentLoopRunContext(toolContext?.runContext)) {
@@ -1252,7 +1248,6 @@ export function createProjectManagerTools(
             origin = userMessage.context.origin ?? origin;
             timezone = userMessage.context.timezone ?? timezone;
           }
-          parentConversationDepth = toolContext.runContext.conversation.depth;
           originMessageId = toolContext.runContext.agentMessage.sId;
         }
         if (isSandboxFunctionRunContext(toolContext?.runContext)) {
@@ -1288,12 +1283,10 @@ export function createProjectManagerTools(
           mentions = [{ configurationId: matchedAgentId }];
         }
 
-        // Create conversation in the project space, nested under the parent so it
-        // stays hidden from the pod's conversation list and notifications.
         const conversationResource = await createConversation(auth, {
           title: params.title,
           visibility: "unlisted",
-          depth: parentConversationDepth + 1,
+          depth: 0,
           spaceId: pod.id,
         });
 
@@ -1520,17 +1513,21 @@ export function createProjectManagerTools(
         const user = auth.user();
         const owner = auth.getNonNullableWorkspace();
 
-        const conversationId =
-          params.conversationId ??
-          (isAgentLoopRunContext(toolContext?.runContext)
-            ? toolContext.runContext.conversation.sId
-            : null);
+        const conversationId = params.conversationId;
 
-        if (!conversationId) {
+        const currentConversationId = isAgentLoopRunContext(
+          toolContext?.runContext
+        )
+          ? toolContext.runContext.conversation.sId
+          : null;
+
+        if (conversationId === currentConversationId) {
           return new Err(
             new MCPError(
-              "No conversationId provided and no conversation in agent context; pass conversationId explicitly.",
-              { tracked: false }
+              "ConversationId cannot be the same as the current conversation",
+              {
+                tracked: false,
+              }
             )
           );
         }

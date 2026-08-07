@@ -128,7 +128,6 @@ async function createConversationForAgentConfiguration({
         title: `Webhook body (source id: ${webhookRequest.webhookSourceId}, date: ${new Date().toISOString()})`,
       },
       fileName: `webhook_body_${webhookRequest.webhookSourceId}_${Date.now()}.json`,
-      skipDataSourceIndexing: true,
     });
 
     if (contentFragmentRes.isErr()) {
@@ -188,41 +187,6 @@ async function createConversationForAgentConfiguration({
   }
 
   return new Ok(newConversation.toJSON());
-}
-
-export async function getTriggerActivity({
-  userId,
-  workspaceId,
-  triggerId,
-}: {
-  userId: string;
-  workspaceId: string;
-  triggerId: string;
-}) {
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    userId,
-    workspaceId
-  );
-  if (!auth.workspace() || !auth.user()) {
-    throw new TriggerNonRetryableError(
-      "Invalid authentication. Missing workspaceId or userId."
-    );
-  }
-
-  if (!auth.isUser()) {
-    throw new TriggerNonRetryableError(
-      "Invalid authentication. Missing user permissions."
-    );
-  }
-
-  const triggerResource = await TriggerResource.fetchById(auth, triggerId);
-  if (!triggerResource) {
-    throw new TriggerNonRetryableError(
-      `Trigger with ID ${triggerId} not found.`
-    );
-  }
-
-  return triggerResource.toJSON();
 }
 
 export async function runTriggeredAgentsActivity({
@@ -428,30 +392,6 @@ function buildWakeUpMessageContent(wakeUp: WakeUpType): string {
   return content;
 }
 
-export async function getWakeUpActivity({
-  workspaceId,
-  wakeUpId,
-}: {
-  workspaceId: string;
-  wakeUpId: string;
-}) {
-  const wakeUpAndAuthRes = await WakeUpResource.fetchWakeUpAndAuthenticatorById(
-    {
-      workspaceId,
-      wakeUpId,
-    }
-  );
-  if (wakeUpAndAuthRes.isErr()) {
-    logger.error(
-      { wakeUpId, workspaceId, error: normalizeError(wakeUpAndAuthRes.error) },
-      "Skipping wake-up: workspace or wake-up not found."
-    );
-    return;
-  }
-
-  return wakeUpAndAuthRes.value.wakeUp.toJSON();
-}
-
 export async function runWakeUpActivity({
   workspaceId,
   wakeUpId,
@@ -477,7 +417,7 @@ export async function runWakeUpActivity({
 
   if (wakeUp.status !== "scheduled") {
     logger.info(
-      { status: wakeUp.status, wakeUpId, workspaceId },
+      { wakeUpStatus: wakeUp.status, wakeUpId, workspaceId },
       "Skipping wake-up: wake-up is not scheduled."
     );
     return;
@@ -488,7 +428,7 @@ export async function runWakeUpActivity({
   ]);
   if (!c) {
     logger.info(
-      { status: wakeUp.status, wakeUpId, workspaceId },
+      { wakeUpStatus: wakeUp.status, wakeUpId, workspaceId },
       "Cancelling wake-up: conversation not found."
     );
     await cancelWakeUpAndCleanupSchedule(auth, wakeUp);
@@ -502,7 +442,7 @@ export async function runWakeUpActivity({
   if (!conversationResource) {
     logger.info(
       {
-        status: wakeUp.status,
+        wakeUpStatus: wakeUp.status,
         wakeUpId,
         workspaceId,
         error: "Conversation not found",

@@ -10,14 +10,6 @@ import { honoApp } from "@front-api/app";
 import { PassThrough } from "stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// devModeConstants reads localStorage at module load. jsdom does not always
-// have localStorage initialized when mock factories evaluate, which crashes
-// tests whose mocked libs transitively import AuthContext. Stub it here.
-vi.mock("@app/components/dev/devModeConstants", () => ({
-  DEV_MODE_STORAGE_KEY: "dust_dev_mode",
-  DEV_MODE_ACTIVE: false,
-}));
-
 const { mockGetFileContentType, mockCreateReadStream } = vi.hoisted(() => ({
   mockGetFileContentType: vi.fn(),
   mockCreateReadStream: vi.fn(),

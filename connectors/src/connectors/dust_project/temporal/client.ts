@@ -1,7 +1,10 @@
 import { QUEUE_NAME } from "@connectors/connectors/dust_project/temporal/config";
+import { dustProjectSyncSignal } from "@connectors/connectors/dust_project/temporal/signals";
 import {
   dustProjectFullSyncWorkflow,
   dustProjectFullSyncWorkflowId,
+  dustProjectIncrementalSyncNowWorkflow,
+  dustProjectIncrementalSyncNowWorkflowId,
   dustProjectIncrementalSyncWorkflow,
   dustProjectIncrementalSyncWorkflowId,
 } from "@connectors/connectors/dust_project/temporal/workflows";
@@ -71,10 +74,9 @@ export async function launchDustProjectIncrementalSyncWorkflow(
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const workflowId = dustProjectIncrementalSyncWorkflowId(connectorId);
 
-  // minuteOffset ensures jobs are distributed across the 10-minute intervals based on connector ID
-  // Run incremental sync every 10 minutes
-  const minuteOffset = connector.id % 10;
-  const cronSchedule = `${minuteOffset},${minuteOffset + 10},${minuteOffset + 20},${minuteOffset + 30},${minuteOffset + 40},${minuteOffset + 50} * * * *`;
+  // Spread hourly jobs across the hour by connector ID.
+  const minuteOffset = connector.id % 60;
+  const cronSchedule = `${minuteOffset} * * * *`;
 
   try {
     // Check if workflow already exists
@@ -106,7 +108,6 @@ export async function launchDustProjectIncrementalSyncWorkflow(
       memo: {
         connectorId,
       },
-      // Every 30 minutes, with minute offset based on connector ID
       cronSchedule,
     });
     logger.info(
@@ -131,6 +132,68 @@ export async function launchDustProjectIncrementalSyncWorkflow(
   }
 }
 
+/**
+ * Signal (or start) a debounced on-demand incremental sync.
+ * Does not touch the hourly cron workflow.
+ */
+export async function signalDustProjectIncrementalSync(
+  connectorId: ModelId
+): Promise<Result<string, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+
+  if (connector.isPaused()) {
+    logger.info(
+      { connectorId },
+      "Skipping dust_project incremental sync signal because connector is paused."
+    );
+    return new Ok(dustProjectIncrementalSyncNowWorkflowId(connectorId));
+  }
+
+  const client = await getTemporalClient();
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const workflowId = dustProjectIncrementalSyncNowWorkflowId(connectorId);
+
+  try {
+    await client.workflow.signalWithStart(
+      dustProjectIncrementalSyncNowWorkflow,
+      {
+        args: [{ connectorId }],
+        taskQueue: QUEUE_NAME,
+        workflowId,
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
+        memo: {
+          connectorId,
+        },
+        signal: dustProjectSyncSignal,
+        signalArgs: undefined,
+      }
+    );
+    logger.info(
+      {
+        workspaceId: dataSourceConfig.workspaceId,
+        workflowId,
+      },
+      `Signaled dust_project incremental sync now workflow.`
+    );
+    return new Ok(workflowId);
+  } catch (e) {
+    logger.error(
+      {
+        workspaceId: dataSourceConfig.workspaceId,
+        workflowId,
+        error: e,
+      },
+      `Failed signaling dust_project incremental sync now workflow.`
+    );
+    return new Err(normalizeError(e));
+  }
+}
+
 export async function stopDustProjectSyncWorkflow({
   connectorId,
   stopReason,
@@ -144,31 +207,21 @@ export async function stopDustProjectSyncWorkflow({
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
 
-  const fullSyncWorkflowId = dustProjectFullSyncWorkflowId(connectorId);
-  const incrementalSyncWorkflowId =
-    dustProjectIncrementalSyncWorkflowId(connectorId);
+  const workflowIds = [
+    dustProjectFullSyncWorkflowId(connectorId),
+    dustProjectIncrementalSyncWorkflowId(connectorId),
+    dustProjectIncrementalSyncNowWorkflowId(connectorId),
+  ];
 
   try {
-    // Terminate full sync workflow if running
-    try {
-      const fullSyncHandle: WorkflowHandle<typeof dustProjectFullSyncWorkflow> =
-        client.workflow.getHandle(fullSyncWorkflowId);
-      await fullSyncHandle.terminate(stopReason);
-    } catch (e) {
-      if (!(e instanceof WorkflowNotFoundError)) {
-        throw e;
-      }
-    }
-
-    // Terminate incremental sync workflow if running
-    try {
-      const incrementalSyncHandle: WorkflowHandle<
-        typeof dustProjectIncrementalSyncWorkflow
-      > = client.workflow.getHandle(incrementalSyncWorkflowId);
-      await incrementalSyncHandle.terminate(stopReason);
-    } catch (e) {
-      if (!(e instanceof WorkflowNotFoundError)) {
-        throw e;
+    for (const workflowId of workflowIds) {
+      try {
+        const handle = client.workflow.getHandle(workflowId);
+        await handle.terminate(stopReason);
+      } catch (e) {
+        if (!(e instanceof WorkflowNotFoundError)) {
+          throw e;
+        }
       }
     }
 

@@ -5,7 +5,11 @@ import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManag
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
-import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
+import {
+  getDisplayNameForDataSource,
+  isDustProjectDataSource,
+  isManaged,
+} from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useKillSwitches } from "@app/lib/swr/kill";
@@ -119,8 +123,12 @@ export function EditSpaceManagedDataSourcesViews({
     [systemSpaceDataSourceViews, dataSourceView]
   );
 
+  // Exclude dust_project: it is Pod-owned (files/conversations), not selectable in the
+  // connections modal, and must survive connected-data selection updates.
   const filteredDataSourceViews = spaceDataSourceViews.filter(
-    (dsv) => !dataSourceView || dsv.sId === dataSourceView.sId
+    (dsv) =>
+      (!dataSourceView || dsv.sId === dataSourceView.sId) &&
+      !isDustProjectDataSource(dsv.dataSource)
   );
 
   const updateSpaceDataSourceViews = async (
@@ -130,6 +138,7 @@ export function EditSpaceManagedDataSourcesViews({
     // comparing the data source.  If so, delete it.
     const deletedViews = filteredDataSourceViews.filter(
       (dsv) =>
+        !isDustProjectDataSource(dsv.dataSource) &&
         !Object.values(selectionConfigurations).find(
           (sc) => sc.dataSourceView.dataSource.sId === dsv.dataSource.sId
         )

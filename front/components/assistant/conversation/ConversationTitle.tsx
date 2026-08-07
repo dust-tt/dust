@@ -8,18 +8,24 @@ import { getParentConversationTitleLabel } from "@app/components/assistant/conve
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversation } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useActivationPod } from "@app/lib/swr/activation";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
+import {
+  getConversationRoute,
+  getGetStartedRoute,
+  getPodRoute,
+} from "@app/lib/utils/router";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
+import type { BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
   ArrowLeft,
   Breadcrumbs,
-  type BreadcrumbsItem,
   Button,
   Chip,
+  CoinsStacked01,
   DotsHorizontal,
   Folder,
   GitBranch01,
@@ -34,6 +40,7 @@ const MOBILE_FORKED_TITLE_TRUNCATE_LENGTH = 35;
 export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const activeConversationId = useActiveConversationId();
   const { user } = useAuth();
+  const { hasFeature } = useFeatureFlags();
   const { togglePanel } = useConversationSidePanelContext();
   const { conversation } = useConversation({
     conversationId: activeConversationId,
@@ -42,6 +49,11 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const { spaceInfo } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId: conversation?.spaceId ?? null,
+  });
+  const hasActivationSkill = hasFeature("activation_skill");
+  const { activationPodId } = useActivationPod({
+    workspaceId: owner.sId,
+    disabled: !hasActivationSkill,
   });
   const isMobile = useIsMobile();
 
@@ -71,10 +83,13 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const breadcrumbItems: BreadcrumbsItem[] = [];
 
   if (spaceId && spaceInfo) {
+    const isActivationPod = spaceId === activationPodId;
     breadcrumbItems.push({
       icon: isMobile ? undefined : ArrowLeft,
-      label: spaceInfo.name,
-      href: getPodRoute(owner.sId, spaceId),
+      label: isActivationPod ? "Get started" : spaceInfo.name,
+      href: isActivationPod
+        ? getGetStartedRoute(owner.sId)
+        : getPodRoute(owner.sId, spaceId),
     });
   }
 
@@ -163,6 +178,15 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
           currentTitle={currentTitle}
         />
         <div className="flex items-center gap-2">
+          {hasFeature("conversation_consumption_details") && (
+            <Button
+              size="sm"
+              label={isMobile ? undefined : "Credit usage"}
+              icon={CoinsStacked01}
+              variant="ghost"
+              onClick={() => togglePanel({ type: "credits" })}
+            />
+          )}
           <Button
             size="sm"
             label={isMobile ? undefined : "Files"}

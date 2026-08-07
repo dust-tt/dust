@@ -1,9 +1,7 @@
 import { usePodLabel } from "@app/components/assistant/conversation/tool_validation/usePodLabel";
 import type { PodManagerUpdateMembersInput } from "@app/lib/api/actions/servers/pod_manager/types";
-import {
-  type MemberDisplayInfo,
-  useMemberDetails,
-} from "@app/lib/swr/assistants";
+import type { MemberDisplayInfo } from "@app/lib/swr/assistants";
+import { useMemberDetails } from "@app/lib/swr/assistants";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { Avatar, Chip, cn } from "@dust-tt/sparkle";
 import { useMemo } from "react";

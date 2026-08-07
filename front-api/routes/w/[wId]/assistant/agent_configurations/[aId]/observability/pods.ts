@@ -64,10 +64,10 @@ app.get(
       });
     }
 
-    const buckets = result.value;
-    const total = buckets.reduce((acc, b) => acc + b.count, 0);
+    const { buckets, otherPodsCount } = result.value;
+    const total = buckets.reduce((acc, b) => acc + b.count, 0) + otherPodsCount;
 
-    return ctx.json({ total, buckets });
+    return ctx.json({ total, buckets, otherPodsCount });
   }
 );
 

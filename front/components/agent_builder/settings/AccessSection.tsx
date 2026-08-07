@@ -1,6 +1,8 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
+import { useAgentRequestedSpaces } from "@app/components/agent_builder/hooks/useAgentRequestedSpaces";
+import { AgentBuilderAvailabilityMessage } from "@app/components/agent_builder/settings/AgentBuilderAvailabilityMessage";
 import { SlackSettingsSheet } from "@app/components/agent_builder/settings/SlackSettingsSheet";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
@@ -22,12 +24,14 @@ import React, { useState } from "react";
 import { useController } from "react-hook-form";
 
 interface AccessSectionProps {
+  initialRequestedSpaceIds?: string[];
   isEditorGateVisible: boolean;
   isAddingSelfAsEditor: boolean;
   onAddSelfAsEditor: () => void;
 }
 
 export function AccessSection({
+  initialRequestedSpaceIds,
   isEditorGateVisible,
   isAddingSelfAsEditor,
   onAddSelfAsEditor,
@@ -57,6 +61,9 @@ export function AccessSection({
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { owner } = useAgentBuilderContext();
   const { hasPermission } = useWorkspacePermissions();
+  const { nonGlobalSpacesWithRestrictions } = useAgentRequestedSpaces({
+    initialRequestedSpaceIds,
+  });
 
   const canPublishAgent = hasPermission("publish", "agent");
 
@@ -157,6 +164,11 @@ export function AccessSection({
           </>
         )}
       </div>
+      <AgentBuilderAvailabilityMessage
+        owner={owner}
+        restrictedSpaces={nonGlobalSpacesWithRestrictions}
+        scope={scope.value}
+      />
     </SettingSectionContainer>
   );
 }

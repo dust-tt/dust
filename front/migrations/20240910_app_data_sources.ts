@@ -1,5 +1,5 @@
 import * as fs from "fs";
-import type { Logger } from "pino";
+import type { Logger } from "@app/logger/logger";
 
 import { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";

@@ -44,16 +44,19 @@ import {
 } from "@app/lib/api/sandbox/image/profile";
 import { recordToolDuration } from "@app/lib/api/sandbox/instrumentation";
 import { ensureConversationSandboxReady } from "@app/lib/api/sandbox/lifecycle";
+import { resolvePodForRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import type { ExecResult } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
+import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import logger from "@app/logger/logger";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isDevelopment } from "@app/types/shared/env";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
-import { Err, Ok, type Result } from "@app/types/shared/result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 import { z } from "zod";
@@ -125,23 +128,40 @@ function safeJsonParse(value: string): unknown {
 // so we keep only allowlist denials for the agent and present them as a clean,
 // unambiguous line. Unrecognized lines are kept verbatim (fail open) so we
 // never silently swallow a real denial we don't understand.
-function filterAgentFacingDenyLogEntries(rawLines: string[]): string[] {
-  return rawLines.flatMap((line) => {
+//
+// Harness denials are hidden from the agent but still returned here so the
+// caller can log them: they are how we notice a request-policy check firing in
+// production, whether that is a real attack or legitimate traffic we broke.
+function partitionDenyLogEntries(rawLines: string[]): {
+  agentFacing: string[];
+  harnessDenials: { reason: string; domain: string | null }[];
+} {
+  const agentFacing: string[] = [];
+  const harnessDenials: { reason: string; domain: string | null }[] = [];
+
+  for (const line of rawLines) {
     const parsed = DenyLogLineSchema.safeParse(safeJsonParse(line));
     if (!parsed.success) {
-      return [line];
+      agentFacing.push(line);
+      continue;
     }
-    if (parsed.data.reason !== PROXY_ALLOWLIST_DENY_REASON) {
-      return [];
+
+    const { reason, domain, port } = parsed.data;
+    if (reason !== PROXY_ALLOWLIST_DENY_REASON) {
+      harnessDenials.push({ reason, domain: domain ?? null });
+      continue;
     }
-    const { domain, port } = parsed.data;
     if (!domain) {
-      return [line];
+      agentFacing.push(line);
+      continue;
     }
-    return [
-      `denied ${domain}${port ? `:${port}` : ""} (blocked by egress allowlist)`,
-    ];
-  });
+
+    agentFacing.push(
+      `denied ${domain}${port ? `:${port}` : ""} (blocked by egress allowlist)`
+    );
+  }
+
+  return { agentFacing, harnessDenials };
 }
 
 // Shannon entropy in bits/char. Uniform random characters approach
@@ -178,13 +198,42 @@ function isRedactionEligible(value: string): boolean {
 // remains the primary disclosure control.
 async function redactSandboxEnvVarsFromOutput(
   auth: Authenticator,
+  conversation: ConversationType,
   output: string
 ): Promise<Result<string, Error>> {
   // loadEnv is intentionally config-only. HTTPS secrets are injected as DSEC
   // placeholders and their real values should never be materialized here.
-  const envResult = await WorkspaceSandboxEnvVarResource.loadEnv(auth);
+  const envResult = await SandboxEnvVarResource.loadEnv(auth, {
+    kind: "workspace",
+    workspace: auth.getNonNullableWorkspace(),
+  });
   if (envResult.isErr()) {
     return envResult;
+  }
+
+  // A conversation inside a pod runs with the pod's env vars injected —
+  // redact those values too, resolving the pod through the same shared rule
+  // as the injection side.
+  const runtimeOwner = {
+    kind: "conversation" as const,
+    conversationId: conversation.sId,
+    spaceId: conversation.spaceId ?? null,
+  };
+  const redactionEnv = { ...envResult.value };
+  const podResult = await resolvePodForRuntimeOwner(auth, runtimeOwner);
+  if (podResult.isErr()) {
+    return podResult;
+  }
+  if (podResult.value) {
+    const podEnvResult = await SandboxEnvVarResource.loadEnv(
+      auth,
+      { kind: "pod", pod: podResult.value },
+      runtimeOwner
+    );
+    if (podEnvResult.isErr()) {
+      return podEnvResult;
+    }
+    Object.assign(redactionEnv, podEnvResult.value);
   }
 
   const workspaceId = auth.getNonNullableWorkspace().sId;
@@ -194,7 +243,7 @@ async function redactSandboxEnvVarsFromOutput(
   // O(env_count × output_size): split/join scans the full output once per
   // eligible env var. Acceptable at current bounds (env_count ≤ 50 per
   // MAX_VARS_PER_WORKSPACE, output capped upstream).
-  for (const [name, value] of Object.entries(envResult.value)) {
+  for (const [name, value] of Object.entries(redactionEnv)) {
     if (!isRedactionEligible(value)) {
       continue;
     }
@@ -461,15 +510,28 @@ export async function runSandboxBashTool(
       "Failed to read egress deny log"
     );
   } else if (denyResult.value.length > 0) {
-    const filtered = filterAgentFacingDenyLogEntries(denyResult.value);
-    if (filtered.length > 0) {
-      denyLogEntries = filtered;
+    const { agentFacing, harnessDenials } = partitionDenyLogEntries(
+      denyResult.value
+    );
+    if (harnessDenials.length > 0) {
+      logger.info(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          sandboxId: sandbox.sId,
+          harnessDenials,
+        },
+        "Sandbox egress request policy denied requests"
+      );
+    }
+    if (agentFacing.length > 0) {
+      denyLogEntries = agentFacing;
     }
   }
 
   const output = formatExecOutput(execResult.value, { denyLogEntries });
   const redactedOutputResult = await redactSandboxEnvVarsFromOutput(
     auth,
+    conversation,
     output
   );
   if (redactedOutputResult.isErr()) {

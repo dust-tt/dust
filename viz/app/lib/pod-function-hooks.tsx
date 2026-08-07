@@ -1,6 +1,7 @@
 "use client";
 
 import { normalizeSandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
+import { POD_FUNCTION_REFERENCE_REGEX } from "@viz/app/lib/pod-function-slug";
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
 import type { UserIdentityState } from "@viz/app/types";
 import {
@@ -63,7 +64,7 @@ function resolvePodFunction(slug: string | null): {
   if (slug === null) {
     return { functionId: null };
   }
-  if (!/^[^/]+\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+  if (!POD_FUNCTION_REFERENCE_REGEX.test(slug)) {
     return {
       functionId: null,
       error: new Error(

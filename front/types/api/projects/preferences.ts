@@ -1,7 +1,5 @@
-import {
-  NOTIFICATION_CONDITION_OPTIONS,
-  type UserPodNotificationPreference,
-} from "@app/types/notification_preferences";
+import type { UserPodNotificationPreference } from "@app/types/notification_preferences";
+import { NOTIFICATION_CONDITION_OPTIONS } from "@app/types/notification_preferences";
 import { z } from "zod";
 
 export type PostUserPodStarResponseBody = {

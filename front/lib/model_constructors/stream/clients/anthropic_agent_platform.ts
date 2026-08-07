@@ -19,10 +19,8 @@ import type { Credentials } from "@app/lib/model_constructors/types/credentials"
 import { AGENT_PLATFORM_HOST } from "@app/lib/model_constructors/types/hosts";
 import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
 import { ANTHROPIC_LAB } from "@app/lib/model_constructors/types/labs";
-import {
-  CLAUDE_HAIKU_4_5,
-  type Model,
-} from "@app/lib/model_constructors/types/models";
+import type { Model } from "@app/lib/model_constructors/types/models";
+import { CLAUDE_HAIKU_4_5 } from "@app/lib/model_constructors/types/models";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
 
 import { z } from "zod";

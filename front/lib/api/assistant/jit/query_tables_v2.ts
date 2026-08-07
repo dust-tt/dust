@@ -26,16 +26,29 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import assert from "assert";
 
 /**
- * Get the query_tables_v2 MCP server for querying CSV/Excel files.
- * Only created if conversation has queryable attachments (tables).
+ * Get the query_tables_v2 MCP server for querying CSV/Excel tables.
+ * Only created if conversation has queryable attachments.
+ *
+ * With Computer available, queryable file attachments are handled by the sandbox and are
+ * excluded here; queryable content nodes always remain eligible.
  */
 export async function getQueryTablesServer(
   auth: Authenticator,
   conversation: ConversationWithoutContentType,
   attachments: ConversationAttachmentType[],
-  autoInternalViews: Map<AutoInternalMCPServerNameType, MCPServerViewResource>
+  autoInternalViews: Map<AutoInternalMCPServerNameType, MCPServerViewResource>,
+  { hasSandboxTools }: { hasSandboxTools: boolean }
 ): Promise<ServerSideMCPServerConfigurationType | null> {
-  const filesUsableAsTableQuery = attachments.filter((f) => f.isQueryable);
+  const filesUsableAsTableQuery = attachments.filter((f) => {
+    if (!f.isQueryable) {
+      return false;
+    }
+    // Computer handles tabular file attachments; keep content nodes on query_tables.
+    if (hasSandboxTools && isFileAttachmentType(f)) {
+      return false;
+    }
+    return true;
+  });
 
   if (filesUsableAsTableQuery.length === 0) {
     return null;

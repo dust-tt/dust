@@ -1,8 +1,8 @@
-import {
-  type ContextFileSlashSearchItem,
-  type ContextFileSlashSearchSelection,
-  useContextFileSlashSearchItems,
+import type {
+  ContextFileSlashSearchItem,
+  ContextFileSlashSearchSelection,
 } from "@app/components/editor/extensions/shared/slash_suggestion/ContextFileSlashSearch";
+import { useContextFileSlashSearchItems } from "@app/components/editor/extensions/shared/slash_suggestion/ContextFileSlashSearch";
 import type {
   ContextSlashSearchSelection,
   ContextSlashSearchUseCase,

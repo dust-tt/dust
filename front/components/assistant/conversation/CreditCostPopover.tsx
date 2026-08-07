@@ -1,0 +1,228 @@
+import { getActionStepIcon } from "@app/components/assistant/conversation/actions/inline/utils";
+import { InternalActionIcons } from "@app/components/resources/resources_icons";
+import { useAgentMessageConsumption } from "@app/hooks/conversations/useAgentMessageConsumption";
+import { formatCredits } from "@app/lib/client/credits";
+import type { AgentMessageConsumptionToolDetails } from "@app/types/assistant/agent_message_consumption";
+import {
+  Icon,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  Tooltip,
+} from "@dust-tt/sparkle";
+import type { ComponentType, ReactElement } from "react";
+import { useId, useState } from "react";
+
+const MAX_VISIBLE_TOOLS = 3;
+
+function formatCreditValue(credits: number): string {
+  return `${formatCredits(credits)} credits`;
+}
+
+function toolDescription(tool: AgentMessageConsumptionToolDetails): string {
+  const descriptions = [
+    `${tool.callCount} ${tool.callCount === 1 ? "use" : "uses"}`,
+  ];
+
+  if (tool.pending) {
+    descriptions.push("Still running");
+  }
+
+  return descriptions.join(" · ");
+}
+
+interface CreditDetailRowProps {
+  description?: string;
+  icon?: ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+}
+
+function CreditDetailRow({
+  description,
+  icon,
+  label,
+  value,
+}: CreditDetailRowProps) {
+  return (
+    <div className="grid min-h-9 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 rounded-lg px-2 py-1.5 text-sm">
+      <dt className="flex min-w-0 items-start gap-2 font-medium text-foreground">
+        {icon && (
+          <Icon
+            visual={icon}
+            size="xs"
+            className="mt-0.5 shrink-0 text-muted-foreground"
+          />
+        )}
+        <span>{label}</span>
+      </dt>
+      <dd className="shrink-0 text-muted-foreground">{value}</dd>
+      {description && (
+        <dd className="col-start-1 text-xs text-muted-foreground">
+          {description}
+        </dd>
+      )}
+    </div>
+  );
+}
+
+interface CreditCostPopoverProps {
+  conversationId: string;
+  credits: number | null | undefined;
+  messageId: string;
+  subAgentCredits: number | null | undefined;
+  trigger: ReactElement;
+  workspaceId: string;
+}
+
+export function CreditCostPopover({
+  conversationId,
+  credits,
+  messageId,
+  subAgentCredits,
+  trigger,
+  workspaceId,
+}: CreditCostPopoverProps) {
+  const headingId = useId();
+  const [hasOpened, setHasOpened] = useState(false);
+  const { consumption, isConsumptionLoading, mutateConsumption } =
+    useAgentMessageConsumption({
+      conversationId,
+      workspaceId,
+      messageId,
+      disabled: !hasOpened,
+    });
+
+  const ownCredits = consumption?.billedCredits ?? credits ?? 0;
+  const childCredits = subAgentCredits ?? 0;
+  const totalCredits = ownCredits + childCredits;
+  const details = consumption?.details;
+
+  if (totalCredits <= 0) {
+    return null;
+  }
+
+  const rankedTools = details
+    ? [...details.tools].sort(
+        (left, right) => right.attributedCredits - left.attributedCredits
+      )
+    : [];
+  const visibleTools = rankedTools.slice(0, MAX_VISIBLE_TOOLS);
+  const remainingTools = rankedTools.slice(MAX_VISIBLE_TOOLS);
+  const remainingToolCredits = remainingTools.reduce(
+    (total, tool) => total + tool.attributedCredits,
+    0
+  );
+  const remainingToolCallCount = remainingTools.reduce(
+    (total, tool) => total + tool.callCount,
+    0
+  );
+
+  return (
+    <PopoverRoot
+      onOpenChange={(open) => {
+        if (!open) {
+          return;
+        }
+        if (hasOpened) {
+          void mutateConsumption();
+        } else {
+          setHasOpened(true);
+        }
+      }}
+    >
+      <Tooltip
+        label="View credit breakdown"
+        tooltipTriggerAsChild
+        trigger={<PopoverTrigger asChild>{trigger}</PopoverTrigger>}
+      />
+      <PopoverContent
+        role="dialog"
+        aria-labelledby={headingId}
+        align="start"
+        className="w-80 p-2"
+        preventAutoFocusOnClose={false}
+      >
+        <h2 id={headingId} className="px-2 py-1 text-sm font-semibold">
+          Credit usage
+        </h2>
+        <section aria-labelledby={`${headingId}-charged`}>
+          <h3
+            id={`${headingId}-charged`}
+            className="px-2 py-1 text-xs font-medium text-muted-foreground"
+          >
+            Charged
+          </h3>
+          <dl>
+            <CreditDetailRow
+              label="This message"
+              value={formatCreditValue(ownCredits)}
+            />
+            {childCredits > 0 && (
+              <CreditDetailRow
+                label="Sub-agents"
+                value={formatCreditValue(childCredits)}
+              />
+            )}
+          </dl>
+        </section>
+
+        <hr className="my-1 border-t border-border" />
+
+        <section aria-labelledby={`${headingId}-breakdown`}>
+          <h3
+            id={`${headingId}-breakdown`}
+            className="px-2 py-1 text-xs font-medium text-muted-foreground"
+          >
+            Credit breakdown
+          </h3>
+          {isConsumptionLoading && !consumption ? (
+            <div
+              aria-busy="true"
+              aria-live="polite"
+              className="flex min-h-9 items-center px-2 py-1.5 text-sm text-muted-foreground"
+            >
+              <span className="flex-1">Loading details</span>
+              <span className="h-3 w-8 animate-pulse rounded bg-muted-foreground/20" />
+            </div>
+          ) : details ? (
+            <dl>
+              <CreditDetailRow
+                label="Agent work and context"
+                description="Longer conversations require more context to process"
+                value={formatCreditValue(details.agentWorkCredits)}
+                icon={InternalActionIcons.ActionBrainIcon}
+              />
+              {visibleTools.map((tool) => (
+                <CreditDetailRow
+                  key={`${tool.internalMCPServerName ?? "external"}:${tool.toolName}:${tool.label}`}
+                  label={tool.label}
+                  description={toolDescription(tool)}
+                  value={formatCreditValue(tool.attributedCredits)}
+                  icon={getActionStepIcon(tool)}
+                />
+              ))}
+              {remainingTools.length > 0 && (
+                <CreditDetailRow
+                  label="Other tools"
+                  description={`${remainingTools.length} ${remainingTools.length === 1 ? "tool" : "tools"}, ${remainingToolCallCount} ${remainingToolCallCount === 1 ? "use" : "uses"}`}
+                  value={formatCreditValue(remainingToolCredits)}
+                  icon={InternalActionIcons.ToolsIcon}
+                />
+              )}
+            </dl>
+          ) : (
+            <div className="px-2 py-1.5 text-sm">
+              <p className="font-medium text-foreground">
+                Detailed explanation unavailable
+              </p>
+              <p className="text-xs text-muted-foreground">
+                The exact charge above is authoritative.
+              </p>
+            </div>
+          )}
+        </section>
+      </PopoverContent>
+    </PopoverRoot>
+  );
+}

@@ -1,5 +1,6 @@
 export type SandboxFunctionErrorCode =
   | "invalid_path"
+  | "not_found"
   | "sandbox_unavailable"
   | "build_failed"
   | "schema_extraction_failed"

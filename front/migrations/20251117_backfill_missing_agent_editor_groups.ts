@@ -1,5 +1,5 @@
 import _ from "lodash";
-import type { Logger } from "pino";
+import type { Logger } from "@app/logger/logger";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";

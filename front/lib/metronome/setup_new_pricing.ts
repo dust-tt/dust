@@ -13,6 +13,10 @@ import {
   CP_PRO_SEAT_COST_YEARLY,
 } from "@app/lib/client/subscription";
 import {
+  TOOL_COST_CATEGORIES,
+  TOOL_COST_CATEGORY_AWU_WEIGHTS,
+} from "@app/lib/credits/agent_message_billing";
+import {
   AWU_PRIORITY_SEAT_ALLOCATION,
   CREDIT_TYPE_EUR_ID,
   CREDIT_TYPE_GBP_ID,
@@ -25,7 +29,16 @@ import {
   USAGE_TYPE_PROGRAMMATIC,
   USAGE_TYPE_USER,
 } from "@app/lib/metronome/constants";
-import { TOOL_COST_CATEGORIES } from "@app/lib/metronome/events";
+import type {
+  MetricDef,
+  PackageDef,
+  PackageOverrideDef,
+  PackageSubscription,
+  RateCardDef,
+  RateDef,
+  RecurringCreditDef,
+  SeatSubscriptionPair,
+} from "@app/lib/metronome/setup_common";
 import {
   BILLING_CYCLE_CONFIG,
   BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
@@ -35,18 +48,10 @@ import {
   getOverageAwuRate,
   MAX_SEAT_CREDIT_NAME,
   MAX_SEAT_PRODUCT_NAME,
-  type MetricDef,
   makeSeatSubscription,
   makeSeatSubscriptions,
-  type PackageDef,
-  type PackageOverrideDef,
-  type PackageSubscription,
   PRO_SEAT_CREDIT_NAME,
   PRO_SEAT_PRODUCT_NAME,
-  type RateCardDef,
-  type RateDef,
-  type RecurringCreditDef,
-  type SeatSubscriptionPair,
   USAGE_TAG,
   WORKSPACE_SEAT_PRODUCT_NAME,
 } from "@app/lib/metronome/setup_common";
@@ -207,15 +212,6 @@ export const NEW_METRICS: MetricDef[] = [
   },
 ];
 
-// Per-tier AWU price for Tool Usage rates. Shared across all AWU-priced rate cards
-const TOOL_COST_CATEGORY_PRICES_AWU: Record<
-  (typeof TOOL_COST_CATEGORIES)[number],
-  number
-> = {
-  basic: 1,
-  advanced: 3,
-};
-
 // usage_type splits each AWU usage rate: "user" and "programmatic" use the
 // nominal price, "free" is priced at 0 (covers free-tagged events, replacing
 // the prior recurring-credit mechanism).
@@ -229,7 +225,7 @@ function buildAwuToolUsageRates(): RateDef[] {
         starting_at: "2026-04-01T00:00:00.000Z",
         entitled: true,
         rate_type: "FLAT",
-        price: TOOL_COST_CATEGORY_PRICES_AWU[category],
+        price: TOOL_COST_CATEGORY_AWU_WEIGHTS[category],
         credit_type_id: getCreditTypeAwuId(),
         pricing_group_values: {
           tool_category: category,

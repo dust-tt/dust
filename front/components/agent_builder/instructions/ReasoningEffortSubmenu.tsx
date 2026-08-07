@@ -1,10 +1,8 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
-import {
-  getAvailableReasoningEfforts,
-  type ReasoningEffort,
-} from "@app/types/assistant/models/types";
+import type { ReasoningEffort } from "@app/types/assistant/models/types";
+import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import {
   ChevronDown,

@@ -8,12 +8,16 @@ interface SimilarSkillsDisplayProps {
   owner: LightWorkspaceType;
   similarSkills: SkillWithoutInstructionsAndToolsType[];
   isLoading: boolean;
+  loadingLabel?: string;
+  title?: string;
 }
 
 export function SimilarSkillsDisplay({
   owner,
   similarSkills,
   isLoading,
+  loadingLabel = "Checking for similar skills...",
+  title = "Similar skills found",
 }: SimilarSkillsDisplayProps) {
   if (similarSkills.length === 0 && !isLoading) {
     return null;
@@ -23,7 +27,7 @@ export function SimilarSkillsDisplay({
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Spinner size="xs" />
-        <span>Checking for similar skills...</span>
+        <span>{loadingLabel}</span>
       </div>
     );
   }
@@ -31,7 +35,7 @@ export function SimilarSkillsDisplay({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <span className="heading-sm text-foreground">Similar skills found</span>
+        <span className="heading-sm text-foreground">{title}</span>
         {isLoading && <Spinner size="xs" />}
       </div>
       <div className="space-y-3">

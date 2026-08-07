@@ -8,12 +8,6 @@ import { replaceStandaloneAttachmentIds } from "@app/lib/api/assistant/conversat
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
-import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
-import { isSandboxRawDelimitedConversationFile } from "@app/lib/api/files/sandbox_raw";
-import {
-  isFileTypeUpsertableForUseCase,
-  processAndUpsertToDataSource,
-} from "@app/lib/api/files/upsert";
 import { getFileContent } from "@app/lib/api/files/utils";
 import { uploadFrameContent } from "@app/lib/api/viz/upload_frame_content";
 import type { Authenticator } from "@app/lib/auth";
@@ -274,62 +268,6 @@ function carryOverContentNode(
   };
 }
 
-async function addFileToConversationDatasource(
-  auth: Authenticator,
-  {
-    parentConversationId,
-    childConversationId,
-    carriedFile,
-  }: {
-    parentConversationId: string;
-    childConversationId: string;
-    carriedFile: FileResource;
-  }
-): Promise<void> {
-  if (isSandboxRawDelimitedConversationFile(carriedFile)) {
-    return;
-  }
-
-  const childDataSourceRes = await getOrCreateConversationDataSourceFromFile(
-    auth,
-    carriedFile
-  );
-
-  if (childDataSourceRes.isErr()) {
-    logger.error(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        parentConversationId,
-        childConversationId,
-        copiedFileId: carriedFile.sId,
-        error: childDataSourceRes.error,
-      },
-      "Failed to get or create child conversation datasource for forked file."
-    );
-
-    return;
-  }
-
-  const upsertRes = await processAndUpsertToDataSource(
-    auth,
-    childDataSourceRes.value,
-    { file: carriedFile }
-  );
-
-  if (upsertRes.isErr()) {
-    logger.error(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        parentConversationId,
-        childConversationId,
-        copiedFileId: carriedFile.sId,
-        error: upsertRes.error,
-      },
-      "Failed to seed child conversation datasource for forked file."
-    );
-  }
-}
-
 async function rewriteCopiedInteractiveContentAttachmentIds(
   auth: Authenticator,
   {
@@ -480,20 +418,6 @@ async function carryOverConversationAttachments(
         return null;
       }
 
-      const shouldCopyFileToDatasource =
-        carriedFile !== null &&
-        !carriedFile.useCaseMetadata?.skipDataSourceIndexing &&
-        !isSandboxRawDelimitedConversationFile(carriedFile) &&
-        isFileTypeUpsertableForUseCase(carriedFile);
-
-      if (shouldCopyFileToDatasource) {
-        await addFileToConversationDatasource(auth, {
-          parentConversationId: parentConversation.sId,
-          childConversationId: childConversation.sId,
-          carriedFile,
-        });
-      }
-
       return {
         sourceAttachmentId: isFileAttachmentType(attachment)
           ? attachment.fileId
@@ -609,10 +533,10 @@ export async function createConversationFork(
         sId: generateRandomModelSId(),
         title: null,
         visibility: parentConversation.visibility,
-        // Forks are user-facing conversations, not run_agent sub-conversations:
-        // they must keep the parent's depth so depth-based behaviors (space
-        // listing, notifications, action limits) treat them as such.
-        depth: parentConversation.depth,
+        // Forking is an explicit user operation, so users expect to find the
+        // conversation they created alongside their other root conversations.
+        // Forks are not run_agent sub-conversations, even when their source is.
+        depth: 0,
         triggerId: null,
         spaceId: parentConversation.space?.id ?? null,
         requestedSpaceIds: [...parentConversation.requestedSpaceIds],

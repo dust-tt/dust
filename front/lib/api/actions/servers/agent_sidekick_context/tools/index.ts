@@ -10,12 +10,12 @@ import {
   MAX_PENDING_SUB_AGENT_SUGGESTIONS,
   MAX_PENDING_TOOLS_SUGGESTIONS,
 } from "@app/lib/api/actions/servers/agent_sidekick_context/constants";
-import {
-  AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA,
-  type InstructionsSuggestionSchema,
-  type SkillsSuggestionSchema,
-  type ToolsSuggestionSchema,
+import type {
+  InstructionsSuggestionSchema,
+  SkillsSuggestionSchema,
+  ToolsSuggestionSchema,
 } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
+import { AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_sidekick_helpers";
 import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";

@@ -1,9 +1,7 @@
 import { SUPPORTED_REGIONS } from "@app/types/region";
 import { z } from "zod";
-import {
-  isWhitelistableFeature,
-  type WhitelistableFeature,
-} from "../../shared/feature_flags";
+import type { WhitelistableFeature } from "../../shared/feature_flags";
+import { isWhitelistableFeature } from "../../shared/feature_flags";
 import type { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 import type { TokenizerConfig } from "../../tokenizer";
 import type { EMBEDDING_PROVIDER_IDS } from "./embedding";

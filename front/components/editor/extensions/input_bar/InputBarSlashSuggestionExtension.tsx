@@ -8,6 +8,7 @@ import {
   handleSlashSubMenuCommand,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { isAllowedSlashQuery } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
+import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { WorkspaceType } from "@app/types/user";
 import { PluginKey } from "@tiptap/pm/state";
@@ -28,8 +29,10 @@ interface InputBarSlashSuggestionExtensionOptions {
   conversationIdRef?: RefObject<string | null>;
   enabledRef: RefObject<boolean>;
   includeAttachKnowledgeRef: RefObject<boolean>;
+  includePickModelRef: RefObject<boolean>;
   onActiveChangeRef?: RefObject<((active: boolean) => void) | undefined>;
   onDetailsRef?: RefObject<((item: SlashCommand) => void) | undefined>;
+  onModelSelectRef: RefObject<((selection: Selection) => void) | undefined>;
   onNodeSelectRef: RefObject<
     ((node: DataSourceViewContentNode) => void) | undefined
   >;
@@ -61,6 +64,8 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     conversationIdRef: { current: null },
     enabledRef: { current: false },
     includeAttachKnowledgeRef: { current: false },
+    includePickModelRef: { current: false },
+    onModelSelectRef: { current: undefined },
     onNodeSelectRef: { current: undefined },
     onSelectRef: { current: undefined },
     onDetailsRef: { current: undefined },
@@ -100,12 +105,14 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
   mapDropdownProps: ({ options }) => ({
     attachedNodesRef: options.attachedNodesRef,
     conversationIdRef: options.conversationIdRef,
+    includeAttachKnowledgeRef: options.includeAttachKnowledgeRef,
+    includePickModelRef: options.includePickModelRef,
     onDetailsRef: options.onDetailsRef,
+    onModelSelectRef: options.onModelSelectRef,
     onNodeSelectRef: options.onNodeSelectRef,
     owner: options.owner,
     selectedMCPServerViewIdsRef: options.selectedMCPServerViewIdsRef,
     slashCommandsRef: options.slashCommandsRef,
-    includeAttachKnowledgeRef: options.includeAttachKnowledgeRef,
     spaceIdRef: options.spaceIdRef,
   }),
   notifyActiveChange: (active, options) => {

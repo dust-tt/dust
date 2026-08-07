@@ -18,7 +18,10 @@ import {
   getConnectorProviderLogoWithFallback,
   isConnectorPermissionsEditable,
 } from "@app/lib/connector_providers_ui";
-import { getDataSourceNameFromView } from "@app/lib/data_sources";
+import {
+  getDataSourceNameFromView,
+  isDustProjectDataSource,
+} from "@app/lib/data_sources";
 import { useAppRouter } from "@app/lib/platform";
 import {
   useDeleteFolderOrWebsite,
@@ -37,6 +40,7 @@ import { isString } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Button,
   Chip,
@@ -45,7 +49,6 @@ import {
   cn,
   DataTable,
   Edit04,
-  type MenuItem,
   Settings01,
   Spinner,
   Trash01,
@@ -373,7 +376,10 @@ export const SpaceResourcesList = ({
 
         // Some connectors, such as Slack/Discord bots, are not meant to be displayed in the list.
         // These are managed separately in the Admin workspace settings page.
-        return !connectorConfig?.isHiddenAsDataSource;
+        return (
+          !connectorConfig?.isHiddenAsDataSource &&
+          !isDustProjectDataSource(dataSourceView.dataSource)
+        );
       })
       .map((dataSourceView) => {
         const provider = dataSourceView.dataSource.connectorProvider;

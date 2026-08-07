@@ -480,7 +480,7 @@ export const google_drive = async ({
 
           if (res.status !== 200 || !res.data.files) {
             logger.warn(
-              { folderId, status: res.status },
+              { folderId, statusCode: res.status },
               "Error listing files in folder"
             );
             break;

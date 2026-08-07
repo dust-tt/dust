@@ -1061,6 +1061,74 @@ mod tests {
         Ok(())
     }
 
+    #[tokio::test]
+    async fn plain_http_session_denies_fronted_host_on_keep_alive() -> Result<()> {
+        // End-to-end mirror of the domain-fronting PoC: the proxy approves a
+        // single domain per port-80 connection and then only splices bytes, so
+        // dsbx must reject a second request that swaps in another host rather
+        // than let it ride the approved domain's CDN edge.
+        let domain = "api.openai.com";
+        let mitm_ca = Arc::new(MitmCa::generate()?);
+        let (_upstream_server_config, upstream_ca_der) = test_upstream_server_config(domain)?;
+        let tempdir = tempfile::tempdir()?;
+        let deny_log = Arc::new(tempdir.path().join("deny.log"));
+        let runtime = ForwardRuntime {
+            deny_log: Arc::clone(&deny_log),
+            ..test_runtime(mitm_ca, upstream_ca_der)?
+        };
+
+        let (mut agent_io, dsbx_client_io) = tokio::io::duplex(16 * 1024);
+        let (dsbx_upstream_io, mut upstream_io) = tokio::io::duplex(16 * 1024);
+        let session_task = tokio::spawn(async move {
+            run_plain_http_session(&runtime, domain, dsbx_client_io, dsbx_upstream_io).await
+        });
+
+        agent_io
+            .write_all(
+                b"GET /one HTTP/1.1\r\nHost: api.openai.com\r\n\r\n\
+                  GET /two HTTP/1.1\r\nHost: evil.example\r\n\r\n",
+            )
+            .await
+            .context("test agent failed to write requests")?;
+        agent_io
+            .shutdown()
+            .await
+            .context("test agent failed to shut down")?;
+
+        // Bounded so a regression fails loudly instead of hanging: if the
+        // fronted request is forwarded, the session blocks waiting for an
+        // upstream response the test never sends.
+        tokio::time::timeout(std::time::Duration::from_secs(5), session_task)
+            .await
+            .context("plain HTTP session did not terminate; fronted request was not denied")?
+            .context("session task panicked")??;
+
+        let mut upstream_bytes = Vec::new();
+        upstream_io
+            .read_to_end(&mut upstream_bytes)
+            .await
+            .context("test upstream failed to read forwarded bytes")?;
+        let upstream_text = String::from_utf8(upstream_bytes)?;
+        assert!(upstream_text.contains("GET /one HTTP/1.1\r\n"));
+        assert!(
+            !upstream_text.contains("evil.example"),
+            "fronted request must not reach upstream, got: {upstream_text}"
+        );
+
+        let deny_log_text = tokio::fs::read_to_string(deny_log.as_ref())
+            .await
+            .context("failed to read deny log")?;
+        assert!(
+            deny_log_text.contains("\"reason\":\"host_domain_mismatch\""),
+            "deny log should record host_domain_mismatch, got: {deny_log_text}"
+        );
+        assert!(
+            deny_log_text.contains("\"host\":\"evil.example\""),
+            "deny log should record the fronted host, got: {deny_log_text}"
+        );
+        Ok(())
+    }
+
     fn single_proxy_opener<S>(stream: S) -> OpenProxyTunnel<S>
     where
         S: AsyncRead + AsyncWrite + Unpin + Send + 'static,

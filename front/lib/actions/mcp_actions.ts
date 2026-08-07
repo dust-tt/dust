@@ -64,11 +64,13 @@ import {
   shouldRetryToolInterruption,
 } from "@app/lib/actions/tool_interruptions";
 import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import type {
+  AgentLoopListToolsContext,
+  ToolContext,
+} from "@app/lib/actions/types";
 import {
-  type AgentLoopListToolsContext,
   isAgentLoopRunContext,
   isSandboxFunctionRunContext,
-  type ToolContext,
 } from "@app/lib/actions/types";
 import {
   isClientSideMCPToolConfiguration,
@@ -97,7 +99,10 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
-import { isSystemAuthoredUserMessage } from "@app/types/assistant/conversation";
+import {
+  ACTIVATION_NUDGE_ORIGIN,
+  isUserMessageWithoutConcreteUser,
+} from "@app/types/assistant/conversation";
 import type { OAuthProvider } from "@app/types/oauth/lib";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -246,6 +251,9 @@ export function makeServerSideMCPToolConfigurations(
     ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
     ...(tool.displayLabels && { displayLabels: tool.displayLabels }),
     ...(tool.eager && { eager: true }),
+    ...(tool.editableArguments && {
+      editableArguments: tool.editableArguments,
+    }),
     argumentsRequiringApproval: toolsArgumentsRequiringApproval?.[tool.name],
   }));
 }
@@ -1076,14 +1084,19 @@ export async function tryListMCPTools(
     preFetchedViews.map((view) => [view.sId, view])
   );
 
+  const isWithoutConcreteUser = isUserMessageWithoutConcreteUser(
+    agentLoopListToolsContext.userMessage
+  );
+  const isActivationNudge =
+    agentLoopListToolsContext.userMessage.context.origin ===
+    ACTIVATION_NUDGE_ORIGIN;
+
   // An admin scoping a server to `personal_actions` decided it runs on each
   // person's own credentials. A message nobody wrote (posted by Dust on the
   // user's behalf) has no person to run as, so those servers are left out of the
   // tool list entirely: running them on the workspace connection instead would
   // quietly override that decision.
-  const listableActionsWithOrigin = isSystemAuthoredUserMessage(
-    agentLoopListToolsContext.userMessage
-  )
+  const listableActionsWithOrigin = isWithoutConcreteUser
     ? mcpServerActionsWithOrigin.filter(({ action }) => {
         if (!isServerSideMCPServerConfiguration(action)) {
           return true;
@@ -1161,6 +1174,14 @@ export async function tryListMCPTools(
       const processedTools: MCPToolConfigurationType[] = [];
 
       for (const toolConfig of rawToolsFromServer) {
+        // A nudge is not something the user asked for, so nobody is waiting on its answer: an
+        // approval prompt would be addressed to a person who never asked anything, and the run
+        // would sit blocked until they happen to open the conversation. Only `never_ask` tools
+        // run there.
+        if (isActivationNudge && toolConfig.permission !== "never_ask") {
+          continue;
+        }
+
         // Fix the tool name to be valid for the model.
         const toolNameRes = tryGetPrefixedToolName(
           action.name,

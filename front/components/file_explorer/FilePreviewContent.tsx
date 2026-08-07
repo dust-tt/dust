@@ -1,7 +1,5 @@
-import {
-  MarkdownFilePreview,
-  type MarkdownFilePreviewViewMode,
-} from "@app/components/file_explorer/MarkdownFilePreview";
+import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
+import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import type { FilePreviewCategory } from "@app/components/file_explorer/utils";

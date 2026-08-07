@@ -49,6 +49,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
+  Label,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -75,10 +76,14 @@ function generateUniqueViewName(
 function getSubmitButtonLabel(
   isLoading: boolean,
   authorization: AuthorizationInfo | null,
-  defaultServerConfig?: DefaultRemoteMCPServerConfig
+  defaultServerConfig: DefaultRemoteMCPServerConfig | undefined,
+  oauthConnectionId: string | null
 ): string {
   if (isLoading) {
     return "Loading...";
+  }
+  if (oauthConnectionId) {
+    return "Save";
   }
   if (authorization) {
     return "Setup connection";
@@ -139,7 +144,7 @@ export function CreateMCPServerDialog({
   const defaultValues = useMemo<CreateMCPServerDialogFormValues>(() => {
     return {
       ...getCreateMCPServerDialogDefaultValues(defaultServerConfig),
-      viewName: suggestedViewName,
+      viewName: suggestedViewName ?? "",
       // Pre-fill headers and store their keys so the form can lock them as non-removable.
       ...(predefinedHeaders && {
         useCustomHeaders: true,
@@ -176,20 +181,30 @@ export function CreateMCPServerDialog({
     name: "selectedScopes",
   });
 
+  const [nameConflict, setNameConflict] = useState<{
+    name: string;
+    oauthConnectionId: string | null;
+  } | null>(null);
+
   // Client-side validation for the view name field.
   const viewNameError = useMemo(() => {
-    if (!needsCustomName) {
-      return null;
-    }
     const trimmed = (viewName ?? "").trim();
-    if (trimmed.length === 0) {
+    if (needsCustomName && !trimmed) {
       return "Name is required.";
     }
-    if (existingViewNames.includes(trimmed)) {
+    if (nameConflict) {
+      if (!trimmed) {
+        return `The default name "${nameConflict.name}" conflicts with an existing Tool. Enter a different name.`;
+      }
+      if (trimmed === nameConflict.name) {
+        return "This name conflicts with an existing Tool. Enter a different name.";
+      }
+    }
+    if (trimmed.length > 0 && existingViewNames.includes(trimmed)) {
       return "This name is already in use.";
     }
     return null;
-  }, [needsCustomName, viewName, existingViewNames]);
+  }, [needsCustomName, nameConflict, viewName, existingViewNames]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [serverError, setServerError] = useState<{
@@ -208,7 +223,6 @@ export function CreateMCPServerDialog({
     remoteMCPServerOAuthDiscoveryDone,
     setRemoteMCPServerOAuthDiscoveryDone,
   ] = useState(false);
-
   const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
   const { createWithURL } = useCreateRemoteMCPServer(owner);
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
@@ -266,6 +280,7 @@ export function CreateMCPServerDialog({
     // Reset workflow state (useState).
     setAuthorization(null);
     setRemoteMCPServerOAuthDiscoveryDone(false);
+    setNameConflict(null);
     setIsStaticFormValid(false);
     setServerError(null);
     // Reset form state.
@@ -289,6 +304,7 @@ export function CreateMCPServerDialog({
       // Pass workflow state as separate params (not from form).
       authorization,
       remoteMCPServerOAuthDiscoveryDone,
+      oauthConnectionId: nameConflict?.oauthConnectionId ?? null,
       discoverOAuthMetadata,
       createWithURL,
       createInternalMCPServer,
@@ -299,16 +315,16 @@ export function CreateMCPServerDialog({
     if (submitRes.isErr()) {
       const err = submitRes.error;
       if (isCreateServerError(err)) {
-        setServerError({
-          message: err.message,
-          domain: new URL(values.remoteServerUrl).hostname,
-          isRemoteServerError: err.isRemoteServerError,
-        });
         setIsLoading(false);
         setExternalIsLoading(false);
         setRemoteMCPServerOAuthDiscoveryDone(
           err.remoteMCPServerOAuthDiscoveryDone
         );
+        setServerError({
+          message: err.message,
+          domain: new URL(values.remoteServerUrl).hostname,
+          isRemoteServerError: err.isRemoteServerError,
+        });
         return;
       }
       handleCreateMCPServerDialogSubmitError({
@@ -337,6 +353,16 @@ export function CreateMCPServerDialog({
       setAuthorization(submitRes.value.authorization);
       form.setValue("authCredentials", submitRes.value.authCredentials);
       // Returning here as now the user must select the use case.
+      setIsLoading(false);
+      return;
+    }
+
+    if (submitRes.value.type === "name_conflict") {
+      setNameConflict({
+        name: submitRes.value.name,
+        oauthConnectionId: submitRes.value.oauthConnectionId,
+      });
+      setExternalIsLoading(false);
       setIsLoading(false);
       return;
     }
@@ -552,16 +578,23 @@ export function CreateMCPServerDialog({
                   {serverError.message}
                 </ContentMessage>
               )}
-              {needsCustomName && (
-                <div className="space-y-4">
-                  <div className="heading-lg text-foreground">Tool name</div>
+              {(needsCustomName || nameConflict) && (
+                <div className="space-y-2">
+                  <Label htmlFor="viewName">Tool name</Label>
                   <Input
-                    placeholder="Enter a name for this instance"
+                    id="viewName"
+                    placeholder={
+                      needsCustomName
+                        ? "Enter a name for this instance"
+                        : "Enter a different name"
+                    }
                     {...form.register("viewName")}
                     isError={!!viewNameError}
                     message={
                       viewNameError ??
-                      `${toolName} is already installed. This name tells them apart.`
+                      (needsCustomName
+                        ? `${toolName} is already installed. This name tells them apart.`
+                        : "Choose a name that distinguishes this Tool.")
                     }
                     messageStatus={viewNameError ? "error" : "info"}
                   />
@@ -624,7 +657,8 @@ export function CreateMCPServerDialog({
                 : getSubmitButtonLabel(
                     isLoading,
                     authorization,
-                    defaultServerConfig
+                    defaultServerConfig,
+                    nameConflict?.oauthConnectionId ?? null
                   ),
               variant: "primary",
               disabled: isSubmitDisabled,

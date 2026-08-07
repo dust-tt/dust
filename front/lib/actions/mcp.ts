@@ -76,6 +76,7 @@ export type ServerSideMCPToolType = Omit<
   // When true, the tool is loaded upfront in the cached tools prefix instead of
   // being deferred behind tool search.
   eager?: boolean;
+  editableArguments?: readonly string[];
 };
 
 export type ClientSideMCPToolType = Omit<
@@ -171,6 +172,7 @@ type BlockedToolExecutionVariant =
   | {
       status: "blocked_validation_required";
       authorizationInfo: AuthorizationInfo | null;
+      editableArguments?: readonly string[];
     }
   | {
       status: "blocked_child_action_input_required";

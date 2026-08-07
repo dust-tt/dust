@@ -1,9 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { GLOBAL_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/global";
-import {
-  filterSkillDefinitions,
-  type GlobalSkillDefinition,
-} from "@app/lib/resources/skill/code_defined/shared";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import { filterSkillDefinitions } from "@app/lib/resources/skill/code_defined/shared";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { serializeSkillTag } from "@app/lib/skills/format";
 

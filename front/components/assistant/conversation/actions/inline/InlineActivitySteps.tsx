@@ -1,11 +1,11 @@
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
 import { ActivityTimeline } from "@app/components/assistant/conversation/actions/inline/ActivityTimeline";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import {
-  type AgentStateClassification,
-  getPendingToolCallKey,
-  type PendingToolCall,
+import type {
+  AgentStateClassification,
+  PendingToolCall,
 } from "@app/components/assistant/conversation/types";
+import { getPendingToolCallKey } from "@app/components/assistant/conversation/types";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import { getToolCallDisplayLabel } from "@app/lib/actions/tool_display_labels";
 import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";

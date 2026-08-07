@@ -1,5 +1,5 @@
 import { Op } from "sequelize";
-import type { Logger } from "pino";
+import type { Logger } from "@app/logger/logger";
 
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";

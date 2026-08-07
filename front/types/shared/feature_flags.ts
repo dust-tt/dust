@@ -154,6 +154,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Allow legacy-contract workspaces to view the Usage page in read-only mode (analytics and member spend visible; all actions disabled).",
     stage: "on_demand",
   },
+  enable_analytics_consumption: {
+    description:
+      "Access to the new consumption-based Analytics dashboard, built alongside the current one while it is brought to parity.",
+    stage: "dust_only",
+  },
   xai_feature: {
     description: "Access to xAI models in the agent builder",
     stage: "on_demand",
@@ -204,6 +209,16 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   sandbox_functions: {
     description: "Enable Pod Function invocation endpoints",
+    stage: "dust_only",
+  },
+  sandbox_function_stdout_result: {
+    description:
+      "Return Pod function results through the worker dsbx stdout channel instead of the in-sandbox HTTP callback",
+    stage: "dust_only",
+  },
+  sandbox_function_fast_execution: {
+    description:
+      "Return Pod function results in the invocation response when the invocation settles before it returns",
     stage: "dust_only",
   },
   run_tools_from_prompt: {
@@ -310,6 +325,16 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable the per-workspace Activation scheduler workflow",
     stage: "dust_only",
   },
+  admin_controlled_pods: {
+    description:
+      "Enable admin-controlled Pods: admins manage membership and attach connected data (Space DataSourceViews) to the Pod itself.",
+    stage: "dust_only",
+  },
+  pod_frame_tabs: {
+    description:
+      "Allow adding frames from the pod file system as custom tabs (title, icon, order) on the pod.",
+    stage: "dust_only",
+  },
   group_permissions_shadow: {
     description:
       "Admin Governance: evaluate the new group_permissions checks alongside the legacy ones and log mismatches (shadow mode). Serves the legacy result; safe to toggle.",
@@ -328,6 +353,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   enforce_user_spend_limit_rate_cap: {
     description:
       "Enable the per-user spend-cap backup: record per-user AWU usage into the Redis fixed-window counter and enforce it at message send (blocks with user_cap_reached). When off, usage is neither recorded nor enforced.",
+    stage: "dust_only",
+  },
+  editable_tool_inputs: {
+    description:
+      "Allow editing tool inputs before approving a tool call in the tool validation UI.",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

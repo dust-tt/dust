@@ -1,7 +1,7 @@
+import type { TaskOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import {
   buildPodTasksListSwrKey,
   isPodTasksListSwrKey,
-  type TaskOwnerFilter,
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useDebounce } from "@app/hooks/useDebounce";
@@ -35,6 +35,7 @@ import type {
   PatchUserPodNotificationPreferenceResponseBody,
   PostUserPodStarResponseBody,
 } from "@app/types/api/projects/preferences";
+import type { GetPodRestrictionImpactResponseBody } from "@app/types/api/projects/restriction_impact";
 import type {
   GetPodTasksResponseBody,
   GetWorkspacePodTaskResponseBody,
@@ -67,7 +68,8 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { type Fetcher, useSWRConfig } from "swr";
+import type { Fetcher } from "swr";
+import { useSWRConfig } from "swr";
 
 export function usePodContextAttachments({
   owner,
@@ -1046,6 +1048,33 @@ export function usePodMetadata({
   };
 }
 
+export function usePodRestrictionImpact({
+  workspaceId,
+  podId,
+  disabled = false,
+}: {
+  workspaceId: string;
+  podId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const restrictionImpactFetcher: Fetcher<GetPodRestrictionImpactResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces/${podId}/project_restriction_impact`,
+    restrictionImpactFetcher,
+    { disabled }
+  );
+
+  return {
+    restrictionImpact: data?.restrictionImpact ?? null,
+    isRestrictionImpactLoading: !error && !data && !disabled,
+    isRestrictionImpactError: error,
+    mutateRestrictionImpact: mutate,
+  };
+}
+
 export function usePodDefaultSkills({
   owner,
   podId,
@@ -1133,19 +1162,27 @@ export function useUpdatePodMetadata({
     void mutateSpaceInfoRegardlessOfQueryParams();
 
     const title =
-      updates.pinnedFramePath !== undefined
-        ? updates.pinnedFramePath
-          ? "Frame pinned as Pod banner"
-          : "Banner unpinned"
-        : updates.archive !== undefined
-          ? updates.archive
-            ? "Pod archived"
-            : "Pod unarchived"
-          : updates.todoGenerationEnabled !== undefined
-            ? updates.todoGenerationEnabled
-              ? "Automatic task suggestions turned on"
-              : "Automatic task suggestions turned off"
-            : "Pod updated";
+      updates.frameTabs !== undefined || updates.tabsOrder !== undefined
+        ? updates.frameTabs?.length === 0
+          ? "Frame tabs cleared"
+          : "Pod frame tabs updated"
+        : updates.pinnedFramePath !== undefined
+          ? updates.pinnedFramePath
+            ? "Frame pinned as Pod banner"
+            : "Banner unpinned"
+          : updates.archive !== undefined
+            ? updates.archive
+              ? "Pod archived"
+              : "Pod unarchived"
+            : updates.todoGenerationEnabled !== undefined
+              ? updates.todoGenerationEnabled
+                ? "Automatic task suggestions turned on"
+                : "Automatic task suggestions turned off"
+              : updates.isAdminControlled !== undefined
+                ? updates.isAdminControlled
+                  ? "Pod is now admin-controlled"
+                  : "Pod is now self-serve"
+                : "Pod updated";
 
     sendNotification({
       type: "success",

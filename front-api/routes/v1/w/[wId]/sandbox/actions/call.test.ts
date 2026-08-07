@@ -1,5 +1,6 @@
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
+import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { createPersistedSandboxFunctionInvocationTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
@@ -48,9 +49,9 @@ function callSandboxTool(
   });
 }
 
-async function setupWithView() {
+async function setupWithView({ noTools = false }: { noTools?: boolean } = {}) {
   const context =
-    await createPersistedSandboxFunctionInvocationTokenTestContext();
+    await createPersistedSandboxFunctionInvocationTokenTestContext({ noTools });
   const commonUtilities = await InternalMCPServerInMemoryResource.makeNew(
     context.auth,
     { name: "common_utilities", useCase: null }
@@ -99,6 +100,63 @@ describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () =
     expect(
       vi.mocked(publishSandboxFunctionInvocationEvent)
     ).not.toHaveBeenCalled();
+  });
+
+  it("refuses a tool call from a function published as fast", async () => {
+    const { token, workspace, view } = await setupWithView({ noTools: true });
+
+    const response = await callSandboxTool(workspace, token, {
+      serverViewId: view.sId,
+      toolName: "generate_random_number",
+      arguments: { max: 10 },
+    });
+
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.error.message).toContain("published as fast");
+    expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
+  });
+
+  // The refusal is the only evidence that the published mode is wrong, so it is also what fixes
+  // it: this invocation still fails, the next one runs durably.
+  it("records the function as durable after refusing its tool call", async () => {
+    const { auth, token, workspace, view, sandboxFunction } =
+      await setupWithView({ noTools: true });
+    expect(sandboxFunction.executionMode).toBe("fast");
+
+    const response = await callSandboxTool(workspace, token, {
+      serverViewId: view.sId,
+      toolName: "generate_random_number",
+      arguments: { max: 10 },
+    });
+    expect(response.status).toBe(403);
+
+    // The write is deliberately not awaited by the request, so let it settle.
+    await vi.waitFor(async () => {
+      const refetched = await SandboxFunctionResource.fetchById(
+        auth,
+        sandboxFunction.sId
+      );
+      expect(refetched?.executionMode).toBe("durable");
+    });
+  });
+
+  it("leaves a durable function's mode alone when its tool call succeeds", async () => {
+    const { auth, token, workspace, view, sandboxFunction } =
+      await setupWithView();
+
+    const response = await callSandboxTool(workspace, token, {
+      serverViewId: view.sId,
+      toolName: "generate_random_number",
+      arguments: { max: 10 },
+    });
+    expect(response.status).toBe(202);
+
+    const refetched = await SandboxFunctionResource.fetchById(
+      auth,
+      sandboxFunction.sId
+    );
+    expect(refetched?.executionMode).toBe("durable");
   });
 
   it("returns 404 for an unknown server view", async () => {

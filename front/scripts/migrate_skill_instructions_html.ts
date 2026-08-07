@@ -14,6 +14,7 @@ import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_in
 import { postProcessMarkdown } from "@app/lib/editor/skill_instructions_preprocessing";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
+import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -136,7 +137,7 @@ type WorkspaceStats = {
 async function processSkillsForWorkspace(
   workspace: LightWorkspaceType,
   execute: boolean,
-  logger: { info: (obj: object, msg: string) => void }
+  logger: Logger
 ): Promise<WorkspaceStats> {
   const skills = await SkillConfigurationModel.findAll({
     where: {

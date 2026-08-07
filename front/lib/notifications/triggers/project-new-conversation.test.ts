@@ -17,10 +17,10 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { NotificationCondition } from "@app/types/notification_preferences";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
   DEFAULT_NOTIFICATION_CONDITION,
-  type NotificationCondition,
 } from "@app/types/notification_preferences";
 import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, test, vi } from "vitest";
@@ -331,22 +331,6 @@ describe("notifyActivationConversationAgentReplied", () => {
     });
 
     expect(vi.mocked(getNovuClient)).toHaveBeenCalled();
-  });
-
-  test("does not trigger the activation email for a nested sub-conversation", async () => {
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: agent.sId,
-      messagesCreatedAt: [],
-      spaceId: pod.id,
-      depth: 1,
-      triggerId: activationTrigger.id,
-    });
-
-    await notifyActivationConversationAgentReplied(auth, {
-      conversationId: conversation.sId,
-    });
-
-    expect(vi.mocked(getNovuClient)).not.toHaveBeenCalled();
   });
 
   test("does not trigger the activation email for a conversation the user starts", async () => {

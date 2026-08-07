@@ -3,10 +3,8 @@ import {
   TASK_DESKTOP_HOVER_REVEAL_CLASS,
 } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
 import { usePodTasksPanel } from "@app/components/pod/tasks/PodTasksPanelContext";
-import {
-  POD_TASK_NO_ASSIGNEE_LABEL,
-  type PodTaskType,
-} from "@app/types/project_task";
+import type { PodTaskType } from "@app/types/project_task";
+import { POD_TASK_NO_ASSIGNEE_LABEL } from "@app/types/project_task";
 import {
   Avatar,
   Button,

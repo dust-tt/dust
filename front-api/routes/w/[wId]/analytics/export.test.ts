@@ -8,14 +8,6 @@ import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
 
-// devModeConstants reads localStorage at module load. jsdom does not always
-// have localStorage initialized when mock factories evaluate, which crashes
-// any test whose mocked lib transitively imports AuthContext. Stub it here.
-vi.mock("@app/components/dev/devModeConstants", () => ({
-  DEV_MODE_STORAGE_KEY: "dust_dev_mode",
-  DEV_MODE_ACTIVE: false,
-}));
-
 vi.mock(import("@app/lib/api/analytics/export_tables"), async (orig) => {
   const mod = await orig();
   return {

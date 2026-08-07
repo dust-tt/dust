@@ -49,6 +49,15 @@ const SourceChart = safeLazy(
     })),
   { canReload }
 );
+const PodUsageChart = safeLazy(
+  () =>
+    import(
+      "@app/components/agent_builder/observability/charts/PodUsageChart"
+    ).then((mod) => ({
+      default: mod.PodUsageChart,
+    })),
+  { canReload }
+);
 const SkillUsageChart = safeLazy(
   () =>
     import(
@@ -276,6 +285,13 @@ export function AgentObservability({
         </SafeSuspense>
         <SafeSuspense fallback={<ChartFallback />}>
           <SourceChart
+            workspaceId={owner.sId}
+            agentConfigurationId={agentConfigurationId}
+            isCustomAgent={isCustomAgent}
+          />
+        </SafeSuspense>
+        <SafeSuspense fallback={<ChartFallback />}>
+          <PodUsageChart
             workspaceId={owner.sId}
             agentConfigurationId={agentConfigurationId}
             isCustomAgent={isCustomAgent}

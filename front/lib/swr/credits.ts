@@ -88,6 +88,7 @@ export function useCredits({
   return {
     credits: data?.credits ?? emptyArray(),
     pendingCredits,
+    freeCreditRenewalDateMs: data?.freeCreditRenewalDateMs ?? null,
     isCreditsLoading: !error && !data && !disabled,
     isCreditsValidating: isValidating,
     isCreditsError: error,
@@ -416,6 +417,7 @@ export function useMyUsage({
 
   return {
     myUsage: data?.member ?? null,
+    creditUsageStatus: data?.creditUsageStatus ?? null,
     nextCreditResetAt: data?.member?.nextCreditResetAt ?? null,
     isMyUsageLoading: !error && !data && !disabled,
     isMyUsageError: error,

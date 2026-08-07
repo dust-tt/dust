@@ -1,3 +1,4 @@
+import { ACTIVATION_WEBHOOK_SOURCE_NAME } from "@app/lib/api/activation/trigger";
 import { Authenticator } from "@app/lib/auth";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -165,6 +166,29 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
     expect(data.error.type).toBe("webhook_source_not_found");
   });
 
+  it("returns 404 for the Activation source even with a valid url secret", async () => {
+    const { workspace } = await createPublicApiMockRequest();
+
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await SpaceFactory.defaults(auth);
+
+    const webhookSource = await new WebhookSourceFactory(workspace).create({
+      name: ACTIVATION_WEBHOOK_SOURCE_NAME,
+    });
+
+    const response = await postWebhook(
+      workspace,
+      webhookSource.sId,
+      webhookSource.urlSecret,
+      { any: "payload" }
+    );
+
+    expect(response.status).toBe(404);
+    const data = await response.json();
+    expect(data.error.type).toBe("webhook_source_not_found");
+    expect(launchTriggersWorkflowsMock).not.toHaveBeenCalled();
+  });
+
   it("returns 401 on non-POST methods", async () => {
     const { workspace } = await createPublicApiMockRequest();
 
@@ -285,11 +309,31 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
     expect(launchTriggersWorkflowsMock).toHaveBeenCalledTimes(1);
   });
 
-  it("does not store payload when no triggers match", async () => {
+  it("stores payload when no triggers match if a trigger includes payload", async () => {
     const { workspace } = await createPublicApiMockRequest();
 
     const webhookSource = await createWebhookSourceAndTrigger(workspace, {
       includePayload: true,
+      filter: '(eq "type" "wanted")',
+    });
+
+    const response = await postWebhook(
+      workspace,
+      webhookSource.sId,
+      webhookSource.urlSecret,
+      { type: "ignored" }
+    );
+
+    expect(response.status).toBe(200);
+    expect(uploadWebhookPayloadMock).toHaveBeenCalledTimes(1);
+    expect(launchTriggersWorkflowsMock).not.toHaveBeenCalled();
+  });
+
+  it("does not store payload when no enabled triggers include payload", async () => {
+    const { workspace } = await createPublicApiMockRequest();
+
+    const webhookSource = await createWebhookSourceAndTrigger(workspace, {
+      includePayload: false,
       filter: '(eq "type" "wanted")',
     });
 

@@ -1,10 +1,8 @@
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
-import {
-  PRETTIFIED_PROVIDER_NAMES,
-  type ProvidersSelection,
-} from "@app/types/provider_selection";
+import type { ProvidersSelection } from "@app/types/provider_selection";
+import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
 import { ContextItem, Icon, SliderToggle } from "@dust-tt/sparkle";
 
 interface ProviderToggleContextItemProps {
