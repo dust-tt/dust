@@ -12,6 +12,16 @@ type SpendLimitAlertState = CustomerAlert["customer_status"];
 // seat-type `default`. `groupCapAwuCredits` is the max cap across the groups the
 // user belongs to (null when none of them carry a cap). All three values must be
 // expressed in the same unit (all pool-only, or all pool + seat allowance).
+export function resolveEffectiveSpendLimitAwuCredits(args: {
+  overrideAwuCredits: number | null;
+  groupCapAwuCredits: number | null;
+  defaultAwuCredits: number;
+}): number;
+export function resolveEffectiveSpendLimitAwuCredits(args: {
+  overrideAwuCredits: number | null;
+  groupCapAwuCredits: number | null;
+  defaultAwuCredits: number | null;
+}): number | null;
 export function resolveEffectiveSpendLimitAwuCredits({
   overrideAwuCredits,
   groupCapAwuCredits,

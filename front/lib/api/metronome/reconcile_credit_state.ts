@@ -631,12 +631,11 @@ export async function reconcileWorkspaceUserCreditStates({
     // ladder).
     const groupCapAwuCredits =
       groupCapByUserModelId.get(membership.userId) ?? null;
-    const poolCapAwuCredits =
-      resolveEffectiveSpendLimitAwuCredits({
-        overrideAwuCredits: membership.poolCapOverrideAwuCredits,
-        groupCapAwuCredits,
-        defaultAwuCredits: defaultPoolCapAwuCredits,
-      }) ?? defaultPoolCapAwuCredits;
+    const poolCapAwuCredits = resolveEffectiveSpendLimitAwuCredits({
+      overrideAwuCredits: membership.poolCapOverrideAwuCredits,
+      groupCapAwuCredits,
+      defaultAwuCredits: defaultPoolCapAwuCredits,
+    });
     const effectiveCapAwuCredits = normalizedSeatType
       ? poolCapAwuCredits + (seatAllowances[normalizedSeatType] ?? 0)
       : null;
