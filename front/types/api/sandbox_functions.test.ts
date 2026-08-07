@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { RUNNER_ERROR_CODES } from "../../../cli/dust-sandbox/functions-runner/protocol";
+import { POD_FUNCTION_REFERENCE_REGEX } from "../../../viz/app/lib/pod-function-slug";
 import {
   isValidSandboxFunctionSlug,
   SANDBOX_FUNCTION_RUNNER_ERROR_CODES,
@@ -40,6 +41,35 @@ describe("isValidSandboxFunctionSlug", () => {
     expect(isValidSandboxFunctionSlug("TaskList__addTask")).toBe(false);
     expect(isValidSandboxFunctionSlug("tasklist add-task")).toBe(false);
     expect(isValidSandboxFunctionSlug("tasklist/add-task")).toBe(false);
+  });
+
+  // A Frame validates the `<podId>/<slug>` reference in the viz workspace, which cannot import from
+  // front and so carries its own copy of this grammar. Drift there is silent and expensive: a
+  // reference viz rejects resolves to a null SWR key, so the Frame issues no request at all rather
+  // than failing loudly.
+  it("stays aligned with the reference grammar Frames validate against", () => {
+    const slugs = [
+      "greet",
+      "send-slack-message",
+      "tasklist__add-task",
+      "task-list__x",
+      "tasklist__admin__purge",
+      "__greet",
+      "tasklist__",
+      "tasklist_add-task",
+      "TaskList__addTask",
+      "tasklist add-task",
+    ];
+
+    for (const slug of slugs) {
+      expect({
+        slug,
+        accepted: POD_FUNCTION_REFERENCE_REGEX.test(`vlt_1/${slug}`),
+      }).toEqual({
+        slug,
+        accepted: isValidSandboxFunctionSlug(slug),
+      });
+    }
   });
 
   // `dsbx function run <name>` validates against is_valid_name in
