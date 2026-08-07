@@ -18,7 +18,6 @@ import {
   checkTriggerForExecutionPerDayLimit,
   checkWebhookRequestForRateLimit,
 } from "@app/lib/triggers/rate_limits";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { verifySignature } from "@app/lib/webhook_source_server";
 import logger from "@app/logger/logger";
@@ -452,15 +451,12 @@ async function filterTriggers({
     );
 
   // Fetch all triggers based on the webhook source id and flatten the result.
-  const triggers = (
-    await concurrentExecutor(
-      views,
-      async (view) => {
-        return TriggerResource.listByWebhookSourceViewId(auth, view.id);
-      },
-      { concurrency: 10 }
-    )
-  )
+  const allTriggers = await TriggerResource.listByWebhookSourceViewIds(
+    auth,
+    views.map((view) => view.id)
+  );
+
+  const triggers = allTriggers
     .flat()
     .map((t) => t.toJSON())
     // Filter here to avoid a lot of type checking later.
