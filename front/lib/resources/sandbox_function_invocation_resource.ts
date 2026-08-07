@@ -609,8 +609,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         return ensureResult;
       }
 
-      // No updateLastActivityAt here: ensurePodSandboxReady's ensureActive just wrote it under
-      // the lifecycle lock.
+      // No updateLastActivityAt here: ensurePodSandboxReady's ensureActive just wrote it.
       const sandbox = ensureResult.value.sandbox;
       const stdoutResultDelivery = await hasFeatureFlag(
         auth,

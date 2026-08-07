@@ -435,7 +435,14 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       `sandbox:lifecycle:${lockKey}`,
       () => fn(provider),
       undefined,
-      { traceAcquireResource: "sandbox:lifecycle" }
+      {
+        traceAcquireResource: "sandbox:lifecycle",
+        // Contended by concurrent invocations of the same pod: transitions
+        // hold this lock from milliseconds (status checks) to seconds
+        // (wake/create), and waiters on the fast side of that range should
+        // not lose in 100ms quanta.
+        retryIntervalMs: 25,
+      }
     );
   }
 
@@ -523,22 +530,41 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       "Cannot ensure sandbox without a workspace"
     );
 
-    return this.withLifecycleLock(owner.lockKey, async (provider) => {
-      const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
+    // Lock-free fast path: `requireRunning` never creates, wakes, or recreates, so a running,
+    // not-kill-requested sandbox can be used off a plain read. The lock exists to serialize
+    // lifecycle transitions, and this path performs none; taking it here made every concurrent
+    // invocation of a busy pod queue behind a blind-polling Redis lock for work that reads two
+    // rows.
+    //
+    // The read is a snapshot, so a transition can land right after it — which is exactly as racy
+    // as the same transition landing right after the locked version released. Every such race
+    // converges: a concurrent kill or sleep makes the exec fail, the caller escalates to the
+    // durable path, and the locked ensure there runs the transition machinery (kill-requested
+    // recreation included). A sandbox that is NOT running never takes the fast path: the error
+    // return below preserves requireRunning's contract without touching the lock, since waiting
+    // behind an in-flight multi-second wake would defeat the caller's latency bound anyway.
+    if (opts.requireRunning) {
       const existing = await owner.fetchSandbox();
-
-      // Decided here rather than by the caller: only under the lifecycle lock are the status and
-      // the kill marker stable, and a kill-requested sandbox is recreated below however it is
-      // reported, so a caller checking `status === "running"` beforehand would still get a cold
-      // start during an image rollout.
       if (
-        opts.requireRunning &&
-        (!existing ||
-          existing.killRequestedAt !== null ||
-          existing.status !== "running")
+        !existing ||
+        existing.killRequestedAt !== null ||
+        existing.status !== "running"
       ) {
         return new Err(new SandboxNotRunningError());
       }
+      // Same touch the locked path performs, so the reaper's inactivity clock keeps running for
+      // sandboxes served entirely through the fast path. Throttled internally to one write/30s.
+      await existing.updateLastActivityAt();
+      return new Ok({
+        sandbox: existing,
+        freshlyCreated: false,
+        wokeFromSleep: false,
+      });
+    }
+
+    return this.withLifecycleLock(owner.lockKey, async (provider) => {
+      const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
+      const existing = await owner.fetchSandbox();
 
       if (!existing) {
         const imageResult = getSandboxImage(auth);
