@@ -1446,6 +1446,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "schedule a meeting on my google calendar",
     expected: "google_calendar.create_event",
+    maxRank: 2, // conference variants expand the indexed input schema
   },
   {
     query: "reschedule a calendar event to a new time",
