@@ -250,11 +250,19 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     }
   }
 
+  // `includeDeletedSpace` refers to the pod, not to the functions themselves: pods are
+  // soft-deleted before being scrubbed, and without it every function of a pod being deleted
+  // resolves to no space and is silently dropped here.
   private static async baseFetch(
     auth: Authenticator,
-    options?: ResourceFindOptions<SandboxFunctionModel>
+    {
+      includeDeletedSpace,
+      ...options
+    }: ResourceFindOptions<SandboxFunctionModel> & {
+      includeDeletedSpace?: boolean;
+    } = {}
   ): Promise<SandboxFunctionResource[]> {
-    const { where, ...rest } = options ?? {};
+    const { where, ...rest } = options;
     const sandboxFunctions = await this.model.findAll({
       where: {
         ...where,
@@ -271,7 +279,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
             (sandboxFunction) => sandboxFunction.get().spaceId
           )
         )
-      )
+      ),
+      { includeDeleted: includeDeletedSpace }
     );
     const accessibleSpacesById = new Map(
       spaces
@@ -365,13 +374,17 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
   static async listBySpace(
     auth: Authenticator,
-    space: SpaceResource
+    space: SpaceResource,
+    { includeDeletedSpace }: { includeDeletedSpace?: boolean } = {}
   ): Promise<SandboxFunctionResource[]> {
     if (!space.isProject()) {
       return [];
     }
 
-    return this.baseFetch(auth, { where: { spaceId: space.id } });
+    return this.baseFetch(auth, {
+      where: { spaceId: space.id },
+      includeDeletedSpace,
+    });
   }
 
   static async fetchBySpaceAndSlug(
@@ -421,7 +434,10 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   ): Promise<Result<number, Error>> {
     assert(space.isProject(), "Sandbox functions can only belong to pods.");
 
-    const sandboxFunctions = await this.listBySpace(auth, space);
+    // The pod is already soft-deleted when the scrub runs, hence `includeDeletedSpace`.
+    const sandboxFunctions = await this.listBySpace(auth, space, {
+      includeDeletedSpace: true,
+    });
     for (const sandboxFunction of sandboxFunctions) {
       // TODO(spolu): potentially optimize as this may be quite slow (each delete calls file delete
       // which deletes a whole bunch of records).
@@ -429,6 +445,23 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       if (result.isErr()) {
         return new Err(result.error);
       }
+    }
+
+    // `listBySpace` drops rows it cannot fully hydrate, so a partial list would leave rows behind
+    // and surface much later as a foreign key violation on the pod hard delete. Fail here instead,
+    // naming what was left.
+    const remaining = await this.model.count({
+      where: {
+        spaceId: space.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    if (remaining > 0) {
+      return new Err(
+        new Error(
+          `${remaining} sandbox function(s) of pod ${space.sId} could not be deleted.`
+        )
+      );
     }
 
     return new Ok(sandboxFunctions.length);

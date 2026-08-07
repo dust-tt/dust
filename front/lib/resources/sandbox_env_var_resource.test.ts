@@ -631,6 +631,34 @@ describe("SandboxEnvVarResource pod scope", () => {
     expect(fetched?.allowedDomains).toEqual(["api.example.com"]);
   });
 
+  it("deletes only the pod-scoped rows on pod scrub", async () => {
+    const { authenticator, pod } = await setupPod();
+
+    const podResult = await SandboxEnvVarResource.makeNew(
+      authenticator,
+      podScope(pod),
+      { name: "CONFIG_TOKEN", value: "pod-config-value" }
+    );
+    expect(podResult.isOk()).toBe(true);
+    const workspaceResult = await SandboxEnvVarResource.makeNew(
+      authenticator,
+      wsScope(authenticator),
+      { name: "CONFIG_TOKEN", value: "workspace-config-value" }
+    );
+    expect(workspaceResult.isOk()).toBe(true);
+
+    await SandboxEnvVarResource.deleteAllForPod(authenticator, pod);
+
+    await expect(
+      SandboxEnvVarResource.listForScope(authenticator, podScope(pod))
+    ).resolves.toEqual([]);
+    const workspaceVars = await SandboxEnvVarResource.listForScope(
+      authenticator,
+      wsScope(authenticator)
+    );
+    expect(workspaceVars.map(({ name }) => name)).toEqual(["CONFIG_TOKEN"]);
+  });
+
   it("rejects non-pod spaces", async () => {
     const { authenticator, globalSpace } = await createResourceTest({
       role: "admin",

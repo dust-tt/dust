@@ -48,6 +48,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
+import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
@@ -55,6 +56,7 @@ import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -180,6 +182,20 @@ export async function scrubSpaceActivity({
     if (deletePodStateResult.isErr()) {
       throw deletePodStateResult.error;
     }
+
+    // Destroy the pod sandbox at the provider and drop its ownership row. The
+    // FK from sandbox_owners to spaces is `onDelete: "RESTRICT"`, so the row
+    // must be gone before the space can be hard-deleted.
+    const deleteSandboxResult = await PodSandboxAdapter.deleteSandbox(
+      auth,
+      space
+    );
+    if (deleteSandboxResult.isErr()) {
+      throw deleteSandboxResult.error;
+    }
+
+    // Same for the pod-scoped env vars.
+    await SandboxEnvVarResource.deleteAllForPod(auth, space);
   }
 
   // Delete all the data sources of the spaces.

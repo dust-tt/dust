@@ -1,6 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   SandboxFunctionInvocationModel,
   SandboxFunctionModel,
@@ -12,6 +13,7 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { sandboxFunctionContentType } from "@app/types/files";
+import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -551,6 +553,54 @@ describe("SandboxFunctionResource", () => {
         },
       })
     ).resolves.toBeNull();
+  });
+
+  it("deletes all sandbox functions for a soft-deleted space", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const space = await SpaceFactory.project(workspace);
+    const file = await FileFactory.create(authenticator, null, {
+      contentType: sandboxFunctionContentType,
+      fileName: "comments.ts",
+      fileSize: 100,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: space.sId },
+    });
+    await SandboxFunctionResource.makeNew(authenticator, {
+      space,
+      file,
+      slug: "add-comment",
+      description: "Add a comment.",
+      inputSchema,
+      outputSchema,
+    });
+
+    // The pod is soft-deleted before the scrub runs, exactly as the poke deletion workflow does.
+    const softDeleteResult = await space.delete(authenticator, {
+      hardDelete: false,
+    });
+    expect(softDeleteResult.isOk()).toBe(true);
+    const deletedSpace = await SpaceResource.fetchById(
+      authenticator,
+      space.sId,
+      { includeDeleted: true }
+    );
+    assert(deletedSpace);
+
+    const deleteResult = await SandboxFunctionResource.deleteAllForSpace(
+      authenticator,
+      deletedSpace
+    );
+
+    expect(deleteResult.isOk()).toBe(true);
+    expect(deleteResult.isOk() ? deleteResult.value : undefined).toBe(1);
+    await expect(
+      SandboxFunctionModel.count({
+        where: { spaceId: space.id, workspaceId: workspace.id },
+      })
+    ).resolves.toBe(0);
   });
 
   it("refuses to delete when the user cannot access the space", async () => {
