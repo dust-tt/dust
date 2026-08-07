@@ -18,7 +18,7 @@ Statement 2
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
-ALTER TABLE "public"."a`ctivation_pods"
+ALTER TABLE "public"."activation_pods"
   ALTER COLUMN "compactUIView" TYPE boolean
   USING (COALESCE("compactUIView", '') = 'compact'),
   ALTER COLUMN "compactUIView" SET DEFAULT false,
