@@ -27,11 +27,13 @@ import { UsageFilterModelComplexityControls } from "@app/components/workspace/an
 import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
+import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
 import {
   getMcpServerDisplayName,
   isRemoteMCPServerType,
 } from "@app/lib/actions/mcp_helper";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useGroups } from "@app/lib/swr/groups";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
@@ -66,15 +68,16 @@ interface UsageFilterPaginationState {
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
-  // Skills/sources are still mock data (see usageFilterMockData.ts — sources
-  // are fake connectors standing in for a real db call); agents come from
+  period: ConsumptionPeriodSelection;
+  // Sources are still mock data (see usageFilterMockData.ts — fake
+  // connectors standing in for a real db call); agents come from
   // useAgentConfigurations, members from useSearchMembers, teams from
   // useGroups, models from the workspace's full model catalog (useModels),
   // and tools from the workspace's full MCP server catalog (useMCPServers)
   // — the same endpoints that back the model and tool pickers elsewhere in
-  // the app.
+  // the app. Skills are fetched live too, scoped to `period`
+  // (useConsumptionTop).
   categoryOptions: {
-    skill: UsageFilterSkillOption[];
     source: UsageFilterSourceOption[];
   };
   filter: UsageFilter;
@@ -83,6 +86,7 @@ interface UsageFilterPanelProps {
 
 export function UsageFilterPanel({
   owner,
+  period,
   categoryOptions,
   filter,
   onFilterChange,
@@ -117,6 +121,7 @@ export function UsageFilterPanel({
   const isAgentCategoryActive = isOpen && activeCategory === "agent";
   const isModelCategoryActive = isOpen && activeCategory === "model";
   const isToolCategoryActive = isOpen && activeCategory === "tool";
+  const isSkillCategoryActive = isOpen && activeCategory === "skill";
 
   // Every category picker supports scroll-to-load-more:
   const [memberPageIndex, setMemberPageIndex] = useState(0);
@@ -201,6 +206,17 @@ export function UsageFilterPanel({
     disabled: !isToolCategoryActive,
   });
 
+  const { rows: topSkillRows } = useConsumptionTop({
+    workspaceId: owner.sId,
+    dimension: "skill",
+    period,
+    // Same rationale as members/agents/tools: broader than the Attribution
+    // table's own top-N so the picker covers most of the period's active
+    // skills.
+    limit: 100,
+    disabled: !isSkillCategoryActive,
+  });
+
   // The workspace's full, period-independent model catalog — the same
   // endpoint backing the model picker elsewhere in the app — rather than a
   // period-scoped top-N, so every enabled model is listable and searchable
@@ -273,6 +289,19 @@ export function UsageFilterPanel({
     [mcpServers]
   );
 
+  // Same client-side search caveat as members/agents/models/tools: a skill
+  // outside the top 100 by credits over the period will not be searchable
+  // here.
+  const skillOptions = useMemo<UsageFilterSkillOption[]>(
+    () =>
+      topSkillRows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        kind: "skill" as const,
+      })),
+    [topSkillRows]
+  );
+
   const resolvedCategoryOptions = useMemo<{
     [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
   }>(
@@ -283,6 +312,7 @@ export function UsageFilterPanel({
       agent: agentOptions,
       model: modelCatalogOptions,
       tool: toolOptions,
+      skill: skillOptions,
     }),
     [
       categoryOptions,
@@ -291,6 +321,7 @@ export function UsageFilterPanel({
       agentOptions,
       modelCatalogOptions,
       toolOptions,
+      skillOptions,
     ]
   );
 
