@@ -14,12 +14,14 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
+import { ActivationWorkAreaResource } from "@app/lib/resources/activation_work_area_resource";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -250,6 +252,106 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
           text: `Previous recommendations (${recs.length}):\n${lines.join("\n")}`,
         },
       ]);
+    },
+
+    list_work_areas: async ({ status }, { auth }) => {
+      const rows = await ActivationWorkAreaResource.listByUserAndStatus(auth, {
+        status,
+      });
+
+      if (rows.length === 0) {
+        return new Ok([
+          {
+            type: "text" as const,
+            text:
+              status === "confirmed"
+                ? "No confirmed work areas yet. Phase A bootstrap is needed."
+                : "No work areas found.",
+          },
+        ]);
+      }
+
+      const lines = rows.map(
+        (r, i) =>
+          `${i + 1}. [${r.status}] ${r.sId} — "${r.title}": ${r.description}`
+      );
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Work areas (${rows.length}):\n${lines.join("\n")}`,
+        },
+      ]);
+    },
+
+    create_work_areas: async ({ workAreas }, { auth }) => {
+      const pod = await ActivationPodResource.fetchByUser(auth);
+
+      const created = await concurrentExecutor(
+        workAreas,
+        (item) =>
+          ActivationWorkAreaResource.makeNew(auth, {
+            title: item.title,
+            description: item.description,
+            podId: pod?.id ?? null,
+          }),
+        { concurrency: 8 }
+      );
+
+      const lines = created.map(
+        (r) => `${r.sId} — "${r.title}" (status: candidate)`
+      );
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `Created ${created.length} candidate work areas:\n${lines.join("\n")}\n\nPresent these to the user for triage using update_work_area with status='confirmed' or 'dismissed'.`,
+        },
+      ]);
+    },
+
+    update_work_area: async (
+      { workAreaId, status, title, description },
+      { auth }
+    ) => {
+      const row = await ActivationWorkAreaResource.fetchById(auth, workAreaId);
+
+      if (!row) {
+        return new Err(new MCPError(`Work area not found: ${workAreaId}.`));
+      }
+
+      if (row.userId !== auth.getNonNullableUser().id) {
+        return new Err(
+          new MCPError(
+            `Cannot update work area ${workAreaId}: not owned by the calling user.`
+          )
+        );
+      }
+
+      const updateRes = await row.updateFields({
+        status,
+        title,
+        description,
+      });
+
+      if (updateRes.isErr()) {
+        return new Err(
+          new MCPError(`Failed to update work area: ${updateRes.error.message}`)
+        );
+      }
+
+      const parts: string[] = [`Work area ${workAreaId} updated.`];
+      if (status) {
+        parts.push(`Status: ${status}.`);
+      }
+      if (title) {
+        parts.push(`Title updated.`);
+      }
+      if (description) {
+        parts.push(`Intent updated.`);
+      }
+
+      return new Ok([{ type: "text" as const, text: parts.join(" ") }]);
     },
 
     get_tool_execution_modes: async (
