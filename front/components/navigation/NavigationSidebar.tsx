@@ -1,23 +1,20 @@
-import { CreditUsage } from "@app/components/app/CreditUsage";
-import { FairUseCreditsUsage } from "@app/components/app/FairUseCreditsUsage";
 import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { SidebarBanners } from "@app/components/navigation/AppStatusBanner";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
+import { SidebarUserMenu } from "@app/components/navigation/SidebarUserMenu";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
-import { UserMenu } from "@app/components/UserMenu";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
-import { useMyUsage } from "@app/lib/swr/credits";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import type {
   ConcreteResourceType,
   GrantVerb,
 } from "@app/types/group_permissions";
-import { isCreditPricedPlan, type SubscriptionType } from "@app/types/plan";
+import type { SubscriptionType } from "@app/types/plan";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { isAdmin, isManager } from "@app/types/user";
 import {
@@ -34,8 +31,6 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useContext, useMemo } from "react";
-
-const DAY_DURATION_MS = 24 * 60 * 60 * 1000;
 
 function getAdminSectionHref(
   owner: WorkspaceType,
@@ -117,26 +112,6 @@ export const NavigationSidebar = React.forwardRef<
   const { setSidebarOpen } = useContext(SidebarContext);
   const { setIsNavigationBarOpen } = useDesktopNavigation();
 
-  const isCreditBased = isCreditPricedPlan(subscription.plan);
-  const { creditUsageStatus } = useMyUsage({
-    workspaceId: owner.sId,
-    disabled: !isCreditBased,
-  });
-  const creditUsageState = creditUsageStatus
-    ? {
-        usedPercentage: creditUsageStatus.usedPercentage,
-        resetInDays: Math.max(
-          0,
-          Math.ceil(
-            (new Date(creditUsageStatus.resetAt).getTime() - Date.now()) /
-              DAY_DURATION_MS
-          )
-        ),
-        pace: creditUsageStatus.pace,
-      }
-    : null;
-  const showCreditUsageInProfileMenu = creditUsageState?.pace === "on_pace";
-
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col">
       <div className={cn("flex flex-col gap-3")}>
@@ -217,24 +192,11 @@ export const NavigationSidebar = React.forwardRef<
           <TrialMessageUsage isAdmin={isAdmin(owner)} workspaceId={owner.sId} />
         </div>
       )}
-      {subscription.plan.code !== FREE_TRIAL_PHONE_PLAN_CODE &&
-        !isCreditBased &&
-        subscription.plan.limits.assistant.maxAwuCredits !== -1 && (
-          <FairUseCreditsUsage workspaceId={owner.sId} />
-        )}
-      {creditUsageState && !showCreditUsageInProfileMenu && (
-        <div className="mx-3 mb-3">
-          <CreditUsage state={creditUsageState} variant="companion" />
-        </div>
-      )}
       {user && (
-        <UserMenu
+        <SidebarUserMenu
           user={user}
           owner={owner}
           subscription={subscription}
-          creditUsageState={
-            showCreditUsageInProfileMenu ? creditUsageState : null
-          }
         />
       )}
     </div>
