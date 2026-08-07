@@ -1,4 +1,5 @@
 import { GroupDialog } from "@app/components/groups/GroupDialog";
+import { getGroupKindChip } from "@app/components/groups/GroupKinds";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import type { GroupType } from "@app/types/groups";
 import {
@@ -68,13 +69,7 @@ export const GroupSelector = ({
               label={group.name}
               disabled={disabled}
               endComponent={
-                <Chip
-                  label={
-                    group.kind === "provisioned" ? "Provisioned" : "Manual"
-                  }
-                  color={group.kind === "provisioned" ? "success" : "info"}
-                  size="xs"
-                />
+                <Chip {...getGroupKindChip(group.kind)} size="xs" />
               }
               onClick={() =>
                 onSelectionChange([...selectedGroupIds, group.sId])

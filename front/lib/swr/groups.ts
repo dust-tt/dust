@@ -5,8 +5,10 @@ import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetGroupsResponseBody } from "@app/types/api/groups";
 import type {
   GetGroupResponseBody,
+  GetMemberGroupsResponseBody,
   PatchGroupResponseBody,
   PostGroupResponseBody,
+  PostMemberGroupResponseBody,
 } from "@app/types/api/groups/manage";
 import type { PutGroupSpendLimitResponseBody } from "@app/types/api/groups/spend_limit";
 import { type GroupKind, MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
@@ -87,6 +89,195 @@ export function useGroup({
     isGroupError: !!error,
     mutateGroup: mutate,
   };
+}
+
+function memberGroupsUrl(workspaceId: string, userId: string): string {
+  return `/api/w/${workspaceId}/members/${userId}/groups`;
+}
+
+/**
+ * Groups (provisioned and manually-managed) a given workspace member belongs to.
+ */
+export function useMemberGroups({
+  owner,
+  userId,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  userId: string | null;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const memberGroupsFetcher: Fetcher<GetMemberGroupsResponseBody> = fetcher;
+
+  const isDisabled = disabled || !userId;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    memberGroupsUrl(owner.sId, userId ?? "unknown"),
+    memberGroupsFetcher,
+    { disabled: isDisabled }
+  );
+
+  const groups = useMemo(
+    () =>
+      data ? [...data.groups].sort((a, b) => a.name.localeCompare(b.name)) : [],
+    [data]
+  );
+
+  return {
+    memberGroups: groups,
+    isMemberGroupsLoading: !error && !data && !isDisabled,
+    isMemberGroupsError: !!error,
+    mutateMemberGroups: mutate,
+  };
+}
+
+export function useAddMemberToGroup({
+  owner,
+  userId,
+}: {
+  owner: LightWorkspaceType;
+  userId: string | null;
+}) {
+  const sendNotification = useSendNotification();
+  const [isAdding, setIsAdding] = useState(false);
+  const { mutateMemberGroups } = useMemberGroups({
+    owner,
+    userId,
+    disabled: true,
+  });
+
+  const doAddMemberToGroup = useCallback(
+    async ({
+      groupId,
+      groupName,
+    }: {
+      groupId: string;
+      groupName: string;
+    }): Promise<boolean> => {
+      if (!userId) {
+        return false;
+      }
+      setIsAdding(true);
+      try {
+        const res = await clientFetch(memberGroupsUrl(owner.sId, userId), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ groupId }),
+        });
+
+        if (!res.ok) {
+          const error = await res.json();
+          sendNotification({
+            type: "error",
+            title: "Failed to add member to group",
+            description:
+              error?.error?.message ?? "An unexpected error occurred.",
+          });
+          return false;
+        }
+
+        const body: PostMemberGroupResponseBody = await res.json();
+
+        sendNotification({
+          type: "success",
+          title: "Member added to group",
+          description: `The member has been added to ${groupName}.`,
+        });
+
+        await mutateMemberGroups(
+          (previous) =>
+            previous
+              ? { ...previous, groups: [...previous.groups, body.group] }
+              : previous,
+          { revalidate: false }
+        );
+        // Member counts changed in the workspace groups list.
+        await invalidateWorkspaceGroups(owner.sId);
+
+        return true;
+      } finally {
+        setIsAdding(false);
+      }
+    },
+    [owner.sId, userId, mutateMemberGroups, sendNotification]
+  );
+
+  return { doAddMemberToGroup, isAdding };
+}
+
+export function useRemoveMemberFromGroup({
+  owner,
+  userId,
+}: {
+  owner: LightWorkspaceType;
+  userId: string | null;
+}) {
+  const sendNotification = useSendNotification();
+  const [isRemoving, setIsRemoving] = useState(false);
+  const { mutateMemberGroups } = useMemberGroups({
+    owner,
+    userId,
+    disabled: true,
+  });
+
+  const doRemoveMemberFromGroup = useCallback(
+    async ({
+      groupId,
+      groupName,
+    }: {
+      groupId: string;
+      groupName: string;
+    }): Promise<boolean> => {
+      if (!userId) {
+        return false;
+      }
+      setIsRemoving(true);
+      try {
+        const res = await clientFetch(
+          `${memberGroupsUrl(owner.sId, userId)}/${groupId}`,
+          { method: "DELETE" }
+        );
+
+        if (!res.ok) {
+          const error = await res.json();
+          sendNotification({
+            type: "error",
+            title: "Failed to remove member from group",
+            description:
+              error?.error?.message ?? "An unexpected error occurred.",
+          });
+          return false;
+        }
+
+        sendNotification({
+          type: "success",
+          title: "Member removed from group",
+          description: `The member has been removed from ${groupName}.`,
+        });
+
+        await mutateMemberGroups(
+          (previous) =>
+            previous
+              ? {
+                  ...previous,
+                  groups: previous.groups.filter((g) => g.sId !== groupId),
+                }
+              : previous,
+          { revalidate: false }
+        );
+        // Member counts changed in the workspace groups list.
+        await invalidateWorkspaceGroups(owner.sId);
+
+        return true;
+      } finally {
+        setIsRemoving(false);
+      }
+    },
+    [owner.sId, userId, mutateMemberGroups, sendNotification]
+  );
+
+  return { doRemoveMemberFromGroup, isRemoving };
 }
 
 function groupSpendLimitUrl(workspaceId: string, groupId: string): string {

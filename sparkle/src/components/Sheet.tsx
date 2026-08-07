@@ -95,6 +95,23 @@ interface SheetContentProps
   preventAutoFocusOnOpen?: boolean;
 }
 
+type PointerDownOutsideEvent = Parameters<
+  NonNullable<SheetContentProps["onPointerDownOutside"]>
+>[0];
+
+type InteractOutsideEvent = Parameters<
+  NonNullable<SheetContentProps["onInteractOutside"]>
+>[0];
+
+// Notifications are rendered by sonner in their own portal, outside of the sheet: interacting with
+// a toast (typically dismissing it) must not be treated as an interaction outside the sheet.
+function isEventInsideNotification(event: {
+  detail: { originalEvent: Event };
+}): boolean {
+  const target = event.detail.originalEvent.target;
+  return target instanceof Element && !!target.closest("[data-sonner-toaster]");
+}
+
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
@@ -110,6 +127,8 @@ const SheetContent = React.forwardRef<
       preventAutoFocusOnOpen = true,
       onCloseAutoFocus,
       onOpenAutoFocus,
+      onPointerDownOutside,
+      onInteractOutside,
       ...props
     },
     ref
@@ -132,6 +151,28 @@ const SheetContent = React.forwardRef<
         onOpenAutoFocus?.(event);
       },
       [preventAutoFocusOnOpen, onOpenAutoFocus]
+    );
+
+    const handlePointerDownOutside = React.useCallback(
+      (event: PointerDownOutsideEvent) => {
+        if (isEventInsideNotification(event)) {
+          event.preventDefault();
+          return;
+        }
+        onPointerDownOutside?.(event);
+      },
+      [onPointerDownOutside]
+    );
+
+    const handleInteractOutside = React.useCallback(
+      (event: InteractOutsideEvent) => {
+        if (isEventInsideNotification(event)) {
+          event.preventDefault();
+          return;
+        }
+        onInteractOutside?.(event);
+      },
+      [onInteractOutside]
     );
 
     const onKeyDownCapture = React.useCallback(
@@ -163,6 +204,8 @@ const SheetContent = React.forwardRef<
             )}
             onCloseAutoFocus={handleCloseAutoFocus}
             onOpenAutoFocus={handleOpenAutoFocus}
+            onPointerDownOutside={handlePointerDownOutside}
+            onInteractOutside={handleInteractOutside}
             onKeyDownCapture={onKeyDownCapture}
             {...props}
           >
