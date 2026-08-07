@@ -325,11 +325,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable the per-workspace Activation scheduler workflow",
     stage: "dust_only",
   },
-  activation_responsibilities: {
-    description:
-      "Make work responsibilities a first-class citizen of the Activation system (Phase A bootstrap + Phase B attribution)",
-    stage: "dust_only",
-  },
   admin_controlled_pods: {
     description:
       "Enable admin-controlled Pods: admins manage membership and attach connected data (Space DataSourceViews) to the Pod itself.",

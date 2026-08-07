@@ -179,7 +179,7 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
       title: this.title,
       description: this.description,
       status: this.status,
-      createdAt: this.createdAt,
+      createdAt: this.createdAt.getTime(),
     };
   }
 }

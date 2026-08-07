@@ -1,16 +1,12 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { ActivationWorkAreaStatus } from "@app/lib/models/activation/activation_work_area";
-import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ActivationWorkAreaResource } from "@app/lib/resources/activation_work_area_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { ModelId } from "@app/types/shared/model_id";
 
-export interface ActivationWorkAreaForUserType {
-  sId: string;
-  title: string;
-  description: string;
-  status: ActivationWorkAreaStatus;
-  createdAt: number;
-}
+export type ActivationWorkAreaForUserType = ReturnType<
+  ActivationWorkAreaResource["toJSON"]
+>;
 
 export interface GetActivationWorkAreasResponseBody {
   workAreas: ActivationWorkAreaForUserType[];
@@ -29,18 +25,6 @@ export interface UpdateActivationWorkAreaResponseBody {
   success: true;
 }
 
-function toUserType(
-  r: ActivationWorkAreaResource
-): ActivationWorkAreaForUserType {
-  return {
-    sId: r.sId,
-    title: r.title,
-    description: r.description,
-    status: r.status,
-    createdAt: r.createdAt.getTime(),
-  };
-}
-
 export async function listActivationWorkAreasForUser(
   auth: Authenticator,
   { status }: { status?: ActivationWorkAreaStatus } = {}
@@ -49,28 +33,26 @@ export async function listActivationWorkAreasForUser(
     status,
   });
 
-  return rows.map(toUserType);
+  return rows.map((r) => r.toJSON());
 }
 
 export async function createActivationWorkAreasForUser(
   auth: Authenticator,
-  items: CreateActivationWorkAreaItem[]
+  items: CreateActivationWorkAreaItem[],
+  podId: ModelId
 ): Promise<ActivationWorkAreaForUserType[]> {
-  // Best-effort link to the user's activation pod.
-  const pod = await ActivationPodResource.fetchByUser(auth);
-
   const created = await concurrentExecutor(
     items,
     (item) =>
       ActivationWorkAreaResource.makeNew(auth, {
         title: item.title,
         description: item.description,
-        podId: pod?.id ?? null,
+        podId,
       }),
     { concurrency: 8 }
   );
 
-  return created.map(toUserType);
+  return created.map((r) => r.toJSON());
 }
 
 export async function updateActivationWorkAreaForUser(

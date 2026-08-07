@@ -8,6 +8,7 @@ import {
   listActivationWorkAreasForUser,
   updateActivationWorkAreaForUser,
 } from "@app/lib/api/activation/work_areas";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -58,7 +59,22 @@ app.post(
     const auth = ctx.get("auth");
     const { workAreas: items } = ctx.req.valid("json");
 
-    const workAreas = await createActivationWorkAreasForUser(auth, items);
+    const pod = await ActivationPodResource.fetchByUser(auth);
+    if (!pod) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "not_found",
+          message: "No activation pod found for this user.",
+        },
+      });
+    }
+
+    const workAreas = await createActivationWorkAreasForUser(
+      auth,
+      items,
+      pod.id
+    );
 
     return ctx.json({ workAreas });
   }
