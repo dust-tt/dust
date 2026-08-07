@@ -107,6 +107,10 @@ export function makeColumnsForAssistants(
       cell: ({ row }) => {
         const assistant = row.original;
 
+        if (assistant.scope === "global") {
+          return null;
+        }
+
         return (
           <>
             <IconButton

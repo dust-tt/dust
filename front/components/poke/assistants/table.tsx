@@ -6,8 +6,6 @@ import type { AppRouter } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
-import type { PokeAgentConfigurationType } from "@app/types/api/poke/agent_configurations";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -23,15 +21,6 @@ interface AssistantsDataTableProps {
   owner: LightWorkspaceType;
   agentsRetention: Record<string, number>;
   loadOnInit?: boolean;
-}
-
-function prepareAgentConfigurationForDisplay(
-  agentConfigurations: PokeAgentConfigurationType[]
-) {
-  return agentConfigurations.filter(
-    (ac) =>
-      !Object.values(GLOBAL_AGENTS_SID).includes(ac.sId as GLOBAL_AGENTS_SID)
-  );
 }
 
 const importAssistant = async (
@@ -124,7 +113,7 @@ export function AssistantsDataTable({
                 await mutate();
               }
             )}
-            data={prepareAgentConfigurationForDisplay(data)}
+            data={data}
           />
         )}
       </PokeDataTableConditionalFetch>
@@ -172,7 +161,7 @@ function RestoreAssistantModal({
                   await mutate();
                 }
               )}
-              data={prepareAgentConfigurationForDisplay(archivedAssistants)}
+              data={archivedAssistants}
             />
           )}
         </SheetContainer>
