@@ -1,4 +1,5 @@
 import type { GroupKind } from "@app/types/groups";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { Chip } from "@dust-tt/sparkle";
 import type React from "react";
 
@@ -17,8 +18,19 @@ export function getGroupKindChip(kind: GroupKind): {
   switch (kind) {
     case "provisioned":
       return { label: "Provisioned", color: "success" };
-    default:
+    case "regular_manual":
       return { label: "Manual", color: "info" };
+    // Only provisioned and manual groups are surfaced to users, so this should never be displayed.
+    case "agent_editors":
+    case "global":
+    case "regular_auto":
+    case "skill_editors":
+    case "space_editors":
+    case "system":
+      return { label: "Other", color: "primary" };
+    default:
+      assertNeverAndIgnore(kind);
+      return { label: "Other", color: "primary" };
   }
 }
 
