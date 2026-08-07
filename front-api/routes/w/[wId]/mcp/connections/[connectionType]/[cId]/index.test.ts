@@ -222,7 +222,8 @@ describe("MCP connections handler", () => {
     expect(response.status).toBe(404);
     const connectionRes = await MCPServerConnectionResource.fetchById(
       auth,
-      connection.sId
+      connection.sId,
+      { connectionType: "personal" }
     );
     expect(connectionRes.isOk()).toBe(true);
   });

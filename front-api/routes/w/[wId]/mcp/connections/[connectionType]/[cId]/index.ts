@@ -1,4 +1,7 @@
-import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
+import type {
+  MCPServerConnectionConnectionType,
+  MCPServerConnectionType,
+} from "@app/lib/resources/mcp_server_connection_resource";
 import {
   isMCPServerConnectionConnectionType,
   MCPServerConnectionResource,
@@ -17,9 +20,13 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/mcp/connections/:connectionType/:cId.
 const app = workspaceApp();
 
-async function loadConnection(ctx: Context, cId: string) {
+async function loadConnection(
+  ctx: Context,
+  cId: string,
+  connectionType: MCPServerConnectionConnectionType
+) {
   const auth = ctx.get("auth");
-  return MCPServerConnectionResource.fetchById(auth, cId);
+  return MCPServerConnectionResource.fetchById(auth, cId, { connectionType });
 }
 
 /** @ignoreswagger */
@@ -35,11 +42,8 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const connectionRes = await loadConnection(ctx, cId);
-  if (
-    connectionRes.isErr() ||
-    connectionRes.value.connectionType !== connectionType
-  ) {
+  const connectionRes = await loadConnection(ctx, cId, connectionType);
+  if (connectionRes.isErr()) {
     return apiError(ctx, {
       status_code: 404,
       api_error: {
@@ -68,11 +72,8 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const connectionRes = await loadConnection(ctx, cId);
-  if (
-    connectionRes.isErr() ||
-    connectionRes.value.connectionType !== connectionType
-  ) {
+  const connectionRes = await loadConnection(ctx, cId, connectionType);
+  if (connectionRes.isErr()) {
     return apiError(ctx, {
       status_code: 404,
       api_error: {

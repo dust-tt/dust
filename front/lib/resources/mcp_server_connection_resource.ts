@@ -151,9 +151,10 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
 
   static async fetchById(
     auth: Authenticator,
-    id: string
+    id: string,
+    { connectionType }: { connectionType: MCPServerConnectionConnectionType }
   ): Promise<Result<MCPServerConnectionResource, DustError>> {
-    const connRes = await this.fetchByIds(auth, [id]);
+    const connRes = await this.fetchByIds(auth, [id], { connectionType });
 
     if (connRes.isErr()) {
       return connRes;
@@ -164,7 +165,8 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
 
   static async fetchByIds(
     auth: Authenticator,
-    ids: string[]
+    ids: string[],
+    { connectionType }: { connectionType: MCPServerConnectionConnectionType }
   ): Promise<Result<MCPServerConnectionResource[], DustError>> {
     const connModelIds = removeNulls(ids.map((id) => getResourceIdFromSId(id)));
     if (connModelIds.length !== ids.length) {
@@ -176,6 +178,7 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
         id: {
           [Op.in]: connModelIds,
         },
+        connectionType,
       },
     });
 
