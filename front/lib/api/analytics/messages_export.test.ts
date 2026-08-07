@@ -26,6 +26,7 @@ vi.mock("@app/lib/resources/storage", async (importActual) => {
 });
 
 function mockMessageHits(docs: ElasticsearchBaseDocument[]) {
+  vi.mocked(searchAnalytics).mockClear();
   vi.mocked(searchAnalytics).mockResolvedValue(
     new Ok({
       took: 1,
@@ -81,6 +82,38 @@ describe("fetchMessageExportRows", () => {
     }
     expect(result.value).toHaveLength(1);
     expect(result.value[0].credits).toBe(7);
+  });
+
+  it("does not filter on status, so failed messages keep their billable credits", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+
+    // A multi-execution message whose terminal execution errored: still billed
+    // for the work of its successful executions.
+    mockMessageHits([
+      messageDoc({
+        message_id: "msg_failed",
+        status: "failed",
+        cost: { full_awu: 10, llm_awu: 4, tool_awu: 3, billable_awu: 5 },
+      }),
+    ]);
+
+    const result = await fetchMessageExportRows({
+      auth: authenticator,
+      owner: workspace,
+      startDate: "2026-07-01",
+      endDate: "2026-07-02",
+      timezone: "UTC",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value).toHaveLength(1);
+    expect(result.value[0].messageId).toBe("msg_failed");
+    expect(result.value[0].credits).toBe(5);
   });
 
   it("resolves agent_tag_ids to sorted, distinct tag names in the assistantTags column", async () => {

@@ -5,6 +5,7 @@ import {
   fetchUserEmails,
 } from "@app/lib/api/analytics/enrichment";
 import { resolveServerDisplayNames } from "@app/lib/api/assistant/observability/tool_usage";
+import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
@@ -135,15 +136,11 @@ export async function fetchMessageExportRows({
   endDate: string;
   timezone: string;
 }): Promise<Result<MessageExportRow[], Error>> {
-  const query: estypes.QueryDslQueryContainer = {
-    bool: {
-      filter: [
-        { term: { workspace_id: owner.sId } },
-        { term: { status: "succeeded" } },
-        { range: { timestamp: { gte: startDate, lte: endDate } } },
-      ],
-    },
-  };
+  const query = buildAgentAnalyticsBaseQuery({
+    workspaceId: owner.sId,
+    startDate,
+    endDate,
+  });
 
   const docsResult = await fetchAllMessageDocuments(query);
   if (docsResult.isErr()) {
