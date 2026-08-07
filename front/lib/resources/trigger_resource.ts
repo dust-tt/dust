@@ -504,62 +504,58 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       }
     }
 
-    try {
-      const webhookSourceViewIds = [
-        ...new Set(
-          triggers.flatMap((trigger) =>
-            trigger.kind === "webhook" && trigger.webhookSourceViewId
-              ? [trigger.webhookSourceViewId]
-              : []
-          )
-        ),
-      ];
-      const webhookRequestsDeletion =
-        await this.deleteWebhookRequestsForSourceViews(
-          auth,
-          webhookSourceViewIds,
-          transaction
-        );
-      if (webhookRequestsDeletion.isErr()) {
-        return webhookRequestsDeletion;
-      }
-
-      const triggerIds = triggers.map((trigger) => trigger.id);
-      await ActivationNudgeModel.destroy({
-        where: { triggerId: { [Op.in]: triggerIds }, workspaceId: owner.id },
-        transaction,
-      });
-
-      await TriggerModel.destroy({
-        where: {
-          id: { [Op.in]: triggerIds },
-          workspaceId: owner.id,
-        },
-        transaction,
-      });
-
-      for (const trigger of triggers) {
-        void emitAuditLogEvent({
-          auth,
-          action: "trigger.deleted",
-          targets: [
-            buildAuditLogTarget("workspace", owner),
-            buildAuditLogTarget("trigger", {
-              sId: trigger.sId,
-              name: trigger.name,
-            }),
-          ],
-          metadata: {
-            trigger_type: trigger.kind,
-            agent_id: trigger.agentConfigurationId,
-          },
-        });
-      }
-
-      return new Ok(undefined);
-    } catch (error) {
-      return new Err(normalizeError(error));
+    const webhookSourceViewIds = [
+      ...new Set(
+        triggers.flatMap((trigger) =>
+          trigger.kind === "webhook" && trigger.webhookSourceViewId
+            ? [trigger.webhookSourceViewId]
+            : []
+        )
+      ),
+    ];
+    const webhookRequestsDeletion =
+      await this.deleteWebhookRequestsForSourceViews(
+        auth,
+        webhookSourceViewIds,
+        transaction
+      );
+    if (webhookRequestsDeletion.isErr()) {
+      return webhookRequestsDeletion;
     }
+
+    const triggerIds = triggers.map((trigger) => trigger.id);
+    await ActivationNudgeModel.destroy({
+      where: { triggerId: { [Op.in]: triggerIds }, workspaceId: owner.id },
+      transaction,
+    });
+
+    await TriggerModel.destroy({
+      where: {
+        id: { [Op.in]: triggerIds },
+        workspaceId: owner.id,
+      },
+      transaction,
+    });
+
+    for (const trigger of triggers) {
+      void emitAuditLogEvent({
+        auth,
+        action: "trigger.deleted",
+        targets: [
+          buildAuditLogTarget("workspace", owner),
+          buildAuditLogTarget("trigger", {
+            sId: trigger.sId,
+            name: trigger.name,
+          }),
+        ],
+        metadata: {
+          trigger_type: trigger.kind,
+          agent_id: trigger.agentConfigurationId,
+        },
+      });
+    }
+
+    return new Ok(undefined);
   }
 
   static async deleteAllForWorkspace(
