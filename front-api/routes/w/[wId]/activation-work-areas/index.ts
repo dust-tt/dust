@@ -96,28 +96,30 @@ app.patch(
       description,
     });
 
-    switch (result) {
-      case "not_found":
-        return apiError(ctx, {
-          status_code: 404,
-          api_error: {
-            type: "work_area_not_found",
-            message: "Work area not found.",
-          },
-        });
-      case "unauthorized":
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "forbidden",
-            message: "Cannot update a work area owned by another user.",
-          },
-        });
-      case "ok":
-        return ctx.json({ success: true });
-      default:
-        assertNever(result);
+    if (result.isErr()) {
+      switch (result.error.code) {
+        case "activation_work_area_not_found":
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: {
+              type: "work_area_not_found",
+              message: result.error.message,
+            },
+          });
+        case "unauthorized":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "forbidden",
+              message: result.error.message,
+            },
+          });
+        default:
+          assertNever(result.error.code);
+      }
     }
+
+    return ctx.json({ success: true });
   }
 );
 

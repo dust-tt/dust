@@ -1,8 +1,11 @@
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import type { ActivationWorkAreaStatus } from "@app/lib/models/activation/activation_work_area";
 import { ActivationWorkAreaResource } from "@app/lib/resources/activation_work_area_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export interface ActivationWorkAreaForUserType {
   sId: string;
@@ -72,18 +75,30 @@ export async function updateActivationWorkAreaForUser(
     title?: string;
     description?: string;
   }
-): Promise<"not_found" | "unauthorized" | "ok"> {
+): Promise<
+  Result<
+    undefined,
+    DustError<"activation_work_area_not_found" | "unauthorized">
+  >
+> {
   const row = await ActivationWorkAreaResource.fetchById(auth, workAreaId);
 
   if (!row) {
-    return "not_found";
+    return new Err(
+      new DustError("activation_work_area_not_found", "Work area not found.")
+    );
   }
 
   if (row.userId !== auth.getNonNullableUser().id) {
-    return "unauthorized";
+    return new Err(
+      new DustError(
+        "unauthorized",
+        "Cannot update a work area owned by another user."
+      )
+    );
   }
 
   await row.updateFields({ status, title, description });
 
-  return "ok";
+  return new Ok(undefined);
 }

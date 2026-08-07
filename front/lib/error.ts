@@ -50,6 +50,8 @@ export type DustErrorCode =
   | "mcp_access_token_error"
   // Triggers errors
   | "webhook_source_not_found"
+  // Activation errors
+  | "activation_work_area_not_found"
   // Space errors
   | "space_already_exists"
   // Conversation errors
