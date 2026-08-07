@@ -3,14 +3,15 @@ import { getIndexedColor } from "@app/components/agent_builder/observability/uti
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
-import type { ConsumptionPeriodSelection } from "@app/components/workspace/analytics/consumption/consumptionPeriod";
-import { formatConsumptionDate } from "@app/components/workspace/analytics/consumption/consumptionPeriod";
 import { useConsumptionTimeseries } from "@app/hooks/useConsumptionTimeseries";
+import {
+  type ConsumptionPeriodSelection,
+  formatConsumptionDate,
+} from "@app/lib/analytics/consumption_period";
 import type {
   ConsumptionTimeseriesGroup,
   ConsumptionTimeseriesPoint,
-} from "@app/lib/api/analytics/consumption/series";
-import { DEFAULT_CONSUMPTION_BREAKDOWN_COUNT } from "@app/lib/api/analytics/consumption/series";
+} from "@app/lib/api/analytics/consumption/timeseries";
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import { cn } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
@@ -126,7 +127,6 @@ export function ConsumptionChart({
       period,
       mode: "daily",
       breakdownBy: "agent",
-      breakdownCount: DEFAULT_CONSUMPTION_BREAKDOWN_COUNT,
     });
 
   const groups = useMemo(() => timeseries?.groups ?? [], [timeseries]);
