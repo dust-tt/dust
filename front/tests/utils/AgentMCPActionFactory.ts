@@ -45,6 +45,7 @@ export class AgentMCPActionFactory {
       toolName = "test_tool",
       mcpServerName = "test_server",
       toolServerId = "test-server",
+      functionCallArguments = "{}",
       sandboxChildActionInfo,
       parentAction,
     }: {
@@ -60,6 +61,7 @@ export class AgentMCPActionFactory {
       toolName?: string;
       mcpServerName?: string;
       toolServerId?: string;
+      functionCallArguments?: string;
       sandboxChildActionInfo?: SandboxChildActionInfo;
       parentAction?: AgentMCPActionResource;
     }
@@ -84,7 +86,7 @@ export class AgentMCPActionFactory {
           value: {
             id: functionCallId,
             name: functionCallName,
-            arguments: "{}",
+            arguments: functionCallArguments,
           },
         },
       }));
