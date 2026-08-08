@@ -78,6 +78,9 @@
       "properties": {
         "id": {
           "type": "keyword"
+        },
+        "group_ids": {
+          "type": "keyword"
         }
       }
     },

@@ -155,6 +155,10 @@ describe("buildLlmConsumptionDocuments", () => {
           reasoning: 5,
         },
         tool: null,
+        user: {
+          id: auth.getNonNullableUser().sId,
+          group_ids: [],
+        },
       }),
     ]);
   });

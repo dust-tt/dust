@@ -11,6 +11,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { RunFactory } from "@app/tests/utils/RunFactory";
 import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
@@ -123,6 +124,7 @@ async function appendHandoverMessage({
 
 async function setupSettledMessage({
   authorless = false,
+  completedAt = new Date("2026-08-05T12:00:00.000Z"),
   depth = 0,
   agenticOriginMessageId,
   agentName,
@@ -130,6 +132,7 @@ async function setupSettledMessage({
   usageType = USAGE_TYPE_USER,
 }: {
   authorless?: boolean;
+  completedAt?: Date;
   depth?: number;
   agenticOriginMessageId?: string;
   agentName?: string;
@@ -155,7 +158,6 @@ async function setupSettledMessage({
     outputTokens: 20,
     modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
   });
-  const completedAt = new Date("2026-08-05T12:00:00.000Z");
   await AgentMessageModel.update(
     {
       completedAt,
@@ -216,8 +218,36 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
           usageType: USAGE_TYPE_USER,
         },
       ],
-      user: { id: context.auth.getNonNullableUser().sId },
+      user: {
+        id: context.auth.getNonNullableUser().sId,
+        group_ids: [],
+      },
       workspaceId: context.workspace.sId,
+    });
+  });
+
+  it("loads the user's consumption groups at message completion", async () => {
+    const testContext = await createResourceTest({ role: "admin" });
+    const group = await GroupFactory.regularManual(
+      testContext.workspace,
+      "Analytics group"
+    );
+    await GroupFactory.withMembers(testContext.authenticator, group, [
+      testContext.authenticator.getNonNullableUser(),
+    ]);
+    const context = await setupSettledMessage({
+      completedAt: new Date(),
+      testContext,
+    });
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      context.auth,
+      { agentMessageId: context.agentMessage.sId }
+    );
+
+    expect(input?.user).toEqual({
+      id: testContext.authenticator.getNonNullableUser().sId,
+      group_ids: [group.sId],
     });
   });
 
