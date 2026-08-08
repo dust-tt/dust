@@ -326,6 +326,7 @@ dependencies = [
  "lru",
  "rcgen",
  "reqwest",
+ "ring",
  "rustix",
  "rustls",
  "rustls-native-certs",
