@@ -1,25 +1,35 @@
-// Warm function server: keeps one imported function bundle resident in a bun
-// process and serves invocations over a unix socket, so repeat invocations skip
-// process spawn, bundle resolution, and the import of the bundle and its
-// dependencies (the dominant sandbox-side costs of a cold run).
+// Warm function server (protocol v2): keeps one imported function bundle
+// resident in a bun process and serves invocations over a unix socket, so
+// repeat invocations skip process spawn, bundle resolution, and the import of
+// the bundle and its dependencies (the dominant sandbox-side costs of a cold
+// run).
 //
-// One server serves exactly one handler path, one invocation at a time. The
-// per-invocation environment (sandbox token, user identity) travels in the
-// request and is applied to process.env for the duration of the invocation,
-// then cleared — concurrency would race those swaps, so a request arriving
-// while one is running gets an immediate `busy` reply and the client runs
-// cold instead of queueing behind work of unknown duration.
+// One server serves exactly one handler path — concurrently. Invocations are
+// IO-bound in the common case (SQL, API calls), so the event loop interleaves
+// many of them at once exactly like a web server would; per-invocation state
+// (user identity, sandbox token) travels in the request and is scoped through
+// the invocation context (see functions-runner/context.ts and @dust/pod),
+// never applied to process.env. Beyond MAX_CONCURRENT_INVOCATIONS requests
+// wait in a FIFO queue; a full or too-slow queue gets a structured
+// `overloaded` outcome instead of sending the client to a cold run —
+// unbounded cold fallback under saturation is exactly the memory blow-up this
+// server exists to prevent.
 //
 // Duplicate executions are the failure mode this protocol is shaped around:
 // pod functions are arbitrary side-effectful code, and front assumes a failed
-// start means nothing ran. The server acks before executing; the client only
+// start means nothing ran. The server acks before executing — a synchronous
+// socket write whose failure proves the client is gone — and the client only
 // falls back to the cold path on failures that precede the ack. After the
-// ack, a lost outcome is reported as a failed invocation, never re-run.
+// ack, a lost outcome is reported as a failed invocation, never re-run. (The
+// synchronous-ack guarantee is why this stays a raw line protocol instead of
+// sitting behind an HTTP server: response streaming cannot prove the ack
+// reached the client's buffer before execution starts.)
 //
-// The server is disposable. It exits on idle, at a hard lifetime cap (drained,
-// never mid-invocation), when the bundle on disk changes, on any malformed
-// request, or when an invocation outlives its deadline (without replying: the
-// client's front-side timeout killed it long before).
+// The server is disposable. It exits on idle, and it drains (stops
+// listening, refuses its queue, lets in-flight invocations finish, then
+// exits) at the lifetime cap, when the bundle on disk changes, when its RSS
+// crosses the recycle threshold, or when an invocation outlives its deadline
+// (whose client was killed by front's much shorter exec timeout long ago).
 
 import { createHash } from "node:crypto";
 import { unlinkSync } from "node:fs";
@@ -31,28 +41,44 @@ import { invoke } from "./invoke.ts";
 import type { RequestInput } from "./protocol.ts";
 import { BadInputError, parseInput } from "./protocol.ts";
 
-export const WARM_PROTOCOL_VERSION = 1;
+export const WARM_PROTOCOL_VERSION = 2;
 
-// Idle: how long the server waits for another invocation before exiting.
-// Lifetime: hard cap bounding how long a republished bundle can keep being
-// served when the envelope carries no bundle hash and gcsfuse metadata
-// caching hides the change from the per-request stat. Deadline: an
+// Concurrency: in-flight invocations share the event loop, so the cap bounds
+// per-invocation memory and downstream pressure (sqlite, egress), not CPU —
+// CPU-bound work serializes on the single JS thread regardless. The queue
+// deadline stays comfortably under front's 10s inline exec timeout so a
+// queued invocation either starts or is refused while its caller still
+// listens; the client's own pre-ack timeout must exceed it (see warm.rs).
+export const MAX_CONCURRENT_INVOCATIONS = 32;
+export const MAX_QUEUED_INVOCATIONS = 128;
+export const QUEUE_WAIT_DEADLINE_MS = 2_000;
+
+// Idle: how long the server waits with nothing running and nothing queued
+// before exiting. Lifetime: hard cap bounding how long a republished bundle
+// can keep being served when the envelope carries no bundle hash and gcsfuse
+// metadata caching hides the change from the per-request stat. Deadline: an
 // invocation that runs this long lost its client to front's much shorter
-// exec timeout ages ago; exit and free the socket.
+// exec timeout ages ago, and its slot is wedged for good (a promise cannot
+// be killed), so the server recycles. Rss: a bloated server trades a one-off
+// import cost for freed memory. Drain flush: how long a drained server waits
+// for its last reply bytes before force-exiting on a client that stopped
+// reading.
 const IDLE_TIMEOUT_MS = 120_000;
 const MAX_LIFETIME_MS = 600_000;
 const INVOCATION_DEADLINE_MS = 120_000;
+const MAX_RSS_BYTES = 300 * 1024 * 1024;
+const DRAIN_FLUSH_TIMEOUT_MS = 5_000;
 
 // Per-invocation env vars inherited from the cold run that spawned this
 // server. Scrubbed at startup: they belong to that invocation, and every
-// request carries its own.
+// request carries its own environment in the request itself.
 const SPAWN_ENV_SCRUB_KEYS = ["DUST_SANDBOX_TOKEN", "DUST_POD_USER_IDENTITY"];
 
 const WarmRequestSchema = z.object({
   v: z.literal(WARM_PROTOCOL_VERSION),
-  // Non-string values are dropped rather than refused: only strings can be
-  // applied to process.env, and the request must not die for an ignorable
-  // field.
+  // Non-string values are dropped rather than refused: only strings are
+  // meaningful environment values, and the request must not die for an
+  // ignorable field.
   env: z.record(z.string(), z.unknown()).transform((env) => {
     const out: Record<string, string> = {};
     for (const [key, value] of Object.entries(env)) {
@@ -107,28 +133,6 @@ export function parseWarmRequest(line: string): WarmRequest | null {
   return result.success ? result.data : null;
 }
 
-/**
- * Applies a request's environment on top of process.env and returns the keys
- * it set, so the caller can clear them once the invocation completes. The
- * request carries the client's full environment, so the invocation sees
- * exactly what a cold run's child would have inherited; clearing afterwards
- * keeps per-invocation secrets out of the idle server's environment.
- */
-export function applyRequestEnv(env: Record<string, string>): Set<string> {
-  const applied = new Set<string>();
-  for (const [key, value] of Object.entries(env)) {
-    process.env[key] = value;
-    applied.add(key);
-  }
-  return applied;
-}
-
-export function clearAppliedEnv(applied: Set<string>): void {
-  for (const key of applied) {
-    delete process.env[key];
-  }
-}
-
 // Minimal surface of Bun's unix socket needed here, typed so the write path
 // can honor partial writes.
 interface WarmSocket {
@@ -166,6 +170,32 @@ function drainPending(socket: WarmSocket): void {
     return;
   }
   pendingWrites.set(socket, remaining.subarray(Math.max(written, 0)));
+}
+
+/** A request waiting for a free invocation slot, in FIFO order. */
+interface QueueEntry {
+  socket: WarmSocket;
+  request: WarmRequest;
+  // Settled entries (reply already sent, or client gone) stay in the array
+  // and are skipped at dequeue time: O(1) removal without scanning the queue
+  // on every socket close.
+  settled: boolean;
+  expireTimer: ReturnType<typeof setTimeout>;
+}
+
+function overloadedFrame(): Record<string, unknown> {
+  return {
+    v: WARM_PROTOCOL_VERSION,
+    outcome: {
+      ok: false,
+      error: {
+        code: "overloaded",
+        message:
+          "The function is running at its concurrency limit and the wait " +
+          "queue is saturated; the invocation was not started.",
+      },
+    },
+  };
 }
 
 export async function serve(
@@ -213,36 +243,118 @@ export async function serve(
     process.exit(code);
   };
 
-  let busy = false;
+  // `running` counts invocations past admission (including their pre-ack
+  // staleness checks); `hung` counts the subset that blew their deadline and
+  // will never release their slot. The server is fully drained once every
+  // running invocation is hung.
+  let running = 0;
+  let hung = 0;
   let draining = false;
-  let idleTimer = setTimeout(() => exit(0), IDLE_TIMEOUT_MS);
-  const armIdle = () => {
-    clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => exit(0), IDLE_TIMEOUT_MS);
-  };
-  setTimeout(() => {
-    // Never exit mid-invocation: the in-flight request finishes and replies,
-    // then the drained server exits. New requests get `busy` meanwhile.
-    if (busy) {
-      draining = true;
-    } else {
-      exit(0);
+  let drainExitCode = 0;
+  let drainFlushTimer: ReturnType<typeof setTimeout> | null = null;
+  // Settled entries linger in the array until dequeued or compacted;
+  // queuedLive is the number of live ones and the number that matters for
+  // admission, idling and drain.
+  let queue: QueueEntry[] = [];
+  let queuedLive = 0;
+  const queuedBySocket = new Map<object, QueueEntry>();
+
+  let idleTimer: ReturnType<typeof setTimeout> | null = null;
+  const clearIdle = () => {
+    if (idleTimer !== null) {
+      clearTimeout(idleTimer);
+      idleTimer = null;
     }
-  }, MAX_LIFETIME_MS);
+  };
+  const armIdle = () => {
+    clearIdle();
+    idleTimer = setTimeout(() => {
+      // Guarded: the timer is cleared on every start, but never trust a
+      // timer alone with killing a process that might be serving.
+      if (running === 0 && queuedLive === 0 && !draining) {
+        exit(0);
+      }
+    }, IDLE_TIMEOUT_MS);
+  };
+
+  function settleQueueEntry(entry: QueueEntry): boolean {
+    if (entry.settled) {
+      return false;
+    }
+    entry.settled = true;
+    queuedLive -= 1;
+    clearTimeout(entry.expireTimer);
+    queuedBySocket.delete(entry.socket);
+    // pump() only reclaims settled entries as they reach the front, which
+    // never happens while every slot stays busy with long invocations; the
+    // occasional compaction keeps the array proportional to the live count
+    // under that kind of churn.
+    if (
+      queue.length > MAX_QUEUED_INVOCATIONS &&
+      queuedLive < queue.length / 2
+    ) {
+      queue = queue.filter((queued) => !queued.settled);
+    }
+    return true;
+  }
+
+  function exitIfDrained(): void {
+    if (!draining || queuedLive > 0 || running !== hung) {
+      return;
+    }
+    if (pendingWrites.size === 0) {
+      exit(drainExitCode);
+    }
+    // Some reply bytes are still buffered toward a slow reader; give the
+    // flush a bounded window, then exit anyway — the reader had its chance.
+    if (drainFlushTimer === null) {
+      drainFlushTimer = setTimeout(
+        () => exit(drainExitCode),
+        DRAIN_FLUSH_TIMEOUT_MS
+      );
+    }
+  }
+
+  let listenerStop: (() => void) | null = null;
+
+  function startDrain(code: number): void {
+    if (draining) {
+      return;
+    }
+    draining = true;
+    drainExitCode = code;
+    clearIdle();
+    // Stop accepting and free the socket path immediately: the next cold run
+    // binds a fresh server there while this one finishes its in-flight work.
+    if (listenerStop !== null) {
+      listenerStop();
+    }
+    if (boundSocket) {
+      try {
+        unlinkSync(socketPath);
+      } catch {
+        // Best effort.
+      }
+      boundSocket = false;
+    }
+    // Queued requests never started executing: refuse them as stale so their
+    // clients re-run cold against the successor server. (On a stale-triggered
+    // drain, serving them from the old import would be wrong anyway.)
+    for (const entry of [...queue]) {
+      if (settleQueueEntry(entry)) {
+        reply(entry.socket, { v: WARM_PROTOCOL_VERSION, stale: true });
+      }
+    }
+    queue = [];
+    exitIfDrained();
+  }
+
+  setTimeout(() => startDrain(0), MAX_LIFETIME_MS);
 
   const socketBuffers = new Map<object, string>();
 
-  function reply(
-    socket: WarmSocket,
-    response: Record<string, unknown>,
-    { exitAfter = false }: { exitAfter?: boolean } = {}
-  ): void {
+  function reply(socket: WarmSocket, response: Record<string, unknown>): void {
     writeThenEnd(socket, `${JSON.stringify(response)}\n`);
-    if (exitAfter) {
-      // The flush of a tiny control frame cannot realistically backpressure;
-      // exit on the next tick so the write callbacks run.
-      setTimeout(() => exit(0), 0);
-    }
   }
 
   async function runInvocation(
@@ -250,15 +362,13 @@ export async function serve(
     request: WarmRequest
   ): Promise<void> {
     // A republished bundle must never be served from the old import. One
-    // metadata call per request; any difference (or a vanished file) sends
-    // the client down the cold path, which respawns a fresh server.
+    // metadata call per invocation start; any difference (or a vanished
+    // file) sends the client down the cold path, which respawns a fresh
+    // server while this one drains.
     const current = await statBundle(handlerPath);
     if (!sameStamp(importedStamp, current)) {
-      reply(
-        socket,
-        { v: WARM_PROTOCOL_VERSION, stale: true },
-        { exitAfter: true }
-      );
+      reply(socket, { v: WARM_PROTOCOL_VERSION, stale: true });
+      startDrain(0);
       return;
     }
 
@@ -287,71 +397,129 @@ export async function serve(
       input.bundleSha256 !== undefined &&
       input.bundleSha256 !== importedSha256
     ) {
-      reply(
-        socket,
-        { v: WARM_PROTOCOL_VERSION, stale: true },
-        { exitAfter: true }
-      );
+      reply(socket, { v: WARM_PROTOCOL_VERSION, stale: true });
+      startDrain(0);
       return;
     }
 
     // The ack is the point of no return: from here the client must never
     // fall back to the cold path, because the function may have side effects
     // in flight. A lost outcome after this frame is a failed invocation, not
-    // a retried one.
-    busy = true;
+    // a retried one. The write is synchronous into the kernel buffer: its
+    // failure proves the client is gone, so nothing executes for a client
+    // that already gave up (e.g. one that timed out while queued).
     const ackWritten = socket.write(
       `${JSON.stringify({ v: WARM_PROTOCOL_VERSION, ack: true })}\n`
     );
     if (ackWritten <= 0) {
-      // The client is already gone; do not execute for a dead client.
-      busy = false;
       socket.end();
       return;
     }
 
     // An invocation that outlives this deadline lost its client to front's
-    // exec timeout long ago. Exit without replying and free the socket; the
-    // hung function was never going to produce an outcome anyway.
-    const deadline = setTimeout(() => exit(1), INVOCATION_DEADLINE_MS);
+    // exec timeout long ago, and its slot is wedged for good — a promise
+    // cannot be killed. Recycle: drain and let the next cold run spawn a
+    // fresh server. Other in-flight invocations finish normally.
+    let deadlineFired = false;
+    const deadlineTimer = setTimeout(() => {
+      deadlineFired = true;
+      hung += 1;
+      startDrain(1);
+      exitIfDrained();
+    }, INVOCATION_DEADLINE_MS);
 
-    const applied = applyRequestEnv(request.env);
     try {
-      const outcome = await invoke(handlerPath, input);
-      reply(
-        socket,
-        { v: WARM_PROTOCOL_VERSION, outcome },
-        { exitAfter: draining }
-      );
+      const outcome = await invoke(handlerPath, input, request.env);
+      if (deadlineFired) {
+        // The client is long gone; nothing useful to write.
+        socket.end();
+      } else {
+        reply(socket, { v: WARM_PROTOCOL_VERSION, outcome });
+      }
     } finally {
-      clearTimeout(deadline);
-      clearAppliedEnv(applied);
-      busy = false;
-      armIdle();
+      clearTimeout(deadlineTimer);
+      if (deadlineFired) {
+        hung -= 1;
+      }
+    }
+  }
+
+  function start(socket: WarmSocket, request: WarmRequest): void {
+    running += 1;
+    clearIdle();
+    void runInvocation(socket, request)
+      .catch(() => {
+        // runInvocation reports failures as structured outcomes; a throw
+        // here is a runner bug, and the client's timeout classifies it.
+        // Never let it take down concurrent invocations.
+      })
+      .finally(() => {
+        running -= 1;
+        if (!draining && process.memoryUsage.rss() > MAX_RSS_BYTES) {
+          // Trade a one-off re-import for freed memory. Checked between
+          // invocation completions only, so a single greedy invocation can
+          // briefly overshoot.
+          startDrain(0);
+        }
+        pump();
+        if (running === 0 && queuedLive === 0 && !draining) {
+          armIdle();
+        }
+        exitIfDrained();
+      });
+  }
+
+  function pump(): void {
+    while (!draining && running < MAX_CONCURRENT_INVOCATIONS) {
+      const entry = queue.shift();
+      if (entry === undefined) {
+        return;
+      }
+      if (!settleQueueEntry(entry)) {
+        continue;
+      }
+      start(entry.socket, entry.request);
     }
   }
 
   function handleLine(socket: WarmSocket, line: string): void {
-    if (busy || draining) {
-      // Never queue: the caller's timeout is shorter than any queue wait
-      // guarantee this server could make, and a queued request would execute
-      // for a client that already gave up. An immediate busy reply sends the
-      // client down the cold path before anything ran.
-      reply(socket, { v: WARM_PROTOCOL_VERSION, busy: true });
-      return;
-    }
     const request = parseWarmRequest(line);
     if (request === null) {
-      // A client this server does not understand; dying lets the cold path
-      // respawn a matching one.
-      reply(
-        socket,
-        { v: WARM_PROTOCOL_VERSION, error: "bad warm request" },
-        { exitAfter: true }
-      );
+      // A client this server does not understand. Version-suffixed socket
+      // names make this a bug rather than a rolling-upgrade case; refusing
+      // the request (the client runs cold) beats killing a server with
+      // concurrent invocations in flight.
+      reply(socket, { v: WARM_PROTOCOL_VERSION, error: "bad warm request" });
       return;
     }
-    void runInvocation(socket, request);
+    if (draining) {
+      // Send the client cold; its run respawns a fresh server.
+      reply(socket, { v: WARM_PROTOCOL_VERSION, stale: true });
+      return;
+    }
+    if (running < MAX_CONCURRENT_INVOCATIONS) {
+      start(socket, request);
+      return;
+    }
+    if (queuedLive >= MAX_QUEUED_INVOCATIONS) {
+      reply(socket, overloadedFrame());
+      return;
+    }
+    const entry: QueueEntry = {
+      socket,
+      request,
+      settled: false,
+      expireTimer: setTimeout(() => {
+        // Waited too long: refuse rather than executing for a caller whose
+        // own timeout budget is nearly spent. Pre-ack, so nothing ran.
+        if (settleQueueEntry(entry)) {
+          reply(socket, overloadedFrame());
+        }
+      }, QUEUE_WAIT_DEADLINE_MS),
+    };
+    queue.push(entry);
+    queuedLive += 1;
+    queuedBySocket.set(socket, entry);
   }
 
   const bind = () =>
@@ -375,20 +543,35 @@ export async function serve(
         },
         drain(socket) {
           drainPending(socket);
+          exitIfDrained();
         },
         close(socket) {
           socketBuffers.delete(socket);
           pendingWrites.delete(socket);
+          // A queued client that hung up is settled here so its slot is
+          // never handed an execution; the ack-write failure would catch it
+          // anyway, but settling keeps the queue honest.
+          const entry = queuedBySocket.get(socket);
+          if (entry !== undefined) {
+            settleQueueEntry(entry);
+          }
+          exitIfDrained();
         },
         error(socket) {
           socketBuffers.delete(socket);
           pendingWrites.delete(socket);
+          const entry = queuedBySocket.get(socket);
+          if (entry !== undefined) {
+            settleQueueEntry(entry);
+          }
+          exitIfDrained();
         },
       },
     });
 
   try {
-    bind();
+    const listener = bind();
+    listenerStop = () => listener.stop();
     boundSocket = true;
   } catch {
     // The socket path exists. Either a live server owns it — this process is
@@ -416,9 +599,12 @@ export async function serve(
       process.exit(0);
     }
     await unlink(socketPath).catch(() => {});
-    bind();
+    const listener = bind();
+    listenerStop = () => listener.stop();
     boundSocket = true;
   }
+
+  armIdle();
 
   // The process stays alive on the event loop; exits go through exit() above.
   return new Promise<never>(() => {});

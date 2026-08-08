@@ -23,6 +23,10 @@ export const RUNNER_ERROR_CODES = [
   "bad_return",
   "http_error",
   "invalid_output",
+  // Emitted by the warm server's admission layer (serve.ts), never by
+  // invoke(): the function is at its concurrency limit and the invocation
+  // was refused before anything executed.
+  "overloaded",
 ] as const;
 
 export type ErrorCode = (typeof RUNNER_ERROR_CODES)[number];
