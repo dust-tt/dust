@@ -73,6 +73,12 @@ export default function ConversationSidePanelContainer({
           withHandle={currentPanel && !isFullScreen}
           disabled={!currentPanel || isFullScreen}
           className="z-50"
+          onDragging={(isDragging) => {
+            // Pointer resizing skips transitions, so release completes a drag collapse.
+            if (!isDragging && panelRef.current?.isCollapsed()) {
+              onPanelClosed();
+            }
+          }}
         />
       )}
       {/* Panel Container - either Interactive Content or Actions */}
@@ -80,16 +86,22 @@ export default function ConversationSidePanelContainer({
         ref={panelRef}
         minSize={20}
         defaultSize={0}
-        onTransitionEnd={() => {
-          if (panelRef.current?.isCollapsed()) {
+        onTransitionEnd={(event) => {
+          // Programmatic and keyboard collapses keep content until motion completes.
+          if (
+            event.target === event.currentTarget &&
+            event.propertyName === "flex-grow" &&
+            panelRef.current?.isCollapsed()
+          ) {
             onPanelClosed();
           }
         }}
         collapsible
         collapsedSize={0}
+        preserveContentLayout
+        initialContentSize={DEFAULT_RIGHT_PANEL_SIZE}
         className={cn(
-          // Smooth transition animation similar to sidebar
-          "flex-0 overflow-hidden transition-all duration-300 ease-out",
+          "flex-0 overflow-hidden",
           !currentPanel && "hidden w-0 md:block",
           // On mobile: overlay full screen with absolute positioning.
           "md:relative",

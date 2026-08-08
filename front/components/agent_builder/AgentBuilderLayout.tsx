@@ -28,7 +28,6 @@ export function AgentBuilderLayout({
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
   const previewPanelRef = useRef<ImperativePanelHandle>(null);
-  const [isResizing, setIsResizing] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -68,6 +67,7 @@ export function AgentBuilderLayout({
                 leftPanel
               ) : (
                 <ResizablePanelGroup
+                  animateLayoutChanges
                   id="agent-builder-layout"
                   autoSaveId="agent-builder-layout"
                   direction="horizontal"
@@ -82,7 +82,6 @@ export function AgentBuilderLayout({
                   <ResizableHandle
                     withHandle={isPreviewPanelOpen}
                     disabled={!isPreviewPanelOpen}
-                    onDragging={(isDragging) => setIsResizing(isDragging)}
                   />
 
                   <ResizablePanel
@@ -98,11 +97,7 @@ export function AgentBuilderLayout({
                     collapsible={true}
                     onCollapse={handlePanelCollapse}
                     onExpand={handlePanelExpand}
-                    className={
-                      !isResizing
-                        ? "overflow-hidden transition-all duration-300 ease-in-out"
-                        : "overflow-hidden"
-                    }
+                    className="overflow-hidden"
                   >
                     <div className="h-full w-full overflow-y-auto">
                       {rightPanel}
