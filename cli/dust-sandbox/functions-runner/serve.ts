@@ -45,11 +45,12 @@ export const WARM_PROTOCOL_VERSION = 2;
 // staleness that gcsfuse metadata caching could hide from unstamped
 // envelopes. Deadline: an invocation that runs this long lost its client to
 // front's much shorter exec timeout ages ago; exit and free the socket.
-// RSS cap: recycles a worker whose imported working set outgrew its share of
-// the sandbox's memory.
+// RSS cap: recycles a worker whose imported working set outgrew its share
+// of the sandbox's memory. Sized so a full pool of 8 stays bounded at
+// ~1.6GB inside the 2GB sandbox, alongside its mounts and daemons.
 const MAX_LIFETIME_MS = 600_000;
 const INVOCATION_DEADLINE_MS = 120_000;
-const MAX_RSS_BYTES = 300 * 1024 * 1024;
+const MAX_RSS_BYTES = 200 * 1024 * 1024;
 
 // Per-invocation env vars inherited from the cold run that spawned this
 // worker. Scrubbed at startup: they belong to that invocation, and every
@@ -137,20 +138,23 @@ export function resolveBundle(
   functionsDir: string,
   name: string
 ): string | null {
-  let entries: string[];
+  let entries: import("node:fs").Dirent[];
   try {
-    entries = readdirSync(functionsDir);
+    entries = readdirSync(functionsDir, { withFileTypes: true });
   } catch {
     return null;
   }
   const matches = entries.filter((entry) => {
-    const dot = entry.lastIndexOf(".");
-    return (dot === -1 ? entry : entry.slice(0, dot)) === name;
+    if (!entry.isFile()) {
+      return false;
+    }
+    const dot = entry.name.lastIndexOf(".");
+    return (dot <= 0 ? entry.name : entry.name.slice(0, dot)) === name;
   });
   if (matches.length !== 1) {
     return null;
   }
-  return join(functionsDir, matches[0]!);
+  return join(functionsDir, matches[0]!.name);
 }
 
 /**
@@ -254,10 +258,19 @@ export async function serve(
   // finishes and replies, then the worker exits. Imports are permanent, so
   // rebirth is the only way to shed a stale or bloated working set.
   let draining = false;
-  let idleTimer = setTimeout(() => exit(0), idleTimeoutMs);
+  // The busy guard matters: burst workers run a 15s idle, far under the
+  // invocation deadline, and an idle exit mid-invocation would sever a
+  // legitimately running function post-ack. A timer that fires while busy is
+  // simply dropped; the invocation's release re-arms it.
+  const idleExit = () => {
+    if (!busy) {
+      exit(0);
+    }
+  };
+  let idleTimer = setTimeout(idleExit, idleTimeoutMs);
   const armIdle = () => {
     clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => exit(0), idleTimeoutMs);
+    idleTimer = setTimeout(idleExit, idleTimeoutMs);
   };
   setTimeout(() => {
     if (busy) {
@@ -268,6 +281,10 @@ export async function serve(
   }, MAX_LIFETIME_MS);
 
   const socketBuffers = new Map<object, string>();
+  // Sockets whose exit must wait for their reply to flush: a draining
+  // worker's final outcome can exceed the kernel buffer, and exiting on the
+  // next tick would truncate it — reporting a completed invocation as lost.
+  const exitWhenDrained = new Set<object>();
 
   function reply(
     socket: WarmSocket,
@@ -276,9 +293,12 @@ export async function serve(
   ): void {
     writeThenEnd(socket, `${JSON.stringify(response)}\n`);
     if (exitAfter) {
-      // The flush of a tiny control frame cannot realistically backpressure;
-      // exit on the next tick so the write callbacks run.
-      setTimeout(() => exit(0), 0);
+      if (pendingWrites.has(socket)) {
+        exitWhenDrained.add(socket);
+      } else {
+        // Fully flushed; exit on the next tick so the write callbacks run.
+        setTimeout(() => exit(0), 0);
+      }
     }
   }
 
@@ -297,9 +317,13 @@ export async function serve(
     importKind: "cached" | "fresh";
   } | null> {
     const staleReply = ({ recycle = false }: { recycle?: boolean } = {}) => {
-      // A recycle exits right after the reply flushes: nothing is in flight
-      // (busy requests never reach here), and the worker holds an import it
-      // can never serve again.
+      // A recycle exits right after the reply flushes: this request holds
+      // the busy claim (no invocation is in flight), and the worker holds an
+      // import it can never serve again. Draining gates the tick before the
+      // exit lands.
+      if (recycle) {
+        draining = true;
+      }
       reply(
         socket,
         { v: WARM_PROTOCOL_VERSION, stale: true },
@@ -363,63 +387,68 @@ export async function serve(
     return { bundle, importKind: "fresh" };
   }
 
+  // Runs under the busy claim taken synchronously in handleLine; releases it
+  // (and re-arms the idle exit) on every path that does not exit the worker.
   async function runInvocation(
     socket: WarmSocket,
     request: WarmRequest
   ): Promise<void> {
-    let input: RequestInput;
     try {
-      input = parseInput(request.input);
-    } catch (e) {
-      // Pre-ack: a malformed envelope never executed anything, and the cold
-      // runner would classify it the same way.
-      const message = e instanceof BadInputError ? e.message : String(e);
-      reply(socket, {
-        v: WARM_PROTOCOL_VERSION,
-        outcome: { ok: false, error: { code: "bad_input", message } },
-      });
-      return;
-    }
-
-    const ensured = await ensureBundle(socket, request, input.bundleSha256);
-    if (ensured === null) {
-      return;
-    }
-    const { bundle, importKind } = ensured;
-
-    // The ack is the point of no return: from here the client must never
-    // fall back to the cold path, because the function may have side effects
-    // in flight. A lost outcome after this frame is a failed invocation, not
-    // a retried one.
-    busy = true;
-    const ackWritten = socket.write(
-      `${JSON.stringify({ v: WARM_PROTOCOL_VERSION, ack: true })}\n`
-    );
-    if (ackWritten <= 0) {
-      // The client is already gone; do not execute for a dead client.
-      busy = false;
-      return;
-    }
-
-    // An invocation that outlives this deadline lost its client to front's
-    // exec timeout long ago. Exit without replying and free the socket; the
-    // hung function was never going to produce an outcome anyway.
-    const deadline = setTimeout(() => exit(1), INVOCATION_DEADLINE_MS);
-
-    const applied = applyRequestEnv(request.env);
-    try {
-      const outcome = await invoke(bundle.handlerPath, input);
-      if (process.memoryUsage.rss() > MAX_RSS_BYTES) {
-        draining = true;
+      let input: RequestInput;
+      try {
+        input = parseInput(request.input);
+      } catch (e) {
+        // Pre-ack: a malformed envelope never executed anything, and the
+        // cold runner would classify it the same way.
+        const message = e instanceof BadInputError ? e.message : String(e);
+        reply(socket, {
+          v: WARM_PROTOCOL_VERSION,
+          outcome: { ok: false, error: { code: "bad_input", message } },
+        });
+        return;
       }
-      reply(
-        socket,
-        { v: WARM_PROTOCOL_VERSION, outcome, importKind },
-        { exitAfter: draining }
+
+      const ensured = await ensureBundle(socket, request, input.bundleSha256);
+      if (ensured === null) {
+        return;
+      }
+      const { bundle, importKind } = ensured;
+
+      // The ack is the point of no return: from here the client must never
+      // fall back to the cold path, because the function may have side
+      // effects in flight. A lost outcome after this frame is a failed
+      // invocation, not a retried one.
+      const ackWritten = socket.write(
+        `${JSON.stringify({ v: WARM_PROTOCOL_VERSION, ack: true })}\n`
       );
+      if (ackWritten <= 0) {
+        // The client is already gone; do not execute for a dead client.
+        socket.end();
+        return;
+      }
+
+      // An invocation that outlives this deadline lost its client to
+      // front's exec timeout long ago. Exit without replying and free the
+      // socket; the hung function was never going to produce an outcome
+      // anyway.
+      const deadline = setTimeout(() => exit(1), INVOCATION_DEADLINE_MS);
+
+      const applied = applyRequestEnv(request.env);
+      try {
+        const outcome = await invoke(bundle.handlerPath, input);
+        if (process.memoryUsage.rss() > MAX_RSS_BYTES) {
+          draining = true;
+        }
+        reply(
+          socket,
+          { v: WARM_PROTOCOL_VERSION, outcome, importKind },
+          { exitAfter: draining }
+        );
+      } finally {
+        clearTimeout(deadline);
+        clearAppliedEnv(applied);
+      }
     } finally {
-      clearTimeout(deadline);
-      clearAppliedEnv(applied);
       busy = false;
       armIdle();
     }
@@ -445,6 +474,12 @@ export async function serve(
       );
       return;
     }
+    // Claim the worker synchronously, before runInvocation's first await:
+    // ensureBundle suspends on stat/read/import, and a second request
+    // arriving during that suspension must see busy — two invocations in
+    // flight would race the process-global env swap and hand one caller's
+    // identity to another's function.
+    busy = true;
     void runInvocation(socket, request);
   }
 
@@ -469,14 +504,25 @@ export async function serve(
         },
         drain(socket) {
           drainPending(socket);
+          if (!pendingWrites.has(socket) && exitWhenDrained.has(socket)) {
+            setTimeout(() => exit(0), 0);
+          }
         },
         close(socket) {
           socketBuffers.delete(socket);
           pendingWrites.delete(socket);
+          if (exitWhenDrained.has(socket)) {
+            // The client died before the flush completed; nothing left to
+            // deliver, and the exit must not be lost with it.
+            setTimeout(() => exit(0), 0);
+          }
         },
         error(socket) {
           socketBuffers.delete(socket);
           pendingWrites.delete(socket);
+          if (exitWhenDrained.has(socket)) {
+            setTimeout(() => exit(0), 0);
+          }
         },
       },
     });

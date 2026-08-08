@@ -58,11 +58,21 @@ const BASE_SLOTS: u32 = 2;
 const BASE_IDLE_TIMEOUT_MS: u64 = 120_000;
 const BURST_IDLE_TIMEOUT_MS: u64 = 15_000;
 
-/// Ceiling on how long the warm path waits for a worker to answer before
-/// giving up. Generous on purpose: the function itself runs inside this
-/// window, and the caller (front) enforces the real invocation timeout by
-/// killing dsbx. This only bounds a wedged worker.
+/// Ceiling on how long the warm path waits, post-ack, for the outcome frame.
+/// Generous on purpose: the function itself runs inside this window, and the
+/// caller (front) enforces the real invocation timeout by killing dsbx. This
+/// only bounds a wedged worker; expiry is a failed invocation, never a
+/// retry.
 const WARM_RESPONSE_TIMEOUT: Duration = Duration::from_secs(120);
+
+/// Ceiling on the first frame (claim refusal or ack). A healthy worker
+/// answers in milliseconds — the slowest pre-ack work is a fresh bundle
+/// import — but a worker whose event loop is blocked by another function's
+/// sync CPU-bound code cannot answer at all, and with generic workers that
+/// would stall an unrelated function's scan. Nothing has executed pre-ack,
+/// so abandoning is safe: a worker that answers after the client left writes
+/// its ack into a closed socket and aborts without executing.
+const WARM_FIRST_FRAME_TIMEOUT: Duration = Duration::from_secs(1);
 
 /// Connect timeout: the worker is either listening or it is not.
 const WARM_CONNECT_TIMEOUT: Duration = Duration::from_millis(250);
@@ -233,14 +243,15 @@ pub async fn try_warm_run(name: &str, input: &str) -> WarmRun {
             // Nothing listening on this slot; try the next.
             _ => continue,
         };
-        match tokio::time::timeout(WARM_RESPONSE_TIMEOUT, roundtrip(stream, name, input)).await {
-            Ok(Ok(WarmRun::Outcome(outcome, import_kind))) => {
+        // roundtrip owns its timeouts: a short one pre-ack (abandoning is
+        // safe, nothing executed) and the long one post-ack (expiry is a
+        // failed invocation, returned as an Outcome, never retried).
+        match roundtrip(stream, name, input).await {
+            Ok(WarmRun::Outcome(outcome, import_kind)) => {
                 return WarmRun::Outcome(outcome, import_kind);
             }
-            // Busy, stale, protocol refusal: nothing executed on this
-            // worker; another slot may still serve. Pre-ack IO errors and
-            // timeouts land here too — roundtrip converts post-ack losses
-            // into a failure Outcome, returned above.
+            // Busy, stale, protocol refusal, pre-ack IO error or timeout:
+            // nothing executed on this worker; another slot may still serve.
             _ => continue,
         }
     }
@@ -285,10 +296,13 @@ async fn roundtrip(mut stream: UnixStream, name: &str, input: &str) -> Result<Wa
 
     // First frame: ack (execution starting), or a pre-execution refusal
     // (busy, stale, protocol error) that safely sends the client to the next
-    // slot or the cold path.
+    // slot or the cold path. Bounded short: see WARM_FIRST_FRAME_TIMEOUT.
     let mut first = String::new();
-    if reader.read_line(&mut first).await? == 0 {
-        return Ok(WarmRun::Miss);
+    let first_read =
+        tokio::time::timeout(WARM_FIRST_FRAME_TIMEOUT, reader.read_line(&mut first)).await;
+    match first_read {
+        Ok(Ok(0)) | Ok(Err(_)) | Err(_) => return Ok(WarmRun::Miss),
+        Ok(Ok(_)) => {}
     }
     let frame: WarmFrame = serde_json::from_str(first.trim())?;
     if frame.v != WARM_PROTOCOL_VERSION || frame.busy || frame.stale || frame.error.is_some() {
@@ -303,12 +317,16 @@ async fn roundtrip(mut stream: UnixStream, name: &str, input: &str) -> Result<Wa
         return Ok(WarmRun::Miss);
     }
 
-    // Past the ack: never Miss again. A lost or unparsable outcome frame is
-    // a failed invocation, not a cold retry.
+    // Past the ack: never Miss again. A lost, late, or unparsable outcome
+    // frame is a failed invocation, not a cold retry.
     let mut second = String::new();
-    match reader.read_line(&mut second).await {
-        Ok(0) | Err(_) => return Ok(WarmRun::Outcome(lost_outcome_after_ack(), None)),
-        Ok(_) => {}
+    let second_read =
+        tokio::time::timeout(WARM_RESPONSE_TIMEOUT, reader.read_line(&mut second)).await;
+    match second_read {
+        Ok(Ok(0)) | Ok(Err(_)) | Err(_) => {
+            return Ok(WarmRun::Outcome(lost_outcome_after_ack(), None));
+        }
+        Ok(Ok(_)) => {}
     }
     match serde_json::from_str::<WarmFrame>(second.trim()) {
         Ok(WarmFrame {

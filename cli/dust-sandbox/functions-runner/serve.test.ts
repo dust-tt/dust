@@ -355,6 +355,54 @@ describe("runner serve", () => {
     }
   });
 
+  test("an idle timeout shorter than the invocation never kills it", async () => {
+    // Burst workers run a 15s idle, far under the invocation deadline: the
+    // idle exit firing mid-invocation must be dropped, not sever a running
+    // function post-ack.
+    const { proc, socketPath } = await startWorker(fixturesDir, {
+      idleTimeoutMs: 150,
+    });
+    try {
+      const reply = await request(
+        socketPath,
+        warmRequest({}, "slow", { url: "http://localhost/" })
+      );
+      expect(reply.outcome?.output).toEqual({ done: true });
+      // After completing, the re-armed idle drains the worker normally.
+      expect(await proc.exited).toBe(0);
+    } finally {
+      proc.kill();
+    }
+  });
+
+  test("claims the worker before the import, not at the ack", async () => {
+    // slow-import.ts delays its own import with a top-level await, holding
+    // the worker inside its pre-ack resolve/import phase. A second request
+    // arriving there must see busy: two invocations in flight would race the
+    // process-global env swap and hand one caller's identity to another's
+    // function.
+    const { proc, socketPath } = await startWorker(fixturesDir);
+    try {
+      const first = request(
+        socketPath,
+        warmRequest({}, "slow-import", { url: "http://localhost/" })
+      );
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const overlapped = await request(
+        socketPath,
+        warmRequest({}, "hello", { url: "http://localhost/" })
+      );
+      expect(overlapped.busy).toBe(true);
+      expect(overlapped.outcome).toBeUndefined();
+
+      const served = await first;
+      expect(served.outcome?.output).toEqual({ imported: true });
+    } finally {
+      proc.kill();
+    }
+  });
+
   test("exits on idle", async () => {
     const { proc, socketPath } = await startWorker(fixturesDir, {
       idleTimeoutMs: 300,
