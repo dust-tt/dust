@@ -2304,6 +2304,30 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10030,
+    name: "Parallel Search",
+    description:
+      "Parallel Search tools for live web search and URL content extraction.",
+    url: "https://search.parallel.ai/mcp",
+    icon: "ActionMagnifyingGlassIcon",
+    connectionInstructions: "No account or API key is required.",
+    authMethod: null,
+    toolStakes: {
+      web_search: "never_ask",
+      web_fetch: "never_ask",
+    },
+    toolDisplayLabels: {
+      web_search: {
+        running: "Searching the web with Parallel",
+        done: "Searched the web with Parallel",
+      },
+      web_fetch: {
+        running: "Fetching web content with Parallel",
+        done: "Fetched web content with Parallel",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (
