@@ -3,6 +3,7 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { listPendingEgressDomainRequests } from "@app/lib/api/sandbox/egress_domain_requests";
 import {
   readOwnerPolicy,
   writeOwnerPolicy,
@@ -57,7 +58,23 @@ app.get(
       });
     }
 
-    return ctx.json({ policy: result.value });
+    const requestsResult = await listPendingEgressDomainRequests(auth, space);
+    if (requestsResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: `Failed to read pod egress domain requests: ${requestsResult.error.message}`,
+        },
+      });
+    }
+
+    return ctx.json({
+      policy: result.value,
+      requestedDomains: requestsResult.value.map(
+        ({ domain, requestedAtMs }) => ({ domain, requestedAtMs })
+      ),
+    });
   }
 );
 

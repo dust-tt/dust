@@ -1359,6 +1359,7 @@ export function usePodEgressPolicy({
 
   return {
     policy: data?.policy ?? EMPTY_EGRESS_POLICY,
+    requestedDomains: data?.requestedDomains ?? emptyArray(),
     isPodEgressPolicyLoading: disabled ? false : isLoading,
     isPodEgressPolicyError: !!error,
     mutatePodEgressPolicy: mutate,

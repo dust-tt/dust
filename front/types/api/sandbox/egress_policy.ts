@@ -10,6 +10,10 @@ export type PutWorkspaceEgressPolicyResponseBody = {
 
 export type GetPodEgressPolicyResponseBody = {
   policy: EgressPolicy;
+  // Agent-requested domains pending admin approval — empty until the tool
+  // approval flow routes requests to the manifest (see
+  // lib/api/sandbox/egress_domain_requests.ts).
+  requestedDomains?: { domain: string; requestedAtMs: number }[];
 };
 
 export type PutPodEgressPolicyResponseBody = {
