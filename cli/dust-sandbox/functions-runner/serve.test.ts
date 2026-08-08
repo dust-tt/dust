@@ -4,8 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
-  applyRequestEnv,
-  clearAppliedEnv,
+  MAX_CONCURRENT_INVOCATIONS,
   parseWarmRequest,
   WARM_PROTOCOL_VERSION,
 } from "./serve.ts";
@@ -62,9 +61,12 @@ async function startServer(handlerPath: string): Promise<ServerHandle> {
 interface WarmReply {
   v: number;
   ack?: boolean;
-  outcome?: { ok: boolean; output?: unknown; error?: { code: string } };
+  outcome?: {
+    ok: boolean;
+    output?: unknown;
+    error?: { code: string };
+  };
   stale?: boolean;
-  busy?: boolean;
   error?: string;
 }
 
@@ -126,6 +128,9 @@ function warmRequest(env: Record<string, string>, input: unknown) {
   };
 }
 
+const sleepyRequest = (delayMs: number) =>
+  warmRequest({}, { url: `http://localhost/?delayMs=${delayMs}` });
+
 describe("runner serve", () => {
   test("serves an invocation over the socket", async () => {
     const { proc, socketPath } = await startServer(fx("hello.ts"));
@@ -157,39 +162,121 @@ describe("runner serve", () => {
     }
   });
 
-  test("applies per-request env and clears it between requests", async () => {
-    // env-probe.ts echoes process.env.WARM_TEST_MARKER, so the reply proves
-    // which env the invocation ran under.
-    const { proc, socketPath } = await startServer(fx("env-probe.ts"));
+  test("serves overlapping invocations concurrently", async () => {
+    const { proc, socketPath } = await startServer(fx("sleepy.ts"));
     try {
-      const first = await request(
-        socketPath,
-        warmRequest(
-          { WARM_TEST_MARKER: "alpha", DUST_SANDBOX_TOKEN: "tok-alpha" },
-          { url: "http://localhost/" }
-        )
-      );
-      expect(first.outcome?.output).toEqual({
-        marker: "alpha",
-        token: "tok-alpha",
+      // Three 400ms invocations completing in well under 3 x 400ms proves
+      // they shared the event loop instead of serializing.
+      const startedAtMs = Date.now();
+      const replies = await Promise.all([
+        request(socketPath, sleepyRequest(400)),
+        request(socketPath, sleepyRequest(400)),
+        request(socketPath, sleepyRequest(400)),
+      ]);
+      const elapsedMs = Date.now() - startedAtMs;
+      for (const reply of replies) {
+        expect(reply.outcome?.ok).toBe(true);
+      }
+      expect(elapsedMs).toBeLessThan(1_000);
+    } finally {
+      proc.kill();
+    }
+  });
+
+  test("per-invocation env is scoped to its invocation, concurrently", async () => {
+    // context-probe.ts reads the invocation context (as @dust/pod does)
+    // before and after an await: concurrent invocations with different
+    // environments must each observe exactly their own, at both ends.
+    const { proc, socketPath } = await startServer(fx("context-probe.ts"));
+    try {
+      const probe = (marker: string, delayMs: number) =>
+        request(
+          socketPath,
+          warmRequest(
+            { WARM_TEST_MARKER: marker, DUST_SANDBOX_TOKEN: `tok-${marker}` },
+            { url: `http://localhost/?delayMs=${delayMs}` }
+          )
+        );
+      const [a, b] = await Promise.all([
+        probe("alpha", 120),
+        probe("beta", 30),
+      ]);
+      expect(a.outcome?.output).toMatchObject({
+        before: "alpha",
+        after: "alpha",
+      });
+      expect(b.outcome?.output).toMatchObject({
+        before: "beta",
+        after: "beta",
       });
 
-      // The second request carries neither: nothing may leak over from the
-      // first invocation — in particular not its sandbox token.
-      const second = await request(
+      // A request carrying no env observes nothing from earlier invocations
+      // — in particular not their sandbox tokens.
+      const clean = await request(
         socketPath,
         warmRequest({}, { url: "http://localhost/" })
       );
-      expect(second.outcome?.output).toEqual({
-        marker: "unset",
-        token: "unset",
+      expect(clean.outcome?.output).toMatchObject({
+        before: null,
+        after: null,
+        identity: null,
       });
     } finally {
       proc.kill();
     }
   });
 
-  test("reports a rewritten bundle as stale and exits", async () => {
+  test("queues past the concurrency cap and serves once a slot frees", async () => {
+    const { proc, socketPath } = await startServer(fx("sleepy.ts"));
+    try {
+      // Fill every slot with 300ms invocations, then send one more: it must
+      // wait in the queue (no slot is free) and still be served.
+      const filling = Array.from({ length: MAX_CONCURRENT_INVOCATIONS }, () =>
+        request(socketPath, sleepyRequest(300))
+      );
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const queued = await request(socketPath, sleepyRequest(10));
+      expect(queued.outcome?.ok).toBe(true);
+
+      const replies = await Promise.all(filling);
+      for (const reply of replies) {
+        expect(reply.outcome?.ok).toBe(true);
+      }
+    } finally {
+      proc.kill();
+    }
+  });
+
+  test("a queued request that outwaits the queue deadline is refused as overloaded", async () => {
+    const { proc, socketPath } = await startServer(fx("sleepy.ts"));
+    try {
+      // Occupy every slot for longer than the queue deadline (2s), then
+      // queue one more: it must be refused with a structured overloaded
+      // outcome rather than executed late or sent cold.
+      const filling = Array.from({ length: MAX_CONCURRENT_INVOCATIONS }, () =>
+        request(socketPath, sleepyRequest(2_800))
+      );
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const startedAtMs = Date.now();
+      const refused = await request(socketPath, sleepyRequest(10));
+      const waitedMs = Date.now() - startedAtMs;
+      expect(refused.outcome?.ok).toBe(false);
+      expect(refused.outcome?.error?.code).toBe("overloaded");
+      expect(refused.ack).toBeUndefined();
+      // Refused at the queue deadline, not at the caller's leisure.
+      expect(waitedMs).toBeGreaterThanOrEqual(1_500);
+      expect(waitedMs).toBeLessThan(2_800);
+
+      const replies = await Promise.all(filling);
+      for (const reply of replies) {
+        expect(reply.outcome?.ok).toBe(true);
+      }
+    } finally {
+      proc.kill();
+    }
+  }, 15_000);
+
+  test("reports a rewritten bundle as stale and drains", async () => {
     const dir = scratch();
     const bundle = join(dir, "hello.ts");
     copyFileSync(fx("hello.ts"), bundle);
@@ -205,6 +292,33 @@ describe("runner serve", () => {
         warmRequest({}, { url: "http://localhost/" })
       );
       expect(reply.stale).toBe(true);
+      expect(await proc.exited).toBe(0);
+    } finally {
+      proc.kill();
+    }
+  });
+
+  test("a stale-triggered drain lets in-flight invocations finish", async () => {
+    const dir = scratch();
+    const bundle = join(dir, "sleepy.ts");
+    copyFileSync(fx("sleepy.ts"), bundle);
+    const { proc, socketPath } = await startServer(bundle);
+    try {
+      const inFlight = request(socketPath, sleepyRequest(600));
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const later = new Date(Date.now() + 5_000);
+      utimesSync(bundle, later, later);
+      const refused = await request(
+        socketPath,
+        warmRequest({}, { url: "http://localhost/" })
+      );
+      expect(refused.stale).toBe(true);
+
+      // The invocation that was already executing still delivers its
+      // outcome; only then does the drained server exit.
+      const served = await inFlight;
+      expect(served.outcome?.ok).toBe(true);
       expect(await proc.exited).toBe(0);
     } finally {
       proc.kill();
@@ -229,7 +343,7 @@ describe("runner serve", () => {
     }
   });
 
-  test("refuses a mismatched bundle hash as stale and exits", async () => {
+  test("refuses a mismatched bundle hash as stale and drains", async () => {
     // The stat cannot see the rewrite here (the file is untouched), which is
     // exactly the gcsfuse-cached-metadata case: the request's hash is the
     // only signal, and it must win.
@@ -263,7 +377,7 @@ describe("runner serve", () => {
     }
   });
 
-  test("rejects a protocol version it does not speak and exits", async () => {
+  test("rejects a protocol version it does not speak without dying", async () => {
     const { proc, socketPath } = await startServer(fx("hello.ts"));
     try {
       const reply = await request(socketPath, {
@@ -272,7 +386,15 @@ describe("runner serve", () => {
         input: "{}",
       });
       expect(reply.error).toBe("bad warm request");
-      expect(await proc.exited).toBe(0);
+
+      // Version-suffixed socket names make a mismatched client a bug, not a
+      // rolling-upgrade case; the server must not abandon concurrent work
+      // over one bad request.
+      const after = await request(
+        socketPath,
+        warmRequest({}, { url: "http://localhost/?name=alive" })
+      );
+      expect(after.outcome?.output).toEqual({ hello: "alive" });
     } finally {
       proc.kill();
     }
@@ -293,44 +415,11 @@ describe("runner serve", () => {
     }
   });
 
-  test("replies busy instead of queueing behind a running invocation", async () => {
-    const { proc, socketPath } = await startServer(fx("slow.ts"));
-    try {
-      const slow = request(
-        socketPath,
-        warmRequest({}, { url: "http://localhost/" })
-      );
-      // Give the slow request time to reach the server and start executing.
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      const overlapped = await request(
-        socketPath,
-        warmRequest({}, { url: "http://localhost/" })
-      );
-      // Queueing would run this request for a client whose front-side
-      // timeout may already have fired; busy sends it cold immediately.
-      expect(overlapped.busy).toBe(true);
-      expect(overlapped.outcome).toBeUndefined();
-
-      const first = await slow;
-      expect(first.outcome?.output).toEqual({ done: true });
-
-      // The server survives and serves again once free.
-      const after = await request(
-        socketPath,
-        warmRequest({}, { url: "http://localhost/" })
-      );
-      expect(after.outcome?.output).toEqual({ done: true });
-    } finally {
-      proc.kill();
-    }
-  });
-
   test("scrubs the spawn-time invocation secrets from its own environment", async () => {
     const dir = scratch();
     const socketPath = join(dir, "fn.sock");
     // Spawned the way dsbx spawns it: with the cold invocation's token in
-    // env. The server must not serve requests under that inherited value.
+    // env. Even a bundle reading process.env directly must not observe it.
     const proc = Bun.spawn(
       ["bun", runner, "serve", fx("env-probe.ts"), socketPath],
       {
@@ -443,26 +532,5 @@ describe("parseWarmRequest", () => {
         JSON.stringify({ v: WARM_PROTOCOL_VERSION, env: {}, input: 7 })
       )
     ).toBeNull();
-  });
-});
-
-describe("applyRequestEnv", () => {
-  test("applies for the invocation and clears afterwards", () => {
-    const original = process.env.SERVE_TEST_KEY;
-    try {
-      const applied = applyRequestEnv({ SERVE_TEST_KEY: "one" });
-      expect(process.env.SERVE_TEST_KEY).toBe("one");
-
-      // Cleared after the invocation: per-request secrets (the sandbox
-      // token travels in env) must not sit in the idle server's environment.
-      clearAppliedEnv(applied);
-      expect(process.env.SERVE_TEST_KEY).toBeUndefined();
-    } finally {
-      if (original === undefined) {
-        delete process.env.SERVE_TEST_KEY;
-      } else {
-        process.env.SERVE_TEST_KEY = original;
-      }
-    }
   });
 });
