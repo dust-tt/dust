@@ -136,3 +136,68 @@ describe("invoke", () => {
     }
   });
 });
+
+describe("invoke with invocationEnv", () => {
+  const outputOf = async (
+    input: RequestInput,
+    env?: Readonly<Record<string, string>>
+  ): Promise<Record<string, unknown>> => {
+    const out = await invoke(fx("context-probe.ts"), input, env);
+    expect(out.ok).toBe(true);
+    if (!out.ok) {
+      throw new Error("probe invocation failed");
+    }
+    expect(typeof out.output).toBe("object");
+    return Object(out.output);
+  };
+
+  test("the handler reads the invocation env, not process.env", async () => {
+    process.env.WARM_TEST_MARKER = "from-process";
+    try {
+      const output = await outputOf(req(), {
+        WARM_TEST_MARKER: "from-context",
+        DUST_POD_USER_IDENTITY: "ctx-identity",
+      });
+      expect(output.before).toBe("from-context");
+      expect(output.identity).toBe("ctx-identity");
+    } finally {
+      delete process.env.WARM_TEST_MARKER;
+    }
+  });
+
+  test("a key absent from the invocation env stays absent", async () => {
+    process.env.WARM_TEST_MARKER = "from-process";
+    try {
+      const output = await outputOf(req(), {});
+      expect(output.before).toBeNull();
+    } finally {
+      delete process.env.WARM_TEST_MARKER;
+    }
+  });
+
+  test("without an invocation env the handler falls back to process.env", async () => {
+    process.env.WARM_TEST_MARKER = "from-process";
+    try {
+      const output = await outputOf(req());
+      expect(output.before).toBe("from-process");
+    } finally {
+      delete process.env.WARM_TEST_MARKER;
+    }
+  });
+
+  test("concurrent invocations with different envs never observe each other", async () => {
+    const probe = (marker: string, delayMs: number) =>
+      outputOf(req({ url: `http://localhost/?delayMs=${delayMs}` }), {
+        WARM_TEST_MARKER: marker,
+      });
+    // Staggered delays force the invocations to interleave across awaits.
+    const [a, b, c] = await Promise.all([
+      probe("alpha", 60),
+      probe("beta", 20),
+      probe("gamma", 40),
+    ]);
+    expect(a).toMatchObject({ before: "alpha", after: "alpha" });
+    expect(b).toMatchObject({ before: "beta", after: "beta" });
+    expect(c).toMatchObject({ before: "gamma", after: "gamma" });
+  });
+});
