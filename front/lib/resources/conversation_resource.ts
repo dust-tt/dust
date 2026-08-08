@@ -172,6 +172,7 @@ const shouldByPassPrivateByDefaultUrlRestriction = (auth: Authenticator) => {
     case "oauth":
     case "session":
     case "sandbox_token":
+    case "frame_viewer":
       return false;
     default:
       assertNever(authMethod);

@@ -22,6 +22,7 @@ interface ServerVisualizationWrapperClientProps {
   allowedOrigins: string[];
   identifier: string;
   isAuthenticatedMember?: boolean;
+  isEmailViewer?: boolean;
   isFullHeight?: boolean;
   isPdfMode?: boolean;
   prefetchedCode?: string;
@@ -44,6 +45,7 @@ export function ServerVisualizationWrapperClient({
   identifier,
   allowedOrigins,
   isAuthenticatedMember = false,
+  isEmailViewer = false,
   isFullHeight = false,
   isPdfMode = false,
   prefetchedCode,
@@ -51,12 +53,12 @@ export function ServerVisualizationWrapperClient({
 }: ServerVisualizationWrapperClientProps) {
   const dataAPI = useMemo(() => {
     const cache = new CacheDataAPI(prefetchedFiles, prefetchedCode);
-    if (!isAuthenticatedMember) {
+    if (!isAuthenticatedMember && !isEmailViewer) {
       return cache;
     }
 
-    // Authenticated member on a public frame: keep SSR reads from the cache,
-    // route callFunction over RPC.
+    // Authenticated member or grant-authorized email viewer on a public frame: keep SSR reads from
+    // the cache, route callFunction over RPC.
     const sendMessage = makeSendCrossDocumentMessage({
       allowedOrigins,
       identifier,
@@ -66,6 +68,7 @@ export function ServerVisualizationWrapperClient({
     prefetchedCode,
     prefetchedFiles,
     isAuthenticatedMember,
+    isEmailViewer,
     allowedOrigins,
     identifier,
   ]);

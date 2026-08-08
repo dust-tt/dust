@@ -71,6 +71,7 @@ export function PublicFrameRenderer({
     error,
     accessToken,
     isAuthenticatedMember,
+    isEmailViewer,
   } = usePublicFrame({
     shareToken,
   });
@@ -147,6 +148,8 @@ export function PublicFrameRenderer({
             }}
             key={`viz-${fileId}`}
             canInvokeFunctions={publicUserIdentity !== undefined}
+            isEmailViewer={isEmailViewer}
+            shareToken={shareToken}
             scopedUserIdentity={publicUserIdentity}
             viewer={viewer}
             isInDrawer

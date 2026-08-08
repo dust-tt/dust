@@ -1,5 +1,6 @@
 import { unauthedApp } from "@front-api/middlewares/ctx";
 
+import publicFrameSandboxFunctionEvents from "./v1/public/frames/[token]/sandbox-functions/[functionId]/invocations/[invocationId]/events";
 import v1WorkspaceSseApp from "./v1/w/[wId]";
 import workspaceSseApp from "./w/[wId]";
 
@@ -12,5 +13,9 @@ const app = unauthedApp();
 
 app.route("/v1/w/:wId", v1WorkspaceSseApp);
 app.route("/w/:wId", workspaceSseApp);
+app.route(
+  "/v1/public/frames/:token/sandbox-functions/:functionId/invocations/:invocationId/events",
+  publicFrameSandboxFunctionEvents
+);
 
 export default app;

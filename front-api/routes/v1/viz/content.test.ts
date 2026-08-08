@@ -87,6 +87,7 @@ describe("/api/v1/viz/content endpoint tests", () => {
         conversationId: "conversation-A",
       },
       isAuthenticatedMember: false,
+      isEmailViewer: false,
     });
   });
 
@@ -272,6 +273,7 @@ describe("/api/v1/viz/content endpoint tests", () => {
         conversationId: "conversation-A",
       },
       isAuthenticatedMember: false,
+      isEmailViewer: false,
     });
   });
 
@@ -313,6 +315,7 @@ describe("/api/v1/viz/content endpoint tests", () => {
         conversationId: "conversation-A",
       },
       isAuthenticatedMember: true,
+      isEmailViewer: false,
     });
   });
 });
