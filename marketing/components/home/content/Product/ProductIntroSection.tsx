@@ -16,7 +16,8 @@ export function ProductIntroSection() {
             mono
             className="text-center text-5xl font-medium md:text-6xl lg:text-7xl"
           >
-            Build your team of&nbsp;AI&nbsp;agents
+            The multiplayer, multi-model AI system that compounds organizational
+            intelligence
           </H1>
           <P size="lg" className="text-base text-muted-foreground sm:text-lg">
             Dust empowers teams to create agents that actually understand your
