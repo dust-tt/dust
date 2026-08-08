@@ -1,3 +1,4 @@
+import { DEFAULT_PRESTOP_DRAIN_DURATION_MS } from "@app/lib/constants/timeouts";
 import { isDevelopment } from "@app/types/shared/env";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
@@ -31,6 +32,24 @@ export function getDefaultInit(): Promise<RequestInit> | null {
 }
 
 const config = {
+  getPreStopDrainDurationMs: (): number => {
+    const value = EnvironmentConfig.getOptionalEnvVariable(
+      "PRESTOP_DRAIN_DURATION_SECONDS"
+    );
+    if (!value) {
+      return DEFAULT_PRESTOP_DRAIN_DURATION_MS;
+    }
+
+    const durationSeconds = Number(value);
+    if (!Number.isSafeInteger(durationSeconds) || durationSeconds <= 0) {
+      throw new Error(
+        "PRESTOP_DRAIN_DURATION_SECONDS must be a positive integer"
+      );
+    }
+
+    return durationSeconds * 1_000;
+  },
+
   // Dynamic API base URL: uses a custom resolver when set (SPA region switching),
   // otherwise falls back to getClientFacingUrl().
   getApiBaseUrl: (): string => {
