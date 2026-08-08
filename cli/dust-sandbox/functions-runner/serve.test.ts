@@ -7,14 +7,18 @@ import {
   applyRequestEnv,
   clearAppliedEnv,
   parseWarmRequest,
+  resolveBundle,
   WARM_PROTOCOL_VERSION,
 } from "./serve.ts";
 
 const runner = join(import.meta.dir, "runner.ts");
 const fx = (n: string) => join(import.meta.dir, "fixtures", n);
+const fixturesDir = join(import.meta.dir, "fixtures");
 
-// Each test gets its own scratch dir holding the socket and a private copy of
-// the fixture (staleness tests rewrite it).
+const DEFAULT_IDLE_MS = 60_000;
+
+// Each test gets its own scratch dir holding the socket and, for staleness
+// tests, a private functions dir whose bundles it rewrites.
 let scratchDirs: string[] = [];
 
 function scratch(): string {
@@ -35,13 +39,23 @@ interface ServerHandle {
   socketPath: string;
 }
 
-async function startServer(handlerPath: string): Promise<ServerHandle> {
-  const socketPath = join(scratch(), "fn.sock");
-  const proc = Bun.spawn(["bun", runner, "serve", handlerPath, socketPath], {
-    stdin: "ignore",
-    stdout: "ignore",
-    stderr: "inherit",
-  });
+async function startWorker(
+  functionsDir: string,
+  {
+    idleTimeoutMs = DEFAULT_IDLE_MS,
+    env = {},
+  }: { idleTimeoutMs?: number; env?: Record<string, string> } = {}
+): Promise<ServerHandle> {
+  const socketPath = join(scratch(), "w.sock");
+  const proc = Bun.spawn(
+    ["bun", runner, "serve", socketPath, String(idleTimeoutMs)],
+    {
+      stdin: "ignore",
+      stdout: "ignore",
+      stderr: "inherit",
+      env: { ...process.env, DUST_FUNCTIONS_DIR: functionsDir, ...env },
+    }
+  );
   // Wait for the socket to accept connections.
   const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
@@ -56,19 +70,20 @@ async function startServer(handlerPath: string): Promise<ServerHandle> {
       await new Promise((resolve) => setTimeout(resolve, 25));
     }
   }
-  throw new Error("warm server did not come up");
+  throw new Error("warm worker did not come up");
 }
 
 interface WarmReply {
   v: number;
   ack?: boolean;
   outcome?: { ok: boolean; output?: unknown; error?: { code: string } };
+  importKind?: "cached" | "fresh";
   stale?: boolean;
   busy?: boolean;
   error?: string;
 }
 
-// Collects every newline-delimited frame until the server closes the
+// Collects every newline-delimited frame until the worker closes the
 // connection: a served invocation is [ack, outcome], every refusal is a
 // single frame.
 async function requestFrames(
@@ -113,45 +128,85 @@ async function request(
 ): Promise<WarmReply> {
   const frames = await requestFrames(socketPath, payload);
   if (frames.length === 0) {
-    throw new Error("server closed without any frame");
+    throw new Error("worker closed without any frame");
   }
   return frames[frames.length - 1]!;
 }
 
-function warmRequest(env: Record<string, string>, input: unknown) {
+function warmRequest(
+  env: Record<string, string>,
+  name: string,
+  input: unknown
+) {
   return {
     v: WARM_PROTOCOL_VERSION,
     env,
     input: JSON.stringify(input),
+    name,
   };
 }
 
 describe("runner serve", () => {
-  test("serves an invocation over the socket", async () => {
-    const { proc, socketPath } = await startServer(fx("hello.ts"));
+  test("serves an invocation, importing the bundle on first use", async () => {
+    const { proc, socketPath } = await startWorker(fixturesDir);
     try {
       const reply = await request(
         socketPath,
-        warmRequest({}, { url: "http://localhost/?name=warm" })
+        warmRequest({}, "hello", { url: "http://localhost/?name=warm" })
       );
       expect(reply.v).toBe(WARM_PROTOCOL_VERSION);
       expect(reply.outcome?.ok).toBe(true);
       expect(reply.outcome?.output).toEqual({ hello: "warm" });
+      expect(reply.importKind).toBe("fresh");
     } finally {
       proc.kill();
     }
   });
 
-  test("serves repeat invocations from the same process", async () => {
-    const { proc, socketPath } = await startServer(fx("hello.ts"));
+  test("serves repeat invocations from the module cache", async () => {
+    const { proc, socketPath } = await startWorker(fixturesDir);
     try {
-      for (const name of ["one", "two", "three"]) {
+      const first = await request(
+        socketPath,
+        warmRequest({}, "hello", { url: "http://localhost/?name=one" })
+      );
+      expect(first.importKind).toBe("fresh");
+      for (const name of ["two", "three"]) {
         const reply = await request(
           socketPath,
-          warmRequest({}, { url: `http://localhost/?name=${name}` })
+          warmRequest({}, "hello", { url: `http://localhost/?name=${name}` })
         );
         expect(reply.outcome?.output).toEqual({ hello: name });
+        expect(reply.importKind).toBe("cached");
       }
+    } finally {
+      proc.kill();
+    }
+  });
+
+  test("serves several functions from one worker", async () => {
+    const { proc, socketPath } = await startWorker(fixturesDir);
+    try {
+      const hello = await request(
+        socketPath,
+        warmRequest({}, "hello", { url: "http://localhost/?name=multi" })
+      );
+      expect(hello.outcome?.output).toEqual({ hello: "multi" });
+
+      const threw = await request(
+        socketPath,
+        warmRequest({}, "throws", { url: "http://localhost/" })
+      );
+      expect(threw.outcome?.ok).toBe(false);
+      expect(threw.outcome?.error?.code).toBe("threw");
+
+      // The first function's import survives serving the second.
+      const again = await request(
+        socketPath,
+        warmRequest({}, "hello", { url: "http://localhost/?name=back" })
+      );
+      expect(again.outcome?.output).toEqual({ hello: "back" });
+      expect(again.importKind).toBe("cached");
     } finally {
       proc.kill();
     }
@@ -160,12 +215,13 @@ describe("runner serve", () => {
   test("applies per-request env and clears it between requests", async () => {
     // env-probe.ts echoes process.env.WARM_TEST_MARKER, so the reply proves
     // which env the invocation ran under.
-    const { proc, socketPath } = await startServer(fx("env-probe.ts"));
+    const { proc, socketPath } = await startWorker(fixturesDir);
     try {
       const first = await request(
         socketPath,
         warmRequest(
           { WARM_TEST_MARKER: "alpha", DUST_SANDBOX_TOKEN: "tok-alpha" },
+          "env-probe",
           { url: "http://localhost/" }
         )
       );
@@ -178,7 +234,7 @@ describe("runner serve", () => {
       // first invocation — in particular not its sandbox token.
       const second = await request(
         socketPath,
-        warmRequest({}, { url: "http://localhost/" })
+        warmRequest({}, "env-probe", { url: "http://localhost/" })
       );
       expect(second.outcome?.output).toEqual({
         marker: "unset",
@@ -189,20 +245,26 @@ describe("runner serve", () => {
     }
   });
 
-  test("reports a rewritten bundle as stale and exits", async () => {
+  test("reports a rewritten bundle as stale and recycles", async () => {
     const dir = scratch();
-    const bundle = join(dir, "hello.ts");
-    copyFileSync(fx("hello.ts"), bundle);
-    const { proc, socketPath } = await startServer(bundle);
+    copyFileSync(fx("hello.ts"), join(dir, "hello.ts"));
+    const { proc, socketPath } = await startWorker(dir);
     try {
+      const first = await request(
+        socketPath,
+        warmRequest({}, "hello", { url: "http://localhost/" })
+      );
+      expect(first.outcome?.ok).toBe(true);
+
       // Same content, different mtime — a republish rewrites the object, and
-      // mtime/size is the staleness signal.
+      // mtime/size is the staleness signal. The stale import can never be
+      // evicted, so the worker drains and exits.
       const later = new Date(Date.now() + 5_000);
-      utimesSync(bundle, later, later);
+      utimesSync(join(dir, "hello.ts"), later, later);
 
       const reply = await request(
         socketPath,
-        warmRequest({}, { url: "http://localhost/" })
+        warmRequest({}, "hello", { url: "http://localhost/" })
       );
       expect(reply.stale).toBe(true);
       expect(await proc.exited).toBe(0);
@@ -211,65 +273,114 @@ describe("runner serve", () => {
     }
   });
 
-  test("serves a request stamped with the matching bundle hash", async () => {
-    const { proc, socketPath } = await startServer(fx("hello.ts"));
+  test("refuses a mismatched bundle hash as stale without importing", async () => {
+    // The stat cannot see a rewrite here (the file is untouched), which is
+    // exactly the gcsfuse-cached-metadata case: the request's hash is the
+    // only signal, and it must win.
+    const { proc, socketPath } = await startWorker(fixturesDir);
     try {
+      const reply = await request(
+        socketPath,
+        warmRequest({}, "hello", {
+          url: "http://localhost/",
+          bundleSha256: "0".repeat(64),
+        })
+      );
+      expect(reply.stale).toBe(true);
+      expect(reply.outcome).toBeUndefined();
+
+      // The refusal happened before the import, so the worker is not
+      // poisoned: a correctly-stamped request still gets served.
       const bytes = await Bun.file(fx("hello.ts")).arrayBuffer();
       const bundleSha256 = new Bun.CryptoHasher("sha256")
         .update(new Uint8Array(bytes))
         .digest("hex");
-      const reply = await request(
+      const served = await request(
         socketPath,
-        warmRequest({}, { url: "http://localhost/?name=stamped", bundleSha256 })
+        warmRequest({}, "hello", {
+          url: "http://localhost/?name=stamped",
+          bundleSha256,
+        })
       );
-      expect(reply.outcome?.ok).toBe(true);
-      expect(reply.outcome?.output).toEqual({ hello: "stamped" });
+      expect(served.outcome?.output).toEqual({ hello: "stamped" });
+      expect(served.importKind).toBe("fresh");
     } finally {
       proc.kill();
     }
   });
 
-  test("refuses a mismatched bundle hash as stale and exits", async () => {
-    // The stat cannot see the rewrite here (the file is untouched), which is
-    // exactly the gcsfuse-cached-metadata case: the request's hash is the
-    // only signal, and it must win.
-    const { proc, socketPath } = await startServer(fx("hello.ts"));
+  test("refuses a cached bundle when the stamped hash stops matching", async () => {
+    const dir = scratch();
+    copyFileSync(fx("hello.ts"), join(dir, "hello.ts"));
+    const { proc, socketPath } = await startWorker(dir);
     try {
+      const first = await request(
+        socketPath,
+        warmRequest({}, "hello", { url: "http://localhost/" })
+      );
+      expect(first.outcome?.ok).toBe(true);
+
       const reply = await request(
         socketPath,
-        warmRequest(
-          {},
-          { url: "http://localhost/", bundleSha256: "0".repeat(64) }
-        )
+        warmRequest({}, "hello", {
+          url: "http://localhost/",
+          bundleSha256: "0".repeat(64),
+        })
       );
       expect(reply.stale).toBe(true);
-      expect(reply.outcome).toBeUndefined();
+      // The cached import can never serve the stamped version: recycle.
       expect(await proc.exited).toBe(0);
     } finally {
       proc.kill();
     }
   });
 
-  test("serves an unstamped request from an older front", async () => {
-    const { proc, socketPath } = await startServer(fx("hello.ts"));
+  test("reports an unknown function as stale, keeping the cold path's error", async () => {
+    const { proc, socketPath } = await startWorker(fixturesDir);
     try {
       const reply = await request(
         socketPath,
-        warmRequest({}, { url: "http://localhost/?name=unstamped" })
+        warmRequest({}, "no-such-function", { url: "http://localhost/" })
       );
-      expect(reply.outcome?.output).toEqual({ hello: "unstamped" });
+      expect(reply.stale).toBe(true);
+
+      // The worker survives: an unknown name poisons nothing.
+      const served = await request(
+        socketPath,
+        warmRequest({}, "hello", { url: "http://localhost/?name=alive" })
+      );
+      expect(served.outcome?.output).toEqual({ hello: "alive" });
+    } finally {
+      proc.kill();
+    }
+  });
+
+  test("exits on idle", async () => {
+    const { proc, socketPath } = await startWorker(fixturesDir, {
+      idleTimeoutMs: 300,
+    });
+    try {
+      const reply = await request(
+        socketPath,
+        warmRequest({}, "hello", { url: "http://localhost/" })
+      );
+      expect(reply.outcome?.ok).toBe(true);
+      // Burst workers are configured with short idles exactly so they drain
+      // once load drops; nothing else references this process again.
+      expect(await proc.exited).toBe(0);
     } finally {
       proc.kill();
     }
   });
 
   test("rejects a protocol version it does not speak and exits", async () => {
-    const { proc, socketPath } = await startServer(fx("hello.ts"));
+    const { proc, socketPath } = await startWorker(fixturesDir);
     try {
       const reply = await request(socketPath, {
         v: 999,
         env: {},
         input: "{}",
+        name: "hello",
       });
       expect(reply.error).toBe("bad warm request");
       expect(await proc.exited).toBe(0);
@@ -279,11 +390,11 @@ describe("runner serve", () => {
   });
 
   test("acks before the outcome so the client can pin execution start", async () => {
-    const { proc, socketPath } = await startServer(fx("hello.ts"));
+    const { proc, socketPath } = await startWorker(fixturesDir);
     try {
       const frames = await requestFrames(
         socketPath,
-        warmRequest({}, { url: "http://localhost/?name=frames" })
+        warmRequest({}, "hello", { url: "http://localhost/?name=frames" })
       );
       expect(frames.length).toBe(2);
       expect(frames[0]?.ack).toBe(true);
@@ -294,31 +405,32 @@ describe("runner serve", () => {
   });
 
   test("replies busy instead of queueing behind a running invocation", async () => {
-    const { proc, socketPath } = await startServer(fx("slow.ts"));
+    const { proc, socketPath } = await startWorker(fixturesDir);
     try {
       const slow = request(
         socketPath,
-        warmRequest({}, { url: "http://localhost/" })
+        warmRequest({}, "slow", { url: "http://localhost/" })
       );
-      // Give the slow request time to reach the server and start executing.
+      // Give the slow request time to reach the worker and start executing.
       await new Promise((resolve) => setTimeout(resolve, 150));
 
       const overlapped = await request(
         socketPath,
-        warmRequest({}, { url: "http://localhost/" })
+        warmRequest({}, "hello", { url: "http://localhost/" })
       );
       // Queueing would run this request for a client whose front-side
-      // timeout may already have fired; busy sends it cold immediately.
+      // timeout may already have fired; busy sends it to the next slot (or
+      // cold) immediately.
       expect(overlapped.busy).toBe(true);
       expect(overlapped.outcome).toBeUndefined();
 
       const first = await slow;
       expect(first.outcome?.output).toEqual({ done: true });
 
-      // The server survives and serves again once free.
+      // The worker survives and serves again once free.
       const after = await request(
         socketPath,
-        warmRequest({}, { url: "http://localhost/" })
+        warmRequest({}, "slow", { url: "http://localhost/" })
       );
       expect(after.outcome?.output).toEqual({ done: true });
     } finally {
@@ -327,40 +439,23 @@ describe("runner serve", () => {
   });
 
   test("scrubs the spawn-time invocation secrets from its own environment", async () => {
-    const dir = scratch();
-    const socketPath = join(dir, "fn.sock");
     // Spawned the way dsbx spawns it: with the cold invocation's token in
-    // env. The server must not serve requests under that inherited value.
-    const proc = Bun.spawn(
-      ["bun", runner, "serve", fx("env-probe.ts"), socketPath],
-      {
-        stdin: "ignore",
-        stdout: "ignore",
-        stderr: "inherit",
-        env: {
-          ...process.env,
-          WARM_TEST_MARKER: "from-spawn",
-          DUST_SANDBOX_TOKEN: "spawn-invocation-token",
-        },
-      }
-    );
+    // env. The worker must not serve requests under that inherited value.
+    const { proc, socketPath } = await startWorker(fixturesDir, {
+      env: {
+        WARM_TEST_MARKER: "from-spawn",
+        DUST_SANDBOX_TOKEN: "spawn-invocation-token",
+      },
+    });
     try {
-      const deadline = Date.now() + 10_000;
-      let reply: WarmReply | null = null;
-      while (Date.now() < deadline && reply === null) {
-        try {
-          reply = await request(
-            socketPath,
-            warmRequest({}, { url: "http://localhost/" })
-          );
-        } catch {
-          await new Promise((resolve) => setTimeout(resolve, 25));
-        }
-      }
+      const reply = await request(
+        socketPath,
+        warmRequest({}, "env-probe", { url: "http://localhost/" })
+      );
       // WARM_TEST_MARKER is not in the scrub list, so it survives spawn env
       // inheritance like any other var; the spawn-time DUST_SANDBOX_TOKEN
       // must have been scrubbed at startup.
-      expect(reply?.outcome?.output).toEqual({
+      expect(reply.outcome?.output).toEqual({
         marker: "from-spawn",
         token: "unset",
       });
@@ -369,35 +464,22 @@ describe("runner serve", () => {
     }
   });
 
-  test("reports runner errors as structured outcomes", async () => {
-    const { proc, socketPath } = await startServer(fx("throws.ts"));
-    try {
-      const reply = await request(
-        socketPath,
-        warmRequest({}, { url: "http://localhost/" })
-      );
-      expect(reply.outcome?.ok).toBe(false);
-      expect(reply.outcome?.error?.code).toBe("threw");
-    } finally {
-      proc.kill();
-    }
-  });
-
   test("reports malformed envelopes as bad_input without dying", async () => {
-    const { proc, socketPath } = await startServer(fx("hello.ts"));
+    const { proc, socketPath } = await startWorker(fixturesDir);
     try {
       const bad = await request(socketPath, {
         v: WARM_PROTOCOL_VERSION,
         env: {},
         input: "not json",
+        name: "hello",
       });
       expect(bad.outcome?.ok).toBe(false);
       expect(bad.outcome?.error?.code).toBe("bad_input");
 
-      // The server survives a bad envelope: the next request still works.
+      // The worker survives a bad envelope: the next request still works.
       const good = await request(
         socketPath,
-        warmRequest({}, { url: "http://localhost/?name=alive" })
+        warmRequest({}, "hello", { url: "http://localhost/?name=alive" })
       );
       expect(good.outcome?.output).toEqual({ hello: "alive" });
     } finally {
@@ -413,36 +495,50 @@ describe("parseWarmRequest", () => {
         v: WARM_PROTOCOL_VERSION,
         env: { KEEP: "yes", DROP_NUMBER: 3, DROP_NULL: null },
         input: "{}",
+        name: "greet",
       })
     );
     expect(parsed).toEqual({
       v: WARM_PROTOCOL_VERSION,
       env: { KEEP: "yes" },
       input: "{}",
+      name: "greet",
     });
   });
 
   test("returns null for every malformed request", () => {
     expect(parseWarmRequest("not json")).toBeNull();
     expect(parseWarmRequest('"a string"')).toBeNull();
+    const base = { v: WARM_PROTOCOL_VERSION, env: {}, input: "{}" };
     expect(
-      parseWarmRequest(JSON.stringify({ v: 999, env: {}, input: "{}" }))
+      parseWarmRequest(JSON.stringify({ ...base, v: 999, name: "greet" }))
+    ).toBeNull();
+    expect(parseWarmRequest(JSON.stringify(base))).toBeNull();
+    expect(
+      parseWarmRequest(JSON.stringify({ ...base, name: "bad name!" }))
     ).toBeNull();
     expect(
-      parseWarmRequest(
-        JSON.stringify({ v: WARM_PROTOCOL_VERSION, input: "{}" })
-      )
+      parseWarmRequest(JSON.stringify({ ...base, env: null, name: "greet" }))
     ).toBeNull();
     expect(
-      parseWarmRequest(
-        JSON.stringify({ v: WARM_PROTOCOL_VERSION, env: null, input: "{}" })
-      )
+      parseWarmRequest(JSON.stringify({ ...base, input: 7, name: "greet" }))
     ).toBeNull();
-    expect(
-      parseWarmRequest(
-        JSON.stringify({ v: WARM_PROTOCOL_VERSION, env: {}, input: 7 })
-      )
-    ).toBeNull();
+  });
+});
+
+describe("resolveBundle", () => {
+  test("resolves a name to its single bundle, extension-agnostically", () => {
+    const resolved = resolveBundle(fixturesDir, "hello");
+    expect(resolved).toBe(join(fixturesDir, "hello.ts"));
+  });
+
+  test("returns null for missing or ambiguous names", () => {
+    expect(resolveBundle(fixturesDir, "no-such-function")).toBeNull();
+    const dir = scratch();
+    copyFileSync(fx("hello.ts"), join(dir, "greet.ts"));
+    copyFileSync(fx("hello.ts"), join(dir, "greet.js"));
+    expect(resolveBundle(dir, "greet")).toBeNull();
+    expect(resolveBundle(join(dir, "does-not-exist"), "greet")).toBeNull();
   });
 });
 
@@ -454,7 +550,7 @@ describe("applyRequestEnv", () => {
       expect(process.env.SERVE_TEST_KEY).toBe("one");
 
       // Cleared after the invocation: per-request secrets (the sandbox
-      // token travels in env) must not sit in the idle server's environment.
+      // token travels in env) must not sit in the idle worker's environment.
       clearAppliedEnv(applied);
       expect(process.env.SERVE_TEST_KEY).toBeUndefined();
     } finally {

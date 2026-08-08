@@ -16,10 +16,11 @@ const NON_JSON_SNIPPET_MAX_CHARS: usize = 512;
 /// The request envelope is read from stdin and the function runs unprivileged
 /// (agent uid) when dsbx is invoked as root.
 ///
-/// The invocation is served warm when a resident server for this function is
-/// listening (see `warm.rs`): one unix-socket round trip instead of a runner
-/// spawn. A cold run additionally leaves a warm server behind for the next
-/// invocation. Both paths produce the same runner `Output` JSON.
+/// The invocation is served warm when a pool worker accepts it (see
+/// `warm.rs`): one unix-socket round trip instead of a runner spawn. A cold
+/// run additionally leaves a warm worker behind for the next invocation, if
+/// the pool has a free slot. Both paths produce the same runner `Output`
+/// JSON.
 ///
 /// Delivery modes:
 /// - `callback` (default): POST the runner response to the Dust result API when
@@ -47,7 +48,7 @@ pub async fn cmd_function_run(name: &str, result_delivery: ResultDelivery) -> Re
         };
     }
 
-    if let WarmRun::Outcome(outcome) = warm::try_warm_run(name, &input).await {
+    if let WarmRun::Outcome(outcome, import_kind) = warm::try_warm_run(name, &input).await {
         let runner_ms = started.elapsed().as_millis() as u64;
         return match result_delivery {
             ResultDelivery::Callback => deliver_callback_outcome(name, outcome).await,
@@ -58,6 +59,7 @@ pub async fn cmd_function_run(name: &str, result_delivery: ResultDelivery) -> Re
                         total: started.elapsed().as_millis() as u64,
                         runner: runner_ms,
                         runner_kind: Some(RunnerKind::Warm),
+                        import_kind,
                     }),
                 ),
                 0,
@@ -65,25 +67,22 @@ pub async fn cmd_function_run(name: &str, result_delivery: ResultDelivery) -> Re
         };
     }
 
-    // Cold path. Resolve once: the run below and the warm server spawn both
-    // need the handler path, and resolution lists the (gcsfuse-backed)
-    // functions directory.
-    let (spawned, handler) = match resolve_existing(name) {
+    // Cold path.
+    let spawned = match resolve_existing(name) {
         Ok(handler) => {
             let spawned = spawn_function_at(&handler, "run", Some(&input), true).await;
-            (spawned, Some(handler))
+            // Leave a warm worker behind (if a pool slot is free) so the
+            // next invocation skips the spawn. Only after a successful
+            // resolution: a bad name or missing bundle should not grow the
+            // pool. Fire-and-forget; never affects this run's outcome.
+            warm::spawn_worker();
+            spawned
         }
         // resolve_existing already emitted the `{error}` line; the message
         // (bad name, unset dir, missing or ambiguous bundle) propagates.
-        Err(e) => (Err(e), None),
+        Err(e) => Err(e),
     };
     let runner_ms = started.elapsed().as_millis() as u64;
-
-    // Leave a warm server behind so the next invocation of this function
-    // skips the spawn. Fire-and-forget; never affects this run's outcome.
-    if let Some(handler) = &handler {
-        warm::spawn_server(name, handler);
-    }
 
     match result_delivery {
         // Spawn failures keep propagating: the bare `{error}` line emit_error
@@ -98,6 +97,7 @@ pub async fn cmd_function_run(name: &str, result_delivery: ResultDelivery) -> Re
                 total: started.elapsed().as_millis() as u64,
                 runner: runner_ms,
                 runner_kind: Some(RunnerKind::Cold),
+                import_kind: None,
             },
         ),
     }
@@ -253,6 +253,7 @@ mod tests {
             total,
             runner,
             runner_kind: Some(RunnerKind::Cold),
+            import_kind: None,
         }
     }
 

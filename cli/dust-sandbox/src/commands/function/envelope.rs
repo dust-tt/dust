@@ -24,10 +24,20 @@ pub struct ResultEnvelope {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum RunnerKind {
-    /// Served by a resident warm server over its unix socket.
+    /// Served by a resident warm worker over its unix socket.
     Warm,
     /// Fresh runner process spawn, today's default behavior.
     Cold,
+}
+
+/// Whether a warm worker served the request from its module cache or paid the
+/// bundle import on this request. The gauge for whether warmth-aware routing
+/// beyond hash affinity would earn its complexity.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum ImportKind {
+    Cached,
+    Fresh,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -39,6 +49,9 @@ pub struct TimingsMs {
     /// treats timingsMs as opaque, so this cannot break the wire contract.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runner_kind: Option<RunnerKind>,
+    /// Additive, warm runs only: see [`ImportKind`].
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub import_kind: Option<ImportKind>,
 }
 
 impl ResultEnvelope {
@@ -84,6 +97,7 @@ mod tests {
                 total: 12,
                 runner: 8,
                 runner_kind: Some(RunnerKind::Warm),
+                import_kind: Some(ImportKind::Cached),
             }),
         );
 
@@ -94,7 +108,7 @@ mod tests {
                 "protocolVersion": 3,
                 "delivery": "stdout",
                 "outcome": { "ok": true, "output": { "hello": "world" } },
-                "timingsMs": { "total": 12, "runner": 8, "runnerKind": "warm" },
+                "timingsMs": { "total": 12, "runner": 8, "runnerKind": "warm", "importKind": "cached" },
             })
         );
     }
