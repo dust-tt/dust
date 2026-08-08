@@ -221,6 +221,123 @@ fn stage_runner(dir: &Path) -> Result<PathBuf> {
     Ok(path)
 }
 
+/// How long an unused cached bundle survives before opportunistic pruning
+/// removes it. Content-addressed entries never go stale, only unused: a
+/// republish changes the stamped hash, so old entries simply stop being
+/// looked up.
+const BUNDLE_CACHE_MAX_AGE: Duration = Duration::from_secs(7 * 24 * 3600);
+
+/// A stamped bundle hash is exactly the lowercase hex sha256 front computes
+/// at publish time; anything else must not touch the filesystem.
+fn is_valid_bundle_sha256(sha256: &str) -> bool {
+    sha256.len() == 64
+        && sha256
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+}
+
+fn bundle_cache_dir() -> Option<PathBuf> {
+    // Same trust model as the rest of the warm dir (and the same root
+    // refusal): only the invoking unprivileged user can write here, so a
+    // cached bundle is exactly what this user previously read and verified.
+    if rustix::process::geteuid().is_root() {
+        return None;
+    }
+    let dir = ensure_trusted_warm_dir()?.join("bundles");
+    let mut builder = std::fs::DirBuilder::new();
+    builder.mode(0o700);
+    match builder.create(&dir) {
+        Ok(()) => {}
+        Err(e) if e.kind() == ErrorKind::AlreadyExists => {}
+        Err(_) => return None,
+    }
+    Some(dir)
+}
+
+/// Path of the locally cached copy of the bundle whose publish-time sha256 is
+/// `sha256`, when one exists. A hit means the cold run can skip the
+/// gcsfuse-backed functions dir entirely — both the resolution readdir and
+/// the bundle read — which is the dominant cost of a first invocation. The
+/// cache can never serve a stale bundle: a republish changes the stamped
+/// hash, which is the lookup key.
+pub fn cached_bundle_path(sha256: &str) -> Option<PathBuf> {
+    if !is_valid_bundle_sha256(sha256) {
+        return None;
+    }
+    let path = bundle_cache_dir()?.join(format!("{sha256}.js"));
+    if std::fs::metadata(&path)
+        .map(|m| m.is_file())
+        .unwrap_or(false)
+    {
+        Some(path)
+    } else {
+        None
+    }
+}
+
+/// Copies `handler` (just read from the functions dir) into the cache under
+/// its stamped hash, so the next cold run of this publish skips gcsfuse.
+/// Best-effort and silent: a failed populate only means the next run stays
+/// on today's path. The bytes are re-hashed before caching — when gcsfuse
+/// caching serves bytes older than the stamp, caching them under the stamp
+/// would wrongly pin the stale version, so a mismatch caches nothing.
+pub fn populate_bundle_cache(handler: &Path, sha256: &str) {
+    if !is_valid_bundle_sha256(sha256) {
+        return;
+    }
+    let Some(dir) = bundle_cache_dir() else {
+        return;
+    };
+    let target = dir.join(format!("{sha256}.js"));
+    if std::fs::metadata(&target).is_ok() {
+        return;
+    }
+    let Ok(bytes) = std::fs::read(handler) else {
+        return;
+    };
+    let digest = ring::digest::digest(&ring::digest::SHA256, &bytes);
+    let actual: String = digest.as_ref().iter().map(|b| format!("{b:02x}")).collect();
+    if actual != sha256 {
+        return;
+    }
+    // Write-then-rename so a concurrent dsbx never observes (or imports) a
+    // half-written bundle.
+    let tmp = dir.join(format!("{sha256}.js.tmp-{}", std::process::id()));
+    if std::fs::write(&tmp, &bytes).is_err() {
+        return;
+    }
+    let _ = std::fs::rename(&tmp, &target);
+    // A populate happens once per publish per sandbox: cheap enough a spot
+    // to keep the cache bounded.
+    prune_bundle_cache(&dir, BUNDLE_CACHE_MAX_AGE);
+}
+
+/// Removes cache entries whose mtime is older than `max_age`. Best-effort.
+fn prune_bundle_cache(dir: &Path, max_age: Duration) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    let now = std::time::SystemTime::now();
+    for entry in entries.flatten() {
+        let Ok(meta) = entry.metadata() else {
+            continue;
+        };
+        if !meta.is_file() {
+            continue;
+        }
+        let Ok(modified) = meta.modified() else {
+            continue;
+        };
+        if now
+            .duration_since(modified)
+            .map(|age| age > max_age)
+            .unwrap_or(false)
+        {
+            let _ = std::fs::remove_file(entry.path());
+        }
+    }
+}
+
 /// Tries to run `input` (the raw stdin envelope) against the warm worker on
 /// `name`'s home slot. Never errors: every failure is a `Miss`.
 pub async fn try_warm_run(name: &str, input: &str) -> WarmRun {
@@ -643,5 +760,103 @@ mod tests {
             .map(|name| preferred_slot(name))
             .collect();
         assert!(slots.len() > 1);
+    }
+
+    fn sha256_hex(bytes: &[u8]) -> String {
+        ring::digest::digest(&ring::digest::SHA256, bytes)
+            .as_ref()
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect()
+    }
+
+    #[test]
+    fn bundle_cache_populates_and_serves_matching_bytes() {
+        let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
+        let original_home = std::env::var_os("HOME");
+        let home = tempfile::tempdir().expect("home tempdir");
+        std::env::set_var("HOME", home.path());
+
+        let bundle_dir = tempfile::tempdir().expect("bundle tempdir");
+        let handler = bundle_dir.path().join("greet.ts");
+        std::fs::write(&handler, b"export default {};").expect("bundle");
+        let sha256 = sha256_hex(b"export default {};");
+
+        assert!(cached_bundle_path(&sha256).is_none());
+        populate_bundle_cache(&handler, &sha256);
+        let cached = cached_bundle_path(&sha256).expect("cache hit after populate");
+        assert_eq!(
+            std::fs::read(&cached).expect("cached bytes"),
+            b"export default {};"
+        );
+
+        restore_env("HOME", original_home);
+    }
+
+    #[test]
+    fn bundle_cache_refuses_bytes_that_do_not_match_the_stamp() {
+        let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
+        let original_home = std::env::var_os("HOME");
+        let home = tempfile::tempdir().expect("home tempdir");
+        std::env::set_var("HOME", home.path());
+
+        let bundle_dir = tempfile::tempdir().expect("bundle tempdir");
+        let handler = bundle_dir.path().join("greet.ts");
+        std::fs::write(&handler, b"current bytes").expect("bundle");
+
+        // The gcsfuse-served-stale-bytes case: the stamp describes different
+        // content than what was read, so nothing may be cached under it.
+        let stamp_of_other_bytes = sha256_hex(b"republished bytes");
+        populate_bundle_cache(&handler, &stamp_of_other_bytes);
+        assert!(cached_bundle_path(&stamp_of_other_bytes).is_none());
+
+        restore_env("HOME", original_home);
+    }
+
+    #[test]
+    fn bundle_cache_refuses_malformed_hashes() {
+        let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
+        let original_home = std::env::var_os("HOME");
+        let home = tempfile::tempdir().expect("home tempdir");
+        std::env::set_var("HOME", home.path());
+
+        for bad in [
+            "",
+            "short",
+            &"Z".repeat(64),
+            &"A".repeat(64), // uppercase hex is not what front stamps
+            "../../../../etc/passwd\0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        ] {
+            assert!(cached_bundle_path(bad).is_none());
+            // Must also not create anything on disk.
+            populate_bundle_cache(Path::new("/nonexistent"), bad);
+        }
+        assert!(
+            !home.path().join(".dust-fn/bundles").exists() || {
+                std::fs::read_dir(home.path().join(".dust-fn/bundles"))
+                    .map(|entries| entries.count() == 0)
+                    .unwrap_or(true)
+            }
+        );
+
+        restore_env("HOME", original_home);
+    }
+
+    #[test]
+    fn bundle_cache_prunes_old_entries_only() {
+        let dir = tempfile::tempdir().expect("cache tempdir");
+        let old = dir.path().join("old.js");
+        let fresh = dir.path().join("fresh.js");
+        std::fs::write(&old, b"old").expect("old");
+        std::fs::write(&fresh, b"fresh").expect("fresh");
+        std::thread::sleep(Duration::from_millis(20));
+
+        // Everything written before the sleep is older than 1ms; a 7-day
+        // horizon keeps both.
+        prune_bundle_cache(dir.path(), BUNDLE_CACHE_MAX_AGE);
+        assert!(old.exists() && fresh.exists());
+
+        prune_bundle_cache(dir.path(), Duration::from_millis(1));
+        assert!(!old.exists() && !fresh.exists());
     }
 }

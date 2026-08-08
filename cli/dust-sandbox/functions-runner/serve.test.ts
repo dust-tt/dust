@@ -35,12 +35,16 @@ interface ServerHandle {
   socketPath: string;
 }
 
-async function startWorker(functionsDir: string): Promise<ServerHandle> {
+async function startWorker(
+  functionsDir: string,
+  env?: Record<string, string>
+): Promise<ServerHandle> {
   const socketPath = join(scratch(), "fn.sock");
   const proc = Bun.spawn(["bun", runner, "serve", functionsDir, socketPath], {
     stdin: "ignore",
     stdout: "ignore",
     stderr: "inherit",
+    ...(env === undefined ? {} : { env: { ...process.env, ...env } }),
   });
   // Wait for the socket to accept connections.
   const deadline = Date.now() + 10_000;
@@ -440,7 +444,7 @@ describe("runner serve", () => {
     }
   });
 
-  test("a mismatched hash on an imported bundle refuses as stale and drains", async () => {
+  test("a mismatched hash on an imported bundle refuses without draining when uncached", async () => {
     const { proc, socketPath } = await startWorker(fixturesDir);
     try {
       const served = await request(
@@ -449,6 +453,8 @@ describe("runner serve", () => {
       );
       expect(served.outcome?.ok).toBe(true);
 
+      // Republished but not yet in the cache: the client goes cold (which
+      // populates the cache), and the worker keeps serving everything else.
       const reply = await request(
         socketPath,
         warmRequest(
@@ -458,7 +464,71 @@ describe("runner serve", () => {
         )
       );
       expect(reply.stale).toBe(true);
-      expect(await proc.exited).toBe(0);
+
+      const alive = await request(
+        socketPath,
+        warmRequest("sleepy", {}, { url: "http://localhost/?delayMs=10" })
+      );
+      expect(alive.outcome?.ok).toBe(true);
+    } finally {
+      proc.kill();
+    }
+  });
+
+  test("a stamped republish is served from the bundle cache without recycling", async () => {
+    // The worker gets its own HOME so the test controls the cache dir.
+    const home = scratch();
+    const dir = scratch();
+    copyFileSync(join(fixturesDir, "hello.ts"), join(dir, "hello.ts"));
+    copyFileSync(join(fixturesDir, "sleepy.ts"), join(dir, "sleepy.ts"));
+    const { proc, socketPath } = await startWorker(dir, { HOME: home });
+    try {
+      // Warm both functions on the old versions.
+      const before = await request(
+        socketPath,
+        warmRequest("hello", {}, { url: "http://localhost/?name=v1" })
+      );
+      expect(before.outcome?.output).toEqual({ hello: "v1" });
+      await request(socketPath, sleepyRequest(10));
+
+      // "Republish" hello: a cold run would read the new bytes and populate
+      // the content-addressed cache. Simulate exactly that.
+      const republished =
+        "export default { async fetch() { return Response.json({ hello: 'republished' }); } };\n";
+      const newSha = new Bun.CryptoHasher("sha256")
+        .update(new TextEncoder().encode(republished))
+        .digest("hex");
+      const cacheDir = join(home, ".dust-fn", "bundles");
+      await Bun.write(join(cacheDir, `${newSha}.js`), republished);
+
+      // The stamped request is served from the cache: new version, fresh
+      // import, and nothing recycles.
+      const frames = await requestFrames(
+        socketPath,
+        warmRequest(
+          "hello",
+          {},
+          { url: "http://localhost/", bundleSha256: newSha }
+        )
+      );
+      expect(frames[1]?.outcome?.output).toEqual({ hello: "republished" });
+      expect(frames[1]?.importKind).toBe("fresh");
+
+      // Served from the module cache from now on.
+      const again = await requestFrames(
+        socketPath,
+        warmRequest(
+          "hello",
+          {},
+          { url: "http://localhost/", bundleSha256: newSha }
+        )
+      );
+      expect(again[1]?.importKind).toBe("cached");
+
+      // The sibling function never lost its warmth.
+      const sibling = await requestFrames(socketPath, sleepyRequest(10));
+      expect(sibling[1]?.outcome?.ok).toBe(true);
+      expect(sibling[1]?.importKind).toBe("cached");
     } finally {
       proc.kill();
     }
