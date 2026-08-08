@@ -49,6 +49,12 @@ pub const WARM_PROTOCOL_VERSION: u32 = 2;
 /// refused. On breach the stream is dropped, which closes the socket and
 /// makes the server's eventual ack write fail — so abandoning a wedged or
 /// queued server pre-ack can never race into a duplicate execution.
+///
+/// Accepted residual: an ack the server buffers within a hair of this
+/// deadline can go unread while the client walks away cold. The 2s server
+/// queue deadline keeps every normal ack far from this boundary; only a
+/// multi-second server-side stall (e.g. a gcsfuse stat hang) could put an
+/// ack near it, which is judged rare enough to accept.
 const WARM_FIRST_FRAME_TIMEOUT: Duration = Duration::from_secs(4);
 
 /// Ceiling on the wait for the outcome once the server acked. Generous on
