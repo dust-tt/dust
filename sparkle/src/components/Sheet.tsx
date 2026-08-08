@@ -27,6 +27,7 @@ const SheetOverlay = React.forwardRef<
       "bg-muted-foreground/75 dark:bg-muted-background/75",
       "data-[state=open]:animate-in data-[state=closed]:animate-out",
       "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "duration-300 ease-out-quint motion-reduce:animate-none",
       className
     )}
     {...props}
@@ -44,18 +45,18 @@ const SHEET_SIDES = ["top", "bottom", "left", "right"] as const;
 type SheetSideType = (typeof SHEET_SIDES)[number];
 
 const sizeClasses: Record<SheetSizeType, string> = {
-  md: "sm:max-w-md",
-  lg: "sm:max-w-xl",
-  xl: "sm:max-w-3xl",
-  "2xl": "sm:max-w-4xl",
-  "3xl": "sm:max-w-5xl",
+  md: "sm:w-md",
+  lg: "sm:w-xl",
+  xl: "sm:w-3xl",
+  "2xl": "sm:w-4xl",
+  "3xl": "sm:w-5xl",
 };
 
 const sheetVariants = cva(
   cn(
     "fixed z-50 overflow-hidden flex flex-col h-full w-full",
     "bg-modal-background",
-    "transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500"
+    "transition ease-out-quint data-[state=open]:animate-in data-[state=closed]:animate-out duration-300 motion-reduce:animate-none"
   ),
   {
     variants: {
