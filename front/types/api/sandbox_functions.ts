@@ -96,6 +96,9 @@ export const SANDBOX_FUNCTION_RUNNER_ERROR_CODES = [
   "bad_return",
   "http_error",
   "invalid_output",
+  // Emitted by the warm server's admission layer when the function is at its
+  // concurrency limit and the invocation was refused before anything ran.
+  "overloaded",
 ] as const;
 
 // Codes minted by front, for failures that happen outside the runner and therefore have no

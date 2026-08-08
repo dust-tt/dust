@@ -252,7 +252,11 @@ export async function serve(
   let draining = false;
   let drainExitCode = 0;
   let drainFlushTimer: ReturnType<typeof setTimeout> | null = null;
-  const queue: QueueEntry[] = [];
+  // Settled entries linger in the array until dequeued or compacted;
+  // queuedLive is the number of live ones and the number that matters for
+  // admission, idling and drain.
+  let queue: QueueEntry[] = [];
+  let queuedLive = 0;
   const queuedBySocket = new Map<object, QueueEntry>();
 
   let idleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -267,7 +271,7 @@ export async function serve(
     idleTimer = setTimeout(() => {
       // Guarded: the timer is cleared on every start, but never trust a
       // timer alone with killing a process that might be serving.
-      if (running === 0 && queue.length === 0 && !draining) {
+      if (running === 0 && queuedLive === 0 && !draining) {
         exit(0);
       }
     }, IDLE_TIMEOUT_MS);
@@ -278,13 +282,24 @@ export async function serve(
       return false;
     }
     entry.settled = true;
+    queuedLive -= 1;
     clearTimeout(entry.expireTimer);
     queuedBySocket.delete(entry.socket);
+    // pump() only reclaims settled entries as they reach the front, which
+    // never happens while every slot stays busy with long invocations; the
+    // occasional compaction keeps the array proportional to the live count
+    // under that kind of churn.
+    if (
+      queue.length > MAX_QUEUED_INVOCATIONS &&
+      queuedLive < queue.length / 2
+    ) {
+      queue = queue.filter((queued) => !queued.settled);
+    }
     return true;
   }
 
   function exitIfDrained(): void {
-    if (!draining || queue.length > 0 || running !== hung) {
+    if (!draining || queuedLive > 0 || running !== hung) {
       return;
     }
     if (pendingWrites.size === 0) {
@@ -325,12 +340,12 @@ export async function serve(
     // Queued requests never started executing: refuse them as stale so their
     // clients re-run cold against the successor server. (On a stale-triggered
     // drain, serving them from the old import would be wrong anyway.)
-    for (const entry of queue) {
+    for (const entry of [...queue]) {
       if (settleQueueEntry(entry)) {
         reply(entry.socket, { v: WARM_PROTOCOL_VERSION, stale: true });
       }
     }
-    queue.length = 0;
+    queue = [];
     exitIfDrained();
   }
 
@@ -447,7 +462,7 @@ export async function serve(
           startDrain(0);
         }
         pump();
-        if (running === 0 && queue.length === 0 && !draining) {
+        if (running === 0 && queuedLive === 0 && !draining) {
           armIdle();
         }
         exitIfDrained();
@@ -465,18 +480,6 @@ export async function serve(
       }
       start(entry.socket, entry.request);
     }
-  }
-
-  function queuedCount(): number {
-    // Settled entries linger in the array until dequeued; count live ones.
-    // O(queue length), bounded by MAX_QUEUED_INVOCATIONS.
-    let count = 0;
-    for (const entry of queue) {
-      if (!entry.settled) {
-        count += 1;
-      }
-    }
-    return count;
   }
 
   function handleLine(socket: WarmSocket, line: string): void {
@@ -498,7 +501,7 @@ export async function serve(
       start(socket, request);
       return;
     }
-    if (queuedCount() >= MAX_QUEUED_INVOCATIONS) {
+    if (queuedLive >= MAX_QUEUED_INVOCATIONS) {
       reply(socket, overloadedFrame());
       return;
     }
@@ -515,6 +518,7 @@ export async function serve(
       }, QUEUE_WAIT_DEADLINE_MS),
     };
     queue.push(entry);
+    queuedLive += 1;
     queuedBySocket.set(socket, entry);
   }
 
