@@ -4,6 +4,7 @@ import type {
 } from "@app/lib/api/assistant/conversation_rendering/pruning";
 import {
   getToolResultTokenSavings,
+  IMAGE_CONTENT_TOKEN_COUNT,
   PRUNING_CHECKPOINT_TOKENS,
   pruneToolResultMessage,
 } from "@app/lib/api/assistant/conversation_rendering/pruning";
@@ -12,8 +13,17 @@ import type {
   ConversationWindowResult,
 } from "@app/lib/api/assistant/conversation_rendering/window_types";
 import logger from "@app/logger/logger";
+import type { Content } from "@app/types/assistant/generation";
+import { isImageContent } from "@app/types/assistant/generation";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+
+const PRUNED_IMAGE_PLACEHOLDER =
+  "<dust_system>" +
+  "This image is no longer available (pruned to respect the model input image limit)." +
+  "</dust_system>";
+const PRUNED_IMAGE_PLACEHOLDER_TOKENS = 24;
 
 type RegularMessageNode = {
   kind: "message";
@@ -45,7 +55,101 @@ type WindowInteraction = {
   messages: WindowMessageNode[];
 };
 
+type ImageBearingMessage = Extract<
+  MessageWithTokens,
+  { role: "user" | "content_fragment" | "function" }
+>;
+
 export const MINIMUM_PRUNING_BATCH_TOKENS = 5_000;
+
+function pruneImagesBeyondLimit(
+  message: MessageWithTokens,
+  imagesToKeep: number
+): {
+  message: MessageWithTokens;
+  prunedImageCount: number;
+  retainedImageCount: number;
+  tokenSavings: number;
+} {
+  let imageMessage: ImageBearingMessage;
+  let content: Content[];
+
+  switch (message.role) {
+    case "user":
+    case "content_fragment":
+      imageMessage = message;
+      content = message.content;
+      break;
+
+    case "function":
+      if (!Array.isArray(message.content)) {
+        return {
+          message,
+          prunedImageCount: 0,
+          retainedImageCount: 0,
+          tokenSavings: 0,
+        };
+      }
+      imageMessage = message;
+      content = message.content;
+      break;
+
+    case "assistant":
+    case "compaction":
+      return {
+        message,
+        prunedImageCount: 0,
+        retainedImageCount: 0,
+        tokenSavings: 0,
+      };
+
+    default:
+      return assertNever(message);
+  }
+
+  let prunedImageCount = 0;
+  let retainedImageCount = 0;
+  const retainedContentReversed: Content[] = [];
+  for (let index = content.length - 1; index >= 0; index--) {
+    const item = content[index];
+    if (!isImageContent(item) || retainedImageCount < imagesToKeep) {
+      retainedContentReversed.push(item);
+      if (isImageContent(item)) {
+        retainedImageCount += 1;
+      }
+    } else {
+      prunedImageCount += 1;
+    }
+  }
+
+  if (prunedImageCount === 0) {
+    return {
+      message,
+      prunedImageCount: 0,
+      retainedImageCount,
+      tokenSavings: 0,
+    };
+  }
+
+  const retainedContent = retainedContentReversed.reverse();
+  const addedPlaceholder = retainedContent.length === 0;
+  const tokenSavings =
+    prunedImageCount * IMAGE_CONTENT_TOKEN_COUNT -
+    (addedPlaceholder ? PRUNED_IMAGE_PLACEHOLDER_TOKENS : 0);
+
+  return {
+    message: {
+      ...imageMessage,
+      content: addedPlaceholder
+        ? [{ type: "text", text: PRUNED_IMAGE_PLACEHOLDER }]
+        : retainedContent,
+      tokenCount: imageMessage.tokenCount - tokenSavings,
+    },
+    prunedImageCount,
+    retainedImageCount,
+    tokenSavings,
+  };
+}
 
 function makeWindowMessageNode(message: MessageWithTokens): WindowMessageNode {
   if (message.role === "function") {
@@ -73,12 +177,17 @@ function makeWindowMessageNode(message: MessageWithTokens): WindowMessageNode {
  * If tool-result pruning cannot keep the complete interaction history below the nominal budget,
  * the window keeps serving it and reports the excess through logs and metrics. The provider limit
  * remains the final boundary. The latest unconsumed result batch always remains intact.
+ *
+ * When configured, an image limit is applied after tool-result pruning. The newest images are
+ * retained and the oldest overflow is removed, including when token-based pruning did not run.
  */
 export class CheckpointedConversationWindowState {
   private interactions: WindowInteraction[] = [];
   private retainedTokens = 0;
   private totalTokensBefore = 0;
   private prunedTokens = 0;
+  private prunedImageCount = 0;
+  private fitted = false;
 
   private pendingToolResults: PendingToolResult[] = [];
   private eligibleToolResults: EligibleToolResult[] = [];
@@ -90,6 +199,7 @@ export class CheckpointedConversationWindowState {
       pruningBudget: number;
       budgetForInteractions: number;
       logDetails: Record<string, unknown>;
+      maxImages?: number;
     }
   ) {}
 
@@ -97,11 +207,17 @@ export class CheckpointedConversationWindowState {
     pruningBudget: number;
     budgetForInteractions: number;
     logDetails: Record<string, unknown>;
+    maxImages?: number;
   }): CheckpointedConversationWindowState {
     return new CheckpointedConversationWindowState(options);
   }
 
   append(interaction: InteractionWithTokens): void {
+    // fit() applies terminal rewrites, so cached pruning savings must not be reused afterward.
+    if (this.fitted) {
+      throw new Error("Cannot append to a fitted conversation window state.");
+    }
+
     if (interaction.messages.length === 0) {
       return;
     }
@@ -143,6 +259,7 @@ export class CheckpointedConversationWindowState {
   }
 
   fit(): Result<ConversationWindowResult, Error> {
+    this.fitted = true;
     const { budgetForInteractions, logDetails } = this.options;
 
     if (this.interactions.length === 0) {
@@ -152,6 +269,8 @@ export class CheckpointedConversationWindowState {
         stats: this.stats(),
       });
     }
+
+    this.applyImageLimit();
 
     if (this.retainedTokens > budgetForInteractions) {
       logger.warn(
@@ -182,6 +301,38 @@ export class CheckpointedConversationWindowState {
     return latestInteraction.messages.some(
       (node) => node.kind === "tool_result" && node.pruned
     );
+  }
+
+  private applyImageLimit(): void {
+    const { maxImages } = this.options;
+    if (maxImages === undefined) {
+      return;
+    }
+
+    let imagesToKeep = maxImages;
+    for (
+      let interactionIndex = this.interactions.length - 1;
+      interactionIndex >= 0;
+      interactionIndex--
+    ) {
+      const interaction = this.interactions[interactionIndex];
+      for (
+        let messageIndex = interaction.messages.length - 1;
+        messageIndex >= 0;
+        messageIndex--
+      ) {
+        const node = interaction.messages[messageIndex];
+        const result = pruneImagesBeyondLimit(node.message, imagesToKeep);
+
+        if (result.prunedImageCount > 0) {
+          node.message = result.message;
+          this.retainedTokens -= result.tokenSavings;
+          this.prunedTokens += result.tokenSavings;
+          this.prunedImageCount += result.prunedImageCount;
+        }
+        imagesToKeep -= result.retainedImageCount;
+      }
+    }
   }
 
   private isModelInputCheckpoint(
@@ -254,6 +405,7 @@ export class CheckpointedConversationWindowState {
       totalTokensAfterPruning,
       pruningBudget: this.options.pruningBudget,
       budgetForInteractions: this.options.budgetForInteractions,
+      prunedImageCount: this.prunedImageCount,
     };
   }
 }

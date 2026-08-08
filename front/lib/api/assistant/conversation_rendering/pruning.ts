@@ -8,6 +8,9 @@ const PRUNED_TOOL_RESULT_PLACEHOLDER =
   "</dust_system>";
 const PRUNED_TOOL_RESULT_TOKENS = 24;
 
+// Fixed number of tokens assumed for image contents.
+export const IMAGE_CONTENT_TOKEN_COUNT = 3_100;
+
 // Pruning advances through history in batches of this size, not message by message. Every move
 // of the pruning frontier invalidates the provider cache from that point on. Moving it for a
 // handful of tokens costs more than it saves, so it only moves once a batch has accumulated.

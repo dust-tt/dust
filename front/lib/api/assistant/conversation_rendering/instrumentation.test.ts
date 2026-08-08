@@ -9,6 +9,7 @@ function statsWhereNothingHappened(): ConversationPruningStats {
     totalTokensAfterPruning: 50_000,
     pruningBudget: 100_000,
     budgetForInteractions: 160_000,
+    prunedImageCount: 0,
   };
 }
 
