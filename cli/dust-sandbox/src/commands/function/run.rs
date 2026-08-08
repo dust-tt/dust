@@ -65,10 +65,22 @@ pub async fn cmd_function_run(name: &str, result_delivery: ResultDelivery) -> Re
         };
     }
 
-    // Cold path. Resolve once: the run below and the warm server spawn both
-    // need the handler path, and resolution lists the (gcsfuse-backed)
-    // functions directory.
-    let (spawned, handler) = match resolve_existing(name) {
+    // Cold path. A stamped invocation whose bundle already sits in the local
+    // content-addressed cache runs from the cached copy, skipping the
+    // gcsfuse-backed functions dir entirely (both the resolution readdir and
+    // the bundle read) — the dominant cost of a first invocation. The cache
+    // key is the publish-time hash, so it can never serve a republished
+    // function's old bytes. Everything else resolves as before.
+    let stamped_sha256 = stamped_bundle_sha256(&input);
+    let resolved = match stamped_sha256
+        .as_deref()
+        .filter(|_| super::is_valid_name(name))
+        .and_then(warm::cached_bundle_path)
+    {
+        Some(cached) => Ok(cached),
+        None => resolve_existing(name),
+    };
+    let (spawned, handler) = match resolved {
         Ok(handler) => {
             let spawned = spawn_function_at(&handler, "run", Some(&input), true).await;
             (spawned, Some(handler))
@@ -79,9 +91,15 @@ pub async fn cmd_function_run(name: &str, result_delivery: ResultDelivery) -> Re
     };
     let runner_ms = started.elapsed().as_millis() as u64;
 
-    // Leave a warm server behind so the next invocation of this function
-    // skips the spawn. Fire-and-forget; never affects this run's outcome.
     if let Some(handler) = &handler {
+        // Cache the bundle this run just read so the next cold run of this
+        // publish skips gcsfuse. No-op when the run already came from the
+        // cache. Best-effort; never affects this run's outcome.
+        if let Some(sha256) = stamped_sha256.as_deref() {
+            warm::populate_bundle_cache(handler, sha256);
+        }
+        // Leave a warm server behind so the next invocation of this function
+        // skips the spawn. Fire-and-forget; never affects this run's outcome.
         warm::spawn_server(name, handler);
     }
 
@@ -101,6 +119,14 @@ pub async fn cmd_function_run(name: &str, result_delivery: ResultDelivery) -> Re
             },
         ),
     }
+}
+
+/// The publish-time bundle hash front stamps into the request envelope, when
+/// present. Extraction only — `cached_bundle_path` and
+/// `populate_bundle_cache` validate the value before it touches any path.
+fn stamped_bundle_sha256(input: &str) -> Option<String> {
+    let envelope: serde_json::Value = serde_json::from_str(input).ok()?;
+    Some(envelope.get("bundleSha256")?.as_str()?.to_string())
 }
 
 /// Callback delivery for a warm outcome: the runner `Output` is already
@@ -310,5 +336,16 @@ mod tests {
     fn last_non_empty_line_skips_trailing_blank_lines() {
         assert_eq!(last_non_empty_line("a\n\n"), "a");
         assert_eq!(last_non_empty_line("   \n"), "");
+    }
+
+    #[test]
+    fn stamped_bundle_sha256_extracts_only_a_string_stamp() {
+        assert_eq!(
+            stamped_bundle_sha256(r#"{"url":"http://x/","bundleSha256":"abc123"}"#),
+            Some("abc123".to_string())
+        );
+        assert_eq!(stamped_bundle_sha256(r#"{"url":"http://x/"}"#), None);
+        assert_eq!(stamped_bundle_sha256(r#"{"bundleSha256":42}"#), None);
+        assert_eq!(stamped_bundle_sha256("not json"), None);
     }
 }
