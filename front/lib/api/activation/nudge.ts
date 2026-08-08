@@ -13,7 +13,6 @@ import {
   DEFAULT_ACTIVATION_NUDGE_MAX_UNANSWERED_COUNT,
 } from "@app/temporal/activation_scheduler/config";
 import isNumber from "lodash/isNumber";
-import uniq from "lodash/uniq";
 
 export function getActivationNudgeFrequencyCapDays(
   auth: Authenticator
@@ -48,6 +47,7 @@ export function getActivationNudgeMaxUnansweredCount(
 async function countUnansweredNudgeStreak(
   auth: Authenticator,
   activationPod: ActivationPodResource,
+  trigger: TriggerResource,
   { limit }: { limit: number }
 ): Promise<number> {
   const recentNudges = await ActivationNudgeResource.listRecentForActivationPod(
@@ -59,11 +59,10 @@ async function countUnansweredNudgeStreak(
   }
 
   const oldestNudge = recentNudges[recentNudges.length - 1];
-  const triggerIds = uniq(recentNudges.map((nudge) => nudge.triggerId));
   const replyTimestamps =
     await ConversationResource.listUserMessageTimestampsForTriggers(auth, {
-      triggerIds,
-      userId: oldestNudge.userId,
+      triggerIds: [trigger.id],
+      userId: activationPod.userId,
       since: oldestNudge.createdAt,
     });
 
@@ -168,9 +167,8 @@ export async function isEligibleForNudge(
   const unansweredStreak = await countUnansweredNudgeStreak(
     auth,
     activationPod,
-    {
-      limit: maxUnansweredCount,
-    }
+    trigger,
+    { limit: maxUnansweredCount }
   );
 
   return unansweredStreak < maxUnansweredCount;

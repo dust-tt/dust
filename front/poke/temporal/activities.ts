@@ -270,15 +270,30 @@ export async function scrubSpaceActivity({
     await UserProjectPreferencesResource.deleteAllBySpace(auth, space.id);
   }
 
-  // Delete activation nudges sent for this Pod. The FK to spaces is
-  // `onDelete: "RESTRICT"`, so these rows must be removed before the space
-  // can be hard-deleted.
-  await ActivationNudgeModel.destroy({
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      spaceId: space.id,
-    },
-  });
+  // Delete the ActivationPod record for this Pod, if any. Its FK to spaces is
+  // `onDelete: "RESTRICT"`, so it (and anything referencing it) must be
+  // removed before the space can be hard-deleted.
+  const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
+  if (activationPod) {
+    // Nudges are owned by the pod: delete them outright.
+    await ActivationNudgeModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        activationPodId: activationPod.id,
+      },
+    });
+
+    // Recommendations are the user's, not the pod's: detach rather than delete.
+    await ActivationRecommendationResource.detachActivationPod(
+      auth,
+      activationPod.id
+    );
+
+    const deleteActivationPodResult = await activationPod.delete(auth, {});
+    if (deleteActivationPodResult.isErr()) {
+      throw deleteActivationPodResult.error;
+    }
+  }
 
   // Delete recommendations made in this Pod before deleting the activation
   // pod record itself. The FK from activation_recommendations to
