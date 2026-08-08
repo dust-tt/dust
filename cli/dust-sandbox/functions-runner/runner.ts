@@ -1,8 +1,9 @@
 #!/usr/bin/env bun
 // Embedded runner for `dsbx function` and `dsbx db`. Subcommands:
 //   runner run <path>                            stdin request envelope -> stdout Output JSON
-//   runner serve <path> <socketPath>             warm server: keep <path> imported, serve
-//                                                invocations over a unix socket until idle
+//   runner serve <socketPath> <idleMs>           warm worker: serve any function from
+//                                                $DUST_FUNCTIONS_DIR over a unix socket,
+//                                                importing bundles on first use, until idle
 //   runner get <path>                            -> stdout FunctionSchema JSON (or {error})
 //   runner build <src> <outBundle> <outSchema>   bundle + extract schema to files
 //   runner db-reconcile <dbPath> <schemaFile>    additive-only DDL reconcile -> stdout envelope
@@ -153,6 +154,20 @@ async function main(): Promise<number> {
     return dbQueryHandler(rest);
   }
 
+  if (command === "serve") {
+    // Generic warm worker: the functions dir comes from DUST_FUNCTIONS_DIR
+    // and each request names the function to serve. The idle timeout is the
+    // spawner's choice (burst workers get seconds, base workers minutes).
+    const [socketPath, idleMsRaw] = rest;
+    const idleTimeoutMs = Number(idleMsRaw);
+    if (!socketPath || !Number.isFinite(idleTimeoutMs) || idleTimeoutMs <= 0) {
+      process.stderr.write("usage: runner serve <socket-path> <idle-ms>\n");
+      return 2;
+    }
+    // Never returns: the worker exits itself (idle, lifetime, staleness).
+    return serve(socketPath, idleTimeoutMs);
+  }
+
   const [handlerPath] = rest;
   if (!handlerPath) {
     process.stderr.write("usage: runner <run|get|serve> <handler-path>\n");
@@ -163,17 +178,6 @@ async function main(): Promise<number> {
       return runHandler(handlerPath);
     case "get":
       return getHandler(handlerPath);
-    case "serve": {
-      const [, socketPath] = rest;
-      if (!socketPath) {
-        process.stderr.write(
-          "usage: runner serve <handler-path> <socket-path>\n"
-        );
-        return 2;
-      }
-      // Never returns: the server exits itself (idle, lifetime, staleness).
-      return serve(handlerPath, socketPath);
-    }
     default:
       process.stderr.write(`runner: unknown command "${command}"\n`);
       return 2;
