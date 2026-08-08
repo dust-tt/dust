@@ -10,6 +10,12 @@ on:
       - sparkle/**
       - .github/workflows/build-and-test-front-api.yml
 
+# Cancel superseded runs on feature branches when a new commit is pushed; never
+# cancel on main so every mainline commit keeps a full CI record.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 permissions:
   contents: read
   actions: read
