@@ -4,6 +4,7 @@ import {
   POD_USER_IDENTITY_ENV,
   POD_WORKSPACE_ID_ENV,
   PodUserIdentityError,
+  runWithInvocationEnv,
 } from "@dust/pod";
 
 const identity = {
@@ -53,5 +54,52 @@ describe("currentUser", () => {
     });
 
     expect(() => currentUser()).toThrow(PodUserIdentityError);
+  });
+});
+
+describe("currentUser inside an invocation context", () => {
+  const contextEnv = (identityValue: string | undefined) => ({
+    [POD_WORKSPACE_ID_ENV]: "w_current",
+    ...(identityValue === undefined
+      ? {}
+      : { [POD_USER_IDENTITY_ENV]: identityValue }),
+  });
+
+  test("reads the identity from the context env", () => {
+    const user = runWithInvocationEnv(
+      contextEnv(JSON.stringify(identity)),
+      () => currentUser()
+    );
+    expect(user).toEqual(identity.user);
+  });
+
+  test("a userless context returns null even when process.env has an identity", () => {
+    process.env[POD_WORKSPACE_ID_ENV] = "w_current";
+    process.env[POD_USER_IDENTITY_ENV] = JSON.stringify(identity);
+
+    expect(
+      runWithInvocationEnv(contextEnv(""), () => currentUser())
+    ).toBeNull();
+    expect(
+      runWithInvocationEnv(contextEnv(undefined), () => currentUser())
+    ).toBeNull();
+  });
+
+  test("concurrent invocations resolve their own callers", async () => {
+    const otherIdentity = {
+      workspaceId: "w_current",
+      user: { ...identity.user, sId: "usr_456", firstName: "Grace" },
+    };
+    const call = async (raw: string, delayMs: number) =>
+      runWithInvocationEnv(contextEnv(raw), async () => {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        return currentUser();
+      });
+    const [a, b] = await Promise.all([
+      call(JSON.stringify(identity), 30),
+      call(JSON.stringify(otherIdentity), 5),
+    ]);
+    expect(a?.sId).toBe("usr_123");
+    expect(b?.sId).toBe("usr_456");
   });
 });

@@ -3,6 +3,8 @@ import { Database } from "bun:sqlite";
 import type { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 
+import { podEnv } from "./context.ts";
+
 /**
  * Pod state databases.
  *
@@ -234,7 +236,7 @@ class PodSqliteDatabase extends Database {
 }
 
 function podDatabasesDir(): string {
-  const dir = process.env[POD_DATABASES_DIR_ENV];
+  const dir = podEnv(POD_DATABASES_DIR_ENV);
   if (dir === undefined || dir.length === 0) {
     throw new PodDatabaseError(
       `${POD_DATABASES_DIR_ENV} is not set: the databases directory is ` +
@@ -246,7 +248,7 @@ function podDatabasesDir(): string {
 }
 
 function podDatabaseMaxSizeBytes(): number {
-  const raw = process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV];
+  const raw = podEnv(POD_DATABASE_MAX_SIZE_BYTES_ENV);
   if (raw === undefined || raw.length === 0) {
     throw new PodDatabaseError(
       `${POD_DATABASE_MAX_SIZE_BYTES_ENV} is not set: the per-database size ` +
@@ -325,7 +327,7 @@ export function db(name: string): PodDatabase {
   if (!POD_DATABASE_NAME_REGEX.test(name)) {
     throw new PodDatabaseInvalidNameError(name);
   }
-  const spaceId = process.env[POD_SPACE_ID_ENV];
+  const spaceId = podEnv(POD_SPACE_ID_ENV);
   if (spaceId === undefined || spaceId.length === 0) {
     throw new PodDatabasesUnavailableError();
   }
