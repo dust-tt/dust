@@ -20,6 +20,8 @@ export class ActivationPodModel extends WorkspaceAwareModel<ActivationPodModel> 
   declare userId: ForeignKey<UserModel["id"]>;
   // The Pod's activation trigger. Null until provisioned.
   declare triggerId: ForeignKey<TriggerModel["id"]> | null;
+  // Whether the Pod uses the compact UI variant.
+  declare compactUIView: CreationOptional<boolean>;
 }
 
 ActivationPodModel.init(
@@ -33,6 +35,11 @@ ActivationPodModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    compactUIView: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {
