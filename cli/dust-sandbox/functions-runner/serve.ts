@@ -35,14 +35,16 @@
 //
 // The worker is disposable. It exits on idle, and it drains (stops
 // listening, refuses its queue, lets in-flight invocations finish, then
-// exits) at the lifetime cap, when a bundle it imported goes stale (ES
-// modules cannot be evicted, so rebirth is the pruning mechanism), when its
+// exits) at the lifetime cap, when an unstamped request finds a bundle it
+// imported rewritten on disk (ES modules cannot be evicted, so rebirth is
+// the pruning mechanism there; stamped republishes instead import the new
+// version from the content-addressed cache, recycling nothing), when its
 // RSS crosses the recycle threshold, or when an invocation outlives its
 // deadline (whose client was killed by front's much shorter exec timeout
 // long ago).
 
 import { createHash } from "node:crypto";
-import { readdirSync, unlinkSync } from "node:fs";
+import { readdirSync, statSync, unlinkSync } from "node:fs";
 import { stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -180,6 +182,35 @@ export function resolveBundle(
     return null;
   }
   return join(functionsDir, matches[0]!.name);
+}
+
+// Publish-time bundle hashes are lowercase hex sha256; anything else must
+// not touch the filesystem.
+const BUNDLE_SHA256_REGEX = /^[0-9a-f]{64}$/;
+
+/**
+ * Path of the locally cached copy of a bundle in the content-addressed cache
+ * shared with dsbx (`~/.dust-fn/bundles/<sha256>.js`, populated by cold runs
+ * from verified bytes — see warm.rs), when one exists. Same trust model as
+ * the socket this worker serves: the warm dir is 0700 and owned by this uid.
+ */
+export function cachedBundlePath(sha256: string): string | null {
+  if (!BUNDLE_SHA256_REGEX.test(sha256)) {
+    return null;
+  }
+  const home = process.env.HOME;
+  if (!home) {
+    return null;
+  }
+  const path = join(home, ".dust-fn", "bundles", `${sha256}.js`);
+  try {
+    if (!statSync(path).isFile()) {
+      return null;
+    }
+  } catch {
+    return null;
+  }
+  return path;
 }
 
 export function parseWarmRequest(line: string): WarmRequest | null {
@@ -475,6 +506,15 @@ export async function serve(
    * and whether this request paid (or joined) the import, or null after a
    * pre-ack `stale` reply was sent (the client re-runs cold, which reads the
    * bundle fresh and respawns a worker as needed).
+   *
+   * Stamped requests are served by content hash: the module cache is keyed
+   * by path, so importing a republished bundle from its content-addressed
+   * cache path (`bundles/<sha256>.js`, populated by cold runs) loads the new
+   * version alongside the old one — no recycle, and the worker's other
+   * bundles keep their warmth. The abandoned module lingers as unreachable
+   * memory until the routine RSS recycle, which is fine for dev-time-rate
+   * republishes. Only unstamped (legacy) staleness still drains the worker:
+   * same path, new bytes, and the old module cannot be evicted.
    */
   async function ensureBundle(
     socket: WarmSocket,
@@ -494,18 +534,66 @@ export async function serve(
       return null;
     };
 
+    /** Import the stamped bytes from the content-addressed cache, if the
+     * cold path has populated them. Immutable content: no stat, no
+     * staleness — the path IS the version. */
+    const importFromCache = async (
+      sha256: string
+    ): Promise<{ bundle: ImportedBundle; importKind: "fresh" } | null> => {
+      const cachePath = cachedBundlePath(sha256);
+      if (cachePath === null) {
+        return null;
+      }
+      const stamp = await statBundle(cachePath);
+      if (stamp === null) {
+        return null;
+      }
+      try {
+        // GEN10 exemption: like the fuse import below, the module to load
+        // is resolved at request time (here from a validated content hash);
+        // a literal specifier is structurally impossible.
+        await import(cachePath);
+      } catch {
+        // A bundle that fails to import still gets served: invoke() reports
+        // the import error as a structured outcome, exactly like a cold run.
+      }
+      const bundle: ImportedBundle = { handlerPath: cachePath, stamp, sha256 };
+      imported.set(request.name, bundle);
+      return { bundle, importKind: "fresh" };
+    };
+
     const existing = imported.get(request.name);
-    if (existing) {
-      // A republished bundle must never be served from the old import. One
-      // metadata call per request; any difference (or a vanished file), or a
-      // request stamped with a hash this import does not match, sends the
-      // client down the cold path — and recycles this worker, since the old
-      // module can never be evicted.
+
+    if (expectedSha256 !== undefined) {
+      // Stamped: the hash is authoritative, and content-addressing makes
+      // every check exact. Matching import -> serve it, no stat needed (the
+      // stamp says the caller wants exactly the bytes this import holds).
+      if (existing && existing.sha256 === expectedSha256) {
+        return { bundle: existing, importKind: "cached" };
+      }
+      // Republish (or first sight of this function): import the stamped
+      // version from the cache, next to whatever old import may exist.
+      const fromCache = await importFromCache(expectedSha256);
+      if (fromCache !== null) {
+        return fromCache;
+      }
+      if (existing) {
+        // Republished but not yet in the cache: refuse; the cold run reads
+        // the fuse fresh and populates the cache, and the next warm request
+        // imports it here. The old import stays valid for nothing, but
+        // draining over it would cost every other bundle's warmth.
+        return staleReply();
+      }
+      // Never imported and not cached: fall through to the fuse below.
+    } else if (existing) {
+      // Unstamped (legacy front): mtime/size against the path we imported
+      // is the only signal, and a mismatch can only be cured by rebirth.
+      // When the import came from the immutable cache path this stat can
+      // never fire; a mixed-front-version window during a rolling deploy
+      // could then serve an unstamped caller a superseded version, bounded
+      // by the lifetime cap. Accepted: fronts stamp everything post-deploy.
       const current = await statBundle(existing.handlerPath);
-      if (
-        !sameStamp(existing.stamp, current) ||
-        (expectedSha256 !== undefined && expectedSha256 !== existing.sha256)
-      ) {
+      if (!sameStamp(existing.stamp, current)) {
         return staleReply({ recycle: true });
       }
       return { bundle: existing, importKind: "cached" };
