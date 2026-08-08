@@ -1,6 +1,9 @@
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as activities from "@app/temporal/analytics_queue/activities";
-import { storeAgentMessageConsumptionAttributionV2Signal } from "@app/temporal/analytics_queue/signals";
+import {
+  storeAgentMessageConsumptionAttributionV2Signal,
+  storeAgentMessageConsumptionAttributionV3Signal,
+} from "@app/temporal/analytics_queue/signals";
 import type {
   AgentLoopArgs,
   AgentMessageRef,
@@ -19,6 +22,13 @@ const {
     initialInterval: "30 seconds",
     backoffCoefficient: 2,
   },
+});
+
+// Consumption indexing is idempotent. The default policy retries without an attempt limit.
+const { storeAgentMessageConsumptionAnalyticsActivity } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "5 minutes",
 });
 
 export async function storeAgentAnalyticsWorkflow(
@@ -82,6 +92,35 @@ export async function storeAgentMessageConsumptionAttributionV2Workflow(
   while (pendingRecompute) {
     pendingRecompute = false;
     await storeAgentMessageConsumptionAttributionActivity(authType, {
+      agentLoopArgs,
+    });
+  }
+}
+
+// V3 adds consumption analytics indexation after each committed attribution pass. V2 remains
+// unchanged above so executions started before this deployment can replay deterministically.
+export async function storeAgentMessageConsumptionAttributionV3Workflow(
+  authType: AuthenticatorType,
+  {
+    agentLoopArgs,
+  }: {
+    agentLoopArgs: AgentLoopArgs;
+  }
+): Promise<void> {
+  let pendingRecompute = true;
+
+  setHandler(storeAgentMessageConsumptionAttributionV3Signal, () => {
+    pendingRecompute = true;
+  });
+
+  while (pendingRecompute) {
+    pendingRecompute = false;
+
+    await storeAgentMessageConsumptionAttributionActivity(authType, {
+      agentLoopArgs,
+    });
+
+    await storeAgentMessageConsumptionAnalyticsActivity(authType, {
       agentLoopArgs,
     });
   }

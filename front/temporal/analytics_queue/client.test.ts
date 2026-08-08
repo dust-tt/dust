@@ -1,8 +1,8 @@
 import { launchStoreAgentMessageConsumptionAttributionWorkflow } from "@app/temporal/analytics_queue/client";
 import { QUEUE_NAME } from "@app/temporal/analytics_queue/config";
 import { makeAgentMessageAnalyticsWorkflowId } from "@app/temporal/analytics_queue/helpers";
-import { storeAgentMessageConsumptionAttributionV2Signal } from "@app/temporal/analytics_queue/signals";
-import { storeAgentMessageConsumptionAttributionV2Workflow } from "@app/temporal/analytics_queue/workflows";
+import { storeAgentMessageConsumptionAttributionV3Signal } from "@app/temporal/analytics_queue/signals";
+import { storeAgentMessageConsumptionAttributionV3Workflow } from "@app/temporal/analytics_queue/workflows";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -25,7 +25,7 @@ describe("launchStoreAgentMessageConsumptionAttributionWorkflow", () => {
     mockSignalWithStart.mockResolvedValue(undefined);
   });
 
-  it("signals the replay-safe V2 workflow for every finalize", async () => {
+  it("signals the replay-safe V3 workflow for every finalize", async () => {
     const { authenticator } = await createResourceTest({});
     const authType = authenticator.toJSON();
     const agentLoopArgs: AgentLoopArgs = {
@@ -51,7 +51,7 @@ describe("launchStoreAgentMessageConsumptionAttributionWorkflow", () => {
     expect(second.isOk()).toBe(true);
     expect(mockSignalWithStart).toHaveBeenCalledTimes(2);
     expect(mockSignalWithStart).toHaveBeenCalledWith(
-      storeAgentMessageConsumptionAttributionV2Workflow,
+      storeAgentMessageConsumptionAttributionV3Workflow,
       expect.objectContaining({
         args: [authType, { agentLoopArgs }],
         taskQueue: QUEUE_NAME,
@@ -59,8 +59,8 @@ describe("launchStoreAgentMessageConsumptionAttributionWorkflow", () => {
           agentMessageId: agentLoopArgs.agentMessageId,
           conversationId: agentLoopArgs.conversationId,
           workspaceId: authType.workspaceId,
-        })}-consumption-attribution-v2`,
-        signal: storeAgentMessageConsumptionAttributionV2Signal,
+        })}-consumption-attribution-v3`,
+        signal: storeAgentMessageConsumptionAttributionV3Signal,
         signalArgs: undefined,
       })
     );
