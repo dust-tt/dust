@@ -7,7 +7,14 @@
 //! socket and forwards invocations to it, so a repeat invocation costs one
 //! local socket round trip.
 //!
-//! Everything here is best-effort: any irregularity — missing socket, wrong
+//! The server runs invocations concurrently (protocol v2) and queues briefly
+//! when saturated, so overlapping calls of one function no longer fan out
+//! into cold runs. When the server refuses under saturation it answers with
+//! a structured `overloaded` outcome, which is delivered to the caller as
+//! the invocation's result — deliberately not a cold fallback, because
+//! unbounded cold runs under load are what would exhaust the sandbox.
+//!
+//! Everything else is best-effort: any irregularity — missing socket, wrong
 //! directory ownership, protocol mismatch, stale bundle — falls back to the
 //! cold path, which is exactly today's behavior. The warm path can only ever
 //! be a fast alternative, never a new failure mode.
@@ -34,12 +41,20 @@ use tokio::process::Command;
 
 use super::RUNNER_JS;
 
-pub const WARM_PROTOCOL_VERSION: u32 = 1;
+pub const WARM_PROTOCOL_VERSION: u32 = 2;
 
-/// Ceiling on how long the warm path waits for the server to answer before
-/// giving up. Generous on purpose: the function itself runs inside this
-/// window, and the caller (front) enforces the real invocation timeout by
-/// killing dsbx. This only bounds a wedged server.
+/// Bound on the wait for the server's first frame (ack or refusal). It must
+/// comfortably exceed the server's admission-queue deadline (~2s, see
+/// serve.ts): a queued request receives nothing until it is started or
+/// refused. On breach the stream is dropped, which closes the socket and
+/// makes the server's eventual ack write fail — so abandoning a wedged or
+/// queued server pre-ack can never race into a duplicate execution.
+const WARM_FIRST_FRAME_TIMEOUT: Duration = Duration::from_secs(4);
+
+/// Ceiling on the wait for the outcome once the server acked. Generous on
+/// purpose: the function itself runs inside this window, and the caller
+/// (front) enforces the real invocation timeout by killing dsbx. This only
+/// bounds a wedged server.
 const WARM_RESPONSE_TIMEOUT: Duration = Duration::from_secs(120);
 
 /// Connect timeout: the server is either listening or it is not.
@@ -55,22 +70,21 @@ struct WarmFrame {
     #[serde(default)]
     stale: bool,
     #[serde(default)]
-    busy: bool,
-    #[serde(default)]
     error: Option<String>,
 }
 
 /// The outcome of asking the warm server to run an invocation.
 pub enum WarmRun {
-    /// The server ran the function; this is the runner `Output` JSON. Also
-    /// carries the synthesized failure outcome when the server acked (the
-    /// function started executing) but the outcome was lost: past the ack the
-    /// cold path is off the table, because re-running a function that may
-    /// already have fired its side effects is worse than failing the
-    /// invocation.
+    /// The server produced this runner `Output` JSON: a served invocation, a
+    /// pre-execution classification (`bad_input`, `overloaded` — delivered as
+    /// the result, never retried cold), or the synthesized failure outcome
+    /// when the server acked (the function started executing) but the outcome
+    /// was lost: past the ack the cold path is off the table, because
+    /// re-running a function that may already have fired its side effects is
+    /// worse than failing the invocation.
     Outcome(serde_json::Value),
-    /// No usable warm server (not running, busy, stale bundle, protocol
-    /// mismatch, ownership refusal...). Nothing executed; run cold.
+    /// No usable warm server (not running, stale bundle, protocol mismatch,
+    /// ownership refusal, first frame overdue...). Nothing executed; run cold.
     Miss,
 }
 
@@ -192,12 +206,12 @@ pub async fn try_warm_run(name: &str, input: &str) -> WarmRun {
         _ => return WarmRun::Miss,
     };
 
-    match tokio::time::timeout(WARM_RESPONSE_TIMEOUT, roundtrip(stream, input)).await {
-        Ok(Ok(run)) => run,
-        // Pre-ack IO error or timeout: nothing executed, run cold. roundtrip
-        // itself converts post-ack losses into a failure Outcome.
-        _ => WarmRun::Miss,
-    }
+    // roundtrip owns its own timeouts: the first frame is bounded tightly
+    // (WARM_FIRST_FRAME_TIMEOUT), the post-ack outcome generously
+    // (WARM_RESPONSE_TIMEOUT). Any error is a pre-ack condition and a Miss
+    // (nothing executed); roundtrip converts post-ack losses into a failure
+    // Outcome itself.
+    roundtrip(stream, input).await.unwrap_or(WarmRun::Miss)
 }
 
 /// The outcome delivered when the server acked (execution started) but the
@@ -231,35 +245,50 @@ async fn roundtrip(mut stream: UnixStream, input: &str) -> Result<WarmRun> {
     });
     let mut line = serde_json::to_string(&request)?;
     line.push('\n');
-    stream.write_all(line.as_bytes()).await?;
-
-    let mut reader = BufReader::new(stream);
 
     // First frame: ack (execution starting), or a pre-execution refusal
-    // (busy, stale, protocol error) that safely sends the client cold.
-    let mut first = String::new();
-    if reader.read_line(&mut first).await? == 0 {
+    // (stale, overloaded, protocol error). The wait is bounded: the server
+    // may queue the request behind its concurrency cap, and a first frame
+    // that outlives the server's own queue deadline means a wedged server.
+    // Timing out here drops the stream, which closes the socket and makes
+    // the server's eventual ack write fail — nothing executes for us after
+    // we walk away, so the cold fallback below stays safe.
+    let first_frame = tokio::time::timeout(WARM_FIRST_FRAME_TIMEOUT, async {
+        stream.write_all(line.as_bytes()).await?;
+        let mut reader = BufReader::new(stream);
+        let mut first = String::new();
+        let read = reader.read_line(&mut first).await?;
+        Ok::<_, std::io::Error>((reader, first, read))
+    })
+    .await;
+    let (mut reader, first, read) = match first_frame {
+        Ok(Ok(parts)) => parts,
+        // Timeout or pre-ack IO error: nothing executed, run cold.
+        _ => return Ok(WarmRun::Miss),
+    };
+    if read == 0 {
         return Ok(WarmRun::Miss);
     }
     let frame: WarmFrame = serde_json::from_str(first.trim())?;
-    if frame.v != WARM_PROTOCOL_VERSION || frame.busy || frame.stale || frame.error.is_some() {
+    if frame.v != WARM_PROTOCOL_VERSION || frame.stale || frame.error.is_some() {
         return Ok(WarmRun::Miss);
     }
     if let Some(outcome) = frame.outcome {
         // Single-frame outcome: a pre-execution classification such as
-        // bad_input, delivered without an ack. Safe either way.
+        // bad_input or overloaded, delivered without an ack. Nothing
+        // executed, and the outcome is the invocation's result.
         return Ok(WarmRun::Outcome(outcome));
     }
     if !frame.ack {
         return Ok(WarmRun::Miss);
     }
 
-    // Past the ack: never Miss again. A lost or unparsable outcome frame is
-    // a failed invocation, not a cold retry.
+    // Past the ack: never Miss again. A lost, overdue or unparsable outcome
+    // frame is a failed invocation, not a cold retry.
     let mut second = String::new();
-    match reader.read_line(&mut second).await {
-        Ok(0) | Err(_) => return Ok(WarmRun::Outcome(lost_outcome_after_ack())),
-        Ok(_) => {}
+    match tokio::time::timeout(WARM_RESPONSE_TIMEOUT, reader.read_line(&mut second)).await {
+        Ok(Ok(0)) | Ok(Err(_)) | Err(_) => return Ok(WarmRun::Outcome(lost_outcome_after_ack())),
+        Ok(Ok(_)) => {}
     }
     match serde_json::from_str::<WarmFrame>(second.trim()) {
         Ok(WarmFrame {
