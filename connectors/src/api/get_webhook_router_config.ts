@@ -3,8 +3,10 @@ import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 import type { Request, Response } from "express";
+import { timingSafeEqual } from "node:crypto";
 
 type WebhookRouterEntryParams = {
+  webhook_secret: string;
   provider: "slack" | "notion";
   providerWorkspaceId: string;
 };
@@ -21,7 +23,28 @@ const _getWebhookRouterEntryHandler = async (
   req: Request<WebhookRouterEntryParams, GetWebhookRouterEntryResBody>,
   res: Response<GetWebhookRouterEntryResBody>
 ) => {
-  const { provider, providerWorkspaceId } = req.params;
+  const { webhook_secret, provider, providerWorkspaceId } = req.params;
+
+  const providedSecretBuffer = Buffer.from(webhook_secret);
+  const configuredSecretBuffer = Buffer.from(
+    process.env.WEBHOOK_ROUTER_SECRET ?? ""
+  );
+
+  const isWebhookSecretValid =
+    providedSecretBuffer.length === configuredSecretBuffer.length &&
+    timingSafeEqual(providedSecretBuffer, configuredSecretBuffer);
+
+  if (!isWebhookSecretValid) {
+    logger.info({ provider, providerWorkspaceId }, "Invalid webhook secret");
+
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "not_found",
+        message: "Webhook router entry not found",
+      },
+    });
+  }
 
   const service = new WebhookRouterConfigService();
   const entry = await service.getEntry(provider, providerWorkspaceId);
