@@ -100,12 +100,12 @@ function selectRunUsagesNeedingEvidence({
 async function buildRunUsageConsumptionEvidence(
   auth: Authenticator,
   {
-    enrichedActionById,
+    enrichedActionByModelId,
     runActions,
     triggeringUserMessageOrigin,
     usage,
   }: {
-    enrichedActionById: ReadonlyMap<ModelId, AgentMCPActionWithOutputType>;
+    enrichedActionByModelId: ReadonlyMap<ModelId, AgentMCPActionWithOutputType>;
     runActions: AgentMCPActionResource[];
     triggeringUserMessageOrigin: UserMessageOrigin | null;
     usage: RunUsageWithRunKeyType;
@@ -129,7 +129,7 @@ async function buildRunUsageConsumptionEvidence(
     isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)
   );
   const modelVisibleRunActionPairs = modelVisibleRunActions.map((action) => {
-    const enrichedAction = enrichedActionById.get(action.id);
+    const enrichedAction = enrichedActionByModelId.get(action.id);
     assert(
       enrichedAction,
       "A selected model-visible action must have an enriched counterpart"
@@ -265,7 +265,7 @@ async function buildRunUsageConsumptionEvidence(
       continue;
     }
 
-    const enrichedAction = enrichedActionById.get(action.id);
+    const enrichedAction = enrichedActionByModelId.get(action.id);
     assert(
       enrichedAction,
       "A completed sandbox child action must have an enriched counterpart"
@@ -497,7 +497,7 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
           ignoreContent: false,
         })
       : [];
-  const enrichedActionById = new Map(
+  const enrichedActionByModelId = new Map(
     enrichedActions.map((action) => [action.id, action])
   );
 
@@ -511,7 +511,7 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
     const dustRunId = dustRunIdByRunModelId.get(usage.runModelId);
     const runActions = (dustRunId && actionsByDustRunId.get(dustRunId)) || [];
     const usageEvidence = await buildRunUsageConsumptionEvidence(auth, {
-      enrichedActionById,
+      enrichedActionByModelId,
       runActions,
       triggeringUserMessageOrigin,
       usage,
