@@ -40,11 +40,11 @@ describe("launchStoreAgentMessageConsumptionAttributionWorkflow", () => {
 
     const first = await launchStoreAgentMessageConsumptionAttributionWorkflow({
       authType,
-      agentLoopArgs,
+      message: agentLoopArgs,
     });
     const second = await launchStoreAgentMessageConsumptionAttributionWorkflow({
       authType,
-      agentLoopArgs,
+      message: agentLoopArgs,
     });
 
     expect(first.isOk()).toBe(true);
@@ -53,7 +53,15 @@ describe("launchStoreAgentMessageConsumptionAttributionWorkflow", () => {
     expect(mockSignalWithStart).toHaveBeenCalledWith(
       storeAgentMessageConsumptionAttributionV3Workflow,
       expect.objectContaining({
-        args: [authType, { agentLoopArgs }],
+        args: [
+          authType,
+          {
+            message: {
+              agentMessageId: agentLoopArgs.agentMessageId,
+              conversationId: agentLoopArgs.conversationId,
+            },
+          },
+        ],
         taskQueue: QUEUE_NAME,
         workflowId: `${makeAgentMessageAnalyticsWorkflowId({
           agentMessageId: agentLoopArgs.agentMessageId,

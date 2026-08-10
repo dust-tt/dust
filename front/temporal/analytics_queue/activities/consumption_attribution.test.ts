@@ -3,7 +3,7 @@ import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { storeAgentMessageConsumptionAnalyticsActivity } from "@app/temporal/analytics_queue/activities/consumption_attribution";
-import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import type { AgentMessageRef } from "@app/types/assistant/agent_run";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -19,9 +19,10 @@ vi.mock(
 );
 
 const authType = {} as AuthenticatorType;
-const agentLoopArgs = {
+const message: AgentMessageRef = {
   agentMessageId: "agent_message_1",
-} as AgentLoopArgs;
+  conversationId: "conversation_1",
+};
 
 describe("storeAgentMessageConsumptionAnalyticsActivity", () => {
   beforeEach(() => {
@@ -38,7 +39,7 @@ describe("storeAgentMessageConsumptionAnalyticsActivity", () => {
 
     await expect(
       storeAgentMessageConsumptionAnalyticsActivity(authType, {
-        agentLoopArgs,
+        message,
       })
     ).resolves.toBeUndefined();
   });
@@ -51,7 +52,7 @@ describe("storeAgentMessageConsumptionAnalyticsActivity", () => {
 
     await expect(
       storeAgentMessageConsumptionAnalyticsActivity(authType, {
-        agentLoopArgs,
+        message,
       })
     ).rejects.toBe(error);
   });

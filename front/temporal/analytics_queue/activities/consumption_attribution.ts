@@ -3,7 +3,19 @@ import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import type {
+  AgentLoopArgs,
+  AgentMessageRef,
+} from "@app/types/assistant/agent_run";
+
+async function storeAgentMessageConsumptionAttribution(
+  authType: AuthenticatorType,
+  message: AgentMessageRef
+): Promise<void> {
+  const auth = await Authenticator.fromJSON(authType);
+
+  await computeAndStoreAgentMessageConsumptionAttribution(auth, message);
+}
 
 export async function storeAgentMessageConsumptionAttributionActivity(
   authType: AuthenticatorType,
@@ -13,27 +25,26 @@ export async function storeAgentMessageConsumptionAttributionActivity(
     agentLoopArgs: AgentLoopArgs;
   }
 ): Promise<void> {
-  const auth = await Authenticator.fromJSON(authType);
-  const { agentMessageId, conversationId } = agentLoopArgs;
+  await storeAgentMessageConsumptionAttribution(authType, agentLoopArgs);
+}
 
-  await computeAndStoreAgentMessageConsumptionAttribution(auth, {
-    agentMessageId,
-    conversationId,
-  });
+// V1/V2 keep their original AgentLoopArgs activity payload for replay. V3 only needs this stable
+// message reference, which also lets historical backfills use the same durable workflow.
+export async function storeAgentMessageConsumptionAttributionForMessageActivity(
+  authType: AuthenticatorType,
+  { message }: { message: AgentMessageRef }
+): Promise<void> {
+  await storeAgentMessageConsumptionAttribution(authType, message);
 }
 
 /** Builds and bulk-upserts every billed consumption unit for one settled agent message. */
 export async function storeAgentMessageConsumptionAnalyticsActivity(
   authType: AuthenticatorType,
-  {
-    agentLoopArgs,
-  }: {
-    agentLoopArgs: AgentLoopArgs;
-  }
+  { message }: { message: AgentMessageRef }
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
   const result = await indexAgentMessageConsumptionAnalytics(auth, {
-    agentMessageId: agentLoopArgs.agentMessageId,
+    agentMessageId: message.agentMessageId,
   });
 
   if (result.isErr()) {
@@ -44,7 +55,7 @@ export async function storeAgentMessageConsumptionAnalyticsActivity(
       {
         error,
         workspaceId,
-        agentMessageId: agentLoopArgs.agentMessageId,
+        agentMessageId: message.agentMessageId,
       },
       "[ConsumptionAnalytics] Failed to upsert consumption documents in ES"
     );

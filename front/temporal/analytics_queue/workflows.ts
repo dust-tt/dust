@@ -14,6 +14,7 @@ const {
   storeAgentAnalyticsActivity,
   storeAgentMessageFeedbackActivity,
   storeAgentMessageConsumptionAttributionActivity,
+  storeAgentMessageConsumptionAttributionForMessageActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
   retry: {
@@ -101,11 +102,7 @@ export async function storeAgentMessageConsumptionAttributionV2Workflow(
 // unchanged above so executions started before this deployment can replay deterministically.
 export async function storeAgentMessageConsumptionAttributionV3Workflow(
   authType: AuthenticatorType,
-  {
-    agentLoopArgs,
-  }: {
-    agentLoopArgs: AgentLoopArgs;
-  }
+  { message }: { message: AgentMessageRef }
 ): Promise<void> {
   let pendingRecompute = true;
 
@@ -116,12 +113,12 @@ export async function storeAgentMessageConsumptionAttributionV3Workflow(
   while (pendingRecompute) {
     pendingRecompute = false;
 
-    await storeAgentMessageConsumptionAttributionActivity(authType, {
-      agentLoopArgs,
+    await storeAgentMessageConsumptionAttributionForMessageActivity(authType, {
+      message,
     });
 
     await storeAgentMessageConsumptionAnalyticsActivity(authType, {
-      agentLoopArgs,
+      message,
     });
   }
 }
