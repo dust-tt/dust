@@ -7,9 +7,8 @@ import type { ConnectorProvider } from "@app/types/data_source";
 
 // Placeholder data for categories not yet wired to a real backend endpoint.
 // Agents are fetched live in UsageFilterPanel (useAgentConfigurations);
-// members via useSearchMembers; groups via useGroups; models via
-// useConsumptionTop. Lists are long enough to exercise scrolling in the
-// preview.
+// members via useSearchMembers; groups via useGroups; models via useModels.
+// Lists are long enough to exercise scrolling in the preview.
 const MOCK_ENTITY_NAMES = {
   tool: [
     "web_search",

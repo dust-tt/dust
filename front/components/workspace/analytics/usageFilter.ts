@@ -3,6 +3,7 @@ import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers"
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ConnectorProvider } from "@app/types/data_source";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 
 export const USAGE_FILTER_CATEGORIES = [
   "agent",
@@ -189,6 +190,9 @@ export function toConsumptionScopeFilter(
 export function usageModelTierFromModelsTierName(
   tier: ModelsTierName | null | undefined
 ): UsageModelTier | undefined {
+  if (tier === null || tier === undefined) {
+    return undefined;
+  }
   switch (tier) {
     case "cost_efficient":
       return "fast";
@@ -197,6 +201,7 @@ export function usageModelTierFromModelsTierName(
     case "premium":
       return "complex";
     default:
+      assertNeverAndIgnore(tier);
       return undefined;
   }
 }

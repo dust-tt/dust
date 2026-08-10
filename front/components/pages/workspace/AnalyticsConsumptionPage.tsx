@@ -91,7 +91,6 @@ export function AnalyticsConsumptionPage() {
           <div className="flex justify-end">
             <UsageFilterPanel
               owner={owner}
-              period={period}
               categoryOptions={USAGE_FILTER_MOCK_OPTIONS}
               filter={filter}
               onFilterChange={setFilter}
