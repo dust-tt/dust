@@ -1,4 +1,5 @@
 import {
+  type AgentLoopBlockedToolExecution,
   isToolFileAuthRequiredEvent,
   isToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp";
@@ -136,6 +137,7 @@ export async function resolveAuthentication(
   let actionIdsToClearFromRedis: string[];
   let remainingBlockedActionsForAgentMessage: AgentMCPActionResource[] | null =
     null;
+
   if (
     kind === "authentication" &&
     outcome === "completed" &&
@@ -201,14 +203,21 @@ export async function resolveAuthentication(
     return new Ok(undefined);
   }
 
-  const blockedActions = remainingBlockedActionsForAgentMessage
-    ? remainingBlockedActionsForAgentMessage
-    : (
-        await AgentMCPActionResource.listBlockedActionsForConversation(
-          auth,
-          conversation
-        )
-      ).filter((blockedAction) => blockedAction.messageId === messageId);
+  let blockedActions:
+    | AgentMCPActionResource[]
+    | AgentLoopBlockedToolExecution[];
+  if (remainingBlockedActionsForAgentMessage !== null) {
+    blockedActions = remainingBlockedActionsForAgentMessage;
+  } else {
+    const blockedActionsForConversation =
+      await AgentMCPActionResource.listBlockedActionsForConversation(
+        auth,
+        conversation
+      );
+    blockedActions = blockedActionsForConversation.filter(
+      (blockedAction) => blockedAction.messageId === messageId
+    );
+  }
 
   if (blockedActions.length > 0) {
     logger.info(
