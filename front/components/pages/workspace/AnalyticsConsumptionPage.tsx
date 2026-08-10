@@ -6,10 +6,7 @@ import { consumptionDimensionFromQueryParam } from "@app/components/workspace/an
 import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
 import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
 import { toConsumptionScopeFilter } from "@app/components/workspace/analytics/usageFilter";
-import {
-  USAGE_FILTER_MOCK_GROUPS,
-  USAGE_FILTER_MOCK_OPTIONS,
-} from "@app/components/workspace/analytics/usageFilterMockData";
+import { USAGE_FILTER_MOCK_OPTIONS } from "@app/components/workspace/analytics/usageFilterMockData";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
