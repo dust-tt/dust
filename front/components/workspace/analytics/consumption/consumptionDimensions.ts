@@ -8,6 +8,7 @@ export const DEFAULT_CONSUMPTION_DIMENSION: ConsumptionDimension = "agent";
 export const CONSUMPTION_DIMENSIONS: ConsumptionDimension[] = [
   "agent",
   "user",
+  "team",
   "model",
   "tool",
   "skill",
@@ -40,6 +41,12 @@ export const CONSUMPTION_DIMENSION_CONFIG: Record<
     hasAvatar: true,
     avgLabel: MESSAGE_AVG_LABEL,
   },
+  team: {
+    label: "Teams",
+    breakdownLabel: "team",
+    hasAvatar: false,
+    avgLabel: MESSAGE_AVG_LABEL,
+  },
   model: {
     label: "Models",
     breakdownLabel: "model",
@@ -70,4 +77,12 @@ export function isConsumptionDimension(
   value: string
 ): value is ConsumptionDimension {
   return CONSUMPTION_DIMENSIONS.some((dimension) => dimension === value);
+}
+
+export function consumptionDimensionFromQueryParam(
+  value: string | undefined
+): ConsumptionDimension {
+  return value !== undefined && isConsumptionDimension(value)
+    ? value
+    : DEFAULT_CONSUMPTION_DIMENSION;
 }

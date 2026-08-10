@@ -3,7 +3,8 @@ import { generateSandboxFunctionInvocationToken } from "@app/lib/api/sandbox/acc
 import { SandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
-import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import type { NormalizedSandboxFunctionOutcome } from "@app/lib/api/sandbox_functions/result_envelope";
+import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
@@ -23,7 +24,6 @@ import type {
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { Err, Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -67,14 +67,6 @@ vi.mock("@app/temporal/sandbox_functions/client", async (importOriginal) => {
   };
 });
 
-vi.mock("@app/lib/auth", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@app/lib/auth")>();
-  return {
-    ...actual,
-    hasFeatureFlag: vi.fn(),
-  };
-});
-
 const inputSchema: JSONSchema = {
   type: "object",
   properties: {
@@ -94,10 +86,21 @@ const outputSchema: JSONSchema = {
 // Stamped on the function at creation and expected back on every exec envelope.
 const TEST_BUNDLE_SHA256 = "a".repeat(64);
 
+// dsbx always delivers the result on the exec's own stdout, as a protocol v3 envelope.
+function stdoutEnvelope(outcome: NormalizedSandboxFunctionOutcome): string {
+  return (
+    JSON.stringify({ protocolVersion: 3, delivery: "stdout", outcome }) + "\n"
+  );
+}
+
+const SUCCEEDED_STDOUT = stdoutEnvelope({
+  ok: true,
+  output: { commentId: "comment-1" },
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
   fileStorageMock.reset();
-  vi.mocked(hasFeatureFlag).mockResolvedValue(false);
 });
 
 async function setupExecutionTest(
@@ -672,7 +675,7 @@ describe("SandboxFunctionInvocationResource", () => {
     const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 0,
-        stdout: "hello world\n",
+        stdout: SUCCEEDED_STDOUT,
         stderr: "",
       })
     );
@@ -694,7 +697,7 @@ describe("SandboxFunctionInvocationResource", () => {
         sandboxFunction,
         invocationId: invocation.sId,
       });
-    expect(refetchedInvocation?.status).toBe("created");
+    expect(refetchedInvocation?.status).toBe("succeeded");
     // execute() itself never touches lastActivityAt: ensurePodSandboxReady's
     // ensureActive already writes it under the lifecycle lock, and a second
     // write per invocation was pure hot-row churn on the sandbox row.
@@ -721,7 +724,9 @@ describe("SandboxFunctionInvocationResource", () => {
     }
     const [, command, opts] = execCall;
     // The bundle is read from the read-only mount, so the command is just the run, no staging write.
-    expect(command).toBe("/opt/bin/dsbx function run 'add-comment'");
+    expect(command).toBe(
+      "/opt/bin/dsbx function run --result-delivery stdout -- 'add-comment'"
+    );
     expect(opts?.envVars).toMatchObject({
       DUST_FUNCTIONS_DIR: `/sandbox-functions/pods/${space.sId}`,
       DUST_POD_DATABASES_DIR: "/pod-state/databases",
@@ -787,7 +792,7 @@ describe("SandboxFunctionInvocationResource", () => {
     const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 0,
-        stdout: "hello world\n",
+        stdout: SUCCEEDED_STDOUT,
         stderr: "",
       })
     );
@@ -813,7 +818,7 @@ describe("SandboxFunctionInvocationResource", () => {
     const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 0,
-        stdout: "hello world\n",
+        stdout: SUCCEEDED_STDOUT,
         stderr: "",
       })
     );
@@ -837,7 +842,7 @@ describe("SandboxFunctionInvocationResource", () => {
     const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 0,
-        stdout: "hello world\n",
+        stdout: SUCCEEDED_STDOUT,
         stderr: "",
       })
     );
@@ -922,7 +927,7 @@ describe("SandboxFunctionInvocationResource", () => {
     const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 0,
-        stdout: "hello world\n",
+        stdout: SUCCEEDED_STDOUT,
         stderr: "",
       })
     );
@@ -946,61 +951,41 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(execSpy).not.toHaveBeenCalled();
   });
 
-  it("surfaces the runner stderr when the invocation exits non-zero", async () => {
-    const { authenticator, sandbox, invocation } = await setupExecutionTest();
+  it("fails the invocation when stdout carries no result envelope", async () => {
+    const { authenticator, sandboxFunction, sandbox, invocation } =
+      await setupExecutionTest();
     vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 1,
-        stdout: "some stdout",
+        stdout: "",
         stderr: "dsbx command failed: connection refused",
       })
     );
 
     const result = await invocation.execute(authenticator);
 
-    expect(result.isErr()).toBe(true);
-    if (result.isOk()) {
-      return;
-    }
-    expect(result.error.message).toContain("exit code 1");
-    expect(result.error.message).toContain(
-      "dsbx command failed: connection refused"
+    expect(result.isOk()).toBe(true);
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
     );
+    expect(refetched?.status).toBe("errored");
+    expect(refetched?.error).toEqual({
+      code: "invocation_failed",
+      message: "Pod function produced no stdout result envelope.",
+    });
   });
 
-  it("falls back to the runner stdout when stderr is empty on failure", async () => {
-    const { authenticator, sandbox, invocation } = await setupExecutionTest();
-    vi.spyOn(sandbox, "exec").mockResolvedValue(
-      new Ok({
-        exitCode: 2,
-        stdout: "boom from stdout",
-        stderr: "",
-      })
-    );
-
-    const result = await invocation.execute(authenticator);
-
-    expect(result.isErr()).toBe(true);
-    if (result.isOk()) {
-      return;
-    }
-    expect(result.error.message).toContain("exit code 2");
-    expect(result.error.message).toContain("boom from stdout");
-  });
-
-  it("persists a stdout envelope when the flag is enabled", async () => {
+  it("persists a stdout envelope", async () => {
     const { authenticator, sandboxFunction, sandbox, invocation } =
       await setupExecutionTest();
-    vi.mocked(hasFeatureFlag).mockResolvedValue(true);
     const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 0,
-        stdout:
-          JSON.stringify({
-            protocolVersion: 3,
-            delivery: "stdout",
-            outcome: { ok: true, output: { commentId: "from-stdout" } },
-          }) + "\n",
+        stdout: stdoutEnvelope({
+          ok: true,
+          output: { commentId: "from-stdout" },
+        }),
         stderr: "",
       })
     );
@@ -1024,17 +1009,12 @@ describe("SandboxFunctionInvocationResource", () => {
   it("persists structured runner errors from stdout envelopes with exit 0", async () => {
     const { authenticator, sandboxFunction, sandbox, invocation } =
       await setupExecutionTest();
-    vi.mocked(hasFeatureFlag).mockResolvedValue(true);
     vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 0,
-        stdout: JSON.stringify({
-          protocolVersion: 3,
-          delivery: "stdout",
-          outcome: {
-            ok: false,
-            error: { code: "threw", message: "boom" },
-          },
+        stdout: stdoutEnvelope({
+          ok: false,
+          error: { code: "threw", message: "boom" },
         }),
         stderr: "",
       })
@@ -1054,19 +1034,14 @@ describe("SandboxFunctionInvocationResource", () => {
   it("persists a stdout invocation_failed envelope even when exit code is non-zero", async () => {
     const { authenticator, sandboxFunction, sandbox, invocation } =
       await setupExecutionTest();
-    vi.mocked(hasFeatureFlag).mockResolvedValue(true);
     vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 1,
-        stdout: JSON.stringify({
-          protocolVersion: 3,
-          delivery: "stdout",
-          outcome: {
-            ok: false,
-            error: {
-              code: "invocation_failed",
-              message: "function produced no output",
-            },
+        stdout: stdoutEnvelope({
+          ok: false,
+          error: {
+            code: "invocation_failed",
+            message: "function produced no output",
           },
         }),
         stderr: "",
@@ -1089,13 +1064,6 @@ describe("SandboxFunctionInvocationResource", () => {
 });
 
 describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
-  // Fast execution rides on stdout delivery, so both flags are on together in practice.
-  function enableFlags(flags: WhitelistableFeature[]) {
-    vi.mocked(hasFeatureFlag).mockImplementation(async (_auth, flag) =>
-      flags.includes(flag)
-    );
-  }
-
   async function setupInlineTest(
     executionMode: SandboxFunctionExecutionMode = "fast"
   ) {
@@ -1117,12 +1085,7 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
     const execSpy = vi.spyOn(setup.sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 0,
-        stdout:
-          JSON.stringify({
-            protocolVersion: 3,
-            delivery: "stdout",
-            outcome: { ok: true, output: { commentId: "inline" } },
-          }) + "\n",
+        stdout: stdoutEnvelope({ ok: true, output: { commentId: "inline" } }),
         stderr: "",
       })
     );
@@ -1132,10 +1095,6 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
 
   it("runs a fast invocation inline instead of starting the workflow", async () => {
     const { authenticator, sandboxFunction, execSpy } = await setupInlineTest();
-    enableFlags([
-      "sandbox_function_fast_execution",
-      "sandbox_function_stdout_result",
-    ]);
 
     const result =
       await SandboxFunctionInvocationResource.createAndStartExecution(
@@ -1182,10 +1141,6 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
 
   it("delivers the inline outcome even when write-behind persistence fails", async () => {
     const { authenticator, sandboxFunction, execSpy } = await setupInlineTest();
-    enableFlags([
-      "sandbox_function_fast_execution",
-      "sandbox_function_stdout_result",
-    ]);
     // Every blob write for this invocation fails: the deferred initial write and the
     // write-behind terminal write. Neither may take down the caller's response — the outcome
     // already reached the caller and the event stream, and the loss is logged, not thrown.
@@ -1215,7 +1170,6 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
 
   it("runs a durable function under a token that can call tools", async () => {
     const { authenticator, sandboxFunction } = await setupInlineTest("durable");
-    enableFlags(["sandbox_function_stdout_result"]);
 
     const result =
       await SandboxFunctionInvocationResource.createAndStartExecution(
@@ -1237,25 +1191,6 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
   it("starts the workflow for a durable function", async () => {
     const { authenticator, sandboxFunction, execSpy } =
       await setupInlineTest("durable");
-    enableFlags([
-      "sandbox_function_fast_execution",
-      "sandbox_function_stdout_result",
-    ]);
-
-    const result =
-      await SandboxFunctionInvocationResource.createAndStartExecution(
-        authenticator,
-        { sandboxFunction, body: {} }
-      );
-
-    expect(result.isOk()).toBe(true);
-    expect(execSpy).not.toHaveBeenCalled();
-    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
-  });
-
-  it("starts the workflow when fast execution is disabled", async () => {
-    const { authenticator, sandboxFunction, execSpy } = await setupInlineTest();
-    enableFlags(["sandbox_function_stdout_result"]);
 
     const result =
       await SandboxFunctionInvocationResource.createAndStartExecution(
@@ -1273,10 +1208,6 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
   it("starts the workflow when the sandbox is not running", async () => {
     const { authenticator, sandboxFunction, sandbox, execSpy } =
       await setupInlineTest();
-    enableFlags([
-      "sandbox_function_fast_execution",
-      "sandbox_function_stdout_result",
-    ]);
     await sandbox.updateStatus("sleeping");
 
     const result =
@@ -1296,9 +1227,15 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
 
   it("records the failure of a fast invocation that errors inline", async () => {
     const { authenticator, sandboxFunction, execSpy } = await setupInlineTest();
-    enableFlags(["sandbox_function_fast_execution"]);
     execSpy.mockResolvedValue(
-      new Ok({ exitCode: 1, stdout: "", stderr: "boom" })
+      new Ok({
+        exitCode: 1,
+        stdout: stdoutEnvelope({
+          ok: false,
+          error: { code: "threw", message: "boom" },
+        }),
+        stderr: "",
+      })
     );
 
     const result =

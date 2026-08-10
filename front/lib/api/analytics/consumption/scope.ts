@@ -9,6 +9,7 @@ export const AGENT_MESSAGE_ID_FIELD = "agent_message_id";
 export const CONSUMPTION_SCOPE_DIMENSIONS = [
   "agent",
   "user",
+  "team",
   "model",
   "tool",
   "skill",
@@ -24,6 +25,8 @@ export const CONSUMPTION_DIMENSION_FIELDS: Record<
 > = {
   agent: "agent.id",
   user: "user.id",
+  // Multi-valued: a member can belong to several teams at once.
+  team: "user.group_ids",
   model: "model.model_id",
   tool: "tool.server_name",
   // Multi-valued: one tool call can be attributed to several skills at once.
@@ -34,6 +37,7 @@ export const CONSUMPTION_DIMENSION_FIELDS: Record<
 export const CONSUMPTION_SCOPE_FILTER_KEYS = [
   "agents",
   "users",
+  "teams",
   "models",
   "tools",
   "skills",
@@ -53,6 +57,7 @@ const CONSUMPTION_DIMENSION_FILTER_KEYS: Record<
 > = {
   agent: "agents",
   user: "users",
+  team: "teams",
   model: "models",
   tool: "tools",
   skill: "skills",

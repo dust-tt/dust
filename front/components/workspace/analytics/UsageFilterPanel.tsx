@@ -2,13 +2,13 @@ import type {
   UsageFilter,
   UsageFilterAgentOption,
   UsageFilterCategory,
-  UsageFilterGroup,
   UsageFilterMemberOption,
   UsageFilterModelOption,
   UsageFilterOptionForCategory,
   UsageFilterScope,
   UsageFilterSkillOption,
   UsageFilterSourceOption,
+  UsageFilterTeamOption,
   UsageFilterToolOption,
   UsageModelTier,
 } from "@app/components/workspace/analytics/usageFilter";
@@ -21,12 +21,14 @@ import {
 import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
 import { UsageFilterCategoryNav } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterCategoryNav";
 import { UsageFilterFooter } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterFooter";
-import { UsageFilterMemberGroupsControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterMemberGroupsControls";
 import { UsageFilterModelComplexityControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterModelComplexityControls";
 import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
+import { useGroups } from "@app/lib/swr/groups";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   BarChart05,
@@ -37,10 +39,23 @@ import {
   PopoverTrigger,
   SearchInput,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+// Chunk size for the infinite scroll
+const FILTER_PICKER_PAGE_SIZE = 100;
+
+interface UsageFilterPaginationState {
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  onLoadMore: () => void;
+}
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
+  // Agents/models/tools/skills/sources are still mock data (see
+  // usageFilterMockData.ts — sources are fake connectors standing in for a
+  // real db call); members and teams are fetched live below, via the generic
+  // member search and group listing endpoints (useSearchMembers, useGroups).
   categoryOptions: {
     agent: UsageFilterAgentOption[];
     model: UsageFilterModelOption[];
@@ -48,7 +63,6 @@ interface UsageFilterPanelProps {
     skill: UsageFilterSkillOption[];
     source: UsageFilterSourceOption[];
   };
-  groups: UsageFilterGroup[];
   filter: UsageFilter;
   onFilterChange: (next: UsageFilter) => void;
 }
@@ -56,7 +70,6 @@ interface UsageFilterPanelProps {
 export function UsageFilterPanel({
   owner,
   categoryOptions,
-  groups,
   filter,
   onFilterChange,
 }: UsageFilterPanelProps) {
@@ -82,23 +95,88 @@ export function UsageFilterPanel({
   );
   const [searchText, setSearchText] = useState("");
 
-  const { members } = useSearchMembers({
+  const isMemberCategoryActive = isOpen && activeCategory === "member";
+  const isTeamCategoryActive = isOpen && activeCategory === "team";
+
+  // Every category picker supports scroll-to-load-more:
+  const [memberPageIndex, setMemberPageIndex] = useState(0);
+  const [accumulatedMemberOptions, setAccumulatedMemberOptions] = useState<
+    UsageFilterMemberOption[]
+  >([]);
+  const [visibleStaticCount, setVisibleStaticCount] = useState(
+    FILTER_PICKER_PAGE_SIZE
+  );
+
+  const resetFilterPickerPagination = useCallback(() => {
+    setMemberPageIndex(0);
+    setVisibleStaticCount(FILTER_PICKER_PAGE_SIZE);
+  }, []);
+
+  // Search is applied server-side by useSearchMembers, same as the sibling
+  // AnalyticsFilterDropdown's member picker.
+  const {
+    members: searchedMembers,
+    totalMembersCount,
+    isMembersValidating,
+  } = useSearchMembers({
     workspaceId: owner.sId,
-    searchTerm: activeCategory === "member" ? searchText : "",
-    pageIndex: 0,
-    pageSize: 100,
-    disabled: !isOpen || activeCategory !== "member",
+    searchTerm: searchText,
+    pageIndex: memberPageIndex,
+    pageSize: FILTER_PICKER_PAGE_SIZE,
+    disabled: !isMemberCategoryActive,
   });
 
-  const memberOptions = useMemo<UsageFilterMemberOption[]>(
+  useEffect(() => {
+    const page = searchedMembers.map((member) => ({
+      id: member.sId,
+      name: member.fullName,
+      kind: "member" as const,
+      image: member.image,
+    }));
+    if (memberPageIndex === 0) {
+      setAccumulatedMemberOptions(page);
+      return;
+    }
+    if (page.length === 0) {
+      return;
+    }
+    setAccumulatedMemberOptions((prev) => {
+      const existingIds = new Set(prev.map((option) => option.id));
+      const newOptions = page.filter((option) => !existingIds.has(option.id));
+      return newOptions.length > 0 ? [...prev, ...newOptions] : prev;
+    });
+  }, [searchedMembers, memberPageIndex]);
+
+  // Whether more members exist server-side, independent of the client-side
+  // group filter below — scrolling must keep fetching even if the current
+  // group filter narrows the visible list to fewer than a full page.
+  const hasMoreMembers = accumulatedMemberOptions.length < totalMembersCount;
+
+  const handleLoadMoreMembers = useCallback(() => {
+    if (isMembersValidating || !hasMoreMembers) {
+      return;
+    }
+    setMemberPageIndex((current) => current + 1);
+  }, [isMembersValidating, hasMoreMembers]);
+
+  const handleLoadMoreStaticOptions = useCallback(() => {
+    setVisibleStaticCount((current) => current + FILTER_PICKER_PAGE_SIZE);
+  }, []);
+
+  const { groups: workspaceGroups } = useGroups({
+    owner,
+    kinds: MANAGEABLE_GROUP_KINDS,
+    disabled: !isTeamCategoryActive,
+  });
+
+  const teamOptions = useMemo<UsageFilterTeamOption[]>(
     () =>
-      members.map((m) => ({
-        id: m.sId,
-        name: m.fullName,
-        kind: "member",
-        image: m.image,
+      workspaceGroups.map((group) => ({
+        id: group.sId,
+        name: group.name,
+        kind: "team",
       })),
-    [members]
+    [workspaceGroups]
   );
 
   const resolvedCategoryOptions = useMemo<{
@@ -106,27 +184,81 @@ export function UsageFilterPanel({
   }>(
     () => ({
       ...categoryOptions,
-      member: memberOptions,
+      member: accumulatedMemberOptions,
+      team: teamOptions,
     }),
-    [categoryOptions, memberOptions]
+    [categoryOptions, accumulatedMemberOptions, teamOptions]
   );
 
   const activeOptions = resolvedCategoryOptions[activeCategory];
   const filteredOptions = useMemo(() => {
     const search = searchText.trim().toLowerCase();
-    return activeOptions.filter((option) => {
+    const matchingOptions = activeOptions.filter((option) => {
       if (option.kind === "agent" && option.scope !== activeScope) {
         return false;
       }
       if (option.kind === "model" && option.tier !== activeTier) {
         return false;
       }
-      if (search && !option.name.toLowerCase().includes(search)) {
+      // The member category is already searched server-side by
+      // useSearchMembers; re-filtering client-side here would just drop
+      // results while the debounced search catches up.
+      if (
+        activeCategory !== "member" &&
+        search &&
+        !option.name.toLowerCase().includes(search)
+      ) {
         return false;
       }
       return true;
     });
-  }, [activeOptions, searchText, activeScope, activeTier]);
+    return matchingOptions;
+  }, [activeOptions, searchText, activeScope, activeTier, activeCategory]);
+
+  // Members are already paginated server-side into filteredOptions; the
+  // other categories reveal a growing window of the already-loaded
+  // filteredOptions as the user scrolls.
+  const displayedOptions = useMemo(
+    () =>
+      activeCategory === "member"
+        ? filteredOptions
+        : filteredOptions.slice(0, visibleStaticCount),
+    [filteredOptions, activeCategory, visibleStaticCount]
+  );
+
+  const hasMoreStaticOptions =
+    activeCategory !== "member" && visibleStaticCount < filteredOptions.length;
+
+  const activePagination = useMemo<UsageFilterPaginationState>(() => {
+    switch (activeCategory) {
+      case "member":
+        return {
+          hasMore: hasMoreMembers,
+          isLoadingMore: isMembersValidating,
+          onLoadMore: handleLoadMoreMembers,
+        };
+      case "agent":
+      case "team":
+      case "model":
+      case "tool":
+      case "skill":
+      case "source":
+        return {
+          hasMore: hasMoreStaticOptions,
+          isLoadingMore: false,
+          onLoadMore: handleLoadMoreStaticOptions,
+        };
+      default:
+        return assertNever(activeCategory);
+    }
+  }, [
+    activeCategory,
+    hasMoreMembers,
+    isMembersValidating,
+    handleLoadMoreMembers,
+    hasMoreStaticOptions,
+    handleLoadMoreStaticOptions,
+  ]);
 
   const selectedIdsForActiveCategory = useMemo(
     () =>
@@ -156,13 +288,30 @@ export function UsageFilterPanel({
     if (open) {
       setDraftFilter(filter);
       setSearchText("");
+      resetFilterPickerPagination();
     }
   };
 
   const handleCategoryChange = (category: UsageFilterCategory) => {
     setActiveCategory(category);
     setSearchText("");
+    resetFilterPickerPagination();
   };
+
+  const handleSearchTextChange = (text: string) => {
+    setSearchText(text);
+    resetFilterPickerPagination();
+  };
+
+  // Category-specific "active option" controls (scope, tier, ...) all need
+  // to reset pagination on change; wrap their setters once instead of
+  // writing a dedicated handleXxxChange per category.
+  const withPaginationReset =
+    <T,>(setter: (value: T) => void) =>
+    (value: T) => {
+      setter(value);
+      resetFilterPickerPagination();
+    };
 
   const handleCancel = () => {
     setIsOpen(false);
@@ -215,36 +364,36 @@ export function UsageFilterPanel({
             <SearchInput
               name="usage-filter-search"
               value={searchText}
-              onChange={setSearchText}
+              onChange={handleSearchTextChange}
               placeholder={`Search ${USAGE_FILTER_CATEGORY_LABEL[activeCategory].toLowerCase()}`}
             />
-            {activeCategory === "member" && (
-              <UsageFilterMemberGroupsControls groups={groups} />
-            )}
             {activeCategory === "model" && (
               <UsageFilterModelComplexityControls
                 models={categoryOptions.model}
                 selectedModelIds={selectedIdsForActiveCategory}
                 onToggleModel={(model) => toggleOption("model", model)}
                 activeTier={activeTier}
-                onTierChange={setActiveTier}
+                onTierChange={withPaginationReset(setActiveTier)}
               />
             )}
             {activeCategory === "agent" && (
               <UsageFilterAgentScopeControls
                 activeScope={activeScope}
-                onScopeChange={setActiveScope}
+                onScopeChange={withPaginationReset(setActiveScope)}
               />
             )}
             <UsageFilterOptionCheckboxList
               category={activeCategory}
               categoryLabel={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
-              options={filteredOptions}
+              options={displayedOptions}
               selectedIds={selectedIdsForActiveCategory}
               onToggleOption={(option) => toggleOption(activeCategory, option)}
               onSelectAll={() =>
                 selectAllFiltered(activeCategory, filteredOptions)
               }
+              hasMore={activePagination.hasMore}
+              isLoadingMore={activePagination.isLoadingMore}
+              onLoadMore={activePagination.onLoadMore}
             />
           </div>
           <UsageFilterSelectionSummary

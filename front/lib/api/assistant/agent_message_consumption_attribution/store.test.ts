@@ -4,6 +4,7 @@ import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assi
 import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { tokenCountForTexts } from "@app/lib/tokenization";
@@ -28,6 +29,7 @@ vi.mock("@app/lib/tokenization", () => ({
 const INPUT_TOKENS_COUNT = 100;
 const OUTPUT_TOKENS_COUNT = 20;
 const REASONING_TOKENS_COUNT = 5;
+const BILLED_CREDIT_AMOUNT_MICRO = 10_000_000;
 
 // Every tokenized footprint counts as this many tokens, so tool-call output and tool input
 // footprints are deterministic in the assertions below.
@@ -59,6 +61,10 @@ async function setupSettledMessageWithUsage() {
     conversation,
     agentConfig: agentConfiguration,
     runIds: [run.dustRunId],
+  });
+  await ConversationResource.updateAgentMessageCostCredits(auth, {
+    agentMessageModelId: agentMessage.agentMessageId,
+    costCredits: BILLED_CREDIT_AMOUNT_MICRO / 1_000_000,
   });
 
   return {
@@ -122,9 +128,16 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
 
     for (const item of items) {
       expect(item.grossAttributedCreditAmountMicro).toBeGreaterThan(0);
+      expect(item.reconciledCreditAmountMicro).not.toBeNull();
       expect(item.directCreditAmountMicro).toBeNull();
       expect(item.agentMCPActionId).toBeNull();
     }
+    expect(
+      items.reduce(
+        (total, item) => total + (item.reconciledCreditAmountMicro ?? 0),
+        0
+      )
+    ).toBe(BILLED_CREDIT_AMOUNT_MICRO);
   });
 
   it("is idempotent across repeated runs", async () => {
@@ -154,6 +167,37 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
       "output",
       "reasoning",
     ]);
+  });
+
+  it("rejects an action added after its run usage was attributed", async () => {
+    const {
+      auth,
+      workspace,
+      conversation,
+      run,
+      conversationId,
+      agentMessageId,
+      agentMessageModelId,
+    } = await setupSettledMessageWithUsage();
+
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+    await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId,
+      status: "succeeded",
+      dustRunId: run.dustRunId,
+    });
+
+    await expect(
+      computeAndStoreAgentMessageConsumptionAttribution(auth, {
+        agentMessageId,
+        conversationId,
+      })
+    ).rejects.toThrow("An attributed run usage is missing tool evidence");
   });
 
   it("writes a tool row per action and carves the tool output from the assistant output", async () => {
@@ -522,6 +566,17 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
       agentMessageId,
       conversationId,
     });
+    const itemsWhilePending =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [agentMessageModelId],
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      );
+    const pendingInputCreditAmountMicro = itemsWhilePending.find(
+      (item) => item.itemType === "input"
+    )?.reconciledCreditAmountMicro;
 
     // The user approves, the tool executes and succeeds, then the loop finalizes again.
     await AgentMCPActionFactory.setStatus(auth, {
@@ -553,6 +608,25 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
       completedAt: expect.any(Date),
     });
     expect(toolItems[0].directCreditAmountMicro).toBeGreaterThan(0);
+
+    const settledItems =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [agentMessageModelId],
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      );
+    expect(
+      settledItems.reduce(
+        (total, item) => total + (item.reconciledCreditAmountMicro ?? 0),
+        0
+      )
+    ).toBe(BILLED_CREDIT_AMOUNT_MICRO);
+    expect(
+      settledItems.find((item) => item.itemType === "input")
+        ?.reconciledCreditAmountMicro
+    ).toBeLessThan(pendingInputCreditAmountMicro ?? 0);
   });
 
   it("keeps a completed tool single and stable across a redundant re-finalize", async () => {
@@ -577,6 +651,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
       agentMessageId,
       conversationId,
     });
+    expect(tokenCountForTexts).toHaveBeenCalledTimes(2);
     await AgentMCPActionFactory.setStatus(auth, {
       action,
       status: "succeeded",
@@ -585,13 +660,17 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
       agentMessageId,
       conversationId,
     });
+    // The completion pass rebuilds only this affected usage, including its shared output-token
+    // partition. It does not revisit any other historical usage.
+    expect(tokenCountForTexts).toHaveBeenCalledTimes(4);
 
     // A redundant finalize (e.g. a Temporal retry) re-upserts the same values. It must not duplicate
-    // the row or change the attributed evidence, and the row stays completed.
+    // the row, change the attributed evidence, or tokenize the completed tool again.
     await computeAndStoreAgentMessageConsumptionAttribution(auth, {
       agentMessageId,
       conversationId,
     });
+    expect(tokenCountForTexts).toHaveBeenCalledTimes(4);
 
     const toolItems = (
       await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(

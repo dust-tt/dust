@@ -32,6 +32,7 @@ const MODEL_CONFIG = {
     "europe-west1": true,
   },
   availableIfOneOf: {
+    creditPricedPlan: true,
     featureFlag: "custom_model_feature",
   },
   customAvailableIf: {
@@ -48,6 +49,7 @@ describe("ModelConfigurationSchema", () => {
       "europe-west1": true,
     });
     expect(result.availableIfOneOf).toEqual({
+      creditPricedPlan: true,
       featureFlag: "custom_model_feature",
     });
     expect(result.customAvailableIf).toEqual({

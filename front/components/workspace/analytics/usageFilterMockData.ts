@@ -1,6 +1,5 @@
 import type {
   UsageFilterAgentOption,
-  UsageFilterGroup,
   UsageFilterModelOption,
   UsageFilterSkillOption,
   UsageFilterSourceOption,
@@ -28,30 +27,9 @@ const MOCK_MODEL_LAB: Record<string, ModelMakerIdType> = {
   "DeepSeek V4": "deepseek",
 };
 
-const MOCK_GROUP_NAMES = [
-  "Engineering",
-  "Sales",
-  "Product",
-  "Design",
-  "Support",
-  "Finance",
-  "Legal",
-  "HR",
-  "Marketing",
-  "Leadership",
-  "Customer Success",
-  "Operations",
-];
-
-export const USAGE_FILTER_MOCK_GROUPS: UsageFilterGroup[] =
-  MOCK_GROUP_NAMES.map((name, index) => ({
-    id: `group_${index + 1}`,
-    name,
-  }));
-
 // Placeholder data for categories not yet wired to a real backend endpoint.
-// Members are fetched live in UsageFilterPanel via useSearchMembers. Lists
-// are long enough to exercise scrolling in the preview.
+// Members and groups are fetched live in UsageFilterPanel (useSearchMembers,
+// useGroups). Lists are long enough to exercise scrolling in the preview.
 const MOCK_ENTITY_NAMES = {
   agent: [
     "SupportBot",

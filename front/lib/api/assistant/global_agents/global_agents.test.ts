@@ -307,6 +307,7 @@ describe("getGlobalAgents OpenAI Dust agents", () => {
 
   it("resolves Sol and Luna variants with light, medium, and high reasoning", async () => {
     const auth = await createAuthenticatorWithFlags([
+      "claude_4_5_opus_feature",
       "dust_internal_global_agents",
     ]);
 
@@ -366,7 +367,7 @@ describe("getGlobalAgents OpenAI Dust agents", () => {
 
 describe("getGlobalAgents Deep Dive model routing", () => {
   it("uses Sol with medium reasoning as the Deep Dive primary model", async () => {
-    const workspace = await WorkspaceFactory.basic({
+    const workspace = await WorkspaceFactory.creditPriced({
       whiteListedProviders: ["anthropic", "openai"],
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);

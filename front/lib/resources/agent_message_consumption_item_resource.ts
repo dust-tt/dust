@@ -4,6 +4,7 @@ import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -15,7 +16,7 @@ import { Err } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
-import { Op } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 
 export type ConversationConsumptionMessageFacts = {
   agentConfigurationId: string;
@@ -489,6 +490,58 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         );
       }
     }, transaction);
+  }
+
+  static async setReconciledCreditAmounts(
+    auth: Authenticator,
+    {
+      reconciledCreditAmountByItem,
+      transaction,
+    }: {
+      reconciledCreditAmountByItem: ReadonlyMap<
+        AgentMessageConsumptionItemResource,
+        number
+      >;
+      transaction?: Transaction;
+    }
+  ): Promise<void> {
+    const changedAllocations = [...reconciledCreditAmountByItem].filter(
+      ([item, reconciledCreditAmountMicro]) =>
+        item.reconciledCreditAmountMicro !== reconciledCreditAmountMicro
+    );
+    if (changedAllocations.length === 0) {
+      return;
+    }
+
+    // `unnest` pairs both arrays by position into rows of item ID and reconciled amount.
+    // biome-ignore lint/plugin/noRawSql: Sequelize cannot bulk-update each row with a distinct value.
+    await frontSequelize.query(
+      `
+        UPDATE agent_message_consumption_items AS item
+        SET
+          "reconciledCreditAmountMicro" = allocation.reconciled_credit_amount_micro,
+          "updatedAt" = $updatedAt
+        FROM unnest(
+          $itemModelIds::bigint[],
+          $reconciledCreditAmountsMicro::bigint[]
+        ) AS allocation(item_model_id, reconciled_credit_amount_micro)
+        WHERE item.id = allocation.item_model_id
+          AND item."workspaceId" = $workspaceModelId
+      `,
+      {
+        bind: {
+          itemModelIds: changedAllocations.map(([item]) => item.id),
+          reconciledCreditAmountsMicro: changedAllocations.map(
+            ([, reconciledCreditAmountMicro]) => reconciledCreditAmountMicro
+          ),
+          // Raw SQL bypasses Sequelize timestamping, so set it explicitly.
+          updatedAt: new Date(),
+          workspaceModelId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+        type: QueryTypes.UPDATE,
+      }
+    );
   }
 
   static async listByAgentMessageModelIds(

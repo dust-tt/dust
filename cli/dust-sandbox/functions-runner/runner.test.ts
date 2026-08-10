@@ -28,6 +28,17 @@ describe("runner run", () => {
     expect(out.output).toEqual({ hello: "r" });
   });
 
+  test("creates function-authored files group-writable (umask 007)", async () => {
+    // A pod database a function opens directly must stay writable by group
+    // `agent`, or litestream can never replicate it.
+    const { stdout, code } = await run(
+      ["run", fx("file-mode-probe.ts")],
+      JSON.stringify({ url: "http://localhost/" })
+    );
+    expect(code).toBe(0);
+    expect(JSON.parse(stdout).output.mode).toBe(0o660);
+  });
+
   test("exits 1 with ok:false when handler throws", async () => {
     const { stdout, code } = await run(
       ["run", fx("throws.ts")],

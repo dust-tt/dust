@@ -61,6 +61,11 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
     // cost-effective floor so tier-capped users still resolve within the stream.
     [AUTO_MODEL_ID]: [
       {
+        providerId: "openai",
+        modelId: GPT_5_6_LUNA_MODEL_ID,
+        reasoningEffort: "high",
+      },
+      {
         providerId: "anthropic",
         modelId: CLAUDE_SONNET_4_6_MODEL_ID,
         reasoningEffort: "medium",
@@ -68,11 +73,6 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       {
         providerId: "openai",
         modelId: GPT_5_5_MODEL_ID,
-        reasoningEffort: "medium",
-      },
-      {
-        providerId: "openai",
-        modelId: GPT_5_6_LUNA_MODEL_ID,
         reasoningEffort: "medium",
       },
       {

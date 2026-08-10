@@ -24,16 +24,52 @@ const CONTENT_MESSAGE_SIZES = ["sm", "md", "lg"] as const;
 type ContentMessageSizeType = (typeof CONTENT_MESSAGE_SIZES)[number];
 
 const sharedVariantStyles = {
-  primary: "bg-stone-50 border-stone-150",
-  success: "bg-success-50 border-success-200",
-  warning: "bg-red-50 border-rose-100",
-  highlight: "bg-highlight-50 border-highlight-100",
-  info: "bg-orange-50 border-orange-100",
-  green: "bg-success-50 border-success-200",
-  blue: "bg-highlight-50 border-highlight-100",
-  rose: "bg-red-50 border-rose-100",
-  golden: "bg-orange-50 border-orange-100",
-  outline: "bg-transparent border-stone-150",
+  primary: cn(
+    "bg-stone-50 border-stone-150",
+    "dark:bg-stone-950 dark:border-stone-800"
+  ),
+  success: cn(
+    "bg-success-50 border-success-200",
+    "dark:bg-green-950 dark:border-green-900"
+  ),
+  warning: cn(
+    "bg-red-50 border-rose-100",
+    "dark:bg-red-950 dark:border-red-900"
+  ),
+  highlight: cn(
+    "bg-highlight-50 border-highlight-100",
+    "dark:bg-blue-950 dark:border-blue-900"
+  ),
+  info: cn(
+    "bg-orange-50 border-orange-100",
+    "dark:bg-golden-950 dark:border-golden-900"
+  ),
+  green: cn(
+    "bg-success-50 border-success-200",
+    "dark:bg-green-950 dark:border-green-900"
+  ),
+  blue: cn(
+    "bg-highlight-50 border-highlight-100",
+    "dark:bg-blue-950 dark:border-blue-900"
+  ),
+  rose: cn("bg-red-50 border-rose-100", "dark:bg-red-950 dark:border-red-900"),
+  golden: cn(
+    "bg-orange-50 border-orange-100",
+    "dark:bg-golden-950 dark:border-golden-900"
+  ),
+  outline: cn("bg-transparent border-stone-150", "dark:border-stone-750"),
+};
+
+const FOREGROUND_VARIANT_STYLES = {
+  primary: "text-stone-800 dark:text-stone-50",
+  warning: "text-red-800 dark:text-red-100",
+  success: "text-success-800 dark:text-green-100",
+  highlight: "text-highlight-800 dark:text-blue-100",
+  info: "text-orange-800 dark:text-golden-100",
+  green: "text-success-800 dark:text-green-100",
+  blue: "text-highlight-800 dark:text-blue-100",
+  rose: "text-red-800 dark:text-red-100",
+  golden: "text-orange-800 dark:text-golden-100",
 };
 
 const contentMessageVariants = cva("flex flex-col gap-3 border", {
@@ -66,15 +102,7 @@ const contentMessageInlineVariants = cva(
 const iconVariants = cva("shrink-0", {
   variants: {
     variant: {
-      primary: "text-stone-800",
-      warning: "text-red-800",
-      success: "text-success-800",
-      highlight: "text-highlight-800",
-      info: "text-orange-800",
-      green: "text-success-800",
-      blue: "text-highlight-800",
-      rose: "text-red-800",
-      golden: "text-orange-800",
+      ...FOREGROUND_VARIANT_STYLES,
       outline: "text-muted-foreground",
     },
   },
@@ -83,15 +111,7 @@ const iconVariants = cva("shrink-0", {
 const titleVariants = cva("", {
   variants: {
     variant: {
-      primary: "text-stone-800",
-      warning: "text-red-800",
-      success: "text-success-800",
-      highlight: "text-highlight-800",
-      info: "text-orange-800",
-      green: "text-success-800",
-      blue: "text-highlight-800",
-      rose: "text-red-800",
-      golden: "text-orange-800",
+      ...FOREGROUND_VARIANT_STYLES,
       outline: "text-foreground",
     },
   },
@@ -100,15 +120,7 @@ const titleVariants = cva("", {
 const textVariants = cva("", {
   variants: {
     variant: {
-      primary: "text-stone-800",
-      warning: "text-red-800",
-      success: "text-success-800",
-      highlight: "text-highlight-800",
-      info: "text-orange-800",
-      green: "text-success-800",
-      blue: "text-highlight-800",
-      rose: "text-red-800",
-      golden: "text-orange-800",
+      ...FOREGROUND_VARIANT_STYLES,
       outline: "text-muted-foreground",
     },
   },

@@ -10,7 +10,7 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import {
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
-  CLAUDE_OPUS_5_MODEL_ID,
+  CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import { MODEL_STREAMS } from "@app/types/assistant/models/auto";
@@ -163,7 +163,7 @@ describe("getModelForStream", () => {
   beforeEach(async () => {
     workspace = await WorkspaceFactory.basic();
     adminAuth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    await FeatureFlagFactory.basic(adminAuth, "models_picker");
+    await FeatureFlagFactory.basic(adminAuth, "claude_4_5_opus_feature");
   });
 
   async function userAuthForTierCap(tierName: "cost_efficient" | "balanced") {
@@ -182,10 +182,8 @@ describe("getModelForStream", () => {
 
     expect(resolved).not.toBeNull();
     // In a full workspace every candidate is available, so the first one wins.
-    expect(resolved?.model.modelId).toBe(
-      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
-    );
-    expect(resolved?.reasoningEffort).toBe("medium");
+    expect(resolved?.model.modelId).toBe(GPT_5_6_LUNA_MODEL_ID);
+    expect(resolved?.reasoningEffort).toBe("high");
   });
 
   it("routes the Fast stream to its first available candidate + effort", async () => {
@@ -201,7 +199,9 @@ describe("getModelForStream", () => {
     const resolved = await getModelForStream(adminAuth, "auto_complex");
 
     expect(resolved).not.toBeNull();
-    expect(resolved?.model.modelId).toBe(CLAUDE_OPUS_5_MODEL_ID);
+    expect(resolved?.model.modelId).toBe(
+      CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG.modelId
+    );
     expect(resolved?.reasoningEffort).toBe("high");
   });
 
@@ -215,9 +215,9 @@ describe("getModelForStream", () => {
 
     expect(resolved).not.toBeNull();
     expect(resolved?.model.modelId).toBe(
-      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
+      CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG.modelId
     );
-    expect(resolved?.reasoningEffort).toBe("light");
+    expect(resolved?.reasoningEffort).toBe("high");
   });
 
   it("only ever resolves to a candidate declared in the stream", async () => {

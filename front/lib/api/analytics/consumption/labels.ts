@@ -5,8 +5,10 @@ import { getUserDisplayName } from "@app/lib/api/assistant/observability/credit_
 import { resolveServerDisplayNames } from "@app/lib/api/assistant/observability/tool_usage";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**
@@ -16,6 +18,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
  * The expected mapping is:
  * - "agent": agent sIds
  * - "user": user sIds
+ * - "team": group sIds
  * - "model": raw model ids
  * - "tool": MCP server names
  * - "skill": skill sIds
@@ -70,6 +73,16 @@ export async function resolveDimensionLabels(
             },
           ];
         })
+      );
+    }
+
+    case "team": {
+      const groups = await GroupResource.listAllWorkspaceGroups(auth, {
+        groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
+      });
+      const namesById = new Map(groups.map((group) => [group.sId, group.name]));
+      return labelsFromNames(
+        new Map(keys.map((key) => [key, namesById.get(key) ?? key]))
       );
     }
 

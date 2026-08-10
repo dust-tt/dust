@@ -146,6 +146,7 @@ function getGlobalAgent({
   hasSandbox,
   globalAgentContext,
   excludeProviders,
+  preferAutoDefaultModel,
   preferGpt56LunaDefaultModel,
   preferSonnet5DefaultModel,
   featureFlags,
@@ -160,6 +161,7 @@ function getGlobalAgent({
   hasSandbox: boolean;
   globalAgentContext?: GlobalAgentContext;
   excludeProviders: ReadonlySet<ModelProviderIdType>;
+  preferAutoDefaultModel: boolean;
   preferGpt56LunaDefaultModel: boolean;
   preferSonnet5DefaultModel: boolean;
   featureFlags: WhitelistableFeature[];
@@ -381,6 +383,7 @@ function getGlobalAgent({
         featureFlags,
         globalAgentContext,
         excludeProviders,
+        preferAutoDefaultModel,
         preferGpt56LunaDefaultModel,
         preferSonnet5DefaultModel,
       });
@@ -1211,6 +1214,7 @@ export async function getGlobalAgents(
       hasSandbox: isComputerFeatureEnabled(flags),
       globalAgentContext: options?.globalAgentContext,
       excludeProviders,
+      preferAutoDefaultModel: flags.includes("models_picker"),
       preferGpt56LunaDefaultModel: flags.includes(
         "dust_agent_gpt_5_6_luna_default"
       ),

@@ -4,6 +4,7 @@ import { fetchConsumptionTopAgents } from "@app/lib/api/analytics/consumption/to
 import { fetchConsumptionTopModels } from "@app/lib/api/analytics/consumption/top_models";
 import { fetchConsumptionTopSkills } from "@app/lib/api/analytics/consumption/top_skills";
 import { fetchConsumptionTopSources } from "@app/lib/api/analytics/consumption/top_sources";
+import { fetchConsumptionTopTeams } from "@app/lib/api/analytics/consumption/top_teams";
 import { fetchConsumptionTopTools } from "@app/lib/api/analytics/consumption/top_tools";
 import { fetchConsumptionTopUsers } from "@app/lib/api/analytics/consumption/top_users";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
@@ -218,7 +219,7 @@ describe("consumption top rankings", () => {
     expect(options?.aggregations?.by_group?.aggs?.messages).toBeUndefined();
   });
 
-  it("ranks users and models per message on their own key", async () => {
+  it("ranks users, teams and models per message on their own key", async () => {
     const { auth } = await setup();
     mockAggs({
       buckets: [
@@ -251,6 +252,26 @@ describe("consumption top rankings", () => {
     });
     expect(lastSearchCall()[1]?.aggregations?.by_group?.terms).toMatchObject({
       field: "user.id",
+    });
+
+    mockLabels({ key1: "Engineering" });
+    const teams = await fetchConsumptionTopTeams(auth, {
+      period: PERIOD,
+      limit: 10,
+    });
+    expect(teams.isOk()).toBe(true);
+    if (!teams.isOk()) {
+      return;
+    }
+    expect(teams.value.teams[0]).toEqual({
+      teamId: "key1",
+      name: "Engineering",
+      credits: 2,
+      messageCount: 4,
+      avgCreditsPerMessage: 0.5,
+    });
+    expect(lastSearchCall()[1]?.aggregations?.by_group?.terms).toMatchObject({
+      field: "user.group_ids",
     });
 
     mockLabels({ key1: "Claude 4 Sonnet" });

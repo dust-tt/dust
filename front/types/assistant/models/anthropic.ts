@@ -415,6 +415,7 @@ export const CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
   customThinkingType: "auto",
   availableIfOneOf: {
+    creditPricedPlan: true,
     plansWithAdvancedModels: true,
     featureFlag: "claude_4_5_opus_feature",
   },

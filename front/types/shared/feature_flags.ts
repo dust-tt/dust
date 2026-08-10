@@ -69,7 +69,8 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "on_demand",
   },
   claude_4_5_opus_feature: {
-    description: "Access to Claude 4.5 Opus model in the agent builder",
+    description:
+      "Access to Claude Opus and GPT 5.6 Sol models in the agent builder",
     stage: "on_demand",
   },
   claude_fable_5_feature: {
@@ -209,16 +210,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   sandbox_functions: {
     description: "Enable Pod Function invocation endpoints",
-    stage: "dust_only",
-  },
-  sandbox_function_stdout_result: {
-    description:
-      "Return Pod function results through the worker dsbx stdout channel instead of the in-sandbox HTTP callback",
-    stage: "dust_only",
-  },
-  sandbox_function_fast_execution: {
-    description:
-      "Return Pod function results in the invocation response when the invocation settles before it returns",
     stage: "dust_only",
   },
   run_tools_from_prompt: {

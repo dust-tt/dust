@@ -1346,6 +1346,48 @@ describe("agent_sidekick_context tools", () => {
         expect(result.error.message).toContain("suggest_knowledge");
       }
     });
+
+    it("returns error when suggesting run_agent instead of using suggest_sub_agent", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      await MCPServerViewResource.ensureAllAutoToolsAreCreated(authenticator);
+
+      const runAgentView =
+        await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          authenticator,
+          "run_agent"
+        );
+      expect(runAgentView).not.toBeNull();
+
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_sidekick_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_tools");
+      const result = await tool.handler(
+        {
+          suggestions: [
+            {
+              action: "remove",
+              toolId: runAgentView!.sId,
+              analysis: "Removing a sub-agent",
+            },
+          ],
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("run_agent");
+        expect(result.error.message).toContain("suggest_sub_agent");
+      }
+    });
   });
 
   describe("suggest_knowledge", () => {

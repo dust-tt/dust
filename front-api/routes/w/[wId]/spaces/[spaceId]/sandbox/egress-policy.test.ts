@@ -4,7 +4,21 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockEmitAuditLogEvent } = vi.hoisted(() => ({
+  mockEmitAuditLogEvent: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/audit/workos_audit")>();
+
+  return {
+    ...actual,
+    emitAuditLogEvent: mockEmitAuditLogEvent,
+  };
+});
 
 async function setupTest({
   role = "admin",
@@ -83,6 +97,16 @@ describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
     expect(await getResponse.json()).toEqual({
       policy: { allowedDomains: ["api.github.com", "*.github.com"] },
     });
+
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "sandbox_egress_policy.updated",
+        metadata: expect.objectContaining({
+          allowed_domains: "api.github.com,*.github.com",
+          space_id: pod.sId,
+        }),
+      })
+    );
   });
 
   it("rejects invalid domain entries and writes nothing", async () => {

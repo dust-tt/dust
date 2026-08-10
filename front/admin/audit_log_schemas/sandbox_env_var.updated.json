@@ -4,6 +4,7 @@
   "metadata": {
     "name": "string",
     "kind": "string",
+    "space_id": "string",
     "allowed_domains": "string",
     "previously_existed": "string",
     "actor_type": "string"

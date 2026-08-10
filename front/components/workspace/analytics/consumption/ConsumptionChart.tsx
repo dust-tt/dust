@@ -1,5 +1,4 @@
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
-import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
@@ -30,6 +29,28 @@ import { CONSUMPTION_DIMENSION_CONFIG } from "./consumptionDimensions";
 
 // The bucket in progress (if mapped to today) is drawn faded across every series.
 const PARTIAL_BAR_OPACITY = "opacity-40";
+
+const CONSUMPTION_CHART_COLORS = [
+  "text-blue-900",
+  "text-blue-800",
+  "text-blue-700",
+  "text-blue-600",
+  "text-blue-500",
+  "text-blue-400",
+  "text-blue-300",
+  "text-blue-200",
+  "text-blue-100",
+  "text-blue-50",
+] as const;
+
+// Reserve the final color for the optional "Others" series.
+const CONSUMPTION_CHART_BREAKDOWN_COUNT = CONSUMPTION_CHART_COLORS.length - 1;
+
+function getConsumptionChartColor(index: number): string {
+  return CONSUMPTION_CHART_COLORS[
+    Math.min(index, CONSUMPTION_CHART_COLORS.length - 1)
+  ];
+}
 
 // Recharts hands the tooltip its datum as `unknown`; the points go into the
 // chart unchanged, so this narrows back to what the endpoint returned.
@@ -132,19 +153,19 @@ export function ConsumptionChart({
       period,
       mode: "daily",
       breakdownBy: dimension,
+      breakdownCount: CONSUMPTION_CHART_BREAKDOWN_COUNT,
       filter,
     });
 
   const groups = useMemo(() => timeseries?.groups ?? [], [timeseries]);
 
-  // Colors are assigned by rank, so the biggest consumer keeps its color as
-  // long as it stays on top. "Others" is special-cased by getIndexedColor.
+  // Colors are assigned darkest-to-lightest by rank, so the biggest consumer
+  // keeps the strongest color as long as it stays on top.
   const colorByGroupKey = useMemo(() => {
-    const names = groups.map((group) => group.name);
     return new Map(
-      groups.map((group) => [
+      groups.map((group, index) => [
         group.groupKey,
-        getIndexedColor(group.name, names),
+        getConsumptionChartColor(index),
       ])
     );
   }, [groups]);
