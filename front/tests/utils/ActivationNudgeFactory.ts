@@ -1,21 +1,18 @@
 import type { Authenticator } from "@app/lib/auth";
 import { ActivationNudgeModel } from "@app/lib/models/activation/activation_nudge";
 import { ActivationNudgeResource } from "@app/lib/resources/activation_nudge_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
-import type { TriggerResource } from "@app/lib/resources/trigger_resource";
+import type { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 
 export class ActivationNudgeFactory {
   static async create(
     auth: Authenticator,
     {
-      pod,
-      trigger,
+      activationPod,
       createdAt,
-    }: { pod: SpaceResource; trigger: TriggerResource; createdAt?: Date }
+    }: { activationPod: ActivationPodResource; createdAt?: Date }
   ): Promise<ActivationNudgeResource> {
     const nudge = await ActivationNudgeResource.makeNew(auth, {
-      pod,
-      trigger,
+      activationPod,
     });
 
     if (createdAt) {
