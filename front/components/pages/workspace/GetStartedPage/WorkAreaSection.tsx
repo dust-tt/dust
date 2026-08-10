@@ -1,3 +1,5 @@
+import { ActivationRunningBanner } from "@app/components/pages/workspace/GetStartedPage/ActivationRunningBanner";
+import { usePodConversations } from "@app/hooks/conversations";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { ActivationWorkAreaForUserType } from "@app/lib/api/activation/work_areas";
@@ -52,6 +54,14 @@ export function WorkAreaSection({
       podId: podId ?? undefined,
       disabled,
     });
+  const { conversations } = usePodConversations({
+    workspaceId: owner.sId,
+    podId,
+    options: { disabled },
+  });
+  const runningConversation =
+    conversations.find((conversation) => conversation.isRunningAgentLoop) ??
+    null;
 
   const { updateWorkArea } = useUpdateActivationWorkArea({
     workspaceId: owner.sId,
@@ -122,23 +132,33 @@ export function WorkAreaSection({
           </div>
         ) : !hasContent ? (
           <div className="py-4">
-            <p className="text-sm leading-5 tracking-tight text-muted-foreground">
-              No work areas yet. Help Dust learn what you own so it can suggest
-              relevant ideas.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {WORK_AREA_ACTIONS.map((action) => (
-                <Button
-                  key={action.label}
-                  variant="outline"
-                  size="sm"
-                  isRounded
-                  label={action.label}
-                  disabled={isCreating}
-                  onClick={() => void startConversation(action.message)}
-                />
-              ))}
-            </div>
+            {runningConversation ? (
+              <ActivationRunningBanner
+                owner={owner}
+                runningConversation={runningConversation}
+                message="An agent is actively learning about your work."
+              />
+            ) : (
+              <>
+                <p className="text-sm leading-5 tracking-tight text-muted-foreground">
+                  No work areas yet. Help Dust learn what you own so it can
+                  suggest relevant ideas.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {WORK_AREA_ACTIONS.map((action) => (
+                    <Button
+                      key={action.label}
+                      variant="outline"
+                      size="sm"
+                      isRounded
+                      label={action.label}
+                      disabled={isCreating}
+                      onClick={() => void startConversation(action.message)}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <>

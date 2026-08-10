@@ -1,9 +1,11 @@
 import { AssistantLayout } from "@app/components/assistant/AssistantLayout";
+import { ActivationRunningBanner } from "@app/components/pages/workspace/GetStartedPage/ActivationRunningBanner";
 import { JustAskComposer } from "@app/components/pages/workspace/GetStartedPage/JustAskComposer";
 import { PreviouslyDoneRow } from "@app/components/pages/workspace/GetStartedPage/PreviouslyDoneRow";
 import { RecentConversations } from "@app/components/pages/workspace/GetStartedPage/RecentConversations";
 import { RecommendationItem } from "@app/components/pages/workspace/GetStartedPage/RecommendationItem";
 import { WorkAreaSection } from "@app/components/pages/workspace/GetStartedPage/WorkAreaSection";
+import { usePodConversations } from "@app/hooks/conversations";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
@@ -62,6 +64,14 @@ export function GetStartedPage() {
       podId: activationPodId ?? undefined,
       disabled: isActivationPodLoading,
     });
+  const { conversations } = usePodConversations({
+    workspaceId: owner.sId,
+    podId: activationPodId,
+    options: { disabled: isActivationPodLoading },
+  });
+  const runningConversation =
+    conversations.find((conversation) => conversation.isRunningAgentLoop) ??
+    null;
 
   // `undefined` = untouched (default to first open, per the design); `null` =
   // user explicitly collapsed everything; string = a specific item is open.
@@ -181,19 +191,29 @@ export function GetStartedPage() {
                 <div className="divide-y divide-border">
                   {recommendations.length === 0 ? (
                     <div className="py-4">
-                      <p className="text-sm text-muted-foreground">
-                        No ideas yet. Let Dust suggest things to try.
-                      </p>
-                      <div className="mt-4">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          isRounded
-                          label="Generate a new idea for me"
-                          disabled={isGeneratingIdea}
-                          onClick={() => void generateIdea()}
+                      {runningConversation ? (
+                        <ActivationRunningBanner
+                          owner={owner}
+                          runningConversation={runningConversation}
+                          message="An agent is actively looking for ideas for you."
                         />
-                      </div>
+                      ) : (
+                        <>
+                          <p className="text-sm text-muted-foreground">
+                            No ideas yet. Let Dust suggest things to try.
+                          </p>
+                          <div className="mt-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              isRounded
+                              label="Generate a new idea for me"
+                              disabled={isGeneratingIdea}
+                              onClick={() => void generateIdea()}
+                            />
+                          </div>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <>

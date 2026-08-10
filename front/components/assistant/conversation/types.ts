@@ -176,6 +176,22 @@ export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
   );
 };
 
+// Messages that MessageItem renders as `null`, i.e. zero-height rows in the
+// Virtuoso list. Wakeup messages are in HIDDEN_MESSAGE_ORIGINS but do render
+// (as WakeUpMessage), so they are excluded.
+//
+// Zero-height rows must never be used as the list's initial scroll target:
+// VirtuosoMessageList bootstraps its size measurement by rendering the target
+// item alone with a seeded size of 0, and only proceeds once the measured size
+// differs from the seed. A zero-height target therefore deadlocks the list in
+// its loading placeholder.
+export const isZeroHeightMessage = (message: VirtuosoMessage): boolean => {
+  return (
+    isHiddenMessage(message) &&
+    !(isUserMessage(message) && message.context.origin === "wakeup")
+  );
+};
+
 export const isCompactionMessage = (
   msg: VirtuosoMessage
 ): msg is CompactionMessageType => msg.type === "compaction_message";

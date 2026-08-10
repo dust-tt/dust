@@ -20,6 +20,7 @@ import { truncate } from "@app/types/shared/utils/string_utils";
 import type { PodListItemType } from "@app/types/space";
 import moment from "moment";
 import type { VirtuosoMessage } from "./types";
+import { isZeroHeightMessage } from "./types";
 
 const MAX_SOURCE_CONVERSATION_TITLE_LENGTH = 50;
 const UNNAMED_PARENT_CONVERSATION_TITLE = "Unnamed parent conversation";
@@ -243,6 +244,11 @@ export function findFirstUnreadMessageIndex(
   lastReadMs: number
 ): number {
   return messages.findIndex((m) => {
+    // Zero-height rows deadlock VirtuosoMessageList when used as the initial
+    // scroll target. Scroll to the first unread message that actually renders instead.
+    if (isZeroHeightMessage(m)) {
+      return false;
+    }
     if (m.created > lastReadMs) {
       return true;
     }
