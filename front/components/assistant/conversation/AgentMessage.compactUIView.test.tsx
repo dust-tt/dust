@@ -216,42 +216,44 @@ function renderAgentMessage({
   );
 }
 
-describe("AgentMessage bottom citations", () => {
-  it("hides the bottom citation list for Activation Pod conversations but keeps inline citations", () => {
-    const { container } = renderAgentMessage({
-      isActivationPodConversation: true,
+describe("AgentMessage compact UI view", () => {
+  describe("bottom citations", () => {
+    it("hides the bottom citation list for Activation Pod conversations but keeps inline citations", () => {
+      const { container } = renderAgentMessage({
+        isActivationPodConversation: true,
+      });
+
+      expect(
+        screen.queryByTestId("bottom-attachment-citation")
+      ).not.toBeInTheDocument();
+      expect(
+        container.querySelector('a[href="https://example.com/doc"]')
+      ).toHaveTextContent("1");
     });
 
-    expect(
-      screen.queryByTestId("bottom-attachment-citation")
-    ).not.toBeInTheDocument();
-    expect(
-      container.querySelector('a[href="https://example.com/doc"]')
-    ).toHaveTextContent("1");
-  });
+    it("keeps the bottom citation list for non-Activation-Pod conversations", () => {
+      const { container } = renderAgentMessage({
+        isActivationPodConversation: false,
+      });
 
-  it("keeps the bottom citation list for non-Activation-Pod conversations", () => {
-    const { container } = renderAgentMessage({
-      isActivationPodConversation: false,
+      expect(
+        screen.getByTestId("bottom-attachment-citation")
+      ).toHaveTextContent("Example Source");
+      expect(
+        container.querySelector('a[href="https://example.com/doc"]')
+      ).toHaveTextContent("1");
     });
 
-    expect(screen.getByTestId("bottom-attachment-citation")).toHaveTextContent(
-      "Example Source"
-    );
-    expect(
-      container.querySelector('a[href="https://example.com/doc"]')
-    ).toHaveTextContent("1");
-  });
+    it("renders no bottom citation container for an Activation Pod conversation with no citations", () => {
+      const { container } = renderAgentMessage({
+        isActivationPodConversation: true,
+        agentMessageOverrides: { content: "No sources here.", citations: {} },
+      });
 
-  it("renders no bottom citation container for an Activation Pod conversation with no citations", () => {
-    const { container } = renderAgentMessage({
-      isActivationPodConversation: true,
-      agentMessageOverrides: { content: "No sources here.", citations: {} },
+      expect(
+        screen.queryByTestId("bottom-attachment-citation")
+      ).not.toBeInTheDocument();
+      expect(container.querySelectorAll('[class*="min-w-60"]').length).toBe(0);
     });
-
-    expect(
-      screen.queryByTestId("bottom-attachment-citation")
-    ).not.toBeInTheDocument();
-    expect(container.querySelectorAll('[class*="min-w-60"]').length).toBe(0);
   });
 });
