@@ -17,6 +17,7 @@ import { default as clariCopilotServer } from "@app/lib/api/actions/servers/clar
 import { default as commonUtilitiesServer } from "@app/lib/api/actions/servers/common_utilities";
 import { default as confluenceServer } from "@app/lib/api/actions/servers/confluence";
 import { default as conversationFilesServer } from "@app/lib/api/actions/servers/conversation_files";
+import { default as conversationSidePanelServer } from "@app/lib/api/actions/servers/conversation_side_panel";
 import { default as dataSourcesFileSystemServer } from "@app/lib/api/actions/servers/data_sources_file_system";
 import { default as dataWarehousesServer } from "@app/lib/api/actions/servers/data_warehouses";
 import { default as databricksServer } from "@app/lib/api/actions/servers/databricks";
@@ -198,6 +199,8 @@ export async function getInternalMCPServer(
       return dataSourcesFileSystemServer(auth, toolContext);
     case "conversation_files":
       return conversationFilesServer(auth, toolContext);
+    case "conversation_side_panel":
+      return conversationSidePanelServer(auth, toolContext);
     case "files":
       return filesServer(auth, toolContext);
     case "databricks":

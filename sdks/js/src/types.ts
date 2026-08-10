@@ -1382,6 +1382,12 @@ const NotificationTextContentSchema = z.object({
   text: z.string(),
 });
 
+const NotificationSidePanelControlSchema = z.object({
+  type: z.literal("side_panel_control"),
+  panel: z.enum(["files"]),
+  action: z.enum(["open", "close"]),
+});
+
 const NotificationToolApproveBubbleUpContentSchema = z.object({
   type: z.literal("tool_approval_bubble_up"),
   configurationId: z.string(),
@@ -1429,6 +1435,7 @@ const NotificationContentSchema = z.union([
   NotificationRunAgentContentSchema,
   NotificationStoreResourceContentSchema,
   NotificationTextContentSchema,
+  NotificationSidePanelControlSchema,
   NotificationToolApproveBubbleUpContentSchema,
 ]);
 
