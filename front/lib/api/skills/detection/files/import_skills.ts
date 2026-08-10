@@ -75,7 +75,8 @@ export async function importSkillsFromFiles(
     onConflict?: ImportConflictStrategyType;
   }
 ): Promise<Result<ImportSkillsResult, Error>> {
-  if (!(await auth.hasWorkspacePermission("create", "skill"))) {
+  const canCreateSkills = await auth.hasWorkspacePermission("create", "skill");
+  if (!canCreateSkills) {
     return new Err(new Error("Creating skills is restricted."));
   }
 
@@ -159,13 +160,16 @@ export async function importSkillsFromFiles(
       createsSkillWithAvailabilityChange ||
       existingSkillsWithAvailabilityChange.length > 0;
 
-    if (
-      availabilityChanged &&
-      !(await auth.hasWorkspacePermission("publish", "skill"))
-    ) {
-      return new Err(
-        new Error("You don't have permission to change skill availability.")
+    if (availabilityChanged) {
+      const canPublishSkills = await auth.hasWorkspacePermission(
+        "publish",
+        "skill"
       );
+      if (!canPublishSkills) {
+        return new Err(
+          new Error("You don't have permission to change skill availability.")
+        );
+      }
     }
 
     const involvesAutoDiscoverable =
@@ -173,16 +177,18 @@ export async function importSkillsFromFiles(
       existingSkillsWithAvailabilityChange.some(
         (skill) => skill.availability === "users_and_agents"
       );
-    if (
-      availabilityChanged &&
-      involvesAutoDiscoverable &&
-      !(await auth.hasWorkspacePermission("make_discoverable", "skill"))
-    ) {
-      return new Err(
-        new Error(
-          "You don't have permission to change a skill's auto-discoverable status."
-        )
+    if (availabilityChanged && involvesAutoDiscoverable) {
+      const canMakeSkillsDiscoverable = await auth.hasWorkspacePermission(
+        "make_discoverable",
+        "skill"
       );
+      if (!canMakeSkillsDiscoverable) {
+        return new Err(
+          new Error(
+            "You don't have permission to change a skill's auto-discoverable status."
+          )
+        );
+      }
     }
   }
 
