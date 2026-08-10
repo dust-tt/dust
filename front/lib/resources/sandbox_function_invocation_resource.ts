@@ -738,10 +738,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       );
       // Persist from the envelope even on non-zero exit: dsbx may still have
       // written a well-formed invocation_failed envelope the worker should keep.
-      const { outcome: normalized, timings } = parseStdoutResultEnvelope(
-        stdout,
-        { stderr }
-      );
+      const { outcome: normalized, timings } =
+        parseStdoutResultEnvelope(stdout);
       recordSandboxFunctionRun({
         runnerKind: timings?.runnerKind ?? "unknown",
         status: normalized.ok ? "success" : "error",

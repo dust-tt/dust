@@ -63,41 +63,4 @@ describe("parseStdoutResultEnvelope", () => {
       timings: null,
     });
   });
-
-  it("folds stderr into the error when stdout carried no envelope", () => {
-    expect(parseStdoutResultEnvelope("", { stderr: "  boom  " })).toMatchObject(
-      {
-        outcome: {
-          ok: false,
-          error: {
-            code: "invocation_failed",
-            message: "Pod function produced no stdout result envelope.\nboom",
-          },
-        },
-      }
-    );
-    expect(
-      parseStdoutResultEnvelope("not-json", { stderr: "boom" })
-    ).toMatchObject({
-      outcome: {
-        ok: false,
-        error: {
-          code: "invocation_failed",
-          message: "Pod function stdout was not valid JSON.\nboom",
-        },
-      },
-    });
-  });
-
-  it("leaves the message alone when stderr is empty", () => {
-    expect(parseStdoutResultEnvelope("", { stderr: "   " })).toMatchObject({
-      outcome: {
-        ok: false,
-        error: {
-          code: "invocation_failed",
-          message: "Pod function produced no stdout result envelope.",
-        },
-      },
-    });
-  });
 });

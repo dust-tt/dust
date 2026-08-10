@@ -970,12 +970,9 @@ describe("SandboxFunctionInvocationResource", () => {
       { sandboxFunction, invocationId: invocation.sId }
     );
     expect(refetched?.status).toBe("errored");
-    // The runner's stderr is the only clue left, so it rides along in the error the agent sees.
     expect(refetched?.error).toEqual({
       code: "invocation_failed",
-      message:
-        "Pod function produced no stdout result envelope.\n" +
-        "dsbx command failed: connection refused",
+      message: "Pod function produced no stdout result envelope.",
     });
   });
 
