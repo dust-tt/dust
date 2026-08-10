@@ -177,15 +177,24 @@ function SubscriptionPastDueBanner() {
     <StatusBanner
       variant="warning"
       title="Your payment has failed!"
-      description="Update your payment method in the Admin section to maintain access to your workspace. We retry for 3 attempts, after which the workspace is downgraded to the free plan."
-      footer={
-        <LinkWrapper
-          href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
-          target="_blank"
-          className="underline"
-        >
-          Learn more
-        </LinkWrapper>
+      description={
+        <>
+          <br />
+          Please make sure to update your payment method in the Admin section to
+          maintain access to your workspace. We will retry in a few days.
+          <br />
+          <br />
+          After 3 attempts, your workspace will be downgraded to the free plan.
+          Connections will be deleted and members will be revoked. Details{" "}
+          <LinkWrapper
+            href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
+            target="_blank"
+            className="underline"
+          >
+            here
+          </LinkWrapper>
+          .
+        </>
       }
     />
   );
