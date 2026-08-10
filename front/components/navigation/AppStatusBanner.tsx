@@ -19,19 +19,28 @@ import { cn, LinkWrapper } from "@dust-tt/sparkle";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
 
-const statusBannerVariants = cva("space-y-2 border-y px-3 py-3 text-xs", {
-  variants: {
-    variant: {
-      info: cn("border-info-200", "bg-info-100", "text-info-900"),
-      warning: cn("border-warning-200", "bg-warning-100", "text-warning-900"),
-      success: cn("border-success-200", "bg-success-100", "text-success-900"),
-      danger: cn("border-red-200", "bg-red-100", "text-red-900"),
+// The banners span the full width of the app shell (see `TopBanners`), so they
+// lay out as a single row: title, then description, then the optional footer
+// pinned to the trailing edge. They stack vertically on narrow viewports.
+const statusBannerVariants = cva(
+  cn(
+    "flex flex-col gap-x-2 gap-y-1 border-b px-4 py-1.5 text-sm",
+    "sm:flex-row sm:items-baseline"
+  ),
+  {
+    variants: {
+      variant: {
+        info: cn("border-info-200", "bg-info-100", "text-info-900"),
+        warning: cn("border-warning-200", "bg-warning-100", "text-warning-900"),
+        success: cn("border-success-200", "bg-success-100", "text-success-900"),
+        danger: cn("border-red-200", "bg-red-100", "text-red-900"),
+      },
     },
-  },
-  defaultVariants: {
-    variant: "info",
-  },
-});
+    defaultVariants: {
+      variant: "info",
+    },
+  }
+);
 
 interface StatusBannerProps extends VariantProps<typeof statusBannerVariants> {
   title: string;
@@ -47,9 +56,9 @@ function StatusBanner({
 }: StatusBannerProps) {
   return (
     <div className={statusBannerVariants({ variant })}>
-      <div className="font-bold">{title}</div>
-      <div className="font-normal">{description}</div>
-      {footer && <div>{footer}</div>}
+      <div className="shrink-0 font-semibold">{title}</div>
+      <div className="min-w-0 grow font-normal line-clamp-2">{description}</div>
+      {footer && <div className="shrink-0 font-normal">{footer}</div>}
     </div>
   );
 }
@@ -164,24 +173,15 @@ function SubscriptionPastDueBanner() {
     <StatusBanner
       variant="warning"
       title="Your payment has failed!"
-      description={
-        <>
-          <br />
-          Please make sure to update your payment method in the Admin section to
-          maintain access to your workspace. We will retry in a few days.
-          <br />
-          <br />
-          After 3 attempts, your workspace will be downgraded to the free plan.
-          Connections will be deleted and members will be revoked. Details{" "}
-          <LinkWrapper
-            href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
-            target="_blank"
-            className="underline"
-          >
-            here
-          </LinkWrapper>
-          .
-        </>
+      description="Update your payment method in the Admin section to maintain access to your workspace. We retry for 3 attempts, after which the workspace is downgraded to the free plan."
+      footer={
+        <LinkWrapper
+          href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
+          target="_blank"
+          className="underline"
+        >
+          Learn more
+        </LinkWrapper>
       }
     />
   );
@@ -310,7 +310,7 @@ function WorkspaceUsageStatusBanner({
   return <StatusBanner {...banner} />;
 }
 
-export function SidebarBanners() {
+export function StatusBanners() {
   const { workspace: owner, subscription } = useAuth();
   const { appStatus } = useAppStatus();
 

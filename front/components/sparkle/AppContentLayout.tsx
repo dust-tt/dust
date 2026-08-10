@@ -2,7 +2,7 @@ import { CommandPalette } from "@app/components/command_palette/CommandPalette";
 import { DEV_MODE_ACTIVE } from "@app/components/dev/devModeConstants";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { Navigation } from "@app/components/navigation/Navigation";
-import { SubscriptionEndBanner } from "@app/components/navigation/TrialBanner";
+import { TopBanners } from "@app/components/navigation/TopBanners";
 import { useAppLayout } from "@app/components/sparkle/AppLayoutContext";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
@@ -13,7 +13,6 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { MOBILE_DOCUMENT_SCROLL_CLASSES } from "@app/lib/documentScrollLayoutClasses";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
-import { isAdmin } from "@app/types/user";
 import { cn } from "@dust-tt/sparkle";
 import type React from "react";
 import { lazy, Suspense } from "react";
@@ -102,11 +101,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
         isMobile ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentRoot : "h-dvh"
       )}
     >
-      <SubscriptionEndBanner
-        isAdmin={isAdmin(owner)}
-        owner={owner}
-        subscription={subscription}
-      />
+      <TopBanners owner={owner} subscription={subscription} />
       <div
         className={cn(
           "flex flex-row",

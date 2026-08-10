@@ -6,7 +6,7 @@ import { useAppRouter } from "@app/lib/platform";
 import type { SubscriptionType } from "@app/types/plan";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { Button, cn } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 
 const SUBSCRIPTION_BANNER_DISPLAY_THRESHOLD_DAYS = 30;
 const THRESHOLD_MS =
@@ -39,22 +39,6 @@ export function SubscriptionEndBanner({
   const ctaHref = isCreditPricedPlan(subscription.plan)
     ? `/w/${owner.sId}/billing`
     : `/w/${owner.sId}/subscription`;
-
-  const bannerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const node = bannerRef.current;
-    if (node) {
-      document.documentElement.style.setProperty(
-        "--banner-height",
-        `${node.offsetHeight}px`
-      );
-    }
-
-    return () => {
-      document.documentElement.style.setProperty("--banner-height", "0px");
-    };
-  }, []);
 
   // Capture initial timestamp in a ref to avoid re-computation on re-renders.
   // This is intentionally not reactive - the banner state is stable for the session.
@@ -113,10 +97,9 @@ export function SubscriptionEndBanner({
 
   return (
     <div
-      ref={bannerRef}
       className={cn(
-        "flex items-center justify-between gap-4 px-4 py-1",
-        "bg-sky-50"
+        "flex items-center justify-between gap-4 border-b px-4 py-1",
+        "border-sky-100 bg-sky-50"
       )}
     >
       <div className="text-sm flex gap-2">
