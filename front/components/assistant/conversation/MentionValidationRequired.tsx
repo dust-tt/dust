@@ -156,15 +156,6 @@ export function MentionValidationRequired({
     (status === "pending_conversation_access" ||
       status === "pending_project_membership");
 
-  const memoryWarning = showMemoryWarning ? (
-    <span className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
-      <InfoCircle className="h-4 w-4 shrink-0" />
-      <span>
-        The content of your personal memory may be disclosed to invited users.
-      </span>
-    </span>
-  ) : null;
-
   let approveLabel: string;
   switch (status) {
     case "agent_restricted_by_space_usage":
@@ -195,7 +186,15 @@ export function MentionValidationRequired({
         description={
           <>
             {description}
-            {memoryWarning}
+            {showMemoryWarning && (
+              <span className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+                <InfoCircle className="h-4 w-4 shrink-0" />
+                <span>
+                  The content of your personal memory may be disclosed to
+                  invited users.
+                </span>
+              </span>
+            )}
           </>
         }
         actions={
