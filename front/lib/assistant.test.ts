@@ -447,11 +447,11 @@ type WorkspaceAccessCase = {
   expected: WorkspaceAccessExpectations;
 };
 
-const MODEL_ACCESS_CATEGORIES: Array<{
+const MODEL_ACCESS_CATEGORIES: {
   id: ModelAccessCategory;
   name: string;
   model: ModelConfigurationType;
-}> = [
+}[] = [
   {
     id: "standardNonLarge",
     name: "standard non-large model",
