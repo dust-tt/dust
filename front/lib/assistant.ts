@@ -27,7 +27,7 @@ function isOnCreditPricedPlan(plan: PlanType | null): boolean {
   return plan !== null && isCreditPricedPlanPrefix(plan.code);
 }
 
-function meetsAnyModelAvailabilityCondition(
+function hasModelAccessThroughEntitlement(
   m: ModelConfigurationType,
   {
     featureFlags,
@@ -67,7 +67,7 @@ export function isModelAvailable(
   const hasModelsPickerOverride =
     featureFlags.includes("models_picker") && isAdvancedModel(m);
   const hasCreditPricedPlan = isOnCreditPricedPlan(plan);
-  const meetsAvailabilityCondition = meetsAnyModelAvailabilityCondition(m, {
+  const hasAccessThroughEntitlement = hasModelAccessThroughEntitlement(m, {
     featureFlags,
     plan,
   });
@@ -75,7 +75,7 @@ export function isModelAvailable(
   if (
     m.largeModel &&
     !hasCreditPricedPlan &&
-    !meetsAvailabilityCondition &&
+    !hasAccessThroughEntitlement &&
     !hasModelsPickerOverride
   ) {
     return false;
@@ -93,7 +93,7 @@ export function isModelAvailable(
     return true;
   }
 
-  return meetsAvailabilityCondition || hasModelsPickerOverride;
+  return hasAccessThroughEntitlement || hasModelsPickerOverride;
 }
 
 // Returns true if the model is enabled for the workspace.
