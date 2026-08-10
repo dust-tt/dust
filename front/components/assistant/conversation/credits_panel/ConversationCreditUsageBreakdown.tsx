@@ -14,10 +14,6 @@ import type { ComponentType } from "react";
 
 const MAX_VISIBLE_TOOLS = 3;
 
-function formatCreditValue(credits: number): string {
-  return `${formatCredits(credits)} credits`;
-}
-
 function toolUsageLabel(callCount: number): string {
   return `${callCount} tool ${callCount === 1 ? "use" : "uses"}`;
 }
