@@ -1281,6 +1281,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     // Workload execs only, not execRoot: root commands are lifecycle plumbing — the pre-sleep
     // flush itself runs root commands, which would otherwise trip the very guard that consults
     // these counters.
+    //
+    // The start is awaited — that ordering IS the guarantee: a start still in flight when the
+    // sleep flow reads would let the pause proceed against a live exec.
     await recordSandboxExecStart(this.sId);
     try {
       const result = await provider.exec(
@@ -1300,7 +1303,11 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
       return result;
     } finally {
-      await recordSandboxExecEnd(this.sId);
+      // The end is not awaited: it only ever lowers the in-flight count, so a late (or lost)
+      // record makes the guard over-report, which costs one reaper cycle and never a lost write.
+      // Keeping it off the return path spares every workload exec a Redis round trip.
+      // recordSandboxExecEnd swallows its own errors, so this can never reject.
+      void recordSandboxExecEnd(this.sId);
     }
   }
 

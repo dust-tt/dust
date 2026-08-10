@@ -68,6 +68,11 @@ export async function recordSandboxExecStart(sandboxId: string): Promise<void> {
   }
 }
 
+/**
+ * Same best-effort contract as the start, and callers need not await it: this only ever lowers
+ * the in-flight count, so arriving late (or not at all) can only make the guard conservative.
+ * Records commute, so an end landing after an unrelated exec's start is harmless.
+ */
 export async function recordSandboxExecEnd(sandboxId: string): Promise<void> {
   try {
     await runOnRedis({ origin: REDIS_ORIGIN }, (client) =>
