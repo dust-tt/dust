@@ -377,6 +377,17 @@ async function createToolsSuggestions({
     );
   }
 
+  const runAgentTools = tools.filter(
+    (t) => t.toJSON()?.server.name === "run_agent"
+  );
+  if (runAgentTools.length > 0) {
+    const runAgentToolNames = runAgentTools.map((t) => t.sId).join(", ");
+    return new Err(
+      `The following ID(s) are run_agent tools: ${runAgentToolNames}. ` +
+        `Use \`suggest_sub_agent\` instead of \`suggest_tools\` to add or remove a specific sub-agent.`
+    );
+  }
+
   // Fetch pending suggestions and mark duplicates (same toolId) as outdated.
   const pendingSuggestions =
     await AgentSuggestionResource.listByAgentConfigurationId(
