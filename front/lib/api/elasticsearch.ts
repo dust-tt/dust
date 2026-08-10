@@ -45,9 +45,10 @@ export class ElasticsearchError extends Error {
   constructor(
     type: ElasticSearchErrorType,
     message: string,
-    statusCode?: number
+    statusCode?: number,
+    options?: ErrorOptions
   ) {
-    super(message);
+    super(message, options);
     this.name = "ElasticsearchError";
     this.type = type;
     this.statusCode = statusCode;
@@ -78,15 +79,22 @@ function toElasticsearchError(err: unknown): ElasticsearchError {
   if (err instanceof esErrors.ResponseError) {
     const statusCode = err.statusCode ?? undefined;
     const reason = extractErrorReason(err);
-    return new ElasticsearchError("query_error", reason, statusCode);
+    return new ElasticsearchError("query_error", reason, statusCode, {
+      cause: err,
+    });
   }
   if (err instanceof esErrors.ConnectionError) {
     return new ElasticsearchError(
       "connection_error",
-      "Failed to connect to Elasticsearch"
+      "Failed to connect to Elasticsearch",
+      undefined,
+      { cause: err }
     );
   }
-  return new ElasticsearchError("unknown_error", normalizeError(err).message);
+  const error = normalizeError(err);
+  return new ElasticsearchError("unknown_error", error.message, undefined, {
+    cause: error,
+  });
 }
 
 export async function withEs<T>(

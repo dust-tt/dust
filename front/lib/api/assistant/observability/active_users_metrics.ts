@@ -127,7 +127,17 @@ export async function fetchActiveUsersMetrics(
   });
 
   if (result.isErr()) {
-    return new Err(new Error(result.error.message));
+    const status =
+      result.error.statusCode !== undefined
+        ? `, HTTP ${result.error.statusCode}`
+        : "";
+
+    return new Err(
+      new Error(
+        `Elasticsearch query failed (${result.error.type}${status}): ${result.error.message}`,
+        { cause: result.error }
+      )
+    );
   }
 
   const dayBuckets = bucketsToArray<DayBucket>(
