@@ -1,10 +1,15 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { AgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
+import { useConversationMessageAction } from "@app/hooks/conversations";
+import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
+import { isInteractiveContentFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
-  isInteractiveContentFileContentOutput,
-  isSidePanelControlOutput,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+  CONVERSATION_SIDE_PANEL_SERVER_NAME,
+  SET_FILES_SIDE_PANEL_TOOL_NAME,
+} from "@app/lib/api/actions/servers/conversation_side_panel/metadata";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import { FILES_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
 import { isInteractiveContentType } from "@app/types/files";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -13,6 +18,52 @@ import React from "react";
 interface UseAutoOpenSidePanelProps {
   isLastMessage: boolean;
   agentMessage: AgentMessageWithStreaming;
+}
+
+function isSetFilesSidePanelAction(
+  action: Pick<AgentMCPActionWithOutputType, "internalMCPServerName"> & {
+    toolName: string | null;
+  }
+): boolean {
+  return (
+    action.internalMCPServerName === CONVERSATION_SIDE_PANEL_SERVER_NAME &&
+    action.toolName === SET_FILES_SIDE_PANEL_TOOL_NAME
+  );
+}
+
+function getFilesSidePanelVisibility(
+  actions: readonly AgentMCPActionWithOutputType[]
+): boolean | undefined {
+  let latestAction: AgentMCPActionWithOutputType | undefined;
+
+  for (const action of actions) {
+    if (
+      isSetFilesSidePanelAction(action) &&
+      action.status === "succeeded" &&
+      typeof action.params.visible === "boolean" &&
+      (!latestAction || action.updatedAt > latestAction.updatedAt)
+    ) {
+      latestAction = action;
+    }
+  }
+
+  return typeof latestAction?.params.visible === "boolean"
+    ? latestAction.params.visible
+    : undefined;
+}
+
+function getLatestFilesSidePanelActionId(
+  agentMessage: AgentMessageWithStreaming
+): string | null {
+  let actionId: string | null = null;
+
+  for (const step of agentMessage.activitySteps) {
+    if (step.type === "action" && isSetFilesSidePanelAction(step)) {
+      actionId = step.actionId;
+    }
+  }
+
+  return actionId;
 }
 
 /**
@@ -31,6 +82,8 @@ export function useAutoOpenSidePanel({
 }: UseAutoOpenSidePanelProps) {
   const { openPanel, closePanel, currentPanel } =
     useConversationSidePanelContext();
+  const { workspace } = useAuth();
+  const conversationId = useActiveConversationId();
   const isMobile = useIsMobile();
 
   // Track the last opened fileId to prevent double-opening glitch.
@@ -50,7 +103,6 @@ export function useAutoOpenSidePanel({
 
   // Track which message sId last triggered file-panel auto-open to open only once per message.
   const autoOpenedFilesForRef = React.useRef<string | null>(null);
-  const handledFilesSidePanelControlRef = React.useRef<number | null>(null);
 
   const interactiveFilesFromProgress = React.useMemo(
     () =>
@@ -68,24 +120,6 @@ export function useAutoOpenSidePanel({
     [agentMessage.streaming.actionProgress]
   );
 
-  const latestFilesSidePanelControl = React.useMemo(() => {
-    let latestControl:
-      | {
-          actionId: number;
-          action: "open" | "close";
-        }
-      | undefined;
-
-    for (const [actionId, progress] of agentMessage.streaming.actionProgress) {
-      const output = progress.progress?._meta.data.output;
-      if (isSidePanelControlOutput(output) && output.panel === "files") {
-        latestControl = { actionId, action: output.action };
-      }
-    }
-
-    return latestControl;
-  }, [agentMessage.streaming.actionProgress]);
-
   const completedInteractiveFiles = React.useMemo(
     () =>
       agentMessage.generatedFiles.filter((file) =>
@@ -102,6 +136,22 @@ export function useAutoOpenSidePanel({
     [agentMessage.generatedFiles]
   );
 
+  const filesSidePanelVisibilityFromActions = getFilesSidePanelVisibility(
+    agentMessage.actions
+  );
+  const filesSidePanelActionId = getLatestFilesSidePanelActionId(agentMessage);
+  const { action: filesSidePanelAction } = useConversationMessageAction({
+    conversationId: conversationId ?? "",
+    workspaceId: workspace.sId,
+    messageId: agentMessage.sId,
+    actionId: conversationId ? filesSidePanelActionId : null,
+  });
+  const filesSidePanelVisibility =
+    filesSidePanelVisibilityFromActions ??
+    getFilesSidePanelVisibility(
+      filesSidePanelAction ? [filesSidePanelAction] : []
+    );
+
   // Reset interactive tracking when the message changes.
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   React.useEffect(() => {
@@ -112,22 +162,6 @@ export function useAutoOpenSidePanel({
   React.useEffect(() => {
     if (isMobile) {
       return;
-    }
-
-    if (
-      latestFilesSidePanelControl &&
-      handledFilesSidePanelControlRef.current !==
-        latestFilesSidePanelControl.actionId
-    ) {
-      if (latestFilesSidePanelControl.action === "open") {
-        handledFilesSidePanelControlRef.current =
-          latestFilesSidePanelControl.actionId;
-        openPanel({ type: FILES_SIDE_PANEL_TYPE });
-      } else if (currentPanel === FILES_SIDE_PANEL_TYPE) {
-        handledFilesSidePanelControlRef.current =
-          latestFilesSidePanelControl.actionId;
-        closePanel();
-      }
     }
 
     // Priority 1: interactive content drawer (covers streaming and completed states).
@@ -156,7 +190,15 @@ export function useAutoOpenSidePanel({
       return;
     }
 
-    if (latestFilesSidePanelControl?.action === "close") {
+    if (isLastMessage && filesSidePanelVisibility === false) {
+      if (currentPanel === FILES_SIDE_PANEL_TYPE) {
+        closePanel();
+      }
+      return;
+    }
+
+    if (isLastMessage && filesSidePanelVisibility === true) {
+      openPanel({ type: FILES_SIDE_PANEL_TYPE });
       return;
     }
 
@@ -176,9 +218,9 @@ export function useAutoOpenSidePanel({
     completedInteractiveFiles,
     interactiveFilesFromProgress,
     regularGeneratedFiles,
+    filesSidePanelVisibility,
     isLastMessage,
     agentMessage.sId,
-    latestFilesSidePanelControl,
     openPanel,
     closePanel,
     currentPanel,
