@@ -1,4 +1,3 @@
-import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { ButtonVariantType } from "@dust-tt/sparkle";
 import { Button, Star01, StarFilled } from "@dust-tt/sparkle";
 import type { MouseEvent } from "react";
@@ -7,7 +6,6 @@ import { useState } from "react";
 type SkillFavoriteButtonProps = {
   isFavorite: boolean;
   onFavoriteChange: (isFavorite: boolean) => Promise<void>;
-  skill: SkillWithoutInstructionsAndToolsType;
   size?: "icon" | "icon-xs";
   variant?: ButtonVariantType;
 };
@@ -15,7 +13,6 @@ type SkillFavoriteButtonProps = {
 export function SkillFavoriteButton({
   isFavorite,
   onFavoriteChange,
-  skill,
   size = "icon",
   variant = "ghost-secondary",
 }: SkillFavoriteButtonProps) {
@@ -39,7 +36,7 @@ export function SkillFavoriteButton({
       icon={isFavorite ? StarFilled : Star01}
       isLoading={isUpdating}
       aria-pressed={isFavorite}
-      tooltip={`${nextIsFavorite ? "Favorite" : "Unfavorite"} ${skill.name}`}
+      tooltip={nextIsFavorite ? "Add to favorites" : "Remove from favorites"}
       onClick={handleClick}
     />
   );
