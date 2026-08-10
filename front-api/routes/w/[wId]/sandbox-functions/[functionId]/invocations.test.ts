@@ -437,7 +437,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
     expect(body.outcome).toBeUndefined();
   });
 
-  it("returns no outcome when the invocation outlives the wait", async () => {
+  it("returns no outcome when the stream ends without settling", async () => {
     const { workspace, sandboxFunction } = await setupSandboxFunction();
 
     const response = await postInvocation({
