@@ -21,6 +21,19 @@ import { BadInputError, parseInput, type RequestInput } from "./protocol.ts";
 import { getFunctionSchema } from "./schema.ts";
 import { serve } from "./serve.ts";
 
+// Everything this process creates — including files the function body creates
+// itself — must stay group-writable. The shared sandbox directories are setgid
+// with a `g::rwx` default ACL (`/pod-state/databases`, `/files`), but a default
+// ACL only masks the mode a process asks for; it cannot add bits the umask
+// stripped. With the inherited 022/027 umask, a SQLite database a function
+// opens directly lands at 0644/0640 owned by `agent-proxied:agent`, and
+// litestream (user `dust-state`, group `agent`) can then read but never write
+// it — every replication sync fails with SQLITE_READONLY, forever. `dsbx db
+// reconcile` already chmods 0660 for exactly this reason; the umask extends the
+// same guarantee to files it did not create. 007 keeps `other` empty: group
+// `agent` is the sandbox's own trust boundary, everyone else stays out.
+process.umask(0o007);
+
 async function runHandler(handlerPath: string): Promise<number> {
   const raw = await Bun.stdin.text();
   let input: RequestInput;
