@@ -45,34 +45,24 @@ function hasModelAccess(
   }
 
   const { availableIfOneOf, largeModel } = modelConfiguration;
-  // Unless we have a model-specific override, the rule is that upgraded plans have access to all large models.
-  if (!availableIfOneOf) {
-    return !largeModel || isUpgraded(plan);
+
+  // If we have a model-specific override rule, we honor it.
+  if (availableIfOneOf) {
+    const { creditPricedPlan, plansWithAdvancedModels, featureFlag } =
+      availableIfOneOf;
+
+    return (
+      (creditPricedPlan === true &&
+        plan !== null &&
+        isCreditPricedPlanPrefix(plan.code)) ||
+      (plansWithAdvancedModels === true &&
+        plan?.hasAdvancedModelAccess === true) ||
+      (featureFlag !== undefined && featureFlags.includes(featureFlag))
+    );
   }
 
-  const { creditPricedPlan, plansWithAdvancedModels, featureFlag } =
-    availableIfOneOf;
-
-  const hasConfiguredAccess =
-    (creditPricedPlan === true &&
-      plan !== null &&
-      isCreditPricedPlanPrefix(plan.code)) ||
-    (plansWithAdvancedModels === true &&
-      plan?.hasAdvancedModelAccess === true) ||
-    (featureFlag !== undefined && featureFlags.includes(featureFlag));
-
-  if (!hasConfiguredAccess) {
-    return false;
-  }
-
-  // A credit-priced-plan condition makes the configured alternatives the
-  // complete large-model access rule. Other large models retain the legacy
-  // upgraded-plan prerequisite.
-  return (
-    !modelConfiguration.largeModel ||
-    isUpgraded(plan) ||
-    creditPricedPlan === true
-  );
+  // Default rule: all plans have access to non-large models, and upgraded plans have access to large models.
+  return !largeModel || isUpgraded(plan);
 }
 
 // Returns true if the model is available to the workspace for build.
