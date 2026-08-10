@@ -187,16 +187,30 @@ const getTableColumns = ({
     {
       header: "Model",
       accessorKey: "model",
-      cell: (info: CellContext<RowData, string>) => (
-        <DataTable.CellContent
-          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
-          icon={info.row.original.modelIcon}
-        >
-          {info.getValue() || "-"}
-        </DataTable.CellContent>
-      ),
+      cell: (info: CellContext<RowData, string>) => {
+        const modelName = info.getValue() || "-";
+        const modelIcon = info.row.original.modelIcon;
+
+        return (
+          <Tooltip
+            tooltipTriggerAsChild
+            label={modelName}
+            trigger={
+              <DataTable.CellContent
+                className="justify-center @xl:justify-start"
+                disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
+                icon={modelIcon}
+                iconClassName="mr-0 @xl:mr-2"
+              >
+                <span className="hidden @xl:inline">{modelName}</span>
+                {!modelIcon && <span className="@xl:hidden">-</span>}
+              </DataTable.CellContent>
+            }
+          />
+        );
+      },
       meta: {
-        className: "hidden @sm:w-48 @sm:table-cell",
+        className: "hidden @sm:w-20 @sm:table-cell @xl:w-48",
       },
     },
     {
