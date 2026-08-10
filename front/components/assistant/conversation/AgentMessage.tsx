@@ -1581,7 +1581,7 @@ function getFrameCitations({
       <FileCitationCard
         key={fileId}
         icon={ActionFrame}
-        title="Frame"
+        title={file.title}
         tooltipLabel={file.title}
         size="sm"
         onClick={() => openPanel({ type: "interactive_content", fileId })}

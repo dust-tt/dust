@@ -397,8 +397,7 @@ describe("AgentMessage compact UI view", () => {
       expect(cards).toHaveLength(1);
 
       const [card] = cards;
-      expect(card).toHaveTextContent("Frame");
-      expect(card).not.toHaveTextContent(frameFile.title);
+      expect(card).toHaveTextContent(frameFile.title);
       expect(card).toHaveAttribute("aria-label", frameFile.title);
       expect(within(card).getByTestId("frame-icon")).toBeInTheDocument();
 
