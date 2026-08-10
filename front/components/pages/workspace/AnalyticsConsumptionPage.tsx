@@ -3,6 +3,12 @@ import { ConsumptionOverview } from "@app/components/workspace/analytics/consump
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { DEFAULT_CONSUMPTION_DIMENSION } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
+import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
+import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
+import {
+  USAGE_FILTER_MOCK_GROUPS,
+  USAGE_FILTER_MOCK_OPTIONS,
+} from "@app/components/workspace/analytics/usageFilterMockData";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -37,6 +43,7 @@ export function AnalyticsConsumptionPage() {
   const [dimension, setDimension] = useState<ConsumptionDimension>(
     DEFAULT_CONSUMPTION_DIMENSION
   );
+  const [filter, setFilter] = useState<UsageFilter>({});
 
   if (!isEnabled) {
     return (
@@ -75,13 +82,24 @@ export function AnalyticsConsumptionPage() {
       />
       <div className="flex flex-col gap-8 pb-8">
         <ConsumptionOverview workspaceId={owner.sId} period={period} />
-        <SafeSuspense fallback={<ChartFallback />}>
-          <ConsumptionChart
-            workspaceId={owner.sId}
-            period={period}
-            dimension={dimension}
-          />
-        </SafeSuspense>
+        <div className="flex flex-col gap-2">
+          <div className="flex justify-end">
+            <UsageFilterPanel
+              owner={owner}
+              categoryOptions={USAGE_FILTER_MOCK_OPTIONS}
+              groups={USAGE_FILTER_MOCK_GROUPS}
+              filter={filter}
+              onFilterChange={setFilter}
+            />
+          </div>
+          <SafeSuspense fallback={<ChartFallback />}>
+            <ConsumptionChart
+              workspaceId={owner.sId}
+              period={period}
+              dimension={dimension}
+            />
+          </SafeSuspense>
+        </div>
         <ConsumptionAttributionTable
           workspaceId={owner.sId}
           period={period}
