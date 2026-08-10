@@ -58,7 +58,7 @@ import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/out
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { formatCredits } from "@app/lib/client/credits";
+import { formatCredits, formatCreditValue } from "@app/lib/client/credits";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
@@ -103,7 +103,6 @@ import {
   Chip,
   Clipboard,
   ClipboardCheck,
-  CoinsStacked01,
   ConversationMessageAvatar,
   ConversationMessageContainer,
   ConversationMessageContent,
@@ -121,6 +120,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
   RefreshCw02,
+  StarCircle,
   Stop,
   Tooltip,
   Trash01,
@@ -872,9 +872,9 @@ export function AgentMessage({
           variant="ghost-secondary"
           size="xs"
           label={formattedCredits}
-          iconRight={CoinsStacked01}
+          iconRight={StarCircle}
           className="gap-1 px-1 tracking-normal"
-          aria-label={`${formattedCredits} credits used for this message. View credit breakdown`}
+          aria-label={`${formatCreditValue(agentMessage.costCredits)} used for this message. View credit breakdown`}
         />
       );
 
@@ -893,11 +893,11 @@ export function AgentMessage({
           <span
             key="message-credit-cost"
             role="status"
-            aria-label={`${formattedCredits} credits used for this message`}
+            aria-label={`${formatCreditValue(agentMessage.costCredits)} used for this message`}
             className="inline-flex h-6 items-center gap-1 rounded-lg px-1 text-sm font-medium leading-5 text-muted-foreground"
           >
             {formattedCredits}
-            <CoinsStacked01 className="h-4 w-4" />
+            <StarCircle className="h-4 w-4" />
           </span>
         )
       );

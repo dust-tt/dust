@@ -2,7 +2,7 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { ConversationCreditUsageBreakdown } from "@app/components/assistant/conversation/credits_panel/ConversationCreditUsageBreakdown";
 import { useConversationConsumption } from "@app/hooks/conversations/useConversationConsumption";
-import { formatCredits } from "@app/lib/client/credits";
+import { formatCreditValue } from "@app/lib/client/credits";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
@@ -57,7 +57,7 @@ export function ConversationCreditUsagePanel({
             <div className="flex items-baseline justify-between gap-4">
               <span className="text-sm text-muted-foreground">Total used</span>
               <span className="text-lg font-semibold text-foreground">
-                {formatCredits(consumption.billedCredits)} credits
+                {formatCreditValue(consumption.billedCredits)}
               </span>
             </div>
             <p className="text-sm text-muted-foreground">

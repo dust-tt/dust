@@ -1,11 +1,16 @@
 import type { MaxAwuCreditsTimeframeType } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 
 // Format a number of AWU credits for display (thousands separators, at most
 // one decimal). Shared across the credits usage table and the message /
 // conversation cost menu entries.
 export function formatCredits(credits: number): string {
   return credits.toLocaleString("en-US", { maximumFractionDigits: 1 });
+}
+
+export function formatCreditValue(credits: number): string {
+  return `${formatCredits(credits)} credit${pluralize(credits)}`;
 }
 
 // Short recurring-period label for a fair-use timeframe (e.g. "per day").
