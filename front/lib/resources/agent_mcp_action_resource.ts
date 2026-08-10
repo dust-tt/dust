@@ -1558,7 +1558,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         )
       : [this];
 
-    await AgentMCPActionModel.update(
+    await this.model.update(
       { status: "ready_allowed_explicitly" },
       {
         where: {
