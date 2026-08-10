@@ -7,7 +7,7 @@ import {
 } from "@app/hooks/useSkillSuggestions";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { Lightbulb04, ScrollArea, Spinner } from "@dust-tt/sparkle";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
 interface SkillBuilderSuggestionsPanelProps {
@@ -25,6 +25,10 @@ export function SkillBuilderSuggestionsPanel({
     acceptInstructionEdits,
   } = useSkillBuilderContext();
   const { getValues, setValue } = useFormContext<SkillBuilderFormData>();
+  const [pendingAction, setPendingAction] = useState<{
+    suggestionId: string;
+    action: "accept" | "decline";
+  } | null>(null);
 
   const getSkillInstructionsHtml = useCallback(
     () => getValues("instructionsHtml") ?? "",
@@ -63,16 +67,21 @@ export function SkillBuilderSuggestionsPanel({
 
   const handleAccept = useCallback(
     async (suggestion: SkillSuggestionType) => {
-      if (disabled) {
+      if (disabled || pendingAction) {
         return;
       }
 
-      const result = await patchSuggestions([suggestion.sId], "approved");
-      if (result) {
-        acceptInstructionEdits?.(suggestion.sId);
-        applyAgentFacingDescriptionEdit(suggestion);
-        setSelectedSuggestionId(null);
-        await mutateSuggestions();
+      setPendingAction({ suggestionId: suggestion.sId, action: "accept" });
+      try {
+        const result = await patchSuggestions([suggestion.sId], "approved");
+        if (result) {
+          acceptInstructionEdits?.(suggestion.sId);
+          applyAgentFacingDescriptionEdit(suggestion);
+          setSelectedSuggestionId(null);
+          await mutateSuggestions();
+        }
+      } finally {
+        setPendingAction(null);
       }
     },
     [
@@ -82,22 +91,34 @@ export function SkillBuilderSuggestionsPanel({
       applyAgentFacingDescriptionEdit,
       setSelectedSuggestionId,
       disabled,
+      pendingAction,
     ]
   );
 
   const handleDecline = useCallback(
     async (suggestion: SkillSuggestionType) => {
-      if (disabled) {
+      if (disabled || pendingAction) {
         return;
       }
 
-      const result = await patchSuggestions([suggestion.sId], "rejected");
-      if (result) {
-        setSelectedSuggestionId(null);
-        await mutateSuggestions();
+      setPendingAction({ suggestionId: suggestion.sId, action: "decline" });
+      try {
+        const result = await patchSuggestions([suggestion.sId], "rejected");
+        if (result) {
+          setSelectedSuggestionId(null);
+          await mutateSuggestions();
+        }
+      } finally {
+        setPendingAction(null);
       }
     },
-    [patchSuggestions, mutateSuggestions, setSelectedSuggestionId, disabled]
+    [
+      patchSuggestions,
+      mutateSuggestions,
+      setSelectedSuggestionId,
+      disabled,
+      pendingAction,
+    ]
   );
 
   const handleSelect = useCallback(
@@ -148,7 +169,15 @@ export function SkillBuilderSuggestionsPanel({
                 isSelected={selectedSuggestionId === suggestion.sId}
                 onSelect={() => handleSelect(suggestion.sId)}
                 workspaceId={owner.sId}
-                disabled={disabled}
+                disabled={disabled || pendingAction !== null}
+                isAccepting={
+                  pendingAction?.suggestionId === suggestion.sId &&
+                  pendingAction.action === "accept"
+                }
+                isDeclining={
+                  pendingAction?.suggestionId === suggestion.sId &&
+                  pendingAction.action === "decline"
+                }
               />
             ))
           )}
