@@ -133,12 +133,15 @@ export async function resolveAuthentication(
   const isSandboxChildAction = isSandboxChildActionInfo(sandboxChildActionInfo);
 
   let resolvedActions: AgentMCPActionResource[];
+  let blockedActionsForAgentMessage: AgentMCPActionResource[] | null = null;
   if (
     kind === "authentication" &&
     outcome === "completed" &&
     !isSandboxChildAction
   ) {
-    resolvedActions = await action.markMatchingAuthenticationActionsReady(auth);
+    const result = await action.markMatchingAuthenticationActionsReady(auth);
+    resolvedActions = result.resolvedActions;
+    blockedActionsForAgentMessage = result.blockedActions;
   } else {
     const [updatedCount] = await action.updateStatusFromExpected(auth, {
       status: outcome === "completed" ? "ready_allowed_explicitly" : "denied",
@@ -195,13 +198,18 @@ export async function resolveAuthentication(
     return new Ok(undefined);
   }
 
-  const blockedActions =
-    await AgentMCPActionResource.listBlockedActionsForConversation(
-      auth,
-      conversation
-    );
+  const blockedActions = blockedActionsForAgentMessage
+    ? blockedActionsForAgentMessage.filter(
+        (blockedAction) => !resolvedActionIds.has(blockedAction.sId)
+      )
+    : (
+        await AgentMCPActionResource.listBlockedActionsForConversation(
+          auth,
+          conversation
+        )
+      ).filter((blockedAction) => blockedAction.messageId === messageId);
 
-  if (blockedActions.some((a) => a.messageId === messageId)) {
+  if (blockedActions.length > 0) {
     logger.info(
       { blockedActions },
       "Skipping agent loop launch because there are remaining blocked actions"

@@ -1540,34 +1540,36 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
    * authentication can unblock parallel calls to any of its tools. Sandbox-child actions are
    * excluded because each one must thaw and relaunch its own parent bash.
    */
-  async markMatchingAuthenticationActionsReady(
-    auth: Authenticator
-  ): Promise<AgentMCPActionResource[]> {
+  async markMatchingAuthenticationActionsReady(auth: Authenticator): Promise<{
+    blockedActions: AgentMCPActionResource[];
+    resolvedActions: AgentMCPActionResource[];
+  }> {
     const { mcpServerId } = this.metadata;
-    const blockedActions = mcpServerId
-      ? await AgentMCPActionResource.listBlockedActionsForAgentMessage(auth, {
-          agentMessageId: this.agentMessageId,
-        })
+    const blockedActions =
+      await AgentMCPActionResource.listBlockedActionsForAgentMessage(auth, {
+        agentMessageId: this.agentMessageId,
+      });
+    const resolvedActions = mcpServerId
+      ? blockedActions.filter(
+          (action) =>
+            action.status === "blocked_authentication_required" &&
+            action.metadata.mcpServerId === mcpServerId &&
+            !isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)
+        )
       : [this];
-    const matchingActions = blockedActions.filter(
-      (action) =>
-        action.status === "blocked_authentication_required" &&
-        action.metadata.mcpServerId === mcpServerId &&
-        !isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)
-    );
 
     await AgentMCPActionModel.update(
       { status: "ready_allowed_explicitly" },
       {
         where: {
-          id: { [Op.in]: matchingActions.map((action) => action.id) },
+          id: { [Op.in]: resolvedActions.map((action) => action.id) },
           workspaceId: auth.getNonNullableWorkspace().id,
           status: "blocked_authentication_required",
         },
       }
     );
 
-    return matchingActions;
+    return { blockedActions, resolvedActions };
   }
 
   /**
