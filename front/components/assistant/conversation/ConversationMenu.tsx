@@ -68,7 +68,7 @@ import {
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ReactElement } from "react";
-import { useCallback, useContext, useState } from "react";
+import { useCallback, useContext, useRef, useState } from "react";
 
 /**
  * Hook for handling right-click context menu with timing protection
@@ -87,6 +87,7 @@ export function useConversationMenu() {
   const [menuTriggerPosition, setMenuTriggerPosition] = useState<
     { x: number; y: number } | undefined
   >();
+  const ignoreNextContextMenuRef = useRef(false);
 
   const handleMenuPhaseChange = useCallback((phase: MenuPhase) => {
     setMenuPhase(phase);
@@ -100,8 +101,11 @@ export function useConversationMenu() {
       e.preventDefault();
       e.stopPropagation();
 
+      const shouldIgnore = ignoreNextContextMenuRef.current;
+      ignoreNextContextMenuRef.current = false;
+
       // Prevent the menu from reopening while its closing animation is running.
-      if (menuPhase !== "closed") {
+      if (shouldIgnore || menuPhase !== "closed") {
         return;
       }
 
@@ -112,11 +116,27 @@ export function useConversationMenu() {
     [menuPhase]
   );
 
+  const handleRightPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLElement>) => {
+      const isContextMenuGesture =
+        e.button === 2 || (e.button === 0 && e.ctrlKey);
+      const target = e.target;
+
+      ignoreNextContextMenuRef.current =
+        isContextMenuGesture &&
+        target instanceof Node &&
+        e.currentTarget.contains(target) &&
+        menuPhase !== "closed";
+    },
+    [menuPhase]
+  );
+
   return {
     isMenuOpen: menuPhase === "open",
     isMenuOpenOrClosing: menuPhase !== "closed",
     menuTriggerPosition,
     handleRightClick,
+    handleRightPointerDown,
     handleMenuPhaseChange,
   };
 }

@@ -1553,6 +1553,7 @@ const ConversationListItem = memo(
       isMenuOpenOrClosing,
       menuTriggerPosition,
       handleRightClick,
+      handleRightPointerDown,
       handleMenuPhaseChange,
     } = useConversationMenu();
 
@@ -1651,6 +1652,7 @@ const ConversationListItem = memo(
             triggerPosition={menuTriggerPosition}
           />
         }
+        onPointerDownCapture={handleRightPointerDown}
         onContextMenu={handleRightClick}
         onClick={async () => {
           // Side bar is the floating sidebar that appears when the screen is small.

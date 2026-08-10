@@ -54,6 +54,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     isMenuOpenOrClosing,
     menuTriggerPosition,
     handleRightClick,
+    handleRightPointerDown,
     handleMenuPhaseChange,
   } = useConversationMenu();
 
@@ -129,6 +130,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     <AppLayoutTitle>
       <div
         className="grid h-full min-w-0 max-w-full grid-cols-[1fr_auto] items-center gap-3"
+        onPointerDownCapture={handleRightPointerDown}
         onContextMenu={handleRightClick}
       >
         <div
