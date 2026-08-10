@@ -143,7 +143,7 @@ export function ProviderSelection({
         const errorText = await response.text();
         datadogLogger.error(
           {
-            status: response.status,
+            statusCode: response.status,
             error: errorText,
             workspaceId: owner.sId,
           },

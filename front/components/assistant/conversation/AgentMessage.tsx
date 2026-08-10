@@ -532,7 +532,7 @@ export function AgentMessage({
         {
           messageId: agentMessage.sId,
           conversationId,
-          status: agentMessage.status,
+          messageStatus: agentMessage.status,
         },
         "handleCopyToClipboard: message content is null"
       );
