@@ -83,24 +83,42 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
         .max(255)
         .optional()
         .describe(
-          "Optional icon identifier for the source of this recommendation. " +
-            "Two namespaces are accepted. " +
-            "ConnectorProvider — use when the recommendation is driven by a specific " +
-            "data source: 'slack', 'github', 'notion', 'google_drive', 'confluence', " +
-            "'microsoft_teams', 'intercom', 'salesforce', 'hubspot'. " +
-            "Sparkle icon name — use for Dust-native features: 'Brain' (agents/AI), " +
-            "'Zap' (triggers/automation), 'PuzzlePiece01' (skills), " +
-            "'ActionFrame' (frames), 'Dataflow01' (workflows), " +
-            "'Database01' (knowledge bases). " +
-            "Omit if no specific source applies."
+          "Icon for the evidence behind this recommendation. Always pass with " +
+            "sourceLabel. Pick the single best match for the actual evidence — do not " +
+            "default to the same icon every time. " +
+            "ConnectorProvider ids (use when a connected source is the signal): " +
+            "'slack', 'github', 'notion', 'google_drive', 'confluence', " +
+            "'microsoft', 'intercom', 'salesforce', 'gong', 'zendesk'. " +
+            "Sparkle icons (use for non-connector evidence): " +
+            "'Users01' (teammate / peer usage), " +
+            "'MessageCircle01' (a conversation or thread), " +
+            "'Calendar' (upcoming or recurring meetings), " +
+            "'Mail01' (inbox / email), " +
+            "'SearchLg' (recent work or research), " +
+            "'Target01' (a work priority or goal), " +
+            "'BarChart01' (usage or activity pattern), " +
+            "'Lightbulb01' (a tailored suggestion), " +
+            "'Brain' (personal AI / agent usage), " +
+            "'PuzzlePiece01' (skill adoption), " +
+            "'Zap' (automation / triggers), " +
+            "'ActionFrame' (a Frame as the evidence), " +
+            "'Dataflow01' (a workflow), " +
+            "'Database01' (a knowledge base)."
         ),
       sourceLabel: z
         .string()
         .max(40)
         .optional()
         .describe(
-          "Optional short label shown alongside the source icon (e.g. 'Slack', 'GitHub'). " +
-            "Can be set independently of sourceIcon."
+          "Short standalone line explaining why this recommendation is relevant to " +
+            "this user right now. Shown without context that it is a 'source' field, " +
+            "so it must make sense alone. Always pass with sourceIcon. Invent the line " +
+            "from the actual evidence; prefer what the evidence means for them over " +
+            "attribution to a Dust artifact. Style examples (adapt to the real " +
+            "evidence, do not reuse verbatim): 'From your #design Slack channel', " +
+            "'Matches your recent work', 'Because your teammates are using the \"Release notes\" skill', " +
+            "'Build on your pilot work'. Never use only a bare product/source name " +
+            "or only the recommended Skill/agent/Frame name."
         ),
     },
     stake: "never_ask",
