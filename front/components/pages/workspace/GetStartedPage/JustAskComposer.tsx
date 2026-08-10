@@ -52,6 +52,7 @@ export function JustAskComposer({
           mentions: mentions.map(toMentionType),
           contentFragments,
           selectedMCPServerViewIds,
+          selectedSpaceIds,
           richMentions: mentions,
           modelSelection,
         },

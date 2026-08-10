@@ -294,13 +294,13 @@ The action card and the recommendation record carry the same core content — se
 
 # Step 6 — Execute on accept
 
+The first thing that happens when the user accepts is that you call \'update_recommendation\' with \`status: "executed"\` to update the recommendation record.
+
 Once the user accepts, execute the current rung for real:
 - Read \`session_plan.md\`, then execute the current Plan rung for the open recommendation.
 - Use only that rung's preparation to inform the execution.
 - Ask at most one clarifying question, only when it is a genuinely blocking human gate; otherwise use sensible defaults and let the user correct the output.
 - Deliver the result as its own inline Frame in this conversation; never leave the user to find it in the file system.
-- Call \`update_recommendation\` with \`status: "executed"\` once the run completes. This is what clears the recommendation from the
-user's Get Started page, so only call it when the work has actually run.
 
 ## When a required source is missing user authentication
 
