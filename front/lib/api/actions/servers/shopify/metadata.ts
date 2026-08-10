@@ -46,9 +46,9 @@ export const SHOPIFY_TOOLS_METADATA = [
         .boolean()
         .optional()
         .describe(
-          "Rank customers by lifetime amount spent, highest first (default: true). Exact for up to 1000 customers; use minAmountSpent to narrow beyond that."
+          "Rank customers by lifetime amount spent, highest first (default: true). Exact for up to 1000 customers; use minAmountSpentDollars to narrow beyond that."
         ),
-      minAmountSpent: z
+      minAmountSpentDollars: z
         .number()
         .nonnegative()
         .optional()
