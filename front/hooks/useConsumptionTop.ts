@@ -1,3 +1,4 @@
+import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { consumptionQueryString } from "@app/lib/analytics/consumption_period";
 import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/consumption/top_agents";
@@ -11,33 +12,20 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
-/**
- * One ranking of the period's consumption, along one dimension.
- *
- * Each dimension has its own endpoint because their averages are denominated
- * differently — per message for the ones that consume whole messages, per
- * invocation for tools and skills — and their rows differ with them. This hook
- * flattens all six into the one shape a ranking table needs.
- */
-
-export const CONSUMPTION_TOP_ENDPOINTS = {
+const CONSUMPTION_TOP_ENDPOINTS = {
   agent: "top-agents",
   user: "top-users",
   model: "top-models",
   tool: "top-tools",
   skill: "top-skills",
   source: "top-sources",
-} as const;
-
-export type ConsumptionTopDimension = keyof typeof CONSUMPTION_TOP_ENDPOINTS;
+} as const satisfies Record<ConsumptionDimension, string>;
 
 export type ConsumptionTopRow = {
   id: string;
   name: string;
-  // Only agents and users have one.
   pictureUrl: string | null;
   credits: number;
-  // Per message, or per invocation, depending on the dimension.
   avgCredits: number;
 };
 
@@ -119,7 +107,7 @@ export function useConsumptionTop({
   disabled,
 }: {
   workspaceId: string;
-  dimension: ConsumptionTopDimension;
+  dimension: ConsumptionDimension;
   period: ConsumptionPeriodSelection;
   limit: number;
   disabled?: boolean;
