@@ -3621,6 +3621,15 @@
                       "format": "email"
                     },
                     "description": "Optional editor email addresses to add to imported or updated skills. Editors must be active workspace builders. Existing skills keep their current editors."
+                  },
+                  "availability": {
+                    "type": "string",
+                    "enum": [
+                      "editors",
+                      "workspace_users",
+                      "users_and_agents"
+                    ],
+                    "description": "Optional availability to apply to imported or updated skills. editors is unpublished, workspace_users is published, and users_and_agents is discoverable. New skills default to editors and existing skills keep their current availability when omitted."
                   }
                 }
               }

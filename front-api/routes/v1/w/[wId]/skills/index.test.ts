@@ -14,6 +14,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import { honoApp } from "@front-api/app";
 import AdmZip from "adm-zip";
 import type formidable from "formidable";
@@ -309,6 +310,102 @@ describe("GET /api/v1/w/[wId]/skills", () => {
 });
 
 describe("POST /api/v1/w/[wId]/skills", () => {
+  it("sets availability when creating and updating imported skills", async () => {
+    const { auth, workspace } = await createPublicApiMockRequest();
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await SpaceFactory.defaults(adminAuth);
+    for (const grantType of [
+      "create",
+      "publish",
+      "make_discoverable",
+    ] as const) {
+      await GroupPermissionResource.setForEverybody(adminAuth, {
+        grantType,
+        resourceType: "skill",
+      });
+    }
+
+    const importWithAvailability = async ({
+      availability,
+      instructions,
+    }: {
+      availability: SkillAvailability;
+      instructions: string;
+    }) => {
+      const result = await importSkillsFromFiles(auth, {
+        uploadedFiles: [
+          await makeSkillZipFile({
+            name: "Imported Skill with Availability",
+            instructions,
+          }),
+        ],
+        availability,
+        source: "api",
+        onConflict: "error",
+      });
+      if (result.isErr()) {
+        throw result.error;
+      }
+      return result.value;
+    };
+
+    const published = await importWithAvailability({
+      availability: "workspace_users",
+      instructions: "Published version.",
+    });
+    expect(published.imported[0]?.availability).toBe("workspace_users");
+
+    const discoverable = await importWithAvailability({
+      availability: "users_and_agents",
+      instructions: "Discoverable version.",
+    });
+    expect(discoverable.updated[0]?.availability).toBe("users_and_agents");
+
+    const unpublished = await importWithAvailability({
+      availability: "editors",
+      instructions: "Unpublished version.",
+    });
+    expect(unpublished.updated[0]?.availability).toBe("editors");
+  });
+
+  it("rejects discoverable imports without the make-discoverable permission", async () => {
+    const { auth, workspace } = await createPublicApiMockRequest();
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await SpaceFactory.defaults(adminAuth);
+    for (const grantType of ["create", "publish"] as const) {
+      await GroupPermissionResource.setForEverybody(adminAuth, {
+        grantType,
+        resourceType: "skill",
+      });
+    }
+
+    const result = await importSkillsFromFiles(auth, {
+      uploadedFiles: [
+        await makeSkillZipFile({
+          name: "Unauthorized Discoverable Skill",
+          instructions: "Should not be imported.",
+        }),
+      ],
+      availability: "users_and_agents",
+      source: "api",
+      onConflict: "error",
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe(
+        "You don't have permission to change a skill's auto-discoverable status."
+      );
+    }
+    expect(
+      await SkillResource.fetchByName(auth, "Unauthorized Discoverable Skill")
+    ).toBeNull();
+  });
+
   it("adds provided editors to new and existing imported skills", async () => {
     const { auth, workspace } = await createPublicApiMockRequest();
     const adminAuth = await Authenticator.internalAdminForWorkspace(
@@ -377,6 +474,7 @@ describe("POST /api/v1/w/[wId]/skills", () => {
     if (!updatedSkill) {
       throw new Error("Expected imported skill to be found.");
     }
+    expect(updatedSkill.availability).toBe("editors");
     const updatedEditors = await updatedSkill.listEditors(auth);
     expect(updatedEditors?.map((editor) => editor.email).sort()).toEqual(
       [firstEditor.email, secondEditor.email]
