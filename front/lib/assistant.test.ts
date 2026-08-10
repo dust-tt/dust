@@ -144,9 +144,9 @@ describe("isModelAvailable", () => {
     ).toBe(false);
   });
 
-  it("should return true for large model with credit-priced plan", () => {
+  it("should return true for large model with upgraded plan", () => {
     const model = createMockModel({ largeModel: true });
-    const plan = createMockPlan(CREDIT_PRICED_BUSINESS_PLAN_CODE);
+    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
     expect(
       isModelAvailable(model, {
@@ -158,21 +158,7 @@ describe("isModelAvailable", () => {
     ).toBe(true);
   });
 
-  it("should return false for large model with legacy paid plan", () => {
-    const model = createMockModel({ largeModel: true });
-    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
-
-    expect(
-      isModelAvailable(model, {
-        featureFlags: [],
-        plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
-        region: TEST_REGION,
-      })
-    ).toBe(false);
-  });
-
-  it("should return false for large model with free upgraded plan", () => {
+  it("should return true for large model with free upgraded plan", () => {
     const model = createMockModel({ largeModel: true });
     const plan = createMockPlan(FREE_UPGRADED_PLAN_CODE);
 
@@ -183,10 +169,10 @@ describe("isModelAvailable", () => {
         regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
-    ).toBe(false);
+    ).toBe(true);
   });
 
-  it("should return false for large model without a credit-priced plan", () => {
+  it("should return false for large model without upgraded plan", () => {
     const model = createMockModel({
       largeModel: true,
       availableIfOneOf: { plansWithAdvancedModels: true },
@@ -219,12 +205,12 @@ describe("isModelAvailable", () => {
     ).toBe(false);
   });
 
-  it("should return false when large model requires a feature flag but it is missing", () => {
+  it("should return false when large model requires upgraded plan but featureFlag is missing", () => {
     const model = createMockModel({
       availableIfOneOf: { featureFlag: "deepseek_feature" },
       largeModel: true,
     });
-    const plan = createMockPlan(CREDIT_PRICED_BUSINESS_PLAN_CODE);
+    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
     expect(
       isModelAvailable(model, {
@@ -260,7 +246,7 @@ describe("isModelAvailable", () => {
     });
 
     it("should be available when the plan has advanced model access", () => {
-      const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE, {
+      const plan = createMockPlan(FREE_NO_PLAN_CODE, {
         hasAdvancedModelAccess: true,
       });
 
@@ -268,7 +254,7 @@ describe("isModelAvailable", () => {
     });
 
     it("should be available with the Opus feature flag", () => {
-      const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
+      const plan = createMockPlan(FREE_NO_PLAN_CODE);
 
       expect(isSolAvailable(plan, ["claude_4_5_opus_feature"])).toBe(true);
     });
@@ -276,6 +262,42 @@ describe("isModelAvailable", () => {
     it("should be unavailable without an entitlement", () => {
       expect(isSolAvailable(createMockPlan(PRO_PLAN_SEAT_29_CODE))).toBe(false);
     });
+  });
+
+  it("should preserve the upgraded-plan requirement for other feature-gated large models", () => {
+    const model = createMockModel({
+      availableIfOneOf: { featureFlag: "deepseek_feature" },
+      largeModel: true,
+    });
+    const plan = createMockPlan(FREE_NO_PLAN_CODE);
+
+    expect(
+      isModelAvailable(model, {
+        featureFlags: ["deepseek_feature"],
+        plan,
+        regionalModelsOnly: owner.regionalModelsOnly,
+        region: TEST_REGION,
+      })
+    ).toBe(false);
+  });
+
+  it("should preserve the upgraded-plan requirement for other advanced large models", () => {
+    const model = createMockModel({
+      availableIfOneOf: { plansWithAdvancedModels: true },
+      largeModel: true,
+    });
+    const plan = createMockPlan(FREE_NO_PLAN_CODE, {
+      hasAdvancedModelAccess: true,
+    });
+
+    expect(
+      isModelAvailable(model, {
+        featureFlags: [],
+        plan,
+        regionalModelsOnly: owner.regionalModelsOnly,
+        region: TEST_REGION,
+      })
+    ).toBe(false);
   });
 
   it("should return true when plansWithAdvancedModels is set and plan has advanced model access", () => {

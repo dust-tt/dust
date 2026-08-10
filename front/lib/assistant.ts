@@ -1,5 +1,8 @@
 import { isProviderWhitelisted } from "@app/lib/api/assistant/provider_whitelist";
-import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
+import {
+  isCreditPricedPlanPrefix,
+  isUpgraded,
+} from "@app/lib/plans/plan_codes";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
 import type {
@@ -33,23 +36,35 @@ function hasModelAccess(
     plan: PlanType | null;
   }
 ): boolean {
-  if (!m.availableIfOneOf) {
-    return (
-      !m.largeModel || (plan !== null && isCreditPricedPlanPrefix(plan.code))
-    );
+  // Dust-only override used to expose advanced models in the model picker.
+  if (featureFlags.includes("models_picker") && isAdvancedModel(m)) {
+    return true;
+  }
+
+  const availability = m.availableIfOneOf;
+  if (!availability) {
+    return !m.largeModel || isUpgraded(plan);
   }
 
   const { creditPricedPlan, plansWithAdvancedModels, featureFlag } =
-    m.availableIfOneOf;
+    availability;
 
-  return (
+  const hasConfiguredAccess =
     (creditPricedPlan === true &&
       plan !== null &&
       isCreditPricedPlanPrefix(plan.code)) ||
     (plansWithAdvancedModels === true &&
       plan?.hasAdvancedModelAccess === true) ||
-    (featureFlag !== undefined && featureFlags.includes(featureFlag))
-  );
+    (featureFlag !== undefined && featureFlags.includes(featureFlag));
+
+  if (!hasConfiguredAccess) {
+    return false;
+  }
+
+  // A credit-priced-plan condition makes the configured alternatives the
+  // complete large-model access rule. Other large models retain the legacy
+  // upgraded-plan prerequisite.
+  return !m.largeModel || isUpgraded(plan) || creditPricedPlan === true;
 }
 
 // Returns true if the model is available to the workspace for build.
@@ -67,15 +82,12 @@ export function isModelAvailable(
     region: RegionType;
   }
 ) {
-  // Dust-only override used to expose advanced models in the model picker.
-  const hasModelsPickerOverride =
-    featureFlags.includes("models_picker") && isAdvancedModel(m);
   const hasAccess = hasModelAccess(m, {
     featureFlags,
     plan,
   });
 
-  if (!hasAccess && !hasModelsPickerOverride) {
+  if (!hasAccess) {
     return false;
   }
 
