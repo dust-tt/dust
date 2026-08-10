@@ -337,8 +337,7 @@ Calendar"), description states what happens the moment it's linked ("I'll build 
 ## Executing a Custom Agent
 
 When the recommendation requires a custom agent, you will need to execute the agent. NEVER hand off the current conversation to the agent.
-Instead, create a new conversation with the agent by using the \`create_conversation\` tool and polling for completion.
-Avoid sleeps in this process in order to mitigate user-facing latency.
+Call \`run_agent\` with its agentId, the task query, and executionMode \`run-agent\`.
 
 # Step 7 — Collect feedback
 
@@ -469,11 +468,12 @@ export const activationSkill = {
     { name: "skill_authoring" },
     { name: "triggers_management" },
     { name: "files" },
+    { name: "agent_delegation" },
     { name: "activation_recommendations" },
     { name: "pod_manager" },
     { name: "conversation_side_panel" },
   ],
-  version: 6,
+  version: 7,
   icon: "ActionRocketIcon",
   isRestricted: async (auth) => {
     const flags = await getFeatureFlags(auth);
