@@ -196,14 +196,19 @@ const getTableColumns = ({
             tooltipTriggerAsChild
             label={modelName}
             trigger={
-              <DataTable.CellContent
-                disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
-                icon={modelIcon}
-                iconClassName="mr-0 @xl:mr-2"
-              >
-                <span className="hidden @xl:inline">{modelName}</span>
-                {!modelIcon && <span className="@xl:hidden">-</span>}
-              </DataTable.CellContent>
+              <div className="inline-flex">
+                <DataTable.CellContent
+                  disabled={isDisabled(
+                    info.row.original.canArchive,
+                    isBatchEdit
+                  )}
+                  icon={modelIcon}
+                  iconClassName="mr-0 @xl:mr-2"
+                >
+                  <span className="hidden @xl:inline">{modelName}</span>
+                  {!modelIcon && <span className="@xl:hidden">-</span>}
+                </DataTable.CellContent>
+              </div>
             }
           />
         );
