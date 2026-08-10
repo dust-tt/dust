@@ -5,7 +5,105 @@ import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_r
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { describe, expect, it } from "vitest";
+import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const oauthMocks = vi.hoisted(() => ({
+  discoverAuthorizationServerMetadata: vi.fn(),
+  discoverOAuthProtectedResourceMetadata: vi.fn(),
+  registerClient: vi.fn(),
+}));
+
+vi.mock("@modelcontextprotocol/sdk/client/auth.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@modelcontextprotocol/sdk/client/auth.js")
+    >();
+
+  return {
+    ...actual,
+    discoverAuthorizationServerMetadata:
+      oauthMocks.discoverAuthorizationServerMetadata,
+    discoverOAuthProtectedResourceMetadata:
+      oauthMocks.discoverOAuthProtectedResourceMetadata,
+    registerClient: oauthMocks.registerClient,
+  };
+});
+
+const oauthProvider: OAuthClientProvider = {
+  redirectUrl: undefined,
+  clientMetadata: {
+    client_name: "Dust",
+    grant_types: ["authorization_code", "refresh_token"],
+    redirect_uris: ["https://dust.example.com/oauth/mcp"],
+    response_types: ["code"],
+    token_endpoint_auth_method: "none",
+  },
+  clientInformation: () => undefined,
+  tokens: () => undefined,
+  saveTokens: () => undefined,
+  redirectToAuthorization: () => undefined,
+  saveCodeVerifier: () => undefined,
+  codeVerifier: () => "verifier",
+};
+
+describe("RemoteMCPServerResource.discoverOAuthMetadata", () => {
+  beforeEach(() => {
+    oauthMocks.discoverAuthorizationServerMetadata.mockReset();
+    oauthMocks.discoverOAuthProtectedResourceMetadata.mockReset();
+    oauthMocks.registerClient.mockReset();
+
+    oauthMocks.discoverOAuthProtectedResourceMetadata.mockResolvedValue({
+      authorization_servers: ["https://auth.example.com"],
+      resource: "https://mcp.example.com/mcp",
+      scopes_supported: ["read", "write"],
+    });
+    oauthMocks.discoverAuthorizationServerMetadata.mockResolvedValue({
+      authorization_endpoint: "https://auth.example.com/authorize",
+      registration_endpoint: "https://auth.example.com/register",
+      token_endpoint: "https://auth.example.com/token",
+      token_endpoint_auth_methods_supported: [
+        "client_secret_post",
+        "client_secret_basic",
+        "none",
+      ],
+    });
+  });
+
+  it.each([
+    {
+      registeredMethod: "none",
+      clientSecret: undefined,
+    },
+    {
+      registeredMethod: "client_secret_basic",
+      clientSecret: "secret",
+    },
+    {
+      registeredMethod: "client_secret_post",
+      clientSecret: "secret",
+    },
+  ])("persists the DCR-returned $registeredMethod token authentication method", async ({
+    registeredMethod,
+    clientSecret,
+  }) => {
+    oauthMocks.registerClient.mockResolvedValue({
+      client_id: "registered-client",
+      client_secret: clientSecret,
+      token_endpoint_auth_method: registeredMethod,
+    });
+
+    const result = await RemoteMCPServerResource.discoverOAuthMetadata({
+      serverUrl: "https://mcp.example.com/mcp",
+      provider: oauthProvider,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.token_endpoint_auth_method).toBe(registeredMethod);
+    }
+  });
+});
 
 describe("RemoteMCPServerResource.updateUrl", () => {
   it("updates the URL of a remote MCP server", async () => {
