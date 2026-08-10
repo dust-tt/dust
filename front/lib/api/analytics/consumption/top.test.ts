@@ -318,7 +318,7 @@ describe("consumption top rankings", () => {
     await fetchConsumptionTopAgents(auth, {
       period: PERIOD,
       limit: 10,
-      filter: { source: ["slack"], user: ["u1", "u2"] },
+      filter: { sources: ["slack"], users: ["u1", "u2"] },
     });
 
     const [query] = lastSearchCall();

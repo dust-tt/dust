@@ -184,7 +184,7 @@ describe("fetchConsumptionTimeseries", () => {
       period,
       granularity: "day",
       mode: "daily",
-      filter: { agent: ["a1"], source: ["web", "slack"], skill: ["s1"] },
+      filter: { agents: ["a1"], sources: ["web", "slack"], skills: ["s1"] },
     });
 
     const [query] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];

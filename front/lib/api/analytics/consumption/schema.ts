@@ -1,5 +1,5 @@
 import type { ConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/period";
-import { CONSUMPTION_SCOPE_DIMENSIONS } from "@app/lib/api/analytics/consumption/scope";
+import { CONSUMPTION_SCOPE_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import { z } from "zod";
 
 /**
@@ -12,7 +12,7 @@ export const DEFAULT_CONSUMPTION_PERIOD_DAYS = 30;
 export const DEFAULT_CONSUMPTION_TOP_LIMIT = 10;
 
 const ConsumptionFilterSchema = z.record(
-  z.enum(CONSUMPTION_SCOPE_DIMENSIONS),
+  z.enum(CONSUMPTION_SCOPE_FILTER_KEYS),
   z.string().array()
 );
 

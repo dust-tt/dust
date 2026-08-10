@@ -31,9 +31,33 @@ export const CONSUMPTION_DIMENSION_FIELDS: Record<
   source: "context_origin",
 };
 
+export const CONSUMPTION_SCOPE_FILTER_KEYS = [
+  "agents",
+  "users",
+  "models",
+  "tools",
+  "skills",
+  "sources",
+] as const;
+
+export type ConsumptionScopeFilterKey =
+  (typeof CONSUMPTION_SCOPE_FILTER_KEYS)[number];
+
 export type ConsumptionScopeFilter = Partial<
-  Record<ConsumptionScopeDimension, string[]>
+  Record<ConsumptionScopeFilterKey, string[]>
 >;
+
+const CONSUMPTION_DIMENSION_FILTER_KEYS: Record<
+  ConsumptionScopeDimension,
+  ConsumptionScopeFilterKey
+> = {
+  agent: "agents",
+  user: "users",
+  model: "models",
+  tool: "tools",
+  skill: "skills",
+  source: "sources",
+};
 
 export const CONSUMPTION_METRICS = ["credit_micro"] as const;
 
@@ -119,7 +143,10 @@ export function buildConsumptionScopeQuery({
 
   for (const dimension of CONSUMPTION_SCOPE_DIMENSIONS) {
     filters.push(
-      ...termFilter(CONSUMPTION_DIMENSION_FIELDS[dimension], filter[dimension])
+      ...termFilter(
+        CONSUMPTION_DIMENSION_FIELDS[dimension],
+        filter[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]]
+      )
     );
   }
 

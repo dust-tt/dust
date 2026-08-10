@@ -162,5 +162,5 @@ export function toConsumptionScopeFilter(
   filter: UsageFilter
 ): ConsumptionScopeFilter {
   const memberIds = filter.member?.map((entity) => entity.id);
-  return memberIds && memberIds.length > 0 ? { user: memberIds } : {};
+  return memberIds && memberIds.length > 0 ? { users: memberIds } : {};
 }

@@ -278,7 +278,7 @@ describe("GET /api/w/:wId/analytics/consumption/top-*", () => {
       limit: "5",
       period: "days",
       days: "7",
-      filter: JSON.stringify({ source: ["slack"] }),
+      filter: JSON.stringify({ sources: ["slack"] }),
     });
 
     expect(response.status).toBe(200);
@@ -286,7 +286,7 @@ describe("GET /api/w/:wId/analytics/consumption/top-*", () => {
       expect.anything(),
       expect.objectContaining({
         limit: 5,
-        filter: { source: ["slack"] },
+        filter: { sources: ["slack"] },
       })
     );
   });
