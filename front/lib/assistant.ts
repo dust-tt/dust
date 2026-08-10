@@ -21,7 +21,7 @@ export function isModelReleased(m: ModelConfigurationType): boolean {
   return !m.availableIfOneOf?.featureFlag;
 }
 
-function hasModelAccess(
+function checkModelSpecificAccessRules(
   modelConfiguration: ModelConfigurationType,
   {
     featureFlags,
@@ -41,7 +41,12 @@ function hasModelAccess(
 
   const { availableIfOneOf, largeModel } = modelConfiguration;
 
-  // If we have a model-specific override rule, we honor it.
+  // First check: downgraded plans only have access to the small models.
+  if (largeModel && !isUpgraded(plan)) {
+    return false;
+  }
+
+  // Second check: if we have a model-specific override rule, we honor it.
   if (availableIfOneOf) {
     const { creditPricedPlan, plansWithAdvancedModels, featureFlag } =
       availableIfOneOf;
@@ -56,8 +61,8 @@ function hasModelAccess(
     );
   }
 
-  // Default rule: all plans have access to non-large models, and upgraded plans have access to large models.
-  return !largeModel || isUpgraded(plan);
+  // If there's no override and no downgraded-plan restriction, the model is allowed.
+  return true;
 }
 
 // Returns true if the model is available to the workspace for build.
@@ -75,7 +80,7 @@ export function isModelAvailable(
     region: RegionType;
   }
 ) {
-  const hasAccess = hasModelAccess(m, {
+  const hasAccess = checkModelSpecificAccessRules(m, {
     featureFlags,
     plan,
   });
