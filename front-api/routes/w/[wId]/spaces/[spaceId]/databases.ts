@@ -28,9 +28,13 @@ import { z } from "zod";
 // Mounted at /api/w/:wId/spaces/:spaceId/databases. A pod database is a live SQLite file inside
 // the pod sandbox, so every route here runs `dsbx db ...` and wakes (or cold starts) the sandbox.
 //
-// Access control matches what `isEditor` serializes from on the space: canAdministrate. Workspace
-// admins pass that on every space, so — as with the sibling `sandbox` routes — an admin who is not
-// a member of a private pod can still read and write its databases.
+// Access control: canRead AND canAdministrate. A pod's databases are pod content, so they follow
+// the content tabs (files, tasks, project_context all require canRead) rather than the sibling
+// `sandbox` settings routes, which are workspace-admin surfaces. The extra canAdministrate is the
+// editor gate — `isEditor` is exactly what it serializes from.
+//
+// The combination matters for a restricted pod: the admin *role* grants "admin" but not "read"
+// there, so a workspace admin who is not a member is denied, the same way Files denies them.
 const app = workspaceApp();
 
 app.use("*", withSandboxFunctionsFeature());
@@ -105,7 +109,7 @@ function apiErrorForDbError(
 /** @ignoreswagger */
 app.get(
   "/",
-  withSpace({ requireCanAdministrate: true }),
+  withSpace({ requireCanRead: true, requireCanAdministrate: true }),
   requirePodSpace,
   async (ctx): HandlerResult<GetPodDatabasesResponseBody> => {
     const result = await listDatabasesOnSandbox(ctx.get("auth"), {
@@ -122,7 +126,7 @@ app.get(
 /** @ignoreswagger */
 app.get(
   "/:database/tables",
-  withSpace({ requireCanAdministrate: true }),
+  withSpace({ requireCanRead: true, requireCanAdministrate: true }),
   requirePodSpace,
   validate("param", DatabaseParamSchema),
   async (ctx): HandlerResult<GetPodDatabaseTablesResponseBody> => {
@@ -143,7 +147,7 @@ app.get(
 /** @ignoreswagger */
 app.get(
   "/:database/tables/:table/rows",
-  withSpace({ requireCanAdministrate: true }),
+  withSpace({ requireCanRead: true, requireCanAdministrate: true }),
   requirePodSpace,
   validate("param", TableParamSchema),
   validate("query", TableRowsQuerySchema),
@@ -169,7 +173,7 @@ app.get(
 /** @ignoreswagger */
 app.post(
   "/:database/query",
-  withSpace({ requireCanAdministrate: true }),
+  withSpace({ requireCanRead: true, requireCanAdministrate: true }),
   requirePodSpace,
   validate("param", DatabaseParamSchema),
   validate("json", QueryBodySchema),

@@ -93,10 +93,11 @@ export function PodPage() {
 
   const isMobile = useIsMobile();
 
-  // Pod databases live in the pod sandbox, so the tab follows the Sandbox Functions flag and is
-  // limited to editors (`isEditor` is what the databases routes check as canAdministrate).
+  // Pod databases live in the pod sandbox, so the tab follows the Sandbox Functions flag. It is
+  // limited to editors who can also read the pod — the same pair the databases routes check, so a
+  // workspace admin who is not a member of a restricted pod never sees a tab that would 404.
   const canViewDatabases = podInfo
-    ? podInfo.isEditor && hasFeature("sandbox_functions")
+    ? podInfo.isEditor && podInfo.canRead && hasFeature("sandbox_functions")
     : undefined;
 
   const { currentTab, handleTabChange } = usePodTabs({

@@ -41,13 +41,18 @@ async function setupTest({
   role?: MembershipRoleType;
   enableSandboxFunctions?: boolean;
 } = {}) {
-  const { workspace, auth, user } = await createPrivateApiMockRequest({ role });
+  const { workspace, auth, user, globalSpace } =
+    await createPrivateApiMockRequest({ role });
 
   if (enableSandboxFunctions) {
     await FeatureFlagFactory.basic(auth, "sandbox_functions");
   }
 
-  return { workspace, auth, user };
+  // The routes require canRead AND canAdministrate, which on a restricted pod only its editors
+  // hold — so the caller is the pod's editor unless a test builds its own pod.
+  const pod = await SpaceFactory.project(workspace, user.id);
+
+  return { workspace, auth, user, pod, globalSpace };
 }
 
 function databasesUrl(wId: string, spaceId: string, path = "") {
@@ -60,8 +65,7 @@ describe("/api/w/:wId/spaces/:spaceId/databases", () => {
   });
 
   it("lists the pod's live databases", async () => {
-    const { workspace } = await setupTest();
-    const pod = await SpaceFactory.project(workspace);
+    const { workspace, pod } = await setupTest();
     mockedListDatabases.mockResolvedValue(
       new Ok([{ name: "chat", sizeBytes: 12648 }])
     );
@@ -77,8 +81,7 @@ describe("/api/w/:wId/spaces/:spaceId/databases", () => {
   });
 
   it("lists a database's tables with their row counts", async () => {
-    const { workspace } = await setupTest();
-    const pod = await SpaceFactory.project(workspace);
+    const { workspace, pod } = await setupTest();
     mockedListTables.mockResolvedValue(
       new Ok([{ name: "messages", rowCount: 1204 }])
     );
@@ -98,8 +101,7 @@ describe("/api/w/:wId/spaces/:spaceId/databases", () => {
   });
 
   it("reads a page of table rows", async () => {
-    const { workspace } = await setupTest();
-    const pod = await SpaceFactory.project(workspace);
+    const { workspace, pod } = await setupTest();
     mockedReadRows.mockResolvedValue(
       new Ok({
         columns: ["id", "role"],
@@ -129,8 +131,7 @@ describe("/api/w/:wId/spaces/:spaceId/databases", () => {
   });
 
   it("rejects a page size above the browse cap", async () => {
-    const { workspace } = await setupTest();
-    const pod = await SpaceFactory.project(workspace);
+    const { workspace, pod } = await setupTest();
 
     const response = await honoApp.request(
       databasesUrl(
@@ -145,8 +146,7 @@ describe("/api/w/:wId/spaces/:spaceId/databases", () => {
   });
 
   it("runs a SQL statement sent in the body", async () => {
-    const { workspace } = await setupTest();
-    const pod = await SpaceFactory.project(workspace);
+    const { workspace, pod } = await setupTest();
     mockedQuery.mockResolvedValue(
       new Ok({
         columns: ["id"],
@@ -182,8 +182,7 @@ describe("/api/w/:wId/spaces/:spaceId/databases", () => {
   });
 
   it("returns 400 with the runner's message when a statement is refused", async () => {
-    const { workspace } = await setupTest();
-    const pod = await SpaceFactory.project(workspace);
+    const { workspace, pod } = await setupTest();
     mockedQuery.mockResolvedValue(
       new Err(
         new SandboxFunctionError(
@@ -212,8 +211,7 @@ describe("/api/w/:wId/spaces/:spaceId/databases", () => {
   });
 
   it("returns 503 when the pod sandbox cannot be reached", async () => {
-    const { workspace } = await setupTest();
-    const pod = await SpaceFactory.project(workspace);
+    const { workspace, pod } = await setupTest();
     mockedListDatabases.mockResolvedValue(
       new Err(new SandboxFunctionError("sandbox_unavailable", "no sandbox"))
     );
@@ -229,8 +227,7 @@ describe("/api/w/:wId/spaces/:spaceId/databases", () => {
   });
 
   it("returns 404 for a table the database does not have", async () => {
-    const { workspace } = await setupTest();
-    const pod = await SpaceFactory.project(workspace);
+    const { workspace, pod } = await setupTest();
     mockedReadRows.mockResolvedValue(
       new Err(new SandboxFunctionError("not_found", "no such table"))
     );
@@ -246,8 +243,7 @@ describe("/api/w/:wId/spaces/:spaceId/databases", () => {
   });
 
   it("rejects a database name outside the pod database name shape", async () => {
-    const { workspace } = await setupTest();
-    const pod = await SpaceFactory.project(workspace);
+    const { workspace, pod } = await setupTest();
 
     const response = await honoApp.request(
       databasesUrl(workspace.sId, pod.sId, "/Chat-1/tables")
@@ -258,8 +254,7 @@ describe("/api/w/:wId/spaces/:spaceId/databases", () => {
   });
 
   it("serves a pod editor who is not a workspace admin", async () => {
-    const { workspace, user } = await setupTest({ role: "user" });
-    const pod = await SpaceFactory.project(workspace, user.id);
+    const { workspace, pod } = await setupTest({ role: "user" });
     mockedListDatabases.mockResolvedValue(new Ok([]));
 
     const response = await honoApp.request(
@@ -269,12 +264,26 @@ describe("/api/w/:wId/spaces/:spaceId/databases", () => {
     expect(response.status).toBe(200);
   });
 
-  it("hides the pod's databases from a member who is not an editor", async () => {
+  it("hides a restricted pod's databases from a user who does not edit it", async () => {
     const { workspace } = await setupTest({ role: "user" });
-    const pod = await SpaceFactory.project(workspace);
+    const otherPod = await SpaceFactory.project(workspace);
 
     const response = await honoApp.request(
-      databasesUrl(workspace.sId, pod.sId)
+      databasesUrl(workspace.sId, otherPod.sId)
+    );
+
+    expect(response.status).toBe(404);
+    expect(mockedListDatabases).not.toHaveBeenCalled();
+  });
+
+  // A workspace admin holds "admin" on every project but not "read" on a restricted one, so the
+  // canRead half of the gate keeps them out — matching Files, Tasks and project context.
+  it("hides a restricted pod's databases from a non-member workspace admin", async () => {
+    const { workspace } = await setupTest({ role: "admin" });
+    const otherPod = await SpaceFactory.project(workspace);
+
+    const response = await honoApp.request(
+      databasesUrl(workspace.sId, otherPod.sId)
     );
 
     expect(response.status).toBe(404);
@@ -282,8 +291,9 @@ describe("/api/w/:wId/spaces/:spaceId/databases", () => {
   });
 
   it("rejects workspaces without the sandbox_functions flag with a 403", async () => {
-    const { workspace } = await setupTest({ enableSandboxFunctions: false });
-    const pod = await SpaceFactory.project(workspace);
+    const { workspace, pod } = await setupTest({
+      enableSandboxFunctions: false,
+    });
 
     const response = await honoApp.request(
       databasesUrl(workspace.sId, pod.sId)
@@ -295,12 +305,13 @@ describe("/api/w/:wId/spaces/:spaceId/databases", () => {
     });
   });
 
+  // A readable non-project space, so the isProject guard is what answers rather than the
+  // permission gate (a restricted regular space would 404 before reaching it).
   it("returns 400 for non-project spaces", async () => {
-    const { workspace } = await setupTest();
-    const regularSpace = await SpaceFactory.regular(workspace);
+    const { workspace, globalSpace } = await setupTest();
 
     const response = await honoApp.request(
-      databasesUrl(workspace.sId, regularSpace.sId)
+      databasesUrl(workspace.sId, globalSpace.sId)
     );
 
     expect(response.status).toBe(400);
