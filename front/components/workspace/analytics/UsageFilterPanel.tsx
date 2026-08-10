@@ -39,6 +39,7 @@ import { useGroups } from "@app/lib/swr/groups";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import { useModels } from "@app/lib/swr/models";
+import { useSkills } from "@app/lib/swr/skill_configurations";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
@@ -68,15 +69,14 @@ interface UsageFilterPaginationState {
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
-  period: ConsumptionPeriodSelection;
   // Sources are still mock data (see usageFilterMockData.ts — fake
   // connectors standing in for a real db call); agents come from
   // useAgentConfigurations, members from useSearchMembers, teams from
   // useGroups, models from the workspace's full model catalog (useModels),
-  // and tools from the workspace's full MCP server catalog (useMCPServers)
-  // — the same endpoints that back the model and tool pickers elsewhere in
-  // the app. Skills are fetched live too, scoped to `period`
-  // (useConsumptionTop).
+  // tools from the workspace's full MCP server catalog (useMCPServers), and
+  // skills from the workspace's full skill catalog (useSkills) — the same
+  // endpoints that back the model, tool, and skill pickers elsewhere in the
+  // app.
   categoryOptions: {
     source: UsageFilterSourceOption[];
   };
@@ -86,7 +86,6 @@ interface UsageFilterPanelProps {
 
 export function UsageFilterPanel({
   owner,
-  period,
   categoryOptions,
   filter,
   onFilterChange,
@@ -206,14 +205,13 @@ export function UsageFilterPanel({
     disabled: !isToolCategoryActive,
   });
 
-  const { rows: topSkillRows } = useConsumptionTop({
-    workspaceId: owner.sId,
-    dimension: "skill",
-    period,
-    // Same rationale as members/agents/tools: broader than the Attribution
-    // table's own top-N so the picker covers most of the period's active
-    // skills.
-    limit: 100,
+  // The workspace's full, period-independent skill catalog — the same
+  // endpoint backing the skill picker elsewhere in the app — rather than a
+  // period-scoped top-N, so every skill is listable and searchable
+  // regardless of the selected period.
+  const { skills: skillCatalog } = useSkills({
+    owner,
+    status: "active",
     disabled: !isSkillCategoryActive,
   });
 
@@ -289,17 +287,17 @@ export function UsageFilterPanel({
     [mcpServers]
   );
 
-  // Same client-side search caveat as members/agents/models/tools: a skill
-  // outside the top 100 by credits over the period will not be searchable
-  // here.
+  // Every skill in the workspace, regardless of the selected period. Keyed
+  // by sId, matching the skill sIds usage data stores for the skill
+  // dimension (see resolveDimensionLabels).
   const skillOptions = useMemo<UsageFilterSkillOption[]>(
     () =>
-      topSkillRows.map((row) => ({
-        id: row.id,
-        name: row.name,
+      skillCatalog.map((skill) => ({
+        id: skill.sId,
+        name: skill.name,
         kind: "skill" as const,
       })),
-    [topSkillRows]
+    [skillCatalog]
   );
 
   const resolvedCategoryOptions = useMemo<{

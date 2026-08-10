@@ -4,7 +4,8 @@ import type { ConnectorProvider } from "@app/types/data_source";
 // Placeholder data for "source", the only category not yet wired to a real
 // backend endpoint. Agents are fetched live in UsageFilterPanel
 // (useAgentConfigurations); members via useSearchMembers; groups via
-// useGroups; models via useModels; tools and skills via useConsumptionTop.
+// useGroups; models via useModels; tools via useMCPServers; skills via
+// useSkills.
 
 // Fake connectors, standing in for the real per-workspace data source list
 // until "source" is wired to a real db call. Covers a broad mix of
