@@ -37,11 +37,8 @@ export function UsageFilterOptionCheckboxList({
   isLoadingMore = false,
   onLoadMore,
 }: UsageFilterOptionCheckboxListProps) {
-  // Tracked as state (not a ref) so InfiniteScroll re-renders once the node
-  // mounts and can attach its scroll listener directly to it — passing this
-  // as an explicit root is what the InfiniteScroll component recommends,
-  // since its IntersectionObserver-sentinel fallback doesn't reliably fire
-  // for a nested scroll container like this one.
+  // Tracked as state so InfiniteScroll re-renders once the node
+  // mounts and can attach its scroll listener directly to it.
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
     null
   );

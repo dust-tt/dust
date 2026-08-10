@@ -103,11 +103,10 @@ export function UsageFilterPanel({
     FILTER_PICKER_PAGE_SIZE
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset every category's load-more window when the active picker's filters change
-  useEffect(() => {
+  const resetFilterPickerPagination = useCallback(() => {
     setMemberPageIndex(0);
     setVisibleStaticCount(FILTER_PICKER_PAGE_SIZE);
-  }, [activeCategory, searchText, activeScope, activeTier]);
+  }, []);
 
   // Search is applied server-side by useSearchMembers, same as the sibling
   // AnalyticsFilterDropdown's member picker.
@@ -268,12 +267,29 @@ export function UsageFilterPanel({
     if (open) {
       setDraftFilter(filter);
       setSearchText("");
+      resetFilterPickerPagination();
     }
   };
 
   const handleCategoryChange = (category: UsageFilterCategory) => {
     setActiveCategory(category);
     setSearchText("");
+    resetFilterPickerPagination();
+  };
+
+  const handleSearchTextChange = (text: string) => {
+    setSearchText(text);
+    resetFilterPickerPagination();
+  };
+
+  const handleScopeChange = (scope: UsageFilterScope) => {
+    setActiveScope(scope);
+    resetFilterPickerPagination();
+  };
+
+  const handleTierChange = (tier: UsageModelTier) => {
+    setActiveTier(tier);
+    resetFilterPickerPagination();
   };
 
   const handleCancel = () => {
@@ -337,7 +353,7 @@ export function UsageFilterPanel({
             <SearchInput
               name="usage-filter-search"
               value={searchText}
-              onChange={setSearchText}
+              onChange={handleSearchTextChange}
               placeholder={`Search ${USAGE_FILTER_CATEGORY_LABEL[activeCategory].toLowerCase()}`}
             />
             {activeCategory === "member" && (
@@ -354,13 +370,13 @@ export function UsageFilterPanel({
                 selectedModelIds={selectedIdsForActiveCategory}
                 onToggleModel={(model) => toggleOption("model", model)}
                 activeTier={activeTier}
-                onTierChange={setActiveTier}
+                onTierChange={handleTierChange}
               />
             )}
             {activeCategory === "agent" && (
               <UsageFilterAgentScopeControls
                 activeScope={activeScope}
-                onScopeChange={setActiveScope}
+                onScopeChange={handleScopeChange}
               />
             )}
             <UsageFilterOptionCheckboxList
