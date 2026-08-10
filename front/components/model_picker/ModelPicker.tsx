@@ -19,6 +19,7 @@ import {
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useModels } from "@app/lib/swr/models";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
@@ -93,7 +94,12 @@ export function ModelPicker({
   const { hasFeature } = useFeatureFlags();
   const hasModelsPicker = hasFeature("models_picker");
   const { subscription } = useAuth();
-  const lockPremiumEfforts = !isCreditPricedPlan(subscription.plan);
+  const canSelectPremiumModels =
+    isUpgraded(subscription.plan) ||
+    isCreditPricedPlan(subscription.plan) ||
+    subscription.plan.hasAdvancedModelAccess ||
+    hasFeature("claude_4_5_opus_feature");
+  const lockPremiumEfforts = !canSelectPremiumModels;
 
   const { isDark } = useTheme();
 
