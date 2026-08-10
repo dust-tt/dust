@@ -1287,8 +1287,8 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
       return !featureFlags.includes("shopify_tool");
     },
     isPreview: true,
-    // Pilot (phase 1): no OAuth provider yet. The merchant token is provided as
-    // a bearer token and the shop domain as an `X-Shopify-Shop` custom header.
+    // no Shopify OAuth provider yet (preview), so auth uses requiresBearerToken
+    // (we are using an access token from a client as bearer + shop domain via X-Shopify-Shop header)
     requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
