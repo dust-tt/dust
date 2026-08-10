@@ -1,3 +1,6 @@
+import { FLEET_TOOLS } from "./fleetTools";
+import type { FleetUsage } from "./fleetUsage";
+import { EMPTY_FLEET_USAGE, makeFleetUsage } from "./fleetUsage";
 import { mockUsers } from "./users";
 
 // Mirrors `SkillWithoutInstructionsAndToolsWithRelationsType` from front,
@@ -53,7 +56,12 @@ export interface ManagedSkill {
   status: SkillStatus;
   isFavorite: boolean;
   canAdministrate: boolean;
-  messageCount: number | null;
+  // Segmented over the last 30 days, like agents. `null` for system skills,
+  // which are always active so message usage does not apply.
+  messageUsage: FleetUsage | null;
+  // MCP server view ids, see `fleetTools.ts`.
+  tools: string[];
+  lastEditedBy: SkillEditor | null;
   updatedAt: number;
   createdAt: number;
   relations: {
@@ -128,6 +136,41 @@ function pickEditors(random: () => number, count: number): SkillEditor[] {
 const NOW_MS = new Date("2026-08-10T10:00:00Z").getTime();
 const FOURTEEN_MONTHS_MS = 425 * 24 * 60 * 60 * 1000;
 
+// ── Tools ─────────────────────────────────────────────────────────────────────
+
+const TOOL_IDS = FLEET_TOOLS.map((tool) => tool.id);
+
+// Tools that make a skill a natural API/integration target.
+const API_FACING_TOOLS = new Set([
+  "salesforce",
+  "hubspot",
+  "zendesk",
+  "intercom",
+  "stripe",
+  "snowflake",
+  "bigquery",
+  "data_warehouse",
+  "extract_data",
+]);
+
+function programmaticBiasForTools(tools: string[]): number {
+  return tools.some((tool) => API_FACING_TOOLS.has(tool)) ? 0.32 : 0;
+}
+
+function pickTools(random: () => number): string[] {
+  const count = 1 + Math.floor(random() * 3);
+  const tools: string[] = [];
+  const used = new Set<string>();
+  while (tools.length < count) {
+    const tool = pick(random, TOOL_IDS);
+    if (!used.has(tool)) {
+      used.add(tool);
+      tools.push(tool);
+    }
+  }
+  return tools;
+}
+
 // ── Agent and skill names used by the "Used by" dropdown ──────────────────────
 
 const USING_AGENTS: { name: string; emoji: string; backgroundColor: string }[] =
@@ -171,6 +214,7 @@ type CuratedSkill = {
   availability: SkillAvailability;
   agents?: number;
   skills?: number;
+  tools?: string[];
   usage: number | null;
   editors: number;
   updatedAt: string;
@@ -181,6 +225,7 @@ type CuratedSkill = {
 const CURATED_SKILLS: CuratedSkill[] = [
   {
     name: "[Agent Optimization] Create Frame",
+    tools: ["frame", "run_agent"],
     description:
       "Classifies a Dust user's builder profile into one of six types and generates personalized Wrapped card copy for the Agent Optimizer frame. Enable after the Agent Optimization skills return data.",
     icon: "table",
@@ -192,6 +237,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "[Agent Optimization] Get Details",
+    tools: ["search", "run_agent"],
     description:
       "Retrieves full metadata of a Dust agent, including config, usage, and active triggers.",
     icon: "search",
@@ -203,6 +249,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "[Agent Optimization] Get recommendation",
+    tools: ["search"],
     description:
       "Audit a Dust agent's configuration and produce actionable optimization recommendations on model choice, instructions quality, architecture, capabilities, and knowledge — covering both quality and cost efficiency.",
     icon: "lightbulb",
@@ -214,6 +261,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "[Agent Optimization] Master Skill",
+    tools: ["run_agent", "search"],
     description: "Master Skill for Agent Optimization Pipeline",
     icon: "search",
     availability: "workspace_users",
@@ -223,6 +271,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "[Area Lead] Team Weekly Presentation",
+    tools: ["frame", "google_drive", "data_warehouse"],
     description:
       "Builds a branded weekly presentation frame for your area using the team template.",
     icon: "presentation",
@@ -234,6 +283,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "[Comms] Panel Prep",
+    tools: ["web_search", "browse", "notion"],
     description:
       "Create a panel prep document ahead of a conference where a public speaker representing the company is participating",
     icon: "chat",
@@ -244,6 +294,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "[Community] Workshop Facilitator",
+    tools: ["notion", "gcal"],
     description:
       "Helps plan and run technical workshops for engineer audiences at customer sites.",
     icon: "chat",
@@ -254,6 +305,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "[Content] AI-generated detector",
+    tools: ["search"],
     description:
       "Rates written content on how human or AI-generated it reads, with flagged quotes and fix recommendations.",
     icon: "search",
@@ -265,6 +317,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "[Content] Dust style guide",
+    tools: ["notion", "search"],
     description:
       "Apply Dust's writing style and tone of voice standards to any external content — blogs, web copy, white papers, emails, and more.",
     icon: "document",
@@ -277,6 +330,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "[Content] Review blog or customer story",
+    tools: ["browse", "search"],
     description:
       "Reviews blog posts and customer stories from the perspective of a skeptical B2B buyer. Checks length, title, opening, structure, AI signal patterns, language, formatting, credibility, and factual accuracy. Returns a scorecard plus prioritized fixes.",
     icon: "document",
@@ -288,6 +342,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "[Content] Technical blog post",
+    tools: ["github", "search"],
     description:
       "Reviews technical engineering blog drafts with prioritized, quoted feedback through six credibility lenses.",
     icon: "search",
@@ -298,6 +353,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "[CS] Business Review",
+    tools: ["frame", "salesforce", "data_warehouse"],
     description:
       "Generates an interactive Business Review Frame for a customer. Covers 6 tabs: Review Objectives, Adoption & Metrics, ROI Analysis, Governance, Action Plan, and Product Roadmap.",
     icon: "presentation",
@@ -308,6 +364,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "[CS] Customer Handoff",
+    tools: ["notion", "hubspot", "gong"],
     description:
       "Extracts and documents key account information from sales calls, demos, and discovery notes to produce a structured Customer Success handoff in Notion, then adds a HubSpot note and prompts for intro emails.",
     icon: "document",
@@ -319,6 +376,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "[CS] Handoff Readiness Check",
+    tools: ["salesforce", "gong"],
     description:
       "Run before any Sales-to-CS handoff to verify all Pre-Sales signal is captured. Flags missing inputs, blocks premature handovers, and drafts AE/SE follow-ups for gaps.",
     icon: "card",
@@ -329,6 +387,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "[CS] Kick-off",
+    tools: ["notion", "gcal", "hubspot"],
     description:
       "Prepares the customer kick-off: agenda, success criteria, stakeholder map and the follow-up recap.",
     icon: "rocket",
@@ -340,6 +399,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "[Data] Warehouse query",
+    tools: ["snowflake", "bigquery", "data_warehouse"],
     description:
       "Writes and runs SQL against the warehouse, then explains the result and the assumptions behind it.",
     icon: "table",
@@ -352,6 +412,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "[Finance] Invoice extraction",
+    tools: ["extract_data", "stripe", "google_drive"],
     description:
       "Extracts amounts, dates and payment terms from PDF invoices into a normalized structure.",
     icon: "card",
@@ -363,6 +424,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "[GTM] Account research",
+    tools: ["salesforce", "web_search", "browse", "gong"],
     description:
       "Builds a one-page account brief from public sources, the CRM and past conversations.",
     icon: "globe",
@@ -375,6 +437,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "[Legal] Clause playbook",
+    tools: ["google_drive", "extract_data"],
     description:
       "Compares a contract clause to our standard position and suggests the fallback language.",
     icon: "scales",
@@ -385,6 +448,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "[People] Interview scorecard",
+    tools: ["notion", "extract_data"],
     description:
       "Turns interview notes into a structured scorecard with evidence per competency.",
     icon: "clipboard",
@@ -396,6 +460,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "Search company knowledge",
+    tools: ["search"],
     description:
       "Searches every connected data source and returns the passages that answer the question, with citations.",
     icon: "search",
@@ -409,6 +474,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "Browse the web",
+    tools: ["browse", "web_search"],
     description:
       "Opens a URL and extracts its readable content so an agent can reason over it.",
     icon: "globe",
@@ -421,6 +487,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "Create a Frame",
+    tools: ["frame"],
     description:
       "Builds an interactive frame — dashboards, reports, mini-apps — from data an agent already has.",
     icon: "grid",
@@ -434,6 +501,7 @@ const CURATED_SKILLS: CuratedSkill[] = [
   },
   {
     name: "Run agent",
+    tools: ["run_agent"],
     description:
       "Delegates a sub-task to another agent and returns its answer.",
     icon: "wand",
@@ -594,6 +662,10 @@ function buildActiveSkills(): ManagedSkill[] {
 
   for (const [index, curated] of CURATED_SKILLS.entries()) {
     const isDustProvided = curated.isDustProvided ?? false;
+    const editors = isDustProvided
+      ? null
+      : pickEditors(random, Math.max(curated.editors, 1));
+    const tools = curated.tools ?? pickTools(random);
     skills.push({
       sId: `skill_curated_${index}`,
       name: curated.name,
@@ -604,13 +676,22 @@ function buildActiveSkills(): ManagedSkill[] {
       status: "active",
       isFavorite: curated.isFavorite ?? false,
       canAdministrate: !isDustProvided,
-      messageCount: curated.usage,
+      messageUsage:
+        curated.usage === null
+          ? null
+          : makeFleetUsage(random, {
+              human: curated.usage,
+              nowMs: NOW_MS,
+              programmaticBias: programmaticBiasForTools(tools),
+              // A skill attached to agents is a dependency by construction.
+              dependencyBias: (curated.agents ?? 0) > 0 ? 0.4 : 0,
+            }),
+      tools,
+      lastEditedBy: editors?.[0] ?? null,
       updatedAt: new Date(`${curated.updatedAt}T14:32:00Z`).getTime(),
       createdAt: new Date(`${curated.updatedAt}T14:32:00Z`).getTime() - 6e9,
       relations: {
-        editors: isDustProvided
-          ? null
-          : pickEditors(random, Math.max(curated.editors, 1)),
+        editors,
         usage: buildUsage(
           random,
           curated.agents ?? 0,
@@ -641,6 +722,9 @@ function buildActiveSkills(): ManagedSkill[] {
           : Math.floor(random() * 2500);
 
     const updatedAt = NOW_MS - Math.floor(random() * FOURTEEN_MONTHS_MS);
+    const editors = pickEditors(random, 1 + Math.floor(random() * 4));
+    const tools = pickTools(random);
+    const agentCount = random() < 0.55 ? Math.floor(random() * 8) : 0;
 
     skills.push({
       sId: `skill_gen_${index}`,
@@ -652,14 +736,21 @@ function buildActiveSkills(): ManagedSkill[] {
       status: "active",
       isFavorite: false,
       canAdministrate: random() < 0.35,
-      messageCount,
+      messageUsage: makeFleetUsage(random, {
+        human: messageCount,
+        nowMs: NOW_MS,
+        programmaticBias: programmaticBiasForTools(tools),
+        dependencyBias: agentCount > 0 ? 0.4 : 0,
+      }),
+      tools,
+      lastEditedBy: editors[0],
       updatedAt,
       createdAt: updatedAt - Math.floor(random() * 1e10),
       relations: {
-        editors: pickEditors(random, 1 + Math.floor(random() * 4)),
+        editors,
         usage: buildUsage(
           random,
-          random() < 0.55 ? Math.floor(random() * 8) : 0,
+          agentCount,
           random() < 0.2 ? 1 + Math.floor(random() * 3) : 0,
           curatedNames
         ),
@@ -690,6 +781,7 @@ function buildArchivedSkills(): ManagedSkill[] {
     const area = pick(random, SKILL_AREAS);
     const subject = pick(random, SKILL_SUBJECTS);
     const updatedAt = NOW_MS - Math.floor(random() * FOURTEEN_MONTHS_MS);
+    const editors = pickEditors(random, 1 + Math.floor(random() * 2));
     skills.push({
       sId: `skill_archived_${index}`,
       name: `[${area}] ${subject}`,
@@ -700,11 +792,16 @@ function buildArchivedSkills(): ManagedSkill[] {
       status: "archived",
       isFavorite: false,
       canAdministrate: true,
-      messageCount: Math.floor(random() * 80),
+      messageUsage: makeFleetUsage(random, {
+        human: Math.floor(random() * 80),
+        nowMs: NOW_MS,
+      }),
+      tools: pickTools(random),
+      lastEditedBy: editors[0],
       updatedAt,
       createdAt: updatedAt - 5e9,
       relations: {
-        editors: pickEditors(random, 1 + Math.floor(random() * 2)),
+        editors,
         usage: { count: 0, agents: [], skills: [] },
       },
     });
@@ -752,7 +849,9 @@ function buildSuggestedSkills(): ManagedSkill[] {
       status: "suggested" as const,
       isFavorite: false,
       canAdministrate: true,
-      messageCount: 0,
+      messageUsage: EMPTY_FLEET_USAGE,
+      tools: pickTools(random),
+      lastEditedBy: null,
       updatedAt: NOW_MS - Math.floor(random() * 1e9),
       createdAt: NOW_MS - Math.floor(random() * 1e10),
       relations: {

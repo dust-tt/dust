@@ -18,6 +18,7 @@ import type {
 } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
+import type { FleetUsage } from "../../data/fleetUsage";
 import type {
   ManagedSkill,
   SkillAvailability,
@@ -25,6 +26,7 @@ import type {
   SkillUsage,
 } from "../../data/manageSkills";
 import { SkillAvatar } from "./skillIcons";
+import { UsageCell } from "./UsageCell";
 import { UsedByButton } from "./UsedByButton";
 import { formatTimestampToFriendlyDate } from "./utils";
 
@@ -37,7 +39,7 @@ type RowData = {
   availability: SkillAvailability;
   editors: SkillEditor[] | null;
   usage: SkillUsage;
-  messageCount: number | null;
+  messageUsage: FleetUsage | null;
   updatedAt: number | null;
   createdAt: number | null;
   onClick: () => void;
@@ -161,29 +163,26 @@ const usedByColumn = (
   },
 });
 
-const usageColumn: ColumnDef<RowData, number | null> = {
+const usageColumn = (nowMs: number): ColumnDef<RowData, number> => ({
+  id: "usage",
   header: "Usage",
-  accessorKey: "messageCount",
-  cell: (info: CellContext<RowData, number | null>) => {
-    const messageCount = info.getValue();
-
-    return (
-      <DataTable.BasicCellContent
-        className="font-mono"
-        label={messageCount === null ? "-" : messageCount.toLocaleString()}
-        tooltip={
-          messageCount === null
-            ? "System skills are always active, so message usage does not apply."
-            : undefined
-        }
+  // Sorting on the human count: programmatic traffic must not be able to float
+  // a skill nobody actually reaches for.
+  accessorFn: (row: RowData) => row.messageUsage?.human ?? -1,
+  cell: (info: CellContext<RowData, number>) => (
+    <DataTable.CellContent>
+      <UsageCell
+        usage={info.row.original.messageUsage}
+        emptyTooltip="System skills are always active, so message usage does not apply."
+        nowMs={nowMs}
       />
-    );
-  },
+    </DataTable.CellContent>
+  ),
   meta: {
-    className: "hidden @sm:w-20 @sm:table-cell",
-    tooltip: "All-time messages",
+    className: "hidden @sm:w-24 @sm:table-cell",
+    tooltip: "Human messages in the last 30 days",
   },
-};
+});
 
 const lastEditedColumn = {
   header: "Last Edited",
@@ -215,10 +214,12 @@ const getTableColumns = ({
   onAgentClick,
   onUsedBySkillClick,
   enableRowSelection,
+  nowMs,
 }: {
   onAgentClick: (agentId: string) => void;
   onUsedBySkillClick: (skillId: string) => void;
   enableRowSelection: boolean;
+  nowMs: number;
 }) => {
   /**
    * Columns order:
@@ -237,7 +238,7 @@ const getTableColumns = ({
     nameColumn,
     availabilityColumn,
     usedByColumn(onAgentClick, onUsedBySkillClick),
-    usageColumn,
+    usageColumn(nowMs),
     editorsColumn,
     lastEditedColumn,
     menuColumn,
@@ -246,6 +247,7 @@ const getTableColumns = ({
 
 interface ManageSkillsTableProps {
   skills: ManagedSkill[];
+  nowMs: number;
   onSkillClick: (skill: ManagedSkill) => void;
   onAgentClick: (agentId: string) => void;
   onUsedBySkillClick: (skillId: string) => void;
@@ -257,6 +259,7 @@ interface ManageSkillsTableProps {
 
 export function ManageSkillsTable({
   skills,
+  nowMs,
   onSkillClick,
   onAgentClick,
   onUsedBySkillClick,
@@ -280,8 +283,9 @@ export function ManageSkillsTable({
         onAgentClick,
         onUsedBySkillClick,
         enableRowSelection: isSelectionEnabled,
+        nowMs,
       }),
-    [onAgentClick, onUsedBySkillClick, isSelectionEnabled]
+    [onAgentClick, onUsedBySkillClick, isSelectionEnabled, nowMs]
   );
 
   const rows: RowData[] = useMemo(
@@ -295,7 +299,7 @@ export function ManageSkillsTable({
         availability: skill.availability,
         editors: skill.relations.editors,
         usage: skill.relations.usage,
-        messageCount: skill.messageCount,
+        messageUsage: skill.messageUsage,
         updatedAt: skill.updatedAt,
         createdAt: skill.createdAt,
         onClick: () => {

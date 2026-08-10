@@ -31,6 +31,16 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import {
+  FleetFilterChips,
+  FleetFilterMenu,
+} from "../components/manage/FleetFilterBar";
+import type { FleetItemFields } from "../components/manage/fleetFilters";
+import {
+  AGENT_STATUS_OPTIONS,
+  filterFleet,
+  useFleetFilters,
+} from "../components/manage/fleetFilters";
 import { ManageAgentsTable } from "../components/manage/ManageAgentsTable";
 import { getModelLogoByModelId } from "../components/manage/ManageAgentsTable";
 import { ManagePageLayout } from "../components/manage/ManagePageLayout";
@@ -365,20 +375,43 @@ function AgentEditBar({
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+// The mock fleet is generated around a fixed "today" so relative filters
+// ("not used in 60 days") stay stable across renders.
+const NOW_MS = new Date("2026-08-10T10:00:00Z").getTime();
+
+function agentFilterFields(agent: ManagedAgent): FleetItemFields {
+  return {
+    name: agent.name,
+    editorIds: agent.editors.map((editor) => editor.sId),
+    editorNames: agent.editors.map((editor) => editor.fullName),
+    lastEditorId: agent.lastEditedBy?.sId ?? null,
+    tools: agent.tools,
+    status:
+      agent.status === "archived"
+        ? "archived"
+        : agent.scope === "hidden"
+          ? "unpublished"
+          : "published",
+    visibility: agent.visibility,
+    modelId: agent.modelId,
+    tagIds: agent.tags.map((tag) => tag.sId),
+    updatedAt: agent.lastUpdate,
+    usage: agent.usage,
+  };
+}
+
 export default function ManageAgents() {
   const [agents, setAgents] = useState<ManagedAgent[]>(mockManagedAgents);
   const [archivedAgents] = useState<ManagedAgent[]>(mockArchivedAgents);
-  const [assistantSearch, setAssistantSearch] = useState("");
   const [selectedTab, setSelectedTab] =
     useState<AssistantManagerTabsType>("all_custom");
-  const [selectedTags, setSelectedTags] = useState<AgentTag[]>([]);
-  const [selectedModels, setSelectedModels] = useState<AgentModelFilterType[]>(
-    []
-  );
   const [isBatchEdit, setIsBatchEdit] = useState(false);
   const [selection, setSelection] = useState<string[]>([]);
   const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const { filters, updateFilters, toggleValue, clearFilters } =
+    useFleetFilters();
 
   // The real page renders a spinner while the agent configurations load.
   useEffect(() => {
@@ -386,66 +419,62 @@ export default function ManageAgents() {
     return () => window.clearTimeout(timeout);
   }, []);
 
+  const assistantSearch = filters.search;
+  const setAssistantSearch = (search: string) => updateFilters({ search });
+
+  const selectedTags = useMemo(
+    () => AGENT_TAGS.filter((tag) => filters.tags.includes(tag.sId)),
+    [filters.tags]
+  );
+  const selectedModels = useMemo<AgentModelFilterType[]>(
+    () =>
+      filters.models.map((modelId) => ({
+        modelId,
+        displayName: AGENT_MODELS_BY_ID.get(modelId)?.displayName ?? modelId,
+      })),
+    [filters.models]
+  );
+
+  // The two pre-existing menus keep their own shapes; they just write into the
+  // shared filter state so every dimension composes.
+  const setSelectedTags = (tags: AgentTag[]) =>
+    updateFilters({ tags: tags.map((tag) => tag.sId) });
+  const setSelectedModels = (models: AgentModelFilterType[]) =>
+    updateFilters({ models: models.map((model) => model.modelId) });
+
   const isSearchActive = assistantSearch.trim() !== "";
   const isFilterActive =
-    isSearchActive || selectedTags.length > 0 || selectedModels.length > 0;
+    isSearchActive ||
+    filters.tags.length > 0 ||
+    filters.models.length > 0 ||
+    filters.tools.length > 0 ||
+    filters.status.length > 0 ||
+    filters.visibility.length > 0 ||
+    filters.editors.length > 0 ||
+    filters.lastEditors.length > 0 ||
+    filters.editedWithin !== null ||
+    filters.notUsedFor !== null;
 
   const selectedAgents = agents.filter((a) => selection.includes(a.sId));
 
   const agentsByTab = useMemo(() => {
-    const selectedTagIds = new Set(selectedTags.map((tag) => tag.sId));
-    const selectedModelIds = new Set(
-      selectedModels.map((model) => model.modelId)
-    );
-    const allAgents = agents
-      .filter((a) => {
-        if (
-          selectedTagIds.size > 0 &&
-          !a.tags.some((t) => selectedTagIds.has(t.sId))
-        ) {
-          return false;
-        }
-        if (selectedModelIds.size > 0 && !selectedModelIds.has(a.modelId)) {
-          return false;
-        }
-        return true;
-      })
-      .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+    // Every dimension is a plain AND over the same list, which is what makes
+    // "published agents using Salesforce, not used in 60 days" expressible.
+    const byName = (list: ManagedAgent[]) =>
+      [...list].sort((a, b) =>
+        a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+      );
 
-    const searchLower = assistantSearch.toLowerCase();
-    const filteredList = (list: ManagedAgent[]) => {
-      if (!isSearchActive) {
-        return list;
-      }
-      return list
-        .filter((a) => subFilter(searchLower, getAgentSearchString(a)))
-        .sort((a, b) =>
-          compareForFuzzySort(
-            searchLower,
-            getAgentSearchString(a),
-            getAgentSearchString(b)
-          )
-        );
-    };
+    const filteredList = (list: ManagedAgent[]) =>
+      filterFleet(byName(list), filters, agentFilterFields, NOW_MS);
 
     return {
-      all_custom: filteredList(allAgents.filter((a) => a.scope !== "global")),
-      editable_by_me: filteredList(allAgents.filter((a) => a.canEdit)),
-      global: filteredList(allAgents.filter((a) => a.scope === "global")),
-      archived: filteredList(
-        [...archivedAgents].sort((a, b) =>
-          a.name.toLowerCase().localeCompare(b.name.toLowerCase())
-        )
-      ),
+      all_custom: filteredList(agents.filter((a) => a.scope !== "global")),
+      editable_by_me: filteredList(agents.filter((a) => a.canEdit)),
+      global: filteredList(agents.filter((a) => a.scope === "global")),
+      archived: filteredList(archivedAgents),
     };
-  }, [
-    agents,
-    archivedAgents,
-    selectedTags,
-    selectedModels,
-    assistantSearch,
-    isSearchActive,
-  ]);
+  }, [agents, archivedAgents, filters]);
 
   const uniqueTags = useMemo(() => {
     const tags = agents.flatMap((a) => a.tags);
@@ -463,6 +492,25 @@ export default function ManageAgents() {
       new Map(models.map((model) => [model.modelId, model])).values()
     ).sort((a, b) => a.displayName.localeCompare(b.displayName));
   }, [agents]);
+
+  // Everyone who edits something in the fleet — the option list for the
+  // Editors and Last editor filters.
+  const people = useMemo(() => {
+    const byId = new Map<string, { sId: string; fullName: string }>();
+    for (const agent of [...agents, ...archivedAgents]) {
+      for (const editor of agent.editors) {
+        byId.set(editor.sId, { sId: editor.sId, fullName: editor.fullName });
+      }
+    }
+    return Array.from(byId.values()).sort((a, b) =>
+      a.fullName.localeCompare(b.fullName)
+    );
+  }, [agents, archivedAgents]);
+
+  const peopleById = useMemo(
+    () => new Map(people.map((person) => [person.sId, person.fullName])),
+    [people]
+  );
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
@@ -551,37 +599,64 @@ export default function ManageAgents() {
                   selectedTags={selectedTags}
                   setSelectedTags={setSelectedTags}
                 />
+                <FleetFilterMenu
+                  filters={filters}
+                  statusOptions={AGENT_STATUS_OPTIONS}
+                  people={people}
+                  showVisibility
+                  onToggle={toggleValue}
+                  onUpdate={updateFilters}
+                />
                 <CreateDropdown />
               </div>
             )}
           </div>
-          {(selectedModels.length > 0 || selectedTags.length > 0) && (
-            <div className="flex flex-row flex-wrap gap-2">
-              {selectedModels.map((model) => (
-                <Chip
-                  key={model.modelId}
-                  label={model.displayName}
-                  size="xs"
-                  color="primary"
-                  icon={getModelLogoByModelId(model.modelId)}
-                  onRemove={() =>
-                    setSelectedModels(
-                      selectedModels.filter((m) => m.modelId !== model.modelId)
-                    )
-                  }
-                />
-              ))}
-              {selectedTags.map((tag) => (
-                <Chip
-                  key={tag.sId}
-                  label={tag.name}
-                  size="xs"
-                  color="info"
-                  onRemove={() =>
-                    setSelectedTags(selectedTags.filter((t) => t !== tag))
-                  }
-                />
-              ))}
+          <FleetFilterChips
+            filters={filters}
+            statusOptions={AGENT_STATUS_OPTIONS}
+            peopleById={peopleById}
+            onRemove={updateFilters}
+            onClear={clearFilters}
+            hasLeadingChips={
+              selectedModels.length > 0 || selectedTags.length > 0
+            }
+            leadingChips={
+              <>
+                {selectedModels.map((model) => (
+                  <Chip
+                    key={model.modelId}
+                    label={model.displayName}
+                    size="xs"
+                    color="primary"
+                    icon={getModelLogoByModelId(model.modelId)}
+                    onRemove={() =>
+                      setSelectedModels(
+                        selectedModels.filter(
+                          (m) => m.modelId !== model.modelId
+                        )
+                      )
+                    }
+                  />
+                ))}
+                {selectedTags.map((tag) => (
+                  <Chip
+                    key={tag.sId}
+                    label={tag.name}
+                    size="xs"
+                    color="info"
+                    onRemove={() =>
+                      setSelectedTags(selectedTags.filter((t) => t !== tag))
+                    }
+                  />
+                ))}
+              </>
+            }
+          />
+          {isFilterActive && (
+            <div className="text-sm text-muted-foreground">
+              {activeAgents.length} agent
+              {activeAgents.length === 1 ? "" : "s"} match
+              {activeAgents.length === 1 ? "es" : ""} the current filters.
             </div>
           )}
           <div className="flex flex-col pt-3">
@@ -630,6 +705,7 @@ export default function ManageAgents() {
                 setSelection={setSelection}
                 agents={activeAgents}
                 tags={AGENT_TAGS}
+                nowMs={NOW_MS}
                 setDetailedAgentId={setDetailedAgentId}
                 onToggleAgentStatus={handleToggleAgentStatus}
                 onTagsChange={(agentId, tags) => updateAgent(agentId, { tags })}

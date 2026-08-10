@@ -33,6 +33,16 @@ import {
 import type { RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import {
+  FleetFilterChips,
+  FleetFilterMenu,
+} from "../components/manage/FleetFilterBar";
+import type { FleetItemFields } from "../components/manage/fleetFilters";
+import {
+  filterFleet,
+  SKILL_STATUS_OPTIONS,
+  useFleetFilters,
+} from "../components/manage/fleetFilters";
 import { ManagePageLayout } from "../components/manage/ManagePageLayout";
 import { ManageSkillsTable } from "../components/manage/ManageSkillsTable";
 import { SKILL_AVAILABILITY_DISPLAY } from "../components/manage/ManageSkillsTable";
@@ -316,6 +326,30 @@ function SkillsBatchEditBar({
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+// The mock fleet is generated around a fixed "today" so relative filters
+// ("not used in 60 days") stay stable across renders.
+const NOW_MS = new Date("2026-08-10T10:00:00Z").getTime();
+
+function skillFilterFields(skill: ManagedSkill): FleetItemFields {
+  return {
+    name: skill.name,
+    editorIds: (skill.relations.editors ?? []).map((editor) => editor.sId),
+    editorNames: (skill.relations.editors ?? []).map(
+      (editor) => editor.fullName
+    ),
+    lastEditorId: skill.lastEditedBy?.sId ?? null,
+    tools: skill.tools,
+    status: skill.status === "archived" ? "archived" : "active",
+    // Skills express their scope through availability, which keeps its own
+    // control next to the tabs.
+    visibility: null,
+    modelId: null,
+    tagIds: [],
+    updatedAt: skill.updatedAt,
+    usage: skill.messageUsage,
+  };
+}
+
 export default function ManageSkills() {
   const [activeSkills, setActiveSkills] =
     useState<ManagedSkill[]>(mockActiveSkills);
@@ -325,9 +359,6 @@ export default function ManageSkills() {
     useState<ManagedSkill[]>(mockSuggestedSkills);
 
   const [selectedTab, setSelectedTab] = useState<SkillManagerTabType>("active");
-  const [skillSearch, setSkillSearch] = useState("");
-  const [availabilityFilter, setAvailabilityFilter] =
-    useState<AvailabilityFilter>("all");
   const [bypassEditorVisibility, setBypassEditorVisibility] = useState(false);
   const [isBatchEditing, setIsBatchEditing] = useState(false);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -335,6 +366,18 @@ export default function ManageSkills() {
     useState<BatchAvailabilityAction | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<ManagedSkill | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // The availability dropdown keeps its own query param, exactly as it does
+  // today; the rest of the dimensions live in the shared filter state.
+  const { filters, updateFilters, toggleValue, clearFilters } =
+    useFleetFilters();
+  const availabilityFilter = (filters.availability[0] ??
+    "all") as AvailabilityFilter;
+  const setAvailabilityFilter = (value: AvailabilityFilter) =>
+    updateFilters({ availability: value === "all" ? [] : [value] });
+
+  const skillSearch = filters.search;
+  const setSkillSearch = (search: string) => updateFilters({ search });
 
   // The real page renders a spinner while the skills load.
   useEffect(() => {
@@ -345,7 +388,15 @@ export default function ManageSkills() {
   const canMakeSkillAutoDiscoverable = true;
 
   const isSearchActive = skillSearch.trim() !== "";
-  const isFilterActive = isSearchActive || availabilityFilter !== "all";
+  const isFilterActive =
+    isSearchActive ||
+    availabilityFilter !== "all" ||
+    filters.tools.length > 0 ||
+    filters.status.length > 0 ||
+    filters.editors.length > 0 ||
+    filters.lastEditors.length > 0 ||
+    filters.editedWithin !== null ||
+    filters.notUsedFor !== null;
 
   // Switching tabs resets the availability filter to avoid carrying it across
   // lists.
@@ -368,10 +419,28 @@ export default function ManageSkills() {
     [archivedSkills]
   );
 
+  // Everyone who edits something in the fleet — the option list for the
+  // Editors and Last editor filters.
+  const people = useMemo(() => {
+    const byId = new Map<string, { sId: string; fullName: string }>();
+    for (const skill of [...activeSkills, ...archivedSkills]) {
+      for (const editor of skill.relations.editors ?? []) {
+        byId.set(editor.sId, { sId: editor.sId, fullName: editor.fullName });
+      }
+    }
+    return Array.from(byId.values()).sort((a, b) =>
+      a.fullName.localeCompare(b.fullName)
+    );
+  }, [activeSkills, archivedSkills]);
+
+  const peopleById = useMemo(
+    () => new Map(people.map((person) => [person.sId, person.fullName])),
+    [people]
+  );
+
   const skillsByTab = useMemo<
     Record<SkillManagerTabType, ManagedSkill[]>
   >(() => {
-    const searchLower = skillSearch.toLowerCase();
     const editableByMeSkills = sortedActiveSkills.filter((s) =>
       s.relations.editors?.some((e) => e.sId === "1")
     );
@@ -379,34 +448,27 @@ export default function ManageSkills() {
       activeSkills.filter((s) => s.isFavorite)
     );
 
+    // Availability keeps its dedicated control; every other dimension goes
+    // through the shared predicate so they all combine.
+    const filteredList = (list: ManagedSkill[]) =>
+      filterFleet(
+        filterByAvailability(list, availabilityFilter),
+        filters,
+        skillFilterFields,
+        NOW_MS
+      );
+
     return {
-      active: filterBySearch(
-        filterByAvailability(sortedActiveSkills, availabilityFilter),
-        searchLower,
-        isSearchActive
-      ),
-      editable_by_me: filterBySearch(
-        filterByAvailability(editableByMeSkills, availabilityFilter),
-        searchLower,
-        isSearchActive
-      ),
-      favorites: filterBySearch(
-        filterByAvailability(favoriteSkills, availabilityFilter),
-        searchLower,
-        isSearchActive
-      ),
-      archived: filterBySearch(
-        filterByAvailability(sortedArchivedSkills, availabilityFilter),
-        searchLower,
-        isSearchActive
-      ),
+      active: filteredList(sortedActiveSkills),
+      editable_by_me: filteredList(editableByMeSkills),
+      favorites: filteredList(favoriteSkills),
+      archived: filteredList(sortedArchivedSkills),
     };
   }, [
     sortedActiveSkills,
     sortedArchivedSkills,
     activeSkills,
-    skillSearch,
-    isSearchActive,
+    filters,
     availabilityFilter,
   ]);
 
@@ -565,6 +627,14 @@ export default function ManageSkills() {
                 onClick={() => setIsBatchEditing(true)}
               />
             )}
+            <FleetFilterMenu
+              filters={filters}
+              statusOptions={SKILL_STATUS_OPTIONS}
+              people={people}
+              showVisibility={false}
+              onToggle={toggleValue}
+              onUpdate={updateFilters}
+            />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button label="Create skill" icon={Plus} isSelect />
@@ -575,6 +645,21 @@ export default function ManageSkills() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+          <FleetFilterChips
+            filters={filters}
+            statusOptions={SKILL_STATUS_OPTIONS}
+            peopleById={peopleById}
+            onRemove={updateFilters}
+            onClear={clearFilters}
+          />
+          {isFilterActive && (
+            <div className="text-sm text-muted-foreground">
+              {skillsByTab[selectedTab].length} skill
+              {skillsByTab[selectedTab].length === 1 ? "" : "s"} match
+              {skillsByTab[selectedTab].length === 1 ? "es" : ""} the current
+              filters.
+            </div>
+          )}
           {isBatchEditionAvailable && isBatchEditing && (
             <SkillsBatchEditBar
               selectedSkills={selectedSkills}
@@ -649,7 +734,7 @@ export default function ManageSkills() {
             ) : (
               <>
                 {selectedTab === "active" &&
-                  availabilityFilter === "all" &&
+                  !isFilterActive &&
                   suggestedSkills.length > 0 && (
                     <SuggestedSkillsSection
                       skills={sortSkillsByName(suggestedSkills)}
@@ -666,6 +751,7 @@ export default function ManageSkills() {
                 ) : (
                   <ManageSkillsTable
                     skills={skillsByTab[selectedTab]}
+                    nowMs={NOW_MS}
                     onSkillClick={handleSkillClick}
                     onAgentClick={handleAgentClick}
                     onUsedBySkillClick={handleUsedBySkillClick}

@@ -35,6 +35,7 @@ import type {
 import type { ComponentType, ReactNode } from "react";
 import { useMemo, useState } from "react";
 
+import type { FleetUsage } from "../../data/fleetUsage";
 import type {
   AgentEditor,
   AgentScope,
@@ -44,11 +45,8 @@ import type {
 } from "../../data/manageAgents";
 import { AGENT_MODELS_BY_ID } from "../../data/manageAgents";
 import { TableTagSelector } from "./TableTagSelector";
-import {
-  assistantUsageMessage,
-  formatTimestampToFriendlyDate,
-  pluralize,
-} from "./utils";
+import { UsageCell } from "./UsageCell";
+import { formatTimestampToFriendlyDate, pluralize } from "./utils";
 
 export const SCOPE_INFO: Record<
   AgentScope,
@@ -104,7 +102,7 @@ type RowData = {
   emoji: string;
   backgroundColor: string;
   editors: AgentEditor[];
-  usage: { messageCount: number; timePeriodSec: number } | undefined;
+  usage: FleetUsage | undefined;
   feedbacks: { up: number; down: number } | undefined;
   lastUpdate: number | null;
   scope: AgentScope;
@@ -128,10 +126,12 @@ const getTableColumns = ({
   tags,
   isBatchEdit,
   onTagsChange,
+  nowMs,
 }: {
   tags: AgentTag[];
   isBatchEdit: boolean;
   onTagsChange: (agentId: string, tags: AgentTag[]) => void;
+  nowMs: number;
 }) => {
   /**
    * Columns order:
@@ -344,20 +344,23 @@ const getTableColumns = ({
     },
     {
       header: "Usage",
-      accessorFn: (row: RowData) => row.usage?.messageCount ?? 0,
+      // Sorting on the human count: programmatic traffic must not be able to
+      // float an agent nobody actually talks to.
+      accessorFn: (row: RowData) => row.usage?.human ?? 0,
       cell: (info: CellContext<RowData, number>) => (
-        <DataTable.BasicCellContent
-          className="font-mono"
+        <DataTable.CellContent
           disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
-          tooltip={assistantUsageMessage({
-            usage: info.row.original.usage ?? null,
-          })}
-          label={info.row.original.usage?.messageCount ?? 0}
-        />
+        >
+          <UsageCell
+            usage={info.row.original.usage ?? null}
+            nowMs={nowMs}
+            disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
+          />
+        </DataTable.CellContent>
       ),
       meta: {
-        className: "hidden @sm:w-16 @sm:table-cell",
-        tooltip: "Messages in the last 30 days",
+        className: "hidden @sm:w-24 @sm:table-cell",
+        tooltip: "Human messages in the last 30 days",
       },
     },
     {
@@ -493,6 +496,7 @@ function GlobalAgentAction({
 interface ManageAgentsTableProps {
   agents: ManagedAgent[];
   tags: AgentTag[];
+  nowMs: number;
   setDetailedAgentId: (sId: string) => void;
   onToggleAgentStatus: (agent: ManagedAgent) => void;
   onTagsChange: (agentId: string, tags: AgentTag[]) => void;
@@ -505,6 +509,7 @@ interface ManageAgentsTableProps {
 export function ManageAgentsTable({
   agents,
   tags,
+  nowMs,
   setDetailedAgentId,
   onToggleAgentStatus,
   onTagsChange,
@@ -521,8 +526,8 @@ export function ManageAgentsTable({
     useState<string | null>(null);
 
   const columns = useMemo(
-    () => getTableColumns({ tags, isBatchEdit, onTagsChange }),
-    [tags, isBatchEdit, onTagsChange]
+    () => getTableColumns({ tags, isBatchEdit, onTagsChange, nowMs }),
+    [tags, isBatchEdit, onTagsChange, nowMs]
   );
 
   // The selection lives in the table state (and not in the rows) so that

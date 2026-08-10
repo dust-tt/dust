@@ -87,7 +87,16 @@ function StoryList({
 }
 
 function App() {
-  const [currentStory, setCurrentStory] = useState<string | null>(null);
+  // Read the hash during initialization, not in an effect: the "write the hash"
+  // effect below runs on the same mount pass and would otherwise clear it,
+  // breaking deep links like `?tools=salesforce#ManageAgents`.
+  const [currentStory, setCurrentStory] = useState<string | null>(() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+    const hash = window.location.hash.slice(1);
+    return hash && stories.some((s) => s.name === hash) ? hash : null;
+  });
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window === "undefined") {
       return "light";
@@ -104,21 +113,13 @@ function App() {
     localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
 
-  // Read initial hash from URL
+  // Update URL hash when story changes, preserving any query string (the
+  // fleet screens keep their filters there).
   useEffect(() => {
-    const hash = window.location.hash.slice(1); // Remove the #
-    if (hash && stories.some((s) => s.name === hash)) {
-      setCurrentStory(hash);
-    }
-  }, []);
-
-  // Update URL hash when story changes
-  useEffect(() => {
-    if (currentStory) {
-      window.location.hash = currentStory;
-    } else {
-      window.location.hash = "";
-    }
+    const url = `${window.location.pathname}${window.location.search}${
+      currentStory ? `#${currentStory}` : ""
+    }`;
+    window.history.replaceState(null, "", url);
   }, [currentStory]);
 
   // Listen for hash changes (back button)

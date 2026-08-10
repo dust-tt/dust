@@ -1,9 +1,17 @@
+import { FLEET_TOOLS } from "./fleetTools";
+import type { FleetUsage } from "./fleetUsage";
+import { makeFleetUsage } from "./fleetUsage";
 import { mockUsers } from "./users";
 
 // Mirrors `LightAgentConfigurationType` from front, reduced to what the
 // Manage Agents table actually renders.
 
 export type AgentScope = "global" | "visible" | "hidden";
+
+// Where the agent is reachable from. `workspace` agents are visible to
+// everyone, `space` agents are scoped to one space/pod, `personal` ones only
+// to their editors.
+export type AgentVisibility = "workspace" | "space" | "personal";
 
 export type AgentStatus =
   | "active"
@@ -48,14 +56,29 @@ export interface ManagedAgent {
   status: AgentStatus;
   modelId: string;
   editors: AgentEditor[];
+  // Author of the current version — what "Last Edited" refers to.
+  lastEditedBy: AgentEditor | null;
   tags: AgentTag[];
-  usage: { messageCount: number; timePeriodSec: number };
+  visibility: AgentVisibility;
+  spaceName: string | null;
+  // MCP server view ids, see `fleetTools.ts`.
+  tools: string[];
+  usage: FleetUsage;
   feedbacks: { up: number; down: number };
   lastUpdate: number;
   canEdit: boolean;
 }
 
 export const AGENT_USAGE_PERIOD_SEC = 30 * 24 * 60 * 60;
+
+export const AGENT_SPACES = [
+  "Company",
+  "Engineering",
+  "GTM",
+  "Finance",
+  "People",
+  "Support",
+];
 
 // ── Models ────────────────────────────────────────────────────────────────────
 
@@ -233,6 +256,9 @@ type CuratedAgent = {
   backgroundColor: string;
   modelId?: string;
   tags?: string[];
+  tools?: string[];
+  visibility?: AgentVisibility;
+  spaceName?: string;
   usage: number;
   feedbacks?: { up: number; down: number };
   lastUpdate: string;
@@ -243,6 +269,7 @@ type CuratedAgent = {
 const CURATED_AGENTS: CuratedAgent[] = [
   {
     name: "AccountExecutive-Scorecard-Generator",
+    tools: ["extract_data", "search"],
     description:
       "Recruiter Screen Scorecard Assistant: evaluate candidates against criteria, produce structured scorecard assessments for Ashby.",
     emoji: "🤖",
@@ -253,6 +280,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "AccountPenetrationEngine",
+    tools: ["salesforce", "web_search", "extract_data"],
     description:
       "Account Penetration Engine: autonomous data extraction and analysis agent for strategic insights.",
     emoji: "🛰",
@@ -263,6 +291,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "AccountPenetrationRenderer",
+    tools: ["frame", "run_agent"],
     description:
       "Account Penetration Renderer: a template population agent that inserts JSON data into a Dust Frame template for rendering.",
     emoji: "🎨",
@@ -273,6 +302,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Accounts_Receivable_Analyst",
+    tools: ["stripe", "gmail", "search"],
     description:
       "Fetches overdue invoices, groups by client, creates Gmail drafts with payment links for Finance to review and send.",
     emoji: "📮",
@@ -283,6 +313,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "AccountSnapshot",
+    tools: ["salesforce", "gong", "web_search", "search"],
     description:
       "Specialized assistant creating detailed B2B account briefings for sales meeting preparation.",
     emoji: "🍀",
@@ -293,6 +324,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Action_Recap",
+    tools: ["slack", "search"],
     description:
       "A CFO-focused agent that screens meeting notes to track action items and blockers, sending a structured Slack DM recap.",
     emoji: "🦊",
@@ -303,6 +335,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "add_event_to_Gcalendar",
+    tools: ["gcal", "gmail"],
     description:
       "Assistant specialized in analyzing emails to create Google Calendar events automatically.",
     emoji: "📅",
@@ -312,6 +345,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "add_event_to_Notion_calendar",
+    tools: ["notion", "gcal"],
     description: "create new events in go/events",
     emoji: "📅",
     backgroundColor: "bg-green-200",
@@ -320,6 +354,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "AdminGovernanceExpert",
+    tools: ["notion", "search"],
     description:
       "An expert agent for the Admin Governance initiative, assisting with admin roles, permissions, and documentation.",
     emoji: "🔮",
@@ -330,6 +365,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "agenda_cleaner",
+    tools: ["gcal"],
     description:
       "Google Calendar assistant: cleans event titles, adds 'Task:' prefix, and changes color to pink.",
     emoji: "🧹",
@@ -339,6 +375,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Agent_Auditor",
+    tools: ["search", "run_agent"],
     description:
       "Expert AI agent auditor for enterprise workspace deployments.",
     emoji: "🔍",
@@ -350,6 +387,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "AI-digest-news",
+    tools: ["web_search", "browse"],
     description:
       "Generative AI industry monitor: research assistant tracking latest developments in AI companies, products, and research.",
     emoji: "🐼",
@@ -359,6 +397,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "AID-Scorecard",
+    tools: ["extract_data", "search"],
     description:
       "Recruiter Screen Scorecard Assistant: evaluate candidates against criteria, produce structured scorecard assessments for Ashby.",
     emoji: "🤖",
@@ -369,6 +408,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "AmbraEA",
+    tools: ["gcal", "gmail", "slack"],
     description:
       "Expert executive assistant AI for the Chief of Staff, managing daily workflow with precision.",
     emoji: "🧭",
@@ -378,6 +418,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Amelie_call_",
+    tools: ["gmail", "gong"],
     description: "follow-up emails after customer calls with key info.",
     emoji: "📞",
     backgroundColor: "bg-blue-100",
@@ -387,6 +428,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Analytics_Copilot",
+    tools: ["snowflake", "bigquery", "data_warehouse", "frame"],
     description:
       "Answers product analytics questions over the warehouse and returns charts with the SQL it ran.",
     emoji: "📊",
@@ -399,6 +441,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Assistant_Onboarding",
+    tools: ["notion", "gcal", "search"],
     description:
       "Walks new hires through their first two weeks, surfacing the right docs, tools and people at the right time.",
     emoji: "🚀",
@@ -410,6 +453,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Bug_Triage",
+    tools: ["github", "linear", "search"],
     description:
       "Reads incoming Sentry issues and GitHub reports, deduplicates them and proposes a severity and an owner.",
     emoji: "🐛",
@@ -421,6 +465,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Churn_Signal_Watcher",
+    tools: ["salesforce", "data_warehouse", "slack"],
     description:
       "Monitors usage drops across accounts and drafts a save play for the CSM with the supporting evidence.",
     emoji: "📉",
@@ -431,6 +476,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Contract_Reviewer",
+    tools: ["google_drive", "notion", "extract_data"],
     description:
       "Reviews inbound MSAs and DPAs against our playbook and flags the clauses that need Legal.",
     emoji: "⚖️",
@@ -443,6 +489,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "daily_standup_digest",
+    tools: ["github", "linear", "slack"],
     description:
       "Compiles yesterday's merged PRs, incidents and Linear updates into one Slack digest.",
     emoji: "☀️",
@@ -454,6 +501,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Deal_Desk",
+    tools: ["salesforce", "search", "data_warehouse"],
     description:
       "Answers pricing, discounting and approval questions using the current commercial policy.",
     emoji: "💼",
@@ -465,6 +513,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Design_Critique",
+    tools: ["figma", "browse"],
     description:
       "Gives structured feedback on a Figma frame: hierarchy, spacing, contrast and copy.",
     emoji: "🎨",
@@ -475,6 +524,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Docs_Gardener",
+    tools: ["notion", "search"],
     description:
       "Finds stale internal documentation, proposes edits and opens the corresponding Notion tasks.",
     emoji: "🪴",
@@ -485,6 +535,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Enterprise_RFP",
+    tools: ["salesforce", "notion", "search"],
     description:
       "Drafts answers to security and procurement questionnaires from our approved answer library.",
     emoji: "📋",
@@ -497,6 +548,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Expense_Checker",
+    tools: ["google_drive", "extract_data"],
     description:
       "Checks submitted expenses against the travel policy and flags the ones that need a manager review.",
     emoji: "🧾",
@@ -507,6 +559,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Incident_Commander",
+    tools: ["github", "slack", "linear"],
     description:
       "Runs the incident checklist, keeps the status page updated and drafts the post-mortem skeleton.",
     emoji: "🚨",
@@ -519,6 +572,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Interview_Debrief",
+    tools: ["notion", "search"],
     description:
       "Turns raw interview notes into a structured debrief with evidence for each competency.",
     emoji: "🗣",
@@ -529,6 +583,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Knowledge_Search",
+    tools: ["search", "notion", "google_drive", "slack", "confluence"],
     description:
       "Searches every connected source at once and answers with citations you can open.",
     emoji: "🔎",
@@ -540,6 +595,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Localization_Buddy",
+    tools: ["notion", "google_drive"],
     description:
       "Translates product copy and keeps the glossary consistent across locales.",
     emoji: "🌍",
@@ -551,6 +607,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "meeting_notes_to_crm",
+    tools: ["hubspot", "gong", "search"],
     description:
       "Extracts next steps, MEDDIC fields and risks from a call transcript and writes them back to HubSpot.",
     emoji: "📝",
@@ -562,6 +619,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Onboarding_Buddy",
+    tools: ["notion", "search"],
     description:
       "Answers the questions new joiners are afraid to ask, from payroll to the coffee machine.",
     emoji: "🐣",
@@ -573,6 +631,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "PR_Reviewer",
+    tools: ["github", "linear", "search"],
     description:
       "Reviews a pull request against our coding rules and comments only on what actually matters.",
     emoji: "🧑‍💻",
@@ -585,6 +644,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Pricing_Analyst",
+    tools: ["data_warehouse", "salesforce"],
     description:
       "Models the revenue impact of a pricing change and explains the assumptions behind it.",
     emoji: "💰",
@@ -596,6 +656,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Release_Notes_Writer",
+    tools: ["github", "notion"],
     description:
       "Turns merged PRs into customer-facing release notes in our tone of voice.",
     emoji: "📣",
@@ -607,6 +668,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Security_Questionnaire",
+    tools: ["notion", "google_drive", "search"],
     description:
       "Answers vendor security reviews using the trust center and escalates anything unanswered.",
     emoji: "🛡",
@@ -617,6 +679,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Slack_Summarizer",
+    tools: ["slack", "search"],
     description:
       "Summarizes a busy channel or a long thread into the three things you actually need to know.",
     emoji: "💬",
@@ -629,6 +692,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Support_Triage",
+    tools: ["zendesk", "intercom", "search"],
     description:
       "Classifies inbound Zendesk tickets, drafts a first reply and routes the hard ones to a human.",
     emoji: "🎧",
@@ -640,6 +704,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "weekly_business_review",
+    tools: ["data_warehouse", "snowflake", "frame", "salesforce"],
     description:
       "Assembles the weekly metrics pack and writes the narrative around the numbers.",
     emoji: "📈",
@@ -652,6 +717,7 @@ const CURATED_AGENTS: CuratedAgent[] = [
   },
   {
     name: "Zendesk_Macro_Writer",
+    tools: ["zendesk", "search"],
     description:
       "Proposes new macros based on the tickets that keep coming back.",
     emoji: "🧰",
@@ -814,6 +880,51 @@ function pickEditors(random: () => number, count: number): AgentEditor[] {
     }
   }
   return editors;
+}
+
+// ── Tools & visibility ────────────────────────────────────────────────────────
+
+const TOOL_IDS = FLEET_TOOLS.map((tool) => tool.id);
+const FLEET_TOOLS_IDS = new Set(TOOL_IDS);
+
+// Tools that make an agent a natural API/integration target — those are the
+// ones whose raw message counts are the most misleading.
+const API_FACING_TOOLS = new Set([
+  "salesforce",
+  "hubspot",
+  "zendesk",
+  "intercom",
+  "stripe",
+  "snowflake",
+  "bigquery",
+  "data_warehouse",
+  "extract_data",
+]);
+
+function programmaticBiasForTools(tools: string[]): number {
+  return tools.some((tool) => API_FACING_TOOLS.has(tool)) ? 0.32 : 0;
+}
+
+function pickTools(random: () => number): string[] {
+  const count = Math.floor(random() * 5);
+  const tools: string[] = [];
+  const used = new Set<string>();
+  while (tools.length < count) {
+    const tool = pick(random, TOOL_IDS);
+    if (!used.has(tool)) {
+      used.add(tool);
+      tools.push(tool);
+    }
+  }
+  return tools;
+}
+
+function pickVisibility(random: () => number): AgentVisibility {
+  const roll = random();
+  if (roll < 0.62) {
+    return "workspace";
+  }
+  return roll < 0.9 ? "space" : "personal";
 }
 
 const NOW_MS = new Date("2026-08-10T10:00:00Z").getTime();
@@ -1020,6 +1131,9 @@ function buildCustomAgents(): ManagedAgent[] {
   const agents: ManagedAgent[] = [];
 
   for (const [index, curated] of CURATED_AGENTS.entries()) {
+    const editors = pickEditors(random, 1 + Math.floor(random() * 3));
+    const tools = curated.tools ?? pickTools(random);
+    const visibility = curated.visibility ?? pickVisibility(random);
     agents.push({
       sId: `agent_curated_${index}`,
       name: curated.name,
@@ -1029,12 +1143,21 @@ function buildCustomAgents(): ManagedAgent[] {
       scope: curated.scope ?? "visible",
       status: "active",
       modelId: curated.modelId ?? "claude-sonnet-4-6",
-      editors: pickEditors(random, 1 + Math.floor(random() * 3)),
+      editors,
+      lastEditedBy: editors[0],
       tags: tagsFor(curated.tags ?? []),
-      usage: {
-        messageCount: curated.usage,
-        timePeriodSec: AGENT_USAGE_PERIOD_SEC,
-      },
+      visibility,
+      spaceName:
+        visibility === "space"
+          ? (curated.spaceName ?? pick(random, AGENT_SPACES))
+          : null,
+      tools,
+      usage: makeFleetUsage(random, {
+        human: curated.usage,
+        nowMs: NOW_MS,
+        programmaticBias: programmaticBiasForTools(tools),
+        dependencyBias: tools.includes("run_agent") ? 0.3 : 0,
+      }),
       feedbacks: curated.feedbacks ?? { up: 0, down: 0 },
       lastUpdate: new Date(`${curated.lastUpdate}T09:12:00Z`).getTime(),
       canEdit: curated.canEdit ?? false,
@@ -1064,6 +1187,9 @@ function buildCustomAgents(): ManagedAgent[] {
           : Math.floor(random() * 900);
     const feedbackCount =
       messageCount > 50 ? Math.floor(random() * 14) : Math.floor(random() * 2);
+    const editors = pickEditors(random, 1 + Math.floor(random() * 4));
+    const tools = pickTools(random);
+    const visibility = pickVisibility(random);
 
     agents.push({
       sId: `agent_gen_${index}`,
@@ -1075,14 +1201,23 @@ function buildCustomAgents(): ManagedAgent[] {
       scope: random() < 0.12 ? "hidden" : "visible",
       status: "active",
       modelId: pickModelId(random),
-      editors: pickEditors(random, 1 + Math.floor(random() * 4)),
+      editors,
+      lastEditedBy: pick(random, editors),
       tags:
         random() < 0.45
           ? tagsFor([pick(random, AGENT_TAGS).name]).concat(
               random() < 0.2 ? tagsFor([pick(random, AGENT_TAGS).name]) : []
             )
           : [],
-      usage: { messageCount, timePeriodSec: AGENT_USAGE_PERIOD_SEC },
+      visibility,
+      spaceName: visibility === "space" ? pick(random, AGENT_SPACES) : null,
+      tools,
+      usage: makeFleetUsage(random, {
+        human: messageCount,
+        nowMs: NOW_MS,
+        programmaticBias: programmaticBiasForTools(tools),
+        dependencyBias: tools.includes("run_agent") ? 0.3 : 0,
+      }),
       feedbacks: {
         up: Math.ceil(feedbackCount * 0.75),
         down: Math.floor(feedbackCount * 0.25),
@@ -1135,11 +1270,18 @@ function buildGlobalAgents(): ManagedAgent[] {
     status: index % 9 === 5 ? "disabled_by_admin" : "active",
     modelId: globalAgent.modelId,
     editors: [],
+    lastEditedBy: null,
     tags: [],
-    usage: {
-      messageCount: Math.floor(random() * 1400),
-      timePeriodSec: AGENT_USAGE_PERIOD_SEC,
-    },
+    visibility: "workspace",
+    spaceName: null,
+    tools: [],
+    usage: makeFleetUsage(random, {
+      human: Math.floor(random() * 1400),
+      nowMs: NOW_MS,
+      // Default agents are the ones people wire into scripts and integrations.
+      programmaticBias: 0.25,
+      dependencyBias: 0.1,
+    }),
     feedbacks: { up: 0, down: 0 },
     lastUpdate: NOW_MS - Math.floor(random() * FOURTEEN_MONTHS_MS),
     canEdit: false,
@@ -1156,11 +1298,16 @@ function buildGlobalAgents(): ManagedAgent[] {
       status: random() < 0.25 ? "disabled_missing_datasource" : "active",
       modelId: "claude-sonnet-4-6",
       editors: [],
+      lastEditedBy: null,
       tags: [],
-      usage: {
-        messageCount: Math.floor(random() * 300),
-        timePeriodSec: AGENT_USAGE_PERIOD_SEC,
-      },
+      visibility: "workspace",
+      spaceName: null,
+      tools: [connector].filter((tool) => FLEET_TOOLS_IDS.has(tool)),
+      usage: makeFleetUsage(random, {
+        human: Math.floor(random() * 300),
+        nowMs: NOW_MS,
+        programmaticBias: 0.2,
+      }),
       feedbacks: { up: 0, down: 0 },
       lastUpdate: NOW_MS - Math.floor(random() * FOURTEEN_MONTHS_MS),
       canEdit: false,
@@ -1177,6 +1324,7 @@ function buildArchivedAgents(): ManagedAgent[] {
   for (let index = 0; index < TOTAL_ARCHIVED_AGENTS; index++) {
     const domain = pick(random, NAME_DOMAINS);
     const role = pick(random, NAME_ROLES);
+    const editors = pickEditors(random, 1 + Math.floor(random() * 2));
     agents.push({
       sId: `agent_archived_${index}`,
       name: styleName(domain, role, pick(random, [...NAME_STYLES])),
@@ -1186,12 +1334,16 @@ function buildArchivedAgents(): ManagedAgent[] {
       scope: "visible",
       status: "archived",
       modelId: pickModelId(random),
-      editors: pickEditors(random, 1 + Math.floor(random() * 2)),
+      editors,
+      lastEditedBy: editors[0],
       tags: random() < 0.3 ? tagsFor([pick(random, AGENT_TAGS).name]) : [],
-      usage: {
-        messageCount: Math.floor(random() * 40),
-        timePeriodSec: AGENT_USAGE_PERIOD_SEC,
-      },
+      visibility: pickVisibility(random),
+      spaceName: null,
+      tools: pickTools(random),
+      usage: makeFleetUsage(random, {
+        human: Math.floor(random() * 40),
+        nowMs: NOW_MS,
+      }),
       feedbacks: { up: 0, down: 0 },
       lastUpdate: NOW_MS - Math.floor(random() * FOURTEEN_MONTHS_MS),
       canEdit: true,
