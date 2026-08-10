@@ -52,6 +52,7 @@ type AgentStepContentCacheMetadata = {
   index: number;
   version: number;
   type: AgentContentItemType["type"];
+  dustRunId: string | null;
 };
 
 /**
@@ -167,7 +168,9 @@ function isCachedAgentStepContent(
 /**
  * Given latest-version metadata from PG (no `value` column), try to hydrate
  * full rows from the per-agentMessage Redis Hash. A message is a hit only when
- * every expected `(step, index)` field is present and matches `id` + `version`.
+ * every expected `(step, index)` field is present and matches `id`, `version`, and `dustRunId`.
+ * Comparing dustRunId makes raw database backfills self-invalidating without coordinating a Redis
+ * delete with the Postgres update.
  *
  * Returns null if Redis itself fails — caller should treat all ids as misses.
  */
@@ -245,6 +248,7 @@ export async function tryHydrateAgentStepContentsFromCache({
           !isCachedAgentStepContent(parsed) ||
           parsed.id !== meta.id ||
           parsed.version !== meta.version ||
+          parsed.dustRunId !== meta.dustRunId ||
           parsed.agentMessageId !== meta.agentMessageId
         ) {
           complete = false;
