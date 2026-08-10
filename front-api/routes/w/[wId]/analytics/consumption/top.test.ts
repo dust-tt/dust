@@ -16,6 +16,10 @@ import {
   type GetConsumptionTopSourcesResponse,
 } from "@app/lib/api/analytics/consumption/top_sources";
 import {
+  fetchConsumptionTopTeams,
+  type GetConsumptionTopTeamsResponse,
+} from "@app/lib/api/analytics/consumption/top_teams";
+import {
   fetchConsumptionTopTools,
   type GetConsumptionTopToolsResponse,
 } from "@app/lib/api/analytics/consumption/top_tools";
@@ -56,6 +60,13 @@ vi.mock(
   async (orig) => {
     const mod = await orig();
     return { ...mod, fetchConsumptionTopSources: vi.fn() };
+  }
+);
+vi.mock(
+  import("@app/lib/api/analytics/consumption/top_teams"),
+  async (orig) => {
+    const mod = await orig();
+    return { ...mod, fetchConsumptionTopTeams: vi.fn() };
   }
 );
 vi.mock(
@@ -136,6 +147,20 @@ const TOP_SOURCES: GetConsumptionTopSourcesResponse = {
   ],
 };
 
+const TOP_TEAMS: GetConsumptionTopTeamsResponse = {
+  period: PERIOD,
+  totalCredits: 5000,
+  teams: [
+    {
+      teamId: "team1",
+      name: "Engineering",
+      credits: 200,
+      messageCount: 4,
+      avgCreditsPerMessage: 50,
+    },
+  ],
+};
+
 const TOP_TOOLS: GetConsumptionTopToolsResponse = {
   period: PERIOD,
   totalCredits: 5000,
@@ -165,7 +190,7 @@ const TOP_SKILLS: GetConsumptionTopSkillsResponse = {
 };
 
 // One entry per ranking endpoint. Each owns its own typed mock plumbing so the
-// table stays type-safe across six different response shapes.
+// table stays type-safe across seven different response shapes.
 const RANKINGS = [
   {
     path: "top-agents",
@@ -200,6 +225,13 @@ const RANKINGS = [
         .mocked(fetchConsumptionTopSources)
         .mockResolvedValue(new Ok(TOP_SOURCES)),
     lastCall: () => vi.mocked(fetchConsumptionTopSources).mock.lastCall,
+  },
+  {
+    path: "top-teams",
+    body: TOP_TEAMS,
+    arrangeOk: () =>
+      vi.mocked(fetchConsumptionTopTeams).mockResolvedValue(new Ok(TOP_TEAMS)),
+    lastCall: () => vi.mocked(fetchConsumptionTopTeams).mock.lastCall,
   },
   {
     path: "top-tools",

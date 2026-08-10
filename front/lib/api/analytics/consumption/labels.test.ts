@@ -5,6 +5,7 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -105,6 +106,22 @@ describe("resolveDimensionLabels", () => {
     expect(labels.get(agent.sId)).toEqual({
       name: "Analytics agent",
       pictureUrl: agent.pictureUrl,
+    });
+  });
+
+  it("labels teams with their group name", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const team = await GroupFactory.regularManual(workspace, "Engineering");
+
+    const labels = await resolveDimensionLabels(authenticator, "team", [
+      team.sId,
+    ]);
+
+    expect(labels.get(team.sId)).toEqual({
+      name: "Engineering",
+      pictureUrl: null,
     });
   });
 });

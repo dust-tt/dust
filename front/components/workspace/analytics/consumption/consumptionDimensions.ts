@@ -8,6 +8,7 @@ export const DEFAULT_CONSUMPTION_DIMENSION: ConsumptionDimension = "agent";
 export const CONSUMPTION_DIMENSIONS: ConsumptionDimension[] = [
   "agent",
   "user",
+  "team",
   "model",
   "tool",
   "skill",
@@ -38,6 +39,12 @@ export const CONSUMPTION_DIMENSION_CONFIG: Record<
     label: "Members",
     breakdownLabel: "member",
     hasAvatar: true,
+    avgLabel: MESSAGE_AVG_LABEL,
+  },
+  team: {
+    label: "Teams",
+    breakdownLabel: "team",
+    hasAvatar: false,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   model: {
