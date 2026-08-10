@@ -5,21 +5,27 @@ import {
   isModelReleased,
 } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
+import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
+  CREDIT_PRICED_BUSINESS_PLAN_CODE,
   FREE_NO_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
   PRO_PLAN_SEAT_29_CODE,
 } from "@app/lib/plans/plan_codes";
+import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
+import { GPT_5_6_SOL_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { PlanType } from "@app/types/plan";
 import type { RegionType } from "@app/types/region";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
 
 const TEST_REGION: RegionType = "us-central1";
+const TEST_WORKSPACE: WorkspaceType = LightWorkspaceFactory.build();
 
 function createMockModel(
   overrides: Partial<ModelConfigurationType>
@@ -31,68 +37,32 @@ function createMockModel(
   };
 }
 
-// createMockPlan is only used by isModelAvailable tests (pure sync, no factory available).
 function createMockPlan(
   code: string,
   { hasAdvancedModelAccess = false }: { hasAdvancedModelAccess?: boolean } = {}
 ): PlanType {
-  return {
-    code,
-    name: `Test Plan ${code}`,
-    trialPeriodDays: 0,
-    limits: {
-      assistant: {
-        isSlackBotAllowed: false,
-        maxMessages: 1000,
-        maxMessagesTimeframe: "day",
-        maxAwuCredits: 1000,
-        maxAwuCreditsTimeframe: "day",
-        isDeepDiveAllowed: false,
-      },
-      connections: {
-        count: -1,
-        isConfluenceAllowed: false,
-        isSlackAllowed: false,
-        isNotionAllowed: false,
-        isGoogleDriveAllowed: false,
-        isGithubAllowed: false,
-        isIntercomAllowed: false,
-        isWebCrawlerAllowed: false,
-        isSalesforceAllowed: false,
-      },
-      dataSources: {
-        count: 10,
-        documents: {
-          count: 1000,
-          sizeMb: 100,
-        },
-      },
-      capabilities: {
-        images: {
-          maxImagesPerWeek: 10,
-        },
-      },
-      users: {
-        maxUsers: 10,
-        maxFreeUsers: -1,
-        maxLifetimeFreeUsers: -1,
-        isSSOAllowed: false,
-        isSCIMAllowed: false,
-      },
-      vaults: {
-        maxVaults: 10,
-      },
-      canUseProduct: true,
+  return renderPlanFromModel({
+    plan: {
+      ...FREE_NO_PLAN_DATA,
+      code,
+      hasAdvancedModelAccess,
     },
-    isByok: false,
-    isAuditLogsAllowed: false,
-    hasAdvancedModelAccess,
-  };
+  });
+}
+
+function isSolAvailable(
+  plan: PlanType,
+  featureFlags: WhitelistableFeature[] = []
+) {
+  return isModelAvailable(GPT_5_6_SOL_MODEL_CONFIG, {
+    featureFlags,
+    plan,
+    regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
+    region: TEST_REGION,
+  });
 }
 
 describe("isModelAvailable", () => {
-  const owner: WorkspaceType = LightWorkspaceFactory.build();
-
   it("should return true for a basic model without restrictions", () => {
     const model = createMockModel({ largeModel: false });
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
@@ -101,7 +71,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -118,7 +88,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: ["deepseek_feature"],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -135,7 +105,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
@@ -149,7 +119,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -163,7 +133,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -180,7 +150,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
@@ -196,7 +166,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan: null,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
@@ -213,7 +183,73 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
+        region: TEST_REGION,
+      })
+    ).toBe(false);
+  });
+
+  describe("GPT 5.6 Sol availability", () => {
+    it("should be configured as a large model", () => {
+      expect(GPT_5_6_SOL_MODEL_CONFIG.largeModel).toBe(true);
+    });
+
+    it("should be available on credit-priced plans", () => {
+      expect(
+        isSolAvailable(createMockPlan(CREDIT_PRICED_BUSINESS_PLAN_CODE))
+      ).toBe(true);
+    });
+
+    it("should be available when the plan has advanced model access", () => {
+      const plan = createMockPlan(FREE_UPGRADED_PLAN_CODE, {
+        hasAdvancedModelAccess: true,
+      });
+
+      expect(isSolAvailable(plan)).toBe(true);
+    });
+
+    it("should be available with the Opus feature flag", () => {
+      const plan = createMockPlan(FREE_UPGRADED_PLAN_CODE);
+
+      expect(isSolAvailable(plan, ["claude_4_5_opus_feature"])).toBe(true);
+    });
+
+    it("should be unavailable without an entitlement", () => {
+      expect(isSolAvailable(createMockPlan(PRO_PLAN_SEAT_29_CODE))).toBe(false);
+    });
+  });
+
+  it("should preserve the upgraded-plan requirement for other feature-gated large models", () => {
+    const model = createMockModel({
+      availableIfOneOf: { featureFlag: "deepseek_feature" },
+      largeModel: true,
+    });
+    const plan = createMockPlan(FREE_NO_PLAN_CODE);
+
+    expect(
+      isModelAvailable(model, {
+        featureFlags: ["deepseek_feature"],
+        plan,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
+        region: TEST_REGION,
+      })
+    ).toBe(false);
+  });
+
+  it("should preserve the upgraded-plan requirement for other advanced large models", () => {
+    const model = createMockModel({
+      availableIfOneOf: { plansWithAdvancedModels: true },
+      largeModel: true,
+    });
+    const plan = createMockPlan(FREE_NO_PLAN_CODE, {
+      hasAdvancedModelAccess: true,
+    });
+
+    expect(
+      isModelAvailable(model, {
+        featureFlags: [],
+        plan,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
@@ -232,7 +268,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -251,13 +287,13 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
   });
 
-  it("should return true for advanced models when models_picker is enabled without plan access", () => {
+  it("should not grant advanced model access through models_picker", () => {
     const model = createMockModel({
       availableIfOneOf: { plansWithAdvancedModels: true },
       largeModel: false,
@@ -270,10 +306,10 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: ["models_picker"],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("should return true when both plansWithAdvancedModels and featureFlag are set, with advanced model access", () => {
@@ -292,7 +328,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -312,7 +348,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: ["deepseek_feature"],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -332,7 +368,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
@@ -356,7 +392,7 @@ describe("isModelReleased", () => {
 });
 
 describe("filterEnabledModels", () => {
-  it("includes advanced models when models_picker is enabled without plan access", async () => {
+  it("excludes advanced models when models_picker is enabled without plan access", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const model = createMockModel({
@@ -373,7 +409,7 @@ describe("filterEnabledModels", () => {
       whitelistedProviders: getWhitelistedProviders(auth),
     });
 
-    expect(result).toEqual([model]);
+    expect(result).toEqual([]);
   });
 
   it("should include model when available and provider is whitelisted", async () => {
