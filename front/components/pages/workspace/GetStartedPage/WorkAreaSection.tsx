@@ -119,7 +119,7 @@ export function WorkAreaSection({
   );
 
   return (
-    <div className="mt-12 rounded-2xl bg-white px-6 pb-8 pt-6 shadow-[0px_3px_3px_-1.5px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_0px_0px_1px_rgba(0,0,0,0.06)]">
+    <div className="mt-12 rounded-2xl border border-border bg-background px-6 pb-8 pt-6 shadow-sm">
       <h2 className="text-xl font-semibold leading-7 tracking-tight text-foreground">
         Your work
       </h2>

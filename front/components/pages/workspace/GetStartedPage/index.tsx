@@ -8,6 +8,7 @@ import {
   WORK_AREA_ACTIONS,
   WorkAreaSection,
 } from "@app/components/pages/workspace/GetStartedPage/WorkAreaSection";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePodConversations } from "@app/hooks/conversations";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -45,6 +46,7 @@ const QUICK_PROMPTS = [
 export function GetStartedPage() {
   const owner = useWorkspace();
   const { user } = useAuth();
+  const { isDark } = useTheme();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const createConversationWithMessage = useCreateConversationWithMessage({
@@ -136,13 +138,13 @@ export function GetStartedPage() {
 
   return (
     <AssistantLayout owner={owner} user={user}>
-      <div className="relative min-h-full w-full overflow-x-hidden bg-white">
+      <div className="relative min-h-full w-full overflow-x-hidden bg-background">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
           style={{
             backgroundImage:
-              "linear-gradient(to right, rgba(0, 0, 0, 0.02) 1px, transparent 1px)",
+              "linear-gradient(to right, color-mix(in oklch, var(--color-border) 20%, transparent) 1px, transparent 1px)",
             backgroundSize: "calc(100% / 7) 100%",
           }}
         />
@@ -150,15 +152,23 @@ export function GetStartedPage() {
           alt=""
           aria-hidden
           className="pointer-events-none absolute -top-[307.6px] left-[227.4px] w-[1067.2px] max-w-none"
-          src="/static/activation/for-you-orb-large.svg"
+          src={
+            isDark
+              ? "/static/activation/for-you-orb-large-dark.svg"
+              : "/static/activation/for-you-orb-large.svg"
+          }
         />
         <img
           alt=""
           aria-hidden
           className="pointer-events-none absolute -top-[307.6px] -left-[72.6px] w-[859.2px] max-w-none"
-          src="/static/activation/for-you-orb-small.svg"
+          src={
+            isDark
+              ? "/static/activation/for-you-orb-small-dark.svg"
+              : "/static/activation/for-you-orb-small.svg"
+          }
         />
-        <div className="relative ml-6 w-[calc(100%-48px)] pb-16 pt-[130px] md:ml-24 md:w-[566px]">
+        <div className="relative ml-[9%] w-[53%] pb-16 pt-[15vh]">
           <div className="flex flex-col gap-1">
             <h1 className="text-5xl font-medium leading-[52px] tracking-[-0.06em] text-foreground">
               Welcome back, {firstName}.
@@ -186,7 +196,7 @@ export function GetStartedPage() {
             disabled={isActivationPodLoading}
           />
 
-          <div className="mt-12 rounded-2xl bg-white px-6 pb-8 pt-6 shadow-[0px_3px_3px_-1.5px_rgba(0,0,0,0.06),0px_1px_1px_-0.5px_rgba(0,0,0,0.06),0px_0px_0px_1px_rgba(0,0,0,0.06)]">
+          <div className="mt-12 rounded-2xl border border-border bg-background px-6 pb-8 pt-6 shadow-sm">
             <h2 className="text-xl font-semibold leading-7 tracking-tight text-foreground">
               Ideas for right now
             </h2>
