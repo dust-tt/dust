@@ -79,6 +79,7 @@ import {
 import { SANDBOX_FUNCTIONS_SERVER } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
 import { SERVICENOW_SERVER } from "@app/lib/api/actions/servers/servicenow/metadata";
+import { SHOPIFY_SERVER } from "@app/lib/api/actions/servers/shopify/metadata";
 import { SKILL_AUTHORING_SERVER } from "@app/lib/api/actions/servers/skill_authoring/metadata";
 import { SKILL_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/skill_management/metadata";
 import { SLAB_SERVER } from "@app/lib/api/actions/servers/slab/metadata";
@@ -212,6 +213,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "salesforce",
   "salesloft",
   "servicenow",
+  "shopify",
   "slab",
   "slack",
   "slack_bot",
@@ -1276,6 +1278,22 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: SERVICENOW_SERVER,
+  },
+  shopify: {
+    id: 1044,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("shopify_tool");
+    },
+    isPreview: true,
+    // Pilot (phase 1): no OAuth provider yet. The merchant token is provided as
+    // a bearer token and the shop domain as an `X-Shopify-Shop` custom header.
+    requiresBearerToken: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: SHOPIFY_SERVER,
   },
   user_memory: {
     id: 1043,
