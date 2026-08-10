@@ -164,6 +164,10 @@ describe("getModelForStream", () => {
     workspace = await WorkspaceFactory.basic();
     adminAuth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     await FeatureFlagFactory.basic(adminAuth, "models_picker");
+    // The Complex stream leads with Opus, which the basic plan does not have
+    // advanced model access for. These tests exercise stream ordering and tier
+    // caps on a full catalog, so unlock the frontier models explicitly.
+    await FeatureFlagFactory.basic(adminAuth, "claude_4_5_opus_feature");
   });
 
   async function userAuthForTierCap(tierName: "cost_efficient" | "balanced") {
