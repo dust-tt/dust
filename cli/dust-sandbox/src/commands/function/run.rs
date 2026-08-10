@@ -3,12 +3,10 @@ use std::time::Instant;
 use anyhow::{anyhow, Result};
 use tokio::io::AsyncReadExt as _;
 
-use super::envelope::{ResultDelivery, ResultEnvelope, RunnerKind, TimingsMs};
+use super::envelope::{ResultEnvelope, RunnerKind, TimingsMs};
 use super::warm::{self, WarmRun};
 use super::{emit_error, resolve_existing, spawn_function_at};
-use crate::api::DustApiClient;
 
-const SANDBOX_TOKEN_ENV: &str = "DUST_SANDBOX_TOKEN";
 const NON_JSON_SNIPPET_MAX_CHARS: usize = 512;
 
 /// Execute a function and deliver its response.
@@ -21,16 +19,10 @@ const NON_JSON_SNIPPET_MAX_CHARS: usize = 512;
 /// spawn. A cold run additionally leaves a warm server behind for the next
 /// invocation. Both paths produce the same runner `Output` JSON.
 ///
-/// Delivery modes:
-/// - `callback` (default): POST the runner response to the Dust result API when
-///   `DUST_SANDBOX_TOKEN` is set. As a testing/local convenience, when there is
-///   no sandbox token the API call is skipped and the bare runner response is
-///   written to dsbx's stdout instead (previous behavior).
-/// - `stdout`: print a protocol v3 envelope on stdout and exit 0, including for
-///   runner `ok:false` and for failures that keep the function from being
-///   spawned at all, so the worker keeps structured errors. Never POSTs the
-///   callback.
-pub async fn cmd_function_run(name: &str, result_delivery: ResultDelivery) -> Result<()> {
+/// The result is always a protocol v3 envelope on stdout, exit 0, including for
+/// runner `ok:false` and for failures that keep the function from being spawned
+/// at all, so the worker keeps structured errors.
+pub async fn cmd_function_run(name: &str) -> Result<()> {
     let started = Instant::now();
 
     // The envelope is consumed here rather than inherited by the runner child:
@@ -38,31 +30,22 @@ pub async fn cmd_function_run(name: &str, result_delivery: ResultDelivery) -> Re
     let mut input = String::new();
     if let Err(e) = tokio::io::stdin().read_to_string(&mut input).await {
         let err = emit_error(anyhow!("failed to read request envelope: {e}"));
-        return match result_delivery {
-            ResultDelivery::Callback => Err(err),
-            ResultDelivery::Stdout => deliver_stdout_envelope(
-                ResultEnvelope::stdout_invocation_failed(err.to_string()),
-                0,
-            ),
-        };
+        deliver_stdout_envelope(ResultEnvelope::stdout_invocation_failed(err.to_string()), 0);
     }
 
     if let WarmRun::Outcome(outcome) = warm::try_warm_run(name, &input).await {
         let runner_ms = started.elapsed().as_millis() as u64;
-        return match result_delivery {
-            ResultDelivery::Callback => deliver_callback_outcome(name, outcome).await,
-            ResultDelivery::Stdout => deliver_stdout_envelope(
-                ResultEnvelope::stdout_outcome(
-                    outcome,
-                    Some(TimingsMs {
-                        total: started.elapsed().as_millis() as u64,
-                        runner: runner_ms,
-                        runner_kind: Some(RunnerKind::Warm),
-                    }),
-                ),
-                0,
+        deliver_stdout_envelope(
+            ResultEnvelope::stdout_outcome(
+                outcome,
+                Some(TimingsMs {
+                    total: started.elapsed().as_millis() as u64,
+                    runner: runner_ms,
+                    runner_kind: Some(RunnerKind::Warm),
+                }),
             ),
-        };
+            0,
+        );
     }
 
     // Cold path. Resolve once: the run below and the warm server spawn both
@@ -85,90 +68,14 @@ pub async fn cmd_function_run(name: &str, result_delivery: ResultDelivery) -> Re
         warm::spawn_server(name, handler);
     }
 
-    match result_delivery {
-        // Spawn failures keep propagating: the bare `{error}` line emit_error
-        // printed is the contract here, and the exit code stays non-zero.
-        ResultDelivery::Callback => {
-            let (code, captured) = spawned?;
-            deliver_callback(name, code, &captured.unwrap_or_default()).await
-        }
-        ResultDelivery::Stdout => deliver_stdout(
-            spawned,
-            TimingsMs {
-                total: started.elapsed().as_millis() as u64,
-                runner: runner_ms,
-                runner_kind: Some(RunnerKind::Cold),
-            },
-        ),
-    }
-}
-
-/// Callback delivery for a warm outcome: the runner `Output` is already
-/// parsed, so it goes straight to the result API (or to stdout in the
-/// local/no-token case, mirroring the cold path's convenience behavior).
-async fn deliver_callback_outcome(name: &str, outcome: serde_json::Value) -> Result<()> {
-    let have_token = std::env::var(SANDBOX_TOKEN_ENV)
-        .map(|t| !t.is_empty())
-        .unwrap_or(false);
-
-    if !have_token {
-        // Exit-code parity with the cold runner: 0 for ok, 2 for bad_input,
-        // 1 for every other failure.
-        let ok = outcome
-            .get("ok")
-            .and_then(serde_json::Value::as_bool)
-            .unwrap_or(false);
-        let bad_input = outcome
-            .pointer("/error/code")
-            .and_then(serde_json::Value::as_str)
-            == Some("bad_input");
-        println!("{outcome}");
-        std::process::exit(if ok {
-            0
-        } else if bad_input {
-            2
-        } else {
-            1
-        });
-    }
-
-    let client = DustApiClient::from_env()?;
-    client
-        .post_function_result(name, &outcome)
-        .await
-        .map_err(emit_error)?;
-    std::process::exit(0);
-}
-
-async fn deliver_callback(name: &str, code: i32, response: &str) -> Result<()> {
-    let have_token = std::env::var(SANDBOX_TOKEN_ENV)
-        .map(|t| !t.is_empty())
-        .unwrap_or(false);
-
-    // No sandbox token: local/testing — emit the response on stdout, as before.
-    if !have_token {
-        print!("{response}");
-        std::process::exit(code);
-    }
-
-    let line = last_non_empty_line(response);
-    // Sandbox: deliver the response to the Dust result API instead of stdout.
-    if line.is_empty() {
-        return Err(emit_error(anyhow!(
-            "function produced no output to deliver to the result API"
-        )));
-    }
-    // The runner emits a JSON line; take the last non-empty line so incidental
-    // console.log output on the same fd does not poison the callback body.
-    let result: serde_json::Value =
-        serde_json::from_str(line).unwrap_or_else(|_| serde_json::Value::String(line.to_string()));
-
-    let client = DustApiClient::from_env()?;
-    client
-        .post_function_result(name, &result)
-        .await
-        .map_err(emit_error)?;
-    std::process::exit(0);
+    deliver_stdout(
+        spawned,
+        TimingsMs {
+            total: started.elapsed().as_millis() as u64,
+            runner: runner_ms,
+            runner_kind: Some(RunnerKind::Cold),
+        },
+    )
 }
 
 fn deliver_stdout(spawned: Result<(i32, Option<String>)>, timings_ms: TimingsMs) -> ! {
@@ -246,6 +153,7 @@ fn truncate_chars(value: &str, max_chars: usize) -> String {
 
 #[cfg(test)]
 mod tests {
+    use super::super::envelope::ResultDelivery;
     use super::*;
 
     fn timings(total: u64, runner: u64) -> TimingsMs {

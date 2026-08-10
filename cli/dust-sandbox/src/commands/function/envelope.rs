@@ -2,11 +2,13 @@ use serde::{Deserialize, Serialize};
 
 pub const RESULT_PROTOCOL_VERSION: u32 = 3;
 
+/// How a function result reaches Dust. Stdout is the only mode: the worker that
+/// started the command reads a protocol v3 envelope off the exec's own stdout.
+/// Kept as an enum because it is also the envelope's `delivery` wire field.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum, Serialize, Deserialize)]
 #[value(rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 pub enum ResultDelivery {
-    Callback,
     Stdout,
 }
 

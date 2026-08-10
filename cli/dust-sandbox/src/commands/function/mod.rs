@@ -49,10 +49,12 @@ pub enum FunctionCommand {
     /// via `--result-delivery` (HTTP callback by default, or a protocol v3
     /// envelope on stdout).
     Run {
-        /// How to deliver the function result. Default remains the in-sandbox
-        /// HTTP callback; `stdout` returns a protocol v3 envelope on stdout for
-        /// the worker that started the command.
-        #[arg(long, value_enum, default_value_t = ResultDelivery::Callback)]
+        /// Accepted and ignored: `stdout` is the only delivery mode. The flag
+        /// stays because front still passes `--result-delivery stdout`, and
+        /// dsbx is pinned by release, so a binary that rejected it would break
+        /// every invocation the moment DSBX_CLI_VERSION moved. Remove it with
+        /// front's argument, not before.
+        #[arg(long, value_enum, default_value_t = ResultDelivery::Stdout)]
         result_delivery: ResultDelivery,
         /// Function name (resolved to a <name>.<ext> bundle in ${DUST_FUNCTIONS_DIR})
         name: String,
