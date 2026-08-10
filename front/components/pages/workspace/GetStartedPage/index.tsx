@@ -253,12 +253,9 @@ export function GetStartedPage() {
                           onResolved={() => void mutateRecommendations()}
                         />
                       ))}
-                      <PreviouslyDoneRow
-                        owner={owner}
-                        podId={activationPodId}
-                      />
                     </>
                   )}
+                  <PreviouslyDoneRow owner={owner} podId={activationPodId} />
                 </div>
               )}
             </div>
