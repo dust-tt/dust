@@ -13,8 +13,6 @@ import type {
   UsageModelTier,
 } from "@app/components/workspace/analytics/usageFilter";
 import {
-  addUsageFilterGroup,
-  removeUsageFilterGroup,
   USAGE_FILTER_CATEGORIES,
   USAGE_FILTER_CATEGORY_LABEL,
   USAGE_FILTER_SCOPES,
@@ -215,11 +213,13 @@ export function UsageFilterPanel({
   };
 
   const handleAddGroup = (group: UsageFilterGroup) => {
-    setSelectedGroups((current) => addUsageFilterGroup(current, group));
+    setSelectedGroups((current) =>
+      current.some((g) => g.id === group.id) ? current : [...current, group]
+    );
   };
 
   const handleRemoveGroup = (id: string) => {
-    setSelectedGroups((current) => removeUsageFilterGroup(current, id));
+    setSelectedGroups((current) => current.filter((g) => g.id !== id));
   };
 
   const activeCategorySelectionCount = draftFilter[activeCategory]?.length ?? 0;
