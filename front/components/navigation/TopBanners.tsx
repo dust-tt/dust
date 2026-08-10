@@ -37,9 +37,9 @@ export function TopBanners({ owner, subscription }: TopBannersProps) {
     <div
       ref={setNode}
       className={cn(
-        "sticky top-0 z-40 shrink-0",
+        "sticky top-0 z-50 shrink-0",
         "flex flex-col",
-        "bg-panel-background"
+        "bg-app-background"
       )}
     >
       <SubscriptionEndBanner

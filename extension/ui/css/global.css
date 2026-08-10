@@ -13,8 +13,7 @@
 @layer base {
   :root {
     --banner-height: 0px;
-    --panel-outer-height: 100dvh;
-    --panel-height: calc(var(--panel-outer-height) - var(--banner-height));
+    --panel-height: calc(100dvh - var(--banner-height));
 
     /* `border-darker`: legacy duplicate of `border-dark`, switches via .dark
        below (was border.darker.{DEFAULT,night} in the old config). Mapped to a

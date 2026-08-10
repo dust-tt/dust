@@ -13,8 +13,6 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { MOBILE_DOCUMENT_SCROLL_CLASSES } from "@app/lib/documentScrollLayoutClasses";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
-import type { SubscriptionType } from "@app/types/plan";
-import type { WorkspaceType } from "@app/types/user";
 import { cn } from "@dust-tt/sparkle";
 import type React from "react";
 import { lazy, Suspense } from "react";
@@ -39,8 +37,6 @@ interface AppContentInnerWrapperProps {
   isNavigationBarOpen: boolean;
   isMobile: boolean;
   isFullScreen: boolean;
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
   children: React.ReactNode;
 }
 
@@ -48,25 +44,16 @@ function AppContentInnerWrapper({
   isNavigationBarOpen,
   isMobile,
   isFullScreen,
-  owner,
-  subscription,
   children,
 }: AppContentInnerWrapperProps) {
-  const banners = <TopBanners owner={owner} subscription={subscription} />;
-
   if (isMobile) {
-    return (
-      <>
-        {banners}
-        {children}
-      </>
-    );
+    return children;
   }
 
   return (
     <div
       className={cn(
-        "my-2 mr-2 rounded-xl flex-1 bg-panel-background border border-border overflow-hidden h-panel-outer flex flex-col",
+        "my-2 mr-2 rounded-xl flex-1 bg-panel-background border border-border overflow-hidden h-panel",
         !isNavigationBarOpen && !isFullScreen && "ml-5",
         isFullScreen && "ml-2"
       )}
@@ -75,7 +62,6 @@ function AppContentInnerWrapper({
           "0 0 0 0.4px rgba(0, 0, 0, 0.02), 0 0 1px 1px rgba(0, 0, 0, 0.02)",
       }}
     >
-      {banners}
       {children}
     </div>
   );
@@ -115,6 +101,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
         isMobile ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentRoot : "h-dvh"
       )}
     >
+      <TopBanners owner={owner} subscription={subscription} />
       <div
         className={cn(
           "flex flex-row",
@@ -146,8 +133,6 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
             isNavigationBarOpen={isNavigationBarOpen}
             isMobile={isMobile}
             isFullScreen={isFullScreen}
-            owner={owner}
-            subscription={subscription}
           >
             {/* Temporary measure to preserve title existence on smaller screens.
              * Page has no title, prepend empty AppLayoutTitle. */}
