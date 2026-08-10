@@ -17,6 +17,8 @@ import type { HttpBindings } from "@hono/node-server";
 import formidable from "formidable";
 import { z } from "zod";
 
+import skill from "./[skillId]";
+
 export type GetPublicSkillsResponseBody = {
   skills: SkillType[];
 };
@@ -35,6 +37,8 @@ const SkillAvailabilitiesSchema = z
 // underlying Node `IncomingMessage` via `ctx.env.incoming` and hand it to
 // `formidable.parse(...)` for multipart parsing in the POST handler.
 const app = createHono<PublicApiCtx & { Bindings: HttpBindings }>();
+
+app.route("/:skillId", skill);
 
 /**
  * @swagger
