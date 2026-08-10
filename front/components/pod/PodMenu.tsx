@@ -50,18 +50,19 @@ import { PodNotificationMenu } from "./settings/PodNotificationMenu";
  * while the menu is open still trigger our handlers. Due to React's async state updates,
  * when the menu closes, our right-click handler sees isMenuOpen as false and reopens the menu.
  */
+type MenuPhase = "closed" | "open" | "closing";
+
 export function usePodMenu() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [menuPhase, setMenuPhase] = useState<MenuPhase>("closed");
   const [menuTriggerPosition, setMenuTriggerPosition] = useState<
     { x: number; y: number } | undefined
   >();
 
-  // Tracks the closing animation so the menu stays stable and cannot reopen mid-exit.
-  const [wasMenuJustClosed, setWasMenuJustClosed] = useState(false);
-
-  const handleMenuOpenChange = useCallback((open: boolean) => {
-    setIsMenuOpen(open);
-    setWasMenuJustClosed(!open);
+  const handleMenuPhaseChange = useCallback((phase: MenuPhase) => {
+    setMenuPhase(phase);
+    if (phase === "closed") {
+      setMenuTriggerPosition(undefined);
+    }
   }, []);
 
   const handleRightClick = useCallback(
@@ -69,31 +70,24 @@ export function usePodMenu() {
       e.preventDefault();
       e.stopPropagation();
 
-      // Ignore right-clicks if menu is currently open OR was just closed
-      // This prevents the close -> immediate reopen behavior
-      if (isMenuOpen || wasMenuJustClosed) {
+      // Prevent the menu from reopening while its closing animation is running.
+      if (menuPhase !== "closed") {
         return;
       }
 
       // Open menu at cursor position
       setMenuTriggerPosition({ x: e.clientX, y: e.clientY });
-      setIsMenuOpen(true);
+      setMenuPhase("open");
     },
-    [isMenuOpen, wasMenuJustClosed]
+    [menuPhase]
   );
 
-  const handleMenuCloseComplete = useCallback(() => {
-    setWasMenuJustClosed(false);
-    setMenuTriggerPosition(undefined);
-  }, []);
-
   return {
-    isMenuOpen,
-    isMenuOpenOrClosing: isMenuOpen || wasMenuJustClosed,
+    isMenuOpen: menuPhase === "open",
+    isMenuOpenOrClosing: menuPhase !== "closed",
     menuTriggerPosition,
     handleRightClick,
-    handleMenuOpenChange,
-    handleMenuCloseComplete,
+    handleMenuPhaseChange,
   };
 }
 
@@ -106,8 +100,7 @@ interface PodMenuProps {
   isPodDisplayed: boolean;
   isOpen: boolean;
   isOpenOrClosing: boolean;
-  onOpenChange: (open: boolean) => void;
-  onCloseComplete: () => void;
+  onPhaseChange: (phase: MenuPhase) => void;
   triggerPosition?: { x: number; y: number };
 }
 
@@ -120,8 +113,7 @@ export function PodMenu({
   isPodDisplayed,
   isOpen,
   isOpenOrClosing,
-  onOpenChange,
-  onCloseComplete,
+  onPhaseChange,
   triggerPosition,
 }: PodMenuProps) {
   const { user } = useAuth();
@@ -225,7 +217,11 @@ export function PodMenu({
           currentTitle={pod.name}
         />
       )}
-      <DropdownMenu modal={false} open={isOpen} onOpenChange={onOpenChange}>
+      <DropdownMenu
+        modal={false}
+        open={isOpen}
+        onOpenChange={(open) => onPhaseChange(open ? "open" : "closing")}
+      >
         {triggerPosition ? (
           <>
             {trigger}
@@ -246,7 +242,7 @@ export function PodMenu({
           <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
         )}
         <DropdownMenuContent
-          onCloseAutoFocus={onCloseComplete}
+          onCloseAutoFocus={() => onPhaseChange("closed")}
           onFocusOutside={(e) => e.preventDefault()}
         >
           <DropdownMenuLabel label="My settings" />

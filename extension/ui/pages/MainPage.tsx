@@ -35,8 +35,7 @@ export const MainPage = () => {
     isMenuOpen,
     isMenuOpenOrClosing,
     menuTriggerPosition,
-    handleMenuOpenChange,
-    handleMenuCloseComplete,
+    handleMenuPhaseChange,
   } = useConversationMenu();
 
   const headerTitle = useMemo(() => {
@@ -85,8 +84,7 @@ export const MainPage = () => {
               isConversationDisplayed={true}
               isOpen={isMenuOpen}
               isOpenOrClosing={isMenuOpenOrClosing}
-              onOpenChange={handleMenuOpenChange}
-              onCloseComplete={handleMenuCloseComplete}
+              onPhaseChange={handleMenuPhaseChange}
               triggerPosition={menuTriggerPosition}
               displayOpenInBrowser
               openDetailsInNewTab
