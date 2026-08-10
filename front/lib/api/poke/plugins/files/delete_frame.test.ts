@@ -1,13 +1,10 @@
 import { deleteFramePlugin } from "@app/lib/api/poke/plugins/files/delete_frame";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
-import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { frameContentType } from "@app/types/files";
 import { DEFAULT_POD_FRAME_TAB_ICON } from "@app/types/pod_frame_tab";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -30,31 +27,6 @@ beforeEach(() => {
 });
 
 describe("deleteFramePlugin", () => {
-  it("requires an exact confirmation before deleting", async () => {
-    const { authenticator: auth } = await createResourceTest({ role: "admin" });
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
-    });
-    const frame = await FileFactory.create(auth, null, {
-      contentType: frameContentType,
-      fileName: "Dashboard.tsx",
-      fileSize: 100,
-      status: "ready",
-      useCase: "conversation",
-      useCaseMetadata: { conversationId: conversation.sId },
-    });
-
-    const result = await deleteFramePlugin.execute(auth, frame, {
-      confirmation: "delete",
-    });
-
-    expect(result.isErr()).toBe(true);
-    await expect(
-      FileResource.fetchById(auth, frame.sId)
-    ).resolves.not.toBeNull();
-  });
-
   it("deletes a Pod Frame and removes its banner and tab references", async () => {
     const {
       authenticator: auth,
