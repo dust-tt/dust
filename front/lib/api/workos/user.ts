@@ -502,6 +502,68 @@ export async function addUserToWorkOSOrganization(
   );
 }
 
+function getEmailFromWorkOSDirectoryUser(
+  workOSUser: WorkOSDirectoryUser
+): string | null {
+  if (workOSUser.email) {
+    return workOSUser.email;
+  }
+
+  return (
+    workOSUser.rawAttributes.emails.find(
+      (e: unknown): e is { address: string; primary: true } =>
+        typeof e === "object" &&
+        e !== null &&
+        "primary" in e &&
+        e.primary === true &&
+        "address" in e &&
+        isString(e.address)
+    )?.address ?? null
+  );
+}
+
+async function fetchWorkOSUserByEmail(email: string) {
+  const workOSUserResponse = await getWorkOS().userManagement.listUsers({
+    email,
+  });
+
+  const [existingUser] = workOSUserResponse.data;
+
+  return existingUser ?? null;
+}
+
+/**
+ * Fetch-only counterpart of `fetchOrCreateWorkOSUserWithEmail`. Deprovisioning
+ * paths must use this one: creating a WorkOS user while handling a removal
+ * provisions the very user we are removing.
+ */
+export async function fetchWorkOSUserWithEmail({
+  workOSUser,
+  workspace,
+}: {
+  workspace: LightWorkspaceType;
+  workOSUser: WorkOSDirectoryUser;
+}): Promise<Result<WorkOSUser | null, Error>> {
+  const localLogger = logger.child({
+    directoryUserId: workOSUser.id,
+    workspaceId: workspace.sId,
+  });
+
+  const email = getEmailFromWorkOSDirectoryUser(workOSUser);
+  if (!email) {
+    return new Err(new Error("Missing email"));
+  }
+
+  const existingUser = await fetchWorkOSUserByEmail(email);
+  if (!existingUser) {
+    return new Ok(null);
+  }
+
+  localLogger.info("Found WorkOS user for webhook event.");
+
+  return new Ok(existingUser);
+}
+
 export async function fetchOrCreateWorkOSUserWithEmail({
   workOSUser,
   workspace,
@@ -514,28 +576,12 @@ export async function fetchOrCreateWorkOSUserWithEmail({
     workspaceId: workspace.sId,
   });
 
-  let email = workOSUser.email;
+  const email = getEmailFromWorkOSDirectoryUser(workOSUser);
   if (!email) {
-    email =
-      workOSUser.rawAttributes.emails.find(
-        (e: unknown): e is { address: string; primary: true } =>
-          typeof e === "object" &&
-          e !== null &&
-          "primary" in e &&
-          e.primary === true &&
-          "address" in e &&
-          isString(e.address)
-      )?.address ?? null;
-    if (!email) {
-      return new Err(new Error("Missing email"));
-    }
+    return new Err(new Error("Missing email"));
   }
 
-  const workOSUserResponse = await getWorkOS().userManagement.listUsers({
-    email,
-  });
-
-  const [existingUser] = workOSUserResponse.data;
+  const existingUser = await fetchWorkOSUserByEmail(email);
   if (!existingUser) {
     const createdUser = await getWorkOS().userManagement.createUser({
       email,
