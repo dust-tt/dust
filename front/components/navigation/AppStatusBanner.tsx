@@ -22,7 +22,8 @@ import { cva } from "class-variance-authority";
 import { useMemo } from "react";
 
 // The banners span the full width of the content panel (see `TopBanners`) and
-// stack their parts on their own lines: title, description, optional footer.
+// lay out on two lines: the title, then the description followed by the
+// optional footer.
 const statusBannerVariants = cva(
   "flex flex-col gap-0.5 border-b px-4 py-2 text-sm",
   {
@@ -55,8 +56,10 @@ function StatusBanner({
   return (
     <div className={statusBannerVariants({ variant })}>
       <div className="font-semibold">{title}</div>
-      <div className="font-normal">{description}</div>
-      {footer && <div className="font-normal">{footer}</div>}
+      <div className="font-normal">
+        {description}
+        {footer && <> {footer}</>}
+      </div>
     </div>
   );
 }
