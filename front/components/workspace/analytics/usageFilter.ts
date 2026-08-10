@@ -1,6 +1,5 @@
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
-import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ConnectorProvider } from "@app/types/data_source";
 
@@ -26,8 +25,6 @@ export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =
     skill: "Skills",
     source: "Sources",
   };
-
-export const USAGE_FILTER_SCOPES = AGENT_CONFIGURATION_SCOPES;
 
 export type UsageFilterScope = AgentConfigurationScope;
 
@@ -148,23 +145,6 @@ export function selectAllUsageFilterOptions<C extends UsageFilterCategory>(
     return filter;
   }
   return { ...filter, [category]: [...current, ...additions] };
-}
-
-export function addUsageFilterGroup(
-  groups: UsageFilterGroup[],
-  group: UsageFilterGroup
-): UsageFilterGroup[] {
-  if (groups.some((g) => g.id === group.id)) {
-    return groups;
-  }
-  return [...groups, group];
-}
-
-export function removeUsageFilterGroup(
-  groups: UsageFilterGroup[],
-  id: string
-): UsageFilterGroup[] {
-  return groups.filter((g) => g.id !== id);
 }
 
 // Members, teams, and agents are wired to real consumption scope dimensions.

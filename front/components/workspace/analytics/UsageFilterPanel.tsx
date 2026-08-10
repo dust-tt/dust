@@ -16,7 +16,6 @@ import type {
 import {
   USAGE_FILTER_CATEGORIES,
   USAGE_FILTER_CATEGORY_LABEL,
-  USAGE_FILTER_SCOPES,
   USAGE_MODEL_TIERS,
 } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
@@ -31,6 +30,7 @@ import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useGroups } from "@app/lib/swr/groups";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -93,7 +93,7 @@ export function UsageFilterPanel({
   const [activeCategory, setActiveCategory] =
     useState<UsageFilterCategory>("agent");
   const [activeScope, setActiveScope] = useState<UsageFilterScope>(
-    USAGE_FILTER_SCOPES[0]
+    AGENT_CONFIGURATION_SCOPES[0]
   );
   const [activeTier, setActiveTier] = useState<UsageModelTier>(
     USAGE_MODEL_TIERS[0]
