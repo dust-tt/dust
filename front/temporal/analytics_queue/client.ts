@@ -7,10 +7,10 @@ import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/analytics_queue/config";
 import { makeAgentMessageAnalyticsWorkflowId } from "@app/temporal/analytics_queue/helpers";
-import { storeAgentMessageConsumptionAttributionV2Signal } from "@app/temporal/analytics_queue/signals";
+import { storeAgentMessageConsumptionAttributionV3Signal } from "@app/temporal/analytics_queue/signals";
 import {
   storeAgentAnalyticsWorkflow,
-  storeAgentMessageConsumptionAttributionV2Workflow,
+  storeAgentMessageConsumptionAttributionV3Workflow,
   storeAgentMessageFeedbackWorkflow,
 } from "@app/temporal/analytics_queue/workflows";
 import type {
@@ -117,7 +117,7 @@ export async function launchStoreAgentMessageConsumptionAttributionWorkflow({
       agentMessageId,
       conversationId,
       workspaceId,
-    }) + "-consumption-attribution-v2";
+    }) + "-consumption-attribution-v3";
 
   try {
     // signalWithStart, not start: a message settles across several finalizes (pause for approval,
@@ -125,12 +125,12 @@ export async function launchStoreAgentMessageConsumptionAttributionWorkflow({
     // already-started, freezing a tool that was still blocked when the first pass ran. The signal
     // instead reruns a workflow already in flight and starts one otherwise.
     await client.workflow.signalWithStart(
-      storeAgentMessageConsumptionAttributionV2Workflow,
+      storeAgentMessageConsumptionAttributionV3Workflow,
       {
         args: [authType, { agentLoopArgs }],
         taskQueue: QUEUE_NAME,
         workflowId,
-        signal: storeAgentMessageConsumptionAttributionV2Signal,
+        signal: storeAgentMessageConsumptionAttributionV3Signal,
         signalArgs: undefined,
         searchAttributes: {
           conversationId: [conversationId],
