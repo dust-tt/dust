@@ -95,7 +95,7 @@ export function UsageFilterSelectionSummary({
                         avatar={
                           <div className="flex grow items-center gap-2 overflow-hidden">
                             <UsageFilterOptionIcon option={option} />
-                            <span className="label-sm overflow-hidden text-ellipsis whitespace-nowrap text-gray-950">
+                            <span className="label-sm overflow-hidden text-ellipsis whitespace-nowrap primary-dark">
                               {option.name}
                             </span>
                           </div>

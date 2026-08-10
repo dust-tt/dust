@@ -37,7 +37,7 @@ export function UsageFilterCategoryNav({
               key={category}
               selected={category === activeCategory}
               avatar={
-                <span className="label-sm grow overflow-hidden text-ellipsis whitespace-nowrap text-gray-950">
+                <span className="label-sm grow overflow-hidden text-ellipsis whitespace-nowrap primary-dark">
                   {USAGE_FILTER_CATEGORY_LABEL[category]}
                 </span>
               }
