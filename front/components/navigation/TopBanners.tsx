@@ -11,22 +11,9 @@ interface TopBannersProps {
   subscription: SubscriptionType;
 }
 
-/**
- * Banner stack pinned to the top of the main content panel, spanning its full
- * width and hugging its rounded top corners (the panel clips it). It does not
- * extend over the navigation sidebar.
- *
- * It is the single owner of `--banner-height`: the panel's content area is
- * sized off `--panel-height` (`--panel-outer-height - var(--banner-height)`,
- * see global.css), so the stack has to report its own height. Measuring the
- * wrapper rather than each banner keeps that correct when several banners show
- * at once.
- */
 export function TopBanners({ owner, subscription }: TopBannersProps) {
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
-  // Measuring from the ref callback (instead of an effect) keeps the reported
-  // height in sync with whichever banners are actually mounted.
   const setNode = useCallback((node: HTMLDivElement | null) => {
     resizeObserverRef.current?.disconnect();
     resizeObserverRef.current = null;
@@ -50,9 +37,6 @@ export function TopBanners({ owner, subscription }: TopBannersProps) {
     <div
       ref={setNode}
       className={cn(
-        // Sticky matters on mobile, where the document itself scrolls (see
-        // useDocumentScrollMode). On desktop the stack is a flex sibling of the
-        // panel's scroll area, so it stays put anyway.
         "sticky top-0 z-40 shrink-0",
         "flex flex-col",
         "bg-panel-background"

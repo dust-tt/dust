@@ -63,11 +63,6 @@ function AppContentInnerWrapper({
     );
   }
 
-  // The panel is `overflow-hidden rounded-xl`, so the banner stack sitting at
-  // the top of the column is clipped to the panel's rounded corners on its own.
-  // The panel keeps its full height (`h-panel-outer`) while the banners report
-  // their height through `--banner-height`, which is what shrinks the content
-  // area below them (`h-panel`).
   return (
     <div
       className={cn(

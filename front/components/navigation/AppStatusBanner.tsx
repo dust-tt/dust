@@ -21,18 +21,6 @@ import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
 import { useMemo } from "react";
 
-// The banners span the full width of the content panel (see `TopBanners`) and
-// lay out on two lines: the title, then the description followed by the
-// optional footer.
-//
-// Colors follow Sparkle's `ContentMessage` scale (`bg-*-50` / `border-*-100` /
-// `text-*-800`). They come from the token layer, which remaps every semantic
-// scale in the `.dark` block of `tokens.css`, so they flip with the theme on
-// their own and need no `dark:` overrides. Note that `info` resolves to golden
-// and `warning` to rose.
-//
-// `orange` is the exception: it points at the raw orange palette, which the
-// token layer does not remap, so it needs explicit `dark:` steps.
 const statusBannerVariants = cva(
   "flex flex-col gap-0.5 border-b px-4 py-2 text-sm",
   {
@@ -43,7 +31,7 @@ const statusBannerVariants = cva(
           "border-orange-100",
           "bg-orange-50",
           "text-orange-800",
-          "dark:border-orange-900 dark:bg-orange-950 dark:text-orange-200"
+          "dark:border-info-100 dark:bg-info-50 dark:text-info-700"
         ),
         warning: cn("border-warning-100", "bg-warning-50", "text-warning-800"),
         success: cn("border-success-200", "bg-success-50", "text-success-800"),
@@ -329,10 +317,6 @@ function WorkspaceUsageStatusBanner({
 }
 
 // DEMO ONLY — remove before merging.
-//
-// Always renders a fake incident so the top banner can be reviewed on a deploy
-// preview without waiting for a real StatusPage incident. `?demoBanner=providers`
-// switches to the model-provider variant, `?demoBanner=off` hides it.
 function useDemoAppStatus(): AppStatus | null {
   const router = useAppRouter();
   const { demoBanner } = router.query;

@@ -41,9 +41,6 @@
   :root {
     --dev-bar-height: 0px;
     --banner-height: 0px;
-    /* Panel geometry, banner excluded: the top banners render inside the panel
-       (see TopBanners), so the panel itself keeps its full height and only its
-       content area shrinks. */
     --panel-outer-height: 100dvh;
     --panel-height: calc(var(--panel-outer-height) - var(--banner-height));
 
