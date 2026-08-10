@@ -181,6 +181,9 @@ async function provisionTrainingPod(
   const activationPod = await ActivationPodResource.makeNew(auth, {
     pod,
     user: creator,
+    // Pods provisioned by this plugin always use the compact conversation UI;
+    // the default (false) is for any other future caller.
+    isCompactUIView: true,
   });
 
   // Ensure the workspace has a running Activation schedule now that it has a
