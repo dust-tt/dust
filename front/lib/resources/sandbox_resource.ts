@@ -101,6 +101,15 @@ export type SandboxDeleteOwner = SandboxLifecycleOwner & {
 // indistinguishable to it.
 const LAST_ACTIVITY_WRITE_INTERVAL_MS = 30_000;
 
+// How long a kill-requested sandbox may keep failing its pre-destroy flush
+// before the destroy proceeds anyway. The flush is best-effort durability, not
+// a precondition: a sandbox whose state cannot be replicated (e.g. a database
+// file the litestream user cannot write) fails the check identically on every
+// sweep, and without a deadline it pins a running VM and blocks the image
+// rollout forever. Generous enough that a transient GCS or daemon hiccup still
+// resolves on a later sweep — the reaper sweeps every 5 minutes.
+const KILL_REQUESTED_FLUSH_GRACE_MS = 60 * 60 * 1000;
+
 // Owner identity env vars are reserved for owner adapters. SandboxResource
 // only enforces the env contract and does not interpret owner types.
 const SANDBOX_OWNER_ENV_VAR_CONTRACT_NAMES = new Set([
@@ -1121,7 +1130,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * `SandboxNotFoundError` as success.
    *
    * An `opts.beforeSleep` Err skips the destroy for this sweep: the row keeps
-   * its `killRequestedAt`, so the reaper retries next cycle.
+   * its `killRequestedAt`, so the reaper retries next cycle. Once the kill
+   * request is older than `KILL_REQUESTED_FLUSH_GRACE_MS` the destroy proceeds
+   * despite the failing flush, matching what the destroy-and-recreate path
+   * already does — an unflushable sandbox must not pin a VM forever.
    */
   static async dangerouslyDestroyIfKillRequested(
     auth: Authenticator,
@@ -1147,16 +1159,31 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         sandbox
       );
       if (checkResult.isErr()) {
-        // TODO(@jd 20260730: remove the panic true)
+        const killRequestedForMs =
+          Date.now() - sandbox.killRequestedAt.getTime();
+        if (killRequestedForMs < KILL_REQUESTED_FLUSH_GRACE_MS) {
+          // TODO(@jd 20260730: remove the panic true)
+          logger.error(
+            {
+              sandbox: sandbox.toLogJSON(),
+              err: checkResult.error,
+              killRequestedForMs,
+              panic: true,
+            },
+            "Kill-requested destroy: pre-destroy health check failed — skipping destroy this sweep."
+          );
+          return checkResult;
+        }
+
         logger.error(
           {
             sandbox: sandbox.toLogJSON(),
             err: checkResult.error,
+            killRequestedForMs,
             panic: true,
           },
-          "Kill-requested destroy: pre-destroy health check failed — skipping destroy this sweep."
+          "Kill-requested destroy: pre-destroy health check still failing past the grace period — destroying anyway, unreplicated pod state is lost."
         );
-        return checkResult;
       }
 
       const result = await provider.destroy(sandbox.providerId, tracingOpts);
