@@ -211,16 +211,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable Pod Function invocation endpoints",
     stage: "dust_only",
   },
-  sandbox_function_stdout_result: {
-    description:
-      "Return Pod function results through the worker dsbx stdout channel instead of the in-sandbox HTTP callback",
-    stage: "dust_only",
-  },
-  sandbox_function_fast_execution: {
-    description:
-      "Return Pod function results in the invocation response when the invocation settles before it returns",
-    stage: "dust_only",
-  },
   run_tools_from_prompt: {
     description: "Enable /run command to directly call tools without LLM",
     stage: "dust_only",
