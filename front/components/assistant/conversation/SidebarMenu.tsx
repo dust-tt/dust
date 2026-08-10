@@ -1747,7 +1747,7 @@ function NavigationListWithInbox({
       <div className="sticky top-0 z-30 h-0" aria-hidden>
         <div
           className={cn(
-            "pointer-events-none absolute inset-x-0 top-0 h-8 backdrop-blur-[2px]",
+            "pointer-events-none absolute inset-x-0 top-0 h-16 backdrop-blur-[6px]",
             "[mask-image:linear-gradient(to_bottom,black,transparent)]",
             "transition-opacity duration-200",
             isScrolled ? "opacity-100" : "opacity-0"
