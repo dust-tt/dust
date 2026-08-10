@@ -27,11 +27,14 @@ import { UsageFilterModelComplexityControls } from "@app/components/workspace/an
 import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
-import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
-import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import {
+  getMcpServerDisplayName,
+  isRemoteMCPServerType,
+} from "@app/lib/actions/mcp_helper";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useGroups } from "@app/lib/swr/groups";
+import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import { useModels } from "@app/lib/swr/models";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
@@ -63,14 +66,13 @@ interface UsageFilterPaginationState {
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
-  period: ConsumptionPeriodSelection;
   // Skills/sources are still mock data (see usageFilterMockData.ts — sources
   // are fake connectors standing in for a real db call); agents come from
   // useAgentConfigurations, members from useSearchMembers, teams from
-  // useGroups, and models from the workspace's full model catalog
-  // (useModels) — the same endpoint that backs the model picker elsewhere in
-  // the app. Tools are fetched live too, scoped to `period`
-  // (useConsumptionTop).
+  // useGroups, models from the workspace's full model catalog (useModels),
+  // and tools from the workspace's full MCP server catalog (useMCPServers)
+  // — the same endpoints that back the model and tool pickers elsewhere in
+  // the app.
   categoryOptions: {
     skill: UsageFilterSkillOption[];
     source: UsageFilterSourceOption[];
@@ -81,7 +83,6 @@ interface UsageFilterPanelProps {
 
 export function UsageFilterPanel({
   owner,
-  period,
   categoryOptions,
   filter,
   onFilterChange,
@@ -195,14 +196,12 @@ export function UsageFilterPanel({
     disabled: !isAgentCategoryActive,
   });
 
-  const { rows: topToolRows } = useConsumptionTop({
-    workspaceId: owner.sId,
-    dimension: "tool",
-    period,
-    // Same rationale as members/agents: broader than the Attribution
-    // table's own top-N so the picker covers most of the period's active
-    // tools.
-    limit: 100,
+  // The workspace's full, period-independent MCP server catalog — the same
+  // endpoint backing the tool picker elsewhere in the app — rather than a
+  // period-scoped top-N, so every tool is listable and searchable regardless
+  // of the selected period.
+  const { mcpServers } = useMCPServers({
+    owner,
     disabled: !isToolCategoryActive,
   });
 
@@ -268,16 +267,18 @@ export function UsageFilterPanel({
     [modelCatalog]
   );
 
-  // Same client-side search caveat as members/agents/models: a tool outside
-  // the top 100 by credits over the period will not be searchable here.
+  // Every MCP server in the workspace, regardless of the selected period.
+  // Remote servers are identified by sId and internal ones by their static
+  // name, matching the key `tool.server_name` stores in usage data (see
+  // resolveServerDisplayNames).
   const toolOptions = useMemo<UsageFilterToolOption[]>(
     () =>
-      topToolRows.map((row) => ({
-        id: row.id,
-        name: row.name,
+      mcpServers.map((server) => ({
+        id: isRemoteMCPServerType(server) ? server.sId : server.name,
+        name: getMcpServerDisplayName(server),
         kind: "tool" as const,
       })),
-    [topToolRows]
+    [mcpServers]
   );
 
   const resolvedCategoryOptions = useMemo<{
