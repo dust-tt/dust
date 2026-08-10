@@ -151,6 +151,20 @@ export const GENERIC_RUN_AGENT_TOOL_SCHEMA = {
     ),
 };
 
+export const GENERIC_RUN_AGENT_TOOLS_METADATA = [
+  {
+    name: GENERIC_RUN_AGENT_TOOL_NAME,
+    description:
+      "Run an accessible workspace agent by ID. Use agent_router.list_all_published_agents first to discover agent IDs.",
+    schema: GENERIC_RUN_AGENT_TOOL_SCHEMA,
+    stake: "never_ask",
+    displayLabels: { running: "Running agent", done: "Run agent" },
+    enableAlerting: true,
+    toolCostCategory: "basic",
+    freeUsage: false,
+  },
+] as const;
+
 export const RUN_AGENT_SERVER = {
   serverInfo: {
     name: RUN_AGENT_SERVER_NAME,

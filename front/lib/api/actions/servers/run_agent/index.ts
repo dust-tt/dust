@@ -9,6 +9,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   makeInternalMCPServer,
   makeMCPToolExit,
@@ -32,7 +33,7 @@ import { RUN_AGENT_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { getOrCreateConversation } from "@app/lib/api/actions/servers/run_agent/conversation";
 import {
   GENERIC_RUN_AGENT_TOOL_NAME,
-  GENERIC_RUN_AGENT_TOOL_SCHEMA,
+  GENERIC_RUN_AGENT_TOOLS_METADATA,
   getRunAgentToolDescription,
   RUN_AGENT_CONFIGURABLE_PROPERTIES,
   RUN_AGENT_PLACEHOLDER_TOOL_NAME,
@@ -844,24 +845,10 @@ async function createServer(
   }
 
   if (!childAgentId) {
-    type GenericRunAgentSchema = z.infer<
-      z.ZodObject<typeof GENERIC_RUN_AGENT_TOOL_SCHEMA>
-    >;
-    registerTool(
-      auth,
-      toolContext,
-      server,
+    const [genericToolDefinition] = buildTools(
+      GENERIC_RUN_AGENT_TOOLS_METADATA,
       {
-        name: GENERIC_RUN_AGENT_TOOL_NAME,
-        description:
-          "Run an accessible workspace agent by ID. Use agent_router.list_all_published_agents first to discover agent IDs.",
-        schema: GENERIC_RUN_AGENT_TOOL_SCHEMA,
-        stake: "never_ask",
-        displayLabels: { running: "Running agent", done: "Run agent" },
-        enableAlerting: true,
-        toolCostCategory: "basic" as const,
-        freeUsage: false,
-        handler: (
+        [GENERIC_RUN_AGENT_TOOL_NAME]: (
           {
             agentId,
             query,
@@ -869,8 +856,8 @@ async function createServer(
             toolsetsToAdd,
             fileOrContentFragmentIds,
             filePaths,
-          }: GenericRunAgentSchema,
-          extra: ToolHandlerExtra
+          },
+          extra
         ) =>
           runAgent(
             {
@@ -888,9 +875,12 @@ async function createServer(
               toolName: GENERIC_RUN_AGENT_TOOL_NAME,
             }
           ),
-      } as unknown as ToolDefinition,
-      { monitoringName: RUN_AGENT_PLACEHOLDER_TOOL_NAME }
+      }
     );
+
+    registerTool(auth, toolContext, server, genericToolDefinition, {
+      monitoringName: RUN_AGENT_PLACEHOLDER_TOOL_NAME,
+    });
     return server;
   }
 

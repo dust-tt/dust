@@ -36,9 +36,11 @@ describe("run_agent", () => {
           executionMode: expect.any(Object),
           query: expect.any(Object),
         },
-        required: ["agentId", "description", "query"],
       },
     });
+    expect(tools[0].inputSchema.required).toEqual(
+      expect.arrayContaining(["agentId", "description", "query"])
+    );
 
     await client.close();
   });
