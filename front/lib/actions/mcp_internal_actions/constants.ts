@@ -11,6 +11,10 @@ import {
   AGENT_ROUTER_SERVER,
   AGENT_ROUTER_SERVER_NAME,
 } from "@app/lib/api/actions/servers/agent_router/metadata";
+import {
+  AGENT_RUNNER_SERVER,
+  AGENT_RUNNER_SERVER_NAME,
+} from "@app/lib/api/actions/servers/agent_runner/metadata";
 import { AGENT_SIDEKICK_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_agent_state/metadata";
 import { AGENT_SIDEKICK_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import { AGENT_TEMPLATES_SERVER } from "@app/lib/api/actions/servers/agent_templates/metadata";
@@ -161,6 +165,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "agent_sidekick_context",
   "agent_templates",
   "agent_memory",
+  AGENT_RUNNER_SERVER_NAME,
   "agent_router",
   ASHBY_SERVER_NAME,
   "clari_copilot",
@@ -1284,6 +1289,17 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: USER_MEMORY_SERVER,
+  },
+  [AGENT_RUNNER_SERVER_NAME]: {
+    id: 1044,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: AGENT_RUNNER_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {

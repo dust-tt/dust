@@ -9,7 +9,6 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   makeInternalMCPServer,
   makeMCPToolExit,
@@ -32,8 +31,6 @@ import {
 import { RUN_AGENT_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { getOrCreateConversation } from "@app/lib/api/actions/servers/run_agent/conversation";
 import {
-  GENERIC_RUN_AGENT_TOOL_NAME,
-  GENERIC_RUN_AGENT_TOOLS_METADATA,
   getRunAgentToolDescription,
   RUN_AGENT_CONFIGURABLE_PROPERTIES,
   RUN_AGENT_PLACEHOLDER_TOOL_NAME,
@@ -136,7 +133,7 @@ function parseAgentConfigurationUri(uri: string): Result<string, Error> {
   return new Ok(match[2]);
 }
 
-const runAgent = async (
+export const runAgent = async (
   {
     query,
     childAgentId,
@@ -842,46 +839,6 @@ async function createServer(
     toolContext.runContext.toolConfiguration.childAgentId
   ) {
     childAgentId = toolContext.runContext.toolConfiguration.childAgentId;
-  }
-
-  if (!childAgentId) {
-    const [genericToolDefinition] = buildTools(
-      GENERIC_RUN_AGENT_TOOLS_METADATA,
-      {
-        [GENERIC_RUN_AGENT_TOOL_NAME]: (
-          {
-            agentId,
-            query,
-            executionMode,
-            toolsetsToAdd,
-            fileOrContentFragmentIds,
-            filePaths,
-          },
-          extra
-        ) =>
-          runAgent(
-            {
-              query,
-              childAgentId: agentId,
-              executionMode: executionMode.value,
-              toolsetsToAdd,
-              fileOrContentFragmentIds,
-              filePaths,
-            },
-            {
-              ...extra,
-              auth,
-              toolContext,
-              toolName: GENERIC_RUN_AGENT_TOOL_NAME,
-            }
-          ),
-      }
-    );
-
-    registerTool(auth, toolContext, server, genericToolDefinition, {
-      monitoringName: RUN_AGENT_PLACEHOLDER_TOOL_NAME,
-    });
-    return server;
   }
 
   let childAgentBlob: ChildAgentBlob | null = null;

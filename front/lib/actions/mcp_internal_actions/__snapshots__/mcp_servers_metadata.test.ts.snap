@@ -54,6 +54,12 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
   },
+  "agent_runner": {
+    "run_agent": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+  },
   "agent_router": {
     "list_all_published_agents": {
       "freeUsage": true,
@@ -2671,6 +2677,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "erase_entries": "never_ask",
     "record_entries": "never_ask",
     "retrieve": "never_ask",
+  },
+  "agent_runner": {
+    "run_agent": "never_ask",
   },
   "agent_router": {
     "list_all_published_agents": "never_ask",

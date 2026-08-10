@@ -9,13 +9,13 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
-import createRunAgentServer from "./index";
+import createAgentRunnerServer from "./index";
 
-describe("run_agent", () => {
-  it("exposes the generic runner without a configured child agent", async () => {
-    const server = await createRunAgentServer({} as Authenticator);
+describe("agent_runner", () => {
+  it("exposes the generic runner", async () => {
+    const server = await createAgentRunnerServer({} as Authenticator);
     const client = new Client({
-      name: "run-agent-test",
+      name: "agent-runner-test",
       version: "1.0.0",
     });
     const [clientTransport, serverTransport] =

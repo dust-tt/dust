@@ -468,12 +468,12 @@ export const activationSkill = {
     { name: "skill_authoring" },
     { name: "triggers_management" },
     { name: "files" },
-    { name: "run_agent" },
+    { name: "agent_runner" },
     { name: "activation_recommendations" },
     { name: "pod_manager" },
     { name: "conversation_side_panel" },
   ],
-  version: 6,
+  version: 7,
   icon: "ActionRocketIcon",
   isRestricted: async (auth) => {
     const flags = await getFeatureFlags(auth);

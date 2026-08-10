@@ -8,6 +8,7 @@ import {
 import { default as activationRecommendationsServer } from "@app/lib/api/actions/servers/activation_recommendations";
 import { default as agentMemoryServer } from "@app/lib/api/actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/api/actions/servers/agent_router";
+import { default as agentRunnerServer } from "@app/lib/api/actions/servers/agent_runner";
 import { default as agentSidekickAgentStateServer } from "@app/lib/api/actions/servers/agent_sidekick_agent_state";
 import { default as agentSidekickContextServer } from "@app/lib/api/actions/servers/agent_sidekick_context";
 import { default as agentTemplatesServer } from "@app/lib/api/actions/servers/agent_templates";
@@ -171,6 +172,8 @@ export async function getInternalMCPServer(
       return includeDataServer(auth, toolContext);
     case "run_agent":
       return runAgentServer(auth, toolContext);
+    case "agent_runner":
+      return agentRunnerServer(auth, toolContext);
     case "run_dust_app":
       return dustAppServer(auth, toolContext);
     case "agent_router":
