@@ -1,4 +1,3 @@
-import { OPUS_AND_SOL_MODEL_AVAILABILITY } from "./availability";
 import type { ModelConfigurationType } from "./types";
 
 export const CLAUDE_4_OPUS_20250514_MODEL_ID =
@@ -415,7 +414,11 @@ export const CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
   customThinkingType: "auto",
-  availableIfOneOf: OPUS_AND_SOL_MODEL_AVAILABILITY,
+  availableIfOneOf: {
+    creditPricedPlan: true,
+    plansWithAdvancedModels: true,
+    featureFlag: "claude_4_5_opus_feature",
+  },
   customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
   // Global (Anthropic direct) only for now; Vertex EU comes in a follow-up once

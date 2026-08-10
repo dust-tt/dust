@@ -1,7 +1,6 @@
 /**
  * MODEL IDS
  */
-import { OPUS_AND_SOL_MODEL_AVAILABILITY } from "./availability";
 import type { ModelConfigurationType } from "./types";
 
 export const GPT_3_5_TURBO_MODEL_ID = "gpt-3.5-turbo" as const;
@@ -462,7 +461,11 @@ export const GPT_5_6_SOL_MODEL_CONFIG: ModelConfigurationType = {
   supportsResponseFormat: true,
   supportsBatchProcessing: true,
   supportsToolSearch: true,
-  availableIfOneOf: OPUS_AND_SOL_MODEL_AVAILABILITY,
+  availableIfOneOf: {
+    creditPricedPlan: true,
+    plansWithAdvancedModels: true,
+    featureFlag: "claude_4_5_opus_feature",
+  },
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
   tokenizer: { type: "tiktoken", base: "r50k_base" },
