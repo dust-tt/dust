@@ -52,7 +52,7 @@ app.get(
     return ctx.json({
       groups:
         withMembers === "true"
-          ? await GroupResource.toJSONWithMembers(auth, groups)
+          ? await GroupResource.fetchJSONWithMembers(auth, groups)
           : await GroupResource.toJSONWithMemberCounts(auth, groups),
     });
   }

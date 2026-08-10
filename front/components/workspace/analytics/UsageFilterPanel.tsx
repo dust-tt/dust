@@ -26,9 +26,11 @@ import { UsageFilterModelComplexityControls } from "@app/components/workspace/an
 import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
+import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
 import { useGroups } from "@app/lib/swr/groups";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   BarChart05,
@@ -43,6 +45,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 // Chunk size for the infinite scroll
 const FILTER_PICKER_PAGE_SIZE = 100;
+
+interface UsageFilterPaginationState {
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  onLoadMore: () => void;
+}
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
@@ -90,7 +98,7 @@ export function UsageFilterPanel({
   const [searchText, setSearchText] = useState("");
   // Only used for the "member" category: narrows the displayed members down
   // to those belonging to at least one of these groups.
-  const [selectedGroups, setSelectedGroups] = useState<UsageFilterGroup[]>([]);
+  const selectedGroups = useToggleSelectionList<UsageFilterGroup>();
 
   const isMemberCategoryActive = isOpen && activeCategory === "member";
 
@@ -190,8 +198,8 @@ export function UsageFilterPanel({
   const filteredOptions = useMemo(() => {
     const search = searchText.trim().toLowerCase();
     const selectedGroupMemberIds =
-      activeCategory === "member" && selectedGroups.length > 0
-        ? new Set(selectedGroups.flatMap((group) => group.memberIds))
+      activeCategory === "member" && selectedGroups.items.length > 0
+        ? new Set(selectedGroups.items.flatMap((group) => group.memberIds))
         : null;
     const matchingOptions = activeOptions.filter((option) => {
       if (option.kind === "agent" && option.scope !== activeScope) {
@@ -222,7 +230,7 @@ export function UsageFilterPanel({
     activeScope,
     activeTier,
     activeCategory,
-    selectedGroups,
+    selectedGroups.items,
   ]);
 
   // Members are already paginated server-side into filteredOptions; the
@@ -238,6 +246,36 @@ export function UsageFilterPanel({
 
   const hasMoreStaticOptions =
     activeCategory !== "member" && visibleStaticCount < filteredOptions.length;
+
+  const activePagination = useMemo<UsageFilterPaginationState>(() => {
+    switch (activeCategory) {
+      case "member":
+        return {
+          hasMore: hasMoreMembers,
+          isLoadingMore: isMembersValidating,
+          onLoadMore: handleLoadMoreMembers,
+        };
+      case "agent":
+      case "model":
+      case "tool":
+      case "skill":
+      case "source":
+        return {
+          hasMore: hasMoreStaticOptions,
+          isLoadingMore: false,
+          onLoadMore: handleLoadMoreStaticOptions,
+        };
+      default:
+        return assertNever(activeCategory);
+    }
+  }, [
+    activeCategory,
+    hasMoreMembers,
+    isMembersValidating,
+    handleLoadMoreMembers,
+    hasMoreStaticOptions,
+    handleLoadMoreStaticOptions,
+  ]);
 
   const selectedIdsForActiveCategory = useMemo(
     () =>
@@ -282,15 +320,15 @@ export function UsageFilterPanel({
     resetFilterPickerPagination();
   };
 
-  const handleScopeChange = (scope: UsageFilterScope) => {
-    setActiveScope(scope);
-    resetFilterPickerPagination();
-  };
-
-  const handleTierChange = (tier: UsageModelTier) => {
-    setActiveTier(tier);
-    resetFilterPickerPagination();
-  };
+  // Category-specific "active option" controls (scope, tier, ...) all need
+  // to reset pagination on change; wrap their setters once instead of
+  // writing a dedicated handleXxxChange per category.
+  const withPaginationReset =
+    <T,>(setter: (value: T) => void) =>
+    (value: T) => {
+      setter(value);
+      resetFilterPickerPagination();
+    };
 
   const handleCancel = () => {
     setIsOpen(false);
@@ -299,16 +337,6 @@ export function UsageFilterPanel({
   const handleApply = () => {
     onFilterChange(draftFilter);
     setIsOpen(false);
-  };
-
-  const handleAddGroup = (group: UsageFilterGroup) => {
-    setSelectedGroups((current) =>
-      current.some((g) => g.id === group.id) ? current : [...current, group]
-    );
-  };
-
-  const handleRemoveGroup = (id: string) => {
-    setSelectedGroups((current) => current.filter((g) => g.id !== id));
   };
 
   const activeCategorySelectionCount = draftFilter[activeCategory]?.length ?? 0;
@@ -359,9 +387,9 @@ export function UsageFilterPanel({
             {activeCategory === "member" && (
               <UsageFilterMemberGroupsControls
                 groups={groups}
-                selectedGroups={selectedGroups}
-                onAddGroup={handleAddGroup}
-                onRemoveGroup={handleRemoveGroup}
+                selectedGroups={selectedGroups.items}
+                onAddGroup={selectedGroups.add}
+                onRemoveGroup={selectedGroups.remove}
               />
             )}
             {activeCategory === "model" && (
@@ -370,13 +398,13 @@ export function UsageFilterPanel({
                 selectedModelIds={selectedIdsForActiveCategory}
                 onToggleModel={(model) => toggleOption("model", model)}
                 activeTier={activeTier}
-                onTierChange={handleTierChange}
+                onTierChange={withPaginationReset(setActiveTier)}
               />
             )}
             {activeCategory === "agent" && (
               <UsageFilterAgentScopeControls
                 activeScope={activeScope}
-                onScopeChange={handleScopeChange}
+                onScopeChange={withPaginationReset(setActiveScope)}
               />
             )}
             <UsageFilterOptionCheckboxList
@@ -388,17 +416,9 @@ export function UsageFilterPanel({
               onSelectAll={() =>
                 selectAllFiltered(activeCategory, filteredOptions)
               }
-              hasMore={
-                activeCategory === "member"
-                  ? hasMoreMembers
-                  : hasMoreStaticOptions
-              }
-              isLoadingMore={activeCategory === "member" && isMembersValidating}
-              onLoadMore={
-                activeCategory === "member"
-                  ? handleLoadMoreMembers
-                  : handleLoadMoreStaticOptions
-              }
+              hasMore={activePagination.hasMore}
+              isLoadingMore={activePagination.isLoadingMore}
+              onLoadMore={activePagination.onLoadMore}
             />
           </div>
           <UsageFilterSelectionSummary

@@ -2965,7 +2965,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    * group's active member sIds, resolved in two queries total regardless of
    * group count.
    */
-  static async toJSONWithMembers(
+  static async fetchJSONWithMembers(
     auth: Authenticator,
     groups: GroupResource[]
   ): Promise<(GroupType & { memberIds: string[] })[]> {
