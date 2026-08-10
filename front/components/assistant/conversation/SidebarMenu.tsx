@@ -137,50 +137,6 @@ type GroupLabel =
   | "Last 12 Months"
   | "Older";
 
-function useScrollTopFade(scrollRoot: HTMLElement | null) {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (
-      !scrollRoot ||
-      !sentinel ||
-      typeof IntersectionObserver === "undefined"
-    ) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => setIsScrolled(!entry.isIntersecting),
-      { root: scrollRoot }
-    );
-    observer.observe(sentinel);
-
-    return () => observer.disconnect();
-  }, [scrollRoot]);
-
-  return { sentinelRef, isScrolled };
-}
-
-interface SidebarScrollBlurProps {
-  isVisible: boolean;
-}
-
-function SidebarScrollBlur({ isVisible }: SidebarScrollBlurProps) {
-  return (
-    <div
-      aria-hidden
-      className={cn(
-        "pointer-events-none absolute inset-x-0 top-0 z-30 h-10 backdrop-blur-[3px]",
-        "[mask-image:linear-gradient(to_bottom,black,transparent)]",
-        "transition-opacity duration-200",
-        isVisible ? "opacity-100" : "opacity-0"
-      )}
-    />
-  );
-}
-
 interface SearchPodItemProps {
   pod: PodType;
   owner: WorkspaceType;
@@ -242,7 +198,6 @@ interface SearchResultsProps {
   isMultiSelect: boolean;
   selectedConversations: ConversationListItemType[];
   toggleConversationSelection: (c: ConversationListItemType) => void;
-  topSection?: React.ReactNode;
 }
 
 function SearchResults({
@@ -267,13 +222,10 @@ function SearchResults({
   isMultiSelect,
   selectedConversations,
   toggleConversationSelection,
-  topSection,
 }: SearchResultsProps) {
   const [podsSectionOpen, setPodsSectionOpen] = useState(true);
   const [conversationsSectionOpen, setConversationsSectionOpen] =
     useState(true);
-  const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
-  const { sentinelRef, isScrolled } = useScrollTopFade(scrollEl);
 
   const allConversations = useMemo(() => {
     const seen = new Set<string>();
@@ -330,153 +282,142 @@ function SearchResults({
     isSearchingPodConversations;
 
   return (
-    <div className="relative h-full">
-      <div ref={setScrollEl} className="h-full overflow-y-auto">
-        <div ref={sentinelRef} className="h-px" aria-hidden />
-        {topSection}
-        <NavigationList className="mx-sidebar-side-spacing">
-          <NavigationListCollapsibleSection
-            label="Pods"
-            type="collapse"
-            open={podsSectionOpen}
-            onOpenChange={setPodsSectionOpen}
-            action={
-              <>
-                <Button
-                  size="xs"
-                  icon={Plus}
-                  label="New"
-                  variant="ghost-secondary"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onCreatePod();
-                  }}
-                />
-                <PodsBrowsePopover owner={owner} />
-              </>
-            }
-          >
-            {showPodsLoading ? (
-              <div className="flex items-center justify-center py-4">
-                <Spinner size="sm" />
-              </div>
-            ) : allPods.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-muted-foreground">
-                No results found
-              </div>
-            ) : (
-              <>
-                {allPods.map((pod) => (
-                  <SearchPodItem
-                    key={pod.sId}
-                    pod={pod}
-                    owner={owner}
-                    isMember={pod.isMember}
-                    activePodId={activeSpaceId}
-                  />
-                ))}
-                {hasMorePods && (
-                  <div className="flex justify-center py-2">
-                    <Button
-                      variant="ghost-secondary"
-                      size="xs"
-                      label={isLoadingMorePods ? "Loading..." : "Show more"}
-                      onClick={handleShowMorePods}
-                      disabled={isLoadingMorePods}
-                    />
-                  </div>
-                )}
-              </>
-            )}
-          </NavigationListCollapsibleSection>
-        </NavigationList>
-
-        <NavigationList className="mx-sidebar-side-spacing">
-          <NavigationListCollapsibleSection
-            label="Conversations"
-            type="collapse"
-            open={conversationsSectionOpen}
-            onOpenChange={setConversationsSectionOpen}
-            action={
-              <>
-                <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      size="xmini"
-                      icon={DotsHorizontal}
-                      variant="ghost"
-                      aria-label="Conversations options"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    onFocusOutside={(e) => e.preventDefault()}
-                  >
-                    <DropdownMenuLabel label="Conversations" />
-                    <DropdownMenuItem
-                      label={
-                        hideTriggeredConversations
-                          ? "Show triggered"
-                          : "Hide triggered"
-                      }
-                      icon={hideTriggeredConversations ? Zap : ZapOff}
-                      disabled={!hasTriggeredConversations}
-                      onClick={() =>
-                        setHideTriggeredConversations(
-                          !hideTriggeredConversations
-                        )
-                      }
-                    />
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            }
-          >
-            {allConversations.length === 0 && !showConversationsLoading ? (
-              <div className="px-3 py-2 text-sm text-muted-foreground">
-                No results found
-              </div>
-            ) : (
-              allConversations.map((conv) => (
-                <ConversationListItem
-                  key={conv.sId}
-                  conversation={conv}
+    <div className="h-full overflow-y-auto">
+      <NavigationList className="mx-sidebar-side-spacing">
+        <NavigationListCollapsibleSection
+          label="Pods"
+          type="collapse"
+          open={podsSectionOpen}
+          onOpenChange={setPodsSectionOpen}
+          action={
+            <>
+              <Button
+                size="xs"
+                icon={Plus}
+                label="New"
+                variant="ghost-secondary"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onCreatePod();
+                }}
+              />
+              <PodsBrowsePopover owner={owner} />
+            </>
+          }
+        >
+          {showPodsLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <Spinner size="sm" />
+            </div>
+          ) : allPods.length === 0 ? (
+            <div className="px-3 py-2 text-sm text-muted-foreground">
+              No results found
+            </div>
+          ) : (
+            <>
+              {allPods.map((pod) => (
+                <SearchPodItem
+                  key={pod.sId}
+                  pod={pod}
                   owner={owner}
-                  isMultiSelect={isMultiSelect}
-                  selectedConversations={selectedConversations}
-                  toggleConversationSelection={toggleConversationSelection}
-                  activeConversationId={activeConversationId}
+                  isMember={pod.isMember}
+                  activePodId={activeSpaceId}
                 />
-              ))
-            )}
-            {hasMorePrivateConversations && (
-              <div className="flex justify-center py-2">
-                <Button
-                  variant="ghost-secondary"
-                  size="xs"
-                  label={
-                    isLoadingMorePrivateConversations
-                      ? "Loading..."
-                      : "Show more"
-                  }
-                  onClick={handleShowMorePrivateConversations}
-                  disabled={isLoadingMorePrivateConversations}
-                />
-              </div>
-            )}
-            {showConversationsLoading && (
-              <div className="flex items-center justify-center py-4">
-                <Spinner size="sm" />
-              </div>
-            )}
-          </NavigationListCollapsibleSection>
-        </NavigationList>
-      </div>
-      <SidebarScrollBlur isVisible={isScrolled} />
+              ))}
+              {hasMorePods && (
+                <div className="flex justify-center py-2">
+                  <Button
+                    variant="ghost-secondary"
+                    size="xs"
+                    label={isLoadingMorePods ? "Loading..." : "Show more"}
+                    onClick={handleShowMorePods}
+                    disabled={isLoadingMorePods}
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </NavigationListCollapsibleSection>
+      </NavigationList>
+
+      <NavigationList className="mx-sidebar-side-spacing">
+        <NavigationListCollapsibleSection
+          label="Conversations"
+          type="collapse"
+          open={conversationsSectionOpen}
+          onOpenChange={setConversationsSectionOpen}
+          action={
+            <>
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="xmini"
+                    icon={DotsHorizontal}
+                    variant="ghost"
+                    aria-label="Conversations options"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent onFocusOutside={(e) => e.preventDefault()}>
+                  <DropdownMenuLabel label="Conversations" />
+                  <DropdownMenuItem
+                    label={
+                      hideTriggeredConversations
+                        ? "Show triggered"
+                        : "Hide triggered"
+                    }
+                    icon={hideTriggeredConversations ? Zap : ZapOff}
+                    disabled={!hasTriggeredConversations}
+                    onClick={() =>
+                      setHideTriggeredConversations(!hideTriggeredConversations)
+                    }
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          }
+        >
+          {allConversations.length === 0 && !showConversationsLoading ? (
+            <div className="px-3 py-2 text-sm text-muted-foreground">
+              No results found
+            </div>
+          ) : (
+            allConversations.map((conv) => (
+              <ConversationListItem
+                key={conv.sId}
+                conversation={conv}
+                owner={owner}
+                isMultiSelect={isMultiSelect}
+                selectedConversations={selectedConversations}
+                toggleConversationSelection={toggleConversationSelection}
+                activeConversationId={activeConversationId}
+              />
+            ))
+          )}
+          {hasMorePrivateConversations && (
+            <div className="flex justify-center py-2">
+              <Button
+                variant="ghost-secondary"
+                size="xs"
+                label={
+                  isLoadingMorePrivateConversations ? "Loading..." : "Show more"
+                }
+                onClick={handleShowMorePrivateConversations}
+                disabled={isLoadingMorePrivateConversations}
+              />
+            </div>
+          )}
+          {showConversationsLoading && (
+            <div className="flex items-center justify-center py-4">
+              <Spinner size="sm" />
+            </div>
+          )}
+        </NavigationListCollapsibleSection>
+      </NavigationList>
     </div>
   );
 }
@@ -908,10 +849,6 @@ export function AgentSidebarMenu({
     sidebarTitleFilter,
   ]);
 
-  // "For you" / "Agents" / "Skills": rendered as the first thing inside
-  // whichever scroll area is active (search results or the conversation
-  // list), so they scroll with the rest of the sidebar instead of sitting
-  // above it.
   const navItemsSection = (showGetStarted ||
     (!isMultiSelect && !hideActions)) && (
     <NavigationList className="mx-sidebar-side-spacing mb-4 pt-1">
@@ -1263,6 +1200,7 @@ export function AgentSidebarMenu({
                 </div>
               </div>
             )}
+            {isSearchActive && navItemsSection}
             <div className="min-h-0 flex-1 overflow-hidden">
               {isConversationsError && (
                 <Label className="px-3 py-4 text-xs font-medium text-muted-foreground">
@@ -1296,7 +1234,6 @@ export function AgentSidebarMenu({
                   isMultiSelect={isMultiSelect}
                   selectedConversations={selectedConversations}
                   toggleConversationSelection={toggleConversationSelection}
-                  topSection={navItemsSection}
                 />
               ) : (
                 conversationsList
@@ -1719,7 +1656,28 @@ function NavigationListWithInbox({
   const [scrollViewport, setScrollViewport] = useState<HTMLDivElement | null>(
     null
   );
-  const { sentinelRef, isScrolled } = useScrollTopFade(scrollViewport);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const scrollTopSentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const sentinel = scrollTopSentinelRef.current;
+    if (
+      !scrollViewport ||
+      !sentinel ||
+      typeof IntersectionObserver === "undefined"
+    ) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsScrolled(!entry.isIntersecting),
+      { root: scrollViewport }
+    );
+    observer.observe(sentinel);
+
+    return () => observer.disconnect();
+  }, [scrollViewport]);
+
   const { isConversationsSectionCollapsed, setConversationsSectionCollapsed } =
     useConversationsSectionCollapsed();
   const {
@@ -1786,7 +1744,7 @@ function NavigationListWithInbox({
         viewportRef={setScrollViewport}
         className="dd-privacy-mask h-full w-full"
       >
-        <div ref={sentinelRef} className="h-px" aria-hidden />
+        <div ref={scrollTopSentinelRef} className="h-px" aria-hidden />
         <div className="flex flex-col gap-4">
           {topSection}
           <AnimatePresence initial={false}>
@@ -1930,7 +1888,14 @@ function NavigationListWithInbox({
           </NavigationList>
         </div>
       </ScrollArea>
-      <SidebarScrollBlur isVisible={isScrolled} />
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-x-0 top-0 h-8 bg-linear-to-b",
+          "from-app-background to-transparent transition-opacity duration-200",
+          isScrolled ? "opacity-100" : "opacity-0"
+        )}
+      />
     </div>
   );
 }
