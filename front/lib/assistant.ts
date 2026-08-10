@@ -1,5 +1,5 @@
 import { isProviderWhitelisted } from "@app/lib/api/assistant/provider_whitelist";
-import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
 import type {
@@ -42,7 +42,11 @@ export function isModelAvailable(
   const includeAdvancedModelInPicker =
     featureFlags.includes("models_picker") && isAdvancedModel(m);
 
-  if (m.largeModel && !isUpgraded(plan) && !includeAdvancedModelInPicker) {
+  if (
+    m.largeModel &&
+    (plan === null || !isCreditPricedPlanPrefix(plan.code)) &&
+    !includeAdvancedModelInPicker
+  ) {
     return false;
   }
 

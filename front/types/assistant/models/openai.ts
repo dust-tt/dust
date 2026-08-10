@@ -461,6 +461,9 @@ export const GPT_5_6_SOL_MODEL_CONFIG: ModelConfigurationType = {
   supportsResponseFormat: true,
   supportsBatchProcessing: true,
   supportsToolSearch: true,
+  availableIfOneOf: {
+    featureFlag: "claude_4_5_opus_feature",
+  },
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
   tokenizer: { type: "tiktoken", base: "r50k_base" },

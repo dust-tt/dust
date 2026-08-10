@@ -6,6 +6,7 @@ import {
 } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import {
+  CREDIT_PRICED_BUSINESS_PLAN_CODE,
   FREE_NO_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
   PRO_PLAN_SEAT_29_CODE,
@@ -13,6 +14,7 @@ import {
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
+import { GPT_5_6_SOL_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { PlanType } from "@app/types/plan";
 import type { RegionType } from "@app/types/region";
@@ -141,7 +143,21 @@ describe("isModelAvailable", () => {
     ).toBe(false);
   });
 
-  it("should return true for large model with upgraded plan", () => {
+  it("should return true for large model with credit-priced plan", () => {
+    const model = createMockModel({ largeModel: true });
+    const plan = createMockPlan(CREDIT_PRICED_BUSINESS_PLAN_CODE);
+
+    expect(
+      isModelAvailable(model, {
+        featureFlags: [],
+        plan,
+        regionalModelsOnly: owner.regionalModelsOnly,
+        region: TEST_REGION,
+      })
+    ).toBe(true);
+  });
+
+  it("should return false for large model with legacy paid plan", () => {
     const model = createMockModel({ largeModel: true });
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
 
@@ -152,10 +168,10 @@ describe("isModelAvailable", () => {
         regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
-    ).toBe(true);
+    ).toBe(false);
   });
 
-  it("should return true for large model with free upgraded plan", () => {
+  it("should return false for large model with free upgraded plan", () => {
     const model = createMockModel({ largeModel: true });
     const plan = createMockPlan(FREE_UPGRADED_PLAN_CODE);
 
@@ -166,10 +182,10 @@ describe("isModelAvailable", () => {
         regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
       })
-    ).toBe(true);
+    ).toBe(false);
   });
 
-  it("should return false for large model without upgraded plan", () => {
+  it("should return false for large model without a credit-priced plan", () => {
     const model = createMockModel({
       largeModel: true,
       availableIfOneOf: { plansWithAdvancedModels: true },
@@ -202,12 +218,12 @@ describe("isModelAvailable", () => {
     ).toBe(false);
   });
 
-  it("should return false when large model requires upgraded plan but featureFlag is missing", () => {
+  it("should return false when large model requires a feature flag but it is missing", () => {
     const model = createMockModel({
       availableIfOneOf: { featureFlag: "deepseek_feature" },
       largeModel: true,
     });
-    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
+    const plan = createMockPlan(CREDIT_PRICED_BUSINESS_PLAN_CODE);
 
     expect(
       isModelAvailable(model, {
@@ -215,6 +231,38 @@ describe("isModelAvailable", () => {
         plan,
         regionalModelsOnly: owner.regionalModelsOnly,
         region: TEST_REGION,
+      })
+    ).toBe(false);
+  });
+
+  it("should only allow GPT 5.6 Sol on credit-priced plans with the Opus feature flag", () => {
+    const creditPricedPlan = createMockPlan(CREDIT_PRICED_BUSINESS_PLAN_CODE);
+    const legacyPaidPlan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
+    const availabilityContext = {
+      regionalModelsOnly: owner.regionalModelsOnly,
+      region: TEST_REGION,
+    };
+
+    expect(GPT_5_6_SOL_MODEL_CONFIG.largeModel).toBe(true);
+    expect(
+      isModelAvailable(GPT_5_6_SOL_MODEL_CONFIG, {
+        featureFlags: [],
+        plan: creditPricedPlan,
+        ...availabilityContext,
+      })
+    ).toBe(false);
+    expect(
+      isModelAvailable(GPT_5_6_SOL_MODEL_CONFIG, {
+        featureFlags: ["claude_4_5_opus_feature"],
+        plan: creditPricedPlan,
+        ...availabilityContext,
+      })
+    ).toBe(true);
+    expect(
+      isModelAvailable(GPT_5_6_SOL_MODEL_CONFIG, {
+        featureFlags: ["claude_4_5_opus_feature"],
+        plan: legacyPaidPlan,
+        ...availabilityContext,
       })
     ).toBe(false);
   });
