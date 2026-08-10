@@ -75,7 +75,7 @@ function Sidebar({ blurPx, heightPx, maskEndPct, tintPct }: SidebarProps) {
 
   return (
     <div className="flex h-full w-[320px] flex-col border-r border-border bg-app-background">
-      <div className="z-50 flex justify-end gap-2 p-sidebar-side-spacing">
+      <div className="z-50 flex justify-end gap-2 p-sidebar-side-spacing pb-0">
         <div className="flex-1">
           <SearchInput
             name="search"
@@ -119,7 +119,7 @@ function Sidebar({ blurPx, heightPx, maskEndPct, tintPct }: SidebarProps) {
             />
           </div>
 
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 pt-sidebar-side-spacing">
             <NavigationList className="mx-sidebar-side-spacing pt-1">
               <NavigationListItem
                 label="For you"

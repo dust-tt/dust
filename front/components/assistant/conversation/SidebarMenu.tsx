@@ -1180,7 +1180,7 @@ export function AgentSidebarMenu({
                 />
               </div>
             ) : (
-              <div className="z-50 flex justify-end gap-2 p-sidebar-side-spacing">
+              <div className="z-50 flex justify-end gap-2 p-sidebar-side-spacing pb-0">
                 <div className="flex-1">
                   <SidebarSearch
                     titleFilter={titleFilter}
@@ -1747,14 +1747,15 @@ function NavigationListWithInbox({
       <div className="sticky top-0 z-30 h-0" aria-hidden>
         <div
           className={cn(
-            "pointer-events-none absolute inset-x-0 top-0 h-16 backdrop-blur-[6px]",
-            "[mask-image:linear-gradient(to_bottom,black,transparent)]",
+            "pointer-events-none absolute inset-x-0 top-0 h-8 backdrop-blur-[2px]",
+            "bg-app-background",
+            "[mask-image:linear-gradient(to_bottom,black_0%,transparent_100%)]",
             "transition-opacity duration-200",
             isScrolled ? "opacity-100" : "opacity-0"
           )}
         />
       </div>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 pt-sidebar-side-spacing">
         {topSection}
         <AnimatePresence initial={false}>
           {triggeredConversations.length > 0 && (
