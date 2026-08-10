@@ -86,8 +86,11 @@ function makeAuthBlockedAction(
 }
 
 function Consumer() {
-  const { getFirstBlockedActionForMessage, removeCompletedAction } =
-    useBlockedActionsContext();
+  const {
+    getFirstBlockedActionForMessage,
+    refreshBlockedActions,
+    removeCompletedAction,
+  } = useBlockedActionsContext();
 
   const firstAction = getFirstBlockedActionForMessage("msg_1");
 
@@ -103,6 +106,14 @@ function Consumer() {
         }}
       >
         resolve
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          void refreshBlockedActions();
+        }}
+      >
+        refresh
       </button>
     </div>
   );
@@ -147,6 +158,15 @@ describe("BlockedActionsProvider", () => {
     await user.click(screen.getByRole("button", { name: "resolve" }));
 
     expect(screen.getByTestId("first-action")).toHaveTextContent("none");
+    expect(mutateBlockedActionsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("refreshes blocked actions on demand", async () => {
+    const user = userEvent.setup();
+
+    renderProvider();
+    await user.click(screen.getByRole("button", { name: "refresh" }));
+
     expect(mutateBlockedActionsMock).toHaveBeenCalledTimes(1);
   });
 });

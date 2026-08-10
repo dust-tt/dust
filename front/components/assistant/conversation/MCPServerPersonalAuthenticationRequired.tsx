@@ -25,7 +25,7 @@ export function MCPServerPersonalAuthenticationRequired({
   scope,
 }: MCPServerPersonalAuthenticationRequiredProps) {
   const { user } = useAuth();
-  const { removeCompletedAction } = useBlockedActionsContext();
+  const { refreshBlockedActions } = useBlockedActionsContext();
 
   const { resolveAuthentication, isResolving } = useResolveAuthentication({
     owner,
@@ -47,7 +47,7 @@ export function MCPServerPersonalAuthenticationRequired({
       return false;
     }
 
-    removeCompletedAction(blockedAction.actionId);
+    await refreshBlockedActions();
     return true;
   };
 
