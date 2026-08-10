@@ -1,5 +1,4 @@
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import groupsWithActivity from "./groups-with-activity";
 import overview from "./overview";
 import timeseries from "./timeseries";
 import topAgents from "./top-agents";
@@ -11,7 +10,6 @@ import topUsers from "./top-users";
 
 const app = workspaceApp();
 
-app.route("/groups-with-activity", groupsWithActivity);
 app.route("/overview", overview);
 app.route("/timeseries", timeseries);
 app.route("/top-agents", topAgents);

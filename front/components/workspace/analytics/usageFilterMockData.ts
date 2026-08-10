@@ -28,9 +28,8 @@ const MOCK_MODEL_LAB: Record<string, ModelMakerIdType> = {
 };
 
 // Placeholder data for categories not yet wired to a real backend endpoint.
-// Members and groups are fetched live in UsageFilterPanel (useConsumptionTop,
-// useConsumptionGroupsWithActivity). Lists are long enough to exercise scrolling
-// in the preview.
+// Members and groups are fetched live in UsageFilterPanel (useSearchMembers,
+// useGroups). Lists are long enough to exercise scrolling in the preview.
 const MOCK_ENTITY_NAMES = {
   agent: [
     "SupportBot",

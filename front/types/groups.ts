@@ -100,6 +100,10 @@ export type GroupType = {
   // Per-group usage spend limit (excluding seat allowance), applied per member.
   // null means the group carries no cap (falls back to the workspace default).
   poolCapAwuCredits: number | null;
+  // Member sIds, only populated when explicitly requested (e.g. GET
+  // /groups?withMembers=true) — omitted otherwise to avoid paying for it on
+  // every group listing.
+  memberIds?: string[];
 };
 
 export const GroupKindCodec = z.enum([

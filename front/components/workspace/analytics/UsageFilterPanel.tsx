@@ -26,9 +26,9 @@ import { UsageFilterModelComplexityControls } from "@app/components/workspace/an
 import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
-import { useConsumptionGroupsWithActivity } from "@app/hooks/useConsumptionGroupsWithActivity";
-import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
-import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import { useGroups } from "@app/lib/swr/groups";
+import { useSearchMembers } from "@app/lib/swr/memberships";
+import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   BarChart05,
@@ -41,13 +41,16 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
+// Matches the picker in AnalyticsFilterDropdown, the sibling analytics filter
+// that also lists workspace members via useSearchMembers.
+const MEMBER_PICKER_PAGE_SIZE = 100;
+
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
-  period: ConsumptionPeriodSelection;
   // Agents/models/tools/skills/sources are still mock data (see
   // usageFilterMockData.ts — sources are fake connectors standing in for a
-  // real db call); members and groups are fetched live below, scoped to
-  // `period` (useConsumptionTop, useConsumptionGroupsWithActivity).
+  // real db call); members and groups are fetched live below, via the generic
+  // member search and group listing endpoints (useSearchMembers, useGroups).
   categoryOptions: {
     agent: UsageFilterAgentOption[];
     model: UsageFilterModelOption[];
@@ -61,7 +64,6 @@ interface UsageFilterPanelProps {
 
 export function UsageFilterPanel({
   owner,
-  period,
   categoryOptions,
   filter,
   onFilterChange,
@@ -96,34 +98,42 @@ export function UsageFilterPanel({
 
   const isMemberCategoryActive = isOpen && activeCategory === "member";
 
-  const { rows: topUserRows } = useConsumptionTop({
+  // Search is applied server-side by useSearchMembers, same as the sibling
+  // AnalyticsFilterDropdown's member picker.
+  const { members: searchedMembers } = useSearchMembers({
     workspaceId: owner.sId,
-    dimension: "user",
-    period,
-    // Wider than the Attribution table's own top-N: the picker needs broader
-    // coverage of the period's active population than a ranking display does.
-    limit: 100,
+    searchTerm: searchText,
+    pageIndex: 0,
+    pageSize: MEMBER_PICKER_PAGE_SIZE,
     disabled: !isMemberCategoryActive,
   });
 
-  const { groups } = useConsumptionGroupsWithActivity({
-    workspaceId: owner.sId,
-    period,
+  const { groups: workspaceGroups } = useGroups({
+    owner,
+    kinds: MANAGEABLE_GROUP_KINDS,
+    withMembers: true,
     disabled: !isMemberCategoryActive,
   });
 
-  // Search is applied client-side below (the top-users ranking has no
-  // server-side search), so a member outside the top 100 by credits over the
-  // period will not be searchable here.
   const memberOptions = useMemo<UsageFilterMemberOption[]>(
     () =>
-      topUserRows.map((row) => ({
-        id: row.id,
-        name: row.name,
+      searchedMembers.map((member) => ({
+        id: member.sId,
+        name: member.fullName,
         kind: "member",
-        image: row.pictureUrl,
+        image: member.image,
       })),
-    [topUserRows]
+    [searchedMembers]
+  );
+
+  const groups = useMemo<UsageFilterGroup[]>(
+    () =>
+      workspaceGroups.map((group) => ({
+        id: group.sId,
+        name: group.name,
+        memberIds: group.memberIds ?? [],
+      })),
+    [workspaceGroups]
   );
 
   const resolvedCategoryOptions = useMemo<{
@@ -153,7 +163,14 @@ export function UsageFilterPanel({
       if (selectedGroupMemberIds && !selectedGroupMemberIds.has(option.id)) {
         return false;
       }
-      if (search && !option.name.toLowerCase().includes(search)) {
+      // The member category is already searched server-side by
+      // useSearchMembers; re-filtering client-side here would just drop
+      // results while the debounced search catches up.
+      if (
+        activeCategory !== "member" &&
+        search &&
+        !option.name.toLowerCase().includes(search)
+      ) {
         return false;
       }
       return true;

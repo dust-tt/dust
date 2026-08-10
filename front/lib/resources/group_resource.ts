@@ -2959,4 +2959,35 @@ export class GroupResource extends BaseResource<GroupModel> {
       memberCount: memberCounts.get(group.id) ?? 0,
     }));
   }
+
+  /**
+   * Batched counterpart of `toJSONWithMemberCount` that also carries each
+   * group's active member sIds, resolved in two queries total regardless of
+   * group count. Does not resolve the global group's implicit membership
+   * (there are no explicit GroupMembershipModel rows for it) — callers that
+   * need it should filter it out of `groups` beforehand.
+   */
+  static async toJSONWithMembers(
+    auth: Authenticator,
+    groups: GroupResource[]
+  ): Promise<(GroupType & { memberIds: string[] })[]> {
+    const membershipsByGroup =
+      await GroupResource.getActiveMembershipsForGroups(auth, groups);
+    const userModelIds = [...new Set(Object.values(membershipsByGroup).flat())];
+    const users = await UserResource.fetchByModelIds(userModelIds);
+    const sIdByModelId = new Map(users.map((user) => [user.id, user.sId]));
+
+    return groups.map((group) => {
+      const memberIds = removeNulls(
+        (membershipsByGroup[group.id] ?? []).map((userModelId) =>
+          sIdByModelId.get(userModelId)
+        )
+      );
+      return {
+        ...group.toJSON(),
+        memberCount: memberIds.length,
+        memberIds,
+      };
+    });
+  }
 }
