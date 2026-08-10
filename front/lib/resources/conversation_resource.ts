@@ -1097,15 +1097,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));
 
-    const conversationSpaceIds = removeNulls(
+    const conversationSpaceModelIds = removeNulls(
       conversations.map((c) => c.spaceId)
     );
     const activationPods =
-      conversationSpaceIds.length === 0
+      conversationSpaceModelIds.length === 0
         ? []
         : await ActivationPodResource.fetchBySpaceModelIds(
             auth,
-            conversationSpaceIds
+            conversationSpaceModelIds
           );
     const spaceIdToActivationPodMap = new Map(
       activationPods.map((p) => [p.spaceId, p])
