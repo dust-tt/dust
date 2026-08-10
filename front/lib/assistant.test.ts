@@ -293,7 +293,7 @@ describe("isModelAvailable", () => {
     ).toBe(false);
   });
 
-  it("should return true for advanced models when models_picker is enabled without plan access", () => {
+  it("should not grant advanced model access through models_picker", () => {
     const model = createMockModel({
       availableIfOneOf: { plansWithAdvancedModels: true },
       largeModel: false,
@@ -309,7 +309,7 @@ describe("isModelAvailable", () => {
         regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("should return true when both plansWithAdvancedModels and featureFlag are set, with advanced model access", () => {
@@ -392,7 +392,7 @@ describe("isModelReleased", () => {
 });
 
 describe("filterEnabledModels", () => {
-  it("includes advanced models when models_picker is enabled without plan access", async () => {
+  it("excludes advanced models when models_picker is enabled without plan access", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const model = createMockModel({
@@ -409,7 +409,7 @@ describe("filterEnabledModels", () => {
       whitelistedProviders: getWhitelistedProviders(auth),
     });
 
-    expect(result).toEqual([model]);
+    expect(result).toEqual([]);
   });
 
   it("should include model when available and provider is whitelisted", async () => {
