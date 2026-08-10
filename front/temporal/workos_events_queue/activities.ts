@@ -15,6 +15,7 @@ import {
 } from "@app/lib/api/workos/organization";
 import {
   fetchOrCreateWorkOSUserWithEmail,
+  fetchWorkOSUserWithEmail,
   getUserNicknameFromEmail,
 } from "@app/lib/api/workos/user";
 import {
@@ -1004,7 +1005,7 @@ async function handleUserRemovedFromGroup(
     return;
   }
 
-  const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail({
+  const workOSUserRes = await fetchWorkOSUserWithEmail({
     workspace,
     workOSUser: eventData.user,
   });
@@ -1013,9 +1014,20 @@ async function handleUserRemovedFromGroup(
   }
   const workOSUser = workOSUserRes.value;
 
-  const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
+  // Nothing to deprovision. Removing them from a group is a no-op.
+  const user = workOSUser
+    ? await UserResource.fetchByWorkOSUserId(workOSUser.id)
+    : null;
   if (!user) {
-    throw new Error(`User not found with workOSId "${workOSUser.id}"`);
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        directoryUserId: eventData.user.id,
+        workOSUserId: workOSUser?.id,
+      },
+      "User to remove from group not found, skipping group removal"
+    );
+    return;
   }
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
@@ -1140,6 +1152,44 @@ async function handleCreateOrUpdateWorkOSUser(
 ) {
   const { data: eventData } = event;
 
+  // Entra (and other IdPs) disable users via SCIM PATCH active=false, which WorkOS translates
+  // into dsync.user.updated with state='inactive' rather than dsync.user.deleted. Treat this
+  // the same as deletion: revoke membership and remove from all groups. Being a deprovisioning
+  // path, it must not create the WorkOS user it fails to find.
+  if (eventData.state === "inactive") {
+    const inactiveWorkOSUserRes = await fetchWorkOSUserWithEmail({
+      workspace,
+      workOSUser: eventData,
+    });
+    if (inactiveWorkOSUserRes.isErr()) {
+      throw inactiveWorkOSUserRes.error;
+    }
+    const inactiveWorkOSUser = inactiveWorkOSUserRes.value;
+
+    const inactiveUser = inactiveWorkOSUser
+      ? await UserResource.fetchByWorkOSUserId(inactiveWorkOSUser.id)
+      : null;
+    if (!inactiveUser) {
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          directoryUserId: eventData.id,
+          workOSUserId: inactiveWorkOSUser?.id,
+        },
+        "Inactive user not found in workspace, skipping revocation"
+      );
+      return;
+    }
+
+    await revokeWorkOSUserMembership(
+      workspace,
+      inactiveUser,
+      eventData.directoryId,
+      false
+    );
+    return;
+  }
+
   const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail({
     workspace,
     workOSUser: eventData,
@@ -1151,25 +1201,6 @@ async function handleCreateOrUpdateWorkOSUser(
 
   const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
 
-  // Entra (and other IdPs) disable users via SCIM PATCH active=false, which WorkOS translates
-  // into dsync.user.updated with state='inactive' rather than dsync.user.deleted. Treat this
-  // the same as deletion: revoke membership and remove from all groups.
-  if (eventData.state === "inactive") {
-    if (!user) {
-      logger.info(
-        { workspaceId: workspace.sId, workOSUserId: workOSUser.id },
-        "Inactive user not found in workspace, skipping revocation"
-      );
-      return;
-    }
-    await revokeWorkOSUserMembership(
-      workspace,
-      user,
-      eventData.directoryId,
-      false
-    );
-    return;
-  }
   const externalUser: ExternalUser = {
     email: workOSUser.email,
     email_verified: true,
@@ -1376,7 +1407,7 @@ async function handleDeleteWorkOSUser(
   event: DsyncUserDeletedEvent
 ) {
   const { data: eventData } = event;
-  const workOSUserRes = await fetchOrCreateWorkOSUserWithEmail({
+  const workOSUserRes = await fetchWorkOSUserWithEmail({
     workspace,
     workOSUser: eventData,
   });
@@ -1385,11 +1416,19 @@ async function handleDeleteWorkOSUser(
   }
   const workOSUser = workOSUserRes.value;
 
-  const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
+  const user = workOSUser
+    ? await UserResource.fetchByWorkOSUserId(workOSUser.id)
+    : null;
   if (!user) {
-    throw new Error(
-      `Did not find user to delete for workOSUserId "${workOSUser.id}" in workspace "${workspace.sId}"`
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        directoryUserId: eventData.id,
+        workOSUserId: workOSUser?.id,
+      },
+      "User to delete not found, likely already deleted"
     );
+    return;
   }
 
   // Clear WorkOS custom attributes before revoking membership.
