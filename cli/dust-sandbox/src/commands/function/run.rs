@@ -22,6 +22,9 @@ const NON_JSON_SNIPPET_MAX_CHARS: usize = 512;
 /// The result is always a protocol v3 envelope on stdout, exit 0, including for
 /// runner `ok:false` and for failures that keep the function from being spawned
 /// at all, so the worker keeps structured errors.
+///
+/// Never actually returns: every path ends in a `deliver_stdout*` call, which
+/// writes the envelope and exits. The `Result` is what the dispatch expects.
 pub async fn cmd_function_run(name: &str) -> Result<()> {
     let started = Instant::now();
 
