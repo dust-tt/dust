@@ -5,6 +5,7 @@ import {
   isDustCompanyPlan,
   isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
 import { useProgrammaticUsageLimit } from "@app/lib/swr/usage_settings";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
@@ -18,6 +19,7 @@ import { isAdmin } from "@app/types/user";
 import { cn, LinkWrapper } from "@dust-tt/sparkle";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
+import { useMemo } from "react";
 
 // The banners span the full width of the app shell (see `TopBanners`), so they
 // lay out as a single row: title, then description, then the optional footer
@@ -310,9 +312,51 @@ function WorkspaceUsageStatusBanner({
   return <StatusBanner {...banner} />;
 }
 
+// DEMO ONLY — remove before merging.
+//
+// Renders a fake incident so the top banner can be reviewed on a deploy
+// preview without waiting for a real StatusPage incident. Append
+// `?demoBanner=dust` (Dust outage) or `?demoBanner=providers` (model provider
+// incident) to any app URL.
+function useDemoAppStatus(): AppStatus | null {
+  const router = useAppRouter();
+  const { demoBanner } = router.query;
+
+  return useMemo(() => {
+    if (demoBanner === "dust") {
+      return {
+        dustStatus: {
+          name: "Degraded performance on conversations",
+          description:
+            "We are investigating elevated error rates on agent conversations. Some messages may fail to send.",
+          link: "https://status.dust.tt",
+        },
+        providersStatus: null,
+      };
+    }
+
+    if (demoBanner === "providers") {
+      return {
+        dustStatus: null,
+        providersStatus: {
+          name: "Model provider incident",
+          description:
+            "One of our model providers reports elevated latency. Agents relying on it may be slower than usual.",
+          link: "https://status.dust.tt",
+        },
+      };
+    }
+
+    return null;
+  }, [demoBanner]);
+}
+
 export function StatusBanners() {
   const { workspace: owner, subscription } = useAuth();
-  const { appStatus } = useAppStatus();
+  const { appStatus: liveAppStatus } = useAppStatus();
+  const demoAppStatus = useDemoAppStatus();
+
+  const appStatus = demoAppStatus ?? liveAppStatus;
 
   return (
     <>
