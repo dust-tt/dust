@@ -219,7 +219,7 @@ describe("getModelForStream", () => {
     expect(resolved?.model.modelId).toBe(
       CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG.modelId
     );
-    expect(resolved?.reasoningEffort).toBe("light");
+    expect(resolved?.reasoningEffort).toBe("high");
   });
 
   it("only ever resolves to a candidate declared in the stream", async () => {
