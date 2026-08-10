@@ -27,11 +27,13 @@ import { useState } from "react";
 interface CreateDropdownProps {
   owner: LightWorkspaceType;
   dataGtmLocation: string;
+  isCompact?: boolean;
 }
 
 export const CreateDropdown = ({
   owner,
   dataGtmLocation,
+  isCompact = false,
 }: CreateDropdownProps) => {
   const router = useAppRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -59,7 +61,8 @@ export const CreateDropdown = ({
         <Button
           variant="primary"
           icon={Plus}
-          label="Create"
+          label={isCompact ? undefined : "Create"}
+          tooltip={isCompact ? "Create" : undefined}
           data-gtm-label="assistantCreationButton"
           data-gtm-location={dataGtmLocation}
           onClick={withTracking(TRACKING_AREAS.BUILDER, "create_menu")}

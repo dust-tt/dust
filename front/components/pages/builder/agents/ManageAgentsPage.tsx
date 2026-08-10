@@ -19,6 +19,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
   compareForFuzzySort,
   getAgentSearchString,
@@ -87,6 +88,7 @@ export function ManageAgentsPage() {
   );
   const [isBatchEdit, setIsBatchEdit] = useState(false);
   const [selection, setSelection] = useState<string[]>([]);
+  const isMobile = useIsMobile();
 
   const { isDark } = useTheme();
 
@@ -301,7 +303,8 @@ export function ManageAgentsPage() {
                   <Button
                     variant="outline"
                     icon={ListSelect}
-                    label="Batch edit"
+                    label={isMobile ? undefined : "Batch edit"}
+                    tooltip={isMobile ? "Batch edit" : undefined}
                     onClick={() => {
                       setIsBatchEdit(true);
                     }}
@@ -311,17 +314,20 @@ export function ManageAgentsPage() {
                   models={uniqueModels}
                   selectedModels={selectedModels}
                   setSelectedModels={setSelectedModels}
+                  isCompact={isMobile}
                 />
                 <TagsFilterMenu
                   tags={uniqueTags}
                   selectedTags={selectedTags}
                   setSelectedTags={setSelectedTags}
                   owner={owner}
+                  isCompact={isMobile}
                 />
                 {canCreateAgent && (
                   <CreateDropdown
                     owner={owner}
                     dataGtmLocation="assistantsWorkspace"
+                    isCompact={isMobile}
                   />
                 )}
               </div>

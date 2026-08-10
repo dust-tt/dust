@@ -17,16 +17,18 @@ export type AgentModelFilterType = {
   displayName: string;
 };
 
-type ModelsFilterMenuProps = {
+interface ModelsFilterMenuProps {
   models: AgentModelFilterType[];
   selectedModels: AgentModelFilterType[];
   setSelectedModels: (models: AgentModelFilterType[]) => void;
-};
+  isCompact?: boolean;
+}
 
 export const ModelsFilterMenu = ({
   models,
   selectedModels,
   setSelectedModels,
+  isCompact = false,
 }: ModelsFilterMenuProps) => {
   const { isDark } = useTheme();
   const [isDropdownOpen, setDropdownOpen] = useState(false);
@@ -58,7 +60,8 @@ export const ModelsFilterMenu = ({
         <Button
           variant="outline"
           icon={CpuChip01}
-          label="Models"
+          label={isCompact ? undefined : "Models"}
+          tooltip={isCompact ? "Models" : undefined}
           counterValue={selectedModels.length.toString()}
           isCounter={selectedModels.length > 0}
         />
