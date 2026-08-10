@@ -222,7 +222,7 @@ export function GetStartedPage() {
                       ) : (
                         <>
                           <p className="text-sm text-muted-foreground">
-                            No ideas yet. Let Dust suggest things to try.
+                            No new ideas yet. Let Dust suggest things to try.
                           </p>
                           <div className="mt-4">
                             <Button
