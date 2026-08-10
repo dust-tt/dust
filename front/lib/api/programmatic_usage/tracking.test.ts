@@ -1,3 +1,4 @@
+import { isProgrammaticUsageFromContext } from "@app/lib/api/programmatic_usage/common";
 import {
   checkProgrammaticUsageLimits,
   compareCreditsForConsumption,
@@ -162,6 +163,30 @@ describe("isProgrammaticUsage", () => {
     expect(isProgrammaticUsage(auth, { userMessageOrigin: "wakeup" })).toBe(
       false
     );
+  });
+
+  it("reconstructs API-key usage from persisted message context", () => {
+    expect(
+      isProgrammaticUsageFromContext({
+        authMethod: "api_key",
+        userMessageOrigin: "web",
+      })
+    ).toBe(true);
+  });
+
+  it("reconstructs programmatic origins from persisted message context", () => {
+    expect(
+      isProgrammaticUsageFromContext({
+        authMethod: "session",
+        userMessageOrigin: "zapier",
+      })
+    ).toBe(true);
+    expect(
+      isProgrammaticUsageFromContext({
+        authMethod: "session",
+        userMessageOrigin: "web",
+      })
+    ).toBe(false);
   });
 
   it("should return credits_exhausted when no active credits are available", async () => {

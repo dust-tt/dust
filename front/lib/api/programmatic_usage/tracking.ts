@@ -1,7 +1,7 @@
 import assert from "node:assert";
 
 import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
-import { USAGE_ORIGINS_CLASSIFICATION } from "@app/lib/api/programmatic_usage/common";
+import { isProgrammaticUsageFromContext } from "@app/lib/api/programmatic_usage/common";
 import {
   hasReachedDailyUsageCap,
   incrementDailyUsageMicroUsd,
@@ -40,14 +40,10 @@ export function isProgrammaticUsage(
   auth: Authenticator,
   { userMessageOrigin }: { userMessageOrigin: UserMessageOrigin }
 ): boolean {
-  if (
-    auth.authMethod() === "api_key" ||
-    USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic"
-  ) {
-    return true;
-  }
-
-  return false;
+  return isProgrammaticUsageFromContext({
+    authMethod: auth.authMethod(),
+    userMessageOrigin,
+  });
 }
 
 async function hasReachedProgrammaticUsageLimits(
