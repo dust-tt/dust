@@ -69,21 +69,57 @@ export function generateSchemaFileText(
   }
 }
 
-// drizzle-kit is a CLI on PATH in the sandbox image (global install). In tests it is only a
-// devDependency, so prepend this package's node_modules/.bin so the same spawn resolves it there.
+// Where the sandbox image installs drizzle-kit (root-owned `npm install -g` at image
+// build). Hardened sandbox exec runs with a pinned PATH that deliberately excludes
+// /opt/npm-global/bin, so runtime resolution must not go through PATH — login shells
+// source the profile and see a wider PATH, which makes PATH-based failures here
+// especially confusing to debug.
+const SANDBOX_DRIZZLE_KIT_BIN = "/opt/npm-global/bin/drizzle-kit";
+
+// Dev/test install: drizzle-kit is a devDependency of this package.
+const LOCAL_DRIZZLE_KIT_BIN = join(
+  import.meta.dir,
+  "..",
+  "node_modules",
+  ".bin",
+  "drizzle-kit"
+);
+
+// Spawn env for the drizzle-kit child; prepending the local .bin keeps any
+// sub-resolutions it does working in dev, where nothing is globally installed.
 function drizzleKitEnv(): Record<string, string | undefined> {
   const localBin = join(import.meta.dir, "..", "node_modules", ".bin");
   return { ...process.env, PATH: `${localBin}:${process.env.PATH ?? ""}` };
 }
 
-// Resolve the drizzle-kit bin against the same PATH the spawn uses (global install on the
-// sandbox, local .bin in tests), so it can be handed to bun as a script path.
-function drizzleKitBinPath(): Result<string, DbCommandError> {
-  const bin = Bun.which("drizzle-kit", { PATH: drizzleKitEnv().PATH });
-  if (!bin) {
-    return new Err(
-      new DbCommandError("internal", "drizzle-kit not found on PATH")
-    );
+// Resolve drizzle-kit by explicit path only — never through the caller's PATH.
+// Image install first: on the sandbox it's a root-owned constant, and preferring
+// it keeps production resolution independent of whatever sits next to the
+// deployed bundle. The local .bin only exists on dev machines and CI.
+export function resolveDrizzleKitBin({
+  imageBin,
+  localBin,
+}: {
+  imageBin: string;
+  localBin: string;
+}): Result<string, DbCommandError> {
+  if (existsSync(imageBin)) {
+    return new Ok(imageBin);
   }
-  return new Ok(bin);
+  if (existsSync(localBin)) {
+    return new Ok(localBin);
+  }
+  return new Err(
+    new DbCommandError(
+      "internal",
+      `drizzle-kit not found; checked ${imageBin} and ${localBin}`
+    )
+  );
+}
+
+function drizzleKitBinPath(): Result<string, DbCommandError> {
+  return resolveDrizzleKitBin({
+    imageBin: SANDBOX_DRIZZLE_KIT_BIN,
+    localBin: LOCAL_DRIZZLE_KIT_BIN,
+  });
 }
