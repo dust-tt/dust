@@ -4,10 +4,8 @@ import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/c
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { DEFAULT_CONSUMPTION_DIMENSION } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
-import {
-  toConsumptionScopeFilter,
-  type UsageFilter,
-} from "@app/components/workspace/analytics/usageFilter";
+import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
+import { toConsumptionScopeFilter } from "@app/components/workspace/analytics/usageFilter";
 import {
   USAGE_FILTER_MOCK_GROUPS,
   USAGE_FILTER_MOCK_OPTIONS,
