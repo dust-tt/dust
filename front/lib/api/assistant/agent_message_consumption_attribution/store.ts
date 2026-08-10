@@ -110,7 +110,7 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
       actions,
       ignoreContent: false,
     });
-  const enrichedActionByModelId = new Map(
+  const enrichedActionById = new Map(
     enrichedActions.map((action) => [action.id, action])
   );
 
@@ -141,7 +141,7 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
     const dustRunId = dustRunIdByRunModelId.get(usage.runModelId);
     const runActions = (dustRunId && actionsByDustRunId.get(dustRunId)) || [];
     const runActionPairs = runActions.map((action) => {
-      const enrichedAction = enrichedActionByModelId.get(action.id);
+      const enrichedAction = enrichedActionById.get(action.id);
       assert(enrichedAction, "Every action must have an enriched counterpart");
       return { action, enrichedAction };
     });
