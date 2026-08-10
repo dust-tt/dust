@@ -39,13 +39,21 @@ function checkModelSpecificAccessRules(
     const { creditPricedPlan, plansWithAdvancedModels, featureFlag } =
       availableIfOneOf;
 
+    const passesCreditPlanCondition =
+      creditPricedPlan === true &&
+      plan !== null &&
+      isCreditPricedPlanPrefix(plan.code);
+
+    const passesAdvancedModelCondition =
+      plansWithAdvancedModels === true && plan?.hasAdvancedModelAccess === true;
+
+    const passesFeatureFlagCondition =
+      featureFlag !== undefined && featureFlags.includes(featureFlag);
+
     return (
-      (creditPricedPlan === true &&
-        plan !== null &&
-        isCreditPricedPlanPrefix(plan.code)) ||
-      (plansWithAdvancedModels === true &&
-        plan?.hasAdvancedModelAccess === true) ||
-      (featureFlag !== undefined && featureFlags.includes(featureFlag))
+      passesCreditPlanCondition ||
+      passesAdvancedModelCondition ||
+      passesFeatureFlagCondition
     );
   }
 
