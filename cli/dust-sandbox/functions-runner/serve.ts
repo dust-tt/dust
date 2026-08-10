@@ -64,6 +64,12 @@ export const QUEUE_WAIT_DEADLINE_MS = 2_000;
 // for its last reply bytes before force-exiting on a client that stopped
 // reading.
 const IDLE_TIMEOUT_MS = 120_000;
+// A request older than this must not be acked: the client abandons the wait
+// at 4s (see warm.rs) and falls back cold, and acking into that window is
+// the one race that could double-execute. Refusing pre-ack is always safe,
+// so past this age the server sends `stale` instead of starting work, and
+// the ack-vs-abandon race shrinks to clock slop.
+const PRE_ACK_DEADLINE_MS = 3_000;
 const MAX_LIFETIME_MS = 600_000;
 const INVOCATION_DEADLINE_MS = 120_000;
 const MAX_RSS_BYTES = 300 * 1024 * 1024;
@@ -140,42 +146,11 @@ interface WarmSocket {
   end(): void;
 }
 
-/**
- * Backpressure-aware write: Bun's socket.write returns how many bytes it
- * accepted, and a large outcome can exceed the kernel buffer. The remainder
- * is retried from the drain callback via the pending map; end() only happens
- * once everything is flushed, so the client never sees a truncated JSON line.
- */
-const pendingWrites = new Map<object, Uint8Array>();
-
-function writeThenEnd(socket: WarmSocket, payload: string): void {
-  const bytes = new TextEncoder().encode(payload);
-  const written = socket.write(bytes);
-  if (written >= bytes.length) {
-    socket.end();
-    return;
-  }
-  pendingWrites.set(socket, bytes.subarray(Math.max(written, 0)));
-}
-
-function drainPending(socket: WarmSocket): void {
-  const remaining = pendingWrites.get(socket);
-  if (!remaining) {
-    return;
-  }
-  const written = socket.write(remaining);
-  if (written >= remaining.length) {
-    pendingWrites.delete(socket);
-    socket.end();
-    return;
-  }
-  pendingWrites.set(socket, remaining.subarray(Math.max(written, 0)));
-}
-
 /** A request waiting for a free invocation slot, in FIFO order. */
 interface QueueEntry {
   socket: WarmSocket;
   request: WarmRequest;
+  receivedAtMs: number;
   // Settled entries (reply already sent, or client gone) stay in the array
   // and are skipped at dequeue time: O(1) removal without scanning the queue
   // on every socket close.
@@ -242,6 +217,39 @@ export async function serve(
     }
     process.exit(code);
   };
+
+  /**
+   * Backpressure-aware write: Bun's socket.write returns how many bytes it
+   * accepted, and a large outcome can exceed the kernel buffer. The
+   * remainder is retried from the drain callback via the pending map; end()
+   * only happens once everything is flushed, so the client never sees a
+   * truncated JSON line.
+   */
+  const pendingWrites = new Map<object, Uint8Array>();
+
+  function writeThenEnd(socket: WarmSocket, payload: string): void {
+    const bytes = new TextEncoder().encode(payload);
+    const written = socket.write(bytes);
+    if (written >= bytes.length) {
+      socket.end();
+      return;
+    }
+    pendingWrites.set(socket, bytes.subarray(Math.max(written, 0)));
+  }
+
+  function drainPending(socket: WarmSocket): void {
+    const remaining = pendingWrites.get(socket);
+    if (!remaining) {
+      return;
+    }
+    const written = socket.write(remaining);
+    if (written >= remaining.length) {
+      pendingWrites.delete(socket);
+      socket.end();
+      return;
+    }
+    pendingWrites.set(socket, remaining.subarray(Math.max(written, 0)));
+  }
 
   // `running` counts invocations past admission (including their pre-ack
   // staleness checks); `hung` counts the subset that blew their deadline and
@@ -359,7 +367,8 @@ export async function serve(
 
   async function runInvocation(
     socket: WarmSocket,
-    request: WarmRequest
+    request: WarmRequest,
+    receivedAtMs: number
   ): Promise<void> {
     // A republished bundle must never be served from the old import. One
     // metadata call per invocation start; any difference (or a vanished
@@ -408,10 +417,20 @@ export async function serve(
     // a retried one. The write is synchronous into the kernel buffer: its
     // failure proves the client is gone, so nothing executes for a client
     // that already gave up (e.g. one that timed out while queued).
-    const ackWritten = socket.write(
+    if (Date.now() - receivedAtMs > PRE_ACK_DEADLINE_MS) {
+      // The pre-ack work (queue wait, gcsfuse metadata) outlived the
+      // client's patience budget; it is walking away or about to.
+      reply(socket, { v: WARM_PROTOCOL_VERSION, stale: true });
+      return;
+    }
+    const ackBytes = new TextEncoder().encode(
       `${JSON.stringify({ v: WARM_PROTOCOL_VERSION, ack: true })}\n`
     );
-    if (ackWritten <= 0) {
+    const ackWritten = socket.write(ackBytes);
+    if (ackWritten < ackBytes.length) {
+      // Failed or partial: the client is gone, or would read a truncated
+      // frame and treat the connection as dead pre-ack. Either way nothing
+      // has executed, so not executing is the only safe continuation.
       socket.end();
       return;
     }
@@ -444,10 +463,14 @@ export async function serve(
     }
   }
 
-  function start(socket: WarmSocket, request: WarmRequest): void {
+  function start(
+    socket: WarmSocket,
+    request: WarmRequest,
+    receivedAtMs: number
+  ): void {
     running += 1;
     clearIdle();
-    void runInvocation(socket, request)
+    void runInvocation(socket, request, receivedAtMs)
       .catch(() => {
         // runInvocation reports failures as structured outcomes; a throw
         // here is a runner bug, and the client's timeout classifies it.
@@ -478,7 +501,7 @@ export async function serve(
       if (!settleQueueEntry(entry)) {
         continue;
       }
-      start(entry.socket, entry.request);
+      start(entry.socket, entry.request, entry.receivedAtMs);
     }
   }
 
@@ -497,8 +520,9 @@ export async function serve(
       reply(socket, { v: WARM_PROTOCOL_VERSION, stale: true });
       return;
     }
+    const receivedAtMs = Date.now();
     if (running < MAX_CONCURRENT_INVOCATIONS) {
-      start(socket, request);
+      start(socket, request, receivedAtMs);
       return;
     }
     if (queuedLive >= MAX_QUEUED_INVOCATIONS) {
@@ -508,6 +532,7 @@ export async function serve(
     const entry: QueueEntry = {
       socket,
       request,
+      receivedAtMs,
       settled: false,
       expireTimer: setTimeout(() => {
         // Waited too long: refuse rather than executing for a caller whose
