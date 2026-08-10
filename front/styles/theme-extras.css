@@ -14,6 +14,9 @@
 @utility h-panel {
   height: var(--panel-height); /* defined in global.css */
 }
+@utility h-panel-outer {
+  height: var(--panel-outer-height); /* defined in global.css */
+}
 
 /* Map the border-darker token (defined in global.css :root/.dark). */
 @theme inline {

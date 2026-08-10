@@ -41,7 +41,11 @@
   :root {
     --dev-bar-height: 0px;
     --banner-height: 0px;
-    --panel-height: calc(100dvh - var(--banner-height));
+    /* Panel geometry, banner excluded: the top banners render inside the panel
+       (see TopBanners), so the panel itself keeps its full height and only its
+       content area shrinks. */
+    --panel-outer-height: 100dvh;
+    --panel-height: calc(var(--panel-outer-height) - var(--banner-height));
 
     /* `border-darker`: legacy duplicate of `border-dark`, switches via .dark
        below (was border.darker.{DEFAULT,night} in the old config). */
@@ -69,7 +73,7 @@
 
 @media (min-width: 768px) {
   :root {
-    --panel-height: calc(100dvh - 1rem - var(--dev-bar-height) - var(--banner-height));
+    --panel-outer-height: calc(100dvh - 1rem - var(--dev-bar-height));
   }
 }
 
