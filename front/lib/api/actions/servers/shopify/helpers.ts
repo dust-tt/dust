@@ -395,23 +395,24 @@ export async function exportCustomerLtv(
   shop: string,
   {
     sortByAmountSpent,
-    minAmountSpent,
+    minAmountSpentDollars,
     limit,
   }: {
     sortByAmountSpent?: boolean;
-    minAmountSpent?: number;
+    minAmountSpentDollars?: number;
     limit: number;
   }
 ): Promise<Result<ExportResult<ShopifyCustomer>, MCPError>> {
   const filters: string[] = [];
-  if (minAmountSpent !== undefined) {
-    filters.push(`total_spent:>=${minAmountSpent}`);
+  if (minAmountSpentDollars !== undefined) {
+    filters.push(`total_spent:>=${minAmountSpentDollars}`);
   }
   const wantsSort = sortByAmountSpent ?? true;
   // Shopify has no "total spent" sort key, so to return the true top lifetime
   // spenders we must fetch a wide window and rank locally. Fetching up to the
   // cap makes the ranking exact when the set fits under it (or is narrowed by
-  // minAmountSpent); beyond the cap it is approximate and flagged as truncated.
+  // minAmountSpentDollars); beyond the cap it is approximate and flagged as
+  // truncated.
   const fetchLimit = wantsSort ? MAX_EXPORT_ITEMS : limit;
 
   const res = await paginateConnection({
@@ -515,21 +516,21 @@ export async function exportTopCustomersByPeriod(
 
   const byCustomer = new Map<
     string,
-    { amount: number; currencyCode: string; numberOfOrders: number }
+    { amountDollars: number; currencyCode: string; numberOfOrders: number }
   >();
   for (const order of res.value.nodes) {
     // Skip guest orders (no associated customer).
     if (!order.customer) {
       continue;
     }
-    const amount = Number(order.totalPriceSet.shopMoney.amount);
+    const amountDollars = Number(order.totalPriceSet.shopMoney.amount);
     const existing = byCustomer.get(order.customer.id);
     if (existing) {
-      existing.amount += amount;
+      existing.amountDollars += amountDollars;
       existing.numberOfOrders += 1;
     } else {
       byCustomer.set(order.customer.id, {
-        amount,
+        amountDollars,
         currencyCode: order.totalPriceSet.shopMoney.currencyCode,
         numberOfOrders: 1,
       });
@@ -541,7 +542,7 @@ export async function exportTopCustomersByPeriod(
       customerId,
       numberOfOrders: agg.numberOfOrders,
       amountSpent: {
-        amount: agg.amount.toFixed(2),
+        amount: agg.amountDollars.toFixed(2),
         currencyCode: agg.currencyCode,
       },
     }))

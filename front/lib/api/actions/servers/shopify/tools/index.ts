@@ -34,7 +34,7 @@ const handlers: ToolHandlers<typeof SHOPIFY_TOOLS_METADATA> = {
     }),
 
   export_customer_ltv: async (
-    { sortByAmountSpent, minAmountSpent, limit },
+    { sortByAmountSpent, minAmountSpentDollars, limit },
     { authInfo }
   ) =>
     withShopifyAuth({
@@ -42,7 +42,7 @@ const handlers: ToolHandlers<typeof SHOPIFY_TOOLS_METADATA> = {
       action: async (accessToken, shop) => {
         const res = await exportCustomerLtv(accessToken, shop, {
           sortByAmountSpent,
-          minAmountSpent,
+          minAmountSpentDollars,
           limit: limit ?? MAX_EXPORT_ITEMS,
         });
         if (res.isErr()) {
