@@ -314,25 +314,16 @@ function WorkspaceUsageStatusBanner({
 
 // DEMO ONLY — remove before merging.
 //
-// Renders a fake incident so the top banner can be reviewed on a deploy
-// preview without waiting for a real StatusPage incident. Append
-// `?demoBanner=dust` (Dust outage) or `?demoBanner=providers` (model provider
-// incident) to any app URL.
+// Always renders a fake incident so the top banner can be reviewed on a deploy
+// preview without waiting for a real StatusPage incident. `?demoBanner=providers`
+// switches to the model-provider variant, `?demoBanner=off` hides it.
 function useDemoAppStatus(): AppStatus | null {
   const router = useAppRouter();
   const { demoBanner } = router.query;
 
   return useMemo(() => {
-    if (demoBanner === "dust") {
-      return {
-        dustStatus: {
-          name: "Degraded performance on conversations",
-          description:
-            "We are investigating elevated error rates on agent conversations. Some messages may fail to send.",
-          link: "https://status.dust.tt",
-        },
-        providersStatus: null,
-      };
+    if (demoBanner === "off") {
+      return null;
     }
 
     if (demoBanner === "providers") {
@@ -347,7 +338,15 @@ function useDemoAppStatus(): AppStatus | null {
       };
     }
 
-    return null;
+    return {
+      dustStatus: {
+        name: "Degraded performance on conversations",
+        description:
+          "We are investigating elevated error rates on agent conversations. Some messages may fail to send.",
+        link: "https://status.dust.tt",
+      },
+      providersStatus: null,
+    };
   }, [demoBanner]);
 }
 
