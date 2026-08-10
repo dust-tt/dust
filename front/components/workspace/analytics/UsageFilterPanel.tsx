@@ -39,12 +39,9 @@ import {
   PopoverTrigger,
   SearchInput,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-// Caps how many options are fetched or shown per category picker, whether
-// they come from a live paginated fetch (members) or a static list
-// (agents/models/tools/skills/sources). Matches the member picker size used
-// by the sibling AnalyticsFilterDropdown's useSearchMembers call.
+// Chunk size for the infinite scroll
 const FILTER_PICKER_PAGE_SIZE = 100;
 
 interface UsageFilterPanelProps {
@@ -92,23 +89,76 @@ export function UsageFilterPanel({
   );
   const [searchText, setSearchText] = useState("");
   // Only used for the "member" category: narrows the displayed members down
-  // to those belonging to at least one of these groups. Groups only narrow
-  // the picker — the user still checks individual members to add them to the
-  // filter. Lifted here (rather than owned by UsageFilterMemberGroupsControls)
-  // because filteredEntities below needs it too.
+  // to those belonging to at least one of these groups.
   const [selectedGroups, setSelectedGroups] = useState<UsageFilterGroup[]>([]);
 
   const isMemberCategoryActive = isOpen && activeCategory === "member";
 
+  // Every category picker supports scroll-to-load-more:
+  const [memberPageIndex, setMemberPageIndex] = useState(0);
+  const [accumulatedMemberOptions, setAccumulatedMemberOptions] = useState<
+    UsageFilterMemberOption[]
+  >([]);
+  const [visibleStaticCount, setVisibleStaticCount] = useState(
+    FILTER_PICKER_PAGE_SIZE
+  );
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset every category's load-more window when the active picker's filters change
+  useEffect(() => {
+    setMemberPageIndex(0);
+    setVisibleStaticCount(FILTER_PICKER_PAGE_SIZE);
+  }, [activeCategory, searchText, activeScope, activeTier]);
+
   // Search is applied server-side by useSearchMembers, same as the sibling
   // AnalyticsFilterDropdown's member picker.
-  const { members: searchedMembers } = useSearchMembers({
+  const {
+    members: searchedMembers,
+    totalMembersCount,
+    isMembersValidating,
+  } = useSearchMembers({
     workspaceId: owner.sId,
     searchTerm: searchText,
-    pageIndex: 0,
+    pageIndex: memberPageIndex,
     pageSize: FILTER_PICKER_PAGE_SIZE,
     disabled: !isMemberCategoryActive,
   });
+
+  useEffect(() => {
+    const page = searchedMembers.map((member) => ({
+      id: member.sId,
+      name: member.fullName,
+      kind: "member" as const,
+      image: member.image,
+    }));
+    if (memberPageIndex === 0) {
+      setAccumulatedMemberOptions(page);
+      return;
+    }
+    if (page.length === 0) {
+      return;
+    }
+    setAccumulatedMemberOptions((prev) => {
+      const existingIds = new Set(prev.map((option) => option.id));
+      const newOptions = page.filter((option) => !existingIds.has(option.id));
+      return newOptions.length > 0 ? [...prev, ...newOptions] : prev;
+    });
+  }, [searchedMembers, memberPageIndex]);
+
+  // Whether more members exist server-side, independent of the client-side
+  // group filter below — scrolling must keep fetching even if the current
+  // group filter narrows the visible list to fewer than a full page.
+  const hasMoreMembers = accumulatedMemberOptions.length < totalMembersCount;
+
+  const handleLoadMoreMembers = useCallback(() => {
+    if (isMembersValidating || !hasMoreMembers) {
+      return;
+    }
+    setMemberPageIndex((current) => current + 1);
+  }, [isMembersValidating, hasMoreMembers]);
+
+  const handleLoadMoreStaticOptions = useCallback(() => {
+    setVisibleStaticCount((current) => current + FILTER_PICKER_PAGE_SIZE);
+  }, []);
 
   const { groups: workspaceGroups } = useGroups({
     owner,
@@ -116,17 +166,6 @@ export function UsageFilterPanel({
     withMembers: true,
     disabled: !isMemberCategoryActive,
   });
-
-  const memberOptions = useMemo<UsageFilterMemberOption[]>(
-    () =>
-      searchedMembers.map((member) => ({
-        id: member.sId,
-        name: member.fullName,
-        kind: "member",
-        image: member.image,
-      })),
-    [searchedMembers]
-  );
 
   const groups = useMemo<UsageFilterGroup[]>(
     () =>
@@ -143,9 +182,9 @@ export function UsageFilterPanel({
   }>(
     () => ({
       ...categoryOptions,
-      member: memberOptions,
+      member: accumulatedMemberOptions,
     }),
-    [categoryOptions, memberOptions]
+    [categoryOptions, accumulatedMemberOptions]
   );
 
   const activeOptions = resolvedCategoryOptions[activeCategory];
@@ -177,13 +216,7 @@ export function UsageFilterPanel({
       }
       return true;
     });
-    // The member category is already capped server-side via the
-    // useSearchMembers pageSize; cap the other, statically-loaded
-    // categories here so every picker shows at most the same number of
-    // options.
-    return activeCategory === "member"
-      ? matchingOptions
-      : matchingOptions.slice(0, FILTER_PICKER_PAGE_SIZE);
+    return matchingOptions;
   }, [
     activeOptions,
     searchText,
@@ -192,6 +225,20 @@ export function UsageFilterPanel({
     activeCategory,
     selectedGroups,
   ]);
+
+  // Members are already paginated server-side into filteredOptions; the
+  // other categories reveal a growing window of the already-loaded
+  // filteredOptions as the user scrolls.
+  const displayedOptions = useMemo(
+    () =>
+      activeCategory === "member"
+        ? filteredOptions
+        : filteredOptions.slice(0, visibleStaticCount),
+    [filteredOptions, activeCategory, visibleStaticCount]
+  );
+
+  const hasMoreStaticOptions =
+    activeCategory !== "member" && visibleStaticCount < filteredOptions.length;
 
   const selectedIdsForActiveCategory = useMemo(
     () =>
@@ -319,11 +366,22 @@ export function UsageFilterPanel({
             <UsageFilterOptionCheckboxList
               category={activeCategory}
               categoryLabel={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
-              options={filteredOptions}
+              options={displayedOptions}
               selectedIds={selectedIdsForActiveCategory}
               onToggleOption={(option) => toggleOption(activeCategory, option)}
               onSelectAll={() =>
                 selectAllFiltered(activeCategory, filteredOptions)
+              }
+              hasMore={
+                activeCategory === "member"
+                  ? hasMoreMembers
+                  : hasMoreStaticOptions
+              }
+              isLoadingMore={activeCategory === "member" && isMembersValidating}
+              onLoadMore={
+                activeCategory === "member"
+                  ? handleLoadMoreMembers
+                  : handleLoadMoreStaticOptions
               }
             />
           </div>
