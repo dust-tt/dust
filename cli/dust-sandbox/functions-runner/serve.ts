@@ -1,23 +1,31 @@
-// Warm function server (protocol v2): keeps one imported function bundle
-// resident in a bun process and serves invocations over a unix socket, so
-// repeat invocations skip process spawn, bundle resolution, and the import of
-// the bundle and its dependencies (the dominant sandbox-side costs of a cold
-// run).
+// Warm function worker (protocol v2): a generic bun process that keeps
+// imported function bundles resident and serves invocations over a unix
+// socket, so repeat invocations skip process spawn, bundle resolution, and
+// the import of the bundle and its dependencies (the dominant sandbox-side
+// costs of a cold run).
 //
-// One server serves exactly one handler path — concurrently. Invocations are
-// IO-bound in the common case (SQL, API calls), so the event loop interleaves
-// many of them at once exactly like a web server would; per-invocation state
-// (user identity, sandbox token) travels in the request and is scoped through
-// the invocation context (see functions-runner/context.ts and @dust/pod),
-// never applied to process.env. Beyond MAX_CONCURRENT_INVOCATIONS requests
-// wait in a FIFO queue; a full or too-slow queue gets a structured
-// `overloaded` outcome instead of sending the client to a cold run —
-// unbounded cold fallback under saturation is exactly the memory blow-up this
-// server exists to prevent.
+// Workers are pod-scoped, not function-scoped: the request names the
+// function, and the worker resolves and imports its bundle on first use (the
+// module cache keeps it). Memory is bounded by the pool size (POOL_SLOTS in
+// warm.rs, times the RSS cap below), not by the number of functions on the
+// pod. The client routes a function to its home worker by hashing the app
+// prefix of its slug, so all of one app's functions accumulate in one
+// worker's module cache and an app pays one process spawn, ever.
+//
+// Invocations run concurrently. They are IO-bound in the common case (SQL,
+// API calls), so the event loop interleaves many of them at once exactly
+// like a web server would; per-invocation state (user identity, sandbox
+// token) travels in the request and is scoped through the invocation context
+// (see functions-runner/context.ts and @dust/pod), never applied to
+// process.env. Beyond MAX_CONCURRENT_INVOCATIONS requests wait in a FIFO
+// queue; a full or too-slow queue gets a structured `overloaded` outcome
+// instead of sending the client to a cold run — unbounded cold fallback
+// under saturation is exactly the memory blow-up this worker exists to
+// prevent.
 //
 // Duplicate executions are the failure mode this protocol is shaped around:
 // pod functions are arbitrary side-effectful code, and front assumes a failed
-// start means nothing ran. The server acks before executing — a synchronous
+// start means nothing ran. The worker acks before executing — a synchronous
 // socket write whose failure proves the client is gone — and the client only
 // falls back to the cold path on failures that precede the ack. After the
 // ack, a lost outcome is reported as a failed invocation, never re-run. (The
@@ -25,15 +33,18 @@
 // sitting behind an HTTP server: response streaming cannot prove the ack
 // reached the client's buffer before execution starts.)
 //
-// The server is disposable. It exits on idle, and it drains (stops
+// The worker is disposable. It exits on idle, and it drains (stops
 // listening, refuses its queue, lets in-flight invocations finish, then
-// exits) at the lifetime cap, when the bundle on disk changes, when its RSS
-// crosses the recycle threshold, or when an invocation outlives its deadline
-// (whose client was killed by front's much shorter exec timeout long ago).
+// exits) at the lifetime cap, when a bundle it imported goes stale (ES
+// modules cannot be evicted, so rebirth is the pruning mechanism), when its
+// RSS crosses the recycle threshold, or when an invocation outlives its
+// deadline (whose client was killed by front's much shorter exec timeout
+// long ago).
 
 import { createHash } from "node:crypto";
-import { unlinkSync } from "node:fs";
+import { readdirSync, unlinkSync } from "node:fs";
 import { stat, unlink } from "node:fs/promises";
+import { join } from "node:path";
 
 import { z } from "zod";
 
@@ -53,16 +64,18 @@ export const MAX_CONCURRENT_INVOCATIONS = 32;
 export const MAX_QUEUED_INVOCATIONS = 128;
 export const QUEUE_WAIT_DEADLINE_MS = 2_000;
 
-// Idle: how long the server waits with nothing running and nothing queued
-// before exiting. Lifetime: hard cap bounding how long a republished bundle
-// can keep being served when the envelope carries no bundle hash and gcsfuse
-// metadata caching hides the change from the per-request stat. Deadline: an
-// invocation that runs this long lost its client to front's much shorter
-// exec timeout ages ago, and its slot is wedged for good (a promise cannot
-// be killed), so the server recycles. Rss: a bloated server trades a one-off
-// import cost for freed memory. Drain flush: how long a drained server waits
-// for its last reply bytes before force-exiting on a client that stopped
-// reading.
+// Idle: how long the worker waits with nothing running and nothing queued
+// before exiting; scale-down to zero is each worker's own idle exit.
+// Lifetime: hard cap bounding both bundle accumulation (imports are
+// permanent for the life of the process) and staleness that gcsfuse metadata
+// caching could hide from unstamped envelopes. Deadline: an invocation that
+// runs this long lost its client to front's much shorter exec timeout ages
+// ago, and its slot is wedged for good (a promise cannot be killed), so the
+// worker recycles. Rss: recycles a worker whose imported working set
+// outgrew its share of the sandbox's memory — sized so a full pool stays
+// bounded well inside the 2GB sandbox. Drain flush: how long a drained
+// worker waits for its last reply bytes before force-exiting on a client
+// that stopped reading.
 const IDLE_TIMEOUT_MS = 120_000;
 // A request older than this must not be acked: the client abandons the wait
 // at 4s (see warm.rs) and falls back cold, and acking into that window is
@@ -76,9 +89,12 @@ const MAX_RSS_BYTES = 300 * 1024 * 1024;
 const DRAIN_FLUSH_TIMEOUT_MS = 5_000;
 
 // Per-invocation env vars inherited from the cold run that spawned this
-// server. Scrubbed at startup: they belong to that invocation, and every
+// worker. Scrubbed at startup: they belong to that invocation, and every
 // request carries its own environment in the request itself.
 const SPAWN_ENV_SCRUB_KEYS = ["DUST_SANDBOX_TOKEN", "DUST_POD_USER_IDENTITY"];
+
+// Mirrors dsbx's function-name validation: the name feeds a directory scan.
+const VALID_NAME = /^[A-Za-z0-9_-]+$/;
 
 const WarmRequestSchema = z.object({
   v: z.literal(WARM_PROTOCOL_VERSION),
@@ -95,6 +111,9 @@ const WarmRequestSchema = z.object({
     return out;
   }),
   input: z.string(),
+  // The function to serve. Workers are generic: the bundle is resolved from
+  // the functions directory and imported on first use.
+  name: z.string().regex(VALID_NAME),
 });
 
 type WarmRequest = z.infer<typeof WarmRequestSchema>;
@@ -102,6 +121,13 @@ type WarmRequest = z.infer<typeof WarmRequestSchema>;
 interface BundleStamp {
   mtimeMs: number;
   size: number;
+}
+
+/** A bundle this worker has imported; the module cache pins it until exit. */
+interface ImportedBundle {
+  handlerPath: string;
+  stamp: BundleStamp;
+  sha256: string;
 }
 
 async function statBundle(handlerPath: string): Promise<BundleStamp | null> {
@@ -126,6 +152,34 @@ async function sha256OfFile(path: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * Resolve a function name to its bundle file, extension-agnostically —
+ * the same contract as dsbx's resolve_existing: exactly one file in the
+ * functions directory whose stem is the name.
+ */
+export function resolveBundle(
+  functionsDir: string,
+  name: string
+): string | null {
+  let entries: import("node:fs").Dirent[];
+  try {
+    entries = readdirSync(functionsDir, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+  const matches = entries.filter((entry) => {
+    if (!entry.isFile()) {
+      return false;
+    }
+    const dot = entry.name.lastIndexOf(".");
+    return (dot <= 0 ? entry.name : entry.name.slice(0, dot)) === name;
+  });
+  if (matches.length !== 1) {
+    return null;
+  }
+  return join(functionsDir, matches[0]!.name);
 }
 
 export function parseWarmRequest(line: string): WarmRequest | null {
@@ -166,47 +220,32 @@ function overloadedFrame(): Record<string, unknown> {
       error: {
         code: "overloaded",
         message:
-          "The function is running at its concurrency limit and the wait " +
-          "queue is saturated; the invocation was not started.",
+          "The function's worker is running at its concurrency limit and " +
+          "the wait queue is saturated; the invocation was not started.",
       },
     },
   };
 }
 
 export async function serve(
-  handlerPath: string,
+  functionsDir: string,
   socketPath: string
 ): Promise<never> {
   for (const key of SPAWN_ENV_SCRUB_KEYS) {
     delete process.env[key];
   }
 
-  // Import eagerly: the server is spawned right after a cold run, so warming
-  // now (rather than on first request) makes the very next invocation fast.
-  // The module cache keyed by path is the whole point of this process. A
-  // static import is impossible here: the bundle to serve is a runtime
-  // argument, a different published function per server.
-  const importedStamp = await statBundle(handlerPath);
-  if (importedStamp === null) {
-    process.exit(1);
-  }
-  // Hash before importing so the hash describes the bytes the import reads;
-  // a write landing between the two is caught by the per-request stat.
-  const importedSha256 = await sha256OfFile(handlerPath);
-  if (importedSha256 === null) {
-    process.exit(1);
-  }
-  try {
-    await import(handlerPath);
-  } catch {
-    // A bundle that fails to import still gets served: invoke() reports the
-    // import error as a structured outcome, exactly like a cold run would.
-  }
+  // name -> imported bundle. Both the resolution and the module are cached
+  // for the life of the worker: a cached resolution that goes bad (bundle
+  // deleted, extension changed, republished) fails its per-request checks
+  // and drains the worker — the module cache cannot be evicted, so rebirth
+  // is the only pruning.
+  const imported = new Map<string, ImportedBundle>();
 
   let boundSocket = false;
   const exit = (code: number): never => {
-    // Remove the socket first so no client connects to a dying server — but
-    // only if this server owns it: a duplicate that lost the bind race must
+    // Remove the socket first so no client connects to a dying worker — but
+    // only if this worker owns it: a duplicate that lost the bind race must
     // not delete the winner's socket on its way out.
     if (boundSocket) {
       try {
@@ -252,9 +291,9 @@ export async function serve(
   }
 
   // `running` counts invocations past admission (including their pre-ack
-  // staleness checks); `hung` counts the subset that blew their deadline and
-  // will never release their slot. The server is fully drained once every
-  // running invocation is hung.
+  // resolve/import phase); `hung` counts the subset that blew their deadline
+  // and will never release their slot. The worker is fully drained once
+  // every running invocation is hung.
   let running = 0;
   let hung = 0;
   let draining = false;
@@ -333,7 +372,7 @@ export async function serve(
     drainExitCode = code;
     clearIdle();
     // Stop accepting and free the socket path immediately: the next cold run
-    // binds a fresh server there while this one finishes its in-flight work.
+    // binds a fresh worker there while this one finishes its in-flight work.
     if (listenerStop !== null) {
       listenerStop();
     }
@@ -346,7 +385,7 @@ export async function serve(
       boundSocket = false;
     }
     // Queued requests never started executing: refuse them as stale so their
-    // clients re-run cold against the successor server. (On a stale-triggered
+    // clients re-run cold against the successor worker. (On a stale-triggered
     // drain, serving them from the old import would be wrong anyway.)
     for (const entry of [...queue]) {
       if (settleQueueEntry(entry)) {
@@ -365,22 +404,141 @@ export async function serve(
     writeThenEnd(socket, `${JSON.stringify(response)}\n`);
   }
 
+  /** Result of the single-flight fuse import of one function's bundle. */
+  type FuseImportResult =
+    | { kind: "ok"; bundle: ImportedBundle }
+    | { kind: "unresolved" }
+    | { kind: "poisoned" };
+
+  // One resolve/stat/hash/import pipeline per name at a time, joined by
+  // concurrent requests. Without it, two overlapping first requests during a
+  // republish window can each hash a different version while import() hands
+  // both the same module — recording one version's hash against the other's
+  // bytes and serving stale code under a fresh stamp from then on.
+  const importsInFlight = new Map<string, Promise<FuseImportResult>>();
+
+  function importFromFunctionsDir(name: string): Promise<FuseImportResult> {
+    const inFlight = importsInFlight.get(name);
+    if (inFlight !== undefined) {
+      return inFlight;
+    }
+    const flight = (async (): Promise<FuseImportResult> => {
+      const handlerPath = resolveBundle(functionsDir, name);
+      if (handlerPath === null) {
+        return { kind: "unresolved" };
+      }
+      const stamp = await statBundle(handlerPath);
+      if (stamp === null) {
+        return { kind: "unresolved" };
+      }
+      // Hash before importing so the hash describes the bytes the import
+      // reads; the re-stat below catches a write landing in between.
+      const sha256 = await sha256OfFile(handlerPath);
+      if (sha256 === null) {
+        return { kind: "unresolved" };
+      }
+      try {
+        // GEN10 exemption: a static import (and a literal specifier) is
+        // structurally impossible here — the module to load is a published
+        // function bundle resolved from the functions directory at request
+        // time. Dynamic import IS this worker's purpose; the path is
+        // produced by resolveBundle from a validated name, never from raw
+        // request input.
+        await import(handlerPath);
+      } catch {
+        // A bundle that fails to import still gets served: invoke() reports
+        // the import error as a structured outcome, exactly like a cold run.
+      }
+      // The module registry now permanently holds whatever bytes import()
+      // read. If the file changed between the hash and the import, the hash
+      // cannot be trusted to describe the module: the worker is poisoned
+      // for this path and must recycle.
+      const after = await statBundle(handlerPath);
+      if (!sameStamp(stamp, after)) {
+        return { kind: "poisoned" };
+      }
+      const bundle: ImportedBundle = { handlerPath, stamp, sha256 };
+      imported.set(name, bundle);
+      return { kind: "ok", bundle };
+    })();
+    // Registered synchronously (before any await runs) and cleared on
+    // settlement so a failed resolution can be retried by a later request.
+    const tracked = flight.finally(() => {
+      importsInFlight.delete(name);
+    });
+    importsInFlight.set(name, tracked);
+    return tracked;
+  }
+
+  /**
+   * Ensure the request's bundle is imported and current. Returns the bundle
+   * and whether this request paid (or joined) the import, or null after a
+   * pre-ack `stale` reply was sent (the client re-runs cold, which reads the
+   * bundle fresh and respawns a worker as needed).
+   */
+  async function ensureBundle(
+    socket: WarmSocket,
+    request: WarmRequest,
+    expectedSha256: string | undefined
+  ): Promise<{
+    bundle: ImportedBundle;
+    importKind: "cached" | "fresh";
+  } | null> {
+    const staleReply = ({ recycle = false }: { recycle?: boolean } = {}) => {
+      reply(socket, { v: WARM_PROTOCOL_VERSION, stale: true });
+      if (recycle) {
+        // The worker holds an import it can never serve again; drain so a
+        // fresh worker replaces it. In-flight invocations finish normally.
+        startDrain(0);
+      }
+      return null;
+    };
+
+    const existing = imported.get(request.name);
+    if (existing) {
+      // A republished bundle must never be served from the old import. One
+      // metadata call per request; any difference (or a vanished file), or a
+      // request stamped with a hash this import does not match, sends the
+      // client down the cold path — and recycles this worker, since the old
+      // module can never be evicted.
+      const current = await statBundle(existing.handlerPath);
+      if (
+        !sameStamp(existing.stamp, current) ||
+        (expectedSha256 !== undefined && expectedSha256 !== existing.sha256)
+      ) {
+        return staleReply({ recycle: true });
+      }
+      return { bundle: existing, importKind: "cached" };
+    }
+
+    const result = await importFromFunctionsDir(request.name);
+    switch (result.kind) {
+      case "unresolved":
+        // Missing or ambiguous bundle: the cold path owes the caller the
+        // structured error, not this worker.
+        return staleReply();
+      case "poisoned":
+        return staleReply({ recycle: true });
+      case "ok":
+        if (
+          expectedSha256 !== undefined &&
+          expectedSha256 !== result.bundle.sha256
+        ) {
+          // The on-disk bundle does not match what the publisher stamped
+          // (gcsfuse lag). The import stays valid for callers of the version
+          // it actually holds; this caller re-runs cold, and the eventual
+          // disk change recycles the worker through the stat check above.
+          return staleReply();
+        }
+        return { bundle: result.bundle, importKind: "fresh" };
+    }
+  }
+
   async function runInvocation(
     socket: WarmSocket,
     request: WarmRequest,
     receivedAtMs: number
   ): Promise<void> {
-    // A republished bundle must never be served from the old import. One
-    // metadata call per invocation start; any difference (or a vanished
-    // file) sends the client down the cold path, which respawns a fresh
-    // server while this one drains.
-    const current = await statBundle(handlerPath);
-    if (!sameStamp(importedStamp, current)) {
-      reply(socket, { v: WARM_PROTOCOL_VERSION, stale: true });
-      startDrain(0);
-      return;
-    }
-
     let input: RequestInput;
     try {
       input = parseInput(request.input);
@@ -395,21 +553,11 @@ export async function serve(
       return;
     }
 
-    // Deterministic republish detection: front stamps each invocation with
-    // the sha256 of the bundle it published, so a server that imported older
-    // bytes is refused even while gcsfuse metadata caching still hides the
-    // rewrite from the stat above. Pre-ack, like every refusal: the client
-    // re-runs cold, which reads the bundle fresh and respawns a matching
-    // server. Unstamped envelopes (older front) keep the stat and lifetime
-    // backstops only.
-    if (
-      input.bundleSha256 !== undefined &&
-      input.bundleSha256 !== importedSha256
-    ) {
-      reply(socket, { v: WARM_PROTOCOL_VERSION, stale: true });
-      startDrain(0);
+    const ensured = await ensureBundle(socket, request, input.bundleSha256);
+    if (ensured === null) {
       return;
     }
+    const { bundle, importKind } = ensured;
 
     // The ack is the point of no return: from here the client must never
     // fall back to the cold path, because the function may have side effects
@@ -438,7 +586,7 @@ export async function serve(
     // An invocation that outlives this deadline lost its client to front's
     // exec timeout long ago, and its slot is wedged for good — a promise
     // cannot be killed. Recycle: drain and let the next cold run spawn a
-    // fresh server. Other in-flight invocations finish normally.
+    // fresh worker. Other in-flight invocations finish normally.
     let deadlineFired = false;
     const deadlineTimer = setTimeout(() => {
       deadlineFired = true;
@@ -448,12 +596,12 @@ export async function serve(
     }, INVOCATION_DEADLINE_MS);
 
     try {
-      const outcome = await invoke(handlerPath, input, request.env);
+      const outcome = await invoke(bundle.handlerPath, input, request.env);
       if (deadlineFired) {
         // The client is long gone; nothing useful to write.
         socket.end();
       } else {
-        reply(socket, { v: WARM_PROTOCOL_VERSION, outcome });
+        reply(socket, { v: WARM_PROTOCOL_VERSION, outcome, importKind });
       }
     } finally {
       clearTimeout(deadlineTimer);
@@ -508,15 +656,15 @@ export async function serve(
   function handleLine(socket: WarmSocket, line: string): void {
     const request = parseWarmRequest(line);
     if (request === null) {
-      // A client this server does not understand. Version-suffixed socket
+      // A client this worker does not understand. Version-suffixed socket
       // names make this a bug rather than a rolling-upgrade case; refusing
-      // the request (the client runs cold) beats killing a server with
+      // the request (the client runs cold) beats killing a worker with
       // concurrent invocations in flight.
       reply(socket, { v: WARM_PROTOCOL_VERSION, error: "bad warm request" });
       return;
     }
     if (draining) {
-      // Send the client cold; its run respawns a fresh server.
+      // Send the client cold; its run respawns a fresh worker.
       reply(socket, { v: WARM_PROTOCOL_VERSION, stale: true });
       return;
     }
@@ -553,8 +701,8 @@ export async function serve(
       socket: {
         open() {
           // Probe connections (the client checks for a listener before
-          // spawning a duplicate server) send no data; the idle timer keeps
-          // running so they cannot pin the server alive.
+          // spawning a duplicate worker) send no data; the idle timer keeps
+          // running so they cannot pin the worker alive.
         },
         data(socket, chunk) {
           const buffered = (socketBuffers.get(socket) ?? "") + chunk.toString();
@@ -599,9 +747,9 @@ export async function serve(
     listenerStop = () => listener.stop();
     boundSocket = true;
   } catch {
-    // The socket path exists. Either a live server owns it — this process is
+    // The socket path exists. Either a live worker owns it — this process is
     // a lost spawn race and must exit without touching the winner's socket —
-    // or it is a stale leftover from a dead server, which is safe to replace.
+    // or it is a stale leftover from a dead worker, which is safe to replace.
     const listening = await new Promise<boolean>((resolve) => {
       Bun.connect({
         unix: socketPath,
