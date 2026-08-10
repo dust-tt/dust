@@ -24,15 +24,20 @@ import { useMemo } from "react";
 // The banners span the full width of the content panel (see `TopBanners`) and
 // lay out on two lines: the title, then the description followed by the
 // optional footer.
+//
+// Colors follow Sparkle's `ContentMessage` scale (`bg-*-50` / `border-*-100` /
+// `text-*-800`). They come from the token layer, which remaps every semantic
+// scale in the `.dark` block of `tokens.css`, so they flip with the theme on
+// their own and need no `dark:` overrides.
 const statusBannerVariants = cva(
   "flex flex-col gap-0.5 border-b px-4 py-2 text-sm",
   {
     variants: {
       variant: {
-        info: cn("border-info-200", "bg-info-100", "text-info-900"),
-        warning: cn("border-warning-200", "bg-warning-100", "text-warning-900"),
-        success: cn("border-success-200", "bg-success-100", "text-success-900"),
-        danger: cn("border-red-200", "bg-red-100", "text-red-900"),
+        info: cn("border-info-100", "bg-info-50", "text-info-800"),
+        warning: cn("border-warning-100", "bg-warning-50", "text-warning-800"),
+        success: cn("border-success-200", "bg-success-50", "text-success-800"),
+        danger: cn("border-red-100", "bg-red-50", "text-red-800"),
       },
     },
     defaultVariants: {
@@ -74,6 +79,7 @@ function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   if (dustStatus) {
     return (
       <StatusBanner
+        variant="warning"
         title={dustStatus.name}
         description={dustStatus.description}
         footer={
@@ -96,6 +102,7 @@ function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   if (providersStatus) {
     return (
       <StatusBanner
+        variant="warning"
         title={providersStatus.name}
         description={providersStatus.description}
       />
