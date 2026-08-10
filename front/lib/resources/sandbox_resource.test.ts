@@ -68,7 +68,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { encrypt } from "@app/types/shared/utils/encryption";
 import type { WhereOptions } from "sequelize";
 
@@ -403,6 +403,104 @@ describe("ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested", 
 
     expect(result.isOk()).toBe(true);
     expect(mockProviderDestroy).not.toHaveBeenCalled();
+  });
+});
+
+describe("SandboxResource.dangerouslyDestroyIfKillRequested pre-destroy flush", () => {
+  let authenticator: Authenticator;
+  let conversationResource: ConversationResource;
+
+  // A flush that can never pass — e.g. a pod database the litestream user
+  // cannot write, which fails identically on every sweep.
+  const alwaysFailingCheck = () =>
+    Promise.resolve(new Err(new Error("litestream sync of arena failed")));
+
+  const lifecycleOwner = () => ({
+    lockKey: conversationResource.sId,
+    fetchSandbox: () =>
+      ConversationSandboxAdapter.fetchSandbox(
+        authenticator,
+        conversationResource.toJSON()
+      ),
+  });
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockExecuteWithLock.mockImplementation(
+      async (_key: string, fn: () => Promise<unknown>) => fn()
+    );
+    mockGetSandboxProvider.mockReturnValue({ destroy: mockProviderDestroy });
+    mockProviderDestroy.mockResolvedValue(new Ok(undefined));
+    mockDeleteLegacySandboxPolicy.mockResolvedValue(new Ok(undefined));
+    mockRevokeAllExecTokensForSandbox.mockResolvedValue(undefined);
+
+    const testSetup = await createResourceTest({ role: "admin" });
+    authenticator = testSetup.authenticator;
+
+    const agentConfig =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date()],
+    });
+    const fetched = await ConversationResource.fetchById(
+      authenticator,
+      conversation.sId
+    );
+    if (!fetched) {
+      throw new Error("Conversation not found.");
+    }
+    conversationResource = fetched;
+  });
+
+  it("skips the destroy while the kill request is within the grace period", async () => {
+    await SandboxFactory.create(authenticator, conversationResource.toJSON(), {
+      status: "running",
+      killRequestedAt: new Date(),
+    });
+
+    const result = await SandboxResource.dangerouslyDestroyIfKillRequested(
+      authenticator,
+      lifecycleOwner(),
+      { beforeSleep: alwaysFailingCheck }
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(mockProviderDestroy).not.toHaveBeenCalled();
+
+    const reloaded = await ConversationSandboxAdapter.fetchSandbox(
+      authenticator,
+      conversationResource.toJSON()
+    );
+    expect(reloaded?.status).toBe("running");
+  });
+
+  it("destroys anyway once the kill request is older than the grace period", async () => {
+    const sandbox = await SandboxFactory.create(
+      authenticator,
+      conversationResource.toJSON(),
+      {
+        status: "running",
+        killRequestedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+      }
+    );
+
+    const result = await SandboxResource.dangerouslyDestroyIfKillRequested(
+      authenticator,
+      lifecycleOwner(),
+      { beforeSleep: alwaysFailingCheck }
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(mockProviderDestroy).toHaveBeenCalledWith(sandbox.providerId, {
+      workspaceId: authenticator.getNonNullableWorkspace().sId,
+    });
+
+    const reloaded = await ConversationSandboxAdapter.fetchSandbox(
+      authenticator,
+      conversationResource.toJSON()
+    );
+    expect(reloaded?.status).toBe("deleted");
   });
 });
 
