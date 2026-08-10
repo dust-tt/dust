@@ -243,6 +243,7 @@ describe("fetchConsumptionTimeseries", () => {
     it.each([
       "agent",
       "user",
+      "team",
       "model",
       "tool",
       "skill",

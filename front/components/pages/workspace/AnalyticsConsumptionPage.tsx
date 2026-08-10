@@ -95,7 +95,6 @@ export function AnalyticsConsumptionPage() {
             <UsageFilterPanel
               owner={owner}
               categoryOptions={USAGE_FILTER_MOCK_OPTIONS}
-              groups={USAGE_FILTER_MOCK_GROUPS}
               filter={filter}
               onFilterChange={setFilter}
             />

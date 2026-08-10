@@ -6,6 +6,7 @@ import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/con
 import type { GetConsumptionTopModelsResponse } from "@app/lib/api/analytics/consumption/top_models";
 import type { GetConsumptionTopSkillsResponse } from "@app/lib/api/analytics/consumption/top_skills";
 import type { GetConsumptionTopSourcesResponse } from "@app/lib/api/analytics/consumption/top_sources";
+import type { GetConsumptionTopTeamsResponse } from "@app/lib/api/analytics/consumption/top_teams";
 import type { GetConsumptionTopToolsResponse } from "@app/lib/api/analytics/consumption/top_tools";
 import type { GetConsumptionTopUsersResponse } from "@app/lib/api/analytics/consumption/top_users";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -16,6 +17,7 @@ import type { Fetcher } from "swr";
 const CONSUMPTION_TOP_ENDPOINTS = {
   agent: "top-agents",
   user: "top-users",
+  team: "top-teams",
   model: "top-models",
   tool: "top-tools",
   skill: "top-skills",
@@ -33,6 +35,7 @@ export type ConsumptionTopRow = {
 type ConsumptionTopResponse =
   | GetConsumptionTopAgentsResponse
   | GetConsumptionTopUsersResponse
+  | GetConsumptionTopTeamsResponse
   | GetConsumptionTopModelsResponse
   | GetConsumptionTopToolsResponse
   | GetConsumptionTopSkillsResponse
@@ -56,6 +59,15 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.userId,
       name: row.name,
       pictureUrl: row.pictureUrl,
+      credits: row.credits,
+      avgCredits: row.avgCreditsPerMessage,
+    }));
+  }
+  if ("teams" in data) {
+    return data.teams.map((row) => ({
+      id: row.teamId,
+      name: row.name,
+      pictureUrl: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));

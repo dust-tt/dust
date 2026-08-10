@@ -88,6 +88,7 @@ export type UsageFilterOption =
 export interface UsageFilterGroup {
   id: string;
   name: string;
+  memberIds: string[];
 }
 
 export type UsageFilterOptionForCategory<C extends UsageFilterCategory> =
@@ -139,24 +140,7 @@ export function selectAllUsageFilterOptions<C extends UsageFilterCategory>(
   return { ...filter, [category]: [...current, ...additions] };
 }
 
-export function addUsageFilterGroup(
-  groups: UsageFilterGroup[],
-  group: UsageFilterGroup
-): UsageFilterGroup[] {
-  if (groups.some((g) => g.id === group.id)) {
-    return groups;
-  }
-  return [...groups, group];
-}
-
-export function removeUsageFilterGroup(
-  groups: UsageFilterGroup[],
-  id: string
-): UsageFilterGroup[] {
-  return groups.filter((g) => g.id !== id);
-}
-
-// Only "member" is wired to a real consumption scope dimension ("user") so
+// Only "member" is wired to a real consumption scope dimension ("users") so
 // far; the other categories stay mock data and are not sent as query filters.
 export function toConsumptionScopeFilter(
   filter: UsageFilter
