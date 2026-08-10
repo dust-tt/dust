@@ -15,10 +15,11 @@ export function Slide({ children, className }: SlideProps) {
   return (
     <div
       className={cn(
+        // relative keeps absolutely positioned content scoped to its slide during PDF export.
         // [&>*]:min-h-0 overrides the default flex-item `min-height: auto` so  that LLM-generated
         // children with tall intrinsic heights (e.g. an SVG with height="2147") shrink to fit the
         // slide instead of overflowing.
-        "w-full h-full flex flex-col items-center justify-center overflow-hidden p-4 [&>*]:min-h-0",
+        "relative w-full h-full flex flex-col items-center justify-center overflow-hidden p-4 [&>*]:min-h-0",
         className
       )}
     >
