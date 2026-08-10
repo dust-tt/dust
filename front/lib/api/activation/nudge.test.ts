@@ -375,6 +375,8 @@ describe("postActivationNudge", () => {
         sessionGoal: "Automate the weekly report",
         pushedResourceType: "skill",
         pushedResourceName: "Notion",
+        workAreas: null,
+        activationPlaybook: null,
       },
     });
 

@@ -125,7 +125,7 @@ describe("activationManagementPlugin.execute", () => {
     expect(mockStartActivationWorkspaceSchedule).toHaveBeenCalledWith({
       workspaceId: workspace.sId,
     });
-    expect(mockFireActivationNudge).toHaveBeenCalledWith(
+    expect(mockPostActivationNudge).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         context: expect.objectContaining({ workAreas, activationPlaybook }),
