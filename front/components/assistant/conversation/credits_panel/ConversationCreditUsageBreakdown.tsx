@@ -2,13 +2,14 @@ import { getActionStepIcon } from "@app/components/assistant/conversation/action
 import { getModelLogoByModelId } from "@app/components/providers/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { formatCredits } from "@app/lib/client/credits";
+import { formatCredits, formatCreditValue } from "@app/lib/client/credits";
 import type {
   ConversationConsumptionAgentDetails,
   ConversationConsumptionDetails,
   ConversationConsumptionModelDetails,
   ConversationConsumptionToolDetails,
 } from "@app/types/assistant/conversation_consumption";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import { Avatar, Chip, DustLogoSquare, Icon } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
@@ -217,7 +218,9 @@ export function ConversationCreditUsageBreakdown({
             <span className="text-2xl font-semibold leading-8 text-foreground">
               {formatCredits(billedCredits)}
             </span>
-            <span className="pb-1 text-sm text-muted-foreground">credits</span>
+            <span className="pb-1 text-sm text-muted-foreground">
+              credit{pluralize(billedCredits)}
+            </span>
           </div>
         </div>
         <ToolBreakdownCards

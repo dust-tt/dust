@@ -58,7 +58,7 @@ import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/out
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { formatCredits } from "@app/lib/client/credits";
+import { formatCredits, formatCreditValue } from "@app/lib/client/credits";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
@@ -874,7 +874,7 @@ export function AgentMessage({
           label={formattedCredits}
           iconRight={CoinsStacked01}
           className="gap-1 px-1 tracking-normal"
-          aria-label={`${formattedCredits} credits used for this message. View credit breakdown`}
+          aria-label={`${formatCreditValue(agentMessage.costCredits)} used for this message. View credit breakdown`}
         />
       );
 
@@ -893,7 +893,7 @@ export function AgentMessage({
           <span
             key="message-credit-cost"
             role="status"
-            aria-label={`${formattedCredits} credits used for this message`}
+            aria-label={`${formatCreditValue(agentMessage.costCredits)} used for this message`}
             className="inline-flex h-6 items-center gap-1 rounded-lg px-1 text-sm font-medium leading-5 text-muted-foreground"
           >
             {formattedCredits}

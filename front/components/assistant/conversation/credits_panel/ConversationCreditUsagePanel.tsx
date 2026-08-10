@@ -4,6 +4,7 @@ import { ConversationCreditUsageBreakdown } from "@app/components/assistant/conv
 import { useConversationConsumption } from "@app/hooks/conversations/useConversationConsumption";
 import { formatCredits } from "@app/lib/client/credits";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
 
@@ -57,7 +58,8 @@ export function ConversationCreditUsagePanel({
             <div className="flex items-baseline justify-between gap-4">
               <span className="text-sm text-muted-foreground">Total used</span>
               <span className="text-lg font-semibold text-foreground">
-                {formatCredits(consumption.billedCredits)} credits
+                {formatCredits(consumption.billedCredits)} credit
+                {pluralize(consumption.billedCredits)}
               </span>
             </div>
             <p className="text-sm text-muted-foreground">
