@@ -518,6 +518,10 @@ pub fn spawn_worker(name: &str) {
         .arg("serve")
         .arg(&functions_dir)
         .arg(&socket)
+        // Eager warm-up hint: the worker imports this function's bundle (and
+        // prefetches its app's siblings) immediately instead of on first
+        // request. The name is already validated by the caller.
+        .arg(name)
         .env("NODE_PATH", super::harness_node_path())
         .stdin(Stdio::null())
         .stdout(Stdio::null())
@@ -596,8 +600,10 @@ mod tests {
 
         spawn_worker("greet");
 
-        // The worker needs a moment to bind its socket; the first served
-        // request pays the bundle import and reports it.
+        // The worker needs a moment to bind its socket. The spawn carries an
+        // eager-import hint, so the first served request is usually already
+        // cached; a fast enough client can still race the eager import and
+        // join it as fresh. Either way the outcome must be correct.
         let deadline = std::time::Instant::now() + Duration::from_secs(15);
         let (outcome, import_kind) = loop {
             match try_warm_run("greet", &input).await {
@@ -612,7 +618,7 @@ mod tests {
             outcome,
             serde_json::json!({ "ok": true, "output": { "hello": "warm" } })
         );
-        assert_eq!(import_kind, Some(ImportKind::Fresh));
+        assert!(import_kind.is_some());
 
         // A repeat invocation is served from the cached import.
         match try_warm_run("greet", &input).await {
