@@ -39,7 +39,7 @@ export async function launchAgentMessageConsumptionAttribution(
 ): Promise<void> {
   const result = await launchStoreAgentMessageConsumptionAttributionWorkflow({
     authType: auth.toJSON(),
-    agentLoopArgs,
+    message: agentLoopArgs,
   });
 
   if (result.isErr()) {

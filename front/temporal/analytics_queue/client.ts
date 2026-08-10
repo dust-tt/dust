@@ -101,14 +101,15 @@ export async function launchStoreAgentAnalyticsWorkflow({
 
 export async function launchStoreAgentMessageConsumptionAttributionWorkflow({
   authType,
-  agentLoopArgs,
+  message,
 }: {
   authType: AuthenticatorType;
-  agentLoopArgs: AgentLoopArgs;
+  message: AgentMessageRef;
 }): Promise<Result<undefined, Error>> {
   const { workspaceId } = authType;
 
-  const { agentMessageId, conversationId } = agentLoopArgs;
+  const { agentMessageId, conversationId } = message;
+  const messageRef = { agentMessageId, conversationId };
 
   const client = await getTemporalClientForFrontNamespace();
 
@@ -127,7 +128,7 @@ export async function launchStoreAgentMessageConsumptionAttributionWorkflow({
     await client.workflow.signalWithStart(
       storeAgentMessageConsumptionAttributionV3Workflow,
       {
-        args: [authType, { agentLoopArgs }],
+        args: [authType, { message: messageRef }],
         taskQueue: QUEUE_NAME,
         workflowId,
         signal: storeAgentMessageConsumptionAttributionV3Signal,
