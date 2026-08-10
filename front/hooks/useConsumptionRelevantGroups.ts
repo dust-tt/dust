@@ -12,8 +12,8 @@ export type ConsumptionRelevantGroupRow = {
   memberIds: string[];
 };
 
-// Broader than the Attribution table's own top-N (25): the picker needs wider
-// coverage of the period's active population than a ranking display does.
+// Caps the number of distinct groups returned (the aggregation itself already
+// covers every group active in the period, unlike a top-N ranking).
 const RELEVANT_GROUPS_LIMIT = 100;
 
 export function useConsumptionRelevantGroups({
