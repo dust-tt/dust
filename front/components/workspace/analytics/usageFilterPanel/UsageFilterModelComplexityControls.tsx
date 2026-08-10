@@ -30,7 +30,7 @@ import {
   NavigationListLabel,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useState } from "react";
 
 const MODEL_TIER_ICON: Record<UsageModelTier, ComponentType> = {
   fast: BarLow,
@@ -74,24 +74,16 @@ export function UsageFilterModelComplexityControls({
   const moreModelsQuery = moreModelsSearch.trim().toLowerCase();
   const isSearchingMoreModels = moreModelsQuery !== "";
 
-  const moreModelsSearchResults = useMemo(
-    () =>
-      isSearchingMoreModels
-        ? models.filter((model) =>
-            model.name.toLowerCase().includes(moreModelsQuery)
-          )
-        : [],
-    [models, isSearchingMoreModels, moreModelsQuery]
-  );
+  const moreModelsSearchResults = isSearchingMoreModels
+    ? models.filter((model) =>
+        model.name.toLowerCase().includes(moreModelsQuery)
+      )
+    : [];
 
-  const moreModelsGroups = useMemo(
-    () =>
-      MODEL_MAKER_IDS.flatMap((lab) => {
-        const labModels = models.filter((model) => model.lab === lab);
-        return labModels.length > 0 ? [{ lab, models: labModels }] : [];
-      }),
-    [models]
-  );
+  const moreModelsGroups = MODEL_MAKER_IDS.flatMap((lab) => {
+    const labModels = models.filter((model) => model.lab === lab);
+    return labModels.length > 0 ? [{ lab, models: labModels }] : [];
+  });
 
   return (
     <>

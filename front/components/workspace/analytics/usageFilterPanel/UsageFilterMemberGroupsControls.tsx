@@ -11,7 +11,7 @@ import {
   NavigationListLabel,
   Plus,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 interface UsageFilterMemberGroupsControlsProps {
   groups: UsageFilterGroup[];
@@ -23,12 +23,8 @@ export function UsageFilterMemberGroupsControls({
   const [isAddGroupOpen, setIsAddGroupOpen] = useState(false);
   const [selectedGroups, setSelectedGroups] = useState<UsageFilterGroup[]>([]);
 
-  const availableGroups = useMemo(
-    () =>
-      groups.filter(
-        (group) => !selectedGroups.some((selected) => selected.id === group.id)
-      ),
-    [groups, selectedGroups]
+  const availableGroups = groups.filter(
+    (group) => !selectedGroups.some((selected) => selected.id === group.id)
   );
 
   const handleAddGroup = (group: UsageFilterGroup) => {
