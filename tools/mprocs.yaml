@@ -158,7 +158,7 @@ procs:
     cwd: "<CONFIG_DIR>/../viz"
     shell: |
       npm run dev
-    autostart: false
+    autostart: true
 
   extension-chrome:
     cwd: "<CONFIG_DIR>/../extension"
