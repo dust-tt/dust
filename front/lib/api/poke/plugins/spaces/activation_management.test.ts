@@ -14,13 +14,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockGetOrCreateActivationWebhookSourceView,
   mockCreateActivationTrigger,
-  mockFireActivationNudge,
+  mockPostActivationNudge,
   mockListActivationPodsByUser,
   mockStartActivationWorkspaceSchedule,
 } = vi.hoisted(() => ({
   mockGetOrCreateActivationWebhookSourceView: vi.fn(),
   mockCreateActivationTrigger: vi.fn(),
-  mockFireActivationNudge: vi.fn(),
+  mockPostActivationNudge: vi.fn(),
   mockListActivationPodsByUser: vi.fn(),
   mockStartActivationWorkspaceSchedule: vi.fn(),
 }));
@@ -29,7 +29,13 @@ vi.mock("@app/lib/api/activation/trigger", () => ({
   getOrCreateActivationWebhookSourceView:
     mockGetOrCreateActivationWebhookSourceView,
   createActivationTrigger: mockCreateActivationTrigger,
-  fireActivationNudge: mockFireActivationNudge,
+}));
+
+vi.mock("@app/lib/api/activation/nudge", () => ({
+  postActivationNudge: mockPostActivationNudge,
+}));
+
+vi.mock("@app/lib/api/activation/pods", () => ({
   listActivationPodsByUser: mockListActivationPodsByUser,
 }));
 
@@ -40,7 +46,7 @@ vi.mock("@app/temporal/activation_scheduler/client", () => ({
 beforeEach(async () => {
   mockGetOrCreateActivationWebhookSourceView.mockReset();
   mockCreateActivationTrigger.mockReset();
-  mockFireActivationNudge.mockReset();
+  mockPostActivationNudge.mockReset();
   mockListActivationPodsByUser.mockReset();
   mockStartActivationWorkspaceSchedule.mockReset();
 
@@ -51,12 +57,12 @@ beforeEach(async () => {
     new Ok({ triggerId: makeSId("trigger", { id: 1, workspaceId: 1 }) })
   );
   // A fake trigger with just an `id`: the plugin only forwards it to
-  // `ActivationPodResource.makeNew` (spied below) and `fireActivationNudge`
-  // (mocked), neither of which touches the DB here.
+  // `ActivationPodResource.makeNew` (spied below), which does not touch the DB
+  // here.
   vi.spyOn(TriggerResource, "fetchById").mockResolvedValue({
     id: 1,
   } as unknown as TriggerResource);
-  mockFireActivationNudge.mockResolvedValue(new Ok(undefined));
+  mockPostActivationNudge.mockResolvedValue(new Ok({ conversationId: "conv" }));
   // No user has a pod yet, so every target is provisioned fresh.
   mockListActivationPodsByUser.mockResolvedValue(new Map());
   mockStartActivationWorkspaceSchedule.mockResolvedValue(new Ok(undefined));
@@ -119,7 +125,7 @@ describe("activationManagementPlugin.execute", () => {
     expect(mockStartActivationWorkspaceSchedule).toHaveBeenCalledWith({
       workspaceId: workspace.sId,
     });
-    expect(mockFireActivationNudge).toHaveBeenCalledWith(
+    expect(mockPostActivationNudge).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         context: expect.objectContaining({ workAreas, activationPlaybook }),

@@ -4,7 +4,10 @@ import { JustAskComposer } from "@app/components/pages/workspace/GetStartedPage/
 import { PreviouslyDoneRow } from "@app/components/pages/workspace/GetStartedPage/PreviouslyDoneRow";
 import { RecentConversations } from "@app/components/pages/workspace/GetStartedPage/RecentConversations";
 import { RecommendationItem } from "@app/components/pages/workspace/GetStartedPage/RecommendationItem";
-import { WorkAreaSection } from "@app/components/pages/workspace/GetStartedPage/WorkAreaSection";
+import {
+  WORK_AREA_ACTIONS,
+  WorkAreaSection,
+} from "@app/components/pages/workspace/GetStartedPage/WorkAreaSection";
 import { usePodConversations } from "@app/hooks/conversations";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -25,9 +28,18 @@ import { Button, Spinner } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 
 const QUICK_PROMPTS = [
-  "Scan my connected sources for repetitive work I can automate.",
-  "Ask me questions to learn how I work.",
-  "How does my learning space work?",
+  {
+    label: "Scan my connected sources to understand my work.",
+    message: WORK_AREA_ACTIONS[0].message,
+  },
+  {
+    label: "Ask me questions to learn how I work.",
+    message: WORK_AREA_ACTIONS[1].message,
+  },
+  {
+    label: "How does my learning space work?",
+    message: "How does my learning space work?",
+  },
 ];
 
 export function GetStartedPage() {
@@ -252,12 +264,12 @@ export function GetStartedPage() {
             <div className="mt-2 flex flex-wrap gap-2">
               {QUICK_PROMPTS.map((prompt) => (
                 <Button
-                  key={prompt}
+                  key={prompt.label}
                   variant="outline"
                   size="sm"
                   isRounded
-                  label={prompt}
-                  onClick={() => void startConversation(prompt)}
+                  label={prompt.label}
+                  onClick={() => void startConversation(prompt.message)}
                 />
               ))}
             </div>

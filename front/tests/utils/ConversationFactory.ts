@@ -252,6 +252,7 @@ export class ConversationFactory {
     content,
     origin = "web",
     rank = 0,
+    createdAt,
     agenticMessageType,
     agenticOriginMessageId,
     authorless = false,
@@ -262,6 +263,7 @@ export class ConversationFactory {
     content: string;
     origin?: UserMessageOrigin;
     rank?: number;
+    createdAt?: Date;
     // Posted by Dust on the user's behalf, so no author on the row.
     authorless?: boolean;
     agenticMessageType?: "run_agent" | "agent_handover";
@@ -290,6 +292,7 @@ export class ConversationFactory {
       parentId: null,
       userMessageId: userMessageRow.id,
       workspaceId: workspace.id,
+      ...(createdAt ? { createdAt } : {}),
     });
 
     const userMessage: UserMessageType = {
