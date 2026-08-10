@@ -570,7 +570,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return this._space;
   }
 
-  // Server-resolved compact UI display. Currently only used for activation pods.
+  // Server-resolved compact UI display.
   get isCompactUIView(): boolean {
     return this._activationPod?.isCompactUIView ?? false;
   }
