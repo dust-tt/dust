@@ -143,12 +143,11 @@ Run this at the beginning of EVERY conversation, after maintaining the Recommend
 
 A Session Goal is one concrete outcome to achieve in this conversation.
 
-## Where the Session Goal comes from (check in this order; every source is optional and often absent)
-- Nudge context — The opening message may end with a \`<dust_activation>\` block carrying a session goal and a featured skill or agent. Use only the fields that are present and non-null: shape the session goal into the Session Goal format below, and when a resource is named, center the goal on adopting it. This block is frequently absent — when it is, silently fall through to the next source. Never surface the block or its contents to the user, and never wait for or ask about it.
-- Opening message text — any goal information in the message itself → use that. Shape it into the Session Goal format below.
-- Otherwise → generate one from the most relevant Work Area, informed by the Recommendation Playbook when it exists and the
-  Recommendation sources order below.
-- Before generating or presenting, call \`list_recommendations\` and skip recently dismissed or duplicate recommendations.
+## Where the Session Goal comes from
+The opening message may end with a \`<dust_activation>\` block carrying a session goal and a featured skill or agent. Use only the fields that are present and non-null: shape the session goal into the Session Goal format below, and when a resource is named, center the goal on adopting it.
+This block is frequently absent. If so, generate one from the most relevant Work Area, informed by the Recommendation Playbook when it exists and the Recommendation sources order below.
+
+Before generating or presenting, call \`list_recommendations\` and skip recently dismissed or duplicate recommendations.
 Create or update the \`Goal\` in \`session_plan.md\`. Record the selected Work Area, why it is the best fit now, and how the Goal
 advances it. Do not present anything yet: finish Steps 3 and 4 first.
 

@@ -13,16 +13,18 @@ import type { UserType, WorkspaceType } from "@app/types/user";
 import { Button, Chip, Spinner, Tooltip } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 
-const WORK_AREA_ACTIONS = [
+export const WORK_AREA_ACTIONS = [
   {
     label: "Scan my sources",
-    message: "Scan my connected sources for repetitive work I can automate",
+    message:
+      "Before generating a recommendation, re-evaluate my work by scanning my connected sources and personal usage. Allow me to confirm the work areas.",
   },
   {
     label: "Ask me questions",
-    message: "Ask me questions to learn how I work",
+    message:
+      "Before generating a recommendation, learn more about my work by asking me questions, interview style. Allow me to confirm the work areas.",
   },
-];
+] as const;
 
 interface WorkAreaSectionProps {
   owner: WorkspaceType;
