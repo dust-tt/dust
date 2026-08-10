@@ -205,8 +205,7 @@ export function UsageFilterPanel({
     [workspaceGroups]
   );
 
-  // Every agent in the workspace, regardless of the selected period. Search
-  // is applied client-side below.
+
   const agentOptions = useMemo<UsageFilterAgentOption[]>(
     () =>
       agentConfigurations.map((agent) => ({
