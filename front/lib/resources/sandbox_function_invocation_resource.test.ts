@@ -3,6 +3,7 @@ import { generateSandboxFunctionInvocationToken } from "@app/lib/api/sandbox/acc
 import { SandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
+import type { NormalizedSandboxFunctionOutcome } from "@app/lib/api/sandbox_functions/result_envelope";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -86,7 +87,7 @@ const outputSchema: JSONSchema = {
 const TEST_BUNDLE_SHA256 = "a".repeat(64);
 
 // dsbx always delivers the result on the exec's own stdout, as a protocol v3 envelope.
-function stdoutEnvelope(outcome: unknown): string {
+function stdoutEnvelope(outcome: NormalizedSandboxFunctionOutcome): string {
   return (
     JSON.stringify({ protocolVersion: 3, delivery: "stdout", outcome }) + "\n"
   );
@@ -969,9 +970,12 @@ describe("SandboxFunctionInvocationResource", () => {
       { sandboxFunction, invocationId: invocation.sId }
     );
     expect(refetched?.status).toBe("errored");
+    // The runner's stderr is the only clue left, so it rides along in the error the agent sees.
     expect(refetched?.error).toEqual({
       code: "invocation_failed",
-      message: "Pod function produced no stdout result envelope.",
+      message:
+        "Pod function produced no stdout result envelope.\n" +
+        "dsbx command failed: connection refused",
     });
   });
 
@@ -981,12 +985,10 @@ describe("SandboxFunctionInvocationResource", () => {
     const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 0,
-        stdout:
-          JSON.stringify({
-            protocolVersion: 3,
-            delivery: "stdout",
-            outcome: { ok: true, output: { commentId: "from-stdout" } },
-          }) + "\n",
+        stdout: stdoutEnvelope({
+          ok: true,
+          output: { commentId: "from-stdout" },
+        }),
         stderr: "",
       })
     );
@@ -1013,13 +1015,9 @@ describe("SandboxFunctionInvocationResource", () => {
     vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 0,
-        stdout: JSON.stringify({
-          protocolVersion: 3,
-          delivery: "stdout",
-          outcome: {
-            ok: false,
-            error: { code: "threw", message: "boom" },
-          },
+        stdout: stdoutEnvelope({
+          ok: false,
+          error: { code: "threw", message: "boom" },
         }),
         stderr: "",
       })
@@ -1042,15 +1040,11 @@ describe("SandboxFunctionInvocationResource", () => {
     vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 1,
-        stdout: JSON.stringify({
-          protocolVersion: 3,
-          delivery: "stdout",
-          outcome: {
-            ok: false,
-            error: {
-              code: "invocation_failed",
-              message: "function produced no output",
-            },
+        stdout: stdoutEnvelope({
+          ok: false,
+          error: {
+            code: "invocation_failed",
+            message: "function produced no output",
           },
         }),
         stderr: "",
@@ -1094,12 +1088,7 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
     const execSpy = vi.spyOn(setup.sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 0,
-        stdout:
-          JSON.stringify({
-            protocolVersion: 3,
-            delivery: "stdout",
-            outcome: { ok: true, output: { commentId: "inline" } },
-          }) + "\n",
+        stdout: stdoutEnvelope({ ok: true, output: { commentId: "inline" } }),
         stderr: "",
       })
     );

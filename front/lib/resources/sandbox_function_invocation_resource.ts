@@ -220,20 +220,6 @@ function buildSandboxFunctionRunCommand(slug: string): string {
   return `${DSBX_BIN_PATH} function run --result-delivery stdout -- ${shellEscape(slug)}`;
 }
 
-/**
- * Whether an invocation runs inline, in the request that creates it, instead of through the
- * invocation workflow.
- *
- * Only a fast function qualifies. A durable one may call a tool that waits on the user for
- * approval or authentication, and holding the request there would deadlock: the approval card
- * only renders once the client holds the invocation.
- */
-function shouldExecuteInline(
-  sandboxFunction: SandboxFunctionResource
-): boolean {
-  return sandboxFunction.executionMode === "fast";
-}
-
 function getSandboxFunctionUserIdentity(
   auth: Authenticator,
   user: UserResource | null,
@@ -752,8 +738,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       );
       // Persist from the envelope even on non-zero exit: dsbx may still have
       // written a well-formed invocation_failed envelope the worker should keep.
-      const { outcome: normalized, timings } =
-        parseStdoutResultEnvelope(stdout);
+      const { outcome: normalized, timings } = parseStdoutResultEnvelope(
+        stdout,
+        { stderr }
+      );
       recordSandboxFunctionRun({
         runnerKind: timings?.runnerKind ?? "unknown",
         status: normalized.ok ? "success" : "error",
@@ -944,9 +932,15 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       origin?: SandboxFunctionInvocationOrigin;
     }
   ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
-    const inline = shouldExecuteInline(sandboxFunction);
-    // Deferring is only safe because no other process reads the blob during an inline execution:
-    // the result comes back on the exec's own stdout.
+    // An inline invocation runs in the request that creates it. Only a fast function qualifies:
+    // a durable one may call a tool that waits on the user for approval or authentication, and
+    // holding the request there would deadlock, since the approval card only renders once the
+    // client holds the invocation.
+    const inline = sandboxFunction.executionMode === "fast";
+    // Deferring is only safe because no other process reads the blob during execution, which
+    // holds because every run is started with `--result-delivery stdout`: the result comes back
+    // on the exec's own stdout rather than through a callback route that would fetch the
+    // invocation, and its blob, mid-execution.
     const invocation = await this.makeNew(
       auth,
       {
