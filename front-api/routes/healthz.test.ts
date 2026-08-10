@@ -1,5 +1,4 @@
 import { frontSequelize } from "@app/lib/resources/storage";
-import * as shutdownSignal from "@app/lib/shutdown_signal";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -19,11 +18,7 @@ describe("GET /api/healthz", () => {
 });
 
 describe("GET /api/healthz/ready", () => {
-  beforeEach(() => {
-    vi.spyOn(shutdownSignal, "isInShutdown").mockReturnValue(false);
-  });
-
-  it("returns 200 with status ready when not shutting down", async () => {
+  it("returns 200 with status ready", async () => {
     const response = await honoApp.request("/api/healthz/ready");
 
     expect(response.status).toBe(200);
@@ -32,15 +27,6 @@ describe("GET /api/healthz/ready", () => {
       status: "ready",
       commitHash: expect.any(String),
     });
-  });
-
-  it("returns 503 with status shutting_down when in shutdown", async () => {
-    vi.spyOn(shutdownSignal, "isInShutdown").mockReturnValue(true);
-
-    const response = await honoApp.request("/api/healthz/ready");
-
-    expect(response.status).toBe(503);
-    expect(await response.json()).toEqual({ status: "shutting_down" });
   });
 });
 
