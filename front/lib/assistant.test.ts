@@ -31,6 +31,7 @@ import type { WorkspaceType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
 
 const TEST_REGION: RegionType = "us-central1";
+const TEST_WORKSPACE: WorkspaceType = LightWorkspaceFactory.build();
 
 function createMockModel(
   overrides: Partial<ModelConfigurationType>
@@ -101,9 +102,19 @@ function createMockPlan(
   };
 }
 
-describe("isModelAvailable", () => {
-  const owner: WorkspaceType = LightWorkspaceFactory.build();
+function isSolAvailable(
+  plan: PlanType,
+  featureFlags: WhitelistableFeature[] = []
+) {
+  return isModelAvailable(GPT_5_6_SOL_MODEL_CONFIG, {
+    featureFlags,
+    plan,
+    regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
+    region: TEST_REGION,
+  });
+}
 
+describe("isModelAvailable", () => {
   it("should return true for a basic model without restrictions", () => {
     const model = createMockModel({ largeModel: false });
     const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
@@ -112,7 +123,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -129,7 +140,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: ["deepseek_feature"],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -146,7 +157,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
@@ -160,7 +171,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -174,7 +185,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -191,7 +202,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
@@ -207,7 +218,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan: null,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
@@ -224,25 +235,13 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
   });
 
   describe("GPT 5.6 Sol availability", () => {
-    function isSolAvailable(
-      plan: PlanType,
-      featureFlags: WhitelistableFeature[] = []
-    ) {
-      return isModelAvailable(GPT_5_6_SOL_MODEL_CONFIG, {
-        featureFlags,
-        plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
-        region: TEST_REGION,
-      });
-    }
-
     it("should be configured as a large model", () => {
       expect(GPT_5_6_SOL_MODEL_CONFIG.largeModel).toBe(true);
     });
@@ -283,7 +282,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: ["deepseek_feature"],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
@@ -302,7 +301,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
@@ -321,7 +320,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -340,7 +339,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
@@ -359,7 +358,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: ["models_picker"],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -381,7 +380,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -401,7 +400,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: ["deepseek_feature"],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(true);
@@ -421,7 +420,7 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })
     ).toBe(false);
