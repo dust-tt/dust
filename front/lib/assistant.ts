@@ -12,10 +12,6 @@ import type { PlanType } from "@app/types/plan";
 import type { RegionType } from "@app/types/region";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
-function isAdvancedModel(m: ModelConfigurationType): boolean {
-  return m.availableIfOneOf?.plansWithAdvancedModels === true;
-}
-
 // False if the model requires an on-demand/dust-only feature flag (not GA).
 export function isModelReleased(m: ModelConfigurationType): boolean {
   return !m.availableIfOneOf?.featureFlag;
@@ -31,14 +27,6 @@ function checkModelSpecificAccessRules(
     plan: PlanType | null;
   }
 ): boolean {
-  // Dust-only override used to expose advanced models in the model picker.
-  if (
-    featureFlags.includes("models_picker") &&
-    isAdvancedModel(modelConfiguration)
-  ) {
-    return true;
-  }
-
   const { availableIfOneOf, largeModel } = modelConfiguration;
 
   // First check: downgraded plans only have access to the small models.
@@ -56,7 +44,9 @@ function checkModelSpecificAccessRules(
         plan !== null &&
         isCreditPricedPlanPrefix(plan.code)) ||
       (plansWithAdvancedModels === true &&
-        plan?.hasAdvancedModelAccess === true) ||
+        (plan?.hasAdvancedModelAccess === true ||
+          // Dust-only override used to expose advanced models in the model picker.
+          featureFlags.includes("models_picker"))) ||
       (featureFlag !== undefined && featureFlags.includes(featureFlag))
     );
   }
