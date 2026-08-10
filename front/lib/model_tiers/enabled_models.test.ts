@@ -201,7 +201,9 @@ describe("getModelForStream", () => {
     const resolved = await getModelForStream(adminAuth, "auto_complex");
 
     expect(resolved).not.toBeNull();
-    expect(resolved?.model.modelId).toBe(CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG.modelId);
+    expect(resolved?.model.modelId).toBe(
+      CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG.modelId
+    );
     expect(resolved?.reasoningEffort).toBe("high");
   });
 
