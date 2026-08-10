@@ -18,6 +18,7 @@ import { GPT_5_6_SOL_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { PlanType } from "@app/types/plan";
 import type { RegionType } from "@app/types/region";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
 
@@ -235,46 +236,46 @@ describe("isModelAvailable", () => {
     ).toBe(false);
   });
 
-  it("should allow GPT 5.6 Sol with any supported entitlement", () => {
-    const creditPricedPlan = createMockPlan(CREDIT_PRICED_BUSINESS_PLAN_CODE);
-    const legacyPaidPlan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
-    const advancedModelPlan = createMockPlan(PRO_PLAN_SEAT_29_CODE, {
-      hasAdvancedModelAccess: true,
-    });
-    const availabilityContext = {
-      regionalModelsOnly: owner.regionalModelsOnly,
-      region: TEST_REGION,
-    };
+  describe("GPT 5.6 Sol availability", () => {
+    function isSolAvailable(
+      plan: PlanType,
+      featureFlags: WhitelistableFeature[] = []
+    ) {
+      return isModelAvailable(GPT_5_6_SOL_MODEL_CONFIG, {
+        featureFlags,
+        plan,
+        regionalModelsOnly: owner.regionalModelsOnly,
+        region: TEST_REGION,
+      });
+    }
 
-    expect(GPT_5_6_SOL_MODEL_CONFIG.largeModel).toBe(true);
-    expect(
-      isModelAvailable(GPT_5_6_SOL_MODEL_CONFIG, {
-        featureFlags: [],
-        plan: creditPricedPlan,
-        ...availabilityContext,
-      })
-    ).toBe(true);
-    expect(
-      isModelAvailable(GPT_5_6_SOL_MODEL_CONFIG, {
-        featureFlags: [],
-        plan: advancedModelPlan,
-        ...availabilityContext,
-      })
-    ).toBe(true);
-    expect(
-      isModelAvailable(GPT_5_6_SOL_MODEL_CONFIG, {
-        featureFlags: ["claude_4_5_opus_feature"],
-        plan: legacyPaidPlan,
-        ...availabilityContext,
-      })
-    ).toBe(true);
-    expect(
-      isModelAvailable(GPT_5_6_SOL_MODEL_CONFIG, {
-        featureFlags: [],
-        plan: legacyPaidPlan,
-        ...availabilityContext,
-      })
-    ).toBe(false);
+    it("should be configured as a large model", () => {
+      expect(GPT_5_6_SOL_MODEL_CONFIG.largeModel).toBe(true);
+    });
+
+    it("should be available on credit-priced plans", () => {
+      expect(
+        isSolAvailable(createMockPlan(CREDIT_PRICED_BUSINESS_PLAN_CODE))
+      ).toBe(true);
+    });
+
+    it("should be available when the plan has advanced model access", () => {
+      const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE, {
+        hasAdvancedModelAccess: true,
+      });
+
+      expect(isSolAvailable(plan)).toBe(true);
+    });
+
+    it("should be available with the Opus feature flag", () => {
+      const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
+
+      expect(isSolAvailable(plan, ["claude_4_5_opus_feature"])).toBe(true);
+    });
+
+    it("should be unavailable without an entitlement", () => {
+      expect(isSolAvailable(createMockPlan(PRO_PLAN_SEAT_29_CODE))).toBe(false);
+    });
   });
 
   it("should return true when plansWithAdvancedModels is set and plan has advanced model access", () => {
