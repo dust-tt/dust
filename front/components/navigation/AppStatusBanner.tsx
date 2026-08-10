@@ -28,7 +28,8 @@ import { useMemo } from "react";
 // Colors follow Sparkle's `ContentMessage` scale (`bg-*-50` / `border-*-100` /
 // `text-*-800`). They come from the token layer, which remaps every semantic
 // scale in the `.dark` block of `tokens.css`, so they flip with the theme on
-// their own and need no `dark:` overrides.
+// their own and need no `dark:` overrides. Note that `info` resolves to golden
+// (the orange one) and `warning` to rose.
 const statusBannerVariants = cva(
   "flex flex-col gap-0.5 border-b px-4 py-2 text-sm",
   {
@@ -79,7 +80,7 @@ function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   if (dustStatus) {
     return (
       <StatusBanner
-        variant="warning"
+        variant="info"
         title={dustStatus.name}
         description={dustStatus.description}
         footer={
@@ -102,7 +103,7 @@ function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   if (providersStatus) {
     return (
       <StatusBanner
-        variant="warning"
+        variant="info"
         title={providersStatus.name}
         description={providersStatus.description}
       />
