@@ -284,15 +284,15 @@ describe("resolveModel", () => {
     });
 
     // `auto` is a stream like `auto_fast` / `auto_complex`: it routes through
-    // getModelForStream and resolves to its first available candidate.
+    // getModelForStream and resolves to its first available candidate, which
+    // is Luna at `high` reasoning.
     expect(getModelForStreamSpy).toHaveBeenCalledWith(auth, AUTO_MODEL_ID);
     expect(modelResolutionMethod).toBe("auto");
     expect(resolvedModel.modelId).not.toBe(AUTO_MODEL_ID);
     expect(resolvedModel).toEqual({
-      providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
-      modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
-      reasoningEffort:
-        CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+      providerId: GPT_5_6_LUNA_MODEL_CONFIG.providerId,
+      modelId: GPT_5_6_LUNA_MODEL_CONFIG.modelId,
+      reasoningEffort: "high",
     });
   });
 
@@ -319,10 +319,9 @@ describe("resolveModel", () => {
     expect(modelResolutionMethod).toBe("auto");
     expect(resolvedModel.modelId).not.toBe(AUTO_MODEL_ID);
     expect(resolvedModel).toEqual({
-      providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
-      modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
-      reasoningEffort:
-        CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+      providerId: GPT_5_6_LUNA_MODEL_CONFIG.providerId,
+      modelId: GPT_5_6_LUNA_MODEL_CONFIG.modelId,
+      reasoningEffort: "high",
     });
   });
 
