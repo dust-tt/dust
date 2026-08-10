@@ -106,7 +106,8 @@ beforeEach(() => {
 async function setupExecutionTest(
   userIdentity: SandboxFunctionUserIdentityPolicy = "optional",
   origin: SandboxFunctionInvocationOrigin = "delegated",
-  executionMode: SandboxFunctionExecutionMode = "durable"
+  executionMode: SandboxFunctionExecutionMode = "durable",
+  slug: string = "add-comment"
 ) {
   const { authenticator, workspace } = await createResourceTest({
     role: "admin",
@@ -123,7 +124,7 @@ async function setupExecutionTest(
   const sandboxFunction = await SandboxFunctionResource.makeNew(authenticator, {
     space,
     file,
-    slug: "add-comment",
+    slug,
     description: "Add a comment.",
     userIdentity,
     executionMode,
@@ -731,6 +732,8 @@ describe("SandboxFunctionInvocationResource", () => {
       DUST_FUNCTIONS_DIR: `/sandbox-functions/pods/${space.sId}`,
       DUST_POD_DATABASES_DIR: "/pod-state/databases",
       DUST_POD_DATABASE_MAX_SIZE_BYTES: "1073741824",
+      // Published outside an app folder, so its databases are unprefixed.
+      DUST_POD_DATABASE_PREFIX: "",
       DUST_SANDBOX_TOKEN: "sbt-function-token",
     });
     expect(
@@ -760,6 +763,34 @@ describe("SandboxFunctionInvocationResource", () => {
       body: JSON.stringify({ message: "hello" }),
       encoding: "utf8",
       bundleSha256: TEST_BUNDLE_SHA256,
+    });
+  });
+
+  it("passes the app's database prefix, derived from the function slug", async () => {
+    // This is what lets the bundle's `db("chat")` resolve to the app's own database without the
+    // app name appearing anywhere in the function's source.
+    const { authenticator, sandbox, invocation } = await setupExecutionTest(
+      "optional",
+      "delegated",
+      "durable",
+      "task-list__add-comment"
+    );
+    const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: "hello world\n",
+        stderr: "",
+      })
+    );
+
+    const executionResult = await invocation.execute(authenticator);
+    if (executionResult.isErr()) {
+      throw executionResult.error;
+    }
+
+    const opts = execSpy.mock.calls[0]?.[2];
+    expect(opts?.envVars).toMatchObject({
+      DUST_POD_DATABASE_PREFIX: "task_list__",
     });
   });
 

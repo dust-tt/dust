@@ -22,39 +22,23 @@ function normalizeAppPrefix(folderName: string): string {
 }
 
 /**
- * Compose a published function's slug as `<appPrefix>__<name>`, where the prefix comes from the app
- * folder the source lives in: the first path segment under the pod root.
+ * Derive the app prefix a pod path belongs to: the normalized first path segment under the pod
+ * root, or `null` for a path sitting directly at the pod root (no app folder).
  *
- * Only that folder contributes. Folders between it and the source (the conventional `functions/`,
- * and anything nested below it) are the app's own business, so moving a source inside its app never
- * renames the published function and never orphans a Frame's `<podId>/<slug>` reference.
- *
- * A source sitting directly at the pod root has no app folder and keeps the bare name. That cannot
- * collide with an app's function: `name` is a single segment so it carries no `__`, and a prefix
- * never contains one either, so a prefixed slug always has exactly one and the two namespaces stay
- * disjoint. Moving such a source into an app folder does rename its function, which is the one
- * rename this scheme does not absorb.
+ * Shared by the two things an app namespaces — its published function slugs (below) and its
+ * databases (`derivePodDatabasePrefix` in db_naming.ts) — so both always agree on which app a
+ * source file belongs to.
  *
  * This checks shape, not access: callers resolve `sourcePath` through `DustFileSystem`, which is
  * what rejects traversal, foreign pods and scopes that are not sandbox-mounted.
  */
-export function deriveSandboxFunctionSlug({
+export function deriveAppPrefix({
   sourcePath,
   podId,
-  name,
 }: {
   sourcePath: string;
   podId: string;
-  name: string;
-}): Result<string, Error> {
-  if (!SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX.test(name)) {
-    return new Err(
-      new Error(
-        `Function name must be lowercase alphanumeric with single hyphen separators: got '${name}'.`
-      )
-    );
-  }
-
+}): Result<string | null, Error> {
   const canonicalPath = resolveCanonicalScopedPath(sourcePath, {
     conversationId: null,
     spaceId: podId,
@@ -75,7 +59,7 @@ export function deriveSandboxFunctionSlug({
     );
   }
   if (segments.length === 1) {
-    return new Ok(name);
+    return new Ok(null);
   }
 
   const prefix = normalizeAppPrefix(segments[0]);
@@ -85,6 +69,49 @@ export function deriveSandboxFunctionSlug({
         `App folder '${segments[0]}' has no alphanumeric characters to derive a function prefix from.`
       )
     );
+  }
+
+  return new Ok(prefix);
+}
+
+/**
+ * Compose a published function's slug as `<appPrefix>__<name>`, where the prefix comes from the app
+ * folder the source lives in: the first path segment under the pod root.
+ *
+ * Only that folder contributes. Folders between it and the source (the conventional `functions/`,
+ * and anything nested below it) are the app's own business, so moving a source inside its app never
+ * renames the published function and never orphans a Frame's `<podId>/<slug>` reference.
+ *
+ * A source sitting directly at the pod root has no app folder and keeps the bare name. That cannot
+ * collide with an app's function: `name` is a single segment so it carries no `__`, and a prefix
+ * never contains one either, so a prefixed slug always has exactly one and the two namespaces stay
+ * disjoint. Moving such a source into an app folder does rename its function, which is the one
+ * rename this scheme does not absorb.
+ */
+export function deriveSandboxFunctionSlug({
+  sourcePath,
+  podId,
+  name,
+}: {
+  sourcePath: string;
+  podId: string;
+  name: string;
+}): Result<string, Error> {
+  if (!SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX.test(name)) {
+    return new Err(
+      new Error(
+        `Function name must be lowercase alphanumeric with single hyphen separators: got '${name}'.`
+      )
+    );
+  }
+
+  const prefixResult = deriveAppPrefix({ sourcePath, podId });
+  if (prefixResult.isErr()) {
+    return new Err(prefixResult.error);
+  }
+  const prefix = prefixResult.value;
+  if (prefix === null) {
+    return new Ok(name);
   }
 
   return new Ok(`${prefix}${SANDBOX_FUNCTION_SLUG_SEPARATOR}${name}`);

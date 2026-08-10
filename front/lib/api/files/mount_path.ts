@@ -123,16 +123,28 @@ const POD_SANDBOX_DATABASE_MAX_SIZE_BYTES = 1024 * 1024 * 1024;
  * The env vars every pod-database exec (`dsbx function run` and every `dsbx db` subcommand)
  * must carry so the bun child resolves the databases dir and the size quota. Returned as a
  * fresh object so callers can spread it into their own env without sharing a reference.
+ *
+ * `databasePrefix` is the app prefix that namespaces the databases the exec resolves by their
+ * app-relative name, i.e. `@dust/pod`'s `db("chat")` inside a published function (see
+ * `podDatabasePrefixFromSlug`). Omit it for execs that address databases by their on-disk name —
+ * every `dsbx db` subcommand does, since front resolves the name before running them.
  */
-export function podDatabaseExecEnvVars(): {
+export function podDatabaseExecEnvVars({
+  databasePrefix,
+}: {
+  databasePrefix?: string | null;
+} = {}): {
   DUST_POD_DATABASES_DIR: string;
   DUST_POD_DATABASE_MAX_SIZE_BYTES: string;
+  DUST_POD_DATABASE_PREFIX: string;
 } {
   return {
     DUST_POD_DATABASES_DIR: POD_SANDBOX_DATABASES_DIR,
     DUST_POD_DATABASE_MAX_SIZE_BYTES: String(
       POD_SANDBOX_DATABASE_MAX_SIZE_BYTES
     ),
+    // Empty means unprefixed, which is what the shim reads an absent value as.
+    DUST_POD_DATABASE_PREFIX: databasePrefix ?? "",
   };
 }
 

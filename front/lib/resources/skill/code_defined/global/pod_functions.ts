@@ -153,9 +153,12 @@ Functions of the same Pod can share durable SQLite databases (via \`drizzle-orm\
 - **One schema file per database** at \`<AppName>/databases/{db}.db.ts\`: the single source of truth
   declaring that database's full schema with drizzle's \`sqliteTable\` DSL. Every function imports
   its table objects from it as \`../databases/{db}.db.ts\` (never hand-write tables in a function
-  file), so functions sharing a database belong to the same app. The database name itself is
-  Pod-wide rather than app-scoped, so pick one that will not collide with another app's
-  (\`${toolName("db_list")}\` shows what the Pod already has).
+  file), so functions sharing a database belong to the same app. Name the database for what it
+  holds within the app (\`chat\`, \`notes\`), not for the app: the app folder namespaces it, so two
+  apps can each own a \`chat\` without colliding. Never write the app name in the source — that is
+  what lets an app folder be copied and get its own databases with no edit. \`${toolName("db_list")}\`
+  shows the resulting on-disk names (\`myapp__chat\`), which is how the db tools address a database;
+  \`db()\` and the schema file always use the short name.
 - **Name functions that use this db.ts by writting a comment a the top** 
 - **Apply the schema file with \`${toolName("db_reconcile")}\`**; it creates the database and
   applies additive DDL after edits, and enforces the rules below. Publishing does not touch
@@ -435,7 +438,7 @@ one \`notes\` function taking an \`action\` field is not. If a capability must b
 subset of members, keep that list in the database and check it against \`currentUser().sId\` —
 the platform only tells you the caller is a workspace member, not what they are allowed to do.`,
   mcpServers: [{ name: SANDBOX_FUNCTIONS_SERVER_NAME }],
-  version: 5,
+  version: 6,
   icon: "PuzzleIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
