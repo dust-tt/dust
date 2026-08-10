@@ -6,11 +6,11 @@ import type {
   ToolMeta,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { ACTIVATION_RECOMMENDATIONS_SERVER } from "@app/lib/api/actions/servers/activation_recommendations/metadata";
-import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import {
   AGENT_DELEGATION_SERVER,
   AGENT_DELEGATION_SERVER_NAME,
 } from "@app/lib/api/actions/servers/agent_delegation/metadata";
+import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import {
   AGENT_ROUTER_SERVER,
   AGENT_ROUTER_SERVER_NAME,
