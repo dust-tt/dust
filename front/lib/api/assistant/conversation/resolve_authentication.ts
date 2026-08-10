@@ -133,7 +133,8 @@ export async function resolveAuthentication(
   const isSandboxChildAction = isSandboxChildActionInfo(sandboxChildActionInfo);
 
   let resolvedActions: AgentMCPActionResource[];
-  let blockedActionsForAgentMessage: AgentMCPActionResource[] | null = null;
+  let remainingBlockedActionsForAgentMessage: AgentMCPActionResource[] | null =
+    null;
   if (
     kind === "authentication" &&
     outcome === "completed" &&
@@ -141,7 +142,7 @@ export async function resolveAuthentication(
   ) {
     const result = await action.markMatchingAuthenticationActionsReady(auth);
     resolvedActions = result.resolvedActions;
-    blockedActionsForAgentMessage = result.blockedActions;
+    remainingBlockedActionsForAgentMessage = result.remainingBlockedActions;
   } else {
     const [updatedCount] = await action.updateStatusFromExpected(auth, {
       status: outcome === "completed" ? "ready_allowed_explicitly" : "denied",
@@ -198,10 +199,8 @@ export async function resolveAuthentication(
     return new Ok(undefined);
   }
 
-  const blockedActions = blockedActionsForAgentMessage
-    ? blockedActionsForAgentMessage.filter(
-        (blockedAction) => !resolvedActionIds.has(blockedAction.sId)
-      )
+  const blockedActions = remainingBlockedActionsForAgentMessage
+    ? remainingBlockedActionsForAgentMessage
     : (
         await AgentMCPActionResource.listBlockedActionsForConversation(
           auth,

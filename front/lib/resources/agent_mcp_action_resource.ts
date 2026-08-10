@@ -1541,7 +1541,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
    * excluded because each one must thaw and relaunch its own parent bash.
    */
   async markMatchingAuthenticationActionsReady(auth: Authenticator): Promise<{
-    blockedActions: AgentMCPActionResource[];
+    remainingBlockedActions: AgentMCPActionResource[];
     resolvedActions: AgentMCPActionResource[];
   }> {
     const { mcpServerId } = this.metadata;
@@ -1569,7 +1569,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       }
     );
 
-    return { blockedActions, resolvedActions };
+    const resolvedActionIds = new Set(
+      resolvedActions.map((action) => action.id)
+    );
+    const remainingBlockedActions = blockedActions.filter(
+      (action) => !resolvedActionIds.has(action.id)
+    );
+
+    return { remainingBlockedActions, resolvedActions };
   }
 
   /**
