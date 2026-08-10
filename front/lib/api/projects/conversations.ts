@@ -34,10 +34,12 @@ export async function moveConversationToProject(
   auth: Authenticator,
   {
     conversation,
+    currentAgentConversationId,
     spaceId,
     transaction,
   }: {
     conversation: ConversationWithoutContentType;
+    currentAgentConversationId?: string;
     spaceId: string;
     transaction?: Transaction;
   }
@@ -53,7 +55,10 @@ export async function moveConversationToProject(
     >
   >
 > {
-  if (conversation.isRunningAgentLoop) {
+  if (
+    conversation.isRunningAgentLoop &&
+    conversation.sId !== currentAgentConversationId
+  ) {
     return new Err(
       new DustError(
         "conversation_agent_running",
