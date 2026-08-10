@@ -1,3 +1,4 @@
+import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
@@ -99,6 +100,14 @@ export function FramePage() {
             size="sm"
           />
         </div>
+
+        <PluginList
+          pluginResourceTarget={{
+            resourceId: file.sId,
+            resourceType: "files",
+            workspace: owner,
+          }}
+        />
 
         {/* Metadata Card */}
         <div className="rounded-lg border">

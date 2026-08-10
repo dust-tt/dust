@@ -5,6 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -21,6 +22,7 @@ export type ResourceTypeMap = {
   conversations: ConversationType;
   workspaces: LightWorkspaceType;
   data_sources: DataSourceResource;
+  files: FileResource;
   mcp_server_views: MCPServerViewResource;
   skills: SkillResource;
   spaces: SpaceResource;
@@ -60,6 +62,9 @@ export async function fetchPluginResource<T extends SupportedResourceType>(
       break;
     case "data_source_views":
       result = await DataSourceViewResource.fetchById(auth, resourceId);
+      break;
+    case "files":
+      result = await FileResource.fetchById(auth, resourceId);
       break;
     case "mcp_server_views":
       result = await MCPServerViewResource.fetchById(auth, resourceId);
