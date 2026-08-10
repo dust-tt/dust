@@ -45,7 +45,6 @@ import type {
   ConversationListItemType,
   ConversationMCPServerViewType,
   ConversationMetadata,
-  ConversationUiView,
   ConversationUrlAccessMode,
   ConversationVisibility,
   ConversationWithoutContentType,
@@ -571,9 +570,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return this._space;
   }
 
-  // Server-resolved compact UI display. Currenrtly only used for activation pods.
-  get uiView(): ConversationUiView | null {
-    return this._activationPod?.uiView ?? null;
+  // Server-resolved compact UI display. Currently only used for activation pods.
+  get isCompactUIView(): boolean {
+    return this._activationPod?.isCompactUIView ?? false;
   }
 
   static async makeNew(
@@ -5278,7 +5277,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       title: this.title,
       id: this.id,
       depth: this.depth,
-      uiView: this.uiView,
+      isCompactUIView: this.isCompactUIView,
       ...(this.forkingData && { forkingData: this.forkingData }),
     };
   }

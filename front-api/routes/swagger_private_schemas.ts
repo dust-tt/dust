@@ -290,11 +290,9 @@
  *           type: array
  *           items:
  *             type: string
- *         uiView:
- *           type: string
- *           enum: [compact]
- *           nullable: true
- *           description: Server-resolved UI display hint for the conversation (currently only 'compact' for conversations in activation pods)
+ *         isCompactUIView:
+ *           type: boolean
+ *           description: Server-resolved compact UI display hint for the conversation (currently only true for conversations in activation pods)
  *         forkingData:
  *           $ref: '#/components/schemas/PrivateConversationForkingData'
  *     PrivateConversationForkUser:

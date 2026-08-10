@@ -151,7 +151,7 @@ describe("GET /api/w/:wId/assistant/conversations/:cId", () => {
     expect(response.status).toBe(200);
   });
 
-  it("returns the activation pod's uiView on pod conversations, and null otherwise", async () => {
+  it("returns the activation pod's isCompactUIView on pod conversations, and false otherwise", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       role: "user",
       method: "GET",
@@ -176,7 +176,7 @@ describe("GET /api/w/:wId/assistant/conversations/:cId", () => {
 
     await ActivationPodFactory.create(refreshedAdminAuth, {
       pod: projectSpace,
-      uiView: "compact",
+      isCompactUIView: true,
     });
 
     const compactConversation = await ConversationFactory.create(
@@ -194,7 +194,9 @@ describe("GET /api/w/:wId/assistant/conversations/:cId", () => {
       compactConversation.sId
     );
     expect(compactResponse.status).toBe(200);
-    expect((await compactResponse.json()).conversation.uiView).toBe("compact");
+    expect((await compactResponse.json()).conversation.isCompactUIView).toBe(
+      true
+    );
 
     const otherProjectSpace = await SpaceFactory.project(
       workspace,
@@ -226,7 +228,9 @@ describe("GET /api/w/:wId/assistant/conversations/:cId", () => {
       standardConversation.sId
     );
     expect(standardResponse.status).toBe(200);
-    expect((await standardResponse.json()).conversation.uiView).toBeNull();
+    expect((await standardResponse.json()).conversation.isCompactUIView).toBe(
+      false
+    );
   });
 
   it("returns 404 conversation_not_found for admins when private conversation URLs are enabled and they are not participants", async () => {

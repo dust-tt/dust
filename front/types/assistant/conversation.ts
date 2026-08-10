@@ -610,12 +610,6 @@ export type ConversationForkingDataType = {
 };
 
 /**
- * Server-resolved compact UI display for a conversation. Currently only used
- * for activation conversations. Null for the standard UI.
- */
-export type ConversationUiView = "compact";
-
-/**
  * A lighter version of Conversation without the content (for menu display).
  * Extends ConversationListItemType with DB-layer fields used when the full conversation context is
  * available (individual conversation pages, mutations).
@@ -626,7 +620,9 @@ export type ConversationWithoutContentType = ConversationListItemType & {
   id: ModelId;
   depth: number;
   forkingData?: ConversationForkingDataType;
-  uiView?: ConversationUiView | null;
+  // Server-resolved compact UI display. Currently only used for activation
+  // conversations. False for the standard UI.
+  isCompactUIView?: boolean;
 };
 
 export type SelectableConversationSpaceType = SpaceType & {
