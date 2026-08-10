@@ -2,7 +2,7 @@ import { ConsumptionAttributionTable } from "@app/components/workspace/analytics
 import { ConsumptionOverview } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import { DEFAULT_CONSUMPTION_DIMENSION } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
+import { consumptionDimensionFromQueryParam } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
 import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
 import { toConsumptionScopeFilter } from "@app/components/workspace/analytics/usageFilter";
@@ -10,6 +10,7 @@ import {
   USAGE_FILTER_MOCK_GROUPS,
   USAGE_FILTER_MOCK_OPTIONS,
 } from "@app/components/workspace/analytics/usageFilterMockData";
+import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -39,13 +40,14 @@ export function AnalyticsConsumptionPage() {
   const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
     DEFAULT_CONSUMPTION_PERIOD
   );
-  // Shared by the chart and the attribution table.
-  // Changing attribution table dimension switches the chart's dimension too.
-  const [dimension, setDimension] = useState<ConsumptionDimension>(
-    DEFAULT_CONSUMPTION_DIMENSION
-  );
+  const { dimension: dimensionParam } = useQueryParams(["dimension"]);
+  const dimension = consumptionDimensionFromQueryParam(dimensionParam.value);
   const [filter, setFilter] = useState<UsageFilter>({});
   const scopeFilter = useMemo(() => toConsumptionScopeFilter(filter), [filter]);
+
+  const handleDimensionChange = (nextDimension: ConsumptionDimension) => {
+    dimensionParam.setParam(nextDimension);
+  };
 
   if (!isEnabled) {
     return (
@@ -112,7 +114,7 @@ export function AnalyticsConsumptionPage() {
           period={period}
           filter={scopeFilter}
           dimension={dimension}
-          onDimensionChange={setDimension}
+          onDimensionChange={handleDimensionChange}
         />
       </div>
     </Page.Vertical>

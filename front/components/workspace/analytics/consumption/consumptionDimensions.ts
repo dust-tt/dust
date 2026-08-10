@@ -71,3 +71,11 @@ export function isConsumptionDimension(
 ): value is ConsumptionDimension {
   return CONSUMPTION_DIMENSIONS.some((dimension) => dimension === value);
 }
+
+export function consumptionDimensionFromQueryParam(
+  value: string | undefined
+): ConsumptionDimension {
+  return value !== undefined && isConsumptionDimension(value)
+    ? value
+    : DEFAULT_CONSUMPTION_DIMENSION;
+}
