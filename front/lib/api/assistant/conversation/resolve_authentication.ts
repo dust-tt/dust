@@ -132,7 +132,8 @@ export async function resolveAuthentication(
   const { sandboxChildActionInfo } = action.stepContext;
   const isSandboxChildAction = isSandboxChildActionInfo(sandboxChildActionInfo);
 
-  let resolvedActions: AgentMCPActionResource[];
+  let actionWasResolved: boolean;
+  let actionIdsToClearFromRedis: string[];
   let remainingBlockedActionsForAgentMessage: AgentMCPActionResource[] | null =
     null;
   if (
@@ -142,19 +143,21 @@ export async function resolveAuthentication(
   ) {
     const result =
       await action.markSameMCPServerAuthenticationActionsReady(auth);
-    resolvedActions = result.resolvedActions;
+    actionWasResolved = true;
+    actionIdsToClearFromRedis = result.resolvedActions.map(
+      (resolvedAction) => resolvedAction.sId
+    );
     remainingBlockedActionsForAgentMessage = result.remainingBlockedActions;
   } else {
     const [updatedCount] = await action.updateStatusFromExpected(auth, {
       status: outcome === "completed" ? "ready_allowed_explicitly" : "denied",
       expectedStatus: blockedStatus,
     });
-    resolvedActions = updatedCount > 0 ? [action] : [];
+    actionWasResolved = updatedCount > 0;
+    actionIdsToClearFromRedis = [action.sId];
   }
 
-  if (
-    !resolvedActions.some((resolvedAction) => resolvedAction.id === action.id)
-  ) {
+  if (!actionWasResolved) {
     logger.info(
       {
         actionId,
@@ -168,9 +171,7 @@ export async function resolveAuthentication(
     return new Ok(undefined);
   }
 
-  const resolvedActionIds = new Set(
-    resolvedActions.map((resolvedAction) => resolvedAction.sId)
-  );
+  const resolvedActionIds = new Set(actionIdsToClearFromRedis);
   await getRedisHybridManager().removeEvent((event) => {
     const payload = JSON.parse(event.message["payload"]);
     return (
