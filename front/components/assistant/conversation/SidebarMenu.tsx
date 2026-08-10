@@ -1272,8 +1272,7 @@ interface UnreadConversationsSectionProps {
   conversations: ConversationListItemType[];
   pods: PodListItemType[];
   isMultiSelect: boolean;
-  isMarkingAllAsRead: boolean;
-  onMarkAllAsRead: (conversationIds: string[]) => void;
+  onMarkAllAsRead: (conversationIds: string[]) => Promise<void>;
   selectedConversations: ConversationListItemType[];
   toggleConversationSelection: (c: ConversationListItemType) => void;
   activeConversationId: string | null;
@@ -1300,7 +1299,6 @@ function UnreadConversationsSection({
   conversations,
   pods,
   isMultiSelect,
-  isMarkingAllAsRead,
   titleFilter,
   onMarkAllAsRead,
   selectedConversations,
@@ -1311,6 +1309,23 @@ function UnreadConversationsSection({
   const conversationGroups = useMemo(
     () => groupUnreadConversations(conversations, pods),
     [conversations, pods]
+  );
+
+  // Which mark-as-read button is in flight ("all" or a pod's spaceId), so
+  // only the clicked button shows a spinner.
+  const [markingScope, setMarkingScope] = useState<string | null>(null);
+
+  const handleMarkAsRead = useCallback(
+    async (scope: string, conversationIds: string[]) => {
+      setMarkingScope(scope);
+      try {
+        await onMarkAllAsRead(conversationIds);
+      } finally {
+        // Only clear our own scope: another button may be in flight.
+        setMarkingScope((prev) => (prev === scope ? null : prev));
+      }
+    },
+    [onMarkAllAsRead]
   );
 
   const podById = useMemo(
@@ -1334,8 +1349,13 @@ function UnreadConversationsSection({
             size="xmini"
             variant="ghost-secondary"
             label="Mark all as read"
-            onClick={() => onMarkAllAsRead(conversations.map((c) => c.sId))}
-            isLoading={isMarkingAllAsRead}
+            onClick={() =>
+              void handleMarkAsRead(
+                "all",
+                conversations.map((c) => c.sId)
+              )
+            }
+            isLoading={markingScope === "all"}
             hasLighterFont
             className="hover:bg-hover active:bg-selected"
           />
@@ -1371,51 +1391,79 @@ function UnreadConversationsSection({
             case "pod": {
               const pod = podById.get(group.spaceId);
               return [
-                <NavigationListLabel
-                  key={`pod-label-${group.spaceId}`}
-                  className="bg-background"
-                  label={group.podName}
-                  icon={pod ? getSpaceIcon(pod) : undefined}
-                  isSticky
-                  action={
-                    shouldShowMarkAllAsReadButton ? (
-                      <Button
-                        size="xmini"
-                        variant="ghost-secondary"
-                        label="Mark as read"
-                        onClick={() =>
-                          onMarkAllAsRead(group.conversations.map((c) => c.sId))
-                        }
-                        isLoading={isMarkingAllAsRead}
-                        hasLighterFont
-                        className="hover:bg-hover active:bg-selected"
-                      />
-                    ) : null
-                  }
-                />,
-                ...group.conversations.map((conversation) => (
-                  <motion.div
-                    key={conversation.sId}
-                    style={GRID_STYLE}
-                    animate={GRID_ANIMATE}
-                    exit={GRID_EXIT}
-                    transition={{ ease: "easeOut", duration: 0.1 }}
+                <motion.div
+                  key={`pod-group-${group.spaceId}`}
+                  style={GRID_STYLE}
+                  animate={GRID_ANIMATE}
+                  exit={GRID_EXIT}
+                  transition={{ ease: "easeOut", duration: 0.1 }}
+                >
+                  {/* Hovering the pod's "Mark as read" button highlights the
+                   * whole block (header + conversations) it would clear. */}
+                  <div
+                    className={cn(
+                      "flex flex-col gap-0.5 overflow-hidden rounded-lg",
+                      "transition-colors duration-150 motion-reduce:transition-none",
+                      "has-[[data-mark-read=pod]:hover]:bg-hover",
+                      "has-[[data-mark-read=pod]:focus-visible]:bg-hover"
+                    )}
                   >
-                    <div className="overflow-hidden">
-                      <ConversationListItem
-                        conversation={conversation}
-                        isMultiSelect={isMultiSelect}
-                        selectedConversations={selectedConversations}
-                        toggleConversationSelection={
-                          toggleConversationSelection
-                        }
-                        activeConversationId={activeConversationId}
-                        owner={owner}
-                        showStatusDot={false}
-                      />
-                    </div>
-                  </motion.div>
-                )),
+                    <NavigationListLabel
+                      // Static group header: no text cursor, and bg-transparent
+                      // lets the hover block show through. mt-2/pt-2 splits the
+                      // label's pt-4 to keep half the spacing outside the block.
+                      className="bg-transparent cursor-default select-none mt-2 pt-2"
+                      label={group.podName}
+                      icon={pod ? getSpaceIcon(pod) : undefined}
+                      action={
+                        shouldShowMarkAllAsReadButton ? (
+                          <Button
+                            size="xmini"
+                            variant="ghost-secondary"
+                            label="Mark as read"
+                            data-mark-read="pod"
+                            onClick={() =>
+                              void handleMarkAsRead(
+                                group.spaceId,
+                                group.conversations.map((c) => c.sId)
+                              )
+                            }
+                            isLoading={markingScope === group.spaceId}
+                            hasLighterFont
+                            className="hover:bg-hover active:bg-selected"
+                          />
+                        ) : null
+                      }
+                    />
+                    <AnimatePresence initial={false}>
+                      {group.conversations.map((conversation) => (
+                        <motion.div
+                          key={conversation.sId}
+                          style={GRID_STYLE}
+                          animate={GRID_ANIMATE}
+                          exit={GRID_EXIT}
+                          transition={{ ease: "easeOut", duration: 0.1 }}
+                        >
+                          {/* Indented under the pod header so the conversation
+                           * reads as nested inside the pod group. */}
+                          <div className="overflow-hidden pl-3">
+                            <ConversationListItem
+                              conversation={conversation}
+                              isMultiSelect={isMultiSelect}
+                              selectedConversations={selectedConversations}
+                              toggleConversationSelection={
+                                toggleConversationSelection
+                              }
+                              activeConversationId={activeConversationId}
+                              owner={owner}
+                              showStatusDot={false}
+                            />
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                </motion.div>,
               ];
             }
             default:
@@ -1682,7 +1730,7 @@ function NavigationListWithInbox({
     );
   }, [conversations, titleFilter]);
 
-  const { markAllAsRead, isMarkingAllAsRead } = useMarkAllConversationsAsRead({
+  const { markAllAsRead } = useMarkAllConversationsAsRead({
     owner,
   });
 
@@ -1749,7 +1797,6 @@ function NavigationListWithInbox({
                   conversations={triggeredConversations}
                   pods={pods}
                   isMultiSelect={isMultiSelect}
-                  isMarkingAllAsRead={isMarkingAllAsRead}
                   titleFilter={titleFilter}
                   onMarkAllAsRead={markAllAsRead}
                   selectedConversations={selectedConversations}
@@ -1774,7 +1821,6 @@ function NavigationListWithInbox({
                   conversations={skillSuggestionConversations}
                   pods={pods}
                   isMultiSelect={isMultiSelect}
-                  isMarkingAllAsRead={isMarkingAllAsRead}
                   titleFilter={titleFilter}
                   onMarkAllAsRead={markAllAsRead}
                   selectedConversations={selectedConversations}
@@ -1799,7 +1845,6 @@ function NavigationListWithInbox({
                   conversations={inboxConversations}
                   pods={pods}
                   isMultiSelect={isMultiSelect}
-                  isMarkingAllAsRead={isMarkingAllAsRead}
                   titleFilter={titleFilter}
                   onMarkAllAsRead={markAllAsRead}
                   selectedConversations={selectedConversations}
