@@ -1535,8 +1535,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   }
 
   /**
-   * Marks every direct authentication-blocked action from the same agent-message step and MCP
-   * server as ready. A personal connection is scoped to the MCP server, so one completed
+   * Marks every direct authentication-blocked action from the same agent message and MCP server
+   * as ready. A personal connection is scoped to the MCP server, so one completed
    * authentication can unblock parallel calls to any of its tools. Sandbox-child actions are
    * excluded because each one must thaw and relaunch its own parent bash.
    */
