@@ -29,13 +29,22 @@ import { useMemo } from "react";
 // `text-*-800`). They come from the token layer, which remaps every semantic
 // scale in the `.dark` block of `tokens.css`, so they flip with the theme on
 // their own and need no `dark:` overrides. Note that `info` resolves to golden
-// (the orange one) and `warning` to rose.
+// and `warning` to rose.
+//
+// `orange` is the exception: it points at the raw orange palette, which the
+// token layer does not remap, so it needs explicit `dark:` steps.
 const statusBannerVariants = cva(
   "flex flex-col gap-0.5 border-b px-4 py-2 text-sm",
   {
     variants: {
       variant: {
         info: cn("border-info-100", "bg-info-50", "text-info-800"),
+        orange: cn(
+          "border-orange-100",
+          "bg-orange-50",
+          "text-orange-800",
+          "dark:border-orange-900 dark:bg-orange-950 dark:text-orange-200"
+        ),
         warning: cn("border-warning-100", "bg-warning-50", "text-warning-800"),
         success: cn("border-success-200", "bg-success-50", "text-success-800"),
         danger: cn("border-red-100", "bg-red-50", "text-red-800"),
@@ -80,7 +89,7 @@ function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   if (dustStatus) {
     return (
       <StatusBanner
-        variant="info"
+        variant="orange"
         title={dustStatus.name}
         description={dustStatus.description}
         footer={
@@ -103,7 +112,7 @@ function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   if (providersStatus) {
     return (
       <StatusBanner
-        variant="info"
+        variant="orange"
         title={providersStatus.name}
         description={providersStatus.description}
       />
