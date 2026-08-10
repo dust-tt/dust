@@ -284,7 +284,10 @@ export function ConversationContainerVirtuoso({
             className={classNames(
               "sticky bottom-0 z-20 flex max-h-dvh w-full",
               "pb-2",
-              "md:w-full md:max-w-conversation md:pb-4"
+              // px-4 keeps a constant gutter so the card's shadow ring never
+              // clips at the scroller edge; max-w compensates so the card
+              // still measures exactly --container-conversation when wide.
+              "md:w-full md:max-w-[calc(var(--container-conversation)+2rem)] md:px-4 md:pb-4"
             )}
           >
             <InputBar
