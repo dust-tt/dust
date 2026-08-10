@@ -235,9 +235,12 @@ describe("isModelAvailable", () => {
     ).toBe(false);
   });
 
-  it("should only allow GPT 5.6 Sol on credit-priced plans with the Opus feature flag", () => {
+  it("should allow GPT 5.6 Sol with any supported entitlement", () => {
     const creditPricedPlan = createMockPlan(CREDIT_PRICED_BUSINESS_PLAN_CODE);
     const legacyPaidPlan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
+    const advancedModelPlan = createMockPlan(PRO_PLAN_SEAT_29_CODE, {
+      hasAdvancedModelAccess: true,
+    });
     const availabilityContext = {
       regionalModelsOnly: owner.regionalModelsOnly,
       region: TEST_REGION,
@@ -250,17 +253,24 @@ describe("isModelAvailable", () => {
         plan: creditPricedPlan,
         ...availabilityContext,
       })
-    ).toBe(false);
+    ).toBe(true);
     expect(
       isModelAvailable(GPT_5_6_SOL_MODEL_CONFIG, {
-        featureFlags: ["claude_4_5_opus_feature"],
-        plan: creditPricedPlan,
+        featureFlags: [],
+        plan: advancedModelPlan,
         ...availabilityContext,
       })
     ).toBe(true);
     expect(
       isModelAvailable(GPT_5_6_SOL_MODEL_CONFIG, {
         featureFlags: ["claude_4_5_opus_feature"],
+        plan: legacyPaidPlan,
+        ...availabilityContext,
+      })
+    ).toBe(true);
+    expect(
+      isModelAvailable(GPT_5_6_SOL_MODEL_CONFIG, {
+        featureFlags: [],
         plan: legacyPaidPlan,
         ...availabilityContext,
       })

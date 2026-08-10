@@ -41,11 +41,22 @@ export function isModelAvailable(
   // Otherwise, we filter too early.
   const includeAdvancedModelInPicker =
     featureFlags.includes("models_picker") && isAdvancedModel(m);
+  const isOnCreditPricedPlan =
+    plan !== null && isCreditPricedPlanPrefix(plan.code);
+  const { plansWithAdvancedModels, featureFlag } = m.availableIfOneOf ?? {};
+  const hasAdvancedModelAccess =
+    plansWithAdvancedModels === true &&
+    (isOnCreditPricedPlan ||
+      plan?.hasAdvancedModelAccess === true ||
+      includeAdvancedModelInPicker);
+  const hasFeatureFlagAccess =
+    featureFlag !== undefined && featureFlags.includes(featureFlag);
 
   if (
     m.largeModel &&
-    (plan === null || !isCreditPricedPlanPrefix(plan.code)) &&
-    !includeAdvancedModelInPicker
+    !isOnCreditPricedPlan &&
+    !hasAdvancedModelAccess &&
+    !hasFeatureFlagAccess
   ) {
     return false;
   }
@@ -62,20 +73,7 @@ export function isModelAvailable(
     return true;
   }
 
-  const { plansWithAdvancedModels, featureFlag } = m.availableIfOneOf;
-
-  if (
-    plansWithAdvancedModels === true &&
-    (plan?.hasAdvancedModelAccess || includeAdvancedModelInPicker)
-  ) {
-    return true;
-  }
-
-  if (featureFlag && featureFlags.includes(featureFlag)) {
-    return true;
-  }
-
-  return false;
+  return hasAdvancedModelAccess || hasFeatureFlagAccess;
 }
 
 // Returns true if the model is enabled for the workspace.

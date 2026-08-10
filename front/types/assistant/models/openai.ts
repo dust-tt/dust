@@ -462,6 +462,7 @@ export const GPT_5_6_SOL_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   supportsToolSearch: true,
   availableIfOneOf: {
+    plansWithAdvancedModels: true,
     featureFlag: "claude_4_5_opus_feature",
   },
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
