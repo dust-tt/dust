@@ -5,6 +5,7 @@ import type { ConnectorProvider } from "@app/types/data_source";
 export const USAGE_FILTER_CATEGORIES = [
   "agent",
   "member",
+  "team",
   "model",
   "tool",
   "skill",
@@ -17,6 +18,7 @@ export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =
   {
     agent: "Agents",
     member: "Members",
+    team: "Teams",
     model: "Models",
     tool: "Tools",
     skill: "Skills",
@@ -58,6 +60,10 @@ export interface UsageFilterMemberOption extends UsageFilterOptionBase {
   image: string | null;
 }
 
+export interface UsageFilterTeamOption extends UsageFilterOptionBase {
+  kind: "team";
+}
+
 export interface UsageFilterSourceOption extends UsageFilterOptionBase {
   kind: "source";
   connectorProvider: ConnectorProvider | undefined;
@@ -80,16 +86,11 @@ export interface UsageFilterSkillOption extends UsageFilterOptionBase {
 export type UsageFilterOption =
   | UsageFilterAgentOption
   | UsageFilterMemberOption
+  | UsageFilterTeamOption
   | UsageFilterSourceOption
   | UsageFilterModelOption
   | UsageFilterToolOption
   | UsageFilterSkillOption;
-
-export interface UsageFilterGroup {
-  id: string;
-  name: string;
-  memberIds: string[];
-}
 
 export type UsageFilterOptionForCategory<C extends UsageFilterCategory> =
   Extract<UsageFilterOption, { kind: C }>;
@@ -140,11 +141,16 @@ export function selectAllUsageFilterOptions<C extends UsageFilterCategory>(
   return { ...filter, [category]: [...current, ...additions] };
 }
 
-// Only "member" is wired to a real consumption scope dimension ("users") so
-// far; the other categories stay mock data and are not sent as query filters.
+// Members and teams are wired to real consumption scope dimensions. The other
+// categories stay mock data and are not sent as query filters yet.
 export function toConsumptionScopeFilter(
   filter: UsageFilter
 ): ConsumptionScopeFilter {
   const memberIds = filter.member?.map((entity) => entity.id);
-  return memberIds && memberIds.length > 0 ? { users: memberIds } : {};
+  const teamIds = filter.team?.map((entity) => entity.id);
+
+  return {
+    ...(memberIds && memberIds.length > 0 ? { users: memberIds } : {}),
+    ...(teamIds && teamIds.length > 0 ? { teams: teamIds } : {}),
+  };
 }
