@@ -23,11 +23,7 @@ export function isModelReleased(m: ModelConfigurationType): boolean {
   return !m.availableIfOneOf?.featureFlag;
 }
 
-function isOnCreditPricedPlan(plan: PlanType | null): boolean {
-  return plan !== null && isCreditPricedPlanPrefix(plan.code);
-}
-
-function hasModelAccessThroughEntitlement(
+function hasModelAccess(
   m: ModelConfigurationType,
   {
     featureFlags,
@@ -37,11 +33,19 @@ function hasModelAccessThroughEntitlement(
     plan: PlanType | null;
   }
 ): boolean {
+  if (!m.availableIfOneOf) {
+    return (
+      !m.largeModel || (plan !== null && isCreditPricedPlanPrefix(plan.code))
+    );
+  }
+
   const { creditPricedPlan, plansWithAdvancedModels, featureFlag } =
-    m.availableIfOneOf ?? {};
+    m.availableIfOneOf;
 
   return (
-    (creditPricedPlan === true && isOnCreditPricedPlan(plan)) ||
+    (creditPricedPlan === true &&
+      plan !== null &&
+      isCreditPricedPlanPrefix(plan.code)) ||
     (plansWithAdvancedModels === true &&
       plan?.hasAdvancedModelAccess === true) ||
     (featureFlag !== undefined && featureFlags.includes(featureFlag))
@@ -66,18 +70,12 @@ export function isModelAvailable(
   // Dust-only override used to expose advanced models in the model picker.
   const hasModelsPickerOverride =
     featureFlags.includes("models_picker") && isAdvancedModel(m);
-  const hasCreditPricedPlan = isOnCreditPricedPlan(plan);
-  const hasAccessThroughEntitlement = hasModelAccessThroughEntitlement(m, {
+  const hasAccess = hasModelAccess(m, {
     featureFlags,
     plan,
   });
 
-  if (
-    m.largeModel &&
-    !hasCreditPricedPlan &&
-    !hasAccessThroughEntitlement &&
-    !hasModelsPickerOverride
-  ) {
+  if (!hasAccess && !hasModelsPickerOverride) {
     return false;
   }
 
@@ -89,11 +87,7 @@ export function isModelAvailable(
     return false;
   }
 
-  if (!m.availableIfOneOf) {
-    return true;
-  }
-
-  return hasAccessThroughEntitlement || hasModelsPickerOverride;
+  return true;
 }
 
 // Returns true if the model is enabled for the workspace.
