@@ -26,13 +26,12 @@ export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =
     source: "Sources",
   };
 
-export type UsageFilterScope = AgentConfigurationScope;
-
-export const USAGE_FILTER_SCOPE_LABEL: Record<UsageFilterScope, string> = {
-  global: "Company",
-  visible: "Shared",
-  hidden: "Private",
-};
+export const USAGE_FILTER_SCOPE_LABEL: Record<AgentConfigurationScope, string> =
+  {
+    global: "Company",
+    visible: "Shared",
+    hidden: "Private",
+  };
 
 export const USAGE_MODEL_TIERS = ["fast", "standard", "complex"] as const;
 
@@ -51,7 +50,7 @@ interface UsageFilterOptionBase {
 
 export interface UsageFilterAgentOption extends UsageFilterOptionBase {
   kind: "agent";
-  scope: UsageFilterScope;
+  scope: AgentConfigurationScope;
   image: string | null;
 }
 

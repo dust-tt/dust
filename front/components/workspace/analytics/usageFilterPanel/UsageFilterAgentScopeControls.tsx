@@ -1,11 +1,11 @@
-import type { UsageFilterScope } from "@app/components/workspace/analytics/usageFilter";
 import { USAGE_FILTER_SCOPE_LABEL } from "@app/components/workspace/analytics/usageFilter";
+import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import { Button, NavigationListLabel } from "@dust-tt/sparkle";
 
 interface UsageFilterAgentScopeControlsProps {
-  activeScope: UsageFilterScope;
-  onScopeChange: (scope: UsageFilterScope) => void;
+  activeScope: AgentConfigurationScope;
+  onScopeChange: (scope: AgentConfigurationScope) => void;
 }
 
 export function UsageFilterAgentScopeControls({

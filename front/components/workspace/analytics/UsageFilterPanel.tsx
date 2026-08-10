@@ -6,7 +6,6 @@ import type {
   UsageFilterMemberOption,
   UsageFilterModelOption,
   UsageFilterOptionForCategory,
-  UsageFilterScope,
   UsageFilterSkillOption,
   UsageFilterSourceOption,
   UsageFilterTeamOption,
@@ -30,6 +29,7 @@ import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useGroups } from "@app/lib/swr/groups";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -92,7 +92,7 @@ export function UsageFilterPanel({
   } = useUsageFilter(filter);
   const [activeCategory, setActiveCategory] =
     useState<UsageFilterCategory>("agent");
-  const [activeScope, setActiveScope] = useState<UsageFilterScope>(
+  const [activeScope, setActiveScope] = useState<AgentConfigurationScope>(
     AGENT_CONFIGURATION_SCOPES[0]
   );
   const [activeTier, setActiveTier] = useState<UsageModelTier>(
