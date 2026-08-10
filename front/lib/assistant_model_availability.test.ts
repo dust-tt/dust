@@ -120,8 +120,8 @@ const MODEL_ACCESS_CATEGORIES: ModelAccessCategoryDefinition[] = [
   },
 ];
 
-// These cases isolate workspace access rules. Provider whitelisting, BYOK,
-// and regional availability are independent constraints covered elsewhere.
+// We test a few cases for workspace that have different rules.
+// Provider whitelisting, BYOK, and regional availability are not covered here, they are tested in assistant.test.ts.
 const WORKSPACE_ACCESS_CASES: WorkspaceAccessCase[] = [
   {
     name: "workspace without a plan",
@@ -411,6 +411,7 @@ function getFeatureFlagsForAccessCase(
 }
 
 describe("model availability by workspace access", () => {
+  // For each category of model we check against what category of workspace has access to.
   for (const category of MODEL_ACCESS_CATEGORIES) {
     describe(category.name, () => {
       for (const accessCase of WORKSPACE_ACCESS_CASES) {
