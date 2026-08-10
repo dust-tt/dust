@@ -87,6 +87,10 @@ interface DustLikeGlobalAgentArgs {
   // Workspace feature flags, forwarded to model selection so it runs the exact
   // same model availability check that is enforced when a message is posted.
   featureFlags: WhitelistableFeature[];
+  // When set, the @dust agent defaults to the Auto (Standard) meta-model. This
+  // is passed unconditionally so @dust runs on Auto for everyone, taking
+  // priority over the per-model default flags below.
+  preferAutoDefaultModel?: boolean;
   // When set, the @dust agent defaults to GPT 5.6 Luna (high reasoning) instead
   // of Claude Sonnet 4.6. Gated by the `dust_agent_gpt_5_6_luna_default` flag.
   preferGpt56LunaDefaultModel?: boolean;
@@ -477,15 +481,15 @@ export function _getDustGlobalAgent(
     CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
   let preferredReasoningEffort: ReasoningEffort = "medium";
 
-  if (args.preferSonnet5DefaultModel) {
+  if (args.preferAutoDefaultModel) {
+    preferredModelConfiguration = AUTO_MODEL_CONFIG;
+    preferredReasoningEffort = "none";
+  } else if (args.preferSonnet5DefaultModel) {
     preferredModelConfiguration = CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG;
     preferredReasoningEffort = "medium";
   } else if (args.preferGpt56LunaDefaultModel) {
     preferredModelConfiguration = GPT_5_6_LUNA_MODEL_CONFIG;
     preferredReasoningEffort = "high";
-  } else if (args.featureFlags.includes("models_picker")) {
-    preferredModelConfiguration = AUTO_MODEL_CONFIG;
-    preferredReasoningEffort = "none";
   }
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST,
