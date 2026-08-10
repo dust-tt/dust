@@ -23,6 +23,31 @@ export function isModelReleased(m: ModelConfigurationType): boolean {
   return !m.availableIfOneOf?.featureFlag;
 }
 
+function isOnCreditPricedPlan(plan: PlanType | null): boolean {
+  return plan !== null && isCreditPricedPlanPrefix(plan.code);
+}
+
+function meetsAnyModelAvailabilityCondition(
+  m: ModelConfigurationType,
+  {
+    featureFlags,
+    plan,
+  }: {
+    featureFlags: WhitelistableFeature[];
+    plan: PlanType | null;
+  }
+): boolean {
+  const { creditPricedPlan, plansWithAdvancedModels, featureFlag } =
+    m.availableIfOneOf ?? {};
+
+  return (
+    (creditPricedPlan === true && isOnCreditPricedPlan(plan)) ||
+    (plansWithAdvancedModels === true &&
+      plan?.hasAdvancedModelAccess === true) ||
+    (featureFlag !== undefined && featureFlags.includes(featureFlag))
+  );
+}
+
 // Returns true if the model is available to the workspace for build.
 export function isModelAvailable(
   m: ModelConfigurationType,
@@ -38,25 +63,20 @@ export function isModelAvailable(
     region: RegionType;
   }
 ) {
-  // Otherwise, we filter too early.
-  const includeAdvancedModelInPicker =
+  // Dust-only override used to expose advanced models in the model picker.
+  const hasModelsPickerOverride =
     featureFlags.includes("models_picker") && isAdvancedModel(m);
-  const isOnCreditPricedPlan =
-    plan !== null && isCreditPricedPlanPrefix(plan.code);
-  const { plansWithAdvancedModels, featureFlag } = m.availableIfOneOf ?? {};
-  const hasAdvancedModelAccess =
-    plansWithAdvancedModels === true &&
-    (isOnCreditPricedPlan ||
-      plan?.hasAdvancedModelAccess === true ||
-      includeAdvancedModelInPicker);
-  const hasFeatureFlagAccess =
-    featureFlag !== undefined && featureFlags.includes(featureFlag);
+  const hasCreditPricedPlan = isOnCreditPricedPlan(plan);
+  const meetsAvailabilityCondition = meetsAnyModelAvailabilityCondition(m, {
+    featureFlags,
+    plan,
+  });
 
   if (
     m.largeModel &&
-    !isOnCreditPricedPlan &&
-    !hasAdvancedModelAccess &&
-    !hasFeatureFlagAccess
+    !hasCreditPricedPlan &&
+    !meetsAvailabilityCondition &&
+    !hasModelsPickerOverride
   ) {
     return false;
   }
@@ -73,7 +93,7 @@ export function isModelAvailable(
     return true;
   }
 
-  return hasAdvancedModelAccess || hasFeatureFlagAccess;
+  return meetsAvailabilityCondition || hasModelsPickerOverride;
 }
 
 // Returns true if the model is enabled for the workspace.
