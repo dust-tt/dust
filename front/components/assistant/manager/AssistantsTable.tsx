@@ -197,7 +197,6 @@ const getTableColumns = ({
             label={modelName}
             trigger={
               <DataTable.CellContent
-                className="justify-center @xl:justify-start"
                 disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
                 icon={modelIcon}
                 iconClassName="mr-0 @xl:mr-2"
