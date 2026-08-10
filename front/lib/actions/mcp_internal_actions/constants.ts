@@ -1291,7 +1291,7 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     metadata: USER_MEMORY_SERVER,
   },
   [AGENT_DELEGATION_SERVER_NAME]: {
-    id: 1044,
+    id: 1045,
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isRestricted: undefined,

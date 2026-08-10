@@ -32,6 +32,12 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
   },
+  "agent_delegation": {
+    "run_agent": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+  },
   "agent_memory": {
     "compact_memory": {
       "freeUsage": true,
@@ -51,12 +57,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
     },
     "retrieve": {
       "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-  },
-  "agent_delegation": {
-    "run_agent": {
-      "freeUsage": false,
       "toolCostCategory": "basic",
     },
   },
@@ -2671,15 +2671,15 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "update_recommendation": "never_ask",
     "update_work_area": "never_ask",
   },
+  "agent_delegation": {
+    "run_agent": "never_ask",
+  },
   "agent_memory": {
     "compact_memory": "never_ask",
     "edit_entries": "never_ask",
     "erase_entries": "never_ask",
     "record_entries": "never_ask",
     "retrieve": "never_ask",
-  },
-  "agent_delegation": {
-    "run_agent": "never_ask",
   },
   "agent_router": {
     "list_all_published_agents": "never_ask",
