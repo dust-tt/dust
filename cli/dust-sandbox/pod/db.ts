@@ -76,11 +76,13 @@ export const POD_DATABASE_MAX_SIZE_BYTES_ENV =
  * functions published outside an app folder get.
  *
  * Front owns the value and derives it from the invoked function's slug, so no
- * layer below front knows how a prefix is built. Like the size quota, it lives
- * in the untrusted workload's own process and workload code can rewrite it —
- * acceptable because it is not a security boundary: the databases directory is
- * local disk the workload can read and write directly, so app prefixing
- * prevents accidental collisions between apps, it does not isolate them.
+ * layer below front knows how a prefix is built. Read through `podEnv`, so a
+ * resident server serving two apps resolves each invocation against its own
+ * prefix rather than a process-wide one.
+ *
+ * Not a security boundary: the databases directory is local disk the workload
+ * can read and write directly, so app prefixing prevents accidental collisions
+ * between apps, it does not isolate them.
  */
 export const POD_DATABASE_PREFIX_ENV = "DUST_POD_DATABASE_PREFIX";
 
@@ -286,7 +288,11 @@ function podDatabasesDir(): string {
  * db() opens is always the file reconcile applied the schema to.
  */
 function resolveDatabasePath(dir: string, name: string): string {
-  const prefix = process.env[POD_DATABASE_PREFIX_ENV] ?? "";
+  // Through podEnv, like every other env read here: a resident server runs
+  // concurrent invocations from different apps, and their prefixes differ. Read
+  // straight from process.env and every warm invocation would resolve against
+  // whichever prefix the cold run happened to leave there.
+  const prefix = podEnv(POD_DATABASE_PREFIX_ENV) ?? "";
   if (prefix.length > 0) {
     // No need to re-check the name contract here: a prefix long enough to push
     // the qualified name past it is one reconcile refuses to create a file for,

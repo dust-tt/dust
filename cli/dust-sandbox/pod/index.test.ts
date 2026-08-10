@@ -15,6 +15,7 @@ import {
   PodDatabaseInvalidNameError,
   PodDatabaseNotDeclaredError,
   PodDatabasesUnavailableError,
+  runWithInvocationEnv,
 } from "@dust/pod";
 import { blob, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
@@ -256,6 +257,48 @@ describe("app prefix resolution", () => {
     process.env[POD_DATABASE_PREFIX_ENV] = "myapp__";
 
     expect(() => db(name)).toThrow(PodDatabaseNotDeclaredError);
+  });
+
+  // A resident server serves concurrent invocations from different apps without
+  // touching process.env, so the prefix has to come from the invocation context.
+  describe("inside an invocation context", () => {
+    const contextEnv = (prefix: string) => ({
+      [POD_DATABASES_DIR_ENV]: databasesDir,
+      [POD_DATABASE_MAX_SIZE_BYTES_ENV]: String(ONE_GIB_BYTES),
+      [POD_SPACE_ID_ENV]: "spc_test_pod",
+      [POD_DATABASE_PREFIX_ENV]: prefix,
+    });
+
+    test("reads the prefix from the context env", () => {
+      const name = uniqueName("chat");
+      createDatabaseOwnedBy(`myapp__${name}`, "myapp");
+
+      expect(
+        runWithInvocationEnv(contextEnv("myapp__"), () => ownerOf(name))
+      ).toBe("myapp");
+    });
+
+    test("the context's prefix wins over the one in process.env", () => {
+      const name = uniqueName("chat");
+      createDatabaseOwnedBy(`myapp__${name}`, "myapp");
+      createDatabaseOwnedBy(`otherapp__${name}`, "otherapp");
+      process.env[POD_DATABASE_PREFIX_ENV] = "myapp__";
+
+      expect(
+        runWithInvocationEnv(contextEnv("otherapp__"), () => ownerOf(name))
+      ).toBe("otherapp");
+    });
+
+    test("a context without a prefix ignores the one in process.env", () => {
+      const name = uniqueName("chat");
+      createDatabaseOwnedBy(name, "bare");
+      createDatabaseOwnedBy(`myapp__${name}`, "myapp");
+      process.env[POD_DATABASE_PREFIX_ENV] = "myapp__";
+
+      expect(runWithInvocationEnv(contextEnv(""), () => ownerOf(name))).toBe(
+        "bare"
+      );
+    });
   });
 });
 
