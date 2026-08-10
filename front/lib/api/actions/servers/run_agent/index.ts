@@ -31,6 +31,8 @@ import {
 import { RUN_AGENT_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { getOrCreateConversation } from "@app/lib/api/actions/servers/run_agent/conversation";
 import {
+  GENERIC_RUN_AGENT_TOOL_NAME,
+  GENERIC_RUN_AGENT_TOOL_SCHEMA,
   getRunAgentToolDescription,
   RUN_AGENT_CONFIGURABLE_PROPERTIES,
   RUN_AGENT_PLACEHOLDER_TOOL_NAME,
@@ -100,16 +102,16 @@ function makeChildAgentUnavailableError(childAgentName: string): MCPError {
   );
 }
 
-async function checkChildAgentCanRun(
+async function getRunnableChildAgent(
   auth: Authenticator,
   {
     agentId,
-    childAgentName,
+    childAgentName = agentId,
   }: {
     agentId: string;
-    childAgentName: string;
+    childAgentName?: string;
   }
-): Promise<Result<void, MCPError>> {
+): Promise<Result<ChildAgentBlob, MCPError>> {
   const childAgent = await getAgentConfiguration(auth, {
     agentId,
     variant: "extra_light",
@@ -119,7 +121,10 @@ async function checkChildAgentCanRun(
     return new Err(makeChildAgentUnavailableError(childAgentName));
   }
 
-  return new Ok(undefined);
+  return new Ok({
+    name: childAgent.name,
+    description: childAgent.description,
+  });
 }
 
 function parseAgentConfigurationUri(uri: string): Result<string, Error> {
@@ -133,15 +138,15 @@ function parseAgentConfigurationUri(uri: string): Result<string, Error> {
 const runAgent = async (
   {
     query,
-    childAgent: { uri },
+    childAgentId,
     executionMode,
     toolsetsToAdd,
     fileOrContentFragmentIds,
     filePaths,
   }: {
     query: string;
-    childAgent: { uri: string };
-    executionMode: { value: "run-agent" | "handoff" };
+    childAgentId: string;
+    executionMode: "run-agent" | "handoff";
     toolsetsToAdd?: string[] | null;
     fileOrContentFragmentIds?: string[] | null;
     filePaths?: string[] | null;
@@ -153,7 +158,7 @@ const runAgent = async (
     _meta,
     signal,
     toolName,
-    childAgentBlob,
+    childAgentBlob: configuredChildAgentBlob,
   }: {
     auth: Authenticator;
     toolContext?: ToolContext;
@@ -163,7 +168,7 @@ const runAgent = async (
     _meta?: RequestMeta;
     signal?: AbortSignal | null;
     toolName: string;
-    childAgentBlob: ChildAgentBlob;
+    childAgentBlob?: ChildAgentBlob;
   }
 ): Promise<ToolHandlerResult> => {
   assert(
@@ -183,7 +188,7 @@ const runAgent = async (
     }
     return result;
   };
-  const isHandoff = executionMode.value === "handoff";
+  const isHandoff = executionMode === "handoff";
 
   if (isHandoff && filePaths && filePaths.length > 0) {
     return finalizeAndReturn(
@@ -200,21 +205,14 @@ const runAgent = async (
   const { agentConfiguration: mainAgent, conversation: mainConversation } =
     toolContext.runContext;
 
-  const parsedChildAgentIdRes = parseAgentConfigurationUri(uri);
-  if (parsedChildAgentIdRes.isErr()) {
-    return finalizeAndReturn(
-      new Err(new MCPError(parsedChildAgentIdRes.error.message))
-    );
-  }
-  const parsedChildAgentId = parsedChildAgentIdRes.value;
-
-  const childAgentAccessRes = await checkChildAgentCanRun(auth, {
-    agentId: parsedChildAgentId,
-    childAgentName: childAgentBlob.name,
+  const childAgentRes = await getRunnableChildAgent(auth, {
+    agentId: childAgentId,
+    childAgentName: configuredChildAgentBlob?.name,
   });
-  if (childAgentAccessRes.isErr()) {
-    return finalizeAndReturn(childAgentAccessRes);
+  if (childAgentRes.isErr()) {
+    return finalizeAndReturn(childAgentRes);
   }
+  const childAgentBlob = configuredChildAgentBlob ?? childAgentRes.value;
 
   const user = auth.user();
 
@@ -260,7 +258,7 @@ const runAgent = async (
                   resource: {
                     mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
                     text: query,
-                    childAgentId: parsedChildAgentId,
+                    childAgentId,
                     uri: "",
                   },
                 },
@@ -278,7 +276,7 @@ const runAgent = async (
     toolContext.runContext,
     {
       childAgentBlob,
-      childAgentId: parsedChildAgentId,
+      childAgentId,
       mainAgent,
       mainConversation,
       query: isHandoff
@@ -300,7 +298,7 @@ const runAgent = async (
     const mentionMain = serializeMention(mainAgent);
     const mentionChild = serializeMention({
       name: childAgentBlob.name,
-      sId: parsedChildAgentId,
+      sId: childAgentId,
     });
     return finalizeAndReturn(
       new Ok(
@@ -344,7 +342,7 @@ const runAgent = async (
                   resource: {
                     mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
                     text: query,
-                    childAgentId: parsedChildAgentId,
+                    childAgentId,
                     uri: "",
                     conversationId: conversation.sId,
                     agentMessageId: agentMessage.sId,
@@ -447,7 +445,7 @@ const runAgent = async (
             output: {
               type: "run_agent",
               query,
-              childAgentId: parsedChildAgentId,
+              childAgentId,
               conversationId: conversation.sId,
               userMessageId,
               agentMessageId: agentMessage?.sId ?? null,
@@ -845,6 +843,57 @@ async function createServer(
     childAgentId = toolContext.runContext.toolConfiguration.childAgentId;
   }
 
+  if (!childAgentId) {
+    type GenericRunAgentSchema = z.infer<
+      z.ZodObject<typeof GENERIC_RUN_AGENT_TOOL_SCHEMA>
+    >;
+    registerTool(
+      auth,
+      toolContext,
+      server,
+      {
+        name: GENERIC_RUN_AGENT_TOOL_NAME,
+        description:
+          "Run an accessible workspace agent by ID. Use agent_router.list_all_published_agents first to discover agent IDs.",
+        schema: GENERIC_RUN_AGENT_TOOL_SCHEMA,
+        stake: "never_ask",
+        displayLabels: { running: "Running agent", done: "Run agent" },
+        enableAlerting: true,
+        toolCostCategory: "basic" as const,
+        freeUsage: false,
+        handler: (
+          {
+            agentId,
+            query,
+            executionMode,
+            toolsetsToAdd,
+            fileOrContentFragmentIds,
+            filePaths,
+          }: GenericRunAgentSchema,
+          extra: ToolHandlerExtra
+        ) =>
+          runAgent(
+            {
+              query,
+              childAgentId: agentId,
+              executionMode: executionMode.value,
+              toolsetsToAdd,
+              fileOrContentFragmentIds,
+              filePaths,
+            },
+            {
+              ...extra,
+              auth,
+              toolContext,
+              toolName: GENERIC_RUN_AGENT_TOOL_NAME,
+            }
+          ),
+      } as unknown as ToolDefinition,
+      { monitoringName: RUN_AGENT_PLACEHOLDER_TOOL_NAME }
+    );
+    return server;
+  }
+
   let childAgentBlob: ChildAgentBlob | null = null;
   if (childAgentId) {
     childAgentBlob = await leakyGetAgentNameAndDescriptionForChildAgent(
@@ -923,14 +972,30 @@ async function createServer(
       done: `Run @${childAgentBlob.name}`,
     },
     enableAlerting: true,
-    handler: (params: SchemaType, extra: ToolHandlerExtra) =>
-      runAgent(params, {
-        ...extra,
-        auth,
-        toolContext,
-        toolName,
-        childAgentBlob,
-      }),
+    handler: (params: SchemaType, extra: ToolHandlerExtra) => {
+      const childAgentIdRes = parseAgentConfigurationUri(params.childAgent.uri);
+      if (childAgentIdRes.isErr()) {
+        return new Err(new MCPError(childAgentIdRes.error.message));
+      }
+
+      return runAgent(
+        {
+          query: params.query,
+          childAgentId: childAgentIdRes.value,
+          executionMode: params.executionMode.value,
+          toolsetsToAdd: params.toolsetsToAdd,
+          fileOrContentFragmentIds: params.fileOrContentFragmentIds,
+          filePaths: params.filePaths,
+        },
+        {
+          ...extra,
+          auth,
+          toolContext,
+          toolName,
+          childAgentBlob,
+        }
+      );
+    },
   } as unknown as ToolDefinition;
 
   registerTool(auth, toolContext, server, toolDefinition, {
