@@ -1543,7 +1543,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   async markMatchingAuthenticationActionsReady(
     auth: Authenticator
   ): Promise<AgentMCPActionResource[]> {
-    const mcpServerId = this.metadata.mcpServerId;
+    const { mcpServerId } = this.metadata;
     const blockedActions = mcpServerId
       ? await AgentMCPActionResource.listBlockedActionsForAgentMessage(auth, {
           agentMessageId: this.agentMessageId,
