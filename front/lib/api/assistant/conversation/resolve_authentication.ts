@@ -140,7 +140,8 @@ export async function resolveAuthentication(
     outcome === "completed" &&
     !isSandboxChildAction
   ) {
-    const result = await action.markMatchingAuthenticationActionsReady(auth);
+    const result =
+      await action.markSameMCPServerAuthenticationActionsReady(auth);
     resolvedActions = result.resolvedActions;
     remainingBlockedActionsForAgentMessage = result.remainingBlockedActions;
   } else {

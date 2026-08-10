@@ -1540,7 +1540,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
    * authentication can unblock parallel calls to any of its tools. Sandbox-child actions are
    * excluded because each one must thaw and relaunch its own parent bash.
    */
-  async markMatchingAuthenticationActionsReady(auth: Authenticator): Promise<{
+  async markSameMCPServerAuthenticationActionsReady(
+    auth: Authenticator
+  ): Promise<{
     remainingBlockedActions: AgentMCPActionResource[];
     resolvedActions: AgentMCPActionResource[];
   }> {
@@ -1553,6 +1555,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       ? blockedActions.filter(
           (action) =>
             action.status === "blocked_authentication_required" &&
+            // Sharing an MCP server is our proxy for the completed personal authentication being
+            // reusable by this action.
             action.metadata.mcpServerId === mcpServerId &&
             !isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)
         )
