@@ -1014,20 +1014,20 @@ async function handleUserRemovedFromGroup(
   }
   const workOSUser = workOSUserRes.value;
 
-  // Nothing to deprovision. Removing them from a group is a no-op.
-  const user = workOSUser
-    ? await UserResource.fetchByWorkOSUserId(workOSUser.id)
-    : null;
-  if (!user) {
+  // Unknown to WorkOS and to us: nothing to deprovision, removing them from a
+  // group is a no-op.
+  if (!workOSUser) {
     logger.info(
-      {
-        workspaceId: workspace.sId,
-        directoryUserId: eventData.user.id,
-        workOSUserId: workOSUser?.id,
-      },
-      "User to remove from group not found, skipping group removal"
+      { workspaceId: workspace.sId, directoryUserId: eventData.user.id },
+      "User to remove from group not found in WorkOS, skipping group removal"
     );
     return;
+  }
+
+  // Known to WorkOS but not to us: provisioning never went through, so surface it.
+  const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
+  if (!user) {
+    throw new Error(`User not found with workOSId "${workOSUser.id}"`);
   }
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
@@ -1166,19 +1166,22 @@ async function handleCreateOrUpdateWorkOSUser(
     }
     const inactiveWorkOSUser = inactiveWorkOSUserRes.value;
 
-    const inactiveUser = inactiveWorkOSUser
-      ? await UserResource.fetchByWorkOSUserId(inactiveWorkOSUser.id)
-      : null;
-    if (!inactiveUser) {
+    if (!inactiveWorkOSUser) {
       logger.info(
-        {
-          workspaceId: workspace.sId,
-          directoryUserId: eventData.id,
-          workOSUserId: inactiveWorkOSUser?.id,
-        },
-        "Inactive user not found in workspace, skipping revocation"
+        { workspaceId: workspace.sId, directoryUserId: eventData.id },
+        "Inactive user not found in WorkOS, skipping revocation"
       );
       return;
+    }
+
+    // Known to WorkOS but not to us: provisioning never went through, so surface it.
+    const inactiveUser = await UserResource.fetchByWorkOSUserId(
+      inactiveWorkOSUser.id
+    );
+    if (!inactiveUser) {
+      throw new Error(
+        `User not found with workOSId "${inactiveWorkOSUser.id}"`
+      );
     }
 
     await revokeWorkOSUserMembership(
@@ -1416,19 +1419,21 @@ async function handleDeleteWorkOSUser(
   }
   const workOSUser = workOSUserRes.value;
 
-  const user = workOSUser
-    ? await UserResource.fetchByWorkOSUserId(workOSUser.id)
-    : null;
-  if (!user) {
+  // Unknown to WorkOS and to us: nothing to delete.
+  if (!workOSUser) {
     logger.info(
-      {
-        workspaceId: workspace.sId,
-        directoryUserId: eventData.id,
-        workOSUserId: workOSUser?.id,
-      },
-      "User to delete not found, likely already deleted"
+      { workspaceId: workspace.sId, directoryUserId: eventData.id },
+      "User to delete not found in WorkOS, likely already deleted"
     );
     return;
+  }
+
+  // Known to WorkOS but not to us: provisioning never went through, so surface it.
+  const user = await UserResource.fetchByWorkOSUserId(workOSUser.id);
+  if (!user) {
+    throw new Error(
+      `Did not find user to delete for workOSUserId "${workOSUser.id}" in workspace "${workspace.sId}"`
+    );
   }
 
   // Clear WorkOS custom attributes before revoking membership.
