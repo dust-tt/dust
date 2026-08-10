@@ -1,7 +1,10 @@
 import { datadogLogs } from "@datadog/browser-logs";
 
-// Keep the exported Logger type for compatibility with existing imports.
-export type { Logger } from "pino";
+import type { DatadogLogStatus } from "./logger";
+
+// Keep the exported Logger type for compatibility with existing imports. Type-only, so the
+// pino-backed module is erased from the browser bundle.
+export type { Logger } from "./logger";
 
 // Benign error messages that should not be forwarded to Datadog.
 export const IGNORED_LOG_MESSAGES = [
@@ -75,7 +78,10 @@ function toMessageAndContext(
 
 type LogContext = Record<string, unknown>;
 type LogMessage = string;
-type LogArg = LogContext | LogMessage;
+// Datadog reads a top-level `status` as the log severity, prefix-matched on its value, so
+// `status: "completed"` reads as critical. Same check as the server-side logger.
+type CheckedLogContext = { status?: DatadogLogStatus } & LogContext;
+type LogArg = CheckedLogContext | LogMessage;
 
 function makeLogger(baseBindings?: LogContext) {
   const call = (level: Level, arg1?: LogArg, arg2?: LogArg) => {
@@ -117,7 +123,7 @@ function makeLogger(baseBindings?: LogContext) {
     warn: (a?: LogArg, b?: LogArg) => call("warn", a, b),
     error: (a?: LogArg, b?: LogArg) => call("error", a, b),
 
-    child: (bindings?: LogContext) =>
+    child: (bindings?: CheckedLogContext) =>
       makeLogger({ ...(baseBindings ?? {}), ...(bindings ?? {}) }),
   };
 }

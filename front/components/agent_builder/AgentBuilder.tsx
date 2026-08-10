@@ -519,7 +519,7 @@ function AgentBuilderForm({
           setPendingAgentId(data.sId);
         } else {
           datadogLogger.error(
-            { status: response.status },
+            { statusCode: response.status },
             "[Agent builder] - Failed to create pending agent"
           );
         }

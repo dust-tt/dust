@@ -138,7 +138,7 @@ const sendErrorToIframe = (
     errorMessage: error.message,
     fileId: request.identifier,
     functionIdOrSlug: request.params.functionIdOrSlug,
-    status: error.status,
+    statusCode: error.status,
     workspaceId,
   });
 
