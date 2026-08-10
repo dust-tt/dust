@@ -27,7 +27,7 @@ export function isModelReleased(m: ModelConfigurationType): boolean {
 }
 
 function hasModelAccess(
-  m: ModelConfigurationType,
+  modelConfiguration: ModelConfigurationType,
   {
     featureFlags,
     plan,
@@ -37,17 +37,21 @@ function hasModelAccess(
   }
 ): boolean {
   // Dust-only override used to expose advanced models in the model picker.
-  if (featureFlags.includes("models_picker") && isAdvancedModel(m)) {
+  if (
+    featureFlags.includes("models_picker") &&
+    isAdvancedModel(modelConfiguration)
+  ) {
     return true;
   }
 
-  const availability = m.availableIfOneOf;
-  if (!availability) {
-    return !m.largeModel || isUpgraded(plan);
+  const { availableIfOneOf, largeModel } = modelConfiguration;
+  // Unless we have a model-specific override, the rule is that upgraded plans have access to all large models.
+  if (!availableIfOneOf) {
+    return !largeModel || isUpgraded(plan);
   }
 
   const { creditPricedPlan, plansWithAdvancedModels, featureFlag } =
-    availability;
+    availableIfOneOf;
 
   const hasConfiguredAccess =
     (creditPricedPlan === true &&
@@ -64,7 +68,11 @@ function hasModelAccess(
   // A credit-priced-plan condition makes the configured alternatives the
   // complete large-model access rule. Other large models retain the legacy
   // upgraded-plan prerequisite.
-  return !m.largeModel || isUpgraded(plan) || creditPricedPlan === true;
+  return (
+    !modelConfiguration.largeModel ||
+    isUpgraded(plan) ||
+    creditPricedPlan === true
+  );
 }
 
 // Returns true if the model is available to the workspace for build.
