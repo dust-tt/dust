@@ -163,7 +163,7 @@ describe("getModelForStream", () => {
   beforeEach(async () => {
     workspace = await WorkspaceFactory.basic();
     adminAuth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    await FeatureFlagFactory.basic(adminAuth, "models_picker");
+    await FeatureFlagFactory.basic(adminAuth, "claude_4_5_opus_feature");
   });
 
   async function userAuthForTierCap(tierName: "cost_efficient" | "balanced") {
