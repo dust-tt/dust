@@ -32,6 +32,17 @@ pub enum RunnerKind {
     Cold,
 }
 
+/// Whether a warm worker served the invocation from a bundle it had already
+/// imported, or paid the import on this request. Observability for the
+/// pool's affinity routing: a high `fresh` share means functions keep
+/// landing on workers that do not hold their bundle.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum ImportKind {
+    Cached,
+    Fresh,
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct TimingsMs {
@@ -41,6 +52,9 @@ pub struct TimingsMs {
     /// treats timingsMs as opaque, so this cannot break the wire contract.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runner_kind: Option<RunnerKind>,
+    /// Additive, warm runs only: see [`ImportKind`].
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub import_kind: Option<ImportKind>,
 }
 
 impl ResultEnvelope {
@@ -86,6 +100,7 @@ mod tests {
                 total: 12,
                 runner: 8,
                 runner_kind: Some(RunnerKind::Warm),
+                import_kind: Some(ImportKind::Cached),
             }),
         );
 
@@ -96,7 +111,7 @@ mod tests {
                 "protocolVersion": 3,
                 "delivery": "stdout",
                 "outcome": { "ok": true, "output": { "hello": "world" } },
-                "timingsMs": { "total": 12, "runner": 8, "runnerKind": "warm" },
+                "timingsMs": { "total": 12, "runner": 8, "runnerKind": "warm", "importKind": "cached" },
             })
         );
     }

@@ -36,7 +36,7 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
         deliver_stdout_envelope(ResultEnvelope::stdout_invocation_failed(err.to_string()), 0);
     }
 
-    if let WarmRun::Outcome(outcome) = warm::try_warm_run(name, &input).await {
+    if let WarmRun::Outcome(outcome, import_kind) = warm::try_warm_run(name, &input).await {
         let runner_ms = started.elapsed().as_millis() as u64;
         deliver_stdout_envelope(
             ResultEnvelope::stdout_outcome(
@@ -45,30 +45,31 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
                     total: started.elapsed().as_millis() as u64,
                     runner: runner_ms,
                     runner_kind: Some(RunnerKind::Warm),
+                    import_kind,
                 }),
             ),
             0,
         );
     }
 
-    // Cold path. Resolve once: the run below and the warm server spawn both
-    // need the handler path, and resolution lists the (gcsfuse-backed)
-    // functions directory.
-    let (spawned, handler) = match resolve_existing(name) {
+    // Cold path. Resolve once: the run below needs the handler path, and
+    // resolution lists the (gcsfuse-backed) functions directory.
+    let (spawned, resolved) = match resolve_existing(name) {
         Ok(handler) => {
             let spawned = spawn_function_at(&handler, "run", Some(&input), true).await;
-            (spawned, Some(handler))
+            (spawned, true)
         }
         // resolve_existing already emitted the `{error}` line; the message
         // (bad name, unset dir, missing or ambiguous bundle) propagates.
-        Err(e) => (Err(e), None),
+        Err(e) => (Err(e), false),
     };
     let runner_ms = started.elapsed().as_millis() as u64;
 
-    // Leave a warm server behind so the next invocation of this function
-    // skips the spawn. Fire-and-forget; never affects this run's outcome.
-    if let Some(handler) = &handler {
-        warm::spawn_server(name, handler);
+    // Leave a warm worker on this function's home slot so the next
+    // invocation of this function (or its app) skips the spawn.
+    // Fire-and-forget; never affects this run's outcome.
+    if resolved {
+        warm::spawn_worker(name);
     }
 
     deliver_stdout(
@@ -77,6 +78,7 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
             total: started.elapsed().as_millis() as u64,
             runner: runner_ms,
             runner_kind: Some(RunnerKind::Cold),
+            import_kind: None,
         },
     )
 }
@@ -164,6 +166,7 @@ mod tests {
             total,
             runner,
             runner_kind: Some(RunnerKind::Cold),
+            import_kind: None,
         }
     }
 
