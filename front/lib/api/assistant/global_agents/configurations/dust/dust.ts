@@ -88,8 +88,6 @@ interface DustLikeGlobalAgentArgs {
   // same model availability check that is enforced when a message is posted.
   featureFlags: WhitelistableFeature[];
   // When set, the @dust agent defaults to the Auto (Standard) meta-model. This
-  // is passed unconditionally so @dust runs on Auto for everyone, taking
-  // priority over the per-model default flags below.
   preferAutoDefaultModel?: boolean;
   // When set, the @dust agent defaults to GPT 5.6 Luna (high reasoning) instead
   // of Claude Sonnet 4.6. Gated by the `dust_agent_gpt_5_6_luna_default` flag.
