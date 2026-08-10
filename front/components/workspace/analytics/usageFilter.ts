@@ -200,7 +200,20 @@ export function usageModelTierFromModelsTierName(
       return "standard";
     case "premium":
       return "complex";
+  if (tier === null || tier === undefined) {
+    return undefined;
+  }
+  switch (tier) {
+    case "cost_efficient":
+      return "fast";
+    case "balanced":
+      return "standard";
+    case "premium":
+      return "complex";
     default:
+      assertNeverAndIgnore(tier);
+      return undefined;
+  }
       assertNeverAndIgnore(tier);
       return undefined;
   }
