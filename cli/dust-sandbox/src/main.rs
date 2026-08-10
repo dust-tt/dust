@@ -73,8 +73,8 @@ async fn run() -> anyhow::Result<()> {
         Commands::Function { command } => match command {
             commands::function::FunctionCommand::Run {
                 name,
-                result_delivery,
-            } => commands::cmd_function_run(&name, result_delivery).await?,
+                result_delivery: _,
+            } => commands::cmd_function_run(&name).await?,
             commands::function::FunctionCommand::Get { name } => {
                 commands::cmd_function_get(&name).await?
             }
@@ -191,10 +191,7 @@ mod tests {
                     result_delivery,
                 } => {
                     assert_eq!(name, "greet");
-                    assert_eq!(
-                        result_delivery,
-                        commands::function::ResultDelivery::Callback
-                    );
+                    assert_eq!(result_delivery, commands::function::ResultDelivery::Stdout);
                 }
                 _ => panic!("expected run"),
             },
@@ -202,8 +199,9 @@ mod tests {
         }
     }
 
+    // front still sends the flag. Parsing it must keep working until front stops.
     #[test]
-    fn function_run_parses_stdout_result_delivery() {
+    fn function_run_still_accepts_the_result_delivery_flag() {
         let cli = Cli::try_parse_from([
             "dsbx",
             "function",
@@ -215,12 +213,8 @@ mod tests {
         .expect("parse");
         match cli.command {
             Commands::Function { command } => match command {
-                commands::function::FunctionCommand::Run {
-                    name,
-                    result_delivery,
-                } => {
+                commands::function::FunctionCommand::Run { name, .. } => {
                     assert_eq!(name, "greet");
-                    assert_eq!(result_delivery, commands::function::ResultDelivery::Stdout);
                 }
                 _ => panic!("expected run"),
             },

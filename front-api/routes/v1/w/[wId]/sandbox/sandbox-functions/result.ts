@@ -19,6 +19,15 @@ const PostSandboxFunctionResultRequestBodySchema = z
 // Mounted at /api/v1/w/:wId/sandbox/sandbox-functions/result. sandboxAuth is
 // applied by the parent sandbox sub-app, so ctx.get("auth") and
 // ctx.get("sandboxClaims") are always available here.
+//
+// DEPRECATED 2026-08-10, pending removal. dsbx 0.1.45 dropped callback delivery:
+// every result now comes back on the exec's own stdout, and front has passed
+// `--result-delivery stdout` since Pod function stdout delivery became the
+// default. The only callers left are dsbx binaries baked into images still
+// pinned below 0.1.45 (DSBX_CLI_VERSION in front/lib/api/sandbox/image/registry.ts),
+// and only for a hand-run `dsbx function run` that omits the flag. Delete this
+// route, its test, and the sandbox-functions result client once that pin has
+// moved and no running sandbox predates it.
 const app = sandboxApp();
 
 /**
