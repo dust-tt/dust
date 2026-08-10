@@ -201,7 +201,7 @@ describe("isModelAvailable", () => {
     });
 
     it("should be available when the plan has advanced model access", () => {
-      const plan = createMockPlan(FREE_NO_PLAN_CODE, {
+      const plan = createMockPlan(FREE_UPGRADED_PLAN_CODE, {
         hasAdvancedModelAccess: true,
       });
 
@@ -209,7 +209,7 @@ describe("isModelAvailable", () => {
     });
 
     it("should be available with the Opus feature flag", () => {
-      const plan = createMockPlan(FREE_NO_PLAN_CODE);
+      const plan = createMockPlan(FREE_UPGRADED_PLAN_CODE);
 
       expect(isSolAvailable(plan, ["claude_4_5_opus_feature"])).toBe(true);
     });
