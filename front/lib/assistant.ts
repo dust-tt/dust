@@ -3,7 +3,6 @@ import {
   isCreditPricedPlanPrefix,
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
-import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
@@ -15,10 +14,6 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 function isAdvancedModel(m: ModelConfigurationType): boolean {
   return m.availableIfOneOf?.plansWithAdvancedModels === true;
-}
-
-export function getAdvancedModels(): ModelConfigurationType[] {
-  return SUPPORTED_MODEL_CONFIGS.filter(isAdvancedModel);
 }
 
 // False if the model requires an on-demand/dust-only feature flag (not GA).
