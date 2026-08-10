@@ -21,14 +21,11 @@ import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
 import { useMemo } from "react";
 
-// The banners span the full width of the app shell (see `TopBanners`), so they
-// lay out as a single row: title, then description, then the optional footer
-// pinned to the trailing edge. They stack vertically on narrow viewports.
+// The banners span the full width of the content panel (see `TopBanners`) and
+// lay out on two lines: the title, then the description followed by the
+// optional footer.
 const statusBannerVariants = cva(
-  cn(
-    "flex flex-col gap-x-2 gap-y-1 border-b px-4 py-1.5 text-sm",
-    "sm:flex-row sm:items-baseline"
-  ),
+  "flex flex-col gap-0.5 border-b px-4 py-2 text-sm",
   {
     variants: {
       variant: {
@@ -58,9 +55,11 @@ function StatusBanner({
 }: StatusBannerProps) {
   return (
     <div className={statusBannerVariants({ variant })}>
-      <div className="shrink-0 font-semibold">{title}</div>
-      <div className="min-w-0 grow font-normal line-clamp-2">{description}</div>
-      {footer && <div className="shrink-0 font-normal">{footer}</div>}
+      <div className="font-semibold">{title}</div>
+      <div className="font-normal">
+        {description}
+        {footer && <> {footer}</>}
+      </div>
     </div>
   );
 }
