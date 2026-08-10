@@ -1,4 +1,4 @@
-import { fetchConsumptionRelevantGroups } from "@app/lib/api/analytics/consumption/relevant_groups";
+import { fetchConsumptionGroupsWithActivity } from "@app/lib/api/analytics/consumption/groups_with_activity";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
@@ -14,17 +14,17 @@ vi.mock("@app/components/dev/devModeConstants", () => ({
 }));
 
 vi.mock(
-  import("@app/lib/api/analytics/consumption/relevant_groups"),
+  import("@app/lib/api/analytics/consumption/groups_with_activity"),
   async (orig) => {
     const mod = await orig();
     return {
       ...mod,
-      fetchConsumptionRelevantGroups: vi.fn(),
+      fetchConsumptionGroupsWithActivity: vi.fn(),
     };
   }
 );
 
-const RELEVANT_GROUPS = {
+const GROUPS_WITH_ACTIVITY = {
   groups: [
     { id: "g1", name: "Engineering", memberIds: ["u1", "u2"] },
     { id: "g2", name: "Sales", memberIds: ["u3"] },
@@ -35,37 +35,39 @@ async function setupTest({ role = "admin" as MembershipRoleType } = {}) {
   return createPrivateApiMockRequest({ role });
 }
 
-function getRelevantGroupsRequest(
+function getGroupsWithActivityRequest(
   wId: string,
   query: Record<string, string> = {}
 ) {
   const qs = new URLSearchParams(query).toString();
   return honoApp.request(
-    `/api/w/${wId}/analytics/consumption/relevant-groups${qs ? `?${qs}` : ""}`
+    `/api/w/${wId}/analytics/consumption/groups-with-activity${qs ? `?${qs}` : ""}`
   );
 }
 
-describe("GET /api/w/:wId/analytics/consumption/relevant-groups", () => {
+describe("GET /api/w/:wId/analytics/consumption/groups-with-activity", () => {
   it("returns 403 for non-manager users", async () => {
     const { workspace } = await setupTest({ role: "user" });
 
-    const response = await getRelevantGroupsRequest(workspace.sId);
+    const response = await getGroupsWithActivityRequest(workspace.sId);
 
     expect(response.status).toBe(403);
-    expect(vi.mocked(fetchConsumptionRelevantGroups)).not.toHaveBeenCalled();
+    expect(
+      vi.mocked(fetchConsumptionGroupsWithActivity)
+    ).not.toHaveBeenCalled();
   });
 
-  it("returns the relevant groups for managers, defaulting to the current cycle", async () => {
-    vi.mocked(fetchConsumptionRelevantGroups).mockResolvedValue(
-      new Ok(RELEVANT_GROUPS)
+  it("returns the groups with activity for managers, defaulting to the current cycle", async () => {
+    vi.mocked(fetchConsumptionGroupsWithActivity).mockResolvedValue(
+      new Ok(GROUPS_WITH_ACTIVITY)
     );
     const { workspace } = await setupTest({ role: "admin" });
 
-    const response = await getRelevantGroupsRequest(workspace.sId);
+    const response = await getGroupsWithActivityRequest(workspace.sId);
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual(RELEVANT_GROUPS);
-    expect(vi.mocked(fetchConsumptionRelevantGroups)).toHaveBeenCalledWith(
+    expect(await response.json()).toEqual(GROUPS_WITH_ACTIVITY);
+    expect(vi.mocked(fetchConsumptionGroupsWithActivity)).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         period: expect.objectContaining({}),
@@ -75,33 +77,33 @@ describe("GET /api/w/:wId/analytics/consumption/relevant-groups", () => {
   });
 
   it("forwards a days period and a custom limit", async () => {
-    vi.mocked(fetchConsumptionRelevantGroups).mockResolvedValue(
-      new Ok(RELEVANT_GROUPS)
+    vi.mocked(fetchConsumptionGroupsWithActivity).mockResolvedValue(
+      new Ok(GROUPS_WITH_ACTIVITY)
     );
     const { workspace } = await setupTest();
 
-    const response = await getRelevantGroupsRequest(workspace.sId, {
+    const response = await getGroupsWithActivityRequest(workspace.sId, {
       period: "days",
       days: "7",
       limit: "50",
     });
 
     expect(response.status).toBe(200);
-    expect(vi.mocked(fetchConsumptionRelevantGroups)).toHaveBeenCalledWith(
+    expect(vi.mocked(fetchConsumptionGroupsWithActivity)).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ limit: 50 })
     );
   });
 
   it("returns 500 when the search fails", async () => {
-    vi.mocked(fetchConsumptionRelevantGroups).mockResolvedValue(
+    vi.mocked(fetchConsumptionGroupsWithActivity).mockResolvedValue(
       new Err(
         Object.assign(new Error("boom"), { type: "query_error" as const })
       )
     );
     const { workspace } = await setupTest();
 
-    const response = await getRelevantGroupsRequest(workspace.sId);
+    const response = await getGroupsWithActivityRequest(workspace.sId);
 
     expect(response.status).toBe(500);
     expect(await response.json()).toMatchObject({

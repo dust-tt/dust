@@ -27,18 +27,19 @@ const USER_ID_FIELD = "user.id";
 
 const MEMBER_IDS_PER_GROUP_LIMIT = 1000;
 
-export type ConsumptionRelevantGroup = {
+export type ConsumptionGroupWithActivity = {
   id: string;
   name: string;
   // Member sIds this group and the period's active users have in common
   memberIds: string[];
 };
 
-export type ConsumptionRelevantGroups = {
-  groups: ConsumptionRelevantGroup[];
+export type ConsumptionGroupsWithActivity = {
+  groups: ConsumptionGroupWithActivity[];
 };
 
-export type GetConsumptionRelevantGroupsResponse = ConsumptionRelevantGroups;
+export type GetConsumptionGroupsWithActivityResponse =
+  ConsumptionGroupsWithActivity;
 
 type MemberBucket = { key: string };
 
@@ -47,36 +48,36 @@ type GroupBucket = {
   members?: estypes.AggregationsMultiBucketAggregateBase<MemberBucket>;
 };
 
-type RelevantGroupsAggs = {
+type GroupsWithActivityAggs = {
   by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
 };
 
-export async function fetchConsumptionRelevantGroups(
+export async function fetchConsumptionGroupsWithActivity(
   auth: Authenticator,
   { period, limit }: { period: ConsumptionPeriod; limit: number }
-): Promise<Result<ConsumptionRelevantGroups, ElasticsearchError>> {
+): Promise<Result<ConsumptionGroupsWithActivity, ElasticsearchError>> {
   const query = buildConsumptionScopeQuery({
     auth,
     startDate: period.startDate,
     endDate: period.endDate,
   });
 
-  const result = await searchConsumptionAnalytics<never, RelevantGroupsAggs>(
-    query,
-    {
-      aggregations: {
-        by_group: {
-          terms: { field: USER_GROUP_IDS_FIELD, size: limit },
-          aggs: {
-            members: {
-              terms: { field: USER_ID_FIELD, size: MEMBER_IDS_PER_GROUP_LIMIT },
-            },
+  const result = await searchConsumptionAnalytics<
+    never,
+    GroupsWithActivityAggs
+  >(query, {
+    aggregations: {
+      by_group: {
+        terms: { field: USER_GROUP_IDS_FIELD, size: limit },
+        aggs: {
+          members: {
+            terms: { field: USER_ID_FIELD, size: MEMBER_IDS_PER_GROUP_LIMIT },
           },
         },
       },
-      size: 0,
-    }
-  );
+    },
+    size: 0,
+  });
 
   if (result.isErr()) {
     return result;
@@ -103,7 +104,7 @@ export async function fetchConsumptionRelevantGroups(
   );
   const groups = await GroupResource.fetchByModelIds(auth, groupModelIds);
 
-  const relevantGroups = groups
+  const groupsWithActivity = groups
     .map((group) => ({
       id: group.sId,
       name: group.name,
@@ -111,5 +112,5 @@ export async function fetchConsumptionRelevantGroups(
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  return new Ok({ groups: relevantGroups });
+  return new Ok({ groups: groupsWithActivity });
 }

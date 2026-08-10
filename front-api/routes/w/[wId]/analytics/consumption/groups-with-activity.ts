@@ -1,6 +1,6 @@
+import type { GetConsumptionGroupsWithActivityResponse } from "@app/lib/api/analytics/consumption/groups_with_activity";
+import { fetchConsumptionGroupsWithActivity } from "@app/lib/api/analytics/consumption/groups_with_activity";
 import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import type { GetConsumptionRelevantGroupsResponse } from "@app/lib/api/analytics/consumption/relevant_groups";
-import { fetchConsumptionRelevantGroups } from "@app/lib/api/analytics/consumption/relevant_groups";
 import {
   ConsumptionTopQuerySchema,
   toConsumptionPeriodInput,
@@ -10,9 +10,9 @@ import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
-export type { GetConsumptionRelevantGroupsResponse };
+export type { GetConsumptionGroupsWithActivityResponse };
 
-// Mounted at /api/w/:wId/analytics/consumption/relevant-groups.
+// Mounted at /api/w/:wId/analytics/consumption/groups-with-activity.
 const app = workspaceApp();
 
 /** @ignoreswagger */
@@ -29,7 +29,7 @@ app.get(
       toConsumptionPeriodInput(periodQuery)
     );
 
-    const result = await fetchConsumptionRelevantGroups(auth, {
+    const result = await fetchConsumptionGroupsWithActivity(auth, {
       period,
       limit,
     });
@@ -38,12 +38,12 @@ app.get(
         status_code: 500,
         api_error: {
           type: "internal_server_error",
-          message: `Failed to retrieve consumption-relevant groups: ${result.error.message}`,
+          message: `Failed to retrieve consumption groups with activity: ${result.error.message}`,
         },
       });
     }
 
-    const body: GetConsumptionRelevantGroupsResponse = result.value;
+    const body: GetConsumptionGroupsWithActivityResponse = result.value;
     return ctx.json(body);
   }
 );

@@ -28,7 +28,7 @@ import { UsageFilterModelComplexityControls } from "@app/components/workspace/an
 import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
-import { useConsumptionRelevantGroups } from "@app/hooks/useConsumptionRelevantGroups";
+import { useConsumptionGroupsWithActivity } from "@app/hooks/useConsumptionGroupsWithActivity";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -49,7 +49,7 @@ interface UsageFilterPanelProps {
   // Agents/models/tools/skills/sources are still mock data (see
   // usageFilterMockData.ts — sources are fake connectors standing in for a
   // real db call); members and groups are fetched live below, scoped to
-  // `period` (useConsumptionTop, useConsumptionRelevantGroups).
+  // `period` (useConsumptionTop, useConsumptionGroupsWithActivity).
   categoryOptions: {
     agent: UsageFilterAgentOption[];
     model: UsageFilterModelOption[];
@@ -108,7 +108,7 @@ export function UsageFilterPanel({
     disabled: !isMemberCategoryActive,
   });
 
-  const { groups } = useConsumptionRelevantGroups({
+  const { groups } = useConsumptionGroupsWithActivity({
     workspaceId: owner.sId,
     period,
     disabled: !isMemberCategoryActive,

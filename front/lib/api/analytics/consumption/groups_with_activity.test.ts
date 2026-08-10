@@ -1,5 +1,5 @@
+import { fetchConsumptionGroupsWithActivity } from "@app/lib/api/analytics/consumption/groups_with_activity";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import { fetchConsumptionRelevantGroups } from "@app/lib/api/analytics/consumption/relevant_groups";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { makeSId } from "@app/lib/resources/string_ids";
@@ -32,7 +32,7 @@ async function setup() {
   return { auth, workspace };
 }
 
-describe("fetchConsumptionRelevantGroups", () => {
+describe("fetchConsumptionGroupsWithActivity", () => {
   afterEach(() => {
     vi.mocked(searchConsumptionAnalytics).mockReset();
   });
@@ -49,7 +49,7 @@ describe("fetchConsumptionRelevantGroups", () => {
       { key: engineering.sId, members: { buckets: [{ key: "u3" }] } },
     ]);
 
-    const result = await fetchConsumptionRelevantGroups(auth, {
+    const result = await fetchConsumptionGroupsWithActivity(auth, {
       period: PERIOD,
       limit: 10,
     });
@@ -74,7 +74,7 @@ describe("fetchConsumptionRelevantGroups", () => {
       { key: deletedGroupSId, members: { buckets: [{ key: "u1" }] } },
     ]);
 
-    const result = await fetchConsumptionRelevantGroups(auth, {
+    const result = await fetchConsumptionGroupsWithActivity(auth, {
       period: PERIOD,
       limit: 10,
     });
@@ -90,7 +90,7 @@ describe("fetchConsumptionRelevantGroups", () => {
     const { auth } = await setup();
     mockGroupBuckets([]);
 
-    const result = await fetchConsumptionRelevantGroups(auth, {
+    const result = await fetchConsumptionGroupsWithActivity(auth, {
       period: PERIOD,
       limit: 10,
     });
@@ -106,7 +106,10 @@ describe("fetchConsumptionRelevantGroups", () => {
     const { auth } = await setup();
     mockGroupBuckets([]);
 
-    await fetchConsumptionRelevantGroups(auth, { period: PERIOD, limit: 25 });
+    await fetchConsumptionGroupsWithActivity(auth, {
+      period: PERIOD,
+      limit: 25,
+    });
 
     const [query, options] = vi.mocked(searchConsumptionAnalytics).mock
       .calls[0];

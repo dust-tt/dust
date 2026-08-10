@@ -1,6 +1,6 @@
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import groupsWithActivity from "./groups-with-activity";
 import overview from "./overview";
-import relevantGroups from "./relevant-groups";
 import timeseries from "./timeseries";
 import topAgents from "./top-agents";
 import topModels from "./top-models";
@@ -11,8 +11,8 @@ import topUsers from "./top-users";
 
 const app = workspaceApp();
 
+app.route("/groups-with-activity", groupsWithActivity);
 app.route("/overview", overview);
-app.route("/relevant-groups", relevantGroups);
 app.route("/timeseries", timeseries);
 app.route("/top-agents", topAgents);
 app.route("/top-models", topModels);

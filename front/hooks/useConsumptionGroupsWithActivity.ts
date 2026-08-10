@@ -1,12 +1,10 @@
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { consumptionQueryString } from "@app/lib/analytics/consumption_period";
-// Type-only: importing a value from this module would pull the Elasticsearch
-// client into the browser bundle (see the note in `series.ts`).
-import type { GetConsumptionRelevantGroupsResponse } from "@app/lib/api/analytics/consumption/relevant_groups";
+import type { GetConsumptionGroupsWithActivityResponse } from "@app/lib/api/analytics/consumption/groups_with_activity";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { Fetcher } from "swr";
 
-export type ConsumptionRelevantGroupRow = {
+export type ConsumptionGroupWithActivityRow = {
   id: string;
   name: string;
   memberIds: string[];
@@ -14,9 +12,9 @@ export type ConsumptionRelevantGroupRow = {
 
 // Caps the number of distinct groups returned (the aggregation itself already
 // covers every group active in the period, unlike a top-N ranking).
-const RELEVANT_GROUPS_LIMIT = 100;
+const GROUPS_WITH_ACTIVITY_LIMIT = 100;
 
-export function useConsumptionRelevantGroups({
+export function useConsumptionGroupsWithActivity({
   workspaceId,
   period,
   disabled,
@@ -26,21 +24,21 @@ export function useConsumptionRelevantGroups({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const relevantGroupsFetcher: Fetcher<GetConsumptionRelevantGroupsResponse> =
+  const groupsWithActivityFetcher: Fetcher<GetConsumptionGroupsWithActivityResponse> =
     fetcher;
 
   const params = new URLSearchParams(consumptionQueryString(period));
-  params.set("limit", String(RELEVANT_GROUPS_LIMIT));
+  params.set("limit", String(GROUPS_WITH_ACTIVITY_LIMIT));
 
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/analytics/consumption/relevant-groups?${params.toString()}`,
-    relevantGroupsFetcher,
+    `/api/w/${workspaceId}/analytics/consumption/groups-with-activity?${params.toString()}`,
+    groupsWithActivityFetcher,
     { disabled }
   );
 
   return {
-    groups: data?.groups ?? emptyArray<ConsumptionRelevantGroupRow>(),
-    isRelevantGroupsLoading: !error && !data && !disabled,
-    isRelevantGroupsError: error,
+    groups: data?.groups ?? emptyArray<ConsumptionGroupWithActivityRow>(),
+    isGroupsWithActivityLoading: !error && !data && !disabled,
+    isGroupsWithActivityError: error,
   };
 }
