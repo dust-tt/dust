@@ -305,6 +305,7 @@ export function UsageFilterPanel({
     if (open) {
       setDraftFilter(filter);
       setSearchText("");
+      selectedGroups.setItems([]);
       resetFilterPickerPagination();
     }
   };
