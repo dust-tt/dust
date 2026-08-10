@@ -225,6 +225,7 @@ export const supportedResourceTypes = [
   "conversations",
   "data_source_views",
   "data_sources",
+  "files",
   "mcp_server_views",
   "skills",
   "spaces",

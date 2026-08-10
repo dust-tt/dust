@@ -1,0 +1,12 @@
+{
+  "action": "frame.deleted_admin",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "frame" }
+  ],
+  "metadata": {
+    "frame_name": "string",
+    "source": "string",
+    "actor_type": "string"
+  }
+}
