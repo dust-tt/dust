@@ -1503,9 +1503,11 @@ const ConversationListItem = memo(
     const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
     const {
       isMenuOpen,
+      isMenuOpenOrClosing,
       menuTriggerPosition,
       handleRightClick,
-      handleMenuOpenChange,
+      handleRightPointerDown,
+      handleMenuPhaseChange,
     } = useConversationMenu();
 
     const [showTypingAnimation, setShowTypingAnimation] = useState(false);
@@ -1598,10 +1600,12 @@ const ConversationListItem = memo(
             trigger={() => <NavigationListItemAction />}
             isConversationDisplayed={activeConversationId === conversation.sId}
             isOpen={isMenuOpen}
-            onOpenChange={handleMenuOpenChange}
+            isOpenOrClosing={isMenuOpenOrClosing}
+            onPhaseChange={handleMenuPhaseChange}
             triggerPosition={menuTriggerPosition}
           />
         }
+        onPointerDownCapture={handleRightPointerDown}
         onContextMenu={handleRightClick}
         onClick={async () => {
           // Side bar is the floating sidebar that appears when the screen is small.

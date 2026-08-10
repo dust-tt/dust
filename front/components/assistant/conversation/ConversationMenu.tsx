@@ -70,7 +70,7 @@ import {
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ReactElement } from "react";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useRef, useState } from "react";
 
 /**
  * Hook for handling right-click context menu with timing protection
@@ -82,25 +82,19 @@ import { useCallback, useContext, useEffect, useState } from "react";
  * while the menu is open still trigger our handlers. Due to React's async state updates,
  * when the menu closes, our right-click handler sees isMenuOpen as false and reopens the menu.
  */
+type MenuPhase = "closed" | "open" | "closing";
+
 export function useConversationMenu() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [menuPhase, setMenuPhase] = useState<MenuPhase>("closed");
   const [menuTriggerPosition, setMenuTriggerPosition] = useState<
     { x: number; y: number } | undefined
   >();
+  const ignoreNextContextMenuRef = useRef(false);
 
-  // Tracks if the menu was just closed to prevent immediate reopening
-  // This flag creates a brief "cooldown" period after menu closure
-  const [wasMenuJustClosed, setWasMenuJustClosed] = useState(false);
-
-  const handleMenuOpenChange = useCallback((open: boolean) => {
-    setIsMenuOpen(open);
-    if (!open) {
-      // When menu closes, set the "just closed" flag for 100ms
-      // This prevents right-click handlers from immediately reopening the menu
-      setWasMenuJustClosed(true);
-      setTimeout(() => {
-        setWasMenuJustClosed(false);
-      }, 100);
+  const handleMenuPhaseChange = useCallback((phase: MenuPhase) => {
+    setMenuPhase(phase);
+    if (phase === "closed") {
+      setMenuTriggerPosition(undefined);
     }
   }, []);
 
@@ -109,34 +103,43 @@ export function useConversationMenu() {
       e.preventDefault();
       e.stopPropagation();
 
-      // Ignore right-clicks if menu is currently open OR was just closed
-      // This prevents the close -> immediate reopen behavior
-      if (isMenuOpen || wasMenuJustClosed) {
+      const shouldIgnore = ignoreNextContextMenuRef.current;
+      ignoreNextContextMenuRef.current = false;
+
+      // Prevent the menu from reopening while its closing animation is running.
+      if (shouldIgnore || menuPhase !== "closed") {
         return;
       }
 
       // Open menu at cursor position
       setMenuTriggerPosition({ x: e.clientX, y: e.clientY });
-      setIsMenuOpen(true);
+      setMenuPhase("open");
     },
-    [isMenuOpen, wasMenuJustClosed]
+    [menuPhase]
   );
 
-  // Clear the trigger position when menu closes to allow animations to complete
-  // The 150ms delay ensures smooth closing animation before position reset
-  useEffect(() => {
-    if (!isMenuOpen) {
-      setTimeout(() => {
-        setMenuTriggerPosition(undefined);
-      }, 150);
-    }
-  }, [isMenuOpen]);
+  const handleRightPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLElement>) => {
+      const isContextMenuGesture =
+        e.button === 2 || (e.button === 0 && e.ctrlKey);
+      const target = e.target;
+
+      ignoreNextContextMenuRef.current =
+        isContextMenuGesture &&
+        target instanceof Node &&
+        e.currentTarget.contains(target) &&
+        menuPhase !== "closed";
+    },
+    [menuPhase]
+  );
 
   return {
-    isMenuOpen,
+    isMenuOpen: menuPhase === "open",
+    isMenuOpenOrClosing: menuPhase !== "closed",
     menuTriggerPosition,
     handleRightClick,
-    handleMenuOpenChange,
+    handleRightPointerDown,
+    handleMenuPhaseChange,
   };
 }
 
@@ -149,7 +152,8 @@ interface ConversationMenuProps {
     | (({ isPendingAction }: { isPendingAction: boolean }) => ReactElement);
   isConversationDisplayed: boolean;
   isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
+  isOpenOrClosing: boolean;
+  onPhaseChange: (phase: MenuPhase) => void;
   triggerPosition?: { x: number; y: number };
   displayOpenInBrowser?: boolean;
   openDetailsInNewTab?: boolean;
@@ -162,7 +166,8 @@ export function ConversationMenu({
   trigger,
   isConversationDisplayed,
   isOpen,
-  onOpenChange,
+  isOpenOrClosing,
+  onPhaseChange,
   triggerPosition,
   displayOpenInBrowser,
   openDetailsInNewTab,
@@ -220,7 +225,9 @@ export function ConversationMenu({
   };
 
   const shouldWaitBeforeFetching =
-    activeConversationId === null || user?.sId === undefined || !isOpen;
+    activeConversationId === null ||
+    user?.sId === undefined ||
+    !isOpenOrClosing;
   const { mutateConversation } = useConversation({
     conversationId: isConversationDisplayed ? activeConversationId : null,
     workspaceId: owner.sId,
@@ -410,7 +417,11 @@ export function ConversationMenu({
         }}
         owner={owner}
       />
-      <DropdownMenu modal={false} open={isOpen} onOpenChange={onOpenChange}>
+      <DropdownMenu
+        modal={false}
+        open={isOpen}
+        onOpenChange={(open) => onPhaseChange(open ? "open" : "closing")}
+      >
         {triggerPosition ? (
           <>
             {menuTrigger}
@@ -430,7 +441,10 @@ export function ConversationMenu({
         ) : (
           <DropdownMenuTrigger asChild>{menuTrigger}</DropdownMenuTrigger>
         )}
-        <DropdownMenuContent onFocusOutside={(e) => e.preventDefault()}>
+        <DropdownMenuContent
+          onCloseAutoFocus={() => onPhaseChange("closed")}
+          onFocusOutside={(e) => e.preventDefault()}
+        >
           <DropdownMenuItem
             label="Rename conversation"
             onClick={() => setShowRenameDialog(true)}

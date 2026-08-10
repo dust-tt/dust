@@ -61,9 +61,11 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
 
   const {
     isMenuOpen,
+    isMenuOpenOrClosing,
     menuTriggerPosition,
     handleRightClick,
-    handleMenuOpenChange,
+    handleRightPointerDown,
+    handleMenuPhaseChange,
   } = useConversationMenu();
 
   const currentTitle = conversation
@@ -141,6 +143,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     <AppLayoutTitle>
       <div
         className="grid h-full min-w-0 max-w-full grid-cols-[1fr_auto] items-center gap-3"
+        onPointerDownCapture={handleRightPointerDown}
         onContextMenu={handleRightClick}
       >
         <div
@@ -215,7 +218,8 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
             )}
             isConversationDisplayed={true}
             isOpen={isMenuOpen}
-            onOpenChange={handleMenuOpenChange}
+            isOpenOrClosing={isMenuOpenOrClosing}
+            onPhaseChange={handleMenuPhaseChange}
             triggerPosition={menuTriggerPosition}
           />
         </div>
