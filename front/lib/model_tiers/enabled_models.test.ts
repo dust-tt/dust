@@ -182,10 +182,8 @@ describe("getModelForStream", () => {
 
     expect(resolved).not.toBeNull();
     // In a full workspace every candidate is available, so the first one wins.
-    expect(resolved?.model.modelId).toBe(
-      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
-    );
-    expect(resolved?.reasoningEffort).toBe("medium");
+    expect(resolved?.model.modelId).toBe(GPT_5_6_LUNA_MODEL_ID);
+    expect(resolved?.reasoningEffort).toBe("high");
   });
 
   it("routes the Fast stream to its first available candidate + effort", async () => {
