@@ -103,7 +103,6 @@ import {
   Chip,
   Clipboard,
   ClipboardCheck,
-  CoinsStacked01,
   ConversationMessageAvatar,
   ConversationMessageContainer,
   ConversationMessageContent,
@@ -121,6 +120,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
   RefreshCw02,
+  StarCircle,
   Stop,
   Tooltip,
   Trash01,
@@ -872,7 +872,7 @@ export function AgentMessage({
           variant="ghost-secondary"
           size="xs"
           label={formattedCredits}
-          iconRight={CoinsStacked01}
+          iconRight={StarCircle}
           className="gap-1 px-1 tracking-normal"
           aria-label={`${formatCreditValue(agentMessage.costCredits)} used for this message. View credit breakdown`}
         />
@@ -897,7 +897,7 @@ export function AgentMessage({
             className="inline-flex h-6 items-center gap-1 rounded-lg px-1 text-sm font-medium leading-5 text-muted-foreground"
           >
             {formattedCredits}
-            <CoinsStacked01 className="h-4 w-4" />
+            <StarCircle className="h-4 w-4" />
           </span>
         )
       );
