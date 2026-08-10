@@ -50,7 +50,6 @@ import {
   refundYearlyMigrationProration,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -58,6 +57,7 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import { countActiveSeatsForWorkspace } from "@app/lib/workspace_seats";
 import logger from "@app/logger/logger";
 import { launchCleanMetronomeInvoiceWorkflow } from "@app/temporal/metronome_events_queue/client";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
@@ -640,9 +640,7 @@ async function handleStripeCheckoutCompleted({
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const workspaceSeats = await MembershipResource.countActiveSeatsInWorkspace(
-      workspace.sId
-    );
+    const workspaceSeats = await countActiveSeatsForWorkspace(workspace.sId);
     await ServerSideTracking.trackSubscriptionCreated({
       workspace: renderLightWorkspaceType({ workspace }),
       planCode,

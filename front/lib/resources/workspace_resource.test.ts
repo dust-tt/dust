@@ -1,39 +1,52 @@
 import { CONVERSATIONS_RETENTION_MIN_DAYS } from "@app/lib/conversations_retention";
 import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
+import { getNamespace } from "@app/tests/utils/test_cls";
+import type { Transaction } from "sequelize";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const inMemoryCache = vi.hoisted(() => new Map<string, string>());
 const deletedKeys = vi.hoisted(() => [] as string[]);
+const cacheReadFailure = vi.hoisted(() => ({ current: null as Error | null }));
 
 vi.mock("@app/lib/utils/cache", () => ({
-  cacheWithRedis: vi
-    .fn()
-    .mockImplementation(
-      <T, Args extends unknown[]>(
-        fn: CacheableFunction<JsonSerializable<T>, Args>,
-        resolver: (...args: Args) => string
-      ) => {
-        return async (...args: Args): Promise<JsonSerializable<T>> => {
-          const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
-          const cached = inMemoryCache.get(key);
-          if (cached) {
-            return JSON.parse(cached) as JsonSerializable<T>;
-          }
-          const result = await fn(...args);
-          inMemoryCache.set(key, JSON.stringify(result));
-          return result;
-        };
+  buildCacheWithRedisKey: (cacheId: string, resolverKey: string) =>
+    `cacheWithRedis-${cacheId}-${resolverKey}`,
+  cacheWithRedis: vi.fn().mockImplementation(
+    <T, Args extends unknown[]>(
+      fn: CacheableFunction<JsonSerializable<T>, Args>,
+      resolver: (...args: Args) => string,
+      options?: {
+        cacheId?: string;
+        cacheNullValues?: boolean;
       }
-    ),
+    ) => {
+      return async (...args: Args): Promise<JsonSerializable<T>> => {
+        if (cacheReadFailure.current) {
+          throw cacheReadFailure.current;
+        }
+        const key = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
+        const cached = inMemoryCache.get(key);
+        if (cached) {
+          return JSON.parse(cached) as JsonSerializable<T>;
+        }
+        const result = await fn(...args);
+        if ((options?.cacheNullValues ?? true) || result !== null) {
+          inMemoryCache.set(key, JSON.stringify(result));
+        }
+        return result;
+      };
+    }
+  ),
   invalidateCacheWithRedis: vi
     .fn()
     .mockImplementation(
       <T, Args extends unknown[]>(
         fn: CacheableFunction<JsonSerializable<T>, Args>,
-        resolver: (...args: Args) => string
+        resolver: (...args: Args) => string,
+        options?: { cacheId?: string }
       ) => {
         return (...args: Args): Promise<void> => {
-          const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+          const key = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
           inMemoryCache.delete(key);
           deletedKeys.push(key);
           return Promise.resolve();
@@ -99,11 +112,10 @@ vi.mock("@app/lib/resources/kill_switch_resource", () => ({
 
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { WORKSPACE_CACHE_KEY_VERSION } from "@app/types/shared/cache_resource_registry";
 import type { WorkspaceType } from "@app/types/user";
 
 function getCacheKeyForWorkspace(workspaceId: string): string {
-  return `cacheWithRedis-_fetchByIdUncached-workspace:v${WORKSPACE_CACHE_KEY_VERSION}:${workspaceId}`;
+  return WorkspaceResource.byIdCacheOperations.buildKey({ wId: workspaceId });
 }
 
 const INVALID_RETENTION_DAYS = CONVERSATIONS_RETENTION_MIN_DAYS - 1;
@@ -113,6 +125,8 @@ describe("WorkspaceResource", () => {
   let workspace: WorkspaceType;
 
   beforeEach(async () => {
+    listEnabledKillSwitches.mockReset().mockResolvedValue([]);
+    cacheReadFailure.current = null;
     workspace = await WorkspaceFactory.basic();
   });
 
@@ -160,6 +174,49 @@ describe("WorkspaceResource", () => {
 
         await WorkspaceResource.fetchById(workspaceId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
+      });
+
+      it("bypasses the cache in a transaction", async () => {
+        const cacheKey = getCacheKeyForWorkspace(workspace.sId);
+        const transaction: Transaction | undefined =
+          getNamespace("test-namespace")?.get("transaction");
+        if (!transaction) {
+          throw new Error("Expected the test transaction to be available.");
+        }
+
+        const resource = await WorkspaceResource.fetchById(
+          workspace.sId,
+          transaction
+        );
+
+        expect(resource?.sId).toBe(workspace.sId);
+        expect(inMemoryCache.has(cacheKey)).toBe(false);
+      });
+
+      it("falls back to the database when the cache is unavailable", async () => {
+        cacheReadFailure.current = new Error("Redis unavailable");
+
+        const resource = await WorkspaceResource.fetchById(workspace.sId);
+
+        expect(resource?.sId).toBe(workspace.sId);
+      });
+
+      it("applies provider kill switches after reading the cached snapshot", async () => {
+        workspace = await WorkspaceFactory.basic({
+          whiteListedProviders: ["openai", "anthropic"],
+        });
+        listEnabledKillSwitches.mockResolvedValue(["global_blacklist_openai"]);
+
+        const firstFetch = await WorkspaceResource.fetchById(workspace.sId);
+        expect(firstFetch?.whiteListedProviders).toEqual(["anthropic"]);
+
+        listEnabledKillSwitches.mockResolvedValue([]);
+
+        const cachedFetch = await WorkspaceResource.fetchById(workspace.sId);
+        expect(cachedFetch?.whiteListedProviders).toEqual([
+          "openai",
+          "anthropic",
+        ]);
       });
     });
 

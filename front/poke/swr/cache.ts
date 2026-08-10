@@ -3,12 +3,28 @@ import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   DeleteAllPokeCacheResponseBody,
+  GetPokeCacheCatalogResponseBody,
   GetPokeCacheResponseBody,
   RedisInstance,
 } from "@app/types/api/poke/cache";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { useState } from "react";
 import type { Fetcher } from "swr";
+
+export function usePokeCacheCatalog() {
+  const { fetcher } = useFetcher();
+  const catalogFetcher: Fetcher<GetPokeCacheCatalogResponseBody> = fetcher;
+  const { data, error } = useSWRWithDefaults(
+    "/api/poke/cache/catalog",
+    catalogFetcher
+  );
+
+  return {
+    resources: data?.resources ?? [],
+    isCatalogLoading: !error && !data,
+    isCatalogError: error,
+  };
+}
 
 interface UsePokeCacheLookupParams {
   rawKey?: string;

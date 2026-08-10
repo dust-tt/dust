@@ -1,10 +1,7 @@
 /**
- * Shared cache resource registry — importable by both API routes and UI.
- *
- * Each entry describes one logical "resource type" that is cached via
- * `cacheWithRedis`. The registry is a parallel source of truth: we do NOT
- * refactor the actual `cacheWithRedis` call sites. Instead, each definition
- * mirrors the function name and resolver key format used at the call site.
+ * Legacy Poke cache descriptors awaiting migration to owner-defined cache
+ * handles. Do not add entries here: new caches should expose operations from
+ * their owning Resource or query module.
  */
 
 export interface CacheResourceParam {
@@ -45,26 +42,9 @@ export function buildCacheKeyPattern(
 
 // Bump these versions whenever the shape or the semantics of the cached payload
 // change (e.g. a new field added).
-export const WORKSPACE_CACHE_KEY_VERSION = 2;
 export const SUBSCRIPTION_CACHE_KEY_VERSION = 2;
 
 export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
-  {
-    id: "workspace_by_sid",
-    label: "Workspace (by sId)",
-    fnName: "_fetchByIdUncached",
-    params: [
-      {
-        key: "wId",
-        label: "Workspace sId",
-        type: "string",
-        placeholder: "e.g. abc123",
-      },
-    ],
-    buildResolverKey: (p) =>
-      `workspace:v${WORKSPACE_CACHE_KEY_VERSION}:${p.wId}`,
-    resolverKeyPattern: `workspace:v${WORKSPACE_CACHE_KEY_VERSION}:*`,
-  },
   {
     id: "user_by_workos_id",
     label: "User (by WorkOS ID)",
@@ -117,21 +97,6 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
     buildResolverKey: (p) =>
       `role:user:${p.userModelId}:workspace:${p.workspaceModelId}`,
     resolverKeyPattern: "role:user:*",
-  },
-  {
-    id: "membership_seats",
-    label: "Membership seats (active count)",
-    fnName: "_countActiveSeatsInWorkspaceUncached",
-    params: [
-      {
-        key: "workspaceId",
-        label: "Workspace sId",
-        type: "string",
-        placeholder: "e.g. DevWkSpace",
-      },
-    ],
-    buildResolverKey: (p) => `count-active-seats-in-workspace:${p.workspaceId}`,
-    resolverKeyPattern: "count-active-seats-in-workspace:*",
   },
   {
     id: "workos_orgs_for_user",

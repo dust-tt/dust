@@ -1,8 +1,8 @@
 import { getDataSources } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { doesConnectorProviderCountTowardConnectionsLimit } from "@app/lib/data_sources";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { countActiveSeatsForWorkspace } from "@app/lib/workspace_seats";
 import type { PlanType } from "@app/types/plan";
 
 type PlanFitResult = {
@@ -30,9 +30,7 @@ export async function checkWorkspaceFitsPlanLimits(
   const violations: string[] = [];
 
   if (limits.users.maxUsers !== -1) {
-    const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
-      workspace.sId
-    );
+    const activeSeats = await countActiveSeatsForWorkspace(workspace.sId);
     if (activeSeats > limits.users.maxUsers) {
       violations.push(
         `active seats (${activeSeats}) exceed plan maxUsers (${limits.users.maxUsers})`

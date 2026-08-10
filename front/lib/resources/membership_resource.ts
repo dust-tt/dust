@@ -15,7 +15,7 @@ import {
   invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
+import { invalidateWorkspaceActiveSeatsCache } from "@app/lib/workspace_seats/cache";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type {
@@ -890,10 +890,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       }
     );
 
-    const workspaceId = workspace.sId;
-    invalidateCacheAfterCommit(transaction, () =>
-      MembershipResource.invalidateActiveSeatsCache(workspaceId)
-    );
+    await invalidateWorkspaceActiveSeatsCache(workspace.sId, transaction);
   }
 
   /**
@@ -988,42 +985,6 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return result;
   }
 
-  // Seat counting with caching - used to track active seats in a workspace
-  private static readonly seatsCacheKeyResolver = (workspaceId: string) =>
-    `count-active-seats-in-workspace:${workspaceId}`;
-
-  private static async _countActiveSeatsInWorkspaceUncached(
-    workspaceId: string
-  ): Promise<number> {
-    const workspace = await WorkspaceResource.fetchById(workspaceId);
-    if (!workspace) {
-      throw new Error(`Workspace not found for sId: ${workspaceId}`);
-    }
-
-    return MembershipResource.getMembersCountForWorkspace({
-      workspace: renderLightWorkspaceType({ workspace }),
-      activeOnly: true,
-    });
-  }
-
-  // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
-  private static countActiveSeatsInWorkspaceCached = cacheWithRedis(
-    MembershipResource._countActiveSeatsInWorkspaceUncached,
-    MembershipResource.seatsCacheKeyResolver,
-    { cacheNullValues: false }
-  );
-
-  private static invalidateActiveSeatsCache = invalidateCacheWithRedis(
-    MembershipResource._countActiveSeatsInWorkspaceUncached,
-    MembershipResource.seatsCacheKeyResolver
-  );
-
-  static async countActiveSeatsInWorkspace(
-    workspaceId: string
-  ): Promise<number> {
-    return this.countActiveSeatsInWorkspaceCached(workspaceId);
-  }
-
   protected override async update(
     blob: Partial<Attributes<MembershipModel>>,
     transaction?: Transaction
@@ -1035,9 +996,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     ]);
     if (workspace) {
       const workspaceId = workspace.sId;
-      invalidateCacheAfterCommit(transaction, () =>
-        MembershipResource.invalidateActiveSeatsCache(workspaceId)
-      );
+      await invalidateWorkspaceActiveSeatsCache(workspaceId, transaction);
     }
 
     return result;
@@ -1096,7 +1055,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       where: { workspaceId: workspace.id },
     });
 
-    await MembershipResource.invalidateActiveSeatsCache(workspace.sId);
+    await invalidateWorkspaceActiveSeatsCache(workspace.sId);
 
     return result;
   }
@@ -1180,11 +1139,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     const userModelId = user.id;
     const workspaceModelId = workspace.id;
     invalidateCacheAfterCommit(transaction, async () => {
-      await MembershipResource.invalidateActiveSeatsCache(workspaceId);
-      await MembershipResource.invalidateRoleCache({
-        userModelId,
-        workspaceModelId,
-      });
+      await Promise.all([
+        invalidateWorkspaceActiveSeatsCache(workspaceId),
+        MembershipResource.invalidateRoleCache({
+          userModelId,
+          workspaceModelId,
+        }),
+      ]);
     });
 
     return new MembershipResource(MembershipModel, newMembership.get());
@@ -1315,11 +1276,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     const userModelId = user.id;
     const workspaceModelId = workspace.id;
     invalidateCacheAfterCommit(transaction, async () => {
-      await MembershipResource.invalidateActiveSeatsCache(workspaceId);
-      await MembershipResource.invalidateRoleCache({
-        userModelId,
-        workspaceModelId,
-      });
+      await Promise.all([
+        invalidateWorkspaceActiveSeatsCache(workspaceId),
+        MembershipResource.invalidateRoleCache({
+          userModelId,
+          workspaceModelId,
+        }),
+      ]);
     });
 
     // We do not invalidate GroupMembership here
@@ -1424,11 +1387,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       const userModelId = user.id;
       const workspaceModelId = workspace.id;
       invalidateCacheAfterCommit(transaction, async () => {
-        await MembershipResource.invalidateActiveSeatsCache(workspaceId);
-        await MembershipResource.invalidateRoleCache({
-          userModelId,
-          workspaceModelId,
-        });
+        await Promise.all([
+          invalidateWorkspaceActiveSeatsCache(workspaceId),
+          MembershipResource.invalidateRoleCache({
+            userModelId,
+            workspaceModelId,
+          }),
+        ]);
       });
 
       await this.updateWorkOSMembershipRole({
@@ -1911,13 +1876,15 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     const userModelId = this.userId;
     const workspaceModelId = this.workspaceId;
     invalidateCacheAfterCommit(transaction, async () => {
-      if (workspaceId) {
-        await MembershipResource.invalidateActiveSeatsCache(workspaceId);
-      }
-      await MembershipResource.invalidateRoleCache({
-        userModelId,
-        workspaceModelId,
-      });
+      await Promise.all([
+        workspaceId
+          ? invalidateWorkspaceActiveSeatsCache(workspaceId)
+          : Promise.resolve(),
+        MembershipResource.invalidateRoleCache({
+          userModelId,
+          workspaceModelId,
+        }),
+      ]);
     });
 
     return new Ok(undefined);

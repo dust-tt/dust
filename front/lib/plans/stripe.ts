@@ -12,9 +12,9 @@ import {
   SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED } from "@app/lib/resources/storage/models/credit_usage_configurations";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { countActiveSeatsForWorkspace } from "@app/lib/workspace_seats";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import { SUPPORTED_CURRENCIES } from "@app/types/currency";
@@ -248,9 +248,7 @@ export const createStripeSubscriptionCheckoutSession = async ({
     line_items: [
       {
         price: priceId,
-        quantity: await MembershipResource.countActiveSeatsInWorkspace(
-          owner.sId
-        ),
+        quantity: await countActiveSeatsForWorkspace(owner.sId),
       },
     ],
     allow_promotion_codes: true,
@@ -1098,9 +1096,7 @@ export async function createStripeBusinessSubscription({
   const defaultPaymentMethodId =
     getDefaultPaymentMethodId(existingSubscription);
 
-  const quantity = await MembershipResource.countActiveSeatsInWorkspace(
-    owner.sId
-  );
+  const quantity = await countActiveSeatsForWorkspace(owner.sId);
 
   const newSubscription = await stripe.subscriptions.create({
     customer: getCustomerId(existingSubscription),
@@ -1531,9 +1527,7 @@ export async function reportActiveSeats(
   stripeSubscriptionItem: Stripe.SubscriptionItem,
   workspace: LightWorkspaceType
 ): Promise<void> {
-  const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
-    workspace.sId
-  );
+  const activeSeats = await countActiveSeatsForWorkspace(workspace.sId);
 
   await updateStripeQuantityForSubscriptionItem(
     stripeSubscriptionItem,

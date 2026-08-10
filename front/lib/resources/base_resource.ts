@@ -21,6 +21,12 @@ export interface ResourceWithId {
   id: ModelId;
 }
 
+// Resource string identifiers are immutable after creation.
+export type ResourceUpdateBlob<M extends Model> = Omit<
+  Partial<Attributes<M>>,
+  "sId"
+> & { sId?: never };
+
 export type ResourceLogValue = string | number | null;
 export type ResourceLogJSON = Record<string, ResourceLogValue>;
 

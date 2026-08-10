@@ -34,12 +34,20 @@ export type CacheableFunction<T, Args extends unknown[]> = (
 
 type KeyResolver<Args extends unknown[]> = (...args: Args) => string;
 
+export function buildCacheWithRedisKey(
+  cacheId: string,
+  resolverKey: string
+): string {
+  return `cacheWithRedis-${cacheId}-${resolverKey}`;
+}
+
 function getCacheKey<T, Args extends unknown[]>(
-  fn: CacheableFunction<JsonSerializable<T>, Args>,
+  fn: CacheableFunction<T, Args>,
   resolver: KeyResolver<Args>,
-  args: Args
+  args: Args,
+  cacheId: string = fn.name
 ) {
-  return `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+  return buildCacheWithRedisKey(cacheId, resolver(...args));
 }
 
 // Wrapper function to cache the result of a function with Redis.
@@ -52,6 +60,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   fn: CacheableFunction<JsonSerializable<T>, Args>,
   resolver: KeyResolver<Args>,
   options: {
+    cacheId?: string;
     ttlMs?: number | ((...args: Args) => number);
     redisUri?: string;
     useDistributedLock?: boolean;
@@ -61,9 +70,23 @@ export function cacheWithRedis<T, Args extends unknown[]>(
 ): (...args: Args) => Promise<JsonSerializable<T>>;
 
 export function cacheWithRedis<T, Args extends unknown[]>(
+  fn: CacheableFunction<JsonSerializable<T> | null, Args>,
+  resolver: KeyResolver<Args>,
+  options: {
+    cacheId?: string;
+    ttlMs?: number | ((...args: Args) => number);
+    redisUri?: string;
+    useDistributedLock?: boolean;
+    skipIfLocked?: false;
+    cacheNullValues: false;
+  }
+): (...args: Args) => Promise<JsonSerializable<T> | null>;
+
+export function cacheWithRedis<T, Args extends unknown[]>(
   fn: CacheableFunction<JsonSerializable<T>, Args>,
   resolver: KeyResolver<Args>,
   options: {
+    cacheId?: string;
     ttlMs?: number | ((...args: Args) => number);
     redisUri?: string;
     useDistributedLock: true;
@@ -74,9 +97,10 @@ export function cacheWithRedis<T, Args extends unknown[]>(
 ): (...args: Args) => Promise<JsonSerializable<T> | null>;
 
 export function cacheWithRedis<T, Args extends unknown[]>(
-  fn: CacheableFunction<JsonSerializable<T>, Args>,
+  fn: CacheableFunction<JsonSerializable<T> | null, Args>,
   resolver: KeyResolver<Args>,
   {
+    cacheId,
     ttlMs,
     // Kept for backwards compatibility, no longer used.
     redisUri: _redisUri,
@@ -84,6 +108,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
     skipIfLocked = false,
     cacheNullValues = true,
   }: {
+    cacheId?: string;
     ttlMs?: number | ((...args: Args) => number);
     // Kept for backwards compatibility, no longer used.
     redisUri?: string;
@@ -106,7 +131,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
       throw new Error("ttlMs should be less than 24 hours");
     }
 
-    const key = getCacheKey(fn, resolver, args);
+    const key = getCacheKey(fn, resolver, args, cacheId);
 
     const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
 
@@ -194,26 +219,28 @@ export function warmCacheWithRedis<T, Args extends unknown[]>(
 }
 
 export function invalidateCacheWithRedis<T, Args extends unknown[]>(
-  fn: CacheableFunction<JsonSerializable<T>, Args>,
+  fn: CacheableFunction<T, Args>,
   resolver: KeyResolver<Args>,
   // Kept for backwards compatibility, no longer used.
   _options?: {
+    cacheId?: string;
     redisUri?: string;
   }
 ): (...args: Args) => Promise<void> {
   return async function (...args: Args): Promise<void> {
     const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
 
-    const key = getCacheKey(fn, resolver, args);
+    const key = getCacheKey(fn, resolver, args, _options?.cacheId);
     await redisCli.del(key);
   };
 }
 
 export function batchInvalidateCacheWithRedis<T, Args extends unknown[]>(
-  fn: CacheableFunction<JsonSerializable<T>, Args>,
+  fn: CacheableFunction<T, Args>,
   resolver: KeyResolver<Args>,
   // Kept for backwards compatibility, no longer used.
   _options?: {
+    cacheId?: string;
     redisUri?: string;
   }
 ): (argsList: Args[]) => Promise<void> {
@@ -224,13 +251,15 @@ export function batchInvalidateCacheWithRedis<T, Args extends unknown[]>(
 
     const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
 
-    const keys = argsList.map((args) => getCacheKey(fn, resolver, args));
+    const keys = argsList.map((args) =>
+      getCacheKey(fn, resolver, args, _options?.cacheId)
+    );
     await redisCli.del(keys);
   };
 }
 
 export function bestEffortInvalidateCacheWithRedis<T, Args extends unknown[]>(
-  fn: CacheableFunction<JsonSerializable<T>, Args>,
+  fn: CacheableFunction<T, Args>,
   resolver: KeyResolver<Args>,
   label: string
 ): (...args: Args) => Promise<void> {

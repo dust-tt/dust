@@ -61,6 +61,7 @@ import {
   getWorkspaceFirstAdmin,
   renderLightWorkspaceType,
 } from "@app/lib/workspace";
+import { countActiveSeatsForWorkspace } from "@app/lib/workspace_seats";
 import logger from "@app/logger/logger";
 import type {
   EnterpriseUpgradeFormType,
@@ -904,9 +905,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
 
     // Prevent subscribing if the new plan has less users allowed then the current one on the workspace
     if (newPlan.maxUsersInWorkspace !== -1) {
-      const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
-        workspace.sId
-      );
+      const activeSeats = await countActiveSeatsForWorkspace(workspace.sId);
       if (activeSeats > newPlan.maxUsersInWorkspace) {
         throw new Error(
           `Cannot subscribe to plan ${planCode}: new plan has less users allowed than currently in workspace.`

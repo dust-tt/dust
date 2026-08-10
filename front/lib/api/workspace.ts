@@ -20,6 +20,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import { countActiveSeatsForWorkspace } from "@app/lib/workspace_seats";
 import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 import type { GroupKind } from "@app/types/groups";
@@ -703,9 +704,7 @@ export async function checkSeatCountForWorkspace(
   }
   const { data: subscriptionItems } = stripeSubscription.items;
 
-  const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
-    workspace.sId
-  );
+  const activeSeats = await countActiveSeatsForWorkspace(workspace.sId);
 
   for (const item of subscriptionItems) {
     const usageToReportRes = getUsageToReportForSubscriptionItem(item);

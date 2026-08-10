@@ -194,6 +194,22 @@ describe("cacheWithRedis", () => {
         "cacheWithRedis-myFunc-foo-123"
       );
     });
+
+    it("uses an explicit stable cache id instead of the loader name", async () => {
+      const mockFn = vi.fn().mockResolvedValue("result");
+      Object.defineProperty(mockFn, "name", { value: "renamableLoader" });
+      mockRedisClient.get.mockResolvedValue(null);
+      mockRedisClient.set.mockResolvedValue("OK");
+
+      const cachedFn = cacheWithRedis(mockFn, (arg: string) => arg, {
+        cacheId: "workspace_by_sid",
+      });
+      await cachedFn("workspace-1");
+
+      expect(mockRedisClient.get).toHaveBeenCalledWith(
+        "cacheWithRedis-workspace_by_sid-workspace-1"
+      );
+    });
   });
 
   describe("TTL handling", () => {
@@ -506,6 +522,23 @@ describe("invalidateCacheWithRedis", () => {
 
     expect(mockRedisClient.del).toHaveBeenCalledWith(
       "cacheWithRedis-myFunc-foo-42"
+    );
+  });
+
+  it("uses the same explicit stable cache id for invalidation", async () => {
+    const mockFn = vi.fn();
+    Object.defineProperty(mockFn, "name", { value: "renamableLoader" });
+    mockRedisClient.del.mockResolvedValue(1);
+
+    const invalidateFn = invalidateCacheWithRedis(
+      mockFn,
+      (arg: string) => arg,
+      { cacheId: "workspace_by_sid" }
+    );
+    await invalidateFn("workspace-1");
+
+    expect(mockRedisClient.del).toHaveBeenCalledWith(
+      "cacheWithRedis-workspace_by_sid-workspace-1"
     );
   });
 });

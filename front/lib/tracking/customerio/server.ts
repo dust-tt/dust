@@ -5,6 +5,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import { countActiveSeatsForWorkspace } from "@app/lib/workspace_seats";
 import logger from "@app/logger/logger";
 import type { JobType } from "@app/types/job_type";
 import type { MembershipRoleType } from "@app/types/memberships";
@@ -232,8 +233,7 @@ export class CustomerioServerSideTracking {
 
     const planCode = workspace.planCode ?? subscription.getPlan().code;
     const seats =
-      workspace.seats ??
-      (await MembershipResource.countActiveSeatsInWorkspace(workspace.sId));
+      workspace.seats ?? (await countActiveSeatsForWorkspace(workspace.sId));
 
     // Unless the info changes, we only identify a given workspace once per day.
     const rateLimiterKey = `customerio_workspace:${workspace.sId}:${workspace.name}:${planCode}:${seats}`;
