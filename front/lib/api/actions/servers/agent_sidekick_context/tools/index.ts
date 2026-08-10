@@ -17,6 +17,7 @@ import type {
 } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import { AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_sidekick_helpers";
+import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
@@ -378,7 +379,7 @@ async function createToolsSuggestions({
   }
 
   const runAgentTools = tools.filter(
-    (t) => t.toJSON()?.server.name === "run_agent"
+    (t) => t.toJSON()?.server.name === RUN_AGENT_SERVER_NAME
   );
   if (runAgentTools.length > 0) {
     const runAgentToolNames = runAgentTools.map((t) => t.sId).join(", ");
