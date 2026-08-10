@@ -5,7 +5,7 @@ import { ReasoningEffortSubmenu } from "@app/components/agent_builder/instructio
 import { ModelPicker } from "@app/components/model_picker/ModelPicker";
 import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
 import { isSupportingResponseFormat } from "@app/types/assistant/assistant";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
@@ -211,8 +211,10 @@ function AdvancedSettingsLegacy({
 
 export function AdvancedSettings() {
   const { owner } = useAgentBuilderContext();
-  const { hasFeature } = useFeatureFlags();
-  const hasModelsPicker = hasFeature("models_picker");
+  const { killSwitches } = useKillSwitches();
+  const hasModelsPicker = !killSwitches?.includes(
+    "global_disable_models_picker"
+  );
 
   const [isResponseFormatDialogOpen, setIsResponseFormatDialogOpen] =
     React.useState(false);

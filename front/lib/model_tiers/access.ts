@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
 import type {
   AgentConfigurationScope,
@@ -9,7 +10,6 @@ import type {
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import { getMinimumReasoningEffort } from "@app/types/assistant/models/types";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { areRestrictedModelsAllowedForPublishedAgents } from "@app/types/user";
 
 const MODEL_TIER_NOT_ENABLED_ERROR_CODE = "model_tier_not_enabled";
@@ -35,17 +35,19 @@ export async function getModelTierAccessErrorForAgentConfiguration(
     agentName,
     model,
     reasoningEffort,
-    featureFlags,
     agentScope,
   }: {
     agentName: string;
     model: ModelConfigurationType;
     reasoningEffort?: ReasoningEffort;
-    featureFlags: WhitelistableFeature[];
     agentScope?: AgentConfigurationScope;
   }
 ): Promise<GenericErrorContent | null> {
-  if (!featureFlags.includes("models_picker")) {
+  // Model access tiers are only enforced while the model picker is enabled.
+  // The picker can be turned off globally via a kill switch.
+  if (
+    await KillSwitchResource.isKillSwitchEnabled("global_disable_models_picker")
+  ) {
     return null;
   }
 

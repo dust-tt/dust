@@ -18,7 +18,8 @@ import {
 } from "@app/components/model_picker/modelPickerUtils";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
@@ -90,8 +91,10 @@ export function ModelPicker({
   setStickyModelOverride,
   commitApiRef,
 }: ModelPickerProps) {
-  const { hasFeature } = useFeatureFlags();
-  const hasModelsPicker = hasFeature("models_picker");
+  const { killSwitches } = useKillSwitches();
+  const hasModelsPicker = !killSwitches?.includes(
+    "global_disable_models_picker"
+  );
   const { subscription } = useAuth();
   const lockPremiumEfforts = !isCreditPricedPlan(subscription.plan);
 

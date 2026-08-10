@@ -8,6 +8,7 @@ import { isModelAvailable } from "@app/lib/assistant";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { useAppRouter } from "@app/lib/platform";
+import { useKillSwitches } from "@app/lib/swr/kill";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
 import type {
   ModelConfigurationType,
@@ -37,7 +38,8 @@ export function ModelProvidersPageContent({
 }: ModelProvidersPageContentProps) {
   const { subscription } = useAuth();
   const { plan } = subscription;
-  const { featureFlags, hasFeature } = useFeatureFlags();
+  const { featureFlags } = useFeatureFlags();
+  const { killSwitches } = useKillSwitches();
   const { regionInfo } = useRegionContext();
   const router = useAppRouter();
 
@@ -85,7 +87,7 @@ export function ModelProvidersPageContent({
         </>
       )}
       <EmbeddingModelSelect workspace={workspace} />
-      {hasFeature("models_picker") && (
+      {!killSwitches?.includes("global_disable_models_picker") && (
         <div className="flex flex-col gap-2 p-3">
           <div className="font-semibold">Model access tiers</div>
           <div className="flex items-center justify-between gap-4">

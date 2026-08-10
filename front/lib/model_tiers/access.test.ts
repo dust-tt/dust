@@ -6,13 +6,22 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const isKillSwitchEnabled = vi.hoisted(() => vi.fn().mockResolvedValue(false));
+vi.mock("@app/lib/resources/kill_switch_resource", () => ({
+  KillSwitchResource: {
+    isKillSwitchEnabled,
+    listEnabledKillSwitches: vi.fn().mockResolvedValue([]),
+  },
+}));
 
 describe("getModelTierAccessErrorForAgentConfiguration", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
   let adminAuth: Authenticator;
 
   beforeEach(async () => {
+    isKillSwitchEnabled.mockResolvedValue(false);
     workspace = await WorkspaceFactory.basic();
     adminAuth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   });
@@ -45,7 +54,6 @@ describe("getModelTierAccessErrorForAgentConfiguration", () => {
     return getModelTierAccessErrorForAgentConfiguration(auth, {
       agentName: "test-agent",
       model: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
-      featureFlags: ["models_picker"],
       agentScope,
     });
   }
@@ -85,13 +93,13 @@ describe("getModelTierAccessErrorForAgentConfiguration", () => {
     expect(error?.code).toBe("model_tier_not_enabled");
   });
 
-  it("does not block when models_picker is disabled", async () => {
+  it("does not block when the model picker is disabled via kill switch", async () => {
+    isKillSwitchEnabled.mockResolvedValue(true);
     const auth = await restrictedUserAuth();
 
     const error = await getModelTierAccessErrorForAgentConfiguration(auth, {
       agentName: "test-agent",
       model: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
-      featureFlags: [],
       agentScope: "visible",
     });
 

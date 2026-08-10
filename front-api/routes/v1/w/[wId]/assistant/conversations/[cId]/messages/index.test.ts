@@ -1,6 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -177,7 +176,6 @@ describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages", () => {
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(userAuth, "models_picker");
     const conversation = await ConversationFactory.create(userAuth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],

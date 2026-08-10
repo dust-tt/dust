@@ -19,6 +19,7 @@ import {
   OpenaiLogo,
   PauseCircle,
   RefreshCw02,
+  Robot,
   Settings01,
   SliderToggle,
   Spinner,
@@ -75,6 +76,13 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
       "Pause the document upsert queue: parked upserts retry every 5 minutes until the switch is disabled.",
     note: "Enqueues keep succeeding and in-flight upserts finish. Use to shed Qdrant write load (e.g. during resharding).",
     icon: PauseCircle,
+  },
+  global_disable_models_picker: {
+    title: "Model Picker",
+    description:
+      "Disable the conversation model picker globally: hide the input-bar model/effort picker, reject per-message model selection, and stop enforcing model access tiers.",
+    note: "Advanced models and the Auto/Standard/Fast/Complex models stay available; only the user-facing picker and tier enforcement are turned off.",
+    icon: Robot,
   },
 };
 

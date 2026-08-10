@@ -55,6 +55,7 @@ import {
   useSeatPlan,
 } from "@app/lib/swr/credits";
 import { useGroups } from "@app/lib/swr/groups";
+import { useKillSwitches } from "@app/lib/swr/kill";
 import type { BulkMemberSelectionBody } from "@app/lib/swr/memberships";
 import {
   useBulkChangeSeatType,
@@ -161,6 +162,7 @@ export function UsagePage() {
   const { subscription } = useAuth();
   const router = useAppRouter();
   const { hasFeature } = useFeatureFlags();
+  const { killSwitches } = useKillSwitches();
   const isCreditPriced = isCreditPricedPlan(subscription.plan);
   // Legacy-contract workspaces can view this page in read-only mode behind a
   // flag: analytics and member spend render as usual, but every action (top up,
@@ -260,7 +262,8 @@ export function UsagePage() {
     []
   );
   const isWorkspaceAdmin = isAdmin(owner);
-  const modelsPickerEnabled = hasFeature("models_picker") && isWorkspaceAdmin;
+  const modelsPickerEnabled =
+    !killSwitches?.includes("global_disable_models_picker") && isWorkspaceAdmin;
   const [membersTab, setMembersTab] = useState<"members" | "requests">(
     "members"
   );

@@ -56,10 +56,16 @@ export interface ModelStreamCandidate {
 
 export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
   {
-    // Plain `auto` spans the whole preferred catalog at each model's default
-    // reasoning effort. The last candidate (Sonnet at `light`) is the
-    // cost-effective floor so tier-capped users still resolve within the stream.
+    // Plain `auto` spans the whole preferred catalog. GPT 5.6 Luna at `high` is
+    // the first pick; the rest follow at each model's default reasoning effort.
+    // The last candidate (Sonnet at `light`) is the cost-effective floor so
+    // tier-capped users still resolve within the stream.
     [AUTO_MODEL_ID]: [
+      {
+        providerId: "openai",
+        modelId: GPT_5_6_LUNA_MODEL_ID,
+        reasoningEffort: "high",
+      },
       {
         providerId: "anthropic",
         modelId: CLAUDE_SONNET_4_6_MODEL_ID,
@@ -205,9 +211,9 @@ function makeMetaModelConfig(
     },
     defaultReasoningEffort: "none",
     supportsResponseFormat: false,
-    availableIfOneOf: {
-      featureFlag: "models_picker",
-    },
+    // The model picker is shipped to everyone, so the meta-models (Standard /
+    // Fast / Complex) are available to all workspaces (subject to the usual
+    // plan/region gating in isModelAvailable).
     tokenizer: { type: "tiktoken", base: "o200k_base" },
     regionalAvailability: {
       "us-central1": true,

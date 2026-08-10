@@ -3,7 +3,7 @@ import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers"
 import { STATIC_MODEL_TIERS } from "@app/lib/api/assistant/token_pricing/tiers";
 import { getAvailableModelsForWorkspace } from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
 import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import type { ModelStreamIdType } from "@app/types/assistant/models/auto";
@@ -73,9 +73,11 @@ export async function withModelSelectability(
   auth: Authenticator,
   { models }: { models: ModelConfigurationType[] }
 ): Promise<EnabledModelConfigurationType[]> {
-  const featureFlags = await getFeatureFlags(auth);
-
-  if (!featureFlags.includes("models_picker")) {
+  // The model picker can be turned off globally via a kill switch, in which
+  // case we stop enforcing model access tiers and everything is selectable.
+  if (
+    await KillSwitchResource.isKillSwitchEnabled("global_disable_models_picker")
+  ) {
     return models.map((model) => ({
       ...model,
       isSelectable: true,

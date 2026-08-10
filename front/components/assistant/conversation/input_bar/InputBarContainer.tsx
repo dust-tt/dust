@@ -53,6 +53,7 @@ import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
 import { getSpaceIcon } from "@app/lib/spaces";
+import { useKillSwitches } from "@app/lib/swr/kill";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile, useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
@@ -426,9 +427,11 @@ const InputBarContainer = ({
   const includeAttachKnowledgeRef = useRef(actions.includes("attachment"));
   includeAttachKnowledgeRef.current = actions.includes("attachment");
   const { hasFeature } = useFeatureFlags();
+  const { killSwitches } = useKillSwitches();
   const includePickModelRef = useRef(false);
   includePickModelRef.current =
-    hasFeature("models_picker") && actions.includes("model-picker");
+    !killSwitches?.includes("global_disable_models_picker") &&
+    actions.includes("model-picker");
   const modelSelectionCommitRef = useRef<
     ((selection: Selection) => void) | null
   >(null);

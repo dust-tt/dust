@@ -1,6 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { getEnabledModelsForAuth } from "@app/lib/model_tiers/enabled_models";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import { ModelSelectionSchema } from "@app/types/assistant/models/types";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
@@ -30,14 +30,14 @@ export async function validatePublicModelSelection(
   }
   const modelSelection = parsed.data;
 
-  if (!(await hasFeatureFlag(auth, "models_picker"))) {
+  if (
+    await KillSwitchResource.isKillSwitchEnabled("global_disable_models_picker")
+  ) {
     return new Err({
       status_code: 403,
       api_error: {
         type: "feature_flag_not_found",
-        message:
-          "Per-message model selection requires the 'models_picker' feature, " +
-          "which is not enabled for this workspace.",
+        message: "Per-message model selection is currently disabled.",
       },
     });
   }

@@ -4,7 +4,6 @@ import { resolveModel } from "@app/lib/api/assistant/resolve_model";
 import { Authenticator } from "@app/lib/auth";
 import * as enabledModels from "@app/lib/model_tiers/enabled_models";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
@@ -28,6 +27,13 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/resources/provider_credential_resource");
+
+vi.mock("@app/lib/resources/kill_switch_resource", () => ({
+  KillSwitchResource: {
+    isKillSwitchEnabled: vi.fn().mockResolvedValue(false),
+    listEnabledKillSwitches: vi.fn().mockResolvedValue([]),
+  },
+}));
 
 function mockCredentials(
   credentials: Array<{
@@ -268,10 +274,9 @@ describe("resolveModel", () => {
     );
   });
 
-  it("resolves an auto agent configuration to a concrete model when models_picker is enabled", async () => {
+  it("resolves an auto agent configuration to a concrete model", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    await FeatureFlagFactory.basic(auth, "models_picker");
 
     const getModelForStreamSpy = vi.spyOn(enabledModels, "getModelForStream");
 
@@ -280,26 +285,25 @@ describe("resolveModel", () => {
         providerId: AUTO_MODEL_ID,
         modelId: AUTO_MODEL_ID,
       }),
-      featureFlags: ["models_picker"],
+      featureFlags: [],
     });
 
     // `auto` is a stream like `auto_fast` / `auto_complex`: it routes through
-    // getModelForStream and resolves to its first available candidate.
+    // getModelForStream and resolves to its first available candidate (GPT 5.6
+    // Luna at high reasoning).
     expect(getModelForStreamSpy).toHaveBeenCalledWith(auth, AUTO_MODEL_ID);
     expect(modelResolutionMethod).toBe("auto");
     expect(resolvedModel.modelId).not.toBe(AUTO_MODEL_ID);
     expect(resolvedModel).toEqual({
-      providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
-      modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
-      reasoningEffort:
-        CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+      providerId: GPT_5_6_LUNA_MODEL_CONFIG.providerId,
+      modelId: GPT_5_6_LUNA_MODEL_CONFIG.modelId,
+      reasoningEffort: "high",
     });
   });
 
-  it("resolves an auto user selection to a concrete model when models_picker is enabled", async () => {
+  it("resolves an auto user selection to a concrete model", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    await FeatureFlagFactory.basic(auth, "models_picker");
 
     const getModelForStreamSpy = vi.spyOn(enabledModels, "getModelForStream");
 
@@ -312,41 +316,16 @@ describe("resolveModel", () => {
         providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
       }),
-      featureFlags: ["models_picker"],
+      featureFlags: [],
     });
 
     expect(getModelForStreamSpy).toHaveBeenCalledWith(auth, AUTO_MODEL_ID);
     expect(modelResolutionMethod).toBe("auto");
     expect(resolvedModel.modelId).not.toBe(AUTO_MODEL_ID);
     expect(resolvedModel).toEqual({
-      providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
-      modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
-      reasoningEffort:
-        CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
-    });
-  });
-
-  it("falls back to a preferred large model when the agent is on auto without models_picker", async () => {
-    const workspace = await WorkspaceFactory.basic();
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
-    const getAutoModelSpy = vi.spyOn(enabledModels, "getAutoModelForAuth");
-
-    const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
-      configuration: makeAgentConfiguration({
-        providerId: AUTO_MODEL_ID,
-        modelId: AUTO_MODEL_ID,
-      }),
-      featureFlags: [],
-    });
-
-    expect(getAutoModelSpy).not.toHaveBeenCalled();
-    expect(modelResolutionMethod).toBe("agent");
-    expect(resolvedModel).toEqual({
-      providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
-      modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
-      reasoningEffort:
-        CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+      providerId: GPT_5_6_LUNA_MODEL_CONFIG.providerId,
+      modelId: GPT_5_6_LUNA_MODEL_CONFIG.modelId,
+      reasoningEffort: "high",
     });
   });
 });

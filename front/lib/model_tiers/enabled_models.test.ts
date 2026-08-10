@@ -4,19 +4,28 @@ import {
   withModelSelectability,
 } from "@app/lib/model_tiers/enabled_models";
 import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import {
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
-  CLAUDE_OPUS_5_MODEL_ID,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import { MODEL_STREAMS } from "@app/types/assistant/models/auto";
-import { GPT_5_6_LUNA_MODEL_ID } from "@app/types/assistant/models/openai";
+import {
+  GPT_5_6_LUNA_MODEL_ID,
+  GPT_5_6_SOL_MODEL_ID,
+} from "@app/types/assistant/models/openai";
 import type { ModelIdType } from "@app/types/assistant/models/types";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const isKillSwitchEnabled = vi.hoisted(() => vi.fn().mockResolvedValue(false));
+vi.mock("@app/lib/resources/kill_switch_resource", () => ({
+  KillSwitchResource: {
+    isKillSwitchEnabled,
+    listEnabledKillSwitches: vi.fn().mockResolvedValue([]),
+  },
+}));
 
 const CUSTOM_MODEL_CONFIG = {
   ...CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
@@ -29,6 +38,7 @@ describe("withModelSelectability", () => {
   let adminAuth: Authenticator;
 
   beforeEach(async () => {
+    isKillSwitchEnabled.mockResolvedValue(false);
     workspace = await WorkspaceFactory.basic();
     adminAuth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   });
@@ -44,18 +54,16 @@ describe("withModelSelectability", () => {
     return Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId);
   }
 
-  it("keeps full reasoning efforts when models_picker is disabled", async () => {
-    const user = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, user, { role: "user" });
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
+  it("keeps everything selectable when the model picker is disabled via kill switch", async () => {
+    isKillSwitchEnabled.mockResolvedValue(true);
+    const auth = await userAuthForTierCap("cost_efficient");
 
     const [model] = await withModelSelectability(auth, {
       models: [CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG],
     });
 
+    // With the picker disabled we stop enforcing tiers: the model is fully
+    // selectable with its efforts untouched even though the user is tier-capped.
     expect(model.isSelectable).toBe(true);
     expect(model.supportedReasoningEfforts).toEqual(
       CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.supportedReasoningEfforts
@@ -65,14 +73,13 @@ describe("withModelSelectability", () => {
     );
   });
 
-  it("keeps full reasoning efforts when models_picker is enabled and user has no tier cap", async () => {
+  it("keeps full reasoning efforts when the user has no tier cap", async () => {
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(auth, "models_picker");
 
     const [model] = await withModelSelectability(auth, {
       models: [CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG],
@@ -88,7 +95,6 @@ describe("withModelSelectability", () => {
   });
 
   it("filters reasoning efforts to those allowed by the user's tier cap", async () => {
-    await FeatureFlagFactory.basic(adminAuth, "models_picker");
     const auth = await userAuthForTierCap("cost_efficient");
 
     const [model] = await withModelSelectability(auth, {
@@ -106,7 +112,6 @@ describe("withModelSelectability", () => {
   });
 
   it("keeps reasoning efforts up to the user's tier cap and drops premium ones", async () => {
-    await FeatureFlagFactory.basic(adminAuth, "models_picker");
     const auth = await userAuthForTierCap("balanced");
 
     const [model] = await withModelSelectability(auth, {
@@ -126,7 +131,6 @@ describe("withModelSelectability", () => {
   });
 
   it("marks frontier-only models as not selectable when capped at balanced", async () => {
-    await FeatureFlagFactory.basic(adminAuth, "models_picker");
     const auth = await userAuthForTierCap("balanced");
 
     const [model] = await withModelSelectability(auth, {
@@ -142,8 +146,7 @@ describe("withModelSelectability", () => {
     });
   });
 
-  it("keeps custom (non-tiered) models selectable when models_picker is enabled and the user is tier-capped", async () => {
-    await FeatureFlagFactory.basic(adminAuth, "models_picker");
+  it("keeps custom (non-tiered) models selectable when the user is tier-capped", async () => {
     const auth = await userAuthForTierCap("cost_efficient");
 
     const [model] = await withModelSelectability(auth, {
@@ -161,9 +164,9 @@ describe("getModelForStream", () => {
   let adminAuth: Authenticator;
 
   beforeEach(async () => {
+    isKillSwitchEnabled.mockResolvedValue(false);
     workspace = await WorkspaceFactory.basic();
     adminAuth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    await FeatureFlagFactory.basic(adminAuth, "models_picker");
   });
 
   async function userAuthForTierCap(tierName: "cost_efficient" | "balanced") {
@@ -182,10 +185,8 @@ describe("getModelForStream", () => {
 
     expect(resolved).not.toBeNull();
     // In a full workspace every candidate is available, so the first one wins.
-    expect(resolved?.model.modelId).toBe(
-      CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId
-    );
-    expect(resolved?.reasoningEffort).toBe("medium");
+    expect(resolved?.model.modelId).toBe(GPT_5_6_LUNA_MODEL_ID);
+    expect(resolved?.reasoningEffort).toBe("high");
   });
 
   it("routes the Fast stream to its first available candidate + effort", async () => {
@@ -201,8 +202,11 @@ describe("getModelForStream", () => {
     const resolved = await getModelForStream(adminAuth, "auto_complex");
 
     expect(resolved).not.toBeNull();
-    expect(resolved?.model.modelId).toBe(CLAUDE_OPUS_5_MODEL_ID);
-    expect(resolved?.reasoningEffort).toBe("high");
+    // The workspace has no advanced-model access, so the Opus candidates at the
+    // top of the Complex stream are unavailable; it resolves to the first
+    // non-advanced candidate (GPT 5.6 Sol at medium).
+    expect(resolved?.model.modelId).toBe(GPT_5_6_SOL_MODEL_ID);
+    expect(resolved?.reasoningEffort).toBe("medium");
   });
 
   it("keeps a cost-effective candidate in the Complex stream for cost_efficient-capped users", async () => {

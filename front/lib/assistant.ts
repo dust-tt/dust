@@ -38,11 +38,7 @@ export function isModelAvailable(
     region: RegionType;
   }
 ) {
-  // Otherwise, we filter too early.
-  const includeAdvancedModelInPicker =
-    featureFlags.includes("models_picker") && isAdvancedModel(m);
-
-  if (m.largeModel && !isUpgraded(plan) && !includeAdvancedModelInPicker) {
+  if (m.largeModel && !isUpgraded(plan)) {
     return false;
   }
 
@@ -60,10 +56,7 @@ export function isModelAvailable(
 
   const { plansWithAdvancedModels, featureFlag } = m.availableIfOneOf;
 
-  if (
-    plansWithAdvancedModels === true &&
-    (plan?.hasAdvancedModelAccess || includeAdvancedModelInPicker)
-  ) {
+  if (plansWithAdvancedModels === true && plan?.hasAdvancedModelAccess) {
     return true;
   }
 

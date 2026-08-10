@@ -146,6 +146,7 @@ function getGlobalAgent({
   hasSandbox,
   globalAgentContext,
   excludeProviders,
+  preferAutoDefaultModel,
   preferGpt56LunaDefaultModel,
   preferSonnet5DefaultModel,
   featureFlags,
@@ -160,6 +161,7 @@ function getGlobalAgent({
   hasSandbox: boolean;
   globalAgentContext?: GlobalAgentContext;
   excludeProviders: ReadonlySet<ModelProviderIdType>;
+  preferAutoDefaultModel: boolean;
   preferGpt56LunaDefaultModel: boolean;
   preferSonnet5DefaultModel: boolean;
   featureFlags: WhitelistableFeature[];
@@ -381,6 +383,7 @@ function getGlobalAgent({
         featureFlags,
         globalAgentContext,
         excludeProviders,
+        preferAutoDefaultModel,
         preferGpt56LunaDefaultModel,
         preferSonnet5DefaultModel,
       });
@@ -1088,7 +1091,13 @@ export async function getGlobalAgents(
     );
   }
 
-  if (agentIds === undefined && flags.includes("models_picker")) {
+  // With the model picker shipped to everyone, model-only global agents are
+  // hidden by default. They resurface when the picker is disabled globally via
+  // the kill switch.
+  const isModelsPickerDisabled = await KillSwitchResource.isKillSwitchEnabled(
+    "global_disable_models_picker"
+  );
+  if (agentIds === undefined && !isModelsPickerDisabled) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) =>
         !isGlobalAgentId(sId) || !MODEL_ONLY_GLOBAL_AGENTS_SID.includes(sId)
@@ -1211,6 +1220,7 @@ export async function getGlobalAgents(
       hasSandbox: isComputerFeatureEnabled(flags),
       globalAgentContext: options?.globalAgentContext,
       excludeProviders,
+      preferAutoDefaultModel: true,
       preferGpt56LunaDefaultModel: flags.includes(
         "dust_agent_gpt_5_6_luna_default"
       ),

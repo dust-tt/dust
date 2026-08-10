@@ -8,6 +8,7 @@ import {
   CLAUDE_OPUS_5_MODEL_ID,
   CLAUDE_SONNET_5_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
+import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
 import { GEMINI_3_1_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import {
   GPT_5_6_LUNA_MODEL_ID,
@@ -250,10 +251,8 @@ describe("getGlobalAgents custom model agents", () => {
 });
 
 describe("getGlobalAgents OpenAI Dust agents", () => {
-  it("uses GPT 5.6 Luna with high reasoning as the flagged Dust default", async () => {
-    const auth = await createAuthenticatorWithFlags([
-      "dust_agent_gpt_5_6_luna_default",
-    ]);
+  it("uses the Auto meta-model as the Dust default", async () => {
+    const auth = await createAuthenticatorWithFlags([]);
 
     const agents = await getGlobalAgents(
       auth,
@@ -263,13 +262,13 @@ describe("getGlobalAgents OpenAI Dust agents", () => {
 
     expect(agents).toHaveLength(1);
     expect(agents[0].model).toMatchObject({
-      providerId: "openai",
-      modelId: GPT_5_6_LUNA_MODEL_ID,
-      reasoningEffort: "high",
+      providerId: AUTO_MODEL_ID,
+      modelId: AUTO_MODEL_ID,
+      reasoningEffort: "none",
     });
   });
 
-  it("keeps Sonnet 5 at medium reasoning when both default flags are set", async () => {
+  it("keeps @dust on Auto even when the legacy default-model flags are set", async () => {
     const auth = await createAuthenticatorWithFlags([
       "dust_agent_gpt_5_6_luna_default",
       "dust_agent_sonnet_5_default",
@@ -283,9 +282,9 @@ describe("getGlobalAgents OpenAI Dust agents", () => {
 
     expect(agents).toHaveLength(1);
     expect(agents[0].model).toMatchObject({
-      providerId: "anthropic",
-      modelId: CLAUDE_SONNET_5_MODEL_ID,
-      reasoningEffort: "medium",
+      providerId: AUTO_MODEL_ID,
+      modelId: AUTO_MODEL_ID,
+      reasoningEffort: "none",
     });
   });
 
