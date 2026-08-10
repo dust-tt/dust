@@ -5,12 +5,14 @@ import {
   isModelReleased,
 } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
+import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
   FREE_NO_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
   PRO_PLAN_SEAT_29_CODE,
 } from "@app/lib/plans/plan_codes";
+import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
@@ -35,63 +37,17 @@ function createMockModel(
   };
 }
 
-// createMockPlan is only used by isModelAvailable tests (pure sync, no factory available).
 function createMockPlan(
   code: string,
   { hasAdvancedModelAccess = false }: { hasAdvancedModelAccess?: boolean } = {}
 ): PlanType {
-  return {
-    code,
-    name: `Test Plan ${code}`,
-    trialPeriodDays: 0,
-    limits: {
-      assistant: {
-        isSlackBotAllowed: false,
-        maxMessages: 1000,
-        maxMessagesTimeframe: "day",
-        maxAwuCredits: 1000,
-        maxAwuCreditsTimeframe: "day",
-        isDeepDiveAllowed: false,
-      },
-      connections: {
-        count: -1,
-        isConfluenceAllowed: false,
-        isSlackAllowed: false,
-        isNotionAllowed: false,
-        isGoogleDriveAllowed: false,
-        isGithubAllowed: false,
-        isIntercomAllowed: false,
-        isWebCrawlerAllowed: false,
-        isSalesforceAllowed: false,
-      },
-      dataSources: {
-        count: 10,
-        documents: {
-          count: 1000,
-          sizeMb: 100,
-        },
-      },
-      capabilities: {
-        images: {
-          maxImagesPerWeek: 10,
-        },
-      },
-      users: {
-        maxUsers: 10,
-        maxFreeUsers: -1,
-        maxLifetimeFreeUsers: -1,
-        isSSOAllowed: false,
-        isSCIMAllowed: false,
-      },
-      vaults: {
-        maxVaults: 10,
-      },
-      canUseProduct: true,
+  return renderPlanFromModel({
+    plan: {
+      ...FREE_NO_PLAN_DATA,
+      code,
+      hasAdvancedModelAccess,
     },
-    isByok: false,
-    isAuditLogsAllowed: false,
-    hasAdvancedModelAccess,
-  };
+  });
 }
 
 function isSolAvailable(
