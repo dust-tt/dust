@@ -268,6 +268,7 @@ export const activationManagementPlugin = createPlugin({
       "Work Areas for the first conversation. Check 'Force " +
       "recreate' to delete and rebuild an existing Pod from scratch.",
     resourceTypes: ["workspaces"],
+    warning: "Large groups can take several minutes.",
     args: {
       targetUserIds: {
         type: "enum",
