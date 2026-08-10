@@ -35,6 +35,7 @@ interface PluginFormProps {
     Record<string, string | number | boolean | AsyncEnumValues | EnumValues>
   > | null;
   disabled?: boolean;
+  isRunning?: boolean;
   manifest: PokeGetPluginDetailsResponseBody["manifest"];
   onSubmit: (args: FormValues<any>) => Promise<void>;
   pluginResourceTarget: PluginResourceTarget;
@@ -43,11 +44,12 @@ interface PluginFormProps {
 export function PluginForm({
   asyncArgs,
   disabled,
+  isRunning = false,
   manifest,
   onSubmit,
   pluginResourceTarget,
 }: PluginFormProps) {
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const argsSchema = useMemo(() => {
     if (!manifest) {
@@ -149,10 +151,16 @@ export function PluginForm({
   });
 
   async function handleSubmit(values: FormValues<typeof argsSchema>) {
-    // Lock the form to prevent multiple submissions.
-    setIsSubmitted(true);
+    if (isSubmitting || isRunning || disabled) {
+      return;
+    }
 
-    await onSubmit(values);
+    setIsSubmitting(true);
+    try {
+      await onSubmit(values);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   if (!manifest) {
@@ -314,8 +322,8 @@ export function PluginForm({
         <Button
           type="submit"
           variant="outline"
-          disabled={isSubmitted}
-          label="Run"
+          disabled={disabled || isRunning || isSubmitting}
+          label={isRunning || isSubmitting ? "Running..." : "Run"}
         />
       </form>
     </PokeForm>

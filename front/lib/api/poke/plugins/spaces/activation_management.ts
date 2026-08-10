@@ -25,6 +25,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { startActivationWorkspaceSchedule } from "@app/temporal/activation_scheduler/client";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
@@ -33,6 +34,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 const LEARNING_SPACE_NAME_SUFFIX = "'s Learning Space";
+
+// Light parallelism for group runs: enough to cut wall time without
+// stampeding the DB pool / nudge path on a large selection.
+const ACTIVATION_MANAGEMENT_CONCURRENCY = 3;
 
 const activationManagementLogger = logger.child({
   activity: "activation-management",
@@ -267,6 +272,9 @@ export const activationManagementPlugin = createPlugin({
       "Work Areas for the first conversation. Check 'Force " +
       "recreate' to delete and rebuild an existing Pod from scratch.",
     resourceTypes: ["workspaces"],
+    warning:
+      "Large groups can take several minutes — the dialog shows Running… " +
+      "with a timer. Leave it open until it finishes.",
     args: {
       targetUserIds: {
         type: "enum",
@@ -495,107 +503,101 @@ export const activationManagementPlugin = createPlugin({
         ? trimmedPodName
         : null;
 
-    const outcomes: TargetOutcome[] = [];
-    // Sequential to avoid straining the connection pool: provisioning a pod is
-    // a multi-step write and a whole group may be selected at once.
-    for (const user of users) {
-      const name = user.fullName() || user.email;
+    const outcomes = await concurrentExecutor(
+      users,
+      async (user): Promise<TargetOutcome> => {
+        const name = user.fullName() || user.email;
+        const existing = existingPodsByUser.get(user.id);
 
-      const existing = existingPodsByUser.get(user.id);
+        // Reuse path: the user already has a Pod and we're not recreating it —
+        // just nudge it. Never fails on an existing Pod.
+        if (existing && !forceRecreate) {
+          if (!existing.trigger) {
+            return {
+              name,
+              status: "failed",
+              message:
+                "Pod exists but trigger was deleted — use forceRecreate to rebuild it.",
+            };
+          }
+          const nudgeResult = await fireActivationNudge(adminAuth, {
+            pod: existing.pod,
+            trigger: existing.trigger,
+            targetUserId: user.sId,
+            context,
+          });
+          if (nudgeResult.isErr()) {
+            return {
+              name,
+              status: "failed",
+              message: nudgeResult.error.message,
+            };
+          }
+          return {
+            name,
+            status: "nudged",
+            podLink: podLink(existing.pod),
+          };
+        }
 
-      // Reuse path: the user already has a Pod and we're not recreating it —
-      // just nudge it. Never fails on an existing Pod.
-      if (existing && !forceRecreate) {
-        if (!existing.trigger) {
-          outcomes.push({
+        // Force-recreate path: tear down the existing Pod before provisioning a
+        // fresh one. Soft-deleting the space launches the scrub workflow, which
+        // removes the ActivationPod row, nudges, and trigger; the soft-deleted
+        // space is excluded from future lookups so it won't shadow the new Pod.
+        const recreated = Boolean(existing);
+        if (existing) {
+          const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
+            adminAuth,
+            existing.pod,
+            true
+          );
+          if (deleteResult.isErr()) {
+            return {
+              name,
+              status: "failed",
+              message: `failed to delete existing Pod: ${deleteResult.error.message}`,
+            };
+          }
+        }
+
+        const otherUsers = users.filter((u) => u.sId !== user.sId);
+        const provisionResult = await provisionTrainingPod(auth, adminAuth, {
+          creator: user,
+          otherUsers,
+          podNameOverride,
+        });
+        if (provisionResult.isErr()) {
+          return {
             name,
             status: "failed",
-            message:
-              "Pod exists but trigger was deleted — use forceRecreate to rebuild it.",
-          });
-          continue;
+            message: provisionResult.error.message,
+          };
         }
+
+        const { pod, trigger } = provisionResult.value;
         const nudgeResult = await fireActivationNudge(adminAuth, {
-          pod: existing.pod,
-          trigger: existing.trigger,
+          pod,
+          trigger,
           targetUserId: user.sId,
           context,
         });
         if (nudgeResult.isErr()) {
-          outcomes.push({
+          return {
             name,
             status: "failed",
-            message: nudgeResult.error.message,
-          });
-        } else {
-          outcomes.push({
-            name,
-            status: "nudged",
-            podLink: podLink(existing.pod),
-          });
+            message: `${recreated ? "recreated" : "provisioned"} but failed to nudge: ${nudgeResult.error.message}`,
+            podLink: podLink(pod),
+          };
         }
-        continue;
-      }
 
-      // Force-recreate path: tear down the existing Pod before provisioning a
-      // fresh one. Soft-deleting the space launches the scrub workflow, which
-      // removes the ActivationPod row, nudges, and trigger; the soft-deleted
-      // space is excluded from future lookups so it won't shadow the new Pod.
-      const recreated = Boolean(existing);
-      if (existing) {
-        const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
-          adminAuth,
-          existing.pod,
-          true
-        );
-        if (deleteResult.isErr()) {
-          outcomes.push({
-            name,
-            status: "failed",
-            message: `failed to delete existing Pod: ${deleteResult.error.message}`,
-          });
-          continue;
-        }
-      }
-
-      const otherUsers = users.filter((u) => u.sId !== user.sId);
-      const provisionResult = await provisionTrainingPod(auth, adminAuth, {
-        creator: user,
-        otherUsers,
-        podNameOverride,
-      });
-      if (provisionResult.isErr()) {
-        outcomes.push({
+        return {
           name,
-          status: "failed",
-          message: provisionResult.error.message,
-        });
-        continue;
-      }
-
-      const { pod, trigger } = provisionResult.value;
-      const nudgeResult = await fireActivationNudge(adminAuth, {
-        pod,
-        trigger,
-        targetUserId: user.sId,
-        context,
-      });
-      if (nudgeResult.isErr()) {
-        outcomes.push({
-          name,
-          status: "failed",
-          message: `${recreated ? "recreated" : "provisioned"} but failed to nudge: ${nudgeResult.error.message}`,
+          status: recreated ? "recreated" : "provisioned",
           podLink: podLink(pod),
-        });
-        continue;
-      }
-
-      outcomes.push({
-        name,
-        status: recreated ? "recreated" : "provisioned",
-        podLink: podLink(pod),
-      });
-    }
+        };
+      },
+      { concurrency: ACTIVATION_MANAGEMENT_CONCURRENCY }
+    );
 
     const provisioned = outcomes.filter((o) => o.status === "provisioned");
     const recreated = outcomes.filter((o) => o.status === "recreated");
