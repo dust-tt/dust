@@ -13,7 +13,7 @@ export function UsageFilterOptionIcon({ option }: UsageFilterOptionIconProps) {
   const { isDark } = useTheme();
 
   switch (option.kind) {
-    case "user":
+    case "member":
       return (
         <Avatar
           name={option.name}

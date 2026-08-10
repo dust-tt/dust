@@ -2,11 +2,9 @@ import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ConnectorProvider } from "@app/types/data_source";
 
-// "user" (not "member") to match the consumption scope dimension this
-// category filters on; "Members" is only the display label below.
 export const USAGE_FILTER_CATEGORIES = [
   "agent",
-  "user",
+  "member",
   "model",
   "tool",
   "skill",
@@ -18,7 +16,7 @@ export type UsageFilterCategory = (typeof USAGE_FILTER_CATEGORIES)[number];
 export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =
   {
     agent: "Agents",
-    user: "Members",
+    member: "Members",
     model: "Models",
     tool: "Tools",
     skill: "Skills",
@@ -55,8 +53,8 @@ export interface UsageFilterAgentOption extends UsageFilterOptionBase {
   scope: UsageFilterScope;
 }
 
-export interface UsageFilterUserOption extends UsageFilterOptionBase {
-  kind: "user";
+export interface UsageFilterMemberOption extends UsageFilterOptionBase {
+  kind: "member";
   image: string | null;
 }
 
@@ -81,7 +79,7 @@ export interface UsageFilterSkillOption extends UsageFilterOptionBase {
 
 export type UsageFilterOption =
   | UsageFilterAgentOption
-  | UsageFilterUserOption
+  | UsageFilterMemberOption
   | UsageFilterSourceOption
   | UsageFilterModelOption
   | UsageFilterToolOption
@@ -90,7 +88,7 @@ export type UsageFilterOption =
 export interface UsageFilterGroup {
   id: string;
   name: string;
-  // Member sIds, used to narrow the "user" category's checklist down to a
+  // Member sIds, used to narrow the "member" category's checklist down to a
   // selected group. Not itself part of `UsageFilter` — groups only narrow the
   // picker, the user still checks individual members to filter by.
   memberIds: string[];
@@ -162,11 +160,11 @@ export function removeUsageFilterGroup(
   return groups.filter((g) => g.id !== id);
 }
 
-// Only "user" is wired to a real consumption scope dimension so far; the
-// other categories stay mock data and are not sent as query filters.
+// Only "member" is wired to a real consumption scope dimension ("users") so
+// far; the other categories stay mock data and are not sent as query filters.
 export function toConsumptionScopeFilter(
   filter: UsageFilter
 ): ConsumptionScopeFilter {
-  const userIds = filter.user?.map((entity) => entity.id);
-  return userIds && userIds.length > 0 ? { users: userIds } : {};
+  const memberIds = filter.member?.map((entity) => entity.id);
+  return memberIds && memberIds.length > 0 ? { users: memberIds } : {};
 }
