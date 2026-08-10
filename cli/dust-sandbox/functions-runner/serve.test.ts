@@ -693,25 +693,11 @@ describe("sibling prefetch", () => {
     return dir;
   };
 
-  // Polls until a request for `name` is served from the module cache.
-  async function untilCached(
-    socketPath: string,
-    name: string,
-    deadlineMs: number
-  ): Promise<boolean> {
-    const deadline = Date.now() + deadlineMs;
-    while (Date.now() < deadline) {
-      const frames = await requestFrames(
-        socketPath,
-        warmRequest(name, {}, { url: "http://localhost/" })
-      );
-      if (frames[1]?.importKind === "cached") {
-        return true;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-    return false;
-  }
+  // The fixtures import in milliseconds and the prefetch loop re-checks
+  // quiet every 100ms, so this settle window makes the background imports
+  // deterministic: after it, a sibling's FIRST request must already be
+  // cached — polling would be vacuous, since the poll itself imports.
+  const PREFETCH_SETTLE_MS = 2_000;
 
   test("the first import of an app warms its siblings in the background", async () => {
     const dir = appDir();
@@ -723,10 +709,20 @@ describe("sibling prefetch", () => {
       );
       expect(first[1]?.importKind).toBe("fresh");
 
-      // Both siblings become cached without ever being requested fresh
-      // first... their first request may race the prefetch, so poll.
-      expect(await untilCached(socketPath, "myapp__beta", 5_000)).toBe(true);
-      expect(await untilCached(socketPath, "myapp__gamma", 5_000)).toBe(true);
+      await new Promise((resolve) => setTimeout(resolve, PREFETCH_SETTLE_MS));
+
+      // The very first request for each sibling is served from the module
+      // cache: the prefetch paid the import, not this request.
+      const beta = await requestFrames(
+        socketPath,
+        warmRequest("myapp__beta", {}, { url: "http://localhost/" })
+      );
+      expect(beta[1]?.importKind).toBe("cached");
+      const gamma = await requestFrames(
+        socketPath,
+        warmRequest("myapp__gamma", {}, { url: "http://localhost/" })
+      );
+      expect(gamma[1]?.importKind).toBe("cached");
 
       // The root-level function shares the worker but not the app: it is
       // not prefetched and pays its own import on first request.
@@ -738,7 +734,7 @@ describe("sibling prefetch", () => {
     } finally {
       proc.kill();
     }
-  });
+  }, 15_000);
 
   test("an eager-name spawn imports the function and its app before any request", async () => {
     const dir = appDir();
@@ -748,8 +744,6 @@ describe("sibling prefetch", () => {
       { stdin: "ignore", stdout: "ignore", stderr: "inherit" }
     );
     try {
-      // Wait for the socket, then for the eager import + prefetch to land:
-      // every function of the app ends up cached without a fresh request.
       const deadline = Date.now() + 10_000;
       let up = false;
       while (Date.now() < deadline && !up) {
@@ -765,12 +759,24 @@ describe("sibling prefetch", () => {
         }
       }
       expect(up).toBe(true);
-      expect(await untilCached(socketPath, "myapp__alpha", 5_000)).toBe(true);
-      expect(await untilCached(socketPath, "myapp__beta", 5_000)).toBe(true);
+      await new Promise((resolve) => setTimeout(resolve, PREFETCH_SETTLE_MS));
+
+      // No request has been made yet: the eager import covered the named
+      // function and the prefetch covered its sibling.
+      const alpha = await requestFrames(
+        socketPath,
+        warmRequest("myapp__alpha", {}, { url: "http://localhost/" })
+      );
+      expect(alpha[1]?.importKind).toBe("cached");
+      const beta = await requestFrames(
+        socketPath,
+        warmRequest("myapp__beta", {}, { url: "http://localhost/" })
+      );
+      expect(beta[1]?.importKind).toBe("cached");
     } finally {
       proc.kill();
     }
-  });
+  }, 15_000);
 });
 
 describe("resolveBundle", () => {

@@ -520,7 +520,7 @@ pub fn spawn_worker(name: &str) {
         .arg(&socket)
         // Eager warm-up hint: the worker imports this function's bundle (and
         // prefetches its app's siblings) immediately instead of on first
-        // request. The name is already validated by the caller.
+        // request. The name was validated at the top of this function.
         .arg(name)
         .env("NODE_PATH", super::harness_node_path())
         .stdin(Stdio::null())

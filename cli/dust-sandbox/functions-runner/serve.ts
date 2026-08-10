@@ -449,10 +449,22 @@ export async function serve(
   // bytes and serving stale code under a fresh stamp from then on.
   const importsInFlight = new Map<string, Promise<FuseImportResult>>();
 
+  // Poison is sticky: once a name's import was caught racing a rewrite, the
+  // module registry permanently holds bytes whose hash is unknown, and NO
+  // later fuse run can fix that — import() would return the already-evaluated
+  // module while the pipeline hashes the new on-disk bytes, silently pairing
+  // a fresh hash with stale code. A background (prefetch) import that
+  // discovers poison ignores the result, so the set is what guarantees the
+  // next real request still takes the stale-and-recycle path.
+  const poisonedNames = new Set<string>();
+
   function importFromFunctionsDir(name: string): Promise<FuseImportResult> {
     const inFlight = importsInFlight.get(name);
     if (inFlight !== undefined) {
       return inFlight;
+    }
+    if (poisonedNames.has(name)) {
+      return Promise.resolve({ kind: "poisoned" });
     }
     const flight = (async (): Promise<FuseImportResult> => {
       const handlerPath = resolveBundle(functionsDir, name);
@@ -487,10 +499,17 @@ export async function serve(
       // for this path and must recycle.
       const after = await statBundle(handlerPath);
       if (!sameStamp(stamp, after)) {
+        poisonedNames.add(name);
         return { kind: "poisoned" };
       }
       const bundle: ImportedBundle = { handlerPath, stamp, sha256 };
-      imported.set(name, bundle);
+      // An entry appearing mid-flight came from a stamped cache import and
+      // is at least as current as the fuse's read (gcsfuse can lag); never
+      // clobber it. Request callers only run this pipeline when the entry
+      // was absent.
+      if (!imported.has(name)) {
+        imported.set(name, bundle);
+      }
       return { kind: "ok", bundle };
     })();
     // Registered synchronously (before any await runs) and cleared on
@@ -554,7 +573,10 @@ export async function serve(
       return;
     }
     prefetchedApps.add(prefix);
-    void prefetchApp(prefix);
+    // The chain is written to never reject; the catch keeps a runner bug in
+    // background work from becoming an unhandled rejection that kills a
+    // serving worker.
+    prefetchApp(prefix).catch(() => {});
   }
 
   async function prefetchApp(prefix: string): Promise<void> {
@@ -964,9 +986,13 @@ export async function serve(
   // request. Best-effort; a request arriving mid-import joins the
   // single-flight pipeline.
   if (eagerName !== undefined && VALID_NAME.test(eagerName)) {
-    void importFromFunctionsDir(eagerName).then(() => {
-      schedulePrefetch(eagerName);
-    });
+    // The catch mirrors prefetchApp's: background work must never become an
+    // unhandled rejection.
+    importFromFunctionsDir(eagerName)
+      .then(() => {
+        schedulePrefetch(eagerName);
+      })
+      .catch(() => {});
   }
 
   // The process stays alive on the event loop; exits go through exit() above.
