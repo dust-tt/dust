@@ -4,14 +4,12 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentModelDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 
 type AnalyticsAgentLabel = {
   name: string;
   pictureUrl: string | null;
   modelDisplayName: string;
   description: string;
-  scope: AgentConfigurationScope;
 };
 
 const PRIVATE_AGENT_DESCRIPTION = "Private agent: description unavailable";
@@ -21,10 +19,6 @@ export const UNKNOWN_AGENT_LABEL: AnalyticsAgentLabel = {
   pictureUrl: null,
   modelDisplayName: getAgentModelDisplayName(undefined),
   description: "",
-  // Unresolvable ids (a deleted agent, one from another workspace's stale
-  // index entry) are never global by construction, so "hidden" is the safe
-  // default bucket.
-  scope: "hidden",
 };
 
 export async function resolveAnalyticsAgentLabels(
@@ -63,7 +57,6 @@ export async function resolveAnalyticsAgentLabels(
             description: agent.canRead
               ? agent.description
               : PRIVATE_AGENT_DESCRIPTION,
-            scope: agent.scope,
           },
         ];
       }
@@ -77,9 +70,6 @@ export async function resolveAnalyticsAgentLabels(
             pictureUrl: fallback.pictureUrl,
             modelDisplayName: getAgentModelDisplayName(fallback.model),
             description: PRIVATE_AGENT_DESCRIPTION,
-            // Only reachable for an agent the caller cannot read via the normal
-            // path, i.e. hidden agents belonging to someone else.
-            scope: "hidden",
           },
         ];
       }

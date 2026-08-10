@@ -1,9 +1,6 @@
 import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
-import {
-  resolveAnalyticsAgentLabels,
-  UNKNOWN_AGENT_LABEL,
-} from "@app/lib/api/assistant/observability/agent_labels";
+import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
 import { getUserDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
 import { resolveServerDisplayNames } from "@app/lib/api/assistant/observability/tool_usage";
 import type { Authenticator } from "@app/lib/auth";
@@ -11,7 +8,6 @@ import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
@@ -33,18 +29,13 @@ export type DimensionLabel = {
   name: string;
   // Only agents and users have one; null for every other dimension.
   pictureUrl: string | null;
-  // Only agents have one; null for every other dimension.
-  scope: AgentConfigurationScope | null;
 };
 
 function labelsFromNames(
   names: Map<string, string>
 ): Map<string, DimensionLabel> {
   return new Map(
-    [...names].map(([key, name]) => [
-      key,
-      { name, pictureUrl: null, scope: null },
-    ])
+    [...names].map(([key, name]) => [key, { name, pictureUrl: null }])
   );
 }
 
@@ -62,15 +53,8 @@ export async function resolveDimensionLabels(
       const labels = await resolveAnalyticsAgentLabels(auth, keys);
       return new Map(
         keys.map((key) => {
-          const label = labels.get(key) ?? UNKNOWN_AGENT_LABEL;
-          return [
-            key,
-            {
-              name: label.name,
-              pictureUrl: label.pictureUrl,
-              scope: label.scope,
-            },
-          ];
+          const label = labels.get(key) ?? { name: key, pictureUrl: null };
+          return [key, { name: label.name, pictureUrl: label.pictureUrl }];
         })
       );
     }
@@ -86,7 +70,6 @@ export async function resolveDimensionLabels(
             {
               name: getUserDisplayName(user),
               pictureUrl: user?.imageUrl ?? null,
-              scope: null,
             },
           ];
         })

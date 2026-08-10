@@ -10,7 +10,6 @@ import type { GetConsumptionTopTeamsResponse } from "@app/lib/api/analytics/cons
 import type { GetConsumptionTopToolsResponse } from "@app/lib/api/analytics/consumption/top_tools";
 import type { GetConsumptionTopUsersResponse } from "@app/lib/api/analytics/consumption/top_users";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
@@ -25,27 +24,13 @@ const CONSUMPTION_TOP_ENDPOINTS = {
   source: "top-sources",
 } as const satisfies Record<ConsumptionDimension, string>;
 
-type ConsumptionTopRowBase = {
+export type ConsumptionTopRow = {
   id: string;
   name: string;
   pictureUrl: string | null;
   credits: number;
   avgCredits: number;
 };
-
-// `scope` only makes sense for the "agent" dimension, so it is tied to that
-// dimension in the type itself rather than left as an optional field every
-// dimension could accidentally set (or forget to set).
-export type ConsumptionAgentTopRow = ConsumptionTopRowBase & {
-  dimension: "agent";
-  scope: AgentConfigurationScope;
-};
-
-export type ConsumptionTopRow =
-  | ConsumptionAgentTopRow
-  | (ConsumptionTopRowBase & {
-      dimension: Exclude<ConsumptionDimension, "agent">;
-    });
 
 type ConsumptionTopResponse =
   | GetConsumptionTopAgentsResponse
@@ -61,29 +46,22 @@ type ConsumptionTopResponse =
 // instead of a silently empty table.
 function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
   if ("agents" in data) {
-    return data.agents.map(
-      (row): ConsumptionAgentTopRow => ({
-        id: row.agentId,
-        name: row.name,
-        pictureUrl: row.pictureUrl,
-        dimension: "agent",
-        scope: row.scope,
-        credits: row.credits,
-        avgCredits: row.avgCreditsPerMessage,
-      })
-    );
+    return data.agents.map((row) => ({
+      id: row.agentId,
+      name: row.name,
+      pictureUrl: row.pictureUrl,
+      credits: row.credits,
+      avgCredits: row.avgCreditsPerMessage,
+    }));
   }
   if ("users" in data) {
-    return data.users.map(
-      (row): ConsumptionTopRow => ({
-        id: row.userId,
-        name: row.name,
-        pictureUrl: row.pictureUrl,
-        dimension: "user",
-        credits: row.credits,
-        avgCredits: row.avgCreditsPerMessage,
-      })
-    );
+    return data.users.map((row) => ({
+      id: row.userId,
+      name: row.name,
+      pictureUrl: row.pictureUrl,
+      credits: row.credits,
+      avgCredits: row.avgCreditsPerMessage,
+    }));
   }
   if ("teams" in data) {
     return data.teams.map((row) => ({
@@ -95,52 +73,40 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
     }));
   }
   if ("models" in data) {
-    return data.models.map(
-      (row): ConsumptionTopRow => ({
-        id: row.modelId,
-        name: row.name,
-        pictureUrl: null,
-        dimension: "model",
-        credits: row.credits,
-        avgCredits: row.avgCreditsPerMessage,
-      })
-    );
+    return data.models.map((row) => ({
+      id: row.modelId,
+      name: row.name,
+      pictureUrl: null,
+      credits: row.credits,
+      avgCredits: row.avgCreditsPerMessage,
+    }));
   }
   if ("tools" in data) {
-    return data.tools.map(
-      (row): ConsumptionTopRow => ({
-        id: row.serverName,
-        name: row.name,
-        pictureUrl: null,
-        dimension: "tool",
-        credits: row.credits,
-        avgCredits: row.avgCreditsPerInvocation,
-      })
-    );
+    return data.tools.map((row) => ({
+      id: row.serverName,
+      name: row.name,
+      pictureUrl: null,
+      credits: row.credits,
+      avgCredits: row.avgCreditsPerInvocation,
+    }));
   }
   if ("skills" in data) {
-    return data.skills.map(
-      (row): ConsumptionTopRow => ({
-        id: row.skillId,
-        name: row.name,
-        pictureUrl: null,
-        dimension: "skill",
-        credits: row.credits,
-        avgCredits: row.avgCreditsPerInvocation,
-      })
-    );
+    return data.skills.map((row) => ({
+      id: row.skillId,
+      name: row.name,
+      pictureUrl: null,
+      credits: row.credits,
+      avgCredits: row.avgCreditsPerInvocation,
+    }));
   }
   if ("sources" in data) {
-    return data.sources.map(
-      (row): ConsumptionTopRow => ({
-        id: row.source,
-        name: row.name,
-        pictureUrl: null,
-        dimension: "source",
-        credits: row.credits,
-        avgCredits: row.avgCreditsPerMessage,
-      })
-    );
+    return data.sources.map((row) => ({
+      id: row.source,
+      name: row.name,
+      pictureUrl: null,
+      credits: row.credits,
+      avgCredits: row.avgCreditsPerMessage,
+    }));
   }
   assertNeverAndIgnore(data);
   return [];
