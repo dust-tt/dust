@@ -468,7 +468,7 @@ export const activationSkill = {
     { name: "skill_authoring" },
     { name: "triggers_management" },
     { name: "files" },
-    { name: "agent_runner" },
+    { name: "agent_delegation" },
     { name: "activation_recommendations" },
     { name: "pod_manager" },
     { name: "conversation_side_panel" },

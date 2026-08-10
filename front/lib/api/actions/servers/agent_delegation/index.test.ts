@@ -9,13 +9,13 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
-import createAgentRunnerServer from "./index";
+import createAgentDelegationServer from "./index";
 
-describe("agent_runner", () => {
+describe("agent_delegation", () => {
   it("exposes the generic runner", async () => {
-    const server = await createAgentRunnerServer({} as Authenticator);
+    const server = await createAgentDelegationServer({} as Authenticator);
     const client = new Client({
-      name: "agent-runner-test",
+      name: "agent-delegation-test",
       version: "1.0.0",
     });
     const [clientTransport, serverTransport] =

@@ -10,13 +10,13 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import { AGENT_RUNNER_SERVER_NAME } from "./metadata";
+import { AGENT_DELEGATION_SERVER_NAME } from "./metadata";
 
 async function createServer(
   auth: Authenticator,
   toolContext?: ToolContext
 ): Promise<McpServer> {
-  const server = makeInternalMCPServer(AGENT_RUNNER_SERVER_NAME);
+  const server = makeInternalMCPServer(AGENT_DELEGATION_SERVER_NAME);
   const [toolDefinition] = buildTools(GENERIC_RUN_AGENT_TOOLS_METADATA, {
     [GENERIC_RUN_AGENT_TOOL_NAME]: (
       {
@@ -48,7 +48,7 @@ async function createServer(
   });
 
   registerTool(auth, toolContext, server, toolDefinition, {
-    monitoringName: AGENT_RUNNER_SERVER_NAME,
+    monitoringName: AGENT_DELEGATION_SERVER_NAME,
   });
 
   return server;
