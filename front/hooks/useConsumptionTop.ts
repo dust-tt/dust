@@ -1,6 +1,7 @@
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { consumptionQueryString } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/consumption/top_agents";
 import type { GetConsumptionTopModelsResponse } from "@app/lib/api/analytics/consumption/top_models";
 import type { GetConsumptionTopSkillsResponse } from "@app/lib/api/analytics/consumption/top_skills";
@@ -104,18 +105,20 @@ export function useConsumptionTop({
   dimension,
   period,
   limit,
+  filter,
   disabled,
 }: {
   workspaceId: string;
   dimension: ConsumptionDimension;
   period: ConsumptionPeriodSelection;
   limit: number;
+  filter?: ConsumptionScopeFilter;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const topFetcher: Fetcher<ConsumptionTopResponse> = fetcher;
 
-  const params = new URLSearchParams(consumptionQueryString(period));
+  const params = new URLSearchParams(consumptionQueryString(period, filter));
   params.set("limit", String(limit));
 
   const { data, error, isValidating } = useSWRWithDefaults(

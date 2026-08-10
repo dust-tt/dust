@@ -1,19 +1,22 @@
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { timeAgoFrom } from "@app/lib/utils";
 
 interface ConsumptionOverviewProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
+  filter?: ConsumptionScopeFilter;
 }
 
 export function ConsumptionOverview({
   workspaceId,
   period: periodSelection,
+  filter,
 }: ConsumptionOverviewProps) {
   const { overview, isOverviewLoading, isOverviewError } =
-    useConsumptionOverview({ workspaceId, period: periodSelection });
+    useConsumptionOverview({ workspaceId, period: periodSelection, filter });
 
   if (isOverviewLoading) {
     return (

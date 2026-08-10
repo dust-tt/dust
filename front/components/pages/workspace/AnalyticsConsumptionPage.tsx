@@ -5,6 +5,7 @@ import type { ConsumptionDimension } from "@app/components/workspace/analytics/c
 import { DEFAULT_CONSUMPTION_DIMENSION } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
 import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
+import { toConsumptionScopeFilter } from "@app/components/workspace/analytics/usageFilter";
 import {
   USAGE_FILTER_MOCK_GROUPS,
   USAGE_FILTER_MOCK_OPTIONS,
@@ -15,7 +16,7 @@ import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
 import { BarChart01, cn, Page, SafeSuspense, safeLazy } from "@dust-tt/sparkle";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 const canReload = () => !isNavigationLocked();
 
@@ -44,6 +45,7 @@ export function AnalyticsConsumptionPage() {
     DEFAULT_CONSUMPTION_DIMENSION
   );
   const [filter, setFilter] = useState<UsageFilter>({});
+  const scopeFilter = useMemo(() => toConsumptionScopeFilter(filter), [filter]);
 
   if (!isEnabled) {
     return (
@@ -81,7 +83,11 @@ export function AnalyticsConsumptionPage() {
         icon={BarChart01}
       />
       <div className="flex flex-col gap-8 pb-8">
-        <ConsumptionOverview workspaceId={owner.sId} period={period} />
+        <ConsumptionOverview
+          workspaceId={owner.sId}
+          period={period}
+          filter={scopeFilter}
+        />
         <div className="flex flex-col gap-2">
           <div className="flex justify-end">
             <UsageFilterPanel
@@ -97,12 +103,14 @@ export function AnalyticsConsumptionPage() {
               workspaceId={owner.sId}
               period={period}
               dimension={dimension}
+              filter={scopeFilter}
             />
           </SafeSuspense>
         </div>
         <ConsumptionAttributionTable
           workspaceId={owner.sId}
           period={period}
+          filter={scopeFilter}
           dimension={dimension}
           onDimensionChange={setDimension}
         />
