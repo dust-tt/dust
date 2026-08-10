@@ -44,9 +44,7 @@ function checkModelSpecificAccessRules(
         plan !== null &&
         isCreditPricedPlanPrefix(plan.code)) ||
       (plansWithAdvancedModels === true &&
-        (plan?.hasAdvancedModelAccess === true ||
-          // Dust-only override used to expose advanced models in the model picker.
-          featureFlags.includes("models_picker"))) ||
+        plan?.hasAdvancedModelAccess === true) ||
       (featureFlag !== undefined && featureFlags.includes(featureFlag))
     );
   }
