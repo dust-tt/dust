@@ -5,6 +5,7 @@ import topAgents from "./top-agents";
 import topModels from "./top-models";
 import topSkills from "./top-skills";
 import topSources from "./top-sources";
+import topTeams from "./top-teams";
 import topTools from "./top-tools";
 import topUsers from "./top-users";
 
@@ -16,6 +17,7 @@ app.route("/top-agents", topAgents);
 app.route("/top-models", topModels);
 app.route("/top-skills", topSkills);
 app.route("/top-sources", topSources);
+app.route("/top-teams", topTeams);
 app.route("/top-tools", topTools);
 app.route("/top-users", topUsers);
 
