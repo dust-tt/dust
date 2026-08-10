@@ -40,7 +40,7 @@ const POD_DATABASE_PREFIX_SEPARATOR = SANDBOX_FUNCTION_SLUG_SEPARATOR;
  * unprefixed database names, which is how every pod behaved before namespacing — deliberately not
  * an error, since refusing would leave the app unable to create any database at all.
  */
-export function podDatabasePrefixFromAppPrefix(
+function podDatabasePrefixFromAppPrefix(
   appPrefix: string | null
 ): string | null {
   if (appPrefix === null) {
@@ -85,45 +85,11 @@ export function podDatabasePrefixFromPodPath({
 }
 
 /**
- * Qualify an app-relative database name with its app prefix, or return it unchanged when there is
- * no prefix or the result would break the name contract (a long app folder plus a long database
- * name can exceed the 64-character cap). Falling back rather than erroring keeps this total, so
- * reconcile and the runtime always agree on the name without either having to handle a failure.
- */
-export function qualifyPodDatabaseName({
-  prefix,
-  name,
-}: {
-  prefix: string | null;
-  name: string;
-}): string {
-  if (prefix === null) {
-    return name;
-  }
-  const qualified = `${prefix}${name}`;
-  return POD_DATABASE_NAME_REGEX.test(qualified) ? qualified : name;
-}
-
-/**
- * Strip an app prefix the caller already applied, so qualifying is idempotent. `db_list` reports
- * on-disk names, so a model that copies `myapp__chat` from it into `db_reconcile` must not end up
- * reconciling `myapp__myapp__chat`.
- */
-export function stripPodDatabasePrefix({
-  prefix,
-  name,
-}: {
-  prefix: string | null;
-  name: string;
-}): string {
-  if (prefix !== null && name.startsWith(prefix)) {
-    return name.slice(prefix.length);
-  }
-  return name;
-}
-
-/**
- * Pick the database file an app-relative `name` refers to, given the names currently on disk.
+ * Pick the database file `name` refers to, given the names currently on disk.
+ *
+ * `name` is the database's app-relative name as the schema file declares it (`chat`). An
+ * already-qualified name is accepted too and re-qualified to itself, because `db_list` reports
+ * on-disk names and a model may well copy `myapp__chat` from it straight into `db_reconcile`.
  *
  * Mirrors `resolveDatabasePath` in cli/dust-sandbox/pod/db.ts so reconcile applies schema changes
  * to exactly the file `db()` will open:
@@ -137,6 +103,10 @@ export function stripPodDatabasePrefix({
  * The step 2 fallback is temporary. While it stands, two apps that each reconcile a name which
  * already exists unprefixed keep sharing that one legacy database, exactly as they do today;
  * removing the fallback requires renaming those files and their litestream replica prefixes.
+ *
+ * A prefix that would push the qualified name past the name contract's 64-character cap yields the
+ * bare name instead of an error, which keeps this total: reconcile and the runtime always agree
+ * without either having to handle a failure.
  */
 export function resolvePodDatabaseName({
   prefix,
@@ -147,13 +117,20 @@ export function resolvePodDatabaseName({
   name: string;
   existingNames: string[];
 }): string {
-  const qualified = qualifyPodDatabaseName({ prefix, name });
-  if (qualified === name) {
+  if (prefix === null) {
     return name;
   }
+  const appRelativeName = name.startsWith(prefix)
+    ? name.slice(prefix.length)
+    : name;
+  const qualified = `${prefix}${appRelativeName}`;
+  if (!POD_DATABASE_NAME_REGEX.test(qualified)) {
+    return appRelativeName;
+  }
+
   const existing = new Set(existingNames);
   if (existing.has(qualified)) {
     return qualified;
   }
-  return existing.has(name) ? name : qualified;
+  return existing.has(appRelativeName) ? appRelativeName : qualified;
 }

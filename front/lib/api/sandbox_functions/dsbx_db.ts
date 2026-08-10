@@ -12,7 +12,6 @@ import { shellEscape } from "@app/lib/api/sandbox/shell";
 import {
   podDatabasePrefixFromPodPath,
   resolvePodDatabaseName,
-  stripPodDatabasePrefix,
 } from "@app/lib/api/sandbox_functions/db_naming";
 import type { SandboxFunctionErrorCode } from "@app/lib/api/sandbox_functions/errors";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
@@ -282,8 +281,6 @@ export async function reconcileDatabaseFromPodPath(
     );
   }
   const prefix = prefixResult.value;
-  // db_list reports on-disk names, so the model may hand back an already-qualified one.
-  const appRelativeName = stripPodDatabasePrefix({ prefix, name: database });
 
   // Acquire the per-pod lock directly (not via executeWithLock) so a timeout surfaces as a
   // retryable publish_conflict Result instead of a thrown error.
@@ -322,7 +319,7 @@ export async function reconcileDatabaseFromPodPath(
       space,
       database: resolvePodDatabaseName({
         prefix,
-        name: appRelativeName,
+        name: database,
         existingNames: existingResult.value.map((entry) => entry.name),
       }),
       schemaFileSandboxPath: resolved.value,

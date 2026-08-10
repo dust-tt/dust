@@ -288,15 +288,12 @@ function podDatabasesDir(): string {
 function resolveDatabasePath(dir: string, name: string): string {
   const prefix = process.env[POD_DATABASE_PREFIX_ENV] ?? "";
   if (prefix.length > 0) {
-    const prefixedName = `${prefix}${name}`;
-    // A prefix long enough to push the qualified name past the name contract
-    // means this app cannot namespace this database; fall through to the bare
-    // name rather than looking for a file reconcile could never have created.
-    if (POD_DATABASE_NAME_REGEX.test(prefixedName)) {
-      const prefixedPath = `${dir}/${prefixedName}.db`;
-      if (existsSync(prefixedPath)) {
-        return prefixedPath;
-      }
+    // No need to re-check the name contract here: a prefix long enough to push
+    // the qualified name past it is one reconcile refuses to create a file for,
+    // so the existence check below is what rejects it.
+    const prefixedPath = `${dir}/${prefix}${name}.db`;
+    if (existsSync(prefixedPath)) {
+      return prefixedPath;
     }
   }
   return `${dir}/${name}.db`;

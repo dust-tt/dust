@@ -1,9 +1,7 @@
 import {
   podDatabasePrefixFromPodPath,
   podDatabasePrefixFromSlug,
-  qualifyPodDatabaseName,
   resolvePodDatabaseName,
-  stripPodDatabasePrefix,
 } from "@app/lib/api/sandbox_functions/db_naming";
 import { POD_DATABASE_NAME_REGEX } from "@app/types/api/sandbox_functions";
 import { describe, expect, it } from "vitest";
@@ -74,43 +72,39 @@ describe("podDatabasePrefixFromSlug", () => {
   });
 });
 
-describe("qualifyPodDatabaseName", () => {
-  it("qualifies with the prefix", () => {
-    expect(qualifyPodDatabaseName({ prefix: "myapp__", name: "chat" })).toBe(
-      "myapp__chat"
-    );
+describe("resolvePodDatabaseName", () => {
+  const prefix = "myapp__";
+
+  it("is idempotent for an already-qualified name", () => {
+    // db_list reports on-disk names, so the model may hand one straight back to db_reconcile.
+    expect(
+      resolvePodDatabaseName({
+        prefix,
+        name: "myapp__chat",
+        existingNames: ["myapp__chat"],
+      })
+    ).toBe("myapp__chat");
   });
 
-  it("returns the bare name when there is no prefix", () => {
-    expect(qualifyPodDatabaseName({ prefix: null, name: "chat" })).toBe("chat");
+  it("treats another app's prefix as part of the name", () => {
+    expect(
+      resolvePodDatabaseName({
+        prefix,
+        name: "other__chat",
+        existingNames: [],
+      })
+    ).toBe("myapp__other__chat");
   });
 
   it("falls back to the bare name when the prefix would break the length cap", () => {
-    const prefix = `${"a".repeat(60)}__`;
-
-    expect(qualifyPodDatabaseName({ prefix, name: "chat" })).toBe("chat");
-  });
-});
-
-describe("stripPodDatabasePrefix", () => {
-  it("makes qualifying idempotent for an already-qualified name", () => {
-    const prefix = "myapp__";
-    const stripped = stripPodDatabasePrefix({ prefix, name: "myapp__chat" });
-
-    expect(qualifyPodDatabaseName({ prefix, name: stripped })).toBe(
-      "myapp__chat"
-    );
-  });
-
-  it("leaves another app's prefix in place", () => {
     expect(
-      stripPodDatabasePrefix({ prefix: "myapp__", name: "other__chat" })
-    ).toBe("other__chat");
+      resolvePodDatabaseName({
+        prefix: `${"a".repeat(60)}__`,
+        name: "chat",
+        existingNames: [],
+      })
+    ).toBe("chat");
   });
-});
-
-describe("resolvePodDatabaseName", () => {
-  const prefix = "myapp__";
 
   it("creates a new database under the app prefix", () => {
     expect(
