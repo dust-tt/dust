@@ -16,18 +16,20 @@ import { useState } from "react";
 
 import { TagsManager } from "./TagsManager";
 
-type TagsFilterMenuProps = {
+interface TagsFilterMenuProps {
   tags: TagType[];
   selectedTags: TagType[];
   setSelectedTags: (tags: TagType[]) => void;
   owner: WorkspaceType;
-};
+  isCompact?: boolean;
+}
 
 export const TagsFilterMenu = ({
   tags,
   selectedTags,
   setSelectedTags,
   owner,
+  isCompact = false,
 }: TagsFilterMenuProps) => {
   const [isTagManagerOpen, setTagManagerOpen] = useState(false);
   const [isDropdownOpen, setDropdownOpen] = useState(false);
@@ -61,7 +63,8 @@ export const TagsFilterMenu = ({
           <Button
             variant="outline"
             icon={Tag01}
-            label="Tags"
+            label={isCompact ? undefined : "Tags"}
+            tooltip={isCompact ? "Tags" : undefined}
             counterValue={selectedTags.length.toString()}
             isCounter={selectedTags.length > 0}
           />
