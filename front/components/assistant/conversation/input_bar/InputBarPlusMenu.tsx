@@ -107,6 +107,7 @@ export function InputBarPlusMenu({
           tooltip="More"
           className={PLUS_BUTTON_CLASSNAME}
           onMouseEnter={() => setHasHovered(true)}
+          onFocus={() => setHasHovered(true)}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">

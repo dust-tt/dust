@@ -442,24 +442,24 @@ function ComposerDemo({
     if ((!text.trim() && !canSubmitEmpty) || isSubmitting) {
       return;
     }
+    // Mirror production: the draft is consumed optimistically at submit time,
+    // so text typed while the request is in flight is not clobbered. Ref
+    // mutation and URL revocation stay outside the state updaters, which
+    // React may run more than once.
+    const submittedText =
+      text.trim() || `(empty message to @${selectedAgent?.name})`;
+    const messageId = `msg-${nextMessageId.current}`;
+    nextMessageId.current += 1;
     setIsSubmitting(true);
+    setText("");
+    attachments.forEach(revokeAttachmentPreview);
+    setAttachments([]);
     window.setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `msg-${nextMessageId.current++}`,
-          text: text.trim() || `(empty message to @${selectedAgent?.name})`,
-        },
-      ]);
-      setText("");
-      setAttachments((prev) => {
-        prev.forEach(revokeAttachmentPreview);
-        return [];
-      });
+      setMessages((prev) => [...prev, { id: messageId, text: submittedText }]);
       setIsSubmitting(false);
       inputRef.current?.focus();
     }, 900);
-  }, [text, canSubmitEmpty, isSubmitting, selectedAgent]);
+  }, [text, canSubmitEmpty, isSubmitting, selectedAgent, attachments]);
 
   const slashItems: ComposerSuggestionItem[] = [
     {

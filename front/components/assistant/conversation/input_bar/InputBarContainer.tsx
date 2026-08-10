@@ -2016,6 +2016,7 @@ const InputBarContainer = ({
                           side={conversation ? "top" : "bottom"}
                           disabled={disableInput}
                           selectionRef={modelSelectionRef}
+                          commitApiRef={modelSelectionCommitRef}
                         />
                       )}
                     {conversation && (
