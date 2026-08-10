@@ -1,7 +1,11 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type { AgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
-import { isInteractiveContentFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  isInteractiveContentFileContentOutput,
+  isSidePanelControlOutput,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import { FILES_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
 import { isInteractiveContentType } from "@app/types/files";
 import { removeNulls } from "@app/types/shared/utils/general";
 import React from "react";
@@ -25,7 +29,8 @@ export function useAutoOpenSidePanel({
   isLastMessage,
   agentMessage,
 }: UseAutoOpenSidePanelProps) {
-  const { openPanel, currentPanel } = useConversationSidePanelContext();
+  const { openPanel, closePanel, currentPanel } =
+    useConversationSidePanelContext();
   const isMobile = useIsMobile();
 
   // Track the last opened fileId to prevent double-opening glitch.
@@ -45,6 +50,7 @@ export function useAutoOpenSidePanel({
 
   // Track which message sId last triggered file-panel auto-open to open only once per message.
   const autoOpenedFilesForRef = React.useRef<string | null>(null);
+  const handledFilesSidePanelControlRef = React.useRef<number | null>(null);
 
   const interactiveFilesFromProgress = React.useMemo(
     () =>
@@ -61,6 +67,24 @@ export function useAutoOpenSidePanel({
       ),
     [agentMessage.streaming.actionProgress]
   );
+
+  const latestFilesSidePanelControl = React.useMemo(() => {
+    let latestControl:
+      | {
+          actionId: number;
+          action: "open" | "close";
+        }
+      | undefined;
+
+    for (const [actionId, progress] of agentMessage.streaming.actionProgress) {
+      const output = progress.progress?._meta.data.output;
+      if (isSidePanelControlOutput(output) && output.panel === "files") {
+        latestControl = { actionId, action: output.action };
+      }
+    }
+
+    return latestControl;
+  }, [agentMessage.streaming.actionProgress]);
 
   const completedInteractiveFiles = React.useMemo(
     () =>
@@ -90,6 +114,22 @@ export function useAutoOpenSidePanel({
       return;
     }
 
+    if (
+      latestFilesSidePanelControl &&
+      handledFilesSidePanelControlRef.current !==
+        latestFilesSidePanelControl.actionId
+    ) {
+      if (latestFilesSidePanelControl.action === "open") {
+        handledFilesSidePanelControlRef.current =
+          latestFilesSidePanelControl.actionId;
+        openPanel({ type: FILES_SIDE_PANEL_TYPE });
+      } else if (currentPanel === FILES_SIDE_PANEL_TYPE) {
+        handledFilesSidePanelControlRef.current =
+          latestFilesSidePanelControl.actionId;
+        closePanel();
+      }
+    }
+
     // Priority 1: interactive content drawer (covers streaming and completed states).
     if (interactiveFilesFromProgress.length > 0) {
       const [firstFile] = interactiveFilesFromProgress;
@@ -116,6 +156,10 @@ export function useAutoOpenSidePanel({
       return;
     }
 
+    if (latestFilesSidePanelControl?.action === "close") {
+      return;
+    }
+
     // Priority 2: file explorer — only when no interactive content is taking the panel.
     if (
       regularGeneratedFiles.length === 0 ||
@@ -134,7 +178,9 @@ export function useAutoOpenSidePanel({
     regularGeneratedFiles,
     isLastMessage,
     agentMessage.sId,
+    latestFilesSidePanelControl,
     openPanel,
+    closePanel,
     currentPanel,
     isMobile,
   ]);
