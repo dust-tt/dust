@@ -41,9 +41,11 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-// Matches the picker in AnalyticsFilterDropdown, the sibling analytics filter
-// that also lists workspace members via useSearchMembers.
-const MEMBER_PICKER_PAGE_SIZE = 100;
+// Caps how many options are fetched or shown per category picker, whether
+// they come from a live paginated fetch (members) or a static list
+// (agents/models/tools/skills/sources). Matches the member picker size used
+// by the sibling AnalyticsFilterDropdown's useSearchMembers call.
+const FILTER_PICKER_PAGE_SIZE = 100;
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
@@ -104,7 +106,7 @@ export function UsageFilterPanel({
     workspaceId: owner.sId,
     searchTerm: searchText,
     pageIndex: 0,
-    pageSize: MEMBER_PICKER_PAGE_SIZE,
+    pageSize: FILTER_PICKER_PAGE_SIZE,
     disabled: !isMemberCategoryActive,
   });
 
@@ -153,7 +155,7 @@ export function UsageFilterPanel({
       activeCategory === "member" && selectedGroups.length > 0
         ? new Set(selectedGroups.flatMap((group) => group.memberIds))
         : null;
-    return activeOptions.filter((option) => {
+    const matchingOptions = activeOptions.filter((option) => {
       if (option.kind === "agent" && option.scope !== activeScope) {
         return false;
       }
@@ -175,6 +177,13 @@ export function UsageFilterPanel({
       }
       return true;
     });
+    // The member category is already capped server-side via the
+    // useSearchMembers pageSize; cap the other, statically-loaded
+    // categories here so every picker shows at most the same number of
+    // options.
+    return activeCategory === "member"
+      ? matchingOptions
+      : matchingOptions.slice(0, FILTER_PICKER_PAGE_SIZE);
   }, [
     activeOptions,
     searchText,

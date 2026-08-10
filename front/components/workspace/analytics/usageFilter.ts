@@ -88,9 +88,6 @@ export type UsageFilterOption =
 export interface UsageFilterGroup {
   id: string;
   name: string;
-  // Member sIds, used to narrow the "member" category's checklist down to a
-  // selected group. Not itself part of `UsageFilter` — groups only narrow the
-  // picker, the user still checks individual members to filter by.
   memberIds: string[];
 }
 

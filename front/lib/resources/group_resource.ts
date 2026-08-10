@@ -2963,9 +2963,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * Batched counterpart of `toJSONWithMemberCount` that also carries each
    * group's active member sIds, resolved in two queries total regardless of
-   * group count. Does not resolve the global group's implicit membership
-   * (there are no explicit GroupMembershipModel rows for it) — callers that
-   * need it should filter it out of `groups` beforehand.
+   * group count.
    */
   static async toJSONWithMembers(
     auth: Authenticator,
