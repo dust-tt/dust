@@ -204,12 +204,6 @@ interface SidebarScrollBlurProps {
   isVisible: boolean;
 }
 
-/**
- * Progressive blur pinned to the top of the sidebar's scroll area. It only
- * shows once the list is scrolled, so the items sliding under the (fixed)
- * search bar soften instead of being cut off — that's what signals that the
- * header above stays put.
- */
 function SidebarScrollBlur({ isVisible }: SidebarScrollBlurProps) {
   return (
     <div
@@ -217,8 +211,6 @@ function SidebarScrollBlur({ isVisible }: SidebarScrollBlurProps) {
       className={cn(
         "pointer-events-none absolute inset-x-0 top-0 z-30 h-8",
         "bg-linear-to-b from-app-background/80 to-transparent backdrop-blur-[3px]",
-        // The mask fades the blur (and the tint) out downwards, so the
-        // transition to sharp content is gradual rather than a hard edge.
         "[mask-image:linear-gradient(to_bottom,black_0%,black_30%,transparent_100%)]",
         "transition-opacity duration-200",
         isVisible ? "opacity-100" : "opacity-0"
@@ -480,9 +472,6 @@ export function AgentSidebarMenu({
   const [podSearchText, setPodSearchText] = useState("");
   const { setSidebarOpen } = useContext(SidebarContext);
 
-  // The Radix ScrollArea root never scrolls (overflow-hidden); the inner
-  // viewport does. Keep it in state so InfiniteScroll and the top sentinel
-  // re-bind once it is mounted.
   const [scrollViewport, setScrollViewport] = useState<HTMLDivElement | null>(
     null
   );
@@ -1094,8 +1083,6 @@ export function AgentSidebarMenu({
                 viewportRef={setScrollViewport}
                 className="dd-privacy-mask h-full w-full"
               >
-                {/* Sentinel: once it leaves the viewport the list is scrolled,
-                 * which is when the top blur fades in. */}
                 <div ref={scrollTopSentinelRef} className="h-px" aria-hidden />
                 {(showGetStarted || (!isMultiSelect && !hideActions)) && (
                   <NavigationList className="mx-sidebar-side-spacing mb-4 pt-1">
