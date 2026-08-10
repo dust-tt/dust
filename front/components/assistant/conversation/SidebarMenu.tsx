@@ -1739,163 +1739,162 @@ function NavigationListWithInbox({
   );
 
   return (
-    <div className="relative h-full">
-      <ScrollArea
-        viewportRef={setScrollViewport}
-        className="dd-privacy-mask h-full w-full"
-      >
+    <ScrollArea
+      viewportRef={setScrollViewport}
+      className="dd-privacy-mask h-full w-full"
+    >
+      <div className="flex flex-col gap-4">
         <div ref={scrollTopSentinelRef} className="h-px" aria-hidden />
-        <div className="flex flex-col gap-4">
-          {topSection}
-          <AnimatePresence initial={false}>
-            {triggeredConversations.length > 0 && (
-              <motion.div
-                key="triggered"
-                style={GRID_STYLE}
-                animate={GRID_ANIMATE}
-                exit={GRID_EXIT}
-                transition={{ duration: 0.2, ease: "easeOut" }}
-              >
-                <div className="overflow-hidden">
-                  <UnreadConversationsSection
-                    label="Auto"
-                    conversations={triggeredConversations}
-                    pods={pods}
-                    isMultiSelect={isMultiSelect}
-                    isMarkingAllAsRead={isMarkingAllAsRead}
-                    titleFilter={titleFilter}
-                    onMarkAllAsRead={markAllAsRead}
-                    selectedConversations={selectedConversations}
-                    toggleConversationSelection={toggleConversationSelection}
-                    activeConversationId={activeConversationId}
-                    owner={owner}
-                  />
-                </div>
-              </motion.div>
+        <div className="sticky top-0 z-30 h-0" aria-hidden>
+          <div
+            className={cn(
+              "pointer-events-none absolute inset-x-0 top-0 h-8 bg-linear-to-b",
+              "from-app-background to-transparent transition-opacity duration-200",
+              isScrolled ? "opacity-100" : "opacity-0"
             )}
-            {skillSuggestionConversations.length > 0 && (
-              <motion.div
-                key="skill-suggestions"
-                style={GRID_STYLE}
-                animate={GRID_ANIMATE}
-                exit={GRID_EXIT}
-                transition={{ duration: 0.2, ease: "easeOut" }}
-              >
-                <div className="overflow-hidden">
-                  <UnreadConversationsSection
-                    label="Skill suggestions"
-                    conversations={skillSuggestionConversations}
-                    pods={pods}
-                    isMultiSelect={isMultiSelect}
-                    isMarkingAllAsRead={isMarkingAllAsRead}
-                    titleFilter={titleFilter}
-                    onMarkAllAsRead={markAllAsRead}
-                    selectedConversations={selectedConversations}
-                    toggleConversationSelection={toggleConversationSelection}
-                    activeConversationId={activeConversationId}
-                    owner={owner}
-                  />
-                </div>
-              </motion.div>
-            )}
-            {inboxConversations.length > 0 && (
-              <motion.div
-                key="inbox"
-                style={GRID_STYLE}
-                animate={{ gridTemplateRows: "1fr" }}
-                exit={{ gridTemplateRows: "0fr" }}
-                transition={{ duration: 0.2, ease: "easeOut" }}
-              >
-                <div className="overflow-hidden">
-                  <UnreadConversationsSection
-                    label="Inbox"
-                    conversations={inboxConversations}
-                    pods={pods}
-                    isMultiSelect={isMultiSelect}
-                    isMarkingAllAsRead={isMarkingAllAsRead}
-                    titleFilter={titleFilter}
-                    onMarkAllAsRead={markAllAsRead}
-                    selectedConversations={selectedConversations}
-                    toggleConversationSelection={toggleConversationSelection}
-                    activeConversationId={activeConversationId}
-                    owner={owner}
-                  />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          {starredSection}
-          {podsSection}
-          <NavigationList className="mx-sidebar-side-spacing">
-            <NavigationListCollapsibleSection
-              label="Conversations"
-              type="collapse"
-              open={!isConversationsSectionCollapsed}
-              onOpenChange={(open) => setConversationsSectionCollapsed(!open)}
-              action={
-                <>
-                  <DropdownMenu modal={false}>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        size="xmini"
-                        icon={DotsHorizontal}
-                        variant="ghost"
-                        aria-label="Conversations options"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      onFocusOutside={(e) => e.preventDefault()}
-                    >
-                      <DropdownMenuLabel label="Conversations" />
-                      <DropdownMenuItem
-                        label={
-                          hideTriggeredConversations
-                            ? "Show triggered"
-                            : "Hide triggered"
-                        }
-                        icon={hideTriggeredConversations ? Zap : ZapOff}
-                        disabled={!hasTriggeredConversations}
-                        onClick={() =>
-                          setHideTriggeredConversations(
-                            !hideTriggeredConversations
-                          )
-                        }
-                      />
-                      <DropdownMenuItem
-                        label="Edit history"
-                        icon={CheckDone01}
-                        onClick={toggleMultiSelect}
-                        disabled={conversations.length === 0}
-                      />
-                      <DropdownMenuItem
-                        label="Clear history"
-                        variant="warning"
-                        icon={Trash01}
-                        onClick={() => setShowDeleteDialog("all")}
-                        disabled={conversations.length === 0}
-                      />
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </>
-              }
-            >
-              {conversationsContent}
-            </NavigationListCollapsibleSection>
-          </NavigationList>
+          />
         </div>
-      </ScrollArea>
-      <div
-        aria-hidden
-        className={cn(
-          "pointer-events-none absolute inset-x-0 top-0 h-8 bg-linear-to-b",
-          "from-app-background to-transparent transition-opacity duration-200",
-          isScrolled ? "opacity-100" : "opacity-0"
-        )}
-      />
-    </div>
+        {topSection}
+        <AnimatePresence initial={false}>
+          {triggeredConversations.length > 0 && (
+            <motion.div
+              key="triggered"
+              style={GRID_STYLE}
+              animate={GRID_ANIMATE}
+              exit={GRID_EXIT}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              <div className="overflow-hidden">
+                <UnreadConversationsSection
+                  label="Auto"
+                  conversations={triggeredConversations}
+                  pods={pods}
+                  isMultiSelect={isMultiSelect}
+                  isMarkingAllAsRead={isMarkingAllAsRead}
+                  titleFilter={titleFilter}
+                  onMarkAllAsRead={markAllAsRead}
+                  selectedConversations={selectedConversations}
+                  toggleConversationSelection={toggleConversationSelection}
+                  activeConversationId={activeConversationId}
+                  owner={owner}
+                />
+              </div>
+            </motion.div>
+          )}
+          {skillSuggestionConversations.length > 0 && (
+            <motion.div
+              key="skill-suggestions"
+              style={GRID_STYLE}
+              animate={GRID_ANIMATE}
+              exit={GRID_EXIT}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              <div className="overflow-hidden">
+                <UnreadConversationsSection
+                  label="Skill suggestions"
+                  conversations={skillSuggestionConversations}
+                  pods={pods}
+                  isMultiSelect={isMultiSelect}
+                  isMarkingAllAsRead={isMarkingAllAsRead}
+                  titleFilter={titleFilter}
+                  onMarkAllAsRead={markAllAsRead}
+                  selectedConversations={selectedConversations}
+                  toggleConversationSelection={toggleConversationSelection}
+                  activeConversationId={activeConversationId}
+                  owner={owner}
+                />
+              </div>
+            </motion.div>
+          )}
+          {inboxConversations.length > 0 && (
+            <motion.div
+              key="inbox"
+              style={GRID_STYLE}
+              animate={{ gridTemplateRows: "1fr" }}
+              exit={{ gridTemplateRows: "0fr" }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              <div className="overflow-hidden">
+                <UnreadConversationsSection
+                  label="Inbox"
+                  conversations={inboxConversations}
+                  pods={pods}
+                  isMultiSelect={isMultiSelect}
+                  isMarkingAllAsRead={isMarkingAllAsRead}
+                  titleFilter={titleFilter}
+                  onMarkAllAsRead={markAllAsRead}
+                  selectedConversations={selectedConversations}
+                  toggleConversationSelection={toggleConversationSelection}
+                  activeConversationId={activeConversationId}
+                  owner={owner}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {starredSection}
+        {podsSection}
+        <NavigationList className="mx-sidebar-side-spacing">
+          <NavigationListCollapsibleSection
+            label="Conversations"
+            type="collapse"
+            open={!isConversationsSectionCollapsed}
+            onOpenChange={(open) => setConversationsSectionCollapsed(!open)}
+            action={
+              <>
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="xmini"
+                      icon={DotsHorizontal}
+                      variant="ghost"
+                      aria-label="Conversations options"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    onFocusOutside={(e) => e.preventDefault()}
+                  >
+                    <DropdownMenuLabel label="Conversations" />
+                    <DropdownMenuItem
+                      label={
+                        hideTriggeredConversations
+                          ? "Show triggered"
+                          : "Hide triggered"
+                      }
+                      icon={hideTriggeredConversations ? Zap : ZapOff}
+                      disabled={!hasTriggeredConversations}
+                      onClick={() =>
+                        setHideTriggeredConversations(
+                          !hideTriggeredConversations
+                        )
+                      }
+                    />
+                    <DropdownMenuItem
+                      label="Edit history"
+                      icon={CheckDone01}
+                      onClick={toggleMultiSelect}
+                      disabled={conversations.length === 0}
+                    />
+                    <DropdownMenuItem
+                      label="Clear history"
+                      variant="warning"
+                      icon={Trash01}
+                      onClick={() => setShowDeleteDialog("all")}
+                      disabled={conversations.length === 0}
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            }
+          >
+            {conversationsContent}
+          </NavigationListCollapsibleSection>
+        </NavigationList>
+      </div>
+    </ScrollArea>
   );
 }
