@@ -234,6 +234,34 @@ describe("AgentStepContentResource Redis cache", () => {
     expect(fetched.map((c) => c.id).includes(created.id)).toBe(true);
   });
 
+  it("falls back to Postgres when a backfill changes dustRunId behind the cache", async () => {
+    const created = await AgentStepContentResource.createNewVersion({
+      workspaceId,
+      agentMessageId: agentMessage.id,
+      step: 0,
+      index: 0,
+      type: "text_content",
+      value: makeTextContent("cached before backfill"),
+    });
+
+    await AgentStepContentModel.update(
+      { dustRunId: "backfilled-run-id" },
+      {
+        where: { id: created.id, workspaceId },
+        fields: ["dustRunId"],
+        silent: true,
+      }
+    );
+
+    const fetched = await AgentStepContentResource.fetchByAgentMessages(
+      authenticator,
+      { agentMessageIds: [agentMessage.id] }
+    );
+
+    expect(fetched).toHaveLength(1);
+    expect(fetched[0].dustRunId).toBe("backfilled-run-id");
+  });
+
   it("overwrites the hash field when creating a new version of the same step/index", async () => {
     await AgentStepContentResource.createNewVersion({
       workspaceId,

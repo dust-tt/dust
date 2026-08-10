@@ -46,6 +46,7 @@ const METADATA_ATTRIBUTES = [
   "index",
   "version",
   "type",
+  "dustRunId",
 ] as const;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -283,6 +284,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       index: number;
       version: number;
       type: AgentStepContentModel["type"];
+      dustRunId: string | null;
     }>
   > {
     const owner = auth.getNonNullableWorkspace();
@@ -323,6 +325,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       index: row.index,
       version: row.version,
       type: row.type,
+      dustRunId: row.dustRunId,
     }));
   }
 

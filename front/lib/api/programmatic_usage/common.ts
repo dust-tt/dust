@@ -55,6 +55,21 @@ const PROGRAMMATIC_USAGE_ORIGINS = Object.keys(
     USAGE_ORIGINS_CLASSIFICATION[origin as UserMessageOrigin] === "programmatic"
 );
 
+export function isProgrammaticUsageFromContext({
+  authMethod,
+  userMessageOrigin,
+}: {
+  // Persisted historical values predate the AuthMethodType union, so keep the input broad and
+  // reproduce the live rule by recognizing the one auth method that changes classification.
+  authMethod: string | null;
+  userMessageOrigin: UserMessageOrigin;
+}): boolean {
+  return (
+    authMethod === "api_key" ||
+    USAGE_ORIGINS_CLASSIFICATION[userMessageOrigin] === "programmatic"
+  );
+}
+
 // Markup multiplier to convert raw ES costs to costs with Dust markup.
 export const MARKUP_MULTIPLIER = 1 + DUST_MARKUP_PERCENT / 100;
 
