@@ -851,7 +851,7 @@ export function AgentSidebarMenu({
 
   const navItemsSection = (showGetStarted ||
     (!isMultiSelect && !hideActions)) && (
-    <NavigationList className="mx-sidebar-side-spacing mb-4 pt-1">
+    <NavigationList className="mx-sidebar-side-spacing pt-1">
       {showGetStarted && (
         <NavigationListItem
           label="For you"
@@ -1743,18 +1743,18 @@ function NavigationListWithInbox({
       viewportRef={setScrollViewport}
       className="dd-privacy-mask h-full w-full"
     >
+      <div ref={scrollTopSentinelRef} className="h-px" aria-hidden />
+      <div className="sticky top-0 z-30 h-0" aria-hidden>
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-x-0 top-0 h-8 backdrop-blur-[2px]",
+            "[mask-image:linear-gradient(to_bottom,black,transparent)]",
+            "transition-opacity duration-200",
+            isScrolled ? "opacity-100" : "opacity-0"
+          )}
+        />
+      </div>
       <div className="flex flex-col gap-4">
-        <div ref={scrollTopSentinelRef} className="h-px" aria-hidden />
-        <div className="sticky top-0 z-30 h-0" aria-hidden>
-          <div
-            className={cn(
-              "pointer-events-none absolute inset-x-0 top-0 h-8 backdrop-blur-[2px]",
-              "[mask-image:linear-gradient(to_bottom,black,transparent)]",
-              "transition-opacity duration-200",
-              isScrolled ? "opacity-100" : "opacity-0"
-            )}
-          />
-        </div>
         {topSection}
         <AnimatePresence initial={false}>
           {triggeredConversations.length > 0 && (
