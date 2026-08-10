@@ -27,10 +27,8 @@ import { UsageFilterModelComplexityControls } from "@app/components/workspace/an
 import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
-import type { ConsumptionAgentTopRow } from "@app/hooks/useConsumptionTop";
-import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
-import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useGroups } from "@app/lib/swr/groups";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
@@ -58,12 +56,12 @@ interface UsageFilterPaginationState {
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
-  period: ConsumptionPeriodSelection;
   // Models/tools/skills/sources are still mock data (see
   // usageFilterMockData.ts — sources are fake connectors standing in for a
-  // real db call); agents are fetched live below scoped to `period`
-  // (useConsumptionTop), members and teams via the generic member search
-  // and group listing endpoints (useSearchMembers, useGroups).
+  // real db call); agents come from the same workspace-wide listing the rest
+  // of the app uses (useAgentConfigurations), members and teams via the
+  // generic member search and group listing endpoints (useSearchMembers,
+  // useGroups).
   categoryOptions: {
     model: UsageFilterModelOption[];
     tool: UsageFilterToolOption[];
@@ -76,7 +74,6 @@ interface UsageFilterPanelProps {
 
 export function UsageFilterPanel({
   owner,
-  period,
   categoryOptions,
   filter,
   onFilterChange,
@@ -182,13 +179,9 @@ export function UsageFilterPanel({
     disabled: !isMemberCategoryActive && !isTeamCategoryActive,
   });
 
-  const { rows: topAgentRows } = useConsumptionTop({
+  const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
-    dimension: "agent",
-    period,
-    // Same rationale as members: broader than the Attribution table's own
-    // top-N so the picker covers most of the period's active agents.
-    limit: 100,
+    agentsGetView: "all",
     disabled: !isAgentCategoryActive,
   });
 
@@ -212,22 +205,18 @@ export function UsageFilterPanel({
     [workspaceGroups]
   );
 
-  // Same client-side search caveat as members: an agent outside the top 100
-  // by credits over the period will not be searchable here.
+  // Every agent in the workspace, regardless of the selected period. Search
+  // is applied client-side below.
   const agentOptions = useMemo<UsageFilterAgentOption[]>(
     () =>
-      topAgentRows
-        .filter(
-          (row): row is ConsumptionAgentTopRow => row.dimension === "agent"
-        )
-        .map((row) => ({
-          id: row.id,
-          name: row.name,
-          kind: "agent",
-          image: row.pictureUrl,
-          scope: row.scope,
-        })),
-    [topAgentRows]
+      agentConfigurations.map((agent) => ({
+        id: agent.sId,
+        name: agent.name,
+        kind: "agent",
+        image: agent.pictureUrl,
+        scope: agent.scope,
+      })),
+    [agentConfigurations]
   );
 
   const resolvedCategoryOptions = useMemo<{
