@@ -25,9 +25,10 @@ const PostSandboxFunctionResultRequestBodySchema = z
 // `--result-delivery stdout` since Pod function stdout delivery became the
 // default. The only callers left are dsbx binaries baked into images still
 // pinned below 0.1.45 (DSBX_CLI_VERSION in front/lib/api/sandbox/image/registry.ts),
-// and only for a hand-run `dsbx function run` that omits the flag. Delete this
-// route, its test, and the sandbox-functions result client once that pin has
-// moved and no running sandbox predates it.
+// and only for a hand-run `dsbx function run` that omits the flag. Once that pin
+// has moved and no running sandbox predates it, delete this route and its test,
+// along with the callback arm normalizeSandboxFunctionResult still accepts in
+// lib/api/sandbox_functions/result_envelope.ts.
 const app = sandboxApp();
 
 /**

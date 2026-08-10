@@ -45,9 +45,8 @@ const DEFAULT_FUNCTION_WORKING_DIR: &str = "/home/agent";
 
 #[derive(Subcommand)]
 pub enum FunctionCommand {
-    /// Execute a function. Request envelope JSON on stdin; deliver the result
-    /// via `--result-delivery` (HTTP callback by default, or a protocol v3
-    /// envelope on stdout).
+    /// Execute a function. Request envelope JSON on stdin, protocol v3 result
+    /// envelope on stdout.
     Run {
         /// Accepted and ignored: `stdout` is the only delivery mode. The flag
         /// stays because front still passes `--result-delivery stdout`, and
