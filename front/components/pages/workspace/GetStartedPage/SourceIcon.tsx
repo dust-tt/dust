@@ -1,3 +1,4 @@
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { isConnectorProvider } from "@app/types/data_source";
 import { ActionBrainIcon, Folder, Icon } from "@dust-tt/sparkle";
@@ -15,8 +16,11 @@ interface SourceIconProps {
 }
 
 export function SourceIcon({ sourceIcon }: SourceIconProps) {
+  const { isDark } = useTheme();
+
   if (isConnectorProvider(sourceIcon)) {
-    const Logo = CONNECTOR_UI_CONFIGURATIONS[sourceIcon].getLogoComponent();
+    const Logo =
+      CONNECTOR_UI_CONFIGURATIONS[sourceIcon].getLogoComponent(isDark);
     return (
       <span className="flex h-4 w-4 shrink-0 items-center justify-center [&_svg]:h-4 [&_svg]:w-4">
         <Logo />
