@@ -11,8 +11,8 @@ import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import type { SandboxFunctionErrorCode } from "@app/lib/api/sandbox_functions/errors";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
+import type { StagingHashes } from "@app/lib/api/sandbox_functions/staging_integrity";
 import {
-  type StagingHashes,
   splitStagingStdout,
   stagingHashCaptureLines,
   verifyStagingContent,
