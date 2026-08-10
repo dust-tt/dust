@@ -6,11 +6,14 @@ import {
   getFilePreviewContentType,
   getFilePreviewTypeLabel,
 } from "@app/lib/markdown/file_preview";
+import { isInteractiveContentType } from "@app/types/files";
 import { isString } from "@app/types/shared/utils/general";
 import { visit } from "unist-util-visit";
 
 interface FilePreviewBlockProps {
   contentType?: string;
+  // When true, the compact Activation Pod UI is used
+  hideInteractiveContent?: boolean;
   path: string;
   title?: string;
 }
@@ -40,6 +43,7 @@ function getDirectiveLabelText(children: unknown): string | undefined {
 
 export function FilePreviewBlock({
   contentType,
+  hideInteractiveContent,
   path,
   title,
 }: FilePreviewBlockProps) {
@@ -52,6 +56,11 @@ export function FilePreviewBlock({
     contentType,
     fileName,
   });
+
+  if (hideInteractiveContent && isInteractiveContentType(fileContentType)) {
+    return null;
+  }
+
   const typeLabel = getFilePreviewTypeLabel({
     contentType: fileContentType,
     fileName,
@@ -68,8 +77,16 @@ export function FilePreviewBlock({
   );
 }
 
-export function getFilePreviewPlugin() {
-  return FilePreviewBlock;
+export function getFilePreviewPlugin(options?: {
+  hideInteractiveContent?: boolean;
+}) {
+  if (!options?.hideInteractiveContent) {
+    return FilePreviewBlock;
+  }
+
+  return function CompactFilePreviewBlock(props: FilePreviewBlockProps) {
+    return <FilePreviewBlock {...props} hideInteractiveContent />;
+  };
 }
 
 export function filePreviewDirective() {

@@ -5,9 +5,11 @@ import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle"
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { InlineActivitySteps } from "@app/components/assistant/conversation/actions/inline/InlineActivitySteps";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
+import { FileCitationCard } from "@app/components/assistant/conversation/attachment/FileCitationCard";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { BlockedAction } from "@app/components/assistant/conversation/BlockedAction";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { CreditCostPopover } from "@app/components/assistant/conversation/CreditCostPopover";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
@@ -34,6 +36,7 @@ import {
   CitationsContext,
   CiteBlock,
 } from "@app/components/markdown/CiteBlock";
+import { getFilePreviewPlugin } from "@app/components/markdown/FilePreviewBlock";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import { getQuickReplyPlugin } from "@app/components/markdown/QuickReplyBlock";
 import { getToolSetupPlugin } from "@app/components/markdown/tool/tool";
@@ -99,6 +102,7 @@ import type {
 } from "@app/types/user";
 import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
+  ActionFrame,
   Button,
   ButtonGroupDropdown,
   Chip,
@@ -932,6 +936,17 @@ export function AgentMessage({
     [activeReferences, conversationId, owner]
   );
 
+  const { interactiveFiles } = useAutoOpenSidePanel({
+    agentMessage,
+    isLastMessage,
+  });
+  const { openPanel } = useConversationSidePanelContext();
+
+  const frameCitations = useMemo(
+    () => getFrameCitations({ files: interactiveFiles, openPanel }),
+    [interactiveFiles, openPanel]
+  );
+
   const handleQuickReply = useCallback(
     async (reply: string) => {
       const parsedMention = extractFromString(reply).find(isAgentMention);
@@ -1070,6 +1085,7 @@ export function AgentMessage({
           additionalMarkdownComponents={additionalMarkdownComponents}
           additionalMarkdownPlugins={additionalMarkdownPlugins}
           uiView={uiView}
+          interactiveFiles={isCompactUIView ? [] : interactiveFiles}
         />
       )}
     </ConversationMessageContent>
@@ -1154,6 +1170,7 @@ function AgentMessageContent({
   additionalMarkdownComponents: propsAdditionalMarkdownComponents,
   additionalMarkdownPlugins,
   uiView,
+  interactiveFiles,
 }: {
   onOpenDetails?: (messageId: string, actionId?: string) => void;
   triggeringUser: UserType | null;
@@ -1187,6 +1204,7 @@ function AgentMessageContent({
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
   uiView: UiView;
+  interactiveFiles: AgentMessageWithStreaming["generatedFiles"];
 }) {
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
@@ -1283,6 +1301,15 @@ function AgentMessageContent({
       quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
       toolSetup: getToolSetupPlugin(owner, handleToolSetupComplete),
       action_card: getActionCardPlugin(onQuickReplySend, isLastMessage),
+      // In the compact Activation Pod UI, the inline Frame preview directive is
+      // suppressed here, the Frame is instead rendered as a bottom citation card.
+      ...(isCompactUIView
+        ? {
+            file_preview: getFilePreviewPlugin({
+              hideInteractiveContent: true,
+            }),
+          }
+        : {}),
       ...propsAdditionalMarkdownComponents,
     }),
     [
@@ -1296,13 +1323,9 @@ function AgentMessageContent({
       handleToolSetupComplete,
       propsAdditionalMarkdownComponents,
       spaceId,
+      isCompactUIView,
     ]
   );
-
-  const { interactiveFiles } = useAutoOpenSidePanel({
-    agentMessage,
-    isLastMessage,
-  });
 
   const blockedActionElement = blockedAction ? (
     <BlockedAction
@@ -1536,5 +1559,33 @@ function getCitations({
         size="sm"
       />
     );
+  });
+}
+
+// Renders Frame files as bottom citation cards for the compact Activation Pod UI
+function getFrameCitations({
+  files,
+  openPanel,
+}: {
+  files: AgentMessageWithStreaming["generatedFiles"];
+  openPanel: ReturnType<typeof useConversationSidePanelContext>["openPanel"];
+}) {
+  return files.flatMap((file) => {
+    if (!file.fileId) {
+      return [];
+    }
+
+    const { fileId } = file;
+
+    return [
+      <FileCitationCard
+        key={fileId}
+        icon={ActionFrame}
+        title="Frame"
+        tooltipLabel={file.title}
+        size="sm"
+        onClick={() => openPanel({ type: "interactive_content", fileId })}
+      />,
+    ];
   });
 }

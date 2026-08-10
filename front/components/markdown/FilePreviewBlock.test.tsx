@@ -234,4 +234,36 @@ describe("getFilePreviewPlugin", () => {
 
     expect(screen.getByText("data.csv")).toBeInTheDocument();
   });
+
+  it("hides Frame files when hideInteractiveContent is set", () => {
+    const FilePreview = getFilePreviewPlugin({ hideInteractiveContent: true });
+
+    render(
+      <FilePreviewProvider owner={mockOwner}>
+        <FilePreview
+          path="conversation-c1/frame.tsx"
+          title="frame.tsx"
+          contentType={frameContentType}
+        />
+      </FilePreviewProvider>
+    );
+
+    expect(screen.queryByText("frame.tsx")).not.toBeInTheDocument();
+  });
+
+  it("still renders non-Frame files when hideInteractiveContent is set", () => {
+    const FilePreview = getFilePreviewPlugin({ hideInteractiveContent: true });
+
+    render(
+      <FilePreviewProvider owner={mockOwner}>
+        <FilePreview
+          path="conversation-c1/reports/report final.pdf"
+          title="report final.pdf"
+          contentType="application/pdf"
+        />
+      </FilePreviewProvider>
+    );
+
+    expect(screen.getByText("report final.pdf")).toBeInTheDocument();
+  });
 });

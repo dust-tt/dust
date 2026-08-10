@@ -6,9 +6,9 @@ import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import type { LightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
 import { Ok } from "@app/types/shared/result";
 import type { UserType } from "@app/types/user";
-import { render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import type { ComponentType, ReactNode } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/auth/AuthContext", () => ({
   useAuth: () => ({ vizUrl: null }),
@@ -72,26 +72,88 @@ vi.mock(
   })
 );
 
+const { useAutoOpenSidePanelMock, openPanelMock } = vi.hoisted(() => ({
+  useAutoOpenSidePanelMock: vi.fn(() => ({
+    interactiveFiles: [] as unknown[],
+  })),
+  openPanelMock: vi.fn(),
+}));
+
 vi.mock("@app/components/assistant/conversation/useAutoOpenSidePanel", () => ({
-  useAutoOpenSidePanel: () => ({ interactiveFiles: [] }),
+  useAutoOpenSidePanel: useAutoOpenSidePanelMock,
 }));
 
 vi.mock(
   "@app/components/assistant/conversation/ConversationSidePanelContext",
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import("@app/components/assistant/conversation/ConversationSidePanelContext")
-      >();
-    return {
-      ...actual,
-      useConversationSidePanelContext: () => ({
-        togglePanel: vi.fn(),
-        openPanel: vi.fn(),
-        currentPanel: null,
-      }),
-    };
-  }
+  () => ({
+    useConversationSidePanelContext: () => ({
+      togglePanel: vi.fn(),
+      openPanel: openPanelMock,
+      currentPanel: null,
+    }),
+  })
+);
+
+// Inline file-preview card (:preview_file{...} directive): stubbed so tests can assert
+// whether FilePreviewBlock decided to render it, without depending on PreviewableCitation's
+// own context wiring (ConversationSidePanelContext, FilePreviewContext, sparkle Tooltip).
+vi.mock(
+  "@app/components/assistant/conversation/attachment/PreviewableCitation",
+  () => ({
+    PreviewableCitation: ({ title }: { title: string }) => (
+      <span data-testid="inline-file-preview">{title}</span>
+    ),
+  })
+);
+
+// Top-of-message Frame renderer: stubbed so tests can assert its presence/absence
+// without depending on the real Citation/CitationGrid markup.
+vi.mock(
+  "@app/components/assistant/conversation/AgentMessageGeneratedFiles",
+  () => ({
+    AgentMessageInteractiveContentGeneratedFiles: ({
+      files,
+    }: {
+      files: { fileId?: string | null; title: string }[];
+    }) =>
+      files.length > 0 ? (
+        <div data-testid="top-frame-link">
+          {files.map((file) => (
+            <span key={file.fileId ?? file.title}>{file.title}</span>
+          ))}
+        </div>
+      ) : null,
+  })
+);
+
+// Bottom citation/source card: stubbed the same way as AttachmentCitation above, so we
+// can assert the visible label, accessible name, icon, and click behavior in isolation.
+vi.mock(
+  "@app/components/assistant/conversation/attachment/FileCitationCard",
+  () => ({
+    FileCitationCard: ({
+      title,
+      tooltipLabel,
+      icon: IconComponent,
+      onClick,
+    }: {
+      title: string;
+      tooltipLabel?: ReactNode;
+      icon?: ComponentType | ReactNode;
+      onClick?: () => void;
+    }) => (
+      <div
+        data-testid="bottom-frame-citation"
+        aria-label={typeof tooltipLabel === "string" ? tooltipLabel : undefined}
+        onClick={onClick}
+      >
+        {typeof IconComponent === "function" ? (
+          <IconComponent data-testid="frame-icon" />
+        ) : null}
+        {title}
+      </div>
+    ),
+  })
 );
 
 vi.mock("@app/components/sparkle/ThemeContext", () => ({
@@ -198,6 +260,17 @@ const messageFeedback: FeedbackSelectorBaseProps = {
   isSubmittingThumb: false,
 };
 
+function buildFrameFile(
+  overrides: Partial<{ fileId: string; title: string }> = {}
+) {
+  return {
+    title: overrides.title ?? "Quarterly Report",
+    contentType: "application/vnd.dust.frame",
+    fileId: overrides.fileId ?? "fil_frame_1",
+    hidden: false,
+  };
+}
+
 function renderAgentMessage({
   uiView,
   agentMessageOverrides,
@@ -225,6 +298,11 @@ function renderAgentMessage({
 }
 
 describe("AgentMessage compact UI view", () => {
+  beforeEach(() => {
+    useAutoOpenSidePanelMock.mockReturnValue({ interactiveFiles: [] });
+    openPanelMock.mockClear();
+  });
+
   describe("bottom citations", () => {
     it("hides the bottom citation list for compact UI conversations but keeps inline citations", () => {
       const { container } = renderAgentMessage({
@@ -301,6 +379,115 @@ describe("AgentMessage compact UI view", () => {
 
       expect(screen.getByText("AGENTS.md")).toBeInTheDocument();
       expect(screen.getByText("session_plan.md")).toBeInTheDocument();
+    });
+  });
+
+  describe("Frame link relocation", () => {
+    it("renders one Frame card at the bottom (not the top) for a compact Activation Pod message with one Frame", () => {
+      const frameFile = buildFrameFile();
+      useAutoOpenSidePanelMock.mockReturnValue({
+        interactiveFiles: [frameFile],
+      });
+
+      renderAgentMessage({ isCompactUIView: true });
+
+      expect(screen.queryByTestId("top-frame-link")).not.toBeInTheDocument();
+
+      const cards = screen.getAllByTestId("bottom-frame-citation");
+      expect(cards).toHaveLength(1);
+
+      const [card] = cards;
+      expect(card).toHaveTextContent("Frame");
+      expect(card).not.toHaveTextContent(frameFile.title);
+      expect(card).toHaveAttribute("aria-label", frameFile.title);
+      expect(within(card).getByTestId("frame-icon")).toBeInTheDocument();
+
+      fireEvent.click(card);
+      expect(openPanelMock).toHaveBeenCalledWith({
+        type: "interactive_content",
+        fileId: frameFile.fileId,
+      });
+    });
+
+    it("renders one bottom Frame card per Frame for a compact Activation Pod message with multiple Frames", () => {
+      const frameFiles = [
+        buildFrameFile({ fileId: "fil_frame_1", title: "First Frame" }),
+        buildFrameFile({ fileId: "fil_frame_2", title: "Second Frame" }),
+      ];
+      useAutoOpenSidePanelMock.mockReturnValue({
+        interactiveFiles: frameFiles,
+      });
+
+      renderAgentMessage({ isCompactUIView: true });
+
+      expect(screen.queryByTestId("top-frame-link")).not.toBeInTheDocument();
+      expect(screen.getAllByTestId("bottom-frame-citation")).toHaveLength(2);
+    });
+
+    it("renders no Frame container for a compact Activation Pod message without a Frame", () => {
+      useAutoOpenSidePanelMock.mockReturnValue({ interactiveFiles: [] });
+
+      renderAgentMessage({ isCompactUIView: true });
+
+      expect(screen.queryByTestId("top-frame-link")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("bottom-frame-citation")
+      ).not.toBeInTheDocument();
+    });
+
+    it("keeps the Frame link at the top for non-Activation-Pod messages", () => {
+      const frameFile = buildFrameFile();
+      useAutoOpenSidePanelMock.mockReturnValue({
+        interactiveFiles: [frameFile],
+      });
+
+      renderAgentMessage({ isCompactUIView: false });
+
+      expect(screen.getByTestId("top-frame-link")).toHaveTextContent(
+        frameFile.title
+      );
+      expect(
+        screen.queryByTestId("bottom-frame-citation")
+      ).not.toBeInTheDocument();
+    });
+
+    it("suppresses the inline Frame preview directive for compact Activation Pod messages", () => {
+      renderAgentMessage({
+        isCompactUIView: true,
+        agentMessageOverrides: {
+          content:
+            'Here is your frame: :preview_file{path="conv_1/frame.html" title="Quarterly Report" contentType="application/vnd.dust.frame"}',
+          citations: {},
+        },
+      });
+
+      expect(screen.queryByText("Quarterly Report")).not.toBeInTheDocument();
+    });
+
+    it("keeps the inline Frame preview directive for non-Activation-Pod messages", () => {
+      renderAgentMessage({
+        isCompactUIView: false,
+        agentMessageOverrides: {
+          content:
+            'Here is your frame: :preview_file{path="conv_1/frame.html" title="Quarterly Report" contentType="application/vnd.dust.frame"}',
+          citations: {},
+        },
+      });
+
+      expect(screen.getByText("Quarterly Report")).toBeInTheDocument();
+    });
+
+    it("keeps non-Frame inline file previews for compact Activation Pod messages", () => {
+      renderAgentMessage({
+        isCompactUIView: true,
+        agentMessageOverrides: {
+          content:
+            'See the report: :preview_file{path="conv_1/report.pdf" title="Report.pdf" contentType="application/pdf"}',
+          citations: {},
+        },
+      });
+
+      expect(screen.getByText("Report.pdf")).toBeInTheDocument();
     });
   });
 });
