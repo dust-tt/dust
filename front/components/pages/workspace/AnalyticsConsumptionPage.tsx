@@ -3,14 +3,14 @@ import { ConsumptionOverview } from "@app/components/workspace/analytics/consump
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { DEFAULT_CONSUMPTION_DIMENSION } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
 import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
 import {
   USAGE_FILTER_MOCK_GROUPS,
   USAGE_FILTER_MOCK_OPTIONS,
 } from "@app/components/workspace/analytics/usageFilterMockData";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
 import { BarChart01, cn, Page, SafeSuspense, safeLazy } from "@dust-tt/sparkle";
