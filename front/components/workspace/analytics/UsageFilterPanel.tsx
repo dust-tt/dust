@@ -1,4 +1,3 @@
-import type { ConsumptionPeriodSelection } from "@app/components/workspace/analytics/consumption/consumptionPeriod";
 import type {
   UsageFilter,
   UsageFilterAgentOption,
@@ -31,6 +30,7 @@ import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
 import { useConsumptionRelevantGroups } from "@app/hooks/useConsumptionRelevantGroups";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   BarChart05,

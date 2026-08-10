@@ -1,5 +1,5 @@
-import type { ConsumptionPeriodSelection } from "@app/components/workspace/analytics/consumption/consumptionPeriod";
-import { consumptionQueryString } from "@app/components/workspace/analytics/consumption/consumptionPeriod";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import { consumptionQueryString } from "@app/lib/analytics/consumption_period";
 // Type-only: importing a value from this module would pull the Elasticsearch
 // client into the browser bundle (see the note in `series.ts`).
 import type { GetConsumptionRelevantGroupsResponse } from "@app/lib/api/analytics/consumption/relevant_groups";
