@@ -1,11 +1,11 @@
 import config from "@app/lib/api/config";
+import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import { countActiveSeatsForWorkspace } from "@app/lib/workspace_seats";
 import logger from "@app/logger/logger";
 import type { JobType } from "@app/types/job_type";
 import type { MembershipRoleType } from "@app/types/memberships";

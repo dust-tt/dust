@@ -1,4 +1,5 @@
 import { updateWorkOSOrganizationName } from "@app/lib/api/workos/organization";
+import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { updateMetronomeCustomerName } from "@app/lib/metronome/client";
@@ -20,7 +21,6 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import { countActiveSeatsForWorkspace } from "@app/lib/workspace_seats";
 import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 import type { GroupKind } from "@app/types/groups";

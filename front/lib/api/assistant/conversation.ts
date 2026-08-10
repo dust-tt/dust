@@ -75,6 +75,7 @@ import {
   isNonCreditPricedUserSpendLimitReached,
   isUserSpendLimitRateCapReached,
 } from "@app/lib/api/users/spend_limit";
+import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { isModelAvailable } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -123,7 +124,6 @@ import {
 } from "@app/lib/utils/rate_limiter";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
-import { countActiveSeatsForWorkspace } from "@app/lib/workspace_seats";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {

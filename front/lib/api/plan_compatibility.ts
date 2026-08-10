@@ -1,8 +1,8 @@
 import { getDataSources } from "@app/lib/api/data_sources";
+import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import type { Authenticator } from "@app/lib/auth";
 import { doesConnectorProviderCountTowardConnectionsLimit } from "@app/lib/data_sources";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { countActiveSeatsForWorkspace } from "@app/lib/workspace_seats";
 import type { PlanType } from "@app/types/plan";
 
 type PlanFitResult = {

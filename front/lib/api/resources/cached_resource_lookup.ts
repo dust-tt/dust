@@ -47,10 +47,16 @@ type OperableCachedResourceLookup<Input, Resource> = CachedResourceLookup<
   }) => CacheOperations;
 };
 
+// Marks database errors so they are not mistaken for Redis failures and retried by the database
+// fallback below.
 class ResourceDatabaseLoadError {
   constructor(readonly cause: unknown) {}
 }
 
+/**
+ * Use when a Resource lookup returns Resource instances. For counts or other query results,
+ * use `defineCache` instead.
+ */
 export function defineCachedResourceLookup<Input, Snapshot, Resource>({
   id,
   version,
@@ -65,6 +71,7 @@ export function defineCachedResourceLookup<Input, Snapshot, Resource>({
   Resource
 >): OperableCachedResourceLookup<Input, Resource> {
   const versionedKey = (input: Input) => `v${version}:${key(input)}`;
+
   const loadSnapshotFromDatabase = async (
     input: Input
   ): Promise<JsonSerializable<Snapshot> | null> => {
@@ -75,6 +82,7 @@ export function defineCachedResourceLookup<Input, Snapshot, Resource>({
       throw new ResourceDatabaseLoadError(err);
     }
   };
+
   const fetchSnapshot = cacheWithRedis<Snapshot, [Input]>(
     loadSnapshotFromDatabase,
     versionedKey,

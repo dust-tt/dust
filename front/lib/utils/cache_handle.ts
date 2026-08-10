@@ -6,7 +6,7 @@ import {
 } from "@app/lib/utils/cache";
 import type { Transaction } from "sequelize";
 
-type CacheHandleDefinition<Input, Value> = {
+type CacheDefinition<Input, Value> = {
   id: string;
   key: (input: Input) => string;
   load: (input: Input) => Promise<JsonSerializable<Value>>;
@@ -14,19 +14,23 @@ type CacheHandleDefinition<Input, Value> = {
   cacheNullValues?: boolean;
 };
 
-export type CacheHandle<Input, Value> = {
-  read: (input: Input) => Promise<JsonSerializable<Value>>;
+export type Cache<Input, Value> = {
+  get: (input: Input) => Promise<JsonSerializable<Value>>;
   invalidate: (input: Input, transaction?: Transaction) => Promise<void>;
 };
 
+/**
+ * Use for cached values such as counts or query results. If the cache returns Resource instances,
+ * use `defineCachedResourceLookup` instead.
+ */
 export function defineCache<Input, Value>({
   id,
   key,
   load,
   ttlMs,
   cacheNullValues,
-}: CacheHandleDefinition<Input, Value>): CacheHandle<Input, Value> {
-  const cached = cacheWithRedis(load, key, {
+}: CacheDefinition<Input, Value>): Cache<Input, Value> {
+  const getCached = cacheWithRedis(load, key, {
     cacheId: id,
     ttlMs,
     cacheNullValues,
@@ -36,7 +40,7 @@ export function defineCache<Input, Value>({
   });
 
   return {
-    read: cached,
+    get: getCached,
     invalidate: async (input, transaction) => {
       if (transaction) {
         invalidateCacheAfterCommit(transaction, () => invalidateCached(input));
@@ -44,51 +48,5 @@ export function defineCache<Input, Value>({
       }
       await invalidateCached(input);
     },
-  };
-}
-
-type DeferredCacheDefinition<Input, Value> = Omit<
-  CacheHandleDefinition<Input, Value>,
-  "load"
->;
-
-export type DeferredCache<Input, Value> = {
-  read: (
-    input: Input,
-    load: () => Promise<JsonSerializable<Value>>
-  ) => Promise<JsonSerializable<Value>>;
-  invalidate: CacheHandle<Input, Value>["invalidate"];
-};
-
-export function defineDeferredCache<Input, Value>({
-  id,
-  key,
-  ttlMs,
-  cacheNullValues,
-}: DeferredCacheDefinition<Input, Value>): DeferredCache<Input, Value> {
-  type DeferredInput = {
-    input: Input;
-    load: () => Promise<JsonSerializable<Value>>;
-  };
-
-  const cache = defineCache<DeferredInput, Value>({
-    id,
-    key: ({ input }) => key(input),
-    load: ({ load }) => load(),
-    ttlMs: typeof ttlMs === "function" ? ({ input }) => ttlMs(input) : ttlMs,
-    cacheNullValues,
-  });
-  return {
-    read: (input, load) => cache.read({ input, load }),
-    invalidate: (input, transaction) =>
-      cache.invalidate(
-        {
-          input,
-          load: async () => {
-            throw new Error("Cache loader called during invalidation.");
-          },
-        },
-        transaction
-      ),
   };
 }

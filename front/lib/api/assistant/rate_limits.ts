@@ -1,3 +1,4 @@
+import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import type { Authenticator } from "@app/lib/auth";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
@@ -6,7 +7,6 @@ import {
   getRateLimiterCount,
   getTimeframeSecondsFromLiteral,
 } from "@app/lib/utils/rate_limiter";
-import { countActiveSeatsForWorkspace } from "@app/lib/workspace_seats";
 import type {
   MaxAwuCreditsTimeframeType,
   MaxMessagesTimeframeType,

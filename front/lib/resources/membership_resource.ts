@@ -1,7 +1,9 @@
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
+import { invalidateWorkspaceActiveSeatsCache } from "@app/lib/api/workspace_seats/cache";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { countMembershipsForWorkspace } from "@app/lib/resources/membership_queries";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -15,7 +17,6 @@ import {
   invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
-import { invalidateWorkspaceActiveSeatsCache } from "@app/lib/workspace_seats/cache";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type {
@@ -722,35 +723,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     transaction?: Transaction;
     membershipSpan?: { fromDate: Date; toDate: Date };
   }): Promise<number> {
-    const fromDate = membershipSpan?.fromDate ?? new Date();
-    const toDate = membershipSpan?.toDate ?? new Date();
-    const where: WhereOptions<InferAttributes<MembershipModel>> = activeOnly
-      ? {
-          endAt: {
-            [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: fromDate }],
-          },
-          startAt: {
-            [Op.lte]: toDate,
-          },
-          firstUsedAt: {
-            [Op.ne]: null,
-          },
-        }
-      : {};
-
-    if (rolesFilter && rolesFilter.length !== 0) {
-      where.role = {
-        [Op.in]: rolesFilter,
-      };
-    }
-
-    where.workspaceId = workspace.id;
-
-    return MembershipModel.count({
-      where,
-      distinct: true,
-      col: "userId",
+    return countMembershipsForWorkspace({
+      workspace,
+      activeOnly,
+      rolesFilter,
       transaction,
+      membershipSpan,
     });
   }
 

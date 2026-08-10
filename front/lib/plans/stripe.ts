@@ -1,5 +1,6 @@
 import type { CheckoutSeatType } from "@app/lib/api/checkout/types";
 import config from "@app/lib/api/config";
+import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
 import { CONTRACT_CREDIT_TYPE_POOL } from "@app/lib/metronome/constants";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
@@ -14,7 +15,6 @@ import {
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED } from "@app/lib/resources/storage/models/credit_usage_configurations";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { countActiveSeatsForWorkspace } from "@app/lib/workspace_seats";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import { SUPPORTED_CURRENCIES } from "@app/types/currency";

@@ -1,6 +1,9 @@
+import { countMembershipsForWorkspace } from "@app/lib/resources/membership_queries";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { buildCacheWithRedisKey } from "@app/lib/utils/cache";
-import { defineDeferredCache } from "@app/lib/utils/cache_handle";
+import { defineCache } from "@app/lib/utils/cache_handle";
 import { defineCacheOperations } from "@app/lib/utils/cache_operations";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Transaction } from "sequelize";
 import { z } from "zod";
 
@@ -9,12 +12,20 @@ const WORKSPACE_ACTIVE_SEATS_CACHE_ID = "workspace_active_seats";
 const workspaceActiveSeatsCacheKey = (workspaceId: string) =>
   `count-active-seats-in-workspace:${workspaceId}`;
 
-const workspaceActiveSeatsCache = defineDeferredCache<
-  { workspaceId: string },
-  number
->({
+const workspaceActiveSeatsCache = defineCache<{ workspaceId: string }, number>({
   id: WORKSPACE_ACTIVE_SEATS_CACHE_ID,
   key: ({ workspaceId }) => workspaceActiveSeatsCacheKey(workspaceId),
+  load: async ({ workspaceId }) => {
+    const workspace = await WorkspaceResource.fetchById(workspaceId);
+    if (!workspace) {
+      throw new Error(`Workspace not found for sId: ${workspaceId}`);
+    }
+
+    return countMembershipsForWorkspace({
+      workspace: renderLightWorkspaceType({ workspace }),
+      activeOnly: true,
+    });
+  },
   ttlMs: WORKSPACE_ACTIVE_SEATS_CACHE_TTL_MS,
   cacheNullValues: false,
 });
@@ -43,10 +54,9 @@ export const workspaceActiveSeatsCacheOperations = defineCacheOperations({
 });
 
 export function getCachedWorkspaceActiveSeats(
-  workspaceId: string,
-  load: () => Promise<number>
+  workspaceId: string
 ): Promise<number> {
-  return workspaceActiveSeatsCache.read({ workspaceId }, load);
+  return workspaceActiveSeatsCache.get({ workspaceId });
 }
 
 export function invalidateWorkspaceActiveSeatsCache(

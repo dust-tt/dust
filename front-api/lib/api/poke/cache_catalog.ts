@@ -1,6 +1,6 @@
+import { workspaceActiveSeatsCacheOperations } from "@app/lib/api/workspace_seats/cache";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { CacheOperations } from "@app/lib/utils/cache_operations";
-import { workspaceActiveSeatsCacheOperations } from "@app/lib/workspace_seats/cache";
 import type { PokeCacheResourceDescriptor } from "@app/types/api/poke/cache";
 import {
   buildCacheKey,

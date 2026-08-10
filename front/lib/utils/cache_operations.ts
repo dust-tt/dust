@@ -1,3 +1,5 @@
+import type { z } from "zod";
+
 export type CacheOperationParam = {
   key: string;
   label: string;
@@ -44,5 +46,3 @@ export function defineCacheOperations<Input>({
     keyPattern,
   };
 }
-
-import type { z } from "zod";
