@@ -32,6 +32,8 @@ import {
   getMcpServerDisplayName,
   isRemoteMCPServerType,
 } from "@app/lib/actions/mcp_helper";
+import type { AnalyticsVisibleOrigin } from "@app/lib/api/analytics/source_labels";
+import { SOURCE_ORIGIN_LABELS } from "@app/lib/api/analytics/source_labels";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useGroups } from "@app/lib/swr/groups";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
@@ -59,6 +61,19 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 // Chunk size for the infinite scroll
 const FILTER_PICKER_PAGE_SIZE = 100;
 
+// The "source" dimension is the message's origin channel (Slack, API, Web,
+// CLI, ...), a static, workspace-independent enum — unlike tool/model/skill,
+// there's no catalog to fetch: every possible value is already known at
+// compile time.
+const SOURCE_OPTIONS: UsageFilterSourceOption[] = (
+  Object.keys(SOURCE_ORIGIN_LABELS) as AnalyticsVisibleOrigin[]
+).map((origin) => ({
+  id: origin,
+  name: SOURCE_ORIGIN_LABELS[origin],
+  kind: "source",
+  connectorProvider: undefined,
+}));
+
 interface UsageFilterPaginationState {
   hasMore: boolean;
   isLoadingMore: boolean;
@@ -67,21 +82,19 @@ interface UsageFilterPaginationState {
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
-  period: ConsumptionPeriodSelection;
   // Agents come from useAgentConfigurations, members from useSearchMembers,
   // teams from useGroups, models from the workspace's full model catalog
   // (useModels), tools from the workspace's full MCP server catalog
-  // (useMCPServers), and skills from the workspace's full skill catalog
+  // (useMCPServers), skills from the workspace's full skill catalog
   // (useSkills) — the same endpoints that back the model, tool, and skill
-  // pickers elsewhere in the app. Sources are fetched live too, scoped to
-  // `period` (useConsumptionTop).
+  // pickers elsewhere in the app — and sources from the static
+  // SOURCE_ORIGIN_LABELS enum.
   filter: UsageFilter;
   onFilterChange: (next: UsageFilter) => void;
 }
 
 export function UsageFilterPanel({
   owner,
-  period,
   filter,
   onFilterChange,
 }: UsageFilterPanelProps) {
@@ -115,7 +128,6 @@ export function UsageFilterPanel({
   const isAgentCategoryActive = isOpen && activeCategory === "agent";
   const isModelCategoryActive = isOpen && activeCategory === "model";
   const isToolCategoryActive = isOpen && activeCategory === "tool";
-  const isSourceCategoryActive = isOpen && activeCategory === "source";
   const isSkillCategoryActive = isOpen && activeCategory === "skill";
 
   // Every category picker supports scroll-to-load-more:
@@ -207,17 +219,6 @@ export function UsageFilterPanel({
     disabled: !isSkillCategoryActive,
   });
 
-  const { rows: topSourceRows } = useConsumptionTop({
-    workspaceId: owner.sId,
-    dimension: "source",
-    period,
-    // Same rationale as members/agents/models/tools/skills: broader than the
-    // Attribution table's own top-N so the picker covers most of the
-    // period's active sources.
-    limit: 100,
-    disabled: !isSourceCategoryActive,
-  });
-
   // The workspace's full, period-independent model catalog — the same
   // endpoint backing the model picker elsewhere in the app — rather than a
   // period-scoped top-N, so every enabled model is listable and searchable
@@ -300,23 +301,6 @@ export function UsageFilterPanel({
     [skillCatalog]
   );
 
-  // Same client-side search caveat as members/agents/models/tools/skills: a
-  // source outside the top 100 by credits over the period will not be
-  // searchable here.
-  const sourceOptions = useMemo<UsageFilterSourceOption[]>(
-    () =>
-      topSourceRows.map((row) => ({
-        id: row.id,
-        name: row.name,
-        kind: "source" as const,
-        // The "source" dimension is the conversation's context origin (web,
-        // api, a specific connector...), not always a connector — the icon
-        // falls back to a generic one when this is undefined.
-        connectorProvider: undefined,
-      })),
-    [topSourceRows]
-  );
-
   const resolvedCategoryOptions = useMemo<{
     [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
   }>(
@@ -327,7 +311,7 @@ export function UsageFilterPanel({
       model: modelCatalogOptions,
       tool: toolOptions,
       skill: skillOptions,
-      source: sourceOptions,
+      source: SOURCE_OPTIONS,
     }),
     [
       accumulatedMemberOptions,
@@ -336,7 +320,6 @@ export function UsageFilterPanel({
       modelCatalogOptions,
       toolOptions,
       skillOptions,
-      sourceOptions,
     ]
   );
 
