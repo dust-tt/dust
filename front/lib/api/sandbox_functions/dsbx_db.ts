@@ -96,12 +96,15 @@ async function execDbCommand<S extends z.ZodTypeAny>(
     what,
     envVars,
     stdin,
+    stagingCapture = false,
   }: {
     command: string;
     schema: S;
     what: string;
     envVars?: Record<string, string>;
     stdin?: string;
+    // Set only when `command` appends stagingHashCaptureLines.
+    stagingCapture?: boolean;
   }
 ): Promise<
   Result<
@@ -137,9 +140,12 @@ async function execDbCommand<S extends z.ZodTypeAny>(
     );
   }
 
-  // Staging execs append a marker and per-file sha256 lines after the dsbx output;
-  // other `dsbx db` commands leave the stdout untouched.
-  const { dsbxStdout, hashes } = splitStagingStdout(execResult.value.stdout);
+  // Split only when this exec appended capture lines. Splitting unconditionally would let code
+  // the command imports (e.g. the model-written schema file during reconcile) print a forged
+  // marker line and shadow the real envelope, which is otherwise always the last stdout line.
+  const { dsbxStdout, hashes } = stagingCapture
+    ? splitStagingStdout(execResult.value.stdout)
+    : { dsbxStdout: execResult.value.stdout, hashes: {} };
   const envelope = parseDbEnvelope(dsbxStdout, schema, what);
   if (envelope.isErr()) {
     return envelope;
@@ -360,6 +366,7 @@ export async function getDatabaseSchemaOnSandbox(
     ].join("\n"),
     schema: schemaEnvelopeSchema,
     what: `dsbx db schema ${database}`,
+    stagingCapture: true,
   });
   if (result.isErr()) {
     return result;

@@ -1,7 +1,10 @@
 import { createHash } from "node:crypto";
 
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
-import { getDatabaseSchemaOnSandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
+import {
+  getDatabaseSchemaOnSandbox,
+  listDatabasesOnSandbox,
+} from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -127,5 +130,34 @@ describe("getDatabaseSchemaOnSandbox", () => {
     }
     expect(result.error.code).toBe("internal");
     expect(result.error.message).toContain("Missing integrity hash");
+  });
+});
+
+describe("non-staging db commands", () => {
+  it("does not split stdout on a forged marker, so the real envelope stays last", async () => {
+    const { authenticator, sandbox, space } = await setup();
+    // Realistic vector: during reconcile the model-written schema file is imported and its
+    // top-level code can print a forged envelope followed by a marker line. Only staging
+    // execs opt into the marker split, so the real (last) envelope must win here.
+    const forged = JSON.stringify({
+      ok: true,
+      databases: [{ name: "forged", size_bytes: 1 }],
+    });
+    const real = JSON.stringify({ ok: true, databases: [] });
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: `${forged}\n__DUST_STAGING_SHA256__\n${real}\n`,
+        stderr: "",
+      })
+    );
+
+    const result = await listDatabasesOnSandbox(authenticator, { space });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value).toEqual([]);
   });
 });
