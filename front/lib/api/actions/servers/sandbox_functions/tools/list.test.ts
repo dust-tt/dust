@@ -1,6 +1,4 @@
 import { makePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/pod_configuration_uri";
-import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import {
   formatSandboxFunctionsList,
   listHandler,
@@ -8,17 +6,13 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
-import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import {
+  makeExtra,
+  setupPlainConversation,
+} from "@app/tests/utils/conversation_test_factories";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { getTestStreamEndpoint } from "@app/tests/utils/models";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import {
-  isAgentMessageType,
-  isUserMessageType,
-} from "@app/types/assistant/conversation";
 import { sandboxFunctionContentType } from "@app/types/files";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
@@ -114,92 +108,25 @@ describe("formatSandboxFunctionsList", () => {
 });
 
 describe("listHandler with a caller-supplied dustPod", () => {
-  // Builds a ToolHandlerExtra for an agent loop running in a conversation that is NOT in a pod,
-  // mirroring the pod_manager tools test setup.
-  async function makeNonPodAgentLoopExtra(
-    auth: Authenticator
-  ): Promise<ToolHandlerExtra> {
-    const workspace = auth.getNonNullableWorkspace();
-    const agent = await AgentConfigurationFactory.createTestAgent(auth);
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: agent.sId,
-      messagesCreatedAt: [new Date()],
-    });
-
-    const userMessage = conversation.content.flat().find(isUserMessageType);
-    const agentMessage = conversation.content.flat().find(isAgentMessageType);
-    assert(userMessage);
-    assert(agentMessage);
-
-    const { action } = await AgentMCPActionFactory.create(auth, {
-      workspace,
-      conversationModelId: conversation.id,
-      agentMessageModelId: agentMessage.agentMessageId,
-      functionCallName: "list",
-      toolName: "list",
-      mcpServerName: "sandbox_functions",
-    });
-    const { model, ...agentConfiguration } = agent;
-    const runContext: AgentLoopRunContext = {
-      contextType: "agent_loop",
-      action,
-      agentConfiguration,
-      modelInfo: {
-        endpoint: getTestStreamEndpoint(model.modelId),
-        ...model,
-      },
-      agentMessage,
-      conversation,
-      stepContext: {
-        citationsCount: 0,
-        citationsOffset: 0,
-        retrievalTopK: 10,
-        resumeState: null,
-        websearchResultCount: 0,
-      },
-      toolConfiguration: action.toolConfiguration,
-      userMessage,
-    };
-
-    return {
-      auth,
-      requestId: "sandbox-functions-list-dust-pod-test",
-      runContext,
-      sendNotification: async () => {},
-      sendRequest: async () => {
-        throw new Error("Unexpected MCP request");
-      },
-      signal: new AbortController().signal,
-    };
-  }
-
   it("fails outside a pod conversation when no dustPod is provided", async () => {
-    const { authenticator: auth } = await createResourceTest({
-      role: "admin",
-    });
-    const extra = await makeNonPodAgentLoopExtra(auth);
+    const { auth, conversation } = await setupPlainConversation();
 
-    const result = await listHandler({}, extra);
+    const result = await listHandler({}, makeExtra(auth, conversation));
 
     assert(result.isErr());
     expect(result.error.message).toContain("not in a Pod");
   });
 
   it("resolves the pod from dustPod outside a pod conversation", async () => {
-    const {
-      authenticator: auth,
-      user,
-      workspace,
-    } = await createResourceTest({
-      role: "admin",
-    });
+    const { auth, conversation } = await setupPlainConversation();
+    const workspace = auth.getNonNullableWorkspace();
+    const user = auth.getNonNullableUser();
     const pod = await SpaceFactory.project(workspace, user.id);
     await auth.refresh();
     await makeFunction(auth, pod, {
       slug: "greet",
       description: "Greet a user by name.",
     });
-    const extra = await makeNonPodAgentLoopExtra(auth);
 
     const result = await listHandler(
       {
@@ -208,7 +135,7 @@ describe("listHandler with a caller-supplied dustPod", () => {
           mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
         },
       },
-      extra
+      makeExtra(auth, conversation)
     );
 
     assert(result.isOk());
