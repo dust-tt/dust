@@ -1,8 +1,6 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
-import type { ImperativePanelHandle } from "react-resizable-panels";
 
-import { Button } from "../components/Button";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -21,7 +19,6 @@ const meta = {
 
 **Guidelines**
 - Give each **ResizablePanel** a \`defaultSize\` (percentages within a group) so the initial split is predictable.
-- Set \`animateLayoutChanges\` on the group to animate programmatic layout changes. Content in panels that fully collapse to zero keeps its expanded layout during the transition.
 - Nest a **ResizablePanelGroup** inside a panel to combine horizontal and vertical splits.`,
       },
     },
@@ -43,67 +40,6 @@ export const TooltipLongLabel = () => (
     </div>
   </div>
 );
-
-export const AnimatedCollapsible = () => {
-  const panelRef = React.useRef<ImperativePanelHandle>(null);
-  const [isOpen, setIsOpen] = React.useState(true);
-
-  const togglePanel = () => {
-    const panel = panelRef.current;
-
-    if (!panel) {
-      return;
-    }
-
-    if (panel.isCollapsed()) {
-      panel.expand();
-    } else {
-      panel.collapse();
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-4 bg-muted-background p-12">
-      <Button
-        label={isOpen ? "Collapse panel" : "Expand panel"}
-        onClick={togglePanel}
-        size="sm"
-        variant="outline"
-      />
-      <ResizablePanelGroup
-        animateLayoutChanges
-        direction="horizontal"
-        className="h-64 w-[800px] overflow-hidden rounded-lg border bg-white"
-      >
-        <ResizablePanel defaultSize={65}>
-          <div className="flex h-full items-center justify-center p-6">
-            Main content
-          </div>
-        </ResizablePanel>
-        <ResizableHandle withHandle={isOpen} disabled={!isOpen} />
-        <ResizablePanel
-          ref={panelRef}
-          defaultSize={35}
-          minSize={20}
-          collapsedSize={0}
-          collapsible
-          onCollapse={() => setIsOpen(false)}
-          onExpand={() => setIsOpen(true)}
-          className="overflow-hidden"
-        >
-          <div className="flex h-full flex-col gap-2 bg-muted-background p-6">
-            <span className="font-semibold">Stable panel content</span>
-            <span>
-              This copy keeps its latest non-zero layout while the panel
-              animates.
-            </span>
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
-    </div>
-  );
-};
-
 export function ResizableDemo() {
   return (
     <ResizablePanelGroup
