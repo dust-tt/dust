@@ -61,10 +61,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 // Chunk size for the infinite scroll
 const FILTER_PICKER_PAGE_SIZE = 100;
 
-// The "source" dimension is the message's origin channel (Slack, API, Web,
-// CLI, ...), a static, workspace-independent enum — unlike tool/model/skill,
-// there's no catalog to fetch: every possible value is already known at
-// compile time.
 const SOURCE_OPTIONS: UsageFilterSourceOption[] = (
   Object.keys(SOURCE_ORIGIN_LABELS) as AnalyticsVisibleOrigin[]
 ).map((origin) => ({
@@ -82,13 +78,6 @@ interface UsageFilterPaginationState {
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
-  // Agents come from useAgentConfigurations, members from useSearchMembers,
-  // teams from useGroups, models from the workspace's full model catalog
-  // (useModels), tools from the workspace's full MCP server catalog
-  // (useMCPServers), skills from the workspace's full skill catalog
-  // (useSkills) — the same endpoints that back the model, tool, and skill
-  // pickers elsewhere in the app — and sources from the static
-  // SOURCE_ORIGIN_LABELS enum.
   filter: UsageFilter;
   onFilterChange: (next: UsageFilter) => void;
 }
@@ -219,10 +208,6 @@ export function UsageFilterPanel({
     disabled: !isSkillCategoryActive,
   });
 
-  // The workspace's full, period-independent model catalog — the same
-  // endpoint backing the model picker elsewhere in the app — rather than a
-  // period-scoped top-N, so every enabled model is listable and searchable
-  // regardless of the selected period.
   const { models: modelCatalog } = useModels({
     owner,
     disabled: !isModelCategoryActive,
@@ -260,11 +245,6 @@ export function UsageFilterPanel({
     [agentConfigurations]
   );
 
-  // Every enabled model in the workspace, regardless of the selected period.
-  // Excludes the auto/meta stream ids (Fast/Standard/Complex are exposed as
-  // the quick-filter tier buttons, not as catalog entries). Search is
-  // applied client-side below; tier is derived from the same static table
-  // ModelsTierResource.getTierForModel resolves server-side.
   const modelCatalogOptions = useMemo<UsageFilterModelOption[]>(
     () =>
       modelCatalog
