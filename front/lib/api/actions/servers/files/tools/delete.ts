@@ -8,6 +8,7 @@ import {
   requireAgentLoopConversation,
   scopedPathsFromArgs,
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
+import { deleteCanonicalFile } from "@app/lib/api/files/file_system_ops";
 import { Err, Ok } from "@app/types/shared/result";
 
 export async function deleteHandler(
@@ -28,7 +29,10 @@ export async function deleteHandler(
     return fsResult;
   }
 
-  const deleteResult = await fsResult.value.delete(path);
+  // Goes through deleteCanonicalFile, not the raw filesystem delete: a file backed by a
+  // FileResource (any published Frame, among others) must lose its row and its share token
+  // together with its bytes, or the share URL keeps serving content the user deleted.
+  const deleteResult = await deleteCanonicalFile(auth, fsResult.value, path);
   if (deleteResult.isErr()) {
     const err = deleteResult.error;
     switch (err.code) {
