@@ -7,10 +7,12 @@ import {
   formatCreditValue,
   toolUsageLabel,
 } from "@app/lib/client/credits";
+import { getSkillAvatarIcon } from "@app/lib/skill";
 import type {
   ConversationConsumptionAgentDetails,
   ConversationConsumptionDetails,
   ConversationConsumptionModelDetails,
+  ConversationConsumptionSkillDetails,
   ConversationConsumptionToolDetails,
 } from "@app/types/assistant/conversation_consumption";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -167,6 +169,49 @@ function ModelsBreakdown({ isDark, models }: ModelsBreakdownProps) {
   );
 }
 
+interface SkillRowProps {
+  skill: ConversationConsumptionSkillDetails;
+}
+
+function SkillRow({ skill }: SkillRowProps) {
+  const SkillAvatar = getSkillAvatarIcon(skill.icon);
+
+  return (
+    <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-border bg-background p-2">
+      <div className="flex min-w-0 items-center gap-2">
+        <SkillAvatar size="xs" />
+        <span className="truncate text-base font-medium text-foreground">
+          {skill.name}
+        </span>
+      </div>
+      <span className="shrink-0 text-base font-semibold text-muted-foreground">
+        {formatCreditValue(skill.attributedCredits)}
+      </span>
+    </div>
+  );
+}
+
+interface SkillsBreakdownProps {
+  skills: ConversationConsumptionSkillDetails[];
+}
+
+function SkillsBreakdown({ skills }: SkillsBreakdownProps) {
+  if (skills.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="space-y-4">
+      <h3 className="text-xs font-semibold text-muted-foreground">Skills</h3>
+      <div className="space-y-2">
+        {skills.map((skill) => (
+          <SkillRow key={skill.skillId} skill={skill} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 interface AgentBreakdownProps {
   agent: ConversationConsumptionAgentDetails;
 }
@@ -228,6 +273,8 @@ export function ConversationCreditUsageBreakdown({
           tools={details.tools}
         />
       </section>
+
+      <SkillsBreakdown skills={details.skills ?? []} />
 
       <ModelsBreakdown isDark={isDark} models={details.models} />
 

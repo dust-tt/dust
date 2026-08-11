@@ -45,6 +45,14 @@ describe("ConversationCreditUsageBreakdown", () => {
           attributedCredits: 15,
         },
       ],
+      skills: [
+        {
+          skillId: "skill_1",
+          name: "Research skill",
+          icon: null,
+          attributedCredits: 2.5,
+        },
+      ],
       agents: [
         {
           agentId: "agent_1",
@@ -73,6 +81,9 @@ describe("ConversationCreditUsageBreakdown", () => {
     expect(screen.getByText("2 uses")).toBeInTheDocument();
     expect(screen.getByText("GPT-5 Mini")).toBeInTheDocument();
     expect(screen.getByText("15 credits")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Skills" })).toBeInTheDocument();
+    expect(screen.getByText("Research skill")).toBeInTheDocument();
+    expect(screen.getByText("2.5 credits")).toBeInTheDocument();
     expect(screen.queryByText("Research agent")).not.toBeInTheDocument();
   });
 
