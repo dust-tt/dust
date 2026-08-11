@@ -2,10 +2,10 @@ import type {
   UsageFilter,
   UsageFilterAgentOption,
   UsageFilterCategory,
+  UsageFilterGroup,
   UsageFilterMemberOption,
   UsageFilterModelOption,
   UsageFilterOptionForCategory,
-  UsageFilterScope,
   UsageFilterSkillOption,
   UsageFilterSourceOption,
   UsageFilterTeamOption,
@@ -15,18 +15,22 @@ import type {
 import {
   USAGE_FILTER_CATEGORIES,
   USAGE_FILTER_CATEGORY_LABEL,
-  USAGE_FILTER_SCOPES,
   USAGE_MODEL_TIERS,
 } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
 import { UsageFilterCategoryNav } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterCategoryNav";
 import { UsageFilterFooter } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterFooter";
+import { UsageFilterMemberGroupsControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterMemberGroupsControls";
 import { UsageFilterModelComplexityControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterModelComplexityControls";
 import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
+import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useGroups } from "@app/lib/swr/groups";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import type { AgentConfigurationScope } from "@app/types/assistant/agent";
+import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -52,12 +56,13 @@ interface UsageFilterPaginationState {
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
-  // Agents/models/tools/skills/sources are still mock data (see
+  // Models/tools/skills/sources are still mock data (see
   // usageFilterMockData.ts — sources are fake connectors standing in for a
-  // real db call); members and teams are fetched live below, via the generic
-  // member search and group listing endpoints (useSearchMembers, useGroups).
+  // real db call); agents come from the same workspace-wide listing the rest
+  // of the app uses (useAgentConfigurations), members and teams via the
+  // generic member search and group listing endpoints (useSearchMembers,
+  // useGroups).
   categoryOptions: {
-    agent: UsageFilterAgentOption[];
     model: UsageFilterModelOption[];
     tool: UsageFilterToolOption[];
     skill: UsageFilterSkillOption[];
@@ -87,16 +92,20 @@ export function UsageFilterPanel({
   } = useUsageFilter(filter);
   const [activeCategory, setActiveCategory] =
     useState<UsageFilterCategory>("agent");
-  const [activeScope, setActiveScope] = useState<UsageFilterScope>(
-    USAGE_FILTER_SCOPES[0]
+  const [activeScope, setActiveScope] = useState<AgentConfigurationScope>(
+    AGENT_CONFIGURATION_SCOPES[0]
   );
   const [activeTier, setActiveTier] = useState<UsageModelTier>(
     USAGE_MODEL_TIERS[0]
   );
   const [searchText, setSearchText] = useState("");
+  // Only used for the "member" category: narrows the displayed members down
+  // to those belonging to at least one of these groups.
+  const selectedGroups = useToggleSelectionList<UsageFilterGroup>();
 
   const isMemberCategoryActive = isOpen && activeCategory === "member";
   const isTeamCategoryActive = isOpen && activeCategory === "team";
+  const isAgentCategoryActive = isOpen && activeCategory === "agent";
 
   // Every category picker supports scroll-to-load-more:
   const [memberPageIndex, setMemberPageIndex] = useState(0);
@@ -166,8 +175,25 @@ export function UsageFilterPanel({
   const { groups: workspaceGroups } = useGroups({
     owner,
     kinds: MANAGEABLE_GROUP_KINDS,
-    disabled: !isTeamCategoryActive,
+    withMembers: true,
+    disabled: !isMemberCategoryActive && !isTeamCategoryActive,
   });
+
+  const { agentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "all",
+    disabled: !isAgentCategoryActive,
+  });
+
+  const groups = useMemo<UsageFilterGroup[]>(
+    () =>
+      workspaceGroups.map((group) => ({
+        id: group.sId,
+        name: group.name,
+        memberIds: group.memberIds ?? [],
+      })),
+    [workspaceGroups]
+  );
 
   const teamOptions = useMemo<UsageFilterTeamOption[]>(
     () =>
@@ -179,6 +205,18 @@ export function UsageFilterPanel({
     [workspaceGroups]
   );
 
+  const agentOptions = useMemo<UsageFilterAgentOption[]>(
+    () =>
+      agentConfigurations.map((agent) => ({
+        id: agent.sId,
+        name: agent.name,
+        kind: "agent",
+        image: agent.pictureUrl,
+        scope: agent.scope,
+      })),
+    [agentConfigurations]
+  );
+
   const resolvedCategoryOptions = useMemo<{
     [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
   }>(
@@ -186,18 +224,26 @@ export function UsageFilterPanel({
       ...categoryOptions,
       member: accumulatedMemberOptions,
       team: teamOptions,
+      agent: agentOptions,
     }),
-    [categoryOptions, accumulatedMemberOptions, teamOptions]
+    [categoryOptions, accumulatedMemberOptions, teamOptions, agentOptions]
   );
 
   const activeOptions = resolvedCategoryOptions[activeCategory];
   const filteredOptions = useMemo(() => {
     const search = searchText.trim().toLowerCase();
+    const selectedGroupMemberIds =
+      activeCategory === "member" && selectedGroups.items.length > 0
+        ? new Set(selectedGroups.items.flatMap((group) => group.memberIds))
+        : null;
     const matchingOptions = activeOptions.filter((option) => {
       if (option.kind === "agent" && option.scope !== activeScope) {
         return false;
       }
       if (option.kind === "model" && option.tier !== activeTier) {
+        return false;
+      }
+      if (selectedGroupMemberIds && !selectedGroupMemberIds.has(option.id)) {
         return false;
       }
       // The member category is already searched server-side by
@@ -213,7 +259,14 @@ export function UsageFilterPanel({
       return true;
     });
     return matchingOptions;
-  }, [activeOptions, searchText, activeScope, activeTier, activeCategory]);
+  }, [
+    activeOptions,
+    searchText,
+    activeScope,
+    activeTier,
+    activeCategory,
+    selectedGroups.items,
+  ]);
 
   // Members are already paginated server-side into filteredOptions; the
   // other categories reveal a growing window of the already-loaded
@@ -288,6 +341,7 @@ export function UsageFilterPanel({
     if (open) {
       setDraftFilter(filter);
       setSearchText("");
+      selectedGroups.setItems([]);
       resetFilterPickerPagination();
     }
   };
@@ -367,6 +421,14 @@ export function UsageFilterPanel({
               onChange={handleSearchTextChange}
               placeholder={`Search ${USAGE_FILTER_CATEGORY_LABEL[activeCategory].toLowerCase()}`}
             />
+            {activeCategory === "member" && (
+              <UsageFilterMemberGroupsControls
+                groups={groups}
+                selectedGroups={selectedGroups.items}
+                onAddGroup={selectedGroups.add}
+                onRemoveGroup={selectedGroups.remove}
+              />
+            )}
             {activeCategory === "model" && (
               <UsageFilterModelComplexityControls
                 models={categoryOptions.model}

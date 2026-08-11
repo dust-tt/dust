@@ -1,14 +1,10 @@
 import type {
-  UsageFilterAgentOption,
   UsageFilterModelOption,
   UsageFilterSkillOption,
   UsageFilterSourceOption,
   UsageFilterToolOption,
 } from "@app/components/workspace/analytics/usageFilter";
-import {
-  USAGE_FILTER_SCOPES,
-  USAGE_MODEL_TIERS,
-} from "@app/components/workspace/analytics/usageFilter";
+import { USAGE_MODEL_TIERS } from "@app/components/workspace/analytics/usageFilter";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ConnectorProvider } from "@app/types/data_source";
 
@@ -28,35 +24,10 @@ const MOCK_MODEL_LAB: Record<string, ModelMakerIdType> = {
 };
 
 // Placeholder data for categories not yet wired to a real backend endpoint.
-// Members and groups are fetched live in UsageFilterPanel (useSearchMembers,
-// useGroups). Lists are long enough to exercise scrolling in the preview.
+// Agents are fetched live in UsageFilterPanel (useConsumptionTop); members
+// and groups via useSearchMembers and useGroups. Lists are long enough to
+// exercise scrolling in the preview.
 const MOCK_ENTITY_NAMES = {
-  agent: [
-    "SupportBot",
-    "SalesAssistant",
-    "Data Digest - Weekly",
-    "Onboarding Helper",
-    "Legal Reviewer",
-    "HR Assistant",
-    "Finance Copilot",
-    "Marketing Brainstorm",
-    "Product Spec Writer",
-    "Customer Success Bot",
-    "Engineering Standup",
-    "Recruiting Screener",
-    "Meeting Notes Summarizer",
-    "Competitive Analysis",
-    "Contract Drafting",
-    "Incident Responder",
-    "Release Notes Writer",
-    "Design Feedback",
-    "Sales Call Coach",
-    "Expense Auditor",
-    "Content Localization",
-    "Churn Risk Analyzer",
-    "Roadmap Planner",
-    "QA Test Generator",
-  ],
   model: [
     "Claude Sonnet 5",
     "Claude Opus 5",
@@ -129,15 +100,6 @@ const MOCK_SOURCE_CONNECTORS: Array<{
   { name: "Uploaded files — Legal templates", connectorProvider: undefined },
 ];
 
-function buildAgentOptions(names: string[]): UsageFilterAgentOption[] {
-  return names.map((name, index) => ({
-    id: `agent_${index + 1}`,
-    name,
-    kind: "agent",
-    scope: USAGE_FILTER_SCOPES[index % USAGE_FILTER_SCOPES.length],
-  }));
-}
-
 function buildModelOptions(names: string[]): UsageFilterModelOption[] {
   return names.map((name, index) => ({
     id: `model_${index + 1}`,
@@ -165,7 +127,6 @@ function buildSkillOptions(names: string[]): UsageFilterSkillOption[] {
 }
 
 export const USAGE_FILTER_MOCK_OPTIONS = {
-  agent: buildAgentOptions(MOCK_ENTITY_NAMES.agent),
   model: buildModelOptions(MOCK_ENTITY_NAMES.model),
   tool: buildToolOptions(MOCK_ENTITY_NAMES.tool),
   skill: buildSkillOptions(MOCK_ENTITY_NAMES.skill),

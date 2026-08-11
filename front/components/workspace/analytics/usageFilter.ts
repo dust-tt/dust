@@ -1,4 +1,5 @@
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ConnectorProvider } from "@app/types/data_source";
 
@@ -25,15 +26,12 @@ export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =
     source: "Sources",
   };
 
-export const USAGE_FILTER_SCOPES = ["company", "shared", "private"] as const;
-
-export type UsageFilterScope = (typeof USAGE_FILTER_SCOPES)[number];
-
-export const USAGE_FILTER_SCOPE_LABEL: Record<UsageFilterScope, string> = {
-  company: "Company",
-  shared: "Shared",
-  private: "Private",
-};
+export const USAGE_FILTER_SCOPE_LABEL: Record<AgentConfigurationScope, string> =
+  {
+    global: "Company",
+    visible: "Shared",
+    hidden: "Private",
+  };
 
 export const USAGE_MODEL_TIERS = ["fast", "standard", "complex"] as const;
 
@@ -52,7 +50,8 @@ interface UsageFilterOptionBase {
 
 export interface UsageFilterAgentOption extends UsageFilterOptionBase {
   kind: "agent";
-  scope: UsageFilterScope;
+  scope: AgentConfigurationScope;
+  image: string | null;
 }
 
 export interface UsageFilterMemberOption extends UsageFilterOptionBase {
@@ -91,6 +90,12 @@ export type UsageFilterOption =
   | UsageFilterModelOption
   | UsageFilterToolOption
   | UsageFilterSkillOption;
+
+export interface UsageFilterGroup {
+  id: string;
+  name: string;
+  memberIds: string[];
+}
 
 export type UsageFilterOptionForCategory<C extends UsageFilterCategory> =
   Extract<UsageFilterOption, { kind: C }>;
@@ -141,16 +146,27 @@ export function selectAllUsageFilterOptions<C extends UsageFilterCategory>(
   return { ...filter, [category]: [...current, ...additions] };
 }
 
-// Members and teams are wired to real consumption scope dimensions. The other
-// categories stay mock data and are not sent as query filters yet.
+// Members, teams, and agents are wired to real consumption scope dimensions.
+// The other categories stay mock data and are not sent as query filters yet.
 export function toConsumptionScopeFilter(
   filter: UsageFilter
 ): ConsumptionScopeFilter {
-  const memberIds = filter.member?.map((entity) => entity.id);
-  const teamIds = filter.team?.map((entity) => entity.id);
+  const scopeFilter: ConsumptionScopeFilter = {};
 
-  return {
-    ...(memberIds && memberIds.length > 0 ? { users: memberIds } : {}),
-    ...(teamIds && teamIds.length > 0 ? { teams: teamIds } : {}),
-  };
+  const memberIds = filter.member?.map((entity) => entity.id);
+  if (memberIds && memberIds.length > 0) {
+    scopeFilter.users = memberIds;
+  }
+
+  const teamIds = filter.team?.map((entity) => entity.id);
+  if (teamIds && teamIds.length > 0) {
+    scopeFilter.teams = teamIds;
+  }
+
+  const agentIds = filter.agent?.map((entity) => entity.id);
+  if (agentIds && agentIds.length > 0) {
+    scopeFilter.agents = agentIds;
+  }
+
+  return scopeFilter;
 }
