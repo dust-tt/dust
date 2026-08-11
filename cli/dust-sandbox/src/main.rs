@@ -37,8 +37,10 @@ enum Commands {
     /// Interact with MCP servers and tools
     Tools {
         /// Emit the tool execution result as JSON (`{ content, isError }`)
-        /// instead of plain text. Must be placed before the positional
-        /// arguments. Ignored when listing servers or tools.
+        /// instead of plain text; failures emit
+        /// `{ error: { code, message, retryable, status? } }` on stdout and
+        /// exit non-zero. Must be placed before the positional arguments.
+        /// Ignored when listing servers or tools.
         #[arg(long)]
         json: bool,
         /// Server name (omit to list all servers)
@@ -56,9 +58,21 @@ async fn main() {
     init_tracing();
 
     if let Err(error) = run().await {
-        error!(error = %error, "dsbx command failed");
-        std::process::exit(1);
+        // `{:#}` prints the whole context chain, not just the outermost
+        // message (typed API errors carry the useful part as the cause).
+        let error_chain = format!("{error:#}");
+        error!(error = %error_chain, "dsbx command failed");
+        std::process::exit(exit_code_for(&error));
     }
+}
+
+/// Typed API failures exit with their stable per-code exit codes; everything
+/// else keeps the generic 1 (2 is reserved by clap for usage errors).
+fn exit_code_for(error: &anyhow::Error) -> i32 {
+    error
+        .downcast_ref::<api::DustApiError>()
+        .map(|api_error| api_error.code.exit_code())
+        .unwrap_or(1)
 }
 
 async fn run() -> anyhow::Result<()> {

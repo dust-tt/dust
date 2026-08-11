@@ -1,10 +1,48 @@
 use anyhow::{bail, Context};
 
-use crate::api::{parse_content_block, ContentBlock, DustApiClient};
+use crate::api::{parse_content_block, ContentBlock, DustApiClient, DustApiError};
 
 const MAX_FILE_ARG_SIZE_BYTES: u64 = 100 * 1024 * 1024;
 
 pub async fn cmd_exec(
+    client: &DustApiClient,
+    server_name: &str,
+    tool_name: &str,
+    raw_args: &[String],
+    json: bool,
+) -> anyhow::Result<()> {
+    match run_exec(client, server_name, tool_name, raw_args, json).await {
+        Ok(()) => Ok(()),
+        Err(err) => {
+            // Under --json, stdout is the machine contract: emit the typed
+            // error envelope there (mirroring `function run`'s emit_error) so
+            // consumers never have to regex stderr prose. The error still
+            // propagates for the stderr diagnostic + non-zero exit.
+            if json {
+                println!("{}", error_envelope_json(&err));
+            }
+            Err(err)
+        }
+    }
+}
+
+/// The `{"error":{code,message,retryable,status?}}` stdout envelope for a
+/// failed `tools --json` execution. API failures carry their typed
+/// classification; anything else is `unknown` and not retryable.
+fn error_envelope_json(err: &anyhow::Error) -> serde_json::Value {
+    if let Some(api_error) = err.downcast_ref::<DustApiError>() {
+        return api_error.to_envelope_json();
+    }
+    serde_json::json!({
+        "error": {
+            "code": "unknown",
+            "message": format!("{err:#}"),
+            "retryable": false,
+        }
+    })
+}
+
+async fn run_exec(
     client: &DustApiClient,
     server_name: &str,
     tool_name: &str,
@@ -692,6 +730,35 @@ mod tests {
             .expect("should parse")
             .expect("should have value");
         assert_eq!(result["count"], 42);
+    }
+
+    // --- error envelope for --json consumers ---
+
+    #[test]
+    fn error_envelope_carries_typed_api_error() {
+        let err = anyhow::Error::new(DustApiError::from_http_response(
+            403,
+            r#"{"error":{"type":"fast_function_called_tools","message":"no tools for fast functions"}}"#,
+        ))
+        .context("POST https://dust.tt/api/v1/w/x/sandbox/actions/call");
+
+        let envelope = error_envelope_json(&err);
+        assert_eq!(envelope["error"]["code"], "fast_function_called_tools");
+        assert_eq!(envelope["error"]["message"], "no tools for fast functions");
+        assert_eq!(envelope["error"]["retryable"], false);
+        assert_eq!(envelope["error"]["status"], 403);
+    }
+
+    #[test]
+    fn error_envelope_falls_back_to_unknown_with_chain() {
+        let err = anyhow::anyhow!("root cause").context("outer context");
+        let envelope = error_envelope_json(&err);
+        assert_eq!(envelope["error"]["code"], "unknown");
+        assert_eq!(envelope["error"]["retryable"], false);
+        let message = envelope["error"]["message"].as_str().expect("message");
+        assert!(message.contains("outer context"));
+        assert!(message.contains("root cause"));
+        assert!(envelope["error"].get("status").is_none());
     }
 
     #[test]

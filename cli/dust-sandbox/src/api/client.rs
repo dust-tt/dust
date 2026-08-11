@@ -6,6 +6,7 @@ use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde::{de::DeserializeOwned, Serialize};
 use tokio::time::sleep;
 
+use super::error::DustApiError;
 use super::types::{
     parse_action_poll_response, ActionPollResponse, CallToolPostResponse, CallToolRequest,
     CallToolResponse, CallToolResult, MCPServerView, SandboxServerViewsResponse,
@@ -79,7 +80,11 @@ impl DustApiClient {
         let status = resp.status();
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
-            bail!("GET {url} returned {status}: {body}");
+            return Err(anyhow::Error::new(DustApiError::from_http_response(
+                status.as_u16(),
+                &body,
+            ))
+            .context(format!("GET {url}")));
         }
 
         resp.json::<T>()
@@ -104,7 +109,11 @@ impl DustApiClient {
         let status = resp.status();
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
-            bail!("POST {url} returned {status}: {body}");
+            return Err(anyhow::Error::new(DustApiError::from_http_response(
+                status.as_u16(),
+                &body,
+            ))
+            .context(format!("POST {url}")));
         }
 
         resp.json::<T>()
@@ -144,11 +153,21 @@ impl DustApiClient {
             .await
             .context(format!("failed to read response from GET {url}"))?;
 
+        if !status.is_success() {
+            return Err(anyhow::Error::new(DustApiError::from_http_response(
+                status.as_u16(),
+                &body,
+            ))
+            .context(format!("GET {url}")));
+        }
+
         match parse_action_poll_response(&body) {
             Ok(poll) => Ok(poll),
-            Err(parse_err) if status.is_success() => Err(parse_err)
+            // A 2xx body carrying an error envelope is already typed; anything
+            // else failing to parse is a malformed success body.
+            Err(err) if err.downcast_ref::<DustApiError>().is_some() => Err(err),
+            Err(parse_err) => Err(parse_err)
                 .with_context(|| format!("GET {url} (status {status}) returned unparseable body")),
-            Err(_) => bail!("GET {url} returned {status}: {body}"),
         }
     }
 

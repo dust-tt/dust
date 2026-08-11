@@ -81,25 +81,11 @@ struct ActionData {
     output: Option<Vec<serde_json::Value>>,
 }
 
-#[derive(Debug, Deserialize)]
-struct ApiErrorEnvelope {
-    error: ApiErrorBody,
-}
-
-#[derive(Debug, Deserialize)]
-struct ApiErrorBody {
-    #[serde(default)]
-    message: Option<String>,
-}
-
 pub fn parse_action_poll_response(body: &str) -> anyhow::Result<ActionPollResponse> {
-    if let Ok(envelope) = serde_json::from_str::<ApiErrorEnvelope>(body) {
-        let message = envelope
-            .error
-            .message
-            .as_deref()
-            .unwrap_or("unknown API error");
-        anyhow::bail!("API error: {message}");
+    // A body shaped like front's `{"error":{...}}` envelope is an API error
+    // regardless of HTTP status; surface it typed so callers can classify.
+    if let Some(api_error) = super::error::DustApiError::parse_envelope(None, body) {
+        return Err(api_error.into());
     }
 
     let raw: ActionPollResponseRaw = serde_json::from_str(body)
@@ -262,6 +248,12 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.to_string().contains("bad token"));
+        // The envelope surfaces typed so the poll loop treats it as terminal
+        // and `--json` consumers get a classified error.
+        let api_error = err
+            .downcast_ref::<super::super::error::DustApiError>()
+            .expect("should carry a DustApiError");
+        assert_eq!(api_error.message, "bad token");
     }
 
     #[test]
