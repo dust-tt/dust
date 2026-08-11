@@ -1,4 +1,5 @@
 import {
+  extractResultSpillPointer,
   normalizeSandboxFunctionResult,
   SANDBOX_FUNCTION_RESULT_PROTOCOL_VERSION,
 } from "@app/lib/api/sandbox_functions/result_envelope";
@@ -259,6 +260,52 @@ describe("normalizeSandboxFunctionResult", () => {
           message: "Sandbox function returned an invalid result envelope.",
         },
       });
+    }
+  });
+});
+
+describe("extractResultSpillPointer", () => {
+  const pointer = {
+    ok: true,
+    resultFile: "/tmp/dust-fn-results/abc.json",
+    resultBytes: 300_000,
+  };
+
+  it("extracts a pointer from a protocol v3 envelope outcome", () => {
+    expect(
+      extractResultSpillPointer({
+        protocolVersion: 3,
+        delivery: "stdout",
+        outcome: pointer,
+        timingsMs: { total: 12, runner: 8 },
+      })
+    ).toEqual(pointer);
+  });
+
+  it("extracts a bare pointer", () => {
+    expect(extractResultSpillPointer(pointer)).toEqual(pointer);
+  });
+
+  it("tolerates additive fields from a newer dsbx", () => {
+    expect(
+      extractResultSpillPointer({ ...pointer, futureField: "ignored" })
+    ).toEqual(pointer);
+  });
+
+  it("returns null for inline outcomes and legacy shapes", () => {
+    for (const value of [
+      { ok: true, output: { hello: "world" } },
+      { ok: false, error: { code: "threw", message: "boom" } },
+      {
+        protocolVersion: 3,
+        delivery: "stdout",
+        outcome: { ok: true, output: 1 },
+      },
+      { ok: true, response: { status: 200 } },
+      null,
+      "not-an-envelope",
+    ]) {
+      expect(extractResultSpillPointer(value)).toBeNull();
     }
   });
 });
