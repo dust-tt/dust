@@ -9,6 +9,8 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { z } from "zod";
+
 import {
   MAX_CONCURRENT_INVOCATIONS,
   parseWarmRequest,
@@ -194,11 +196,9 @@ describe("runner serve", () => {
       expect(reply.outcome?.resultBytes).toBe(
         Buffer.byteLength(spilled, "utf8")
       );
-      const envelope = JSON.parse(spilled) as {
-        ok: boolean;
-        output: { big: string };
-      };
-      expect(envelope.ok).toBe(true);
+      const envelope = z
+        .object({ ok: z.literal(true), output: z.object({ big: z.string() }) })
+        .parse(JSON.parse(spilled));
       expect(envelope.output.big.length).toBe(2 * 1024 * 1024);
     } finally {
       proc.kill();
