@@ -1,8 +1,29 @@
-import { isFreeUsageCostLimitReachedForUser } from "@app/lib/api/assistant/rate_limits";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { isFreeOrigin } from "@app/lib/metronome/events";
+import {
+  awuFromMicroUsd,
+  isFreeOrigin,
+} from "@app/lib/credits/agent_message_billing";
+import {
+  addRateLimiterCount,
+  getRateLimiterCount,
+} from "@app/lib/utils/rate_limiter";
+import logger from "@app/logger/logger";
+import type { LightWorkspaceType } from "@app/types/user";
+
+// Per-user cost cap on free (unbilled) LLM usage — utility calls (title/skill
+// suggestions, etc.) and free agent calls (sidekick). Counted in AWU credits
+// (the fair-use unit; 1 AWU = $0.0085), so $5/day ≈ 589 credits.
+const FREE_USAGE_COST_WINDOW_SECONDS = 24 * 60 * 60;
+const FREE_USAGE_AWU_CREDITS_LIMIT_PER_DAY = awuFromMicroUsd(5 * 1_000_000);
+
+const makeFreeUsageCostRateLimitKeyForUser = (
+  owner: LightWorkspaceType,
+  userId: number
+) => {
+  return `workspace:${owner.id}:user:${userId}:free_usage_cost`;
+};
 
 // Whether an LLM call is free (unbilled). Two cases:
 //   - Utility operations (title/skill suggestions, etc.) — anything other than
@@ -40,8 +61,35 @@ export async function isFreeUsageBlocked(
     return false;
   }
 
-  return isFreeUsageCostLimitReachedForUser(
-    auth.getNonNullableWorkspace(),
-    user.id
-  );
+  // Fails open on a Redis error so a transient failure never blocks usage.
+  const result = await getRateLimiterCount({
+    key: makeFreeUsageCostRateLimitKeyForUser(
+      auth.getNonNullableWorkspace(),
+      user.id
+    ),
+    timeframeSeconds: FREE_USAGE_COST_WINDOW_SECONDS,
+  });
+  if (result.isErr()) {
+    return false;
+  }
+  return result.value >= FREE_USAGE_AWU_CREDITS_LIMIT_PER_DAY;
+}
+
+// Contribute a free call's cost (converted to AWU credits) to the user's daily
+// free-usage counter. No-op when the cost rounds to zero credits.
+export async function contributeFreeUsageCostForUser(
+  owner: LightWorkspaceType,
+  userId: number,
+  costMicroUsd: number
+): Promise<void> {
+  const awuCredits = awuFromMicroUsd(costMicroUsd);
+  if (awuCredits <= 0) {
+    return;
+  }
+  await addRateLimiterCount({
+    key: makeFreeUsageCostRateLimitKeyForUser(owner, userId),
+    timeframeSeconds: FREE_USAGE_COST_WINDOW_SECONDS,
+    incrementBy: awuCredits,
+    logger,
+  });
 }

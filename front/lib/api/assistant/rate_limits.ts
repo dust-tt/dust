@@ -1,15 +1,12 @@
 import type { Authenticator } from "@app/lib/auth";
-import { awuFromMicroUsd } from "@app/lib/metronome/events";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
-  addRateLimiterCount,
   expireRateLimiterKey,
   getRateLimiterCount,
   getTimeframeSecondsFromLiteral,
 } from "@app/lib/utils/rate_limiter";
-import logger from "@app/logger/logger";
 import type {
   MaxAwuCreditsTimeframeType,
   MaxMessagesTimeframeType,
@@ -28,15 +25,6 @@ export const MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR_WINDOW_SECONDS = 60 * 60;
 export const SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY = 100;
 export const SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_WINDOW_SECONDS =
   24 * 60 * 60;
-
-// Per-user cost cap on free (unbilled) LLM usage — utility calls (title/skill
-// suggestions, etc.) and free agent calls (sidekick). Counted in AWU credits.
-// Enforced at the LLM call site: read before each free call, contribute the
-// call's cost after.
-export const FREE_USAGE_COST_WINDOW_SECONDS = 24 * 60 * 60;
-export const FREE_USAGE_AWU_CREDITS_LIMIT_PER_DAY = awuFromMicroUsd(
-  5 * 1_000_000
-);
 
 type MessageRateLimitActor =
   | {
@@ -79,48 +67,6 @@ export const makeSidekickMessageRateLimitKeyForWorkspaceActor = (
 ) => {
   return `${makeMessageRateLimitKeyForWorkspaceActor(owner, actor)}:sidekick_daily`;
 };
-
-export const makeFreeUsageCostRateLimitKeyForUser = (
-  owner: LightWorkspaceType,
-  userId: number
-) => {
-  return `workspace:${owner.id}:user:${userId}:free_usage_cost`;
-};
-
-// Whether the user has hit the daily free-usage cost cap. Fails open (returns
-// false) on a Redis error so a transient failure never blocks usage.
-export async function isFreeUsageCostLimitReachedForUser(
-  owner: LightWorkspaceType,
-  userId: number
-): Promise<boolean> {
-  const result = await getRateLimiterCount({
-    key: makeFreeUsageCostRateLimitKeyForUser(owner, userId),
-    timeframeSeconds: FREE_USAGE_COST_WINDOW_SECONDS,
-  });
-  if (result.isErr()) {
-    return false;
-  }
-  return result.value >= FREE_USAGE_AWU_CREDITS_LIMIT_PER_DAY;
-}
-
-// Contribute a free call's cost (converted to AWU credits) to the user's daily
-// free-usage counter. No-op when the cost rounds to zero credits.
-export async function contributeFreeUsageCostForUser(
-  owner: LightWorkspaceType,
-  userId: number,
-  costMicroUsd: number
-): Promise<void> {
-  const awuCredits = awuFromMicroUsd(costMicroUsd);
-  if (awuCredits <= 0) {
-    return;
-  }
-  await addRateLimiterCount({
-    key: makeFreeUsageCostRateLimitKeyForUser(owner, userId),
-    timeframeSeconds: FREE_USAGE_COST_WINDOW_SECONDS,
-    incrementBy: awuCredits,
-    logger,
-  });
-}
 
 export const makeAgentMentionsRateLimitKeyForWorkspace = (
   owner: LightWorkspaceType,

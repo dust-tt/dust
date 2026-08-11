@@ -1,6 +1,8 @@
-import { contributeFreeUsageCostForUser } from "@app/lib/api/assistant/rate_limits";
 import config from "@app/lib/api/config";
-import { isFreeUsageContext } from "@app/lib/api/llm/free_usage";
+import {
+  contributeFreeUsageCostForUser,
+  isFreeUsageContext,
+} from "@app/lib/api/llm/free_usage";
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
   createLLMTraceId,
