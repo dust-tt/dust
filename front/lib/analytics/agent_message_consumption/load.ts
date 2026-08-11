@@ -248,7 +248,10 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     { withToolMetadata: true }
   );
   const ancestorAgentIds = (
-    await listAgenticAncestors(auth, messageConversation, { agentMessageId })
+    await listAgenticAncestors(auth, messageConversation, {
+      agentMessageId,
+      includeDeleted: true,
+    })
   )
     .map((ancestor) => ancestor.agentConfigurationId)
     .reverse();

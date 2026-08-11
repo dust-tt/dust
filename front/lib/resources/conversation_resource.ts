@@ -318,12 +318,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
       excludeTest,
       updatedAfter,
+      includeDeleted,
       includeForkingData,
       loadSpaces,
     }: {
       transaction?: Transaction;
       excludeTest?: boolean;
       updatedAfter?: Date;
+      includeDeleted?: boolean;
       includeForkingData?: boolean;
       loadSpaces?: boolean;
     } = {}
@@ -334,7 +336,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const workspace = auth.getNonNullableWorkspace();
 
-    const excludedVisibilities: ConversationVisibility[] = ["deleted"];
+    const excludedVisibilities: ConversationVisibility[] = [];
+
+    if (!includeDeleted) {
+      excludedVisibilities.push("deleted");
+    }
 
     if (excludeTest) {
       excludedVisibilities.push("test");
@@ -344,7 +350,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where: {
         workspaceId: workspace.id,
         id: ids,
-        visibility: { [Op.notIn]: excludedVisibilities },
+        ...(excludedVisibilities.length > 0
+          ? { visibility: { [Op.notIn]: excludedVisibilities } }
+          : {}),
         ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
       } as WhereOptions<ConversationModel>,
       ...(includeForkingData ? { include: this.getForkedFromInclude() } : {}),
@@ -360,6 +368,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         uniqueSpaceIds.length === 0
           ? []
           : await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds, {
+              includeDeleted,
               transaction,
             });
       spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));

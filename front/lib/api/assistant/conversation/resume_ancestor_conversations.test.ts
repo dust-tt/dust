@@ -159,6 +159,20 @@ describe("resumeAncestorConversations", () => {
     expect(retryBlockedActions).not.toHaveBeenCalled();
   });
 
+  it("does not retry a deleted ancestor conversation", async () => {
+    const parent = await createAgenticConversation(auth, workspace);
+    const child = await createAgenticConversation(auth, workspace, {
+      agenticParentMessageId: parent.agentMessageId,
+    });
+    await parent.conversation.updateVisibilityToDeleted(auth);
+
+    await resumeAncestorConversations(auth, child.conversation, {
+      agentMessageId: child.agentMessageId,
+    });
+
+    expect(retryBlockedActions).not.toHaveBeenCalled();
+  });
+
   it("walks up multiple ancestors when each resumes successfully", async () => {
     const grandParent = await createAgenticConversation(auth, workspace);
     const parent = await createAgenticConversation(auth, workspace, {

@@ -15,8 +15,13 @@ export async function listAgenticAncestors(
   conversation: ConversationResource,
   {
     agentMessageId,
+    includeDeleted = false,
     maxAncestors,
-  }: { agentMessageId: string; maxAncestors?: number }
+  }: {
+    agentMessageId: string;
+    includeDeleted?: boolean;
+    maxAncestors?: number;
+  }
 ): Promise<AgenticAncestor[]> {
   const ancestors: AgenticAncestor[] = [];
   const visitedAgentMessageIds = new Set([agentMessageId]);
@@ -37,7 +42,7 @@ export async function listAgenticAncestors(
     const [parentConversation] = await ConversationResource.fetchByModelIds(
       auth,
       [parentAgentMessage.conversationModelId],
-      { loadSpaces: true }
+      { includeDeleted, loadSpaces: true }
     );
     if (!parentConversation) {
       break;
