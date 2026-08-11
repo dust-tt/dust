@@ -281,9 +281,6 @@ export function UsageFilterPanel({
     [mcpServers]
   );
 
-  // Every skill in the workspace, regardless of the selected period. Keyed
-  // by sId, matching the skill sIds usage data stores for the skill
-  // dimension (see resolveDimensionLabels).
   const skillOptions = useMemo<UsageFilterSkillOption[]>(
     () =>
       skillCatalog.map((skill) => ({
