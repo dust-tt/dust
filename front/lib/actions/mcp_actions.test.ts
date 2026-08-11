@@ -1,8 +1,10 @@
+import { REMOTE_MAX_STRUCTURED_CONTENT_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type {
   ClientSideMCPToolConfigurationType,
   LightServerSideMCPToolConfigurationType,
   ServerSideMCPServerConfigurationType,
+  ServerSideMCPToolConfigurationType,
   ToolNotificationEvent,
 } from "@app/lib/actions/mcp";
 import {
@@ -482,28 +484,33 @@ describe("tryCallMCPTool", () => {
     // The in-memory transport strips extra properties from tool results (like the real MCP SDK).
     // withToolResultProcessing (in wrappers) moves extras to _meta before the result goes over
     // the transport, so they survive; tryCallMCPTool then moves _meta back to root.
+    // The handler also returns structuredContent, which must survive the transport round-trip.
     mockSearchFunction.mockResolvedValue(
-      new Ok([
-        {
-          type: "resource" as const,
-          resource: {
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
-            uri: "https://example.com/doc1",
-            text: "Document 1",
-            id: "doc1",
-            ref: "ref1",
-            chunks: ["chunk1", "chunk2"],
-            source: {
-              provider: "slack",
-              data_source_id: "ds1",
-              data_source_view_id: "dsv1",
+      new Ok({
+        content: [
+          {
+            type: "resource" as const,
+            resource: {
+              mimeType:
+                INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
+              uri: "https://example.com/doc1",
+              text: "Document 1",
+              id: "doc1",
+              ref: "ref1",
+              chunks: ["chunk1", "chunk2"],
+              source: {
+                provider: "slack",
+                data_source_id: "ds1",
+                data_source_view_id: "dsv1",
+              },
+              tags: ["tag1"],
+              customProperty: "customValue",
+              anotherExtraProperty: 123,
             },
-            tags: ["tag1"],
-            customProperty: "customValue",
-            anotherExtraProperty: 123,
           },
-        },
-      ])
+        ],
+        structuredContent: { results: [{ id: "doc1" }], resultCount: 1 },
+      })
     );
     const user = await UserFactory.basic();
     const workspace = await WorkspaceFactory.basic();
@@ -829,6 +836,12 @@ describe("tryCallMCPTool", () => {
     // Verify _meta is removed (properties moved back to root)
     expect(resource._meta).toBeUndefined();
 
+    // Verify structuredContent survived the transport round-trip.
+    expect(toolCallResult.structuredContent).toEqual({
+      results: [{ id: "doc1" }],
+      resultCount: 1,
+    });
+
     // Ensure the code path went through withToolResultProcessing (spy is set in wrappers mock so it's in place when search server loads).
     const withToolResultProcessingSpy = withToolResultProcessingSpyRef.current;
     expect(withToolResultProcessingSpy).not.toBeNull();
@@ -895,6 +908,167 @@ describe("postProcessMCPToolResult - structuredContent", () => {
     );
 
     expect(result.content).toHaveLength(0);
+    expect(result.structuredContent).toBeUndefined();
+  });
+
+  it("preserves structuredContent alongside non-empty content for client servers", () => {
+    const result = postProcessMCPToolResult(
+      {
+        content: [{ type: "text", text: "existing result" }],
+        structuredContent: { tables: [{ id: "tbl1" }] },
+      } as ToolCallResult,
+      clientConfig
+    );
+
+    expect(result.content).toEqual([{ type: "text", text: "existing result" }]);
+    expect(result.structuredContent).toEqual({ tables: [{ id: "tbl1" }] });
+  });
+
+  it("preserves structuredContent when falling back to it for empty content", () => {
+    const result = postProcessMCPToolResult(
+      {
+        content: [],
+        structuredContent: { tables: [] },
+      } as ToolCallResult,
+      clientConfig
+    );
+
+    expect(result.content).toEqual([
+      { type: "text", text: JSON.stringify({ tables: [] }) },
+    ]);
+    expect(result.structuredContent).toEqual({ tables: [] });
+  });
+
+  const serverSideConfigBase = {
+    id: -1,
+    sId: "test-sid",
+    type: "mcp_configuration",
+    description: null,
+    inputSchema: { type: "object", properties: {} },
+    dataSources: null,
+    tables: null,
+    childAgentId: null,
+    timeFrame: null,
+    jsonSchema: null,
+    additionalConfiguration: {},
+    mcpServerViewId: "msv_test",
+    dustAppConfiguration: null,
+    secretName: null,
+    dustProject: null,
+    availability: "manual",
+    permission: "never_ask",
+    toolServerId: "srv_test",
+    retryPolicy: "no_retry",
+  } as const;
+
+  function makeServerSideConfig(
+    internalMCPServerId: string | null
+  ): ServerSideMCPToolConfigurationType {
+    if (internalMCPServerId !== null) {
+      return {
+        ...serverSideConfigBase,
+        name: "semantic_search",
+        originalName: "semantic_search",
+        mcpServerName: "search",
+        internalMCPServerId,
+      };
+    }
+    return {
+      ...serverSideConfigBase,
+      name: "test_tool",
+      originalName: "test_tool",
+      mcpServerName: "test_server",
+      internalMCPServerId: null,
+    };
+  }
+
+  it("preserves structuredContent for internal servers alongside the _meta restore", () => {
+    const result = postProcessMCPToolResult(
+      {
+        content: [
+          {
+            type: "resource",
+            resource: {
+              uri: "test://resource",
+              text: "resource text",
+              _meta: { extraField: "extra" },
+            },
+          },
+        ],
+        structuredContent: { count: 3 },
+      } as ToolCallResult,
+      makeServerSideConfig(
+        internalMCPServerNameToSId({
+          name: "search",
+          workspaceId: 1,
+          prefix: 0,
+        })
+      )
+    );
+
+    expect(result.structuredContent).toEqual({ count: 3 });
+    // The _meta restore of extra resource fields is unaffected.
+    const [item] = result.content;
+    if (item.type !== "resource") {
+      throw new Error("Expected a resource item.");
+    }
+    // The resource type is a union without extra fields; extras restored from
+    // _meta need a loose view (same pattern as the tryCallMCPTool test above).
+    const restoredResource = item.resource as any;
+    expect(restoredResource.extraField).toBe("extra");
+    expect(restoredResource._meta).toBeUndefined();
+  });
+
+  it("preserves structuredContent for remote servers within the size limit", () => {
+    const result = postProcessMCPToolResult(
+      {
+        content: [{ type: "text", text: "remote result" }],
+        structuredContent: { items: [1, 2, 3], nextCursor: "abc" },
+      } as ToolCallResult,
+      makeServerSideConfig(null)
+    );
+
+    expect(result.content).toEqual([{ type: "text", text: "remote result" }]);
+    expect(result.structuredContent).toEqual({
+      items: [1, 2, 3],
+      nextCursor: "abc",
+    });
+  });
+
+  it("drops oversized structuredContent from remote servers without failing the call", () => {
+    const result = postProcessMCPToolResult(
+      {
+        content: [{ type: "text", text: "remote result" }],
+        structuredContent: {
+          blob: "x".repeat(REMOTE_MAX_STRUCTURED_CONTENT_SIZE_BYTES + 1),
+        },
+      } as ToolCallResult,
+      makeServerSideConfig(null)
+    );
+
+    expect(result.isError).toBe(false);
+    expect(result.content).toEqual([{ type: "text", text: "remote result" }]);
+    expect(result.structuredContent).toBeUndefined();
+  });
+
+  it("keeps oversized structuredContent for internal servers", () => {
+    const result = postProcessMCPToolResult(
+      {
+        content: [{ type: "text", text: "internal result" }],
+        structuredContent: {
+          blob: "x".repeat(REMOTE_MAX_STRUCTURED_CONTENT_SIZE_BYTES + 1),
+        },
+      } as ToolCallResult,
+      makeServerSideConfig(
+        internalMCPServerNameToSId({
+          name: "search",
+          workspaceId: 1,
+          prefix: 0,
+        })
+      )
+    );
+
+    expect(result.structuredContent).toBeDefined();
   });
 });
 

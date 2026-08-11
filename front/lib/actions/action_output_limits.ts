@@ -36,6 +36,11 @@ const REMOTE_MAX_RESOURCE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB.
 // Hard limit on the entire array of tool outputs.
 const REMOTE_MAX_TOOL_RESULT_SIZE_BYTES = 50 * 1024 * 1024; // 50MB.
 
+// Hard limit on the `structuredContent` payload of remote MCP tool results. Oversized payloads
+// are dropped (the model-facing content is unaffected) rather than failing the tool call, since
+// they used to be discarded entirely.
+export const REMOTE_MAX_STRUCTURED_CONTENT_SIZE_BYTES = 2 * 1024 * 1024; // 2MB.
+
 export function computeTextByteSize(text: string): number {
   return Buffer.byteLength(text, "utf8");
 }

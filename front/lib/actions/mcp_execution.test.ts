@@ -934,6 +934,34 @@ describe("processToolResults", () => {
     expect(stored.resource.text).toContain("[Full content archived at ");
   });
 
+  it("should persist a versioned envelope when the tool result carries structuredContent in a sandbox function run context", async () => {
+    const { auth, action, toolContext } = await setupSandboxFunctionTest();
+
+    const toolCallResultContent: CallToolResult["content"] = [
+      { type: "text", text: "human-readable result" },
+    ];
+    const structuredContent = { items: [{ id: 1 }], nextCursor: "abc" };
+
+    const { outputItems } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent,
+      toolCallResultStructuredContent: structuredContent,
+    });
+
+    expect(outputItems).toHaveLength(1);
+
+    const outputWrite = fileStorageMock.saveFileCalls.find((call) =>
+      call.filePath.endsWith(`mcp_output_items/${action.sId}/output.json`)
+    );
+    expect(outputWrite).toBeDefined();
+    expect(JSON.parse(outputWrite?.content.toString() ?? "")).toEqual({
+      version: 2,
+      content: toolCallResultContent,
+      structuredContent,
+    });
+  });
+
   it("should throw and leave the action without an output path when the sandbox output write fails", async () => {
     const { auth, action, toolContext } = await setupSandboxFunctionTest();
 

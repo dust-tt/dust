@@ -38,6 +38,8 @@ type CallToolSandboxFunctionSuccessResponse = {
   status: "success";
   action: SandboxFunctionMCPActionType & {
     output: CallToolResult["content"] | null;
+    // Machine-readable payload of the tool result, when the tool provided one.
+    structuredContent?: CallToolResult["structuredContent"];
   };
 };
 
@@ -99,10 +101,17 @@ app.get(
               },
             });
           }
+          const output = outputResult.value;
           return ctx.json(
             {
               status: "success",
-              action: { ...action.toJSON(), output: outputResult.value },
+              action: {
+                ...action.toJSON(),
+                output: output?.content ?? null,
+                ...(output?.structuredContent !== undefined
+                  ? { structuredContent: output.structuredContent }
+                  : {}),
+              },
             },
             200
           );
