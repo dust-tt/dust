@@ -64,6 +64,7 @@ function determineGlobalAgentIdsToFetch(
     case "list":
     case "manage":
     case "all":
+    case "analytics":
     case "favorites":
     case "admin_internal":
       return undefined; // undefined means all global agents will be fetched
@@ -169,6 +170,17 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
         ...baseAgentsSequelizeQuery,
         where: baseWhereConditions,
       });
+
+    // Analytics reports on every agent, so admins get the private ones too.
+    // Everyone else sees what `all` returns.
+    case "analytics":
+      return AgentConfigurationModel.findAll({
+        ...baseAgentsSequelizeQuery,
+        where: auth.isAdmin()
+          ? baseWhereConditions
+          : baseConditionsAndScopesIn(["workspace", "published", "visible"]),
+      });
+
     case "current_user":
       const authorId = auth.getNonNullableUser().id;
       const r = await AgentConfigurationModel.findAll({
@@ -321,7 +333,13 @@ async function fetchWorkspaceAgentConfigurationsForView(
     }
   );
 
-  const allowedAgentModels = dangerouslySkipPermissionFiltering
+  // Analytics counts credits for agents built on spaces an admin cannot read,
+  // so the admin analytics view has to list them as well.
+  const skipPermissionFiltering =
+    dangerouslySkipPermissionFiltering ||
+    (agentsGetView === "analytics" && auth.isAdmin());
+
+  const allowedAgentModels = skipPermissionFiltering
     ? agentModels
     : await filterAgentsByRequestedSpaces(auth, agentModels);
 
@@ -371,8 +389,7 @@ export async function getAgentConfigurationsForView<
     !auth.isAdmin()
   ) {
     throw new Error(
-      "Superuser view is for dust superusers, internal admin auths or " +
-        "workspace admins only."
+      "Superuser view is for dust superusers or internal admin auths only."
     );
   }
 

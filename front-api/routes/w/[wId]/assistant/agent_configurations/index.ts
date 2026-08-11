@@ -59,7 +59,7 @@ const app = workspaceApp();
  *         description: Filter agents by view
  *         schema:
  *           type: string
- *           enum: [all, list, favorites, published, admin_internal, global, workspace]
+ *           enum: [all, analytics, list, favorites, published, admin_internal, global, workspace]
  *       - in: query
  *         name: limit
  *         required: false
@@ -193,18 +193,12 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
   let viewParam = view ? view : "all";
   // @ts-expect-error: added for backwards compatibility
   viewParam = viewParam === "assistant-search" ? "list" : viewParam;
-  if (
-    viewParam === "admin_internal" &&
-    !auth.isDustSuperUser() &&
-    !auth.isAdmin()
-  ) {
+  if (viewParam === "admin_internal" && !auth.isDustSuperUser()) {
     return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "app_auth_error",
-        message:
-          "Only Dust Super Users and workspace admins can see " +
-          "admin_internal agents.",
+        message: "Only Dust Super Users can see admin_internal agents.",
       },
     });
   }
@@ -219,9 +213,6 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
     sort,
     // Stripped to stay under Next.js' 4MB API response limit.
     omitInstructions: true,
-    // The admin view lists every agent in the workspace, so agents built on
-    // spaces the caller cannot read are listed too.
-    dangerouslySkipPermissionFiltering: viewParam === "admin_internal",
   });
   if (withUsage === "true") {
     const mentionCounts = await runOnRedis(

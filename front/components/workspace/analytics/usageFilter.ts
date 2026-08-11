@@ -43,8 +43,6 @@ export const USAGE_FILTER_CATEGORY_SINGULAR_LABEL: Record<
   source: "Source",
 };
 
-// The agent picker's scope tabs: the agent scopes, plus an "all" catch-all that
-// doesn't narrow by scope.
 export const USAGE_FILTER_AGENT_SCOPES = [
   ...AGENT_CONFIGURATION_SCOPES,
   "all",

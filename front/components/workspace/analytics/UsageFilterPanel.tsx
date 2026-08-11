@@ -27,7 +27,6 @@ import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_
 import { useGroups } from "@app/lib/swr/groups";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
-import { isAdmin } from "@app/types/user";
 import {
   BarChart05,
   Button,
@@ -106,11 +105,6 @@ export function UsageFilterPanel({
       })),
     [workspaceGroups]
   );
-
-  // Private agents are only listed for admins.
-  const agentScopes = isAdmin(owner)
-    ? USAGE_FILTER_AGENT_SCOPES
-    : USAGE_FILTER_AGENT_SCOPES.filter((scope) => scope !== "hidden");
 
   const activeOptions = categoryOptions[activeCategory];
   const filteredOptions = useMemo(() => {
@@ -245,7 +239,7 @@ export function UsageFilterPanel({
             )}
             {activeCategory === "agent" && (
               <UsageFilterAgentScopeControls
-                scopes={agentScopes}
+                scopes={USAGE_FILTER_AGENT_SCOPES}
                 activeScope={activeScope}
                 onScopeChange={setActiveScope}
               />
