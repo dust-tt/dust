@@ -38,10 +38,16 @@ export class RPCDataAPI implements VisualizationDataAPI {
 
   async getUserIdentity() {
     const identity = await this.sendMessage("getUserIdentity", null);
+    // Hosts deployed before the field existed answer without it; absent means false. Rebuild
+    // the anonymous state rather than passing it through so the field is present either way.
     if (!identity.isAuthenticated) {
-      return identity;
+      return {
+        isAuthenticated: false as const,
+        isWorkspaceMember: false as const,
+        isPodEditor: false as const,
+        user: null,
+      };
     }
-    // Hosts deployed before the field existed answer without it; absent means false.
     return { ...identity, isPodEditor: identity.isPodEditor === true };
   }
 
