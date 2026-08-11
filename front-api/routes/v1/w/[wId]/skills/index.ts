@@ -30,6 +30,7 @@ const GetSkillsQuerySchema = z.object({
 const SkillAvailabilitiesSchema = z
   .array(z.enum(SKILL_AVAILABILITIES))
   .optional();
+const SkillAvailabilitySchema = z.enum(SKILL_AVAILABILITIES).optional();
 
 // Mounted at /api/v1/w/:wId/skills.
 //
@@ -143,6 +144,10 @@ app.route("/:skillId", skill);
  *                   type: string
  *                   format: email
  *                 description: Optional editor email addresses to add to imported or updated skills. Editors must be active workspace builders. Existing skills keep their current editors.
+ *               availability:
+ *                 type: string
+ *                 enum: [editors, workspace_users, users_and_agents]
+ *                 description: Optional availability to apply to imported or updated skills. editors is unpublished, workspace_users is published, and users_and_agents is discoverable. New skills default to editors and existing skills keep their current availability when omitted.
  *     responses:
  *       200:
  *         description: Skills import result.
@@ -279,6 +284,20 @@ app.post("/", async (ctx): HandlerResult<ImportSkillsResponseBody> => {
 
   const { editors, names } = fields;
 
+  const availabilityValidation = SkillAvailabilitySchema.safeParse(
+    fields.availability?.[0]
+  );
+  if (!availabilityValidation.success) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          'Invalid availability. Expected "editors", "workspace_users", or "users_and_agents".',
+      },
+    });
+  }
+
   const onConflict = fields.onConflict?.[0] ?? "error";
   if (!isImportConflictStrategy(onConflict)) {
     return apiError(ctx, {
@@ -292,6 +311,7 @@ app.post("/", async (ctx): HandlerResult<ImportSkillsResponseBody> => {
 
   const result = await importSkillsFromFiles(auth, {
     uploadedFiles,
+    availability: availabilityValidation.data,
     editors,
     names,
     source: "api",

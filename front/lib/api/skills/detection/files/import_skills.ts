@@ -14,7 +14,10 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { SkillSourceType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillAvailability,
+  SkillSourceType,
+} from "@app/types/assistant/skill_configuration";
 import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -60,17 +63,20 @@ export async function importSkillsFromFiles(
     uploadedFiles,
     names,
     editors,
+    availability,
     source = "local_file",
     onConflict = "skip",
   }: {
     uploadedFiles: formidable.File[];
     names?: string[];
     editors?: string[];
+    availability?: SkillAvailability;
     source?: FileImportSource;
     onConflict?: ImportConflictStrategyType;
   }
 ): Promise<Result<ImportSkillsResult, Error>> {
-  if (!(await auth.hasWorkspacePermission("create", "skill"))) {
+  const canCreateSkills = await auth.hasWorkspacePermission("create", "skill");
+  if (!canCreateSkills) {
     return new Err(new Error("Creating skills is restricted."));
   }
 
@@ -133,6 +139,59 @@ export async function importSkillsFromFiles(
     return new Err(new Error("No matching importable skills found."));
   }
 
+  const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
+
+  if (availability !== undefined) {
+    const skillsToUpsert = selectedSkills.filter((skill) => {
+      const existing = existingSkillsMap.get(skill.name);
+      return !(
+        existing &&
+        existing.source !== source &&
+        onConflict !== "override"
+      );
+    });
+    const existingSkillsWithAvailabilityChange = removeNulls(
+      skillsToUpsert.map((skill) => existingSkillsMap.get(skill.name) ?? null)
+    ).filter((skill) => skill.availability !== availability);
+    const createsSkillWithAvailabilityChange =
+      availability !== DEFAULT_SKILL_AVAILABILITY &&
+      skillsToUpsert.some((skill) => !existingSkillsMap.has(skill.name));
+    const availabilityChanged =
+      createsSkillWithAvailabilityChange ||
+      existingSkillsWithAvailabilityChange.length > 0;
+
+    if (availabilityChanged) {
+      const canPublishSkills = await auth.hasWorkspacePermission(
+        "publish",
+        "skill"
+      );
+      if (!canPublishSkills) {
+        return new Err(
+          new Error("You don't have permission to change skill availability.")
+        );
+      }
+    }
+
+    const involvesAutoDiscoverable =
+      availability === "users_and_agents" ||
+      existingSkillsWithAvailabilityChange.some(
+        (skill) => skill.availability === "users_and_agents"
+      );
+    if (availabilityChanged && involvesAutoDiscoverable) {
+      const canMakeSkillsDiscoverable = await auth.hasWorkspacePermission(
+        "make_discoverable",
+        "skill"
+      );
+      if (!canMakeSkillsDiscoverable) {
+        return new Err(
+          new Error(
+            "You don't have permission to change a skill's auto-discoverable status."
+          )
+        );
+      }
+    }
+  }
+
   const editorUsersResult = await resolveEditorUsersFromEmails(
     auth,
     editors ?? []
@@ -146,8 +205,6 @@ export async function importSkillsFromFiles(
   const imported: SkillResource[] = [];
   const updated: SkillResource[] = [];
   const skipped: { name: string; message: string }[] = [];
-
-  const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
 
   for (const skill of selectedSkills) {
     const existing = existingSkillsMap.get(skill.name) ?? null;
@@ -189,6 +246,7 @@ export async function importSkillsFromFiles(
 
       await existing.updateSkill(auth, {
         name: skill.name,
+        availability,
         agentFacingDescription: skill.description,
         userFacingDescription: skill.description,
         instructions: skill.instructions,
@@ -247,7 +305,7 @@ export async function importSkillsFromFiles(
           icon,
           source,
           sourceMetadata: { filePath: skill.skillMdPath },
-          availability: DEFAULT_SKILL_AVAILABILITY,
+          availability: availability ?? DEFAULT_SKILL_AVAILABILITY,
         },
         {
           mcpServerViews: suggestedMCPServerViews,
