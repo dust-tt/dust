@@ -1,6 +1,9 @@
 import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
-import { InputBarSpacesPicker } from "@app/components/assistant/conversation/input_bar/InputBarSpacesPicker";
+import {
+  getSpacesPickerLabel,
+  InputBarSpacesPicker,
+} from "@app/components/assistant/conversation/input_bar/InputBarSpacesPicker";
 import {
   INPUT_BAR_PILL_HOVER_CLASSNAME,
   INPUT_BAR_PILL_SURFACE_CLASSNAME,
@@ -94,6 +97,11 @@ export function InputBarPlusMenu({
   const [openMobilePicker, setOpenMobilePicker] = useState<MobilePicker | null>(
     null
   );
+  // On mobile the pickers render as siblings of the menu (see below), so they
+  // would mount — and fire their SWR hooks — with every input bar. Wait for the
+  // menu to be opened once, which matches when desktop mounts them inside
+  // DropdownMenuContent.
+  const [hasOpenedMenu, setHasOpenedMenu] = useState(false);
   const plusButtonRef = useRef<HTMLDivElement>(null);
   const shouldPrefetch = isOpen || hasHovered || openMobilePicker !== null;
 
@@ -112,10 +120,7 @@ export function InputBarPlusMenu({
     setOpenMobilePicker(open ? picker : null);
   };
 
-  const spacesLabel =
-    selectedSpaceIds.length > 0
-      ? `${selectedSpaceIds.length} additional Space${selectedSpaceIds.length > 1 ? "s" : ""}`
-      : "Spaces";
+  const spacesLabel = getSpacesPickerLabel(selectedSpaceIds);
 
   const capabilitiesPicker = (
     <CapabilitiesPicker
@@ -190,75 +195,89 @@ export function InputBarPlusMenu({
     />
   );
 
-  return (
-    <>
-      <div ref={plusButtonRef} className="flex items-center">
-        <DropdownMenu
-          open={isOpen}
-          onOpenChange={(open) => {
-            setIsOpen(open);
-            onOpenChange?.(open);
-          }}
-        >
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost-secondary"
-              icon={Plus}
-              size={buttonSize}
-              disabled={disabled}
-              isRounded
-              tooltip="More"
-              className={PLUS_BUTTON_CLASSNAME}
-              onMouseEnter={() => setHasHovered(true)}
-              onFocus={() => setHasHovered(true)}
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-64">
-            {isMobile ? (
-              <>
-                {!hideCapabilities && (
-                  <DropdownMenuItem
-                    label="Capabilities"
-                    icon={ShapesPlus}
-                    disabled={disabled}
-                    onClick={() => openPicker("capabilities")}
-                  />
-                )}
-                {!hideAttachments && (
-                  <DropdownMenuItem
-                    label="Attach knowledge"
-                    icon={Attachment01}
-                    disabled={disabled}
-                    onClick={() => openPicker("attachments")}
-                  />
-                )}
-                {spaces != null && (
-                  <DropdownMenuItem
-                    label={spacesLabel}
-                    icon={Planet}
-                    disabled={disabled}
-                    onClick={() => openPicker("spaces")}
-                  />
-                )}
-              </>
-            ) : (
-              <>
-                {!hideCapabilities && capabilitiesPicker}
-                {!hideAttachments && attachmentsPicker}
-                {spaces != null && spacesPicker}
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+  const plusButton = (
+    <DropdownMenuTrigger asChild>
+      <Button
+        variant="ghost-secondary"
+        icon={Plus}
+        size={buttonSize}
+        disabled={disabled}
+        isRounded
+        tooltip="More"
+        className={PLUS_BUTTON_CLASSNAME}
+        onMouseEnter={() => setHasHovered(true)}
+        onFocus={() => setHasHovered(true)}
+      />
+    </DropdownMenuTrigger>
+  );
 
-      {isMobile && (
-        <>
-          {!hideCapabilities && capabilitiesPicker}
-          {!hideAttachments && attachmentsPicker}
-          {spaces != null && spacesPicker}
-        </>
-      )}
-    </>
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    onOpenChange?.(open);
+    if (open) {
+      setHasOpenedMenu(true);
+    }
+  };
+
+  if (isMobile) {
+    return (
+      <>
+        {/* The wrapper is the anchor the pickers position against; it hugs the
+            "+" button because the menu itself renders in a portal. */}
+        <div ref={plusButtonRef} className="flex items-center">
+          <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
+            {plusButton}
+            <DropdownMenuContent align="start" className="w-64">
+              {!hideCapabilities && (
+                <DropdownMenuItem
+                  label="Capabilities"
+                  icon={ShapesPlus}
+                  disabled={disabled}
+                  onClick={() => openPicker("capabilities")}
+                />
+              )}
+              {!hideAttachments && (
+                <DropdownMenuItem
+                  label="Attach knowledge"
+                  icon={Attachment01}
+                  disabled={disabled}
+                  onClick={() => openPicker("attachments")}
+                />
+              )}
+              {spaces != null && (
+                <DropdownMenuItem
+                  label={spacesLabel}
+                  icon={Planet}
+                  disabled={disabled}
+                  onClick={() => openPicker("spaces")}
+                />
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Siblings of the menu rather than children: a sub-menu opens beside
+            its parent, and `parent width + sub-menu width` does not fit a phone
+            viewport. */}
+        {hasOpenedMenu && (
+          <>
+            {!hideCapabilities && capabilitiesPicker}
+            {!hideAttachments && attachmentsPicker}
+            {spaces != null && spacesPicker}
+          </>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
+      {plusButton}
+      <DropdownMenuContent align="start" className="w-64">
+        {!hideCapabilities && capabilitiesPicker}
+        {!hideAttachments && attachmentsPicker}
+        {spaces != null && spacesPicker}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

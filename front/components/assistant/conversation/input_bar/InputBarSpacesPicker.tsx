@@ -19,6 +19,14 @@ import {
 import type React from "react";
 import { useMemo, useState } from "react";
 
+export function getSpacesPickerLabel(selectedSpaceIds: string[]): string {
+  if (selectedSpaceIds.length === 0) {
+    return "Spaces";
+  }
+
+  return `${selectedSpaceIds.length} additional Space${selectedSpaceIds.length > 1 ? "s" : ""}`;
+}
+
 interface InputBarSpacesPickerProps {
   canDeselectSelectedSpaces: boolean;
   disabled: boolean;
@@ -69,10 +77,7 @@ export function InputBarSpacesPicker({
     );
   }, [searchText, spaces]);
 
-  const label =
-    selectedSpaceIds.length > 0
-      ? `${selectedSpaceIds.length} additional Space${selectedSpaceIds.length > 1 ? "s" : ""}`
-      : "Spaces";
+  const label = getSpacesPickerLabel(selectedSpaceIds);
 
   const handleSpaceCheckedChange = (spaceId: string, checked: boolean) => {
     if (!checked && !canDeselectSelectedSpaces) {
