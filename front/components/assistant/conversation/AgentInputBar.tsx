@@ -52,19 +52,35 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 const DOUBLE_ESC_WINDOW_MS = 300;
+
+// Framer Motion requires numeric durations and Bezier tuples. Keep these
+// aligned with Sparkle's semantic motion tokens.
+const SPARKLE_MOTION = {
+  duration: { enter: 0.2, exit: 0.16 },
+  ease: {
+    enter: [0.215, 0.61, 0.355, 1],
+    move: [0.455, 0.03, 0.515, 0.955],
+  },
+} as const;
+
+const INPUT_BAR_SWAP_TRANSFORMS = {
+  initial: "translateY(calc(var(--spacing) * 2))",
+  idle: "translateY(calc(var(--spacing) * 0))",
+  exit: "translateY(calc(var(--spacing) * -1))",
+} as const;
+
 const INPUT_BAR_SWAP_TRANSITION = {
+  duration: SPARKLE_MOTION.duration.enter,
+  ease: SPARKLE_MOTION.ease.enter,
   layout: {
-    duration: 0.2,
-    ease: [0.455, 0.03, 0.515, 0.955],
+    duration: SPARKLE_MOTION.duration.enter,
+    ease: SPARKLE_MOTION.ease.move,
   },
-  opacity: {
-    duration: 0.2,
-    ease: [0.215, 0.61, 0.355, 1],
-  },
-  transform: {
-    duration: 0.2,
-    ease: [0.215, 0.61, 0.355, 1],
-  },
+} satisfies Transition;
+
+const INPUT_BAR_SWAP_EXIT_TRANSITION = {
+  duration: SPARKLE_MOTION.duration.exit,
+  ease: SPARKLE_MOTION.ease.enter,
 } satisfies Transition;
 
 interface AgentInputBarProps {
@@ -649,13 +665,20 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
             initial={
               shouldReduceMotion
                 ? false
-                : { opacity: 0, transform: "translateY(8px)" }
+                : { opacity: 0, transform: INPUT_BAR_SWAP_TRANSFORMS.initial }
             }
-            animate={{ opacity: 1, transform: "translateY(0px)" }}
+            animate={{
+              opacity: 1,
+              transform: INPUT_BAR_SWAP_TRANSFORMS.idle,
+            }}
             exit={
               shouldReduceMotion
                 ? undefined
-                : { opacity: 0, transform: "translateY(-4px)" }
+                : {
+                    opacity: 0,
+                    transform: INPUT_BAR_SWAP_TRANSFORMS.exit,
+                    transition: INPUT_BAR_SWAP_EXIT_TRANSITION,
+                  }
             }
             transition={INPUT_BAR_SWAP_TRANSITION}
             className={classNames(
