@@ -4,9 +4,17 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockUseAgentMessageConsumption } = vi.hoisted(() => ({
+const { mockOpenPanel, mockUseAgentMessageConsumption } = vi.hoisted(() => ({
+  mockOpenPanel: vi.fn(),
   mockUseAgentMessageConsumption: vi.fn(),
 }));
+
+vi.mock(
+  "@app/components/assistant/conversation/ConversationSidePanelContext",
+  () => ({
+    useConversationSidePanelContext: () => ({ openPanel: mockOpenPanel }),
+  })
+);
 
 vi.mock("@app/hooks/conversations/useAgentMessageConsumption", () => ({
   useAgentMessageConsumption: mockUseAgentMessageConsumption,
@@ -24,7 +32,14 @@ vi.mock("@app/components/resources/resources_icons", () => ({
 
 vi.mock("@dust-tt/sparkle", () => ({
   ShapesPlus: () => null,
+  Button: ({ label, onClick }: { label: string; onClick: () => void }) => (
+    <button type="button" onClick={onClick}>
+      {label}
+    </button>
+  ),
+  Chip: ({ label }: { label: string }) => <span>{label}</span>,
   Icon: () => null,
+  Plus: () => null,
   PopoverRoot: ({
     children,
     onOpenChange,
@@ -73,10 +88,11 @@ const defaultProps: ComponentProps<typeof CreditCostPopover> = {
 
 describe("CreditCostPopover", () => {
   beforeEach(() => {
+    mockOpenPanel.mockReset();
     mockUseAgentMessageConsumption.mockReset();
   });
 
-  it("shows the three largest tool contributions and groups the remaining tools", () => {
+  it("shows the tool breakdown and opens conversation credits", () => {
     mockUseAgentMessageConsumption.mockReturnValue({
       consumption: {
         billedCredits: 12,
@@ -104,15 +120,19 @@ describe("CreditCostPopover", () => {
     expect(screen.getByText("Web tool")).toBeInTheDocument();
     expect(screen.queryByText("File tool")).not.toBeInTheDocument();
     expect(screen.queryByText("Title tool")).not.toBeInTheDocument();
-    expect(screen.getByText("Other tools")).toBeInTheDocument();
-    expect(screen.getByText("2 tools, 2 uses")).toBeInTheDocument();
-    expect(screen.getByText("Credit breakdown")).toBeInTheDocument();
+    expect(screen.getByText("2 other tools")).toBeInTheDocument();
+    expect(screen.getAllByText("2 uses")).toHaveLength(2);
+    expect(screen.getByText("Message credits")).toBeInTheDocument();
+    expect(screen.getByText("Charged")).toBeInTheDocument();
+    expect(screen.getByText("15 credits")).toBeInTheDocument();
     expect(screen.getByText("Agent work and context")).toBeInTheDocument();
-    expect(
-      screen.getByText("Longer conversations require more context to process")
-    ).toBeInTheDocument();
-    expect(screen.getByText("This message")).toBeInTheDocument();
     expect(screen.getByText("Sub-agents")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Conversation credits" })
+    );
+
+    expect(mockOpenPanel).toHaveBeenCalledWith({ type: "credits" });
   });
 
   it("shows an additive breakdown without a separate savings adjustment", () => {
@@ -135,7 +155,7 @@ describe("CreditCostPopover", () => {
 
     render(<CreditCostPopover {...defaultProps} />);
 
-    expect(screen.getByText("Credit breakdown")).toBeInTheDocument();
+    expect(screen.getByText("Message credits")).toBeInTheDocument();
     expect(screen.queryByText("Saved through reuse")).not.toBeInTheDocument();
     expect(screen.getByText("3 credits")).toBeInTheDocument();
     expect(screen.getByText("7 credits")).toBeInTheDocument();

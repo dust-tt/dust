@@ -2,7 +2,11 @@ import { getActionStepIcon } from "@app/components/assistant/conversation/action
 import { getModelLogoByModelId } from "@app/components/providers/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { formatCredits, formatCreditValue } from "@app/lib/client/credits";
+import {
+  formatCredits,
+  formatCreditValue,
+  toolUsageLabel,
+} from "@app/lib/client/credits";
 import type {
   ConversationConsumptionAgentDetails,
   ConversationConsumptionDetails,
@@ -14,10 +18,6 @@ import { Avatar, Chip, DustLogoSquare, Icon } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
 const MAX_VISIBLE_TOOLS = 3;
-
-function toolUsageLabel(callCount: number): string {
-  return `${callCount} tool ${callCount === 1 ? "use" : "uses"}`;
-}
 
 interface CreditBreakdownCardProps {
   description?: string;

@@ -27,7 +27,7 @@ export function ConversationCreditUsagePanel({
     <div className="flex h-panel flex-col">
       <ConversationSidePanelHeader onClose={closePanel}>
         <span className="text-sm font-medium text-foreground">
-          Conversation credit usage
+          Conversation credits
         </span>
       </ConversationSidePanelHeader>
       <div className="min-h-0 flex-1 overflow-y-auto">
