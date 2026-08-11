@@ -50,6 +50,8 @@ impl ApiErrorCode {
     /// Distinct process exit codes so non-`--json` consumers can classify
     /// without parsing anything. 1 stays the generic failure (including a tool
     /// result with `isError: true`); 2 is reserved by clap for usage errors.
+    /// 15 is allocated outside this enum, to offloaded tool output resolution
+    /// failures (`OffloadResolutionError::EXIT_CODE`).
     pub fn exit_code(&self) -> i32 {
         match self {
             ApiErrorCode::InvalidRequest => 10,
