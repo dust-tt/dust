@@ -17,7 +17,11 @@ export function formatReconcileResult(result: ReconcileDatabaseResult): string {
     result.statements.length === 0
       ? "No schema changes to apply."
       : `Applied:\n${result.statements.map((statement) => `- ${statement}`).join("\n")}`;
-  return `${header}\n${body}`;
+  const warning =
+    result.replicationWarning === undefined
+      ? ""
+      : `\nWarning: ${result.replicationWarning}`;
+  return `${header}\n${body}${warning}`;
 }
 
 export async function dbReconcileHandler(

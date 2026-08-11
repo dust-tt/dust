@@ -33,4 +33,27 @@ describe("formatReconcileResult", () => {
 
     expect(out).toContain('Database "myapp__chat" created.');
   });
+
+  it("appends the replication warning when the first sync was not confirmed", () => {
+    const out = formatReconcileResult({
+      database: "chat",
+      created: true,
+      statements: [],
+      replicationWarning: "first replication sync could not be confirmed.",
+    });
+
+    expect(out).toContain(
+      "Warning: first replication sync could not be confirmed."
+    );
+  });
+
+  it("emits no warning line by default", () => {
+    const out = formatReconcileResult({
+      database: "chat",
+      created: true,
+      statements: [],
+    });
+
+    expect(out).not.toContain("Warning:");
+  });
 });

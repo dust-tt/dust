@@ -1,20 +1,27 @@
 import { createHash } from "node:crypto";
 
+import { syncPodDatabaseAfterCreate } from "@app/lib/api/sandbox/db";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import {
   getDatabaseSchemaOnSandbox,
   listDatabasesOnSandbox,
+  reconcileDatabaseOnSandbox,
 } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/sandbox/lifecycle", () => ({
   ensurePodSandboxReady: vi.fn(),
 }));
+
+vi.mock(import("@app/lib/api/sandbox/db"), async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, syncPodDatabaseAfterCreate: vi.fn() };
+});
 
 const sha256Hex = (content: string): string =>
   createHash("sha256").update(content).digest("hex");
@@ -130,6 +137,90 @@ describe("getDatabaseSchemaOnSandbox", () => {
     }
     expect(result.error.code).toBe("internal");
     expect(result.error.message).toContain("Missing integrity hash");
+  });
+});
+
+describe("reconcileDatabaseOnSandbox", () => {
+  const reconcileArgs = {
+    database: "myapp__chat",
+    schemaFileSandboxPath: "/files/pod-x/MyApp/databases/chat.db.ts",
+  };
+
+  function mockReconcileExec(
+    sandbox: SandboxResource,
+    { created }: { created: boolean }
+  ) {
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: `${JSON.stringify({ ok: true, created, statements: [] })}\n`,
+        stderr: "",
+      })
+    );
+  }
+
+  it("waits for the first replication sync when the database was created", async () => {
+    const { authenticator, sandbox, space } = await setup();
+    mockReconcileExec(sandbox, { created: true });
+    vi.mocked(syncPodDatabaseAfterCreate).mockResolvedValue(new Ok(undefined));
+
+    const result = await reconcileDatabaseOnSandbox(authenticator, {
+      space,
+      ...reconcileArgs,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.created).toBe(true);
+    expect(result.value.replicationWarning).toBeUndefined();
+    expect(syncPodDatabaseAfterCreate).toHaveBeenCalledTimes(1);
+    expect(syncPodDatabaseAfterCreate).toHaveBeenCalledWith(
+      authenticator,
+      sandbox,
+      "myapp__chat"
+    );
+  });
+
+  it("reports a replication warning when the first sync cannot be confirmed", async () => {
+    const { authenticator, sandbox, space } = await setup();
+    mockReconcileExec(sandbox, { created: true });
+    vi.mocked(syncPodDatabaseAfterCreate).mockResolvedValue(
+      new Err(new Error("daemon socket unavailable"))
+    );
+
+    const result = await reconcileDatabaseOnSandbox(authenticator, {
+      space,
+      ...reconcileArgs,
+    });
+
+    // The DDL applied and reconcile is idempotent, so the reconcile still
+    // succeeds — but the caller is told durability is not confirmed yet.
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.replicationWarning).toContain(
+      "first replication sync could not be confirmed"
+    );
+  });
+
+  it("does not sync when the database already existed", async () => {
+    const { authenticator, sandbox, space } = await setup();
+    mockReconcileExec(sandbox, { created: false });
+
+    const result = await reconcileDatabaseOnSandbox(authenticator, {
+      space,
+      ...reconcileArgs,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.replicationWarning).toBeUndefined();
+    expect(syncPodDatabaseAfterCreate).not.toHaveBeenCalled();
   });
 });
 

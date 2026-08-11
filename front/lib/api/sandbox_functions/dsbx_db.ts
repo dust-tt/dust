@@ -7,6 +7,7 @@ import {
   TOOL_OUTPUTS_FOLDER_NAME,
 } from "@app/lib/api/files/mount_path";
 import { getRedisStreamClient } from "@app/lib/api/redis";
+import { syncPodDatabaseAfterCreate } from "@app/lib/api/sandbox/db";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import {
@@ -181,14 +182,23 @@ export interface ReconcileDatabaseResult {
   database: string;
   created: boolean;
   statements: string[];
+  /**
+   * Set when the database was created but its first replication sync could not be confirmed: the
+   * DDL did apply, but until replication catches up an unclean sandbox end could lose the file.
+   */
+  replicationWarning?: string;
 }
 
 /**
  * `dsbx db reconcile <name> <schema-file>`: plan the DDL for the database's drizzle schema file,
  * apply it when strictly additive, refuse anything destructive. Runs as `agent-proxied` (the
  * schema file is model-written code that gets imported).
+ *
+ * Lock-free inner reconcile: `database` must be the resolved on-disk name and callers must
+ * serialize concurrent reconciles of one pod themselves (see `reconcileDatabaseFromPodPath`,
+ * which holds the per-pod lock and resolves the name inside it).
  */
-async function reconcileDatabaseOnSandbox(
+export async function reconcileDatabaseOnSandbox(
   auth: Authenticator,
   {
     space,
@@ -209,7 +219,7 @@ async function reconcileDatabaseOnSandbox(
   if (result.isErr()) {
     return result;
   }
-  const { envelope } = result.value;
+  const { sandbox, envelope } = result.value;
 
   if ("ok" in envelope && envelope.ok) {
     if (envelope.statements.length > 0) {
@@ -224,10 +234,40 @@ async function reconcileDatabaseOnSandbox(
         "Pod database reconciled: applied DDL"
       );
     }
+
+    // A freshly created database exists only on the sandbox disk until litestream's first sync:
+    // wait for that sync before reporting success, so "created" means durable. On failure the
+    // reconcile still succeeds (the DDL applied and reconcile is idempotent) but carries a
+    // warning; the pre-sleep sync remains the enforcement point that blocks the pause and pages.
+    let replicationWarning: string | undefined;
+    if (envelope.created) {
+      const syncResult = await syncPodDatabaseAfterCreate(
+        auth,
+        sandbox,
+        database
+      );
+      if (syncResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            podId: space.sId,
+            database,
+            err: syncResult.error,
+          },
+          "Pod database created but its first replication sync could not be confirmed"
+        );
+        replicationWarning =
+          `The database was created and its schema applied, but its first replication sync ` +
+          `could not be confirmed. If the sandbox ends uncleanly before replication catches ` +
+          `up, the database may disappear and need another reconcile.`;
+      }
+    }
+
     return new Ok({
       database,
       created: envelope.created,
       statements: envelope.statements,
+      ...(replicationWarning !== undefined ? { replicationWarning } : {}),
     });
   }
 
