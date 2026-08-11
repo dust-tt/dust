@@ -173,7 +173,9 @@ export function RunPluginDialog({
       >
         <DialogHeader className="bg-structure-100 rounded-t-2xl pb-4">
           <DialogTitle>Run {plugin.name} plugin</DialogTitle>
-          <DialogDescription>{plugin.description}</DialogDescription>
+          <DialogDescription className="whitespace-pre-line">
+            {plugin.description}
+          </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-2 px-5 py-4 text-foreground">
           {isLoading || (hasAsyncArgs && isLoadingAsyncArgs) ? (
