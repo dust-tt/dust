@@ -1,15 +1,15 @@
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { MAX_EXPORT_ITEMS } from "@app/lib/api/actions/servers/shopify/client";
 import {
   exportCustomerLtv,
   exportProducts,
   exportSales,
   exportTopCustomersByPeriod,
-  MAX_EXPORT_ITEMS,
-  renderExport,
   withShopifyAuth,
 } from "@app/lib/api/actions/servers/shopify/helpers";
 import { SHOPIFY_TOOLS_METADATA } from "@app/lib/api/actions/servers/shopify/metadata";
+import { renderExport } from "@app/lib/api/actions/servers/shopify/rendering";
 import { Ok } from "@app/types/shared/result";
 
 const handlers: ToolHandlers<typeof SHOPIFY_TOOLS_METADATA> = {

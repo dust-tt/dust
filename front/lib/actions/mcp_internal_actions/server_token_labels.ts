@@ -46,6 +46,15 @@ const SERVER_TOKEN_LABELS: Record<string, TokenFieldLabel> = {
     tooltip:
       "You can find your API key by clicking your avatar (bottom left) and selecting API info.",
   },
+  // Preview only: manual access token + shop domain via header. Removed when
+  // Shopify OAuth lands (token + shop come from the connection instead).
+  shopify: {
+    label: "Shopify Admin API access token",
+    placeholder: "Paste your Shopify Admin API access token",
+    tooltip:
+      "Paste the Admin API access token of the Shopify store's custom app to connect the store to Dust.",
+    predefinedHeaders: ["X-Shopify-Shop"],
+  },
 };
 
 const DEFAULT_TOKEN_LABEL: TokenFieldLabel = {
