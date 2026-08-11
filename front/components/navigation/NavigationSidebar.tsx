@@ -112,7 +112,7 @@ export const NavigationSidebar = React.forwardRef<
   const { setIsNavigationBarOpen } = useDesktopNavigation();
 
   return (
-    <div ref={ref} className="flex min-w-0 grow flex-col">
+    <div ref={ref} className="flex min-w-0 grow flex-col pt-2">
       <div className={cn("flex flex-col gap-3")}>
         {navs.length > 1 && (
           <NavTabPill value={currentTab?.id ?? "conversations"}>
