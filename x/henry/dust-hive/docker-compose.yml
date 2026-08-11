@@ -58,6 +58,21 @@ services:
       timeout: 10s
       retries: 10
 
+  kibana:
+    profiles: ["kibana"]
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    image: docker.elastic.co/kibana/kibana:8.11.3
+    environment:
+      - SERVER_NAME=kibana
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -s -I http://kibana:5601 | grep -q 'HTTP/1.1 302 Found'" ]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+
   apache-tika:
     image: apache/tika:3.2.3.0-full
     volumes:

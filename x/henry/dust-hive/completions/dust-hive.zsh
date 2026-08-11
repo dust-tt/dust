@@ -292,6 +292,7 @@ _dust-hive() {
         'status:Show service health'
         'logs:Show service logs'
         'url:Print front URL'
+        'kibana:Open Kibana for a warm environment'
         'cd:Print worktree path'
         'setup:Check prerequisites and guide initial setup'
         'doctor:Check prerequisites (non-interactive)'
@@ -429,6 +430,9 @@ _dust-hive() {
           ;;
         url|cd)
           _arguments '1::name:_dust_hive_envs'
+          ;;
+        kibana)
+          _arguments '1::name:_dust_hive_warm_envs'
           ;;
         setup)
           _arguments \

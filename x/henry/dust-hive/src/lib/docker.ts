@@ -21,6 +21,9 @@ export interface DockerComposeOverride {
       ports: string[];
       volumes: string[];
     };
+    kibana: {
+      ports: string[];
+    };
     "apache-tika": {
       ports: string[];
     };
@@ -61,6 +64,9 @@ export function generateDockerComposeOverride(
       elasticsearch: {
         ports: [`${ports.elasticsearch}:9200`],
         volumes: [`${getVolumeName(name, "elasticsearch")}:/usr/share/elasticsearch/data`],
+      },
+      kibana: {
+        ports: [`${ports.kibana}:5601`],
       },
       "apache-tika": {
         ports: [`${ports.apacheTika}:9998`],
@@ -150,6 +156,47 @@ export async function startDocker(env: Environment): Promise<void> {
   logger.success("Docker containers started");
 }
 
+const KIBANA_WAIT_TIMEOUT_SECONDS = 300;
+
+export async function startKibana(env: Environment): Promise<void> {
+  logger.step(`Starting Kibana for '${env.name}'...`);
+
+  const projectName = getDockerProjectName(env.name);
+  const overridePath = getDockerOverridePath(env.name);
+  const basePath = getDockerComposePath();
+
+  const proc = Bun.spawn(
+    [
+      "docker",
+      "compose",
+      "--profile",
+      "kibana",
+      "-f",
+      basePath,
+      "-f",
+      overridePath,
+      "-p",
+      projectName,
+      "up",
+      "-d",
+      "--wait",
+      "--wait-timeout",
+      String(KIBANA_WAIT_TIMEOUT_SECONDS),
+      "kibana",
+    ],
+    { stdout: "pipe", stderr: "pipe" }
+  );
+
+  const stderr = await new Response(proc.stderr).text();
+  await proc.exited;
+
+  if (proc.exitCode !== 0) {
+    throw new Error(`Failed to start Kibana: ${stderr.trim() || "unknown error"}`);
+  }
+
+  logger.success("Kibana is ready");
+}
+
 // Pause docker-compose containers (stop without removing)
 // Returns true if paused successfully, false if docker-compose failed
 // Use this for cool operations - faster restart since containers don't need to be recreated
@@ -160,7 +207,19 @@ export async function pauseDocker(envName: string): Promise<boolean> {
   const overridePath = getDockerOverridePath(envName);
   const basePath = getDockerComposePath();
 
-  const args = ["docker", "compose", "-f", basePath, "-f", overridePath, "-p", projectName, "stop"];
+  const args = [
+    "docker",
+    "compose",
+    "--profile",
+    "kibana",
+    "-f",
+    basePath,
+    "-f",
+    overridePath,
+    "-p",
+    projectName,
+    "stop",
+  ];
 
   const proc = Bun.spawn(args, {
     stdout: "pipe",
@@ -190,7 +249,19 @@ export async function stopDocker(
   const overridePath = getDockerOverridePath(envName);
   const basePath = getDockerComposePath();
 
-  const args = ["docker", "compose", "-f", basePath, "-f", overridePath, "-p", projectName, "down"];
+  const args = [
+    "docker",
+    "compose",
+    "--profile",
+    "kibana",
+    "-f",
+    basePath,
+    "-f",
+    overridePath,
+    "-p",
+    projectName,
+    "down",
+  ];
 
   if (options.removeVolumes) {
     args.push("-v");
