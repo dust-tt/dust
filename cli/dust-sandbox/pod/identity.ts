@@ -11,15 +11,16 @@ export interface WorkspaceUserIdentity {
   readonly lastName: string | null;
   readonly fullName: string;
   readonly image: string | null;
-}
-
-interface WorkspaceUserIdentityEnvelope {
-  workspaceId: string;
-  user: WorkspaceUserIdentity;
+  // Whether the caller is an editor of the Pod this function belongs to (workspace admins
+  // included). Gate refresh-style mutations on it; viewers only read.
+  readonly isPodEditor: boolean;
 }
 
 const workspaceUserIdentityEnvelopeSchema = z.object({
   workspaceId: z.string(),
+  // Optional so envelopes written before the field existed still parse; absent means false,
+  // the restrictive reading.
+  isPodEditor: z.boolean().optional(),
   user: z.object({
     sId: z.string(),
     firstName: z.string(),
@@ -28,6 +29,10 @@ const workspaceUserIdentityEnvelopeSchema = z.object({
     image: z.string().nullable(),
   }),
 });
+
+type WorkspaceUserIdentityEnvelope = z.infer<
+  typeof workspaceUserIdentityEnvelopeSchema
+>;
 
 export class PodUserIdentityError extends Error {
   override readonly name = "PodUserIdentityError";
@@ -71,5 +76,6 @@ export function currentUser(): WorkspaceUserIdentity | null {
     lastName: value.user.lastName,
     fullName: value.user.fullName,
     image: value.user.image,
+    isPodEditor: value.isPodEditor ?? false,
   });
 }

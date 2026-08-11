@@ -77,6 +77,10 @@ function userIdentityPolicyStrength(
       return 1;
     case "interactive_workspace_user_required":
       return 2;
+    case "pod_editor_required":
+      // Strictest audience: editors only. Ranking it above the session-bound policy means a
+      // publish moving to it always commits the policy before exposing the new bundle.
+      return 3;
     default:
       return assertNever(policy);
   }
@@ -541,6 +545,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     const authorization = await authorizeSandboxFunctionInvocation(auth, {
       userIdentity: this.userIdentity,
       origin,
+      space: this.space,
     });
     if (!authorization.authorized) {
       return new Err(

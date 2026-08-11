@@ -91,11 +91,13 @@ export function getFrameRuntimeAccess(
       ? {
           isAuthenticated: true,
           isWorkspaceMember: true,
+          isPodEditor: scopedUserIdentity.isPodEditor ?? false,
           user: scopedUserIdentity.user,
         }
       : {
           isAuthenticated: false,
           isWorkspaceMember: false,
+          isPodEditor: false,
           user: null,
         };
 

@@ -162,6 +162,7 @@ export function PodFrameSheet({
                 conversationId={null}
                 spaceId={fileMetadata?.useCaseMetadata.spaceId}
                 isInDrawer={true}
+                isPodEditor={isEditor}
                 ref={iframeRef}
               />
             )

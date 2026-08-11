@@ -97,10 +97,12 @@ afterEach(() => {
 
 async function setupSandboxFunction({
   addCallerToSpace = true,
+  addCallerToEditors = false,
   withSandboxFunctionsFeatureFlag = true,
   userIdentity = "optional",
 }: {
   addCallerToSpace?: boolean;
+  addCallerToEditors?: boolean;
   withSandboxFunctionsFeatureFlag?: boolean;
   userIdentity?: SandboxFunctionUserIdentityPolicy;
 } = {}) {
@@ -145,6 +147,20 @@ async function setupSandboxFunction({
       user: user.toJSON(),
     });
     expect(addMemberResult.isOk()).toBe(true);
+  }
+  if (addCallerToEditors) {
+    const [editorGroup] = await space.fetchGroupResources(adminAuth, {
+      groupReferences: space.groups.filter(
+        (group) => group.groupKind === "space_editors"
+      ),
+    });
+    if (!editorGroup) {
+      throw new Error("Expected the project editor group to exist.");
+    }
+    const addEditorResult = await editorGroup.dangerouslyAddMember(adminAuth, {
+      user: user.toJSON(),
+    });
+    expect(addEditorResult.isOk()).toBe(true);
   }
   const callerAuth = await Authenticator.fromUserIdAndWorkspaceId(
     user.sId,
@@ -477,6 +493,42 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
 
     expect(response.status).toBe(201);
     expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
+  });
+
+  it("allows a pod editor to invoke a pod-editor-required function", async () => {
+    // Editors are not in the member group ("a user cannot be both a member and an editor").
+    const { workspace, sandboxFunction } = await setupSandboxFunction({
+      userIdentity: "pod_editor_required",
+      addCallerToSpace: false,
+      addCallerToEditors: true,
+    });
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(201);
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
+  });
+
+  it("denies a pod member who is not an editor on a pod-editor-required function", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction({
+      userIdentity: "pod_editor_required",
+    });
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({
+      error: {
+        type: "user_authentication_required",
+      },
+    });
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
   });
 
   it("records an OAuth invocation as delegated", async () => {

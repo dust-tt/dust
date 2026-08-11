@@ -37,7 +37,12 @@ export class RPCDataAPI implements VisualizationDataAPI {
   }
 
   async getUserIdentity() {
-    return this.sendMessage("getUserIdentity", null);
+    const identity = await this.sendMessage("getUserIdentity", null);
+    if (!identity.isAuthenticated) {
+      return identity;
+    }
+    // Hosts deployed before the field existed answer without it; absent means false.
+    return { ...identity, isPodEditor: identity.isPodEditor === true };
   }
 
   async fetchFile(fileId: string): Promise<File | null> {
