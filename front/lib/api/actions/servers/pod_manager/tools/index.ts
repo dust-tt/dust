@@ -8,10 +8,7 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { agentInvocationFromFunctionGuard } from "@app/lib/actions/mcp_internal_actions/utils";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type { ToolContext } from "@app/lib/actions/types";
-import {
-  isAgentLoopRunContext,
-  isSandboxFunctionRunContext,
-} from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   FILES_LIST_ACTION_NAME,
   FILES_SERVER_NAME,
@@ -1224,7 +1221,8 @@ export function createProjectManagerTools(
 
     create_conversation: async (params) => {
       return withErrorHandling(async () => {
-        const invocationGuardError = agentInvocationFromFunctionGuard(toolContext);
+        const invocationGuardError =
+          agentInvocationFromFunctionGuard(toolContext);
         if (invocationGuardError) {
           return new Err(invocationGuardError);
         }
@@ -1256,11 +1254,6 @@ export function createProjectManagerTools(
           }
           originMessageId = toolContext.runContext.agentMessage.sId;
         }
-        if (isSandboxFunctionRunContext(toolContext?.runContext)) {
-          timezone =
-            toolContext.runContext.invocation.context?.timezone ?? timezone;
-        }
-
         // Get agent configuration name & profile picture URL
         const agentName = isAgentLoopRunContext(toolContext?.runContext)
           ? toolContext.runContext.agentConfiguration.name
@@ -1507,7 +1500,8 @@ export function createProjectManagerTools(
 
     add_message_to_conversation: async (params) => {
       return withErrorHandling(async () => {
-        const invocationGuardError = agentInvocationFromFunctionGuard(toolContext);
+        const invocationGuardError =
+          agentInvocationFromFunctionGuard(toolContext);
         if (invocationGuardError) {
           return new Err(invocationGuardError);
         }
