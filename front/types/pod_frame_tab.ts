@@ -12,6 +12,7 @@ export const POD_NAV_SYSTEM_TABS_BEFORE_SETTINGS = [
   "conversations",
   "tasks",
   "files",
+  "apps",
   "connected_data",
 ] as const;
 
@@ -94,26 +95,48 @@ export function normalizeTabsOrder(
   return result;
 }
 
+/**
+ * Which conditional system tabs this Pod currently shows. Connected Data depends on the Pod being
+ * admin-controlled, Apps on a workspace feature flag. Both must be honoured everywhere tab order is
+ * computed, so neighbour-swapping never moves a frame past a tab the user cannot see.
+ */
+export type PodNavVisibility = {
+  includeConnectedData: boolean;
+  includeApps: boolean;
+};
+
+/** Neither conditional tab shown — the safe default for callers that do not know yet. */
+export const DEFAULT_POD_NAV_VISIBILITY: PodNavVisibility = {
+  includeConnectedData: false,
+  includeApps: false,
+};
+
 export function visibleTabsOrder(
   tabsOrder: string[],
-  { includeConnectedData }: { includeConnectedData: boolean }
+  { includeConnectedData, includeApps }: PodNavVisibility
 ): string[] {
-  return tabsOrder.filter(
-    (id) => id !== "connected_data" || includeConnectedData
-  );
+  return tabsOrder.filter((id) => {
+    if (id === "connected_data") {
+      return includeConnectedData;
+    }
+    if (id === "apps") {
+      return includeApps;
+    }
+    return true;
+  });
 }
 
 export function buildPodNavItemsBeforeSettings(
   frameTabs: PodFrameTab[],
   tabsOrder: string[],
-  { includeConnectedData }: { includeConnectedData: boolean }
+  visibility: PodNavVisibility
 ): PodNavItemBeforeSettings[] {
   const byPath = new Map(frameTabs.map((tab) => [tab.path, tab]));
   const normalized = normalizeTabsOrder(
     tabsOrder,
     frameTabs.map((tab) => tab.path)
   );
-  const visible = visibleTabsOrder(normalized, { includeConnectedData });
+  const visible = visibleTabsOrder(normalized, visibility);
 
   const items: PodNavItemBeforeSettings[] = [];
   for (const entry of visible) {
@@ -134,9 +157,9 @@ export function moveFrameTabInTabsOrder(
   tabsOrder: string[],
   path: string,
   direction: "left" | "right",
-  { includeConnectedData }: { includeConnectedData: boolean }
+  visibility: PodNavVisibility
 ): string[] | null {
-  const visible = visibleTabsOrder(tabsOrder, { includeConnectedData });
+  const visible = visibleTabsOrder(tabsOrder, visibility);
   const index = visible.indexOf(path);
   if (index < 0) {
     return null;

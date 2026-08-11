@@ -34,6 +34,7 @@ import {
   NavTabPill,
   NavTabPillList,
   NavTabPillTrigger,
+  PuzzlePiece01,
   Settings01,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -52,6 +53,10 @@ const SYSTEM_TAB_TRIGGERS = {
     label: "Files",
     icon: Folder,
   },
+  apps: {
+    label: "Apps",
+    icon: PuzzlePiece01,
+  },
   connected_data: {
     label: "Connected Data",
     icon: CloudArrowLeftRight,
@@ -64,6 +69,7 @@ export function PodPage() {
   const { hasFeature } = useFeatureFlags();
   const podId = useActivePodId();
   const hasFrameTabs = hasFeature("pod_frame_tabs");
+  const hasApps = hasFeature("sandbox_functions");
   const [editingFrameTab, setEditingFrameTab] = useState<PodFrameTab | null>(
     null
   );
@@ -111,14 +117,17 @@ export function PodPage() {
     [frameTabs, hasFrameTabs, podInfo?.tabsOrder]
   );
 
-  const includeConnectedData = !!podInfo?.isAdminControlled;
+  const navVisibility = useMemo(
+    () => ({
+      includeConnectedData: !!podInfo?.isAdminControlled,
+      includeApps: hasApps,
+    }),
+    [podInfo?.isAdminControlled, hasApps]
+  );
 
   const navItemsBeforeSettings = useMemo(
-    () =>
-      buildPodNavItemsBeforeSettings(frameTabs, tabsOrder, {
-        includeConnectedData,
-      }),
-    [frameTabs, tabsOrder, includeConnectedData]
+    () => buildPodNavItemsBeforeSettings(frameTabs, tabsOrder, navVisibility),
+    [frameTabs, tabsOrder, navVisibility]
   );
 
   // Drop frame-tab selection when the flag is off or the tab was removed
@@ -249,7 +258,7 @@ export function PodPage() {
           frameTabs={frameTabs}
           tabsOrder={tabsOrder}
           isEditor={podInfo.isEditor}
-          includeConnectedData={includeConnectedData}
+          navVisibility={navVisibility}
           tab={editingFrameTab}
           isOpen
           onClose={() => setEditingFrameTab(null)}

@@ -688,6 +688,17 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   /**
+   * Whether this is a frame that has been published, i.e. a built bundle exists for it. Reads the
+   * same `frameBundleRootPath` signal as `getRenderableVersion`, kept here so callers never have to
+   * know which field carries it.
+   */
+  isPublishedFrame(): boolean {
+    return (
+      this.isInteractiveContent && !!this.useCaseMetadata?.frameBundleRootPath
+    );
+  }
+
+  /**
    * The version the viz engine should render for a frame. A published frame's bundle is stored
    * as the processed version. Until a frame is published (no bundle) the source ("original")
    * renders. Non-frame files always render their original, so this is safe to call generically.

@@ -47,6 +47,11 @@ class FileStorageMock {
     () => null;
   private _copyFileShouldFail: (src: string, dest: string) => boolean = () =>
     false;
+  private _filesByPrefix: (
+    prefix: string
+  ) => { name: string; metadata: Record<string, unknown> }[] | null = () =>
+    null;
+  private _subdirectoryNames: (prefix: string) => string[] | null = () => null;
 
   get writeStreamCalls(): readonly WriteStreamCall[] {
     return this._writeStreamCalls;
@@ -115,6 +120,26 @@ class FileStorageMock {
   }
 
   /**
+   * Controls what `bucket.getAllFilesByPrefix({ prefix })` resolves to, keyed by the prefix. Return
+   * null (the default) to resolve an empty list. Reset between tests via `reset()`.
+   */
+  setFilesByPrefix(
+    fn: (
+      prefix: string
+    ) => { name: string; metadata: Record<string, unknown> }[] | null
+  ): void {
+    this._filesByPrefix = fn;
+  }
+
+  /**
+   * Controls what `bucket.listSubdirectoryNames({ prefix })` resolves to, keyed by the prefix.
+   * Return null (the default) to resolve an empty list. Reset between tests via `reset()`.
+   */
+  setSubdirectoryNames(fn: (prefix: string) => string[] | null): void {
+    this._subdirectoryNames = fn;
+  }
+
+  /**
    * Makes `fetchFileContent(path)` throw a GCS-shaped not-found error
    * (`{ code: 404 }`) for matching paths that were not previously written via
    * `uploadRawContentToBucket` and have no `setFileContent` override. Enables
@@ -147,6 +172,8 @@ class FileStorageMock {
     this._contentForPath = () => null;
     this._sortedFileVersions = () => null;
     this._copyFileShouldFail = () => false;
+    this._filesByPrefix = () => null;
+    this._subdirectoryNames = () => null;
   }
 
   /**
@@ -313,9 +340,15 @@ class FileStorageMock {
         }
       }),
       deleteFiles: vi.fn().mockResolvedValue(undefined),
-      getAllFilesByPrefix: vi
-        .fn()
-        .mockResolvedValue({ files: [], pageFetchCount: 1 }),
+      getAllFilesByPrefix: vi.fn(({ prefix }: { prefix: string }) =>
+        Promise.resolve({
+          files: this._filesByPrefix(prefix) ?? [],
+          pageFetchCount: 1,
+        })
+      ),
+      listSubdirectoryNames: vi.fn(({ prefix }: { prefix: string }) =>
+        Promise.resolve(this._subdirectoryNames(prefix) ?? [])
+      ),
       getSortedFileVersions: vi.fn(({ filePath }: { filePath: string }) =>
         Promise.resolve(new Ok(this._sortedFileVersions(filePath) ?? []))
       ),

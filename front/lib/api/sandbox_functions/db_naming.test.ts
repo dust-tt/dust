@@ -1,4 +1,6 @@
 import {
+  appPrefixFromPodDatabaseName,
+  podDatabaseNameWithoutAppPrefix,
   podDatabasePrefixFromPodPath,
   podDatabasePrefixFromSlug,
   resolvePodDatabaseName,
@@ -69,6 +71,33 @@ describe("podDatabasePrefixFromSlug", () => {
 
   it("has no prefix for a function published outside an app folder", () => {
     expect(podDatabasePrefixFromSlug("greet")).toBeNull();
+  });
+});
+
+describe("appPrefixFromPodDatabaseName", () => {
+  it("round-trips the prefix a slug's app produces", () => {
+    // The Apps tab joins databases onto functions on the app prefix, so this must invert exactly
+    // what podDatabasePrefixFromSlug produces.
+    expect(appPrefixFromPodDatabaseName("task_list__tasks")).toBe("task-list");
+    expect(podDatabasePrefixFromSlug("task-list__add-task")).toBe(
+      "task_list__"
+    );
+  });
+
+  it("has no app prefix for a database created before namespacing", () => {
+    expect(appPrefixFromPodDatabaseName("chat")).toBeNull();
+  });
+});
+
+describe("podDatabaseNameWithoutAppPrefix", () => {
+  it("strips the app prefix, leaving the name the schema file declares", () => {
+    expect(podDatabaseNameWithoutAppPrefix("people_tracker__people")).toBe(
+      "people"
+    );
+  });
+
+  it("returns the whole name for a database with no app prefix", () => {
+    expect(podDatabaseNameWithoutAppPrefix("chat")).toBe("chat");
   });
 });
 

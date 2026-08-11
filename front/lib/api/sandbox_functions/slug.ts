@@ -14,7 +14,7 @@ export const SANDBOX_FUNCTION_SLUG_SEPARATOR = "__";
  * splitting, so `TaskList` becomes `tasklist` rather than `task-list`: a predictable rule beats a
  * prettier heuristic that has to decide what to do with `MyAPIApp`.
  */
-function normalizeAppPrefix(folderName: string): string {
+export function normalizeAppPrefix(folderName: string): string {
   return folderName
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -72,6 +72,22 @@ export function deriveAppPrefix({
   }
 
   return new Ok(prefix);
+}
+
+/**
+ * The bare function name inside its app, i.e. the slug with its app prefix removed. Returns the whole
+ * slug for a function published from the pod root, which has no prefix.
+ *
+ * For display only, where the app is already the surrounding context. Everything that addresses a
+ * function — `get`, `call`, `unpublish`, a Frame's reference — must keep using the full slug.
+ */
+export function sandboxFunctionNameFromSlug(slug: string): string {
+  const separatorIndex = slug.indexOf(SANDBOX_FUNCTION_SLUG_SEPARATOR);
+  if (separatorIndex <= 0) {
+    return slug;
+  }
+
+  return slug.slice(separatorIndex + SANDBOX_FUNCTION_SLUG_SEPARATOR.length);
 }
 
 /**
