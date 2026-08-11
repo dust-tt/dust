@@ -1710,6 +1710,16 @@ const InputBarContainer = ({
         )}
         aria-hidden={isCompact}
         onClick={(e) => {
+          // Overlays rendered by our pickers (dropdowns, sub-dropdowns, popovers) are portalled
+          // out of this div but stay React descendants, so their clicks still bubble here.
+          // Refocusing the editor on those steals focus from the overlay, which makes Radix
+          // dismiss it (e.g. clicking a sub-dropdown searchbar would close it).
+          if (
+            !(e.target instanceof Node) ||
+            !e.currentTarget.contains(e.target)
+          ) {
+            return;
+          }
           if (hasActiveSelectionInEditor(editorRef.current?.view.dom)) {
             return;
           }
