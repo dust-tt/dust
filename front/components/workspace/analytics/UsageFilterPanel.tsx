@@ -281,27 +281,17 @@ export function UsageFilterPanel({
     [skillCatalog]
   );
 
-  const resolvedCategoryOptions = useMemo<{
+  const resolvedCategoryOptions: {
     [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
-  }>(
-    () => ({
-      member: accumulatedMemberOptions,
-      team: teamOptions,
-      agent: agentOptions,
-      model: modelCatalogOptions,
-      tool: toolOptions,
-      skill: skillOptions,
-      source: SOURCE_OPTIONS,
-    }),
-    [
-      accumulatedMemberOptions,
-      teamOptions,
-      agentOptions,
-      modelCatalogOptions,
-      toolOptions,
-      skillOptions,
-    ]
-  );
+  } = {
+    member: accumulatedMemberOptions,
+    team: teamOptions,
+    agent: agentOptions,
+    model: modelCatalogOptions,
+    tool: toolOptions,
+    skill: skillOptions,
+    source: SOURCE_OPTIONS,
+  };
 
   const activeOptions = resolvedCategoryOptions[activeCategory];
   const filteredOptions = useMemo(() => {
