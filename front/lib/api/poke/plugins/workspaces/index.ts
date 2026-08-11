@@ -27,6 +27,7 @@ export * from "./manage_credit_usage_configuration";
 export * from "./manage_programmatic_usage_configuration";
 export * from "./manage_seat_limits";
 export * from "./manage_workspace_kill_switch";
+export * from "./override_plan_seat_limits";
 export * from "./project_task_details";
 export * from "./reconcile_credit_state";
 export * from "./reinforcement_workflow";
