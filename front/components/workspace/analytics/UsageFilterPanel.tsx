@@ -1,3 +1,4 @@
+import { getModelEffortTier } from "@app/components/model_picker/modelPickerUtils";
 import type {
   UsageFilter,
   UsageFilterAgentOption,
@@ -16,6 +17,7 @@ import {
   USAGE_FILTER_CATEGORIES,
   USAGE_FILTER_CATEGORY_LABEL,
   USAGE_MODEL_TIERS,
+  usageModelTierFromModelsTierName,
 } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
 import { UsageFilterCategoryNav } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterCategoryNav";
@@ -29,8 +31,11 @@ import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useGroups } from "@app/lib/swr/groups";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import { useModels } from "@app/lib/swr/models";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
+import { getModelMaker } from "@app/types/assistant/models/providers";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -56,14 +61,13 @@ interface UsageFilterPaginationState {
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
-  // Models/tools/skills/sources are still mock data (see
-  // usageFilterMockData.ts — sources are fake connectors standing in for a
-  // real db call); agents come from the same workspace-wide listing the rest
-  // of the app uses (useAgentConfigurations), members and teams via the
-  // generic member search and group listing endpoints (useSearchMembers,
-  // useGroups).
+  // Tools/skills/sources are still mock data (see usageFilterMockData.ts —
+  // sources are fake connectors standing in for a real db call); agents come
+  // from useAgentConfigurations, members from useSearchMembers, teams from
+  // useGroups, and models from the workspace's full model catalog
+  // (useModels) — the same endpoint that backs the model picker elsewhere in
+  // the app.
   categoryOptions: {
-    model: UsageFilterModelOption[];
     tool: UsageFilterToolOption[];
     skill: UsageFilterSkillOption[];
     source: UsageFilterSourceOption[];
@@ -106,6 +110,7 @@ export function UsageFilterPanel({
   const isMemberCategoryActive = isOpen && activeCategory === "member";
   const isTeamCategoryActive = isOpen && activeCategory === "team";
   const isAgentCategoryActive = isOpen && activeCategory === "agent";
+  const isModelCategoryActive = isOpen && activeCategory === "model";
 
   // Every category picker supports scroll-to-load-more:
   const [memberPageIndex, setMemberPageIndex] = useState(0);
@@ -185,6 +190,15 @@ export function UsageFilterPanel({
     disabled: !isAgentCategoryActive,
   });
 
+  // The workspace's full, period-independent model catalog — the same
+  // endpoint backing the model picker elsewhere in the app — rather than a
+  // period-scoped top-N, so every enabled model is listable and searchable
+  // regardless of the selected period.
+  const { models: modelCatalog } = useModels({
+    owner,
+    disabled: !isModelCategoryActive,
+  });
+
   const groups = useMemo<UsageFilterGroup[]>(
     () =>
       workspaceGroups.map((group) => ({
@@ -217,6 +231,27 @@ export function UsageFilterPanel({
     [agentConfigurations]
   );
 
+  // Every enabled model in the workspace, regardless of the selected period.
+  // Excludes the auto/meta stream ids (Fast/Standard/Complex are exposed as
+  // the quick-filter tier buttons, not as catalog entries). Search is
+  // applied client-side below; tier is derived from the same static table
+  // ModelsTierResource.getTierForModel resolves server-side.
+  const modelCatalogOptions = useMemo<UsageFilterModelOption[]>(
+    () =>
+      modelCatalog
+        .filter((model) => !isModelStreamId(model.modelId))
+        .map((model) => ({
+          id: model.modelId,
+          name: model.displayName,
+          kind: "model" as const,
+          lab: getModelMaker(model),
+          tier: usageModelTierFromModelsTierName(
+            getModelEffortTier(model.modelId, model.defaultReasoningEffort)
+          ),
+        })),
+    [modelCatalog]
+  );
+
   const resolvedCategoryOptions = useMemo<{
     [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
   }>(
@@ -225,8 +260,15 @@ export function UsageFilterPanel({
       member: accumulatedMemberOptions,
       team: teamOptions,
       agent: agentOptions,
+      model: modelCatalogOptions,
     }),
-    [categoryOptions, accumulatedMemberOptions, teamOptions, agentOptions]
+    [
+      categoryOptions,
+      accumulatedMemberOptions,
+      teamOptions,
+      agentOptions,
+      modelCatalogOptions,
+    ]
   );
 
   const activeOptions = resolvedCategoryOptions[activeCategory];
@@ -431,7 +473,7 @@ export function UsageFilterPanel({
             )}
             {activeCategory === "model" && (
               <UsageFilterModelComplexityControls
-                models={categoryOptions.model}
+                moreModelsCatalog={modelCatalogOptions}
                 selectedModelIds={selectedIdsForActiveCategory}
                 onToggleModel={(model) => toggleOption("model", model)}
                 activeTier={activeTier}

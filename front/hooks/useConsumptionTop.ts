@@ -68,6 +68,8 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.teamId,
       name: row.name,
       pictureUrl: null,
+      modelMaker: null,
+      tier: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));
