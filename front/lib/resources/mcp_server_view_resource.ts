@@ -250,7 +250,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     name: string,
     space: SpaceResource,
     tools: readonly MCPToolType[] = [],
-    excludedMCPServerViewId?: string
+    { excludedMCPServerViewId }: { excludedMCPServerViewId?: string } = {}
   ): Promise<{ hasConflict: boolean; name: string }> {
     const candidateToolNames = removeNulls(
       tools.map((tool) => {
