@@ -38,11 +38,20 @@ app.post(
       });
     }
 
-    const mountAllowed = claims.fsMounts.some(
-      (mount) =>
-        mount.kind === request.mount.kind && mount.id === request.mount.id
+    const requestedMounts = [
+      request.mount,
+      ...(request.operation === "rename" && request.destinationMount
+        ? [request.destinationMount]
+        : []),
+    ];
+    const mountsAllowed = requestedMounts.every((requestedMount) =>
+      claims.fsMounts.some(
+        (allowedMount) =>
+          allowedMount.kind === requestedMount.kind &&
+          allowedMount.id === requestedMount.id
+      )
     );
-    if (!mountAllowed) {
+    if (!mountsAllowed) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

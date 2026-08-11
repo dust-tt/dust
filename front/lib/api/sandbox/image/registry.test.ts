@@ -94,7 +94,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.76",
+      tag: "0.8.77",
     });
   });
 
@@ -481,8 +481,10 @@ describe("sandbox image registry", () => {
     expect(runCommands.join("\n")).toContain(
       "useradd --system --no-create-home --gid dust-fs"
     );
-    expect(overlay).toContain('"rename", old, destinationPath=');
-    expect(overlay).toContain('self._mutation_client.apply("unlink"');
+    expect(overlay).toContain("destinationMount=new_mount.mount");
+    expect(overlay).toContain(
+      'self._mutation_client.apply(mount.mount, "unlink"'
+    );
   });
 
   test("installs the current dsbx CLI release", () => {

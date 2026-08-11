@@ -26,7 +26,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.76";
+const DUST_BASE_IMAGE_VERSION = "0.8.77";
 const DSBX_CLI_VERSION = "0.1.45";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
@@ -313,9 +313,8 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
 )
   // Create agent user first so e2b creates /home/agent with correct ownership.
   .setUser("agent")
-  // Create the /files parent directory. Mount subdirectories (conversation-{sId}, pod-{sId}) are
-  // created at runtime by the mount adapter and symlinked to legacy paths (/files/conversation,
-  // /files/pod) for backward compatibility.
+  // Create the /files mount point. The runtime adapter mounts one routed FUSE
+  // filesystem here and exposes conversation/pod directories plus legacy aliases.
   .runCmd("mkdir -p /files && chmod 777 /files", {
     user: "root",
   })

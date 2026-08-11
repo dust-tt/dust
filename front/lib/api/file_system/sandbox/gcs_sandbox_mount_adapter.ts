@@ -37,6 +37,7 @@ const FILE_SYSTEM_OVERLAY_PYTHON_PATH = "/opt/venv/bin/python";
 const FILE_SYSTEM_OVERLAY_RUNTIME_DIRECTORY = "/run/dust-fs";
 const FILE_SYSTEM_OVERLAY_TOKEN_PATH = `${FILE_SYSTEM_OVERLAY_RUNTIME_DIRECTORY}/token`;
 const FILE_SYSTEM_OVERLAY_USER = "dust-fs";
+const FILE_SYSTEM_OVERLAY_MOUNT_POINT = "/files";
 const FUSE_STATFS_MAGIC_HEX = "65735546";
 
 class GCSMountImageHelperUnavailableError extends Error {
@@ -300,6 +301,16 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
             FILE_SYSTEM_OVERLAY_RUNTIME_DIRECTORY,
             `${FILE_SYSTEM_OVERLAY_RUNTIME_DIRECTORY}/data`,
           ]),
+          rootCommand.exec("/usr/bin/install", [
+            "-d",
+            "-o",
+            FILE_SYSTEM_OVERLAY_USER,
+            "-g",
+            "agent",
+            "-m",
+            "2770",
+            FILE_SYSTEM_OVERLAY_MOUNT_POINT,
+          ]),
           // Supports an incremental rollout from images whose token writer
           // still initially stages this file for the agent account.
           rootCommand.exec("/usr/bin/chown", [
@@ -335,27 +346,15 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
         const mkdirResult = await sandbox.execRoot(
           auth,
           useFileSystemOverlay
-            ? rootCommand.and([
-                rootCommand.exec("/usr/bin/install", [
-                  "-d",
-                  "-o",
-                  FILE_SYSTEM_OVERLAY_USER,
-                  "-g",
-                  FILE_SYSTEM_OVERLAY_USER,
-                  "-m",
-                  "700",
-                  dataMountPoint,
-                ]),
-                rootCommand.exec("/usr/bin/install", [
-                  "-d",
-                  "-o",
-                  FILE_SYSTEM_OVERLAY_USER,
-                  "-g",
-                  "agent",
-                  "-m",
-                  "2770",
-                  target.sandboxMountPoint,
-                ]),
+            ? rootCommand.exec("/usr/bin/install", [
+                "-d",
+                "-o",
+                FILE_SYSTEM_OVERLAY_USER,
+                "-g",
+                FILE_SYSTEM_OVERLAY_USER,
+                "-m",
+                "700",
+                dataMountPoint,
               ])
             : rootCommand.exec("/usr/bin/mkdir", [
                 "-p",
@@ -402,45 +401,9 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
           return new Err(new Error(msg));
         }
 
-        if (useFileSystemOverlay) {
-          const overlayResult = await sandbox.execRoot(
-            auth,
-            buildFileSystemOverlayMountCommand({
-              target,
-              targetIndex: index,
-              workspaceId,
-            }),
-            { timeoutMs: MOUNT_TIMEOUT_MS }
-          );
-          if (overlayResult.isErr()) {
-            childLogger.error(
-              {
-                err: overlayResult.error,
-                mountPoint: target.sandboxMountPoint,
-              },
-              "Dust filesystem overlay mount failed"
-            );
-            await sandbox.requestKill();
-            return overlayResult;
-          }
-          if (overlayResult.value.exitCode !== 0) {
-            const output =
-              overlayResult.value.stderr || overlayResult.value.stdout;
-            const msg = `Dust filesystem overlay exited with code ${overlayResult.value.exitCode} for ${target.sandboxMountPoint}: ${output}`;
-            childLogger.error(
-              {
-                output,
-                mountPoint: target.sandboxMountPoint,
-              },
-              msg
-            );
-            await sandbox.requestKill();
-            return new Err(new Error(msg));
-          }
-        }
-
         // 6. Backward-compat symlink so old paths keep working.
-        if (target.legacySandboxMountPoint) {
+        // The routed overlay exposes tracked legacy paths as synthetic symlinks.
+        if (!useFileSystemOverlay && target.legacySandboxMountPoint) {
           const symlinkResult = await sandbox.execRoot(
             auth,
             rootCommand.exec("/usr/bin/ln", [
@@ -470,6 +433,38 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
     if (firstError) {
       childLogger.error({}, "GCS sandbox mount: one or more targets failed");
       return firstError;
+    }
+
+    if (usesFileSystemOverlay) {
+      const trackedTargets = targets.flatMap((target, index) =>
+        target.mutationScope ? [{ target, targetIndex: index }] : []
+      );
+      const overlayResult = await sandbox.execRoot(
+        auth,
+        buildFileSystemOverlayMountCommand({ trackedTargets, workspaceId }),
+        { timeoutMs: MOUNT_TIMEOUT_MS }
+      );
+      if (overlayResult.isErr()) {
+        childLogger.error(
+          {
+            err: overlayResult.error,
+            mountPoint: FILE_SYSTEM_OVERLAY_MOUNT_POINT,
+          },
+          "Dust filesystem overlay mount failed"
+        );
+        await sandbox.requestKill();
+        return overlayResult;
+      }
+      if (overlayResult.value.exitCode !== 0) {
+        const output = overlayResult.value.stderr || overlayResult.value.stdout;
+        const msg = `Dust filesystem overlay exited with code ${overlayResult.value.exitCode} for ${FILE_SYSTEM_OVERLAY_MOUNT_POINT}: ${output}`;
+        childLogger.error(
+          { output, mountPoint: FILE_SYSTEM_OVERLAY_MOUNT_POINT },
+          msg
+        );
+        await sandbox.requestKill();
+        return new Err(new Error(msg));
+      }
     }
 
     childLogger.info(
@@ -540,24 +535,21 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
           await sandbox.requestKill();
           return tokenResult;
         }
-        const livenessResults = await concurrentExecutor(
-          trackedTargets,
-          async (target) =>
-            checkFileSystemOverlayLiveness(auth, sandbox, target),
-          { concurrency: trackedTargets.length }
+        const livenessResult = await checkFileSystemOverlayLiveness(
+          auth,
+          sandbox
         );
-        const livenessError = livenessResults.find((result) => result.isErr());
-        if (livenessError?.isErr()) {
+        if (livenessResult.isErr()) {
           logger.error(
             {
-              err: livenessError.error,
+              err: livenessResult.error,
               sandboxId: sandbox.sId,
               workspaceId: auth.getNonNullableWorkspace().sId,
             },
             "Dust filesystem overlay is not live; requesting sandbox recreation"
           );
           await sandbox.requestKill();
-          return livenessError;
+          return livenessResult;
         }
       }
     }
@@ -586,8 +578,7 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
 
 async function checkFileSystemOverlayLiveness(
   auth: Authenticator,
-  sandbox: SandboxResource,
-  target: GCSMountTarget
+  sandbox: SandboxResource
 ): Promise<Result<void, Error>> {
   const result = await sandbox.execRoot(
     auth,
@@ -599,7 +590,7 @@ async function checkFileSystemOverlayLiveness(
       "-f",
       "-c",
       "%t",
-      target.sandboxMountPoint,
+      FILE_SYSTEM_OVERLAY_MOUNT_POINT,
     ]),
     { timeoutMs: 10_000 }
   );
@@ -609,14 +600,14 @@ async function checkFileSystemOverlayLiveness(
   if (result.value.exitCode !== 0) {
     return new Err(
       new Error(
-        `Dust filesystem overlay statfs failed for ${target.sandboxMountPoint}: ${result.value.stderr || result.value.stdout}`
+        `Dust filesystem overlay statfs failed for ${FILE_SYSTEM_OVERLAY_MOUNT_POINT}: ${result.value.stderr || result.value.stdout}`
       )
     );
   }
   if (result.value.stdout.trim().toLowerCase() !== FUSE_STATFS_MAGIC_HEX) {
     return new Err(
       new Error(
-        `Dust filesystem overlay is not a FUSE mount at ${target.sandboxMountPoint} (statfs magic: ${result.value.stdout.trim()})`
+        `Dust filesystem overlay is not a FUSE mount at ${FILE_SYSTEM_OVERLAY_MOUNT_POINT} (statfs magic: ${result.value.stdout.trim()})`
       )
     );
   }
@@ -728,16 +719,17 @@ export function fileSystemOverlayDataMountPoint(targetIndex: number): string {
 
 /** Exported for focused command tests. */
 export function buildFileSystemOverlayMountCommand({
-  target,
-  targetIndex,
+  trackedTargets,
   workspaceId,
 }: {
-  target: GCSMountTarget;
-  targetIndex: number;
+  trackedTargets: ReadonlyArray<{
+    target: GCSMountTarget;
+    targetIndex: number;
+  }>;
   workspaceId: string;
 }): RootCommand {
-  if (!target.mutationScope) {
-    throw new Error("Filesystem overlay target has no mutation scope.");
+  if (trackedTargets.length === 0 || trackedTargets.length > 2) {
+    throw new Error("Filesystem overlay requires one or two tracked targets.");
   }
   const args = [
     "-u",
@@ -745,21 +737,37 @@ export function buildFileSystemOverlayMountCommand({
     "--",
     FILE_SYSTEM_OVERLAY_PYTHON_PATH,
     FILE_SYSTEM_OVERLAY_PATH,
-    "--source",
-    fileSystemOverlayDataMountPoint(targetIndex),
     "--mountpoint",
-    target.sandboxMountPoint,
+    FILE_SYSTEM_OVERLAY_MOUNT_POINT,
     "--api-url",
     `${dustAPIBaseUrlForSandbox()}/api/v1/w/${workspaceId}/sandbox/filesystem/mutations`,
     "--token-file",
     FILE_SYSTEM_OVERLAY_TOKEN_PATH,
-    "--mount-kind",
-    target.mutationScope.kind,
-    "--mount-owner-id",
-    target.mutationScope.id,
   ];
-  if (target.readOnly) {
-    args.push("--read-only");
+
+  for (const { target, targetIndex } of trackedTargets) {
+    if (!target.mutationScope) {
+      throw new Error("Filesystem overlay target has no mutation scope.");
+    }
+    const name = target.sandboxMountPoint.split("/").filter(Boolean).at(-1);
+    if (!name) {
+      throw new Error("Filesystem overlay target has an invalid mount point.");
+    }
+    const legacyName = target.legacySandboxMountPoint
+      ?.split("/")
+      .filter(Boolean)
+      .at(-1);
+    args.push(
+      "--mount-spec",
+      JSON.stringify({
+        name,
+        source: fileSystemOverlayDataMountPoint(targetIndex),
+        kind: target.mutationScope.kind,
+        ownerId: target.mutationScope.id,
+        readOnly: target.readOnly,
+        legacyName: legacyName ?? null,
+      })
+    );
   }
   return rootCommand.stderrToStdout(
     rootCommand.timeout(

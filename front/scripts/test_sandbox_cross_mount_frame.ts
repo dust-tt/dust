@@ -1,6 +1,7 @@
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { deleteCanonicalFile } from "@app/lib/api/files/file_system_ops";
+import { SandboxFileSystemMutationRequestSchema } from "@app/lib/api/sandbox/file_system_mutations";
 import { ensureConversationSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -113,7 +114,7 @@ makeScript(
           FileResource.fetchByMountFilePaths(auth, [sourceMountPath]),
           FileResource.fetchByMountFilePaths(auth, [destinationMountPath]),
         ]);
-      const [originalExists, sourceExists, destinationExists] =
+      const [[originalExists], [sourceExists], [destinationExists]] =
         await Promise.all([
           bucket.file(originalPath).exists(),
           bucket.file(sourceMountPath).exists(),
@@ -123,6 +124,53 @@ makeScript(
         where: { workspaceId: workspace.id, sandboxId: sandbox.id },
         order: [["id", "ASC"]],
       });
+      const persistedMutations = mutations.map((mutation) => ({
+        status: mutation.status,
+        request: SandboxFileSystemMutationRequestSchema.parse(mutation.request),
+      }));
+      const renameMutation = persistedMutations.find(
+        (mutation) => mutation.request.operation === "rename"
+      );
+      if (
+        !frameAfterMove ||
+        frameAfterMove.sId !== frame.sId ||
+        frameAfterMove.mountFilePath !== destinationMountPath ||
+        frameAfterMove.useCase !== "project_context" ||
+        frameAfterMove.useCaseMetadata?.spaceId !== pod.sId
+      ) {
+        throw new Error("Cross-mount move did not preserve frame identity.");
+      }
+      if (
+        linkedAtSource.length !== 0 ||
+        linkedAtDestination.length !== 1 ||
+        linkedAtDestination[0].sId !== frame.sId
+      ) {
+        throw new Error("Cross-mount FileResource lookup is inconsistent.");
+      }
+      if (!originalExists || sourceExists || !destinationExists) {
+        throw new Error(
+          `Cross-mount GCS state is inconsistent: original=${originalExists} source=${sourceExists} destination=${destinationExists}`
+        );
+      }
+      if (
+        !renameMutation ||
+        renameMutation.status !== "completed" ||
+        renameMutation.request.operation !== "rename" ||
+        renameMutation.request.destinationMount?.kind !== "pod" ||
+        renameMutation.request.destinationMount.id !== pod.sId
+      ) {
+        throw new Error("Cross-mount rename was not durably recorded.");
+      }
+      if (
+        persistedMutations.some(
+          (mutation) =>
+            mutation.request.operation === "unlink" &&
+            mutation.request.mount.kind === "conversation" &&
+            mutation.request.path === "PipelineDashboard.tsx"
+        )
+      ) {
+        throw new Error("Cross-mount mv degraded into copy plus unlink.");
+      }
 
       logger.info(
         {
@@ -143,14 +191,14 @@ makeScript(
           linkedAtSource: linkedAtSource.map((file) => file.sId),
           linkedAtDestination: linkedAtDestination.map((file) => file.sId),
           gcs: { originalExists, sourceExists, destinationExists },
-          mutations: mutations.map((mutation) => ({
+          mutations: persistedMutations.map((mutation) => ({
             status: mutation.status,
             operation: mutation.request.operation,
             mount: mutation.request.mount,
             path: mutation.request.path,
           })),
         },
-        "Cross-mount frame move observed"
+        "Cross-mount frame move passed"
       );
     } finally {
       const podFsResult = await DustFileSystem.forPod(auth, pod);

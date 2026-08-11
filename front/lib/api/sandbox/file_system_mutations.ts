@@ -37,6 +37,9 @@ export const SandboxFileSystemMutationRequestSchema = z.discriminatedUnion(
     MutationBaseSchema.extend({ operation: z.literal("unlink") }).strict(),
     MutationBaseSchema.extend({
       operation: z.literal("rename"),
+      // Optional so sandboxes running the previous single-mount helper remain
+      // compatible during rollout. Omitted means the source mount.
+      destinationMount: MountSchema.optional(),
       destinationPath: z.string().min(1).max(4096),
     }).strict(),
     MutationBaseSchema.extend({
@@ -108,7 +111,20 @@ async function executeMutation(
     return sourcePathResult;
   }
   const sourcePath = sourcePathResult.value;
-  const fsResult = await DustFileSystem.fromScopedPath(auth, sourcePath);
+  const fileSystemContextPath =
+    request.operation === "rename" &&
+    request.mount.kind === "pod" &&
+    request.destinationMount?.kind === "conversation"
+      ? scopedPath(request.destinationMount, request.destinationPath)
+      : new Ok(sourcePath);
+  if (fileSystemContextPath.isErr()) {
+    return fileSystemContextPath;
+  }
+
+  const fsResult = await DustFileSystem.fromScopedPath(
+    auth,
+    fileSystemContextPath.value
+  );
   if (fsResult.isErr()) {
     return fsResult;
   }
@@ -133,8 +149,9 @@ async function executeMutation(
     }
 
     case "rename": {
+      const destinationMount = request.destinationMount ?? request.mount;
       const destinationPathResult = scopedPath(
-        request.mount,
+        destinationMount,
         request.destinationPath
       );
       if (destinationPathResult.isErr()) {
