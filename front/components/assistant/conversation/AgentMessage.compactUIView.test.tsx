@@ -225,7 +225,7 @@ function renderAgentMessage({
 
 describe("AgentMessage compact UI view", () => {
   describe("bottom citations", () => {
-    it("hides the bottom citation list for Activation Pod conversations but keeps inline citations", () => {
+    it("hides the bottom citation list for compact UI conversations but keeps inline citations", () => {
       const { container } = renderAgentMessage({
         isCompactUIView: true,
       });
@@ -238,7 +238,7 @@ describe("AgentMessage compact UI view", () => {
       ).toHaveTextContent("1");
     });
 
-    it("keeps the bottom citation list for non-Activation-Pod conversations", () => {
+    it("keeps the bottom citation list for non-compact UI conversations", () => {
       const { container } = renderAgentMessage({
         isCompactUIView: false,
       });
@@ -251,7 +251,7 @@ describe("AgentMessage compact UI view", () => {
       ).toHaveTextContent("1");
     });
 
-    it("renders no bottom citation container for an Activation Pod conversation with no citations", () => {
+    it("renders no bottom citation container for an compact UI conversation with no citations", () => {
       const { container } = renderAgentMessage({
         isCompactUIView: true,
         agentMessageOverrides: { content: "No sources here.", citations: {} },
