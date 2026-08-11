@@ -210,6 +210,10 @@ export async function createSandboxFunctionMCPAction(
   // Replay: a retried POST carrying the same idempotency key returns the original action instead
   // of creating (and executing) a second one. The client polls the action for its actual state,
   // whatever it is by now — including errored, which is what an honest replay reports.
+  //
+  // Lookup-then-create is deliberately best-effort: two concurrent POSTs with the same key can
+  // both miss and create two actions. The retrying clients replay sequentially, and a unique
+  // index would forbid legitimate key reuse after the window.
   if (idempotencyKey !== undefined) {
     const existingAction =
       await SandboxFunctionMCPActionResource.fetchByIdempotencyKey(auth, {
