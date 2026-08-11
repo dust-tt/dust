@@ -152,6 +152,7 @@ import { UserProjectPreferencesModel } from "@app/lib/resources/storage/models/u
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
+import { WorkspacePlanLimitOverrideModel } from "@app/lib/resources/storage/models/workspace_plan_limit_override";
 import { WorkspaceSeatLimitModel } from "@app/lib/resources/storage/models/workspace_seat_limit";
 import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
 import { isDevelopment, isTest } from "@app/types/shared/env";
@@ -285,6 +286,7 @@ export function loadAllModels() {
     WorkspaceSensitivityLabelConfigModel,
     SandboxEnvVarModel,
     WorkspaceSeatLimitModel,
+    WorkspacePlanLimitOverrideModel,
     ActivationPodModel,
     ActivationRecommendationModel,
     ActivationNudgeModel,

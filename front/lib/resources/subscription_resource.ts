@@ -31,6 +31,8 @@ import {
   POKE_PLAN_TYPE_FILTERS,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
+import type { PlanLimitOverride } from "@app/lib/plans/plan_limit_overrides";
+import { applyPlanLimitOverrides } from "@app/lib/plans/plan_limit_overrides";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   cancelSubscriptionImmediately,
@@ -48,6 +50,7 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { WorkspacePlanLimitOverrideResource } from "@app/lib/resources/workspace_plan_limit_override_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -434,9 +437,16 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       return null;
     }
 
+    const planLimitOverride =
+      await WorkspacePlanLimitOverrideResource.fetchByWorkspace({
+        workspace,
+        transaction,
+      });
+
     const plan = this.determinePlanFromSubscription(
       lastSubscription,
-      workspace.sId
+      workspace.sId,
+      planLimitOverride
     );
 
     return new SubscriptionResource(
@@ -501,6 +511,12 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       "workspaceId"
     );
 
+    const planLimitOverrideByWorkspaceModelId =
+      await WorkspacePlanLimitOverrideResource.fetchByWorkspaceModelIds(
+        workspaceModelIds,
+        transaction
+      );
+
     const subscriptionResourceByWorkspaceModelId: Record<
       ModelId,
       SubscriptionResource
@@ -512,7 +528,8 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
 
       const plan = this.determinePlanFromSubscription(
         activeSubscription ?? null,
-        workspaceModelId.toString()
+        workspaceModelId.toString(),
+        planLimitOverrideByWorkspaceModelId.get(workspaceModelId) ?? null
       );
 
       subscriptionResourceByWorkspaceModelId[workspaceModelId] =
@@ -847,13 +864,18 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
 
     await this.endActiveSubscription(workspace);
 
-    // No plan anymore: clear billed seat assignments and plan-level seat caps.
+    // No plan anymore: clear billed seat assignments, plan-level seat caps and
+    // any negotiated plan-limit override.
     await withTransaction(async (t) => {
       await MembershipResource.resetAllSeatsToNoneForWorkspace({
         workspace,
         transaction: t,
       });
       await WorkspaceSeatLimitResource.deleteAllForWorkspace({
+        workspace,
+        transaction: t,
+      });
+      await WorkspacePlanLimitOverrideResource.deleteAllForWorkspace({
         workspace,
         transaction: t,
       });
@@ -902,12 +924,18 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       );
     }
 
-    // Prevent subscribing if the new plan has less users allowed then the current one on the workspace
-    if (newPlan.maxUsersInWorkspace !== -1) {
+    // Prevent subscribing if the new plan has less users allowed then the current one on the
+    // workspace. The workspace's own plan-limit overrides apply to the new plan too, so compare
+    // against the effective cap.
+    const { maxUsersInWorkspace } = applyPlanLimitOverrides(
+      newPlan.get(),
+      await WorkspacePlanLimitOverrideResource.fetchByWorkspace({ workspace })
+    );
+    if (maxUsersInWorkspace !== -1) {
       const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
         workspace.sId
       );
-      if (activeSeats > newPlan.maxUsersInWorkspace) {
+      if (activeSeats > maxUsersInWorkspace) {
         throw new Error(
           `Cannot subscribe to plan ${planCode}: new plan has less users allowed than currently in workspace.`
         );
@@ -1589,7 +1617,8 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
 
   private static determinePlanFromSubscription(
     subscription: SubscriptionModel | null,
-    workspaceId: string
+    workspaceId: string,
+    planLimitOverride: PlanLimitOverride | null
   ): PlanAttributes {
     let plan: PlanAttributes = DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION;
 
@@ -1598,7 +1627,9 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       if (isTrial(subscription)) {
         plan = getTrialVersionForPlan(subscription.plan);
       } else if (subscription.plan) {
-        plan = subscription.plan;
+        // `.get()` so that `plan` is always plain attributes: spreading a
+        // Sequelize instance would drop every attribute.
+        plan = subscription.plan.get();
       } else {
         logger.error(
           {
@@ -1610,7 +1641,9 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       }
     }
 
-    return plan;
+    // Applied last: a per-workspace override wins over the plan value and over
+    // the trial limits above.
+    return applyPlanLimitOverrides(plan, planLimitOverride);
   }
 
   private static async findPlanOrThrow(planCode: string): Promise<PlanModel> {

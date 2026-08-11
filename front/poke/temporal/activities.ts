@@ -84,6 +84,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
+import { WorkspacePlanLimitOverrideResource } from "@app/lib/resources/workspace_plan_limit_override_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
@@ -864,6 +865,7 @@ export async function deleteWorkspaceActivity({
   await SelfImprovingSkillsUsageResource.deleteAllForWorkspace(auth);
   await WorkspaceVerificationAttemptResource.deleteAllForWorkspace(auth);
   await WorkspaceSeatLimitResource.deleteAllForWorkspace({ workspace });
+  await WorkspacePlanLimitOverrideResource.deleteAllForWorkspace({ workspace });
 
   hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
 

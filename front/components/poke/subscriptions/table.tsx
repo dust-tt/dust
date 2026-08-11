@@ -17,6 +17,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { getMetronomeContractUrl } from "@app/lib/metronome/urls";
 import { FREE_NO_PLAN_CODE, isProPlanPrefix } from "@app/lib/plans/plan_codes";
+import type { PlanLimitOverride } from "@app/lib/plans/plan_limit_overrides";
 import { useAppRouter } from "@app/lib/platform";
 import { usePokeCancelPendingContract, usePokePlans } from "@app/lib/swr/poke";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
@@ -436,11 +437,34 @@ export function ActiveSubscriptionTable({
   );
 }
 
+interface PlanLimitValueProps {
+  value: number;
+  isOverridden: boolean;
+}
+
+// A plan limit as it applies to this workspace. Overridden limits are flagged so
+// that a value that does not match the plan is never silently displayed as if it
+// came from the plan.
+function PlanLimitValue({ value, isOverridden }: PlanLimitValueProps) {
+  return (
+    <span>
+      {value === -1 ? "unlimited" : value}
+      {isOverridden && (
+        <span className="text-warning-500 pl-1 font-bold">(overridden)</span>
+      )}
+    </span>
+  );
+}
+
+interface PlanLimitationsTableProps {
+  subscription: SubscriptionType;
+  planLimitOverride: PlanLimitOverride | null;
+}
+
 export function PlanLimitationsTable({
   subscription,
-}: {
-  subscription: SubscriptionType;
-}) {
+  planLimitOverride,
+}: PlanLimitationsTableProps) {
   const activePlan = subscription.plan;
 
   return (
@@ -500,9 +524,36 @@ export function PlanLimitationsTable({
               <PokeTableRow>
                 <PokeTableCell>Max number of users</PokeTableCell>
                 <PokeTableCell>
-                  {activePlan.limits.users.maxUsers === -1
-                    ? "unlimited"
-                    : activePlan.limits.users.maxUsers}
+                  <PlanLimitValue
+                    value={activePlan.limits.users.maxUsers}
+                    isOverridden={
+                      planLimitOverride?.maxUsersInWorkspace != null
+                    }
+                  />
+                </PokeTableCell>
+              </PokeTableRow>
+
+              <PokeTableRow>
+                <PokeTableCell>Max number of free seats</PokeTableCell>
+                <PokeTableCell>
+                  <PlanLimitValue
+                    value={activePlan.limits.users.maxFreeUsers}
+                    isOverridden={
+                      planLimitOverride?.maxFreeUsersInWorkspace != null
+                    }
+                  />
+                </PokeTableCell>
+              </PokeTableRow>
+
+              <PokeTableRow>
+                <PokeTableCell>Max number of lifetime free seats</PokeTableCell>
+                <PokeTableCell>
+                  <PlanLimitValue
+                    value={activePlan.limits.users.maxLifetimeFreeUsers}
+                    isOverridden={
+                      planLimitOverride?.maxLifetimeFreeUsersInWorkspace != null
+                    }
+                  />
                 </PokeTableCell>
               </PokeTableRow>
 

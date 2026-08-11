@@ -135,6 +135,7 @@ export function WorkspacePage() {
     membersCount,
     metronomeCustomerId,
     pendingSubscription,
+    planLimitOverride,
     poolCreditState,
     poolAlert,
     programmaticAlerts,
@@ -258,7 +259,10 @@ export function WorkspacePage() {
                 />
               </TabsContent>
               <TabsContent value="planlimitations">
-                <PlanLimitationsTable subscription={activeSubscription} />
+                <PlanLimitationsTable
+                  subscription={activeSubscription}
+                  planLimitOverride={planLimitOverride}
+                />
               </TabsContent>
             </Tabs>
 

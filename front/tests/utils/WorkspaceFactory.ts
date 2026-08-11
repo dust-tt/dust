@@ -43,6 +43,15 @@ export class WorkspaceFactory {
     return this.createWithPlan(plan, overrides);
   }
 
+  // Subscribe a fresh workspace to a plan built by the caller — use when the
+  // test needs specific plan limits rather than one of the seeded plans.
+  static async fromPlan(
+    plan: PlanModel,
+    overrides?: WorkspaceOverrides
+  ): Promise<WorkspaceType> {
+    return this.createWithPlan(plan, overrides);
+  }
+
   static async freeNoProductAccess(
     overrides?: WorkspaceOverrides
   ): Promise<WorkspaceType> {

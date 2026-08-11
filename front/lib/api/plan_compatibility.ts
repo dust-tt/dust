@@ -3,6 +3,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { doesConnectorProviderCountTowardConnectionsLimit } from "@app/lib/data_sources";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { WorkspacePlanLimitOverrideResource } from "@app/lib/resources/workspace_plan_limit_override_resource";
 import type { PlanType } from "@app/types/plan";
 
 type PlanFitResult = {
@@ -20,6 +21,9 @@ type PlanFitResult = {
  * migration: active seats, regular spaces, and data sources. A limit of -1
  * (unlimited) is never a violation. Feature gates (SSO/SCIM/audit logs) are
  * intentionally not checked here.
+ *
+ * The workspace's plan-limit overrides apply to `plan` as well (they are
+ * workspace-scoped, not plan-scoped), so the seat check uses the effective cap.
  */
 export async function checkWorkspaceFitsPlanLimits(
   auth: Authenticator,
@@ -29,13 +33,18 @@ export async function checkWorkspaceFitsPlanLimits(
   const { limits } = plan;
   const violations: string[] = [];
 
-  if (limits.users.maxUsers !== -1) {
+  const planLimitOverride =
+    await WorkspacePlanLimitOverrideResource.fetchByWorkspace({ workspace });
+  const maxUsers =
+    planLimitOverride?.maxUsersInWorkspace ?? limits.users.maxUsers;
+
+  if (maxUsers !== -1) {
     const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
       workspace.sId
     );
-    if (activeSeats > limits.users.maxUsers) {
+    if (activeSeats > maxUsers) {
       violations.push(
-        `active seats (${activeSeats}) exceed plan maxUsers (${limits.users.maxUsers})`
+        `active seats (${activeSeats}) exceed plan maxUsers (${maxUsers})`
       );
     }
   }
