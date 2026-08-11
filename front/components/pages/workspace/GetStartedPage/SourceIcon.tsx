@@ -25,11 +25,9 @@ import type { ComponentType } from "react";
 // unrecognized source identifiers.
 const SPARKLE_ICON_BY_NAME: Record<string, ComponentType> = {
   Brain,
-  ActionBrainIcon: Brain,
   Zap,
   PuzzlePiece01,
   ActionFrame,
-  ActionFrameIcon: ActionFrame,
   Dataflow01,
   Database01,
   Users01,
