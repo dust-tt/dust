@@ -21,11 +21,13 @@ import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   FRAME_RECREATE_WASTE_RATIONALE,
+  GET_INTERACTIVE_CONTENT_FILE_SHARE_URL_TOOL_NAME,
   PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
+import { SANDBOX_FUNCTIONS_SERVER_NAME } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 
 const FILES_EDIT_TOOL = getPrefixedToolName(
   FILES_SERVER_NAME,
@@ -46,6 +48,10 @@ const FILES_RESOLVE_TOOL = getPrefixedToolName(
 const FILES_MOVE_TOOL = getPrefixedToolName(
   FILES_SERVER_NAME,
   FILES_MOVE_ACTION_NAME
+);
+const POD_FUNCTIONS_CALL_TOOL = getPrefixedToolName(
+  SANDBOX_FUNCTIONS_SERVER_NAME,
+  "call"
 );
 
 const UPDATING_SECTION_LEGACY = `\
@@ -98,7 +104,7 @@ After a Frame is created, its source file is already mounted in the Computer at 
 1. Edit that file in place with your file tools, changing only the parts that need to change. Do not rewrite the whole file for partial changes. When the Computer is not available, edit it with \`${FILES_EDIT_TOOL}\` using its scoped path, e.g. \`conversation-<conversationId>/<FrameName>.tsx\`.
 2. Publish with \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\`, passing \`path\` set to the source file's own scoped path (the entry file itself, not the directory holding it), e.g. \`conversation-<conversationId>/<FrameName>.tsx\`.
 
-If an edit fails because the text to replace is not found, the file differs from what you remember: re-read it and retry the targeted edit. Never respond to a failed match by resending the whole file.
+If an edit fails because the text to replace is not found, the file differs from what you remember: re-read it and retry the targeted edit. Never respond to a failed match by resending the whole file. After a batch of edits where any edit failed, re-read the whole file before editing it further, and never publish without re-reading it: the file holds an unknown mix of applied and missing changes.
 
 ${PUBLISH_PARAGRAPH}
 `;
@@ -113,7 +119,7 @@ After a Frame is created, its source file is available to your file tools at \`c
 2. Make targeted edits with \`${FILES_EDIT_TOOL}\`, replacing only the text that changes. Do not rewrite the whole file for partial changes.
 3. Publish with \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\`, passing \`path\` set to the source file's own scoped path (the entry file itself, not the directory holding it).
 
-If an edit fails because the text to replace is not found, the file differs from what you remember: re-read it with \`${FILES_CAT_TOOL}\` and retry the targeted edit. Never respond to a failed match by resending the whole file.
+If an edit fails because the text to replace is not found, the file differs from what you remember: re-read it with \`${FILES_CAT_TOOL}\` and retry the targeted edit. Never respond to a failed match by resending the whole file. After a batch of edits where any edit failed, re-read the whole file before editing it further, and never publish without re-reading it: the file holds an unknown mix of applied and missing changes.
 
 Example, updating one value of an existing Frame:
 \`\`\`
@@ -161,6 +167,24 @@ ${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
 \`\`\`
 
 From then on, edit the source at its Pod path and publish it again. Anything the Frame imports relatively must live under its folder, which is the bundling root.
+
+After publishing, always fetch the Frame's share URL with \`${GET_INTERACTIVE_CONTENT_FILE_SHARE_URL_TOOL_NAME}\` and hand it to the user: a Pod Frame does not surface itself in this conversation on its own.
+`;
+
+// Pod conversations where pod functions are available. Headless exports of function-backed
+// Frames capture the loading state, so verification must go through the functions themselves.
+const POD_VERIFICATION_SECTION = `\
+### Verifying A Frame
+
+A headless export (PNG or PDF) of a Frame that calls pod functions captures its loading state, not its data, so never use an export to verify one. Verify the data path directly instead: call each pod function the Frame references with \`${POD_FUNCTIONS_CALL_TOOL}\`, using the same inputs the Frame sends, and confirm the outputs match the shapes the Frame consumes. Then send the user the Frame's share URL.
+`;
+
+// Non-Pod conversations. Without this, a Frame asked to hold data silently ends up with a
+// `useState` array that dies on reload, and the user only finds out after entering real data.
+const NON_POD_STATE_SECTION = `\
+### Frame State Outside A Pod
+
+This conversation is not part of a Pod, so a Frame here has no persistence: there is no server-side storage it can write to, and anything held in component state is lost on reload. If the user expects entered data (tasks, notes, entries, edits) to still be there the next time the Frame opens, say so plainly and suggest building the Frame in a Pod, where pod functions and databases hold its data; otherwise keep the Frame read-only or accept per-session state.
 `;
 
 // Pod conversations where pod functions are available. Without this, a Frame asked to hold data
@@ -177,7 +201,8 @@ Keep in component state only what is genuinely throwaway. e.g. the selected tab,
 interface InstructionsVariant {
   updatingSection: string;
   validationFixExample: string;
-  // Pod-specific sections, empty outside a Pod conversation.
+  // Sections that depend on the conversation's Pod context (or its absence). Empty for legacy
+  // conversations without the file system.
   podSections: string;
 }
 
@@ -436,9 +461,12 @@ export const buildInteractiveContentInstructions = ({
         ? [
             POD_APP_SECTION,
             ...(hasPodFunctions
-              ? [podStorageSection(podFunctionsSkillName)]
+              ? [
+                  podStorageSection(podFunctionsSkillName),
+                  POD_VERIFICATION_SECTION,
+                ]
               : []),
           ]
-        : []
+        : [NON_POD_STATE_SECTION]
     ),
   });
