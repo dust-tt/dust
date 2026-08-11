@@ -60,6 +60,10 @@ describe("formatSandboxFunction", () => {
 
     expect(out).toContain("greet: Greet a user by name.");
     expect(out).toContain("userIdentity: optional");
+    // The serving-version fields mirror the publish tool's receipt. This function was created
+    // without a hash (pre-hash publishes exist in prod), so the field must degrade explicitly.
+    expect(out).toContain(`updatedAt: ${fn.updatedAt.toISOString()}`);
+    expect(out).toContain("bundleSha256: null");
     expect(out).toContain(`input: ${JSON.stringify(fn.inputSchema)}`);
     expect(out).toContain(`output: ${JSON.stringify(fn.outputSchema)}`);
   });

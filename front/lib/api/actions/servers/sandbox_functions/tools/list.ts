@@ -13,7 +13,12 @@ export function formatSandboxFunctionsList(
     return "No pod functions published in this pod.";
   }
 
-  const lines = sandboxFunctions.map((fn) => `- ${fn.slug}: ${fn.description}`);
+  // Mode and timestamp let a caller confirm a publish landed (they mirror the publish tool's
+  // echo) without fetching each function.
+  const lines = sandboxFunctions.map(
+    (fn) =>
+      `- ${fn.slug} [${fn.executionMode}, updated ${fn.updatedAt.toISOString()}]: ${fn.description}`
+  );
 
   return (
     `Pod functions:\n${lines.join("\n")}\n\n` +

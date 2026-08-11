@@ -18,6 +18,13 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
+export type PublishSandboxFunctionResult = {
+  sandboxFunction: SandboxFunctionResource;
+  // True when a re-publish produced a bundle byte-identical to the one it replaced: the edit the
+  // publisher thinks they made did not change the built output. Always false on a first publish.
+  byteIdentical: boolean;
+};
+
 /**
  * Publish a sandbox function: build the source the model wrote to the pod mount, then store the
  * bundle and its extracted contract.
@@ -46,7 +53,7 @@ export async function publishSandboxFunction(
     executionMode?: SandboxFunctionExecutionMode;
     defaultStake?: SandboxFunctionStake;
   }
-): Promise<Result<SandboxFunctionResource, SandboxFunctionError>> {
+): Promise<Result<PublishSandboxFunctionResult, SandboxFunctionError>> {
   // Resolve the model-supplied scoped path (e.g. `pod-{id}/greet.ts`) to its absolute path inside
   // the sandbox, reusing DustFileSystem's traversal and mount checks rather than rebuilding them.
   const fsResult = await DustFileSystem.forPod(auth, space);
@@ -110,7 +117,10 @@ export async function publishSandboxFunction(
       );
     }
 
-    return new Ok(existing);
+    return new Ok({
+      sandboxFunction: existing,
+      byteIdentical: updateResult.value.byteIdentical,
+    });
   }
 
   const fileResult = await createBundleFile(auth, {
@@ -135,7 +145,7 @@ export async function publishSandboxFunction(
     outputSchema,
   });
 
-  return new Ok(created);
+  return new Ok({ sandboxFunction: created, byteIdentical: false });
 }
 
 async function createBundleFile(

@@ -806,7 +806,7 @@ export async function clonePodApp(
         )
       );
     }
-    publishedFunctionSlugs.push(publishResult.value.slug);
+    publishedFunctionSlugs.push(publishResult.value.sandboxFunction.slug);
   }
 
   // Reconcile the copy's databases from its own schema files, which creates them empty under the

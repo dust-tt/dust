@@ -12,6 +12,11 @@ export function formatSandboxFunction(fn: SandboxFunctionResource): string {
     `${fn.slug}: ${fn.description}`,
     `userIdentity: ${fn.userIdentity ?? "optional"}`,
     `executionMode: ${fn.executionMode}`,
+    // The timestamp and full bundle hash identify the serving version: they match the publish
+    // tool's echo and the hash stamped on invocations, so a caller can confirm which publish
+    // serves. "null" only for functions last published before hashes existed.
+    `updatedAt: ${fn.updatedAt.toISOString()}`,
+    `bundleSha256: ${fn.bundleSha256 ?? "null"}`,
     `input: ${JSON.stringify(fn.inputSchema)}`,
     `output: ${JSON.stringify(fn.outputSchema)}`,
   ].join("\n");
