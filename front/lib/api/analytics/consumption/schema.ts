@@ -2,10 +2,7 @@ import type { ConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/
 import { CONSUMPTION_SCOPE_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import { z } from "zod";
 
-/**
- * Query-string contract shared by the consumption analytics endpoints, so the
- * period and the Explore filters are parsed the same way everywhere.
- */
+/** Shared validation for consumption analytics periods and filters. */
 
 export const DEFAULT_CONSUMPTION_PERIOD_DAYS = 30;
 
@@ -16,7 +13,7 @@ const ConsumptionFilterSchema = z.record(
   z.string().array()
 );
 
-export const ConsumptionQuerySchema = z.object({
+const ConsumptionPeriodSchema = z.object({
   period: z.enum(["cycle", "days"]).optional().default("cycle"),
   days: z.coerce
     .number()
@@ -24,6 +21,9 @@ export const ConsumptionQuerySchema = z.object({
     .positive()
     .optional()
     .default(DEFAULT_CONSUMPTION_PERIOD_DAYS),
+});
+
+export const ConsumptionQuerySchema = ConsumptionPeriodSchema.extend({
   // JSON-encoded, mirroring the existing analytics filter query param: the
   // filter is a map of dimension to selected ids and does not flatten well
   // into repeated query params.
@@ -44,6 +44,12 @@ export const ConsumptionQuerySchema = z.object({
 });
 
 export type ConsumptionQuery = z.infer<typeof ConsumptionQuerySchema>;
+
+export const ConsumptionFacetsBodySchema = ConsumptionPeriodSchema.extend({
+  filter: ConsumptionFilterSchema.optional(),
+});
+
+export type ConsumptionFacetsBody = z.infer<typeof ConsumptionFacetsBodySchema>;
 
 // Every `top-*` endpoint takes the same query: the period and the filters of any
 // consumption endpoint, plus how many rows to rank.

@@ -25,6 +25,7 @@ export function UsageFilterAgentScopeControls({
             label={USAGE_FILTER_SCOPE_LABEL[scope]}
             size="xs"
             variant={activeScope === scope ? "primary" : "outline"}
+            aria-pressed={activeScope === scope}
             onClick={() => onScopeChange(scope)}
           />
         ))}
