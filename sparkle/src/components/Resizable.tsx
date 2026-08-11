@@ -7,17 +7,14 @@ type ResizablePanelGroupProps = React.ComponentProps<
 > & {
   /**
    * Animates panel layout changes while keeping pointer dragging immediate.
-   * Reduced-motion preferences shorten the transition automatically.
+   * Fully collapsed panels keep their content layout during the transition.
    */
   animateLayoutChanges?: boolean;
 };
 
 const ResizablePanelGroupContext = React.createContext<{
-  animateLayoutChanges: boolean;
   direction: ResizablePanelGroupProps["direction"];
-  isDragging: boolean;
   panelGroupSizePx?: number;
-  setIsDragging: (isDragging: boolean) => void;
 } | null>(null);
 
 const ResizablePanelGroup = ({
@@ -29,7 +26,6 @@ const ResizablePanelGroup = ({
 }: ResizablePanelGroupProps) => {
   const panelGroupRef =
     React.useRef<React.ElementRef<typeof ResizablePrimitive.PanelGroup>>(null);
-  const [isDragging, setIsDragging] = React.useState(false);
   const [panelGroupSizePx, setPanelGroupSizePx] = React.useState<
     number | undefined
   >();
@@ -56,9 +52,7 @@ const ResizablePanelGroup = ({
           ? panelGroupElement.clientHeight
           : panelGroupElement.clientWidth;
 
-      setPanelGroupSizePx((previousSize) =>
-        previousSize === nextSize ? previousSize : nextSize
-      );
+      setPanelGroupSizePx(nextSize);
     };
 
     updatePanelGroupSize();
@@ -67,7 +61,7 @@ const ResizablePanelGroup = ({
       return;
     }
 
-    const resizeObserver = new ResizeObserver(() => updatePanelGroupSize());
+    const resizeObserver = new ResizeObserver(updatePanelGroupSize);
 
     resizeObserver.observe(panelGroupElement);
 
@@ -76,16 +70,13 @@ const ResizablePanelGroup = ({
     };
   }, [animateLayoutChanges, direction, id]);
 
-  const contextValue = React.useMemo(
-    () => ({
-      animateLayoutChanges,
-      direction,
-      isDragging,
-      panelGroupSizePx: animateLayoutChanges ? panelGroupSizePx : undefined,
-      setIsDragging,
-    }),
-    [animateLayoutChanges, direction, isDragging, panelGroupSizePx]
-  );
+  const contextValue = animateLayoutChanges
+    ? { direction, panelGroupSizePx }
+    : null;
+  const animatedPanelClasses = animateLayoutChanges && [
+    "[&:not(:has(>[data-resize-handle-state=drag]))>[data-panel]]:transition-[flex-grow]",
+    "[&>[data-panel]]:duration-300 [&>[data-panel]]:ease-out-quint",
+  ];
 
   return (
     <ResizablePanelGroupContext.Provider value={contextValue}>
@@ -95,6 +86,7 @@ const ResizablePanelGroup = ({
         direction={direction}
         className={cn(
           "flex h-full w-full data-[panel-group-direction=vertical]:flex-col",
+          animatedPanelClasses,
           className
         )}
         {...props}
@@ -103,78 +95,41 @@ const ResizablePanelGroup = ({
   );
 };
 
-interface ResizablePanelContentProps {
-  children: React.ReactNode;
-  panelSize?: number;
-}
-
-const ResizablePanelContent = ({
-  children,
-  panelSize,
-}: ResizablePanelContentProps) => {
-  const panelGroupContext = React.useContext(ResizablePanelGroupContext);
-  const contentSizePx =
-    panelGroupContext?.panelGroupSizePx && panelSize
-      ? Math.round((panelGroupContext.panelGroupSizePx * panelSize) / 100)
-      : undefined;
-  let panelSizeStyle: React.CSSProperties | undefined;
-
-  if (contentSizePx && contentSizePx > 0) {
-    panelSizeStyle =
-      panelGroupContext?.direction === "vertical"
-        ? { height: contentSizePx }
-        : { width: contentSizePx };
-  }
-
-  return (
-    <div className="h-full w-full" style={panelSizeStyle}>
-      {children}
-    </div>
-  );
-};
-
-type ResizablePanelProps = React.ComponentProps<
-  typeof ResizablePrimitive.Panel
-> & {
-  /**
-   * Keeps content laid out at the latest non-zero target size while a panel
-   * fully collapses to zero or expands. Direct resizing still updates live.
-   * Compact collapsed states require their own content lifecycle.
-   */
-  preserveContentLayout?: boolean;
-  /**
-   * Initial content size, as a percentage of the panel group, used until the
-   * panel reports a non-zero size.
-   */
-  initialContentSize?: number;
-};
-
 const ResizablePanel = React.forwardRef<
   React.ElementRef<typeof ResizablePrimitive.Panel>,
-  ResizablePanelProps
+  React.ComponentProps<typeof ResizablePrimitive.Panel>
 >(
   (
-    {
-      children,
-      className,
-      defaultSize,
-      initialContentSize,
-      onResize,
-      preserveContentLayout = false,
-      ...props
-    },
+    { children, collapsedSize, collapsible, defaultSize, onResize, ...props },
     forwardedRef
   ) => {
     const panelGroupContext = React.useContext(ResizablePanelGroupContext);
+    const preserveContentLayout =
+      panelGroupContext !== null &&
+      collapsible === true &&
+      (collapsedSize ?? 0) === 0;
     const fallbackContentPanelSize =
-      initialContentSize ??
-      (typeof defaultSize === "number" && defaultSize > 0
+      typeof defaultSize === "number" && defaultSize > 0
         ? defaultSize
-        : undefined);
+        : undefined;
     const [lastNonZeroPanelSize, setLastNonZeroPanelSize] = React.useState<
       number | undefined
     >();
     const contentPanelSize = lastNonZeroPanelSize ?? fallbackContentPanelSize;
+    const contentSizePx =
+      panelGroupContext?.panelGroupSizePx && contentPanelSize
+        ? Math.round(
+            (panelGroupContext.panelGroupSizePx * contentPanelSize) / 100
+          )
+        : undefined;
+    let contentStyle: React.CSSProperties | undefined;
+
+    if (contentSizePx && contentSizePx > 0) {
+      contentStyle =
+        panelGroupContext?.direction === "vertical"
+          ? { height: contentSizePx }
+          : { width: contentSizePx };
+    }
 
     const handleResize: NonNullable<
       React.ComponentProps<typeof ResizablePrimitive.Panel>["onResize"]
@@ -189,22 +144,16 @@ const ResizablePanel = React.forwardRef<
     return (
       <ResizablePrimitive.Panel
         ref={forwardedRef}
+        collapsedSize={collapsedSize}
+        collapsible={collapsible}
         defaultSize={defaultSize}
         onResize={preserveContentLayout ? handleResize : onResize}
-        className={cn(
-          panelGroupContext?.animateLayoutChanges &&
-            "motion-reduce:duration-75",
-          panelGroupContext?.animateLayoutChanges &&
-            !panelGroupContext?.isDragging &&
-            "transition-[flex-grow] duration-300 ease-out-quint",
-          className
-        )}
         {...props}
       >
         {preserveContentLayout ? (
-          <ResizablePanelContent panelSize={contentPanelSize}>
+          <div className="h-full w-full" style={contentStyle}>
             {children}
-          </ResizablePanelContent>
+          </div>
         ) : (
           children
         )}
@@ -217,54 +166,40 @@ ResizablePanel.displayName = "ResizablePanel";
 const ResizableHandle = ({
   withHandle,
   className,
-  onDragging,
   ...props
 }: React.ComponentProps<typeof ResizablePrimitive.PanelResizeHandle> & {
   withHandle?: boolean;
-}) => {
-  const panelGroupContext = React.useContext(ResizablePanelGroupContext);
-
-  const handleDragging = (isDragging: boolean) => {
-    if (panelGroupContext?.animateLayoutChanges) {
-      panelGroupContext.setIsDragging(isDragging);
-    }
-
-    onDragging?.(isDragging);
-  };
-
-  return (
-    <ResizablePrimitive.PanelResizeHandle
-      className={cn(
-        "relative flex w-px items-center justify-center",
-        "after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2",
-        "focus-visible:outline-hidden focus-visible:ring-1",
-        "focus-visible:ring-ring",
-        "focus-visible:ring-offset-1 data-[panel-group-direction=vertical]:h-px",
-        "data-[panel-group-direction=vertical]:w-full",
-        "data-[panel-group-direction=vertical]:after:left-0",
-        "data-[panel-group-direction=vertical]:after:h-1",
-        "data-[panel-group-direction=vertical]:after:w-full",
-        "data-[panel-group-direction=vertical]:after:-translate-y-1/2",
-        "data-[panel-group-direction=vertical]:after:translate-x-0",
-        "[&[data-panel-group-direction=vertical]>div]:rotate-90",
-        "bg-primary-100",
-        className
-      )}
-      onDragging={handleDragging}
-      {...props}
-    >
-      {withHandle && (
-        <div
-          className={cn(
-            "absolute flex h-6 w-2 items-center justify-center rounded-2xl",
-            "border border-border bg-background"
-          )}
-        >
-          <div className="w-px" />
-        </div>
-      )}
-    </ResizablePrimitive.PanelResizeHandle>
-  );
-};
+}) => (
+  <ResizablePrimitive.PanelResizeHandle
+    className={cn(
+      "relative flex w-px items-center justify-center",
+      "after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2",
+      "focus-visible:outline-hidden focus-visible:ring-1",
+      "focus-visible:ring-ring",
+      "focus-visible:ring-offset-1 data-[panel-group-direction=vertical]:h-px",
+      "data-[panel-group-direction=vertical]:w-full",
+      "data-[panel-group-direction=vertical]:after:left-0",
+      "data-[panel-group-direction=vertical]:after:h-1",
+      "data-[panel-group-direction=vertical]:after:w-full",
+      "data-[panel-group-direction=vertical]:after:-translate-y-1/2",
+      "data-[panel-group-direction=vertical]:after:translate-x-0",
+      "[&[data-panel-group-direction=vertical]>div]:rotate-90",
+      "bg-primary-100",
+      className
+    )}
+    {...props}
+  >
+    {withHandle && (
+      <div
+        className={cn(
+          "absolute flex h-6 w-2 items-center justify-center rounded-2xl",
+          "border border-border bg-background"
+        )}
+      >
+        <div className="w-px" />
+      </div>
+    )}
+  </ResizablePrimitive.PanelResizeHandle>
+);
 
 export { ResizableHandle, ResizablePanel, ResizablePanelGroup };

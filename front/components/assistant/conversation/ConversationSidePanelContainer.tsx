@@ -98,8 +98,6 @@ export default function ConversationSidePanelContainer({
         }}
         collapsible
         collapsedSize={0}
-        preserveContentLayout
-        initialContentSize={DEFAULT_RIGHT_PANEL_SIZE}
         className={cn(
           "flex-0 overflow-hidden",
           !currentPanel && "hidden w-0 md:block",

@@ -21,7 +21,7 @@ const meta = {
 
 **Guidelines**
 - Give each **ResizablePanel** a \`defaultSize\` (percentages within a group) so the initial split is predictable.
-- Set \`animateLayoutChanges\` on the group and \`preserveContentLayout\` on a panel that fully collapses to zero when programmatic collapse or expand should not reflow content through intermediate widths.
+- Set \`animateLayoutChanges\` on the group to animate programmatic layout changes. Content in panels that fully collapse to zero keeps its expanded layout during the transition.
 - Nest a **ResizablePanelGroup** inside a panel to combine horizontal and vertical splits.`,
       },
     },
@@ -87,7 +87,6 @@ export const AnimatedCollapsible = () => {
           minSize={20}
           collapsedSize={0}
           collapsible
-          preserveContentLayout
           onCollapse={() => setIsOpen(false)}
           onExpand={() => setIsOpen(true)}
           className="overflow-hidden"
