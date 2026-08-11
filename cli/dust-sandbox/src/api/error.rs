@@ -201,6 +201,19 @@ mod tests {
     }
 
     #[test]
+    fn classifies_not_authenticated_as_invalid_sandbox_token() {
+        // On sandbox endpoints the only credential is the sandbox token, so a
+        // missing/non-sandbox token is the same terminal class as an expired
+        // one; the TTL hint stays scoped to the expiry type.
+        let err = DustApiError::from_http_response(
+            401,
+            r#"{"error":{"type":"not_authenticated","message":"This endpoint requires a sandbox token."}}"#,
+        );
+        assert_eq!(err.code, ApiErrorCode::InvalidSandboxToken);
+        assert!(!err.message.contains("~2-minute TTL"));
+    }
+
+    #[test]
     fn classifies_fast_function_called_tools_by_type() {
         let err = DustApiError::from_http_response(
             403,
