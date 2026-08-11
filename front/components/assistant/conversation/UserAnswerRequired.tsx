@@ -313,6 +313,7 @@ export function UserAnswerRequired({
               key={index}
               label={option.label}
               description={option.description}
+              counterValue={index + 1}
               selected={answerDraft.selectedOptions.includes(index)}
               disableHover={isKeyboardNavigating}
               selectionIndicator={question.multiSelect ? "checkbox" : "radio"}
