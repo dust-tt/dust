@@ -50,7 +50,9 @@ describe("editHandler", () => {
       text: expect.stringContaining("made 1 replacement"),
     });
     assert(result.value[0].type === "text");
-    expect(result.value[0].text).toMatch(/is now 1 line \(sha256:[0-9a-f]{8}\)/);
+    expect(result.value[0].text).toMatch(
+      /is now 1 line \(sha256:[0-9a-f]{8}\)/
+    );
 
     expect(fileStorageMock.saveFileCalls).toHaveLength(1);
     const { filePath, content, contentType } = fileStorageMock.saveFileCalls[0];

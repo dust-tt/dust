@@ -201,12 +201,12 @@ export async function editHandler(
         new MCPError(
           isBatch
             ? `Edit ${editIndex + 1} of ${editSpecs.length} failed: string "${editSnippet(edit.old_string)}" not found. ` +
-              "The batch is all-or-nothing: zero edits were applied and the file was not modified. " +
-              "Each edit matches against the file as transformed by the previous edits in the batch. " +
-              `Re-read the file with \`${catToolName}\` and retry the full batch with the exact current text.`
+                "The batch is all-or-nothing: zero edits were applied and the file was not modified. " +
+                "Each edit matches against the file as transformed by the previous edits in the batch. " +
+                `Re-read the file with \`${catToolName}\` and retry the full batch with the exact current text.`
             : `String "${edit.old_string}" not found in file. The file may have changed since you last ` +
-              `read it: re-read it with \`${catToolName}\` ` +
-              "and retry with the exact current text. Never resend the whole file content.",
+                `read it: re-read it with \`${catToolName}\` ` +
+                "and retry with the exact current text. Never resend the whole file content.",
           {
             tracked: false,
           }
@@ -220,9 +220,9 @@ export async function editHandler(
         new MCPError(
           isBatch
             ? `Edit ${editIndex + 1} of ${editSpecs.length} failed: expected ${expectedReplacements} ` +
-              `replacement${pluralize(expectedReplacements)}, but found ${occurrences} ` +
-              `occurrence${pluralize(occurrences)}. The batch is all-or-nothing: zero edits were ` +
-              "applied and the file was not modified."
+                `replacement${pluralize(expectedReplacements)}, but found ${occurrences} ` +
+                `occurrence${pluralize(occurrences)}. The batch is all-or-nothing: zero edits were ` +
+                "applied and the file was not modified."
             : `Expected ${expectedReplacements} replacements, but found ${occurrences} occurrences`,
           { tracked: false }
         )
