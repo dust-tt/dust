@@ -40,6 +40,8 @@ export class GroupFactory {
   ) {
     return group.dangerouslyAddMembers(auth, {
       users: users.map((u) => u.toJSON()),
+      // Provisioned membership is owned by the IdP in production; tests seed it directly.
+      allowProvisionedGroups: true,
     });
   }
 }
