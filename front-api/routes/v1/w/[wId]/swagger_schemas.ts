@@ -417,11 +417,10 @@
  *       description: |
  *         Optional per-message model and reasoning-effort override applied to the
  *         mentioned agent(s). When omitted, each agent runs its configured model.
- *         Requires the model picker to be enabled for the workspace; otherwise the
- *         request fails with a 403. A provider/model pair that is not authorized
- *         for the workspace is rejected with a 400 (`model_disabled`), it does not
- *         fall back to the agent's configured model. A malformed object, or an
- *         unknown reasoning effort, also results in a 400.
+ *         A provider/model pair that is not authorized for the workspace is
+ *         rejected with a 400 (`model_disabled`), it does not fall back to the
+ *         agent's configured model. A malformed object, or an unknown reasoning
+ *         effort, also results in a 400.
  *       required:
  *         - providerId
  *         - modelId
