@@ -10,6 +10,7 @@ import { MCPServerPersonalAuthenticationRequired } from "./MCPServerPersonalAuth
 const createPersonalConnectionMock = vi.fn();
 const resolveAuthenticationMock = vi.fn();
 const refreshBlockedActionsMock = vi.fn();
+const removeCompletedActionMock = vi.fn();
 
 vi.mock("@app/lib/auth/AuthContext", () => ({
   useAuth: () => ({ user: { sId: "user_1" } }),
@@ -20,6 +21,7 @@ vi.mock(
   () => ({
     useBlockedActionsContext: () => ({
       refreshBlockedActions: refreshBlockedActionsMock,
+      removeCompletedAction: removeCompletedActionMock,
     }),
   })
 );
@@ -173,15 +175,19 @@ describe("MCPServerPersonalAuthenticationRequired", () => {
     refreshBlockedActionsMock.mockResolvedValue(undefined);
   });
 
-  it("refreshes blocked actions after resolving a successful connection", async () => {
+  it("removes the completed action before refreshing blocked actions", async () => {
     const user = userEvent.setup();
     renderCard();
 
     await user.click(screen.getByRole("button", { name: /Connect/i }));
 
     expect(outcomesPassedToResolve()).toContain("completed");
+    expect(removeCompletedActionMock).toHaveBeenCalledWith("action_1");
     expect(refreshBlockedActionsMock).toHaveBeenCalledTimes(1);
     expect(resolveAuthenticationMock.mock.invocationCallOrder[0]).toBeLessThan(
+      removeCompletedActionMock.mock.invocationCallOrder[0]
+    );
+    expect(removeCompletedActionMock.mock.invocationCallOrder[0]).toBeLessThan(
       refreshBlockedActionsMock.mock.invocationCallOrder[0]
     );
   });
