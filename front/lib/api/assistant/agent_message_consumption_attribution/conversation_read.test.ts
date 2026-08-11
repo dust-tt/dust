@@ -2,12 +2,16 @@ import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assi
 import { getConversationConsumption } from "@app/lib/api/assistant/agent_message_consumption_attribution/conversation_read";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { RunFactory } from "@app/tests/utils/RunFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { ModelId } from "@app/types/shared/model_id";
 import { describe, expect, it } from "vitest";
 
@@ -16,7 +20,11 @@ const PREVIOUS_ATTRIBUTION_VERSION =
   AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION - 1;
 
 async function setupMessage() {
-  const { authenticator: auth, workspace } = await createResourceTest({});
+  const {
+    authenticator: auth,
+    globalSpace,
+    workspace,
+  } = await createResourceTest({});
   const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
     auth,
     { name: `Consumption ${generateRandomModelSId()}` }
@@ -55,6 +63,7 @@ async function setupMessage() {
 
   return {
     auth,
+    globalSpace,
     workspace,
     conversation,
     run,
@@ -88,15 +97,49 @@ function modelRecords(runUsageModelId: ModelId) {
 }
 
 describe("getConversationConsumption", () => {
-  it("aggregates the exact bill and active attribution by tool, model, and agent", async () => {
+  it("aggregates the exact bill and active attribution by tool, skill, model, and agent", async () => {
     const {
       auth,
+      globalSpace,
       workspace,
       conversation,
       run,
       runUsageModelId,
       agentMessage,
+      agentConfiguration,
     } = await setupMessage();
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      description: "Conversation consumption skill server",
+      name: "Conversation consumption skill server",
+      tools: [
+        {
+          name: "test_tool",
+          description: "Test tool",
+          inputSchema: undefined,
+        },
+      ],
+    });
+    const serverView = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      globalSpace
+    );
+    const skill = await SkillFactory.create(auth, {
+      name: "Research skill",
+      mcpServerViews: [serverView],
+    });
+    const enabledSkill = await skill.upsertToConversation(auth, {
+      conversationId: conversation.id,
+      enabled: true,
+    });
+    if (enabledSkill.isErr()) {
+      throw new Error("Skill could not be enabled for the test conversation");
+    }
+    await SkillResource.snapshotConversationSkillsForMessage(auth, {
+      agentConfigurationId: agentConfiguration.sId,
+      agentMessageId: agentMessage.agentMessageId,
+      conversationId: conversation.id,
+    });
     const { action } = await AgentMCPActionFactory.create(auth, {
       workspace,
       conversationModelId: conversation.id,
@@ -104,6 +147,7 @@ describe("getConversationConsumption", () => {
       status: "succeeded",
       dustRunId: run.dustRunId,
       step: 1,
+      toolServerId: server.sId,
     });
     await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
       conversation,
@@ -148,6 +192,13 @@ describe("getConversationConsumption", () => {
             attributedCredits: BILLED_CREDITS,
             modelId: "gpt-5-mini",
             providerId: "openai",
+          },
+        ],
+        skills: [
+          {
+            skillId: skill.sId,
+            name: "Research skill",
+            attributedCredits: 5,
           },
         ],
         agents: [

@@ -62,7 +62,7 @@ export async function getAgentMessageConsumption(
     return unavailableResponse;
   }
 
-  const { models: _models, ...messageDetails } = details;
+  const { models: _models, skills: _skills, ...messageDetails } = details;
 
   return {
     billedCredits: facts.billedCredits,

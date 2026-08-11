@@ -7,6 +7,7 @@ import type {
   RunResource,
   RunUsageWithRunKeyType,
 } from "@app/lib/resources/run_resource";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { AgentMCPActionType } from "@app/types/actions";
 import type {
   AgentMessageConsumptionDetails,
@@ -17,9 +18,16 @@ import type {
   ReconciledCreditAmounts,
 } from "./allocation";
 import { buildLatestMessageConsumptionAllocation } from "./allocation";
+import { skillIdsAttributedToAction } from "./skill_attribution";
+
+export type MessageConsumptionSkillDetails = {
+  skillId: string;
+  attributedCredits: number;
+};
 
 export type MessageConsumptionDetails = AgentMessageConsumptionDetails & {
   models: AgentMessageConsumptionModelDetails[];
+  skills: MessageConsumptionSkillDetails[];
 };
 
 function buildConsumptionTotals({
@@ -167,12 +175,66 @@ function buildModelDetails({
   );
 }
 
+function buildSkillDetails({
+  actions,
+  enabledSkillIdsByActionId,
+  items,
+  reconciledCreditAmounts,
+  skills,
+}: {
+  actions: AgentMCPActionResource[];
+  enabledSkillIdsByActionId: ReadonlyMap<string, string[]>;
+  items: AgentMessageConsumptionItemResource[];
+  reconciledCreditAmounts: ReconciledCreditAmounts;
+  skills: SkillResource[];
+}): MessageConsumptionSkillDetails[] {
+  const actionByModelId = new Map(actions.map((action) => [action.id, action]));
+  const skillCredits = new Map<string, number>();
+
+  for (const item of items) {
+    if (item.itemType !== "tool" || item.agentMCPActionId === null) {
+      continue;
+    }
+
+    const action = actionByModelId.get(item.agentMCPActionId);
+    if (!action) {
+      continue;
+    }
+
+    const attributedCredits = microCreditsToCredits(
+      reconciledCreditAmounts.byItem.get(item) ?? 0
+    );
+    for (const skillId of skillIdsAttributedToAction(
+      skills,
+      action,
+      enabledSkillIdsByActionId.get(action.sId) ?? []
+    )) {
+      skillCredits.set(
+        skillId,
+        (skillCredits.get(skillId) ?? 0) + attributedCredits
+      );
+    }
+  }
+
+  return [...skillCredits.entries()]
+    .map(([skillId, attributedCredits]) => ({
+      skillId,
+      attributedCredits,
+    }))
+    .filter((skill) => skill.attributedCredits > 0)
+    .sort((left, right) => right.attributedCredits - left.attributedCredits);
+}
+
 function buildMessageConsumptionDetails({
   actions,
   allocation,
+  enabledSkillIdsByActionId,
+  skills,
 }: {
   actions: AgentMCPActionResource[];
   allocation: MessageConsumptionAllocation;
+  enabledSkillIdsByActionId: ReadonlyMap<string, string[]>;
+  skills: SkillResource[];
 }): MessageConsumptionDetails | null {
   const { attributionVersion, items, messageUsages, reconciledCreditAmounts } =
     allocation;
@@ -193,6 +255,13 @@ function buildMessageConsumptionDetails({
       reconciledCreditAmounts,
     }),
     tools,
+    skills: buildSkillDetails({
+      actions,
+      enabledSkillIdsByActionId,
+      items,
+      reconciledCreditAmounts,
+      skills,
+    }),
     models: buildModelDetails({
       items,
       usages: messageUsages,
@@ -208,6 +277,8 @@ export function buildLatestAvailableMessageConsumptionDetails({
   dustRunIds,
   items,
   runs,
+  enabledSkillIdsByActionId = new Map(),
+  skills = [],
   usages,
 }: {
   actions: AgentMCPActionResource[];
@@ -215,6 +286,8 @@ export function buildLatestAvailableMessageConsumptionDetails({
   dustRunIds: string[];
   items: AgentMessageConsumptionItemResource[];
   runs: RunResource[];
+  enabledSkillIdsByActionId?: ReadonlyMap<string, string[]>;
+  skills?: SkillResource[];
   usages: RunUsageWithRunKeyType[];
 }): MessageConsumptionDetails | null {
   const allocation = buildLatestMessageConsumptionAllocation({
@@ -229,5 +302,10 @@ export function buildLatestAvailableMessageConsumptionDetails({
     return null;
   }
 
-  return buildMessageConsumptionDetails({ actions, allocation });
+  return buildMessageConsumptionDetails({
+    actions,
+    allocation,
+    enabledSkillIdsByActionId,
+    skills,
+  });
 }

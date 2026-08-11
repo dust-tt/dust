@@ -185,6 +185,24 @@
  *         attributedCredits:
  *           type: number
  *           description: Model attribution after reconciling exclusively through its input rows.
+ *     PrivateConversationConsumptionSkillDetails:
+ *       type: object
+ *       required:
+ *         - skillId
+ *         - name
+ *         - icon
+ *         - attributedCredits
+ *       properties:
+ *         skillId:
+ *           type: string
+ *         name:
+ *           type: string
+ *         icon:
+ *           type: string
+ *           nullable: true
+ *         attributedCredits:
+ *           type: number
+ *           description: Full credits of tool calls attributed to this skill. A call can be attributed to multiple skills, so skill credits can overlap.
  *     PrivateConversationConsumptionAgentDetails:
  *       type: object
  *       required:
@@ -232,6 +250,11 @@
  *           type: array
  *           items:
  *             $ref: '#/components/schemas/PrivateConversationConsumptionToolDetails'
+ *         skills:
+ *           type: array
+ *           description: Skills responsible for tool calls in the conversation. Optional for compatibility with older responses.
+ *           items:
+ *             $ref: '#/components/schemas/PrivateConversationConsumptionSkillDetails'
  *         models:
  *           type: array
  *           items:

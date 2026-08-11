@@ -16,6 +16,17 @@ export type ConversationConsumptionModelDetails =
   AgentMessageConsumptionModelDetails;
 
 /**
+ * @swaggerschema PrivateConversationConsumptionSkillDetails (swagger_private_schemas.ts)
+ */
+export type ConversationConsumptionSkillDetails = {
+  skillId: string;
+  name: string;
+  icon: string | null;
+  /** Full credits of the tool calls attributed to this skill. Skills can overlap. */
+  attributedCredits: number;
+};
+
+/**
  * @swaggerschema PrivateConversationConsumptionAgentDetails (swagger_private_schemas.ts)
  */
 export type ConversationConsumptionAgentDetails = {
@@ -34,6 +45,8 @@ export type ConversationConsumptionAgentDetails = {
 export type ConversationConsumptionDetails = {
   agentWorkCredits: number;
   tools: ConversationConsumptionToolDetails[];
+  /** Optional for compatibility with responses produced before skill attribution was exposed. */
+  skills?: ConversationConsumptionSkillDetails[];
   models: ConversationConsumptionModelDetails[];
   agents: ConversationConsumptionAgentDetails[];
 };

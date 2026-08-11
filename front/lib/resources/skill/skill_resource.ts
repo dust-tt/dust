@@ -3863,11 +3863,29 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     agentMessageId: ModelId,
     { withToolMetadata = false }: { withToolMetadata?: boolean } = {}
   ): Promise<SkillResource[]> {
+    const skillsByAgentMessageId = await this.listByAgentMessageIds(
+      auth,
+      [agentMessageId],
+      { withToolMetadata }
+    );
+
+    return skillsByAgentMessageId.get(agentMessageId) ?? [];
+  }
+
+  static async listByAgentMessageIds(
+    auth: Authenticator,
+    agentMessageIds: ModelId[],
+    { withToolMetadata = false }: { withToolMetadata?: boolean } = {}
+  ): Promise<Map<ModelId, SkillResource[]>> {
+    if (agentMessageIds.length === 0) {
+      return new Map();
+    }
+
     const workspace = auth.getNonNullableWorkspace();
 
     const where: WhereOptions<AgentMessageSkillModel> = {
       workspaceId: workspace.id,
-      agentMessageId,
+      agentMessageId: { [Op.in]: agentMessageIds },
     };
 
     const agentMessageSkills = await AgentMessageSkillModel.findAll({
@@ -3875,10 +3893,50 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     // Include all statuses for historical accuracy.
-    return this.fetchBySkillReferences(auth, agentMessageSkills, {
+    const skills = await this.fetchBySkillReferences(auth, agentMessageSkills, {
       status: ["active", "archived", "suggested"],
       withToolMetadata,
     });
+    const skillsById = new Map(skills.map((skill) => [skill.sId, skill]));
+    const skillsByAgentMessageId = new Map<ModelId, SkillResource[]>();
+    const seenSkillIdsByAgentMessageId = new Map<ModelId, Set<string>>();
+
+    for (const agentMessageSkill of agentMessageSkills) {
+      const skillId =
+        agentMessageSkill.globalSkillId ??
+        (agentMessageSkill.customSkillId !== null
+          ? this.modelIdToSId({
+              id: agentMessageSkill.customSkillId,
+              workspaceId: workspace.id,
+            })
+          : null);
+      const skill = skillId ? skillsById.get(skillId) : undefined;
+      if (!skill) {
+        continue;
+      }
+
+      const seenSkillIds =
+        seenSkillIdsByAgentMessageId.get(agentMessageSkill.agentMessageId) ??
+        new Set();
+      if (seenSkillIds.has(skill.sId)) {
+        continue;
+      }
+
+      const messageSkills =
+        skillsByAgentMessageId.get(agentMessageSkill.agentMessageId) ?? [];
+      messageSkills.push(skill);
+      seenSkillIds.add(skill.sId);
+      skillsByAgentMessageId.set(
+        agentMessageSkill.agentMessageId,
+        messageSkills
+      );
+      seenSkillIdsByAgentMessageId.set(
+        agentMessageSkill.agentMessageId,
+        seenSkillIds
+      );
+    }
+
+    return skillsByAgentMessageId;
   }
 
   static async listByConversationModelId(

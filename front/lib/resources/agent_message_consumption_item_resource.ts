@@ -19,6 +19,7 @@ import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op, QueryTypes } from "sequelize";
 
 export type ConversationConsumptionMessageFacts = {
+  agentMessageModelId: ModelId;
   agentConfigurationId: string;
   billedCredits: number | null;
   dustRunIds: string[];
@@ -664,13 +665,11 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
 
     return {
       messages: messageFacts.map(
-        ({
-          agentMessageModelId,
-          ...message
-        }): ConversationConsumptionMessageFacts => ({
+        (message): ConversationConsumptionMessageFacts => ({
           ...message,
-          items: itemsByMessageModelId.get(agentMessageModelId) ?? [],
-          actions: actionsByMessageModelId.get(agentMessageModelId) ?? [],
+          items: itemsByMessageModelId.get(message.agentMessageModelId) ?? [],
+          actions:
+            actionsByMessageModelId.get(message.agentMessageModelId) ?? [],
         })
       ),
     };
