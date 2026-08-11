@@ -1,6 +1,6 @@
 import {
-  listAllResolvedUpgradeRequests,
-  RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE,
+  listAllUpgradeRequests,
+  UPGRADE_REQUESTS_PAGE_SIZE,
 } from "@app/lib/api/credits/upgrade_requests";
 import { Authenticator } from "@app/lib/auth";
 import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
@@ -53,26 +53,25 @@ async function createResolvedRequest(
   return request;
 }
 
-describe("listAllResolvedUpgradeRequests", () => {
+describe("listAllUpgradeRequests", () => {
   it("does not duplicate or drop rows when a request is resolved between page fetches", async () => {
     const { adminAuth, memberUser } = await setupWorkspaceWithAdminAndMember();
 
     // More than one page's worth of pre-existing resolved requests, so the
     // export has to fetch at least two pages.
-    const preExistingCount = RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE + 50;
+    const preExistingCount = UPGRADE_REQUESTS_PAGE_SIZE + 50;
     const preExistingIds: string[] = [];
     for (let i = 0; i < preExistingCount; i++) {
       const request = await createResolvedRequest(adminAuth, memberUser);
       preExistingIds.push(request.sId);
     }
 
-    const original =
-      MembershipUpgradeRequestResource.listResolvedByWorkspaceAfter.bind(
-        MembershipUpgradeRequestResource
-      );
+    const original = MembershipUpgradeRequestResource.listByWorkspaceAfter.bind(
+      MembershipUpgradeRequestResource
+    );
     const spy = vi.spyOn(
       MembershipUpgradeRequestResource,
-      "listResolvedByWorkspaceAfter"
+      "listByWorkspaceAfter"
     );
     let concurrentRequestId: string | null = null;
     spy.mockImplementation(async (auth, opts) => {
@@ -86,7 +85,9 @@ describe("listAllResolvedUpgradeRequests", () => {
       return page;
     });
 
-    const exported = await listAllResolvedUpgradeRequests(adminAuth);
+    const exported = await listAllUpgradeRequests(adminAuth, {
+      status: "resolved",
+    });
     const exportedIds = exported.map((r) => r.sId);
 
     expect(spy.mock.calls.length).toBeGreaterThan(1);

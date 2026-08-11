@@ -114,7 +114,7 @@ MembershipUpgradeRequestModel.init(
         name: "membership_upgrade_requests_resolved_by_user_idx",
       },
       // Admin history view: resolved requests for a workspace, newest first
-      // (see `listResolvedByWorkspace`).
+      // (see `listByWorkspace`).
       {
         fields: ["workspaceId", "resolvedAt"],
         name: "membership_upgrade_requests_workspace_resolved_at_idx",

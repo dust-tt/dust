@@ -15,7 +15,11 @@ import {
   Spinner,
   X,
 } from "@dust-tt/sparkle";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import type {
+  CellContext,
+  ColumnDef,
+  PaginationState,
+} from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
 type RowData = {
@@ -144,6 +148,9 @@ interface UpgradeRequestsTableProps {
   requests: MembershipUpgradeRequestType[];
   isLoading: boolean;
   isError: boolean;
+  totalRowCount: number;
+  pagination: PaginationState;
+  setPagination: (pagination: PaginationState) => void;
   seatPlans: SeatPlanResponseBody;
   isEnterprise: boolean;
   pendingRequestIds: ReadonlySet<string>;
@@ -156,6 +163,9 @@ export function UpgradeRequestsTable({
   requests,
   isLoading,
   isError,
+  totalRowCount,
+  pagination,
+  setPagination,
   seatPlans,
   isEnterprise,
   pendingRequestIds,
@@ -234,7 +244,13 @@ export function UpgradeRequestsTable({
 
   return (
     <>
-      <DataTable<RowData> data={rows} columns={columns} />
+      <DataTable<RowData>
+        data={rows}
+        columns={columns}
+        pagination={pagination}
+        setPagination={setPagination}
+        totalRowCount={totalRowCount}
+      />
       <ManageUpgradeRequestModal
         request={manageRequest}
         onClose={() => setManageRequest(null)}

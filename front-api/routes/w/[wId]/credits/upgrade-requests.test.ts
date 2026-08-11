@@ -250,9 +250,10 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
         upgradeRequestsUrl(workspace.sId)
       );
       expect(listResponse.status).toBe(200);
-      const { requests } = await listResponse.json();
+      const { requests, total } = await listResponse.json();
       expect(requests).toHaveLength(1);
       expect(requests[0].requester.sId).toBe(member.sId);
+      expect(total).toBe(1);
 
       const requestId = requests[0].sId;
       const patchResponse = await honoApp.request(
@@ -270,7 +271,92 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       const afterResponse = await honoApp.request(
         upgradeRequestsUrl(workspace.sId)
       );
-      expect((await afterResponse.json()).requests).toHaveLength(0);
+      const afterBody = await afterResponse.json();
+      expect(afterBody.requests).toHaveLength(0);
+      expect(afterBody.total).toBe(0);
+    });
+
+    it("paginates pending requests 100 per page", async () => {
+      const workspace = await creditPricedWorkspace();
+
+      const totalPendingRequests = 101;
+      for (let i = 0; i < totalPendingRequests; i++) {
+        const { user, auth: memberAuth } = await createPrivateApiMockRequest({
+          method: "POST",
+          role: "user",
+          workspace,
+        });
+        const created = await MembershipUpgradeRequestResource.createPending(
+          memberAuth,
+          { user, reason: null }
+        );
+        if (created.isErr()) {
+          throw created.error;
+        }
+      }
+
+      // Re-authenticate as an admin of the same workspace for the list calls.
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+        workspace,
+      });
+
+      const firstPageResponse = await honoApp.request(
+        upgradeRequestsUrl(workspace.sId)
+      );
+      expect(firstPageResponse.status).toBe(200);
+      const firstPage = await firstPageResponse.json();
+      expect(firstPage.requests).toHaveLength(100);
+      expect(firstPage.total).toBe(totalPendingRequests);
+
+      const secondPageResponse = await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}?offset=100`
+      );
+      expect(secondPageResponse.status).toBe(200);
+      const secondPage = await secondPageResponse.json();
+      expect(secondPage.requests).toHaveLength(1);
+      expect(secondPage.total).toBe(totalPendingRequests);
+
+      // The two pages are disjoint and together cover every pending request.
+      const firstPageIds = new Set(
+        firstPage.requests.map((r: { sId: string }) => r.sId)
+      );
+      const secondPageIds = new Set(
+        secondPage.requests.map((r: { sId: string }) => r.sId)
+      );
+      expect(firstPageIds.size).toBe(100);
+      for (const id of secondPageIds) {
+        expect(firstPageIds.has(id)).toBe(false);
+      }
+    });
+
+    it("filters pending requests by requester name/email search", async () => {
+      const workspace = await creditPricedWorkspace();
+      const { user: matchingMember } = await createMemberRequest(workspace);
+      const { user: otherMember } = await createMemberRequest(workspace);
+
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+        workspace,
+      });
+
+      const searchResponse = await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}?search=${encodeURIComponent(matchingMember.email ?? "")}`
+      );
+      expect(searchResponse.status).toBe(200);
+      const { requests: searchResults, total: searchTotal } =
+        await searchResponse.json();
+      expect(searchTotal).toBe(1);
+      expect(searchResults).toHaveLength(1);
+      expect(searchResults[0].requester.sId).toBe(matchingMember.sId);
+      expect(
+        searchResults.some(
+          (r: { requester: { sId: string } }) =>
+            r.requester.sId === otherMember.sId
+        )
+      ).toBe(false);
     });
 
     it("PATCH returns 404 for an unknown request id", async () => {

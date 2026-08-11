@@ -190,27 +190,17 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     return request ?? null;
   }
 
-  static async listPendingByWorkspace(
-    auth: Authenticator
-  ): Promise<MembershipUpgradeRequestResource[]> {
-    if (!auth.isManager()) {
-      return [];
-    }
-    return this.baseFetch(auth, {
-      where: { status: "pending" },
-      order: [["createdAt", "DESC"]],
-    });
-  }
-
-  // Resolved requests, most recent first.
-  static async listResolvedByWorkspace(
+  // Admin-only, offset-paginated: the pending queue or the resolved history
+  static async listByWorkspace(
     auth: Authenticator,
     {
+      status,
       limit,
       offset,
       decision,
       userModelIds,
     }: {
+      status: "pending" | "resolved";
       limit: number;
       offset: number;
       decision?: Exclude<MembershipUpgradeRequestStatus, "pending">;
@@ -221,15 +211,16 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
       return { requests: [], total: 0 };
     }
     const where = {
-      status: decision ?? { [Op.ne]: "pending" },
+      status:
+        status === "pending" ? "pending" : (decision ?? { [Op.ne]: "pending" }),
       ...(userModelIds ? { userId: { [Op.in]: userModelIds } } : {}),
     };
     const requests = await this.baseFetch(auth, {
       where,
-      // `id` breaks ties between requests resolved at the same timestamp, so
-      // offset pagination stays stable across pages.
+      // `id` breaks ties between requests created/resolved at the same
+      // timestamp, so offset pagination stays stable across pages.
       order: [
-        ["resolvedAt", "DESC"],
+        [status === "pending" ? "createdAt" : "resolvedAt", "DESC"],
         ["id", "DESC"],
       ],
       limit,
@@ -242,25 +233,21 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     return { requests, total };
   }
 
-  // Resolved requests, most recent first, keyset-paginated on
-  // (resolvedAt, id) rather than offset. Offset pagination would shift
-  // under a concurrent resolution (a newly resolved request is inserted at
-  // the head, pushing every offset down), causing the caller to duplicate
-  // or skip rows across pages; keyset pagination is immune to that because
-  // each page is bounded by the last row actually returned. `decision` and
-  // `userModelIds` mirror the same filters as `listResolvedByWorkspace`, so
-  // the full-history export respects the History tab's decision filter and
-  // search bar.
-  static async listResolvedByWorkspaceAfter(
+  // Same view as `listByWorkspace`, keyset-paginated on (sort column, id)
+  // instead of offset so a concurrent create/resolve can't shift page
+  // boundaries and duplicate or drop a row.
+  static async listByWorkspaceAfter(
     auth: Authenticator,
     {
+      status,
       limit,
       after,
       decision,
       userModelIds,
     }: {
+      status: "pending" | "resolved";
       limit: number;
-      after: { resolvedAt: Date; id: ModelId } | null;
+      after: { sortKey: Date; id: ModelId } | null;
       decision?: Exclude<MembershipUpgradeRequestStatus, "pending">;
       userModelIds?: ModelId[];
     }
@@ -268,16 +255,18 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     if (!auth.isManager()) {
       return [];
     }
+    const sortField = status === "pending" ? "createdAt" : "resolvedAt";
     const baseFilter = {
-      status: decision ?? { [Op.ne]: "pending" },
+      status:
+        status === "pending" ? "pending" : (decision ?? { [Op.ne]: "pending" }),
       ...(userModelIds ? { userId: { [Op.in]: userModelIds } } : {}),
     };
     const where = after
       ? {
           ...baseFilter,
           [Op.or]: [
-            { resolvedAt: { [Op.lt]: after.resolvedAt } },
-            { resolvedAt: after.resolvedAt, id: { [Op.lt]: after.id } },
+            { [sortField]: { [Op.lt]: after.sortKey } },
+            { [sortField]: after.sortKey, id: { [Op.lt]: after.id } },
           ],
         }
       : baseFilter;
@@ -285,7 +274,7 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     return this.baseFetch(auth, {
       where,
       order: [
-        ["resolvedAt", "DESC"],
+        [sortField, "DESC"],
         ["id", "DESC"],
       ],
       limit,

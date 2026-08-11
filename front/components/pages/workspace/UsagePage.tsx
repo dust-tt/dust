@@ -76,7 +76,7 @@ import {
 } from "@app/lib/swr/model_tiers";
 import type { UpgradeRequestDecisionFilter } from "@app/lib/swr/upgrade_requests";
 import {
-  UPGRADE_REQUESTS_HISTORY_PAGE_SIZE,
+  UPGRADE_REQUESTS_PAGE_SIZE,
   upgradeRequestsHistoryCsvUrl,
   useResolveUpgradeRequest,
   useUpgradeRequests,
@@ -227,10 +227,12 @@ export function UsagePage() {
     []
   );
 
-  // Name/email search is also applied server-side before pagination
+  // Name/email search feeds the Members table and both the Requests and
+  // History tabs, so all three paginations reset together.
   const handleSetSearchTerm = useCallback((next: string) => {
     setSearchTerm(next);
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    setRequestsPagination((prev) => ({ ...prev, pageIndex: 0 }));
     setHistoryPagination((prev) => ({ ...prev, pageIndex: 0 }));
   }, []);
 
@@ -283,13 +285,25 @@ export function UsagePage() {
   const [membersTab, setMembersTab] = useState<
     "members" | "requests" | "history"
   >("members");
-  const { upgradeRequests, isUpgradeRequestsLoading, isUpgradeRequestsError } =
-    useUpgradeRequests({
-      workspaceId: owner.sId,
-    });
+  const [requestsPagination, setRequestsPagination] = useState<PaginationState>(
+    {
+      pageIndex: 0,
+      pageSize: UPGRADE_REQUESTS_PAGE_SIZE,
+    }
+  );
+  const {
+    upgradeRequests,
+    totalUpgradeRequestsCount,
+    isUpgradeRequestsLoading,
+    isUpgradeRequestsError,
+  } = useUpgradeRequests({
+    workspaceId: owner.sId,
+    pageIndex: requestsPagination.pageIndex,
+    searchTerm,
+  });
   const [historyPagination, setHistoryPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: UPGRADE_REQUESTS_HISTORY_PAGE_SIZE,
+    pageSize: UPGRADE_REQUESTS_PAGE_SIZE,
   });
   const {
     upgradeRequestsHistory,
@@ -313,22 +327,6 @@ export function UsagePage() {
       isUpgradeRequestsHistoryLoading || upgradeRequestsHistory.length === 0,
   });
 
-  const filteredUpgradeRequests = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-    return upgradeRequests.filter((request) => {
-      if (request.status !== "pending") {
-        return false;
-      }
-      if (!normalizedSearch) {
-        return true;
-      }
-      const { name, email } = request.requester;
-      return (
-        name.toLowerCase().includes(normalizedSearch) ||
-        (email?.toLowerCase().includes(normalizedSearch) ?? false)
-      );
-    });
-  }, [upgradeRequests, searchTerm]);
   const { doResolveUpgradeRequest } = useResolveUpgradeRequest({
     workspaceId: owner.sId,
   });
@@ -1225,8 +1223,8 @@ export function UsagePage() {
                       label="Requests"
                       isCounter
                       counterValue={
-                        filteredUpgradeRequests.length > 0
-                          ? String(filteredUpgradeRequests.length)
+                        totalUpgradeRequestsCount > 0
+                          ? String(totalUpgradeRequestsCount)
                           : undefined
                       }
                     />
@@ -1264,9 +1262,12 @@ export function UsagePage() {
                   )}
                   {membersTab === "requests" && (
                     <UpgradeRequestsTable
-                      requests={filteredUpgradeRequests}
+                      requests={upgradeRequests}
                       isLoading={isUpgradeRequestsLoading}
                       isError={isUpgradeRequestsError}
+                      totalRowCount={totalUpgradeRequestsCount}
+                      pagination={requestsPagination}
+                      setPagination={setRequestsPagination}
                       seatPlans={seatPlans}
                       isEnterprise={isEnterprise}
                       pendingRequestIds={resolvingRequestIds}

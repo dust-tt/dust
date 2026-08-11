@@ -234,17 +234,8 @@ export async function getUpgradeRequestAvailabilityForUser(
   };
 }
 
-// Admin-only: list pending upgrade requests for the workspace.
-export async function listPendingUpgradeRequests(
-  auth: Authenticator
-): Promise<MembershipUpgradeRequestType[]> {
-  const requests =
-    await MembershipUpgradeRequestResource.listPendingByWorkspace(auth);
-  return requests.map((r) => r.toJSON());
-}
-
-// Admin-only: resolved requests, for the history view, paginated.
-export const RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE = 100;
+// Admin-only: paginated upgrade requests for the workspace
+export const UPGRADE_REQUESTS_PAGE_SIZE = 100;
 
 // The requester isn't joined in SQL so a name/email search
 // resolves matching users via the user search index first, then restricts the
@@ -267,13 +258,15 @@ async function resolveSearchUserModelIds(
   return userModelIds.length === 0 ? null : userModelIds;
 }
 
-export async function listResolvedUpgradeRequests(
+export async function listUpgradeRequests(
   auth: Authenticator,
   {
+    status,
     offset,
     decision,
     search,
   }: {
+    status: "pending" | "resolved";
     offset: number;
     decision?: Exclude<MembershipUpgradeRequestStatus, "pending">;
     search?: string;
@@ -285,8 +278,9 @@ export async function listResolvedUpgradeRequests(
   }
 
   const { requests, total } =
-    await MembershipUpgradeRequestResource.listResolvedByWorkspace(auth, {
-      limit: RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE,
+    await MembershipUpgradeRequestResource.listByWorkspace(auth, {
+      status,
+      limit: UPGRADE_REQUESTS_PAGE_SIZE,
       offset,
       decision,
       userModelIds,
@@ -294,18 +288,20 @@ export async function listResolvedUpgradeRequests(
   return { requests: requests.map((r) => r.toJSON()), total };
 }
 
-// Admin-only: every resolved request, keyset-paginated fetching. Keyset
-// (not offset) pagination so a request resolved concurrently mid-export
-// can't shift page boundaries and cause a duplicated or omitted row.
-export async function listAllResolvedUpgradeRequests(
+// Admin-only: every upgrade request matching the current filters. Keyset
+// (not offset) pagination so a request created/resolved concurrently
+// mid-export can't shift page boundaries and duplicate or drop a row.
+export async function listAllUpgradeRequests(
   auth: Authenticator,
   {
+    status,
     decision,
     search,
   }: {
+    status: "pending" | "resolved";
     decision?: Exclude<MembershipUpgradeRequestStatus, "pending">;
     search?: string;
-  } = {}
+  }
 ): Promise<MembershipUpgradeRequestType[]> {
   const userModelIds = await resolveSearchUserModelIds(auth, search);
   if (userModelIds === null) {
@@ -313,24 +309,24 @@ export async function listAllResolvedUpgradeRequests(
   }
 
   const allRequests: MembershipUpgradeRequestType[] = [];
-  let after: { resolvedAt: Date; id: ModelId } | null = null;
+  let after: { sortKey: Date; id: ModelId } | null = null;
   while (true) {
     const requests =
-      await MembershipUpgradeRequestResource.listResolvedByWorkspaceAfter(
-        auth,
-        {
-          limit: RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE,
-          after,
-          decision,
-          userModelIds,
-        }
-      );
+      await MembershipUpgradeRequestResource.listByWorkspaceAfter(auth, {
+        status,
+        limit: UPGRADE_REQUESTS_PAGE_SIZE,
+        after,
+        decision,
+        userModelIds,
+      });
     allRequests.push(...requests.map((r) => r.toJSON()));
-    if (requests.length < RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE) {
+    if (requests.length < UPGRADE_REQUESTS_PAGE_SIZE) {
       break;
     }
     const last = requests[requests.length - 1];
-    after = { resolvedAt: last.resolvedAt ?? new Date(0), id: last.id };
+    const sortKey =
+      status === "pending" ? last.createdAt : (last.resolvedAt ?? new Date(0));
+    after = { sortKey, id: last.id };
   }
   return allRequests;
 }
