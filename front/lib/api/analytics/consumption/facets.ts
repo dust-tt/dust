@@ -34,6 +34,7 @@ export type ConsumptionFacet = {
   value: string;
   label: string;
   pictureUrl: string | null;
+  icon?: string | null;
   documentCount: number;
   disabled: boolean;
 };

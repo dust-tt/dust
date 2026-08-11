@@ -114,10 +114,12 @@ function toFacetOptions(
     tool: data.facets.tool.map<UsageFilterToolOption>((facet) => ({
       ...baseOption(facet),
       kind: "tool",
+      icon: facet.icon ?? null,
     })),
     skill: data.facets.skill.map<UsageFilterSkillOption>((facet) => ({
       ...baseOption(facet),
       kind: "skill",
+      icon: facet.icon ?? null,
     })),
     source: data.facets.source.map<UsageFilterSourceOption>((facet) => ({
       ...baseOption(facet),

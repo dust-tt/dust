@@ -20,6 +20,10 @@
  *         pictureUrl:
  *           type: string
  *           nullable: true
+ *         icon:
+ *           type: string
+ *           nullable: true
+ *           description: Design-system icon name for tool and skill facets when known.
  *         documentCount:
  *           type: integer
  *           minimum: 0

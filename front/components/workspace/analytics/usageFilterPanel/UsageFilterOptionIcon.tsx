@@ -1,7 +1,13 @@
 import { getModelMakerLogo } from "@app/components/providers/types";
+import {
+  getIcon,
+  isCustomResourceIconType,
+  isInternalAllowedIcon,
+} from "@app/components/resources/resources_icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { UsageFilterOption } from "@app/components/workspace/analytics/usageFilter";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
+import { getSkillIcon } from "@app/lib/skill";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Avatar, Icon } from "@dust-tt/sparkle";
 
@@ -34,9 +40,15 @@ export function UsageFilterOptionIcon({ option }: UsageFilterOptionIconProps) {
       return option.lab ? (
         <Icon visual={getModelMakerLogo(option.lab, isDark)} size="sm" />
       ) : null;
-    case "team":
     case "tool":
+      return option.icon &&
+        (isCustomResourceIconType(option.icon) ||
+          isInternalAllowedIcon(option.icon)) ? (
+        <Icon visual={getIcon(option.icon)} size="sm" />
+      ) : null;
     case "skill":
+      return <Icon visual={getSkillIcon(option.icon)} size="sm" />;
+    case "team":
       return null;
     default:
       assertNeverAndIgnore(option);

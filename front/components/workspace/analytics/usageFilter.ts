@@ -89,10 +89,12 @@ export interface UsageFilterModelOption extends UsageFilterOptionBase {
 
 export interface UsageFilterToolOption extends UsageFilterOptionBase {
   kind: "tool";
+  icon: string | null;
 }
 
 export interface UsageFilterSkillOption extends UsageFilterOptionBase {
   kind: "skill";
+  icon: string | null;
 }
 
 export type UsageFilterOption =

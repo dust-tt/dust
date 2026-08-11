@@ -25,6 +25,7 @@ export type ConsumptionFacetCatalogEntry = {
   value: string;
   label: string;
   pictureUrl: string | null;
+  icon?: string | null;
   scope?: AgentConfigurationScope;
   maker?: ModelMakerIdType;
   tier?: ModelsTierName;
@@ -45,6 +46,7 @@ function toolFacetCatalogEntries(
           value: server.name,
           label: getMcpServerDisplayName(server),
           pictureUrl: null,
+          icon: server.icon,
         },
       ];
     }
@@ -59,6 +61,7 @@ function toolFacetCatalogEntries(
       value: view.name ?? server.name,
       label: getMcpServerViewDisplayName(view),
       pictureUrl: null,
+      icon: view.server.icon,
     }));
   });
 
@@ -129,6 +132,7 @@ export async function listConsumptionFacetCatalog(
       value: skill.sId,
       label: skill.name,
       pictureUrl: null,
+      icon: skill.icon,
     })),
     source: Object.entries(SOURCE_ORIGIN_LABELS).map(([value, label]) => ({
       value,
