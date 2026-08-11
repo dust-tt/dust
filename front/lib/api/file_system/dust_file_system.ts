@@ -947,18 +947,21 @@ export class DustFileSystem {
   }
 
   /**
-   * Move `src` to `dest` (copy then delete source).
+   * Backend-agnostic move implemented as copy then delete.
    *
-   * GCS has no atomic rename so this is copy-then-delete. When the source deletion fails
-   * after a successful copy, returns `Ok({ sourceDeletionFailed: true })` rather than
-   * `Err` because the destination is already the authoritative copy.
+   * When the source deletion fails after a successful copy, returns
+   * `Ok({ sourceDeletionFailed: true })` because the destination is already the
+   * authoritative copy. GCS callers that need atomic single-object rename must
+   * use the GCS Objects.move path instead of this fallback.
    */
   async move({
     src,
     dest,
+    overwrite = false,
   }: {
     src: string;
     dest: string;
+    overwrite?: boolean;
   }): Promise<Result<{ sourceDeletionFailed: boolean }, DustFileSystemError>> {
     const resolvedSrc = this.requireWriteMount(src);
     if (resolvedSrc.isErr()) {
@@ -973,7 +976,7 @@ export class DustFileSystem {
     if (destExists.isErr()) {
       return destExists;
     }
-    if (destExists.value) {
+    if (destExists.value && !overwrite) {
       return new Err(
         new DustFileSystemError(
           "already_exists",

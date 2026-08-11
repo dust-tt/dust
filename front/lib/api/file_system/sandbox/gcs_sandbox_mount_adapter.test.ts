@@ -2,7 +2,9 @@ import { spawnSync } from "node:child_process";
 import { GCSFileSystemBackend } from "@app/lib/api/file_system/backends/gcs_file_system_backend";
 import type { GCSMountTarget } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import {
+  buildFileSystemOverlayMountCommand,
   buildMountCommand,
+  fileSystemOverlayDataMountPoint,
   GCSSandboxMountAdapter,
 } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
@@ -14,9 +16,22 @@ import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
-const { mockMintDownscopedGcsToken } = vi.hoisted(() => ({
-  mockMintDownscopedGcsToken: vi.fn(),
-}));
+const { mockGenerateSandboxFileSystemToken, mockMintDownscopedGcsToken } =
+  vi.hoisted(() => ({
+    mockGenerateSandboxFileSystemToken: vi.fn(),
+    mockMintDownscopedGcsToken: vi.fn(),
+  }));
+
+vi.mock(
+  import("@app/lib/api/sandbox/access_tokens"),
+  async (importOriginal) => {
+    const original = await importOriginal();
+    return {
+      ...original,
+      generateSandboxFileSystemToken: mockGenerateSandboxFileSystemToken,
+    };
+  }
+);
 
 vi.mock(import("@app/lib/api/sandbox/gcs/token"), async (importOriginal) => {
   const original = await importOriginal();
@@ -24,6 +39,10 @@ vi.mock(import("@app/lib/api/sandbox/gcs/token"), async (importOriginal) => {
     ...original,
     mintDownscopedGcsToken: mockMintDownscopedGcsToken,
   };
+});
+
+beforeEach(() => {
+  mockGenerateSandboxFileSystemToken.mockResolvedValue("sbt-fs-token");
 });
 
 function workloadTarget(
@@ -35,6 +54,7 @@ function workloadTarget(
     legacySandboxMountPoint: "/files/pod",
     readOnly: false,
     mountProfile: "workload",
+    mutationScope: { kind: "pod", id: "spc1" },
     ...overrides,
   };
 }
@@ -58,6 +78,10 @@ async function createTestSandbox() {
 
 function createTestImage(): SandboxImage {
   return SandboxImage.fromDocker("test-image").withCapability("gcsfuse");
+}
+
+function createOverlayTestImage(): SandboxImage {
+  return createTestImage().withCapability("dust_fs_overlay");
 }
 
 function getRootCommandCall(
@@ -103,7 +127,9 @@ describe("buildMountCommand", () => {
     expect(command).toContain("-o allow_other");
     expect(command).toContain("--file-mode=666");
     expect(command).toContain("--dir-mode=777");
-    expect(command).toContain("--kernel-list-cache-ttl-secs=60");
+    expect(command).toContain("--kernel-list-cache-ttl-secs=0");
+    expect(command).toContain("--metadata-cache-ttl-secs=0");
+    expect(command).toContain("--metadata-cache-negative-ttl-secs=0");
     expect(command).toContain("--only-dir w/ws1/pods/spc1/files");
     expect(command).toContain("--enable-hns=false");
     expect(command).toContain("bucket-x /files/pod-spc1");
@@ -120,6 +146,7 @@ describe("buildMountCommand", () => {
           legacySandboxMountPoint: null,
           readOnly: true,
           mountProfile: "pod_sandbox_functions",
+          mutationScope: null,
         }),
       })
     );
@@ -139,6 +166,7 @@ describe("buildMountCommand", () => {
           legacySandboxMountPoint: null,
           readOnly: false,
           mountProfile: "pod_state_replica",
+          mutationScope: null,
         },
       })
     );
@@ -156,6 +184,103 @@ describe("buildMountCommand", () => {
     expect(command).toContain("--only-dir w/ws1/pods/spc1/state");
     expect(command).toContain("--enable-hns=false");
     expect(command).toContain("bucket-x /pod-state/replica");
+  });
+});
+
+describe("buildFileSystemOverlayMountCommand", () => {
+  test("routes conversation and pod backings through one /files FUSE mount", () => {
+    const conversationTarget = workloadTarget({
+      gcsPrefix: "w/ws1/conversations/conv1/files",
+      sandboxMountPoint: "/files/conversation-conv1",
+      legacySandboxMountPoint: "/files/conversation",
+      mutationScope: { kind: "conversation", id: "conv1" },
+    });
+    const command = renderRootCommand(
+      buildFileSystemOverlayMountCommand({
+        trackedTargets: [
+          { target: conversationTarget, targetIndex: 0 },
+          { target: workloadTarget(), targetIndex: 1 },
+        ],
+        workspaceId: "ws1",
+      })
+    );
+
+    expect(fileSystemOverlayDataMountPoint(1)).toBe(
+      "/run/dust-fs/data/mount-1"
+    );
+    expect(command).toContain(
+      "/usr/sbin/runuser -u dust-fs -- /opt/bin/dsbx filesystem"
+    );
+    expect(command).toContain("/usr/bin/nohup");
+    expect(command).toContain("/run/dust-fs/overlay.log");
+    expect(command).toContain("/usr/bin/stat -f -c %t /files");
+    expect(command).toContain("--mountpoint /files");
+    expect(command.match(/--mount-spec/g)).toHaveLength(2);
+    expect(command).toContain('"name":"conversation-conv1"');
+    expect(command).toContain('"source":"/run/dust-fs/data/mount-0"');
+    expect(command).toContain('"kind":"conversation"');
+    expect(command).toContain('"legacyName":"conversation"');
+    expect(command).toContain('"name":"pod-spc1"');
+    expect(command).toContain('"source":"/run/dust-fs/data/mount-1"');
+    expect(command).toContain('"kind":"pod"');
+    expect(command).toContain('"legacyName":"pod"');
+    expect(command).toContain("--api-url");
+    expect(command).toContain("/api/v1/w/ws1/sandbox/filesystem/mutations");
+    expect(command).toContain("--token-file /run/dust-fs/token");
+  });
+
+  test("limits mutation tracking to the conversation and pod file mounts", () => {
+    expect(
+      () =>
+        new GCSSandboxMountAdapter("bucket-x", [
+          workloadTarget({ gcsPrefix: "conversation-1" }),
+          workloadTarget({ gcsPrefix: "pod-1" }),
+          workloadTarget({ gcsPrefix: "pod-2" }),
+        ])
+    ).toThrow("mutation-tracked targets (3), limit is 2");
+  });
+
+  test("starts one routed overlay after both hidden data mounts", async () => {
+    vi.clearAllMocks();
+    mockGenerateSandboxFileSystemToken.mockResolvedValue("sbt-fs-token");
+    mockMintDownscopedGcsToken.mockResolvedValue(
+      new Ok({ accessToken: "token", expiresInSeconds: 3600 })
+    );
+    const conversationTarget = workloadTarget({
+      gcsPrefix: "w/ws1/conversations/conv1/files",
+      sandboxMountPoint: "/files/conversation-conv1",
+      legacySandboxMountPoint: "/files/conversation",
+      mutationScope: { kind: "conversation", id: "conv1" },
+    });
+    const adapter = new GCSSandboxMountAdapter("bucket-x", [
+      conversationTarget,
+      workloadTarget(),
+    ]);
+    const { auth, sandbox, execRoot } = await createTestSandbox();
+
+    const result = await adapter.setup(auth, sandbox, createOverlayTestImage());
+
+    expect(result.isOk()).toBe(true);
+    const commands = execRoot.mock.calls.map((_, callIndex) =>
+      getRootCommandCall(execRoot, callIndex)
+    );
+    const overlayIndexes = commands.flatMap((command, index) =>
+      command.includes("/opt/bin/dsbx filesystem") ? [index] : []
+    );
+    const hiddenMountIndexes = commands.flatMap((command, index) =>
+      command.includes("/usr/bin/gcsfuse") &&
+      command.includes("/run/dust-fs/data/mount-")
+        ? [index]
+        : []
+    );
+
+    expect(overlayIndexes).toHaveLength(1);
+    expect(hiddenMountIndexes).toHaveLength(2);
+    expect(overlayIndexes[0]).toBeGreaterThan(Math.max(...hiddenMountIndexes));
+    expect(commands[overlayIndexes[0]].match(/--mount-spec/g)).toHaveLength(2);
+    expect(
+      commands.some((command) => command.includes("/usr/bin/ln -sfn"))
+    ).toBe(false);
   });
 });
 
@@ -218,8 +343,59 @@ describe("pod sandbox mount wiring", () => {
         command.includes("/sandbox-functions/pods/spc1")
     );
 
-    expect(podFilesCommand).toContain("--kernel-list-cache-ttl-secs=60");
+    expect(podFilesCommand).toContain("--kernel-list-cache-ttl-secs=0");
     expect(podFunctionsCommand).toContain("--kernel-list-cache-ttl-secs=0");
+  });
+
+  test("only overlays the pod files mount, leaving sandbox-only mounts direct", async () => {
+    vi.clearAllMocks();
+    mockMintDownscopedGcsToken.mockResolvedValue(
+      new Ok({ accessToken: "token", expiresInSeconds: 3600 })
+    );
+    const adapter = createPodSandboxAdapter();
+    const { auth, sandbox, execRoot } = await createTestSandbox();
+
+    const result = await adapter.setup(auth, sandbox, createOverlayTestImage());
+
+    expect(result.isOk()).toBe(true);
+    const commands = execRoot.mock.calls.map((_, callIndex) =>
+      getRootCommandCall(execRoot, callIndex)
+    );
+    const overlayCommands = commands.filter((command) =>
+      command.includes("/opt/bin/dsbx filesystem")
+    );
+    expect(overlayCommands).toHaveLength(1);
+    expect(overlayCommands[0]).toContain("--mountpoint /files");
+    expect(overlayCommands[0]).toContain('"name":"pod-spc1"');
+    expect(commands).toContainEqual(
+      expect.stringContaining(
+        "/usr/bin/chown dust-fs:dust-fs /run/dust-fs/token"
+      )
+    );
+    expect(commands).toContainEqual(
+      expect.stringContaining(
+        "/usr/bin/install -d -o dust-fs -g agent -m 2770 /files"
+      )
+    );
+
+    const podFilesGcsFuse = commands.find(
+      (command) =>
+        command.includes("/usr/bin/gcsfuse") &&
+        command.includes("--only-dir w/ws1/pods/spc1/files")
+    );
+    const podFunctionsGcsFuse = commands.find(
+      (command) =>
+        command.includes("/usr/bin/gcsfuse") &&
+        command.includes("--only-dir w/ws1/pods/spc1/sandbox-functions")
+    );
+    const podStateGcsFuse = commands.find(
+      (command) =>
+        command.includes("/usr/bin/gcsfuse") &&
+        command.includes("--only-dir w/ws1/pods/spc1/state")
+    );
+    expect(podFilesGcsFuse).toContain("/run/dust-fs/data/mount-0");
+    expect(podFunctionsGcsFuse).toContain("/sandbox-functions/pods/spc1");
+    expect(podStateGcsFuse).toContain("/pod-state/replica");
   });
 });
 
@@ -228,6 +404,7 @@ describe("GCS credential lifecycle", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGenerateSandboxFileSystemToken.mockResolvedValue("sbt-fs-token");
     mockMintDownscopedGcsToken.mockResolvedValue(
       new Ok({ accessToken: "token", expiresInSeconds: 3600 })
     );
@@ -294,6 +471,35 @@ describe("GCS credential lifecycle", () => {
     const firewallCommand = getRootCommandCall(execRoot, 0);
     expect(firewallCommand).toBe("/usr/local/bin/dust-gcs-token-firewall.sh");
     expect(requestKill).not.toHaveBeenCalled();
+  });
+
+  test("fail-closes and recreates when a tracked overlay is no longer mounted", async () => {
+    const { auth, sandbox, execRoot, requestKill } = await createTestSandbox();
+    execRoot
+      .mockReset()
+      .mockResolvedValueOnce(successfulExec())
+      .mockResolvedValueOnce(successfulExec())
+      .mockResolvedValueOnce(successfulExec())
+      .mockResolvedValueOnce(
+        new Ok({ exitCode: 0, stdout: "ef53\n", stderr: "" })
+      );
+    const adapter = new GCSSandboxMountAdapter("bucket-x", [workloadTarget()]);
+
+    const result = await adapter.refreshCredential(
+      auth,
+      sandbox,
+      createOverlayTestImage()
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("expected overlay liveness to fail");
+    }
+    expect(result.error.message).toContain("is not a FUSE mount");
+    expect(getRootCommandCall(execRoot, 3)).toContain(
+      "/usr/sbin/runuser -u agent-proxied -- /usr/bin/stat -f -c %t /files"
+    );
+    expect(requestKill).toHaveBeenCalledTimes(1);
   });
 
   test("requests recreation when the image firewall helper is unavailable", async () => {

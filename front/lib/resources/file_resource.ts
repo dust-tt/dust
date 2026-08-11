@@ -435,6 +435,35 @@ export class FileResource extends BaseResource<FileModel> {
     return files.map((f) => new this(this.model, f.get()));
   }
 
+  /**
+   * Fetch FileResources whose mount path is exactly `mountFilePath` or is a
+   * descendant of it. The range form keeps wildcard characters in user file
+   * names literal and can use the mount-path btree index.
+   */
+  static async fetchByMountFilePathPrefix(
+    auth: Authenticator,
+    mountFilePath: string
+  ): Promise<FileResource[]> {
+    const owner = auth.getNonNullableWorkspace();
+    const descendantPrefix = `${mountFilePath}/`;
+    const files = await this.model.findAll({
+      where: {
+        workspaceId: owner.id,
+        [Op.or]: [
+          { mountFilePath },
+          {
+            mountFilePath: {
+              [Op.gte]: descendantPrefix,
+              [Op.lt]: `${mountFilePath}0`,
+            },
+          },
+        ],
+      },
+    });
+
+    return files.map((file) => new this(this.model, file.get()));
+  }
+
   static async deleteAllForWorkspace(auth: Authenticator) {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
@@ -544,7 +573,7 @@ export class FileResource extends BaseResource<FileModel> {
 
         await this.getBucketForVersion("original")
           .file(this.getCloudStoragePath(auth, "original"))
-          .delete();
+          .delete({ ignoreNotFound: true });
 
         // Delete the processed file if it exists.
         await this.getBucketForVersion("processed")

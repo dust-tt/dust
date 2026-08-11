@@ -7,6 +7,7 @@ import type {
 } from "@app/lib/api/sandbox/access_tokens";
 import {
   isSandboxExecTokenPayload,
+  isSandboxFileSystemTokenPayload,
   isSandboxFunctionInvocationTokenPayload,
   SANDBOX_TOKEN_PREFIX,
 } from "@app/lib/api/sandbox/access_tokens";
@@ -623,6 +624,13 @@ export class Authenticator {
         return new Err(groupModelIdsRes.error);
       }
       groupModelIdSets.push(groupModelIdsRes.value);
+    }
+    if (isSandboxFileSystemTokenPayload(claims)) {
+      // Filesystem tokens are separately restricted to the exact mounted
+      // conversation/pod ids by their callback endpoint. Retain the issuing
+      // user's current groups here so normal DustFileSystem permission checks
+      // still apply and immediately reflect membership changes.
+      groupModelIdSets.push(baseGroupModelIds);
     }
     if (groupModelIdSets.length === 0) {
       return new Err({

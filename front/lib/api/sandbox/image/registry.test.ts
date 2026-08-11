@@ -94,7 +94,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.70",
+      tag: "0.8.78",
     });
   });
 
@@ -439,6 +439,8 @@ describe("sandbox image registry", () => {
     expect(server).toContain('Server(("127.0.0.1", 987), Handler)');
     expect(server).not.toContain("/tmp/token.json");
     expect(writer).toContain("^/run/dust-gcs/mount-[0-9]+\\.json$");
+    expect(writer).toContain('[ "$token_path" = "/run/dust-fs/token" ]');
+    expect(writer).toContain('token_owner="dust-fs"');
     expect(writer).toContain("chmod 600");
     expect(writer).toContain("mv -f");
     expect(firewall).toContain("dust-gcs-token");
@@ -451,13 +453,35 @@ describe("sandbox image registry", () => {
     expect(firewall).not.toContain("delete table ip dust-gcs-token");
   });
 
+  test("installs and self-tests the Rust filesystem overlay", () => {
+    const image = getDustBaseImage();
+    const operations = getDustBaseImageOperations();
+    const runCommands = getRunCommands(operations);
+
+    expect(image.hasCapability("dust_fs_overlay")).toBe(true);
+    expect(runCommands).toContain(
+      "/usr/sbin/runuser -u dust-fs -- /opt/bin/dsbx filesystem --self-test"
+    );
+    expect(runCommands.join("\n")).not.toContain("fusepy");
+    expect(runCommands.join("\n")).not.toContain("libfuse2t64");
+    expect(
+      getCopyOperations(operations).some(
+        (operation) => operation.dest === "/usr/local/bin/dust-fs-overlay.py"
+      )
+    ).toBe(false);
+    expect(runCommands.join("\n")).toContain("user_allow_other /etc/fuse.conf");
+    expect(runCommands.join("\n")).toContain(
+      "useradd --system --no-create-home --gid dust-fs"
+    );
+  });
+
   test("installs the current dsbx CLI release", () => {
     const runCommands = getRunCommands(getDustBaseImageOperations());
 
     expect(runCommands).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.45/dsbx-linux-x86_64"
+          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.48/dsbx-linux-x86_64"
         ),
         expect.stringContaining(
           "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx"

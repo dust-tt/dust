@@ -64,27 +64,26 @@ export function getSandboxImage(
     return imageResult;
   }
 
-  if (!isDevelopment()) {
-    return imageResult;
-  }
-
   const image = imageResult.value;
 
   // Dev-only: bypass all egress restrictions. Pairs with skipping the dsbx
   // forwarder + tearing down in-sandbox nftables in tools/index.ts.
-  if (config.getSandboxDevUnrestrictedEgress()) {
+  if (isDevelopment() && config.getSandboxDevUnrestrictedEgress()) {
     return new Ok(image.withNetwork({ mode: "allow_all" }));
   }
 
-  const devHost = config.getSandboxDevFrontHostName();
-  if (!devHost) {
-    return new Ok(image);
-  }
+  const devHost = isDevelopment()
+    ? config.getSandboxDevFrontHostName()
+    : undefined;
+  const frontHost = devHost ?? new URL(config.getApiBaseUrl()).hostname;
 
   return new Ok(
     image.withNetwork({
       mode: image.network.mode,
-      allowlist: [...(image.network.allowlist ?? []), devHost],
+      // The semantic filesystem adapter runs as a dedicated service user and
+      // calls this host with a short-lived, mount-scoped JWT. Workload users
+      // remain redirected through the regular per-owner egress policy.
+      allowlist: [...(image.network.allowlist ?? []), frontHost],
     })
   );
 }

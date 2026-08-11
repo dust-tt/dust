@@ -26,8 +26,8 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.70";
-const DSBX_CLI_VERSION = "0.1.45";
+const DUST_BASE_IMAGE_VERSION = "0.8.78";
+const DSBX_CLI_VERSION = "0.1.48";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
 // the stable identity used when creating the workload account.
@@ -228,6 +228,16 @@ function getDustStateUserSetupCommand(): string {
   ].join(" && ");
 }
 
+function getDustFileSystemUserSetupCommand(): string {
+  // dust-fs owns the semantic FUSE adapter. It is intentionally distinct
+  // from workload users: callbacks to Front are control-plane traffic and
+  // must not be governed by a conversation's user egress policy.
+  return [
+    "groupadd --system dust-fs",
+    "useradd --system --no-create-home --gid dust-fs --shell /usr/sbin/nologin dust-fs",
+  ].join(" && ");
+}
+
 function getPodStateSetupCommand(): string {
   // /pod-state/databases holds the live SQLite files: both agent-proxied
   // function code (group agent) and the litestream daemon (user dust-state)
@@ -302,17 +312,23 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
 )
   // Create agent user first so e2b creates /home/agent with correct ownership.
   .setUser("agent")
-  // Create the /files parent directory. Mount subdirectories (conversation-{sId}, pod-{sId}) are
-  // created at runtime by the mount adapter and symlinked to legacy paths (/files/conversation,
-  // /files/pod) for backward compatibility.
+  // Create the /files mount point. The runtime adapter mounts one routed FUSE
+  // filesystem here and exposes conversation/pod directories plus legacy aliases.
   .runCmd("mkdir -p /files && chmod 777 /files", {
     user: "root",
   })
   .runCmd(getLocalAccountPrivilegeHardeningCommand(), { user: "root" })
   .runCmd(getAgentProxiedSetupCommand(), { user: "root" })
   .runCmd(getSshHardeningCommand(), { user: "root" })
-  // The root-owned token broker requires /usr/bin/python3.
-  .runCmd("apt-get update && apt-get install -y python3", { user: "root" })
+  // The root-owned token broker requires /usr/bin/python3. The filesystem
+  // overlay is part of the statically linked dsbx binary.
+  .runCmd("apt-get update && apt-get install -y python3", {
+    user: "root",
+  })
+  .runCmd(
+    "grep -qxF user_allow_other /etc/fuse.conf || echo user_allow_other >> /etc/fuse.conf",
+    { user: "root" }
+  )
   // The per-mount broker helpers live outside the agent's group-writable home and serve
   // mode-0600 tokens from /run/dust-gcs.
   .runCmd("mkdir -p /usr/local/bin", { user: "root" })
@@ -337,6 +353,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     { user: "root" }
   )
   .runCmd(getEgressResolverUserSetupCommand(), { user: "root" })
+  .runCmd(getDustFileSystemUserSetupCommand(), { user: "root" })
   .runCmd(getDustStateUserSetupCommand(), { user: "root" })
   .runCmd(getPodStateSetupCommand(), { user: "root" })
   // Hidden tools: installed but not in manifest (back profile functions)
@@ -468,6 +485,12 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
       "mv /tmp/dsbx /opt/bin/dsbx && " +
       "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx",
     { user: "root" }
+  )
+  .runCmd(
+    "/usr/sbin/runuser -u dust-fs -- /opt/bin/dsbx filesystem --self-test",
+    {
+      user: "root",
+    }
   )
   .registerTool({
     name: DSBX_TOOL_NAME,
@@ -871,6 +894,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     isDustTool: true,
   })
   .withCapability("gcsfuse")
+  .withCapability("dust_fs_overlay")
   .withResources({ vcpu: 2, memoryMb: 2048 })
   .withNetwork(PROXY_ONLY_NETWORK_POLICY)
   .setWorkdir("/home/agent")

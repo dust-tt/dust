@@ -641,6 +641,10 @@ export class GCSFileSystemBackend implements FileSystemBackend {
             legacySandboxMountPoint: mount.legacySandboxMountPoint,
             readOnly: false,
             mountProfile: "workload",
+            mutationScope:
+              mount.kind === "conversation" || mount.kind === "pod"
+                ? { kind: mount.kind, id: mount.id }
+                : null,
           })
         ),
       ...sandboxOnlyMounts.map(
@@ -650,6 +654,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
           legacySandboxMountPoint: null,
           readOnly: mount.readOnly,
           mountProfile: this.sandboxOnlyMountProfile(mount),
+          mutationScope: null,
         })
       ),
     ];
