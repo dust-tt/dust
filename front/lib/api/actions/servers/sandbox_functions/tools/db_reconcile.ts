@@ -1,3 +1,4 @@
+import type { DustPodConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   ToolHandlerExtra,
   ToolHandlerResult,
@@ -21,11 +22,16 @@ export function formatReconcileResult(result: ReconcileDatabaseResult): string {
 }
 
 export async function dbReconcileHandler(
-  { database, path }: { database: string; path: string },
+  {
+    database,
+    path,
+    dustPod,
+  }: { database: string; path: string; dustPod?: DustPodConfigurationType },
   { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
   const podResult = await getWritablePodContext(auth, {
     toolContext: { runContext },
+    dustPod,
   });
   if (podResult.isErr()) {
     return new Err(podResult.error);

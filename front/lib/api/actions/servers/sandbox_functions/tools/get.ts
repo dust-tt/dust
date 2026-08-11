@@ -1,4 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { DustPodConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   ToolHandlerExtra,
   ToolHandlerResult,
@@ -18,10 +19,13 @@ export function formatSandboxFunction(fn: SandboxFunctionResource): string {
 }
 
 export async function getHandler(
-  { slug }: { slug: string },
+  { slug, dustPod }: { slug: string; dustPod?: DustPodConfigurationType },
   { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const podResult = await getPod(auth, { toolContext: { runContext } });
+  const podResult = await getPod(auth, {
+    toolContext: { runContext },
+    dustPod,
+  });
   if (podResult.isErr()) {
     return new Err(podResult.error);
   }

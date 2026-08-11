@@ -1,3 +1,4 @@
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   POD_DATABASE_NAME_REGEX,
@@ -5,9 +6,22 @@ import {
   SANDBOX_FUNCTION_SLUG_REGEX,
   SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX,
 } from "@app/types/api/sandbox_functions";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { z } from "zod";
 
 export const SANDBOX_FUNCTIONS_SERVER_NAME = "sandbox_functions" as const;
+
+// Every tool on this server resolves its pod the same way, so they share one optional dustPod
+// input mirroring pod_manager's: pass it to target a pod from any conversation, omit it to fall
+// back to the conversation's pod.
+const dustPodSchema = ConfigurableToolInputSchemas[
+  INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
+]
+  .optional()
+  .describe(
+    "Optional Pod to target, will fallback to the conversation's Pod. Reuse a dustPod value " +
+      "from pod_manager's list tool; do not invent this URI."
+  );
 
 export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
   {
@@ -16,7 +30,9 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
       "List the pod functions published in the current pod, with their " +
       "slug and description. Use the get tool to retrieve a function's input " +
       "and output schemas.",
-    schema: {},
+    schema: {
+      dustPod: dustPodSchema,
+    },
     stake: "never_ask",
     displayLabels: {
       running: "Listing pod functions...",
@@ -34,6 +50,7 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
         .string()
         .min(1)
         .describe("The slug of the pod function, as shown by the list tool."),
+      dustPod: dustPodSchema,
     },
     stake: "never_ask",
     displayLabels: {
@@ -89,6 +106,7 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
             "interaction or on a poll `fast`, and isolate `dsbx tools` calls in their own " +
             "`durable` functions."
         ),
+      dustPod: dustPodSchema,
     },
     stake: "low",
     displayLabels: {
@@ -110,6 +128,7 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
         .describe(
           "The slug of the pod function to unpublish, as shown by the list tool."
         ),
+      dustPod: dustPodSchema,
     },
     stake: "high",
     displayLabels: {
@@ -138,6 +157,7 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
         .describe(
           "The function's input payload as a JSON object, matching its input schema (see the get tool)."
         ),
+      dustPod: dustPodSchema,
     },
     stake: "low",
     displayLabels: {
@@ -165,6 +185,7 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
         .optional()
         .default(5)
         .describe("Maximum number of recent invocations to return."),
+      dustPod: dustPodSchema,
     },
     stake: "never_ask",
     displayLabels: {
@@ -177,7 +198,9 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
   {
     name: "db_list",
     description: "List the pod's SQLite databases and their sizes.",
-    schema: {},
+    schema: {
+      dustPod: dustPodSchema,
+    },
     stake: "never_ask",
     displayLabels: {
       running: "Listing pod databases...",
@@ -194,6 +217,7 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
         .string()
         .regex(POD_DATABASE_NAME_REGEX)
         .describe("The database name, as shown by the db_list tool."),
+      dustPod: dustPodSchema,
     },
     stake: "never_ask",
     displayLabels: {
@@ -219,6 +243,7 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
           "A SINGLE SQL statement (SELECT or INSERT/UPDATE/DELETE); multiple statements " +
             "are rejected, issue one call per statement."
         ),
+      dustPod: dustPodSchema,
     },
     stake: "never_ask",
     displayLabels: {
@@ -247,6 +272,7 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
           "Scoped path to the database's drizzle schema file in the pod, as shown by the " +
             "files tools (e.g. `pod-<id>/MyApp/databases/chat.db.ts`)."
         ),
+      dustPod: dustPodSchema,
     },
     stake: "never_ask",
     displayLabels: {

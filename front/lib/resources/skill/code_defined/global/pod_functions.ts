@@ -453,10 +453,22 @@ the platform only tells you the caller is a workspace member, not what they are 
 
     return !flags.includes("sandbox_functions");
   },
-  // Functions are Pod-scoped, so the skill is hidden outside a Pod conversation.
-  isDisabledForAgentLoop: (agentLoopData) =>
-    !agentLoopData.conversation ||
-    !isPodConversation(agentLoopData.conversation),
+  // Functions are Pod-scoped, so the skill is hidden outside a Pod conversation — unless the
+  // agent explicitly targets a Pod through one of its actions' Pod configuration, in which case
+  // the tools can resolve that Pod via their `dustPod` input from any conversation.
+  isDisabledForAgentLoop: (agentLoopData) => {
+    if (
+      agentLoopData.conversation &&
+      isPodConversation(agentLoopData.conversation)
+    ) {
+      return false;
+    }
+
+    // Client-side MCP server configurations carry no Pod configuration.
+    return !agentLoopData.agentConfiguration.actions.some(
+      (action) => "dustProject" in action && action.dustProject !== null
+    );
+  },
   // Equipped in Pod conversations but not auto-enabled.
   getAutoEnabledOrEquippedForAgentLoop: () => "equipped",
 } as const satisfies GlobalSkillDefinition;

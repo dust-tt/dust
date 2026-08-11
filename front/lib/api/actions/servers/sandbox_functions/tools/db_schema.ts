@@ -1,3 +1,4 @@
+import type { DustPodConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   ToolHandlerExtra,
   ToolHandlerResult,
@@ -8,10 +9,13 @@ import { getDatabaseSchemaOnSandbox } from "@app/lib/api/sandbox_functions/dsbx_
 import { Err, Ok } from "@app/types/shared/result";
 
 export async function dbSchemaHandler(
-  { database }: { database: string },
+  { database, dustPod }: { database: string; dustPod?: DustPodConfigurationType },
   { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const podResult = await getPod(auth, { toolContext: { runContext } });
+  const podResult = await getPod(auth, {
+    toolContext: { runContext },
+    dustPod,
+  });
   if (podResult.isErr()) {
     return new Err(podResult.error);
   }
