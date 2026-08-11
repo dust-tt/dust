@@ -72,13 +72,19 @@ async fn main() {
     }
 }
 
-/// Typed API failures exit with their stable per-code exit codes; everything
-/// else keeps the generic 1 (2 is reserved by clap for usage errors).
+/// Typed failures exit with their stable per-code exit codes; everything else
+/// keeps the generic 1 (2 is reserved by clap for usage errors).
 fn exit_code_for(error: &anyhow::Error) -> i32 {
-    error
-        .downcast_ref::<api::DustApiError>()
-        .map(|api_error| api_error.code.exit_code())
-        .unwrap_or(1)
+    if let Some(api_error) = error.downcast_ref::<api::DustApiError>() {
+        return api_error.code.exit_code();
+    }
+    if error
+        .downcast_ref::<commands::OffloadResolutionError>()
+        .is_some()
+    {
+        return commands::OffloadResolutionError::EXIT_CODE;
+    }
+    1
 }
 
 async fn run() -> anyhow::Result<()> {

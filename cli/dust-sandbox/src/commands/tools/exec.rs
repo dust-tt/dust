@@ -1,6 +1,9 @@
 use anyhow::{bail, Context};
 
-use crate::api::{parse_content_block, ContentBlock, DustApiClient, DustApiError};
+use crate::api::{parse_content_block, CallToolResult, ContentBlock, DustApiClient, DustApiError};
+use crate::commands::tools::offload::{
+    resolve_offloaded_content, OffloadResolutionError, ResolveOptions,
+};
 
 const MAX_FILE_ARG_SIZE_BYTES: u64 = 100 * 1024 * 1024;
 
@@ -28,11 +31,15 @@ pub async fn cmd_exec(
 }
 
 /// The `{"error":{code,message,retryable,status?}}` stdout envelope for a
-/// failed `tools --json` execution. API failures carry their typed
-/// classification; anything else is `unknown` and not retryable.
+/// failed `tools --json` execution. API failures and offloaded-output
+/// resolution failures carry their typed classification; anything else is
+/// `unknown` and not retryable.
 fn error_envelope_json(err: &anyhow::Error) -> serde_json::Value {
     if let Some(api_error) = err.downcast_ref::<DustApiError>() {
         return api_error.to_envelope_json();
+    }
+    if let Some(offload_error) = err.downcast_ref::<OffloadResolutionError>() {
+        return offload_error.to_envelope_json();
     }
     serde_json::json!({
         "error": {
@@ -82,49 +89,70 @@ async fn run_exec(
 
     let resp = client.call_tool(&view.s_id, tool_name, arguments).await?;
 
+    let is_error = resp.result.is_error;
+
     if json {
-        println!("{}", serde_json::to_string_pretty(&resp.result)?);
+        // `--json` is a machine contract: content blocks whose full text was
+        // offloaded by front get their archived content read back and
+        // substituted, so the emitted JSON is complete rather than a snippet.
+        let content = resolve_offloaded_content(&resp.result.content, &ResolveOptions::default())
+            .await
+            .map_err(anyhow::Error::new)?;
+        let result = CallToolResult {
+            content,
+            ..resp.result
+        };
+        println!("{}", serde_json::to_string_pretty(&result)?);
     } else {
-        // All content blocks (text and sentinel markers) go to stdout so a
-        // caller capturing stdout sees the full tool output. stderr is
-        // reserved for ambient diagnostics.
-        for value in &resp.result.content {
-            match parse_content_block(value) {
-                ContentBlock::Text { text } => {
-                    println!("{text}");
-                }
-                ContentBlock::Image { mime_type, .. } => {
-                    println!("[image: {mime_type}]");
-                }
-                ContentBlock::Audio { mime_type, .. } => {
-                    println!("[audio: {mime_type}]");
-                }
-                ContentBlock::Resource { resource } => {
-                    if let Some(text) = &resource.text {
-                        println!("{text}");
-                    } else if resource.blob.is_some() {
-                        println!("[binary resource: {}]", resource.uri);
-                    } else {
-                        println!("[resource: {}]", resource.uri);
-                    }
-                }
-                ContentBlock::ResourceLink { uri, name } => {
-                    if let Some(name) = name {
-                        println!("[resource link: {name} - {uri}]");
-                    } else {
-                        println!("[resource link: {uri}]");
-                    }
-                }
-                ContentBlock::Unknown => {}
-            }
-        }
+        // Model-facing rendering: offloaded blocks keep their snippet and the
+        // "[Full content archived at ...]" sentence, which is how the model
+        // learns where to read the rest.
+        print!("{}", format_content_plain(&resp.result.content));
     }
 
-    if resp.result.is_error {
+    if is_error {
         std::process::exit(1);
     }
 
     Ok(())
+}
+
+/// Plain-text rendering of a tool result. All content blocks (text and
+/// sentinel markers) go to stdout so a caller capturing stdout sees the full
+/// tool output. stderr is reserved for ambient diagnostics.
+fn format_content_plain(content: &[serde_json::Value]) -> String {
+    let mut out = String::new();
+    for value in content {
+        match parse_content_block(value) {
+            ContentBlock::Text { text } => {
+                out.push_str(&format!("{text}\n"));
+            }
+            ContentBlock::Image { mime_type, .. } => {
+                out.push_str(&format!("[image: {mime_type}]\n"));
+            }
+            ContentBlock::Audio { mime_type, .. } => {
+                out.push_str(&format!("[audio: {mime_type}]\n"));
+            }
+            ContentBlock::Resource { resource } => {
+                if let Some(text) = &resource.text {
+                    out.push_str(&format!("{text}\n"));
+                } else if resource.blob.is_some() {
+                    out.push_str(&format!("[binary resource: {}]\n", resource.uri));
+                } else {
+                    out.push_str(&format!("[resource: {}]\n", resource.uri));
+                }
+            }
+            ContentBlock::ResourceLink { uri, name } => {
+                if let Some(name) = name {
+                    out.push_str(&format!("[resource link: {name} - {uri}]\n"));
+                } else {
+                    out.push_str(&format!("[resource link: {uri}]\n"));
+                }
+            }
+            ContentBlock::Unknown => {}
+        }
+    }
+    out
 }
 
 /// Resolve the `--args-json` value: `-` reads the whole payload from stdin
@@ -898,6 +926,68 @@ mod tests {
         assert_eq!(envelope["error"]["message"], "no tools for fast functions");
         assert_eq!(envelope["error"]["retryable"], false);
         assert_eq!(envelope["error"]["status"], 403);
+    }
+
+    #[test]
+    fn error_envelope_carries_typed_offload_resolution_error() {
+        let err = anyhow::Error::new(OffloadResolutionError::new(
+            "could not read the offloaded tool output at /files/pod-x/.tool_outputs/f/1.json"
+                .to_string(),
+        ))
+        .context("tools exec");
+
+        let envelope = error_envelope_json(&err);
+        assert_eq!(envelope["error"]["code"], "tool_output_unavailable");
+        assert!(envelope["error"]["message"]
+            .as_str()
+            .expect("message")
+            .contains("/files/pod-x/.tool_outputs/f/1.json"));
+        assert_eq!(envelope["error"]["retryable"], true);
+    }
+
+    // --- plain-text (model-facing) rendering ---
+
+    #[test]
+    fn plain_rendering_keeps_the_offloaded_snippet_and_archive_sentence() {
+        // The default mode is model-facing: the snippet plus the archive
+        // sentence is how the model learns where to read the rest, so no
+        // resolution happens here.
+        let scoped_path = "pod-vlt_1/.tool_outputs/my-fn/1_search.json";
+        let snippet =
+            format!("head of payload... (truncated)\n[Full content archived at {scoped_path}]");
+        let content = vec![serde_json::json!({
+            "type": "resource",
+            "resource": { "uri": scoped_path, "mimeType": "text/plain", "text": snippet },
+            "_meta": {
+                "tt.dust/offload": {
+                    "fullContentPath": scoped_path,
+                    "totalBytes": 121_700,
+                    "contentType": "application/json",
+                }
+            },
+        })];
+
+        let rendered = format_content_plain(&content);
+        assert_eq!(
+            rendered,
+            format!("head of payload... (truncated)\n[Full content archived at {scoped_path}]\n")
+        );
+    }
+
+    #[test]
+    fn plain_rendering_covers_every_block_shape() {
+        let content = vec![
+            serde_json::json!({ "type": "text", "text": "hello" }),
+            serde_json::json!({ "type": "image", "data": "AA", "mimeType": "image/png" }),
+            serde_json::json!({ "type": "resource", "resource": { "uri": "u", "blob": "AA" } }),
+            serde_json::json!({ "type": "resource_link", "uri": "u", "name": "n" }),
+            serde_json::json!({ "type": "future_block" }),
+        ];
+
+        assert_eq!(
+            format_content_plain(&content),
+            "hello\n[image: image/png]\n[binary resource: u]\n[resource link: n - u]\n"
+        );
     }
 
     #[test]
