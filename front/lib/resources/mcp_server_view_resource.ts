@@ -250,7 +250,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     name: string,
     space: SpaceResource,
     tools: readonly MCPToolType[] = [],
-    excludedMCPServerId?: string
+    excludedMCPServerViewId?: string
   ): Promise<{ hasConflict: boolean; name: string }> {
     const candidateToolNames = removeNulls(
       tools.map((tool) => {
@@ -262,7 +262,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     );
     const existingViews = await this.listBySpace(auth, space);
     const hasConflict = existingViews.some((view) => {
-      if (view.mcpServerId === excludedMCPServerId) {
+      if (view.sId === excludedMCPServerViewId) {
         return false;
       }
 

@@ -117,7 +117,7 @@ export async function updateNameAndDescriptionForMCPServerViews(
           name,
           systemView.space,
           systemView.getServerTools(),
-          mcpServerId
+          systemView.sId
         );
 
       if (hasConflict) {
