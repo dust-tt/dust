@@ -12,6 +12,9 @@ import {
 import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import { podSandboxOnlyMounts } from "@app/lib/api/sandbox/pod_mounts";
 import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
+// Deliberately lifecycle-free module (see its module doc): importing it here
+// cannot create a cycle.
+import { recoverMissingPodDatabasesOnColdStart } from "@app/lib/api/sandbox_functions/pod_db_cold_start_recovery";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
@@ -178,6 +181,18 @@ async function ensureOwnerSandboxReady(
           status = "error";
           return podStateResult;
         }
+
+        // Recreate expected-but-missing databases from their schema files
+        // (e.g. a replica lost before its first sync made the restore skip
+        // them). Must run AFTER restore + daemon start so a recreated file
+        // replicates immediately. Best-effort by contract: failures are
+        // logged and metered inside, and never block sandbox readiness.
+        await traceSandboxStartupPhase("pod_state_recovery", () =>
+          recoverMissingPodDatabasesOnColdStart(auth, {
+            sandbox,
+            podId: runtimeOwner.spaceId,
+          })
+        );
       }
 
       const ensureEgressResult = await traceSandboxStartupPhase(
