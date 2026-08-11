@@ -63,11 +63,15 @@ struct MockPolicies {
     workspace: Option<MockGcsResponse>,
     workspace_new: Option<MockGcsResponse>,
     owner: Option<MockGcsResponse>,
+    // The pod's policy file — same `w/{wId}/sandboxes/{id}.json` scheme as
+    // owner files, keyed by the pod space sId.
+    pod: Option<MockGcsResponse>,
     sandbox: Option<MockGcsResponse>,
 }
 
 const TEST_WORKSPACE_ID: &str = "workspace-456";
 const TEST_OWNER_ID: &str = "owner-789";
+const TEST_POD_ID: &str = "pod-space-123";
 
 #[derive(Debug, Serialize)]
 struct TestClaims {
@@ -77,6 +81,8 @@ struct TestClaims {
     w_id: Option<String>,
     #[serde(rename = "ownerId", skip_serializing_if = "Option::is_none")]
     owner_id: Option<String>,
+    #[serde(rename = "podId", skip_serializing_if = "Option::is_none")]
+    pod_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     action: Option<String>,
     iss: String,
@@ -191,6 +197,7 @@ async fn workspace_policy_allows_domain() -> Result<()> {
             workspace: Some(policy_response(&["localhost"])),
             workspace_new: None,
             owner: None,
+            pod: None,
             sandbox: None,
         },
         None,
@@ -228,6 +235,7 @@ async fn sandbox_policy_allows_when_workspace_has_no_policy() -> Result<()> {
             workspace: None,
             workspace_new: None,
             owner: None,
+            pod: None,
             sandbox: Some(policy_response(&["localhost"])),
         },
         None,
@@ -265,6 +273,7 @@ async fn workspace_policy_new_layout_allows_domain() -> Result<()> {
             workspace: None,
             workspace_new: Some(policy_response(&["localhost"])),
             owner: None,
+            pod: None,
             sandbox: None,
         },
         None,
@@ -302,6 +311,7 @@ async fn workspace_policy_new_layout_preferred_over_legacy() -> Result<()> {
             workspace: Some(policy_response(&["localhost"])),
             workspace_new: Some(policy_response(&["other.example.com"])),
             owner: None,
+            pod: None,
             sandbox: None,
         },
         None,
@@ -326,6 +336,7 @@ async fn owner_policy_allows_domain() -> Result<()> {
             workspace: None,
             workspace_new: None,
             owner: Some(policy_response(&["localhost"])),
+            pod: None,
             sandbox: None,
         },
         None,
@@ -365,6 +376,7 @@ async fn owner_policy_ignored_without_owner_id_claim() -> Result<()> {
             workspace: None,
             workspace_new: None,
             owner: Some(policy_response(&["localhost"])),
+            pod: None,
             sandbox: None,
         },
         None,
@@ -373,6 +385,129 @@ async fn owner_policy_ignored_without_owner_id_claim() -> Result<()> {
     )
     .await?;
     let token = make_token_with_workspace(SECRET, 60);
+
+    let response = send_handshake(&proxy, &token, "localhost", upstream_port).await?;
+
+    assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
+async fn pod_policy_allows_conversation_inside_pod() -> Result<()> {
+    // A conversation sandbox inside a pod carries ownerId=<conversation> and
+    // podId=<pod>: the pod's policy applies as the inherited layer even when
+    // the conversation's own file grants nothing.
+    let (upstream_port, mut upstream_handles) =
+        start_localhost_servers(UpstreamBehavior::EchoFixed { read_len: 4 }).await?;
+    let proxy = start_proxy_with_mock_gcs(
+        MockPolicies {
+            workspace: None,
+            workspace_new: None,
+            owner: None,
+            pod: Some(policy_response(&["localhost"])),
+            sandbox: None,
+        },
+        None,
+        true,
+        "test",
+    )
+    .await?;
+    let token = make_token_with_owner_and_pod(SECRET, 60);
+    let mut stream = connect_forwarder(&proxy).await?;
+
+    stream
+        .write_all(&build_frame(&token, "localhost", upstream_port)?)
+        .await?;
+
+    let mut response = [0; 1];
+    stream.read_exact(&mut response).await?;
+    assert_eq!(response[0], ALLOW_RESPONSE);
+
+    stream.write_all(b"ping").await?;
+    let mut echoed = [0; 4];
+    stream.read_exact(&mut echoed).await?;
+    assert_eq!(&echoed, b"ping");
+
+    drop(stream);
+    wait_for_upstream_completion(&mut upstream_handles, Duration::from_secs(2)).await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn pod_policy_ignored_without_pod_id_claim() -> Result<()> {
+    // Fail-closed: the same conversation token without the podId claim must
+    // not pick up pod-level grants, even when the pod policy file exists.
+    let (upstream_port, _upstream_handles) =
+        start_localhost_servers(UpstreamBehavior::EchoFixed { read_len: 4 }).await?;
+    let proxy = start_proxy_with_mock_gcs(
+        MockPolicies {
+            workspace: None,
+            workspace_new: None,
+            owner: None,
+            pod: Some(policy_response(&["localhost"])),
+            sandbox: None,
+        },
+        None,
+        true,
+        "test",
+    )
+    .await?;
+    let token = make_token_with_owner(SECRET, 60);
+
+    let response = send_handshake(&proxy, &token, "localhost", upstream_port).await?;
+
+    assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
+async fn pod_function_allowed_through_pod_file_as_owner() -> Result<()> {
+    // Pod-owned (pod function) sandboxes carry ownerId=<pod> and no podId:
+    // the pod's file IS their owner file, granting workspace + pod scope.
+    let (upstream_port, _upstream_handles) =
+        start_localhost_servers(UpstreamBehavior::EchoFixed { read_len: 4 }).await?;
+    let proxy = start_proxy_with_mock_gcs(
+        MockPolicies {
+            workspace: None,
+            workspace_new: None,
+            owner: None,
+            pod: Some(policy_response(&["localhost"])),
+            sandbox: None,
+        },
+        None,
+        true,
+        "test",
+    )
+    .await?;
+    let token = make_pod_function_token(SECRET, 60);
+
+    let response = send_handshake(&proxy, &token, "localhost", upstream_port).await?;
+
+    assert_eq!(response, Some(ALLOW_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
+async fn conversation_policy_does_not_apply_to_pod_function() -> Result<()> {
+    // A conversation's on-the-fly approvals stay scoped to that
+    // conversation: the pod-function sandbox (ownerId=<pod>) must not pick
+    // them up.
+    let (upstream_port, _upstream_handles) =
+        start_localhost_servers(UpstreamBehavior::EchoFixed { read_len: 4 }).await?;
+    let proxy = start_proxy_with_mock_gcs(
+        MockPolicies {
+            workspace: None,
+            workspace_new: None,
+            owner: Some(policy_response(&["localhost"])),
+            pod: None,
+            sandbox: None,
+        },
+        None,
+        true,
+        "test",
+    )
+    .await?;
+    let token = make_pod_function_token(SECRET, 60);
 
     let response = send_handshake(&proxy, &token, "localhost", upstream_port).await?;
 
@@ -392,6 +527,7 @@ async fn legacy_sandbox_policy_unioned_with_owner_policy() -> Result<()> {
             workspace: None,
             workspace_new: None,
             owner: Some(policy_response(&["other.example.com"])),
+            pod: None,
             sandbox: Some(policy_response(&["localhost"])),
         },
         None,
@@ -431,6 +567,7 @@ async fn owner_gcs_failure_falls_back_to_legacy_sandbox() -> Result<()> {
             workspace: None,
             workspace_new: None,
             owner: Some(MockGcsResponse::Status(StatusCode::INTERNAL_SERVER_ERROR)),
+            pod: None,
             sandbox: Some(policy_response(&["localhost"])),
         },
         None,
@@ -466,6 +603,7 @@ async fn denied_when_no_policy_allows_with_owner_id() -> Result<()> {
             workspace: Some(policy_response(&["a.example.com"])),
             workspace_new: Some(policy_response(&["b.example.com"])),
             owner: Some(policy_response(&["c.example.com"])),
+            pod: None,
             sandbox: Some(policy_response(&["d.example.com"])),
         },
         None,
@@ -488,6 +626,7 @@ async fn denied_when_neither_workspace_nor_sandbox_allows_domain() -> Result<()>
             workspace: Some(policy_response(&["other.example.com"])),
             workspace_new: None,
             owner: None,
+            pod: None,
             sandbox: Some(policy_response(&["another.example.com"])),
         },
         None,
@@ -512,6 +651,7 @@ async fn workspace_gcs_failure_falls_back_to_sandbox() -> Result<()> {
             workspace: Some(MockGcsResponse::Status(StatusCode::INTERNAL_SERVER_ERROR)),
             workspace_new: None,
             owner: None,
+            pod: None,
             sandbox: Some(policy_response(&["localhost"])),
         },
         None,
@@ -547,6 +687,7 @@ async fn sandbox_gcs_failure_denies_connection() -> Result<()> {
             workspace: None,
             workspace_new: None,
             owner: None,
+            pod: None,
             sandbox: Some(MockGcsResponse::Status(StatusCode::INTERNAL_SERVER_ERROR)),
         },
         None,
@@ -631,6 +772,7 @@ async fn invalid_issuer_returns_deny() -> Result<()> {
             sb_id: Some(TEST_SANDBOX_ID),
             w_id: None,
             owner_id: None,
+            pod_id: None,
             action: None,
             iss: "wrong-front",
             aud: "dust-egress-proxy",
@@ -653,6 +795,7 @@ async fn invalid_audience_returns_deny() -> Result<()> {
             sb_id: Some(TEST_SANDBOX_ID),
             w_id: None,
             owner_id: None,
+            pod_id: None,
             action: None,
             iss: "dust-front",
             aud: "wrong-audience",
@@ -675,6 +818,7 @@ async fn empty_sandbox_id_claim_returns_deny() -> Result<()> {
             sb_id: Some("   "),
             w_id: None,
             owner_id: None,
+            pod_id: None,
             action: None,
             iss: "dust-front",
             aud: "dust-egress-proxy",
@@ -999,6 +1143,7 @@ async fn invalidate_policy_evicts_cached_workspace_entry() -> Result<()> {
             workspace: Some(policy_response(&["localhost"])),
             workspace_new: None,
             owner: None,
+            pod: None,
             sandbox: None,
         },
         None,
@@ -1079,6 +1224,7 @@ async fn invalidate_policy_rejects_token_with_both_wid_and_sbid() -> Result<()> 
             sb_id: Some(TEST_SANDBOX_ID),
             w_id: Some(TEST_WORKSPACE_ID),
             owner_id: None,
+            pod_id: None,
             action: Some("invalidate-policy"),
             iss: "dust-front",
             aud: "dust-egress-proxy",
@@ -1102,6 +1248,7 @@ async fn invalidate_policy_evicts_cached_owner_entry() -> Result<()> {
             workspace: None,
             workspace_new: None,
             owner: Some(policy_response(&["localhost"])),
+            pod: None,
             sandbox: None,
         },
         None,
@@ -1153,6 +1300,7 @@ async fn invalidate_policy_workspace_evicts_both_layouts() -> Result<()> {
             workspace: None,
             workspace_new: Some(policy_response(&["localhost"])),
             owner: None,
+            pod: None,
             sandbox: None,
         },
         None,
@@ -1203,6 +1351,7 @@ async fn invalidate_policy_rejects_owner_without_wid() -> Result<()> {
             sb_id: None,
             w_id: None,
             owner_id: Some(TEST_OWNER_ID),
+            pod_id: None,
             action: Some("invalidate-policy"),
             iss: "dust-front",
             aud: "dust-egress-proxy",
@@ -1266,6 +1415,7 @@ async fn start_proxy_with_sandbox_policy(
             workspace: None,
             workspace_new: None,
             owner: None,
+            pod: None,
             sandbox: Some(policy_response(allowed_domains)),
         },
         None,
@@ -1341,6 +1491,12 @@ async fn start_mock_gcs_server(policies: MockPolicies) -> Result<MockGcsServer> 
         objects.insert(
             format!("w/{TEST_WORKSPACE_ID}/sandboxes/{TEST_OWNER_ID}.json"),
             owner,
+        );
+    }
+    if let Some(pod) = policies.pod {
+        objects.insert(
+            format!("w/{TEST_WORKSPACE_ID}/sandboxes/{TEST_POD_ID}.json"),
+            pod,
         );
     }
     if let Some(sandbox) = policies.sandbox {
@@ -1569,6 +1725,7 @@ fn make_token(secret: &str, exp_offset_seconds: i64) -> String {
             sb_id: Some(TEST_SANDBOX_ID),
             w_id: None,
             owner_id: None,
+            pod_id: None,
             action: None,
             iss: "dust-front",
             aud: "dust-egress-proxy",
@@ -1584,6 +1741,7 @@ fn make_token_with_workspace(secret: &str, exp_offset_seconds: i64) -> String {
             sb_id: Some(TEST_SANDBOX_ID),
             w_id: Some(TEST_WORKSPACE_ID),
             owner_id: None,
+            pod_id: None,
             action: None,
             iss: "dust-front",
             aud: "dust-egress-proxy",
@@ -1599,6 +1757,7 @@ fn make_invalidation_token(secret: &str, exp_offset_seconds: i64) -> String {
             sb_id: None,
             w_id: Some(TEST_WORKSPACE_ID),
             owner_id: None,
+            pod_id: None,
             action: Some("invalidate-policy"),
             iss: "dust-front",
             aud: "dust-egress-proxy",
@@ -1614,6 +1773,40 @@ fn make_token_with_owner(secret: &str, exp_offset_seconds: i64) -> String {
             sb_id: Some(TEST_SANDBOX_ID),
             w_id: Some(TEST_WORKSPACE_ID),
             owner_id: Some(TEST_OWNER_ID),
+            pod_id: None,
+            action: None,
+            iss: "dust-front",
+            aud: "dust-egress-proxy",
+            exp_offset_seconds,
+        },
+    )
+}
+
+fn make_token_with_owner_and_pod(secret: &str, exp_offset_seconds: i64) -> String {
+    make_token_with_claims(
+        secret,
+        FullClaims {
+            sb_id: Some(TEST_SANDBOX_ID),
+            w_id: Some(TEST_WORKSPACE_ID),
+            owner_id: Some(TEST_OWNER_ID),
+            pod_id: Some(TEST_POD_ID),
+            action: None,
+            iss: "dust-front",
+            aud: "dust-egress-proxy",
+            exp_offset_seconds,
+        },
+    )
+}
+
+// A pod-owned (pod function) sandbox: its ownerId IS the pod, no podId claim.
+fn make_pod_function_token(secret: &str, exp_offset_seconds: i64) -> String {
+    make_token_with_claims(
+        secret,
+        FullClaims {
+            sb_id: Some(TEST_SANDBOX_ID),
+            w_id: Some(TEST_WORKSPACE_ID),
+            owner_id: Some(TEST_POD_ID),
+            pod_id: None,
             action: None,
             iss: "dust-front",
             aud: "dust-egress-proxy",
@@ -1629,6 +1822,7 @@ fn make_owner_invalidation_token(secret: &str, exp_offset_seconds: i64) -> Strin
             sb_id: None,
             w_id: Some(TEST_WORKSPACE_ID),
             owner_id: Some(TEST_OWNER_ID),
+            pod_id: None,
             action: Some("invalidate-policy"),
             iss: "dust-front",
             aud: "dust-egress-proxy",
@@ -1651,6 +1845,7 @@ fn make_token_with_claims(secret: &str, claims: FullClaims<'_>) -> String {
         sb_id: claims.sb_id.map(|s| s.to_string()),
         w_id: claims.w_id.map(|s| s.to_string()),
         owner_id: claims.owner_id.map(|s| s.to_string()),
+        pod_id: claims.pod_id.map(|s| s.to_string()),
         action: claims.action.map(|s| s.to_string()),
         iss: claims.iss.to_string(),
         aud: claims.aud.to_string(),
@@ -1675,6 +1870,7 @@ struct FullClaims<'a> {
     sb_id: Option<&'a str>,
     w_id: Option<&'a str>,
     owner_id: Option<&'a str>,
+    pod_id: Option<&'a str>,
     action: Option<&'a str>,
     iss: &'a str,
     aud: &'a str,
