@@ -168,7 +168,7 @@ export function GetStartedPage() {
               : "/static/activation/for-you-orb-small.svg"
           }
         />
-        <div className="relative ml-[9%] w-[53%] pb-16 pt-[15vh]">
+        <div className="relative mx-auto w-full max-w-2xl px-4 pb-16 pt-[15vh] sm:px-8 lg:mx-0 lg:ml-[9%] lg:w-[53%] lg:max-w-none lg:px-0">
           <div className="flex flex-col gap-1">
             <h1 className="text-5xl font-medium leading-[52px] tracking-[-0.06em] text-foreground">
               Welcome back, {firstName}.

@@ -25,10 +25,7 @@ function RecentConversationRow({
 
   return (
     <ConversationListItem
-      className={cn(
-        "rounded-2xl border-x-0 hover:bg-hover",
-        activeConversationId === conversation.id && "bg-selected"
-      )}
+      className={cn(activeConversationId === conversation.id && "bg-selected")}
       conversation={{
         id: conversation.id,
         title: conversation.title,
