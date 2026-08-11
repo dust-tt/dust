@@ -1,5 +1,6 @@
 pub mod db;
 pub mod env;
+pub mod filesystem;
 pub mod forward;
 pub mod function;
 pub mod healthcheck;
