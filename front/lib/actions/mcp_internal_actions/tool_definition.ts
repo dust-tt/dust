@@ -28,8 +28,7 @@ export type ToolHandlerExtra = BaseToolHandlerExtra & {
 
 // Tool handlers return the model-facing content blocks, optionally paired with a
 // machine-readable `structuredContent` payload (MCP `CallToolResult.structuredContent`,
-// preserved end-to-end for programmatic consumers such as sandbox functions). The bare
-// content array remains supported so existing handlers keep compiling unchanged.
+// preserved end-to-end for programmatic consumers such as sandbox functions).
 export type ToolHandlerOutput =
   | CallToolResult["content"]
   | {
@@ -47,13 +46,25 @@ export function normalizeToolHandlerOutput(output: ToolHandlerOutput): {
   return output;
 }
 
-export type ToolHandlerResult = Result<ToolHandlerOutput, MCPError>;
+// Default handler result: the model-facing content blocks alone.
+export type ToolHandlerResult = Result<CallToolResult["content"], MCPError>;
+
+// Handlers that also produce a machine-readable payload return `{content, structuredContent}`
+// and type their result with this instead. Registration accepts both, so returning a bare
+// content array stays valid everywhere.
+export type ToolHandlerResultWithStructuredContent = Result<
+  ToolHandlerOutput,
+  MCPError
+>;
 
 export type ToolHandlers<
   ToolsList extends readonly ToolMeta[],
   // Keep tool names as a separate generic so that generic consumers don't widen them to strings.
   ToolNames extends string = ToolsList[number]["name"],
   THandlerExtra = ToolHandlerExtra,
+  // Servers whose handlers emit `structuredContent` set this to
+  // `ToolHandlerResultWithStructuredContent`.
+  TResult extends ToolHandlerResultWithStructuredContent = ToolHandlerResult,
 > = {
   [ToolName in ToolNames]: (
     // Type the params with the type inferred from the zod schema (z.ZodObject because it's a zod shape, not a schema).
@@ -61,7 +72,7 @@ export type ToolHandlers<
       z.ZodObject<Extract<ToolsList[number], { name: ToolName }>["schema"]>
     >,
     extra: THandlerExtra
-  ) => Promise<ToolHandlerResult>;
+  ) => Promise<TResult>;
 };
 
 export type ClientToolHandlers<
@@ -73,6 +84,7 @@ export interface ToolDefinition<
   TName extends string = string,
   TSchema extends ZodRawShape = ZodRawShape,
   THandlerExtra = ToolHandlerExtra,
+  TResult extends ToolHandlerResultWithStructuredContent = ToolHandlerResult,
 > {
   name: TName;
   enableAlerting?: boolean;
@@ -94,8 +106,17 @@ export interface ToolDefinition<
   handler(
     params: z.infer<z.ZodObject<TSchema>>,
     extra: THandlerExtra
-  ): Promise<ToolHandlerResult>;
+  ): Promise<TResult>;
 }
+
+// Registration is agnostic to whether a handler emits `structuredContent`, so it accepts the
+// widest result type. Definitions built with the default (content-only) result are assignable.
+export type RegistrableToolDefinition = ToolDefinition<
+  string,
+  ZodRawShape,
+  ToolHandlerExtra,
+  ToolHandlerResultWithStructuredContent
+>;
 
 export type ToolMeta<
   TName extends string = string,
@@ -119,10 +140,11 @@ export function buildTools<
   const T extends readonly ToolMeta<TName>[],
   // Internal tools always receive auth and runContext, while client-side tools do not.
   THandlerExtra = ToolHandlerExtra,
+  TResult extends ToolHandlerResultWithStructuredContent = ToolHandlerResult,
 >(
   metadata: T & ValidToolMetadata<T>,
-  handlers: ToolHandlers<T, TName, THandlerExtra>
-): ToolDefinition<TName, ZodRawShape, THandlerExtra>[] {
+  handlers: ToolHandlers<T, TName, THandlerExtra, TResult>
+): ToolDefinition<TName, ZodRawShape, THandlerExtra, TResult>[] {
   return metadata.map((tool) => ({
     ...tool,
     handler: handlers[tool.name],
