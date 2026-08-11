@@ -42,7 +42,7 @@ function CreditDetailRow({
   value,
 }: CreditDetailRowProps) {
   return (
-    <div className="grid min-h-10 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 text-sm">
+    <div className="grid min-h-9 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 text-sm">
       <dt className="flex min-w-0 items-center gap-2 font-medium text-foreground">
         {icon && (
           <Icon
@@ -139,7 +139,7 @@ export function CreditCostPopover({
         role="dialog"
         aria-labelledby={headingId}
         align="start"
-        className="w-[min(24rem,calc(100vw-1rem))] p-4"
+        className="w-[min(20rem,calc(100vw-1rem))] p-3"
         preventAutoFocusOnClose={false}
       >
         <h2
@@ -157,14 +157,14 @@ export function CreditCostPopover({
           </dl>
         </section>
 
-        <hr className="-mx-4 border-t border-border" />
+        <hr className="-mx-3 border-t border-border" />
 
         <section aria-label="Credit breakdown">
           {isConsumptionLoading && !consumption ? (
             <div
               aria-busy="true"
               aria-live="polite"
-              className="flex min-h-10 items-center text-sm text-muted-foreground"
+              className="flex min-h-9 items-center text-sm text-muted-foreground"
             >
               <span className="flex-1">Loading details</span>
               <span className="h-3 w-8 animate-pulse rounded bg-muted-foreground/20" />

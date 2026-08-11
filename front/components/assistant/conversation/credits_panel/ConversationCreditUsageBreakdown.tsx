@@ -16,7 +16,7 @@ import type { ComponentType } from "react";
 const MAX_VISIBLE_TOOLS = 3;
 
 function toolUsageLabel(callCount: number): string {
-  return `${callCount} tool ${callCount === 1 ? "use" : "uses"}`;
+  return `${callCount} use${pluralize(callCount)}`;
 }
 
 interface CreditBreakdownCardProps {
@@ -50,7 +50,7 @@ function CreditBreakdownCard({
         />
       </div>
       <div className="min-w-0">
-        <p className="text-base font-semibold text-foreground">
+        <p className="text-base font-semibold tabular-nums text-foreground">
           {formatCreditValue(value)}
         </p>
         {description && (
@@ -134,7 +134,7 @@ function ModelRow({ isDark, model }: ModelRowProps) {
           {model.displayName}
         </span>
       </div>
-      <span className="shrink-0 text-base font-semibold text-muted-foreground">
+      <span className="shrink-0 text-base font-semibold tabular-nums text-muted-foreground">
         {formatCreditValue(model.attributedCredits)}
       </span>
     </div>
@@ -186,7 +186,7 @@ function AgentBreakdown({ agent }: AgentBreakdownProps) {
             {agent.name}
           </h3>
         </div>
-        <span className="shrink-0 text-xs text-muted-foreground">
+        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
           {formatCreditValue(agent.billedCredits)}
         </span>
       </div>
@@ -215,7 +215,7 @@ export function ConversationCreditUsageBreakdown({
         <div>
           <h2 className="text-sm font-semibold text-foreground">Total</h2>
           <div className="mt-1 flex items-end gap-1">
-            <span className="text-2xl font-semibold leading-8 text-foreground">
+            <span className="text-2xl font-semibold leading-8 tabular-nums text-foreground">
               {formatCredits(billedCredits)}
             </span>
             <span className="pb-1 text-sm text-muted-foreground">
