@@ -1,6 +1,10 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  ToolHandlerResult,
+  ToolHandlers,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { ToolContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { SnowflakeClient } from "@app/lib/api/actions/servers/snowflake/client";
@@ -20,6 +24,21 @@ import { fromError } from "zod-validation-error";
 const CONNECTION_ERROR = new MCPError(
   "Snowflake connection not configured. Please connect your Snowflake account."
 );
+
+function handleSnowflakeError(error: Error): ToolHandlerResult {
+  if (
+    error.name === "RequestFailedError" &&
+    "response" in error &&
+    typeof error.response === "object" &&
+    error.response !== null &&
+    "statusCode" in error.response &&
+    (error.response.statusCode === 401 || error.response.statusCode === 403)
+  ) {
+    return new Ok(makePersonalAuthenticationError("snowflake").content);
+  }
+
+  return new Err(new MCPError(error.message));
+}
 
 interface SnowflakeQueryTagMetadata {
   workspace_id: string;
@@ -145,7 +164,7 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
 
     const result = await clientRes.value.listDatabases();
     if (result.isErr()) {
-      return new Err(new MCPError(result.error.message));
+      return handleSnowflakeError(result.error);
     }
 
     const databases = result.value;
@@ -173,7 +192,7 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
 
     const result = await clientRes.value.listSchemas(database);
     if (result.isErr()) {
-      return new Err(new MCPError(result.error.message));
+      return handleSnowflakeError(result.error);
     }
 
     const schemas = result.value;
@@ -201,7 +220,7 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
 
     const result = await clientRes.value.listTables(database, schema);
     if (result.isErr()) {
-      return new Err(new MCPError(result.error.message));
+      return handleSnowflakeError(result.error);
     }
 
     const tables = result.value;
@@ -232,7 +251,7 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
 
     const result = await clientRes.value.describeTable(database, schema, table);
     if (result.isErr()) {
-      return new Err(new MCPError(result.error.message));
+      return handleSnowflakeError(result.error);
     }
 
     const columns = result.value;
@@ -276,7 +295,7 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
       semantic_view
     );
     if (result.isErr()) {
-      return new Err(new MCPError(result.error.message));
+      return handleSnowflakeError(result.error);
     }
 
     const { dimensions, metrics } = result.value;
@@ -317,7 +336,7 @@ const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {
       max_rows ?? MAX_QUERY_ROWS
     );
     if (result.isErr()) {
-      return new Err(new MCPError(result.error.message));
+      return handleSnowflakeError(result.error);
     }
 
     const { columns, rows, rowCount } = result.value;
