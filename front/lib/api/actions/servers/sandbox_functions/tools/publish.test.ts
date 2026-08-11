@@ -8,8 +8,11 @@ import {
   setupProjectConversation,
 } from "@app/tests/utils/conversation_test_factories";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import {
+  computeSandboxFunctionBundleSha256,
+  shortSandboxFunctionBundleSha256,
+} from "@app/lib/resources/sandbox_function_resource";
 import { Ok } from "@app/types/shared/result";
-import { createHash } from "crypto";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -98,10 +101,9 @@ describe("publishHandler", () => {
     // publish landed through list/get.
     expect(block.text).toContain("executionMode: fast");
     expect(block.text).toContain("updatedAt: ");
-    const expectedShortSha = createHash("sha256")
-      .update("export default {};", "utf8")
-      .digest("hex")
-      .slice(0, 12);
+    const expectedShortSha = shortSandboxFunctionBundleSha256(
+      computeSandboxFunctionBundleSha256("export default {};")
+    );
     expect(block.text).toContain(`bundle: ${expectedShortSha}`);
     // A first publish must not claim byte-identity with anything.
     expect(block.text).not.toContain("byte-identical");
