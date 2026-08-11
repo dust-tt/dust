@@ -372,8 +372,8 @@ export const isSearchResultResourceType = (
 // Slack search results carry additional structured message metadata so programmatic
 // consumers do not have to parse the human-readable `text` field. The extra fields ride
 // the resource `_meta` round-trip for internal servers and are ignored everywhere else.
-export const SlackSearchResultResourceSchema = SearchResultResourceSchema.extend(
-  {
+export const SlackSearchResultResourceSchema =
+  SearchResultResourceSchema.extend({
     author: z
       .object({ id: z.string().optional(), name: z.string().optional() })
       .optional(),
@@ -390,8 +390,7 @@ export const SlackSearchResultResourceSchema = SearchResultResourceSchema.extend
     mentionedUsers: z
       .array(z.object({ id: z.string(), name: z.string() }))
       .optional(),
-  }
-);
+  });
 
 export type SlackSearchResultResourceType = z.infer<
   typeof SlackSearchResultResourceSchema
