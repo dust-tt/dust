@@ -1,17 +1,22 @@
 import {
+  addFileToProject,
   removeContentNodesFromProject,
   removeFileFromProject,
 } from "@app/lib/api/projects/context";
 import { MessageModel } from "@app/lib/models/agent/conversation";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { frameContentType } from "@app/types/files";
 import { beforeEach, describe, expect, it } from "vitest";
 
 describe("removeFileFromProject", () => {
@@ -318,5 +323,71 @@ describe("removeContentNodesFromProject", () => {
       where: { id: superseded.id, workspaceId: workspace.id },
     });
     expect(supersededAfter).toBeNull();
+  });
+});
+
+describe("addFileToProject", () => {
+  it("keeps a published frame published when saved from a conversation into a pod", async () => {
+    const { auth, workspace, user } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+
+    const project = await SpaceFactory.project(workspace, user.id);
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+
+    const frame = await FileFactory.create(auth, user, {
+      contentType: frameContentType,
+      fileName: "app.tsx",
+      fileSize: 100,
+      status: "ready",
+      useCase: "tool_output",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+    // Mirror publishFrame: the entry's directory is the bundle root, its filename the entry.
+    await frame.setUseCaseMetadata(auth, {
+      ...(frame.useCaseMetadata ?? {}),
+      frameBundleRootPath: `conversation-${conversation.sId}`,
+      frameEntryRelPath: "app.tsx",
+    });
+    expect(frame.isPublishedFrame()).toBe(true);
+
+    // The destination must be free for the move to proceed; the storage mock reports every
+    // path as existing by default.
+    fileStorageMock.setFileExists(
+      (filePath) => !filePath.startsWith(`w/${workspace.sId}/pods/`)
+    );
+
+    // This is the "Save to Pod" button on the frame renderer.
+    const res = await addFileToProject(auth, {
+      file: frame,
+      space: project,
+      sourceConversationId: conversation.sId,
+    });
+    if (res.isErr()) {
+      throw new Error(`addFileToProject failed: ${res.error.message}`);
+    }
+
+    const moved = await FileResource.fetchById(auth, frame.sId);
+    expect(moved).not.toBeNull();
+    expect(moved!.useCase).toBe("project_context");
+    expect(moved!.useCaseMetadata?.spaceId).toBe(project.sId);
+    expect(moved!.useCaseMetadata?.sourceConversationId).toBe(conversation.sId);
+    expect(moved!.useCaseMetadata?.conversationId).toBeUndefined();
+
+    // The publish state must survive, retargeted to the pod.
+    expect(moved!.useCaseMetadata?.frameBundleRootPath).toBe(
+      `pod-${project.sId}`
+    );
+    expect(moved!.useCaseMetadata?.frameEntryRelPath).toBe("app.tsx");
+    expect(moved!.isPublishedFrame()).toBe(true);
+    expect(moved!.getRenderableVersion()).toBe("processed");
   });
 });

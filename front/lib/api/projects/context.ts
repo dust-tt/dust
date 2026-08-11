@@ -9,6 +9,7 @@ import {
   DustFileSystemError,
   podScopedPath,
 } from "@app/lib/api/file_system/types";
+import { translateUseCaseMetadataForMove } from "@app/lib/api/files/file_system_ops";
 import {
   deleteGCSMountFile,
   moveFile,
@@ -393,10 +394,17 @@ export async function addFileToProject(
       destRelativeFilePath: destFileName,
       destFileName,
       destUseCase: "project_context",
-      destUseCaseMetadata: {
-        spaceId: space.sId,
-        ...(sourceConversationId ? { sourceConversationId } : {}),
-      },
+      // Carried over rather than rebuilt: a published Frame saved into a Pod must keep the
+      // bundle root and entry recorded at publish time, retargeted to the Pod, or it renders
+      // as raw source once it lands there.
+      destUseCaseMetadata: translateUseCaseMetadataForMove({
+        previousMetadata: file.useCaseMetadata,
+        destScopedPath,
+        destScopeMetadata: {
+          spaceId: space.sId,
+          ...(sourceConversationId ? { sourceConversationId } : {}),
+        },
+      }),
     });
     if (moveRes.isErr()) {
       return new Err({

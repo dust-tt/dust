@@ -275,7 +275,7 @@ function inferDestMountInfo(
  * `frameBundleRootPath`, which flipped `getRenderableVersion` back to "original" and made a
  * published Frame render as raw source after any move.
  */
-function translateUseCaseMetadataForMove({
+export function translateUseCaseMetadataForMove({
   previousMetadata,
   destScopedPath,
   destScopeMetadata,
