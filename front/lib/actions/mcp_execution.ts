@@ -82,13 +82,13 @@ function getFileName(resource: { uri: string }): string {
 /**
  * Builds the model-visible snippet for a content block whose full text was offloaded to the
  * file system by persistToolOutput. The scoped path pointer is what lets the model read the
- * rest of the content back, so it must always be present. The
- * "[Full content archived at <path>]" sentence is a stable contract and must stay
- * byte-identical.
+ * rest of the content back, so it must always be present, and the
+ * "[Full content archived at <path>]" sentence stays byte-identical so the model reads the
+ * same wording everywhere.
  *
  * One snippet shape for every consumer: the snippet is for humans and models reading the
- * conversation, never a machine contract. Code consumers (function code via `@dust/pod`) read
- * the full content back through the `_meta` descriptor instead of parsing this text.
+ * conversation, never something to parse. Code consumers (function code via `@dust/pod`) read
+ * the full content back through the `_meta` descriptor instead.
  */
 function makeOffloadedSnippet(
   text: string,
