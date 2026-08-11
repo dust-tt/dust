@@ -44,9 +44,9 @@ export function ManageUpgradeRequestModal({
     {
       key: "allow-unlimited-spend",
       icon: Infinity,
-      label: "Use workspace default",
+      label: "Allow unlimited spend",
       description:
-        "Remove this member's custom limit; they'll fall back to their group or workspace default cap.",
+        "Let this member draw from the credit pool with no cap, limited only by what the workspace has available.",
       onClick: () => request && onAllowUnlimitedSpend(request),
     },
     {

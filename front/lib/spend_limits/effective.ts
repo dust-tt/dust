@@ -8,29 +8,26 @@ export type EffectiveSpendLimitSource =
 
 type SpendLimitAlertState = CustomerAlert["customer_status"];
 
-// Priority: per-user `override` > the highest of the user's `group` caps >
-// seat-type `default`. `groupCapAwuCredits` is the max cap across the groups the
-// user belongs to (null when none of them carry a cap). All three values must be
-// expressed in the same unit (all pool-only, or all pool + seat allowance).
-export function resolveEffectiveSpendLimitAwuCredits(args: {
-  overrideAwuCredits: number | null;
-  groupCapAwuCredits: number | null;
-  defaultAwuCredits: number;
-}): number;
-export function resolveEffectiveSpendLimitAwuCredits(args: {
-  overrideAwuCredits: number | null;
-  groupCapAwuCredits: number | null;
-  defaultAwuCredits: number | null;
-}): number | null;
+// Priority: an explicit `overrideUnlimited` bypasses everything below it (no
+// cap at all) > per-user `override` amount > the highest of the user's `group`
+// caps > seat-type `default`. `groupCapAwuCredits` is the max cap across the
+// groups the user belongs to (null when none of them carry a cap). All three
+// numeric values must be expressed in the same unit (all pool-only, or all
+// pool + seat allowance).
 export function resolveEffectiveSpendLimitAwuCredits({
   overrideAwuCredits,
+  overrideUnlimited,
   groupCapAwuCredits,
   defaultAwuCredits,
 }: {
   overrideAwuCredits: number | null;
+  overrideUnlimited: boolean;
   groupCapAwuCredits: number | null;
   defaultAwuCredits: number | null;
 }): number | null {
+  if (overrideUnlimited) {
+    return null;
+  }
   if (overrideAwuCredits !== null) {
     return overrideAwuCredits;
   }
@@ -40,19 +37,21 @@ export function resolveEffectiveSpendLimitAwuCredits({
   return defaultAwuCredits;
 }
 
-// Where the effective spend limit comes from: a user-specific `override`, a
-// `group` cap, the seat-type `default`, or `none` when nothing is configured
-// (unlimited).
+// Where the effective spend limit comes from: a user-specific `override`
+// (amount-capped or explicitly unlimited), a `group` cap, the seat-type
+// `default`, or `none` when nothing is configured (unlimited).
 export function resolveEffectiveSpendLimitSource({
   overrideAwuCredits,
+  overrideUnlimited,
   groupCapAwuCredits,
   defaultAwuCredits,
 }: {
   overrideAwuCredits: number | null;
+  overrideUnlimited: boolean;
   groupCapAwuCredits: number | null;
   defaultAwuCredits: number | null;
 }): EffectiveSpendLimitSource {
-  if (overrideAwuCredits !== null) {
+  if (overrideUnlimited || overrideAwuCredits !== null) {
     return "override";
   }
   if (groupCapAwuCredits !== null) {

@@ -404,14 +404,27 @@ async function handlePerUserSpendThresholdEvent({
     creditUsageConfig?.defaultPoolCapAwuCredits ?? 0;
   const poolCap = resolveEffectiveSpendLimitAwuCredits({
     overrideAwuCredits: membership.poolCapOverrideAwuCredits,
+    overrideUnlimited: membership.poolCapOverrideUnlimited,
     groupCapAwuCredits,
     defaultAwuCredits: defaultPoolCapAwuCredits,
   });
   const capSource = resolveEffectiveSpendLimitSource({
     overrideAwuCredits: membership.poolCapOverrideAwuCredits,
+    overrideUnlimited: membership.poolCapOverrideUnlimited,
     groupCapAwuCredits,
     defaultAwuCredits: defaultPoolCapAwuCredits,
   });
+
+  if (poolCap === null) {
+    // Explicitly granted unlimited pool access — no numeric threshold can
+    // ever match, so any per-user/seat-type-default/group alert firing for
+    // this user is stale and should not (re-)cap them.
+    logger.info(
+      { eventId: event.id, workspaceId: workspace.sId, userId, capSource },
+      "[Metronome Webhook] per-user spend threshold: user has unlimited pool access, ignoring"
+    );
+    return new Ok(undefined);
+  }
 
   let seatAllowance = 0;
   try {

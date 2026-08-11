@@ -7,11 +7,15 @@ export const SPEND_LIMIT_EXPIRY_KINDS = [
 export type SpendLimitExpiryKind = (typeof SPEND_LIMIT_EXPIRY_KINDS)[number];
 
 export type UserSpendLimit =
+  // No override: falls back to the group cap / seat-type default.
+  | { kind: "default" }
+  // Explicit override bypassing the group cap and seat-type default entirely
+  // — bounded only by the workspace's available credit pool.
   | { kind: "unlimited" }
   | {
       kind: "limited";
       awuCredits: number;
-      // Epoch ms at which the override auto-reverts to unlimited. Omitted/null
+      // Epoch ms at which the override auto-reverts to the default. Omitted/null
       // means it never expires.
       expiresAt?: number | null;
     };

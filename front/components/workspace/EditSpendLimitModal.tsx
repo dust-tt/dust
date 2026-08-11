@@ -35,10 +35,10 @@ import { useForm } from "react-hook-form";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
-type SpendLimitKind = "default" | "override";
+type SpendLimitKind = "default" | "unlimited" | "override";
 
 function isSpendLimitKind(value: string): value is SpendLimitKind {
-  return value === "default" || value === "override";
+  return value === "default" || value === "unlimited" || value === "override";
 }
 
 interface EditSpendLimitModalProps {
@@ -125,6 +125,10 @@ export function EditSpendLimitModal({
         });
         break;
       case "unlimited":
+        setKind(forceOverride ? "override" : "unlimited");
+        overrideForm.reset({ creditsInput: "", expiryMode: "never" });
+        break;
+      case "default":
         setKind(forceOverride ? "override" : "default");
         overrideForm.reset({ creditsInput: "", expiryMode: "never" });
         break;
@@ -171,6 +175,9 @@ export function EditSpendLimitModal({
 
     switch (kind) {
       case "default":
+        await submitLimit({ kind: "default" });
+        return;
+      case "unlimited":
         await submitLimit({ kind: "unlimited" });
         return;
       case "override":
@@ -274,6 +281,11 @@ export function EditSpendLimitModal({
                 value="default"
                 id="spend-limit-default"
                 label="Use workspace default"
+              />
+              <RadioGroupItem
+                value="unlimited"
+                id="spend-limit-unlimited"
+                label="Allow unlimited spend"
               />
               <RadioGroupItem
                 value="override"

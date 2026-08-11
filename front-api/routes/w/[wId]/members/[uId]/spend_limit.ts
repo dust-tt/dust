@@ -19,6 +19,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 export const UpdateUserSpendLimitBodySchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("default") }),
   z.object({ kind: z.literal("unlimited") }),
   z.object({
     kind: z.literal("limited"),

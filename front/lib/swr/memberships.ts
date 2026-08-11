@@ -676,8 +676,11 @@ export function useUpdateUserSpendLimit({
       const body = PutUserSpendLimitResponseSchema.parse(await res.json());
       let description: string;
       switch (limit.kind) {
+        case "default":
+          description = `${memberName}'s custom spend limit has been removed.`;
+          break;
         case "unlimited":
-          description = `${memberName}'s spend limit has been removed.`;
+          description = `${memberName} can now draw from the credit pool with no cap.`;
           break;
         case "limited":
           description = `${memberName}'s spend limit has been set to ${limit.awuCredits.toLocaleString("en-US")} credits.`;

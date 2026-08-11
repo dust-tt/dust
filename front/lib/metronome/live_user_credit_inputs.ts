@@ -84,6 +84,7 @@ export async function fetchLiveUserCreditInputs({
   userId,
   seatType,
   poolCapOverrideAwuCredits,
+  poolCapOverrideUnlimited,
   groupCapAwuCredits,
   defaultPoolCapAwuCredits,
   metronomeCustomerId,
@@ -93,6 +94,7 @@ export async function fetchLiveUserCreditInputs({
   userId: string;
   seatType: MembershipSeatType | null;
   poolCapOverrideAwuCredits: number | null;
+  poolCapOverrideUnlimited: boolean;
   // Max group cap (pool-only, excluding seat allowance) across the user's
   // groups; null when none carry a cap.
   groupCapAwuCredits: number | null;
@@ -154,11 +156,13 @@ export async function fetchLiveUserCreditInputs({
     // ladder).
     const poolCapAwuCredits = resolveEffectiveSpendLimitAwuCredits({
       overrideAwuCredits: poolCapOverrideAwuCredits,
+      overrideUnlimited: poolCapOverrideUnlimited,
       groupCapAwuCredits,
       defaultAwuCredits: defaultPoolCapAwuCredits,
     });
     capSource = resolveEffectiveSpendLimitSource({
       overrideAwuCredits: poolCapOverrideAwuCredits,
+      overrideUnlimited: poolCapOverrideUnlimited,
       groupCapAwuCredits,
       defaultAwuCredits: defaultPoolCapAwuCredits,
     });
@@ -175,7 +179,8 @@ export async function fetchLiveUserCreditInputs({
         )
       );
     }
-    effectiveCapAwuCredits = poolCapAwuCredits + seatAllowance;
+    effectiveCapAwuCredits =
+      poolCapAwuCredits === null ? null : poolCapAwuCredits + seatAllowance;
 
     if (metronomeContractId) {
       const usageResult = await fetchPerUserAwuUsage({

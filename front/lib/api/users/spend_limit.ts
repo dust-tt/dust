@@ -134,16 +134,24 @@ export async function getUserSpendLimit(
 
   const nextCreditResetAt = await resolveNextCreditResetAt(workspace);
 
-  if (!membership || membership.poolCapOverrideAwuCredits === null) {
+  if (!membership) {
+    return new Ok({ kind: "default", nextCreditResetAt });
+  }
+
+  if (membership.poolCapOverrideAwuCredits !== null) {
+    return new Ok({
+      kind: "limited",
+      awuCredits: membership.poolCapOverrideAwuCredits,
+      expiresAt: membership.poolCapOverrideExpiresAt?.getTime() ?? null,
+      nextCreditResetAt,
+    });
+  }
+
+  if (membership.poolCapOverrideUnlimited) {
     return new Ok({ kind: "unlimited", nextCreditResetAt });
   }
 
-  return new Ok({
-    kind: "limited",
-    awuCredits: membership.poolCapOverrideAwuCredits,
-    expiresAt: membership.poolCapOverrideExpiresAt?.getTime() ?? null,
-    nextCreditResetAt,
-  });
+  return new Ok({ kind: "default", nextCreditResetAt });
 }
 
 /**
@@ -254,12 +262,17 @@ export async function setUserSpendLimit(
       limit.kind === "limited" && limit.expiresAt
         ? new Date(limit.expiresAt)
         : null,
+    poolCapOverrideUnlimited: limit.kind === "unlimited",
   });
 
   const revert = () =>
     membership.revertPoolCapOverride(previousPoolCapOverride);
 
   switch (limit.kind) {
+    // Neither has a numeric per-user threshold to enforce at the Metronome
+    // layer — the DB override (cleared above) is what actually distinguishes
+    // them for effective-cap resolution.
+    case "default":
     case "unlimited": {
       const clearResult = await revertOnSyncFailure(
         await clearMetronomePerUserCapAlert({
@@ -386,8 +399,7 @@ export async function setUserSpendLimit(
     context: auditContext,
     metadata: {
       kind: limit.kind,
-      awu_credits:
-        limit.kind === "limited" ? String(limit.awuCredits) : "unlimited",
+      awu_credits: limit.kind === "limited" ? String(limit.awuCredits) : "",
       expires_at:
         limit.kind === "limited" && limit.expiresAt
           ? new Date(limit.expiresAt).toISOString()

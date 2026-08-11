@@ -38,11 +38,13 @@ import type { LightWorkspaceType } from "@app/types/user";
 /**
  * Resolve the effective pool credit limit for a user.
  *
- * Priority: per-user override > max group cap > workspace default. When nothing
- * is configured, defaults to 0 (no pool access). Unlimited pool is not
- * supported. All values are pool-only (excluding seat allowance).
+ * Priority: an explicit unlimited override bypasses everything else > per-user
+ * override amount > max group cap > workspace default. When nothing is
+ * configured, defaults to 0 (no pool access). All values are pool-only
+ * (excluding seat allowance).
  *
- * Returns `number`: the pool credit limit (0 = no pool access).
+ * Returns `null` when the user has unbounded pool access (explicit unlimited
+ * override), otherwise the pool credit limit (0 = no pool access).
  */
 function resolvePoolLimitForUser({
   workspace,
@@ -54,7 +56,7 @@ function resolvePoolLimitForUser({
   membership: MembershipResource;
   groupCapAwuCredits: number | null;
   defaultPoolCapAwuCredits: number;
-}): number {
+}): number | null {
   if (!workspace.metronomeCustomerId) {
     return 0;
   }
@@ -67,6 +69,7 @@ function resolvePoolLimitForUser({
   // shared ladder: per-user override > max group cap > workspace default.
   return resolveEffectiveSpendLimitAwuCredits({
     overrideAwuCredits: membership.poolCapOverrideAwuCredits,
+    overrideUnlimited: membership.poolCapOverrideUnlimited,
     groupCapAwuCredits,
     defaultAwuCredits: defaultPoolCapAwuCredits,
   });
@@ -156,6 +159,7 @@ export async function dispatchSeatBalanceExhausted({
       userId,
       seatType: membership.seatType,
       poolCapOverrideAwuCredits: membership.poolCapOverrideAwuCredits,
+      poolCapOverrideUnlimited: membership.poolCapOverrideUnlimited,
       groupCapAwuCredits,
       defaultPoolCapAwuCredits,
     });
@@ -242,6 +246,7 @@ export async function dispatchSeatBalanceResolved({
     userId,
     seatType: membership.seatType,
     poolCapOverrideAwuCredits: membership.poolCapOverrideAwuCredits,
+    poolCapOverrideUnlimited: membership.poolCapOverrideUnlimited,
     groupCapAwuCredits: await fetchMaxGroupPoolCapForUser({
       workspace: lightWorkspace,
       userModelId: membership.userId,
@@ -364,6 +369,7 @@ export async function dispatchPerUserCapResolved({
     userId,
     seatType: membership.seatType,
     poolCapOverrideAwuCredits: membership.poolCapOverrideAwuCredits,
+    poolCapOverrideUnlimited: membership.poolCapOverrideUnlimited,
     groupCapAwuCredits: await fetchMaxGroupPoolCapForUser({
       workspace: lightWorkspace,
       userModelId: membership.userId,
@@ -395,12 +401,14 @@ async function resolveLiveUserBalance({
   userId,
   seatType,
   poolCapOverrideAwuCredits,
+  poolCapOverrideUnlimited,
   groupCapAwuCredits,
 }: {
   workspace: WorkspaceResource;
   userId: string;
   seatType: MembershipSeatType | null;
   poolCapOverrideAwuCredits: number | null;
+  poolCapOverrideUnlimited: boolean;
   groupCapAwuCredits: number | null;
 }): Promise<LiveUserSeatBalance | undefined> {
   const { metronomeCustomerId } = workspace;
@@ -423,6 +431,7 @@ async function resolveLiveUserBalance({
     userId,
     seatType,
     poolCapOverrideAwuCredits,
+    poolCapOverrideUnlimited,
     groupCapAwuCredits,
     defaultPoolCapAwuCredits: creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
     metronomeCustomerId,

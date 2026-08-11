@@ -32,6 +32,11 @@ export class MembershipModel extends WorkspaceAwareModel<MembershipModel> {
   // Meaningless — and ignored by enforcement — when
   // `poolCapOverrideAwuCredits` is null.
   declare poolCapOverrideExpiresAt: Date | null;
+  // True when the admin explicitly granted unbounded pool access (bypassing
+  // the group cap and seat-type default entirely), as opposed to
+  // `poolCapOverrideAwuCredits` being null because no override was ever set.
+  // Meaningless when `poolCapOverrideAwuCredits` is non-null.
+  declare poolCapOverrideUnlimited: CreationOptional<boolean>;
 
   declare userId: ForeignKey<UserModel["id"]>;
   declare user: NonAttribute<UserModel>;
@@ -88,6 +93,11 @@ MembershipModel.init(
       type: DataTypes.DATE,
       allowNull: true,
       defaultValue: null,
+    },
+    poolCapOverrideUnlimited: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {

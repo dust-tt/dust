@@ -417,6 +417,7 @@ export async function reconcileUser({
     // Pool-only values persisted in the DB; the live-inputs helper adds the
     // seat allowance back to get the total threshold.
     poolCapOverrideAwuCredits: membership.poolCapOverrideAwuCredits,
+    poolCapOverrideUnlimited: membership.poolCapOverrideUnlimited,
     groupCapAwuCredits,
     defaultPoolCapAwuCredits: creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
     metronomeCustomerId,
@@ -633,12 +634,14 @@ export async function reconcileWorkspaceUserCreditStates({
       groupCapByUserModelId.get(membership.userId) ?? null;
     const poolCapAwuCredits = resolveEffectiveSpendLimitAwuCredits({
       overrideAwuCredits: membership.poolCapOverrideAwuCredits,
+      overrideUnlimited: membership.poolCapOverrideUnlimited,
       groupCapAwuCredits,
       defaultAwuCredits: defaultPoolCapAwuCredits,
     });
-    const effectiveCapAwuCredits = normalizedSeatType
-      ? poolCapAwuCredits + (seatAllowances[normalizedSeatType] ?? 0)
-      : null;
+    const effectiveCapAwuCredits =
+      normalizedSeatType && poolCapAwuCredits !== null
+        ? poolCapAwuCredits + (seatAllowances[normalizedSeatType] ?? 0)
+        : null;
     // Seat balance comes from `listMetronomeSeatBalances` for pro/max; free
     // seats read their per-user credit balance instead (not a seat balance).
     // Pro/max read their seat balance. `expectedUserCreditState` decides routing

@@ -65,6 +65,7 @@ export type MembershipsPaginationParams = {
 export type PoolCapOverrideSnapshot = {
   poolCapOverrideAwuCredits: number | null;
   poolCapOverrideExpiresAt: Date | null;
+  poolCapOverrideUnlimited: boolean;
 };
 
 type MembershipsWithTotal = {
@@ -1609,9 +1610,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
   /**
    * Update the per-user pool cap override (in AWU credits, seat allowance
-   * excluded) of an active membership in place. `null` clears the override,
-   * letting the seat-type default apply. Callers are responsible for syncing
-   * the derived Metronome alerts.
+   * excluded) of an active membership in place. `null` amount with
+   * `poolCapOverrideUnlimited` false clears the override, letting the group
+   * cap / seat-type default apply. `null` amount with `poolCapOverrideUnlimited`
+   * true grants unbounded pool access, bypassing the group cap and default
+   * entirely. Callers are responsible for syncing the derived Metronome alerts.
    *
    * `poolCapOverrideExpiresAt` schedules an automatic revert back to the
    * seat-type default (see the `spend_limit_expiration` Temporal sweep).
@@ -1622,9 +1625,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     {
       poolCapOverrideAwuCredits,
       poolCapOverrideExpiresAt,
+      poolCapOverrideUnlimited,
     }: {
       poolCapOverrideAwuCredits: number | null;
       poolCapOverrideExpiresAt?: Date | null;
+      poolCapOverrideUnlimited?: boolean;
     },
     transaction?: Transaction
   ): Promise<void> {
@@ -1632,6 +1637,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       {
         poolCapOverrideAwuCredits,
         poolCapOverrideExpiresAt: poolCapOverrideExpiresAt ?? null,
+        poolCapOverrideUnlimited: poolCapOverrideUnlimited ?? false,
       },
       transaction
     );
@@ -1644,6 +1650,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return {
       poolCapOverrideAwuCredits: this.poolCapOverrideAwuCredits,
       poolCapOverrideExpiresAt: this.poolCapOverrideExpiresAt,
+      poolCapOverrideUnlimited: this.poolCapOverrideUnlimited,
     };
   }
 
@@ -1756,6 +1763,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           // it's the pool-only portion, independent of the seat allowance.
           poolCapOverrideAwuCredits: this.poolCapOverrideAwuCredits,
           poolCapOverrideExpiresAt: this.poolCapOverrideExpiresAt,
+          poolCapOverrideUnlimited: this.poolCapOverrideUnlimited,
         },
         { transaction }
       );

@@ -371,9 +371,9 @@ export function UsagePage() {
   const handleAllowUnlimitedSpendRequest = useCallback(
     async (request: MembershipUpgradeRequestType) => {
       const confirmed = await confirm({
-        title: "Use workspace default",
-        message: `Remove ${request.requester.name}'s custom spend limit? They'll fall back to their group or workspace default cap.`,
-        validateLabel: "Use workspace default",
+        title: "Allow unlimited spend",
+        message: `Let ${request.requester.name} draw from the credit pool with no cap, limited only by what the workspace has available?`,
+        validateLabel: "Allow unlimited spend",
         validateVariant: "primary",
       });
       if (!confirmed) {

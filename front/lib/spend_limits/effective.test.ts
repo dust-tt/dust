@@ -9,6 +9,7 @@ describe("resolveEffectiveSpendLimitAwuCredits", () => {
     expect(
       resolveEffectiveSpendLimitAwuCredits({
         overrideAwuCredits: 100,
+        overrideUnlimited: false,
         groupCapAwuCredits: 200,
         defaultAwuCredits: 300,
       })
@@ -17,6 +18,7 @@ describe("resolveEffectiveSpendLimitAwuCredits", () => {
     expect(
       resolveEffectiveSpendLimitAwuCredits({
         overrideAwuCredits: null,
+        overrideUnlimited: false,
         groupCapAwuCredits: 200,
         defaultAwuCredits: 300,
       })
@@ -25,6 +27,7 @@ describe("resolveEffectiveSpendLimitAwuCredits", () => {
     expect(
       resolveEffectiveSpendLimitAwuCredits({
         overrideAwuCredits: null,
+        overrideUnlimited: false,
         groupCapAwuCredits: null,
         defaultAwuCredits: 300,
       })
@@ -35,6 +38,7 @@ describe("resolveEffectiveSpendLimitAwuCredits", () => {
     expect(
       resolveEffectiveSpendLimitAwuCredits({
         overrideAwuCredits: null,
+        overrideUnlimited: false,
         groupCapAwuCredits: null,
         defaultAwuCredits: null,
       })
@@ -45,10 +49,22 @@ describe("resolveEffectiveSpendLimitAwuCredits", () => {
     expect(
       resolveEffectiveSpendLimitAwuCredits({
         overrideAwuCredits: null,
+        overrideUnlimited: false,
         groupCapAwuCredits: 0,
         defaultAwuCredits: 300,
       })
     ).toBe(0);
+  });
+
+  it("bypasses the group cap and default entirely when explicitly unlimited", () => {
+    expect(
+      resolveEffectiveSpendLimitAwuCredits({
+        overrideAwuCredits: null,
+        overrideUnlimited: true,
+        groupCapAwuCredits: 200,
+        defaultAwuCredits: 300,
+      })
+    ).toBeNull();
   });
 });
 
@@ -57,6 +73,7 @@ describe("resolveEffectiveSpendLimitSource", () => {
     expect(
       resolveEffectiveSpendLimitSource({
         overrideAwuCredits: 100,
+        overrideUnlimited: false,
         groupCapAwuCredits: 200,
         defaultAwuCredits: 300,
       })
@@ -65,6 +82,7 @@ describe("resolveEffectiveSpendLimitSource", () => {
     expect(
       resolveEffectiveSpendLimitSource({
         overrideAwuCredits: null,
+        overrideUnlimited: false,
         groupCapAwuCredits: 200,
         defaultAwuCredits: 300,
       })
@@ -73,6 +91,7 @@ describe("resolveEffectiveSpendLimitSource", () => {
     expect(
       resolveEffectiveSpendLimitSource({
         overrideAwuCredits: null,
+        overrideUnlimited: false,
         groupCapAwuCredits: null,
         defaultAwuCredits: 300,
       })
@@ -81,9 +100,21 @@ describe("resolveEffectiveSpendLimitSource", () => {
     expect(
       resolveEffectiveSpendLimitSource({
         overrideAwuCredits: null,
+        overrideUnlimited: false,
         groupCapAwuCredits: null,
         defaultAwuCredits: null,
       })
     ).toBe("none");
+  });
+
+  it("reports 'override' when explicitly unlimited even without a group/default cap", () => {
+    expect(
+      resolveEffectiveSpendLimitSource({
+        overrideAwuCredits: null,
+        overrideUnlimited: true,
+        groupCapAwuCredits: 200,
+        defaultAwuCredits: 300,
+      })
+    ).toBe("override");
   });
 });

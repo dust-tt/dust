@@ -44,13 +44,14 @@ export type UserCreditContext = {
   remainingCapCreditsPercentage?: number | null;
   /**
    * The user's effective pool budget in AWU credits: `0` = no pool access
-   * (e.g. free seats), `> 0` = capped pool. Unlimited is not supported. A
-   * property of the user's situation (like `remainingCapCreditsPercentage`), so
-   * it lives in the context — it's what the `seat_balance_exhausted` guards use
-   * to route `capped` vs `on_pool`, with no seat-type special-casing. Absent
-   * for events that don't carry a resolved pool limit.
+   * (e.g. free seats), `> 0` = capped pool, `null` = explicit unlimited
+   * override (unbounded). A property of the user's situation (like
+   * `remainingCapCreditsPercentage`), so it lives in the context — it's what
+   * the `seat_balance_exhausted` guards use to route `capped` vs `on_pool`,
+   * with no seat-type special-casing. Absent for events that don't carry a
+   * resolved pool limit.
    */
-  poolLimitAwuCredits?: number;
+  poolLimitAwuCredits?: number | null;
 };
 
 type UserCreditEvent =
@@ -71,7 +72,7 @@ type UserCreditEvent =
    * This user's personal seat balance is exhausted. The next state is decided
    * by `ctx.poolLimitAwuCredits`:
    *   - `0` (no pool access, e.g. free seats) → `capped`
-   *   - `> 0` (or absent) → `on_pool` (band depends on cap usage)
+   *   - `> 0`, `null` (unlimited), or absent → `on_pool` (band depends on cap usage)
    */
   | { type: "seat_balance_exhausted" }
   /**

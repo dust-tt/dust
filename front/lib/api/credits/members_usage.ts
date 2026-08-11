@@ -835,6 +835,7 @@ export async function fetchRemainingCapCreditsPercentageForUser({
   userId,
   seatType,
   poolCapOverrideAwuCredits,
+  poolCapOverrideUnlimited,
   groupCapAwuCredits,
   defaultPoolCapAwuCredits,
 }: {
@@ -843,6 +844,7 @@ export async function fetchRemainingCapCreditsPercentageForUser({
   userId: string;
   seatType: MembershipSeatType | null | undefined;
   poolCapOverrideAwuCredits: number | null;
+  poolCapOverrideUnlimited: boolean;
   // Max group cap (pool-only, excluding seat allowance) across the user's
   // groups; null when none carry a cap.
   groupCapAwuCredits: number | null;
@@ -898,6 +900,9 @@ export async function fetchRemainingCapCreditsPercentageForUser({
 
   const spendLimitAwuCredits = resolveEffectiveSpendLimitAwuCredits({
     overrideAwuCredits,
+    // "none" seat users have no pool access, so their unlimited override (if
+    // any) is irrelevant too.
+    overrideUnlimited: poolCapOverrideUnlimited && seatType !== "none",
     groupCapAwuCredits: groupCapTotalAwuCredits,
     defaultAwuCredits,
   });
@@ -977,6 +982,10 @@ export async function getEffectiveSpendCapAwuCreditsForUser(
 
   return resolveEffectiveSpendLimitAwuCredits({
     overrideAwuCredits,
+    // "none" seat users have no pool access, so their unlimited override (if
+    // any) is irrelevant too.
+    overrideUnlimited:
+      membership.poolCapOverrideUnlimited && membership.seatType !== "none",
     groupCapAwuCredits,
     defaultAwuCredits,
   });
@@ -1226,14 +1235,21 @@ export async function getMemberUsage({
         (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
       : null;
 
+  // "none" seat users have no pool access, so their unlimited override (if
+  // any) is irrelevant too.
+  const overrideUnlimited =
+    membership.poolCapOverrideUnlimited && membership.seatType !== "none";
+
   const spendLimitSource = resolveEffectiveSpendLimitSource({
     overrideAwuCredits,
+    overrideUnlimited,
     groupCapAwuCredits,
     defaultAwuCredits: effectiveDefaultAwuCredits,
   });
 
   const spendLimitAwuCredits = resolveEffectiveSpendLimitAwuCredits({
     overrideAwuCredits,
+    overrideUnlimited,
     groupCapAwuCredits,
     defaultAwuCredits: effectiveDefaultAwuCredits,
   });
@@ -1840,8 +1856,14 @@ export async function getMembersUsage({
           (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
         : null;
 
+    // "none" seat users have no pool access, so their unlimited override (if
+    // any) is irrelevant too.
+    const overrideUnlimited =
+      membership.poolCapOverrideUnlimited && membership.seatType !== "none";
+
     const spendLimitSource = resolveEffectiveSpendLimitSource({
       overrideAwuCredits,
+      overrideUnlimited,
       groupCapAwuCredits,
       defaultAwuCredits: effectiveDefaultAwuCredits,
     });
@@ -1895,6 +1917,7 @@ export async function getMembersUsage({
         scheduledSeatChangeAt: scheduled?.startAt.toISOString() ?? null,
         spendLimitAwuCredits: resolveEffectiveSpendLimitAwuCredits({
           overrideAwuCredits,
+          overrideUnlimited,
           groupCapAwuCredits,
           defaultAwuCredits: effectiveDefaultAwuCredits,
         }),
