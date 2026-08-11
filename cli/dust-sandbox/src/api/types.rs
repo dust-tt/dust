@@ -282,6 +282,45 @@ mod tests {
     }
 
     #[test]
+    fn call_tool_result_preserves_block_meta_offload_descriptor() {
+        // Offloaded tool outputs carry a machine-readable descriptor in the block's `_meta`
+        // (key "tt.dust/offload"); the CLI must pass it through verbatim so in-sandbox
+        // consumers can resolve the full content.
+        let poll_body = r#"{
+            "status":"success",
+            "action":{
+                "status":"succeeded",
+                "output":[{
+                    "type":"resource",
+                    "resource":{"uri":"pod-x/.tool_outputs/fn/1_tool.json","mimeType":"text/plain","text":"snippet"},
+                    "_meta":{"tt.dust/offload":{"fullContentPath":"pod-x/.tool_outputs/fn/1_tool.json","totalBytes":123456,"contentType":"application/json"}}
+                }]
+            }
+        }"#;
+        let resp = parse_action_poll_response(poll_body).expect("should parse");
+        let content = match resp {
+            ActionPollResponse::Success { content, .. } => content,
+            _ => panic!("expected success"),
+        };
+
+        let result = CallToolResult {
+            content,
+            is_error: false,
+        };
+        let value: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&result).expect("should serialize"))
+                .expect("should round-trip");
+
+        let descriptor = &value["content"][0]["_meta"]["tt.dust/offload"];
+        assert_eq!(
+            descriptor["fullContentPath"],
+            "pod-x/.tool_outputs/fn/1_tool.json"
+        );
+        assert_eq!(descriptor["totalBytes"], 123456);
+        assert_eq!(descriptor["contentType"], "application/json");
+    }
+
+    #[test]
     fn call_tool_result_preserves_unknown_block_types_when_serialized() {
         let result = CallToolResult {
             content: vec![serde_json::json!({

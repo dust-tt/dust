@@ -22,10 +22,13 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { slugify } from "@app/types/shared/utils/string_utils";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-interface PersistedToolOutput {
+export interface PersistedToolOutput {
   contentType: AllSupportedFileContentType;
   fileName: string;
   scopedPath: string;
+  // Byte size of the persisted content, surfaced in the offload descriptor attached to the
+  // replacement snippet block.
+  totalBytes: number;
 }
 
 /**
@@ -221,6 +224,7 @@ export async function persistToolOutput(
       fileName,
       scopedPath: result.value,
       contentType: storageContentType,
+      totalBytes: Buffer.byteLength(content, "utf8"),
     });
   }
 
@@ -240,7 +244,12 @@ export async function persistToolOutput(
       return result;
     }
 
-    return new Ok({ fileName, scopedPath: result.value, contentType });
+    return new Ok({
+      fileName,
+      scopedPath: result.value,
+      contentType,
+      totalBytes: Buffer.byteLength(block.text, "utf8"),
+    });
   }
 
   // Resource blocks whose text exceeds the offload threshold.
@@ -261,7 +270,12 @@ export async function persistToolOutput(
       return result;
     }
 
-    return new Ok({ fileName, scopedPath: result.value, contentType });
+    return new Ok({
+      fileName,
+      scopedPath: result.value,
+      contentType,
+      totalBytes: Buffer.byteLength(text, "utf8"),
+    });
   }
 
   return new Ok(null);
