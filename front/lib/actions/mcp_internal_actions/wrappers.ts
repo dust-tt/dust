@@ -1,6 +1,6 @@
 import type {
-  ToolDefinition,
-  ToolHandlerResult,
+  RegistrableToolDefinition,
+  ToolHandlerResultWithStructuredContent,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { normalizeToolHandlerOutput } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { ToolContext, ToolRunContext } from "@app/lib/actions/types";
@@ -29,7 +29,7 @@ export function registerTool(
   auth: Authenticator,
   toolContext: ToolContext | undefined,
   server: McpServer,
-  tool: ToolDefinition,
+  tool: RegistrableToolDefinition,
   { monitoringName }: { monitoringName: string }
 ): void {
   server.registerTool(
@@ -70,8 +70,8 @@ export function registerTool(
 // To keep the same behavior as before, we move the extra properties to the _meta field of each resource item.
 // They will be moved back to the resource items root level in the tool result processing.
 export async function withToolResultProcessing(
-  resultPromise: Promise<ToolHandlerResult>
-): Promise<ToolHandlerResult> {
+  resultPromise: Promise<ToolHandlerResultWithStructuredContent>
+): Promise<ToolHandlerResultWithStructuredContent> {
   const result = await resultPromise;
   if (result.isOk()) {
     const { content, structuredContent } = normalizeToolHandlerOutput(
@@ -113,8 +113,8 @@ export async function withToolResultProcessing(
 
 /**
  * Wraps a tool callback with logging and monitoring.
- * The tool callback is expected to return a `ToolHandlerResult` (content blocks, optionally
- * paired with `structuredContent`),
+ * The tool callback is expected to return content blocks, optionally paired with
+ * `structuredContent`,
  * Errors are caught and logged unless not tracked, and the error is returned as a text content.
  *
  * The tool name is used as a tag in the DD metric, it's 1 tool name <=> 1 monitor.
@@ -134,7 +134,7 @@ function withToolLogging<T>(
   toolCallback: (
     params: T,
     extra: RequestHandlerExtra<ServerRequest, ServerNotification>
-  ) => Promise<ToolHandlerResult>
+  ) => Promise<ToolHandlerResultWithStructuredContent>
 ): (
   params: T,
   extra: RequestHandlerExtra<ServerRequest, ServerNotification>

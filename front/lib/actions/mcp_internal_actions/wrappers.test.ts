@@ -1,5 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { ToolHandlerResult } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlerResultWithStructuredContent } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { withToolResultProcessing } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import { Err, Ok } from "@app/types/shared/result";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -31,7 +31,9 @@ function expectExtraFieldMovedToMeta(content: CallToolResult["content"]) {
 describe("withToolResultProcessing", () => {
   it("moves extra resource fields to _meta for bare content arrays", async () => {
     const result = await withToolResultProcessing(
-      Promise.resolve<ToolHandlerResult>(new Ok(resourceContent))
+      Promise.resolve<ToolHandlerResultWithStructuredContent>(
+        new Ok(resourceContent)
+      )
     );
 
     expect(result.isOk()).toBe(true);
@@ -46,7 +48,7 @@ describe("withToolResultProcessing", () => {
   it("processes content and preserves structuredContent for structured outputs", async () => {
     const structuredContent = { items: [{ id: 1 }], nextCursor: "abc" };
     const result = await withToolResultProcessing(
-      Promise.resolve<ToolHandlerResult>(
+      Promise.resolve<ToolHandlerResultWithStructuredContent>(
         new Ok({ content: resourceContent, structuredContent })
       )
     );
@@ -64,7 +66,7 @@ describe("withToolResultProcessing", () => {
   it("passes errors through unchanged", async () => {
     const error = new MCPError("boom");
     const result = await withToolResultProcessing(
-      Promise.resolve<ToolHandlerResult>(new Err(error))
+      Promise.resolve<ToolHandlerResultWithStructuredContent>(new Err(error))
     );
 
     expect(result.isErr()).toBe(true);
