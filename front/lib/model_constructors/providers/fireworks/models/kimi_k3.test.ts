@@ -3,6 +3,7 @@
 import { MODEL_PRICING } from "@app/lib/api/assistant/token_pricing";
 import { DustMoonshotAiKimiK3GlobalFireworksStream } from "@app/lib/llms/stream/endpoints/moonshot_ai_kimi_k3_global_fireworks";
 import { MoonshotAiKimiK3GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/moonshot_ai_kimi_k3_global_fireworks";
+import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
 import {
   FIREWORKS_KIMI_K3_MODEL_CONFIG,
   FIREWORKS_KIMI_K3_MODEL_ID,
@@ -74,6 +75,24 @@ describe("Kimi K3 model configuration", () => {
     });
     expect(FIREWORKS_KIMI_K3_MODEL_CONFIG.useNativeLightReasoning).toBe(true);
     expect(FIREWORKS_KIMI_K3_MODEL_CONFIG.defaultReasoningEffort).toBe("light");
+  });
+
+  it("forces every Dust request to temperature zero", () => {
+    const config: InputConfig = {
+      reasoning: { effort: "medium" },
+      temperature: 0.7,
+    };
+
+    const parsedConfig =
+      DustMoonshotAiKimiK3GlobalFireworksStream.configParsers.reduce(
+        (currentConfig, parser) => parser(currentConfig),
+        config
+      );
+
+    expect(parsedConfig).toEqual({
+      reasoning: { effort: "high" },
+      temperature: 0,
+    });
   });
 
   it("caps the legacy model config to match, leaving a 192k prompt budget", () => {
