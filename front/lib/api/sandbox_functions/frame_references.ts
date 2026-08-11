@@ -5,7 +5,7 @@ import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_functio
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { frameContentType, frameSlideshowContentType } from "@app/types/files";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 // Frame contents are read from file storage; keep the fan-out bounded.
@@ -37,11 +37,7 @@ export async function listFramePathsReferencingSandboxFunction(
     const projectFiles = await FileResource.listByProject(auth, {
       projectId: space.sId,
     });
-    const frames = projectFiles.filter(
-      (file) =>
-        file.contentType === frameContentType ||
-        file.contentType === frameSlideshowContentType
-    );
+    const frames = projectFiles.filter((file) => file.isInteractiveContent);
 
     const framePaths = await concurrentExecutor(
       frames,
@@ -69,7 +65,11 @@ export async function listFramePathsReferencingSandboxFunction(
   } catch (error) {
     // Warning-only path: a scan failure must not fail the mutation it decorates.
     logger.warn(
-      { error, spaceId: space.sId, slug: sandboxFunction.slug },
+      {
+        err: normalizeError(error),
+        spaceId: space.sId,
+        slug: sandboxFunction.slug,
+      },
       "Failed to scan pod frames for sandbox function references"
     );
 
