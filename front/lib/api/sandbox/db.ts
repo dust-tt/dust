@@ -626,6 +626,10 @@ export async function syncPodDatabaseAfterCreate(
     if (syncResult.isOk() || attempt >= CREATED_DB_SYNC_MAX_ATTEMPTS) {
       return syncResult;
     }
+    if (syncResult.error instanceof SandboxNotFoundError) {
+      // The sandbox is gone; retrying cannot succeed.
+      return syncResult;
+    }
     await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
   }
 }

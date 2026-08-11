@@ -6,6 +6,7 @@ import {
   syncPodDatabaseAfterCreate,
   syncPodDatabaseToReplica,
 } from "@app/lib/api/sandbox/db";
+import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Err, Ok } from "@app/types/shared/result";
@@ -137,6 +138,23 @@ describe("syncPodDatabaseAfterCreate", () => {
 
     expect(result.isOk()).toBe(true);
     expect(execRoot).toHaveBeenCalledTimes(2);
+  });
+
+  test("does not retry when the sandbox is gone", async () => {
+    const { authenticator, sandbox } = await setupSandbox();
+    const execRoot = vi
+      .spyOn(sandbox, "execRoot")
+      .mockResolvedValue(new Err(new SandboxNotFoundError("test-provider-id")));
+
+    const result = await syncPodDatabaseAfterCreate(
+      authenticator,
+      sandbox,
+      "chat",
+      { retryDelayMs: 0 }
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(execRoot).toHaveBeenCalledTimes(1);
   });
 
   test("gives up after the bounded attempts and returns the last error", async () => {
