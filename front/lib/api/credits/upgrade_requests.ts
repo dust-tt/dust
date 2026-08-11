@@ -28,7 +28,8 @@ type UpgradeRequestErrorType =
   | "reason_required"
   | "user_not_found"
   | "request_not_found"
-  | "request_not_pending";
+  | "request_not_pending"
+  | "internal_error";
 
 export class UpgradeRequestError extends Error {
   constructor(
@@ -170,7 +171,7 @@ export async function createUpgradeRequest(
       );
     }
     return new Err(
-      new UpgradeRequestError("request_not_found", result.error.message)
+      new UpgradeRequestError("internal_error", result.error.message)
     );
   }
   const request = result.value;

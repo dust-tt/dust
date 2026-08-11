@@ -72,6 +72,11 @@ function upgradeRequestErrorToApiError(
         status_code: 409,
         api_error: { type: "invalid_request_error", message: error.message },
       };
+    case "internal_error":
+      return {
+        status_code: 500,
+        api_error: { type: "internal_server_error", message: error.message },
+      };
     default:
       assertNever(error.type);
   }

@@ -18,6 +18,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import { UniqueConstraintError } from "sequelize";
 
 export interface MembershipUpgradeRequestResource
   extends ReadonlyAttributesType<MembershipUpgradeRequestModel> {}
@@ -115,7 +116,24 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
       if (err instanceof UpgradeRequestReasonRequiredError) {
         return new Err(err);
       }
-      return new Err(normalizeError(err));
+      if (err instanceof UniqueConstraintError) {
+        // Lost the race on the partial unique index: another request
+        // created the pending row between our `findOne` and `create`.
+        // Reuse it so `createPending` stays idempotent under concurrency.
+        const existing = await this.model.findOne({
+          where: {
+            workspaceId: workspace.id,
+            userId: user.id,
+            status: "pending",
+          },
+        });
+        if (!existing) {
+          return new Err(normalizeError(err));
+        }
+        row = existing;
+      } else {
+        return new Err(normalizeError(err));
+      }
     }
     const membership =
       await MembershipResource.getActiveMembershipOfUserInWorkspace({

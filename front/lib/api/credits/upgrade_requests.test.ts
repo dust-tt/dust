@@ -4,9 +4,12 @@ import * as workspaceApi from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import type * as upgradeRequestNotif from "@app/lib/notifications/workflows/upgrade-request-created";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
+import { MembershipUpgradeRequestModel } from "@app/lib/resources/storage/models/membership_upgrade_requests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { UniqueConstraintError } from "sequelize";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/audit/workos_audit", async () => {
@@ -114,5 +117,44 @@ describe("createUpgradeRequest", () => {
       throw new Error("expected Ok result");
     }
     expect(retry.value.sId).toBe(initial.value.sId);
+  });
+
+  it("reuses the winning request when it loses the race on the pending unique index", async () => {
+    const { auth } = await setup({ requireUpgradeRequestReason: false });
+    const workspace = auth.getNonNullableWorkspace();
+    const user = auth.getNonNullableUser();
+
+    // Simulate another request that already committed its pending row
+    // between this request's `findOne` and `create`.
+    const winner = await MembershipUpgradeRequestModel.create({
+      workspaceId: workspace.id,
+      userId: user.id,
+      status: "pending",
+      reason: "Winning request",
+    });
+
+    vi.spyOn(MembershipUpgradeRequestModel, "findOne").mockResolvedValueOnce(
+      null
+    );
+    vi.spyOn(MembershipUpgradeRequestModel, "create").mockImplementationOnce(
+      async () => {
+        throw new UniqueConstraintError({});
+      }
+    );
+
+    const result = await createUpgradeRequest(auth, {
+      reason: "Losing request",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      throw new Error("expected Ok result");
+    }
+    expect(result.value.sId).toBe(
+      MembershipUpgradeRequestResource.modelIdToSId({
+        id: winner.id,
+        workspaceId: workspace.id,
+      })
+    );
   });
 });
