@@ -111,6 +111,17 @@ export type SandboxDeleteOwner = SandboxLifecycleOwner & {
 // Activity writes are throttled to this granularity; the reaper's inactivity
 // thresholds are minutes-scale, so a lastActivityAt up to 30s stale is
 // indistinguishable to it.
+// How long an acquired lifecycle lock stays valid. Must comfortably exceed
+// the slowest operation performed under it (provider create/wake and, for
+// scope transitions, provider destroy + the database move) — if the lease
+// expires mid-operation, a concurrent ensure or move can acquire the lock
+// and the scope-serialization guarantee is gone. The cost of a generous TTL
+// is that a crashed holder strands the lock for up to this long; waiters
+// give up at executeWithLock's 30s acquisition timeout well before that.
+// TODO(2026-09-30 SANDBOX): replace with a renewable lease so the TTL can
+// shrink to heartbeat scale.
+const SANDBOX_LIFECYCLE_LOCK_TTL_MS = 5 * 60 * 1000;
+
 const LAST_ACTIVITY_WRITE_INTERVAL_MS = 30_000;
 
 // How long a kill-requested sandbox may keep failing its pre-destroy flush
@@ -464,6 +475,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       undefined,
       {
         traceAcquireResource: "sandbox:lifecycle",
+        lockTtlMs: SANDBOX_LIFECYCLE_LOCK_TTL_MS,
         // Contended by concurrent invocations of the same pod: transitions
         // hold this lock from milliseconds (status checks) to seconds
         // (wake/create), and waiters on the fast side of that range should
