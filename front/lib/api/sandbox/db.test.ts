@@ -92,7 +92,11 @@ describe("syncPodDatabaseToReplica", () => {
       .spyOn(sandbox, "execRoot")
       .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" }));
 
-    const result = await syncPodDatabaseToReplica(authenticator, sandbox, "chat");
+    const result = await syncPodDatabaseToReplica(
+      authenticator,
+      sandbox,
+      "chat"
+    );
 
     expect(result.isOk()).toBe(true);
     expect(execRoot).toHaveBeenCalledTimes(1);
@@ -108,7 +112,11 @@ describe("syncPodDatabaseToReplica", () => {
       new Ok({ exitCode: 1, stdout: "", stderr: "no matching database" })
     );
 
-    const result = await syncPodDatabaseToReplica(authenticator, sandbox, "chat");
+    const result = await syncPodDatabaseToReplica(
+      authenticator,
+      sandbox,
+      "chat"
+    );
 
     expect(result.isErr()).toBe(true);
     if (result.isOk()) {
