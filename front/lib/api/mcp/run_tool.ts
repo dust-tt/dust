@@ -130,6 +130,7 @@ export async function* runToolWithStreaming(
       processToolResults(auth, {
         localLogger,
         toolCallResultContent: toolCallResult.content,
+        toolCallResultStructuredContent: toolCallResult.structuredContent,
         toolContext,
       }),
     {

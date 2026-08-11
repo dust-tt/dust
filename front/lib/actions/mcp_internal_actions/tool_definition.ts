@@ -26,7 +26,28 @@ export type ToolHandlerExtra = BaseToolHandlerExtra & {
   runContext: ToolRunContext;
 };
 
-export type ToolHandlerResult = Result<CallToolResult["content"], MCPError>;
+// Tool handlers return the model-facing content blocks, optionally paired with a
+// machine-readable `structuredContent` payload (MCP `CallToolResult.structuredContent`,
+// preserved end-to-end for programmatic consumers such as sandbox functions). The bare
+// content array remains supported so existing handlers keep compiling unchanged.
+export type ToolHandlerOutput =
+  | CallToolResult["content"]
+  | {
+      content: CallToolResult["content"];
+      structuredContent: NonNullable<CallToolResult["structuredContent"]>;
+    };
+
+export function normalizeToolHandlerOutput(output: ToolHandlerOutput): {
+  content: CallToolResult["content"];
+  structuredContent?: CallToolResult["structuredContent"];
+} {
+  if (Array.isArray(output)) {
+    return { content: output };
+  }
+  return output;
+}
+
+export type ToolHandlerResult = Result<ToolHandlerOutput, MCPError>;
 
 export type ToolHandlers<
   ToolsList extends readonly ToolMeta[],

@@ -256,10 +256,14 @@ export async function processToolResults(
   {
     localLogger,
     toolCallResultContent,
+    toolCallResultStructuredContent,
     toolContext,
   }: {
     localLogger: Logger;
     toolCallResultContent: CallToolResult["content"];
+    // Machine-readable payload of the tool result. Persisted alongside the content for sandbox
+    // function actions; agent-loop actions only persist the model-facing content blocks.
+    toolCallResultStructuredContent?: CallToolResult["structuredContent"];
     toolContext: ToolContext;
   }
 ): Promise<{
@@ -572,14 +576,20 @@ export async function processToolResults(
   );
 
   // Persist the processed contents on the run context's action: per-item rows for agent loop
-  // actions, a single output object for sandbox function actions.
-  const outputRes = await runContext.action.createOutputItems(
-    auth,
-    cleanContent.map((c) => ({
-      content: sanitizeStringsDeep(c.content),
-      fileId: c.file?.id,
-    }))
-  );
+  // actions, a single output object for sandbox function actions. Sandbox function actions also
+  // persist the structuredContent so programmatic consumers get a machine-readable payload.
+  const cleanContentItems = cleanContent.map((c) => ({
+    content: sanitizeStringsDeep(c.content),
+    fileId: c.file?.id,
+  }));
+  const outputRes = isSandboxFunctionRunContext(runContext)
+    ? await runContext.action.createOutputItems(auth, cleanContentItems, {
+        structuredContent:
+          toolCallResultStructuredContent !== undefined
+            ? sanitizeStringsDeep(toolCallResultStructuredContent)
+            : undefined,
+      })
+    : await runContext.action.createOutputItems(auth, cleanContentItems);
 
   // Surfaced as an exception: there is no acceptable degraded state for unpersisted tool outputs.
   if (outputRes.isErr()) {

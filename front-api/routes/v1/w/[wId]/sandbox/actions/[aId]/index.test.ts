@@ -114,6 +114,54 @@ describe("GET /api/v1/w/[wId]/sandbox/actions/[aId] (function invocation)", () =
     expect(body.status).toBe("success");
     expect(body.action.status).toBe("succeeded");
     expect(body.action.output).toEqual(content);
+    expect(body.action).not.toHaveProperty("structuredContent");
+  });
+
+  it("returns the structuredContent alongside the output when present", async () => {
+    const { auth, token, workspace, action } = await setupWithAction();
+
+    const content = [{ type: "text" as const, text: "7" }];
+    const structuredContent = { value: 7, unit: "count" };
+    const writeResult = await action.createOutputItems(
+      auth,
+      content.map((c) => ({ content: c })),
+      { structuredContent }
+    );
+    expect(writeResult.isOk()).toBe(true);
+    await action.markAsSucceeded({ executionDurationMs: 42 });
+
+    const response = await getSandboxAction(workspace, token, action.sId);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.status).toBe("success");
+    expect(body.action.output).toEqual(content);
+    expect(body.action.structuredContent).toEqual(structuredContent);
+  });
+
+  it("returns the output of a legacy bare-array GCS object", async () => {
+    const { auth, token, workspace, action } = await setupWithAction();
+
+    // Record the GCS path through the modern write path, then overwrite the object with the
+    // legacy bare-array format written by previous deploys.
+    const content = [{ type: "text" as const, text: "legacy" }];
+    const writeResult = await action.createOutputItems(auth, [
+      { content: { type: "text", text: "placeholder" } },
+    ]);
+    expect(writeResult.isOk()).toBe(true);
+    const [gcsPath] = [...gcsStore.keys()].filter((path) =>
+      path.endsWith(`${action.sId}/output.json`)
+    );
+    expect(gcsPath).toBeDefined();
+    gcsStore.set(gcsPath, Buffer.from(JSON.stringify(content), "utf-8"));
+    await action.markAsSucceeded({ executionDurationMs: 42 });
+
+    const response = await getSandboxAction(workspace, token, action.sId);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.action.output).toEqual(content);
+    expect(body.action).not.toHaveProperty("structuredContent");
   });
 
   it("serves content block _meta (offload descriptor) verbatim", async () => {

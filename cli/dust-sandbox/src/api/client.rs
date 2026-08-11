@@ -228,9 +228,17 @@ impl DustApiClient {
                 ActionPollResponse::Rejected => {
                     bail!("action {action_id} was rejected");
                 }
-                ActionPollResponse::Success { content, is_error } => {
+                ActionPollResponse::Success {
+                    content,
+                    structured_content,
+                    is_error,
+                } => {
                     return Ok(CallToolResponse {
-                        result: CallToolResult { content, is_error },
+                        result: CallToolResult {
+                            content,
+                            structured_content,
+                            is_error,
+                        },
                     });
                 }
             }
