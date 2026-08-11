@@ -849,6 +849,177 @@ export function AgentSidebarMenu({
     sidebarTitleFilter,
   ]);
 
+  const navItemsSection = (showGetStarted ||
+    (!isMultiSelect && !hideActions)) && (
+    <NavigationList className="mx-sidebar-side-spacing pt-1">
+      {showGetStarted && (
+        <NavigationListItem
+          label="For you"
+          icon={Lightbulb04}
+          href={getGetStartedRoute(owner.sId)}
+          selected={router.asPath?.startsWith(getGetStartedRoute(owner.sId))}
+          suffix={
+            activationRecsForBadge.length > 0 ? (
+              <Counter
+                value={activationRecsForBadge.length}
+                size="xs"
+                variant="highlight"
+              />
+            ) : undefined
+          }
+        />
+      )}
+      {!isMultiSelect && !hideActions && (
+        <>
+          <NavigationListItem
+            href={getAgentBuilderRoute(owner.sId, "manage")}
+            icon={Robot}
+            label="Agents"
+            selected={router.asPath.startsWith(
+              `/w/${owner.sId}/builder/agents`
+            )}
+            data-gtm-label="assistantManagementButton"
+            data-gtm-location="sidebarMenu"
+            onClick={withTracking(TRACKING_AREAS.BUILDER, "manage_agents", () =>
+              setSidebarOpen(false)
+            )}
+            keepHoverOnMoreMenu
+            moreMenu={
+              canCreateAgent ? (
+                <div
+                  className={cn(
+                    "absolute right-2 top-1.5",
+                    "transition-opacity",
+                    "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
+                    "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
+                    "has-[[data-state=open]]:opacity-100"
+                  )}
+                >
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="xs"
+                        icon={Plus}
+                        label="New"
+                        variant="ghost-secondary"
+                        className="data-[state=open]:bg-hover"
+                        disabled={noHealthyProviders}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      side="bottom"
+                      align="center"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <DropdownMenuLabel label="New agent" />
+                      <DropdownMenuItem
+                        href={getAgentBuilderRoute(owner.sId, "new")}
+                        icon={File02}
+                        label="From scratch"
+                        data-gtm-label="assistantCreationButton"
+                        data-gtm-location="sidebarMenu"
+                        onClick={withTracking(
+                          TRACKING_AREAS.BUILDER,
+                          "create_from_scratch",
+                          () => setSidebarOpen(false)
+                        )}
+                      />
+                      <DropdownMenuItem
+                        href={getAgentBuilderRoute(owner.sId, "create")}
+                        icon={MagicWand02}
+                        label="From template"
+                        data-gtm-label="assistantCreationButton"
+                        data-gtm-location="sidebarMenu"
+                        onClick={withTracking(
+                          TRACKING_AREAS.BUILDER,
+                          "create_from_template",
+                          () => setSidebarOpen(false)
+                        )}
+                      />
+                      <DropdownMenuItem
+                        icon={
+                          isUploadingYAML ? <Spinner size="xs" /> : Brackets
+                        }
+                        label={isUploadingYAML ? "Uploading..." : "From YAML"}
+                        disabled={isUploadingYAML}
+                        onClick={triggerYAMLUpload}
+                        data-gtm-label="yamlUploadButton"
+                        data-gtm-location="sidebarMenu"
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ) : undefined
+            }
+          />
+          <NavigationListItem
+            href={getSkillBuilderRoute(owner.sId, "manage")}
+            icon={SKILL_ICON}
+            label="Skills"
+            selected={router.asPath.startsWith(
+              `/w/${owner.sId}/builder/skills`
+            )}
+            onClick={withTracking(TRACKING_AREAS.BUILDER, "manage_skills", () =>
+              setSidebarOpen(false)
+            )}
+            keepHoverOnMoreMenu
+            moreMenu={
+              canCreateSkill ? (
+                <div
+                  className={cn(
+                    "absolute right-2 top-1.5",
+                    "transition-opacity",
+                    "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
+                    "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
+                    "has-[[data-state=open]]:opacity-100"
+                  )}
+                >
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="xs"
+                        icon={Plus}
+                        label="New"
+                        variant="ghost-secondary"
+                        className="data-[state=open]:bg-hover"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      side="bottom"
+                      align="center"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <DropdownMenuLabel label="New skill" />
+                      <DropdownMenuItem
+                        href={getSkillBuilderRoute(owner.sId, "new")}
+                        icon={SKILL_ICON}
+                        label="From scratch"
+                        onClick={() => setSidebarOpen(false)}
+                      />
+                      <DropdownMenuItem
+                        icon={FolderOpen}
+                        label="From existing"
+                        onClick={() => setIsImportSkillDialogOpen(true)}
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ) : undefined
+            }
+          />
+        </>
+      )}
+    </NavigationList>
+  );
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const conversationsList = useMemo(() => {
     return (
@@ -861,6 +1032,7 @@ export function AgentSidebarMenu({
         toggleConversationSelection={toggleConversationSelection}
         activeConversationId={activeConversationId}
         owner={owner}
+        topSection={navItemsSection}
         starredSection={starredSection}
         podsSection={podsSection}
         hasTriggeredConversations={hasTriggeredConversations}
@@ -882,6 +1054,7 @@ export function AgentSidebarMenu({
     toggleConversationSelection,
     activeConversationId,
     owner,
+    navItemsSection,
     starredSection,
     podsSection,
     hasTriggeredConversations,
@@ -1027,194 +1200,7 @@ export function AgentSidebarMenu({
                 </div>
               </div>
             )}
-            {(showGetStarted || (!isMultiSelect && !hideActions)) && (
-              <NavigationList className="mx-sidebar-side-spacing mb-4 flex-shrink-0 pt-1">
-                {showGetStarted && (
-                  <NavigationListItem
-                    label="For you"
-                    icon={Lightbulb04}
-                    href={getGetStartedRoute(owner.sId)}
-                    selected={router.asPath?.startsWith(
-                      getGetStartedRoute(owner.sId)
-                    )}
-                    suffix={
-                      activationRecsForBadge.length > 0 ? (
-                        <Counter
-                          value={activationRecsForBadge.length}
-                          size="xs"
-                          variant="highlight"
-                        />
-                      ) : undefined
-                    }
-                  />
-                )}
-                {!isMultiSelect && !hideActions && (
-                  <>
-                    <NavigationListItem
-                      href={getAgentBuilderRoute(owner.sId, "manage")}
-                      icon={Robot}
-                      label="Agents"
-                      selected={router.asPath.startsWith(
-                        `/w/${owner.sId}/builder/agents`
-                      )}
-                      data-gtm-label="assistantManagementButton"
-                      data-gtm-location="sidebarMenu"
-                      onClick={withTracking(
-                        TRACKING_AREAS.BUILDER,
-                        "manage_agents",
-                        () => setSidebarOpen(false)
-                      )}
-                      keepHoverOnMoreMenu
-                      moreMenu={
-                        canCreateAgent ? (
-                          <div
-                            className={cn(
-                              "absolute right-2 top-1.5",
-                              "transition-opacity",
-                              "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
-                              "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
-                              "has-[[data-state=open]]:opacity-100"
-                            )}
-                          >
-                            <DropdownMenu modal={false}>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  size="xs"
-                                  icon={Plus}
-                                  label="New"
-                                  variant="ghost-secondary"
-                                  className="data-[state=open]:bg-hover"
-                                  disabled={noHealthyProviders}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                  }}
-                                />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent
-                                side="bottom"
-                                align="center"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <DropdownMenuLabel label="New agent" />
-                                <DropdownMenuItem
-                                  href={getAgentBuilderRoute(owner.sId, "new")}
-                                  icon={File02}
-                                  label="From scratch"
-                                  data-gtm-label="assistantCreationButton"
-                                  data-gtm-location="sidebarMenu"
-                                  onClick={withTracking(
-                                    TRACKING_AREAS.BUILDER,
-                                    "create_from_scratch",
-                                    () => setSidebarOpen(false)
-                                  )}
-                                />
-                                <DropdownMenuItem
-                                  href={getAgentBuilderRoute(
-                                    owner.sId,
-                                    "create"
-                                  )}
-                                  icon={MagicWand02}
-                                  label="From template"
-                                  data-gtm-label="assistantCreationButton"
-                                  data-gtm-location="sidebarMenu"
-                                  onClick={withTracking(
-                                    TRACKING_AREAS.BUILDER,
-                                    "create_from_template",
-                                    () => setSidebarOpen(false)
-                                  )}
-                                />
-                                <DropdownMenuItem
-                                  icon={
-                                    isUploadingYAML ? (
-                                      <Spinner size="xs" />
-                                    ) : (
-                                      Brackets
-                                    )
-                                  }
-                                  label={
-                                    isUploadingYAML
-                                      ? "Uploading..."
-                                      : "From YAML"
-                                  }
-                                  disabled={isUploadingYAML}
-                                  onClick={triggerYAMLUpload}
-                                  data-gtm-label="yamlUploadButton"
-                                  data-gtm-location="sidebarMenu"
-                                />
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        ) : undefined
-                      }
-                    />
-                    <NavigationListItem
-                      href={getSkillBuilderRoute(owner.sId, "manage")}
-                      icon={SKILL_ICON}
-                      label="Skills"
-                      selected={router.asPath.startsWith(
-                        `/w/${owner.sId}/builder/skills`
-                      )}
-                      onClick={withTracking(
-                        TRACKING_AREAS.BUILDER,
-                        "manage_skills",
-                        () => setSidebarOpen(false)
-                      )}
-                      keepHoverOnMoreMenu
-                      moreMenu={
-                        canCreateSkill ? (
-                          <div
-                            className={cn(
-                              "absolute right-2 top-1.5",
-                              "transition-opacity",
-                              "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
-                              "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
-                              "has-[[data-state=open]]:opacity-100"
-                            )}
-                          >
-                            <DropdownMenu modal={false}>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  size="xs"
-                                  icon={Plus}
-                                  label="New"
-                                  variant="ghost-secondary"
-                                  className="data-[state=open]:bg-hover"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                  }}
-                                />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent
-                                side="bottom"
-                                align="center"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <DropdownMenuLabel label="New skill" />
-                                <DropdownMenuItem
-                                  href={getSkillBuilderRoute(owner.sId, "new")}
-                                  icon={SKILL_ICON}
-                                  label="From scratch"
-                                  onClick={() => setSidebarOpen(false)}
-                                />
-                                <DropdownMenuItem
-                                  icon={FolderOpen}
-                                  label="From existing"
-                                  onClick={() =>
-                                    setIsImportSkillDialogOpen(true)
-                                  }
-                                />
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        ) : undefined
-                      }
-                    />
-                  </>
-                )}
-              </NavigationList>
-            )}
+            {isSearchActive && navItemsSection}
             <div className="min-h-0 flex-1 overflow-hidden">
               {isConversationsError && (
                 <Label className="px-3 py-4 text-xs font-medium text-muted-foreground">
@@ -1677,6 +1663,7 @@ interface NavigationListWithInboxProps {
   toggleConversationSelection: (conversation: ConversationListItemType) => void;
   activeConversationId: string | null;
   owner: WorkspaceType;
+  topSection?: React.ReactNode;
   starredSection?: React.ReactNode;
   podsSection?: React.ReactNode;
   hasTriggeredConversations: boolean;
@@ -1699,6 +1686,7 @@ function NavigationListWithInbox({
   toggleConversationSelection,
   activeConversationId,
   owner,
+  topSection,
   starredSection,
   podsSection,
   hasTriggeredConversations,
@@ -1716,6 +1704,28 @@ function NavigationListWithInbox({
   const [scrollViewport, setScrollViewport] = useState<HTMLDivElement | null>(
     null
   );
+  const [isScrolled, setIsScrolled] = useState(false);
+  const scrollTopSentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const sentinel = scrollTopSentinelRef.current;
+    if (
+      !scrollViewport ||
+      !sentinel ||
+      typeof IntersectionObserver === "undefined"
+    ) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsScrolled(!entry.isIntersecting),
+      { root: scrollViewport }
+    );
+    observer.observe(sentinel);
+
+    return () => observer.disconnect();
+  }, [scrollViewport]);
+
   const { isConversationsSectionCollapsed, setConversationsSectionCollapsed } =
     useConversationsSectionCollapsed();
   const {
@@ -1781,7 +1791,20 @@ function NavigationListWithInbox({
       viewportRef={setScrollViewport}
       className="dd-privacy-mask h-full w-full"
     >
+      <div ref={scrollTopSentinelRef} className="h-px" aria-hidden />
+      <div className="sticky top-0 z-30 h-0" aria-hidden>
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-x-0 top-0 h-8 backdrop-blur-[4px]",
+            "bg-app-background/100",
+            "[mask-image:linear-gradient(to_bottom,black_0%,transparent_100%)]",
+            "transition-opacity duration-200",
+            isScrolled ? "opacity-100" : "opacity-0"
+          )}
+        />
+      </div>
       <div className="flex flex-col gap-4">
+        {topSection}
         <AnimatePresence initial={false}>
           {triggeredConversations.length > 0 && (
             <motion.div
