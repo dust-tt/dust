@@ -124,8 +124,8 @@ export function planPodDatabaseRecovery({
 
 /**
  * Recreate expected-but-missing pod databases on a freshly cold-started sandbox. Best-effort by
- * contract (see the module doc): never throws, never returns a failure — a pod must come up even
- * when its recovery cannot run.
+ * contract (see the module doc): expected failures are logged and metered, never returned — a pod
+ * must come up even when its recovery cannot run.
  *
  * No per-pod reconcile lock is taken: the DDL is additive and idempotent, and a concurrent tool
  * reconcile either creates the database first (this one becomes a no-op) or briefly contends on
