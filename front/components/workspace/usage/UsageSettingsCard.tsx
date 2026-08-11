@@ -36,48 +36,27 @@ export function UsageSettingsCard({
   const { usageSettings, isUsageSettingsLoading } = useUsageSettings({
     workspaceId,
   });
-  const { doUpdateUsageSettings } = useUpdateUsageSettings({ workspaceId });
+  const { doUpdateUsageSettings, isUpdatingUsageSettings } =
+    useUpdateUsageSettings({ workspaceId });
 
-  const [isSavingAllowUpgradeRequest, setIsSavingAllowUpgradeRequest] =
-    useState(false);
-  const [
-    isSavingRequireUpgradeRequestReason,
-    setIsSavingRequireUpgradeRequestReason,
-  ] = useState(false);
-  const [isSavingAutoSeatUpgrade, setIsSavingAutoSeatUpgrade] = useState(false);
   const [isEditingDefaultLimit, setIsEditingDefaultLimit] = useState(false);
 
   const handleToggleAllowUpgradeRequest = async () => {
-    setIsSavingAllowUpgradeRequest(true);
-    try {
-      await doUpdateUsageSettings({
-        allowUpgradeRequest: !usageSettings.allowUpgradeRequest,
-      });
-    } finally {
-      setIsSavingAllowUpgradeRequest(false);
-    }
+    await doUpdateUsageSettings({
+      allowUpgradeRequest: !usageSettings.allowUpgradeRequest,
+    });
   };
 
   const handleToggleRequireUpgradeRequestReason = async () => {
-    setIsSavingRequireUpgradeRequestReason(true);
-    try {
-      await doUpdateUsageSettings({
-        requireUpgradeRequestReason: !usageSettings.requireUpgradeRequestReason,
-      });
-    } finally {
-      setIsSavingRequireUpgradeRequestReason(false);
-    }
+    await doUpdateUsageSettings({
+      requireUpgradeRequestReason: !usageSettings.requireUpgradeRequestReason,
+    });
   };
 
   const handleToggleAutoSeatUpgrade = async () => {
-    setIsSavingAutoSeatUpgrade(true);
-    try {
-      await doUpdateUsageSettings({
-        autoSeatUpgradeEnabled: !usageSettings.autoSeatUpgradeEnabled,
-      });
-    } finally {
-      setIsSavingAutoSeatUpgrade(false);
-    }
+    await doUpdateUsageSettings({
+      autoSeatUpgradeEnabled: !usageSettings.autoSeatUpgradeEnabled,
+    });
   };
 
   const currentDefaultLimit = defaultUserSpendLimit?.awuCredits ?? 0;
@@ -148,9 +127,7 @@ export function UsageSettingsCard({
             <SliderToggle
               selected={usageSettings.allowUpgradeRequest}
               disabled={
-                readOnly ||
-                isSavingAllowUpgradeRequest ||
-                isUsageSettingsLoading
+                readOnly || isUpdatingUsageSettings || isUsageSettingsLoading
               }
               onClick={() => void handleToggleAllowUpgradeRequest()}
             />
@@ -167,7 +144,7 @@ export function UsageSettingsCard({
               }
               disabled={
                 readOnly ||
-                isSavingRequireUpgradeRequestReason ||
+                isUpdatingUsageSettings ||
                 isUsageSettingsLoading ||
                 !usageSettings.allowUpgradeRequest
               }
@@ -200,7 +177,7 @@ export function UsageSettingsCard({
               }
               disabled={
                 readOnly ||
-                isSavingAutoSeatUpgrade ||
+                isUpdatingUsageSettings ||
                 isUsageSettingsLoading ||
                 !usageSettings.autoSeatUpgradeAvailable
               }

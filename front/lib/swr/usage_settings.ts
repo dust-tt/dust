@@ -16,7 +16,7 @@ import type {
   PutDefaultUserSpendLimitResponseBody,
 } from "@app/types/api/workspace/default_user_spend_limit";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { Fetcher } from "swr";
 import { mutate } from "swr";
 import { z } from "zod";
@@ -127,6 +127,7 @@ export function useUpdateUsageSettings({
     getCreditUsageConfigurationEndpoint(workspaceId),
     null
   );
+  const [isUpdatingUsageSettings, setIsUpdatingUsageSettings] = useState(false);
 
   const doUpdateUsageSettings = useCallback(
     async (patch: Partial<UsageSettings>): Promise<boolean> => {
@@ -145,27 +146,32 @@ export function useUpdateUsageSettings({
         return true;
       }
 
-      const result = await patchCreditUsageConfiguration(workspaceId, body);
-      if (!result.ok) {
-        sendNotification({
-          type: "error",
-          title: "Failed to update usage settings",
-          description: result.message,
-        });
-        return false;
-      }
+      setIsUpdatingUsageSettings(true);
+      try {
+        const result = await patchCreditUsageConfiguration(workspaceId, body);
+        if (!result.ok) {
+          sendNotification({
+            type: "error",
+            title: "Failed to update usage settings",
+            description: result.message,
+          });
+          return false;
+        }
 
-      await mutate();
-      sendNotification({
-        type: "success",
-        title: "Usage settings updated",
-      });
-      return true;
+        await mutate();
+        sendNotification({
+          type: "success",
+          title: "Usage settings updated",
+        });
+        return true;
+      } finally {
+        setIsUpdatingUsageSettings(false);
+      }
     },
     [workspaceId, sendNotification, mutate]
   );
 
-  return { doUpdateUsageSettings };
+  return { doUpdateUsageSettings, isUpdatingUsageSettings };
 }
 
 export function useUsageNotifications({

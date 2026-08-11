@@ -72,14 +72,17 @@ export function UsageUpgradeButton({
     const result = await doRequestUpgrade({
       reason: trimmedReason.length > 0 ? trimmedReason : undefined,
     });
-    if (result.ok) {
+    if (result.isOk()) {
       setRequested(true);
       setIsDialogOpen(false);
       form.reset();
       return;
     }
-    if (result.errorType === "invalid_request_error") {
-      form.setError("reason", { type: "manual", message: result.message });
+    if (result.error.errorType === "invalid_request_error") {
+      form.setError("reason", {
+        type: "manual",
+        message: result.error.message,
+      });
     }
   };
 

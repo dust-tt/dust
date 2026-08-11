@@ -9,6 +9,8 @@ import {
 } from "@app/lib/swr/swr";
 import type { GetUpgradeRequestsResponseBody } from "@app/types/api/credits/upgrade_requests";
 import type { MembershipUpgradeRequestStatus } from "@app/types/memberships";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
@@ -21,9 +23,8 @@ function usageStatusUrl(workspaceId: string): string {
   return `/api/w/${workspaceId}/usage-status`;
 }
 
-export type RequestUpgradeResult =
-  | { ok: true }
-  | { ok: false; errorType: string; message: string };
+export type RequestUpgradeError = { errorType: string; message: string };
+export type RequestUpgradeResult = Result<void, RequestUpgradeError>;
 
 // Member-initiated: request a spend-limit upgrade for the current user. On
 // success the usage-status read is revalidated so the banner reflects the now
@@ -53,7 +54,7 @@ export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
             description: errorData.message,
           });
         }
-        return { ok: false, errorType, message: errorData.message };
+        return new Err({ errorType, message: errorData.message });
       }
 
       await mutate();
@@ -62,7 +63,7 @@ export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
         title: "Upgrade requested",
         description: "Your workspace admins have been notified.",
       });
-      return { ok: true };
+      return new Ok(undefined);
     },
     [workspaceId, sendNotification, mutate]
   );
