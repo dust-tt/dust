@@ -67,13 +67,22 @@ export async function resolveModel(
       m.modelId === configuration.model.modelId
   );
 
-  let enabled = selectEnabledModel(
-    auth,
-    removeNulls([userConfig, agentConfig, ...PREFERRED_LARGE_MODEL_CONFIGS]),
-    {
-      featureFlags,
-    }
-  );
+  const requestedConfig = userConfig ?? agentConfig;
+
+  let enabled =
+    requestedConfig && isModelStreamId(requestedConfig.modelId)
+      ? requestedConfig
+      : selectEnabledModel(
+          auth,
+          removeNulls([
+            userConfig,
+            agentConfig,
+            ...PREFERRED_LARGE_MODEL_CONFIGS,
+          ]),
+          {
+            featureFlags,
+          }
+        );
 
   // Effort chosen by a stream tier (Fast/Standard/Complex) for its resolved
   // model. When set, it takes precedence over any effort carried by the
