@@ -7,6 +7,7 @@ import {
   db,
   POD_DATABASE_BUSY_TIMEOUT_MS,
   POD_DATABASE_MAX_SIZE_BYTES_ENV,
+  POD_DATABASE_PREFIX_ENV,
   POD_DATABASES_DIR_ENV,
   POD_SPACE_ID_ENV,
   PodDatabaseError,
@@ -14,6 +15,7 @@ import {
   PodDatabaseInvalidNameError,
   PodDatabaseNotDeclaredError,
   PodDatabasesUnavailableError,
+  runWithInvocationEnv,
 } from "@dust/pod";
 import { blob, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
@@ -68,6 +70,7 @@ beforeEach(() => {
 afterEach(() => {
   delete process.env[POD_DATABASES_DIR_ENV];
   delete process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV];
+  delete process.env[POD_DATABASE_PREFIX_ENV];
   if (originalSpaceId === undefined) {
     delete process.env[POD_SPACE_ID_ENV];
   } else {
@@ -163,6 +166,139 @@ describe("must-exist open", () => {
     const name = uniqueName("nodir");
     expect(() => db(name)).toThrow(PodDatabaseError);
     expect(() => db(name)).toThrow(/DUST_POD_DATABASES_DIR is not set/);
+  });
+});
+
+describe("app prefix resolution", () => {
+  // Each database gets a table named after the app that owns it, so the assertions can tell
+  // which FILE db() opened rather than trusting the name it was asked for.
+  function createDatabaseOwnedBy(fileName: string, owner: string): void {
+    createDatabaseFile(fileName, `CREATE TABLE ${owner}_marker (id INTEGER)`);
+  }
+
+  function ownerOf(name: string): string {
+    const row = db(name)
+      .$client.query<{ name: string }, []>(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE '%_marker'"
+      )
+      .get();
+    if (row === null) {
+      throw new Error(`No marker table in database ${name}`);
+    }
+    return row.name.replace(/_marker$/, "");
+  }
+
+  test("opens the app-prefixed database when it exists", () => {
+    const name = uniqueName("chat");
+    process.env[POD_DATABASE_PREFIX_ENV] = "myapp__";
+    createDatabaseOwnedBy(`myapp__${name}`, "myapp");
+
+    expect(ownerOf(name)).toBe("myapp");
+  });
+
+  test("prefers the app-prefixed database over a same-named legacy one", () => {
+    const name = uniqueName("chat");
+    process.env[POD_DATABASE_PREFIX_ENV] = "myapp__";
+    createDatabaseOwnedBy(name, "legacy");
+    createDatabaseOwnedBy(`myapp__${name}`, "myapp");
+
+    expect(ownerOf(name)).toBe("myapp");
+  });
+
+  test("falls back to a legacy unprefixed database", () => {
+    // Transitional: databases created before app namespacing keep their bare filenames, and
+    // litestream replicates them under a prefix keyed on that filename.
+    const name = uniqueName("chat");
+    process.env[POD_DATABASE_PREFIX_ENV] = "myapp__";
+    createDatabaseOwnedBy(name, "legacy");
+
+    expect(ownerOf(name)).toBe("legacy");
+  });
+
+  test("two apps asking for the same name get their own databases", () => {
+    const name = uniqueName("chat");
+    createDatabaseOwnedBy(`myapp__${name}`, "myapp");
+    createDatabaseOwnedBy(`otherapp__${name}`, "otherapp");
+
+    process.env[POD_DATABASE_PREFIX_ENV] = "myapp__";
+    expect(ownerOf(name)).toBe("myapp");
+    process.env[POD_DATABASE_PREFIX_ENV] = "otherapp__";
+    expect(ownerOf(name)).toBe("otherapp");
+  });
+
+  test("uses the bare name when no prefix is set", () => {
+    const name = uniqueName("chat");
+    createDatabaseOwnedBy(name, "bare");
+
+    expect(ownerOf(name)).toBe("bare");
+  });
+
+  test("an empty prefix means unprefixed", () => {
+    // front passes "" for functions published outside an app folder.
+    const name = uniqueName("chat");
+    process.env[POD_DATABASE_PREFIX_ENV] = "";
+    createDatabaseOwnedBy(name, "bare");
+
+    expect(ownerOf(name)).toBe("bare");
+  });
+
+  test("falls back to the bare name when the prefix breaks the name contract", () => {
+    // A prefix this long cannot produce a valid qualified name, so reconcile could never have
+    // created one; looking for it would only mask the database that does exist.
+    const name = uniqueName("chat");
+    process.env[POD_DATABASE_PREFIX_ENV] = `${"a".repeat(60)}__`;
+    createDatabaseOwnedBy(name, "bare");
+
+    expect(ownerOf(name)).toBe("bare");
+  });
+
+  test("still throws when neither the prefixed nor the bare database exists", () => {
+    const name = uniqueName("missing");
+    process.env[POD_DATABASE_PREFIX_ENV] = "myapp__";
+
+    expect(() => db(name)).toThrow(PodDatabaseNotDeclaredError);
+  });
+
+  // A resident server serves concurrent invocations from different apps without
+  // touching process.env, so the prefix has to come from the invocation context.
+  describe("inside an invocation context", () => {
+    const contextEnv = (prefix: string) => ({
+      [POD_DATABASES_DIR_ENV]: databasesDir,
+      [POD_DATABASE_MAX_SIZE_BYTES_ENV]: String(ONE_GIB_BYTES),
+      [POD_SPACE_ID_ENV]: "spc_test_pod",
+      [POD_DATABASE_PREFIX_ENV]: prefix,
+    });
+
+    test("reads the prefix from the context env", () => {
+      const name = uniqueName("chat");
+      createDatabaseOwnedBy(`myapp__${name}`, "myapp");
+
+      expect(
+        runWithInvocationEnv(contextEnv("myapp__"), () => ownerOf(name))
+      ).toBe("myapp");
+    });
+
+    test("the context's prefix wins over the one in process.env", () => {
+      const name = uniqueName("chat");
+      createDatabaseOwnedBy(`myapp__${name}`, "myapp");
+      createDatabaseOwnedBy(`otherapp__${name}`, "otherapp");
+      process.env[POD_DATABASE_PREFIX_ENV] = "myapp__";
+
+      expect(
+        runWithInvocationEnv(contextEnv("otherapp__"), () => ownerOf(name))
+      ).toBe("otherapp");
+    });
+
+    test("a context without a prefix ignores the one in process.env", () => {
+      const name = uniqueName("chat");
+      createDatabaseOwnedBy(name, "bare");
+      createDatabaseOwnedBy(`myapp__${name}`, "myapp");
+      process.env[POD_DATABASE_PREFIX_ENV] = "myapp__";
+
+      expect(runWithInvocationEnv(contextEnv(""), () => ownerOf(name))).toBe(
+        "bare"
+      );
+    });
   });
 });
 

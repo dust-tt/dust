@@ -236,7 +236,10 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
       database: z
         .string()
         .regex(POD_DATABASE_NAME_REGEX)
-        .describe("The database name declared by the schema file."),
+        .describe(
+          "The database's short name as declared by the schema file (e.g. `chat`), without " +
+            "the app prefix."
+        ),
       path: z
         .string()
         .min(1)

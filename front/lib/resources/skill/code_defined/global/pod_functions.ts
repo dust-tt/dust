@@ -93,6 +93,14 @@ skill covers creating it and moving it into the app folder with \`${FILES_MOVE_T
 
 Functions that no Frame calls still get an app folder, named after what they do together.
 
+**Copying an app folder does not finish the job.** The databases and the published slugs follow the
+new folder on their own, but a Frame addresses its functions by \`<podId>/<slug>\` written into its
+source, so the copy's Frame still calls the ORIGINAL app's functions and therefore reads and writes
+the original's data. After copying \`MyApp/\` to \`MyAppCopy/\`: publish the copy's functions, reconcile
+its databases, then edit the copy's Frame so every function reference carries the new prefix
+(\`myappcopy__list-notes\`, not \`myapp__list-notes\`) and re-publish it. The same applies to renaming
+an app folder.
+
 #### Authoring a function
 
 Write the source as a TypeScript file in the app's \`functions\` folder, at
@@ -153,9 +161,12 @@ Functions of the same Pod can share durable SQLite databases (via \`drizzle-orm\
 - **One schema file per database** at \`<AppName>/databases/{db}.db.ts\`: the single source of truth
   declaring that database's full schema with drizzle's \`sqliteTable\` DSL. Every function imports
   its table objects from it as \`../databases/{db}.db.ts\` (never hand-write tables in a function
-  file), so functions sharing a database belong to the same app. The database name itself is
-  Pod-wide rather than app-scoped, so pick one that will not collide with another app's
-  (\`${toolName("db_list")}\` shows what the Pod already has).
+  file), so functions sharing a database belong to the same app. Name the database for what it
+  holds within the app (\`chat\`, \`notes\`), not for the app: the app folder namespaces it, so two
+  apps can each own a \`chat\` without colliding. Never write the app name in \`db()\` or the schema
+  file — the prefix is applied for you from the app folder. \`${toolName("db_list")}\` shows the
+  resulting on-disk names (\`myapp__chat\`), which is how the db tools address a database; \`db()\`
+  and the schema file always use the short name.
 - **Name functions that use this db.ts by writting a comment a the top** 
 - **Apply the schema file with \`${toolName("db_reconcile")}\`**; it creates the database and
   applies additive DDL after edits, and enforces the rules below. Publishing does not touch
@@ -435,7 +446,7 @@ one \`notes\` function taking an \`action\` field is not. If a capability must b
 subset of members, keep that list in the database and check it against \`currentUser().sId\` —
 the platform only tells you the caller is a workspace member, not what they are allowed to do.`,
   mcpServers: [{ name: SANDBOX_FUNCTIONS_SERVER_NAME }],
-  version: 5,
+  version: 6,
   icon: "PuzzleIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);

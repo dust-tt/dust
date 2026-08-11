@@ -16,6 +16,7 @@ import { isSandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { recordSandboxFunctionRun } from "@app/lib/api/sandbox/instrumentation";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
+import { podDatabasePrefixFromSlug } from "@app/lib/api/sandbox_functions/db_naming";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import { parseStdoutResultEnvelope } from "@app/lib/api/sandbox_functions/result_delivery";
@@ -679,7 +680,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           DUST_FUNCTIONS_DIR: getPodSandboxFunctionsMountPoint(
             sandboxFunction.space.sId
           ),
-          ...podDatabaseExecEnvVars(),
+          // The app prefix comes from the slug, so `db("chat")` in the bundle resolves to this
+          // app's own database without the source naming the app.
+          ...podDatabaseExecEnvVars({
+            databasePrefix: podDatabasePrefixFromSlug(sandboxFunction.slug),
+          }),
           DUST_SANDBOX_TOKEN: token,
           // Set this for every invocation so userless calls cannot inherit a sandbox-level value.
           [POD_USER_IDENTITY_ENV]: userIdentity

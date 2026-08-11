@@ -9,6 +9,10 @@ import {
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
+import {
+  podDatabasePrefixFromPodPath,
+  resolvePodDatabaseName,
+} from "@app/lib/api/sandbox_functions/db_naming";
 import type { SandboxFunctionErrorCode } from "@app/lib/api/sandbox_functions/errors";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { StagingHashes } from "@app/lib/api/sandbox_functions/staging_integrity";
@@ -169,6 +173,12 @@ const reconcileEnvelopeSchema = z.union([
 ]);
 
 export interface ReconcileDatabaseResult {
+  /**
+   * The on-disk database name that was reconciled: the app-relative name qualified with the app
+   * prefix (see resolvePodDatabaseName). Reported back because it is what `db_list`, `db_query` and
+   * `db_schema` address the database by, and it is not what the caller passed in.
+   */
+  database: string;
   created: boolean;
   statements: string[];
 }
@@ -215,6 +225,7 @@ async function reconcileDatabaseOnSandbox(
       );
     }
     return new Ok({
+      database,
       created: envelope.created,
       statements: envelope.statements,
     });
@@ -229,10 +240,15 @@ async function reconcileDatabaseOnSandbox(
 const RECONCILE_LOCK_ACQUIRE_TIMEOUT_MS = 30_000;
 
 /**
- * Resolve a model-supplied scoped schema-file path (e.g. `pod-{id}/databases/chat.db.ts`) to its
- * in-sandbox path and reconcile against it. The only path that applies schema changes to a live
+ * Resolve a model-supplied scoped schema-file path (e.g. `pod-{id}/MyApp/databases/chat.db.ts`) to
+ * its in-sandbox path and reconcile against it. The only path that applies schema changes to a live
  * database (publish validates but never applies); concurrent reconciles of one pod are serialized
  * under a per-pod lock.
+ *
+ * `database` is the app-relative name the schema file declares (`chat`); the on-disk name is that
+ * name qualified with the app prefix taken from the schema file's own app folder. The live database
+ * set is read inside the lock, because which name wins depends on what already exists (see
+ * resolvePodDatabaseName) and a concurrent reconcile could otherwise create it in between.
  */
 export async function reconcileDatabaseFromPodPath(
   auth: Authenticator,
@@ -254,6 +270,17 @@ export async function reconcileDatabaseFromPodPath(
       new SandboxFunctionError("invalid_path", resolved.error.message)
     );
   }
+
+  const prefixResult = podDatabasePrefixFromPodPath({
+    sourcePath: scopedPath,
+    podId: space.sId,
+  });
+  if (prefixResult.isErr()) {
+    return new Err(
+      new SandboxFunctionError("invalid_path", prefixResult.error.message)
+    );
+  }
+  const prefix = prefixResult.value;
 
   // Acquire the per-pod lock directly (not via executeWithLock) so a timeout surfaces as a
   // retryable publish_conflict Result instead of a thrown error.
@@ -283,9 +310,18 @@ export async function reconcileDatabaseFromPodPath(
     );
   }
   try {
+    const existingResult = await listDatabasesOnSandbox(auth, { space });
+    if (existingResult.isErr()) {
+      return new Err(existingResult.error);
+    }
+
     return await reconcileDatabaseOnSandbox(auth, {
       space,
-      database,
+      database: resolvePodDatabaseName({
+        prefix,
+        name: database,
+        existingNames: existingResult.value.map((entry) => entry.name),
+      }),
       schemaFileSandboxPath: resolved.value,
     });
   } finally {

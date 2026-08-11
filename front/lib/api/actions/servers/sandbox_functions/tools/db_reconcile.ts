@@ -8,10 +8,8 @@ import type { ReconcileDatabaseResult } from "@app/lib/api/sandbox_functions/dsb
 import { reconcileDatabaseFromPodPath } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { Err, Ok } from "@app/types/shared/result";
 
-export function formatReconcileResult(
-  database: string,
-  result: ReconcileDatabaseResult
-): string {
+export function formatReconcileResult(result: ReconcileDatabaseResult): string {
+  const { database } = result;
   const header = result.created
     ? `Database "${database}" created.`
     : `Database "${database}" reconciled.`;
@@ -42,7 +40,7 @@ export async function dbReconcileHandler(
     return new Err(toDbMCPError(result.error));
   }
 
-  return new Ok([
-    { type: "text", text: formatReconcileResult(database, result.value) },
-  ]);
+  // The name in the message is the resolved on-disk one, which is what db_query and db_schema
+  // address the database by; it carries the app prefix the caller's name did not.
+  return new Ok([{ type: "text", text: formatReconcileResult(result.value) }]);
 }
