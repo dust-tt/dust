@@ -3,8 +3,13 @@ import {
   isValidPodDatabaseName,
   parseLiveDatabaseNames,
   parseReplicaDatabaseNames,
+  syncPodDatabaseAfterCreate,
+  syncPodDatabaseToReplica,
 } from "@app/lib/api/sandbox/db";
-import { describe, expect, test } from "vitest";
+import { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { Err, Ok } from "@app/types/shared/result";
+import { describe, expect, test, vi } from "vitest";
 
 describe("pod state helpers", () => {
   test("validates database names against the contract shape", () => {
@@ -65,5 +70,93 @@ describe("pod state helpers", () => {
     expect(isFuseStatfsMagic("ef53")).toBe(false);
     expect(isFuseStatfsMagic("794c7630")).toBe(false);
     expect(isFuseStatfsMagic("")).toBe(false);
+  });
+});
+
+async function setupSandbox() {
+  const { authenticator } = await createResourceTest({ role: "admin" });
+  const sandbox = await SandboxResource.makeNew(authenticator, {
+    providerId: "test-provider-id",
+    status: "running",
+    baseImage: "dust-base",
+    version: "0.0.0-test",
+  });
+  return { authenticator, sandbox };
+}
+
+describe("syncPodDatabaseToReplica", () => {
+  test("runs one litestream sync through the daemon socket", async () => {
+    const { authenticator, sandbox } = await setupSandbox();
+    const execRoot = vi
+      .spyOn(sandbox, "execRoot")
+      .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" }));
+
+    const result = await syncPodDatabaseToReplica(authenticator, sandbox, "chat");
+
+    expect(result.isOk()).toBe(true);
+    expect(execRoot).toHaveBeenCalledTimes(1);
+    const command = execRoot.mock.calls[0][1].command;
+    expect(command).toContain("/opt/bin/litestream sync -wait");
+    expect(command).toContain("-socket /run/litestream/litestream.sock");
+    expect(command).toContain("-- /pod-state/databases/chat.db");
+  });
+
+  test("surfaces a non-zero exit as an error", async () => {
+    const { authenticator, sandbox } = await setupSandbox();
+    vi.spyOn(sandbox, "execRoot").mockResolvedValue(
+      new Ok({ exitCode: 1, stdout: "", stderr: "no matching database" })
+    );
+
+    const result = await syncPodDatabaseToReplica(authenticator, sandbox, "chat");
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.message).toContain("litestream sync of chat");
+    expect(result.error.message).toContain("no matching database");
+  });
+});
+
+describe("syncPodDatabaseAfterCreate", () => {
+  test("retries past the watcher discovery delay and succeeds", async () => {
+    const { authenticator, sandbox } = await setupSandbox();
+    const execRoot = vi
+      .spyOn(sandbox, "execRoot")
+      .mockResolvedValueOnce(
+        new Ok({ exitCode: 1, stdout: "", stderr: "no matching database" })
+      )
+      .mockResolvedValue(new Ok({ exitCode: 0, stdout: "", stderr: "" }));
+
+    const result = await syncPodDatabaseAfterCreate(
+      authenticator,
+      sandbox,
+      "chat",
+      { retryDelayMs: 0 }
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(execRoot).toHaveBeenCalledTimes(2);
+  });
+
+  test("gives up after the bounded attempts and returns the last error", async () => {
+    const { authenticator, sandbox } = await setupSandbox();
+    const execRoot = vi
+      .spyOn(sandbox, "execRoot")
+      .mockResolvedValue(new Err(new Error("daemon socket unavailable")));
+
+    const result = await syncPodDatabaseAfterCreate(
+      authenticator,
+      sandbox,
+      "chat",
+      { retryDelayMs: 0 }
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.message).toContain("daemon socket unavailable");
+    expect(execRoot).toHaveBeenCalledTimes(3);
   });
 });

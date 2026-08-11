@@ -1,6 +1,7 @@
 import { getPodStateBasePath } from "@app/lib/api/files/mount_path";
 import {
   recordPodStateHealth,
+  recordPodStateRestoreSkip,
   traceSandboxStartupPhase,
 } from "@app/lib/api/sandbox/instrumentation";
 import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
@@ -43,6 +44,9 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
  *    paused; the daemon is restarted and a failure metric is emitted.
  *  - Wake from pause needs nothing: the Firecracker snapshot preserves the
  *    daemon, its control socket, the mounts and the database files.
+ *  - Database creation (`syncPodDatabaseAfterCreate`, called from the
+ *    reconcile path): one sync right after reconcile creates a file, so the
+ *    database reaches GCS before its creation is reported as a success.
  */
 
 export const POD_STATE_DATABASES_DIR = "/pod-state/databases";
@@ -88,6 +92,11 @@ const FUSE_STATFS_MAGIC_HEX = "65735546";
 // is tightly bounded.
 const SYNC_WAIT_TIMEOUT_SECONDS = 10;
 const SYNC_EXEC_TIMEOUT_MS = 15_000;
+// A reconcile-created database is durable only after litestream's first sync,
+// and the daemon's directory watcher discovers new files within seconds — so
+// the first sync attempt can race discovery and is retried briefly.
+const CREATED_DB_SYNC_MAX_ATTEMPTS = 3;
+const CREATED_DB_SYNC_RETRY_DELAY_MS = 2_000;
 // Cheap probes and file operations stay tightly bounded.
 const PROBE_EXEC_TIMEOUT_MS = 10_000;
 // Cold-start restore may pull a large snapshot + LTX chain through gcsfuse.
@@ -337,8 +346,17 @@ async function restorePodDatabase(
     return restoredResult;
   }
   if (restoredResult.value.exitCode !== 0) {
-    logger.warn(
-      { database: name },
+    // Deliberately not a failure (see the -if-replica-exists comment above),
+    // but loud: the skipped database's data — if it ever had any — is not
+    // coming back on its own, and every function using it will fail until a
+    // reconcile recreates it. The metric is what Datadog monitors alert on.
+    recordPodStateRestoreSkip();
+    logger.error(
+      {
+        sandboxId: sandbox.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        database: name,
+      },
       "Pod state cold start: replica directory has no restorable backup — skipping database"
     );
     return new Ok(undefined);
@@ -517,29 +535,10 @@ export async function ensurePodStateHealthOnSleep(
 
   // 4. Sync each database through the daemon control socket.
   for (const name of names) {
-    const dbPath = `${POD_STATE_DATABASES_DIR}/${name}.db`;
-    const syncResult = await sandbox.execRoot(
-      auth,
-      rootCommand.exec(LITESTREAM_BIN, [
-        "sync",
-        "-wait",
-        "-timeout",
-        SYNC_WAIT_TIMEOUT_SECONDS,
-        "-socket",
-        LITESTREAM_SOCKET_PATH,
-        "--",
-        dbPath,
-      ]),
-      { timeoutMs: SYNC_EXEC_TIMEOUT_MS }
-    );
+    const syncResult = await syncPodDatabaseToReplica(auth, sandbox, name);
 
-    const failure = syncResult.isErr()
-      ? syncResult.error
-      : syncResult.value.exitCode !== 0
-        ? execFailure(`litestream sync of ${name}`, syncResult.value)
-        : null;
-
-    if (failure) {
+    if (syncResult.isErr()) {
+      const failure = syncResult.error;
       if (failure instanceof SandboxNotFoundError) {
         return new Ok(undefined);
       }
@@ -564,6 +563,71 @@ export async function ensurePodStateHealthOnSleep(
   recordPodStateHealth("success");
 
   return new Ok(undefined);
+}
+
+/**
+ * Sync one database's committed WAL frames to the GCS replica through the
+ * daemon control socket. Requires the litestream daemon to be running (see
+ * the lifecycle in the module doc). A provider error is returned as-is so
+ * callers can special-case `SandboxNotFoundError`.
+ */
+export async function syncPodDatabaseToReplica(
+  auth: Authenticator,
+  sandbox: SandboxResource,
+  name: string
+): Promise<Result<void, Error>> {
+  const dbPath = `${POD_STATE_DATABASES_DIR}/${name}.db`;
+  const syncResult = await sandbox.execRoot(
+    auth,
+    rootCommand.exec(LITESTREAM_BIN, [
+      "sync",
+      "-wait",
+      "-timeout",
+      SYNC_WAIT_TIMEOUT_SECONDS,
+      "-socket",
+      LITESTREAM_SOCKET_PATH,
+      "--",
+      dbPath,
+    ]),
+    { timeoutMs: SYNC_EXEC_TIMEOUT_MS }
+  );
+  if (syncResult.isErr()) {
+    return syncResult;
+  }
+  if (syncResult.value.exitCode !== 0) {
+    return new Err(execFailure(`litestream sync of ${name}`, syncResult.value));
+  }
+  return new Ok(undefined);
+}
+
+/**
+ * Sync a database right after reconcile created its file, so the database is
+ * in GCS before the reconcile reports success. Without this, an unclean
+ * sandbox end before litestream's first sync silently loses the file — and
+ * the next cold start then skips the database by design (no restorable
+ * backup, see `restorePodDatabase`), reproducing "reconciled earlier, missing
+ * now". The daemon's directory watcher discovers new files within seconds,
+ * so a failing sync is retried briefly to ride out the discovery delay.
+ *
+ * `retryDelayMs` is overridable for tests only.
+ */
+export async function syncPodDatabaseAfterCreate(
+  auth: Authenticator,
+  sandbox: SandboxResource,
+  name: string,
+  {
+    retryDelayMs = CREATED_DB_SYNC_RETRY_DELAY_MS,
+  }: { retryDelayMs?: number } = {}
+): Promise<Result<void, Error>> {
+  let attempt = 0;
+  for (;;) {
+    attempt += 1;
+    const syncResult = await syncPodDatabaseToReplica(auth, sandbox, name);
+    if (syncResult.isOk() || attempt >= CREATED_DB_SYNC_MAX_ATTEMPTS) {
+      return syncResult;
+    }
+    await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+  }
 }
 
 async function checkReplicaMountLiveness(

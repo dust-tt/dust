@@ -127,8 +127,7 @@ export class PodDatabaseNotDeclaredError extends PodDatabaseError {
     super(
       `Pod database "${dbName}" does not exist (no database file at ${path}). ` +
         `Databases are created by their first reconcile: define the tables in ` +
-        `databases/${dbName}.db.ts, apply it with the db_reconcile tool, and ` +
-        `declare "${dbName}" in the function's schema.databases.`
+        `databases/${dbName}.db.ts and apply it with the db_reconcile tool.`
     );
     this.name = "PodDatabaseNotDeclaredError";
   }

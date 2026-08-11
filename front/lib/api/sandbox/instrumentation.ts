@@ -152,3 +152,13 @@ export function recordPodStateHealth(status: "success" | "failure"): void {
     `status:${status}`,
   ]);
 }
+
+// Cold-start restore found a replica directory with no restorable backup and
+// skipped the database (see restorePodDatabase): whatever data that database
+// held is not coming back on its own, so this is alert-worthy, not routine.
+// The stable logger.error at the call site carries the database name.
+export function recordPodStateRestoreSkip(): void {
+  getStatsDClient().increment("sandbox.pod_state.restore_skipped", 1, [
+    regionTag(),
+  ]);
+}
