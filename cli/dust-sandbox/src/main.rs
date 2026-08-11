@@ -43,6 +43,12 @@ enum Commands {
         /// Ignored when listing servers or tools.
         #[arg(long)]
         json: bool,
+        /// Tool arguments as a single JSON object (`-` reads it from stdin),
+        /// bypassing per-key parsing and coercion entirely. Must be placed
+        /// before the positional arguments and cannot be combined with
+        /// --key value pairs.
+        #[arg(long)]
+        args_json: Option<String>,
         /// Server name (omit to list all servers)
         server_name: Option<String>,
         /// Tool name to execute
@@ -110,6 +116,7 @@ async fn run() -> anyhow::Result<()> {
         },
         Commands::Tools {
             json,
+            args_json,
             server_name,
             tool_name,
             args,
@@ -119,7 +126,8 @@ async fn run() -> anyhow::Result<()> {
                 (None, _) => commands::cmd_list_servers(&client).await?,
                 (Some(server), None) => commands::cmd_list_tools(&client, &server).await?,
                 (Some(server), Some(tool)) => {
-                    commands::cmd_exec(&client, &server, &tool, &args, json).await?
+                    commands::cmd_exec(&client, &server, &tool, &args, args_json.as_deref(), json)
+                        .await?
                 }
             }
         }
@@ -151,14 +159,29 @@ mod tests {
         Cli::command().debug_assert();
     }
 
-    fn tools_fields(cli: Cli) -> (bool, Option<String>, Option<String>, Vec<String>) {
+    struct ToolsFields {
+        json: bool,
+        args_json: Option<String>,
+        server_name: Option<String>,
+        tool_name: Option<String>,
+        args: Vec<String>,
+    }
+
+    fn tools_fields(cli: Cli) -> ToolsFields {
         match cli.command {
             Commands::Tools {
                 json,
+                args_json,
                 server_name,
                 tool_name,
                 args,
-            } => (json, server_name, tool_name, args),
+            } => ToolsFields {
+                json,
+                args_json,
+                server_name,
+                tool_name,
+                args,
+            },
             _ => panic!("expected Tools subcommand"),
         }
     }
@@ -167,23 +190,29 @@ mod tests {
     fn json_flag_parses_before_positionals() {
         let cli = Cli::try_parse_from(["dsbx", "tools", "--json", "srv", "tool", "--foo", "bar"])
             .expect("should parse");
-        let (json, server, tool, args) = tools_fields(cli);
+        let fields = tools_fields(cli);
 
-        assert!(json, "--json before positionals should set json=true");
-        assert_eq!(server.as_deref(), Some("srv"));
-        assert_eq!(tool.as_deref(), Some("tool"));
-        assert_eq!(args, vec!["--foo".to_string(), "bar".to_string()]);
+        assert!(
+            fields.json,
+            "--json before positionals should set json=true"
+        );
+        assert_eq!(fields.server_name.as_deref(), Some("srv"));
+        assert_eq!(fields.tool_name.as_deref(), Some("tool"));
+        assert_eq!(fields.args, vec!["--foo".to_string(), "bar".to_string()]);
     }
 
     #[test]
     fn json_flag_after_positionals_is_swallowed_into_args() {
         let cli = Cli::try_parse_from(["dsbx", "tools", "srv", "tool", "--foo", "bar", "--json"])
             .expect("should parse");
-        let (json, _, _, args) = tools_fields(cli);
+        let fields = tools_fields(cli);
 
-        assert!(!json, "--json after positionals should NOT toggle the flag");
         assert!(
-            args.contains(&"--json".to_string()),
+            !fields.json,
+            "--json after positionals should NOT toggle the flag"
+        );
+        assert!(
+            fields.args.contains(&"--json".to_string()),
             "--json should land in trailing args instead"
         );
     }
@@ -191,8 +220,62 @@ mod tests {
     #[test]
     fn tools_without_json_defaults_to_false() {
         let cli = Cli::try_parse_from(["dsbx", "tools", "srv", "tool"]).expect("should parse");
-        let (json, ..) = tools_fields(cli);
-        assert!(!json);
+        let fields = tools_fields(cli);
+        assert!(!fields.json);
+        assert!(fields.args_json.is_none());
+    }
+
+    #[test]
+    fn args_json_parses_before_positionals() {
+        let cli = Cli::try_parse_from([
+            "dsbx",
+            "tools",
+            "--json",
+            "--args-json",
+            r#"{"query": "hello"}"#,
+            "srv",
+            "tool",
+        ])
+        .expect("should parse");
+        let fields = tools_fields(cli);
+
+        assert!(fields.json);
+        assert_eq!(fields.args_json.as_deref(), Some(r#"{"query": "hello"}"#));
+        assert_eq!(fields.server_name.as_deref(), Some("srv"));
+        assert_eq!(fields.tool_name.as_deref(), Some("tool"));
+        assert!(fields.args.is_empty());
+    }
+
+    #[test]
+    fn args_json_accepts_stdin_sentinel() {
+        let cli = Cli::try_parse_from(["dsbx", "tools", "--args-json", "-", "srv", "tool"])
+            .expect("should parse");
+        let fields = tools_fields(cli);
+        assert_eq!(fields.args_json.as_deref(), Some("-"));
+    }
+
+    #[test]
+    fn args_json_after_trailing_args_is_swallowed_into_args() {
+        // Once the trailing var-arg capture has started (first --key token),
+        // --args-json is data, not the flag; same behavior as --json.
+        let cli = Cli::try_parse_from([
+            "dsbx",
+            "tools",
+            "srv",
+            "tool",
+            "--foo",
+            "bar",
+            "--args-json",
+            "{}",
+        ])
+        .expect("should parse");
+        let fields = tools_fields(cli);
+
+        assert!(
+            fields.args_json.is_none(),
+            "--args-json after trailing args should NOT set the flag"
+        );
+        assert!(fields.args.contains(&"--args-json".to_string()));
     }
 
     #[test]
