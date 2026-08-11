@@ -31,9 +31,10 @@ const FUNCTION_WORKING_DIR_ENV: &str = "DUST_FUNCTION_WORKING_DIR";
 /// TODO(SANDBOX FUNCTION) Consider adding a dedicated node_modules dedicated to sandbox functions.
 const FUNCTIONS_GLOBAL_NODE_MODULES: &str = "/opt/npm-global/lib/node_modules";
 
-/// The function bundle runner, pre-bundled (Zod inlined) at dev time and
-/// committed. Embedded so `dsbx` is a single binary; cross-compilation does
-/// not need `bun`.
+/// The function bundle runner, a generated build artifact (Zod inlined), NOT
+/// committed: `bun run build` in `functions-runner/` produces it before dsbx
+/// compiles (see build.rs). Embedded so `dsbx` is a single binary;
+/// cross-compilation does not need `bun`.
 const RUNNER_JS: &str = include_str!("../../../functions-runner/runner.js");
 
 /// The unprivileged, egress-proxied user the sandbox runs agent code as (the
