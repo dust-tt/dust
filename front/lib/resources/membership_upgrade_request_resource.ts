@@ -23,9 +23,6 @@ import { UniqueConstraintError } from "sequelize";
 export interface MembershipUpgradeRequestResource
   extends ReadonlyAttributesType<MembershipUpgradeRequestModel> {}
 
-// Thrown by `createPending` when a reason is required but missing, and there
-// is no existing pending request to reuse. Distinguished from generic errors
-// so callers can map it to the appropriate domain error.
 export class UpgradeRequestReasonRequiredError extends Error {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -70,10 +67,7 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
   }
 
   // Create a pending request for the given member, or return the existing
-  // pending one if there already is one `reasonRequired`
-  // is only enforced when a new request actually needs to be created, and the
-  // check happens inside the same transaction as the existing-request lookup
-  // to avoid rejecting a retry that races with a concurrent creation.
+  // pending one if there already is one.
   static async createPending(
     auth: Authenticator,
     {
