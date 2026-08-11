@@ -13,6 +13,7 @@ import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import { podSandboxOnlyMounts } from "@app/lib/api/sandbox/pod_mounts";
 import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import type {
@@ -23,7 +24,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 const SANDBOX_RUNTIME_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -213,10 +214,28 @@ export async function ensureConversationSandboxReady(
   auth: Authenticator,
   conversation: ConversationType
 ): Promise<Result<EnsureSandboxReadyResult, Error>> {
+  // The caller's conversation is typically a snapshot captured at agent-loop
+  // start, and a move — possibly issued by this very agent — can change
+  // spaceId while the loop runs. spaceId is an authorization input (egress
+  // scope, pod env vars, pod mounts), so it is re-read from the database
+  // here rather than trusted from the caller.
+  const freshResource = await ConversationResource.fetchById(
+    auth,
+    conversation.sId
+  );
+  if (!freshResource) {
+    return new Err(new Error(`Conversation ${conversation.sId} not found.`));
+  }
+  const freshConversation = {
+    ...conversation,
+    spaceId: freshResource.spaceSId,
+  };
+
   return ensureOwnerSandboxReady(auth, {
     ensureActive: () =>
-      ConversationSandboxAdapter.ensureSandboxActive(auth, conversation),
-    getFileSystem: () => DustFileSystem.forConversation(auth, conversation),
+      ConversationSandboxAdapter.ensureSandboxActive(auth, freshConversation),
+    getFileSystem: () =>
+      DustFileSystem.forConversation(auth, freshConversation),
     // Pod-level sandbox config applies to everything running in the Pod: a
     // conversation inside a Pod receives the Pod's env vars and HTTPS
     // secrets at creation, and inherits the Pod's egress policy as a
@@ -225,11 +244,11 @@ export async function ensureConversationSandboxReady(
     // like conversations outside a Pod.
     runtimeOwner: {
       kind: "conversation",
-      conversationId: conversation.sId,
-      spaceId: conversation.spaceId ?? null,
+      conversationId: freshConversation.sId,
+      spaceId: freshConversation.spaceId ?? null,
     },
-    egressPolicyOwnerId: conversation.sId,
-    egressPolicyPodId: conversation.spaceId ?? undefined,
+    egressPolicyOwnerId: freshConversation.sId,
+    egressPolicyPodId: freshConversation.spaceId ?? undefined,
   });
 }
 
