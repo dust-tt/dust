@@ -5,6 +5,7 @@ import {
   fetchAuthContext,
   hasWorkosSessionCookie,
 } from "@marketing/lib/api/authContext";
+import { DUST_SKIP_LANDING, shouldSkipLanding } from "@marketing/lib/cookies";
 import type { NewsItem } from "@marketing/lib/homepage_news";
 import { fetchHomepageNews } from "@marketing/lib/homepage_news";
 import { extractUTMParams } from "@marketing/lib/utils/utm";
@@ -24,8 +25,8 @@ interface HomeProps {
 /**
  * Resolve where an already-authenticated visitor should be sent, server-side.
  *
- * Mirrors the old `front` behaviour (`front/pages/index.tsx` `getServerSideProps`,
- * which called `getSession` and redirected before rendering).
+ * Only called for visitors who opted into skipping the landing page; the caller
+ * owns that gate.
  *
  * `/api/auth-context` already returns the default workspace, so we redirect
  * straight to the app (`/w/<id>`) rather than bouncing through `/api/login`,
@@ -71,14 +72,19 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (
 ) => {
   const { inviteToken } = context.query;
 
-  // On the marketing root, an authenticated user's intent is to open the
-  // product, not browse the homepage — so redirect them server-side, before
-  // rendering, to avoid the render + hydrate + client fetch round-trip. Gated on
-  // the session cookie so anonymous SSR stays a no-op. We do NOT forward
-  // inviteToken: an expired/invalid one makes /api/login 400, and the redirect
-  // intent doesn't depend on it.
+  // On the marketing root, redirect straight to the product only for visitors
+  // who explicitly asked for it via the "Always open Dust" prompt. Everyone else
+  // gets the landing page. Doing it server-side, before rendering, avoids the
+  // render + hydrate + client fetch round-trip. The skip-preference check comes
+  // first because it is a plain cookie lookup, which keeps the auth-context
+  // round-trip off the path of every logged-in visitor who has not opted in. We
+  // do NOT forward inviteToken: an expired/invalid one makes /api/login 400, and
+  // the redirect intent doesn't depend on it.
   const cookieHeader = context.req.headers.cookie ?? "";
-  if (hasWorkosSessionCookie(cookieHeader)) {
+  if (
+    shouldSkipLanding(context.req.cookies[DUST_SKIP_LANDING]) &&
+    hasWorkosSessionCookie(cookieHeader)
+  ) {
     const destination = await resolveAuthedRedirectDestination(
       cookieHeader,
       context.query

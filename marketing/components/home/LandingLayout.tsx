@@ -11,6 +11,7 @@ import { OpenDustButton } from "@marketing/components/home/OpenDustButton";
 import { PromoBanner } from "@marketing/components/home/PromoBanner";
 import { PublicWebsiteLogo } from "@marketing/components/home/PublicWebsiteLogo";
 import ScrollingHeader from "@marketing/components/home/ScrollingHeader";
+import { SkipLandingPrompt } from "@marketing/components/home/SkipLandingPrompt";
 import UTMButton from "@marketing/components/UTMButton";
 import { useStripUtmParams } from "@marketing/hooks/useStripUtmParams";
 import {
@@ -168,14 +169,19 @@ export default function LandingLayout({
                 <PublicWebsiteLogo />
               </div>
               <MainNavigation />
-              <div className="flex flex-grow items-center justify-end gap-1 xs:gap-4">
+              <div className="relative flex flex-grow items-center justify-end gap-1 xs:gap-4">
                 {hasSession && (isAuthLoading || isAuthenticated) ? (
-                  <OpenDustButton
-                    variant="highlight"
-                    size="sm"
-                    trackingArea={TRACKING_AREAS.NAVIGATION}
-                    trackingObject="go_to_app"
-                  />
+                  <>
+                    <OpenDustButton
+                      variant="highlight"
+                      size="sm"
+                      trackingArea={TRACKING_AREAS.NAVIGATION}
+                      trackingObject="go_to_app"
+                    />
+                    {/* The opt-in only affects the root, which is the only page
+                        that redirects to the app. */}
+                    {router.pathname === "/" && <SkipLandingPrompt />}
+                  </>
                 ) : (
                   <>
                     <Button
