@@ -98,7 +98,12 @@ export function emitEnvelopeLine(envelope: unknown): void {
   let offset = 0;
   while (offset < bytes.length) {
     try {
-      offset += writeSync(1, bytes, offset, bytes.length - offset);
+      offset += writeSync(
+        process.stdout.fd,
+        bytes,
+        offset,
+        bytes.length - offset
+      );
     } catch (error) {
       if (isRetryableWriteError(error)) {
         continue;
