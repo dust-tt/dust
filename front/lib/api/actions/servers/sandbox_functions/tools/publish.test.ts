@@ -1,17 +1,17 @@
 import { SANDBOX_FUNCTIONS_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { publishHandler } from "@app/lib/api/actions/servers/sandbox_functions/tools/publish";
 import { buildSandboxFunctionOnSandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
-import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import {
+  computeSandboxFunctionBundleSha256,
+  SandboxFunctionResource,
+  shortSandboxFunctionBundleSha256,
+} from "@app/lib/resources/sandbox_function_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   makeExtra,
   setupProjectConversation,
 } from "@app/tests/utils/conversation_test_factories";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
-import {
-  computeSandboxFunctionBundleSha256,
-  shortSandboxFunctionBundleSha256,
-} from "@app/lib/resources/sandbox_function_resource";
 import { Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
