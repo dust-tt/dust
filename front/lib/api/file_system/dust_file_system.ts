@@ -956,9 +956,11 @@ export class DustFileSystem {
   async move({
     src,
     dest,
+    overwrite = false,
   }: {
     src: string;
     dest: string;
+    overwrite?: boolean;
   }): Promise<Result<{ sourceDeletionFailed: boolean }, DustFileSystemError>> {
     const resolvedSrc = this.requireWriteMount(src);
     if (resolvedSrc.isErr()) {
@@ -973,7 +975,7 @@ export class DustFileSystem {
     if (destExists.isErr()) {
       return destExists;
     }
-    if (destExists.value) {
+    if (destExists.value && !overwrite) {
       return new Err(
         new DustFileSystemError(
           "already_exists",

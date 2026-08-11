@@ -11,9 +11,13 @@ import {
   SCOPED_PREFIX_POD,
 } from "@app/lib/api/file_system/types";
 import { decodeBuffer } from "@app/lib/api/files/utils";
+import { ensureAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
+import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
+import { publishFrame } from "@app/lib/api/viz/publish_frame";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
+import { concurrentExecutor } from "@app/temporal/workflow_utils";
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
 import {
@@ -220,6 +224,177 @@ export async function fetchLinkedFileResource(
   return linkedFile;
 }
 
+/**
+ * Promote a sandbox-written mount object to the linked FileResource's
+ * canonical original. Plain filesystem objects intentionally remain plain.
+ */
+export async function syncCanonicalFileResourceFromMount(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  scopedPath: string
+): Promise<Result<void, DustFileSystemError>> {
+  const republishResult = await republishPublishedFramesForPaths(auth, dustFs, [
+    scopedPath,
+  ]);
+  if (republishResult.isErr()) {
+    return republishResult;
+  }
+  if (republishResult.value > 0) {
+    return new Ok(undefined);
+  }
+
+  const linkedFileResource = await fetchLinkedFileResource(
+    auth,
+    dustFs,
+    scopedPath
+  );
+  if (!linkedFileResource) {
+    return new Ok(undefined);
+  }
+
+  try {
+    await linkedFileResource.syncOriginalFromMount(auth);
+    if (linkedFileResource.isInteractiveContent) {
+      const accessResult = await ensureAuthorizedFileAccessForShare(
+        auth,
+        linkedFileResource
+      );
+      if (accessResult.isErr()) {
+        return new Err(
+          new DustFileSystemError("internal", accessResult.error.message)
+        );
+      }
+    }
+    return new Ok(undefined);
+  } catch (error) {
+    return new Err(
+      new DustFileSystemError(
+        "internal",
+        error instanceof Error ? error.message : String(error)
+      )
+    );
+  }
+}
+
+async function republishPublishedFramesForPaths(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  scopedPaths: string[]
+): Promise<Result<number, DustFileSystemError>> {
+  const framesById = new Map<string, FileResource>();
+  for (const scopedPath of scopedPaths) {
+    const frames = await FileResource.fetchPublishedFramesForScopedPath(
+      auth,
+      scopedPath
+    );
+    for (const frame of frames) {
+      framesById.set(frame.sId, frame);
+    }
+  }
+
+  const frames = [...framesById.values()];
+  const publishResults = await concurrentExecutor(
+    frames,
+    async (frame) => {
+      const rootScopedPath = frame.useCaseMetadata?.frameBundleRootPath;
+      if (!rootScopedPath) {
+        return new Ok(undefined);
+      }
+      const publishResult = await publishFrame(auth, {
+        file: frame,
+        reader: createMountFrameSourceReader(dustFs, rootScopedPath),
+        entryRelPath:
+          frame.useCaseMetadata?.frameEntryRelPath ?? frame.fileName,
+        rootScopedPath,
+      });
+      if (publishResult.isErr()) {
+        return new Err(
+          new DustFileSystemError("internal", publishResult.error.message)
+        );
+      }
+      return new Ok(undefined);
+    },
+    { concurrency: 2 }
+  );
+  const publishError = publishResults.find((result) => result.isErr());
+  if (publishError?.isErr()) {
+    return publishError;
+  }
+
+  return new Ok(frames.length);
+}
+
+async function fetchLinkedFileResourcesAtOrBelow(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  scopedPath: string
+): Promise<FileResource[]> {
+  const gcsPath = dustFs.toMountFilePath(scopedPath);
+  if (!gcsPath) {
+    return [];
+  }
+
+  return FileResource.fetchByMountFilePathPrefix(auth, gcsPath);
+}
+
+export async function reconcileCanonicalFileResourcesAfterMove(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  src: string,
+  dest: string,
+  linkedFileResources?: FileResource[]
+): Promise<void> {
+  const sourceGcsPath = dustFs.toMountFilePath(src);
+  const destGcsPath = dustFs.toMountFilePath(dest);
+  if (!sourceGcsPath || !destGcsPath) {
+    return;
+  }
+
+  const resources =
+    linkedFileResources ??
+    (await fetchLinkedFileResourcesAtOrBelow(auth, dustFs, src));
+  await concurrentExecutor(
+    resources,
+    async (linkedFileResource) => {
+      if (!linkedFileResource.mountFilePath) {
+        return;
+      }
+      const relativeSuffix = linkedFileResource.mountFilePath.slice(
+        sourceGcsPath.length
+      );
+      const destScopedPath = `${dest}${relativeSuffix}`;
+      const destInfo = inferDestMountInfo(destScopedPath);
+      if (!destInfo) {
+        return;
+      }
+      const linkedDestGcsPath = `${destGcsPath}${relativeSuffix}`;
+      const destFileName = linkedDestGcsPath.split("/").pop();
+      if (!destFileName) {
+        return;
+      }
+
+      const previousMetadata = linkedFileResource.useCaseMetadata;
+      const previousRoot = previousMetadata?.frameBundleRootPath;
+      const movedRoot =
+        previousRoot &&
+        (previousRoot === src || previousRoot.startsWith(`${src}/`))
+          ? `${dest}${previousRoot.slice(src.length)}`
+          : previousRoot;
+      await linkedFileResource.updateMount({
+        destFileName,
+        destMountFilePath: linkedDestGcsPath,
+        destUseCase: destInfo.useCase,
+        destUseCaseMetadata: {
+          ...previousMetadata,
+          ...destInfo.useCaseMetadata,
+          ...(movedRoot ? { frameBundleRootPath: movedRoot } : {}),
+        },
+      });
+    },
+    { concurrency: 8 }
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Move with FileResource sync
 // ---------------------------------------------------------------------------
@@ -277,33 +452,28 @@ export async function renameCanonicalFile(
 ): Promise<
   Result<{ dest: string; sourceDeletionFailed: boolean }, DustFileSystemError>
 > {
-  const linkedFileResource = await fetchLinkedFileResource(
-    auth,
-    dustFs,
-    scopedPath
-  );
-
-  const renameResult = await dustFs.rename(scopedPath, newFileName);
-  if (renameResult.isErr()) {
-    return renameResult;
+  if (!newFileName || newFileName.includes("/") || newFileName.includes("\\")) {
+    return new Err(
+      new DustFileSystemError(
+        "invalid_path",
+        "newFileName must be a non-empty string without path separators."
+      )
+    );
   }
 
-  if (linkedFileResource) {
-    const { dest } = renameResult.value;
-    const destGcsPath = dustFs.toMountFilePath(dest);
-    const destInfo = inferDestMountInfo(dest);
-
-    if (destGcsPath && destInfo) {
-      await linkedFileResource.updateMount({
-        destFileName: newFileName,
-        destMountFilePath: destGcsPath,
-        destUseCase: destInfo.useCase,
-        destUseCaseMetadata: destInfo.useCaseMetadata,
-      });
-    }
+  const lastSlash = scopedPath.lastIndexOf("/");
+  const parentDir = lastSlash >= 0 ? scopedPath.slice(0, lastSlash) : "";
+  const dest = parentDir ? `${parentDir}/${newFileName}` : newFileName;
+  if (dest === scopedPath) {
+    return new Ok({ dest, sourceDeletionFailed: false });
   }
 
-  return renameResult;
+  const moveResult = await moveCanonicalFile(auth, dustFs, scopedPath, dest);
+  if (moveResult.isErr()) {
+    return moveResult;
+  }
+
+  return new Ok({ dest, ...moveResult.value });
 }
 
 /**
@@ -316,29 +486,72 @@ export async function moveCanonicalFile(
   auth: Authenticator,
   dustFs: DustFileSystem,
   src: string,
-  dest: string
+  dest: string,
+  { overwrite = false }: { overwrite?: boolean } = {}
 ): Promise<Result<{ sourceDeletionFailed: boolean }, DustFileSystemError>> {
-  // Look up the linked FileResource before the bytes move.
-  const linkedFileResource = await fetchLinkedFileResource(auth, dustFs, src);
+  // Look up every linked FileResource before the bytes move. For a directory
+  // move this includes all descendants, not only a resource at the directory
+  // placeholder itself.
+  const linkedFileResources = await fetchLinkedFileResourcesAtOrBelow(
+    auth,
+    dustFs,
+    src
+  );
+  const destinationFileResources = overwrite
+    ? await fetchLinkedFileResourcesAtOrBelow(auth, dustFs, dest)
+    : [];
 
-  const moveResult = await dustFs.move({ src, dest });
+  // POSIX rename replaces an existing destination. If the source has logical
+  // identity, it replaces the destination resource. If the source is an
+  // untracked editor temporary file, preserve the destination FileResource so
+  // atomic-save keeps the frame/share identity stable.
+  if (linkedFileResources.length > 0 && destinationFileResources.length > 0) {
+    const deleteResults = await concurrentExecutor(
+      destinationFileResources,
+      async (fileResource) => fileResource.delete(auth),
+      { concurrency: 8 }
+    );
+    const deleteError = deleteResults.find((result) => result.isErr());
+    if (deleteError?.isErr()) {
+      return new Err(
+        new DustFileSystemError("internal", deleteError.error.message)
+      );
+    }
+  }
+
+  const moveResult = await dustFs.move({ src, dest, overwrite });
   if (moveResult.isErr()) {
     return moveResult;
   }
 
-  // Update the FileResource to point to the new location.
-  if (linkedFileResource) {
-    const destGcsPath = dustFs.toMountFilePath(dest);
-    const destInfo = inferDestMountInfo(dest);
+  await reconcileCanonicalFileResourcesAfterMove(
+    auth,
+    dustFs,
+    src,
+    dest,
+    linkedFileResources
+  );
 
-    if (destGcsPath && destInfo) {
-      const destFileName = dest.split("/").pop() ?? dest;
-      await linkedFileResource.updateMount({
-        destFileName,
-        destMountFilePath: destGcsPath,
-        destUseCase: destInfo.useCase,
-        destUseCaseMetadata: destInfo.useCaseMetadata,
-      });
+  const republishResult = await republishPublishedFramesForPaths(auth, dustFs, [
+    src,
+    dest,
+  ]);
+  if (republishResult.isErr()) {
+    return republishResult;
+  }
+
+  if (
+    republishResult.value === 0 &&
+    linkedFileResources.length === 0 &&
+    destinationFileResources.length > 0
+  ) {
+    const syncResult = await syncCanonicalFileResourceFromMount(
+      auth,
+      dustFs,
+      dest
+    );
+    if (syncResult.isErr()) {
+      return syncResult;
     }
   }
 
@@ -586,20 +799,35 @@ export async function deleteCanonicalFile(
   dustFs: DustFileSystem,
   scopedPath: string
 ): Promise<Result<void, DustFileSystemError>> {
-  const linkedFileResource = await fetchLinkedFileResource(
+  const linkedFileResources = await fetchLinkedFileResourcesAtOrBelow(
     auth,
     dustFs,
     scopedPath
   );
-  if (!linkedFileResource) {
+  if (linkedFileResources.length === 0) {
     return dustFs.delete(scopedPath);
   }
 
-  const deleteResult = await linkedFileResource.delete(auth);
-  if (deleteResult.isErr()) {
+  const deleteResults = await concurrentExecutor(
+    linkedFileResources,
+    async (linkedFileResource) => linkedFileResource.delete(auth),
+    { concurrency: 8 }
+  );
+  const deleteError = deleteResults.find((result) => result.isErr());
+  if (deleteError?.isErr()) {
     return new Err(
-      new DustFileSystemError("internal", deleteResult.error.message)
+      new DustFileSystemError("internal", deleteError.error.message)
     );
+  }
+
+  // FileResource.delete removes its own mount object. A directory can also
+  // contain plain sandbox-created objects and its placeholder, so remove the
+  // remaining subtree after all linked resources have been cleaned up.
+  const remainingDeleteResult = await dustFs.delete(scopedPath, {
+    ignoreNotFound: true,
+  });
+  if (remainingDeleteResult.isErr()) {
+    return remainingDeleteResult;
   }
 
   return new Ok(undefined);

@@ -1,0 +1,96 @@
+import { generateSandboxFileSystemToken } from "@app/lib/api/sandbox/access_tokens";
+import { SandboxFileSystemMutationModel } from "@app/lib/resources/storage/models/sandbox_file_system_mutation";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { createSandboxTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
+import { honoApp } from "@front-api/app";
+import { beforeEach, describe, expect, it } from "vitest";
+
+process.env.DUST_SANDBOX_JWT_SECRET ??= "test-sandbox-jwt-secret";
+
+function mutationRequest(
+  workspaceId: string,
+  token: string,
+  body: Record<string, unknown>
+) {
+  return honoApp.request(
+    `/api/v1/w/${workspaceId}/sandbox/filesystem/mutations`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }
+  );
+}
+
+describe("POST /api/v1/w/:wId/sandbox/filesystem/mutations", () => {
+  beforeEach(() => {
+    fileStorageMock.reset();
+    fileStorageMock.setFileExists(() => false);
+  });
+
+  it("applies and persists a scoped filesystem mutation", async () => {
+    const { auth, workspace, conversation, sandbox } =
+      await createSandboxTokenTestContext();
+    const token = await generateSandboxFileSystemToken(auth, {
+      sandbox,
+      mounts: [{ kind: "conversation", id: conversation.sId }],
+    });
+    const idempotencyKey = crypto.randomUUID();
+    const body = {
+      idempotencyKey,
+      operation: "mkdir",
+      mount: { kind: "conversation", id: conversation.sId },
+      path: "generated",
+    };
+
+    const response = await mutationRequest(workspace.sId, token, body);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ success: true });
+    expect(
+      fileStorageMock.saveFileCalls.some(
+        ({ filePath }) =>
+          filePath ===
+          `w/${workspace.sId}/conversations/${conversation.sId}/files/generated/`
+      )
+    ).toBe(true);
+    const persisted = await SandboxFileSystemMutationModel.findOne({
+      where: { workspaceId: workspace.id, idempotencyKey },
+    });
+    expect(persisted?.status).toBe("completed");
+
+    const replay = await mutationRequest(workspace.sId, token, body);
+    expect(replay.status).toBe(200);
+    expect(
+      fileStorageMock.saveFileCalls.filter(
+        ({ filePath }) =>
+          filePath ===
+          `w/${workspace.sId}/conversations/${conversation.sId}/files/generated/`
+      )
+    ).toHaveLength(1);
+  });
+
+  it("rejects a mount outside the filesystem token scope", async () => {
+    const { auth, workspace, conversation, sandbox } =
+      await createSandboxTokenTestContext();
+    const token = await generateSandboxFileSystemToken(auth, {
+      sandbox,
+      mounts: [{ kind: "conversation", id: conversation.sId }],
+    });
+
+    const response = await mutationRequest(workspace.sId, token, {
+      idempotencyKey: crypto.randomUUID(),
+      operation: "unlink",
+      mount: { kind: "conversation", id: "another-conversation" },
+      path: "frame.tsx",
+    });
+
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.message).toContain(
+      "outside token scope"
+    );
+  });
+});

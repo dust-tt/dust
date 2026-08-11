@@ -104,7 +104,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op, UniqueConstraintError } from "sequelize";
+import { col, fn, Op, UniqueConstraintError, where } from "sequelize";
 import type { Readable, Writable } from "stream";
 import { validate } from "uuid";
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
@@ -435,6 +435,70 @@ export class FileResource extends BaseResource<FileModel> {
     return files.map((f) => new this(this.model, f.get()));
   }
 
+  /**
+   * Fetch FileResources whose mount path is exactly `mountFilePath` or is a
+   * descendant of it. The range form keeps wildcard characters in user file
+   * names literal and can use the mount-path btree index.
+   */
+  static async fetchByMountFilePathPrefix(
+    auth: Authenticator,
+    mountFilePath: string
+  ): Promise<FileResource[]> {
+    const owner = auth.getNonNullableWorkspace();
+    const descendantPrefix = `${mountFilePath}/`;
+    const files = await this.model.findAll({
+      where: {
+        workspaceId: owner.id,
+        [Op.or]: [
+          { mountFilePath },
+          {
+            mountFilePath: {
+              [Op.gte]: descendantPrefix,
+              [Op.lt]: `${mountFilePath}0`,
+            },
+          },
+        ],
+      },
+    });
+
+    return files.map((file) => new this(this.model, file.get()));
+  }
+
+  /**
+   * Return published Frames whose source root contains `scopedPath`. Checking
+   * the finite set of path ancestors keeps this an indexed equality lookup,
+   * rather than a workspace-wide JSON scan on every sandbox close.
+   */
+  static async fetchPublishedFramesForScopedPath(
+    auth: Authenticator,
+    scopedPath: string
+  ): Promise<FileResource[]> {
+    const pathSegments = scopedPath.replace(/\/+$/, "").split("/");
+    const possibleRoots = pathSegments
+      .slice(0, -1)
+      .map((_, index) => pathSegments.slice(0, index + 1).join("/"));
+    if (possibleRoots.length === 0) {
+      return [];
+    }
+
+    const files = await this.model.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        contentType: { [Op.in]: [...FRAME_CONTENT_TYPES] },
+        [Op.and]: where(
+          fn(
+            "jsonb_extract_path_text",
+            col("useCaseMetadata"),
+            "frameBundleRootPath"
+          ),
+          { [Op.in]: possibleRoots }
+        ),
+      },
+    });
+
+    return files.map((file) => new this(this.model, file.get()));
+  }
+
   static async deleteAllForWorkspace(auth: Authenticator) {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
@@ -544,7 +608,7 @@ export class FileResource extends BaseResource<FileModel> {
 
         await this.getBucketForVersion("original")
           .file(this.getCloudStoragePath(auth, "original"))
-          .delete();
+          .delete({ ignoreNotFound: true });
 
         // Delete the processed file if it exists.
         await this.getBucketForVersion("processed")
@@ -1121,6 +1185,30 @@ export class FileResource extends BaseResource<FileModel> {
     // Increment version after successful upload and mark as ready
     await this.incrementVersion();
     await this.markAsReady(auth);
+  }
+
+  /**
+   * Promote the current mounted object to the FileResource's canonical
+   * original. Sandbox programs write through the mount, so this is the
+   * server-side-copy equivalent of uploadContent without buffering the file
+   * through Front.
+   */
+  async syncOriginalFromMount(auth: Authenticator): Promise<void> {
+    if (!this.mountFilePath) {
+      return;
+    }
+
+    const bucket = getPrivateUploadBucket();
+    const [metadata] = await bucket.file(this.mountFilePath).getMetadata();
+    await bucket.copyFile(
+      this.mountFilePath,
+      this.getCloudStoragePath(auth, "original")
+    );
+    await this.update({
+      fileSize: Number(metadata.size ?? 0),
+      version: this.version + 1,
+      status: "ready",
+    });
   }
 
   /**

@@ -540,6 +540,44 @@ describe("DELETE /api/w/:wId/files/path/:canonicalPath", () => {
     await expect(FileResource.fetchById(auth, file.sId)).resolves.toBeNull();
   });
 
+  it("deletes every linked FileResource below a directory", async () => {
+    const { workspace, auth, conversation } = await setup();
+    const mountRoot = `w/${workspace.sId}/conversations/${conversation.sId}/files`;
+    const files = await Promise.all(
+      [
+        { fileName: "frame.tsx", relativePath: "frames/frame.tsx" },
+        { fileName: "nested.tsx", relativePath: "frames/nested/nested.tsx" },
+      ].map(async ({ fileName, relativePath }) => {
+        const file = await FileFactory.create(auth, auth.getNonNullableUser(), {
+          contentType: frameContentType,
+          fileName,
+          fileSize: 42,
+          status: "ready",
+          useCase: "tool_output",
+        });
+        await file.updateMount({
+          destFileName: fileName,
+          destMountFilePath: `${mountRoot}/${relativePath}`,
+          destUseCase: "tool_output",
+          destUseCaseMetadata: { conversationId: conversation.sId },
+        });
+        return file;
+      })
+    );
+    setExistingFiles(["/files/frames/"]);
+
+    const response = await request(
+      workspace,
+      `conversation-${conversation.sId}/frames`,
+      { method: "DELETE" }
+    );
+
+    expect(response.status).toBe(204);
+    for (const file of files) {
+      await expect(FileResource.fetchById(auth, file.sId)).resolves.toBeNull();
+    }
+  });
+
   it("returns 404 when file does not exist", async () => {
     const { workspace, conversation } = await setup();
 

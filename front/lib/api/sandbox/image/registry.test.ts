@@ -94,7 +94,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.70",
+      tag: "0.8.76",
     });
   });
 
@@ -191,7 +191,7 @@ describe("sandbox image registry", () => {
       expect(command).toContain("/usr/bin/systemd-analyze unit-paths");
       expect(command).toContain("systemd unit path must be absolute");
       expect(command).toContain(
-        "for path in /opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle /usr/local/bin/dust-gcs-token-server.py /usr/local/bin/dust-gcs-write-token.sh /usr/local/bin/dust-gcs-token-firewall.sh /opt/bin/litestream"
+        "for path in /opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle /usr/local/bin/dust-gcs-token-server.py /usr/local/bin/dust-gcs-write-token.sh /usr/local/bin/dust-gcs-token-firewall.sh /usr/local/bin/dust-fs-overlay.py /opt/bin/litestream"
       );
       expect(command).toContain("empty-password local accounts must not exist");
       expect(command).toContain("privileged primary group");
@@ -423,10 +423,10 @@ describe("sandbox image registry", () => {
 
     expect(runCommands).toEqual(
       expect.arrayContaining([
-        "apt-get update && apt-get install -y python3",
+        "apt-get update && apt-get install -y python3 libfuse2t64",
         "mkdir -p /usr/local/bin",
         expect.stringContaining(
-          "chown root:root /usr/local/bin/dust-gcs-token-server.py /usr/local/bin/dust-gcs-write-token.sh /usr/local/bin/dust-gcs-token-firewall.sh"
+          "chown root:root /usr/local/bin/dust-gcs-token-server.py /usr/local/bin/dust-gcs-write-token.sh /usr/local/bin/dust-gcs-token-firewall.sh /usr/local/bin/dust-fs-overlay.py"
         ),
       ])
     );
@@ -439,6 +439,8 @@ describe("sandbox image registry", () => {
     expect(server).toContain('Server(("127.0.0.1", 987), Handler)');
     expect(server).not.toContain("/tmp/token.json");
     expect(writer).toContain("^/run/dust-gcs/mount-[0-9]+\\.json$");
+    expect(writer).toContain('[ "$token_path" = "/run/dust-fs/token" ]');
+    expect(writer).toContain('token_owner="dust-fs"');
     expect(writer).toContain("chmod 600");
     expect(writer).toContain("mv -f");
     expect(firewall).toContain("dust-gcs-token");
@@ -449,6 +451,38 @@ describe("sandbox image registry", () => {
       'meta skuid "$CONTROLLED_UID" ip daddr 127.0.0.0/8 tcp dport 987 drop'
     );
     expect(firewall).not.toContain("delete table ip dust-gcs-token");
+  });
+
+  test("installs and self-tests the mutation-tracking filesystem overlay", () => {
+    const image = getDustBaseImage();
+    const operations = getDustBaseImageOperations();
+    const runCommands = getRunCommands(operations);
+    const overlay = getCopiedContent(
+      getCopyOperations(operations),
+      "/usr/local/bin/dust-fs-overlay.py"
+    );
+    const temporaryDirectory = mkdtempSync(join(tmpdir(), "dust-fs-overlay-"));
+    const overlayPath = join(temporaryDirectory, "dust-fs-overlay.py");
+
+    try {
+      writeFileSync(overlayPath, overlay);
+      const result = spawnSync("python3", [overlayPath, "--self-test"], {
+        encoding: "utf8",
+      });
+
+      expect(result.status, result.stderr).toBe(0);
+    } finally {
+      rmSync(temporaryDirectory, { recursive: true, force: true });
+    }
+
+    expect(image.hasCapability("dust_fs_overlay")).toBe(true);
+    expect(runCommands.join("\n")).toContain("fusepy==3.0.1");
+    expect(runCommands.join("\n")).toContain("user_allow_other /etc/fuse.conf");
+    expect(runCommands.join("\n")).toContain(
+      "useradd --system --no-create-home --gid dust-fs"
+    );
+    expect(overlay).toContain('"rename", old, destinationPath=');
+    expect(overlay).toContain('self._mutation_client.apply("unlink"');
   });
 
   test("installs the current dsbx CLI release", () => {

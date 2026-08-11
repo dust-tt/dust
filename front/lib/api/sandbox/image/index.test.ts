@@ -1,5 +1,7 @@
+import config from "@app/lib/api/config";
 import {
   createToolManifest,
+  getSandboxImage,
   getToolsForProvider,
   toolManifestToYAML,
 } from "@app/lib/api/sandbox/image";
@@ -37,5 +39,19 @@ describe("getToolsForProvider", () => {
       createToolManifest(visibleToolsResult.value)
     );
     expect(visibleManifest).toContain("name: dsbx");
+  });
+});
+
+describe("getSandboxImage", () => {
+  it("allows the dedicated filesystem service to reach Front", () => {
+    const result = getSandboxImage();
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    expect(result.value.network.allowlist).toContain(
+      new URL(config.getApiBaseUrl()).hostname
+    );
   });
 });

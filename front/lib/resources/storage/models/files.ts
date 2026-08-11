@@ -112,6 +112,16 @@ FileModel.init(
         unique: true,
         where: { mountFilePath: { [Op.ne]: null } },
       },
+      {
+        name: "files_workspace_frame_bundle_root_idx",
+        fields: [
+          "workspaceId",
+          "contentType",
+          literal("(\"useCaseMetadata\" #>> '{frameBundleRootPath}')"),
+        ],
+        concurrently: true,
+        where: { useCaseMetadata: { [Op.ne]: null } },
+      },
     ],
   }
 );

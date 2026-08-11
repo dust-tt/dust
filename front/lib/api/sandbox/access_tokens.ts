@@ -36,6 +36,16 @@ const SandboxTokenPayloadSchema = z
     spaceId: z.string().optional(),
     sandboxFunctionId: z.string().optional(),
     invocationId: z.string().optional(),
+    fsMounts: z
+      .array(
+        z.object({
+          kind: z.enum(["conversation", "pod"]),
+          id: z.string(),
+        })
+      )
+      .min(1)
+      .max(2)
+      .optional(),
     // Set for a fast Pod function, published on the promise that it does not call tools. A tool
     // call can wait on the user for as long as they take, which a fast invocation has no way to
     // survive, so the token it runs under cannot make one.
@@ -51,6 +61,7 @@ const SandboxTokenPayloadSchema = z
     const hasAction =
       payload.cId !== undefined && actionClaims.every(isDefined);
     const hasInvocation = invocationClaims.every(isDefined);
+    const hasFileSystem = payload.fsMounts !== undefined;
 
     if (actionClaims.some(isDefined) && !hasAction) {
       ctx.addIssue({
@@ -64,11 +75,14 @@ const SandboxTokenPayloadSchema = z
         message: "Incomplete sandbox function invocation token claims.",
       });
     }
-    if (!hasAction && !hasInvocation) {
+    const tokenKindCount = [hasAction, hasInvocation, hasFileSystem].filter(
+      Boolean
+    ).length;
+    if (tokenKindCount !== 1) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          "Sandbox token payload must include action or function invocation claims.",
+          "Sandbox token payload must include exactly one supported token kind.",
       });
     }
   });
@@ -87,6 +101,10 @@ export type SandboxFunctionInvocationTokenPayload = SandboxTokenPayload & {
   spaceId: string;
   sandboxFunctionId: string;
   invocationId: string;
+};
+
+export type SandboxFileSystemTokenPayload = SandboxTokenPayload & {
+  fsMounts: Array<{ kind: "conversation" | "pod"; id: string }>;
 };
 
 export function isSandboxExecTokenPayload(
@@ -170,6 +188,12 @@ export function isSandboxFunctionInvocationTokenPayload(
     payload.sandboxFunctionId !== undefined &&
     payload.invocationId !== undefined
   );
+}
+
+export function isSandboxFileSystemTokenPayload(
+  payload: SandboxTokenPayload
+): payload is SandboxFileSystemTokenPayload {
+  return payload.fsMounts !== undefined;
 }
 
 const EXEC_TOKEN_REDIS_TTL_SECONDS = 24 * 60 * 60; // 24 hours
@@ -318,6 +342,36 @@ export async function generateSandboxFunctionInvocationToken(
   const token = jwt.sign(payload, secret, {
     algorithm: "HS256",
     expiresIn: expiryMs / 1000, // expiresIn is in seconds
+  });
+
+  return `${SANDBOX_TOKEN_PREFIX}${token}`;
+}
+
+export async function generateSandboxFileSystemToken(
+  auth: Authenticator,
+  {
+    sandbox,
+    mounts,
+    expiryMs = 10 * 60 * 1000,
+  }: {
+    sandbox: SandboxResource;
+    mounts: Array<{ kind: "conversation" | "pod"; id: string }>;
+    expiryMs?: number;
+  }
+): Promise<string> {
+  const payload: SandboxFileSystemTokenPayload = {
+    wId: auth.getNonNullableWorkspace().sId,
+    uId: auth.user()?.sId,
+    sbId: sandbox.sId,
+    execId: "filesystem",
+    fsMounts: mounts,
+  };
+
+  await registerExecToken(payload);
+
+  const token = jwt.sign(payload, config.getSandboxJwtSecret(), {
+    algorithm: "HS256",
+    expiresIn: expiryMs / 1000,
   });
 
   return `${SANDBOX_TOKEN_PREFIX}${token}`;

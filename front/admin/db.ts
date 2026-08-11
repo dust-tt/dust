@@ -131,6 +131,7 @@ import {
   SandboxOwnerModel,
 } from "@app/lib/resources/storage/models/sandbox";
 import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
+import { SandboxFileSystemMutationModel } from "@app/lib/resources/storage/models/sandbox_file_system_mutation";
 import {
   SandboxFunctionInvocationModel,
   SandboxFunctionModel,
@@ -272,6 +273,7 @@ export function loadAllModels() {
     AcademyChapterVisitModel,
     SandboxModel,
     SandboxOwnerModel,
+    SandboxFileSystemMutationModel,
     ConversationForkModel,
     ProjectTaskModel,
     ProjectTaskConversationModel,
