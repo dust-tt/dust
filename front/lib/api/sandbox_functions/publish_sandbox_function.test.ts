@@ -93,7 +93,9 @@ describe("publishSandboxFunction", () => {
     if (result.isErr()) {
       return;
     }
-    const fn = result.value;
+    // A first publish has nothing to be identical to.
+    expect(result.value.byteIdentical).toBe(false);
+    const fn = result.value.sandboxFunction;
     expect(fn.slug).toBe("greeter__greet");
     expect(fn.description).toBe("Greet someone.");
     expect(fn.userIdentity).toBe("interactive_workspace_user_required");
@@ -148,7 +150,7 @@ describe("publishSandboxFunction", () => {
     if (durable.isErr()) {
       return;
     }
-    expect(durable.value.executionMode).toBe("durable");
+    expect(durable.value.sandboxFunction.executionMode).toBe("durable");
 
     const fast = await publishSandboxFunction(auth, {
       space,
@@ -161,7 +163,7 @@ describe("publishSandboxFunction", () => {
     if (fast.isErr()) {
       return;
     }
-    expect(fast.value.executionMode).toBe("fast");
+    expect(fast.value.sandboxFunction.executionMode).toBe("fast");
   });
 
   it("returns a re-publish that does not restate the execution mode to the default", async () => {
@@ -195,7 +197,7 @@ describe("publishSandboxFunction", () => {
     if (republished.isErr()) {
       return;
     }
-    expect(republished.value.executionMode).toBe("durable");
+    expect(republished.value.sandboxFunction.executionMode).toBe("durable");
 
     const restated = await publishSandboxFunction(auth, {
       space,
@@ -208,7 +210,7 @@ describe("publishSandboxFunction", () => {
     if (restated.isErr()) {
       return;
     }
-    expect(restated.value.executionMode).toBe("fast");
+    expect(restated.value.sandboxFunction.executionMode).toBe("fast");
   });
 
   it("overwrites the bundle in place on re-publish, keeping one row and the same file", async () => {
@@ -232,7 +234,7 @@ describe("publishSandboxFunction", () => {
     if (first.isErr()) {
       return;
     }
-    const firstFileId = first.value.fileId;
+    const firstFileId = first.value.sandboxFunction.fileId;
     const [firstBundle] = await FileModel.findAll({
       where: { workspaceId: workspace.id },
     });
@@ -262,18 +264,22 @@ describe("publishSandboxFunction", () => {
       return;
     }
 
-    expect(second.value.id).toBe(first.value.id);
-    expect(second.value.description).toBe("v2");
-    expect(second.value.userIdentity).toBe("optional");
+    expect(second.value.sandboxFunction.id).toBe(
+      first.value.sandboxFunction.id
+    );
+    expect(second.value.sandboxFunction.description).toBe("v2");
+    expect(second.value.sandboxFunction.userIdentity).toBe("optional");
+    // The bundle changed, so the publish must not report it as byte-identical.
+    expect(second.value.byteIdentical).toBe(false);
     // The hash follows the bundle: a republish must restamp it, or warm servers holding the old
     // import would keep matching and serve stale code.
-    expect(second.value.bundleSha256).toBe(
+    expect(second.value.sandboxFunction.bundleSha256).toBe(
       createHash("sha256").update("v2", "utf8").digest("hex")
     );
-    expect(second.value.outputSchema).toEqual(newOutputSchema);
+    expect(second.value.sandboxFunction.outputSchema).toEqual(newOutputSchema);
     // The bundle file is reused in place, not replaced: same row, canonical mount path retained, and
     // its version bumped by the re-upload.
-    expect(second.value.fileId).toBe(firstFileId);
+    expect(second.value.sandboxFunction.fileId).toBe(firstFileId);
 
     const listed = await SandboxFunctionResource.listBySpace(auth, space);
     expect(listed).toHaveLength(1);
@@ -285,6 +291,39 @@ describe("publishSandboxFunction", () => {
       `w/${workspace.sId}/pods/${space.sId}/sandbox-functions/greeter__greet.ts`
     );
     expect(files[0].version).toBeGreaterThan(firstVersion ?? 0);
+  });
+
+  it("reports a re-publish whose bundle did not change as byte-identical", async () => {
+    const { space, auth } = await setupPod();
+    vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
+      new Ok({
+        bundleCode: "export default {};",
+        userIdentity: "optional",
+        inputSchema,
+        outputSchema,
+      })
+    );
+
+    const first = await publishSandboxFunction(auth, {
+      space,
+      slug: "greet",
+      description: "Greet someone.",
+      path: `pod-${space.sId}/Greeter/functions/greet.ts`,
+    });
+    expect(first.isOk()).toBe(true);
+
+    // Same build output: the publisher's edit did not land, and the result must say so.
+    const republished = await publishSandboxFunction(auth, {
+      space,
+      slug: "greet",
+      description: "Greet someone.",
+      path: `pod-${space.sId}/Greeter/functions/greet.ts`,
+    });
+    expect(republished.isOk()).toBe(true);
+    if (republished.isErr()) {
+      return;
+    }
+    expect(republished.value.byteIdentical).toBe(true);
   });
 
   it("keeps two apps that publish the same name as separate functions", async () => {
@@ -318,11 +357,15 @@ describe("publishSandboxFunction", () => {
     }
 
     // The second publish must not have replaced the first: two rows, two slugs, two bundles.
-    expect(taskList.value.slug).toBe("tasklist__refresh");
-    expect(inbox.value.slug).toBe("inbox__refresh");
-    expect(inbox.value.id).not.toBe(taskList.value.id);
-    expect(taskList.value.description).toBe("Refresh the task list.");
-    expect(inbox.value.description).toBe("Refresh the inbox.");
+    expect(taskList.value.sandboxFunction.slug).toBe("tasklist__refresh");
+    expect(inbox.value.sandboxFunction.slug).toBe("inbox__refresh");
+    expect(inbox.value.sandboxFunction.id).not.toBe(
+      taskList.value.sandboxFunction.id
+    );
+    expect(taskList.value.sandboxFunction.description).toBe(
+      "Refresh the task list."
+    );
+    expect(inbox.value.sandboxFunction.description).toBe("Refresh the inbox.");
 
     const listed = await SandboxFunctionResource.listBySpace(auth, space);
     expect(listed).toHaveLength(2);
@@ -358,7 +401,7 @@ describe("publishSandboxFunction", () => {
     if (result.isErr()) {
       return;
     }
-    expect(result.value.slug).toBe("greet");
+    expect(result.value.sandboxFunction.slug).toBe("greet");
 
     const files = await FileModel.findAll({
       where: { workspaceId: workspace.id },

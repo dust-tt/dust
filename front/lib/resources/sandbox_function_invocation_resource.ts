@@ -136,6 +136,11 @@ const InvocationDataBaseSchema = z.object({
     })
     .optional(),
   result: z.unknown().optional(),
+  // The hash of the bundle the invocation was executed against, recorded by the terminal
+  // transition when the executing instance stamped it. Absent on blobs written before the field
+  // existed, on invocations that never reached execution, and on outcomes delivered through the
+  // in-sandbox HTTP callback (a separately fetched instance settles those).
+  bundleSha256: z.string().optional(),
 });
 
 // Every shape we have ever written, discriminated on `version` so a new one is an added arm rather
@@ -188,6 +193,7 @@ function migrateStoredInvocationData(
 }
 
 interface SandboxFunctionInvocationForLLM {
+  bundleSha256?: string;
   createdAt: string;
   error?: StoredSandboxFunctionCallError;
   input: unknown;
@@ -301,6 +307,14 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
    */
   private lastSettledOutcome: SandboxFunctionInvocationOutcome | undefined;
 
+  /**
+   * The hash of the bundle execute() ran (or attempted to run) this invocation against, read
+   * from the persisted function row at execution time. Only ever set on the instance that
+   * executed; the terminal transitions fold it into the stored blob so `inspect_invocations`
+   * can report which publish served each invocation.
+   */
+  private executedBundleSha256: string | undefined;
+
   settledOutcome(): SandboxFunctionInvocationOutcome | null {
     return this.lastSettledOutcome ?? null;
   }
@@ -349,6 +363,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
   get error(): StoredSandboxFunctionCallError | undefined {
     return this.data.error;
+  }
+
+  get bundleSha256(): string | undefined {
+    return this.data.bundleSha256;
   }
 
   // WHERE-guarded compare-and-swap on status. Same pattern as
@@ -484,6 +502,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
       context: this.context,
+      ...(this.executedBundleSha256 === undefined
+        ? {}
+        : { bundleSha256: this.executedBundleSha256 }),
       // Persist the whole error: the code and status are what `inspect_invocations` needs to say
       // why an invocation failed, and dropping them here would leave the message as the only
       // record of a failure the stream classified precisely.
@@ -530,6 +551,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
       input: this.input,
       context: this.context,
+      ...(this.executedBundleSha256 === undefined
+        ? {}
+        : { bundleSha256: this.executedBundleSha256 }),
       result,
     };
     await this.persistTerminalData("succeeded");
@@ -652,6 +676,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       // Read from the persisted row rather than the in-memory copy, which may predate a
       // re-publish, since this one gates tool access.
       const noTools = persistedFunction.executionMode === "fast";
+      // Remember which bundle this execution serves, so the terminal transition records the
+      // version behind the outcome.
+      this.executedBundleSha256 = persistedFunction.bundleSha256 ?? undefined;
       const token = await generateSandboxFunctionInvocationToken(auth, {
         sandbox,
         sandboxFunction,
@@ -1418,6 +1445,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       invocationId: this.sId,
       status: this.status,
       updatedAt: this.updatedAt.toISOString(),
+      // Which publish served this invocation: comparable against the hash `publish` and `get`
+      // echo. Absent when the invocation predates the stamping or never reached execution.
+      ...(this.bundleSha256 !== undefined
+        ? { bundleSha256: this.bundleSha256 }
+        : {}),
       ...(this.result !== undefined ? { result: this.result } : {}),
       ...(this.error !== undefined ? { error: this.error } : {}),
     };

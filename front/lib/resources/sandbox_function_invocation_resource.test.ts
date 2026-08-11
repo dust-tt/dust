@@ -234,6 +234,11 @@ describe("SandboxFunctionInvocationResource", () => {
         message: "second invocation failed",
       },
     });
+    // These invocations settled without going through execute(), so no bundle hash was stamped
+    // and none must be invented.
+    expect(recentInvocations[0]?.toJSONForLLM()).not.toHaveProperty(
+      "bundleSha256"
+    );
 
     const formatted = formatSandboxFunctionInvocations(
       sandboxFunction.slug,
@@ -705,6 +710,12 @@ describe("SandboxFunctionInvocationResource", () => {
         invocationId: invocation.sId,
       });
     expect(refetchedInvocation?.status).toBe("succeeded");
+    // The terminal blob records which publish served the invocation, and inspect_invocations
+    // reports it so a caller can match invocations to the hash publish/get echo.
+    expect(refetchedInvocation?.bundleSha256).toBe(TEST_BUNDLE_SHA256);
+    expect(refetchedInvocation?.toJSONForLLM()).toMatchObject({
+      bundleSha256: TEST_BUNDLE_SHA256,
+    });
     // execute() itself never touches lastActivityAt: ensurePodSandboxReady's
     // ensureActive already writes it under the lifecycle lock, and a second
     // write per invocation was pure hot-row churn on the sandbox row.
