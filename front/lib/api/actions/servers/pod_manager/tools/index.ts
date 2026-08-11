@@ -5,6 +5,7 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { agentInvocationFromFunctionGuard } from "@app/lib/actions/mcp_internal_actions/utils";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type { ToolContext } from "@app/lib/actions/types";
 import {
@@ -1223,6 +1224,11 @@ export function createProjectManagerTools(
 
     create_conversation: async (params) => {
       return withErrorHandling(async () => {
+        const invocationGuardError = agentInvocationFromFunctionGuard(toolContext);
+        if (invocationGuardError) {
+          return new Err(invocationGuardError);
+        }
+
         const contextRes = await getWritablePodContext(auth, {
           toolContext,
           dustPod: params.dustPod,
@@ -1501,6 +1507,11 @@ export function createProjectManagerTools(
 
     add_message_to_conversation: async (params) => {
       return withErrorHandling(async () => {
+        const invocationGuardError = agentInvocationFromFunctionGuard(toolContext);
+        if (invocationGuardError) {
+          return new Err(invocationGuardError);
+        }
+
         const contextRes = await getWritablePodContext(auth, {
           toolContext,
           dustPod: params.dustPod,

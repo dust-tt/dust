@@ -1,14 +1,21 @@
 import { makePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/pod_configuration_uri";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { AgentLoopRunContext } from "@app/lib/actions/types";
+import type {
+  AgentLoopRunContext,
+  SandboxFunctionRunContext,
+} from "@app/lib/actions/types";
 import { createProjectManagerTools } from "@app/lib/api/actions/servers/pod_manager/tools";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { processEventForDatabase } from "@app/temporal/agent_loop/activities/common";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { getTestStreamEndpoint } from "@app/tests/utils/models";
+import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";
+import { createPersistedSandboxFunctionInvocationTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 import {
@@ -277,5 +284,105 @@ describe("pod_manager move_conversation", () => {
       otherConversation.sId
     );
     expect(unmovedConversation?.toJSON().spaceId).toBeNull();
+  });
+});
+
+async function createSandboxFunctionToolsContext() {
+  const context =
+    await createPersistedSandboxFunctionInvocationTokenTestContext();
+  const { auth, workspace, globalSpace, invocation } = context;
+  const server = await InternalMCPServerInMemoryResource.makeNew(auth, {
+    name: "common_utilities",
+    useCase: null,
+  });
+  const view = await MCPServerViewFactory.create(
+    workspace,
+    server.id,
+    globalSpace
+  );
+  const action = await SandboxFunctionMCPActionFactory.create(auth, {
+    invocation,
+    mcpServerView: view,
+  });
+  const runContext: SandboxFunctionRunContext = {
+    contextType: "sandbox_function",
+    action,
+    invocation,
+    toolConfiguration: action.toolConfiguration,
+  };
+  const tools = createProjectManagerTools(auth, { runContext });
+  const extra: ToolHandlerExtra = {
+    auth,
+    requestId: "pod-manager-sandbox-function-test",
+    runContext,
+    sendNotification: async () => {},
+    sendRequest: async () => {
+      throw new Error("Unexpected MCP request");
+    },
+    signal: new AbortController().signal,
+  };
+
+  return { ...context, extra, tools };
+}
+
+describe("pod_manager tools from a sandbox-function run context", () => {
+  it("denies create_conversation with a typed error", async () => {
+    const { extra, tools } = await createSandboxFunctionToolsContext();
+
+    const result = await getTool(tools, "create_conversation").handler(
+      {
+        message: "Spawned from a function",
+        title: "Not allowed",
+      },
+      extra
+    );
+
+    assert(result.isErr());
+    expect(result.error.message).toContain(
+      "Creating conversations or invoking agents from a Pod function is not supported"
+    );
+  });
+
+  it("denies add_message_to_conversation with a typed error", async () => {
+    const { extra, tools } = await createSandboxFunctionToolsContext();
+
+    const result = await getTool(tools, "add_message_to_conversation").handler(
+      {
+        conversationId: "cnv_never_looked_up",
+        message: "Spawned from a function",
+      },
+      extra
+    );
+
+    assert(result.isErr());
+    expect(result.error.message).toContain(
+      "Creating conversations or invoking agents from a Pod function is not supported"
+    );
+  });
+
+  it("still allows the read-only list_conversations", async () => {
+    const { agentConfig, auth, extra, podSpace, tools } =
+      await createSandboxFunctionToolsContext();
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date()],
+      spaceId: podSpace.id,
+    });
+
+    const result = await getTool(tools, "list_conversations").handler(
+      {},
+      extra
+    );
+
+    assert(result.isOk());
+    const content = result.value[0];
+    assert(content?.type === "text");
+    const output = ListConversationsOutputSchema.parse(
+      JSON.parse(content.text)
+    );
+
+    expect(
+      output.conversations.map((listedConversation) => listedConversation.sId)
+    ).toContain(conversation.sId);
   });
 });
