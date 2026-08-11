@@ -73,13 +73,17 @@ describe("inline passthrough", () => {
   });
 
   test("throws a typed error when the block carries no text and no descriptor", async () => {
-    expect(
-      resolveToolTextContent({ type: "image", data: "...", mimeType: "image/png" })
+    await expect(
+      resolveToolTextContent({
+        type: "image",
+        data: "...",
+        mimeType: "image/png",
+      })
     ).rejects.toThrow(ToolOutputResolutionError);
   });
 
   test("throws a typed error on a non-object block", async () => {
-    expect(resolveToolTextContent("just a string")).rejects.toThrow(
+    await expect(resolveToolTextContent("just a string")).rejects.toThrow(
       ToolOutputResolutionError
     );
   });
@@ -87,8 +91,13 @@ describe("inline passthrough", () => {
 
 describe("descriptor resolution", () => {
   test("reads the full content from the mount, not the inline snippet", async () => {
-    const full = JSON.stringify({ items: Array.from({ length: 50 }, (_, i) => i) });
-    const block = makeOffloadedBlock("pod-spc_x/.tool_outputs/fn/1_tool.json", full);
+    const full = JSON.stringify({
+      items: Array.from({ length: 50 }, (_, i) => i),
+    });
+    const block = makeOffloadedBlock(
+      "pod-spc_x/.tool_outputs/fn/1_tool.json",
+      full
+    );
 
     const resolved = await resolveToolTextContent(block, { mountRootDir });
 
@@ -112,13 +121,15 @@ describe("descriptor resolution", () => {
   });
 
   test("throws a typed error on a malformed descriptor", async () => {
-    const block = makeOffloadedBlock("pod-spc_x/.tool_outputs/fn/3_tool.json", "x", {
-      fullContentPath: undefined,
-    });
-
-    expect(resolveToolTextContent(block, { mountRootDir })).rejects.toThrow(
-      ToolOutputResolutionError
+    const block = makeOffloadedBlock(
+      "pod-spc_x/.tool_outputs/fn/3_tool.json",
+      "x",
+      { fullContentPath: undefined }
     );
+
+    await expect(
+      resolveToolTextContent(block, { mountRootDir })
+    ).rejects.toThrow(ToolOutputResolutionError);
   });
 });
 
