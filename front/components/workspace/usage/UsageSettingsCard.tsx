@@ -133,25 +133,30 @@ export function UsageSettingsCard({
             />
           }
         />
-        <SettingsList.Row
-          title="Require a reason for upgrade requests"
-          description="Members must explain why they need an upgrade before their request can be submitted."
-          action={
-            <SliderToggle
-              selected={
-                usageSettings.allowUpgradeRequest &&
-                usageSettings.requireUpgradeRequestReason
-              }
-              disabled={
-                readOnly ||
-                isUpdatingUsageSettings ||
-                isUsageSettingsLoading ||
-                !usageSettings.allowUpgradeRequest
-              }
-              onClick={() => void handleToggleRequireUpgradeRequestReason()}
-            />
-          }
-        />
+        <LockedSection
+          locked={!usageSettings.allowUpgradeRequest}
+          tooltipContent="Enable upgrade requests to enable this setting"
+        >
+          <SettingsList.Row
+            title="Require a reason for upgrade requests"
+            description="Members must explain why they need an upgrade before their request can be submitted."
+            action={
+              <SliderToggle
+                selected={
+                  usageSettings.allowUpgradeRequest &&
+                  usageSettings.requireUpgradeRequestReason
+                }
+                disabled={
+                  readOnly ||
+                  isUpdatingUsageSettings ||
+                  isUsageSettingsLoading ||
+                  !usageSettings.allowUpgradeRequest
+                }
+                onClick={() => void handleToggleRequireUpgradeRequestReason()}
+              />
+            }
+          />
+        </LockedSection>
         <SettingsList.Row
           title="Auto-upgrade seats"
           description={
