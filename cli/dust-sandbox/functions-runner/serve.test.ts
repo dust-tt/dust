@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { copyFileSync, mkdtempSync, rmSync, utimesSync } from "node:fs";
+import {
+  copyFileSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  utimesSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -70,6 +76,9 @@ interface WarmReply {
     ok: boolean;
     output?: unknown;
     error?: { code: string };
+    // Present when the result was spilled to a scratch file (see emit.ts).
+    resultFile?: string;
+    resultBytes?: number;
   };
   importKind?: string;
   stale?: boolean;
@@ -160,6 +169,37 @@ describe("runner serve", () => {
       expect(reply.v).toBe(WARM_PROTOCOL_VERSION);
       expect(reply.outcome?.ok).toBe(true);
       expect(reply.outcome?.output).toEqual({ hello: "warm" });
+    } finally {
+      proc.kill();
+    }
+  });
+
+  test("spills an oversized warm result and replies with a pointer", async () => {
+    // Same size policy as the cold runner: a result over the inline cap is
+    // written to the scratch dir and the reply frame carries the pointer.
+    const { proc, socketPath } = await startWorker(fixturesDir);
+    try {
+      const reply = await request(
+        socketPath,
+        warmRequest("big-output", {}, { url: "http://localhost/" })
+      );
+      expect(reply.outcome?.ok).toBe(true);
+      const resultFile = reply.outcome?.resultFile;
+      expect(resultFile).toStartWith("/tmp/dust-fn-results/");
+      if (resultFile === undefined) {
+        throw new Error("expected a spill pointer");
+      }
+      const spilled = readFileSync(resultFile, "utf8");
+      rmSync(resultFile, { force: true });
+      expect(reply.outcome?.resultBytes).toBe(
+        Buffer.byteLength(spilled, "utf8")
+      );
+      const envelope = JSON.parse(spilled) as {
+        ok: boolean;
+        output: { big: string };
+      };
+      expect(envelope.ok).toBe(true);
+      expect(envelope.output.big.length).toBe(2 * 1024 * 1024);
     } finally {
       proc.kill();
     }

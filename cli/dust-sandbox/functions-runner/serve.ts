@@ -50,6 +50,7 @@ import { join } from "node:path";
 
 import { z } from "zod";
 
+import { applyResultSpillPolicy } from "./emit.ts";
 import { invoke } from "./invoke.ts";
 import type { RequestInput } from "./protocol.ts";
 import { BadInputError, parseInput } from "./protocol.ts";
@@ -685,11 +686,17 @@ export async function serve(
 
     try {
       const outcome = await invoke(bundle.handlerPath, input, request.env);
+      // Same size policy as the cold runner: one set of numbers everywhere.
+      const delivered = applyResultSpillPolicy(outcome);
       if (deadlineFired) {
         // The client is long gone; nothing useful to write.
         socket.end();
       } else {
-        reply(socket, { v: WARM_PROTOCOL_VERSION, outcome, importKind });
+        reply(socket, {
+          v: WARM_PROTOCOL_VERSION,
+          outcome: delivered,
+          importKind,
+        });
       }
     } finally {
       clearTimeout(deadlineTimer);

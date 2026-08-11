@@ -16,7 +16,7 @@ import { errorEnvelope, podDatabaseMaxSizeBytes } from "./db/common.ts";
 import { runQuery } from "./db/query.ts";
 import { reconcile } from "./db/reconcile.ts";
 import { generateSchemaFileText } from "./db/schema.ts";
-import { emitEnvelopeLine } from "./emit.ts";
+import { applyResultSpillPolicy, emitEnvelopeLine } from "./emit.ts";
 import { invoke } from "./invoke.ts";
 import { BadInputError, parseInput, type RequestInput } from "./protocol.ts";
 import { getFunctionSchema } from "./schema.ts";
@@ -46,8 +46,11 @@ async function runHandler(handlerPath: string): Promise<number> {
     return 2;
   }
   const out = await invoke(handlerPath, input);
-  emitEnvelopeLine(out);
-  return out.ok ? 0 : 1;
+  // An oversized result is spilled to a scratch file and replaced by a
+  // pointer envelope; over the hard cap it becomes an output_too_large error.
+  const delivered = applyResultSpillPolicy(out);
+  emitEnvelopeLine(delivered);
+  return delivered.ok ? 0 : 1;
 }
 
 async function getHandler(handlerPath: string): Promise<number> {
