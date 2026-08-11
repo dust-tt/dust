@@ -174,10 +174,6 @@ interface CapabilitiesPickerProps {
   buttonSize?: "xs" | "sm" | "md";
   onOpenChange?: (open: boolean) => void;
   type?: "dropdown" | "subdropdown";
-  // When provided, the dropdown's open state is owned by the parent and its
-  // trigger is replaced by an invisible box mirroring `anchorRef`. Used on
-  // mobile, where the "+" menu opens this picker as a top-level dropdown
-  // instead of a sub-menu that would not fit the viewport.
   externalOpen?: boolean;
   onExternalOpenChange?: (open: boolean) => void;
   anchorRef?: React.RefObject<HTMLElement | null>;

@@ -1721,10 +1721,6 @@ const InputBarContainer = ({
         }}
       >
         <div className="flex w-0 flex-grow flex-col">
-          {/* No formatting affordance on mobile: the "T" toggle that used to sit
-              above the editor crowded the composer's first row and pushed the
-              input down. Formatting stays desktop-only, through the selection
-              BubbleMenu below. */}
           <div className="relative">
             <EditorContent
               editor={editor}
@@ -2004,10 +2000,6 @@ const InputBarContainer = ({
                       />
                     )}
                   </div>
-                  {/* Mic and send coexist: the mic no longer disappears once
-                      the user starts typing. It stays a plain grey icon button
-                      (like the model picker) so the highlighted send button
-                      remains the only primary action. */}
                   {canShowVoicePicker && (
                     <VoicePicker
                       status={activeVoiceService.status}

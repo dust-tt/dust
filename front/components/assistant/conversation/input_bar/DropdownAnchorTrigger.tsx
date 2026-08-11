@@ -5,12 +5,6 @@ interface DropdownAnchorTriggerProps {
   anchorRef?: React.RefObject<HTMLElement | null>;
 }
 
-/**
- * Invisible trigger that mirrors another element's box so an externally
- * controlled dropdown can position itself against a button it does not own —
- * e.g. the input bar's "+" button opening the capabilities picker as a
- * top-level dropdown on mobile, where nested sub-menus do not fit the viewport.
- */
 export function DropdownAnchorTrigger({
   anchorRef,
 }: DropdownAnchorTriggerProps) {

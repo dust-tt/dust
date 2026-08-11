@@ -188,13 +188,6 @@
     min-height: 100%;
   }
 
-  /* Squircle corners for the composer surface. `corner-shape` ships in Chrome
-     139+ only: Firefox and Safari < 26 drop the declaration and render the raw
-     40px circular radius, which on a ~100px-tall composer reads as a stadium
-     pill instead of a squircle. The fallback swaps in the circular radius whose
-     silhouette tracks the squircle most closely (~0.6x — a squircle only cuts
-     0.073r² off each corner versus 0.215r² for a circular arc, so matching the
-     cut area gives r_round = r_squircle * sqrt(0.073 / 0.215) ≈ 0.58). */
   .rounded-squircle-40 {
     border-radius: 40px;
     corner-shape: squircle;

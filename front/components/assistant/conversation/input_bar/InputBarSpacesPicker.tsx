@@ -28,8 +28,6 @@ interface InputBarSpacesPickerProps {
   selectedSpaceIds: string[];
   spaces: SelectableConversationSpaceType[];
   type?: "dropdown" | "subdropdown";
-  // See DropdownAnchorTrigger: on mobile the "+" menu owns the open state and
-  // this picker renders as a top-level dropdown anchored to the "+" button.
   externalOpen?: boolean;
   onExternalOpenChange?: (open: boolean) => void;
   anchorRef?: React.RefObject<HTMLElement | null>;

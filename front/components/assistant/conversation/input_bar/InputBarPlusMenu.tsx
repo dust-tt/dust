@@ -34,12 +34,6 @@ const PLUS_BUTTON_CLASSNAME = cn(
   INPUT_BAR_PILL_HOVER_CLASSNAME
 );
 
-// Which picker the mobile layout has drilled into. Mobile cannot use sub-menus:
-// a sub-menu is positioned beside its parent menu, and `parent width +
-// sub-menu width` exceeds a phone viewport, so Radix flips it to the other side
-// where it does not fit either — leaving it mostly off-screen. Instead the "+"
-// menu closes and the picker reopens as a top-level dropdown anchored to the
-// "+" button, which Radix keeps inside the viewport.
 const MOBILE_PICKERS = ["capabilities", "attachments", "spaces"] as const;
 type MobilePicker = (typeof MOBILE_PICKERS)[number];
 
@@ -198,8 +192,6 @@ export function InputBarPlusMenu({
 
   return (
     <>
-      {/* The wrapper is the anchor the mobile pickers position against; it
-          hugs the "+" button because the menu itself renders in a portal. */}
       <div ref={plusButtonRef} className="flex items-center">
         <DropdownMenu
           open={isOpen}
@@ -260,8 +252,6 @@ export function InputBarPlusMenu({
         </DropdownMenu>
       </div>
 
-      {/* On mobile the pickers live outside the "+" menu so they can be
-          positioned against the "+" button as top-level dropdowns. */}
       {isMobile && (
         <>
           {!hideCapabilities && capabilitiesPicker}
