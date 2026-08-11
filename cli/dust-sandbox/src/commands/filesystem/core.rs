@@ -8,13 +8,14 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use anyhow::Context;
 use parking_lot::Mutex;
 use rustix::fs::{AtFlags, Mode, Timespec, Timestamps, CWD, UTIME_NOW, UTIME_OMIT};
 use rustix::process::{getegid, geteuid};
 
 use super::model::{
-    child_path, is_at_or_below, path_for_mutation, MountIdentity, MountKind, MountSpec, MountTable,
-    NodeKey, NodeTable, ROOT_INODE,
+    child_path, is_at_or_below, path_for_mutation, rebase_path, MountIdentity, MountKind,
+    MountSpec, MountTable, NodeKey, NodeTable, ROOT_INODE,
 };
 use super::mutation::{MutationError, MutationOperation, MutationPort};
 
@@ -379,14 +380,29 @@ impl DustFilesystem {
 
     pub fn open(&self, inode: u64, flags: i32) -> FsResult<u64> {
         let (mount_index, path) = self.backing_key(inode)?;
-        let node = self.backing_node(mount_index, &path, true)?;
+        let node = self
+            .backing_node(mount_index, &path, true)
+            .map_err(|error| {
+                FsError::message(
+                    error.errno,
+                    format!("failed to resolve {} for open: {error}", path.display()),
+                )
+            })?;
         let writable = access_mode_is_writable(flags);
         let truncated = flags & libc::O_TRUNC != 0;
         if writable || truncated {
             self.require_writable(node.read_only)?;
         }
 
-        let file = open_existing(&node.resolved_path, flags)?;
+        let file = open_existing(&node.resolved_path, flags).map_err(|error| {
+            FsError::message(
+                error.raw_os_error().unwrap_or(libc::EIO),
+                format!(
+                    "failed to open {} with flags {flags:#x}: {error}",
+                    node.resolved_path.display()
+                ),
+            )
+        })?;
         self.insert_handle(file, mount_index, path, truncated)
     }
 
@@ -799,12 +815,13 @@ impl DustFilesystem {
             {
                 continue;
             }
-            let suffix = match open_handle.state.path.strip_prefix(source_path) {
-                Ok(suffix) => suffix,
-                Err(_) => continue,
-            };
+            let rebased_path =
+                match rebase_path(&open_handle.state.path, source_path, destination_path) {
+                    Some(path) => path,
+                    None => continue,
+                };
             open_handle.state.mount_index = destination_mount;
-            open_handle.state.path = destination_path.join(suffix);
+            open_handle.state.path = rebased_path;
         }
     }
 }
@@ -1075,6 +1092,22 @@ pub fn run_self_test() -> anyhow::Result<()> {
         pod.attributes.inode,
         OsStr::new("frame.tsx"),
     )?;
+    let moved_frame = filesystem
+        .lookup(pod.attributes.inode, OsStr::new("frame.tsx"))
+        .context("cross-mount destination lookup failed")?;
+    let moved_handle = filesystem
+        .open(moved_frame.attributes.inode, libc::O_RDONLY)
+        .context("cross-mount destination open failed")?;
+    anyhow::ensure!(
+        filesystem
+            .read(moved_handle, 0, 64)
+            .context("cross-mount destination read failed")?
+            == b"export default 1",
+        "cross-mount destination should be immediately readable"
+    );
+    filesystem
+        .release(moved_handle)
+        .context("cross-mount destination release failed")?;
     filesystem.unlink(pod.attributes.inode, OsStr::new("frame.tsx"))?;
     filesystem.rmdir(conversation.attributes.inode, OsStr::new("folder"))?;
 

@@ -239,13 +239,13 @@ impl NodeTable {
                 NodeKey::Backing { mount_index, path }
                     if *mount_index == source_mount && is_at_or_below(path, source_path) =>
                 {
-                    let suffix = path.strip_prefix(source_path).ok()?;
+                    let new_path = rebase_path(path, source_path, destination_path)?;
                     Some((
                         *inode,
                         key.clone(),
                         NodeKey::Backing {
                             mount_index: destination_mount,
-                            path: destination_path.join(suffix),
+                            path: new_path,
                         },
                     ))
                 }
@@ -283,6 +283,19 @@ pub fn path_for_mutation(path: &Path) -> io::Result<String> {
 
 pub fn is_at_or_below(candidate: &Path, root: &Path) -> bool {
     candidate == root || candidate.starts_with(root)
+}
+
+pub fn rebase_path(
+    candidate: &Path,
+    source_root: &Path,
+    destination_root: &Path,
+) -> Option<PathBuf> {
+    let suffix = candidate.strip_prefix(source_root).ok()?;
+    Some(if suffix.as_os_str().is_empty() {
+        destination_root.to_path_buf()
+    } else {
+        destination_root.join(suffix)
+    })
 }
 
 fn validate_segment(value: &str) -> anyhow::Result<()> {
@@ -332,6 +345,18 @@ mod tests {
                 path: PathBuf::from("moved-bundle/frame.tsx"),
             }
         );
+    }
+
+    #[test]
+    fn rebase_path_does_not_turn_a_file_into_a_directory_path() {
+        let rebased = rebase_path(
+            Path::new("frame.tsx"),
+            Path::new("frame.tsx"),
+            Path::new("moved.tsx"),
+        )
+        .expect("exact path should rebase");
+
+        assert_eq!(rebased.to_str(), Some("moved.tsx"));
     }
 
     #[test]

@@ -3,6 +3,7 @@ import { DustFileSystem } from "@app/lib/api/file_system";
 import { deleteCanonicalFile } from "@app/lib/api/files/file_system_ops";
 import { SandboxFileSystemMutationRequestSchema } from "@app/lib/api/sandbox/file_system_mutations";
 import { ensureConversationSandboxReady } from "@app/lib/api/sandbox/lifecycle";
+import { rootCommand } from "@app/lib/api/sandbox/root_command";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -95,8 +96,40 @@ makeScript(
           throw result.error;
         }
         if (result.value.exitCode !== 0) {
+          const diagnosticCommands = [
+            rootCommand.exec("/usr/bin/tail", [
+              "-n",
+              "200",
+              "/run/dust-fs/overlay.log",
+            ]),
+            rootCommand.exec("/usr/bin/find", [
+              "/run/dust-fs/data",
+              "-maxdepth",
+              "3",
+              "-printf",
+              "%y %p -> %l\\n",
+            ]),
+            rootCommand.exec("/usr/bin/ls", [
+              "-lan",
+              "/files",
+              sourceRoot,
+              destinationRoot,
+              destinationPath,
+            ]),
+          ];
+          const diagnostics = await Promise.all(
+            diagnosticCommands.map(async (diagnosticCommand) => {
+              const diagnosticResult = await sandbox.execRoot(
+                auth,
+                rootCommand.stderrToStdout(diagnosticCommand)
+              );
+              return diagnosticResult.isOk()
+                ? diagnosticResult.value.stdout.trim()
+                : diagnosticResult.error.message;
+            })
+          );
           throw new Error(
-            `Sandbox command failed (${result.value.exitCode}): ${result.value.stderr}`
+            `Sandbox command failed (${result.value.exitCode}): ${result.value.stderr}\nRust filesystem diagnostics:\n${diagnostics.join("\n---\n")}`
           );
         }
         return result.value.stdout.trim();
