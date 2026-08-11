@@ -41,6 +41,7 @@ import {
   discoverAuthorizationServerMetadata,
   discoverOAuthProtectedResourceMetadata,
   registerClient,
+  selectClientAuthMethod,
   selectResourceURL,
 } from "@modelcontextprotocol/sdk/client/auth.js";
 import type {
@@ -746,16 +747,10 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
         fetchFn,
       });
 
-      const supportedTokenAuthMethods =
-        metadata.token_endpoint_auth_methods_supported;
-
-      const tokenEndpointAuthMethod = supportedTokenAuthMethods?.includes(
-        "client_secret_post"
-      )
-        ? "client_secret_post"
-        : supportedTokenAuthMethods?.includes("client_secret_basic")
-          ? "client_secret_basic"
-          : undefined;
+      const tokenEndpointAuthMethod = selectClientAuthMethod(
+        fullInformation,
+        metadata.token_endpoint_auth_methods_supported ?? []
+      );
 
       const connectionMetadata: MCPOAuthConnectionMetadataType = {
         authorization_endpoint: metadata.authorization_endpoint,
