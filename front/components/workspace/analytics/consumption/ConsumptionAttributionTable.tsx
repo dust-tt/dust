@@ -63,11 +63,11 @@ function buildColumns({
       id: "name",
       accessorKey: "name",
       header: "Name",
-      meta: { sizeRatio: 34 },
+      meta: { sizeRatio: 34, headerAlign: "left" },
       cell: (info) => {
         const { name, pictureUrl } = info.row.original;
         return (
-          <DataTable.CellContent>
+          <DataTable.CellContent className="w-full justify-start text-left">
             {hasAvatar ? (
               <AvatarNameCell name={name} imageUrl={pictureUrl} />
             ) : (
@@ -80,9 +80,9 @@ function buildColumns({
     {
       id: "costShare",
       header: "Cost share",
-      meta: { sizeRatio: 22 },
+      meta: { sizeRatio: 22, headerAlign: "left" },
       cell: (info) => (
-        <DataTable.CellContent>
+        <DataTable.CellContent className="w-full justify-start">
           <CostShareCell
             share={
               totalCredits > 0 ? info.row.original.credits / totalCredits : 0
@@ -95,9 +95,10 @@ function buildColumns({
       id: "credits",
       accessorKey: "credits",
       header: "Total credits",
-      meta: { sizeRatio: 22 },
+      meta: { sizeRatio: 22, headerAlign: "right" },
       cell: (info) => (
         <DataTable.BasicCellContent
+          className="justify-end text-right tabular-nums"
           label={formatCredits(info.row.original.credits)}
         />
       ),
@@ -106,9 +107,10 @@ function buildColumns({
       id: "avgCredits",
       accessorKey: "avgCredits",
       header: avgLabel,
-      meta: { sizeRatio: 22 },
+      meta: { sizeRatio: 22, headerAlign: "right" },
       cell: (info) => (
         <DataTable.BasicCellContent
+          className="justify-end text-right tabular-nums"
           label={formatCredits(info.row.original.avgCredits)}
         />
       ),

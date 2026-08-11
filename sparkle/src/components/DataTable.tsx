@@ -28,6 +28,7 @@ import { useCopyToClipboard } from "@sparkle/hooks";
 import {
   ArrowDown,
   ArrowUp,
+  ChevronSelectorVertical,
   Clipboard,
   ClipboardCheck,
   DotsHorizontal,
@@ -268,15 +269,12 @@ export function DataTable<TData extends TBaseData>({
                           visual={
                             header.column.getIsSorted() === "asc"
                               ? ArrowUp
-                              : ArrowDown
+                              : header.column.getIsSorted() === "desc"
+                                ? ArrowDown
+                                : ChevronSelectorVertical
                           }
                           size="xs"
-                          className={cn(
-                            "ml-1",
-                            header.column.getIsSorted()
-                              ? "opacity-100"
-                              : "opacity-0"
-                          )}
+                          className="ml-1"
                         />
                       )}
                     </div>
@@ -620,15 +618,12 @@ export function ScrollableDataTable<TData extends TBaseData>({
                             visual={
                               header.column.getIsSorted() === "asc"
                                 ? ArrowUp
-                                : ArrowDown
+                                : header.column.getIsSorted() === "desc"
+                                  ? ArrowDown
+                                  : ChevronSelectorVertical
                             }
                             size="xs"
-                            className={cn(
-                              "ml-1",
-                              header.column.getIsSorted()
-                                ? "opacity-100"
-                                : "opacity-0"
-                            )}
+                            className="ml-1"
                           />
                         )}
                       </div>
