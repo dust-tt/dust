@@ -8,6 +8,7 @@ import {
   Button,
   Chip,
   Icon,
+  Plus,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -201,7 +202,7 @@ export function CreditCostPopover({
                   label={`${remainingTools.length} other ${remainingTools.length === 1 ? "tool" : "tools"}`}
                   description={toolUsageLabel(remainingToolCallCount)}
                   value={formatCreditValue(remainingToolCredits)}
-                  icon={InternalActionIcons.ToolsIcon}
+                  icon={Plus}
                 />
               )}
             </dl>

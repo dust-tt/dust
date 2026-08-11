@@ -39,6 +39,7 @@ vi.mock("@dust-tt/sparkle", () => ({
   ),
   Chip: ({ label }: { label: string }) => <span>{label}</span>,
   Icon: () => null,
+  Plus: () => null,
   PopoverRoot: ({
     children,
     onOpenChange,
