@@ -95,10 +95,7 @@ describe("recoverMissingPodDatabasesOnColdStart", () => {
   // are the three execs the recovery path can run.
   function mockRecoveryExecs(
     sandbox: SandboxResource,
-    {
-      liveNames,
-      schemaFiles,
-    }: { liveNames: string[]; schemaFiles: string[] }
+    { liveNames, schemaFiles }: { liveNames: string[]; schemaFiles: string[] }
   ) {
     return vi
       .spyOn(sandbox, "exec")
