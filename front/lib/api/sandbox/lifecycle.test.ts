@@ -106,13 +106,16 @@ vi.mock("@app/logger/logger", () => {
   return { default: logger };
 });
 
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
+import type { WorkspaceType } from "@app/types/user";
 import {
   ensureConversationSandboxReady,
   ensurePodSandboxReady,
@@ -133,6 +136,7 @@ function createDeferred<T>() {
 
 describe("ensureConversationSandboxReady", () => {
   let auth: Authenticator;
+  let workspace: WorkspaceType;
   let conversation: ConversationType;
   let conversationOwner: {
     kind: "conversation";
@@ -155,6 +159,7 @@ describe("ensureConversationSandboxReady", () => {
     vi.clearAllMocks();
     const testSetup = await createResourceTest({ role: "admin" });
     auth = testSetup.authenticator;
+    workspace = testSetup.workspace;
     const agentConfiguration =
       await AgentConfigurationFactory.createTestAgent(auth);
     conversation = await ConversationFactory.create(auth, {
@@ -222,35 +227,103 @@ describe("ensureConversationSandboxReady", () => {
     );
   });
 
-  it("scopes egress policy to the Pod for conversations inside a Pod", async () => {
+  it("keeps conversation-scoped policy with the Pod as an inherited layer", async () => {
     mockEnsureSandboxActive.mockResolvedValue(
       new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
     );
-    const podConversation = { sId: conversation.sId, spaceId: "space-id" };
+    const project = await SpaceFactory.project(workspace);
+    // Space-scoped conversation fetches are permission-filtered, so the test
+    // user must be a member of the project before the authoritative re-read
+    // inside ensureConversationSandboxReady can see the moved conversation.
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const groupReference = project.groups.find((group) =>
+      group.isRegularAuto()
+    );
+    if (!groupReference) {
+      throw new Error("Project space regular group not found");
+    }
+    const [projectGroup] = await project.fetchGroupResources(
+      internalAdminAuth,
+      { groupReferences: [groupReference] }
+    );
+    const addRes = await projectGroup.dangerouslyAddMember(internalAdminAuth, {
+      user: auth.getNonNullableUser().toJSON(),
+    });
+    if (addRes.isErr()) {
+      throw new Error(
+        `Failed to add user to project space group: ${addRes.error.message}`
+      );
+    }
+    await auth.refresh();
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    if (!conversationResource) {
+      throw new Error("Test conversation not found");
+    }
+    await conversationResource.updateSpaceId(auth, project);
 
+    // The caller's snapshot predates the move on purpose: the ready path must
+    // derive the pod scope from the database, not from the caller.
     const result = await ensureConversationSandboxReady(
       auth as never,
-      podConversation as never
+      conversation as never
     );
 
     expect(result.isOk()).toBe(true);
-    // The runtime owner stays the conversation but carries its pod, and the
-    // egress policy is scoped to the Pod's shared file.
+    // The runtime owner stays the conversation and carries its pod. The
+    // egress policy file stays conversation-scoped (on-the-fly approvals
+    // land there) while the Pod's policy applies as the inherited layer.
     const podConversationOwner = {
       ...conversationOwner,
-      spaceId: "space-id",
+      spaceId: project.sId,
     };
     expect(mockPrepareSandboxEgressBeforeMount).toHaveBeenCalledWith(
       auth,
       sandbox,
-      { runtimeOwner: podConversationOwner, egressPolicyOwnerId: "space-id" }
+      {
+        runtimeOwner: podConversationOwner,
+        egressPolicyOwnerId: conversation.sId,
+        egressPolicyPodId: project.sId,
+      }
     );
     expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
       runtimeOwner: podConversationOwner,
-      egressPolicyOwnerId: "space-id",
+      egressPolicyOwnerId: conversation.sId,
+      egressPolicyPodId: project.sId,
       wokeFromSleep: false,
     });
-    expect(mockForConversation).toHaveBeenCalledWith(auth, podConversation);
+    expect(mockForConversation).toHaveBeenCalledWith(auth, {
+      ...conversation,
+      spaceId: project.sId,
+    });
+  });
+
+  it("drops a stale pod scope from the caller's snapshot after a move out", async () => {
+    mockEnsureSandboxActive.mockResolvedValue(
+      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
+    );
+    // The database says the conversation is standalone; only the caller's
+    // stale snapshot still carries a pod.
+    const staleSnapshot = { ...conversation, spaceId: "stale-pod-space-id" };
+
+    const result = await ensureConversationSandboxReady(
+      auth as never,
+      staleSnapshot as never
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
+      runtimeOwner: conversationOwner,
+      egressPolicyOwnerId: conversation.sId,
+      wokeFromSleep: false,
+    });
+    expect(
+      mockEnsureSandboxEgressOnExec.mock.calls[0][2].egressPolicyPodId
+    ).toBeUndefined();
   });
 
   it("starts GCS mount before initial egress prep resolves", async () => {

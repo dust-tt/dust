@@ -108,18 +108,23 @@ async function runSuccessfulRootCommand(
 
 // ownerId is the sandbox owner's stable sId (conversation sId for
 // conversation sandboxes, space sId for pod sandboxes); it selects the owner
-// policy file `w/{wId}/sandboxes/{ownerId}.json`. sbId stays for identity and
-// log tracing. Older proxy builds ignore the ownerId claim. Object params on
-// purpose: the values are look-alike sIds and transposed positional args
-// would compile fine and fail silently.
+// policy file `w/{wId}/sandboxes/{ownerId}.json`. podId is set for
+// conversation sandboxes running inside a pod and selects the pod's policy
+// file as an inherited layer — the proxy allows a domain if the workspace,
+// owner, or pod policy allows it. sbId stays for identity and log tracing.
+// Older proxy builds ignore unknown claims. Object params on purpose: the
+// values are look-alike sIds and transposed positional args would compile
+// fine and fail silently.
 export function mintEgressJwt({
   providerId,
   workspaceId,
   ownerId,
+  podId,
 }: {
   providerId: string;
   workspaceId: string;
   ownerId: string;
+  podId?: string;
 }): string {
   return jwt.sign(
     {
@@ -128,6 +133,7 @@ export function mintEgressJwt({
       sbId: providerId,
       wId: workspaceId,
       ownerId,
+      ...(podId ? { podId } : {}),
     },
     config.getEgressProxyJwtSecret(),
     {
@@ -384,7 +390,12 @@ export async function prepareSandboxEgressBeforeMount(
   {
     runtimeOwner,
     egressPolicyOwnerId,
-  }: { runtimeOwner: SandboxRuntimeOwner; egressPolicyOwnerId: string }
+    egressPolicyPodId,
+  }: {
+    runtimeOwner: SandboxRuntimeOwner;
+    egressPolicyOwnerId: string;
+    egressPolicyPodId?: string;
+  }
 ): Promise<Result<void, Error>> {
   if (config.getSandboxDevUnrestrictedEgress()) {
     return teardownInSandboxEgressRedirect(auth, sandbox);
@@ -392,6 +403,7 @@ export async function prepareSandboxEgressBeforeMount(
   return setupEgressForwarder(auth, sandbox, {
     runtimeOwner,
     egressPolicyOwnerId,
+    egressPolicyPodId,
   });
 }
 
@@ -405,10 +417,12 @@ export async function ensureSandboxEgressOnExec(
   {
     runtimeOwner,
     egressPolicyOwnerId,
+    egressPolicyPodId,
     wokeFromSleep,
   }: {
     runtimeOwner: SandboxRuntimeOwner;
     egressPolicyOwnerId: string;
+    egressPolicyPodId?: string;
     wokeFromSleep: boolean;
   }
 ): Promise<Result<void, Error>> {
@@ -432,6 +446,7 @@ export async function ensureSandboxEgressOnExec(
       restartExisting: true,
       runtimeOwner,
       egressPolicyOwnerId,
+      egressPolicyPodId,
     });
   }
 
@@ -455,6 +470,7 @@ export async function ensureSandboxEgressOnExec(
       restartExisting: true,
       runtimeOwner,
       egressPolicyOwnerId,
+      egressPolicyPodId,
     });
   }
 
@@ -569,15 +585,19 @@ export async function setupEgressForwarder(
     restartExisting = false,
     runtimeOwner,
     egressPolicyOwnerId,
+    egressPolicyPodId,
   }: {
     restartExisting?: boolean;
     runtimeOwner: SandboxRuntimeOwner;
-    // The egress POLICY owner, distinct from runtimeOwner: conversations
-    // inside a Pod share the Pod's policy file, so their policy owner is the
-    // Pod space's sId while runtimeOwner (env vars, log context, file system
-    // selection) stays the conversation. Derived by the lifecycle ready
-    // helpers.
+    // The egress POLICY owner: every sandbox has its own policy file keyed
+    // by its owner's sId (conversation or pod space). Derived by the
+    // lifecycle ready helpers.
     egressPolicyOwnerId: string;
+    // The inherited pod policy layer, set for conversation sandboxes
+    // running inside a pod: the proxy also honors the pod's policy file, so
+    // pod network settings apply to every Computer in the Pod while
+    // on-the-fly approvals stay scoped to the conversation.
+    egressPolicyPodId?: string;
   }
 ): Promise<Result<void, Error>> {
   const logContext = {
@@ -601,6 +621,7 @@ export async function setupEgressForwarder(
     providerId: sandbox.providerId,
     workspaceId: auth.getNonNullableWorkspace().sId,
     ownerId: egressPolicyOwnerId,
+    podId: egressPolicyPodId,
   });
 
   // Token, secrets, and manifest are written in order, each gated on the

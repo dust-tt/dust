@@ -189,11 +189,9 @@ export async function readOwnerPolicy(
 // (Shared Computer) policies: like the workspace policy — and unlike the
 // agent tool's exact-domain appends — wildcard entries such as
 // `*.github.com` are supported, and there is no domain-count cap (also
-// mirroring the workspace policy). Note the asymmetry with
-// addOwnerPolicyDomain, which caps at SANDBOX_POLICY_MAX_DOMAINS and writes
-// the same pod files (tool approvals from a Pod's conversations are
-// Pod-scoped): an admin list over the cap makes every tool append in that
-// Pod fail its cap check.
+// mirroring the workspace policy). Tool approvals never touch pod files
+// (they land in the conversation's own policy file), so an over-cap admin
+// list does not interfere with addOwnerPolicyDomain's cap check.
 export async function writeOwnerPolicy(
   auth: Authenticator,
   { ownerId, policy }: { ownerId: string; policy: EgressPolicy }

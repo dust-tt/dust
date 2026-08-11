@@ -681,7 +681,7 @@ describe("destroyConversation", () => {
     expect(stillThere).not.toBeNull();
   });
 
-  it("does not scrub the Pod's egress policy file when destroying a pod conversation", async () => {
+  it("deletes the conversation's own policy file, never the Pod's, when destroying a pod conversation", async () => {
     mockDeleteOwnerPolicy.mockResolvedValue(new Ok(undefined));
     const workspace = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
@@ -715,9 +715,17 @@ describe("destroyConversation", () => {
 
     await destroyConversation(podAuth, { conversation });
 
-    // Pod conversations never own a policy file — the Pod's file is scrubbed
-    // by hardDeleteSpace, not conversation destruction.
-    expect(mockDeleteOwnerPolicy).not.toHaveBeenCalled();
+    // Pod conversations own their own policy file (on-the-fly approvals land
+    // there) — destroying the conversation deletes it. The Pod's own file is
+    // untouched: the delete targets the conversation sId, never the pod's.
+    expect(mockDeleteOwnerPolicy).toHaveBeenCalledWith(
+      expect.anything(),
+      conversation.sId
+    );
+    expect(mockDeleteOwnerPolicy).not.toHaveBeenCalledWith(
+      expect.anything(),
+      pod.sId
+    );
   });
 
   it("should delete batched message resources chunk by chunk", async () => {
