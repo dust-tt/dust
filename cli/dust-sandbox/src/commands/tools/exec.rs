@@ -51,6 +51,11 @@ async fn run_exec(
     args_json: Option<&str>,
     json: bool,
 ) -> anyhow::Result<()> {
+    // Reject conflicting arg styles before any network round-trip.
+    if args_json.is_some() && !raw_args.is_empty() {
+        bail!("--args-json cannot be combined with --key value arguments");
+    }
+
     let views = client.list_tools(Some(server_name), false).await?;
 
     let view = match views.first() {
@@ -71,12 +76,7 @@ async fn run_exec(
     };
 
     let arguments = match args_json {
-        Some(spec) => {
-            if !raw_args.is_empty() {
-                bail!("--args-json cannot be combined with --key value arguments");
-            }
-            Some(parse_args_json(&read_args_json_spec(spec)?)?)
-        }
+        Some(spec) => Some(parse_args_json(&read_args_json_spec(spec)?)?),
         None => parse_args(raw_args, tool.input_schema.as_ref())?,
     };
 
