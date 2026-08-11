@@ -475,6 +475,50 @@ export async function resolveChannelDisplayName({
   return `#${channelId}`;
 }
 
+// Returns the Slack workspace base URL (e.g. "https://acme.slack.com/") using auth.test.
+// Returns null when the URL cannot be determined (callers should degrade gracefully,
+// e.g. by omitting permalinks).
+export async function getSlackTeamUrl({
+  accessToken,
+}: {
+  accessToken: string;
+}): Promise<string | null> {
+  const slackClient = await getSlackClient(accessToken);
+
+  try {
+    const authResult = await slackClient.auth.test();
+    if (authResult.ok && authResult.url) {
+      return authResult.url;
+    }
+  } catch {
+    // Best effort: return null so callers can omit permalinks.
+  }
+
+  return null;
+}
+
+// Builds a Slack archive permalink for a message, matching the format returned by
+// chat.getPermalink (e.g. "https://acme.slack.com/archives/C012AB3CD/p1234567890123456").
+// For thread replies, pass threadTs so the permalink opens the thread view.
+export function buildSlackPermalink({
+  teamUrl,
+  channelId,
+  messageTs,
+  threadTs,
+}: {
+  teamUrl: string;
+  channelId: string;
+  messageTs: string;
+  threadTs?: string;
+}): string {
+  const base = teamUrl.endsWith("/") ? teamUrl : `${teamUrl}/`;
+  const permalink = `${base}archives/${channelId}/p${messageTs.replace(".", "")}`;
+  if (threadTs && threadTs !== messageTs) {
+    return `${permalink}?thread_ts=${threadTs}&cid=${channelId}`;
+  }
+  return permalink;
+}
+
 // Format users as Markdown.
 function formatUsersAsMarkdown(users: MinimalUserInfo[]): string {
   return users
