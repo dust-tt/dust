@@ -13,7 +13,6 @@ import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import { podSandboxOnlyMounts } from "@app/lib/api/sandbox/pod_mounts";
 import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import type {
@@ -24,7 +23,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 
 const SANDBOX_RUNTIME_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -33,31 +32,32 @@ export interface EnsureSandboxReadyResult {
   freshlyCreated: boolean;
 }
 
-type SandboxReadyConfig = {
-  ensureActive: () => Promise<Result<EnsureSandboxResult, Error>>;
-  getFileSystem: () => Promise<Result<DustFileSystem, Error>>;
-  runtimeOwner: SandboxRuntimeOwner;
-  // Which owner policy file (`w/{wId}/sandboxes/{ownerId}.json`) this
-  // sandbox's egress is scoped to — the owner's own sId (conversation or
-  // pod space).
-  egressPolicyOwnerId: string;
-  // Inherited pod policy layer for conversation sandboxes running inside a
-  // pod; pod-owned sandboxes carry none (their ownerId already is the pod).
-  egressPolicyPodId?: string;
+type SandboxReadyConfig<TScope> = {
+  ensureActive: () => Promise<Result<EnsureSandboxResult<TScope>, Error>>;
+  // Everything scope-dependent is derived from the scope ensureActive
+  // resolved INSIDE the lifecycle lock — never from state the caller read
+  // before it. A scope transition (conversation move) holds the same lock,
+  // so this config cannot be built from a pod association that a concurrent
+  // move already changed.
+  deriveConfig: (scope: TScope) => {
+    getFileSystem: () => Promise<Result<DustFileSystem, Error>>;
+    runtimeOwner: SandboxRuntimeOwner;
+    // Which owner policy file (`w/{wId}/sandboxes/{ownerId}.json`) this
+    // sandbox's egress is scoped to — the owner's own sId (conversation or
+    // pod space).
+    egressPolicyOwnerId: string;
+    // Inherited pod policy layer for conversation sandboxes running inside a
+    // pod; pod-owned sandboxes carry none (their ownerId already is the pod).
+    egressPolicyPodId?: string;
+  };
 };
 
 // /!\ All sandbox-touching tools must use the owner-specific ready helper rather than calling
 // the owner adapter directly, otherwise the GCS FUSE mount and egress forwarder bring-up will be
 // skipped.
-async function ensureOwnerSandboxReady(
+async function ensureOwnerSandboxReady<TScope>(
   auth: Authenticator,
-  {
-    ensureActive,
-    getFileSystem,
-    runtimeOwner,
-    egressPolicyOwnerId,
-    egressPolicyPodId,
-  }: SandboxReadyConfig
+  { ensureActive, deriveConfig }: SandboxReadyConfig<TScope>
 ): Promise<Result<EnsureSandboxReadyResult, Error>> {
   const startMs = performance.now();
   // cold is unknown until ensureActive returns; if it errors first (rare) we
@@ -76,8 +76,15 @@ async function ensureOwnerSandboxReady(
         return ensureResult;
       }
 
-      const { sandbox, freshlyCreated, wokeFromSleep } = ensureResult.value;
+      const { sandbox, freshlyCreated, wokeFromSleep, scope } =
+        ensureResult.value;
       cold = freshlyCreated;
+      const {
+        getFileSystem,
+        runtimeOwner,
+        egressPolicyOwnerId,
+        egressPolicyPodId,
+      } = deriveConfig(scope);
 
       const shouldRefreshRuntime =
         freshlyCreated ||
@@ -214,41 +221,34 @@ export async function ensureConversationSandboxReady(
   auth: Authenticator,
   conversation: ConversationType
 ): Promise<Result<EnsureSandboxReadyResult, Error>> {
-  // The caller's conversation is typically a snapshot captured at agent-loop
-  // start, and a move — possibly issued by this very agent — can change
-  // spaceId while the loop runs. spaceId is an authorization input (egress
-  // scope, pod env vars, pod mounts), so it is re-read from the database
-  // here rather than trusted from the caller.
-  const freshResource = await ConversationResource.fetchById(
-    auth,
-    conversation.sId
-  );
-  if (!freshResource) {
-    return new Err(new Error(`Conversation ${conversation.sId} not found.`));
-  }
-  const freshConversation = {
-    ...conversation,
-    spaceId: freshResource.spaceSId,
-  };
-
+  // Only the conversation's identity is trusted from the caller: it is
+  // typically an agent-loop snapshot, and a move — possibly issued by this
+  // very agent — can change the pod association mid-loop. The adapter
+  // re-resolves spaceId from the database INSIDE the lifecycle lock, and
+  // everything scope-dependent below derives from that resolved value.
   return ensureOwnerSandboxReady(auth, {
     ensureActive: () =>
-      ConversationSandboxAdapter.ensureSandboxActive(auth, freshConversation),
-    getFileSystem: () =>
-      DustFileSystem.forConversation(auth, freshConversation),
+      ConversationSandboxAdapter.ensureSandboxActive(auth, conversation),
     // Pod-level sandbox config applies to everything running in the Pod: a
     // conversation inside a Pod receives the Pod's env vars and HTTPS
     // secrets at creation, and inherits the Pod's egress policy as a
     // read-only layer (egressPolicyPodId). Its own policy file stays
     // conversation-scoped — on-the-fly domain approvals land there, exactly
     // like conversations outside a Pod.
-    runtimeOwner: {
-      kind: "conversation",
-      conversationId: freshConversation.sId,
-      spaceId: freshConversation.spaceId ?? null,
-    },
-    egressPolicyOwnerId: freshConversation.sId,
-    egressPolicyPodId: freshConversation.spaceId ?? undefined,
+    deriveConfig: (scope) => ({
+      getFileSystem: () =>
+        DustFileSystem.forConversation(auth, {
+          ...conversation,
+          spaceId: scope.spaceId,
+        }),
+      runtimeOwner: {
+        kind: "conversation",
+        conversationId: conversation.sId,
+        spaceId: scope.spaceId,
+      },
+      egressPolicyOwnerId: conversation.sId,
+      egressPolicyPodId: scope.spaceId ?? undefined,
+    }),
   });
 }
 
@@ -260,14 +260,17 @@ export async function ensurePodSandboxReady(
   return ensureOwnerSandboxReady(auth, {
     ensureActive: () =>
       PodSandboxAdapter.ensureSandboxActive(auth, pod, { requireRunning }),
-    getFileSystem: () =>
-      DustFileSystem.forPod(auth, pod, {
-        sandboxOnlyMounts: podSandboxOnlyMounts(pod),
-      }),
-    runtimeOwner: {
-      kind: "pod",
-      spaceId: pod.sId,
-    },
-    egressPolicyOwnerId: pod.sId,
+    // Pods are their own scope and cannot move — the config is static.
+    deriveConfig: () => ({
+      getFileSystem: () =>
+        DustFileSystem.forPod(auth, pod, {
+          sandboxOnlyMounts: podSandboxOnlyMounts(pod),
+        }),
+      runtimeOwner: {
+        kind: "pod",
+        spaceId: pod.sId,
+      },
+      egressPolicyOwnerId: pod.sId,
+    }),
   });
 }

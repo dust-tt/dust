@@ -106,16 +106,13 @@ vi.mock("@app/logger/logger", () => {
   return { default: logger };
 });
 
-import { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
-import type { WorkspaceType } from "@app/types/user";
 import {
   ensureConversationSandboxReady,
   ensurePodSandboxReady,
@@ -136,7 +133,6 @@ function createDeferred<T>() {
 
 describe("ensureConversationSandboxReady", () => {
   let auth: Authenticator;
-  let workspace: WorkspaceType;
   let conversation: ConversationType;
   let conversationOwner: {
     kind: "conversation";
@@ -159,7 +155,6 @@ describe("ensureConversationSandboxReady", () => {
     vi.clearAllMocks();
     const testSetup = await createResourceTest({ role: "admin" });
     auth = testSetup.authenticator;
-    workspace = testSetup.workspace;
     const agentConfiguration =
       await AgentConfigurationFactory.createTestAgent(auth);
     conversation = await ConversationFactory.create(auth, {
@@ -174,10 +169,20 @@ describe("ensureConversationSandboxReady", () => {
     sandbox = await SandboxFactory.create(auth, conversation);
 
     mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({ freshlyCreated: false, sandbox, wokeFromSleep: false })
+      new Ok({
+        freshlyCreated: false,
+        sandbox,
+        wokeFromSleep: false,
+        scope: { spaceId: null },
+      })
     );
     mockEnsurePodSandboxActive.mockResolvedValue(
-      new Ok({ freshlyCreated: false, sandbox, wokeFromSleep: false })
+      new Ok({
+        freshlyCreated: false,
+        sandbox,
+        wokeFromSleep: false,
+        scope: undefined,
+      })
     );
     mockPrepareSandboxEgressBeforeMount.mockResolvedValue(new Ok(undefined));
     mockEnsureSandboxEgressOnExec.mockResolvedValue(new Ok(undefined));
@@ -192,7 +197,12 @@ describe("ensureConversationSandboxReady", () => {
 
   it("preps egress, mounts files, and ensures egress on exec for freshly-created sandboxes", async () => {
     mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
+      new Ok({
+        freshlyCreated: true,
+        sandbox,
+        wokeFromSleep: false,
+        scope: { spaceId: null },
+      })
     );
 
     const result = await ensureConversationSandboxReady(
@@ -228,46 +238,18 @@ describe("ensureConversationSandboxReady", () => {
   });
 
   it("keeps conversation-scoped policy with the Pod as an inherited layer", async () => {
+    // The adapter resolves the pod association under the lifecycle lock and
+    // returns it as the scope; the ready path derives everything from it.
+    // (That resolution is itself pinned in sandbox_resource.test.ts.)
     mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
+      new Ok({
+        freshlyCreated: true,
+        sandbox,
+        wokeFromSleep: false,
+        scope: { spaceId: "pod-space-id" },
+      })
     );
-    const project = await SpaceFactory.project(workspace);
-    // Space-scoped conversation fetches are permission-filtered, so the test
-    // user must be a member of the project before the authoritative re-read
-    // inside ensureConversationSandboxReady can see the moved conversation.
-    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
-      workspace.sId
-    );
-    const groupReference = project.groups.find((group) =>
-      group.isRegularAuto()
-    );
-    if (!groupReference) {
-      throw new Error("Project space regular group not found");
-    }
-    const [projectGroup] = await project.fetchGroupResources(
-      internalAdminAuth,
-      { groupReferences: [groupReference] }
-    );
-    const addRes = await projectGroup.dangerouslyAddMember(internalAdminAuth, {
-      user: auth.getNonNullableUser().toJSON(),
-    });
-    if (addRes.isErr()) {
-      throw new Error(
-        `Failed to add user to project space group: ${addRes.error.message}`
-      );
-    }
-    await auth.refresh();
-    const conversationResource = await ConversationResource.fetchById(
-      auth,
-      conversation.sId
-    );
-    if (!conversationResource) {
-      throw new Error("Test conversation not found");
-    }
-    await conversationResource.updateSpaceId(auth, project);
 
-    // The caller's snapshot predates the move on purpose: the ready path must
-    // derive the pod scope from the database, not from the caller.
     const result = await ensureConversationSandboxReady(
       auth as never,
       conversation as never
@@ -279,7 +261,7 @@ describe("ensureConversationSandboxReady", () => {
     // land there) while the Pod's policy applies as the inherited layer.
     const podConversationOwner = {
       ...conversationOwner,
-      spaceId: project.sId,
+      spaceId: "pod-space-id",
     };
     expect(mockPrepareSandboxEgressBeforeMount).toHaveBeenCalledWith(
       auth,
@@ -287,27 +269,32 @@ describe("ensureConversationSandboxReady", () => {
       {
         runtimeOwner: podConversationOwner,
         egressPolicyOwnerId: conversation.sId,
-        egressPolicyPodId: project.sId,
+        egressPolicyPodId: "pod-space-id",
       }
     );
     expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
       runtimeOwner: podConversationOwner,
       egressPolicyOwnerId: conversation.sId,
-      egressPolicyPodId: project.sId,
+      egressPolicyPodId: "pod-space-id",
       wokeFromSleep: false,
     });
     expect(mockForConversation).toHaveBeenCalledWith(auth, {
       ...conversation,
-      spaceId: project.sId,
+      spaceId: "pod-space-id",
     });
   });
 
-  it("drops a stale pod scope from the caller's snapshot after a move out", async () => {
+  it("derives scope from the lock-resolved value, never the caller's snapshot", async () => {
     mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
+      new Ok({
+        freshlyCreated: true,
+        sandbox,
+        wokeFromSleep: false,
+        // The lock-resolved scope says standalone…
+        scope: { spaceId: null },
+      })
     );
-    // The database says the conversation is standalone; only the caller's
-    // stale snapshot still carries a pod.
+    // …while the caller's stale snapshot still carries a pod.
     const staleSnapshot = { ...conversation, spaceId: "stale-pod-space-id" };
 
     const result = await ensureConversationSandboxReady(
@@ -324,13 +311,22 @@ describe("ensureConversationSandboxReady", () => {
     expect(
       mockEnsureSandboxEgressOnExec.mock.calls[0][2].egressPolicyPodId
     ).toBeUndefined();
+    expect(mockForConversation).toHaveBeenCalledWith(auth, {
+      ...conversation,
+      spaceId: null,
+    });
   });
 
   it("starts GCS mount before initial egress prep resolves", async () => {
     const prepStarted = createDeferred<void>();
     const prepResult = createDeferred<Result<void, Error>>();
     mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
+      new Ok({
+        freshlyCreated: true,
+        sandbox,
+        wokeFromSleep: false,
+        scope: { spaceId: null },
+      })
     );
     mockPrepareSandboxEgressBeforeMount.mockImplementation(() => {
       prepStarted.resolve(undefined);
@@ -360,7 +356,12 @@ describe("ensureConversationSandboxReady", () => {
   it("only refreshes the token (no remount) when the sandbox woke from sleep", async () => {
     await sandbox.updateLastRuntimeRefreshAt(new Date());
     mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({ freshlyCreated: false, sandbox, wokeFromSleep: true })
+      new Ok({
+        freshlyCreated: false,
+        sandbox,
+        wokeFromSleep: true,
+        scope: { spaceId: null },
+      })
     );
 
     const result = await ensureConversationSandboxReady(
@@ -421,7 +422,12 @@ describe("ensureConversationSandboxReady", () => {
 
   it("uses pod owner plumbing and pod filesystem mounts for pod sandboxes", async () => {
     mockEnsurePodSandboxActive.mockResolvedValue(
-      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
+      new Ok({
+        freshlyCreated: true,
+        sandbox,
+        wokeFromSleep: false,
+        scope: undefined,
+      })
     );
 
     const result = await ensurePodSandboxReady(auth as never, pod as never);
@@ -475,7 +481,12 @@ describe("ensureConversationSandboxReady", () => {
 
   it("does not run pod state bring-up for conversation sandboxes", async () => {
     mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
+      new Ok({
+        freshlyCreated: true,
+        sandbox,
+        wokeFromSleep: false,
+        scope: { spaceId: null },
+      })
     );
 
     const result = await ensureConversationSandboxReady(
@@ -489,7 +500,12 @@ describe("ensureConversationSandboxReady", () => {
 
   it("requests a sandbox kill when pod state cold start fails", async () => {
     mockEnsurePodSandboxActive.mockResolvedValue(
-      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
+      new Ok({
+        freshlyCreated: true,
+        sandbox,
+        wokeFromSleep: false,
+        scope: undefined,
+      })
     );
     const podStateError = new Error("restore failed");
     mockSetupPodStateOnColdStart.mockResolvedValue(new Err(podStateError));
@@ -542,7 +558,12 @@ describe("ensureConversationSandboxReady", () => {
   it("returns the initial egress prep error after also running the GCS mount", async () => {
     const setupError = new Error("setup failed");
     mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
+      new Ok({
+        freshlyCreated: true,
+        sandbox,
+        wokeFromSleep: false,
+        scope: { spaceId: null },
+      })
     );
     mockPrepareSandboxEgressBeforeMount.mockResolvedValue(new Err(setupError));
 
@@ -562,7 +583,12 @@ describe("ensureConversationSandboxReady", () => {
   it("returns the initial egress prep error when both initial phases fail", async () => {
     const setupError = new Error("setup failed");
     mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
+      new Ok({
+        freshlyCreated: true,
+        sandbox,
+        wokeFromSleep: false,
+        scope: { spaceId: null },
+      })
     );
     mockPrepareSandboxEgressBeforeMount.mockResolvedValue(new Err(setupError));
     mockSetupSandboxMount.mockResolvedValue(new Err(new Error("mount failed")));
@@ -582,7 +608,12 @@ describe("ensureConversationSandboxReady", () => {
 
   it("short-circuits when mounting conversation files fails", async () => {
     mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
+      new Ok({
+        freshlyCreated: true,
+        sandbox,
+        wokeFromSleep: false,
+        scope: { spaceId: null },
+      })
     );
     mockSetupSandboxMount.mockResolvedValue(new Err(new Error("mount failed")));
 
@@ -597,7 +628,12 @@ describe("ensureConversationSandboxReady", () => {
 
   it("short-circuits when DustFileSystem.forConversation fails", async () => {
     mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
+      new Ok({
+        freshlyCreated: true,
+        sandbox,
+        wokeFromSleep: false,
+        scope: { spaceId: null },
+      })
     );
     mockForConversation.mockResolvedValue(
       new Err(new Error("space not found"))

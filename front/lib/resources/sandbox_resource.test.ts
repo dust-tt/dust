@@ -1163,9 +1163,22 @@ describe("SandboxResource.ensureActive", () => {
       throw podSecretResult.error;
     }
 
+    // The pod association is resolved from the database under the lifecycle
+    // lock, so the conversation must actually live in the pod — a spaceId on
+    // the passed object would be (correctly) ignored.
+    const conversationResource = await ConversationResource.fetchById(
+      authenticator,
+      conversation.sId
+    );
+    if (!conversationResource) {
+      throw new Error("Test conversation not found");
+    }
+    await conversationResource.updateSpaceId(authenticator, pod);
+    await authenticator.refresh();
+
     const result = await ConversationSandboxAdapter.ensureSandboxActive(
       authenticator,
-      { id: conversation.id, sId: conversation.sId, spaceId: pod.sId }
+      { id: conversation.id, sId: conversation.sId }
     );
     expect(result.isOk()).toBe(true);
 

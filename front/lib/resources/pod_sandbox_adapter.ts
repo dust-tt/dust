@@ -162,6 +162,10 @@ export class PodSandboxAdapter {
       auth,
       {
         ...this.toSandboxLifecycleOwner(auth, pod),
+        // Pods are their own scope and cannot move; nothing to re-resolve
+        // under the lock (which also keeps requireRunning's lock-free fast
+        // path sound for pods).
+        resolveScope: async () => new Ok(undefined),
         // Factory form: the loads only run when a sandbox is actually
         // created — ensureActive on an already-running sandbox discards
         // owner env vars, so eager loads would waste two queries per call.

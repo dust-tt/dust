@@ -42,10 +42,15 @@ import assert from "assert";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { col, fn, Op, where } from "sequelize";
 
-export interface EnsureSandboxResult {
+export interface EnsureSandboxResult<TScope = undefined> {
   freshlyCreated: boolean;
   sandbox: SandboxResource;
   wokeFromSleep: boolean;
+  // Owner scope resolved inside the lifecycle lock (see
+  // SandboxCreateOwner.resolveScope). Callers must derive every
+  // scope-dependent input (egress claims, mounts, runtime owner) from this,
+  // never from state read before the lock.
+  scope: TScope;
 }
 
 export type SandboxCreateBlob = {
@@ -70,15 +75,22 @@ export type SandboxPreSleepCheck = (
   sandbox: SandboxResource
 ) => Promise<Result<void, Error>>;
 
-type SandboxCreateOwner = SandboxLifecycleOwner & {
+type SandboxCreateOwner<TScope> = SandboxLifecycleOwner & {
   createSandbox: (blob: SandboxCreateBlob) => Promise<SandboxResource>;
+  // Resolves the owner's authorization scope (e.g. a conversation's current
+  // pod association). Runs as the first step INSIDE the lifecycle lock so a
+  // scope transition (a move's destroy + spaceId change, which holds the
+  // same lock) can never interleave between the read and the create/wake it
+  // parameterizes. Owners with immutable scope return a constant.
+  resolveScope: () => Promise<Result<TScope, Error>>;
   // Owner env vars are only consumed when a sandbox is actually created.
   // Owners whose env requires DB reads (e.g. pod env vars) should pass the
   // factory form so ensureActive calls on an already-running sandbox don't
-  // pay for loads that would be discarded.
+  // pay for loads that would be discarded. The factory receives the
+  // lock-resolved scope.
   envVars:
     | Record<string, string>
-    | (() => Promise<Result<Record<string, string>, Error>>);
+    | ((scope: TScope) => Promise<Result<Record<string, string>, Error>>);
   logLabel: string;
 };
 
@@ -464,11 +476,12 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   // Owner env vars come either as a plain record or as a factory for owners
   // whose env requires DB reads — the factory only runs on the create paths,
   // so ensure calls on an already-running sandbox pay nothing.
-  private static async resolveOwnerEnvVars(
-    owner: SandboxCreateOwner
+  private static async resolveOwnerEnvVars<TScope>(
+    owner: SandboxCreateOwner<TScope>,
+    scope: TScope
   ): Promise<Result<Record<string, string>, Error>> {
     return typeof owner.envVars === "function"
-      ? owner.envVars()
+      ? owner.envVars(scope)
       : new Ok(owner.envVars);
   }
 
@@ -540,9 +553,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * destroy-and-recreate of a still-running sandbox: a failure is logged and
    * recreation proceeds.
    */
-  static async ensureActive(
+  static async ensureActive<TScope = undefined>(
     auth: Authenticator,
-    owner: SandboxCreateOwner,
+    owner: SandboxCreateOwner<TScope>,
     opts: {
       beforeSleep?: SandboxPreSleepCheck;
       // Use the sandbox only if it is already running: do not create, wake, or recreate one.
@@ -550,7 +563,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       // cannot wait for.
       requireRunning?: boolean;
     } = {}
-  ): Promise<Result<EnsureSandboxResult, Error>> {
+  ): Promise<Result<EnsureSandboxResult<TScope>, Error>> {
     assert(
       auth.getNonNullableWorkspace().id !== undefined,
       "Cannot ensure sandbox without a workspace"
@@ -587,15 +600,32 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       // Same touch the locked path performs, so the reaper's inactivity clock keeps running for
       // sandboxes served entirely through the fast path. Throttled internally to one write/30s.
       await existing.updateLastActivityAt();
+      // Resolved outside the lock: this path never creates, wakes, or mints,
+      // so the scope parameterizes nothing lifecycle-ordered. requireRunning
+      // callers must therefore have lock-independent (immutable) scope.
+      const fastPathScopeResult = await owner.resolveScope();
+      if (fastPathScopeResult.isErr()) {
+        return fastPathScopeResult;
+      }
       return new Ok({
         sandbox: existing,
         freshlyCreated: false,
         wokeFromSleep: false,
+        scope: fastPathScopeResult.value,
       });
     }
 
     return this.withLifecycleLock(owner.lockKey, async (provider) => {
       const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
+      // First thing under the lock: a scope transition holds this same lock,
+      // so everything derived from here cannot be invalidated by a
+      // concurrent move.
+      const scopeResult = await owner.resolveScope();
+      if (scopeResult.isErr()) {
+        return scopeResult;
+      }
+      const scope = scopeResult.value;
+
       const existing = await owner.fetchSandbox();
 
       if (!existing) {
@@ -605,7 +635,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         }
 
         const createConfig = imageResult.value.toCreateConfig();
-        const ownerEnvVarsResult = await this.resolveOwnerEnvVars(owner);
+        const ownerEnvVarsResult = await this.resolveOwnerEnvVars(owner, scope);
         if (ownerEnvVarsResult.isErr()) {
           return ownerEnvVarsResult;
         }
@@ -642,7 +672,12 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           "Created new sandbox for owner"
         );
 
-        return new Ok({ sandbox, freshlyCreated: true, wokeFromSleep: false });
+        return new Ok({
+          sandbox,
+          freshlyCreated: true,
+          wokeFromSleep: false,
+          scope,
+        });
       }
 
       let effectiveStatus: SandboxStatus = existing.status;
@@ -749,7 +784,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           }
 
           const createConfig = imageResult.value.toCreateConfig();
-          const ownerEnvVarsResult = await this.resolveOwnerEnvVars(owner);
+          const ownerEnvVarsResult = await this.resolveOwnerEnvVars(
+            owner,
+            scope
+          );
           if (ownerEnvVarsResult.isErr()) {
             return ownerEnvVarsResult;
           }
@@ -809,7 +847,12 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         recordLifecycleOperation("create");
       }
 
-      return new Ok({ sandbox: existing, freshlyCreated, wokeFromSleep });
+      return new Ok({
+        sandbox: existing,
+        freshlyCreated,
+        wokeFromSleep,
+        scope,
+      });
     });
   }
 
