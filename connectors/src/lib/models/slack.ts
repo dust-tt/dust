@@ -145,7 +145,7 @@ export class SlackChannelModel extends ConnectorBaseModel<SlackChannelModel> {
   declare permission: ConnectorPermission;
   declare agentConfigurationId: CreationOptional<string | null>;
   declare autoRespondWithoutMention: CreationOptional<boolean>;
-  declare skipThreadReplies: CreationOptional<boolean>;
+  declare autoRespondWithoutMentionSkipThreadReplies: CreationOptional<boolean>;
 }
 SlackChannelModel.init(
   {
@@ -189,7 +189,7 @@ SlackChannelModel.init(
       allowNull: false,
       defaultValue: false,
     },
-    skipThreadReplies: {
+    autoRespondWithoutMentionSkipThreadReplies: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
