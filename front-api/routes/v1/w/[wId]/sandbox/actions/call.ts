@@ -70,10 +70,12 @@ app.post(
         return apiError(ctx, {
           status_code: 403,
           api_error: {
-            type: "invalid_request_error",
+            type: "fast_function_called_tools",
             message:
-              "This Pod function is published as fast and cannot call tools. Publish it with " +
-              "executionMode `durable` to let it call tools.",
+              "This Pod function was published as fast, which cannot call tools, so this call " +
+              "was refused. The function is now recorded as durable: retrying the invocation " +
+              "will work without a republish. Republish with executionMode `durable` only to " +
+              "make the source's declaration match.",
           },
         });
       }
