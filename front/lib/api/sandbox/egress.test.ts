@@ -178,7 +178,27 @@ describe("sandbox egress helpers", () => {
     expect(payload.sbId).toBe("provider-sandbox-id");
     expect(payload.wId).toBe("workspace-id");
     expect(payload.ownerId).toBe("owner-id");
+    // Back-compat contract: no podId means the claim is absent from the
+    // payload entirely, not present with an empty value.
+    expect(payload).not.toHaveProperty("podId");
     expect(payload.exp).toBeGreaterThan(payload.iat ?? 0);
+  });
+
+  it("mints the podId claim for conversation sandboxes inside a pod", () => {
+    const token = mintEgressJwt({
+      providerId: "provider-sandbox-id",
+      workspaceId: "workspace-id",
+      ownerId: "conversation-id",
+      podId: "pod-space-id",
+    });
+    const payload = jwt.verify(token, "egress-secret", {
+      algorithms: ["HS256"],
+      audience: "dust-egress-proxy",
+      issuer: "dust-front",
+    }) as jwt.JwtPayload;
+
+    expect(payload.ownerId).toBe("conversation-id");
+    expect(payload.podId).toBe("pod-space-id");
   });
 
   it("writes the token, starts the forwarder, and waits for health", async () => {

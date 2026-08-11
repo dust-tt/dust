@@ -37,9 +37,12 @@ type SandboxReadyConfig = {
   getFileSystem: () => Promise<Result<DustFileSystem, Error>>;
   runtimeOwner: SandboxRuntimeOwner;
   // Which owner policy file (`w/{wId}/sandboxes/{ownerId}.json`) this
-  // sandbox's egress is scoped to. Distinct from runtimeOwner: conversations
-  // inside a Pod share the Pod's policy file.
+  // sandbox's egress is scoped to — the owner's own sId (conversation or
+  // pod space).
   egressPolicyOwnerId: string;
+  // Inherited pod policy layer for conversation sandboxes running inside a
+  // pod; pod-owned sandboxes carry none (their ownerId already is the pod).
+  egressPolicyPodId?: string;
 };
 
 // /!\ All sandbox-touching tools must use the owner-specific ready helper rather than calling
@@ -52,6 +55,7 @@ async function ensureOwnerSandboxReady(
     getFileSystem,
     runtimeOwner,
     egressPolicyOwnerId,
+    egressPolicyPodId,
   }: SandboxReadyConfig
 ): Promise<Result<EnsureSandboxReadyResult, Error>> {
   const startMs = performance.now();
@@ -121,6 +125,7 @@ async function ensureOwnerSandboxReady(
             prepareSandboxEgressBeforeMount(auth, sandbox, {
               runtimeOwner,
               egressPolicyOwnerId,
+              egressPolicyPodId,
             })
           ),
           traceSandboxStartupPhase("gcs_mount", async () => {
@@ -186,6 +191,7 @@ async function ensureOwnerSandboxReady(
           ensureSandboxEgressOnExec(auth, sandbox, {
             runtimeOwner,
             egressPolicyOwnerId,
+            egressPolicyPodId,
             wokeFromSleep,
           })
       );
@@ -212,14 +218,18 @@ export async function ensureConversationSandboxReady(
       ConversationSandboxAdapter.ensureSandboxActive(auth, conversation),
     getFileSystem: () => DustFileSystem.forConversation(auth, conversation),
     // Pod-level sandbox config applies to everything running in the Pod: a
-    // conversation inside a Pod uses the Pod's shared egress policy file and
-    // receives the Pod's env vars and HTTPS secrets at creation.
+    // conversation inside a Pod receives the Pod's env vars and HTTPS
+    // secrets at creation, and inherits the Pod's egress policy as a
+    // read-only layer (egressPolicyPodId). Its own policy file stays
+    // conversation-scoped — on-the-fly domain approvals land there, exactly
+    // like conversations outside a Pod.
     runtimeOwner: {
       kind: "conversation",
       conversationId: conversation.sId,
       spaceId: conversation.spaceId ?? null,
     },
-    egressPolicyOwnerId: conversation.spaceId ?? conversation.sId,
+    egressPolicyOwnerId: conversation.sId,
+    egressPolicyPodId: conversation.spaceId ?? undefined,
   });
 }
 

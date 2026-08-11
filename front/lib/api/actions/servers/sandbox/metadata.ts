@@ -102,9 +102,9 @@ export const SANDBOX_TOOLS_METADATA = [
       "allowlist surface as denied entries in `<network_proxy_logs>` in " +
       "the bash tool output. Allowlist entries added through this tool " +
       "persist for the lifetime of the conversation (across sandbox " +
-      "restarts). In a Pod, approvals are Pod-wide: the domain is allowed " +
-      "for every conversation in the Pod and the Pod's shared sandbox, so " +
-      "make that scope clear when asking the user.",
+      "restarts) and are scoped to this conversation only — including " +
+      "inside a Pod, where Pod-wide domains are managed by admins in the " +
+      "Pod's network settings.",
     schema: {
       domain: z
         .string()

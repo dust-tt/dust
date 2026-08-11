@@ -933,7 +933,7 @@ describe("addEgressDomainTool", () => {
     }
   });
 
-  it("writes Pod-scoped approvals to the Pod's policy file for pod conversations", async () => {
+  it("keeps approvals conversation-scoped for conversations inside a Pod", async () => {
     const sandbox = {
       providerId: "provider-id",
       sId: "sandbox-id",
@@ -951,17 +951,15 @@ describe("addEgressDomainTool", () => {
     );
 
     expect(result.isOk()).toBe(true);
-    // The approval lands in the POD's owner policy file — the same ownerId
-    // every sandbox in the Pod (conversations and the shared sandbox) carries
-    // in its egress JWT, so the domain is allowed Pod-wide.
+    // The approval lands in the CONVERSATION's own policy file, never the
+    // Pod's shared one — the Pod policy reaches the sandbox as a read-only
+    // inherited layer, and Pod-level additions go through the admin surface.
     expect(mockAddOwnerPolicyDomain).toHaveBeenCalledWith(expect.anything(), {
       domain: "example.org",
-      ownerId: "space-id",
+      ownerId: "conversation-id",
     });
     if (result.isOk()) {
-      expect(result.value[0].text).toContain(
-        "applies to this Pod (every conversation in it and the Pod's shared sandbox)"
-      );
+      expect(result.value[0].text).toContain("applies to this conversation");
     }
   });
 
