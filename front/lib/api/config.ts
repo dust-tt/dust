@@ -636,6 +636,13 @@ const config = {
       ) === "true"
     );
   },
+  // Namespaces sandbox image aliases built outside CI (e.g. "david"), so a
+  // developer iterating on the image never publishes over the release alias
+  // that `sandbox_image_check.ts` uses to decide whether a region needs a
+  // build. Only honored at runtime when isDevelopment().
+  getSandboxDevImageSuffix: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("SBX_DEV_IMAGE_SUFFIX");
+  },
   getSandboxGcpArtifactServiceAccountPath: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
       "SBX_GCP_ARTIFACT_SERVICE_ACCOUNT"
