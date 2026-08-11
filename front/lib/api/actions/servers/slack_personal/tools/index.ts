@@ -1,6 +1,6 @@
 import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { SlackSearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
   ToolDefinition,
   ToolHandlers,
@@ -25,12 +25,13 @@ import {
   executeSearchUser,
   executeSetUserStatus,
   executeWriteCanvas,
+  extractMentionedSlackUserIds,
   getSlackClient,
   getSlackTeamUrl,
   isSlackMissingScope,
   resolveChannelDisplayName,
   resolveChannelId,
-  resolveUserDisplayName,
+  resolveUserDisplayNames,
   SLACK_THREAD_LISTING_LIMIT,
 } from "@app/lib/api/actions/servers/slack/helpers";
 import {
@@ -268,6 +269,13 @@ function formatDateForSlackQuery(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+// Structured message metadata attached to each search result (rides the resource `_meta`
+// round-trip so programmatic consumers do not have to parse the human-readable `text`).
+type SlackStructuredFields = Pick<
+  SlackSearchResultResourceType,
+  "author" | "channel" | "ts" | "threadTs" | "mentionedUsers"
+>;
+
 // Helper function to build search results from matches.
 function buildSearchResults<T>(
   matches: T[],
@@ -277,10 +285,11 @@ function buildSearchResults<T>(
     text: (match: T) => string;
     id: (match: T) => string;
     content: (match: T) => string;
+    structured: (match: T) => SlackStructuredFields;
   }
-): SearchResultResourceType[] {
+): SlackSearchResultResourceType[] {
   return matches.map(
-    (match, index): SearchResultResourceType => ({
+    (match, index): SlackSearchResultResourceType => ({
       mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
       uri: extractors.permalink(match) ?? "",
       text: extractors.text(match),
@@ -289,8 +298,77 @@ function buildSearchResults<T>(
       tags: [],
       ref: refs[index] ?? "",
       chunks: [stripNullBytes(extractors.content(match))],
+      permalink: extractors.permalink(match),
+      ...extractors.structured(match),
     })
   );
+}
+
+// Builds the `mentionedUsers` structured field for a message: user IDs mentioned in the
+// text, with their resolved display names (unresolvable IDs are omitted).
+function makeMentionedUsers(
+  text: string | undefined,
+  displayNamesByUserId: Map<string, string>
+): Array<{ id: string; name: string }> | undefined {
+  if (!text) {
+    return undefined;
+  }
+  const users = extractMentionedSlackUserIds(text).flatMap((userId) => {
+    const name = displayNamesByUserId.get(userId);
+    return name ? [{ id: userId, name }] : [];
+  });
+  return users.length > 0 ? users : undefined;
+}
+
+// Builds search results for search_messages / semantic_search_messages matches, with
+// structured author/channel/ts/permalink fields and bulk-resolved mention display names.
+async function buildMatchSearchResults({
+  matches,
+  refs,
+  accessToken,
+  mcpServerId,
+}: {
+  matches: SlackSearchMatch[];
+  refs: string[];
+  accessToken: string;
+  mcpServerId: string;
+}): Promise<SlackSearchResultResourceType[]> {
+  // Bulk-resolve display names for @-mentions and for authors missing a name, so
+  // consumers do not need one search_user call per user ID.
+  const displayNamesByUserId = await resolveUserDisplayNames({
+    userIds: matches.flatMap((match) => [
+      ...(match.author_id && !match.author_name ? [match.author_id] : []),
+      ...extractMentionedSlackUserIds(match.content ?? ""),
+    ]),
+    accessToken,
+    mcpServerId,
+  });
+
+  return buildSearchResults<SlackSearchMatch>(matches, refs, {
+    permalink: (match) => match.permalink,
+    text: (match) => formatSlackMessageForDisplay(match),
+    id: (match) => match.message_ts ?? "",
+    content: (match) => match.content ?? "",
+    structured: (match) => ({
+      author:
+        match.author_id || match.author_name
+          ? {
+              id: match.author_id,
+              name:
+                match.author_name ??
+                (match.author_id
+                  ? displayNamesByUserId.get(match.author_id)
+                  : undefined),
+            }
+          : undefined,
+      channel:
+        match.channel_id || match.channel_name
+          ? { id: match.channel_id, name: match.channel_name }
+          : undefined,
+      ts: match.message_ts,
+      mentionedUsers: makeMentionedUsers(match.content, displayNamesByUserId),
+    }),
+  });
 }
 
 // Best-effort detection of Slack user IDs (U* or W* for enterprise grid).
@@ -462,16 +540,12 @@ export function createSlackPersonalTools(
           citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
         );
 
-        const searchResults = buildSearchResults<SlackSearchMatch>(
+        const searchResults = await buildMatchSearchResults({
           matches,
           refs,
-          {
-            permalink: (match) => match.permalink,
-            text: (match) => formatSlackMessageForDisplay(match),
-            id: (match) => match.message_ts ?? "",
-            content: (match) => match.content ?? "",
-          }
-        );
+          accessToken,
+          mcpServerId,
+        });
 
         return new Ok(
           searchResults.map((result) => ({
@@ -542,16 +616,12 @@ export function createSlackPersonalTools(
           citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
         );
 
-        const searchResults = buildSearchResults<SlackSearchMatch>(
+        const searchResults = await buildMatchSearchResults({
           matches,
           refs,
-          {
-            permalink: (match) => match.permalink,
-            text: (match) => formatSlackMessageForDisplay(match),
-            id: (match) => match.message_ts ?? "",
-            content: (match) => match.content ?? "",
-          }
-        );
+          accessToken,
+          mcpServerId,
+        });
 
         return new Ok(
           searchResults.map((result) => ({
@@ -841,17 +911,35 @@ export function createSlackPersonalTools(
         citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
       );
 
-      // Resolve user display names for all thread authors.
-      const threadsWithAuthors = await Promise.all(
-        matches.map(async (match) => {
+      // Reconstruct readable text from blocks/attachments: app/bot messages
+      // (Datadog, Zendesk, ...) often have an empty `text` and put content in
+      // `blocks[]`, which would otherwise render as empty for the agent.
+      const renderedMatches = matches.map((match) => ({
+        match,
+        renderedText: renderFormattedMessage(formatSlackMessageForLLM(match)),
+      }));
+
+      // Bulk-resolve display names for message authors and @-mentions. Mentions appear
+      // as `<@U...>` in the raw text and `@U...` in the rendered text.
+      const displayNamesByUserId = await resolveUserDisplayNames({
+        userIds: renderedMatches.flatMap(({ match, renderedText }) => [
+          ...(match.user ? [match.user] : []),
+          ...extractMentionedSlackUserIds(
+            [match.text ?? "", renderedText].join("\n")
+          ),
+        ]),
+        accessToken,
+        mcpServerId,
+      });
+
+      const threadsWithAuthors = renderedMatches.map(
+        ({ match, renderedText }) => {
           const authorName = match.user
-            ? await resolveUserDisplayName({
-                userId: match.user,
-                accessToken,
-              })
+            ? (displayNamesByUserId.get(match.user) ?? null)
             : null;
           return {
             ts: match.ts,
+            threadTs: match.thread_ts,
             reply_count: match.reply_count,
             permalink:
               teamUrl && match.ts
@@ -861,22 +949,25 @@ export function createSlackPersonalTools(
                     messageTs: match.ts,
                   })
                 : undefined,
+            authorId: match.user,
             authorName: authorName ?? "Unknown",
-            // Reconstruct readable text from blocks/attachments: app/bot messages
-            // (Datadog, Zendesk, ...) often have an empty `text` and put content in
-            // `blocks[]`, which would otherwise render as empty for the agent.
-            renderedText: renderFormattedMessage(
-              formatSlackMessageForLLM(match)
+            renderedText,
+            mentionedUsers: makeMentionedUsers(
+              [match.text ?? "", renderedText].join("\n"),
+              displayNamesByUserId
             ),
           };
-        })
+        }
       );
       const searchResults = buildSearchResults<{
         permalink?: string;
         renderedText: string;
         ts?: string;
+        threadTs?: string;
+        authorId?: string;
         authorName: string;
         reply_count?: number;
+        mentionedUsers?: Array<{ id: string; name: string }>;
       }>(threadsWithAuthors, refs, {
         permalink: (match) => match.permalink,
         text: (match) => {
@@ -888,6 +979,18 @@ export function createSlackPersonalTools(
         },
         id: (match) => match.ts ?? "",
         content: (match) => match.renderedText,
+        structured: (match) => ({
+          author: match.authorId
+            ? {
+                id: match.authorId,
+                name: displayNamesByUserId.get(match.authorId),
+              }
+            : undefined,
+          channel: { id: channelId, name: displayName },
+          ts: match.ts,
+          threadTs: match.threadTs,
+          mentionedUsers: match.mentionedUsers,
+        }),
       });
 
       return new Ok(

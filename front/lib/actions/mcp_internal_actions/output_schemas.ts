@@ -369,6 +369,33 @@ export const isSearchResultResourceType = (
   );
 };
 
+// Slack search results carry additional structured message metadata so programmatic
+// consumers do not have to parse the human-readable `text` field. The extra fields ride
+// the resource `_meta` round-trip for internal servers and are ignored everywhere else.
+export const SlackSearchResultResourceSchema =
+  SearchResultResourceSchema.extend({
+    author: z
+      .object({ id: z.string().optional(), name: z.string().optional() })
+      .optional(),
+    // For `list_messages`, `name` is the resolved display name and may carry a leading
+    // "#" (channel) or "@" (DM) prefix; search results return the bare channel name.
+    channel: z
+      .object({ id: z.string().optional(), name: z.string().optional() })
+      .optional(),
+    ts: z.string().optional(),
+    threadTs: z.string().optional(),
+    permalink: z.string().optional(),
+    // Display names for user IDs mentioned in the message content (best effort:
+    // unresolvable IDs are omitted).
+    mentionedUsers: z
+      .array(z.object({ id: z.string(), name: z.string() }))
+      .optional(),
+  });
+
+export type SlackSearchResultResourceType = z.infer<
+  typeof SlackSearchResultResourceSchema
+>;
+
 export const WarningResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.WARNING),
   warningTitle: z.string(),

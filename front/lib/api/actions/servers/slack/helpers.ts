@@ -15,6 +15,7 @@ import {
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { removeDiacritics } from "@app/lib/utils";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
@@ -499,17 +500,104 @@ export async function getSlackTeamUrl({
 
 // Builds a Slack archive permalink for a message, matching the format returned by
 // chat.getPermalink (e.g. "https://acme.slack.com/archives/C012AB3CD/p1234567890123456").
+// For thread replies, pass threadTs so the permalink opens the thread view.
 export function buildSlackPermalink({
   teamUrl,
   channelId,
   messageTs,
+  threadTs,
 }: {
   teamUrl: string;
   channelId: string;
   messageTs: string;
+  threadTs?: string;
 }): string {
   const base = teamUrl.endsWith("/") ? teamUrl : `${teamUrl}/`;
-  return `${base}archives/${channelId}/p${messageTs.replace(".", "")}`;
+  const permalink = `${base}archives/${channelId}/p${messageTs.replace(".", "")}`;
+  if (threadTs && threadTs !== messageTs) {
+    return `${permalink}?thread_ts=${threadTs}&cid=${channelId}`;
+  }
+  return permalink;
+}
+
+// Best-effort extraction of Slack user IDs referenced in message text. Matches both the
+// raw mention syntax (`<@U12345678>` / `<@U12345678|name>`) and the rendered form
+// (`@U12345678`) produced by the message formatter.
+export function extractMentionedSlackUserIds(text: string): string[] {
+  const userIds = new Set<string>();
+  for (const match of text.matchAll(/<@([UW][A-Z0-9]{2,})(?:\|[^>]*)?>/g)) {
+    const userId = match[1];
+    if (userId) {
+      userIds.add(userId);
+    }
+  }
+  for (const match of text.matchAll(/(?<![<\w])@([UW][A-Z0-9]{7,})\b/g)) {
+    const userId = match[1];
+    if (userId) {
+      userIds.add(userId);
+    }
+  }
+  return [...userIds];
+}
+
+const USER_DISPLAY_NAME_RESOLUTION_CONCURRENCY = 8;
+// users.info is Tier 4 (100+ req/min): cap resolutions per tool call to stay well below.
+const MAX_USER_DISPLAY_NAME_RESOLUTIONS = 50;
+
+const getCachedUserDisplayName = cacheWithRedis(
+  async ({
+    userId,
+    accessToken,
+  }: {
+    userId: string;
+    accessToken: string;
+    mcpServerId: string;
+  }): Promise<string | null> => {
+    return resolveUserDisplayName({ userId, accessToken });
+  },
+  ({ userId, mcpServerId }) =>
+    `slack_user_display_name_${mcpServerId}_${userId}`,
+  {
+    ttlMs: USER_CACHE_TTL_MS, // 10 minutes
+  }
+);
+
+// Bulk-resolves Slack user IDs to display names (Redis-cached per user). Unresolvable IDs
+// are omitted from the returned map.
+export async function resolveUserDisplayNames({
+  userIds,
+  accessToken,
+  mcpServerId,
+}: {
+  userIds: string[];
+  accessToken: string;
+  mcpServerId: string;
+}): Promise<Map<string, string>> {
+  const uniqueUserIds = [...new Set(userIds)].slice(
+    0,
+    MAX_USER_DISPLAY_NAME_RESOLUTIONS
+  );
+
+  const resolved = await concurrentExecutor(
+    uniqueUserIds,
+    async (userId) => ({
+      userId,
+      name: await getCachedUserDisplayName({
+        userId,
+        accessToken,
+        mcpServerId,
+      }),
+    }),
+    { concurrency: USER_DISPLAY_NAME_RESOLUTION_CONCURRENCY }
+  );
+
+  const displayNamesByUserId = new Map<string, string>();
+  for (const { userId, name } of resolved) {
+    if (name) {
+      displayNamesByUserId.set(userId, name);
+    }
+  }
+  return displayNamesByUserId;
 }
 
 // Format users as Markdown.
@@ -1232,9 +1320,7 @@ export async function executeSearchUser(
     if (result.isErr()) {
       return result;
     }
-    return new Ok([
-      { type: "text" as const, text: formatUsersAsMarkdown([result.value]) },
-    ]);
+    return new Ok(makeSearchUserContent([result.value]));
   }
 
   // Strategy 2: Search by email
@@ -1243,9 +1329,7 @@ export async function executeSearchUser(
     if (result.isErr()) {
       return result;
     }
-    return new Ok([
-      { type: "text" as const, text: formatUsersAsMarkdown([result.value]) },
-    ]);
+    return new Ok(makeSearchUserContent([result.value]));
   }
 
   // Strategy 3: Search by name (slow, asks in chat permission)
@@ -1265,13 +1349,28 @@ export async function executeSearchUser(
     return result;
   }
 
-  const markdown = formatUsersAsMarkdown(result.value);
-  return new Ok([
+  return new Ok(
+    makeSearchUserContent(
+      result.value,
+      `Found ${result.value.length} user(s) matching '${query}':`
+    )
+  );
+}
+
+// Builds search_user output: the human-readable Markdown block (unchanged historical
+// format) followed by a machine-readable JSON block.
+function makeSearchUserContent(
+  users: MinimalUserInfo[],
+  header?: string
+): Array<{ type: "text"; text: string }> {
+  const markdown = formatUsersAsMarkdown(users);
+  return [
     {
       type: "text" as const,
-      text: `Found ${result.value.length} user(s) matching '${query}':\n\n${markdown}`,
+      text: header ? `${header}\n\n${markdown}` : markdown,
     },
-  ]);
+    { type: "text" as const, text: JSON.stringify({ users }) },
+  ];
 }
 
 type ChannelTab = {
@@ -1724,6 +1823,10 @@ export async function executeReadThreadMessages({
   const parentMessage = messages[0];
   const threadReplies = messages.slice(1);
 
+  // conversations.replies does not return permalinks: fetch the team URL once and
+  // construct them. When the team URL cannot be resolved, permalinks are omitted.
+  const teamUrl = await getSlackTeamUrl({ accessToken });
+
   const formattedOutput = {
     parent_message: {
       // Rendered text reconstructs content from blocks/attachments when the top-level
@@ -1735,12 +1838,29 @@ export async function executeReadThreadMessages({
       user: parentMessage?.user ?? "",
       ts: parentMessage?.ts ?? "",
       reply_count: parentMessage?.reply_count ?? 0,
+      permalink:
+        teamUrl && parentMessage?.ts
+          ? buildSlackPermalink({
+              teamUrl,
+              channelId,
+              messageTs: parentMessage.ts,
+            })
+          : undefined,
     },
     thread_replies: threadReplies.map((msg) => ({
       text: renderFormattedMessage(formatSlackMessageForLLM(msg)),
       raw_text: msg.text ?? "",
       user: msg.user ?? "",
       ts: msg.ts ?? "",
+      permalink:
+        teamUrl && msg.ts
+          ? buildSlackPermalink({
+              teamUrl,
+              channelId,
+              messageTs: msg.ts,
+              threadTs,
+            })
+          : undefined,
     })),
     total_messages: messages.length,
     has_more: response.has_more ?? false,

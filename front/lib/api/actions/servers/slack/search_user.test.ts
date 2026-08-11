@@ -66,6 +66,34 @@ describe("executeSearchUser - Slack Logic", () => {
       expect(result.isOk()).toBe(true);
     });
 
+    it("should append a machine-readable JSON block after the Markdown block", async () => {
+      const mockUser = {
+        id: "U01234ABCD",
+        name: "john.doe",
+        real_name: "John Doe",
+        profile: { email: "john@company.com", display_name: "John" },
+        is_bot: false,
+        deleted: false,
+      };
+
+      mockUsersInfo.mockResolvedValue({
+        ok: true,
+        user: mockUser,
+      });
+
+      const result = await executeSearchUser("U01234ABCD", false, testConfig);
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toHaveLength(2);
+        expect(result.value[0].text).toContain("**ID: U01234ABCD**");
+        const payload = JSON.parse(result.value[1].text);
+        expect(payload.users).toHaveLength(1);
+        expect(payload.users[0].id).toBe("U01234ABCD");
+        expect(payload.users[0].email).toBe("john@company.com");
+      }
+    });
+
     it("should handle @ prefix in user ID", async () => {
       const mockUser = { id: "U01234ABCD", name: "john" };
 
