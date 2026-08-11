@@ -21,7 +21,7 @@ import { validate } from "@front-api/middlewares/validator";
 import {
   spendLimitErrorToApiError,
   UpdateUserSpendLimitBodySchema,
-} from "@front-api/routes/w/[wId]/members/[uId]/spend_limit";
+} from "@front-api/routes/w/[wId]/user_spend_limit_shared";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
