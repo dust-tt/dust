@@ -27,6 +27,7 @@ import {
   RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
+import type { SANDBOX_FUNCTIONS_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { SANDBOX_FUNCTIONS_SERVER_NAME } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 
 const FILES_EDIT_TOOL = getPrefixedToolName(
@@ -51,7 +52,7 @@ const FILES_MOVE_TOOL = getPrefixedToolName(
 );
 const POD_FUNCTIONS_CALL_TOOL = getPrefixedToolName(
   SANDBOX_FUNCTIONS_SERVER_NAME,
-  "call"
+  "call" satisfies (typeof SANDBOX_FUNCTIONS_TOOLS_METADATA)[number]["name"]
 );
 
 const UPDATING_SECTION_LEGACY = `\
@@ -181,10 +182,15 @@ A headless export (PNG or PDF) of a Frame that calls pod functions captures its 
 
 // Non-Pod conversations. Without this, a Frame asked to hold data silently ends up with a
 // `useState` array that dies on reload, and the user only finds out after entering real data.
-const NON_POD_STATE_SECTION = `\
+// The Pod suggestion is only made when pod functions are actually available in the workspace.
+const nonPodStateSection = (hasPodFunctions: boolean) => `\
 ### Frame State Outside A Pod
 
-This conversation is not part of a Pod, so a Frame here has no persistence: there is no server-side storage it can write to, and anything held in component state is lost on reload. If the user expects entered data (tasks, notes, entries, edits) to still be there the next time the Frame opens, say so plainly and suggest building the Frame in a Pod, where pod functions and databases hold its data; otherwise keep the Frame read-only or accept per-session state.
+This conversation is not part of a Pod, so a Frame here has no persistence: there is no server-side storage it can write to, and anything held in component state is lost on reload. If the user expects entered data (tasks, notes, entries, edits) to still be there the next time the Frame opens, say so plainly${
+  hasPodFunctions
+    ? " and suggest building the Frame in a Pod, where pod functions and databases hold its data"
+    : ""
+}; otherwise keep the Frame read-only or accept per-session state.
 `;
 
 // Pod conversations where pod functions are available. Without this, a Frame asked to hold data
@@ -467,6 +473,6 @@ export const buildInteractiveContentInstructions = ({
                 ]
               : []),
           ]
-        : [NON_POD_STATE_SECTION]
+        : [nonPodStateSection(hasPodFunctions)]
     ),
   });

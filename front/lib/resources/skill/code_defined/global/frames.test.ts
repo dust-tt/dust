@@ -121,6 +121,19 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).not.toContain(POD_STORAGE_MARKER);
     expect(instructions).not.toContain(POD_VERIFICATION_MARKER);
     expect(instructions).toContain(NON_POD_STATE_MARKER);
+    expect(instructions).toContain("suggest building the Frame in a Pod");
+  });
+
+  it("omits the Pod suggestion outside a Pod when pod functions are unavailable", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const instructions = await framesSkill.fetchInstructions(auth, {
+      spaceIds: [],
+      agentLoopData: agentLoopDataInPod(null),
+    });
+
+    expect(instructions).toContain(NON_POD_STATE_MARKER);
+    expect(instructions).not.toContain("suggest building the Frame in a Pod");
   });
 
   it("teaches the Pod app layout and storage decision in a Pod", async () => {
@@ -137,7 +150,7 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain(POD_STORAGE_MARKER);
     expect(instructions).toContain(`\`${POD_FUNCTIONS_SKILL_NAME}\` skill`);
     expect(instructions).toContain(POD_VERIFICATION_MARKER);
-    expect(instructions).toContain("share URL");
+    expect(instructions).toContain("always fetch the Frame's share URL");
     expect(instructions).not.toContain(NON_POD_STATE_MARKER);
   });
 
