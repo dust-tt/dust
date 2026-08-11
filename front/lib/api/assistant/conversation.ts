@@ -166,6 +166,7 @@ import {
   isUserMention,
   toMentionType,
 } from "@app/types/assistant/mentions";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type {
   ContentFragmentContextType,
@@ -781,12 +782,15 @@ export async function postUserMessage(
     const supportedModelConfig = getSupportedModelConfig(agentConfig.model);
     if (
       !supportedModelConfig ||
-      !isModelAvailable(supportedModelConfig, {
-        featureFlags,
-        plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
-        region: regionConfig.getCurrentRegion(),
-      })
+      !(
+        isModelStreamId(supportedModelConfig.modelId) ||
+        isModelAvailable(supportedModelConfig, {
+          featureFlags,
+          plan,
+          regionalModelsOnly: owner.regionalModelsOnly,
+          region: regionConfig.getCurrentRegion(),
+        })
+      )
     ) {
       return new Err({
         status_code: 400,

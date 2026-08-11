@@ -325,11 +325,11 @@ describe("resolveModel", () => {
     });
   });
 
-  it("falls back to a preferred large model when the agent is on auto without models_picker", async () => {
+  it("resolves an auto agent through the stream even without models_picker", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const getAutoModelSpy = vi.spyOn(enabledModels, "getAutoModelForAuth");
+    const getModelForStreamSpy = vi.spyOn(enabledModels, "getModelForStream");
 
     const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
       configuration: makeAgentConfiguration({
@@ -339,13 +339,13 @@ describe("resolveModel", () => {
       featureFlags: [],
     });
 
-    expect(getAutoModelSpy).not.toHaveBeenCalled();
-    expect(modelResolutionMethod).toBe("agent");
+    expect(getModelForStreamSpy).toHaveBeenCalledWith(auth, AUTO_MODEL_ID);
+    expect(modelResolutionMethod).toBe("auto");
+    expect(resolvedModel.modelId).not.toBe(AUTO_MODEL_ID);
     expect(resolvedModel).toEqual({
-      providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
-      modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
-      reasoningEffort:
-        CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+      providerId: GPT_5_6_LUNA_MODEL_CONFIG.providerId,
+      modelId: GPT_5_6_LUNA_MODEL_CONFIG.modelId,
+      reasoningEffort: "high",
     });
   });
 });
