@@ -27,13 +27,11 @@ import { UsageFilterModelComplexityControls } from "@app/components/workspace/an
 import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
-import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
 import {
   getMcpServerDisplayName,
   isRemoteMCPServerType,
 } from "@app/lib/actions/mcp_helper";
-import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useGroups } from "@app/lib/swr/groups";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
@@ -205,10 +203,6 @@ export function UsageFilterPanel({
     disabled: !isToolCategoryActive,
   });
 
-  // The workspace's full, period-independent skill catalog — the same
-  // endpoint backing the skill picker elsewhere in the app — rather than a
-  // period-scoped top-N, so every skill is listable and searchable
-  // regardless of the selected period.
   const { skills: skillCatalog } = useSkills({
     owner,
     status: "active",
