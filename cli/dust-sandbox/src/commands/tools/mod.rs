@@ -1,7 +1,7 @@
 mod exec;
 mod list_servers;
 mod list_tools;
-pub mod offload;
+mod offload;
 
 pub use exec::cmd_exec;
 pub use list_servers::cmd_list_servers;

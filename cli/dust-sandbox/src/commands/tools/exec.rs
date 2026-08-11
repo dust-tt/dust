@@ -1,9 +1,7 @@
 use anyhow::{bail, Context};
 
+use super::offload::{resolve_offloaded_content, OffloadResolutionError, ResolveOptions};
 use crate::api::{parse_content_block, CallToolResult, ContentBlock, DustApiClient, DustApiError};
-use crate::commands::tools::offload::{
-    resolve_offloaded_content, OffloadResolutionError, ResolveOptions,
-};
 
 const MAX_FILE_ARG_SIZE_BYTES: u64 = 100 * 1024 * 1024;
 
@@ -123,34 +121,23 @@ async fn run_exec(
 fn format_content_plain(content: &[serde_json::Value]) -> String {
     let mut out = String::new();
     for value in content {
-        match parse_content_block(value) {
-            ContentBlock::Text { text } => {
-                out.push_str(&format!("{text}\n"));
-            }
-            ContentBlock::Image { mime_type, .. } => {
-                out.push_str(&format!("[image: {mime_type}]\n"));
-            }
-            ContentBlock::Audio { mime_type, .. } => {
-                out.push_str(&format!("[audio: {mime_type}]\n"));
-            }
-            ContentBlock::Resource { resource } => {
-                if let Some(text) = &resource.text {
-                    out.push_str(&format!("{text}\n"));
-                } else if resource.blob.is_some() {
-                    out.push_str(&format!("[binary resource: {}]\n", resource.uri));
-                } else {
-                    out.push_str(&format!("[resource: {}]\n", resource.uri));
-                }
-            }
-            ContentBlock::ResourceLink { uri, name } => {
-                if let Some(name) = name {
-                    out.push_str(&format!("[resource link: {name} - {uri}]\n"));
-                } else {
-                    out.push_str(&format!("[resource link: {uri}]\n"));
-                }
-            }
-            ContentBlock::Unknown => {}
-        }
+        let line = match parse_content_block(value) {
+            ContentBlock::Text { text } => text,
+            ContentBlock::Image { mime_type, .. } => format!("[image: {mime_type}]"),
+            ContentBlock::Audio { mime_type, .. } => format!("[audio: {mime_type}]"),
+            ContentBlock::Resource { resource } => match (resource.text, resource.blob) {
+                (Some(text), _) => text,
+                (None, Some(_)) => format!("[binary resource: {}]", resource.uri),
+                (None, None) => format!("[resource: {}]", resource.uri),
+            },
+            ContentBlock::ResourceLink { uri, name } => match name {
+                Some(name) => format!("[resource link: {name} - {uri}]"),
+                None => format!("[resource link: {uri}]"),
+            },
+            ContentBlock::Unknown => continue,
+        };
+        out.push_str(&line);
+        out.push('\n');
     }
     out
 }
