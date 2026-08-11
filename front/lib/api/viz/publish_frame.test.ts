@@ -602,9 +602,7 @@ export default function Dashboard() {
     if (result.isOk()) {
       expect(result.value.warnings).toHaveLength(1);
       expect(result.value.warnings[0].type).toBe("pod_function");
-      expect(result.value.warnings[0].message).toContain(
-        "not scoped to a Pod"
-      );
+      expect(result.value.warnings[0].message).toContain("not scoped to a Pod");
     }
   });
 
