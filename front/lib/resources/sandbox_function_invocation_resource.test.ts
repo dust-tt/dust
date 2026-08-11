@@ -3,7 +3,10 @@ import { generateSandboxFunctionInvocationToken } from "@app/lib/api/sandbox/acc
 import { SandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
-import type { NormalizedSandboxFunctionOutcome } from "@app/lib/api/sandbox_functions/result_envelope";
+import type {
+  NormalizedSandboxFunctionOutcome,
+  SandboxFunctionResultSpillPointer,
+} from "@app/lib/api/sandbox_functions/result_envelope";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -86,8 +89,11 @@ const outputSchema: JSONSchema = {
 // Stamped on the function at creation and expected back on every exec envelope.
 const TEST_BUNDLE_SHA256 = "a".repeat(64);
 
-// dsbx always delivers the result on the exec's own stdout, as a protocol v3 envelope.
-function stdoutEnvelope(outcome: NormalizedSandboxFunctionOutcome): string {
+// dsbx always delivers the result on the exec's own stdout, as a protocol v3 envelope. The
+// outcome is either inline or, for an oversized result, a spill pointer to a sandbox file.
+function stdoutEnvelope(
+  outcome: NormalizedSandboxFunctionOutcome | SandboxFunctionResultSpillPointer
+): string {
   return (
     JSON.stringify({ protocolVersion: 3, delivery: "stdout", outcome }) + "\n"
   );
@@ -763,6 +769,83 @@ describe("SandboxFunctionInvocationResource", () => {
       body: JSON.stringify({ message: "hello" }),
       encoding: "utf8",
       bundleSha256: TEST_BUNDLE_SHA256,
+    });
+  });
+
+  it("reads back a spilled result and delivers the full output", async () => {
+    const { authenticator, sandboxFunction, sandbox, invocation } =
+      await setupExecutionTest();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: stdoutEnvelope({
+          ok: true,
+          resultFile: "/tmp/dust-fn-results/spill.json",
+          resultBytes: 300_000,
+        }),
+        stderr: "",
+      })
+    );
+    const readFileSpy = vi
+      .spyOn(sandbox, "readFile")
+      .mockResolvedValue(
+        new Ok(
+          Buffer.from(
+            JSON.stringify({ ok: true, output: { commentId: "comment-big" } }),
+            "utf8"
+          )
+        )
+      );
+
+    const executionResult = await invocation.execute(authenticator);
+    if (executionResult.isErr()) {
+      throw executionResult.error;
+    }
+
+    expect(readFileSpy).toHaveBeenCalledWith(
+      authenticator,
+      "/tmp/dust-fn-results/spill.json"
+    );
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.status).toBe("succeeded");
+    expect(refetched?.result).toEqual({ commentId: "comment-big" });
+  });
+
+  it("fails the invocation when the spilled result cannot be read back", async () => {
+    const { authenticator, sandboxFunction, sandbox, invocation } =
+      await setupExecutionTest();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: stdoutEnvelope({
+          ok: true,
+          resultFile: "/tmp/dust-fn-results/spill.json",
+          resultBytes: 300_000,
+        }),
+        stderr: "",
+      })
+    );
+    vi.spyOn(sandbox, "readFile").mockResolvedValue(
+      new Err(new Error("file not found"))
+    );
+
+    const executionResult = await invocation.execute(authenticator);
+    if (executionResult.isErr()) {
+      throw executionResult.error;
+    }
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.status).toBe("errored");
+    expect(refetched?.error).toMatchObject({
+      code: "invocation_failed",
+      message:
+        "Pod function result could not be read back from /tmp/dust-fn-results/spill.json: file not found",
     });
   });
 

@@ -19,7 +19,10 @@ import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { podDatabasePrefixFromSlug } from "@app/lib/api/sandbox_functions/db_naming";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
-import { parseStdoutResultEnvelope } from "@app/lib/api/sandbox_functions/result_delivery";
+import {
+  parseStdoutResultEnvelope,
+  resolveSpilledResult,
+} from "@app/lib/api/sandbox_functions/result_delivery";
 import {
   authorizeSandboxFunctionInvocation,
   getAuthenticatedWorkspaceUser,
@@ -731,6 +734,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       }
 
       const { exitCode, stdout, stderr } = execResult.value;
+      // Persist from the envelope even on non-zero exit: dsbx may still have
+      // written a well-formed invocation_failed envelope the worker should keep.
+      const parsed = parseStdoutResultEnvelope(stdout);
+      const { timings } = parsed;
       logger.info(
         {
           workspaceId: auth.getNonNullableWorkspace().sId,
@@ -738,13 +745,20 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           invocationId: this.sId,
           exitCode,
           stdoutBytes: Buffer.byteLength(stdout, "utf8"),
+          ...(parsed.spill === null
+            ? {}
+            : { spilledResultBytes: parsed.spill.resultBytes }),
         },
         "Pod function stdout result delivery"
       );
-      // Persist from the envelope even on non-zero exit: dsbx may still have
-      // written a well-formed invocation_failed envelope the worker should keep.
-      const { outcome: normalized, timings } =
-        parseStdoutResultEnvelope(stdout);
+      // An oversized result was spilled to a sandbox-local file: read it back
+      // through the provider and normalize it exactly like an inline outcome.
+      const normalized =
+        parsed.spill === null
+          ? parsed.outcome
+          : await resolveSpilledResult(parsed.spill, (path) =>
+              sandbox.readFile(auth, path)
+            );
       recordSandboxFunctionRun({
         runnerKind: timings?.runnerKind ?? "unknown",
         status: normalized.ok ? "success" : "error",
