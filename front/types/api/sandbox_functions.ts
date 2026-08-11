@@ -105,6 +105,7 @@ export const SANDBOX_FUNCTION_RUNNER_ERROR_CODES = [
 // upstream classification to forward.
 type SandboxFunctionFrontErrorCode =
   | "invocation_failed"
+  | "invocation_timeout"
   | "transport_error"
   | "not_supported";
 

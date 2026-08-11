@@ -21,6 +21,7 @@ import type {
 } from "@app/lib/api/sandbox/provider";
 import {
   isSandboxExecUser,
+  SandboxExecTimeoutError,
   SandboxNotFoundError,
   traceSandboxOperation,
 } from "@app/lib/api/sandbox/provider";
@@ -36,7 +37,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { CommandHandle } from "e2b";
-import { CommandExitError, NotFoundError, Sandbox } from "e2b";
+import { CommandExitError, NotFoundError, Sandbox, TimeoutError } from "e2b";
 
 const ONE_HOUR_MS = 60 * 60 * 1_000;
 
@@ -50,6 +51,13 @@ const SANDBOX_LIFETIME_MS = 24 * ONE_HOUR_MS;
 
 /** Timeout for individual API calls to E2B (create, connect, etc.). */
 const REQUEST_TIMEOUT_MS = 30_000;
+
+/**
+ * The E2B SDK's own command timeout when the caller passes no `timeoutMs`
+ * (`Commands.defaultProcessConnectionTimeout`). Only used to report the budget a command that
+ * timed out without an explicit `timeoutMs` was actually running under.
+ */
+const E2B_DEFAULT_COMMAND_TIMEOUT_MS = 60_000;
 const LOCAL_ACCOUNT_HARDENING_TIMEOUT_MS = 120_000;
 
 /**
@@ -565,6 +573,16 @@ export class E2BSandboxProvider implements SandboxProvider {
               stdout: err.stdout,
               stderr: err.stderr,
             });
+          }
+          // The SDK throws TimeoutError when the command runs past its `timeoutMs`. Keep the
+          // classification (and the budget) instead of erasing it into a generic Error whose
+          // message carries SDK advice ("pass 'timeoutMs'") that only this file could act on.
+          if (err instanceof TimeoutError) {
+            return new Err(
+              new SandboxExecTimeoutError(
+                commandOpts.timeoutMs ?? E2B_DEFAULT_COMMAND_TIMEOUT_MS
+              )
+            );
           }
           return new Err(normalizeError(err));
         }

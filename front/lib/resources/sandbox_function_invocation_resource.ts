@@ -15,6 +15,7 @@ import {
 import { isSandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { recordSandboxFunctionRun } from "@app/lib/api/sandbox/instrumentation";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
+import { SandboxExecTimeoutError } from "@app/lib/api/sandbox/provider";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { podDatabasePrefixFromSlug } from "@app/lib/api/sandbox_functions/db_naming";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
@@ -709,19 +710,42 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           status: "error",
           durationMs: Date.now() - execStartedAtMs,
         });
-        if (inline) {
-          // An inline exec that fails is usually one that ran past its ceiling, but nothing in the
-          // provider result says so: the timeout is handed to the sandbox provider and comes back
-          // as an ordinary failure. Log the whole class rather than guess, so we can see how often
-          // a fast function is simply too slow before deciding whether that should move it to
-          // durable the way a refused tool call does.
+        // The provider reports a command that ran past the budget this call handed it as a typed
+        // timeout. The function ran (and may already have written to pod state), so record the
+        // terminal outcome here with a stable code and a message naming the real ceilings,
+        // instead of forwarding provider SDK text to callers and frames.
+        if (execResult.error instanceof SandboxExecTimeoutError) {
           logger.info(
             {
               workspaceId: auth.getNonNullableWorkspace().sId,
               sandboxFunctionId: sandboxFunction.sId,
               slug: sandboxFunction.slug,
               invocationId: this.sId,
-              timeoutMs: SANDBOX_FUNCTION_INLINE_EXEC_TIMEOUT_MS,
+              inline,
+              timeoutMs: execResult.error.timeoutMs,
+            },
+            "Pod function execution timed out"
+          );
+          await this.fail({
+            code: "invocation_timeout",
+            message:
+              `The Pod function did not return within ${Math.round(execResult.error.timeoutMs / 1000)}s: ` +
+              `fast functions must return within ${SANDBOX_FUNCTION_INLINE_EXEC_TIMEOUT_MS / 1000}s ` +
+              `and durable functions within ${SANDBOX_FUNCTION_EXEC_TIMEOUT_MS / 1000}s. ` +
+              "Reduce the work, or split it into a durable refresh and a fast read.",
+          });
+          return new Ok(undefined);
+        }
+        if (inline) {
+          // Timeouts are classified above, so what lands here is the rest of the exec-failure
+          // class. Log it so we can see what else makes inline invocations fail before deciding
+          // whether anything should move to durable the way a refused tool call does.
+          logger.info(
+            {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              sandboxFunctionId: sandboxFunction.sId,
+              slug: sandboxFunction.slug,
+              invocationId: this.sId,
               error: execResult.error.message,
             },
             "Inline Pod function execution failed"

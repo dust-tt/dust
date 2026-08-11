@@ -64,9 +64,12 @@ vi.mock("e2b", () => {
 
   class NotFoundError extends Error {}
 
+  class TimeoutError extends Error {}
+
   return {
     CommandExitError,
     NotFoundError,
+    TimeoutError,
     Sandbox: {
       connect: mockConnect,
       create: mockCreate,
@@ -75,7 +78,7 @@ vi.mock("e2b", () => {
   };
 });
 
-import { CommandExitError, NotFoundError } from "e2b";
+import { CommandExitError, NotFoundError, TimeoutError } from "e2b";
 
 import {
   SANDBOX_AGENT_PROXIED_SAFE_PATH,
@@ -83,6 +86,7 @@ import {
   SANDBOX_AGENT_SERVICE_HOME,
   SANDBOX_ROOT_SAFE_PATH,
 } from "../hardening";
+import { SandboxExecTimeoutError } from "../provider";
 import { rootCommand } from "../root_command";
 import { E2BSandboxProvider } from "./e2b";
 
@@ -597,6 +601,64 @@ describe("E2BSandboxProvider", () => {
     expect(mockCommandHandleWait).toHaveBeenCalledTimes(1);
     expect(mockHandleKill).not.toHaveBeenCalled();
     expect(mockCloseStdin).not.toHaveBeenCalled();
+  });
+
+  it("returns a typed timeout error carrying the budget when a command runs past it", async () => {
+    mockCommandHandleWait.mockRejectedValueOnce(
+      new TimeoutError(
+        "[deadline_exceeded] the operation timed out: This error is likely due to exceeding " +
+          "'timeoutMs'. You can pass the timeout value in 'timeoutMs' when making the request."
+      )
+    );
+    const provider = new E2BSandboxProvider({
+      apiKey: "api-key",
+      domain: undefined,
+    });
+
+    const result = await provider.exec(
+      "provider-id",
+      "/opt/bin/dsbx function run slow-function",
+      { timeoutMs: 10_000, user: "agent-proxied" },
+      { workspaceId: "workspace-id" }
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("expected an error");
+    }
+    expect(result.error).toBeInstanceOf(SandboxExecTimeoutError);
+    if (!(result.error instanceof SandboxExecTimeoutError)) {
+      throw new Error("expected a SandboxExecTimeoutError");
+    }
+    expect(result.error.timeoutMs).toBe(10_000);
+    // The SDK's advice ("pass 'timeoutMs'") targets this file, not our callers.
+    expect(result.error.message).not.toContain("timeoutMs");
+  });
+
+  it("reports the SDK's own default budget when a command without timeoutMs times out", async () => {
+    mockCommandHandleWait.mockRejectedValueOnce(
+      new TimeoutError("[deadline_exceeded] the operation timed out")
+    );
+    const provider = new E2BSandboxProvider({
+      apiKey: "api-key",
+      domain: undefined,
+    });
+
+    const result = await provider.exec(
+      "provider-id",
+      "/opt/bin/dsbx function run slow-function",
+      { user: "agent-proxied" },
+      { workspaceId: "workspace-id" }
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("expected an error");
+    }
+    if (!(result.error instanceof SandboxExecTimeoutError)) {
+      throw new Error("expected a SandboxExecTimeoutError");
+    }
+    expect(result.error.timeoutMs).toBe(60_000);
   });
 
   describe("connection reuse", () => {

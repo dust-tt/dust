@@ -111,6 +111,18 @@ export class SandboxNotFoundError extends Error {
   }
 }
 
+/**
+ * Returned when a command ran past the timeout the caller handed to exec/execRoot. Carries the
+ * budget so callers can name it instead of forwarding provider SDK text (which suggests SDK
+ * options only Dust platform code could act on) to their own callers.
+ */
+export class SandboxExecTimeoutError extends Error {
+  constructor(readonly timeoutMs: number) {
+    super(`Sandbox command did not finish within ${timeoutMs}ms.`);
+    this.name = "SandboxExecTimeoutError";
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Provider interface
 // ---------------------------------------------------------------------------
