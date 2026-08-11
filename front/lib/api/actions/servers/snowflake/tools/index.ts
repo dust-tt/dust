@@ -25,13 +25,22 @@ const CONNECTION_ERROR = new MCPError(
   "Snowflake connection not configured. Please connect your Snowflake account."
 );
 
-function handleSnowflakeError(error: Error): ToolHandlerResult {
-  if (
+function isSnowflakeRequestFailedError(
+  error: Error
+): error is Error & { response: { statusCode: number } } {
+  return (
     error.name === "RequestFailedError" &&
     "response" in error &&
     typeof error.response === "object" &&
     error.response !== null &&
     "statusCode" in error.response &&
+    typeof error.response.statusCode === "number"
+  );
+}
+
+function handleSnowflakeError(error: Error): ToolHandlerResult {
+  if (
+    isSnowflakeRequestFailedError(error) &&
     (error.response.statusCode === 401 || error.response.statusCode === 403)
   ) {
     return new Ok(makePersonalAuthenticationError("snowflake").content);
