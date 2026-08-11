@@ -58,6 +58,12 @@ export const Inline = () => {
         title="You have a message"
         description="A friendly notification"
       />
+      <NotificationContent
+        type="success"
+        title="Added to favorites"
+        description="Research assistant"
+        action={{ label: "View", href: "#favorites" }}
+      />
     </div>
   );
 };

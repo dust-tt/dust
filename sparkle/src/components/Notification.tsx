@@ -11,11 +11,17 @@ import { cn } from "@sparkle/lib/utils";
 import React from "react";
 import { Toaster, toast } from "sonner";
 
+import { Button } from "./Button";
 import { Icon } from "./Icon";
 
 const NOTIFICATION_DELAY_MS = 5000;
 
 export type NotificationType = {
+  action?: {
+    href?: string;
+    label: string;
+    onClick?: () => void;
+  };
   title?: string;
   description?: string;
   type: "success" | "error" | "info" | "warning" | "hello";
@@ -63,6 +69,7 @@ export function NotificationContent({
   type,
   title,
   description,
+  action,
   onDismiss,
 }: NotificationType & { onDismiss?: () => void }) {
   const icon = resolveIcon(type);
@@ -114,6 +121,20 @@ export function NotificationContent({
           </button>
         )}
       </div>
+      {action && (
+        <div className="mt-1 pl-5">
+          <Button
+            size="xs"
+            variant="ghost"
+            label={action.label}
+            href={action.href}
+            onClick={() => {
+              action.onClick?.();
+              onDismiss?.();
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -128,6 +149,7 @@ export const Notification = {
               type={notification.type}
               title={notification.title}
               description={notification.description}
+              action={notification.action}
               onDismiss={() => toast.dismiss(t)}
             />
           ),
