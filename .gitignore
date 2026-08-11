@@ -30,6 +30,7 @@ AGENTS.local.md
 CLAUDE.local.md
 node_modules
 thoughts/*
+.superpowers/
 
 # dust-hive worktrees
 .hives/
