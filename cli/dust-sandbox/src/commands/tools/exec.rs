@@ -9,9 +9,10 @@ pub async fn cmd_exec(
     server_name: &str,
     tool_name: &str,
     raw_args: &[String],
+    args_json: Option<&str>,
     json: bool,
 ) -> anyhow::Result<()> {
-    match run_exec(client, server_name, tool_name, raw_args, json).await {
+    match run_exec(client, server_name, tool_name, raw_args, args_json, json).await {
         Ok(()) => Ok(()),
         Err(err) => {
             // Under --json, stdout is the machine contract: emit the typed
@@ -47,6 +48,7 @@ async fn run_exec(
     server_name: &str,
     tool_name: &str,
     raw_args: &[String],
+    args_json: Option<&str>,
     json: bool,
 ) -> anyhow::Result<()> {
     let views = client.list_tools(Some(server_name), false).await?;
@@ -68,7 +70,15 @@ async fn run_exec(
         }
     };
 
-    let arguments = parse_args(raw_args, tool.input_schema.as_ref())?;
+    let arguments = match args_json {
+        Some(spec) => {
+            if !raw_args.is_empty() {
+                bail!("--args-json cannot be combined with --key value arguments");
+            }
+            Some(parse_args_json(&read_args_json_spec(spec)?)?)
+        }
+        None => parse_args(raw_args, tool.input_schema.as_ref())?,
+    };
 
     let resp = client.call_tool(&view.s_id, tool_name, arguments).await?;
 
@@ -117,13 +127,35 @@ async fn run_exec(
     Ok(())
 }
 
+/// Resolve the `--args-json` value: `-` reads the whole payload from stdin
+/// (for values larger than ARG_MAX), anything else is the literal JSON.
+fn read_args_json_spec(spec: &str) -> anyhow::Result<String> {
+    if spec == "-" {
+        return std::io::read_to_string(std::io::stdin())
+            .context("failed to read --args-json payload from stdin");
+    }
+    Ok(spec.to_string())
+}
+
+/// Parse an `--args-json` payload: a single JSON object passed to the tool
+/// verbatim, bypassing per-key parsing and schema/heuristic coercion.
+fn parse_args_json(payload: &str) -> anyhow::Result<serde_json::Value> {
+    let value = serde_json::from_str::<serde_json::Value>(payload.trim())
+        .context("--args-json is not valid JSON")?;
+    if !value.is_object() {
+        bail!("--args-json must be a JSON object of tool arguments");
+    }
+    Ok(value)
+}
+
 /// Parse `--key value` pairs into a JSON object.
 /// Uses the tool's JSON Schema (`schema`) to coerce each value to the declared
 /// type when available; falls back to heuristic detection otherwise.
 ///
 /// A value prefixed with `__file__:` reads the file at that path (UTF-8, capped
 /// at 100 MB), letting agents pass values larger than the OS argv limit
-/// (ARG_MAX). JSON object/array contents are parsed; other content is a string.
+/// (ARG_MAX). Contents coerce to schema-declared scalar types, JSON
+/// object/array contents are parsed, and other content is a string.
 fn parse_args(
     raw: &[String],
     schema: Option<&serde_json::Value>,
@@ -167,27 +199,86 @@ fn parse_args(
     Ok(Some(serde_json::Value::Object(map)))
 }
 
-/// Returns the declared JSON Schema `type` string for `key` in a tool's
-/// `input_schema`, or `None` when the schema is absent or the key is not found.
+/// Returns the declared JSON Schema type for `key` in a tool's
+/// `input_schema`, or `None` when the schema is absent, the key is not found,
+/// or the declaration does not reduce to a single type.
 fn property_type<'a>(schema: Option<&'a serde_json::Value>, key: &str) -> Option<&'a str> {
-    schema?.get("properties")?.get(key)?.get("type")?.as_str()
+    let property = schema?.get("properties")?.get(key)?;
+    declared_type(property)
+}
+
+/// Reduce a property schema to a single declared type when unambiguous:
+/// - `"type": "number"` stays as-is;
+/// - `"type": ["number", "null"]` reduces to `number` (nullable fields are
+///   common in generated schemas);
+/// - `anyOf: [{type: "number"}, {type: "null"}]` reduces to `number`.
+///
+/// Anything else (two non-null types, an `anyOf` entry without a `type` such
+/// as a `$ref`) yields `None`, i.e. heuristic coercion.
+fn declared_type(property: &serde_json::Value) -> Option<&str> {
+    if let Some(ty) = property.get("type") {
+        if let Some(s) = ty.as_str() {
+            return Some(s);
+        }
+        if let Some(types) = ty.as_array() {
+            return single_non_null_type(types.iter().map(|v| v.as_str()));
+        }
+        return None;
+    }
+    if let Some(any_of) = property.get("anyOf").and_then(|v| v.as_array()) {
+        return single_non_null_type(
+            any_of
+                .iter()
+                .map(|entry| entry.get("type").and_then(|t| t.as_str())),
+        );
+    }
+    None
+}
+
+/// `Some(type)` when the entries hold exactly one non-`"null"` type string;
+/// an entry without a type string makes the union ambiguous.
+fn single_non_null_type<'a>(entries: impl Iterator<Item = Option<&'a str>>) -> Option<&'a str> {
+    let mut found: Option<&str> = None;
+    for entry in entries {
+        let ty = entry?;
+        if ty == "null" {
+            continue;
+        }
+        if found.is_some() {
+            return None;
+        }
+        found = Some(ty);
+    }
+    found
 }
 
 fn coerce_value_or_read_file(s: &str, ty: Option<&str>) -> anyhow::Result<serde_json::Value> {
     if let Some(path) = s.strip_prefix("__file__:") {
         let contents = read_file_arg(path)?;
-        // JSON object/array contents are parsed (like inline values); anything
-        // else is a string. Malformed JSON-shaped content errors rather than
-        // silently degrading, since the file isn't visible on the command line.
-        // Exception: when the schema declares "string", never attempt JSON parsing.
         let trimmed = contents.trim();
-        if ty != Some("string") && looks_like_json_object_or_array(trimmed) {
-            return serde_json::from_str::<serde_json::Value>(trimmed)
-                .with_context(|| format!("__file__:{path} looks like JSON but failed to parse"));
+        match ty {
+            // Scalar schema types coerce like inline values (trimmed: files
+            // routinely carry a trailing newline). Without this, a file-passed
+            // "42" against an integer schema is guaranteed to fail server-side
+            // validation. A schema-declared "string" never coerces.
+            Some("boolean") | Some("integer") | Some("number") => Ok(coerce_value(trimmed, ty)),
+            // JSON object/array contents are parsed (like inline values);
+            // anything else is a string. Malformed JSON-shaped content errors
+            // rather than silently degrading, since the file isn't visible on
+            // the command line. Exception: when the schema declares "string",
+            // never attempt JSON parsing.
+            _ => {
+                if ty != Some("string") && looks_like_json_object_or_array(trimmed) {
+                    return serde_json::from_str::<serde_json::Value>(trimmed).with_context(|| {
+                        format!("__file__:{path} looks like JSON but failed to parse")
+                    });
+                }
+                Ok(serde_json::Value::String(contents))
+            }
         }
-        return Ok(serde_json::Value::String(contents));
+    } else {
+        Ok(coerce_value(s, ty))
     }
-    Ok(coerce_value(s, ty))
 }
 
 fn read_file_arg(path: &str) -> anyhow::Result<String> {
@@ -395,7 +486,8 @@ mod tests {
     }
 
     #[test]
-    fn parse_file_prefix_skips_coercion() {
+    fn parse_file_prefix_without_schema_stays_string() {
+        // No schema evidence: file contents are never coerced heuristically.
         let file = write_tempfile(b"42");
         let args = vec![
             "--count".to_string(),
@@ -406,6 +498,65 @@ mod tests {
             .expect("should have value");
         assert_eq!(result["count"], "42");
         assert!(result["count"].is_string());
+    }
+
+    #[test]
+    fn parse_file_prefix_coerces_scalar_with_schema() {
+        let file = write_tempfile(b"42");
+        let schema = make_schema(&[("count", "integer")]);
+        let args = vec![
+            "--count".to_string(),
+            format!("__file__:{}", file.path().to_string_lossy()),
+        ];
+        let result = parse_args(&args, Some(&schema))
+            .expect("should parse")
+            .expect("should have value");
+        assert_eq!(result["count"], 42);
+    }
+
+    #[test]
+    fn parse_file_prefix_coerces_scalar_with_trailing_newline() {
+        let file = write_tempfile(b"true\n");
+        let schema = make_schema(&[("enabled", "boolean")]);
+        let args = vec![
+            "--enabled".to_string(),
+            format!("__file__:{}", file.path().to_string_lossy()),
+        ];
+        let result = parse_args(&args, Some(&schema))
+            .expect("should parse")
+            .expect("should have value");
+        assert_eq!(result["enabled"], true);
+    }
+
+    #[test]
+    fn parse_file_prefix_coerces_number_with_schema() {
+        let file = write_tempfile(b"3.5");
+        let schema = make_schema(&[("ratio", "number")]);
+        let args = vec![
+            "--ratio".to_string(),
+            format!("__file__:{}", file.path().to_string_lossy()),
+        ];
+        let result = parse_args(&args, Some(&schema))
+            .expect("should parse")
+            .expect("should have value");
+        let ratio = result["ratio"].as_f64().expect("should be f64");
+        assert!((ratio - 3.5).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn parse_file_prefix_scalar_schema_non_scalar_content_falls_back_to_string() {
+        // Unparseable content against a scalar schema falls back to the
+        // (trimmed) string; server-side validation reports the mismatch.
+        let file = write_tempfile(b"not a number\n");
+        let schema = make_schema(&[("count", "integer")]);
+        let args = vec![
+            "--count".to_string(),
+            format!("__file__:{}", file.path().to_string_lossy()),
+        ];
+        let result = parse_args(&args, Some(&schema))
+            .expect("should parse")
+            .expect("should have value");
+        assert_eq!(result["count"], "not a number");
     }
 
     #[test]
@@ -775,5 +926,145 @@ mod tests {
             .expect("should have value");
         assert!(result["data"].is_string());
         assert_eq!(result["data"].as_str().unwrap(), r#"{"status":"active"}"#);
+    }
+
+    // --- union-type schema reduction ---
+
+    #[test]
+    fn property_type_reduces_nullable_type_array() {
+        let schema = serde_json::json!({
+            "properties": { "count": { "type": ["integer", "null"] } }
+        });
+        assert_eq!(property_type(Some(&schema), "count"), Some("integer"));
+    }
+
+    #[test]
+    fn property_type_ambiguous_type_array_yields_none() {
+        let schema = serde_json::json!({
+            "properties": { "value": { "type": ["string", "integer"] } }
+        });
+        assert_eq!(property_type(Some(&schema), "value"), None);
+    }
+
+    #[test]
+    fn property_type_reduces_nullable_any_of() {
+        let schema = serde_json::json!({
+            "properties": {
+                "limit": { "anyOf": [{ "type": "number" }, { "type": "null" }] }
+            }
+        });
+        assert_eq!(property_type(Some(&schema), "limit"), Some("number"));
+    }
+
+    #[test]
+    fn property_type_ambiguous_any_of_yields_none() {
+        let schema = serde_json::json!({
+            "properties": {
+                "value": { "anyOf": [{ "type": "string" }, { "type": "number" }] }
+            }
+        });
+        assert_eq!(property_type(Some(&schema), "value"), None);
+    }
+
+    #[test]
+    fn property_type_any_of_with_ref_entry_yields_none() {
+        // An entry without a literal type ($ref, nested schema) makes the
+        // union ambiguous; do not pretend to know the type.
+        let schema = serde_json::json!({
+            "properties": {
+                "value": { "anyOf": [{ "type": "number" }, { "$ref": "#/defs/X" }] }
+            }
+        });
+        assert_eq!(property_type(Some(&schema), "value"), None);
+    }
+
+    #[test]
+    fn parse_args_nullable_type_array_coerces_scalar() {
+        let schema = serde_json::json!({
+            "properties": { "count": { "type": ["integer", "null"] } }
+        });
+        let args = vec!["--count".to_string(), "42".to_string()];
+        let result = parse_args(&args, Some(&schema))
+            .expect("should parse")
+            .expect("should have value");
+        assert_eq!(result["count"], 42);
+    }
+
+    #[test]
+    fn parse_args_nullable_string_never_coerces() {
+        // ["string", "null"] reduces to "string": leading zeros survive.
+        let schema = serde_json::json!({
+            "properties": { "zip": { "type": ["string", "null"] } }
+        });
+        let args = vec!["--zip".to_string(), "020".to_string()];
+        let result = parse_args(&args, Some(&schema))
+            .expect("should parse")
+            .expect("should have value");
+        assert_eq!(result["zip"], "020");
+        assert!(result["zip"].is_string());
+    }
+
+    #[test]
+    fn parse_args_nullable_any_of_string_never_coerces_file_contents() {
+        let file = write_tempfile(br#"{"status":"active"}"#);
+        let schema = serde_json::json!({
+            "properties": {
+                "data": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+            }
+        });
+        let args = vec![
+            "--data".to_string(),
+            format!("__file__:{}", file.path().to_string_lossy()),
+        ];
+        let result = parse_args(&args, Some(&schema))
+            .expect("should parse")
+            .expect("should have value");
+        assert!(result["data"].is_string());
+    }
+
+    // --- --args-json ---
+
+    #[test]
+    fn parse_args_json_accepts_object() {
+        let value = parse_args_json(r#"{"query": "hello", "count": 42, "nested": {"a": [1]}}"#)
+            .expect("should parse");
+        assert_eq!(value["query"], "hello");
+        assert_eq!(value["count"], 42);
+        assert_eq!(value["nested"]["a"][0], 1);
+    }
+
+    #[test]
+    fn parse_args_json_preserves_string_typed_numbers() {
+        // The whole point: no coercion, values travel verbatim.
+        let value = parse_args_json(r#"{"zip": "020", "flag": "true"}"#).expect("should parse");
+        assert_eq!(value["zip"], "020");
+        assert_eq!(value["flag"], "true");
+        assert!(value["zip"].is_string());
+        assert!(value["flag"].is_string());
+    }
+
+    #[test]
+    fn parse_args_json_tolerates_surrounding_whitespace() {
+        let value = parse_args_json("  {\"a\": 1}\n").expect("should parse");
+        assert_eq!(value["a"], 1);
+    }
+
+    #[test]
+    fn parse_args_json_rejects_non_object() {
+        assert!(parse_args_json("[1, 2]").is_err());
+        assert!(parse_args_json("\"hello\"").is_err());
+        assert!(parse_args_json("42").is_err());
+    }
+
+    #[test]
+    fn parse_args_json_rejects_malformed_json() {
+        let err = parse_args_json("{not json}").unwrap_err();
+        assert!(format!("{err:#}").contains("--args-json is not valid JSON"));
+    }
+
+    #[test]
+    fn read_args_json_spec_returns_literal() {
+        let payload = read_args_json_spec(r#"{"a": 1}"#).expect("should read");
+        assert_eq!(payload, r#"{"a": 1}"#);
     }
 }
