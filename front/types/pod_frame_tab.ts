@@ -58,7 +58,12 @@ export function sortPodFrameTabs(tabs: PodFrameTab[]): PodFrameTab[] {
 
 /**
  * Ensure tabsOrder contains every system tab + every frame path exactly once.
- * Unknown entries are dropped; missing ones are appended.
+ * Unknown entries are dropped.
+ *
+ * A system tab the saved order predates lands at its canonical position among the system tabs
+ * (right after the nearest preceding one that is present) rather than at the end — a pod that
+ * already had a saved order should not get a new system tab stranded past its frame tabs. Missing
+ * frame paths are still appended.
  */
 export function normalizeTabsOrder(
   tabsOrder: string[] | null | undefined,
@@ -78,12 +83,26 @@ export function normalizeTabsOrder(
     }
   }
 
-  for (const id of POD_NAV_SYSTEM_TABS_BEFORE_SETTINGS) {
-    if (!seen.has(id)) {
-      result.push(id);
-      seen.add(id);
+  POD_NAV_SYSTEM_TABS_BEFORE_SETTINGS.forEach((id, canonicalIndex) => {
+    if (seen.has(id)) {
+      return;
     }
-  }
+    seen.add(id);
+
+    // Anchor on the nearest canonical predecessor that survived above; walking backwards keeps a
+    // run of newly added tabs in canonical order, since each one anchors on the previous.
+    const predecessor = POD_NAV_SYSTEM_TABS_BEFORE_SETTINGS.slice(
+      0,
+      canonicalIndex
+    )
+      .filter((candidate) => result.includes(candidate))
+      .at(-1);
+    if (predecessor === undefined) {
+      result.unshift(id);
+      return;
+    }
+    result.splice(result.indexOf(predecessor) + 1, 0, id);
+  });
 
   for (const path of framePaths) {
     if (!seen.has(path)) {
