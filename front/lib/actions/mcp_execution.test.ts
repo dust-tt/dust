@@ -802,9 +802,7 @@ describe("processToolResults", () => {
     // sentence conversation snippets carry (existing function code regexes it).
     const lines = stored.resource.text.split("\n");
     expect(lines).toHaveLength(2);
-    expect(lines[1]).toBe(
-      `[Full content archived at ${stored.resource.uri}]`
-    );
+    expect(lines[1]).toBe(`[Full content archived at ${stored.resource.uri}]`);
 
     // The stub itself parses and points at the full content, like the _meta descriptor.
     expect(lines[0].length).toBeLessThanOrEqual(FILE_OFFLOAD_SNIPPET_LENGTH);
