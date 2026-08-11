@@ -54,10 +54,11 @@ const ResolveBodySchema = z
     }
   );
 
-// Omitted/"pending" preserves the requests queue behavior
 const ListUpgradeRequestsQuerySchema = z.object({
   status: z.union([z.literal("pending"), z.literal("resolved")]).optional(),
   offset: z.coerce.number().int().min(0).catch(0),
+  decision: z.union([z.literal("approved"), z.literal("denied")]).optional(),
+  search: z.string().optional(),
   format: z.union([z.literal("json"), z.literal("csv")]).optional(),
 });
 
@@ -119,12 +120,15 @@ app.get(
   validate("query", ListUpgradeRequestsQuerySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
-    const { status, offset, format } = ctx.req.valid("query");
+    const { status, offset, decision, search, format } = ctx.req.valid("query");
 
     if (format === "csv") {
       // CSV export is only wired to the resolved-requests History tab; it
-      // always covers the full history.
-      const requests = await listAllResolvedUpgradeRequests(auth);
+      // always covers the full history matching the current filters.
+      const requests = await listAllResolvedUpgradeRequests(auth, {
+        decision,
+        search,
+      });
 
       ctx.header("Content-Type", "text/csv");
       ctx.header(
@@ -136,7 +140,7 @@ app.get(
 
     const { requests, total } =
       status === "resolved"
-        ? await listResolvedUpgradeRequests(auth, { offset })
+        ? await listResolvedUpgradeRequests(auth, { offset, decision, search })
         : {
             requests: await listPendingUpgradeRequests(auth),
             total: undefined,

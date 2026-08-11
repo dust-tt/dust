@@ -12,17 +12,36 @@ import type {
   PatchUpgradeRequestResponseBody,
   UpgradeRequestResolution,
 } from "@app/types/api/credits/upgrade_requests";
+import type { MembershipUpgradeRequestStatus } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Fetcher } from "swr";
+
+export type UpgradeRequestDecisionFilter = Exclude<
+  MembershipUpgradeRequestStatus,
+  "pending"
+>;
 
 function upgradeRequestsUrl(workspaceId: string): string {
   return `/api/w/${workspaceId}/credits/upgrade-requests`;
 }
 
-// CSV download link for the resolved-requests
-export function upgradeRequestsHistoryCsvUrl(workspaceId: string): string {
-  return `${upgradeRequestsUrl(workspaceId)}?format=csv`;
+// CSV download link for the resolved-requests, also apply filtering
+export function upgradeRequestsHistoryCsvUrl(
+  workspaceId: string,
+  {
+    decision,
+    search,
+  }: { decision?: UpgradeRequestDecisionFilter; search?: string } = {}
+): string {
+  const searchParams = new URLSearchParams({ format: "csv" });
+  if (decision) {
+    searchParams.set("decision", decision);
+  }
+  if (search && search.trim().length > 0) {
+    searchParams.set("search", search.trim());
+  }
+  return `${upgradeRequestsUrl(workspaceId)}?${searchParams.toString()}`;
 }
 
 function usageStatusUrl(workspaceId: string): string {
@@ -108,20 +127,42 @@ export const UPGRADE_REQUESTS_HISTORY_PAGE_SIZE = 100;
 export function useUpgradeRequestsHistory({
   workspaceId,
   pageIndex,
+  searchTerm = "",
+  decision,
   disabled,
 }: {
   workspaceId: string;
   pageIndex: number;
+  searchTerm?: string;
+  decision?: UpgradeRequestDecisionFilter;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const upgradeRequestsHistoryFetcher: Fetcher<GetUpgradeRequestsResponseBody> =
     fetcher;
 
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearchTerm(searchTerm), 300);
+    return () => clearTimeout(id);
+  }, [searchTerm]);
+
   const offset = pageIndex * UPGRADE_REQUESTS_HISTORY_PAGE_SIZE;
 
+  const searchParams = new URLSearchParams({
+    status: "resolved",
+    offset: offset.toString(),
+  });
+  if (decision) {
+    searchParams.set("decision", decision);
+  }
+  if (debouncedSearchTerm.trim().length > 0) {
+    searchParams.set("search", debouncedSearchTerm.trim());
+  }
+
   const { data, error, mutate } = useSWRWithDefaults(
-    `${upgradeRequestsUrl(workspaceId)}?status=resolved&offset=${offset}`,
+    `${upgradeRequestsUrl(workspaceId)}?${searchParams.toString()}`,
     upgradeRequestsHistoryFetcher,
     { disabled, keepPreviousData: true }
   );

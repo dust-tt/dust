@@ -74,6 +74,7 @@ import {
   useUserAllowedModelTiers,
   useWorkspaceAllowedModelTiers,
 } from "@app/lib/swr/model_tiers";
+import type { UpgradeRequestDecisionFilter } from "@app/lib/swr/upgrade_requests";
 import {
   UPGRADE_REQUESTS_HISTORY_PAGE_SIZE,
   upgradeRequestsHistoryCsvUrl,
@@ -185,6 +186,8 @@ export function UsagePage() {
     MembershipSeatType | "none" | null
   >(null);
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
+  const [decisionFilter, setDecisionFilter] =
+    useState<UpgradeRequestDecisionFilter | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -215,11 +218,20 @@ export function UsagePage() {
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   }, []);
 
-  // Name/email search is also applied server-side before pagination, so reset
-  // to the first page whenever the search term changes.
+  // The decision filter is applied server-side before pagination
+  const handleSetDecisionFilter = useCallback(
+    (next: UpgradeRequestDecisionFilter | null) => {
+      setDecisionFilter(next);
+      setHistoryPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    },
+    []
+  );
+
+  // Name/email search is also applied server-side before pagination
   const handleSetSearchTerm = useCallback((next: string) => {
     setSearchTerm(next);
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    setHistoryPagination((prev) => ({ ...prev, pageIndex: 0 }));
   }, []);
 
   const sort = sorting[0];
@@ -287,10 +299,15 @@ export function UsagePage() {
   } = useUpgradeRequestsHistory({
     workspaceId: owner.sId,
     pageIndex: historyPagination.pageIndex,
+    searchTerm,
+    decision: decisionFilter ?? undefined,
     disabled: membersTab !== "history",
   });
   const upgradeRequestsHistoryCsvDownload = useDownloadCsv({
-    url: upgradeRequestsHistoryCsvUrl(owner.sId),
+    url: upgradeRequestsHistoryCsvUrl(owner.sId, {
+      decision: decisionFilter ?? undefined,
+      search: searchTerm,
+    }),
     filename: `dust_upgrade_requests_history_${owner.sId}.csv`,
     disabled:
       isUpgradeRequestsHistoryLoading || upgradeRequestsHistory.length === 0,
@@ -951,6 +968,39 @@ export function UsagePage() {
     </DropdownMenu>
   );
 
+  const decisionFilterDropdown = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          label={
+            decisionFilter === "approved"
+              ? "Approved"
+              : decisionFilter === "denied"
+                ? "Denied"
+                : "All decisions"
+          }
+          size="sm"
+          isSelect
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          label="All decisions"
+          onClick={() => handleSetDecisionFilter(null)}
+        />
+        <DropdownMenuItem
+          label="Approved"
+          onClick={() => handleSetDecisionFilter("approved")}
+        />
+        <DropdownMenuItem
+          label="Denied"
+          onClick={() => handleSetDecisionFilter("denied")}
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   const groupsFilterDropdown = groups.length > 0 && (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -1196,10 +1246,13 @@ export function UsagePage() {
                     </div>
                   )}
                   {membersTab === "history" && (
-                    <CsvDownloadButton
-                      {...upgradeRequestsHistoryCsvDownload}
-                      label="Download to CSV"
-                    />
+                    <div className="flex flex-row items-center gap-2">
+                      {decisionFilterDropdown}
+                      <CsvDownloadButton
+                        {...upgradeRequestsHistoryCsvDownload}
+                        label="Download to CSV"
+                      />
+                    </div>
                   )}
                 </div>
                 <div className="flex flex-col gap-2 pt-2">

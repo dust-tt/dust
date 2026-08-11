@@ -1,11 +1,63 @@
 import * as spendLimits from "@app/lib/metronome/alerts/spend_limits";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
-import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock(import("@app/lib/user_search/search"), async (importOriginal) => {
+  const mod = await importOriginal();
+  return {
+    ...mod,
+    searchAllUsers: vi.fn(
+      async ({
+        owner,
+        searchTerm,
+      }: {
+        owner: WorkspaceType;
+        searchTerm: string;
+      }) => {
+        const { memberships } =
+          await MembershipResource.getMembershipsForWorkspace({
+            workspace: owner,
+            includeUser: true,
+          });
+
+        const users = memberships
+          .map((m) => m.user)
+          .filter((u): u is NonNullable<typeof u> => u !== undefined);
+
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        const filteredUsers = searchTerm.trim()
+          ? users.filter((user) => {
+              const email = user.email?.toLowerCase() || "";
+              const fullName =
+                `${user.firstName ?? ""} ${user.lastName ?? ""}`.toLowerCase();
+              return (
+                email.includes(lowerSearchTerm) ||
+                fullName.includes(lowerSearchTerm)
+              );
+            })
+          : users;
+
+        return new Ok({
+          users: filteredUsers.map((user) => ({
+            workspace_id: owner.sId,
+            user_id: user.sId,
+            email: user.email,
+            full_name: `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim(),
+            updated_at: user.updatedAt,
+          })),
+          total: filteredUsers.length,
+        });
+      }
+    ),
+  };
+});
+
+import { honoApp } from "@front-api/app";
 
 vi.mock("@app/lib/metronome/alerts/spend_limits", async () => {
   const actual = await vi.importActual<typeof spendLimits>(
@@ -501,6 +553,140 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       for (const id of secondPageIds) {
         expect(firstPageIds.has(id)).toBe(false);
       }
+    });
+
+    it("filters by decision", async () => {
+      const workspace = await creditPricedWorkspace();
+      const { user: approvedMember } = await createMemberRequest(workspace);
+      const { user: deniedMember } = await createMemberRequest(workspace);
+
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+        workspace,
+      });
+      const { requests: pendingRequests } = await (
+        await honoApp.request(upgradeRequestsUrl(workspace.sId))
+      ).json();
+      const approvedRequestId = pendingRequests.find(
+        (r: { requester: { sId: string } }) =>
+          r.requester.sId === approvedMember.sId
+      ).sId;
+      const deniedRequestId = pendingRequests.find(
+        (r: { requester: { sId: string } }) =>
+          r.requester.sId === deniedMember.sId
+      ).sId;
+
+      await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}/${approvedRequestId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "approved" }),
+        }
+      );
+      await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}/${deniedRequestId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "denied" }),
+        }
+      );
+
+      const approvedResponse = await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}?status=resolved&decision=approved`
+      );
+      const { requests: approvedRequests, total: approvedTotal } =
+        await approvedResponse.json();
+      expect(approvedTotal).toBe(1);
+      expect(approvedRequests).toHaveLength(1);
+      expect(approvedRequests[0].sId).toBe(approvedRequestId);
+
+      const deniedResponse = await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}?status=resolved&decision=denied`
+      );
+      const { requests: deniedRequests, total: deniedTotal } =
+        await deniedResponse.json();
+      expect(deniedTotal).toBe(1);
+      expect(deniedRequests).toHaveLength(1);
+      expect(deniedRequests[0].sId).toBe(deniedRequestId);
+
+      const allResponse = await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}?status=resolved`
+      );
+      expect((await allResponse.json()).total).toBe(2);
+    });
+
+    it("filters by requester name/email search", async () => {
+      const workspace = await creditPricedWorkspace();
+      const { user: matchingMember } = await createMemberRequest(workspace);
+      const { user: otherMember } = await createMemberRequest(workspace);
+
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+        workspace,
+      });
+      const { requests: pendingRequests } = await (
+        await honoApp.request(upgradeRequestsUrl(workspace.sId))
+      ).json();
+      for (const request of pendingRequests) {
+        await honoApp.request(
+          `${upgradeRequestsUrl(workspace.sId)}/${request.sId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "denied" }),
+          }
+        );
+      }
+
+      const searchResponse = await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}?status=resolved&search=${encodeURIComponent(matchingMember.email ?? "")}`
+      );
+      expect(searchResponse.status).toBe(200);
+      const { requests: searchResults, total: searchTotal } =
+        await searchResponse.json();
+      expect(searchTotal).toBe(1);
+      expect(searchResults).toHaveLength(1);
+      expect(searchResults[0].requester.sId).toBe(matchingMember.sId);
+      expect(
+        searchResults.some(
+          (r: { requester: { sId: string } }) =>
+            r.requester.sId === otherMember.sId
+        )
+      ).toBe(false);
+    });
+
+    it("returns an empty page when the search matches no requester", async () => {
+      const workspace = await creditPricedWorkspace();
+      await createMemberRequest(workspace);
+
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+        workspace,
+      });
+      const { requests: pendingRequests } = await (
+        await honoApp.request(upgradeRequestsUrl(workspace.sId))
+      ).json();
+      await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}/${pendingRequests[0].sId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "denied" }),
+        }
+      );
+
+      const searchResponse = await honoApp.request(
+        `${upgradeRequestsUrl(workspace.sId)}?status=resolved&search=no-such-person`
+      );
+      expect(searchResponse.status).toBe(200);
+      const { requests, total } = await searchResponse.json();
+      expect(requests).toHaveLength(0);
+      expect(total).toBe(0);
     });
   });
 

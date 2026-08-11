@@ -202,15 +202,28 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     });
   }
 
-  // Resolved requests, most recent first
+  // Resolved requests, most recent first.
   static async listResolvedByWorkspace(
     auth: Authenticator,
-    { limit, offset }: { limit: number; offset: number }
+    {
+      limit,
+      offset,
+      decision,
+      userModelIds,
+    }: {
+      limit: number;
+      offset: number;
+      decision?: Exclude<MembershipUpgradeRequestStatus, "pending">;
+      userModelIds?: ModelId[];
+    }
   ): Promise<{ requests: MembershipUpgradeRequestResource[]; total: number }> {
     if (!auth.isManager()) {
       return { requests: [], total: 0 };
     }
-    const where = { status: { [Op.ne]: "pending" } };
+    const where = {
+      status: decision ?? { [Op.ne]: "pending" },
+      ...(userModelIds ? { userId: { [Op.in]: userModelIds } } : {}),
+    };
     const requests = await this.baseFetch(auth, {
       where,
       // `id` breaks ties between requests resolved at the same timestamp, so
@@ -234,27 +247,40 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
   // under a concurrent resolution (a newly resolved request is inserted at
   // the head, pushing every offset down), causing the caller to duplicate
   // or skip rows across pages; keyset pagination is immune to that because
-  // each page is bounded by the last row actually returned.
+  // each page is bounded by the last row actually returned. `decision` and
+  // `userModelIds` mirror the same filters as `listResolvedByWorkspace`, so
+  // the full-history export respects the History tab's decision filter and
+  // search bar.
   static async listResolvedByWorkspaceAfter(
     auth: Authenticator,
     {
       limit,
       after,
-    }: { limit: number; after: { resolvedAt: Date; id: ModelId } | null }
+      decision,
+      userModelIds,
+    }: {
+      limit: number;
+      after: { resolvedAt: Date; id: ModelId } | null;
+      decision?: Exclude<MembershipUpgradeRequestStatus, "pending">;
+      userModelIds?: ModelId[];
+    }
   ): Promise<MembershipUpgradeRequestResource[]> {
     if (!auth.isManager()) {
       return [];
     }
-    const statusFilter = { status: { [Op.ne]: "pending" } } as const;
+    const baseFilter = {
+      status: decision ?? { [Op.ne]: "pending" },
+      ...(userModelIds ? { userId: { [Op.in]: userModelIds } } : {}),
+    };
     const where = after
       ? {
-          ...statusFilter,
+          ...baseFilter,
           [Op.or]: [
             { resolvedAt: { [Op.lt]: after.resolvedAt } },
             { resolvedAt: after.resolvedAt, id: { [Op.lt]: after.id } },
           ],
         }
-      : statusFilter;
+      : baseFilter;
 
     return this.baseFetch(auth, {
       where,
