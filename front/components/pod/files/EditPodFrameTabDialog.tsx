@@ -1,10 +1,11 @@
 import { isCustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { usePodFrameTabs } from "@app/hooks/usePodFrameTabs";
-import type { PodFrameTab } from "@app/types/pod_frame_tab";
+import type { PodFrameTab, PodNavVisibility } from "@app/types/pod_frame_tab";
 import {
   buildPodNavItemsBeforeSettings,
   DEFAULT_POD_FRAME_TAB_ICON,
+  DEFAULT_POD_NAV_VISIBILITY,
   MAX_POD_FRAME_TAB_TITLE_LENGTH,
 } from "@app/types/pod_frame_tab";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -33,7 +34,7 @@ interface EditPodFrameTabDialogProps {
   frameTabs: PodFrameTab[];
   tabsOrder?: string[];
   isEditor: boolean;
-  includeConnectedData?: boolean;
+  navVisibility?: PodNavVisibility;
   tab: PodFrameTab;
   mode?: "create" | "edit";
   isOpen: boolean;
@@ -46,7 +47,7 @@ export function EditPodFrameTabDialog({
   frameTabs,
   tabsOrder,
   isEditor,
-  includeConnectedData = false,
+  navVisibility = DEFAULT_POD_NAV_VISIBILITY,
   tab,
   mode = "edit",
   isOpen,
@@ -74,11 +75,8 @@ export function EditPodFrameTabDialog({
   const [isMoving, setIsMoving] = useState(false);
 
   const navItems = useMemo(
-    () =>
-      buildPodNavItemsBeforeSettings(frameTabs, navOrder, {
-        includeConnectedData,
-      }),
-    [frameTabs, includeConnectedData, navOrder]
+    () => buildPodNavItemsBeforeSettings(frameTabs, navOrder, navVisibility),
+    [frameTabs, navVisibility, navOrder]
   );
   const tabIndex = navItems.findIndex(
     (item) => item.kind === "frame" && item.tab.path === tab.path
@@ -134,7 +132,7 @@ export function EditPodFrameTabDialog({
       return;
     }
     setIsMoving(true);
-    await moveFrameTab(tab.path, direction, { includeConnectedData });
+    await moveFrameTab(tab.path, direction, navVisibility);
     setIsMoving(false);
   };
 

@@ -85,6 +85,37 @@ export function podDatabasePrefixFromPodPath({
 }
 
 /**
+ * The app prefix (function-slug form) an on-disk database name belongs to, or `null` for a database
+ * with no app prefix — either created before namespacing, or owned by an app whose name cannot start
+ * a database name (see `podDatabasePrefixFromAppPrefix`).
+ *
+ * The inverse of `podDatabasePrefixFromAppPrefix`, which is injective because `deriveAppPrefix`
+ * never emits an underscore, so every underscore here came from a hyphen.
+ */
+export function appPrefixFromPodDatabaseName(name: string): string | null {
+  const separatorIndex = name.indexOf(POD_DATABASE_PREFIX_SEPARATOR);
+  if (separatorIndex <= 0) {
+    return null;
+  }
+
+  return name.slice(0, separatorIndex).replace(/_/g, "-");
+}
+
+/**
+ * A database's app-relative name, i.e. the on-disk name with its app prefix removed. This is the name
+ * the schema file declares and `db()` opens, so it is also the right thing to show inside an app.
+ * Returns the whole name for a database with no app prefix.
+ */
+export function podDatabaseNameWithoutAppPrefix(name: string): string {
+  const separatorIndex = name.indexOf(POD_DATABASE_PREFIX_SEPARATOR);
+  if (separatorIndex <= 0) {
+    return name;
+  }
+
+  return name.slice(separatorIndex + POD_DATABASE_PREFIX_SEPARATOR.length);
+}
+
+/**
  * Pick the database file `name` refers to, given the names currently on disk.
  *
  * `name` is the database's app-relative name as the schema file declares it (`chat`). An

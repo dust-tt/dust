@@ -2,7 +2,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import type { CustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useUpdatePodMetadata } from "@app/lib/swr/pods";
-import type { PodFrameTab } from "@app/types/pod_frame_tab";
+import type { PodFrameTab, PodNavVisibility } from "@app/types/pod_frame_tab";
 import {
   DEFAULT_POD_FRAME_TAB_ICON,
   MAX_POD_FRAME_TAB_TITLE_LENGTH,
@@ -208,15 +208,18 @@ export function usePodFrameTabs({
     async (
       path: string,
       direction: "left" | "right",
-      { includeConnectedData }: { includeConnectedData: boolean }
+      visibility: PodNavVisibility
     ) => {
       if (!isEditor) {
         return false;
       }
 
-      const nextNavOrder = moveFrameTabInTabsOrder(navOrder, path, direction, {
-        includeConnectedData,
-      });
+      const nextNavOrder = moveFrameTabInTabsOrder(
+        navOrder,
+        path,
+        direction,
+        visibility
+      );
       if (!nextNavOrder) {
         return false;
       }

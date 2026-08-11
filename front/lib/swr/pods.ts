@@ -26,6 +26,7 @@ import type {
   FileSystemEntry,
   GetSpaceFilesResponseBody,
 } from "@app/types/api/file_system/types";
+import type { GetPodAppsResponseBody, PodApp } from "@app/types/api/pod_apps";
 import type {
   GetPodMetadataResponseBody,
   PatchPodMetadataResponseBody,
@@ -111,6 +112,32 @@ export function usePodContextAttachments({
     isPodContextAttachmentsError: !!error,
     mutatePodContextAttachments: mutate,
     refreshPodContextAttachments,
+  };
+}
+
+export function usePodApps({
+  owner,
+  podId,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const podAppsFetcher: Fetcher<GetPodAppsResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    !podId ? null : `/api/w/${owner.sId}/pods/${podId}/apps`,
+    podAppsFetcher,
+    { disabled, keepPreviousData: true }
+  );
+
+  return {
+    apps: data?.apps ?? emptyArray<PodApp>(),
+    isPodAppsLoading: !disabled && !error && !data,
+    isPodAppsError: !!error,
+    mutatePodApps: mutate,
   };
 }
 

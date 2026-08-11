@@ -1,4 +1,7 @@
-import { deriveSandboxFunctionSlug } from "@app/lib/api/sandbox_functions/slug";
+import {
+  deriveSandboxFunctionSlug,
+  sandboxFunctionNameFromSlug,
+} from "@app/lib/api/sandbox_functions/slug";
 import { describe, expect, it } from "vitest";
 
 const POD_ID = "vlt_abc123";
@@ -112,5 +115,28 @@ describe("deriveSandboxFunctionSlug", () => {
     const result = derive(`pod-${POD_ID}/TaskList/functions/x.ts`, "Add_Task");
 
     expect(result.isErr()).toBe(true);
+  });
+});
+
+describe("sandboxFunctionNameFromSlug", () => {
+  it("inverts the slug composition for an app's function", () => {
+    const slug = derive(
+      `pod-${POD_ID}/PeopleTracker2/functions/add-person.ts`,
+      "add-person"
+    );
+    if (slug.isErr()) {
+      throw slug.error;
+    }
+
+    expect(slug.value).toBe("peopletracker2__add-person");
+    expect(sandboxFunctionNameFromSlug(slug.value)).toBe("add-person");
+  });
+
+  it("returns the whole slug for a function published outside an app folder", () => {
+    expect(sandboxFunctionNameFromSlug("greet")).toBe("greet");
+  });
+
+  it("keeps hyphens in a multi-word app's function name", () => {
+    expect(sandboxFunctionNameFromSlug("task-list__add-task")).toBe("add-task");
   });
 });
