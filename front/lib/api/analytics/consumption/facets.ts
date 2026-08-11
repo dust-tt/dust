@@ -66,6 +66,18 @@ type FacetBuckets = {
   contextual: Map<string, number>;
 };
 
+function getFacetBuckets(
+  bucketsByDimension: ReadonlyMap<ConsumptionScopeDimension, FacetBuckets>,
+  dimension: ConsumptionScopeDimension
+): FacetBuckets {
+  const buckets = bucketsByDimension.get(dimension);
+  if (!buckets) {
+    throw new Error(`Missing consumption facet buckets for ${dimension}.`);
+  }
+
+  return buckets;
+}
+
 type CompositeFacetBucket = {
   key: { value: string };
   contextual?: estypes.AggregationsSingleBucketAggregateBase;
@@ -223,10 +235,7 @@ export async function fetchConsumptionFacets(
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionFacets, ElasticsearchError>> {
-  const bucketsByDimension = {} as Record<
-    ConsumptionScopeDimension,
-    FacetBuckets
-  >;
+  const bucketsByDimension = new Map<ConsumptionScopeDimension, FacetBuckets>();
   for (const dimension of CONSUMPTION_SCOPE_DIMENSIONS) {
     const result = await fetchDimensionFacetBuckets({
       auth,
@@ -237,7 +246,7 @@ export async function fetchConsumptionFacets(
     if (result.isErr()) {
       return result;
     }
-    bucketsByDimension[dimension] = result.value;
+    bucketsByDimension.set(dimension, result.value);
   }
 
   const catalog = await listConsumptionFacetCatalog(auth);
@@ -247,43 +256,43 @@ export async function fetchConsumptionFacets(
   const agentFacets = await resolveFacets(
     auth,
     "agent",
-    bucketsByDimension.agent,
+    getFacetBuckets(bucketsByDimension, "agent"),
     catalog.agent
   );
   const userFacets = await resolveFacets(
     auth,
     "user",
-    bucketsByDimension.user,
+    getFacetBuckets(bucketsByDimension, "user"),
     catalog.user
   );
   const teamFacets = await resolveFacets(
     auth,
     "team",
-    bucketsByDimension.team,
+    getFacetBuckets(bucketsByDimension, "team"),
     catalog.team
   );
   const modelFacets = await resolveFacets(
     auth,
     "model",
-    bucketsByDimension.model,
+    getFacetBuckets(bucketsByDimension, "model"),
     catalog.model
   );
   const toolFacets = await resolveFacets(
     auth,
     "tool",
-    bucketsByDimension.tool,
+    getFacetBuckets(bucketsByDimension, "tool"),
     catalog.tool
   );
   const skillFacets = await resolveFacets(
     auth,
     "skill",
-    bucketsByDimension.skill,
+    getFacetBuckets(bucketsByDimension, "skill"),
     catalog.skill
   );
   const sourceFacets = await resolveFacets(
     auth,
     "source",
-    bucketsByDimension.source,
+    getFacetBuckets(bucketsByDimension, "source"),
     catalog.source
   );
 
