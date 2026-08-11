@@ -64,10 +64,10 @@ export function forceTemperatureToOne<C extends InputConfig>(config: C): C {
   return { ...config, temperature: 1 };
 }
 
-// `configParsers` helper: Fireworks accepts temperatures from 0 to 2 and
-// documents 0 as deterministic. Kimi K3 uses 0 as a Dust product choice, so
-// keep that policy in the llms layer rather than narrowing the endpoint schema,
-// which mirrors the provider API.
+// `configParsers` helper: Fireworks accepts temperatures from 0 to 2. Kimi K3
+// uses the lowest supported temperature as a Dust product choice, so keep that
+// policy in the llms layer rather than narrowing the endpoint schema, which
+// mirrors the provider API.
 // Verified 2026-08-11: https://docs.fireworks.ai/api-reference/post-responses
 export function forceTemperatureToZero<C extends InputConfig>(config: C): C {
   return { ...config, temperature: 0 };
