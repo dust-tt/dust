@@ -1,4 +1,8 @@
 import config from "@app/lib/api/config";
+import {
+  contributeFreeUsageCostForUser,
+  isFreeUsageContext,
+} from "@app/lib/api/llm/free_usage";
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
   createLLMTraceId,
@@ -141,6 +145,14 @@ export abstract class LLM<
       yield* this.completeStream(streamParameters, metadata);
       return;
     }
+
+    // Free (unbilled) usage — utility operations and free-origin agent calls
+    // (e.g. sidekick). Enforcement of the per-user daily cost cap happens above
+    // the router (before getStreamLLM); here we only record the call's cost into
+    // the counter after it completes (see below), alongside usage recording.
+    const isFreeUsage = isFreeUsageContext(this.context);
+    const user = this.authenticator.user();
+
     const { conversation, prompt, specifications, previousMessageId } =
       streamParameters;
 
@@ -362,25 +374,30 @@ export abstract class LLM<
           workspaceId: this.authenticator.getNonNullableWorkspace().id,
         });
 
-        // Classify usage at creation for internal/utility LLM operations
-        // (everything except the agent conversation itself): they are never
-        // billed and never processed by the usage queue, so they are free.
-        // agent_conversation runs are left untagged here and classified
-        // (free/user/programmatic) by the usage queue, which knows the
-        // triggering message origin.
-        const usageType =
-          this.context.operationType === "agent_conversation"
-            ? undefined
-            : USAGE_TYPE_FREE;
+        // Tag free (unbilled) usage at creation — utility operations and
+        // free-origin agent calls (e.g. sidekick). Paid agent_conversation runs
+        // are left untagged here and classified (user/programmatic) by the usage
+        // queue, which knows the triggering message origin.
+        const usageType = isFreeUsage ? USAGE_TYPE_FREE : undefined;
 
         // Run usage is only populated if the run is successful.
         if (buffer.runTokenUsage) {
-          await run.recordTokenUsage(
+          const costMicroUsd = await run.recordTokenUsage(
             this.authenticator,
             buffer.runTokenUsage,
             this.modelId,
             { inferenceRegion: this.metadata.inferenceRegion, usageType }
           );
+
+          // Record this free call's cost into the per-user daily free-usage
+          // counter (enforced above the router, before the call).
+          if (isFreeUsage && user && costMicroUsd) {
+            await contributeFreeUsageCostForUser(
+              this.authenticator.getNonNullableWorkspace(),
+              user.id,
+              costMicroUsd
+            );
+          }
         }
 
         const simulatedRunUsages = this.getSimulatedRunUsages();

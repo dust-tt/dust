@@ -43,6 +43,7 @@ import {
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import { getStreamLLM } from "@app/lib/api/llm";
+import { isFreeUsageBlocked } from "@app/lib/api/llm/free_usage";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import {
   getByokUserFacingLLMErrorMessage,
@@ -784,7 +785,22 @@ export async function runModel(
     conversationId: conversation.sId,
     userId: auth.user()?.sId,
     workspaceId: conversation.owner.sId,
+    // Lets the LLM call site classify free usage (e.g. sidekick) and enforce the
+    // per-user free-usage cost cap.
+    userMessageOrigin: userMessage.context.origin,
   };
+
+  // Enforce the per-user daily free-usage cost cap before running a free call
+  // (e.g. sidekick). Runs per step, so a runaway free loop is stopped mid-run.
+  if (await isFreeUsageBlocked(auth, traceContext)) {
+    await publishAgentError({
+      code: "free_usage_limit_reached",
+      message:
+        "The daily free-usage limit has been reached. Please try again later.",
+      metadata: null,
+    });
+    return null;
+  }
 
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,

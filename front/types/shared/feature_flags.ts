@@ -355,6 +355,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Allow editing tool inputs before approving a tool call in the tool validation UI.",
     stage: "dust_only",
   },
+  skip_free_usage_rate_limit: {
+    description:
+      "Skip the per-user daily free-usage cost cap enforced at the LLM call site. Escape hatch to unstick legitimate workspaces that legitimately exceed the free-usage limit.",
+    stage: "on_demand",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

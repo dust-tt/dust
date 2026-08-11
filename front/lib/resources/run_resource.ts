@@ -507,7 +507,7 @@ export class RunResource extends BaseResource<RunModel> {
       inferenceRegion,
     });
 
-    return this.recordRunUsage(
+    await this.recordRunUsage(
       auth,
       [
         {
@@ -524,6 +524,10 @@ export class RunResource extends BaseResource<RunModel> {
       ],
       { usageType }
     );
+
+    // Return the computed cost so callers can meter it (e.g. the free-usage cost
+    // cap); undefined above when the model is unknown and nothing was recorded.
+    return usageCostMicroUsd;
   }
 
   async listRunUsages(auth: Authenticator): Promise<RunUsageType[]> {
