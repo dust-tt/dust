@@ -245,13 +245,22 @@ describe("SandboxFunctionMCPActionResource", () => {
       { content: { type: "text", text: "placeholder" } },
     ]);
     expect(outputRes.isOk()).toBe(true);
+    const gcsPath = action.outputGcsPath ?? "missing-output-path";
+
     gcsStore.set(
-      action.outputGcsPath ?? "missing-output-path",
+      gcsPath,
       Buffer.from(JSON.stringify({ not: "an output" }), "utf-8")
     );
-
     const readBack = await action.readOutput();
     expect(readBack.isErr()).toBe(true);
+
+    // An envelope with an unknown version fails loudly instead of being silently misparsed.
+    gcsStore.set(
+      gcsPath,
+      Buffer.from(JSON.stringify({ version: 3, content: [] }), "utf-8")
+    );
+    const unknownVersionReadBack = await action.readOutput();
+    expect(unknownVersionReadBack.isErr()).toBe(true);
   });
 
   it("marks the action as succeeded or errored with a duration", async () => {

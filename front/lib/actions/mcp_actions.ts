@@ -110,8 +110,8 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isRecord } from "@app/types/shared/utils/general";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isRecord } from "@app/types/shared/utils/general";
 import { slugify } from "@app/types/shared/utils/string_utils";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
