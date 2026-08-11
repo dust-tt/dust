@@ -22,6 +22,11 @@ import type { Attributes, ModelStatic, Transaction } from "sequelize";
 export interface MembershipUpgradeRequestResource
   extends ReadonlyAttributesType<MembershipUpgradeRequestModel> {}
 
+// Thrown by `createPending` when a reason is required but missing, and there
+// is no existing pending request to reuse. Distinguished from generic errors
+// so callers can map it to the appropriate domain error.
+export class UpgradeRequestReasonRequiredError extends Error {}
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpgradeRequestModel> {
   static model: ModelStaticWorkspaceAware<MembershipUpgradeRequestModel> =
@@ -64,36 +69,54 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
   }
 
   // Create a pending request for the given member, or return the existing
-  // pending one if there already is one (idempotent — requesting again while a
-  // request is pending is a no-op). The partial unique index also guards
-  // against concurrent duplicates.
+  // pending one if there already is one `reasonRequired`
+  // is only enforced when a new request actually needs to be created, and the
+  // check happens inside the same transaction as the existing-request lookup
+  // to avoid rejecting a retry that races with a concurrent creation.
   static async createPending(
     auth: Authenticator,
-    { user, reason }: { user: UserResource; reason: string | null }
+    {
+      user,
+      reason,
+      reasonRequired,
+    }: { user: UserResource; reason: string | null; reasonRequired: boolean }
   ): Promise<Result<MembershipUpgradeRequestResource, Error>> {
     const workspace = auth.getNonNullableWorkspace();
-    const row = await withTransaction(async (transaction) => {
-      const existing = await this.model.findOne({
-        where: {
-          workspaceId: workspace.id,
-          userId: user.id,
-          status: "pending",
-        },
-        transaction,
+    let row;
+    try {
+      row = await withTransaction(async (transaction) => {
+        const existing = await this.model.findOne({
+          where: {
+            workspaceId: workspace.id,
+            userId: user.id,
+            status: "pending",
+          },
+          transaction,
+        });
+        if (existing) {
+          return existing;
+        }
+        if (reasonRequired && !reason?.trim()) {
+          throw new UpgradeRequestReasonRequiredError(
+            "A reason is required to submit an upgrade request."
+          );
+        }
+        return this.model.create(
+          {
+            workspaceId: workspace.id,
+            userId: user.id,
+            status: "pending",
+            reason,
+          },
+          { transaction }
+        );
       });
-      if (existing) {
-        return existing;
+    } catch (err) {
+      if (err instanceof UpgradeRequestReasonRequiredError) {
+        return new Err(err);
       }
-      return this.model.create(
-        {
-          workspaceId: workspace.id,
-          userId: user.id,
-          status: "pending",
-          reason,
-        },
-        { transaction }
-      );
-    });
+      return new Err(normalizeError(err));
+    }
     const membership =
       await MembershipResource.getActiveMembershipOfUserInWorkspace({
         user,
