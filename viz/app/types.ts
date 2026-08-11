@@ -61,6 +61,7 @@ export type VisualizationRPCRequestMap = {
   getUserIdentity: null;
   getFile: GetFileParams;
   getCodeToExecute: null;
+  ping: null;
   setContentHeight: SetContentHeightParams;
   setErrorMessage: SetErrorMessageParams;
   downloadFileRequest: DownloadFileRequestParams;
@@ -79,6 +80,7 @@ export interface CommandResultMap {
   getCodeToExecute: { code: string };
   getFile: { fileBlob: Blob | null };
   downloadFileRequest: { blob: Blob; filename?: string };
+  ping: { ok: true };
   setContentHeight: void;
   setErrorMessage: void;
   displayCode: void;
