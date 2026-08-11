@@ -23,9 +23,6 @@ function usageStatusUrl(workspaceId: string): string {
 
 export type RequestUpgradeResult =
   | { ok: true }
-  // "invalid_request_error" here means the reason the member supplied didn't
-  // satisfy the workspace's requirements (missing when required, too long).
-  // The caller surfaces that inline on the reason field instead of a toast.
   | { ok: false; errorType: string; message: string };
 
 // Member-initiated: request a spend-limit upgrade for the current user. On
