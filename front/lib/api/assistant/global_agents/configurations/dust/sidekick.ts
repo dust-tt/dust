@@ -6,11 +6,6 @@ import type {
   PrefetchedDataSourcesType,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
-import {
-  getLargeWhitelistedModel,
-  getSmallWhitelistedModel,
-  selectEnabledModel,
-} from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
@@ -18,7 +13,10 @@ import type {
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import {
+  AUTO_FAST_MODEL_CONFIG,
+  AUTO_MODEL_CONFIG,
+} from "@app/types/assistant/models/auto";
 import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { SHARED_PROMPT_SECTIONS } from "./agent_suggestions_shared";
@@ -349,17 +347,17 @@ export function _getSidekickGlobalAgent(
 
   // Use noop model for the first turn of a new agent sidekick conversation
   // (static response without calling a real LLM).
-  // Use a fast model for other first turns and the full model for follow-ups.
+  // Use the Fast auto stream for other first turns and the Standard auto stream
+  // for follow-ups. Both sentinels are resolved to a concrete model + effort at
+  // message-send time by resolveModel().
   const isFirstTurn = globalAgentContext?.userMessageRank === 0;
   const isNewAgentFromScratchFirstTurn =
     isFirstTurn && globalAgentContext?.sidekickIsNewAgentFromScratch;
   const modelConfiguration = isNewAgentFromScratchFirstTurn
     ? NOOP_MODEL_CONFIG
     : isFirstTurn
-      ? (selectEnabledModel(auth, [CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG], {
-          featureFlags,
-        }) ?? getSmallWhitelistedModel(auth, undefined, { featureFlags }))
-      : getLargeWhitelistedModel(auth, undefined, { featureFlags });
+      ? AUTO_FAST_MODEL_CONFIG
+      : AUTO_MODEL_CONFIG;
   const model = modelConfiguration
     ? {
         providerId: modelConfiguration.providerId,
