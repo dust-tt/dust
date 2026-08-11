@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 const runner = join(import.meta.dir, "runner.ts");
@@ -39,10 +40,21 @@ describe("runner run", () => {
     expect(JSON.parse(stdout).output.mode).toBe(0o660);
   });
 
-  test("delivers a 2MB result envelope intact", async () => {
-    // Regression: process.exit does not drain queued async stdout writes, so a
-    // large envelope written with process.stdout.write was cut mid-JSON. The
-    // envelope must reach the reader whole, whatever its size.
+  test("delivers an inline envelope larger than the pipe buffer intact", async () => {
+    // Regression: process.exit does not drain queued async stdout writes, so
+    // an envelope bigger than the kernel pipe buffer (64KB) but under the
+    // inline cap was cut mid-JSON. It must reach the reader whole.
+    const { stdout, code } = await run(
+      ["run", fx("big-output.ts")],
+      JSON.stringify({ url: "http://localhost/?size=200000" })
+    );
+    expect(code).toBe(0);
+    const out = JSON.parse(stdout);
+    expect(out.ok).toBe(true);
+    expect(out.output.big.length).toBe(200_000);
+  });
+
+  test("spills a 2MB result to a file and emits a pointer envelope", async () => {
     const { stdout, code } = await run(
       ["run", fx("big-output.ts")],
       JSON.stringify({ url: "http://localhost/" })
@@ -50,7 +62,25 @@ describe("runner run", () => {
     expect(code).toBe(0);
     const out = JSON.parse(stdout);
     expect(out.ok).toBe(true);
-    expect(out.output.big.length).toBe(2 * 1024 * 1024);
+    expect(out.resultFile).toStartWith("/tmp/dust-fn-results/");
+    const spilled = readFileSync(out.resultFile, "utf8");
+    rmSync(out.resultFile, { force: true });
+    expect(out.resultBytes).toBe(Buffer.byteLength(spilled, "utf8"));
+    const envelope = JSON.parse(spilled);
+    expect(envelope.ok).toBe(true);
+    expect(envelope.output.big.length).toBe(2 * 1024 * 1024);
+  });
+
+  test("refuses a result over the hard cap with output_too_large", async () => {
+    const { stdout, code } = await run(
+      ["run", fx("big-output.ts")],
+      JSON.stringify({ url: `http://localhost/?size=${6 * 1024 * 1024}` })
+    );
+    expect(code).toBe(1);
+    const out = JSON.parse(stdout);
+    expect(out.ok).toBe(false);
+    expect(out.error.code).toBe("output_too_large");
+    expect(out.error.message).toContain("bytes");
   });
 
   test("exits 1 with ok:false when handler throws", async () => {
