@@ -52,6 +52,10 @@ use super::RUNNER_JS;
 
 pub const WARM_PROTOCOL_VERSION: u32 = 2;
 
+const WARM_ENABLED_ENV: &str = "DUST_FUNCTION_WARM_ENABLED";
+const SANDBOX_TOKEN_ENV: &str = "DUST_SANDBOX_TOKEN";
+const POD_USER_IDENTITY_ENV: &str = "DUST_POD_USER_IDENTITY";
+
 /// Pool geometry. Four generic workers bound the pod's warm memory (a worker
 /// is one bun process capped at ~300MB RSS with its imported working set,
 /// see serve.ts) regardless of how many functions the pod publishes. Each
@@ -81,6 +85,10 @@ const WARM_RESPONSE_TIMEOUT: Duration = Duration::from_secs(120);
 
 /// Connect timeout: the server is either listening or it is not.
 const WARM_CONNECT_TIMEOUT: Duration = Duration::from_millis(250);
+
+fn warm_execution_enabled() -> bool {
+    matches!(std::env::var(WARM_ENABLED_ENV).as_deref(), Ok("1"))
+}
 
 #[derive(Debug, Deserialize)]
 struct WarmFrame {
@@ -341,6 +349,9 @@ fn prune_bundle_cache(dir: &Path, max_age: Duration) {
 /// Tries to run `input` (the raw stdin envelope) against the warm worker on
 /// `name`'s home slot. Never errors: every failure is a `Miss`.
 pub async fn try_warm_run(name: &str, input: &str) -> WarmRun {
+    if !warm_execution_enabled() {
+        return WarmRun::Miss;
+    }
     // The name travels in the warm request and feeds the worker's directory
     // scan, so it is validated here as the cold path's resolve_existing
     // would.
@@ -475,6 +486,9 @@ async fn roundtrip(mut stream: UnixStream, name: &str, input: &str) -> Result<Wa
 /// is its own process group so it survives dsbx exiting and is not
 /// collateral of anything that signals dsbx's group.
 pub fn spawn_worker(name: &str) {
+    if !warm_execution_enabled() {
+        return;
+    }
     if !super::is_valid_name(name) {
         return;
     }
@@ -519,6 +533,11 @@ pub fn spawn_worker(name: &str) {
         .arg(&functions_dir)
         .arg(&socket)
         .env("NODE_PATH", super::harness_node_path())
+        // Bun child processes inherit the worker's native spawn environment, even after
+        // JavaScript deletes process.env entries. Invocation-scoped values are supplied to the
+        // handler through the request context instead and must never enter the resident process.
+        .env_remove(SANDBOX_TOKEN_ENV)
+        .env_remove(POD_USER_IDENTITY_ENV)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(log.map(Stdio::from).unwrap_or_else(Stdio::null))
@@ -556,6 +575,33 @@ mod tests {
 };
 "#;
 
+    fn environment_fixture() -> String {
+        let context_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("pod/context.ts");
+        let context_import = serde_json::to_string(
+            context_path
+                .to_str()
+                .expect("pod context path must be valid UTF-8"),
+        )
+        .expect("serialize pod context import");
+        format!(
+            r#"import {{ podEnv }} from {context_import};
+
+export default {{
+  async fetch() {{
+    const child = Bun.spawnSync(["/usr/bin/env"]);
+    const childEnv = new TextDecoder().decode(child.stdout);
+    return Response.json({{
+      contextToken: podEnv("DUST_SANDBOX_TOKEN") ?? null,
+      contextIdentity: podEnv("DUST_POD_USER_IDENTITY") ?? null,
+      childHasToken: childEnv.includes("DUST_SANDBOX_TOKEN="),
+      childHasIdentity: childEnv.includes("DUST_POD_USER_IDENTITY="),
+    }});
+  }},
+}};
+"#
+        )
+    }
+
     fn restore_env(key: &str, original: Option<std::ffi::OsString>) {
         match original {
             Some(value) => std::env::set_var(key, value),
@@ -581,6 +627,9 @@ mod tests {
         }
         let original_home = std::env::var_os("HOME");
         let original_functions_dir = std::env::var_os("DUST_FUNCTIONS_DIR");
+        let original_warm_enabled = std::env::var_os(WARM_ENABLED_ENV);
+        let original_token = std::env::var_os(SANDBOX_TOKEN_ENV);
+        let original_identity = std::env::var_os(POD_USER_IDENTITY_ENV);
 
         let home = tempfile::tempdir().expect("home tempdir");
         std::env::set_var("HOME", home.path());
@@ -588,6 +637,9 @@ mod tests {
         let handler = bundle_dir.path().join("greet.ts");
         std::fs::write(&handler, HELLO_FIXTURE).expect("fixture");
         std::env::set_var("DUST_FUNCTIONS_DIR", bundle_dir.path());
+        std::env::set_var(WARM_ENABLED_ENV, "1");
+        std::env::set_var(SANDBOX_TOKEN_ENV, "spawn-token");
+        std::env::set_var(POD_USER_IDENTITY_ENV, "spawn-identity");
 
         let input = serde_json::json!({ "url": "http://localhost/?name=warm" }).to_string();
 
@@ -595,6 +647,8 @@ mod tests {
         assert!(matches!(try_warm_run("greet", &input).await, WarmRun::Miss));
 
         spawn_worker("greet");
+        std::env::set_var(SANDBOX_TOKEN_ENV, "invocation-token");
+        std::env::set_var(POD_USER_IDENTITY_ENV, "invocation-identity");
 
         // The worker needs a moment to bind its socket; the first served
         // request pays the bundle import and reports it.
@@ -620,6 +674,29 @@ mod tests {
                 assert_eq!(import_kind, Some(ImportKind::Cached));
             }
             WarmRun::Miss => panic!("second warm attempt missed"),
+        }
+
+        // The handler sees the current invocation's values through AsyncLocalStorage, while a
+        // nested process cannot recover the token or identity that existed when the worker was
+        // spawned.
+        let environment_handler = bundle_dir.path().join("greet__environment.ts");
+        std::fs::write(&environment_handler, environment_fixture()).expect("environment fixture");
+        match try_warm_run("greet__environment", &input).await {
+            WarmRun::Outcome(outcome, _) => {
+                assert_eq!(
+                    outcome,
+                    serde_json::json!({
+                        "ok": true,
+                        "output": {
+                            "contextToken": "invocation-token",
+                            "contextIdentity": "invocation-identity",
+                            "childHasToken": false,
+                            "childHasIdentity": false,
+                        }
+                    })
+                );
+            }
+            WarmRun::Miss => panic!("invocation environment probe missed the warm worker"),
         }
 
         // A second function in the same directory is served by the same
@@ -666,6 +743,24 @@ mod tests {
 
         restore_env("HOME", original_home);
         restore_env("DUST_FUNCTIONS_DIR", original_functions_dir);
+        restore_env(WARM_ENABLED_ENV, original_warm_enabled);
+        restore_env(SANDBOX_TOKEN_ENV, original_token);
+        restore_env(POD_USER_IDENTITY_ENV, original_identity);
+    }
+
+    #[test]
+    fn warm_execution_requires_explicit_opt_in() {
+        let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
+        let original = std::env::var_os(WARM_ENABLED_ENV);
+
+        std::env::remove_var(WARM_ENABLED_ENV);
+        assert!(!warm_execution_enabled());
+        std::env::set_var(WARM_ENABLED_ENV, "0");
+        assert!(!warm_execution_enabled());
+        std::env::set_var(WARM_ENABLED_ENV, "1");
+        assert!(warm_execution_enabled());
+
+        restore_env(WARM_ENABLED_ENV, original);
     }
 
     /// A squatted warm dir (wrong owner is hard to fake unprivileged, but a
