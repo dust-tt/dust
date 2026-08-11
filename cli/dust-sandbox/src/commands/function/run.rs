@@ -156,6 +156,28 @@ fn stdout_result(
         Ok(outcome) => (ResultEnvelope::stdout_outcome(outcome, Some(timings_ms)), 0),
         Err(_) => {
             let snippet = truncate_chars(line, NON_JSON_SNIPPET_MAX_CHARS);
+            if line.starts_with('{') || line.starts_with('[') {
+                // A JSON-prefixed line that does not parse is a runner envelope
+                // cut in transit, not a function printing prose: the function
+                // ran, its result was lost. Classify honestly, and keep the
+                // payload prefix out of the error message — a snippet of valid
+                // JSON inside an error string reads like a wrapping bug and
+                // sends builders chasing the wrong problem. The raw prefix
+                // goes to stderr for the logs instead.
+                let bytes_read = response.len();
+                eprintln!("dsbx: truncated function output (read {bytes_read} bytes): {snippet}");
+                return (
+                    ResultEnvelope::stdout_error(
+                        "output_truncated",
+                        format!(
+                            "function output was truncated in transit (read {bytes_read} bytes, \
+                             runner exit {runner_exit_code}); return a smaller payload or write \
+                             large data to a pod file"
+                        ),
+                    ),
+                    0,
+                );
+            }
             (
                 ResultEnvelope::stdout_invocation_failed(format!(
                     "function produced non-JSON output (runner exit {runner_exit_code}): {snippet}"
@@ -231,6 +253,43 @@ mod tests {
             .expect("invocation_failed message is a string");
         assert!(message.contains("runner exit 1"));
         assert!(message.contains("not-json"));
+    }
+
+    #[test]
+    fn stdout_result_classifies_a_cut_json_line_as_output_truncated() {
+        // A JSON-prefixed line that fails to parse is a truncated envelope:
+        // the code is output_truncated, the message carries the byte count and
+        // never the payload prefix (which reads like a wrapping bug).
+        let cut = "{\"ok\":true,\"output\":{\"hello\":\"wor".to_string();
+        let bytes_read = cut.len();
+        let (envelope, code) = stdout_result(Ok((0, Some(cut))), timings(1, 1));
+        assert_eq!(code, 0);
+        assert_eq!(envelope.outcome["error"]["code"], "output_truncated");
+        let message = envelope.outcome["error"]["message"]
+            .as_str()
+            .expect("output_truncated message is a string");
+        assert!(message.contains(&format!("read {bytes_read} bytes")));
+        assert!(message.contains("runner exit 0"));
+        assert!(!message.contains("{\"ok\""));
+
+        // Same for an array-prefixed line.
+        let (envelope, _) = stdout_result(Ok((0, Some("[1,2,".to_string()))), timings(1, 1));
+        assert_eq!(envelope.outcome["error"]["code"], "output_truncated");
+    }
+
+    #[test]
+    fn stdout_result_keeps_the_snippet_for_genuinely_non_json_output() {
+        let (envelope, code) = stdout_result(
+            Ok((0, Some("some stray log line\n".to_string()))),
+            timings(1, 1),
+        );
+        assert_eq!(code, 0);
+        assert_eq!(envelope.outcome["error"]["code"], "invocation_failed");
+        let message = envelope.outcome["error"]["message"]
+            .as_str()
+            .expect("invocation_failed message is a string");
+        assert!(message.contains("non-JSON output"));
+        assert!(message.contains("some stray log line"));
     }
 
     #[test]

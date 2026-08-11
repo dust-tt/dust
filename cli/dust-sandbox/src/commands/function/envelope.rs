@@ -68,11 +68,15 @@ impl ResultEnvelope {
     }
 
     pub fn stdout_invocation_failed(message: impl Into<String>) -> Self {
+        Self::stdout_error("invocation_failed", message)
+    }
+
+    pub fn stdout_error(code: &str, message: impl Into<String>) -> Self {
         Self::stdout_outcome(
             serde_json::json!({
                 "ok": false,
                 "error": {
-                    "code": "invocation_failed",
+                    "code": code,
                     "message": message.into(),
                 }
             }),

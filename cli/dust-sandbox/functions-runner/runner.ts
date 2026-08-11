@@ -16,6 +16,7 @@ import { errorEnvelope, podDatabaseMaxSizeBytes } from "./db/common.ts";
 import { runQuery } from "./db/query.ts";
 import { reconcile } from "./db/reconcile.ts";
 import { generateSchemaFileText } from "./db/schema.ts";
+import { emitEnvelopeLine } from "./emit.ts";
 import { invoke } from "./invoke.ts";
 import { BadInputError, parseInput, type RequestInput } from "./protocol.ts";
 import { getFunctionSchema } from "./schema.ts";
@@ -41,25 +42,21 @@ async function runHandler(handlerPath: string): Promise<number> {
     input = parseInput(raw);
   } catch (e) {
     const message = e instanceof BadInputError ? e.message : String(e);
-    process.stdout.write(
-      `${JSON.stringify({ ok: false, error: { code: "bad_input", message } })}\n`
-    );
+    emitEnvelopeLine({ ok: false, error: { code: "bad_input", message } });
     return 2;
   }
   const out = await invoke(handlerPath, input);
-  process.stdout.write(`${JSON.stringify(out)}\n`);
+  emitEnvelopeLine(out);
   return out.ok ? 0 : 1;
 }
 
 async function getHandler(handlerPath: string): Promise<number> {
   try {
     const schema = await getFunctionSchema(handlerPath);
-    process.stdout.write(`${JSON.stringify(schema)}\n`);
+    emitEnvelopeLine(schema);
     return 0;
   } catch (e) {
-    process.stdout.write(
-      `${JSON.stringify({ error: e instanceof Error ? e.message : String(e) })}\n`
-    );
+    emitEnvelopeLine({ error: e instanceof Error ? e.message : String(e) });
     return 1;
   }
 }
@@ -67,29 +64,25 @@ async function getHandler(handlerPath: string): Promise<number> {
 async function buildHandler(args: string[]): Promise<number> {
   const [srcPath, outBundlePath, outSchemaPath] = args;
   if (!srcPath || !outBundlePath || !outSchemaPath) {
-    process.stdout.write(
-      `${JSON.stringify({
-        ok: false,
-        error: {
-          kind: "bad_args",
-          message: "usage: runner build <src> <outBundle> <outSchema>",
-        },
-      })}\n`
-    );
+    emitEnvelopeLine({
+      ok: false,
+      error: {
+        kind: "bad_args",
+        message: "usage: runner build <src> <outBundle> <outSchema>",
+      },
+    });
     return 2;
   }
   const result = await build(srcPath, outBundlePath, outSchemaPath);
-  process.stdout.write(`${JSON.stringify(result)}\n`);
+  emitEnvelopeLine(result);
   return result.ok ? 0 : 1;
 }
 
 function emitDbBadArgs(usage: string): number {
-  process.stdout.write(
-    `${JSON.stringify({
-      ok: false,
-      error: { kind: "bad_args", message: usage },
-    })}\n`
-  );
+  emitEnvelopeLine({
+    ok: false,
+    error: { kind: "bad_args", message: usage },
+  });
   return 2;
 }
 
@@ -103,10 +96,10 @@ async function dbReconcileHandler(args: string[]): Promise<number> {
   }
   const result = await reconcile(dbPath, schemaFile);
   if (result.isErr()) {
-    process.stdout.write(`${JSON.stringify(errorEnvelope(result.error))}\n`);
+    emitEnvelopeLine(errorEnvelope(result.error));
     return 1;
   }
-  process.stdout.write(`${JSON.stringify({ ok: true, ...result.value })}\n`);
+  emitEnvelopeLine({ ok: true, ...result.value });
   return 0;
 }
 
@@ -117,11 +110,11 @@ async function dbSchemaHandler(args: string[]): Promise<number> {
   }
   const result = generateSchemaFileText(dbPath);
   if (result.isErr()) {
-    process.stdout.write(`${JSON.stringify(errorEnvelope(result.error))}\n`);
+    emitEnvelopeLine(errorEnvelope(result.error));
     return 1;
   }
   await Bun.write(outSchemaTs, result.value);
-  process.stdout.write(`${JSON.stringify({ ok: true })}\n`);
+  emitEnvelopeLine({ ok: true });
   return 0;
 }
 
@@ -136,18 +129,16 @@ async function dbQueryHandler(args: string[]): Promise<number> {
   }
   const maxSizeBytes = podDatabaseMaxSizeBytes();
   if (maxSizeBytes.isErr()) {
-    process.stdout.write(
-      `${JSON.stringify(errorEnvelope(maxSizeBytes.error))}\n`
-    );
+    emitEnvelopeLine(errorEnvelope(maxSizeBytes.error));
     return 1;
   }
   const sql = await Bun.stdin.text();
   const result = runQuery(dbPath, sql, maxSizeBytes.value, spillDir);
   if (result.isErr()) {
-    process.stdout.write(`${JSON.stringify(errorEnvelope(result.error))}\n`);
+    emitEnvelopeLine(errorEnvelope(result.error));
     return 1;
   }
-  process.stdout.write(`${JSON.stringify({ ok: true, ...result.value })}\n`);
+  emitEnvelopeLine({ ok: true, ...result.value });
   return 0;
 }
 

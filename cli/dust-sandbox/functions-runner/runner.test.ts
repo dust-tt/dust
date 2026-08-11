@@ -39,6 +39,20 @@ describe("runner run", () => {
     expect(JSON.parse(stdout).output.mode).toBe(0o660);
   });
 
+  test("delivers a 2MB result envelope intact", async () => {
+    // Regression: process.exit does not drain queued async stdout writes, so a
+    // large envelope written with process.stdout.write was cut mid-JSON. The
+    // envelope must reach the reader whole, whatever its size.
+    const { stdout, code } = await run(
+      ["run", fx("big-output.ts")],
+      JSON.stringify({ url: "http://localhost/" })
+    );
+    expect(code).toBe(0);
+    const out = JSON.parse(stdout);
+    expect(out.ok).toBe(true);
+    expect(out.output.big.length).toBe(2 * 1024 * 1024);
+  });
+
   test("exits 1 with ok:false when handler throws", async () => {
     const { stdout, code } = await run(
       ["run", fx("throws.ts")],
