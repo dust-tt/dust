@@ -180,6 +180,20 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   }
 
   const { agentMessage, conversation, triggeringUserMessage } = context;
+  // Deleted conversations still incurred billable consumption and must remain visible in
+  // historical analytics. This system workflow is already workspace-scoped and loads the message
+  // graph without user permission filtering, so load the conversation under the same conditions.
+  const messageConversation = await ConversationResource.fetchById(
+    auth,
+    conversation.conversationId,
+    {
+      dangerouslySkipPermissionFiltering: true,
+      includeDeleted: true,
+    }
+  );
+  if (!messageConversation) {
+    throw new Error("Agent message conversation not found");
+  }
   if (
     !AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status) ||
     !isTerminalAgentMessageStatus(agentMessage.status)
@@ -233,13 +247,6 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     agentMessage.agentMessageModelId,
     { withToolMetadata: true }
   );
-  const messageConversation = await ConversationResource.fetchById(
-    auth,
-    conversation.conversationId
-  );
-  if (!messageConversation) {
-    throw new Error("Agent message conversation not found");
-  }
   const ancestorAgentIds = (
     await listAgenticAncestors(auth, messageConversation, { agentMessageId })
   )

@@ -353,6 +353,21 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
     expect(input).toBeNull();
   });
 
+  it("loads billed consumption when the conversation was deleted", async () => {
+    const context = await setupSettledMessage();
+    await context.conversation.updateVisibilityToDeleted(context.auth);
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      context.auth,
+      { agentMessageId: context.agentMessage.sId }
+    );
+
+    expect(input).toMatchObject({
+      billedCredits: 5,
+      conversationId: context.conversation.sId,
+    });
+  });
+
   it("fails when usage has not been classified for billing", async () => {
     const context = await setupSettledMessage({ usageType: null });
 
