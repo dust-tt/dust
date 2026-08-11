@@ -1,7 +1,10 @@
 import type { MCPToolType } from "@app/lib/api/mcp";
 import { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
-import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import {
+  getMCPAuthorizationScope,
+  RemoteMCPServerResource,
+} from "@app/lib/resources/remote_mcp_servers_resource";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -102,6 +105,26 @@ describe("RemoteMCPServerResource.discoverOAuthMetadata", () => {
     if (result.isOk()) {
       expect(result.value.token_endpoint_auth_method).toBe(registeredMethod);
     }
+  });
+});
+
+describe("getMCPAuthorizationScope", () => {
+  it("requests offline access when the authorization server supports it", () => {
+    expect(
+      getMCPAuthorizationScope({
+        extraScopes: "files.read",
+        authorizationServerScopes: ["files.read", "offline_access"],
+      })
+    ).toBe("files.read offline_access");
+  });
+
+  it("omits offline access when the authorization server does not support it", () => {
+    expect(
+      getMCPAuthorizationScope({
+        extraScopes: "files.read offline_access",
+        authorizationServerScopes: ["files.read"],
+      })
+    ).toBe("files.read");
   });
 });
 

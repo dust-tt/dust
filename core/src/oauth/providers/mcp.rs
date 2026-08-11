@@ -279,6 +279,10 @@ impl Provider for MCPConnectionProvider {
             form_data.push(("resource", resource));
         }
 
+        if let Some(ref scope) = metadata.scope {
+            form_data.push(("scope", scope));
+        }
+
         let client = self.client_for(use_static_ip)?;
         let mut req = client
             .post(metadata.token_endpoint)
