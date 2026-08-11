@@ -135,6 +135,90 @@
   }
 }
 
+/* Puzzle spinner */
+.puzzle-spinner-icon {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+  overflow: visible;
+}
+.dark .puzzle-spinner-icon {
+  color: var(--color-white);
+}
+.puzzle-spinner-base {
+  fill: currentColor;
+  opacity: 0.16;
+}
+.puzzle-spinner-water-cycle {
+  animation: puzzle-spinner-water-cycle 2.8s
+    cubic-bezier(0.2, 0.72, 0.2, 1) infinite;
+  will-change: transform, opacity;
+}
+.puzzle-spinner-back-wave {
+  fill: currentColor;
+  opacity: 0.72;
+  animation: puzzle-spinner-wave-back 1.8s linear infinite;
+  will-change: transform;
+}
+.puzzle-spinner-front-wave {
+  fill: currentColor;
+  animation: puzzle-spinner-wave-front 1.25s linear infinite;
+  will-change: transform;
+}
+.puzzle-spinner-outline {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@keyframes puzzle-spinner-water-cycle {
+  0% {
+    opacity: 0;
+    transform: translateY(86px);
+  }
+  6% {
+    opacity: 1;
+  }
+  82% {
+    opacity: 1;
+    transform: translateY(-14px);
+  }
+  94%,
+  100% {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+}
+@keyframes puzzle-spinner-wave-back {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-64px);
+  }
+}
+@keyframes puzzle-spinner-wave-front {
+  from {
+    transform: translateX(-64px);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .puzzle-spinner-water-cycle,
+  .puzzle-spinner-back-wave,
+  .puzzle-spinner-front-wave {
+    animation: none;
+  }
+
+  .puzzle-spinner-water-cycle {
+    opacity: 1;
+    transform: translateY(18px);
+  }
+}
+
 /* ─── Spinner ────────────────────────────────────────────────────────────────
  * Styles for the <Spinner> component. The square path in the 0%/100% frame of
  * `sss-morph` must stay in sync with the SQ constant in `components/Spinner.tsx`
