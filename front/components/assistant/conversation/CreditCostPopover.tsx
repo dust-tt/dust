@@ -15,7 +15,7 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import type { ComponentType, ReactElement } from "react";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 const MAX_VISIBLE_TOOLS = 3;
 
@@ -86,6 +86,7 @@ export function CreditCostPopover({
   const headingId = useId();
   const [hasOpened, setHasOpened] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const preventTriggerFocusOnCloseRef = useRef(false);
   const { openPanel } = useConversationSidePanelContext();
   const { consumption, isConsumptionLoading, mutateConsumption } =
     useAgentMessageConsumption({
@@ -146,6 +147,12 @@ export function CreditCostPopover({
         align="start"
         className="w-80 rounded-2xl px-3 py-2 shadow-sm"
         preventAutoFocusOnClose={false}
+        onCloseAutoFocus={(event) => {
+          if (preventTriggerFocusOnCloseRef.current) {
+            event.preventDefault();
+            preventTriggerFocusOnCloseRef.current = false;
+          }
+        }}
       >
         <h2
           id={headingId}
@@ -225,6 +232,7 @@ export function CreditCostPopover({
             label="Conversation credits"
             className="w-full"
             onClick={() => {
+              preventTriggerFocusOnCloseRef.current = true;
               setIsOpen(false);
               openPanel({ type: "credits" });
             }}

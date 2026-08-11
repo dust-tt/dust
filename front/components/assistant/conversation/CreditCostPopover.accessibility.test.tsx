@@ -3,14 +3,15 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockUseAgentMessageConsumption } = vi.hoisted(() => ({
+const { mockOpenPanel, mockUseAgentMessageConsumption } = vi.hoisted(() => ({
+  mockOpenPanel: vi.fn(),
   mockUseAgentMessageConsumption: vi.fn(),
 }));
 
 vi.mock(
   "@app/components/assistant/conversation/ConversationSidePanelContext",
   () => ({
-    useConversationSidePanelContext: () => ({ openPanel: vi.fn() }),
+    useConversationSidePanelContext: () => ({ openPanel: mockOpenPanel }),
   })
 );
 
@@ -31,6 +32,7 @@ vi.mock("@app/components/resources/resources_icons", () => ({
 
 describe("CreditCostPopover accessibility", () => {
   beforeEach(() => {
+    mockOpenPanel.mockReset();
     mockUseAgentMessageConsumption.mockReturnValue({
       consumption: {
         billedCredits: 10,
@@ -45,7 +47,7 @@ describe("CreditCostPopover accessibility", () => {
     });
   });
 
-  it("opens from the keyboard and restores focus when closed", async () => {
+  it("restores focus on Escape but not when opening conversation credits", async () => {
     const user = userEvent.setup();
     render(
       <CreditCostPopover
@@ -83,5 +85,21 @@ describe("CreditCostPopover accessibility", () => {
       ).not.toBeInTheDocument();
       expect(trigger).toHaveFocus();
     });
+
+    await user.keyboard("{Enter}");
+    await user.click(
+      await screen.findByRole("button", { name: "Conversation credits" })
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", { name: "Message credits" })
+      ).not.toBeInTheDocument();
+      expect(trigger).not.toHaveFocus();
+      expect(
+        screen.queryByText("View credit breakdown")
+      ).not.toBeInTheDocument();
+    });
+    expect(mockOpenPanel).toHaveBeenCalledWith({ type: "credits" });
   });
 });
