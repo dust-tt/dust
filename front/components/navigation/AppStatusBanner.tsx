@@ -5,7 +5,6 @@ import {
   isDustCompanyPlan,
   isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
-import { useAppRouter } from "@app/lib/platform";
 import { useProgrammaticUsageLimit } from "@app/lib/swr/usage_settings";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
@@ -19,7 +18,6 @@ import { isAdmin } from "@app/types/user";
 import { cn, LinkWrapper } from "@dust-tt/sparkle";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
-import { useMemo } from "react";
 
 const statusBannerVariants = cva(
   "flex flex-col gap-0.5 border-b px-4 py-2 text-sm",
@@ -325,46 +323,9 @@ function WorkspaceUsageStatusBanner({
   return <StatusBanner {...banner} />;
 }
 
-// DEMO ONLY — remove before merging.
-function useDemoAppStatus(): AppStatus | null {
-  const router = useAppRouter();
-  const { demoBanner } = router.query;
-
-  return useMemo(() => {
-    if (demoBanner === "off") {
-      return null;
-    }
-
-    if (demoBanner === "providers") {
-      return {
-        dustStatus: null,
-        providersStatus: {
-          name: "Model provider incident",
-          description:
-            "One of our model providers reports elevated latency. Agents relying on it may be slower than usual.",
-          link: "https://status.dust.tt",
-        },
-      };
-    }
-
-    return {
-      dustStatus: {
-        name: "Degraded performance on conversations",
-        description:
-          "We are investigating elevated error rates on agent conversations. Some messages may fail to send.",
-        link: "https://status.dust.tt",
-      },
-      providersStatus: null,
-    };
-  }, [demoBanner]);
-}
-
 export function StatusBanners() {
   const { workspace: owner, subscription } = useAuth();
-  const { appStatus: liveAppStatus } = useAppStatus();
-  const demoAppStatus = useDemoAppStatus();
-
-  const appStatus = demoAppStatus ?? liveAppStatus;
+  const { appStatus } = useAppStatus();
 
   return (
     <>
