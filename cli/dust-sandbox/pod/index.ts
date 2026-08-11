@@ -7,8 +7,10 @@
  * - `podEnv(name)`: the invocation's environment (./context.ts).
  * - `resolveToolTextContent(block)`: full text of a tool output block,
  *   resolving offloaded content through its descriptor (./tool_output.ts).
+ * - `tools.call(server, tool, args)`: workspace tool calls (./tools.ts).
  */
 export * from "./context.ts";
 export * from "./db.ts";
 export * from "./identity.ts";
 export * from "./tool_output.ts";
+export * from "./tools.ts";
