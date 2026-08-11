@@ -40,6 +40,12 @@ const POD_FUNCTION_CALLER_NAMES = new Set([
 
 type PodFunctionCallOrigin = "call_function" | "hook";
 
+// Appended to every hook-side warning while the rollout lasts.
+const HOOK_BLOCKING_NOTICE =
+  "this check will start blocking publishing in an upcoming release";
+// Cap on the diagnostics reported per publish, for errors and warnings alike.
+const MAX_REPORTED_DIAGNOSTICS = 5;
+
 interface PodFunctionCall {
   call: ts.CallExpression;
   origin: PodFunctionCallOrigin;
@@ -308,7 +314,8 @@ function classifyDiagnostics(
       const call = sortedCalls[callIndex];
       while (
         activeCalls.length > 0 &&
-        activeCalls[activeCalls.length - 1].call.getEnd() <= call.call.getStart()
+        activeCalls[activeCalls.length - 1].call.getEnd() <=
+          call.call.getStart()
       ) {
         activeCalls.pop();
       }
@@ -395,7 +402,10 @@ function podFunctionCallOrigin(
     }
 
     const declaredName = declaration.name?.text;
-    if (declaredName !== undefined && POD_FUNCTION_CALLER_NAMES.has(declaredName)) {
+    if (
+      declaredName !== undefined &&
+      POD_FUNCTION_CALLER_NAMES.has(declaredName)
+    ) {
       return declaredName === CALL_FUNCTION_NAME ? "call_function" : "hook";
     }
   }
@@ -414,7 +424,7 @@ function hookDiagnosticWarning({
 
   return {
     type: "pod_function",
-    message: `${headline} (this check will start blocking publishing in an upcoming release): ${formatDiagnostic(diagnostic)}`,
+    message: `${headline} (${HOOK_BLOCKING_NOTICE}): ${formatDiagnostic(diagnostic)}`,
   };
 }
 
@@ -560,7 +570,7 @@ async function validateCallFunctionTypes({
             ? "Frame references a Pod function that is not available in its Pod"
             : "Frame passes input that does not match the Pod function contract"
         }:\n${blockingDiagnostics
-          .slice(0, 5)
+          .slice(0, MAX_REPORTED_DIAGNOSTICS)
           .map(({ diagnostic }) => formatDiagnostic(diagnostic))
           .join("\n")}`
       )
@@ -568,7 +578,9 @@ async function validateCallFunctionTypes({
   }
 
   return new Ok({
-    warnings: hookDiagnostics.slice(0, 5).map(hookDiagnosticWarning),
+    warnings: hookDiagnostics
+      .slice(0, MAX_REPORTED_DIAGNOSTICS)
+      .map(hookDiagnosticWarning),
   });
 }
 
@@ -615,14 +627,17 @@ export async function validateFramePodFunctionReferences(
   const blockOnFailure = referencedCallerNames.has(CALL_FUNCTION_NAME);
   const frameFailure = (
     error: FramePodFunctionValidationError
-  ): Result<{ warnings: ValidationWarning[] }, FramePodFunctionValidationError> =>
+  ): Result<
+    { warnings: ValidationWarning[] },
+    FramePodFunctionValidationError
+  > =>
     blockOnFailure
       ? new Err(error)
       : new Ok({
           warnings: [
             {
               type: "pod_function",
-              message: `${error.message} (this check will start blocking publishing in an upcoming release)`,
+              message: `${error.message} (${HOOK_BLOCKING_NOTICE})`,
             },
           ],
         });
