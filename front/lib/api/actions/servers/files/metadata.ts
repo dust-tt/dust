@@ -372,7 +372,7 @@ const EDIT_TOOL = {
     "`old_string`/`new_string`): an array of replacements applied in order, each matching against " +
     "the result of the previous ones. The batch is all-or-nothing: if any edit fails to match, " +
     "the file is left untouched. " +
-    "Success messages end with the resulting line count and a sha256 prefix of the final content. " +
+    "Success messages include the resulting line count and a sha256 prefix of the final content. " +
     `Files larger than ${CREATE_CONTENT_MAX_BYTES / 1024} KB cannot be edited with this tool, ` +
     `except Frame source files, which get a higher, ${FRAME_SOURCE_MAX_BYTES / 1024} KB cap. ` +
     "Editing a Frame source file updates only its source, never the rendered Frame directly.",
