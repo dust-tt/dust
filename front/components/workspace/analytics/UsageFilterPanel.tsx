@@ -28,8 +28,13 @@ import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analyti
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
+import {
+  getMcpServerDisplayName,
+  isRemoteMCPServerType,
+} from "@app/lib/actions/mcp_helper";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useGroups } from "@app/lib/swr/groups";
+import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import { useModels } from "@app/lib/swr/models";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
@@ -61,14 +66,14 @@ interface UsageFilterPaginationState {
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
-  // Tools/skills/sources are still mock data (see usageFilterMockData.ts —
-  // sources are fake connectors standing in for a real db call); agents come
-  // from useAgentConfigurations, members from useSearchMembers, teams from
-  // useGroups, and models from the workspace's full model catalog
-  // (useModels) — the same endpoint that backs the model picker elsewhere in
+  // Skills/sources are still mock data (see usageFilterMockData.ts — sources
+  // are fake connectors standing in for a real db call); agents come from
+  // useAgentConfigurations, members from useSearchMembers, teams from
+  // useGroups, models from the workspace's full model catalog (useModels),
+  // and tools from the workspace's full MCP server catalog (useMCPServers)
+  // — the same endpoints that back the model and tool pickers elsewhere in
   // the app.
   categoryOptions: {
-    tool: UsageFilterToolOption[];
     skill: UsageFilterSkillOption[];
     source: UsageFilterSourceOption[];
   };
@@ -111,6 +116,7 @@ export function UsageFilterPanel({
   const isTeamCategoryActive = isOpen && activeCategory === "team";
   const isAgentCategoryActive = isOpen && activeCategory === "agent";
   const isModelCategoryActive = isOpen && activeCategory === "model";
+  const isToolCategoryActive = isOpen && activeCategory === "tool";
 
   // Every category picker supports scroll-to-load-more:
   const [memberPageIndex, setMemberPageIndex] = useState(0);
@@ -190,6 +196,11 @@ export function UsageFilterPanel({
     disabled: !isAgentCategoryActive,
   });
 
+  const { mcpServers } = useMCPServers({
+    owner,
+    disabled: !isToolCategoryActive,
+  });
+
   // The workspace's full, period-independent model catalog — the same
   // endpoint backing the model picker elsewhere in the app — rather than a
   // period-scoped top-N, so every enabled model is listable and searchable
@@ -252,6 +263,16 @@ export function UsageFilterPanel({
     [modelCatalog]
   );
 
+  const toolOptions = useMemo<UsageFilterToolOption[]>(
+    () =>
+      mcpServers.map((server) => ({
+        id: isRemoteMCPServerType(server) ? server.sId : server.name,
+        name: getMcpServerDisplayName(server),
+        kind: "tool" as const,
+      })),
+    [mcpServers]
+  );
+
   const resolvedCategoryOptions = useMemo<{
     [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
   }>(
@@ -261,6 +282,7 @@ export function UsageFilterPanel({
       team: teamOptions,
       agent: agentOptions,
       model: modelCatalogOptions,
+      tool: toolOptions,
     }),
     [
       categoryOptions,
@@ -268,6 +290,7 @@ export function UsageFilterPanel({
       teamOptions,
       agentOptions,
       modelCatalogOptions,
+      toolOptions,
     ]
   );
 

@@ -151,9 +151,9 @@ export function selectAllUsageFilterOptions<C extends UsageFilterCategory>(
   return { ...filter, [category]: [...current, ...additions] };
 }
 
-// Members, teams, agents, and models are wired to real consumption scope
-// dimensions. The other categories stay mock data and are not sent as query
-// filters yet.
+// Members, teams, agents, models, and tools are wired to real consumption
+// scope dimensions. The other categories stay mock data and are not sent as
+// query filters yet.
 export function toConsumptionScopeFilter(
   filter: UsageFilter
 ): ConsumptionScopeFilter {
@@ -177,6 +177,11 @@ export function toConsumptionScopeFilter(
   const modelIds = filter.model?.map((entity) => entity.id);
   if (modelIds && modelIds.length > 0) {
     scopeFilter.models = modelIds;
+  }
+
+  const toolIds = filter.tool?.map((entity) => entity.id);
+  if (toolIds && toolIds.length > 0) {
+    scopeFilter.tools = toolIds;
   }
 
   return scopeFilter;
