@@ -1,6 +1,7 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { GroupDialog } from "@app/components/groups/GroupDialog";
 import { getGroupKindChip } from "@app/components/groups/GroupKinds";
+import { ProvisionedGroupDialog } from "@app/components/groups/ProvisionedGroupDialog";
 import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isSCIMEnabled } from "@app/lib/plans/scim";
@@ -137,6 +138,11 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editedGroupId, setEditedGroupId] = useState<string | null>(null);
+  const [isProvisionedDialogOpen, setIsProvisionedDialogOpen] = useState(false);
+  const [viewedProvisionedGroup, setViewedProvisionedGroup] = useState<{
+    groupId: string;
+    name: string;
+  } | null>(null);
 
   const confirm = useContext(ConfirmContext);
   const { doDeleteGroup } = useDeleteGroup({ owner });
@@ -176,7 +182,14 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
               setEditedGroupId(group.sId);
               setIsDialogOpen(true);
             }
-          : undefined,
+          : // Provisioned groups open a read-only member list.
+            () => {
+              setViewedProvisionedGroup({
+                groupId: group.sId,
+                name: group.name,
+              });
+              setIsProvisionedDialogOpen(true);
+            },
         onDelete: isManual
           ? () => handleDeleteGroup(group.sId, group.name)
           : undefined,
@@ -243,6 +256,13 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
         isOpen={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         groupId={editedGroupId}
+      />
+      <ProvisionedGroupDialog
+        owner={owner}
+        isOpen={isProvisionedDialogOpen}
+        onOpenChange={setIsProvisionedDialogOpen}
+        groupId={viewedProvisionedGroup?.groupId ?? null}
+        groupName={viewedProvisionedGroup?.name ?? ""}
       />
     </div>
   );
