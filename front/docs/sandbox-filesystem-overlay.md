@@ -60,8 +60,10 @@ mount. Mutations use a short-lived sandbox token and an idempotency key:
 - `rename` moves files or directory trees and reconciles every linked
   `FileResource` below the source path;
 - cross-mount `rename` additionally supplies `destinationMount`;
-- `content_committed`, sent after `fsync` or final handle release, promotes the
-  written mount object to the stable original of an existing linked resource.
+- `content_committed`, sent after final handle release, promotes the written
+  mount object to the stable original of an existing linked resource. `fsync`
+  persists the backing handle but deliberately does not reconcile Dust state
+  before gcsfuse has published the object on close.
 
 An ordinary GCS object remains an ordinary file: filesystem activity does not
 create a `FileResource` row for every object. Atomic editor saves are also
@@ -82,15 +84,17 @@ Both paths therefore used the same sandbox, bucket, GCS prefix, credentials, and
 network. Distinct same-size objects avoided warming the overlay fixture through
 the direct path. Cold-read order was alternated by size.
 
-The tracked gcsfuse mount had list and metadata caches disabled, as it does in
-the current implementation. The Rust FUSE adapter also returned a zero kernel
-attribute and entry TTL. These are deliberately conservative coherence settings,
-but they are central to interpreting the result.
+The tracked gcsfuse mount had list and metadata caches disabled, as it still does
+for cross-writer coherence. The benchmarked Rust FUSE revision also returned a
+zero kernel attribute and entry TTL. Those settings are central to interpreting
+the baseline result; the remediation below changes only the visible overlay TTL.
 
 The repeatable GCS benchmark is
 `front/scripts/benchmark_sandbox_filesystem_overlay.ts`. Its phases can be run
 independently with `--benchmarkPhase reads`, `metadata`, `write-4096`, or
-`mutations`; independent phases avoid a local command-runner lifetime limit.
+`mutations`. The `coherence` phase mutates GCS outside the mount and measures
+when the overlay observes the create and delete. Independent phases avoid a
+local command-runner lifetime limit.
 Each phase creates and destroys its own conversation, sandbox, and GCS fixture
 prefix.
 
@@ -167,26 +171,76 @@ close/reopen the backing handle while preserving POSIX handle behavior). The
 chosen behavior needs a live test proving that a newly created file succeeds and
 that its canonical resource is synchronized only after the new bytes are visible.
 
-### Rollout gates
+### Implemented remediation
 
-The current prototype should not be rolled out on the measured configuration.
-Before rollout:
+This branch addresses the measured causes at their ownership boundaries:
 
-- fix new-file commit ordering and rerun write sizes through close and canonical
-  resource synchronization;
-- remove the per-entry metadata fan-out from `readdir`;
-- introduce a bounded cache policy at the overlay and/or hidden gcsfuse layer,
-  with explicit stale-read tests for UI, Front mutation, and sandbox writers;
-- rerun this matrix and require the 20-entry listing to stay near one backing
-  list operation and large warm-read throughput to remain close to direct
-  gcsfuse;
+- `entry_for_key` reuses its first backing metadata result instead of issuing a
+  second `symlink_metadata` for the same lookup;
+- `read_backing_directory` uses the file type returned by `readdir`, allowing the
+  standard library to fall back only when a backing filesystem reports an
+  unknown type instead of issuing one unconditional stat per child;
+- the visible Rust FUSE mount returns a five-second kernel attribute/entry TTL,
+  while the hidden gcsfuse metadata and list caches remain disabled. Sandbox
+  mutations update the same kernel namespace immediately; an external Front or
+  UI writer has an explicit five-second kernel stale-dentry window (plus GCS
+  propagation and caller round-trip time);
+- `fsync` synchronizes only the open backing handle. `release` closes that handle
+  first and then sends `content_committed`, ensuring Front reads the published
+  bytes. Dirty state remains set across fsync so release cannot skip the commit.
+
+The cache TTL is intentionally named and documented in `fuse.rs`, the post-close
+publication boundary is documented in `core.rs`, and the hidden-mount zero-cache
+decision is documented beside the gcsfuse flags. Focused Linux tests cover
+post-release commit ordering and directory entry types.
+
+### Post-remediation live validation
+
+The same disposable E2B setup was rebuilt with the remediated local Rust binary.
+The comparison below uses p50 values from independent phases; GCS latency varies
+between runs, so the direct path in each row remains the control.
+
+| Operation | Direct p50 | Remediated overlay p50 | Overlay/direct |
+| --- | ---: | ---: | ---: |
+| Warm read, 4 KiB | 779 ms | 1,254 ms | 1.61x |
+| Warm read, 1 MiB | 457 ms | 1,018 ms | 2.23x |
+| Warm read, 8 MiB | 438 ms | 1,101 ms | 2.52x |
+| `stat` | 820 ms | 0.011 ms | <0.001x |
+| `readdir`, 20 entries | 702 ms | 1,890 ms | 2.69x |
+
+The 20-entry overlay listing fell from 24,227 ms to 1,890 ms, a 12.8x
+improvement. Cached `stat` became a local kernel operation. The remaining
+listing and read deltas are consistent with one extra Rust/FUSE traversal over
+the uncached backing mount rather than N additional GCS metadata requests.
+
+Two newly created 4 KiB overlay files completed open, write, `fsync`, and close
+without `EIO`; the corresponding post-close `content_committed` requests both
+returned HTTP 200 after gcsfuse had published the objects. The `coherence` phase
+observed an external GCS create after 925 ms and an externally deleted,
+positively cached file after 6,400 ms. The latter includes the five-second
+kernel TTL plus repeated remote command and GCS observation latency, and stayed
+inside the explicit seven-second end-to-end test envelope.
+
+### Remaining rollout gates
+
+The original correctness and metadata-amplification blockers are fixed and live
+validated. Before rollout:
+
+- run the complete write-size matrix and assert canonical resource contents, in
+  addition to the HTTP-success check used for the 4 KiB regression;
+- keep the `coherence` phase in image qualification so a TTL or gcsfuse flag
+  change cannot silently widen external-writer staleness;
+- keep the 20-entry listing near one backing list operation and investigate any
+  regression toward the original per-entry metadata shape;
+- set an accepted read-path overhead budget from a larger sample of production-
+  shaped objects and directories;
 - retain mutation latency as a separate semantic-API SLO rather than hiding it
   inside the local forwarding budget.
 
-A short TTL is the first experiment, not an automatic fix. The overlay can
-invalidate its own entries after mutations, but Front and UI writers may change
-GCS outside that process. Any cache setting must therefore be justified by a
-coherence window the product accepts.
+The five-second TTL is a bounded experiment, not an invisible implementation
+detail. Front and UI writers may change GCS outside the overlay process, so this
+coherence window is part of the product behavior and must stay covered by live
+tests whenever the value changes.
 
 ## Failure and security model
 
@@ -203,7 +257,9 @@ The mount fails closed. If the overlay cannot start, or its `/files` FUSE
 liveness check fails during credential refresh or wake, Front requests sandbox
 recreation instead of exposing an untracked writable directory. Tracked hidden
 gcsfuse mounts disable list and metadata caches so they observe namespace
-changes performed by Front.
+changes performed by Front. The visible overlay keeps only the bounded
+five-second kernel attribute/entry TTL documented above; the two cache layers
+must not both be enabled because their stale windows would compound.
 
 The service writes structured startup and failure events to
 `/run/dust-fs/overlay.log`, including rejected mutations, exhausted retries, and

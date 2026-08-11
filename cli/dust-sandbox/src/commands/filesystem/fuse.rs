@@ -16,7 +16,13 @@ use super::model::MountTable;
 use super::mutation::HttpMutationAdapter;
 use super::RuntimeArgs;
 
-const CACHE_TTL: Duration = Duration::ZERO;
+// Keep the hidden gcsfuse mounts uncached for cross-writer coherence, but avoid replaying the
+// kernel's lookup/getattr/open sequence against GCS for every syscall. Mutations made through this
+// mount invalidate the relevant kernel entries; for mutations made by Front or the UI, the kernel
+// may reuse stale overlay metadata for at most this bounded window (GCS propagation is separate).
+// Revisit this value only with the live filesystem benchmark and explicit external-writer
+// coherence tests.
+const KERNEL_METADATA_CACHE_TTL: Duration = Duration::from_secs(5);
 
 pub fn mount(args: RuntimeArgs) -> anyhow::Result<()> {
     info!(
@@ -56,7 +62,11 @@ impl FuseAdapter {
 impl Filesystem for FuseAdapter {
     fn lookup(&self, _request: &Request, parent: INodeNo, name: &OsStr, reply: ReplyEntry) {
         match self.filesystem.lookup(parent.0, name) {
-            Ok(entry) => reply.entry(&CACHE_TTL, &to_file_attr(&entry.attributes), Generation(0)),
+            Ok(entry) => reply.entry(
+                &KERNEL_METADATA_CACHE_TTL,
+                &to_file_attr(&entry.attributes),
+                Generation(0),
+            ),
             Err(error) => reply.error(to_errno(error)),
         }
     }
@@ -72,7 +82,7 @@ impl Filesystem for FuseAdapter {
             .filesystem
             .attributes(inode.0, handle.map(|handle| handle.0))
         {
-            Ok(attributes) => reply.attr(&CACHE_TTL, &to_file_attr(&attributes)),
+            Ok(attributes) => reply.attr(&KERNEL_METADATA_CACHE_TTL, &to_file_attr(&attributes)),
             Err(error) => reply.error(to_errno(error)),
         }
     }
@@ -106,7 +116,7 @@ impl Filesystem for FuseAdapter {
             handle: handle.map(|handle| handle.0),
         };
         match self.filesystem.set_attributes(inode.0, values) {
-            Ok(attributes) => reply.attr(&CACHE_TTL, &to_file_attr(&attributes)),
+            Ok(attributes) => reply.attr(&KERNEL_METADATA_CACHE_TTL, &to_file_attr(&attributes)),
             Err(error) => reply.error(to_errno(error)),
         }
     }
@@ -128,7 +138,11 @@ impl Filesystem for FuseAdapter {
         reply: ReplyEntry,
     ) {
         match self.filesystem.mkdir(parent.0, name) {
-            Ok(entry) => reply.entry(&CACHE_TTL, &to_file_attr(&entry.attributes), Generation(0)),
+            Ok(entry) => reply.entry(
+                &KERNEL_METADATA_CACHE_TTL,
+                &to_file_attr(&entry.attributes),
+                Generation(0),
+            ),
             Err(error) => reply.error(to_errno(error)),
         }
     }
@@ -329,7 +343,7 @@ impl Filesystem for FuseAdapter {
     ) {
         match self.filesystem.create(parent.0, name, mode, umask, flags) {
             Ok((entry, handle)) => reply.created(
-                &CACHE_TTL,
+                &KERNEL_METADATA_CACHE_TTL,
                 &to_file_attr(&entry.attributes),
                 Generation(0),
                 FileHandle(handle),

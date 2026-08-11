@@ -144,7 +144,6 @@ struct HandleState {
     mount_index: usize,
     path: PathBuf,
     dirty: bool,
-    generation: u64,
 }
 
 #[derive(Debug)]
@@ -452,7 +451,6 @@ impl DustFilesystem {
         self.require_writable(target.read_only)?;
         let written = open_handle.file.write_at(data, offset)?;
         open_handle.state.dirty = true;
-        open_handle.state.generation = open_handle.state.generation.saturating_add(1);
         u32::try_from(written).map_err(|_| FsError::errno(libc::EOVERFLOW))
     }
 
@@ -466,36 +464,19 @@ impl DustFilesystem {
     }
 
     pub fn fsync(&self, handle: u64, data_only: bool) -> FsResult<()> {
-        let snapshot = {
-            let handles = self.handles.lock();
-            let open_handle = handles
-                .get(&handle)
-                .ok_or_else(|| FsError::errno(libc::EBADF))?;
-            if data_only {
-                open_handle.file.sync_data()?;
-            } else {
-                open_handle.file.sync_all()?;
-            }
-            if !open_handle.state.dirty {
-                return Ok(());
-            }
-            (
-                open_handle.state.mount_index,
-                open_handle.state.path.clone(),
-                open_handle.state.generation,
-            )
-        };
-
-        self.commit(snapshot.0, &snapshot.1)?;
-        let mut handles = self.handles.lock();
-        if let Some(open_handle) = handles.get_mut(&handle) {
-            if open_handle.state.mount_index == snapshot.0
-                && open_handle.state.path == snapshot.1
-                && open_handle.state.generation == snapshot.2
-            {
-                open_handle.state.dirty = false;
-            }
+        let handles = self.handles.lock();
+        let open_handle = handles
+            .get(&handle)
+            .ok_or_else(|| FsError::errno(libc::EBADF))?;
+        if data_only {
+            open_handle.file.sync_data()?;
+        } else {
+            open_handle.file.sync_all()?;
         }
+        // Do not notify Front here. gcsfuse finalizes a newly created object when the backing
+        // handle closes, so a content_committed request during fsync races an object that is not
+        // visible yet and turns a successful write into EIO. `release` owns the notification and
+        // deliberately sends it only after dropping the backing file.
         Ok(())
     }
 
@@ -507,6 +488,9 @@ impl DustFilesystem {
             .ok_or_else(|| FsError::errno(libc::EBADF))?;
         open_handle.file.sync_all()?;
         let state = open_handle.state;
+        // Closing the gcsfuse handle is the publication boundary for new objects. Keep this drop
+        // before the semantic commit: Front must never reconcile a FileResource against stale or
+        // not-yet-visible bytes.
         drop(open_handle.file);
         if state.dirty {
             self.commit(state.mount_index, &state.path)?;
@@ -597,7 +581,11 @@ impl DustFilesystem {
     fn entry_for_key(&self, key: NodeKey) -> FsResult<Entry> {
         if let NodeKey::Backing { mount_index, path } = &key {
             let resolved = self.resolve_path(*mount_index, path, false)?;
-            fs::symlink_metadata(resolved)?;
+            let metadata = fs::symlink_metadata(resolved)?;
+            let inode = self.nodes.lock().inode_for(key);
+            return Ok(Entry {
+                attributes: attributes_from_metadata(inode, &metadata)?,
+            });
         }
         let inode = self.nodes.lock().inode_for(key);
         Ok(Entry {
@@ -666,8 +654,11 @@ impl DustFilesystem {
         for directory_entry in fs::read_dir(resolved)? {
             let directory_entry = directory_entry?;
             let child_path = path.join(directory_entry.file_name());
-            let metadata = fs::symlink_metadata(directory_entry.path())?;
-            let kind = entry_kind(&metadata)?;
+            // DirEntry::file_type uses the type returned by readdir and only asks the backing
+            // filesystem when it reports DT_UNKNOWN. Calling symlink_metadata unconditionally
+            // turned one GCS list into N extra metadata requests (24s for 20 entries in the live
+            // benchmark).
+            let kind = entry_kind_from_file_type(&directory_entry.file_type()?)?;
             let child_inode = self.nodes.lock().inode_for(NodeKey::Backing {
                 mount_index,
                 path: child_path,
@@ -758,7 +749,6 @@ impl DustFilesystem {
                     mount_index,
                     path,
                     dirty,
-                    generation: u64::from(dirty),
                 },
             },
         );
@@ -790,7 +780,6 @@ impl DustFilesystem {
                 .ok_or_else(|| FsError::errno(libc::EBADF))?;
             open_handle.file.set_len(size)?;
             open_handle.state.dirty = true;
-            open_handle.state.generation = open_handle.state.generation.saturating_add(1);
             return Ok(());
         }
 
@@ -908,7 +897,10 @@ fn synthetic_attributes(inode: u64, kind: EntryKind, permissions: u16, size: u64
 }
 
 fn entry_kind(metadata: &fs::Metadata) -> FsResult<EntryKind> {
-    let file_type = metadata.file_type();
+    entry_kind_from_file_type(&metadata.file_type())
+}
+
+fn entry_kind_from_file_type(file_type: &fs::FileType) -> FsResult<EntryKind> {
     if file_type.is_file() {
         Ok(EntryKind::File)
     } else if file_type.is_dir() {
@@ -1137,6 +1129,29 @@ mod tests {
     use super::*;
     use std::os::unix::fs::symlink;
 
+    fn make_writable_test_filesystem(
+        source: PathBuf,
+    ) -> (DustFilesystem, Arc<SelfTestMutationAdapter>) {
+        let identity = MountIdentity {
+            kind: MountKind::Conversation,
+            id: "conv_test".to_owned(),
+        };
+        let mounts = MountTable::from_specs(vec![MountSpec {
+            name: "conversation-conv_test".to_owned(),
+            source: source.clone(),
+            kind: MountKind::Conversation,
+            owner_id: identity.id.clone(),
+            read_only: false,
+            legacy_name: None,
+        }])
+        .expect("writable test mount should be valid");
+        let adapter = Arc::new(SelfTestMutationAdapter {
+            sources: HashMap::from([(identity, source)]),
+            operations: Mutex::new(Vec::new()),
+        });
+        (DustFilesystem::new(mounts, adapter.clone()), adapter)
+    }
+
     #[test]
     fn behavioral_self_test_passes() {
         run_self_test().expect("filesystem self-test should pass");
@@ -1214,5 +1229,72 @@ mod tests {
             .expect_err("opening an escaping symlink must fail");
 
         assert_eq!(error.errno, libc::EACCES);
+    }
+
+    #[test]
+    fn dirty_content_is_committed_only_after_release() {
+        let temporary_directory = tempfile::tempdir().expect("temporary directory should exist");
+        let (filesystem, adapter) =
+            make_writable_test_filesystem(temporary_directory.path().to_path_buf());
+        let conversation = filesystem
+            .lookup(ROOT_INODE, OsStr::new("conversation-conv_test"))
+            .expect("conversation root should exist");
+        let (_, handle) = filesystem
+            .create(
+                conversation.attributes.inode,
+                OsStr::new("new-file.txt"),
+                0o644,
+                0,
+                libc::O_WRONLY,
+            )
+            .expect("file creation should succeed");
+
+        filesystem
+            .write(handle, 0, b"new content")
+            .expect("file write should succeed");
+        filesystem
+            .fsync(handle, false)
+            .expect("backing fsync should succeed");
+        assert!(adapter.operations.lock().is_empty());
+
+        filesystem
+            .release(handle)
+            .expect("release should publish and commit the file");
+        let operations = adapter.operations.lock();
+        assert_eq!(operations.len(), 1);
+        assert!(matches!(
+            operations[0].1,
+            MutationOperation::ContentCommitted { .. }
+        ));
+    }
+
+    #[test]
+    fn directory_entries_preserve_backing_file_types() {
+        let temporary_directory = tempfile::tempdir().expect("temporary directory should exist");
+        fs::write(temporary_directory.path().join("file.txt"), "content")
+            .expect("test file should exist");
+        fs::create_dir(temporary_directory.path().join("folder"))
+            .expect("test directory should exist");
+        symlink("file.txt", temporary_directory.path().join("link"))
+            .expect("test symlink should exist");
+        let (filesystem, _) =
+            make_writable_test_filesystem(temporary_directory.path().to_path_buf());
+        let conversation = filesystem
+            .lookup(ROOT_INODE, OsStr::new("conversation-conv_test"))
+            .expect("conversation root should exist");
+
+        let entries = filesystem
+            .read_directory(conversation.attributes.inode)
+            .expect("directory listing should succeed");
+
+        assert!(entries.iter().any(|entry| {
+            entry.name == OsStr::new("file.txt") && entry.kind == EntryKind::File
+        }));
+        assert!(entries.iter().any(|entry| {
+            entry.name == OsStr::new("folder") && entry.kind == EntryKind::Directory
+        }));
+        assert!(entries
+            .iter()
+            .any(|entry| { entry.name == OsStr::new("link") && entry.kind == EntryKind::Symlink }));
     }
 }

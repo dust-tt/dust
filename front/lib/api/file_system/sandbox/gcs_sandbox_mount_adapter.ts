@@ -653,6 +653,10 @@ export function buildMountCommand({
       if (target.readOnly) {
         mountOptions.push("ro");
       }
+      // Tracked objects are also moved/deleted by Front through the semantic mutation API, so the
+      // hidden backing mount must observe GCS immediately. The visible Rust FUSE layer owns the
+      // short, bounded kernel metadata TTL that absorbs repeated lookup/getattr calls; adding a
+      // second cache here would compound the external-writer staleness window.
       const kernelListCacheTtlSeconds =
         target.mountProfile === "pod_sandbox_functions" ||
         target.mutationScope !== null

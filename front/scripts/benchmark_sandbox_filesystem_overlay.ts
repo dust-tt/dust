@@ -5,6 +5,7 @@ import { rootCommand } from "@app/lib/api/sandbox/root_command";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -22,6 +23,10 @@ const DIRECTORY_ENTRY_COUNT = 20;
 const WRITE_SAMPLES = 2;
 const MUTATION_SAMPLES = 3;
 const BENCHMARK_TIMEOUT_MS = 15 * 60 * 1000;
+// The Rust overlay advertises a five-second metadata TTL. Leave enough room for
+// one sandbox command round-trip when checking the externally visible bound.
+const CACHE_COHERENCE_TIMEOUT_MS = 7 * 1000;
+const CACHE_COHERENCE_POLL_MS = 250;
 
 const SummarySchema = z.object({
   samples: z.number().int().positive(),
@@ -451,10 +456,12 @@ async function uploadFixtures({
     const buffer = Buffer.alloc(size);
     await Promise.all(
       (["direct", "overlay"] as const).map((route) =>
-        bucket.file(`${benchmarkGcsPrefix}read-${route}-${size}.bin`).save(buffer, {
-          contentType: "application/octet-stream",
-          resumable: size >= 8 * MIB,
-        })
+        bucket
+          .file(`${benchmarkGcsPrefix}read-${route}-${size}.bin`)
+          .save(buffer, {
+            contentType: "application/octet-stream",
+            resumable: size >= 8 * MIB,
+          })
       )
     );
   }
@@ -467,6 +474,55 @@ async function uploadFixtures({
           resumable: false,
         })
     )
+  );
+}
+
+async function sandboxPathExists(
+  auth: Authenticator,
+  sandbox: SandboxResource,
+  path: string
+): Promise<boolean> {
+  const result = await sandbox.execRoot(
+    auth,
+    rootCommand.exec("/usr/bin/test", ["-e", path]),
+    { timeoutMs: 10 * 1000 }
+  );
+  if (result.isErr()) {
+    throw result.error;
+  }
+  if (result.value.exitCode === 0) {
+    return true;
+  }
+  if (result.value.exitCode === 1) {
+    return false;
+  }
+  throw new Error(
+    `Sandbox path check failed (${result.value.exitCode}): ${result.value.stderr}`
+  );
+}
+
+async function waitForSandboxPathState({
+  auth,
+  sandbox,
+  path,
+  expected,
+}: {
+  auth: Authenticator;
+  sandbox: SandboxResource;
+  path: string;
+  expected: boolean;
+}): Promise<number> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt <= CACHE_COHERENCE_TIMEOUT_MS) {
+    if ((await sandboxPathExists(auth, sandbox, path)) === expected) {
+      return Date.now() - startedAt;
+    }
+    await new Promise((resolve) =>
+      setTimeout(resolve, CACHE_COHERENCE_POLL_MS)
+    );
+  }
+  throw new Error(
+    `Sandbox path ${path} did not become ${expected ? "visible" : "absent"} within ${CACHE_COHERENCE_TIMEOUT_MS}ms`
   );
 }
 
@@ -568,6 +624,55 @@ makeScript(
       const directRoot = "/run/dust-fs/data/mount-0";
       const overlayRoot = `/files/conversation-${conversation.sId}`;
       const rawResult: Record<string, unknown> = {};
+      if (benchmarkPhase === "coherence") {
+        const coherenceObject = getPrivateUploadBucket().file(
+          `${benchmarkGcsPrefix}coherence.txt`
+        );
+        const coherencePath = `${overlayRoot}/${benchmarkDirectory}/coherence.txt`;
+        if (await sandboxPathExists(auth, sandbox, coherencePath)) {
+          throw new Error(
+            `Unexpected pre-existing coherence file: ${coherencePath}`
+          );
+        }
+
+        await coherenceObject.save(Buffer.from("cache coherence"), {
+          contentType: "text/plain",
+          resumable: false,
+        });
+        const externalCreateVisibleAfterMs = await waitForSandboxPathState({
+          auth,
+          sandbox,
+          path: coherencePath,
+          expected: true,
+        });
+
+        // The successful check above primes the positive kernel metadata cache.
+        // Delete through GCS, not through the FUSE mount, to exercise the bounded
+        // stale-data behavior that Front/UI writers rely on.
+        await coherenceObject.delete();
+        const externalDeleteVisibleAfterMs = await waitForSandboxPathState({
+          auth,
+          sandbox,
+          path: coherencePath,
+          expected: false,
+        });
+        logger.info(
+          {
+            conversationId: conversation.sId,
+            podId: pod.sId,
+            sandboxId: sandbox.sId,
+            phase: benchmarkPhase,
+            result: {
+              cacheTtlMs: 5 * 1000,
+              timeoutMs: CACHE_COHERENCE_TIMEOUT_MS,
+              externalCreateVisibleAfterMs,
+              externalDeleteVisibleAfterMs,
+            },
+          },
+          "Sandbox filesystem cache coherence phase completed"
+        );
+        return;
+      }
       const phases = [
         { name: "reads", programPhase: "reads", sizes: BENCHMARK_SIZES },
         { name: "metadata", programPhase: "metadata", sizes: BENCHMARK_SIZES },
@@ -576,14 +681,18 @@ makeScript(
           programPhase: "writes",
           sizes: [size],
         })),
-        { name: "mutations", programPhase: "mutations", sizes: BENCHMARK_SIZES },
+        {
+          name: "mutations",
+          programPhase: "mutations",
+          sizes: BENCHMARK_SIZES,
+        },
       ];
       const selectedPhases = benchmarkPhase
         ? phases.filter((phase) => phase.name === benchmarkPhase)
         : phases;
       if (selectedPhases.length === 0) {
         throw new Error(
-          `Unknown benchmark phase ${benchmarkPhase}. Expected one of: ${phases.map((phase) => phase.name).join(", ")}`
+          `Unknown benchmark phase ${benchmarkPhase}. Expected coherence or one of: ${phases.map((phase) => phase.name).join(", ")}`
         );
       }
 
