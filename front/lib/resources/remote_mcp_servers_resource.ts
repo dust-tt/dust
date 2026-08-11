@@ -59,6 +59,30 @@ import { Op } from "sequelize";
 
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
 
+export function getMCPAuthorizationScope({
+  extraScopes,
+  resourceScopes,
+  authorizationServerScopes,
+}: {
+  extraScopes?: string;
+  resourceScopes?: string[];
+  authorizationServerScopes?: string[];
+}): string | undefined {
+  const scopes = new Set(
+    extraScopes?.trim()
+      ? extraScopes.trim().split(/\s+/)
+      : (resourceScopes ?? authorizationServerScopes ?? [])
+  );
+
+  if (authorizationServerScopes?.includes("offline_access")) {
+    scopes.add("offline_access");
+  } else {
+    scopes.delete("offline_access");
+  }
+
+  return scopes.size > 0 ? [...scopes].join(" ") : undefined;
+}
+
 // Unbounded columns (large JSONB/TEXT values) excluded from the base fetch. Callers opt into
 // the ones they need via `includeHeavyAttributes`, or hydrate later via `hydrateHeavyAttributes`.
 const REMOTE_MCP_SERVER_HEAVY_ATTRIBUTES = [
@@ -727,16 +751,11 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     // Dynamic client registration
     const clientMetadata = provider.clientMetadata;
 
-    // Priority: user-provided scope > discovered scopes
-    if (!extraScopes || extraScopes.trim() === "") {
-      // Prefer scopes from resource metadata if available
-      const scopesSupported =
-        resourceMetadata?.scopes_supported ?? metadata.scopes_supported;
-      // Add all supported scopes to client registration
-      if (scopesSupported) {
-        clientMetadata.scope = scopesSupported.join(" ");
-      }
-    }
+    clientMetadata.scope = getMCPAuthorizationScope({
+      extraScopes,
+      resourceScopes: resourceMetadata?.scopes_supported,
+      authorizationServerScopes: metadata.scopes_supported,
+    });
 
     try {
       // Try DCR.
