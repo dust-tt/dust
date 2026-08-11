@@ -81,12 +81,7 @@ describe("consumption top rankings", () => {
   it("ranks agents on gross credits and averages over distinct messages", async () => {
     const { auth } = await setup();
     vi.mocked(resolveDimensionLabels).mockResolvedValue(
-      new Map([
-        [
-          "agent1",
-          { name: "@dust", pictureUrl: "http://pic/dust" },
-        ],
-      ])
+      new Map([["agent1", { name: "@dust", pictureUrl: "http://pic/dust" }]])
     );
     mockAggs({
       buckets: [
