@@ -55,7 +55,10 @@ type SandboxStartupPhase =
   | "pod_state_setup"
   | "pod_state.enumerate"
   | "pod_state.restore_db"
-  | "pod_state.start_daemon";
+  | "pod_state.start_daemon"
+  // Recreate expected-but-missing databases from their schema files (cold
+  // start only, after pod_state_setup).
+  | "pod_state_recovery";
 
 // Opens a parent APM span for a startup phase. The provider.* child spans nest
 // underneath automatically, so this adds semantic grouping (and a per-phase
@@ -159,6 +162,16 @@ export function recordPodStateHealth(status: "success" | "failure"): void {
 // The stable logger.error at the call site carries the database name.
 export function recordPodStateRestoreSkip(): void {
   getStatsDClient().increment("sandbox.pod_state.restore_skipped", 1, [
+    regionTag(),
+  ]);
+}
+
+// A cold start found a database that a schema file expects but that is absent
+// from disk and replica, and recreated it EMPTY by re-running its reconcile.
+// Recreation restores service, not data — alert-worthy alongside
+// sandbox.pod_state.restore_skipped.
+export function recordPodStateColdStartRecreate(): void {
+  getStatsDClient().increment("sandbox.pod_state.cold_start_recreate", 1, [
     regionTag(),
   ]);
 }

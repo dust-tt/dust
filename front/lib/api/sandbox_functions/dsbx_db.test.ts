@@ -5,8 +5,8 @@ import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import {
   getDatabaseSchemaOnSandbox,
   listDatabasesOnSandbox,
-  reconcileDatabaseOnSandbox,
 } from "@app/lib/api/sandbox_functions/dsbx_db";
+import { reconcileDatabaseOnSandbox } from "@app/lib/api/sandbox_functions/dsbx_db_on_sandbox";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -165,7 +165,8 @@ describe("reconcileDatabaseOnSandbox", () => {
     vi.mocked(syncPodDatabaseAfterCreate).mockResolvedValue(new Ok(undefined));
 
     const result = await reconcileDatabaseOnSandbox(authenticator, {
-      space,
+      sandbox,
+      podId: space.sId,
       ...reconcileArgs,
     });
 
@@ -191,7 +192,8 @@ describe("reconcileDatabaseOnSandbox", () => {
     );
 
     const result = await reconcileDatabaseOnSandbox(authenticator, {
-      space,
+      sandbox,
+      podId: space.sId,
       ...reconcileArgs,
     });
 
@@ -211,7 +213,8 @@ describe("reconcileDatabaseOnSandbox", () => {
     mockReconcileExec(sandbox, { created: false });
 
     const result = await reconcileDatabaseOnSandbox(authenticator, {
-      space,
+      sandbox,
+      podId: space.sId,
       ...reconcileArgs,
     });
 
