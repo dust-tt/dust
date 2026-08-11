@@ -5,7 +5,11 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getWritablePodContext } from "@app/lib/api/actions/servers/pod_manager/helpers";
 import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
+import { listFramePathsReferencingSandboxFunction } from "@app/lib/api/sandbox_functions/frame_references";
 import { publishSandboxFunction } from "@app/lib/api/sandbox_functions/publish_sandbox_function";
+import { deriveSandboxFunctionSlug } from "@app/lib/api/sandbox_functions/slug";
+import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import { areSchemasEqual } from "@app/lib/utils/json_schemas";
 import type { SandboxFunctionExecutionMode } from "@app/types/api/sandbox_functions";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -30,9 +34,27 @@ export async function publishHandler(
   if (podResult.isErr()) {
     return new Err(podResult.error);
   }
+  const { pod } = podResult.value;
+
+  // Snapshot the previous input schema before publishing: a republish overwrites it in place,
+  // and a schema change can break frames that call this function. The published slug is derived
+  // from `path` the same way publishSandboxFunction derives it; if the derivation fails, publish
+  // reports the invalid path below.
+  const slugResult = deriveSandboxFunctionSlug({
+    sourcePath: path,
+    podId: pod.sId,
+    name: slug,
+  });
+  const previous = slugResult.isOk()
+    ? await SandboxFunctionResource.fetchBySpaceAndSlug(
+        auth,
+        pod,
+        slugResult.value
+      )
+    : null;
 
   const result = await publishSandboxFunction(auth, {
-    space: podResult.value.pod,
+    space: pod,
     slug,
     description,
     path,
@@ -47,10 +69,35 @@ export async function publishHandler(
   // the slug alone; only a Frame needs the qualified reference, so name that consumer.
   const { slug: publishedSlug } = result.value;
 
+  const lines = [
+    `Published pod function "${publishedSlug}". Frames call it by reference "${pod.sId}/${publishedSlug}".`,
+  ];
+
+  // A republish that changed the input schema may have broken frames calling this function:
+  // warn about the ones whose sources reference it, never block.
+  if (
+    previous &&
+    !areSchemasEqual(previous.inputSchema, result.value.inputSchema)
+  ) {
+    const referencingFramePaths =
+      await listFramePathsReferencingSandboxFunction(auth, {
+        space: pod,
+        sandboxFunction: result.value,
+      });
+    if (referencingFramePaths.length > 0) {
+      lines.push(
+        `Warning: the input schema changed and ${referencingFramePaths.length} frame(s) ` +
+          `reference this function: ${referencingFramePaths.join(", ")}. Verify their calls ` +
+          "still match the new schema and re-publish them if needed (this is a text scan of " +
+          "frame sources, so dynamically-built references are not detected)."
+      );
+    }
+  }
+
   return new Ok([
     {
       type: "text",
-      text: `Published pod function "${publishedSlug}". Frames call it by reference "${podResult.value.pod.sId}/${publishedSlug}".`,
+      text: lines.join("\n\n"),
     },
   ]);
 }

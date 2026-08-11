@@ -8,7 +8,10 @@ import {
 } from "@app/tests/utils/conversation_test_factories";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
-import { sandboxFunctionContentType } from "@app/types/files";
+import {
+  frameContentType,
+  sandboxFunctionContentType,
+} from "@app/types/files";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -82,6 +85,61 @@ describe("unpublishHandler", () => {
     await expect(
       SandboxFunctionResource.fetchById(auth, sandboxFunction.sId)
     ).resolves.toBeNull();
+  });
+
+  it("warns about pod frames that still reference the unpublished function", async () => {
+    const { auth, conversation, projectId } = await setupProjectConversation();
+    const pod = await SpaceResource.fetchById(auth, projectId);
+    expect(pod).not.toBeNull();
+    if (!pod) {
+      return;
+    }
+    const bundle = await FileFactory.create(auth, null, {
+      contentType: sandboxFunctionContentType,
+      fileName: "greet.ts",
+      fileSize: 100,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: pod.sId },
+    });
+    await SandboxFunctionResource.makeNew(auth, {
+      space: pod,
+      file: bundle,
+      slug: "greet",
+      description: "Greet someone.",
+      inputSchema,
+      outputSchema,
+    });
+    const frame = await FileFactory.create(auth, null, {
+      contentType: frameContentType,
+      fileName: "Greeter.tsx",
+      fileSize: 100,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: pod.sId },
+    });
+    await frame.uploadContent(auth, `callFunction("${pod.sId}/greet", {});`);
+
+    const result = await unpublishHandler(
+      { slug: "greet" },
+      makeExtra(auth, conversation)
+    );
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+    const content = result.value[0];
+    expect(content?.type).toBe("text");
+    if (content?.type !== "text") {
+      return;
+    }
+    expect(content.text).toContain(
+      'Unpublished pod function "greet" and deleted its invocation history.'
+    );
+    expect(content.text).toContain(
+      "Warning: 1 frame(s) reference this function:"
+    );
+    expect(content.text).toContain("Greeter.tsx");
   });
 
   it("returns an untracked error when the slug is not published", async () => {
