@@ -139,6 +139,14 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
     });
   }
 
+  static async deleteAllForWorkspace(auth: Authenticator): Promise<undefined> {
+    await this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+  }
+
   async updateFields(fields: {
     status?: ActivationWorkAreaStatus;
     title?: string;
