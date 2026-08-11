@@ -461,6 +461,34 @@ async fn pod_policy_ignored_without_pod_id_claim() -> Result<()> {
 }
 
 #[tokio::test]
+async fn pod_id_without_owner_id_is_rejected() -> Result<()> {
+    // Boundary hardening: a signed token carrying podId but no ownerId is a
+    // shape no legitimate minter produces — it must be denied before policy
+    // evaluation, even when the pod policy would allow the domain.
+    let (upstream_port, _upstream_handles) =
+        start_localhost_servers(UpstreamBehavior::EchoFixed { read_len: 4 }).await?;
+    let proxy = start_proxy_with_mock_gcs(
+        MockPolicies {
+            workspace: None,
+            workspace_new: None,
+            owner: None,
+            pod: Some(policy_response(&["localhost"])),
+            sandbox: None,
+        },
+        None,
+        true,
+        "test",
+    )
+    .await?;
+    let token = make_malformed_pod_token(SECRET, 60);
+
+    let response = send_handshake(&proxy, &token, "localhost", upstream_port).await?;
+
+    assert_eq!(response, Some(DENY_RESPONSE));
+    Ok(())
+}
+
+#[tokio::test]
 async fn pod_function_allowed_through_pod_file_as_owner() -> Result<()> {
     // Pod-owned (pod function) sandboxes carry ownerId=<pod> and no podId:
     // the pod's file IS their owner file, granting workspace + pod scope.
@@ -1789,6 +1817,23 @@ fn make_token_with_owner_and_pod(secret: &str, exp_offset_seconds: i64) -> Strin
             sb_id: Some(TEST_SANDBOX_ID),
             w_id: Some(TEST_WORKSPACE_ID),
             owner_id: Some(TEST_OWNER_ID),
+            pod_id: Some(TEST_POD_ID),
+            action: None,
+            iss: "dust-front",
+            aud: "dust-egress-proxy",
+            exp_offset_seconds,
+        },
+    )
+}
+
+// An impossible shape no legitimate minter produces: podId without ownerId.
+fn make_malformed_pod_token(secret: &str, exp_offset_seconds: i64) -> String {
+    make_token_with_claims(
+        secret,
+        FullClaims {
+            sb_id: Some(TEST_SANDBOX_ID),
+            w_id: Some(TEST_WORKSPACE_ID),
+            owner_id: None,
             pod_id: Some(TEST_POD_ID),
             action: None,
             iss: "dust-front",
