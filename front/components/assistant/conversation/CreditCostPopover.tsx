@@ -1,7 +1,7 @@
 import { getActionStepIcon } from "@app/components/assistant/conversation/actions/inline/utils";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import { useAgentMessageConsumption } from "@app/hooks/conversations/useAgentMessageConsumption";
-import { formatCredits } from "@app/lib/client/credits";
+import { formatCreditValue } from "@app/lib/client/credits";
 import type { AgentMessageConsumptionToolDetails } from "@app/types/assistant/agent_message_consumption";
 import {
   Icon,
@@ -14,10 +14,6 @@ import type { ComponentType, ReactElement } from "react";
 import { useId, useState } from "react";
 
 const MAX_VISIBLE_TOOLS = 3;
-
-function formatCreditValue(credits: number): string {
-  return `${formatCredits(credits)} credits`;
-}
 
 function toolDescription(tool: AgentMessageConsumptionToolDetails): string {
   const descriptions = [
