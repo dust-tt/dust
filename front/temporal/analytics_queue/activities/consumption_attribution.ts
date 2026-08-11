@@ -3,10 +3,7 @@ import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import type {
-  AgentLoopArgs,
-  AgentMessageRef,
-} from "@app/types/assistant/agent_run";
+import type { AgentMessageRef } from "@app/types/assistant/agent_run";
 
 async function storeAgentMessageConsumptionAttribution(
   authType: AuthenticatorType,
@@ -17,19 +14,6 @@ async function storeAgentMessageConsumptionAttribution(
   await computeAndStoreAgentMessageConsumptionAttribution(auth, message);
 }
 
-export async function storeAgentMessageConsumptionAttributionActivity(
-  authType: AuthenticatorType,
-  {
-    agentLoopArgs,
-  }: {
-    agentLoopArgs: AgentLoopArgs;
-  }
-): Promise<void> {
-  await storeAgentMessageConsumptionAttribution(authType, agentLoopArgs);
-}
-
-// V1/V2 keep their original AgentLoopArgs activity payload for replay. V3 only needs this stable
-// message reference, which also lets historical backfills use the same durable workflow.
 export async function storeAgentMessageConsumptionAttributionForMessageActivity(
   authType: AuthenticatorType,
   { message }: { message: AgentMessageRef }
