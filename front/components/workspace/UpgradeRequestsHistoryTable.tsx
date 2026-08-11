@@ -1,9 +1,14 @@
-import { seatTypeDisplayName } from "@app/components/workspace/billing/seatTypeUtils";
 import { buildMemberNameColumn } from "@app/components/workspace/member_name_column";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
-import type { SpendLimitExpiryKind } from "@app/types/api/users/spend_limit";
+import {
+  formatUpgradeRequestDate,
+  UPGRADE_REQUEST_REASON_LABEL,
+  upgradeRequestGrant,
+  upgradeRequestGrantedLabel,
+  upgradeRequestStatusLabel,
+  upgradeRequestUntilLabel,
+} from "@app/lib/api/credits/upgrade_requests_display";
 import type { MembershipUpgradeRequestType } from "@app/types/memberships";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
   AlertCircle,
@@ -40,34 +45,6 @@ type Info = CellContext<RowData, string>;
 
 const nameColumn = buildMemberNameColumn<RowData>("User");
 
-const REASON_LABEL = "Reached credit limit";
-
-function formatDate(epochMs: number): string {
-  return new Date(epochMs).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
-
-function durationLabel(expiryKind: SpendLimitExpiryKind | null): string | null {
-  if (expiryKind === null) {
-    return null;
-  }
-  switch (expiryKind) {
-    case "one_day":
-      return "1 day";
-    case "next_credit_reset":
-      return "Until next billing";
-    case "never":
-      return "Forever";
-    default:
-      assertNeverAndIgnore(expiryKind);
-      return null;
-  }
-}
-
 const issuedColumn: ColumnDef<RowData, string> = {
   id: "issued" as const,
   header: "Requested",
@@ -75,7 +52,7 @@ const issuedColumn: ColumnDef<RowData, string> = {
   cell: (info: Info) => (
     <DataTable.CellContent>
       <span className="text-sm text-muted-foreground">
-        {formatDate(info.row.original.createdAt)}
+        {formatUpgradeRequestDate(info.row.original.createdAt)}
       </span>
     </DataTable.CellContent>
   ),
@@ -91,54 +68,18 @@ const grantedColumn: ColumnDef<RowData, string> = {
   header: "Granted",
   enableSorting: false,
   cell: (info: Info) => {
-    const {
-      status,
-      grantedAwuCredits,
-      grantedUnlimitedSpend,
-      grantedSeatType,
-    } = info.row.original.request;
-
-    if (status !== "approved") {
-      return (
-        <DataTable.CellContent>
-          <span className="text-sm text-muted-foreground">—</span>
-        </DataTable.CellContent>
-      );
-    }
-
-    if (grantedSeatType) {
-      return (
-        <DataTable.CellContent>
-          <span
-            className={`text-sm font-medium ${getSeatIconColorClass(grantedSeatType)}`}
-          >
-            Upgraded to {seatTypeDisplayName(grantedSeatType)}
-          </span>
-        </DataTable.CellContent>
-      );
-    }
-
-    if (grantedUnlimitedSpend) {
-      return (
-        <DataTable.CellContent>
-          <span className="text-sm">Unlimited spend</span>
-        </DataTable.CellContent>
-      );
-    }
-
-    if (grantedAwuCredits !== null) {
-      return (
-        <DataTable.CellContent>
-          <span className="text-sm">
-            {grantedAwuCredits.toLocaleString("en-US")} credits
-          </span>
-        </DataTable.CellContent>
-      );
-    }
+    const grant = upgradeRequestGrant(info.row.original.request);
+    const label = upgradeRequestGrantedLabel(grant);
+    const className =
+      grant.kind === "none"
+        ? "text-sm text-muted-foreground"
+        : grant.kind === "seat_upgrade"
+          ? `text-sm font-medium ${getSeatIconColorClass(grant.seatType)}`
+          : "text-sm";
 
     return (
       <DataTable.CellContent>
-        <span className="text-sm text-muted-foreground">—</span>
+        <span className={className}>{label}</span>
       </DataTable.CellContent>
     );
   },
@@ -153,36 +94,13 @@ const untilColumn: ColumnDef<RowData, string> = {
   id: "until" as const,
   header: "For",
   enableSorting: false,
-  cell: (info: Info) => {
-    const {
-      status,
-      grantedAwuCredits,
-      grantedExpiryKind,
-      grantedUnlimitedSpend,
-      grantedSeatType,
-    } = info.row.original.request;
-
-    const hasGrant =
-      grantedAwuCredits !== null || grantedUnlimitedSpend || grantedSeatType;
-    if (status !== "approved" || !hasGrant) {
-      return (
-        <DataTable.CellContent>
-          <span className="text-sm text-muted-foreground">—</span>
-        </DataTable.CellContent>
-      );
-    }
-
-    const label =
-      grantedSeatType || grantedUnlimitedSpend
-        ? "Forever"
-        : (durationLabel(grantedExpiryKind) ?? "—");
-
-    return (
-      <DataTable.CellContent>
-        <span className="text-sm text-muted-foreground">{label}</span>
-      </DataTable.CellContent>
-    );
-  },
+  cell: (info: Info) => (
+    <DataTable.CellContent>
+      <span className="text-sm text-muted-foreground">
+        {upgradeRequestUntilLabel(info.row.original.request)}
+      </span>
+    </DataTable.CellContent>
+  ),
   meta: {
     className: "w-28",
   },
@@ -191,7 +109,9 @@ const untilColumn: ColumnDef<RowData, string> = {
 function ReasonCell({ reason }: { reason: string | null }) {
   if (!reason) {
     return (
-      <span className="text-sm text-muted-foreground">{REASON_LABEL}</span>
+      <span className="text-sm text-muted-foreground">
+        {UPGRADE_REQUEST_REASON_LABEL}
+      </span>
     );
   }
 
@@ -241,11 +161,11 @@ const statusColumn: ColumnDef<RowData, string> = {
     const { status } = info.row.original.request;
     return (
       <DataTable.CellContent>
-        {status === "approved" ? (
-          <Chip size="xs" color="success" label="Approved" />
-        ) : (
-          <Chip size="xs" color="warning" label="Denied" />
-        )}
+        <Chip
+          size="xs"
+          color={status === "approved" ? "success" : "warning"}
+          label={upgradeRequestStatusLabel(status)}
+        />
       </DataTable.CellContent>
     );
   },
@@ -263,7 +183,7 @@ const resolvedAtColumn: ColumnDef<RowData, string> = {
     return (
       <DataTable.CellContent>
         <span className="text-sm text-muted-foreground">
-          {resolvedAt ? formatDate(resolvedAt) : "—"}
+          {resolvedAt ? formatUpgradeRequestDate(resolvedAt) : "—"}
         </span>
       </DataTable.CellContent>
     );

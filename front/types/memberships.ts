@@ -106,6 +106,19 @@ export function toBaseSeatType(
   return seatType;
 }
 
+const SEAT_TYPE_DISPLAY_NAMES: Record<string, string> = {
+  free: "Free",
+  pro: "Pro",
+  max: "Max",
+  workspace: "Platform",
+  none: "None",
+};
+
+export function seatTypeDisplayName(seatType: MembershipSeatType): string {
+  const base = toBaseSeatType(seatType);
+  return SEAT_TYPE_DISPLAY_NAMES[base] ?? base;
+}
+
 /**
  * Map a membership seat type to its normalized pool-limit seat type.
  * Returns null for `free` seats (they have a fixed lifetime allocation with

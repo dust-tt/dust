@@ -2,6 +2,7 @@ import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { ConfirmContext } from "@app/components/Confirm";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
+import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import { BulkChangeSeatModal } from "@app/components/workspace/BulkChangeSeatModal";
 import { BulkEditSpendLimitModal } from "@app/components/workspace/BulkEditSpendLimitModal";
 import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDialog";
@@ -25,6 +26,7 @@ import { ModelTiersSettingsCard } from "@app/components/workspace/usage/ModelTie
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
+import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import { useMembersSelection } from "@app/hooks/useMembersSelection";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
@@ -73,6 +75,7 @@ import {
 } from "@app/lib/swr/model_tiers";
 import {
   UPGRADE_REQUESTS_HISTORY_PAGE_SIZE,
+  upgradeRequestsHistoryCsvUrl,
   useResolveUpgradeRequest,
   useUpgradeRequests,
   useUpgradeRequestsHistory,
@@ -284,6 +287,12 @@ export function UsagePage() {
     workspaceId: owner.sId,
     pageIndex: historyPagination.pageIndex,
     disabled: membersTab !== "history",
+  });
+  const upgradeRequestsHistoryCsvDownload = useDownloadCsv({
+    url: upgradeRequestsHistoryCsvUrl(owner.sId),
+    filename: `dust_upgrade_requests_history_${owner.sId}.csv`,
+    disabled:
+      isUpgradeRequestsHistoryLoading || upgradeRequestsHistory.length === 0,
   });
 
   const filteredUpgradeRequests = useMemo(() => {
@@ -1164,6 +1173,12 @@ export function UsagePage() {
                       )}
                       {seatFilterDropdown}
                     </div>
+                  )}
+                  {membersTab === "history" && (
+                    <CsvDownloadButton
+                      {...upgradeRequestsHistoryCsvDownload}
+                      label="Download to CSV"
+                    />
                   )}
                 </div>
                 <div className="flex flex-col gap-2 pt-2">

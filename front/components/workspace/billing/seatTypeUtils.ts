@@ -1,5 +1,5 @@
-import type { MembershipSeatType } from "@app/types/memberships";
-import { toBaseSeatType } from "@app/types/memberships";
+export { seatTypeDisplayName } from "@app/types/memberships";
+
 import {
   AlertCircle,
   CoinsStacked01,
@@ -9,19 +9,6 @@ import {
   LayersTwo01,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
-
-const SEAT_TYPE_DISPLAY_NAMES: Record<string, string> = {
-  free: "Free",
-  pro: "Pro",
-  max: "Max",
-  workspace: "Platform",
-  none: "None",
-};
-
-export function seatTypeDisplayName(seatType: MembershipSeatType): string {
-  const base = toBaseSeatType(seatType);
-  return SEAT_TYPE_DISPLAY_NAMES[base] ?? base;
-}
 
 export const SEAT_TYPE_ICONS: Record<string, ComponentType> = {
   none: AlertCircle,

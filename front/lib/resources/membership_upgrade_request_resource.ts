@@ -229,6 +229,43 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     return { requests, total };
   }
 
+  // Resolved requests, most recent first, keyset-paginated on
+  // (resolvedAt, id) rather than offset. Offset pagination would shift
+  // under a concurrent resolution (a newly resolved request is inserted at
+  // the head, pushing every offset down), causing the caller to duplicate
+  // or skip rows across pages; keyset pagination is immune to that because
+  // each page is bounded by the last row actually returned.
+  static async listResolvedByWorkspaceAfter(
+    auth: Authenticator,
+    {
+      limit,
+      after,
+    }: { limit: number; after: { resolvedAt: Date; id: ModelId } | null }
+  ): Promise<MembershipUpgradeRequestResource[]> {
+    if (!auth.isManager()) {
+      return [];
+    }
+    const statusFilter = { status: { [Op.ne]: "pending" } } as const;
+    const where = after
+      ? {
+          ...statusFilter,
+          [Op.or]: [
+            { resolvedAt: { [Op.lt]: after.resolvedAt } },
+            { resolvedAt: after.resolvedAt, id: { [Op.lt]: after.id } },
+          ],
+        }
+      : statusFilter;
+
+    return this.baseFetch(auth, {
+      where,
+      order: [
+        ["resolvedAt", "DESC"],
+        ["id", "DESC"],
+      ],
+      limit,
+    });
+  }
+
   // Fetching an arbitrary request by id is a business-admin operation (a
   // manager or full admin resolves it from the usage page).
   static async fetchById(

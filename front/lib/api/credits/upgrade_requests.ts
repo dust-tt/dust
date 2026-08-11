@@ -16,6 +16,7 @@ import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_
 import logger from "@app/logger/logger";
 import type { UpgradeRequestResolution } from "@app/types/api/credits/upgrade_requests";
 import type { MembershipUpgradeRequestType } from "@app/types/memberships";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -251,6 +252,30 @@ export async function listResolvedUpgradeRequests(
       offset,
     });
   return { requests: requests.map((r) => r.toJSON()), total };
+}
+
+// Admin-only: every resolved request, keyset-paginated fetching. Keyset
+// (not offset) pagination so a request resolved concurrently mid-export
+// can't shift page boundaries and cause a duplicated or omitted row.
+export async function listAllResolvedUpgradeRequests(
+  auth: Authenticator
+): Promise<MembershipUpgradeRequestType[]> {
+  const allRequests: MembershipUpgradeRequestType[] = [];
+  let after: { resolvedAt: Date; id: ModelId } | null = null;
+  while (true) {
+    const requests =
+      await MembershipUpgradeRequestResource.listResolvedByWorkspaceAfter(
+        auth,
+        { limit: RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE, after }
+      );
+    allRequests.push(...requests.map((r) => r.toJSON()));
+    if (requests.length < RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE) {
+      break;
+    }
+    const last = requests[requests.length - 1];
+    after = { resolvedAt: last.resolvedAt ?? new Date(0), id: last.id };
+  }
+  return allRequests;
 }
 
 // Admin-only: record the outcome of a request. The request is claimed first

@@ -20,6 +20,11 @@ function upgradeRequestsUrl(workspaceId: string): string {
   return `/api/w/${workspaceId}/credits/upgrade-requests`;
 }
 
+// CSV download link for the resolved-requests
+export function upgradeRequestsHistoryCsvUrl(workspaceId: string): string {
+  return `${upgradeRequestsUrl(workspaceId)}?format=csv`;
+}
+
 function usageStatusUrl(workspaceId: string): string {
   return `/api/w/${workspaceId}/usage-status`;
 }
