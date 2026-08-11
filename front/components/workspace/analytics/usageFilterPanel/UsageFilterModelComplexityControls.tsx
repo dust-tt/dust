@@ -8,6 +8,7 @@ import {
   USAGE_MODEL_TIER_LABEL,
   USAGE_MODEL_TIERS,
 } from "@app/components/workspace/analytics/usageFilter";
+import { UsageFilterAvailabilityStatus } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAvailabilityStatus";
 import {
   getModelMakerDisplayName,
   MODEL_MAKER_IDS,
@@ -44,6 +45,28 @@ interface UsageFilterModelComplexityControlsProps {
   onToggleModel: (model: UsageFilterModelOption) => void;
   activeTier: UsageModelTier;
   onTierChange: (tier: UsageModelTier) => void;
+  isSelectionLimitReached: boolean;
+}
+
+function getModelSelectionStatus({
+  isSelected,
+  isUnavailable,
+}: {
+  isSelected: boolean;
+  isUnavailable: boolean;
+}) {
+  if (!isSelected && !isUnavailable) {
+    return undefined;
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      {isUnavailable && <UsageFilterAvailabilityStatus />}
+      {isSelected && (
+        <Icon visual={Check} size="sm" className="text-muted-foreground" />
+      )}
+    </div>
+  );
 }
 
 export function UsageFilterModelComplexityControls({
@@ -52,6 +75,7 @@ export function UsageFilterModelComplexityControls({
   onToggleModel,
   activeTier,
   onTierChange,
+  isSelectionLimitReached,
 }: UsageFilterModelComplexityControlsProps) {
   const { isDark } = useTheme();
   const [isMoreModelsOpen, setIsMoreModelsOpen] = useState(false);
@@ -84,6 +108,9 @@ export function UsageFilterModelComplexityControls({
     const labModels = moreModelsCatalog.filter((model) => model.lab === lab);
     return labModels.length > 0 ? [{ lab, models: labModels }] : [];
   });
+  const isModelSelectionDisabled = (model: UsageFilterModelOption) =>
+    (model.disabled || isSelectionLimitReached) &&
+    !selectedModelIds.has(model.id);
 
   return (
     <>
@@ -115,17 +142,26 @@ export function UsageFilterModelComplexityControls({
                     <DropdownMenuItem
                       key={model.id}
                       label={model.name}
-                      icon={getModelMakerLogo(model.lab, isDark)}
-                      endComponent={
-                        selectedModelIds.has(model.id) ? (
-                          <Icon
-                            visual={Check}
-                            size="sm"
-                            className="text-muted-foreground"
-                          />
-                        ) : undefined
+                      icon={
+                        model.lab
+                          ? getModelMakerLogo(model.lab, isDark)
+                          : undefined
                       }
-                      onClick={() => onToggleModel(model)}
+                      aria-disabled={isModelSelectionDisabled(model)}
+                      className={
+                        isModelSelectionDisabled(model)
+                          ? "opacity-50"
+                          : undefined
+                      }
+                      endComponent={getModelSelectionStatus({
+                        isSelected: selectedModelIds.has(model.id),
+                        isUnavailable: model.disabled,
+                      })}
+                      onClick={() => {
+                        if (!isModelSelectionDisabled(model)) {
+                          onToggleModel(model);
+                        }
+                      }}
                       onSelect={(e) => e.preventDefault()}
                     />
                   ))
@@ -151,6 +187,7 @@ export function UsageFilterModelComplexityControls({
                         />
                       }
                       onClick={() => handleToggleExpandedModelLab(lab)}
+                      aria-expanded={expandedModelLab === lab}
                       onSelect={(e) => e.preventDefault()}
                     />
                     {expandedModelLab === lab &&
@@ -158,17 +195,21 @@ export function UsageFilterModelComplexityControls({
                         <DropdownMenuItem
                           key={model.id}
                           label={model.name}
-                          className="pl-8"
-                          endComponent={
-                            selectedModelIds.has(model.id) ? (
-                              <Icon
-                                visual={Check}
-                                size="sm"
-                                className="text-muted-foreground"
-                              />
-                            ) : undefined
+                          aria-disabled={isModelSelectionDisabled(model)}
+                          className={
+                            isModelSelectionDisabled(model)
+                              ? "pl-8 opacity-50"
+                              : "pl-8"
                           }
-                          onClick={() => onToggleModel(model)}
+                          endComponent={getModelSelectionStatus({
+                            isSelected: selectedModelIds.has(model.id),
+                            isUnavailable: model.disabled,
+                          })}
+                          onClick={() => {
+                            if (!isModelSelectionDisabled(model)) {
+                              onToggleModel(model);
+                            }
+                          }}
                           onSelect={(e) => e.preventDefault()}
                         />
                       ))}
@@ -187,6 +228,7 @@ export function UsageFilterModelComplexityControls({
             icon={MODEL_TIER_ICON[tier]}
             size="xs"
             variant={activeTier === tier ? "primary" : "outline"}
+            aria-pressed={activeTier === tier}
             onClick={() => onTierChange(tier)}
           />
         ))}

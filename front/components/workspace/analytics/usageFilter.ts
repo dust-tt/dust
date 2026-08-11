@@ -16,6 +16,10 @@ export const USAGE_FILTER_CATEGORIES = [
   "source",
 ] as const;
 
+// Consumption widgets currently serialize their filters into GET query
+// strings. Keep the total bounded until those reads move to POST bodies.
+export const MAX_USAGE_FILTER_SELECTIONS = 50;
+
 export type UsageFilterCategory = (typeof USAGE_FILTER_CATEGORIES)[number];
 
 export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =
@@ -49,11 +53,14 @@ export const USAGE_MODEL_TIER_LABEL: Record<UsageModelTier, string> = {
 interface UsageFilterOptionBase {
   id: string;
   name: string;
+  documentCount: number;
+  disabled: boolean;
 }
 
 export interface UsageFilterAgentOption extends UsageFilterOptionBase {
   kind: "agent";
-  scope: AgentConfigurationScope;
+  // Historical agents remain filterable after their configuration disappears.
+  scope?: AgentConfigurationScope;
   image: string | null;
 }
 
@@ -73,7 +80,7 @@ export interface UsageFilterSourceOption extends UsageFilterOptionBase {
 
 export interface UsageFilterModelOption extends UsageFilterOptionBase {
   kind: "model";
-  lab: ModelMakerIdType;
+  lab?: ModelMakerIdType;
   // Undefined for a model outside the static tier table — it doesn't match
   // any Fast/Standard/Complex quick filter, so it's absent from the main
   // checklist but still reachable through the "More models" browse dropdown.
@@ -110,13 +117,27 @@ export type UsageFilter = {
   [C in UsageFilterCategory]?: UsageFilterOptionForCategory<C>[];
 };
 
+export function usageFilterSelectionCount(filter: UsageFilter): number {
+  return USAGE_FILTER_CATEGORIES.reduce(
+    (count, category) => count + (filter[category]?.length ?? 0),
+    0
+  );
+}
+
 export function toggleUsageFilterOption<C extends UsageFilterCategory>(
   filter: UsageFilter,
   category: C,
   option: NoInfer<UsageFilterOptionForCategory<C>>
 ): UsageFilter {
   const current = filter[category] ?? [];
-  const next = current.some((e) => e.id === option.id)
+  const isSelected = current.some((e) => e.id === option.id);
+  if (
+    !isSelected &&
+    usageFilterSelectionCount(filter) >= MAX_USAGE_FILTER_SELECTIONS
+  ) {
+    return filter;
+  }
+  const next = isSelected
     ? current.filter((e) => e.id !== option.id)
     : [...current, option];
   return { ...filter, [category]: next.length > 0 ? next : undefined };
@@ -145,15 +166,21 @@ export function selectAllUsageFilterOptions<C extends UsageFilterCategory>(
 ): UsageFilter {
   const current = filter[category] ?? [];
   const currentIds = new Set(current.map((e) => e.id));
-  const additions = options.filter((e) => !currentIds.has(e.id));
+  const remainingCapacity = Math.max(
+    0,
+    MAX_USAGE_FILTER_SELECTIONS - usageFilterSelectionCount(filter)
+  );
+  const additions = options
+    .filter((e) => !currentIds.has(e.id))
+    .slice(0, remainingCapacity);
   if (additions.length === 0) {
     return filter;
   }
   return { ...filter, [category]: [...current, ...additions] };
 }
 
-// "member" maps to the "users" dimension; every other category (including
-// "team") maps to its same-named consumption scope dimension.
+// "member" maps to the "user" dimension; every other category maps directly
+// to its same-named consumption dimension.
 export function toConsumptionScopeFilter(
   filter: UsageFilter
 ): ConsumptionScopeFilter {

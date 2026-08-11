@@ -31,7 +31,9 @@ export function UsageFilterOptionIcon({ option }: UsageFilterOptionIconProps) {
       return <Icon visual={logo} size="sm" />;
     }
     case "model":
-      return <Icon visual={getModelMakerLogo(option.lab, isDark)} size="sm" />;
+      return option.lab ? (
+        <Icon visual={getModelMakerLogo(option.lab, isDark)} size="sm" />
+      ) : null;
     case "team":
     case "tool":
     case "skill":

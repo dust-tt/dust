@@ -3,6 +3,7 @@ import type {
   UsageFilterCategory,
   UsageFilterOption,
 } from "@app/components/workspace/analytics/usageFilter";
+import { UsageFilterAvailabilityStatus } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAvailabilityStatus";
 import { UsageFilterOptionIcon } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionIcon";
 import {
   Button,
@@ -20,10 +21,14 @@ interface UsageFilterOptionCheckboxListProps {
   selectedIds: Set<string>;
   onToggleOption: (option: UsageFilterOption) => void;
   onSelectAll: () => void;
-  // Only set for categories backed by a paginated server fetch (members).
+  selectAllLabel: string;
+  hasSelectableOptions: boolean;
+  isSelectionLimitReached: boolean;
   hasMore?: boolean;
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
+  isLoading?: boolean;
+  isUpdating?: boolean;
 }
 
 export function UsageFilterOptionCheckboxList({
@@ -33,40 +38,64 @@ export function UsageFilterOptionCheckboxList({
   selectedIds,
   onToggleOption,
   onSelectAll,
+  selectAllLabel,
+  hasSelectableOptions,
+  isSelectionLimitReached,
   hasMore = false,
   isLoadingMore = false,
   onLoadMore,
+  isLoading = false,
+  isUpdating = false,
 }: UsageFilterOptionCheckboxListProps) {
   // Tracked as state so InfiniteScroll re-renders once the node
   // mounts and can attach its scroll listener directly to it.
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
     null
   );
-
   return (
     <>
       <NavigationListLabel
         label={`All ${categoryLabel}`}
         className="bg-transparent font-medium"
         action={
-          <Button
-            label="Select all"
-            size="xmini"
-            variant="ghost-secondary"
-            onClick={onSelectAll}
-            disabled={options.length === 0}
-          />
+          <div className="flex items-center gap-2">
+            {isUpdating && (
+              <span className="text-xs text-muted-foreground">Updating…</span>
+            )}
+            {isSelectionLimitReached && !isUpdating && (
+              <span className="text-xs text-muted-foreground">
+                Selection limit reached
+              </span>
+            )}
+            <Button
+              label={selectAllLabel}
+              size="xmini"
+              variant="ghost-secondary"
+              onClick={onSelectAll}
+              disabled={!hasSelectableOptions || isUpdating}
+            />
+          </div>
         }
       />
       <div
         ref={setScrollContainer}
+        aria-busy={isUpdating}
         className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto"
       >
-        {options.length > 0 ? (
+        {isLoading && options.length === 0 ? (
+          <div className="flex h-24 items-center justify-center">
+            <Spinner size="xs" />
+          </div>
+        ) : options.length > 0 ? (
           <>
             {options.map((option) => {
               const checked = selectedIds.has(option.id);
+              const disabled =
+                (option.disabled || isSelectionLimitReached) && !checked;
               const checkboxId = `usage-filter-option-${category}-${option.id}`;
+              const availabilityDescriptionId = option.disabled
+                ? `${checkboxId}-availability`
+                : undefined;
               return (
                 <div
                   key={option.id}
@@ -75,15 +104,33 @@ export function UsageFilterOptionCheckboxList({
                   <Checkbox
                     id={checkboxId}
                     checked={checked}
-                    onCheckedChange={() => onToggleOption(option)}
+                    aria-disabled={disabled}
+                    aria-describedby={availabilityDescriptionId}
+                    className={
+                      disabled ? "cursor-default opacity-50" : undefined
+                    }
+                    onCheckedChange={() => {
+                      if (!disabled) {
+                        onToggleOption(option);
+                      }
+                    }}
                   />
                   <UsageFilterOptionIcon option={option} />
                   <Label
                     htmlFor={checkboxId}
-                    className="cursor-pointer text-sm leading-none"
+                    className={
+                      disabled
+                        ? "min-w-0 flex-1 cursor-default text-sm leading-none text-muted-foreground peer-disabled:cursor-default"
+                        : "min-w-0 flex-1 cursor-pointer text-sm leading-none"
+                    }
                   >
-                    {option.name}
+                    <span className="block truncate">{option.name}</span>
                   </Label>
+                  {option.disabled && (
+                    <UsageFilterAvailabilityStatus
+                      id={availabilityDescriptionId}
+                    />
+                  )}
                 </div>
               );
             })}

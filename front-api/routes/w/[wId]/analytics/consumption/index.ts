@@ -1,4 +1,5 @@
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import facets from "./facets";
 import overview from "./overview";
 import timeseries from "./timeseries";
 import topAgents from "./top-agents";
@@ -11,6 +12,7 @@ import topUsers from "./top-users";
 
 const app = workspaceApp();
 
+app.route("/facets", facets);
 app.route("/overview", overview);
 app.route("/timeseries", timeseries);
 app.route("/top-agents", topAgents);
