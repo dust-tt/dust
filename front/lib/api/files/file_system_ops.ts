@@ -264,6 +264,47 @@ function inferDestMountInfo(
 }
 
 /**
+ * Compute the useCaseMetadata a linked FileResource carries after its mount file moved or was
+ * renamed to `destScopedPath`.
+ *
+ * Metadata is carried over, not rebuilt: only location-derived fields change. The scope field of
+ * the previous location (conversationId or spaceId) is dropped in favor of the one inferred from
+ * the destination. For published Frames the bundle fields are recomputed against the destination,
+ * keeping the invariant of `splitFrameEntryScopedPath`: the root is the entry's directory and the
+ * entry rel path is its filename. Replacing the metadata wholesale here used to wipe
+ * `frameBundleRootPath`, which flipped `getRenderableVersion` back to "original" and made a
+ * published Frame render as raw source after any move.
+ */
+function translateUseCaseMetadataForMove({
+  previousMetadata,
+  destScopedPath,
+  destScopeMetadata,
+}: {
+  previousMetadata: FileUseCaseMetadata | null;
+  destScopedPath: string;
+  destScopeMetadata: FileUseCaseMetadata;
+}): FileUseCaseMetadata {
+  const translated: FileUseCaseMetadata = {
+    ...(previousMetadata ?? {}),
+    ...destScopeMetadata,
+  };
+
+  if (!("conversationId" in destScopeMetadata)) {
+    delete translated.conversationId;
+  }
+  if (!("spaceId" in destScopeMetadata)) {
+    delete translated.spaceId;
+  }
+
+  if (previousMetadata?.frameBundleRootPath) {
+    translated.frameBundleRootPath = path.posix.dirname(destScopedPath);
+    translated.frameEntryRelPath = path.posix.basename(destScopedPath);
+  }
+
+  return translated;
+}
+
+/**
  * Rename a file at `scopedPath` to `newFileName` (same directory) and sync the
  * linked FileResource record if one exists.
  *
@@ -298,7 +339,11 @@ export async function renameCanonicalFile(
         destFileName: newFileName,
         destMountFilePath: destGcsPath,
         destUseCase: destInfo.useCase,
-        destUseCaseMetadata: destInfo.useCaseMetadata,
+        destUseCaseMetadata: translateUseCaseMetadataForMove({
+          previousMetadata: linkedFileResource.useCaseMetadata,
+          destScopedPath: dest,
+          destScopeMetadata: destInfo.useCaseMetadata,
+        }),
       });
     }
   }
@@ -337,7 +382,11 @@ export async function moveCanonicalFile(
         destFileName,
         destMountFilePath: destGcsPath,
         destUseCase: destInfo.useCase,
-        destUseCaseMetadata: destInfo.useCaseMetadata,
+        destUseCaseMetadata: translateUseCaseMetadataForMove({
+          previousMetadata: linkedFileResource.useCaseMetadata,
+          destScopedPath: dest,
+          destScopeMetadata: destInfo.useCaseMetadata,
+        }),
       });
     }
   }
