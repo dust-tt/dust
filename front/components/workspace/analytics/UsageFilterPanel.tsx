@@ -37,6 +37,7 @@ import { useGroups } from "@app/lib/swr/groups";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import { useModels } from "@app/lib/swr/models";
+import { useSkills } from "@app/lib/swr/skill_configurations";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
@@ -66,15 +67,15 @@ interface UsageFilterPaginationState {
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
-  // Skills/sources are still mock data (see usageFilterMockData.ts — sources
-  // are fake connectors standing in for a real db call); agents come from
+  // Sources are still mock data (see usageFilterMockData.ts — fake
+  // connectors standing in for a real db call); agents come from
   // useAgentConfigurations, members from useSearchMembers, teams from
   // useGroups, models from the workspace's full model catalog (useModels),
-  // and tools from the workspace's full MCP server catalog (useMCPServers)
-  // — the same endpoints that back the model and tool pickers elsewhere in
-  // the app.
+  // tools from the workspace's full MCP server catalog (useMCPServers), and
+  // skills from the workspace's full skill catalog (useSkills) — the same
+  // endpoints that back the model, tool, and skill pickers elsewhere in the
+  // app.
   categoryOptions: {
-    skill: UsageFilterSkillOption[];
     source: UsageFilterSourceOption[];
   };
   filter: UsageFilter;
@@ -117,6 +118,7 @@ export function UsageFilterPanel({
   const isAgentCategoryActive = isOpen && activeCategory === "agent";
   const isModelCategoryActive = isOpen && activeCategory === "model";
   const isToolCategoryActive = isOpen && activeCategory === "tool";
+  const isSkillCategoryActive = isOpen && activeCategory === "skill";
 
   // Every category picker supports scroll-to-load-more:
   const [memberPageIndex, setMemberPageIndex] = useState(0);
@@ -201,6 +203,12 @@ export function UsageFilterPanel({
     disabled: !isToolCategoryActive,
   });
 
+  const { skills: skillCatalog } = useSkills({
+    owner,
+    status: "active",
+    disabled: !isSkillCategoryActive,
+  });
+
   // The workspace's full, period-independent model catalog — the same
   // endpoint backing the model picker elsewhere in the app — rather than a
   // period-scoped top-N, so every enabled model is listable and searchable
@@ -273,6 +281,16 @@ export function UsageFilterPanel({
     [mcpServers]
   );
 
+  const skillOptions = useMemo<UsageFilterSkillOption[]>(
+    () =>
+      skillCatalog.map((skill) => ({
+        id: skill.sId,
+        name: skill.name,
+        kind: "skill" as const,
+      })),
+    [skillCatalog]
+  );
+
   const resolvedCategoryOptions = useMemo<{
     [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
   }>(
@@ -283,6 +301,7 @@ export function UsageFilterPanel({
       agent: agentOptions,
       model: modelCatalogOptions,
       tool: toolOptions,
+      skill: skillOptions,
     }),
     [
       categoryOptions,
@@ -291,6 +310,7 @@ export function UsageFilterPanel({
       agentOptions,
       modelCatalogOptions,
       toolOptions,
+      skillOptions,
     ]
   );
 

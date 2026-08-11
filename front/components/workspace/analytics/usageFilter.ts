@@ -184,6 +184,11 @@ export function toConsumptionScopeFilter(
     scopeFilter.tools = toolIds;
   }
 
+  const skillIds = filter.skill?.map((entity) => entity.id);
+  if (skillIds && skillIds.length > 0) {
+    scopeFilter.skills = skillIds;
+  }
+
   return scopeFilter;
 }
 
