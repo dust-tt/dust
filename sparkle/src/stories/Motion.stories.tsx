@@ -11,7 +11,7 @@ const meta = {
     layout: "padded",
     docs: {
       description: {
-        component: `Motion tokens as Tailwind utilities. Two decisions: **easing** (entering/exiting → ease-out, moving on screen → ease-in-out) and **duration** (bigger element → longer). Prefer the semantic aliases (\`ease-enter\`, \`duration-enter\`, …). Each token is shown as a reference row: a continuously looping specimen (a ball tracing the curve, a square spinning at the duration), a click-to-copy class chip, its resolved value, and a description of intended use.`,
+        component: `Motion tokens as Tailwind utilities. Two decisions: **easing** (entering/exiting → ease-out, moving on screen → ease-in-out) and **duration** (bigger element → longer). Prefer the semantic aliases (\`ease-enter\`, \`duration-enter\`, …). For JavaScript animation libraries, import \`MOTION_EASINGS\` and \`MOTION_DURATIONS\` from \`@dust-tt/sparkle\`. Each token is shown as a reference row: a continuously looping specimen (a ball tracing the curve, a square spinning at the duration), a click-to-copy class chip, its resolved value, and a description of intended use.`,
       },
     },
   },

@@ -41,6 +41,8 @@ import {
   ContentMessageInline,
   EmptyCTA,
   InfoCircle,
+  MOTION_DURATIONS,
+  MOTION_EASINGS,
 } from "@dust-tt/sparkle";
 import {
   useVirtuosoLocation,
@@ -53,16 +55,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
 const DOUBLE_ESC_WINDOW_MS = 300;
 
-// Framer Motion requires numeric durations and Bezier tuples. Keep these
-// aligned with Sparkle's semantic motion tokens.
-const SPARKLE_MOTION = {
-  duration: { enter: 0.2, exit: 0.16 },
-  ease: {
-    enter: [0.215, 0.61, 0.355, 1],
-    move: [0.455, 0.03, 0.515, 0.955],
-  },
-} as const;
-
 const INPUT_BAR_SWAP_TRANSFORMS = {
   initial: "translateY(calc(var(--spacing) * 2))",
   idle: "translateY(calc(var(--spacing) * 0))",
@@ -70,17 +62,17 @@ const INPUT_BAR_SWAP_TRANSFORMS = {
 } as const;
 
 const INPUT_BAR_SWAP_TRANSITION = {
-  duration: SPARKLE_MOTION.duration.enter,
-  ease: SPARKLE_MOTION.ease.enter,
+  duration: MOTION_DURATIONS.enter,
+  ease: MOTION_EASINGS.enter,
   layout: {
-    duration: SPARKLE_MOTION.duration.enter,
-    ease: SPARKLE_MOTION.ease.move,
+    duration: MOTION_DURATIONS.enter,
+    ease: MOTION_EASINGS.move,
   },
 } satisfies Transition;
 
 const INPUT_BAR_SWAP_EXIT_TRANSITION = {
-  duration: SPARKLE_MOTION.duration.exit,
-  ease: SPARKLE_MOTION.ease.enter,
+  duration: MOTION_DURATIONS.exit,
+  ease: MOTION_EASINGS.enter,
 } satisfies Transition;
 
 interface AgentInputBarProps {
