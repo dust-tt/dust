@@ -39,11 +39,12 @@ fn is_unsafe_ipv4(ip: Ipv4Addr) -> bool {
 }
 
 fn is_unsafe_ipv6(ip: Ipv6Addr) -> bool {
-    if let Some(mapped_ipv4) = ip.to_ipv4_mapped() {
-        return is_unsafe_ipv4(mapped_ipv4);
-    }
-
-    ip.is_loopback() || ip.is_unspecified() || is_unique_local_ipv6(ip) || is_unicast_link_local(ip)
+    // Check native IPv6 addresses first because `to_ipv4` maps `::1` to `0.0.0.1`.
+    ip.is_loopback()
+        || ip.is_unspecified()
+        || is_unique_local_ipv6(ip)
+        || is_unicast_link_local(ip)
+        || ip.to_ipv4().is_some_and(is_unsafe_ipv4)
 }
 
 fn is_unique_local_ipv6(ip: Ipv6Addr) -> bool {
@@ -68,19 +69,21 @@ mod tests {
 
     #[test]
     fn classifies_unsafe_ips() {
-        assert!(is_unsafe_ip(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))));
-        assert!(is_unsafe_ip(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1))));
-        assert!(is_unsafe_ip(IpAddr::V4(Ipv4Addr::new(169, 254, 169, 254))));
+        for ipv4 in [
+            Ipv4Addr::new(127, 0, 0, 1),
+            Ipv4Addr::new(10, 0, 0, 1),
+            Ipv4Addr::new(169, 254, 169, 254),
+        ] {
+            assert!(is_unsafe_ip(IpAddr::V4(ipv4)));
+            assert!(is_unsafe_ip(IpAddr::V6(ipv4.to_ipv6_mapped())));
+            assert!(is_unsafe_ip(IpAddr::V6(ipv4.to_ipv6_compatible())));
+        }
+
         assert!(is_unsafe_ip(IpAddr::V6(Ipv6Addr::LOCALHOST)));
-        assert!(is_unsafe_ip(IpAddr::V6(
-            Ipv4Addr::new(127, 0, 0, 1).to_ipv6_mapped()
-        )));
-        assert!(is_unsafe_ip(IpAddr::V6(
-            Ipv4Addr::new(10, 0, 0, 1).to_ipv6_mapped()
-        )));
-        assert!(is_unsafe_ip(IpAddr::V6(
-            Ipv4Addr::new(169, 254, 169, 254).to_ipv6_mapped()
-        )));
-        assert!(!is_unsafe_ip(IpAddr::V4(Ipv4Addr::new(93, 184, 216, 34))));
+
+        let public_ipv4 = Ipv4Addr::new(93, 184, 216, 34);
+        assert!(!is_unsafe_ip(IpAddr::V4(public_ipv4)));
+        assert!(!is_unsafe_ip(IpAddr::V6(public_ipv4.to_ipv6_mapped())));
+        assert!(!is_unsafe_ip(IpAddr::V6(public_ipv4.to_ipv6_compatible())));
     }
 }
