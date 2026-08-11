@@ -8,10 +8,7 @@ import {
 } from "@app/tests/utils/conversation_test_factories";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
-import {
-  frameContentType,
-  sandboxFunctionContentType,
-} from "@app/types/files";
+import { frameContentType, sandboxFunctionContentType } from "@app/types/files";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
