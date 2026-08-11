@@ -1,5 +1,5 @@
+import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import {
-  type AgentLoopBlockedToolExecution,
   isToolFileAuthRequiredEvent,
   isToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp";
