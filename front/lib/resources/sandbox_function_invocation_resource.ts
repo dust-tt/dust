@@ -15,7 +15,7 @@ import {
 import { isSandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { recordSandboxFunctionRun } from "@app/lib/api/sandbox/instrumentation";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
-import { SandboxExecTimeoutError } from "@app/lib/api/sandbox/provider";
+import { isSandboxExecTimeoutError } from "@app/lib/api/sandbox/provider";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import { podDatabasePrefixFromSlug } from "@app/lib/api/sandbox_functions/db_naming";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
@@ -714,7 +714,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         // timeout. The function ran (and may already have written to pod state), so record the
         // terminal outcome here with a stable code and a message naming the real ceilings,
         // instead of forwarding provider SDK text to callers and frames.
-        if (execResult.error instanceof SandboxExecTimeoutError) {
+        if (isSandboxExecTimeoutError(execResult.error)) {
           logger.info(
             {
               workspaceId: auth.getNonNullableWorkspace().sId,

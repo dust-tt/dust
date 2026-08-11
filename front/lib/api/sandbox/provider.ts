@@ -123,6 +123,12 @@ export class SandboxExecTimeoutError extends Error {
   }
 }
 
+export function isSandboxExecTimeoutError(
+  error: unknown
+): error is SandboxExecTimeoutError {
+  return error instanceof SandboxExecTimeoutError;
+}
+
 // ---------------------------------------------------------------------------
 // Provider interface
 // ---------------------------------------------------------------------------

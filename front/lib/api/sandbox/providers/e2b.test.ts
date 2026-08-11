@@ -86,7 +86,7 @@ import {
   SANDBOX_AGENT_SERVICE_HOME,
   SANDBOX_ROOT_SAFE_PATH,
 } from "../hardening";
-import { SandboxExecTimeoutError } from "../provider";
+import { isSandboxExecTimeoutError } from "../provider";
 import { rootCommand } from "../root_command";
 import { E2BSandboxProvider } from "./e2b";
 
@@ -626,8 +626,7 @@ describe("E2BSandboxProvider", () => {
     if (result.isOk()) {
       throw new Error("expected an error");
     }
-    expect(result.error).toBeInstanceOf(SandboxExecTimeoutError);
-    if (!(result.error instanceof SandboxExecTimeoutError)) {
+    if (!isSandboxExecTimeoutError(result.error)) {
       throw new Error("expected a SandboxExecTimeoutError");
     }
     expect(result.error.timeoutMs).toBe(10_000);
@@ -655,7 +654,7 @@ describe("E2BSandboxProvider", () => {
     if (result.isOk()) {
       throw new Error("expected an error");
     }
-    if (!(result.error instanceof SandboxExecTimeoutError)) {
+    if (!isSandboxExecTimeoutError(result.error)) {
       throw new Error("expected a SandboxExecTimeoutError");
     }
     expect(result.error.timeoutMs).toBe(60_000);
