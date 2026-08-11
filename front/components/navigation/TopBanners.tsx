@@ -39,6 +39,7 @@ export function TopBanners({ owner, subscription }: TopBannersProps) {
       className={cn(
         "sticky top-0 z-50 shrink-0",
         "flex flex-col",
+        "pb-2 empty:hidden",
         "bg-app-background"
       )}
     >
