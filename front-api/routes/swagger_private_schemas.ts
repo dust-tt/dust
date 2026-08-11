@@ -1161,6 +1161,9 @@
  *             isAdminControlled:
  *               type: boolean
  *               description: Whether workspace admins control membership and connected data for this Pod.
+ *             isCompactUIView:
+ *               type: boolean
+ *               description: Whether this space uses the compact UI display variant.
  *     PrivateDataSourceView:
  *       type: object
  *       description: A view on a data source within a space.

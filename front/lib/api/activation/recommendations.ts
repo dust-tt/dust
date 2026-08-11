@@ -27,15 +27,6 @@ export interface GetActivationRecommendationsResponseBody {
 
 export interface GetActivationPodResponseBody {
   podId: string | null;
-  isCompactUIView: boolean;
-}
-
-// Resolves the compact UI display preference from an activation pod.
-// Kept separate from pod-id resolution.
-function resolveCompactUIView(
-  activationPod: ActivationPodResource | null
-): boolean {
-  return activationPod?.isCompactUIView ?? false;
 }
 
 export async function getActivationPodInfo(
@@ -43,17 +34,14 @@ export async function getActivationPodInfo(
 ): Promise<GetActivationPodResponseBody> {
   const activationPod = await ActivationPodResource.fetchByUser(auth);
   if (!activationPod) {
-    return { podId: null, isCompactUIView: resolveCompactUIView(null) };
+    return { podId: null };
   }
 
   const [space] = await SpaceResource.fetchByModelIds(auth, [
     activationPod.spaceId,
   ]);
 
-  return {
-    podId: space?.sId ?? null,
-    isCompactUIView: resolveCompactUIView(activationPod),
-  };
+  return { podId: space?.sId ?? null };
 }
 
 export interface UpdateActivationRecommendationResponseBody {

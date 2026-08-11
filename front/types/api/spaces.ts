@@ -109,6 +109,8 @@ export type RichSpaceType = SpaceType & {
   tabsOrder: string[];
   /** Workspace admins control membership and connected data (project spaces only). */
   isAdminControlled: boolean;
+  /** Whether this space renders the compact UI variant, independent of which user is asking. */
+  isCompactUIView: boolean;
 };
 
 export type GetSpaceResponseBody = {

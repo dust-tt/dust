@@ -10,17 +10,17 @@ function getActivationPod(wId: string) {
 }
 
 describe("GET /api/w/:wId/activation-pod", () => {
-  it("returns null podId and isCompactUIView false when the user has no activation pod", async () => {
+  it("returns null when the user has no activation pod", async () => {
     const { workspace } = await createPrivateApiMockRequest();
 
     const response = await getActivationPod(workspace.sId);
     expect(response.status).toBe(200);
 
     const body = await response.json();
-    expect(body).toEqual({ podId: null, isCompactUIView: false });
+    expect(body).toEqual({ podId: null });
   });
 
-  it("returns the pod space sId and isCompactUIView false by default", async () => {
+  it("returns the pod space sId when the user has an activation pod", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest();
 
     const user = auth.getNonNullableUser();
@@ -36,26 +36,6 @@ describe("GET /api/w/:wId/activation-pod", () => {
     expect(response.status).toBe(200);
 
     const body = await response.json();
-    expect(body).toEqual({ podId: podSpace.sId, isCompactUIView: false });
-  });
-
-  it("returns isCompactUIView true when the pod is configured for compact UI", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest();
-
-    const user = auth.getNonNullableUser();
-    const [userResource] = await UserResource.fetchByModelIds([user.id]);
-    const podSpace = await SpaceFactory.regular(workspace);
-
-    await ActivationPodResource.makeNew(auth, {
-      pod: podSpace,
-      user: userResource,
-      isCompactUIView: true,
-    });
-
-    const response = await getActivationPod(workspace.sId);
-    expect(response.status).toBe(200);
-
-    const body = await response.json();
-    expect(body).toEqual({ podId: podSpace.sId, isCompactUIView: true });
+    expect(body).toEqual({ podId: podSpace.sId });
   });
 });

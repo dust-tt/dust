@@ -1448,6 +1448,7 @@ export const ConversationViewer = ({
       isAutoScrollEnabledRef,
       isNoSeat: limitReachedCode === "no_seat",
       setLimitReachedCode,
+      uiView: spaceInfo?.isCompactUIView ? "compact" : "standard",
     };
   }, [
     user,
@@ -1464,6 +1465,7 @@ export const ConversationViewer = ({
     spaceInfo?.isRestricted,
     spaceInfo?.archivedAt,
     spaceInfo?.name,
+    spaceInfo?.isCompactUIView,
     limitReachedCode,
     setLimitReachedCode,
   ]);

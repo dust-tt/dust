@@ -43,6 +43,8 @@ export type AgentStateClassification =
   | "writing"
   | "done";
 
+export type UiView = "standard" | "compact";
+
 export type ActionProgressState = Map<
   ModelId,
   {
@@ -144,6 +146,7 @@ export type VirtuosoMessageListContext = {
   isAutoScrollEnabledRef: MutableRefObject<boolean>;
   isNoSeat?: boolean;
   setLimitReachedCode?: (code: WorkspaceLimit) => void;
+  uiView: UiView;
 };
 
 export const areSameRank = (
