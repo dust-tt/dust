@@ -5,16 +5,44 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
-  rdme-openapi:
+  mintlify-openapi:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repo 📚
+      - name: Check out Dust
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Run `openapi` command 🚀
-        uses: readmeio/rdme@3c41af599df44e516c90ba4107a81c05d4945822 # v10.6.2
+      - name: Validate configuration
+        env:
+          DOCS_DEPLOY_TOKEN: ${{ secrets.DOCS_DEPLOY_TOKEN }}
+        run: |
+          if [ -z "${DOCS_DEPLOY_TOKEN}" ]; then
+            echo "::error::DOCS_DEPLOY_TOKEN must have Contents read/write access to dust-tt/new-docs."
+            exit 1
+          fi
+
+      - name: Check out docs
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          rdme: openapi upload front-api/public/swagger.json --branch=v1.1 --key=${{ secrets.README_API_KEY }} --slug=dust-api-documentation.json
+          repository: dust-tt/new-docs
+          token: ${{ secrets.DOCS_DEPLOY_TOKEN }}
+          path: new-docs
+
+      - name: Sync OpenAPI specification
+        run: cp front-api/public/swagger.json new-docs/docs/developer-platform/dust-api-documentation/openapi.json
+
+      - name: Deploy to Mintlify
+        working-directory: new-docs
+        run: |
+          git config user.name "dust-docs-bot"
+          git config user.email "dust-docs-bot@users.noreply.github.com"
+          git add docs/developer-platform/dust-api-documentation/openapi.json
+
+          if git diff --cached --quiet; then
+            echo "OpenAPI documentation is already up to date."
+            exit 0
+          fi
+
+          git commit -m "docs: sync OpenAPI specification"
+          git push
