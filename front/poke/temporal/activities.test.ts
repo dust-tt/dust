@@ -1,10 +1,14 @@
 import { Authenticator } from "@app/lib/auth";
+import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
+import { ActivationWorkAreaResource } from "@app/lib/resources/activation_work_area_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { deleteSpacesActivity } from "@app/poke/temporal/activities";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { describe, expect, it, vi } from "vitest";
 
@@ -57,5 +61,35 @@ describe("deleteSpacesActivity", () => {
     await expect(
       SpaceResource.fetchById(auth, laterSpace.sId, { includeDeleted: true })
     ).resolves.toBeNull();
+  });
+
+  it("deletes the work areas of an activation pod before its space", async () => {
+    const workspace = await WorkspaceFactory.byok();
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "admin" });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const pod = await SpaceFactory.project(workspace, user.id);
+    const activationPod = await ActivationPodResource.makeNew(auth, {
+      pod,
+      user,
+    });
+    await ActivationWorkAreaResource.makeNew(auth, {
+      title: "Weekly reporting",
+      description: "Automate the weekly report.",
+      podId: activationPod.id,
+    });
+
+    await deleteSpacesActivity({ workspaceId: workspace.sId });
+
+    await expect(
+      SpaceResource.fetchById(auth, pod.sId, { includeDeleted: true })
+    ).resolves.toBeNull();
+    await expect(
+      ActivationWorkAreaResource.listByUserAndStatus(auth, {})
+    ).resolves.toEqual([]);
   });
 });

@@ -257,6 +257,14 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
     }
   }
 
+  static async deleteAllForWorkspace(auth: Authenticator): Promise<undefined> {
+    await this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+  }
+
   async updateFields(fields: {
     status?: Exclude<ActivationRecommendationStatus, "suggested">;
     createdSkillModelId?: ModelId;

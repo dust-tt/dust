@@ -29,6 +29,7 @@ import { MembershipInvitationModel } from "@app/lib/models/membership_invitation
 import { SubscriptionModel } from "@app/lib/models/plan";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
+import { ActivationWorkAreaResource } from "@app/lib/resources/activation_work_area_resource";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -280,15 +281,13 @@ export async function scrubSpaceActivity({
     },
   });
 
-  // Delete recommendations made in this Pod before deleting the activation
-  // pod record itself. The FK from activation_recommendations to
-  // activation_pods is `onDelete: "RESTRICT"`, so the recommendations must
-  // be removed first or the destroy below fails. The FK from spaces to
-  // activation_pods is `onDelete: "RESTRICT"` too, so this row must be
-  // removed before the space can be hard-deleted.
   const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
   if (activationPod) {
     await ActivationRecommendationResource.deleteAllForActivationPod(
+      auth,
+      activationPod
+    );
+    await ActivationWorkAreaResource.deleteAllForActivationPod(
       auth,
       activationPod
     );
@@ -854,6 +853,8 @@ export async function deleteWorkspaceActivity({
   await FeatureFlagResource.deleteAllForWorkspace(auth);
   await AgentMemoryResource.deleteAllForWorkspace(auth);
   await OnboardingTaskResource.deleteAllForWorkspace(auth);
+  await ActivationRecommendationResource.deleteAllForWorkspace(auth);
+  await ActivationWorkAreaResource.deleteAllForWorkspace(auth);
   await RemoteMCPServerToolMetadataModel.destroy({
     where: { workspaceId: workspace.id },
   });
