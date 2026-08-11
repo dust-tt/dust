@@ -7,24 +7,22 @@ import type {
 } from "@app/types/assistant/agent_run";
 import { proxyActivities, setHandler } from "@temporalio/workflow";
 
-const {
-  storeAgentAnalyticsActivity,
-  storeAgentMessageFeedbackActivity,
-  storeAgentMessageConsumptionAttributionForMessageActivity,
-} = proxyActivities<typeof activities>({
-  startToCloseTimeout: "5 minutes",
-  retry: {
-    // Analytics is best effort, only retry twice.
-    maximumAttempts: 2,
-    initialInterval: "30 seconds",
-    backoffCoefficient: 2,
-  },
-});
+const { storeAgentAnalyticsActivity, storeAgentMessageFeedbackActivity } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "5 minutes",
+    retry: {
+      // Analytics is best effort, only retry twice.
+      maximumAttempts: 2,
+      initialInterval: "30 seconds",
+      backoffCoefficient: 2,
+    },
+  });
 
 // Consumption indexing is idempotent. The default policy retries without an attempt limit.
-const { storeAgentMessageConsumptionAnalyticsActivity } = proxyActivities<
-  typeof activities
->({
+const {
+  storeAgentMessageConsumptionAnalyticsActivity,
+  storeAgentMessageConsumptionAttributionForMessageActivity,
+} = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
 
