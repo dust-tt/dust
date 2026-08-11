@@ -112,20 +112,20 @@ describe("FrameCachePersistence", () => {
 
   it("keeps only the most recently updated entries", () => {
     const cache = new Map<string, unknown>();
-    let clock = 1_000;
-    const persistence = makePersistence({ cache, nowMs: () => clock });
+    let clockMs = 1_000;
+    const persistence = makePersistence({ cache, nowMs: () => clockMs });
 
     for (let i = 0; i < FRAME_CACHE_MAX_ENTRIES + 10; i++) {
       const key = `key-${i}`;
       cache.set(key, { data: i });
-      clock += 1;
+      clockMs += 1;
       persistence.recordEntry(key);
     }
     persistence.flush();
 
     const hydrated = makePersistence({
       cache: new Map(),
-      nowMs: () => clock,
+      nowMs: () => clockMs,
     }).hydrate();
     expect(hydrated.size).toBe(FRAME_CACHE_MAX_ENTRIES);
     expect(hydrated.has("key-0")).toBe(false);
@@ -139,17 +139,17 @@ describe("FrameCachePersistence", () => {
       ["new-big", { data: bigValue }],
       ["newest-small", { data: "small" }],
     ]);
-    let clock = 1_000;
-    const persistence = makePersistence({ cache, nowMs: () => clock });
+    let clockMs = 1_000;
+    const persistence = makePersistence({ cache, nowMs: () => clockMs });
     for (const key of ["old-big", "new-big", "newest-small"]) {
-      clock += 1;
+      clockMs += 1;
       persistence.recordEntry(key);
     }
     persistence.flush();
 
     const hydrated = makePersistence({
       cache: new Map(),
-      nowMs: () => clock,
+      nowMs: () => clockMs,
     }).hydrate();
     expect(hydrated.has("newest-small")).toBe(true);
     expect(hydrated.has("new-big")).toBe(true);
