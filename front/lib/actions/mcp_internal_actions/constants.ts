@@ -1280,7 +1280,7 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     metadata: SERVICENOW_SERVER,
   },
   shopify: {
-    id: 1044,
+    id: 1046,
     availability: "manual",
     allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
