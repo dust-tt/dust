@@ -86,6 +86,7 @@ export function CreditCostPopover({
   const headingId = useId();
   const [hasOpened, setHasOpened] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  // Avoid reopening the trigger tooltip when switching to the credits drawer.
   const preventTriggerFocusOnCloseRef = useRef(false);
   const { openPanel } = useConversationSidePanelContext();
   const { consumption, isConsumptionLoading, mutateConsumption } =
