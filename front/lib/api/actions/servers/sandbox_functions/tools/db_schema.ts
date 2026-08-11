@@ -9,7 +9,10 @@ import { getDatabaseSchemaOnSandbox } from "@app/lib/api/sandbox_functions/dsbx_
 import { Err, Ok } from "@app/types/shared/result";
 
 export async function dbSchemaHandler(
-  { database, dustPod }: { database: string; dustPod?: DustPodConfigurationType },
+  {
+    database,
+    dustPod,
+  }: { database: string; dustPod?: DustPodConfigurationType },
   { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
   const podResult = await getPod(auth, {
