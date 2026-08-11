@@ -13,6 +13,26 @@ export function formatSandboxImageId(id: SandboxImageId): string {
   return `${sanitize(id.imageName)}_${sanitize(id.tag)}`;
 }
 
+// Builds outside CI publish under a per-developer alias instead of the release
+// one. `sandbox_image_check.ts` reads "an alias with this tag exists" as "this
+// version was built from main", so a locally built image sitting on the release
+// alias makes CI skip that region's build and leaves the region running
+// unmerged code. Both the build script and the dev-time image resolution go
+// through here so the two always agree on the alias.
+//
+// No suffix means no local image to point at: the id is returned untouched so
+// local runs use the release image built by CI. That is the common case.
+export function devSandboxImageId(
+  id: SandboxImageId,
+  devSuffix: string | undefined
+): SandboxImageId {
+  if (!devSuffix) {
+    return id;
+  }
+
+  return { ...id, tag: `${id.tag}-${devSuffix}` };
+}
+
 // ---------------------------------------------------------------------------
 // Tool Names
 // ---------------------------------------------------------------------------
