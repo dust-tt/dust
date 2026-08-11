@@ -20,7 +20,7 @@ const dustPodSchema = ConfigurableToolInputSchemas[
   .optional()
   .describe(
     "Optional Pod to target, will fallback to the conversation's Pod. Reuse a dustPod value " +
-      "from pod_manager's list tool; do not invent this URI."
+      "from pod_manager's list_pods tool; do not invent this URI."
   );
 
 export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
