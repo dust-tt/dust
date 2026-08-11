@@ -1,4 +1,5 @@
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
+import { DropdownAnchorTrigger } from "@app/components/assistant/conversation/input_bar/DropdownAnchorTrigger";
 import type { CapabilitySearchIndexItem } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { searchCapabilityIndex } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
@@ -173,6 +174,13 @@ interface CapabilitiesPickerProps {
   buttonSize?: "xs" | "sm" | "md";
   onOpenChange?: (open: boolean) => void;
   type?: "dropdown" | "subdropdown";
+  // When provided, the dropdown's open state is owned by the parent and its
+  // trigger is replaced by an invisible box mirroring `anchorRef`. Used on
+  // mobile, where the "+" menu opens this picker as a top-level dropdown
+  // instead of a sub-menu that would not fit the viewport.
+  externalOpen?: boolean;
+  onExternalOpenChange?: (open: boolean) => void;
+  anchorRef?: React.RefObject<HTMLElement | null>;
 }
 
 export function CapabilitiesPicker({
@@ -186,10 +194,18 @@ export function CapabilitiesPicker({
   buttonSize = "xs",
   onOpenChange,
   type = "dropdown",
+  externalOpen,
+  onExternalOpenChange,
+  anchorRef,
 }: CapabilitiesPickerProps) {
   const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isExternallyControlled = externalOpen !== undefined;
+  const isOpen = isExternallyControlled ? externalOpen : internalOpen;
+  const setIsOpen = isExternallyControlled
+    ? (open: boolean) => onExternalOpenChange?.(open)
+    : setInternalOpen;
   const [setupSheetServer, setSetupSheetServer] =
     useState<MCPServerType | null>(null);
   const [setupSheetRemoteServerConfig, setSetupSheetRemoteServerConfig] =
@@ -474,7 +490,9 @@ export function CapabilitiesPicker({
           }
         }}
       >
-        {type === "dropdown" ? (
+        {type === "dropdown" && isExternallyControlled ? (
+          <DropdownAnchorTrigger anchorRef={anchorRef} />
+        ) : type === "dropdown" ? (
           <DropdownMenuTrigger asChild>
             <Button
               icon={ShapesPlus}
@@ -503,8 +521,16 @@ export function CapabilitiesPicker({
           />
         )}
         <ContentWrapper
-          className="w-80"
-          {...(type === "dropdown" ? { align: "start" as const } : {})}
+          className="w-80 max-w-[calc(100vw-1rem)]"
+          collisionPadding={8}
+          {...(type === "dropdown"
+            ? {
+                align: isExternallyControlled
+                  ? ("end" as const)
+                  : ("start" as const),
+                onInteractOutside: () => setIsOpen(false),
+              }
+            : {})}
           dropdownHeaders={
             <>
               <DropdownMenuSearchbar
