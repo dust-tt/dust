@@ -1,6 +1,10 @@
 "use client";
 
 import { normalizeSandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
+import {
+  FrameCachePersistence,
+  frameCacheStorageKey,
+} from "@viz/app/lib/frame-cache-persistence";
 import { POD_FUNCTION_REFERENCE_REGEX } from "@viz/app/lib/pod-function-slug";
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
 import type { UserIdentityState } from "@viz/app/types";
@@ -15,15 +19,27 @@ import {
   useRef,
   useState,
 } from "react";
-import useSWR, { type KeyedMutator, SWRConfig } from "swr";
+import useSWR, { type KeyedMutator, SWRConfig, unstable_serialize } from "swr";
 import useSWRMutation from "swr/mutation";
 
 interface PodFunctionContextValue {
   dataAPI: VisualizationDataAPI;
+  persistence: FrameCachePersistence | null;
 }
 
-interface PodFunctionHooksProviderProps extends PodFunctionContextValue {
+interface PodFunctionHooksProviderProps {
   children?: ReactNode;
+  dataAPI: VisualizationDataAPI;
+  // Stable identifier of the rendered content (e.g. "viz-<fileId>"). When set and the viewer
+  // is an authenticated workspace member, function outputs persist across opens in
+  // localStorage, namespaced by identifier and viewer. Absent: per-mount cache only.
+  identifier?: string;
+}
+
+export interface UsePodFunctionOptions {
+  // Set to false for must-be-fresh data: the result is then never persisted to, nor served
+  // from, the cross-open cache. The per-mount SWR cache still applies.
+  persist?: boolean;
 }
 
 export interface UsePodFunctionResult {
@@ -53,6 +69,8 @@ const POD_FUNCTION_QUERY_DEDUPING_INTERVAL_MS = 2_000;
 
 const PodFunctionContext = createContext<PodFunctionContextValue | null>(null);
 
+const EMPTY_FALLBACK: Record<string, unknown> = {};
+
 async function noopMutate(): Promise<undefined> {
   return undefined;
 }
@@ -76,13 +94,105 @@ function resolvePodFunction(slug: string | null): {
   return { functionId: slug };
 }
 
+function getLocalStorage(): Storage | null {
+  // Accessing localStorage can throw (disabled storage, sandboxed iframe without
+  // allow-same-origin); persistence is best-effort so treat that as unavailable.
+  try {
+    return typeof window === "undefined" ? null : window.localStorage;
+  } catch (_error) {
+    return null;
+  }
+}
+
+interface PersistedCacheState {
+  fallback: Record<string, unknown>;
+  persistence: FrameCachePersistence;
+}
+
 export function PodFunctionHooksProvider({
   children,
   dataAPI,
+  identifier,
 }: PodFunctionHooksProviderProps) {
   const [cache] = useState(() => new Map());
-  const swrConfig = useMemo(() => ({ provider: () => cache }), [cache]);
-  const contextValue = useMemo(() => ({ dataAPI }), [dataAPI]);
+  const [persisted, setPersisted] = useState<PersistedCacheState | null>(null);
+
+  // Boot the cross-open cache: resolve the viewer, then hydrate their persisted entries as
+  // SWR fallback. Hooks mount and fetch immediately; hydration only fills the interim
+  // renders, so a slow or silent host merely leaves the cache cold.
+  useEffect(() => {
+    if (!identifier) {
+      return;
+    }
+    const storage = getLocalStorage();
+    if (!storage) {
+      return;
+    }
+
+    let cancelled = false;
+    let persistence: FrameCachePersistence | null = null;
+    const flushNow = () => persistence?.flush();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        flushNow();
+      }
+    };
+
+    const boot = async () => {
+      let identity: UserIdentityState;
+      try {
+        identity = await dataAPI.getUserIdentity();
+      } catch (_error) {
+        // No host answered (headless render, legacy embedder): stay cold.
+        return;
+      }
+      if (cancelled || !identity.isAuthenticated) {
+        // The viz origin is shared: never persist anything for unauthenticated viewers.
+        return;
+      }
+
+      persistence = new FrameCachePersistence({
+        cache,
+        storage,
+        storageKey: frameCacheStorageKey(identifier, identity.user.sId),
+      });
+      const hydrated = persistence.hydrate();
+
+      // Debounced writes lose the tail on navigation; flush when the page hides.
+      window.addEventListener("pagehide", flushNow);
+      document.addEventListener("visibilitychange", onVisibilityChange);
+
+      setPersisted({
+        fallback: Object.fromEntries(hydrated),
+        persistence,
+      });
+    };
+    void boot();
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("pagehide", flushNow);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      if (persistence) {
+        persistence.flush();
+        persistence.dispose();
+      }
+    };
+  }, [dataAPI, identifier, cache]);
+
+  // The SWR provider is only read when SWRConfig mounts; later value updates only carry the
+  // fallback, which hooks re-read on every render.
+  const swrConfig = useMemo(
+    () => ({
+      provider: () => cache,
+      fallback: persisted?.fallback ?? EMPTY_FALLBACK,
+    }),
+    [cache, persisted]
+  );
+  const contextValue = useMemo(
+    () => ({ dataAPI, persistence: persisted?.persistence ?? null }),
+    [dataAPI, persisted]
+  );
 
   return createElement(
     PodFunctionContext.Provider,
@@ -102,9 +212,11 @@ function usePodFunctionContext(): PodFunctionContextValue {
 
 export function usePodFunction(
   slug: string | null,
-  input: unknown
+  input: unknown,
+  options?: UsePodFunctionOptions
 ): UsePodFunctionResult {
-  const { dataAPI } = usePodFunctionContext();
+  const { dataAPI, persistence } = usePodFunctionContext();
+  const persistEnabled = options?.persist ?? true;
   const resolution = useMemo(() => resolvePodFunction(slug), [slug]);
   const functionId = resolution.functionId;
   const key: PodFunctionQueryKey | null = functionId
@@ -132,10 +244,29 @@ export function usePodFunction(
   );
   const mutate = functionId ? result.mutate : noopMutate;
 
+  const serializedKey = key === null ? null : unstable_serialize(key);
+  const data = key === null ? undefined : result.data;
+
+  useEffect(() => {
+    if (!persistence || serializedKey === null) {
+      return;
+    }
+    if (!persistEnabled) {
+      // Opt-out also clears anything a previous (persisting) version of the frame stored.
+      persistence.dropEntry(serializedKey);
+      return;
+    }
+    if (data !== undefined) {
+      persistence.recordEntry(serializedKey);
+    }
+  }, [persistence, persistEnabled, serializedKey, data]);
+
   return {
-    data: key === null ? undefined : result.data,
+    data,
     error: resolution.error ?? (key === null ? undefined : result.error),
-    isLoading: key !== null && result.isLoading,
+    // Fallback (and previous-key) data counts as loaded: frames branch on isLoading for
+    // skeletons, and painting cached data is the point of the cross-open cache.
+    isLoading: key !== null && result.isLoading && data === undefined,
     isValidating: key !== null && result.isValidating,
     mutate,
   };

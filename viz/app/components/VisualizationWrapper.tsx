@@ -680,7 +680,7 @@ export function VisualizationWrapper({
         </div>
       )}
       <VizContext.Provider value={vizContextValue}>
-        <PodFunctionHooksProvider dataAPI={api.data}>
+        <PodFunctionHooksProvider dataAPI={api.data} identifier={identifier}>
           {isEditable ? <EditableFrame>{runner}</EditableFrame> : runner}
         </PodFunctionHooksProvider>
       </VizContext.Provider>

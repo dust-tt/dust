@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { frameCacheStorageKey } from "@viz/app/lib/frame-cache-persistence";
 import {
   PodFunctionHooksProvider,
   usePodFunction,
@@ -9,7 +10,8 @@ import {
 } from "@viz/app/lib/pod-function-hooks";
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
 import { createElement, type PropsWithChildren } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { unstable_serialize } from "swr";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 function deferred<T>() {
   let resolve: (value: T) => void = () => undefined;
@@ -37,9 +39,13 @@ function makeDataAPI(
   };
 }
 
-function makeWrapper(dataAPI: VisualizationDataAPI) {
+function makeWrapper(dataAPI: VisualizationDataAPI, identifier?: string) {
   return function Wrapper({ children }: PropsWithChildren) {
-    return createElement(PodFunctionHooksProvider, { dataAPI }, children);
+    return createElement(
+      PodFunctionHooksProvider,
+      { dataAPI, identifier },
+      children
+    );
   };
 }
 
@@ -467,5 +473,190 @@ describe("usePodFunctionMutation", () => {
     });
     expect(result.current.list.data).toEqual([{ id: 1 }, { id: 2 }]);
     expect(callFunction).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("cross-open cache persistence", () => {
+  const IDENTIFIER = "viz-fil_1";
+  const USER_ID = "usr_123";
+  const SLUG = "vlt_123/list-comments";
+  const INPUT = { threadId: "thread-1" };
+  const SERIALIZED_KEY = unstable_serialize(["pod-function", SLUG, INPUT]);
+  const STORAGE_KEY = frameCacheStorageKey(IDENTIFIER, USER_ID);
+
+  function makeAuthenticatedDataAPI(
+    callFunction: VisualizationDataAPI["callFunction"]
+  ): VisualizationDataAPI {
+    const dataAPI = makeDataAPI(callFunction);
+    dataAPI.getUserIdentity = vi.fn().mockResolvedValue({
+      isAuthenticated: true,
+      isWorkspaceMember: true,
+      user: {
+        sId: USER_ID,
+        firstName: "Ada",
+        lastName: "Lovelace",
+        fullName: "Ada Lovelace",
+        image: null,
+      },
+    });
+    return dataAPI;
+  }
+
+  function seedPersistedEntry(
+    storageKey: string,
+    serializedKey: string,
+    data: unknown
+  ) {
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        updatedAtMs: Date.now(),
+        entries: [[serializedKey, { data, updatedAtMs: Date.now() }]],
+      })
+    );
+  }
+
+  function countFrameItems(): number {
+    let count = 0;
+    for (let i = 0; i < window.localStorage.length; i++) {
+      if (window.localStorage.key(i)?.startsWith("dust:frameCache:")) {
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("paints persisted data before the first fetch resolves", async () => {
+    seedPersistedEntry(STORAGE_KEY, SERIALIZED_KEY, [{ id: "persisted" }]);
+    const request = deferred<unknown>();
+    const callFunction = vi.fn().mockReturnValue(request.promise);
+    const dataAPI = makeAuthenticatedDataAPI(callFunction);
+
+    const { result, unmount } = renderHook(() => usePodFunction(SLUG, INPUT), {
+      wrapper: makeWrapper(dataAPI, IDENTIFIER),
+    });
+
+    // Hydration lands right after identity resolves, while the fetch is in flight.
+    await waitFor(() => {
+      expect(result.current.data).toEqual([{ id: "persisted" }]);
+    });
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.isValidating).toBe(true);
+
+    request.resolve([{ id: "fresh" }]);
+    await waitFor(() => {
+      expect(result.current.data).toEqual([{ id: "fresh" }]);
+    });
+    expect(callFunction).toHaveBeenCalledTimes(1);
+
+    // There is no test auto-cleanup here: unmount so this provider's pagehide listener
+    // cannot fire in later tests.
+    unmount();
+  });
+
+  it("persists fetched data for the next open", async () => {
+    const callFunction = vi.fn().mockResolvedValue([{ id: 1 }]);
+    const dataAPI = makeAuthenticatedDataAPI(callFunction);
+
+    const { result, unmount } = renderHook(() => usePodFunction(SLUG, INPUT), {
+      wrapper: makeWrapper(dataAPI, IDENTIFIER),
+    });
+    await waitFor(() => expect(result.current.data).toEqual([{ id: 1 }]));
+
+    // pagehide forces the debounced write; retry until the boot and record effects landed.
+    await waitFor(() => {
+      window.dispatchEvent(new Event("pagehide"));
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      expect(raw).not.toBeNull();
+    });
+
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const persisted = raw === null ? null : JSON.parse(raw);
+    expect(persisted?.entries).toEqual([
+      [SERIALIZED_KEY, { data: [{ id: 1 }], updatedAtMs: expect.any(Number) }],
+    ]);
+    unmount();
+  });
+
+  it("never persists for unauthenticated viewers", async () => {
+    const callFunction = vi.fn().mockResolvedValue([{ id: 1 }]);
+    // makeDataAPI's identity is unauthenticated.
+    const dataAPI = makeDataAPI(callFunction);
+
+    const { result, unmount } = renderHook(() => usePodFunction(SLUG, INPUT), {
+      wrapper: makeWrapper(dataAPI, IDENTIFIER),
+    });
+    await waitFor(() => expect(result.current.data).toEqual([{ id: 1 }]));
+    await act(async () => {});
+
+    window.dispatchEvent(new Event("pagehide"));
+    unmount();
+    expect(countFrameItems()).toBe(0);
+  });
+
+  it("never serves another viewer's entries", async () => {
+    seedPersistedEntry(
+      frameCacheStorageKey(IDENTIFIER, "usr_other"),
+      SERIALIZED_KEY,
+      [{ id: "other-user" }]
+    );
+    const request = deferred<unknown>();
+    const callFunction = vi.fn().mockReturnValue(request.promise);
+    const dataAPI = makeAuthenticatedDataAPI(callFunction);
+
+    const { result, unmount } = renderHook(() => usePodFunction(SLUG, INPUT), {
+      wrapper: makeWrapper(dataAPI, IDENTIFIER),
+    });
+
+    // Let identity resolution and hydration settle: no fallback may appear.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.isLoading).toBe(true);
+
+    request.resolve([{ id: "fresh" }]);
+    await waitFor(() => {
+      expect(result.current.data).toEqual([{ id: "fresh" }]);
+    });
+    unmount();
+  });
+
+  it("does not persist opted-out reads and clears their leftovers", async () => {
+    seedPersistedEntry(STORAGE_KEY, SERIALIZED_KEY, [{ id: "stale" }]);
+    const callFunction = vi.fn().mockResolvedValue([{ id: "fresh" }]);
+    const dataAPI = makeAuthenticatedDataAPI(callFunction);
+
+    const { result, unmount } = renderHook(
+      () => usePodFunction(SLUG, INPUT, { persist: false }),
+      { wrapper: makeWrapper(dataAPI, IDENTIFIER) }
+    );
+    await waitFor(() => expect(result.current.data).toEqual([{ id: "fresh" }]));
+
+    // The pre-existing entry is dropped rather than refreshed.
+    await waitFor(() => {
+      window.dispatchEvent(new Event("pagehide"));
+      expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+    });
+    unmount();
+  });
+
+  it("keeps the cache per-mount without an identifier", async () => {
+    const callFunction = vi.fn().mockResolvedValue([{ id: 1 }]);
+    const dataAPI = makeAuthenticatedDataAPI(callFunction);
+
+    const { result, unmount } = renderHook(() => usePodFunction(SLUG, INPUT), {
+      wrapper: makeWrapper(dataAPI),
+    });
+    await waitFor(() => expect(result.current.data).toEqual([{ id: 1 }]));
+    await act(async () => {});
+
+    window.dispatchEvent(new Event("pagehide"));
+    unmount();
+    expect(countFrameItems()).toBe(0);
   });
 });
