@@ -1,11 +1,13 @@
 import {
   getMcpServerDisplayName,
+  getMcpServerViewDisplayName,
   isRemoteMCPServerType,
 } from "@app/lib/actions/mcp_helper";
 import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import { SOURCE_ORIGIN_LABELS } from "@app/lib/api/analytics/source_labels";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
+import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import { listMCPServersWithViews } from "@app/lib/api/mcp/servers";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -32,6 +34,39 @@ export type ConsumptionFacetCatalog = Record<
   ConsumptionScopeDimension,
   ConsumptionFacetCatalogEntry[]
 >;
+
+function toolFacetCatalogEntries(
+  mcpServers: MCPServerTypeWithViews[]
+): ConsumptionFacetCatalogEntry[] {
+  const entries = mcpServers.flatMap<ConsumptionFacetCatalogEntry>((server) => {
+    if (!isRemoteMCPServerType(server)) {
+      return [
+        {
+          value: server.name,
+          label: getMcpServerDisplayName(server),
+          pictureUrl: null,
+        },
+      ];
+    }
+
+    // `tool.server_name` does not contain the remote server sId. Tool actions
+    // write their effective configuration name instead: an action override,
+    // then the view name, then the server metadata name. Catalog entries can
+    // cover the latter two; period-scoped ES buckets supplement custom action
+    // overrides and historical names. Keying this facet by server.sId would
+    // therefore never match the indexed field and would create a disabled
+    // duplicate beside the real ES-derived value.
+    return server.views.map((view) => ({
+      value: view.name ?? server.name,
+      label: getMcpServerViewDisplayName(view),
+      pictureUrl: null,
+    }));
+  });
+
+  // A remote server commonly has system and workspace views with the same
+  // effective name. They all map to the same indexed facet value.
+  return [...new Map(entries.map((entry) => [entry.value, entry])).values()];
+}
 
 /** Lists current workspace entities that can be selected as consumption filters. */
 export async function listConsumptionFacetCatalog(
@@ -90,11 +125,7 @@ export async function listConsumptionFacetCatalog(
             model.defaultReasoningEffort
           ) ?? undefined,
       })),
-    tool: mcpServers.map((server) => ({
-      value: isRemoteMCPServerType(server) ? server.sId : server.name,
-      label: getMcpServerDisplayName(server),
-      pictureUrl: null,
-    })),
+    tool: toolFacetCatalogEntries(mcpServers),
     skill: skills.map((skill) => ({
       value: skill.sId,
       label: skill.name,
