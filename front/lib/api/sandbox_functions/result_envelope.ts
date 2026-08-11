@@ -15,6 +15,28 @@ export const SUPPORTED_SANDBOX_FUNCTION_RESULT_PROTOCOL_VERSIONS = [
 // Cap on the rejected-payload snippet included in logs.
 const REJECTED_ENVELOPE_LOG_SNIPPET_MAX_CHARS = 512;
 
+// Cap on error messages delivered to callers and frames. Thrown errors can embed entire tool
+// stderr dumps, and frames render `message` on user-facing error cards. The full text stays
+// available for debugging: execute() logs the raw runner stdout/stderr on every failure, and
+// `inspect_invocations` reads the persisted invocation record.
+export const SANDBOX_FUNCTION_DELIVERED_ERROR_MESSAGE_MAX_CHARS = 1_000;
+
+/**
+ * Bound a call error's message for delivery. Callers hand the returned error to frames and
+ * tool outputs; the original, unbounded text belongs in logs only.
+ */
+export function boundSandboxFunctionCallError(
+  error: SandboxFunctionCallError
+): SandboxFunctionCallError {
+  return {
+    ...error,
+    message: truncate(
+      error.message,
+      SANDBOX_FUNCTION_DELIVERED_ERROR_MESSAGE_MAX_CHARS
+    ),
+  };
+}
+
 export type NormalizedSandboxFunctionOutcome =
   | { ok: true; output: unknown }
   | { ok: false; error: SandboxFunctionCallError };
@@ -129,7 +151,14 @@ function normalizeRunnerOutcome(
 ): NormalizedSandboxFunctionOutcome {
   const current = SandboxFunctionRunnerOutputSchema.safeParse(result);
   if (current.success) {
-    return current.data;
+    const outcome = current.data;
+    // `threw` is the only code whose message is authored by the function itself (the thrown
+    // error's message), which in practice embeds whole tool stderr dumps. Bound it before it is
+    // persisted and delivered; runner-minted messages on the other codes are short prose.
+    if (!outcome.ok && outcome.error.code === "threw") {
+      return { ok: false, error: boundSandboxFunctionCallError(outcome.error) };
+    }
+    return outcome;
   }
 
   const legacy = LegacySandboxFunctionRunnerOutputSchema.safeParse(result);
@@ -143,12 +172,16 @@ function normalizeRunnerOutcome(
   }
 
   if (!legacy.data.ok) {
+    const error = {
+      code: legacy.data.error.kind,
+      message: legacy.data.error.message,
+    };
     return {
       ok: false,
-      error: {
-        code: legacy.data.error.kind,
-        message: legacy.data.error.message,
-      },
+      error:
+        legacy.data.error.kind === "threw"
+          ? boundSandboxFunctionCallError(error)
+          : error,
     };
   }
 

@@ -1,5 +1,6 @@
 import { isSandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { getSandboxFunctionInvocationEvents } from "@app/lib/api/sandbox_functions/events";
+import { boundSandboxFunctionCallError } from "@app/lib/api/sandbox_functions/result_envelope";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type {
@@ -29,15 +30,21 @@ export async function callSandboxFunction(
   });
   if (invocationResult.isErr()) {
     if (isSandboxFunctionInvocationError(invocationResult.error)) {
-      return new Err({
-        code: invocationResult.error.code,
-        message: invocationResult.error.message,
-      });
+      return new Err(
+        boundSandboxFunctionCallError({
+          code: invocationResult.error.code,
+          message: invocationResult.error.message,
+        })
+      );
     }
-    return new Err({
-      code: "invocation_failed",
-      message: invocationResult.error.message,
-    });
+    // The unclassified message may be a raw provider or runner dump; the full text is already
+    // in the failure-path logs, so deliver a bounded copy only.
+    return new Err(
+      boundSandboxFunctionCallError({
+        code: "invocation_failed",
+        message: invocationResult.error.message,
+      })
+    );
   }
   const invocation = invocationResult.value;
   const { sId: invocationId } = invocation;
@@ -50,7 +57,7 @@ export async function callSandboxFunction(
       case "succeeded":
         return new Ok(settled.result);
       case "errored":
-        return new Err(settled.error);
+        return new Err(boundSandboxFunctionCallError(settled.error));
       default:
         assertNever(settled);
     }
@@ -63,7 +70,7 @@ export async function callSandboxFunction(
       signal: AbortSignal.timeout(CALL_RESULT_WAIT_TIMEOUT_MS),
     })) {
       if (data.type === "sandbox_function_invocation_error") {
-        return new Err(data.error);
+        return new Err(boundSandboxFunctionCallError(data.error));
       }
 
       if (data.type !== "sandbox_function_invocation_result") {
@@ -73,10 +80,12 @@ export async function callSandboxFunction(
       return new Ok(data.result);
     }
   } catch (error) {
-    return new Err({
-      code: "transport_error",
-      message: `Failed to receive sandbox function events: ${normalizeError(error).message}`,
-    });
+    return new Err(
+      boundSandboxFunctionCallError({
+        code: "transport_error",
+        message: `Failed to receive sandbox function events: ${normalizeError(error).message}`,
+      })
+    );
   }
 
   return new Err({
