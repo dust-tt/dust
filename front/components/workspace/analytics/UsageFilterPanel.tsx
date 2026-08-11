@@ -196,10 +196,6 @@ export function UsageFilterPanel({
     disabled: !isAgentCategoryActive,
   });
 
-  // The workspace's full, period-independent MCP server catalog — the same
-  // endpoint backing the tool picker elsewhere in the app — rather than a
-  // period-scoped top-N, so every tool is listable and searchable regardless
-  // of the selected period.
   const { mcpServers } = useMCPServers({
     owner,
     disabled: !isToolCategoryActive,
@@ -267,10 +263,6 @@ export function UsageFilterPanel({
     [modelCatalog]
   );
 
-  // Every MCP server in the workspace, regardless of the selected period.
-  // Remote servers are identified by sId and internal ones by their static
-  // name, matching the key `tool.server_name` stores in usage data (see
-  // resolveServerDisplayNames).
   const toolOptions = useMemo<UsageFilterToolOption[]>(
     () =>
       mcpServers.map((server) => ({
