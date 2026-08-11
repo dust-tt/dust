@@ -78,8 +78,9 @@ interface ChangeSeatModalProps {
   seatPlans: SeatPlanResponseBody;
   onSavingChange?: (memberId: string, isSaving: boolean) => void;
   // Fired once the seat change has been persisted successfully (not on cancel
-  // or a no-op close). Used to resolve a linked upgrade request as approved.
-  onSaved?: () => void;
+  // or a no-op close), with the seat type it was changed to. Used to resolve
+  // a linked upgrade request as approved, snapshotting the granted seat.
+  onSaved?: (seatType: MembershipSeatType) => void;
 }
 
 export function ChangeSeatModal({
@@ -320,7 +321,7 @@ export function ChangeSeatModal({
         hasSeatPool: (seatPlans[selectedSeat]?.awuCredits ?? 0) > 0,
       });
       if (ok) {
-        onSaved?.();
+        onSaved?.(selectedSeat);
         onClose();
       }
     } finally {

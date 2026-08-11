@@ -14,12 +14,12 @@ export type UserSpendLimit =
       // Epoch ms at which the override auto-reverts to unlimited. Omitted/null
       // means it never expires.
       expiresAt?: number | null;
+      expiryKind?: SpendLimitExpiryKind;
     };
 
 export type GetUserSpendLimitResponse = UserSpendLimit & {
-  // Epoch ms of this workspace's next AWU credit pool reset (Metronome
-  // billing period boundary), if resolvable from an active Metronome
-  // contract.
+  // Epoch ms of this workspace's next AWU credit pool reset
+  // if resolvable from an active Metronome contract.
   nextCreditResetAt: number | null;
 };
 

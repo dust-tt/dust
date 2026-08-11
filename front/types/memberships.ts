@@ -1,4 +1,5 @@
 import { NEAR_LIMIT_FRACTION } from "@app/lib/metronome/constants";
+import type { SpendLimitExpiryKind } from "@app/types/api/users/spend_limit";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const MEMBERSHIP_ROLE_TYPES = [
@@ -303,6 +304,16 @@ export interface MembershipUpgradeRequestType {
     image: string | null;
     seatType: MembershipSeatType | null;
   };
+  resolvedBy: {
+    sId: string;
+    name: string;
+    image: string | null;
+  } | null;
+  // Snapshot of what was actually granted.
+  grantedAwuCredits: number | null;
+  grantedExpiryKind: SpendLimitExpiryKind | null;
+  grantedUnlimitedSpend: boolean;
+  grantedSeatType: MembershipSeatType | null;
 }
 
 /**

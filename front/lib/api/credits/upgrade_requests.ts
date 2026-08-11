@@ -238,7 +238,31 @@ export async function listPendingUpgradeRequests(
   return requests.map((r) => r.toJSON());
 }
 
-// Admin-only: record the outcome of a request.
+// Admin-only: resolved requests, for the history view, paginated.
+export const RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE = 100;
+
+export async function listResolvedUpgradeRequests(
+  auth: Authenticator,
+  { offset }: { offset: number }
+): Promise<{ requests: MembershipUpgradeRequestType[]; total: number }> {
+  const { requests, total } =
+    await MembershipUpgradeRequestResource.listResolvedByWorkspace(auth, {
+      limit: RESOLVED_UPGRADE_REQUESTS_HISTORY_PAGE_SIZE,
+      offset,
+    });
+  return { requests: requests.map((r) => r.toJSON()), total };
+}
+
+// Admin-only: record the outcome of a request. The request is claimed first
+// via a compare-and-set on `status = 'pending'` — see `markAsResolved` — so
+// that two admins resolving the same request concurrently can't both apply
+// conflicting side effects: only the admin whose CAS observes `pending`
+// proceeds past the claim. An approval that carries a `limit` then syncs the
+// requester's spend limit; if that sync fails, the claim is rolled back via
+// `revertToPending` so the request remains resolvable instead of being stuck
+// approved with no limit ever applied. `grantedSeatType`, when resolved via
+// "Upgrade to max plan", and the spend-limit grant (recorded inside
+// `setUserSpendLimit`) are snapshotted onto the request for the history view.
 export async function resolveUpgradeRequest(
   auth: Authenticator,
   {
@@ -269,28 +293,10 @@ export async function resolveUpgradeRequest(
     );
   }
 
-  // Apply the spend-limit change first, before flipping the request to
-  // resolved. `setUserSpendLimit` is idempotent (it converges to the
-  // requested limit however many times it's called), so if the process
-  // crashes right after this call, the request is still visible as pending
-  // and the next resolution attempt just re-applies the same limit and
-  // succeeds. Doing this the other way around — resolving first — would
-  // instead risk a crash leaving the request permanently "approved" with the
-  // limit never actually applied.
-  if (resolution.status === "approved" && resolution.limit) {
-    const spendLimitResult = await setUserSpendLimit(auth, {
-      userId: request.requester.sId,
-      limit: resolution.limit,
-      auditContext: auditContext ?? { location: "internal" },
-    });
-    if (spendLimitResult.isErr()) {
-      return new Err(spendLimitResult.error);
-    }
-  }
-
-  // Compare-and-set on `status = 'pending'`: if another admin resolved this
-  // request concurrently between the fetch above and here, this fails rather
-  // than silently overwriting their resolution.
+  // Claim the request first: compare-and-set on `status = 'pending'`. If
+  // another admin resolved this request concurrently between the fetch above
+  // and here, this fails rather than letting both admins' side effects below
+  // race against each other.
   const resolvedByUser = auth.getNonNullableUser();
   const result = await request.markAsResolved(auth, {
     status: resolution.status,
@@ -303,11 +309,31 @@ export async function resolveUpgradeRequest(
         workspaceId: auth.getNonNullableWorkspace().sId,
         resolutionStatus: resolution.status,
       },
-      "[UpgradeRequest] Request was resolved concurrently by another admin after its spend limit was applied"
+      "[UpgradeRequest] Request was resolved concurrently by another admin"
     );
     return new Err(
       new UpgradeRequestError("request_not_pending", result.error.message)
     );
+  }
+
+  if (resolution.status === "approved" && resolution.limit) {
+    const spendLimitResult = await setUserSpendLimit(auth, {
+      userId: request.requester.sId,
+      limit: resolution.limit,
+      auditContext: auditContext ?? { location: "internal" },
+      requestId: request.sId,
+    });
+    if (spendLimitResult.isErr()) {
+      // The claim succeeded but applying the limit failed (e.g. a Metronome
+      // sync error): roll the claim back so the request stays pending and
+      // this (or another) resolution attempt can retry it.
+      await request.revertToPending();
+      return new Err(spendLimitResult.error);
+    }
+  }
+
+  if (resolution.status === "approved" && resolution.grantedSeatType) {
+    await request.recordSeatUpgrade(resolution.grantedSeatType);
   }
 
   void emitAuditLogEvent({

@@ -8,6 +8,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import type { SpendLimitExpiryKind } from "@app/types/api/users/spend_limit";
 import type {
   MembershipSeatType,
   MembershipUpgradeRequestStatus,
@@ -18,9 +19,18 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 export interface MembershipUpgradeRequestResource
   extends ReadonlyAttributesType<MembershipUpgradeRequestModel> {}
+
+type GrantSnapshot = Pick<
+  Attributes<MembershipUpgradeRequestModel>,
+  | "grantedAwuCredits"
+  | "grantedExpiryKind"
+  | "grantedUnlimitedSpend"
+  | "grantedSeatType"
+>;
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpgradeRequestModel> {
@@ -29,6 +39,7 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
 
   readonly requester: UserResource;
   readonly requesterSeatType: MembershipSeatType | null;
+  readonly resolvedByUser: UserResource | null;
 
   constructor(
     _: ModelStatic<MembershipUpgradeRequestModel>,
@@ -36,14 +47,17 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     {
       requester,
       requesterSeatType,
+      resolvedByUser,
     }: {
       requester: UserResource;
       requesterSeatType: MembershipSeatType | null;
+      resolvedByUser?: UserResource | null;
     }
   ) {
     super(MembershipUpgradeRequestModel, blob);
     this.requester = requester;
     this.requesterSeatType = requesterSeatType;
+    this.resolvedByUser = resolvedByUser ?? null;
   }
 
   get sId(): string {
@@ -129,6 +143,17 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     );
     const requesterByModelId = new Map(requesters.map((u) => [u.id, u]));
 
+    const resolvedByUserModelIds = rows.flatMap((r) =>
+      r.resolvedByUserId !== null ? [r.resolvedByUserId] : []
+    );
+    const resolvedByUsers =
+      resolvedByUserModelIds.length > 0
+        ? await UserResource.fetchByModelIds(resolvedByUserModelIds)
+        : [];
+    const resolvedByUserByModelId = new Map(
+      resolvedByUsers.map((u) => [u.id, u])
+    );
+
     const { memberships } = await MembershipResource.getActiveMemberships({
       users: requesters,
       workspace: auth.getNonNullableWorkspace(),
@@ -146,6 +171,10 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
         new this(this.model, r.get(), {
           requester,
           requesterSeatType: seatTypeByUserModelId.get(r.userId) ?? null,
+          resolvedByUser:
+            r.resolvedByUserId !== null
+              ? (resolvedByUserByModelId.get(r.resolvedByUserId) ?? null)
+              : null,
         }),
       ];
     });
@@ -171,6 +200,33 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
       where: { status: "pending" },
       order: [["createdAt", "DESC"]],
     });
+  }
+
+  // Resolved requests, most recent first
+  static async listResolvedByWorkspace(
+    auth: Authenticator,
+    { limit, offset }: { limit: number; offset: number }
+  ): Promise<{ requests: MembershipUpgradeRequestResource[]; total: number }> {
+    if (!auth.isManager()) {
+      return { requests: [], total: 0 };
+    }
+    const where = { status: { [Op.ne]: "pending" } };
+    const requests = await this.baseFetch(auth, {
+      where,
+      // `id` breaks ties between requests resolved at the same timestamp, so
+      // offset pagination stays stable across pages.
+      order: [
+        ["resolvedAt", "DESC"],
+        ["id", "DESC"],
+      ],
+      limit,
+      offset,
+    });
+
+    const total = await this.model.count({
+      where: { ...where, workspaceId: auth.getNonNullableWorkspace().id },
+    });
+    return { requests, total };
   }
 
   // Fetching an arbitrary request by id is a business-admin operation (a
@@ -226,6 +282,78 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     return new Ok(undefined);
   }
 
+  // Snapshot of the currently-recorded grant, so a failed downstream sync can
+  // restore it exactly (mirrors `MembershipResource.poolCapOverrideSnapshot`).
+  get grantSnapshot(): GrantSnapshot {
+    return {
+      grantedAwuCredits: this.grantedAwuCredits,
+      grantedExpiryKind: this.grantedExpiryKind,
+      grantedUnlimitedSpend: this.grantedUnlimitedSpend,
+      grantedSeatType: this.grantedSeatType,
+    };
+  }
+
+  // Restore a grant from a snapshot. Used when a resolution's downstream
+  // effect (e.g. syncing the approved spend limit to Metronome) fails after
+  // the grant was already recorded, so the request doesn't claim a grant that
+  // was never actually applied.
+  async revertGrant(
+    snapshot: GrantSnapshot,
+    transaction?: Transaction
+  ): Promise<void> {
+    await this.update(snapshot, transaction);
+  }
+
+  // Snapshot the spend-limit override actually granted when this (approved)
+  // request was resolved
+  async recordGrant(
+    limit:
+      | { kind: "unlimited" }
+      | {
+          kind: "limited";
+          awuCredits: number;
+          expiryKind?: SpendLimitExpiryKind | null;
+        },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    await this.update(
+      {
+        grantedAwuCredits: limit.kind === "limited" ? limit.awuCredits : null,
+        grantedExpiryKind:
+          limit.kind === "limited" ? (limit.expiryKind ?? null) : null,
+        grantedUnlimitedSpend: limit.kind === "unlimited",
+        grantedSeatType: null,
+      },
+      transaction
+    );
+  }
+
+  // Revert a resolution back to `pending` after a downstream side effect
+  // applied while claiming this request (e.g. the linked spend-limit sync)
+  // failed.
+  async revertToPending(transaction?: Transaction): Promise<void> {
+    await this.update(
+      { status: "pending", resolvedByUserId: null, resolvedAt: null },
+      transaction
+    );
+  }
+
+  // Snapshot the seat this (approved) request was resolved to
+  async recordSeatUpgrade(
+    seatType: MembershipSeatType,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    await this.update(
+      {
+        grantedSeatType: seatType,
+        grantedAwuCredits: null,
+        grantedExpiryKind: null,
+        grantedUnlimitedSpend: false,
+      },
+      transaction
+    );
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
@@ -267,6 +395,17 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
         image: this.requester.imageUrl ?? null,
         seatType: this.requesterSeatType,
       },
+      resolvedBy: this.resolvedByUser
+        ? {
+            sId: this.resolvedByUser.sId,
+            name: this.resolvedByUser.fullName() || this.resolvedByUser.name,
+            image: this.resolvedByUser.imageUrl ?? null,
+          }
+        : null,
+      grantedAwuCredits: this.grantedAwuCredits,
+      grantedExpiryKind: this.grantedExpiryKind,
+      grantedUnlimitedSpend: this.grantedUnlimitedSpend,
+      grantedSeatType: this.grantedSeatType,
     };
   }
 

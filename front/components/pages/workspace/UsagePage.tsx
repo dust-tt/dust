@@ -348,26 +348,34 @@ export function UsagePage() {
   );
   // Shared by approval flows before resolving the request.
   const resolveRequestApproved = useCallback(
-    async (requestId: string): Promise<void> => {
+    async (
+      requestId: string,
+      grantedSeatType?: MembershipSeatType
+    ): Promise<void> => {
       await doResolveUpgradeRequest({
         requestId,
-        resolution: { status: "approved" },
+        resolution: grantedSeatType
+          ? { status: "approved", grantedSeatType }
+          : { status: "approved" },
       });
     },
     [doResolveUpgradeRequest]
   );
-  const handleApproveOnModalSaved = useCallback(async () => {
-    if (!pendingApproveRequestId) {
-      return;
-    }
-    const requestId = pendingApproveRequestId;
-    setRequestResolving(requestId, true);
-    try {
-      await resolveRequestApproved(requestId);
-    } finally {
-      setRequestResolving(requestId, false);
-    }
-  }, [pendingApproveRequestId, resolveRequestApproved, setRequestResolving]);
+  const handleApproveOnModalSaved = useCallback(
+    async (grantedSeatType?: MembershipSeatType) => {
+      if (!pendingApproveRequestId) {
+        return;
+      }
+      const requestId = pendingApproveRequestId;
+      setRequestResolving(requestId, true);
+      try {
+        await resolveRequestApproved(requestId, grantedSeatType);
+      } finally {
+        setRequestResolving(requestId, false);
+      }
+    },
+    [pendingApproveRequestId, resolveRequestApproved, setRequestResolving]
+  );
   const handleDenyRequest = useCallback(
     async (request: MembershipUpgradeRequestType) => {
       const confirmed = await confirm({
@@ -638,13 +646,16 @@ export function UsagePage() {
     [confirm, doUpdateSeatType, handleSeatChangePendingChange, clearSelection]
   );
 
-  const handleSeatMutationSaved = useCallback(() => {
-    // Seat mutations can move a member in or out of the currently filtered set
-    // (for example with the seat filter), which makes the cross-page selection
-    // stale.
-    clearSelection();
-    handleApproveOnModalSaved();
-  }, [handleApproveOnModalSaved, clearSelection]);
+  const handleSeatMutationSaved = useCallback(
+    (seatType: MembershipSeatType) => {
+      // Seat mutations can move a member in or out of the currently filtered
+      // set (for example with the seat filter), which makes the cross-page
+      // selection stale.
+      clearSelection();
+      handleApproveOnModalSaved(seatType);
+    },
+    [handleApproveOnModalSaved, clearSelection]
+  );
 
   // Rows to spin while a bulk update runs — the request returns once the bulk
   // workflow has completed. For an "all matching" selection only the current

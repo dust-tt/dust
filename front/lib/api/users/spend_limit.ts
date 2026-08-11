@@ -26,6 +26,7 @@ import {
 import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { currentCalendarMonthCycleUtc } from "@app/lib/spend_limits/cycle";
@@ -36,6 +37,7 @@ import {
   getFixedWindowCount,
   setFixedWindowCount,
 } from "@app/lib/utils/rate_limiter";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   GetUserSpendLimitResponse,
@@ -54,7 +56,8 @@ export const MAX_USER_SPEND_LIMIT_AWU_CREDITS = 2_000_000;
 type UserSpendLimitErrorType =
   | "user_not_found"
   | "workspace_not_metronome_billed"
-  | "metronome_error";
+  | "metronome_error"
+  | "request_invalid";
 
 export class UserSpendLimitError extends Error {
   constructor(
@@ -172,10 +175,14 @@ export async function setUserSpendLimit(
     userId,
     limit,
     auditContext,
+    requestId,
   }: {
     userId: string;
     limit: UserSpendLimit;
     auditContext: AuditLogContext;
+    // Set when this save resolves a specific upgrade request.
+    // Snapshots the granted amount/expiry
+    requestId?: string | null;
   }
 ): Promise<Result<SetUserSpendLimitResponse, UserSpendLimitError>> {
   const workspace = auth.getNonNullableWorkspace();
@@ -241,23 +248,87 @@ export async function setUserSpendLimit(
     );
   }
 
-  // Persist the admin's intent first: the membership is the source of truth,
-  // the Metronome alerts below are derived enforcement (a failed sync can be
-  // retried and re-derives from this value).
+  // Captured before the transaction below (and the Metronome sync further
+  // down) so a failed sync can revert the membership back to exactly this
+  // state: the membership is the source of truth, the Metronome alerts are
+  // derived enforcement.
   const previousPoolCapOverride = membership.poolCapOverrideSnapshot;
   const previousAwuCredits = previousPoolCapOverride.poolCapOverrideAwuCredits;
 
-  await membership.updatePoolCapOverride({
-    poolCapOverrideAwuCredits:
-      limit.kind === "limited" ? limit.awuCredits : null,
-    poolCapOverrideExpiresAt:
-      limit.kind === "limited" && limit.expiresAt
-        ? new Date(limit.expiresAt)
-        : null,
+  // The membership override and its linked-request grant snapshot must land
+  // together for consistency. The request must belong to `userId` and must
+  // not have been resolved to a conflicting outcome. `resolveUpgradeRequest`
+  // claims the request via its own compare-and-set on `status = 'pending'`
+  // before calling this, so by the time this runs the status is expected to
+  // already be "approved" (not "pending") — `pending` is only accepted for
+  // callers that apply the limit without going through that claim step.
+  let request: MembershipUpgradeRequestResource | null = null;
+  if (requestId) {
+    request = await MembershipUpgradeRequestResource.fetchById(auth, requestId);
+    if (
+      !request ||
+      request.requester.sId !== user.sId ||
+      request.status === "denied"
+    ) {
+      logger.warn(
+        {
+          workspaceId: workspace.sId,
+          userId: user.sId,
+          requestId,
+          requestFound: !!request,
+          requestStatus: request?.status,
+        },
+        "[Metronome PerUserCap] set: linked upgrade request not found, mismatched, or denied"
+      );
+      return new Err(
+        new UserSpendLimitError(
+          "request_invalid",
+          "The linked upgrade request could not be found, does not belong to this user, or was denied."
+        )
+      );
+    }
+  }
+  const previousGrantSnapshot = request?.grantSnapshot ?? null;
+
+  await withTransaction(async (transaction) => {
+    // Persist the admin's intent first: the membership is the source of
+    // truth, the Metronome alerts below are derived enforcement (a failed
+    // sync can be retried and re-derives from this value).
+    await membership.updatePoolCapOverride(
+      {
+        poolCapOverrideAwuCredits:
+          limit.kind === "limited" ? limit.awuCredits : null,
+        poolCapOverrideExpiresAt:
+          limit.kind === "limited" && limit.expiresAt
+            ? new Date(limit.expiresAt)
+            : null,
+      },
+      transaction
+    );
+
+    if (request) {
+      await request.recordGrant(
+        limit.kind === "limited"
+          ? {
+              kind: "limited",
+              awuCredits: limit.awuCredits,
+              expiryKind: limit.expiryKind ?? null,
+            }
+          : { kind: limit.kind },
+        { transaction }
+      );
+    }
   });
 
-  const revert = () =>
-    membership.revertPoolCapOverride(previousPoolCapOverride);
+  // On a Metronome failure below, both the membership override and the
+  // linked request's grant snapshot are put back: the DB write is only
+  // valid once the derived Metronome sync has actually succeeded.
+  const revert = async () => {
+    await membership.revertPoolCapOverride(previousPoolCapOverride);
+    if (request && previousGrantSnapshot) {
+      await request.revertGrant(previousGrantSnapshot);
+    }
+  };
 
   switch (limit.kind) {
     case "unlimited": {

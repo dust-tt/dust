@@ -3,6 +3,7 @@ import type { ResolveUpgradeRequestError } from "@app/lib/api/credits/upgrade_re
 import {
   createUpgradeRequest,
   listPendingUpgradeRequests,
+  listResolvedUpgradeRequests,
   resolveUpgradeRequest,
 } from "@app/lib/api/credits/upgrade_requests";
 import { UserSpendLimitError } from "@app/lib/api/users/spend_limit";
@@ -12,7 +13,10 @@ import type {
   PostUpgradeRequestResponseBody,
 } from "@app/types/api/credits/upgrade_requests";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
-import { MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS } from "@app/types/memberships";
+import {
+  MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS,
+  MEMBERSHIP_SEAT_TYPES,
+} from "@app/types/memberships";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
@@ -28,13 +32,31 @@ const ParamsSchema = z.object({
   requestId: z.string(),
 });
 
-const ResolveBodySchema = z.discriminatedUnion("status", [
-  z.object({ status: z.literal("denied") }),
-  z.object({
-    status: z.literal("approved"),
-    limit: UpdateUserSpendLimitBodySchema.optional(),
-  }),
-]);
+const ResolveBodySchema = z
+  .discriminatedUnion("status", [
+    z.object({ status: z.literal("denied") }),
+    z.object({
+      status: z.literal("approved"),
+      limit: UpdateUserSpendLimitBodySchema.optional(),
+      // Set when the admin resolved the request via "Upgrade to max plan"
+      grantedSeatType: z.enum(MEMBERSHIP_SEAT_TYPES).optional(),
+    }),
+  ])
+  // A request is granted at most one of a spend limit or a seat upgrade.
+  .refine(
+    (data) =>
+      !(data.status === "approved" && data.limit && data.grantedSeatType),
+    {
+      message: "Cannot set both `limit` and `grantedSeatType`.",
+      path: ["grantedSeatType"],
+    }
+  );
+
+// Omitted/"pending" preserves the requests queue behavior
+const ListUpgradeRequestsQuerySchema = z.object({
+  status: z.union([z.literal("pending"), z.literal("resolved")]).optional(),
+  offset: z.coerce.number().int().min(0).catch(0),
+});
 
 const CreateUpgradeRequestBodySchema = z.object({
   reason: z
@@ -91,8 +113,16 @@ const app = workspaceApp();
 app.get(
   "/",
   ensureIsManager(),
+  validate("query", ListUpgradeRequestsQuerySchema),
   async (ctx): HandlerResult<GetUpgradeRequestsResponseBody> => {
     const auth = ctx.get("auth");
+    const { status, offset } = ctx.req.valid("query");
+    if (status === "resolved") {
+      const { requests, total } = await listResolvedUpgradeRequests(auth, {
+        offset,
+      });
+      return ctx.json({ requests, total });
+    }
     const requests = await listPendingUpgradeRequests(auth);
     return ctx.json({ requests });
   }
