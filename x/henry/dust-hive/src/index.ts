@@ -12,6 +12,7 @@ import { envGetCommand, envListCommand, envSetCommand, envUnsetCommand } from ".
 import { feedCommand } from "./commands/feed";
 import { flagCommand } from "./commands/flag";
 import { forwardCommand, forwardStatusCommand, forwardStopCommand } from "./commands/forward";
+import { kibanaCommand } from "./commands/kibana";
 import { listCommand } from "./commands/list";
 import { logsCommand } from "./commands/logs";
 import { openCommand } from "./commands/open";
@@ -311,6 +312,12 @@ cli
 cli.command("url [name]", "Print front URL").action(async (name: string | undefined) => {
   await prepareAndRun(urlCommand(name));
 });
+
+cli
+  .command("kibana [name]", "Open Kibana for a warm environment")
+  .action(async (name: string | undefined) => {
+    await prepareAndRun(kibanaCommand(name));
+  });
 
 cli
   .command("cd [name]", "Print worktree path (use with: cd $(dust-hive cd <env>))")

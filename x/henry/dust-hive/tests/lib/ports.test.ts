@@ -19,6 +19,7 @@ describe("ports", () => {
       expect(ports.qdrantHttp).toBe(10333);
       expect(ports.qdrantGrpc).toBe(10334);
       expect(ports.elasticsearch).toBe(10200);
+      expect(ports.kibana).toBe(10601);
       expect(ports.apacheTika).toBe(10998);
     });
 
@@ -52,6 +53,7 @@ describe("ports", () => {
       expect(ports.qdrantHttp).toBe(base + PORT_OFFSETS.qdrantHttp);
       expect(ports.qdrantGrpc).toBe(base + PORT_OFFSETS.qdrantGrpc);
       expect(ports.elasticsearch).toBe(base + PORT_OFFSETS.elasticsearch);
+      expect(ports.kibana).toBe(base + PORT_OFFSETS.kibana);
       expect(ports.apacheTika).toBe(base + PORT_OFFSETS.apacheTika);
     });
   });

@@ -186,6 +186,7 @@ external workspace is archived.
 | `status [NAME]` | Show service health |
 | `logs [NAME] [SERVICE] [-f]` | View service logs |
 | `url [NAME]` | Print front URL |
+| `kibana [NAME]` | Start Kibana for a warm environment and open it in the default browser |
 
 ### Utilities
 

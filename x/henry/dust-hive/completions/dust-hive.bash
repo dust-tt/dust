@@ -300,7 +300,7 @@ _dust_hive_complete() {
 
   # Top-level command completion
   if [[ -z "$cmd" ]]; then
-    local commands="spawn adopt open reload restart warm cool start stop up down destroy unregister list status logs url cd setup doctor cache refresh forward sync temporal seed-config feed flag help"
+    local commands="spawn adopt open reload restart warm cool start stop up down destroy unregister list status logs url kibana cd setup doctor cache refresh forward sync temporal seed-config feed flag help"
     COMPREPLY=($(compgen -W "$commands" -- "$cur"))
     return
   fi
@@ -432,6 +432,15 @@ _dust_hive_complete() {
           ;;
         *)
           COMPREPLY=($(compgen -W "$(_dust_hive_envs)" -- "$cur"))
+          ;;
+      esac
+      ;;
+    kibana)
+      case "$cur" in
+        -*)
+          ;;
+        *)
+          COMPREPLY=($(compgen -W "$(_dust_hive_warm_envs)" -- "$cur"))
           ;;
       esac
       ;;

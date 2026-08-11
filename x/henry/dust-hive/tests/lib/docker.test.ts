@@ -16,6 +16,7 @@ describe("docker", () => {
       expect(override.services.redis.ports).toEqual(["10379:6379"]);
       expect(override.services.qdrant.ports).toEqual(["10333:6333", "10334:6334"]);
       expect(override.services.elasticsearch.ports).toEqual(["10200:9200"]);
+      expect(override.services.kibana.ports).toEqual(["10601:5601"]);
       expect(override.services["apache-tika"].ports).toEqual(["10998:9998"]);
     });
 
