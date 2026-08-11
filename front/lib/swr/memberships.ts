@@ -652,15 +652,19 @@ export function useUpdateUserSpendLimit({
       memberId,
       memberName,
       limit,
+      requestId,
     }: {
       memberId: string;
       memberName: string;
       limit: UserSpendLimit;
+      // Set when this save resolves a specific upgrade request — see
+      // `setUserSpendLimit`.
+      requestId?: string | null;
     }): Promise<PutUserSpendLimitResponseBody | null> => {
       const res = await clientFetch(spendLimitUrl(workspaceId, memberId), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(limit),
+        body: JSON.stringify({ ...limit, requestId: requestId ?? undefined }),
       });
 
       if (!res.ok) {

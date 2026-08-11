@@ -18,6 +18,7 @@ import { MembersSelectionBanner } from "@app/components/workspace/MembersSelecti
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import { TopUpsHistoryTable } from "@app/components/workspace/TopUpsHistoryTable";
+import { UpgradeRequestsHistoryTable } from "@app/components/workspace/UpgradeRequestsHistoryTable";
 import { UpgradeRequestsTable } from "@app/components/workspace/UpgradeRequestsTable";
 import { LockedSection } from "@app/components/workspace/usage/LockedSection";
 import { ModelTiersSettingsCard } from "@app/components/workspace/usage/ModelTiersSettingsCard";
@@ -71,8 +72,10 @@ import {
   useWorkspaceAllowedModelTiers,
 } from "@app/lib/swr/model_tiers";
 import {
+  UPGRADE_REQUESTS_HISTORY_PAGE_SIZE,
   useResolveUpgradeRequest,
   useUpgradeRequests,
+  useUpgradeRequestsHistory,
 } from "@app/lib/swr/upgrade_requests";
 import { useUsageSettings } from "@app/lib/swr/usage_settings";
 import {
@@ -261,11 +264,26 @@ export function UsagePage() {
   );
   const isWorkspaceAdmin = isAdmin(owner);
   const modelsPickerEnabled = hasFeature("models_picker") && isWorkspaceAdmin;
-  const [membersTab, setMembersTab] = useState<"members" | "requests">(
-    "members"
-  );
-  const { upgradeRequests, isUpgradeRequestsLoading } = useUpgradeRequests({
+  const [membersTab, setMembersTab] = useState<
+    "members" | "requests" | "history"
+  >("members");
+  const { upgradeRequests, isUpgradeRequestsLoading, isUpgradeRequestsError } =
+    useUpgradeRequests({
+      workspaceId: owner.sId,
+    });
+  const [historyPagination, setHistoryPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: UPGRADE_REQUESTS_HISTORY_PAGE_SIZE,
+  });
+  const {
+    upgradeRequestsHistory,
+    totalUpgradeRequestsHistoryCount,
+    isUpgradeRequestsHistoryLoading,
+    isUpgradeRequestsHistoryError,
+  } = useUpgradeRequestsHistory({
     workspaceId: owner.sId,
+    pageIndex: historyPagination.pageIndex,
+    disabled: membersTab !== "history",
   });
 
   const filteredUpgradeRequests = useMemo(() => {
@@ -1113,9 +1131,13 @@ export function UsagePage() {
                   <ButtonsSwitchList
                     size="xs"
                     defaultValue="members"
-                    onValueChange={(v: string) =>
-                      setMembersTab(v === "requests" ? "requests" : "members")
-                    }
+                    onValueChange={(v: string) => {
+                      if (v === "requests" || v === "history") {
+                        setMembersTab(v);
+                      } else {
+                        setMembersTab("members");
+                      }
+                    }}
                   >
                     <ButtonsSwitch value="members" label="Members" />
                     <ButtonsSwitch
@@ -1128,6 +1150,7 @@ export function UsagePage() {
                           : undefined
                       }
                     />
+                    <ButtonsSwitch value="history" label="History" />
                   </ButtonsSwitchList>
                   {membersTab === "members" && (
                     <div className="flex flex-row items-center gap-2">
@@ -1144,21 +1167,33 @@ export function UsagePage() {
                   )}
                 </div>
                 <div className="flex flex-col gap-2 pt-2">
-                  {membersTab === "members" ? (
+                  {membersTab === "members" && (
                     <>
                       {selectionBanner}
                       {membersTable}
                     </>
-                  ) : (
+                  )}
+                  {membersTab === "requests" && (
                     <UpgradeRequestsTable
                       requests={filteredUpgradeRequests}
                       isLoading={isUpgradeRequestsLoading}
+                      isError={isUpgradeRequestsError}
                       seatPlans={seatPlans}
                       isEnterprise={isEnterprise}
                       pendingRequestIds={resolvingRequestIds}
                       onUpgradePlan={handleUpgradePlanRequest}
                       onSetCreditAmount={handleSetCreditAmountRequest}
                       onDeny={handleDenyRequest}
+                    />
+                  )}
+                  {membersTab === "history" && (
+                    <UpgradeRequestsHistoryTable
+                      requests={upgradeRequestsHistory}
+                      isLoading={isUpgradeRequestsHistoryLoading}
+                      isError={isUpgradeRequestsHistoryError}
+                      totalRowCount={totalUpgradeRequestsHistoryCount}
+                      pagination={historyPagination}
+                      setPagination={setHistoryPagination}
                     />
                   )}
                 </div>

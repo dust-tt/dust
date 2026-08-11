@@ -6,7 +6,15 @@ import type {
   MembershipSeatType,
   MembershipUpgradeRequestType,
 } from "@app/types/memberships";
-import { Button, DataTable, LoadingBlock, Spinner, X } from "@dust-tt/sparkle";
+import {
+  AlertCircle,
+  Button,
+  ContentMessage,
+  DataTable,
+  LoadingBlock,
+  Spinner,
+  X,
+} from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
@@ -135,6 +143,7 @@ function buildActionsColumn({
 interface UpgradeRequestsTableProps {
   requests: MembershipUpgradeRequestType[];
   isLoading: boolean;
+  isError: boolean;
   seatPlans: SeatPlanResponseBody;
   isEnterprise: boolean;
   pendingRequestIds: ReadonlySet<string>;
@@ -146,6 +155,7 @@ interface UpgradeRequestsTableProps {
 export function UpgradeRequestsTable({
   requests,
   isLoading,
+  isError,
   seatPlans,
   isEnterprise,
   pendingRequestIds,
@@ -190,6 +200,19 @@ export function UpgradeRequestsTable({
         <LoadingBlock className="h-8 w-full rounded-xl" />
         <LoadingBlock className="h-8 w-full rounded-xl" />
       </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <ContentMessage
+        title="Failed to load upgrade requests"
+        icon={AlertCircle}
+        variant="warning"
+      >
+        An error occurred while loading pending upgrade requests. Please refresh
+        the page or contact support if the issue persists.
+      </ContentMessage>
     );
   }
 

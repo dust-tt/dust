@@ -9,13 +9,12 @@ interface MemberNameRow {
   image: string | null;
 }
 
-export function buildMemberNameColumn<TRow extends MemberNameRow>(): ColumnDef<
-  TRow,
-  string
-> {
+export function buildMemberNameColumn<TRow extends MemberNameRow>(
+  header = "Name"
+): ColumnDef<TRow, string> {
   return {
     id: "name" as const,
-    header: "Name",
+    header,
     enableSorting: true,
     accessorFn: (row) => row.name,
     cell: (info: CellContext<TRow, string>) => (

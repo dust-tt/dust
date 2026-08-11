@@ -52,7 +52,9 @@ interface EditSpendLimitModalProps {
   // separate spend-limit update, so the two can't drift apart if one half
   // fails. It also skips the "workspace default vs. custom limit" choice and
   // opens straight into the custom-limit form, since approving an overage
-  // request is meant to fix the overage, not reset the member's cap.
+  // request is meant to fix the overage, not reset the member's cap. The
+  // combined resolution also records the granted amount/expiry on the
+  // request for the admin history view (see `setUserSpendLimit`).
   upgradeRequestId?: string | null;
 }
 
@@ -192,6 +194,7 @@ export function EditSpendLimitModal({
             kind: "limited",
             awuCredits: Number(data.creditsInput),
             expiresAt,
+            expiryKind: data.expiryMode,
           });
         })();
         return;
