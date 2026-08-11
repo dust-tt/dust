@@ -10,6 +10,7 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -122,50 +123,74 @@ export async function moveConversationToProject(
     );
   }
 
-  await withTransaction(async (t) => {
-    // Before moving the conversation, capture the current state:
-    // - Current updatedAt timestamp
-    // - All participants with their lastReadAt status
-    const oldUpdatedAt = conversationResource.updatedAt;
-    const participants = await conversationResource.listParticipants(auth);
+  // The scope transition holds the sandbox lifecycle lock across the strict
+  // destroy AND the database move: a concurrent Computer command can neither
+  // keep the pre-move sandbox alive nor create one from the pre-move scope.
+  // The next Computer command recreates the sandbox — with the new pod's
+  // egress claims, env vars, and mounts — from the moved conversation. A
+  // destroy failure fails the move (fail closed, association unchanged); the
+  // kill request it leaves behind lets the next access finish the reset.
+  const transitionRes = await ConversationSandboxAdapter.withScopeTransition(
+    auth,
+    conversationResource,
+    async () => {
+      await withTransaction(async (t) => {
+        // Before moving the conversation, capture the current state:
+        // - Current updatedAt timestamp
+        // - All participants with their lastReadAt status
+        const oldUpdatedAt = conversationResource.updatedAt;
+        const participants = await conversationResource.listParticipants(auth);
 
-    // Move the conversation to the project (this will update updatedAt)
-    await conversationResource.updateSpaceId(auth, project, t);
-    // See front/lib/api/assistant/conversation/mentions.ts updateConversationRequirements for more details
-    await conversationResource.updateRequirements(auth, [project.id], t);
+        // Move the conversation to the project (this will update updatedAt)
+        await conversationResource.updateSpaceId(auth, project, t);
+        // See front/lib/api/assistant/conversation/mentions.ts updateConversationRequirements for more details
+        await conversationResource.updateRequirements(auth, [project.id], t);
 
-    // The requirements above drop every Space the conversation used to require, including the ones
-    // that were selected from the input bar. Their selections must go with them: they no longer
-    // have any ACL backing, and moving the conversation out of the project later rebuilds
-    // requirements from agents and content fragments only, which would make them live again.
-    await ConversationSelectedSpaceResource.removeAllForConversation(auth, {
-      conversation: conversationResource,
-      transaction: t,
-    });
-
-    // For participants who had already read the conversation (unread = false),
-    // mark them as read using markAsReadForAuthUser to preserve their read status.
-    // Participants who were already unread should stay unread.
-    const workspaceId = auth.getNonNullableWorkspace().sId;
-
-    for (const participant of participants) {
-      // A participant was read if they had a lastReadAt and it was >= oldUpdatedAt
-      const wasRead =
-        participant.lastReadAt !== null &&
-        participant.lastReadAt >= oldUpdatedAt;
-
-      if (wasRead) {
-        const participantAuth = await Authenticator.fromUserIdAndWorkspaceId(
-          participant.sId,
-          workspaceId
-        );
-        await ConversationResource.markAsReadForAuthUser(participantAuth, {
-          conversation,
+        // The requirements above drop every Space the conversation used to require, including the ones
+        // that were selected from the input bar. Their selections must go with them: they no longer
+        // have any ACL backing, and moving the conversation out of the project later rebuilds
+        // requirements from agents and content fragments only, which would make them live again.
+        await ConversationSelectedSpaceResource.removeAllForConversation(auth, {
+          conversation: conversationResource,
           transaction: t,
         });
-      }
+
+        // For participants who had already read the conversation (unread = false),
+        // mark them as read using markAsReadForAuthUser to preserve their read status.
+        // Participants who were already unread should stay unread.
+        const workspaceId = auth.getNonNullableWorkspace().sId;
+
+        for (const participant of participants) {
+          // A participant was read if they had a lastReadAt and it was >= oldUpdatedAt
+          const wasRead =
+            participant.lastReadAt !== null &&
+            participant.lastReadAt >= oldUpdatedAt;
+
+          if (wasRead) {
+            const participantAuth =
+              await Authenticator.fromUserIdAndWorkspaceId(
+                participant.sId,
+                workspaceId
+              );
+            await ConversationResource.markAsReadForAuthUser(participantAuth, {
+              conversation,
+              transaction: t,
+            });
+          }
+        }
+      }, transaction);
+
+      return new Ok(undefined);
     }
-  }, transaction);
+  );
+  if (transitionRes.isErr()) {
+    return new Err(
+      new DustError(
+        "internal_error",
+        `Could not recycle the conversation's sandbox for the move: ${transitionRes.error.message}`
+      )
+    );
+  }
 
   return new Ok(undefined);
 }
@@ -224,13 +249,35 @@ export async function moveConversationOutOfProject(
   const oldUpdatedAt = conversationResource.updatedAt;
   const participants = await conversationResource.listParticipants(auth);
 
-  // Remove the project association.
-  await conversationResource.updateSpaceId(auth, null);
+  // Same contract as moveConversationToProject: strict sandbox destroy and
+  // the association change happen under one lifecycle-lock hold, so the Pod's
+  // egress scope, env vars, and secrets are gone before the conversation is.
+  // Participant processing stays outside the lock — it is slow, and not part
+  // of the scope the lock protects.
+  const transitionRes = await ConversationSandboxAdapter.withScopeTransition(
+    auth,
+    conversationResource,
+    async () => {
+      // Remove the project association.
+      await conversationResource.updateSpaceId(auth, null);
 
-  // Rebuild requestedSpaceIds from all agents and content fragments in the conversation.
-  // When a conversation is in a project, its requestedSpaceIds is set to [projectSpaceId] only.
-  // Moving out requires recalculating the full set of space requirements.
-  await rebuildConversationRequirements(auth, conversationResource);
+      // Rebuild requestedSpaceIds from all agents and content fragments in
+      // the conversation. When a conversation is in a project, its
+      // requestedSpaceIds is set to [projectSpaceId] only. Moving out
+      // requires recalculating the full set of space requirements.
+      await rebuildConversationRequirements(auth, conversationResource);
+
+      return new Ok(undefined);
+    }
+  );
+  if (transitionRes.isErr()) {
+    return new Err(
+      new DustError(
+        "internal_error",
+        `Could not recycle the conversation's sandbox for the move: ${transitionRes.error.message}`
+      )
+    );
+  }
 
   const workspaceId = auth.getNonNullableWorkspace().sId;
 

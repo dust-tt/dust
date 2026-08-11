@@ -240,6 +240,27 @@ export class ConversationSandboxAdapter {
     );
   }
 
+  // Wraps a conversation scope transition (a move between/out of pods):
+  // strictly destroys the conversation's sandbox and runs the database
+  // transition under one lifecycle-lock hold, so a concurrent Computer
+  // command can neither keep a pre-move sandbox alive nor create one from
+  // the pre-move scope. See SandboxResource.runScopeTransition for the
+  // ordering and crash-recovery contract.
+  static async withScopeTransition<T>(
+    auth: Authenticator,
+    conversation: ConversationSandboxOwner,
+    transition: () => Promise<Result<T, Error>>
+  ): Promise<Result<T, Error>> {
+    return SandboxResource.runScopeTransition(
+      auth,
+      {
+        lockKey: conversation.sId,
+        fetchSandbox: () => this.fetchSandbox(auth, conversation),
+      },
+      transition
+    );
+  }
+
   static async dangerouslySleepSandboxIfRunning(
     auth: Authenticator,
     conversation: ConversationSandboxLifecycleOwner
