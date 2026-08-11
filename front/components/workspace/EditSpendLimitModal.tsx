@@ -1,9 +1,19 @@
+import type { SpendLimitOverrideFormValues } from "@app/components/workspace/SpendLimitOverrideFields";
+import {
+  SpendLimitOverrideFields,
+  spendLimitOverrideFormSchema,
+} from "@app/components/workspace/SpendLimitOverrideFields";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import {
   useUpdateUserSpendLimit,
   useUserSpendLimit,
 } from "@app/lib/swr/memberships";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { useResolveUpgradeRequest } from "@app/lib/swr/upgrade_requests";
+import type { UserSpendLimit } from "@app/types/api/users/spend_limit";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   AlertCircle,
@@ -15,15 +25,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Input,
   RadioGroup,
   RadioGroupItem,
   Spinner,
 } from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
 
-const MIN_AWU_CREDITS = 0;
-const MAX_AWU_CREDITS = 2_000_000;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 type SpendLimitKind = "default" | "override";
 
@@ -36,10 +46,15 @@ interface EditSpendLimitModalProps {
   onClose: () => void;
   member: MemberUsageType | null;
   owner: WorkspaceType;
+  // When set, the modal skips the "workspace default vs. custom limit"
+  // choice and opens straight into the custom-limit form.
+  forceOverride?: boolean;
   onSavingChange?: (memberId: string, isSaving: boolean) => void;
-  // Fired once the spend limit has been persisted successfully (not on cancel
-  // or a load error). Used to resolve a linked upgrade request as approved.
-  onSaved?: () => void;
+  // When set, the modal is resolving this pending upgrade request: the limit
+  // is submitted together with the approval in a single call instead of a
+  // separate spend-limit update, so the two can't drift apart if one half
+  // fails.
+  upgradeRequestId?: string | null;
 }
 
 export function EditSpendLimitModal({
@@ -47,8 +62,9 @@ export function EditSpendLimitModal({
   onClose,
   member,
   owner,
+  forceOverride = false,
   onSavingChange,
-  onSaved,
+  upgradeRequestId = null,
 }: EditSpendLimitModalProps) {
   // Keep the last non-null member so the dialog can render its content through
   // the exit animation after the parent has cleared `member`.
@@ -71,18 +87,25 @@ export function EditSpendLimitModal({
   const { doUpdateSpendLimit } = useUpdateUserSpendLimit({
     workspaceId: owner.sId,
   });
+  const { doResolveUpgradeRequest } = useResolveUpgradeRequest({
+    workspaceId: owner.sId,
+  });
 
   const [kind, setKind] = useState<SpendLimitKind>("override");
-  const [creditsInput, setCreditsInput] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
-  const [validationMessage, setValidationMessage] = useState<string | null>(
-    null
-  );
+
+  const overrideForm = useForm<SpendLimitOverrideFormValues>({
+    resolver: zodResolver(spendLimitOverrideFormSchema),
+    defaultValues: { creditsInput: "", expiryMode: "never" },
+  });
+
+  // The amount currently persisted
+  const currentAwuCredits =
+    spendLimit?.kind === "limited" ? spendLimit.awuCredits : null;
 
   useEffect(() => {
     if (!isOpen) {
       setIsSaving(false);
-      setValidationMessage(null);
       return;
     }
     if (!spendLimit) {
@@ -91,62 +114,30 @@ export function EditSpendLimitModal({
     switch (spendLimit.kind) {
       case "limited":
         setKind("override");
-        setCreditsInput(String(spendLimit.awuCredits));
+        overrideForm.reset({
+          creditsInput: String(spendLimit.awuCredits),
+          expiryMode:
+            spendLimit.expiresAt === null
+              ? "never"
+              : spendLimit.expiresAt === spendLimit.nextCreditResetAt
+                ? "next_credit_reset"
+                : "one_day",
+        });
         break;
       case "unlimited":
-        setKind("default");
-        setCreditsInput("");
+        setKind(forceOverride ? "override" : "default");
+        overrideForm.reset({ creditsInput: "", expiryMode: "never" });
         break;
       default:
         assertNeverAndIgnore(spendLimit);
     }
-    setValidationMessage(null);
-  }, [isOpen, spendLimit]);
+  }, [isOpen, spendLimit, forceOverride, overrideForm]);
 
   function handleSelectKind(next: SpendLimitKind) {
     setKind(next);
-    setValidationMessage(null);
   }
 
-  function handleCreditsChange(value: string) {
-    // Keep only digits — credits are integers and the API range starts at 0.
-    const cleaned = value.replace(/[^\d]/g, "");
-    setCreditsInput(cleaned);
-    setValidationMessage(null);
-  }
-
-  function validate(): { ok: true; awuCredits: number } | { ok: false } {
-    switch (kind) {
-      case "default":
-        return { ok: true, awuCredits: 0 };
-      case "override": {
-        const parsed = Number(creditsInput);
-        if (!Number.isInteger(parsed) || parsed < MIN_AWU_CREDITS) {
-          setValidationMessage(
-            `Enter a whole number of credits between ${MIN_AWU_CREDITS.toLocaleString("en-US")} and ${MAX_AWU_CREDITS.toLocaleString("en-US")}.`
-          );
-          return { ok: false };
-        }
-        if (parsed > MAX_AWU_CREDITS) {
-          setValidationMessage(
-            `Credits cannot exceed ${MAX_AWU_CREDITS.toLocaleString("en-US")}.`
-          );
-          return { ok: false };
-        }
-        return { ok: true, awuCredits: parsed };
-      }
-      default:
-        assertNeverAndIgnore(kind);
-        return { ok: false };
-    }
-  }
-
-  async function handleValidate() {
-    const result = validate();
-    if (!result.ok) {
-      return;
-    }
-
+  async function submitLimit(limit: UserSpendLimit) {
     if (!displayedMember) {
       return;
     }
@@ -154,27 +145,17 @@ export function EditSpendLimitModal({
     setIsSaving(true);
     onSavingChange?.(displayedMember.sId, true);
     try {
-      let limit:
-        | { kind: "unlimited" }
-        | { kind: "limited"; awuCredits: number };
-      switch (kind) {
-        case "default":
-          limit = { kind: "unlimited" };
-          break;
-        case "override":
-          limit = { kind: "limited", awuCredits: result.awuCredits };
-          break;
-        default:
-          assertNeverAndIgnore(kind);
-          return;
-      }
-      const body = await doUpdateSpendLimit({
-        memberId: displayedMember.sId,
-        memberName: displayedMember.name,
-        limit,
-      });
-      if (body) {
-        onSaved?.();
+      const saved = upgradeRequestId
+        ? await doResolveUpgradeRequest({
+            requestId: upgradeRequestId,
+            resolution: { status: "approved", limit },
+          })
+        : !!(await doUpdateSpendLimit({
+            memberId: displayedMember.sId,
+            memberName: displayedMember.name,
+            limit,
+          }));
+      if (saved) {
         onClose();
       }
     } finally {
@@ -183,13 +164,60 @@ export function EditSpendLimitModal({
     }
   }
 
+  async function handleValidate() {
+    if (!displayedMember) {
+      return;
+    }
+
+    switch (kind) {
+      case "default":
+        await submitLimit({ kind: "unlimited" });
+        return;
+      case "override":
+        await overrideForm.handleSubmit(async (data) => {
+          let expiresAt: number | null;
+          switch (data.expiryMode) {
+            case "never":
+              expiresAt = null;
+              break;
+            case "one_day":
+              expiresAt = Date.now() + ONE_DAY_MS;
+              break;
+            case "next_credit_reset":
+              expiresAt = spendLimit?.nextCreditResetAt ?? null;
+              break;
+            default:
+              assertNever(data.expiryMode);
+          }
+          await submitLimit({
+            kind: "limited",
+            awuCredits: Number(data.creditsInput),
+            expiresAt,
+          });
+        })();
+        return;
+      default:
+        assertNever(kind);
+    }
+  }
+
+  const watchedCreditsInput = overrideForm.watch("creditsInput");
   const validateDisabled =
     isSaving ||
     isSpendLimitLoading ||
-    (kind === "override" && creditsInput.length === 0);
+    (kind === "override" && watchedCreditsInput.length === 0);
   const primaryDisabled = isSpendLimitError
     ? isSaving || isSpendLimitLoading
     : validateDisabled;
+
+  const overrideFields = (
+    <SpendLimitOverrideFields
+      control={overrideForm.control}
+      member={displayedMember}
+      currentAwuCredits={currentAwuCredits}
+      nextCreditResetAt={spendLimit?.nextCreditResetAt ?? null}
+    />
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -230,6 +258,8 @@ export function EditSpendLimitModal({
             <div className="flex justify-center py-6">
               <Spinner />
             </div>
+          ) : forceOverride ? (
+            overrideFields
           ) : (
             <RadioGroup
               value={kind}
@@ -251,34 +281,7 @@ export function EditSpendLimitModal({
                 label="Use custom monthly limit"
               />
 
-              {kind === "override" && (
-                <div className="flex flex-col gap-1.5 pl-6">
-                  <div className="relative">
-                    <Input
-                      id="spend-credit-limit-input"
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      placeholder="1,000"
-                      value={
-                        creditsInput !== ""
-                          ? Number(creditsInput).toLocaleString()
-                          : ""
-                      }
-                      onChange={(e) => handleCreditsChange(e.target.value)}
-                      isError={validationMessage !== null}
-                      message={validationMessage ?? undefined}
-                      messageStatus={
-                        validationMessage !== null ? "error" : undefined
-                      }
-                      className="pr-28 text-right"
-                    />
-                    <span className="copy-sm pointer-events-none absolute right-3 top-0 flex h-9 items-center text-muted-foreground">
-                      credits/month
-                    </span>
-                  </div>
-                </div>
-              )}
+              {kind === "override" && overrideFields}
             </RadioGroup>
           )}
         </DialogContainer>
@@ -294,7 +297,7 @@ export function EditSpendLimitModal({
             disabled: primaryDisabled,
             onClick: isSpendLimitError
               ? () => void mutateSpendLimit()
-              : handleValidate,
+              : () => void handleValidate(),
           }}
         />
       </DialogContent>

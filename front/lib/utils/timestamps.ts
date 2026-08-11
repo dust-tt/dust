@@ -66,12 +66,20 @@ export const formatDurationString = (durationMs: number): string => {
 /**
  * Formats a timestamp to a short date string (e.g., "Jan 15").
  * @param timestamp - The timestamp to format (number or string in milliseconds)
+ * @param options.includeYear - Also include the year (e.g., "Jan 15, 2026")
+ * @param options.timeZone - Pin the formatting to a specific IANA time zone
+ * instead of the browser's local one (e.g., to label a UTC billing boundary)
  * @returns A formatted string like "Jan 15"
  */
-export const formatShortDate = (timestamp: number | string): string => {
+export const formatShortDate = (
+  timestamp: number | string,
+  options?: { includeYear?: boolean; timeZone?: string }
+): string => {
   return new Date(timestamp).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
+    ...(options?.includeYear && { year: "numeric" }),
+    ...(options?.timeZone && { timeZone: options.timeZone }),
   });
 };
 

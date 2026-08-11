@@ -116,6 +116,8 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
       expect(await getResponse.json()).toEqual({
         kind: "limited",
         awuCredits: 1500,
+        expiresAt: null,
+        nextCreditResetAt: null,
       });
     });
 
@@ -251,7 +253,10 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
       );
 
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ kind: "unlimited" });
+      expect(await response.json()).toEqual({
+        kind: "unlimited",
+        nextCreditResetAt: null,
+      });
     });
 
     it("returns limited with the override persisted on the membership", async () => {
@@ -280,6 +285,41 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
       expect(await response.json()).toEqual({
         kind: "limited",
         awuCredits: 2500,
+        expiresAt: null,
+        nextCreditResetAt: null,
+      });
+    });
+
+    it("returns the persisted expiresAt when the override has one", async () => {
+      const workspace = await makeMetronomeWorkspaceWithCustomer();
+      const targetUser = await UserFactory.basic();
+      const membership = await MembershipFactory.associate(
+        workspace,
+        targetUser,
+        { role: "user" }
+      );
+      const expiresAt = new Date("2026-08-15T00:00:00.000Z");
+      await membership.updatePoolCapOverride({
+        poolCapOverrideAwuCredits: 2500,
+        poolCapOverrideExpiresAt: expiresAt,
+      });
+
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+        workspace,
+      });
+
+      const response = await honoApp.request(
+        spendLimitUrl(workspace.sId, targetUser.sId)
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        kind: "limited",
+        awuCredits: 2500,
+        expiresAt: expiresAt.getTime(),
+        nextCreditResetAt: null,
       });
     });
   });

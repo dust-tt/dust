@@ -12,6 +12,7 @@ import type {
 import type {
   GetUserSpendLimitResponseBody,
   PutUserSpendLimitResponseBody,
+  UserSpendLimit,
 } from "@app/types/api/users/spend_limit";
 import { SUPPORTED_CURRENCIES } from "@app/types/currency";
 import type { GroupKind } from "@app/types/groups";
@@ -34,6 +35,7 @@ const SpendLimitResponseSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("limited"),
     awuCredits: z.number(),
+    expiresAt: z.number().nullable().optional(),
   }),
 ]);
 
@@ -653,7 +655,7 @@ export function useUpdateUserSpendLimit({
     }: {
       memberId: string;
       memberName: string;
-      limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number };
+      limit: UserSpendLimit;
     }): Promise<PutUserSpendLimitResponseBody | null> => {
       const res = await clientFetch(spendLimitUrl(workspaceId, memberId), {
         method: "PUT",

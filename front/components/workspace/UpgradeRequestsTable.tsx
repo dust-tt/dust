@@ -1,3 +1,4 @@
+import { ManageUpgradeRequestModal } from "@app/components/workspace/ManageUpgradeRequestModal";
 import { buildMemberNameColumn } from "@app/components/workspace/member_name_column";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { timeAgoFrom } from "@app/lib/utils";
@@ -5,16 +6,9 @@ import type {
   MembershipSeatType,
   MembershipUpgradeRequestType,
 } from "@app/types/memberships";
-import {
-  Button,
-  Check,
-  DataTable,
-  LoadingBlock,
-  Spinner,
-  X,
-} from "@dust-tt/sparkle";
+import { Button, DataTable, LoadingBlock, Spinner, X } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 type RowData = {
   sId: string;
@@ -94,14 +88,10 @@ const requestedColumn: ColumnDef<RowData, string> = {
 };
 
 function buildActionsColumn({
-  seatPlans,
-  onUpgradePlan,
-  onEditLimit,
+  onManage,
   onDeny,
 }: {
-  seatPlans: SeatPlanResponseBody;
-  onUpgradePlan: (request: MembershipUpgradeRequestType) => void;
-  onEditLimit: (request: MembershipUpgradeRequestType) => void;
+  onManage: (request: MembershipUpgradeRequestType) => void;
   onDeny: (request: MembershipUpgradeRequestType) => void;
 }): ColumnDef<RowData, string> {
   return {
@@ -118,10 +108,6 @@ function buildActionsColumn({
           </div>
         );
       }
-      // Hide "Upgrade plan" when there is no higher seat tier to move the
-      // requester to: their current seat already grants as many AWU credits as
-      // the richest seat the plan offers.
-      const canUpgradePlan = canUpgrade(request.requester.seatType, seatPlans);
       return (
         <div className="flex w-full items-center justify-end gap-2">
           <Button
@@ -131,26 +117,17 @@ function buildActionsColumn({
             label="Deny"
             onClick={() => onDeny(request)}
           />
-          {canUpgradePlan && (
-            <Button
-              size="sm"
-              variant="highlight-secondary"
-              icon={Check}
-              label="Upgrade plan"
-              onClick={() => onUpgradePlan(request)}
-            />
-          )}
           <Button
             size="sm"
             variant="outline"
-            label="Edit limit"
-            onClick={() => onEditLimit(request)}
+            label="Manage"
+            onClick={() => onManage(request)}
           />
         </div>
       );
     },
     meta: {
-      className: "w-96",
+      className: "w-48",
     },
   };
 }
@@ -159,9 +136,11 @@ interface UpgradeRequestsTableProps {
   requests: MembershipUpgradeRequestType[];
   isLoading: boolean;
   seatPlans: SeatPlanResponseBody;
+  isEnterprise: boolean;
   pendingRequestIds: ReadonlySet<string>;
   onUpgradePlan: (request: MembershipUpgradeRequestType) => void;
-  onEditLimit: (request: MembershipUpgradeRequestType) => void;
+  onAllowUnlimitedSpend: (request: MembershipUpgradeRequestType) => void;
+  onSetCreditAmount: (request: MembershipUpgradeRequestType) => void;
   onDeny: (request: MembershipUpgradeRequestType) => void;
 }
 
@@ -169,11 +148,16 @@ export function UpgradeRequestsTable({
   requests,
   isLoading,
   seatPlans,
+  isEnterprise,
   pendingRequestIds,
   onUpgradePlan,
-  onEditLimit,
+  onAllowUnlimitedSpend,
+  onSetCreditAmount,
   onDeny,
 }: UpgradeRequestsTableProps) {
+  const [manageRequest, setManageRequest] =
+    useState<MembershipUpgradeRequestType | null>(null);
+
   const rows: RowData[] = useMemo(
     () =>
       requests.map((request) => ({
@@ -194,13 +178,11 @@ export function UpgradeRequestsTable({
       reasonColumn,
       requestedColumn,
       buildActionsColumn({
-        seatPlans,
-        onUpgradePlan,
-        onEditLimit,
+        onManage: setManageRequest,
         onDeny,
       }),
     ],
-    [seatPlans, onUpgradePlan, onEditLimit, onDeny]
+    [onDeny]
   );
 
   if (isLoading) {
@@ -223,5 +205,23 @@ export function UpgradeRequestsTable({
     );
   }
 
-  return <DataTable<RowData> data={rows} columns={columns} />;
+  // Hide "Upgrade User Plan" for enterprise workspaces
+  // and whenever there is no higher seat tier to move the requester to
+  const canUpgradePlan =
+    !isEnterprise &&
+    canUpgrade(manageRequest?.requester.seatType ?? null, seatPlans);
+
+  return (
+    <>
+      <DataTable<RowData> data={rows} columns={columns} />
+      <ManageUpgradeRequestModal
+        request={manageRequest}
+        onClose={() => setManageRequest(null)}
+        canUpgradePlan={canUpgradePlan}
+        onUpgradePlan={onUpgradePlan}
+        onAllowUnlimitedSpend={onAllowUnlimitedSpend}
+        onSetCreditAmount={onSetCreditAmount}
+      />
+    </>
+  );
 }

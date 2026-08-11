@@ -339,31 +339,58 @@ export function UsagePage() {
     },
     []
   );
-  const handleEditLimitRequest = useCallback(
+  const handleSetCreditAmountRequest = useCallback(
     (request: MembershipUpgradeRequestType) => {
       setPendingApproveRequestId(request.sId);
       setEditSpendLimitMember(memberFromUpgradeRequest(request));
     },
     []
   );
-  const handleApproveOnModalSaved = useCallback(() => {
+  // Shared by approval flows before resolving the request.
+  const resolveRequestApproved = useCallback(
+    async (requestId: string): Promise<void> => {
+      await doResolveUpgradeRequest({
+        requestId,
+        resolution: { status: "approved" },
+      });
+    },
+    [doResolveUpgradeRequest]
+  );
+  const handleApproveOnModalSaved = useCallback(async () => {
     if (!pendingApproveRequestId) {
       return;
     }
     const requestId = pendingApproveRequestId;
-    const request = upgradeRequests.find((r) => r.sId === requestId);
     setRequestResolving(requestId, true);
-    void doResolveUpgradeRequest({
-      requestId,
-      requesterName: request?.requester.name ?? "Member",
-      status: "approved",
-    }).finally(() => setRequestResolving(requestId, false));
-  }, [
-    pendingApproveRequestId,
-    upgradeRequests,
-    doResolveUpgradeRequest,
-    setRequestResolving,
-  ]);
+    try {
+      await resolveRequestApproved(requestId);
+    } finally {
+      setRequestResolving(requestId, false);
+    }
+  }, [pendingApproveRequestId, resolveRequestApproved, setRequestResolving]);
+  const handleAllowUnlimitedSpendRequest = useCallback(
+    async (request: MembershipUpgradeRequestType) => {
+      const confirmed = await confirm({
+        title: "Use workspace default",
+        message: `Remove ${request.requester.name}'s custom spend limit? They'll fall back to their group or workspace default cap.`,
+        validateLabel: "Use workspace default",
+        validateVariant: "primary",
+      });
+      if (!confirmed) {
+        return;
+      }
+      setRequestResolving(request.sId, true);
+      try {
+        await doResolveUpgradeRequest({
+          requestId: request.sId,
+          resolution: { status: "approved", limit: { kind: "unlimited" } },
+        });
+      } finally {
+        setRequestResolving(request.sId, false);
+      }
+    },
+    [confirm, doResolveUpgradeRequest, setRequestResolving]
+  );
   const handleDenyRequest = useCallback(
     async (request: MembershipUpgradeRequestType) => {
       const confirmed = await confirm({
@@ -379,8 +406,7 @@ export function UsagePage() {
       try {
         await doResolveUpgradeRequest({
           requestId: request.sId,
-          requesterName: request.requester.name,
-          status: "denied",
+          resolution: { status: "denied" },
         });
       } finally {
         setRequestResolving(request.sId, false);
@@ -1140,9 +1166,11 @@ export function UsagePage() {
                       requests={filteredUpgradeRequests}
                       isLoading={isUpgradeRequestsLoading}
                       seatPlans={seatPlans}
+                      isEnterprise={isEnterprise}
                       pendingRequestIds={resolvingRequestIds}
                       onUpgradePlan={handleUpgradePlanRequest}
-                      onEditLimit={handleEditLimitRequest}
+                      onAllowUnlimitedSpend={handleAllowUnlimitedSpendRequest}
+                      onSetCreditAmount={handleSetCreditAmountRequest}
                       onDeny={handleDenyRequest}
                     />
                   )}
@@ -1226,8 +1254,9 @@ export function UsagePage() {
         }}
         member={editSpendLimitMember}
         owner={owner}
+        forceOverride={pendingApproveRequestId !== null}
         onSavingChange={handleUsagePendingChange}
-        onSaved={handleApproveOnModalSaved}
+        upgradeRequestId={pendingApproveRequestId}
       />
 
       <BulkEditSpendLimitModal

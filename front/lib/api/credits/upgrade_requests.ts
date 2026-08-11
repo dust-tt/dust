@@ -3,6 +3,8 @@ import {
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import { isEligibleForAutoSeatUpgrade } from "@app/lib/api/credits/auto_seat_upgrade";
+import type { UserSpendLimitError } from "@app/lib/api/users/spend_limit";
+import { setUserSpendLimit } from "@app/lib/api/users/spend_limit";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -12,10 +14,8 @@ import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usag
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
 import logger from "@app/logger/logger";
-import type {
-  MembershipUpgradeRequestStatus,
-  MembershipUpgradeRequestType,
-} from "@app/types/memberships";
+import type { UpgradeRequestResolution } from "@app/types/api/credits/upgrade_requests";
+import type { MembershipUpgradeRequestType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -34,6 +34,10 @@ export class UpgradeRequestError extends Error {
     super(message);
   }
 }
+
+export type ResolveUpgradeRequestError =
+  | UpgradeRequestError
+  | UserSpendLimitError;
 
 async function isMemberUpgradeRequestAllowed(
   auth: Authenticator
@@ -234,20 +238,19 @@ export async function listPendingUpgradeRequests(
   return requests.map((r) => r.toJSON());
 }
 
-// Admin-only: record the outcome of a request. The actual spend-limit / seat
-// change is performed by the existing flows; this only marks the request.
+// Admin-only: record the outcome of a request.
 export async function resolveUpgradeRequest(
   auth: Authenticator,
   {
     requestId,
-    status,
+    resolution,
     auditContext,
   }: {
     requestId: string;
-    status: Exclude<MembershipUpgradeRequestStatus, "pending">;
+    resolution: UpgradeRequestResolution;
     auditContext?: AuditLogContext;
   }
-): Promise<Result<MembershipUpgradeRequestType, UpgradeRequestError>> {
+): Promise<Result<MembershipUpgradeRequestType, ResolveUpgradeRequestError>> {
   const request = await MembershipUpgradeRequestResource.fetchById(
     auth,
     requestId
@@ -257,10 +260,51 @@ export async function resolveUpgradeRequest(
       new UpgradeRequestError("request_not_found", "Upgrade request not found.")
     );
   }
+  if (request.status !== "pending") {
+    return new Err(
+      new UpgradeRequestError(
+        "request_not_pending",
+        "Upgrade request is not pending."
+      )
+    );
+  }
 
+  // Apply the spend-limit change first, before flipping the request to
+  // resolved. `setUserSpendLimit` is idempotent (it converges to the
+  // requested limit however many times it's called), so if the process
+  // crashes right after this call, the request is still visible as pending
+  // and the next resolution attempt just re-applies the same limit and
+  // succeeds. Doing this the other way around — resolving first — would
+  // instead risk a crash leaving the request permanently "approved" with the
+  // limit never actually applied.
+  if (resolution.status === "approved" && resolution.limit) {
+    const spendLimitResult = await setUserSpendLimit(auth, {
+      userId: request.requester.sId,
+      limit: resolution.limit,
+      auditContext: auditContext ?? { location: "internal" },
+    });
+    if (spendLimitResult.isErr()) {
+      return new Err(spendLimitResult.error);
+    }
+  }
+
+  // Compare-and-set on `status = 'pending'`: if another admin resolved this
+  // request concurrently between the fetch above and here, this fails rather
+  // than silently overwriting their resolution.
   const resolvedByUser = auth.getNonNullableUser();
-  const result = await request.markAsResolved(auth, { status, resolvedByUser });
+  const result = await request.markAsResolved(auth, {
+    status: resolution.status,
+    resolvedByUser,
+  });
   if (result.isErr()) {
+    logger.error(
+      {
+        requestId: request.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        resolutionStatus: resolution.status,
+      },
+      "[UpgradeRequest] Request was resolved concurrently by another admin after its spend limit was applied"
+    );
     return new Err(
       new UpgradeRequestError("request_not_pending", result.error.message)
     );
@@ -277,7 +321,7 @@ export async function resolveUpgradeRequest(
       }),
     ],
     context: auditContext,
-    metadata: { status, request_sid: request.sId },
+    metadata: { status: resolution.status, request_sid: request.sId },
   });
 
   return new Ok(request.toJSON());

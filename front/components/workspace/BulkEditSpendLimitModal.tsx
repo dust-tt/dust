@@ -150,30 +150,24 @@ function BulkEditSpendLimitForm({
 
           {kind === "override" && (
             <div className="flex flex-col gap-1.5 pl-6">
-              <div className="relative">
-                <Input
-                  id="bulk-spend-credit-limit-input"
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder="1,000"
-                  value={
-                    creditsInput !== ""
-                      ? Number(creditsInput).toLocaleString()
-                      : ""
-                  }
-                  onChange={(e) => handleCreditsChange(e.target.value)}
-                  isError={validationMessage !== null}
-                  message={validationMessage ?? undefined}
-                  messageStatus={
-                    validationMessage !== null ? "error" : undefined
-                  }
-                  className="pr-28 text-right"
-                />
-                <span className="copy-sm pointer-events-none absolute right-3 top-0 flex h-9 items-center text-muted-foreground dark:text-muted-foreground-night">
-                  credits/month
-                </span>
-              </div>
+              <Input
+                id="bulk-spend-credit-limit-input"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="1,000"
+                value={
+                  creditsInput !== ""
+                    ? Number(creditsInput).toLocaleString()
+                    : ""
+                }
+                onChange={(e) => handleCreditsChange(e.target.value)}
+                isError={validationMessage !== null}
+                message={validationMessage ?? undefined}
+                messageStatus={validationMessage !== null ? "error" : undefined}
+                className="text-right"
+                suffix="credits/month"
+              />
             </div>
           )}
         </RadioGroup>

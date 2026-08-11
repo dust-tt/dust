@@ -131,14 +131,39 @@ export async function getUserSpendLimit(
       user,
       workspace,
     });
+
+  const nextCreditResetAt = await resolveNextCreditResetAt(workspace);
+
   if (!membership || membership.poolCapOverrideAwuCredits === null) {
-    return new Ok({ kind: "unlimited" });
+    return new Ok({ kind: "unlimited", nextCreditResetAt });
   }
 
   return new Ok({
     kind: "limited",
     awuCredits: membership.poolCapOverrideAwuCredits,
+    expiresAt: membership.poolCapOverrideExpiresAt?.getTime() ?? null,
+    nextCreditResetAt,
   });
+}
+
+/**
+ * Resolve the workspace's next AWU credit pool reset (the Metronome contract
+ * billing-period boundary), in epoch ms.  Null when there is no active
+ * Metronome contract to derive it from, or on a Metronome outage.
+ */
+async function resolveNextCreditResetAt(
+  workspace: LightWorkspaceType
+): Promise<number | null> {
+  if (!workspace.metronomeCustomerId) {
+    return null;
+  }
+  const periodResult = await getCachedMetronomeCurrentBillingPeriod(
+    workspace.sId
+  );
+  if (periodResult.isErr() || !periodResult.value) {
+    return null;
+  }
+  return periodResult.value.cycleEnd.getTime();
 }
 
 export async function setUserSpendLimit(
@@ -225,6 +250,10 @@ export async function setUserSpendLimit(
   await membership.updatePoolCapOverride({
     poolCapOverrideAwuCredits:
       limit.kind === "limited" ? limit.awuCredits : null,
+    poolCapOverrideExpiresAt:
+      limit.kind === "limited" && limit.expiresAt
+        ? new Date(limit.expiresAt)
+        : null,
   });
 
   const revert = () =>
@@ -359,6 +388,10 @@ export async function setUserSpendLimit(
       kind: limit.kind,
       awu_credits:
         limit.kind === "limited" ? String(limit.awuCredits) : "unlimited",
+      expires_at:
+        limit.kind === "limited" && limit.expiresAt
+          ? new Date(limit.expiresAt).toISOString()
+          : "",
     },
   });
 

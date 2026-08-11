@@ -190,8 +190,11 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     return request ?? null;
   }
 
-  // Mark the request as resolved by an admin. Only a `pending` request can be
-  // resolved; resolving an already-resolved request is rejected.
+  // Mark the request as resolved by an admin. This is a compare-and-set on
+  // `status = 'pending'` (not a plain update-by-id) so that two admins
+  // resolving the same request concurrently can't both succeed: only the
+  // update that observes `pending` at the DB level wins, the other gets back
+  // an error instead of silently overwriting the first resolution.
   async markAsResolved(
     auth: Authenticator,
     {
@@ -203,17 +206,23 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    if (this.status !== "pending") {
+    const [affectedCount, affectedRows] =
+      await MembershipUpgradeRequestModel.update(
+        {
+          status,
+          resolvedByUserId: resolvedByUser.id,
+          resolvedAt: new Date(),
+        },
+        {
+          where: { id: this.id, status: "pending" },
+          transaction,
+          returning: true,
+        }
+      );
+    if (affectedCount === 0) {
       return new Err(new Error("Request is not pending."));
     }
-    await this.update(
-      {
-        status,
-        resolvedByUserId: resolvedByUser.id,
-        resolvedAt: new Date(),
-      },
-      transaction
-    );
+    Object.assign(this, affectedRows[0].get());
     return new Ok(undefined);
   }
 

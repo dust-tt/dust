@@ -7,8 +7,11 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { GetUpgradeRequestsResponseBody } from "@app/types/api/credits/upgrade_requests";
-import type { MembershipUpgradeRequestStatus } from "@app/types/memberships";
+import type {
+  GetUpgradeRequestsResponseBody,
+  PatchUpgradeRequestResponseBody,
+  UpgradeRequestResolution,
+} from "@app/types/api/credits/upgrade_requests";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
@@ -101,19 +104,17 @@ export function useResolveUpgradeRequest({
   const doResolveUpgradeRequest = useCallback(
     async ({
       requestId,
-      requesterName,
-      status,
+      resolution,
     }: {
       requestId: string;
-      requesterName: string;
-      status: Exclude<MembershipUpgradeRequestStatus, "pending">;
+      resolution: UpgradeRequestResolution;
     }): Promise<boolean> => {
       const res = await clientFetch(
         `${upgradeRequestsUrl(workspaceId)}/${requestId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status }),
+          body: JSON.stringify(resolution),
         }
       );
 
@@ -127,17 +128,20 @@ export function useResolveUpgradeRequest({
         return false;
       }
 
+      const body: PatchUpgradeRequestResponseBody = await res.json();
+      const requesterName = body.request.requester.name;
+
       // Resolving always removes the request from the pending list. Only an
       // approval edits the member's seat / limit, so the members-usage surface
       // only needs refreshing on approve.
       await Promise.all([
         mutate(),
-        status === "approved"
+        resolution.status === "approved"
           ? invalidateMembersUsage(workspaceId)
           : Promise.resolve(),
       ]);
 
-      switch (status) {
+      switch (resolution.status) {
         case "approved":
           sendNotification({
             type: "success",
@@ -153,7 +157,7 @@ export function useResolveUpgradeRequest({
           });
           break;
         default:
-          assertNeverAndIgnore(status);
+          assertNeverAndIgnore(resolution);
       }
       return true;
     },

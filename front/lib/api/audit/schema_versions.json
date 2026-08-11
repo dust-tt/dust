@@ -45,7 +45,7 @@
   "member.bulk_invited": 3,
   "member.bulk_revoked": 3,
   "member.invited": 6,
-  "member.spend_limit_updated": 3,
+  "member.spend_limit_updated": 4,
   "membership.bulk_role_updated": 1,
   "membership.bulk_seat_updated": 1,
   "membership.created": 2,
