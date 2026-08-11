@@ -316,6 +316,36 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
     });
   });
 
+  it("preserves the agent chain when the parent conversation was deleted", async () => {
+    const testContext = await createResourceTest({ role: "admin" });
+    const parent = await createAgenticMessage({
+      auth: testContext.authenticator,
+      workspace: testContext.workspace,
+      depth: 0,
+      agentName: "Deleted parent agent",
+    });
+    const child = await setupSettledMessage({
+      testContext,
+      depth: 1,
+      agenticOriginMessageId: parent.agentMessage.sId,
+      agentName: "Child agent",
+    });
+    await parent.conversation.updateVisibilityToDeleted(
+      testContext.authenticator
+    );
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(child.auth, {
+      agentMessageId: child.agentMessage.sId,
+    });
+
+    expect(input?.agent).toMatchObject({
+      parent_ids: [parent.agent.sId],
+      direct_parent_id: parent.agent.sId,
+      root_id: parent.agent.sId,
+      depth: 1,
+    });
+  });
+
   it("includes usage explicitly classified as programmatic", async () => {
     const context = await setupSettledMessage({
       usageType: USAGE_TYPE_PROGRAMMATIC,
