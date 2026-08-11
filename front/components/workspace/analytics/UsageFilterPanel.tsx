@@ -205,7 +205,6 @@ export function UsageFilterPanel({
     [workspaceGroups]
   );
 
-
   const agentOptions = useMemo<UsageFilterAgentOption[]>(
     () =>
       agentConfigurations.map((agent) => ({
