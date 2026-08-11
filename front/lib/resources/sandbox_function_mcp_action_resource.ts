@@ -57,10 +57,13 @@ function parseOutputObject(
     return new Ok({ content: parsed });
   }
   // Version 2 envelope. The object is written by `createOutputItems` below, so shape validation
-  // stays a light guard (matching the trust level of the version-1 read path).
+  // stays a light guard (matching the trust level of the version-1 read path). The version is
+  // checked so a future format bump fails loudly here instead of being silently misparsed.
   if (
     parsed !== null &&
     typeof parsed === "object" &&
+    "version" in parsed &&
+    parsed.version === OUTPUT_ENVELOPE_VERSION &&
     "content" in parsed &&
     Array.isArray(parsed.content)
   ) {

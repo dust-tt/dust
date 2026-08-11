@@ -11,7 +11,6 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { errorToString } from "@app/types/shared/utils/error_utils";
 import { truncate } from "@app/types/shared/utils/string_utils";
