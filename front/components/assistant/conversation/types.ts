@@ -123,6 +123,8 @@ export type VirtuosoMessageListContext = {
   ) => Promise<Result<undefined, DustError>>;
   draftKey: string;
   conversation?: ConversationWithoutContentType;
+  // Server-resolved compact UI display, from the user's activation pod.
+  isCompactUIView: boolean;
   agentBuilderContext?: {
     draftAgent?: LightAgentConfigurationType;
     isSubmitting: boolean;

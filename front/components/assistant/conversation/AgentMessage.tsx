@@ -191,7 +191,7 @@ function PrunedContextChip() {
 interface AgentMessageProps {
   conversationId: string;
   spaceId: string | null;
-  isActivationPodConversation: boolean;
+  isCompactUIView: boolean;
   hideHeader: boolean;
   isLastMessage: boolean;
   agentMessage: AgentMessageWithStreaming;
@@ -216,7 +216,7 @@ interface AgentMessageProps {
 export function AgentMessage({
   conversationId,
   spaceId,
-  isActivationPodConversation,
+  isCompactUIView,
   hideHeader,
   isLastMessage,
   agentMessage,
@@ -1042,9 +1042,7 @@ export function AgentMessage({
 
   const messageContent = (
     <ConversationMessageContent
-      citations={
-        isDeleted || isActivationPodConversation ? undefined : citations
-      }
+      citations={isDeleted || isCompactUIView ? undefined : citations}
       type="agent"
     >
       {isDeleted ? (
@@ -1070,6 +1068,7 @@ export function AgentMessage({
           isAgentMessageHandingOver={isAgentMessageHandingOver}
           additionalMarkdownComponents={additionalMarkdownComponents}
           additionalMarkdownPlugins={additionalMarkdownPlugins}
+          isCompactUIView={isCompactUIView}
         />
       )}
     </ConversationMessageContent>
@@ -1153,6 +1152,7 @@ function AgentMessageContent({
   isAgentMessageHandingOver,
   additionalMarkdownComponents: propsAdditionalMarkdownComponents,
   additionalMarkdownPlugins,
+  isCompactUIView,
 }: {
   onOpenDetails?: (messageId: string, actionId?: string) => void;
   triggeringUser: UserType | null;
@@ -1185,6 +1185,7 @@ function AgentMessageContent({
   isAgentMessageHandingOver: boolean;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
+  isCompactUIView: boolean;
 }) {
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
@@ -1439,7 +1440,7 @@ function AgentMessageContent({
               />
             </div>
           )}
-        {generatedFiles.length > 0 && (
+        {!isCompactUIView && generatedFiles.length > 0 && (
           <div className="mt-2 grid grid-cols-2 gap-2 @xs:grid-cols-3 @sm:grid-cols-4 @md:grid-cols-5">
             {generatedFiles.map((file) => (
               <ToolGeneratedFileDetails

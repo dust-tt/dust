@@ -345,9 +345,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               triggeringUser={triggeringUser}
               conversationId={context.conversation.sId}
               spaceId={context.conversation.spaceId ?? null}
-              isActivationPodConversation={
-                context.conversation.isCompactUIView ?? false
-              }
+              isCompactUIView={context.isCompactUIView}
               hideHeader={isSteeredAgentMessage}
               isLastMessage={!nextData}
               agentMessage={data}

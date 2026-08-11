@@ -74,6 +74,7 @@ export function useActivationPod({
 
   return {
     activationPodId: data?.podId ?? null,
+    isCompactUIView: data?.isCompactUIView ?? false,
     isActivationPodLoading: disabled ? false : isLoading,
     isActivationPodError: !!error,
   };

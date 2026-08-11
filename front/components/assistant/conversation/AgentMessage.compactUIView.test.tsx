@@ -77,13 +77,20 @@ vi.mock("@app/components/assistant/conversation/useAutoOpenSidePanel", () => ({
 
 vi.mock(
   "@app/components/assistant/conversation/ConversationSidePanelContext",
-  () => ({
-    useConversationSidePanelContext: () => ({
-      togglePanel: vi.fn(),
-      openPanel: vi.fn(),
-      currentPanel: null,
-    }),
-  })
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@app/components/assistant/conversation/ConversationSidePanelContext")
+      >();
+    return {
+      ...actual,
+      useConversationSidePanelContext: () => ({
+        togglePanel: vi.fn(),
+        openPanel: vi.fn(),
+        currentPanel: null,
+      }),
+    };
+  }
 );
 
 vi.mock("@app/components/sparkle/ThemeContext", () => ({
@@ -191,17 +198,17 @@ const messageFeedback: FeedbackSelectorBaseProps = {
 };
 
 function renderAgentMessage({
-  isActivationPodConversation,
+  isCompactUIView,
   agentMessageOverrides,
 }: {
-  isActivationPodConversation: boolean;
+  isCompactUIView: boolean;
   agentMessageOverrides?: Partial<LightAgentMessageWithActionsType>;
 }) {
   return render(
     <AgentMessage
       conversationId="conv_1"
       spaceId={null}
-      isActivationPodConversation={isActivationPodConversation}
+      isCompactUIView={isCompactUIView}
       hideHeader={false}
       isLastMessage={false}
       agentMessage={buildAgentMessage(agentMessageOverrides)}
@@ -220,7 +227,7 @@ describe("AgentMessage compact UI view", () => {
   describe("bottom citations", () => {
     it("hides the bottom citation list for Activation Pod conversations but keeps inline citations", () => {
       const { container } = renderAgentMessage({
-        isActivationPodConversation: true,
+        isCompactUIView: true,
       });
 
       expect(
@@ -233,7 +240,7 @@ describe("AgentMessage compact UI view", () => {
 
     it("keeps the bottom citation list for non-Activation-Pod conversations", () => {
       const { container } = renderAgentMessage({
-        isActivationPodConversation: false,
+        isCompactUIView: false,
       });
 
       expect(
@@ -246,7 +253,7 @@ describe("AgentMessage compact UI view", () => {
 
     it("renders no bottom citation container for an Activation Pod conversation with no citations", () => {
       const { container } = renderAgentMessage({
-        isActivationPodConversation: true,
+        isCompactUIView: true,
         agentMessageOverrides: { content: "No sources here.", citations: {} },
       });
 
@@ -254,6 +261,45 @@ describe("AgentMessage compact UI view", () => {
         screen.queryByTestId("bottom-attachment-citation")
       ).not.toBeInTheDocument();
       expect(container.querySelectorAll('[class*="min-w-60"]').length).toBe(0);
+    });
+  });
+
+  describe("bottom generated file cards", () => {
+    const generatedFilesOverrides: Partial<LightAgentMessageWithActionsType> = {
+      generatedFiles: [
+        {
+          title: "AGENTS.md",
+          contentType: "text/markdown",
+          fileId: null,
+          filePath: "pod-123/AGENTS.md",
+        },
+        {
+          title: "session_plan.md",
+          contentType: "text/markdown",
+          fileId: null,
+          filePath: "pod-123/session_plan.md",
+        },
+      ],
+    };
+
+    it("hides the bottom generated file cards for compact UI conversations", () => {
+      renderAgentMessage({
+        isCompactUIView: true,
+        agentMessageOverrides: generatedFilesOverrides,
+      });
+
+      expect(screen.queryByText("AGENTS.md")).not.toBeInTheDocument();
+      expect(screen.queryByText("session_plan.md")).not.toBeInTheDocument();
+    });
+
+    it("keeps the bottom generated file cards for non-compact UI conversations", () => {
+      renderAgentMessage({
+        isCompactUIView: false,
+        agentMessageOverrides: generatedFilesOverrides,
+      });
+
+      expect(screen.getByText("AGENTS.md")).toBeInTheDocument();
+      expect(screen.getByText("session_plan.md")).toBeInTheDocument();
     });
   });
 });

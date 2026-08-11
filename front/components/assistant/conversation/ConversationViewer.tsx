@@ -52,6 +52,7 @@ import { useSubmitMessage } from "@app/hooks/useSubmitMessage";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
 import type { DustError } from "@app/lib/error";
 import {
@@ -330,8 +331,10 @@ export const ConversationViewer = ({
     disabled: !conversation?.spaceId,
   });
 
-  const { activationPodId } = useActivationPod({
+  const { hasFeature } = useFeatureFlags();
+  const { activationPodId, isCompactUIView } = useActivationPod({
     workspaceId: owner.sId,
+    disabled: !hasFeature("activation_skill"),
   });
 
   useConversationMarkAsRead({
@@ -1440,6 +1443,7 @@ export const ConversationViewer = ({
       handleSubmit,
       conversation,
       isOnboardingConversation,
+      isCompactUIView,
       draftKey: `conversation-${conversationId}`,
       agentBuilderContext,
       feedbacksByMessageId,
@@ -1464,6 +1468,7 @@ export const ConversationViewer = ({
     handleSubmit,
     conversation,
     isOnboardingConversation,
+    isCompactUIView,
     conversationId,
     agentBuilderContext,
     feedbacksByMessageId,
