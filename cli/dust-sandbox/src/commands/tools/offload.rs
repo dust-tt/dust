@@ -17,7 +17,9 @@
 // archive sentence: the descriptor is the contract.
 //
 // The TypeScript counterpart is `resolveToolTextContent` in
-// `cli/dust-sandbox/pod/tool_output.ts`; both must keep the same semantics.
+// `cli/dust-sandbox/pod/tool_output.ts`; both must keep the same resolution
+// semantics (descriptor over snippet, mount-relative path, bounded retry).
+// The few deliberate divergences are called out where they happen.
 
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -135,15 +137,21 @@ async fn resolve_block(
 }
 
 /// Absolute path of the archived content. `fullContentPath` is a scoped path
-/// ("pod-{pId}/...") resolved under the mount root; an already-absolute value
-/// is used as-is.
+/// ("pod-{pId}/...") resolved under the mount root.
+///
+/// The path is confined to the mount root: `_meta` is not fully trusted input,
+/// since front passes some remote MCP resource blocks through verbatim
+/// (`processToolResults`), so a third-party server can forge a descriptor.
+/// Nothing privileged is crossed (dsbx runs as the workload user), but there is
+/// no reason to let a forged descriptor aim the read outside the file mounts.
 fn archive_path(
     descriptor: &serde_json::Value,
     mount_root_dir: &Path,
 ) -> Result<PathBuf, OffloadResolutionError> {
     // Only `fullContentPath` is load-bearing here; the descriptor's other
-    // fields (totalBytes, contentType) are informational and travel through to
-    // the consumer untouched.
+    // fields (totalBytes, contentType) are informational. The TypeScript
+    // counterpart validates all three through zod — the divergence is
+    // deliberate: this side reads only what it uses.
     let full_content_path = descriptor
         .get("fullContentPath")
         .and_then(|value| value.as_str())
@@ -156,10 +164,27 @@ fn archive_path(
             ))
         })?;
 
-    if full_content_path.starts_with('/') {
-        return Ok(PathBuf::from(full_content_path));
+    // An absolute value is accepted as long as it already points inside the
+    // mount (front only ever emits scoped relative paths).
+    let path = if full_content_path.starts_with('/') {
+        PathBuf::from(full_content_path)
+    } else {
+        mount_root_dir.join(full_content_path)
+    };
+
+    let escapes_mount = path
+        .components()
+        .any(|component| matches!(component, std::path::Component::ParentDir))
+        || !path.starts_with(mount_root_dir);
+    if escapes_mount {
+        return Err(OffloadResolutionError::new(format!(
+            "the offload descriptor points at {}, outside the {} file mounts; refusing to read it",
+            path.display(),
+            mount_root_dir.display()
+        )));
     }
-    Ok(mount_root_dir.join(full_content_path))
+
+    Ok(path)
 }
 
 async fn read_archived_content(
@@ -168,12 +193,19 @@ async fn read_archived_content(
 ) -> Result<String, OffloadResolutionError> {
     // The archived file is written through the GCS API while this reads it
     // through the gcsfuse mount, whose metadata cache can lag behind the
-    // write: retry a bounded number of times instead of failing on the first
-    // missing read.
+    // write: a missing file is retried a bounded number of times instead of
+    // failing on the first read. Any other failure (permissions, non-UTF-8
+    // content) is terminal, so retrying it would only burn the retry budget.
     let mut last_error: Option<std::io::Error> = None;
     for attempt in 1..=options.max_attempts {
         match tokio::fs::read_to_string(path).await {
             Ok(content) => return Ok(content),
+            Err(err) if err.kind() != std::io::ErrorKind::NotFound => {
+                return Err(OffloadResolutionError::new(format!(
+                    "could not read the offloaded tool output at {}: {err}",
+                    path.display()
+                )));
+            }
             Err(err) => last_error = Some(err),
         }
         if attempt < options.max_attempts {
@@ -197,10 +229,26 @@ async fn read_archived_content(
 /// offloaded blocks as embedded resources (both the text and the resource
 /// branch of `processToolResults`), so `resource.text` is the live shape;
 /// top-level `text` is handled too so a future front branch that offloads a
-/// plain text block resolves the same way.
+/// plain text block resolves the same way. (The TypeScript counterpart reads
+/// top-level `text` first; the order only matters for blocks carrying both,
+/// which front never emits.)
+///
+/// The descriptor is dropped from `_meta`: it means "the inline text is a
+/// snippet, the full content lives at this path", which stops being true once
+/// substituted. Leaving it would make a downstream resolver read the file a
+/// second time and throw when it is gone. The archive path stays reachable
+/// through the block's `resource.uri`, which front sets to the same scoped
+/// path.
 fn with_full_text(block: &serde_json::Value, full_content: String) -> serde_json::Value {
     let mut resolved = block.clone();
     let text = serde_json::Value::String(full_content);
+
+    if let Some(meta) = resolved
+        .get_mut("_meta")
+        .and_then(|meta| meta.as_object_mut())
+    {
+        meta.remove(TOOL_OUTPUT_OFFLOAD_META_KEY);
+    }
 
     if let Some(resource) = resolved
         .get_mut("resource")
@@ -275,12 +323,60 @@ mod tests {
             .expect("should resolve");
 
         assert_eq!(resolved[0]["resource"]["text"], full_content);
-        // The descriptor and the rest of the block travel through untouched.
-        assert_eq!(
-            resolved[0]["_meta"][TOOL_OUTPUT_OFFLOAD_META_KEY]["fullContentPath"],
-            scoped_path
-        );
+        // The descriptor is dropped (the text is no longer a snippet); the rest
+        // of the block, including the archive path in `uri`, is untouched.
+        assert!(resolved[0]["_meta"]
+            .get(TOOL_OUTPUT_OFFLOAD_META_KEY)
+            .is_none());
         assert_eq!(resolved[0]["resource"]["uri"], scoped_path);
+    }
+
+    #[tokio::test]
+    async fn resolution_keeps_other_meta_keys() {
+        let mount = tempfile::tempdir().expect("tempdir");
+        let scoped_path = "pod-vlt_1/.tool_outputs/my-fn/8_meta.json";
+        write_archive(mount.path(), scoped_path, "body");
+
+        let mut block = offloaded_resource_block(scoped_path, "bo");
+        block["_meta"]["tt.dust/other"] = serde_json::json!({ "k": 1 });
+        let resolved = resolve_offloaded_content(&[block], &test_options(mount.path()))
+            .await
+            .expect("should resolve");
+
+        assert_eq!(resolved[0]["_meta"]["tt.dust/other"]["k"], 1);
+    }
+
+    #[tokio::test]
+    async fn unreadable_archive_fails_without_burning_the_retry_budget() {
+        // Only a missing file is a mount-staleness candidate; a directory (or a
+        // permission error) is terminal and must not be retried.
+        let mount = tempfile::tempdir().expect("tempdir");
+        let scoped_path = "pod-vlt_1/.tool_outputs/my-fn/9_dir.json";
+        std::fs::create_dir_all(mount.path().join(scoped_path)).expect("create dir");
+
+        let block = offloaded_resource_block(scoped_path, "head");
+        let err = resolve_offloaded_content(&[block], &test_options(mount.path()))
+            .await
+            .expect_err("should fail");
+
+        let message = err.to_string();
+        assert!(message.contains(scoped_path), "message: {message}");
+        assert!(!message.contains("attempts"), "message: {message}");
+    }
+
+    #[tokio::test]
+    async fn descriptor_pointing_outside_the_mount_is_refused() {
+        let mount = tempfile::tempdir().expect("tempdir");
+        let block = serde_json::json!({
+            "type": "resource",
+            "resource": { "uri": "x", "text": "snippet" },
+            "_meta": offload_meta("pod-vlt_1/../../../etc/passwd", 0),
+        });
+
+        let err = resolve_offloaded_content(&[block], &test_options(mount.path()))
+            .await
+            .expect_err("should fail");
+        assert!(err.to_string().contains("outside the"), "message: {err}");
     }
 
     #[tokio::test]
@@ -456,6 +552,18 @@ mod tests {
     #[test]
     fn archive_path_rejects_empty_path() {
         let descriptor = serde_json::json!({ "fullContentPath": "" });
+        assert!(archive_path(&descriptor, Path::new("/files")).is_err());
+    }
+
+    #[test]
+    fn archive_path_rejects_traversal_out_of_the_mount() {
+        let descriptor = serde_json::json!({ "fullContentPath": "pod-vlt_1/../../etc/passwd" });
+        assert!(archive_path(&descriptor, Path::new("/files")).is_err());
+    }
+
+    #[test]
+    fn archive_path_rejects_absolute_path_outside_the_mount() {
+        let descriptor = serde_json::json!({ "fullContentPath": "/etc/passwd" });
         assert!(archive_path(&descriptor, Path::new("/files")).is_err());
     }
 }

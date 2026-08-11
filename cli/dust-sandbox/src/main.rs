@@ -165,6 +165,21 @@ mod tests {
         Cli::command().debug_assert();
     }
 
+    #[test]
+    fn exit_code_classifies_typed_errors() {
+        let api_error = anyhow::Error::new(api::DustApiError::from_http_response(429, "slow down"))
+            .context("POST /sandbox/actions/call");
+        assert_eq!(exit_code_for(&api_error), 13);
+
+        let offload_error = anyhow::Error::new(commands::OffloadResolutionError::new(
+            "could not read the offloaded tool output at /files/pod-x/y.json".to_string(),
+        ))
+        .context("tools exec");
+        assert_eq!(exit_code_for(&offload_error), 15);
+
+        assert_eq!(exit_code_for(&anyhow::anyhow!("boom")), 1);
+    }
+
     struct ToolsFields {
         json: bool,
         args_json: Option<String>,
