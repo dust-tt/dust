@@ -51,7 +51,7 @@ export type ConsumptionScopeFilter = Partial<
   Record<ConsumptionScopeFilterKey, string[]>
 >;
 
-const CONSUMPTION_DIMENSION_FILTER_KEYS: Record<
+export const CONSUMPTION_DIMENSION_FILTER_KEYS: Record<
   ConsumptionScopeDimension,
   ConsumptionScopeFilterKey
 > = {

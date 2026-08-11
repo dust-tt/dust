@@ -32,6 +32,8 @@ import {
   getMcpServerDisplayName,
   isRemoteMCPServerType,
 } from "@app/lib/actions/mcp_helper";
+import type { AnalyticsVisibleOrigin } from "@app/lib/api/analytics/source_labels";
+import { SOURCE_ORIGIN_LABELS } from "@app/lib/api/analytics/source_labels";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useGroups } from "@app/lib/swr/groups";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
@@ -59,6 +61,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 // Chunk size for the infinite scroll
 const FILTER_PICKER_PAGE_SIZE = 100;
 
+const SOURCE_OPTIONS: UsageFilterSourceOption[] = (
+  Object.keys(SOURCE_ORIGIN_LABELS) as AnalyticsVisibleOrigin[]
+).map((origin) => ({
+  id: origin,
+  name: SOURCE_ORIGIN_LABELS[origin],
+  kind: "source",
+  connectorProvider: undefined,
+}));
+
 interface UsageFilterPaginationState {
   hasMore: boolean;
   isLoadingMore: boolean;
@@ -67,24 +78,12 @@ interface UsageFilterPaginationState {
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
-  // Sources are still mock data (see usageFilterMockData.ts — fake
-  // connectors standing in for a real db call); agents come from
-  // useAgentConfigurations, members from useSearchMembers, teams from
-  // useGroups, models from the workspace's full model catalog (useModels),
-  // tools from the workspace's full MCP server catalog (useMCPServers), and
-  // skills from the workspace's full skill catalog (useSkills) — the same
-  // endpoints that back the model, tool, and skill pickers elsewhere in the
-  // app.
-  categoryOptions: {
-    source: UsageFilterSourceOption[];
-  };
   filter: UsageFilter;
   onFilterChange: (next: UsageFilter) => void;
 }
 
 export function UsageFilterPanel({
   owner,
-  categoryOptions,
   filter,
   onFilterChange,
 }: UsageFilterPanelProps) {
@@ -209,10 +208,6 @@ export function UsageFilterPanel({
     disabled: !isSkillCategoryActive,
   });
 
-  // The workspace's full, period-independent model catalog — the same
-  // endpoint backing the model picker elsewhere in the app — rather than a
-  // period-scoped top-N, so every enabled model is listable and searchable
-  // regardless of the selected period.
   const { models: modelCatalog } = useModels({
     owner,
     disabled: !isModelCategoryActive,
@@ -250,11 +245,6 @@ export function UsageFilterPanel({
     [agentConfigurations]
   );
 
-  // Every enabled model in the workspace, regardless of the selected period.
-  // Excludes the auto/meta stream ids (Fast/Standard/Complex are exposed as
-  // the quick-filter tier buttons, not as catalog entries). Search is
-  // applied client-side below; tier is derived from the same static table
-  // ModelsTierResource.getTierForModel resolves server-side.
   const modelCatalogOptions = useMemo<UsageFilterModelOption[]>(
     () =>
       modelCatalog
@@ -291,28 +281,17 @@ export function UsageFilterPanel({
     [skillCatalog]
   );
 
-  const resolvedCategoryOptions = useMemo<{
+  const resolvedCategoryOptions: {
     [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
-  }>(
-    () => ({
-      ...categoryOptions,
-      member: accumulatedMemberOptions,
-      team: teamOptions,
-      agent: agentOptions,
-      model: modelCatalogOptions,
-      tool: toolOptions,
-      skill: skillOptions,
-    }),
-    [
-      categoryOptions,
-      accumulatedMemberOptions,
-      teamOptions,
-      agentOptions,
-      modelCatalogOptions,
-      toolOptions,
-      skillOptions,
-    ]
-  );
+  } = {
+    member: accumulatedMemberOptions,
+    team: teamOptions,
+    agent: agentOptions,
+    model: modelCatalogOptions,
+    tool: toolOptions,
+    skill: skillOptions,
+    source: SOURCE_OPTIONS,
+  };
 
   const activeOptions = resolvedCategoryOptions[activeCategory];
   const filteredOptions = useMemo(() => {

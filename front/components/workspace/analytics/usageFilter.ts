@@ -1,4 +1,5 @@
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
@@ -151,9 +152,8 @@ export function selectAllUsageFilterOptions<C extends UsageFilterCategory>(
   return { ...filter, [category]: [...current, ...additions] };
 }
 
-// Members, teams, agents, models, and tools are wired to real consumption
-// scope dimensions. The other categories stay mock data and are not sent as
-// query filters yet.
+// "member" maps to the "users" dimension; every other category (including
+// "team") maps to its same-named consumption scope dimension.
 export function toConsumptionScopeFilter(
   filter: UsageFilter
 ): ConsumptionScopeFilter {
@@ -164,29 +164,14 @@ export function toConsumptionScopeFilter(
     scopeFilter.users = memberIds;
   }
 
-  const teamIds = filter.team?.map((entity) => entity.id);
-  if (teamIds && teamIds.length > 0) {
-    scopeFilter.teams = teamIds;
-  }
-
-  const agentIds = filter.agent?.map((entity) => entity.id);
-  if (agentIds && agentIds.length > 0) {
-    scopeFilter.agents = agentIds;
-  }
-
-  const modelIds = filter.model?.map((entity) => entity.id);
-  if (modelIds && modelIds.length > 0) {
-    scopeFilter.models = modelIds;
-  }
-
-  const toolIds = filter.tool?.map((entity) => entity.id);
-  if (toolIds && toolIds.length > 0) {
-    scopeFilter.tools = toolIds;
-  }
-
-  const skillIds = filter.skill?.map((entity) => entity.id);
-  if (skillIds && skillIds.length > 0) {
-    scopeFilter.skills = skillIds;
+  for (const category of USAGE_FILTER_CATEGORIES) {
+    if (category === "member") {
+      continue;
+    }
+    const ids = filter[category]?.map((entity) => entity.id);
+    if (ids && ids.length > 0) {
+      scopeFilter[CONSUMPTION_DIMENSION_FILTER_KEYS[category]] = ids;
+    }
   }
 
   return scopeFilter;
