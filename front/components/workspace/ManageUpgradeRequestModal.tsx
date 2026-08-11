@@ -10,7 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
   Icon,
-  Infinity,
   ListItem,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
@@ -28,7 +27,6 @@ interface ManageUpgradeRequestModalProps {
   onClose: () => void;
   canUpgradePlan: boolean;
   onUpgradePlan: (request: MembershipUpgradeRequestType) => void;
-  onAllowUnlimitedSpend: (request: MembershipUpgradeRequestType) => void;
   onSetCreditAmount: (request: MembershipUpgradeRequestType) => void;
 }
 
@@ -37,18 +35,9 @@ export function ManageUpgradeRequestModal({
   onClose,
   canUpgradePlan,
   onUpgradePlan,
-  onAllowUnlimitedSpend,
   onSetCreditAmount,
 }: ManageUpgradeRequestModalProps) {
   const actions: ManageAction[] = [
-    {
-      key: "allow-unlimited-spend",
-      icon: Infinity,
-      label: "Use workspace default",
-      description:
-        "Remove this member's custom limit; they'll fall back to their group or workspace default cap.",
-      onClick: () => request && onAllowUnlimitedSpend(request),
-    },
     {
       key: "set-credit-amount",
       icon: Coins02,

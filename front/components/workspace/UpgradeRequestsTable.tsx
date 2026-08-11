@@ -139,7 +139,6 @@ interface UpgradeRequestsTableProps {
   isEnterprise: boolean;
   pendingRequestIds: ReadonlySet<string>;
   onUpgradePlan: (request: MembershipUpgradeRequestType) => void;
-  onAllowUnlimitedSpend: (request: MembershipUpgradeRequestType) => void;
   onSetCreditAmount: (request: MembershipUpgradeRequestType) => void;
   onDeny: (request: MembershipUpgradeRequestType) => void;
 }
@@ -151,7 +150,6 @@ export function UpgradeRequestsTable({
   isEnterprise,
   pendingRequestIds,
   onUpgradePlan,
-  onAllowUnlimitedSpend,
   onSetCreditAmount,
   onDeny,
 }: UpgradeRequestsTableProps) {
@@ -219,7 +217,6 @@ export function UpgradeRequestsTable({
         onClose={() => setManageRequest(null)}
         canUpgradePlan={canUpgradePlan}
         onUpgradePlan={onUpgradePlan}
-        onAllowUnlimitedSpend={onAllowUnlimitedSpend}
         onSetCreditAmount={onSetCreditAmount}
       />
     </>

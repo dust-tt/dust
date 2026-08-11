@@ -368,29 +368,6 @@ export function UsagePage() {
       setRequestResolving(requestId, false);
     }
   }, [pendingApproveRequestId, resolveRequestApproved, setRequestResolving]);
-  const handleAllowUnlimitedSpendRequest = useCallback(
-    async (request: MembershipUpgradeRequestType) => {
-      const confirmed = await confirm({
-        title: "Use workspace default",
-        message: `Remove ${request.requester.name}'s custom spend limit? They'll fall back to their group or workspace default cap.`,
-        validateLabel: "Use workspace default",
-        validateVariant: "primary",
-      });
-      if (!confirmed) {
-        return;
-      }
-      setRequestResolving(request.sId, true);
-      try {
-        await doResolveUpgradeRequest({
-          requestId: request.sId,
-          resolution: { status: "approved", limit: { kind: "unlimited" } },
-        });
-      } finally {
-        setRequestResolving(request.sId, false);
-      }
-    },
-    [confirm, doResolveUpgradeRequest, setRequestResolving]
-  );
   const handleDenyRequest = useCallback(
     async (request: MembershipUpgradeRequestType) => {
       const confirmed = await confirm({
@@ -1169,7 +1146,6 @@ export function UsagePage() {
                       isEnterprise={isEnterprise}
                       pendingRequestIds={resolvingRequestIds}
                       onUpgradePlan={handleUpgradePlanRequest}
-                      onAllowUnlimitedSpend={handleAllowUnlimitedSpendRequest}
                       onSetCreditAmount={handleSetCreditAmountRequest}
                       onDeny={handleDenyRequest}
                     />
