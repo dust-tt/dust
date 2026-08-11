@@ -41,8 +41,8 @@ function resolveImageId(
   if (!devSuffix) {
     logger.error(
       "Set SBX_DEV_IMAGE_SUFFIX (e.g. your username) in front/.env.local to " +
-        "build a sandbox image locally, or pass --release to publish the " +
-        `release alias '${formatSandboxImageId(releaseImageId)}' (CI only).`
+        "build a sandbox image locally, or pass --release if you intend " +
+        "to deploy the image in production."
     );
     process.exit(1);
   }
