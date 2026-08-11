@@ -46,12 +46,8 @@ import {
   useVirtuosoLocation,
   useVirtuosoMethods,
 } from "@virtuoso.dev/message-list";
-import {
-  AnimatePresence,
-  motion,
-  type Transition,
-  useReducedMotion,
-} from "framer-motion";
+import type { Transition } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const MAX_DISTANCE_FOR_SMOOTH_SCROLL = 2048;
