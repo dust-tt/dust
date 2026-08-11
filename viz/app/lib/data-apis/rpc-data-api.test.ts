@@ -26,12 +26,52 @@ describe("sandbox function data APIs", () => {
     expect(sendMessage).toHaveBeenCalledWith("getUserIdentity", null);
   });
 
+  it("defaults pod editorship to false for hosts that omit it", async () => {
+    const sendMessage = vi.fn().mockResolvedValue({
+      isAuthenticated: true,
+      isWorkspaceMember: true,
+      user: {
+        sId: "usr_123",
+        firstName: "Ada",
+        lastName: "Lovelace",
+        fullName: "Ada Lovelace",
+        image: null,
+      },
+    });
+    const api = new RPCDataAPI(sendMessage);
+
+    await expect(api.getUserIdentity()).resolves.toMatchObject({
+      isPodEditor: false,
+    });
+  });
+
+  it("keeps pod editorship from hosts that provide it", async () => {
+    const sendMessage = vi.fn().mockResolvedValue({
+      isAuthenticated: true,
+      isWorkspaceMember: true,
+      isPodEditor: true,
+      user: {
+        sId: "usr_123",
+        firstName: "Ada",
+        lastName: "Lovelace",
+        fullName: "Ada Lovelace",
+        image: null,
+      },
+    });
+    const api = new RPCDataAPI(sendMessage);
+
+    await expect(api.getUserIdentity()).resolves.toMatchObject({
+      isPodEditor: true,
+    });
+  });
+
   it("returns no identity from the public cache", async () => {
     const api = new CacheDataAPI();
 
     await expect(api.getUserIdentity()).resolves.toEqual({
       isAuthenticated: false,
       isWorkspaceMember: false,
+      isPodEditor: false,
       user: null,
     });
   });

@@ -8,6 +8,7 @@ interface PodFrameVisualizationProps {
   fileContent: string;
   vizUrl: string;
   identifier: string;
+  isPodEditor?: boolean;
 }
 
 /**
@@ -20,6 +21,7 @@ export function PodFrameVisualization({
   fileContent,
   vizUrl,
   identifier,
+  isPodEditor,
 }: PodFrameVisualizationProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -36,6 +38,7 @@ export function PodFrameVisualization({
       conversationId={null}
       spaceId={spaceId}
       isInDrawer={true}
+      isPodEditor={isPodEditor}
       ref={iframeRef}
     />
   );

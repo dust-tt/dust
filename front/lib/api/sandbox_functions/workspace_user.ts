@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type {
   SandboxFunctionInvocationOrigin,
@@ -32,9 +33,12 @@ export async function authorizeSandboxFunctionInvocation(
   {
     userIdentity,
     origin,
+    space,
   }: {
     userIdentity: SandboxFunctionUserIdentityPolicy | null;
     origin: SandboxFunctionInvocationOrigin;
+    // The pod the function belongs to, for policies scoped to the caller's standing in it.
+    space: SpaceResource;
   }
 ): Promise<SandboxFunctionAuthorization> {
   const user = await getAuthenticatedWorkspaceUser(auth);
@@ -61,6 +65,19 @@ export async function authorizeSandboxFunctionInvocation(
             authorized: false,
             errorMessage:
               "This Pod Function requires a logged-in workspace member in a live Dust session.",
+          };
+    }
+    case "pod_editor_required": {
+      // Editorship matches the `isEditor` the pod UI serializes: members of the pod's editor
+      // group, plus workspace admins via their role (`canWrite` would not do: the pod member
+      // group also holds write on the space, so it cannot separate editors from viewers).
+      const authorized = user !== null && space.canAdministrate(auth);
+      return authorized
+        ? { authorized: true, user }
+        : {
+            authorized: false,
+            errorMessage:
+              "This Pod Function requires an editor of its Pod (or a workspace admin).",
           };
     }
     default:

@@ -32,6 +32,7 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   SandboxFunctionInvocationModel,
   SandboxFunctionModel,
@@ -227,7 +228,8 @@ function buildSandboxFunctionRunCommand(slug: string): string {
 function getSandboxFunctionUserIdentity(
   auth: Authenticator,
   user: UserResource | null,
-  invocation: SandboxFunctionInvocationResource
+  invocation: SandboxFunctionInvocationResource,
+  space: SpaceResource
 ) {
   const workspace = auth.getNonNullableWorkspace();
   if (
@@ -240,6 +242,9 @@ function getSandboxFunctionUserIdentity(
 
   return {
     workspaceId: workspace.sId,
+    // Same predicate as the `isEditor` the pod UI serializes: pod editor group members plus
+    // workspace admins via role.
+    isPodEditor: space.canAdministrate(auth),
     user: {
       sId: user.sId,
       firstName: user.firstName,
@@ -591,6 +596,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         const authorization = await authorizeSandboxFunctionInvocation(auth, {
           userIdentity: persistedFunction.userIdentity,
           origin: this.origin ?? "delegated",
+          // The space is fixed at creation, so the in-memory copy is safe to reuse alongside
+          // the re-fetched row.
+          space: sandboxFunction.space,
         });
         return { persistedFunction, authorization };
       };
@@ -672,7 +680,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       const userIdentity = getSandboxFunctionUserIdentity(
         auth,
         authorization.user,
-        this
+        this,
+        sandboxFunction.space
       );
 
       const execStartedAtMs = Date.now();

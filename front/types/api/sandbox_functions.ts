@@ -18,6 +18,7 @@ export const SANDBOX_FUNCTION_USER_IDENTITY_POLICIES = [
   "optional",
   "workspace_user_required",
   "interactive_workspace_user_required",
+  "pod_editor_required",
 ] as const;
 
 export type SandboxFunctionUserIdentityPolicy =

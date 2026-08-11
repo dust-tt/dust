@@ -15,7 +15,10 @@ interface WorkspaceAuthIdentity {
 
 export function getAuthenticatedFrameUserIdentity(
   authContext: WorkspaceAuthIdentity | null,
-  workspaceId: string
+  workspaceId: string,
+  // Editorship of the pod hosting the frame, when the host knows it (pod tabs, pinned banner,
+  // frame sheet). Display-only: invocations are re-authorized server-side.
+  isPodEditor = false
 ): ScopedWorkspaceUserIdentity | undefined {
   if (
     !authContext ||
@@ -27,6 +30,7 @@ export function getAuthenticatedFrameUserIdentity(
 
   return {
     workspaceId,
+    isPodEditor,
     user: {
       sId: authContext.user.sId,
       firstName: authContext.user.firstName,
@@ -41,16 +45,22 @@ interface AuthenticatedVisualizationActionIframeProps
   extends Omit<
     VisualizationActionIframeProps,
     "canInvokeFunctions" | "scopedUserIdentity" | "viewer"
-  > {}
+  > {
+  isPodEditor?: boolean;
+}
 
 export const AuthenticatedVisualizationActionIframe = forwardRef<
   HTMLIFrameElement,
   AuthenticatedVisualizationActionIframeProps
->(function AuthenticatedVisualizationActionIframe(props, ref) {
+>(function AuthenticatedVisualizationActionIframe(
+  { isPodEditor, ...props },
+  ref
+) {
   const authContext = useContext(AuthContext);
   const scopedUserIdentity = getAuthenticatedFrameUserIdentity(
     authContext,
-    props.workspaceId
+    props.workspaceId,
+    isPodEditor
   );
 
   return (

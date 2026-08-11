@@ -28,7 +28,24 @@ describe("currentUser", () => {
     process.env[POD_WORKSPACE_ID_ENV] = "w_current";
     process.env[POD_USER_IDENTITY_ENV] = JSON.stringify(identity);
 
-    expect(currentUser()).toEqual(identity.user);
+    expect(currentUser()).toEqual({ ...identity.user, isPodEditor: false });
+  });
+
+  test("reads the pod editor bit from the envelope", () => {
+    process.env[POD_WORKSPACE_ID_ENV] = "w_current";
+    process.env[POD_USER_IDENTITY_ENV] = JSON.stringify({
+      ...identity,
+      isPodEditor: true,
+    });
+
+    expect(currentUser()).toEqual({ ...identity.user, isPodEditor: true });
+  });
+
+  test("defaults the pod editor bit to false when the envelope omits it", () => {
+    process.env[POD_WORKSPACE_ID_ENV] = "w_current";
+    process.env[POD_USER_IDENTITY_ENV] = JSON.stringify(identity);
+
+    expect(currentUser()?.isPodEditor).toBe(false);
   });
 
   test("returns null for a userless invocation", () => {
@@ -70,7 +87,7 @@ describe("currentUser inside an invocation context", () => {
       contextEnv(JSON.stringify(identity)),
       () => currentUser()
     );
-    expect(user).toEqual(identity.user);
+    expect(user).toEqual({ ...identity.user, isPodEditor: false });
   });
 
   test("a userless context returns null even when process.env has an identity", () => {
