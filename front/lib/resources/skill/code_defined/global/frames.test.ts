@@ -24,6 +24,10 @@ const FILES_FIRST_MARKER =
 // Markers unique to each Pod-only section.
 const POD_APP_MARKER = "### Frames In A Pod";
 const POD_STORAGE_MARKER = "### Where The Frame's Data Lives";
+const POD_VERIFICATION_MARKER = "### Verifying A Frame";
+
+// Marker unique to the non-Pod persistence warning.
+const NON_POD_STATE_MARKER = "### Frame State Outside A Pod";
 
 const FILES_EDIT_TOOL = getPrefixedToolName(
   FILES_SERVER_NAME,
@@ -115,6 +119,21 @@ describe("framesSkill.fetchInstructions", () => {
 
     expect(instructions).not.toContain(POD_APP_MARKER);
     expect(instructions).not.toContain(POD_STORAGE_MARKER);
+    expect(instructions).not.toContain(POD_VERIFICATION_MARKER);
+    expect(instructions).toContain(NON_POD_STATE_MARKER);
+    expect(instructions).toContain("suggest building the Frame in a Pod");
+  });
+
+  it("omits the Pod suggestion outside a Pod when pod functions are unavailable", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const instructions = await framesSkill.fetchInstructions(auth, {
+      spaceIds: [],
+      agentLoopData: agentLoopDataInPod(null),
+    });
+
+    expect(instructions).toContain(NON_POD_STATE_MARKER);
+    expect(instructions).not.toContain("suggest building the Frame in a Pod");
   });
 
   it("teaches the Pod app layout and storage decision in a Pod", async () => {
@@ -130,6 +149,9 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("pod-<podId>/MyApp/MyApp.tsx");
     expect(instructions).toContain(POD_STORAGE_MARKER);
     expect(instructions).toContain(`\`${POD_FUNCTIONS_SKILL_NAME}\` skill`);
+    expect(instructions).toContain(POD_VERIFICATION_MARKER);
+    expect(instructions).toContain("always fetch the Frame's share URL");
+    expect(instructions).not.toContain(NON_POD_STATE_MARKER);
   });
 
   it("omits the storage decision when pod functions are unavailable", async () => {
@@ -142,6 +164,7 @@ describe("framesSkill.fetchInstructions", () => {
 
     expect(instructions).toContain(POD_APP_MARKER);
     expect(instructions).not.toContain(POD_STORAGE_MARKER);
+    expect(instructions).not.toContain(POD_VERIFICATION_MARKER);
   });
 
   it("keeps the legacy flow for a Pod conversation without the file system", async () => {

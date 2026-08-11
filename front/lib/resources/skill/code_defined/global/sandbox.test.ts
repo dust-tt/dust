@@ -64,6 +64,18 @@ describe("sandboxSkill", () => {
     expect(instructions).not.toContain("- `dsbx`: Dust CLI");
   });
 
+  it("documents the bash timeout ceiling and waiting etiquette", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const instructions = await sandboxSkill.fetchInstructions(auth, {
+      spaceIds: [],
+    });
+
+    expect(instructions).toContain("default 60 s, maximum 120 s");
+    expect(instructions).toContain("exit code 124");
+    expect(instructions).toContain("Never use `sleep` to wait");
+  });
+
   it("instructs the model to analyze mounted tabular files with code", async () => {
     const { authenticator: auth } = await createResourceTest({});
 

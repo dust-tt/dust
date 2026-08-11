@@ -50,7 +50,8 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
       "must default-export a `fetch(request: Request): Promise<Response>` handler and export a " +
       "`schema` with zod `input` and `output`. Set `schema.userIdentity` to `optional`, " +
       "`workspace_user_required`, or `interactive_workspace_user_required`. It is bundled on the " +
-      "pod sandbox (only `zod` is available to import), and its contract is extracted from the " +
+      "pod sandbox (the external packages available to import are `zod`, `drizzle-orm` and " +
+      "`@dust/pod`), and its contract is extracted from the " +
       "`schema` export. The published slug is prefixed with the app the source lives in, so " +
       "re-publishing the same name from the same app replaces the previous version while another " +
       "app's function of the same name is left alone.",
@@ -81,13 +82,15 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
       executionMode: z
         .enum(SANDBOX_FUNCTION_EXECUTION_MODES)
         .describe(
-          "`fast` runs synchronously and returns in a fraction of the time, but cannot call Dust " +
-            "tools through `dsbx tools`. It can still read and write pod state, run local " +
-            "binaries and make outbound HTTP calls, though those count against its execution " +
-            "ceiling. `durable` is for a function that calls `dsbx tools`, which may wait on the " +
-            "user for approval or authentication. Keep the functions a Frame calls on user " +
-            "interaction or on a poll `fast`, and isolate `dsbx tools` calls in their own " +
-            "`durable` functions."
+          "`durable` if and only if the function calls Dust tools through `dsbx tools` — the " +
+            "mode is determined by what the code does, not by how the function is called, and it " +
+            "is restated on every publish, so derive it from the source (including its helpers) " +
+            "each time rather than from a previous publish. `fast` runs synchronously and " +
+            "returns in a fraction of the time, but `dsbx tools` is refused inside it; it can " +
+            "still read and write pod state, run local binaries and make outbound HTTP calls, " +
+            "though those count against its execution ceiling. Keep the functions a Frame calls " +
+            "on user interaction or on a poll `fast`, and isolate `dsbx tools` calls in their " +
+            "own `durable` functions."
         ),
     },
     stake: "low",

@@ -1,3 +1,7 @@
+import {
+  FILE_OFFLOAD_SNIPPET_LENGTH,
+  FILE_OFFLOAD_TEXT_SIZE_BYTES,
+} from "@app/lib/actions/action_output_limits";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   FILES_MOVE_ACTION_NAME,
@@ -35,6 +39,13 @@ const PUBLISH_FRAME_TOOL = getPrefixedToolName(
 );
 
 export const POD_FUNCTIONS_SKILL_NAME = "Pod Functions";
+
+// The execution budgets quoted in the instructions track the platform constants:
+// SANDBOX_FUNCTION_INLINE_EXEC_TIMEOUT_MS (10 s, fast) and SANDBOX_FUNCTION_EXEC_TIMEOUT_MS
+// (120 s, durable) in `front/lib/resources/sandbox_function_invocation_resource.ts`, and the
+// durable activity's 3-minute startToCloseTimeout in `front/temporal/sandbox_functions/
+// workflows.ts`. The result delivery caps track RESULT_INLINE_CAP_BYTES (256 KB) and
+// RESULT_HARD_CAP_BYTES (5 MB) in the functions runner. Keep them in sync.
 
 export const podFunctionsSkill = {
   sId: "pod_functions",
@@ -99,7 +110,8 @@ source, so the copy's Frame still calls the ORIGINAL app's functions and therefo
 the original's data. After copying \`MyApp/\` to \`MyAppCopy/\`: publish the copy's functions, reconcile
 its databases, then edit the copy's Frame so every function reference carries the new prefix
 (\`myappcopy__list-notes\`, not \`myapp__list-notes\`) and re-publish it. The same applies to renaming
-an app folder.
+an app folder. Finish the port by confirming with \`${toolName("list")}\` that every function is
+published under the new prefix, and smoke-testing each one with a \`${toolName("call")}\`.
 
 #### Authoring a function
 
@@ -147,6 +159,10 @@ publish time: editing a helper changes nothing until you re-publish, and re-publ
 leaves the others on the old copy. After changing a shared helper, re-publish every function that
 imports it.
 
+If a batch of edits to a source file partially fails, re-read the whole file before editing it
+further, and never publish it without re-reading: the file is not in the state you remember, and
+publishing ships whatever mix of applied and missing edits is actually on disk.
+
 The external packages you can import are \`zod\`, \`drizzle-orm\` and \`@dust/pod\`. Other npm packages
 are not available at build time.
 
@@ -170,7 +186,9 @@ Functions of the same Pod can share durable SQLite databases (via \`drizzle-orm\
 - **Name functions that use this db.ts by writting a comment a the top** 
 - **Apply the schema file with \`${toolName("db_reconcile")}\`**; it creates the database and
   applies additive DDL after edits, and enforces the rules below. Publishing does not touch
-  databases; an unreconciled database does not exist at runtime.
+  databases; an unreconciled database does not exist at runtime. Reconcile is idempotent and is
+  also the recovery step: if a function fails because its database is missing (for example after
+  the Pod's Computer was recycled), run it again on the same schema file.
 - **At runtime open a database with \`db(name)\` from \`@dust/pod\`** and query it with the imported
   table objects.
 
@@ -216,10 +234,34 @@ are available under the same substitution rules as the Computer.
 
 \`dsbx\` is available inside a function's own process, the same way it is in the conversation's
 Computer: shell out to \`dsbx tools --json [SERVER_NAME] [TOOL_NAME] [ARGS]...\` and parse its
-stdout (\`{ content, isError }\`) for the result.
+stdout (\`{ content, isError }\`) for the result. Spawn it asynchronously (\`spawn\`, never
+\`spawnSync\`, which blocks the worker thread other invocations share).
 Run \`dsbx tools --help\` from the Computer to explore available
 servers and tools before writing the function. A function that calls \`dsbx tools\` must be
 published as \`durable\`, see below.
+
+A tool result's \`content\` blocks are text written for an agent to read, not an API response, and
+the rendering you see in a conversation is the model-facing rendering, which is not what the
+function receives. Before writing any parsing code, run the tool from a function once and look at
+the real output. Keep all parsing of a given tool's output in one \`functions/lib/\` helper, store
+parsed data with a format version, and on a parse failure keep serving the previously stored data
+instead of persisting a broken parse.
+
+Text blocks over ${FILE_OFFLOAD_TEXT_SIZE_BYTES / 1024} KB never arrive whole: the platform
+offloads them, leaving an ${FILE_OFFLOAD_SNIPPET_LENGTH}-character head cut blindly mid-token plus
+a \`[Full content archived at <path>]\` pointer, while the full content is written to a file
+mounted in the function's own sandbox under \`/files/\`. Always read the archived file — the
+\`@dust/pod\` helper \`resolveToolTextContent\` resolves a content block to its full text where
+available, otherwise read the path the pointer names — and never store or parse the snippet text.
+
+**Never create conversations or invoke agents from a Pod function.** Do not call
+\`pod_manager.create_conversation\`, \`pod_manager.add_message_to_conversation\`, or any
+agent-invocation tool through \`dsbx tools\` from function code — there is no run-status or
+completion signal for a spawned agent, and the platform refuses these calls from functions. If a
+Frame needs agent help, link the user into a conversation instead (deep link / open-conversation
+button). If data must be produced by an agent on a schedule, use a wakeup or trigger that runs
+the agent in a normal conversation, and have that agent write results through a Pod function.
+Reading conversations (\`pod_manager.list_conversations\`) remains fine.
 
 #### Fast and durable functions
 
@@ -228,11 +270,13 @@ split functions up.
 
 - \`fast\`: runs synchronously and returns several times quicker, but **cannot call Dust tools**:
   \`dsbx tools\` is refused inside it. Everything else still works, including Pod state, local
-  binaries and outbound HTTP calls, but those count against the invocation's execution ceiling, so
-  a fast function that waits on a slow endpoint will fail rather than return late.
-- \`durable\`: required for any function that calls \`dsbx tools\`. A tool call can wait on the user
-  for approval or authentication, for as long as they take, so the invocation runs in the
-  background and its result reaches the caller when it is ready.
+  binaries and outbound HTTP calls, but those count against the invocation's 10-second execution
+  ceiling, so a fast function that waits on a slow endpoint will fail rather than return late.
+- \`durable\`: required for any function that calls \`dsbx tools\`, so a tool call can wait on the
+  user for approval or authentication. The invocation runs in the background and its result
+  reaches the caller when it is ready, but it is not unbounded: execution is capped at 120
+  seconds, inside a background envelope of about 3 minutes. Work that cannot fit that budget must
+  be split across invocations.
 
 So the shape of your functions is the real decision:
 
@@ -248,9 +292,29 @@ So the shape of your functions is the real decision:
   above when the data can tolerate being a little stale, not when it cannot.
 - Publishing a function that calls \`dsbx tools\` as \`fast\` is a bug: its tool call is refused at
   run time and the invocation fails.
+- \`executionMode\` is restated on every publish, so a republish can silently demote a \`durable\`
+  function to \`fast\` and re-introduce that bug. Derive the mode from whether the source
+  (including its \`functions/lib/\` helpers) calls \`dsbx tools\`, on every publish, never from
+  memory of a previous publish.
 
 The Frame API is identical for both, but a \`durable\` call takes visibly longer, so give it a
 loading state.
+
+##### Caching fetched data
+
+The durable-writes/fast-reads split stores snapshots, so make freshness visible: store a
+\`fetchedAt\` timestamp with every snapshot and return it from the read, so the Frame can derive
+and show staleness.
+
+Where a snapshot may live follows how the tool that produced it is connected. A tool on a
+*personal* connection runs with the credentials of whoever triggered the durable refresh, so the
+data it returns belongs to that user: key it by \`currentUser().sId\` and declare the function
+\`workspace_user_required\` (see "Knowing who called a function" below), or do not cache it at
+all. Only tools connected at the workspace level, or sources that need no authentication, may
+feed a cache shared by the whole Pod. A read that serves personally-fetched rows must itself be
+at least \`workspace_user_required\` and filter by the caller. Serving one member's
+connected-account data to other members is a data leak, not a caching optimization. When unsure
+how a tool server is connected, check it from the Computer before deciding where its data lives.
 
 #### Publishing, discovering, and invoking
 
@@ -280,6 +344,11 @@ Call a published function directly from this conversation with \`${toolName("cal
 its slug and an input payload matching its \`get\`-reported input schema. Call it yourself whenever
 you need the result now rather than asking a Frame to fetch it for you.
 
+After every publish, verify it: invoke the function once with \`${toolName("call")}\` on realistic
+input and confirm the output reflects your change before reporting success. If behavior is
+identical to before the edit, or the publish reports the new bundle is identical to the previous
+one, your edit did not land: re-read the source file, fix it, and publish again.
+
 To debug a function, use \`${toolName("inspect_invocations")}\` to inspect its most recent inputs,
 results, errors, statuses, and timestamps.
 
@@ -304,6 +373,11 @@ Design the function contract around the Frame interaction, not individual databa
 
 - make reads idempotent and side-effect-free, and return one bounded screen snapshot instead of
   creating waterfalls or N+1 calls;
+- keep outputs bounded: a response is one screen's worth of data (aim for tens of kilobytes),
+  never a raw tool output or a whole dataset. Write large data to pod files or a database and
+  return the slice the caller asked for. Result delivery is capped by the runner (see
+  \`RESULT_INLINE_CAP_BYTES\`, 256 KB inline, and \`RESULT_HARD_CAP_BYTES\`, 5 MB hard) — an
+  output near those caps is a design bug even when it gets through;
 - make mutations return the updated entity or screen snapshot so the Frame can update its cache
   without another function call;
 - keep write operations safe against duplicate interaction, using a stable idempotency key when a
@@ -352,6 +426,13 @@ schemas. Before success, hook \`data\` is \`undefined\`. After success, it conta
 value described by \`schema.output\`. Mutation \`trigger\` accepts \`schema.input\` and resolves to
 the parsed and validated value described by \`schema.output\`.
 
+That is the whole response contract: \`data\` IS the \`schema.output\` value, already validated by
+the platform. It is never a stringified payload to \`JSON.parse\`, never wrapped in \`output\`,
+\`result\`, or \`response.body\`, and never nested inside \`error\`. Do not write unwrapping
+helpers or defensive re-parsing around it: a response that violates this contract is a platform
+bug — reproduce it with \`${toolName("call")}\` and report it rather than coding around it. An
+error's \`message\` is prose for a human, never a payload to salvage data from.
+
 Function call failures are normalized as \`SandboxFunctionCallError\` instances, also exported by
 \`@dust/react-hooks\`. Query failures are exposed through \`error\`. Mutation failures update
 \`error\` and reject \`trigger\`. Each error carries a \`message\`, an optional HTTP \`status\`, and
@@ -360,6 +441,15 @@ open string because it is whatever classified the failure. Branch on the codes y
 fall back to a generic message for the rest. The ones worth branching on are \`invalid_input\` and
 \`invalid_output\` for schema mismatches, \`threw\` when the function threw, \`http_error\` when the
 function's own request failed, \`sandbox_function_not_found\`, and \`not_supported\`.
+
+Render failures as a compact card: one plain sentence saying what failed, with a retry action.
+Never render the raw \`error.message\` in the Frame's main layout — it can be long, technical, and
+platform-flavored. On the function side, throw one-line human-readable messages and keep the
+detail in logs.
+
+When a Frame polls a \`fast\` function to stay fresh, poll on a cadence of tens of seconds.
+Sub-5-second polling is only for short-lived, self-terminating transitions (waiting for one
+in-flight action to complete), never a steady state.
 
 Pod functions in shared Frames are available to authenticated members of the Pod's workspace;
 anonymous viewers cannot call them.
@@ -379,6 +469,11 @@ Declare the policy alongside the input and output schemas:
 - \`"workspace_user_required"\` refuses the call unless it comes from a current member of the Pod's
   workspace. Use it as soon as the function reads or writes anything that belongs to a person, or
   performs an action that should be attributable.
+- \`"interactive_workspace_user_required"\` further refuses any call that does not come from a
+  workspace member in a live interactive Dust session — in practice, a signed-in user acting
+  through a Frame. Calls made by an agent (including \`${toolName("call")}\` from this
+  conversation) or through an API key are refused even when a user is attached. Use it when the
+  action must be performed by the user themselves, in the moment.
 
 \`\`\`ts
 import { z } from "zod";
@@ -420,7 +515,9 @@ const user = currentUser();
 
 Scope rows by \`currentUser().sId\`, which is stable for a user across calls, conversations, and
 Frames. That single column is what turns a shared Pod database into per-user state, so add it when
-you create the table rather than retrofitting it later (schema evolution is additive-only).
+you create the table rather than retrofitting it later (schema evolution is additive-only). The
+same scoping applies to cached tool data: rows fetched through a member's personal connection are
+that member's — see "Caching fetched data" above.
 
 \`\`\`ts
 // MyApp/databases/notes.db.ts
@@ -446,7 +543,7 @@ one \`notes\` function taking an \`action\` field is not. If a capability must b
 subset of members, keep that list in the database and check it against \`currentUser().sId\` —
 the platform only tells you the caller is a workspace member, not what they are allowed to do.`,
   mcpServers: [{ name: SANDBOX_FUNCTIONS_SERVER_NAME }],
-  version: 6,
+  version: 7,
   icon: "PuzzleIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);

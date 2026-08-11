@@ -1,3 +1,7 @@
+import {
+  SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS,
+  SANDBOX_MAX_COMMAND_TIMEOUT_MS,
+} from "@app/lib/api/actions/servers/sandbox/metadata";
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/prompt_context";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { readWorkspacePolicy } from "@app/lib/api/sandbox/egress_policy";
@@ -28,6 +32,8 @@ function buildSandboxInstructionProse({
     'The sandbox provides an isolated Linux environment for running code, scripts, and shell commands. Always call this environment "the Computer" in any text you send to the user.',
     "Use `bash` to run commands and scripts.",
     "The sandbox persists for the conversation duration.",
+    `A bash command is killed when it reaches its \`timeoutMs\` (default ${SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS / 1000} s, maximum ${SANDBOX_MAX_COMMAND_TIMEOUT_MS / 1000} s); exit code 124 means the command hit that ceiling.`,
+    "Never use `sleep` to wait for something outside the command's control (a background job, an external system, another tool's result): a long sleep only burns the timeout. Return instead and check again on a later call, or use a bounded loop of short checks.",
   ];
 
   if (hasDsbxTools) {

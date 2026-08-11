@@ -93,6 +93,7 @@ The same decision rule applies regardless of where the data came from:
 - If a declared data array such as \`ITEMS\`, \`STORIES\`, or \`ROWS\` exists, the rendered JSX must consume it. Do not declare correct data and render stale hardcoded content.
 - Never fabricate missing names, numbers, URLs, booleans, totals, or logos. If no source provides a value, omit it or show \`No data available\`.
 - Every async source, including \`useFile\` or \`fetch\`, must expose loading, ok, empty, and error states.
+- Render failures as a compact card: one plain sentence saying what failed, with a retry action where retrying can help. Never render a raw \`error.message\` or stack trace in the main layout.
 - Never block the whole render on \`if (!data) return <p>Loading...</p>\`. Keep the frame shell visible and show state-specific content in the data region.
 - Parse file content inside \`useEffect\` with visible fallback UI. Catch JSON, CSV, and file-read errors.
 - Always use \`papaparse\` for CSV files with \`skipEmptyLines: "greedy"\`.

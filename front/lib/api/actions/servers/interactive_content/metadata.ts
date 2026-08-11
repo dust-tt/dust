@@ -22,7 +22,7 @@ export const REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME =
   "revert_interactive_content_file";
 export const RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME =
   "rename_interactive_content_file";
-const GET_INTERACTIVE_CONTENT_FILE_SHARE_URL_TOOL_NAME =
+export const GET_INTERACTIVE_CONTENT_FILE_SHARE_URL_TOOL_NAME =
   "get_interactive_content_file_share_url";
 const EXPORT_INTERACTIVE_CONTENT_FILE_TOOL_NAME =
   "export_interactive_content_file";
@@ -251,7 +251,9 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = [
       "Export a Frame as a PNG screenshot or PDF document. " +
       "PNG returns a visual snapshot of the rendered frame. " +
       "PDF renders the frame with optional orientation (portrait/landscape for regular frames, " +
-      "landscape by default for slideshows).",
+      "landscape by default for slideshows). " +
+      "A Frame that calls pod functions exports its loading state, not its data: do not use a " +
+      "PNG export to verify one — call its functions directly instead.",
     schema: {
       file_id: z
         .string()
