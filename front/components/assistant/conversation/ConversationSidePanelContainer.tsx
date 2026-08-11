@@ -120,8 +120,8 @@ export default function ConversationSidePanelContainer({
       >
         {currentPanel && conversation && (
           <div
-            className="h-full"
-            // Keep content width stable while the panel animates.
+            className="h-full @container"
+            // Keep content width and container queries stable during animation.
             style={{ width: `${panelContentSizePercent}cqw` }}
           >
             <MemoizedConversationSidePanelContent
