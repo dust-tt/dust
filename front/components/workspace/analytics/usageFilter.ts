@@ -2,6 +2,7 @@ import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/
 import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
+import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ConnectorProvider } from "@app/types/data_source";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -42,12 +43,21 @@ export const USAGE_FILTER_CATEGORY_SINGULAR_LABEL: Record<
   source: "Source",
 };
 
-export const USAGE_FILTER_SCOPE_LABEL: Record<AgentConfigurationScope, string> =
-  {
-    global: "Company",
-    visible: "Shared",
-    hidden: "Private",
-  };
+// The agent picker's scope tabs: the agent scopes, plus an "all" catch-all that
+// doesn't narrow by scope.
+export const USAGE_FILTER_AGENT_SCOPES = [
+  ...AGENT_CONFIGURATION_SCOPES,
+  "all",
+] as const;
+
+export type UsageFilterAgentScope = (typeof USAGE_FILTER_AGENT_SCOPES)[number];
+
+export const USAGE_FILTER_SCOPE_LABEL: Record<UsageFilterAgentScope, string> = {
+  global: "Company",
+  visible: "Shared",
+  hidden: "Private",
+  all: "All",
+};
 
 export const USAGE_MODEL_TIERS = ["fast", "standard", "complex"] as const;
 

@@ -87,7 +87,10 @@ export type AgentConfigurationScope =
  *   agents); used e.g. for non-user calls such as API
  * - 'published': Retrieves all published agents.
  * - 'global': Retrieves all agents exclusively with a 'global' scope.
- * - 'admin_internal': Grants access to all agents, including private ones.
+ * - 'admin_internal': Every active agent in the workspace, whatever its scope
+ *   and whoever edits it. Gated per surface: Dust superusers in Poke, workspace
+ *   admins in the workspace admin views. Space permissions still narrow the
+ *   result unless the caller passes `dangerouslySkipPermissionFiltering`.
  * - 'manage': Retrieves all agents for the manage agents view (same as list, but including disabled agents).
  * - 'archived': Retrieves all agents that are archived. Only available to super
  *   users. Intended strictly for internal use with necessary superuser or admin

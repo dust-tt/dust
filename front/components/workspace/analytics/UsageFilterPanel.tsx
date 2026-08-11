@@ -1,11 +1,13 @@
 import type {
   UsageFilter,
+  UsageFilterAgentScope,
   UsageFilterCategory,
   UsageFilterGroup,
   UsageModelTier,
 } from "@app/components/workspace/analytics/usageFilter";
 import {
   toConsumptionScopeFilter,
+  USAGE_FILTER_AGENT_SCOPES,
   USAGE_FILTER_CATEGORIES,
   USAGE_FILTER_CATEGORY_LABEL,
   USAGE_MODEL_TIERS,
@@ -23,10 +25,9 @@ import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { useGroups } from "@app/lib/swr/groups";
-import type { AgentConfigurationScope } from "@app/types/assistant/agent";
-import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   BarChart05,
   Button,
@@ -65,9 +66,7 @@ export function UsageFilterPanel({
   } = useUsageFilter(filter);
   const [activeCategory, setActiveCategory] =
     useState<UsageFilterCategory>("agent");
-  const [activeScope, setActiveScope] = useState<AgentConfigurationScope>(
-    AGENT_CONFIGURATION_SCOPES[0]
-  );
+  const [activeScope, setActiveScope] = useState<UsageFilterAgentScope>("all");
   const [activeTier, setActiveTier] = useState<UsageModelTier>(
     USAGE_MODEL_TIERS[0]
   );
@@ -108,6 +107,11 @@ export function UsageFilterPanel({
     [workspaceGroups]
   );
 
+  // Private agents are only listed for admins.
+  const agentScopes = isAdmin(owner)
+    ? USAGE_FILTER_AGENT_SCOPES
+    : USAGE_FILTER_AGENT_SCOPES.filter((scope) => scope !== "hidden");
+
   const activeOptions = categoryOptions[activeCategory];
   const filteredOptions = useMemo(() => {
     const search = searchText.trim().toLowerCase();
@@ -117,10 +121,12 @@ export function UsageFilterPanel({
         : null;
 
     return activeOptions.filter((option) => {
-      if (option.kind === "agent") {
-        if (option.scope === undefined || option.scope !== activeScope) {
-          return false;
-        }
+      if (
+        option.kind === "agent" &&
+        activeScope !== "all" &&
+        option.scope !== activeScope
+      ) {
+        return false;
       }
       if (option.kind === "model" && option.tier !== activeTier) {
         return false;
@@ -239,6 +245,7 @@ export function UsageFilterPanel({
             )}
             {activeCategory === "agent" && (
               <UsageFilterAgentScopeControls
+                scopes={agentScopes}
                 activeScope={activeScope}
                 onScopeChange={setActiveScope}
               />

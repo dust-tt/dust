@@ -371,7 +371,8 @@ export async function getAgentConfigurationsForView<
     !auth.isAdmin()
   ) {
     throw new Error(
-      "Superuser view is for dust superusers or internal admin auths only."
+      "Superuser view is for dust superusers, internal admin auths or " +
+        "workspace admins only."
     );
   }
 
