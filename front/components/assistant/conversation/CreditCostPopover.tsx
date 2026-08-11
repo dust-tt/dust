@@ -144,7 +144,7 @@ export function CreditCostPopover({
         role="dialog"
         aria-labelledby={headingId}
         align="start"
-        className="w-80 rounded-2xl px-3 py-2"
+        className="w-80 rounded-2xl px-3 py-2 shadow-sm"
         preventAutoFocusOnClose={false}
       >
         <h2
