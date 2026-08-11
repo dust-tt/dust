@@ -1,9 +1,11 @@
+import { DeletePodAppDialog } from "@app/components/pod/apps/DeletePodAppDialog";
 import { PodAppDetail } from "@app/components/pod/apps/PodAppDetail";
 import { PodAppList } from "@app/components/pod/apps/PodAppList";
 import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
 import type { CustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { usePodApps } from "@app/lib/swr/pods";
-import type { PodAppFrame } from "@app/types/api/pod_apps";
+import type { PodApp, PodAppFrame } from "@app/types/api/pod_apps";
+import { UNFILED_POD_APP_PREFIX } from "@app/types/api/pod_apps";
 import { DEFAULT_POD_FRAME_TAB_ICON } from "@app/types/pod_frame_tab";
 import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
@@ -23,8 +25,13 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
     podId: pod.sId,
   });
 
+  const canDelete = pod.isEditor && !pod.archivedAt;
+
   const [selectedPrefix, setSelectedPrefix] = useState<string | null>(null);
   const [framePreview, setFramePreview] = useState<PodAppFrame | null>(null);
+  const [appPendingDeletion, setAppPendingDeletion] = useState<PodApp | null>(
+    null
+  );
 
   const iconByFramePath = useMemo(
     () =>
@@ -83,9 +90,30 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
       </div>
       <div className="min-w-0 flex-1">
         {selectedApp && (
-          <PodAppDetail app={selectedApp} onOpenFrame={setFramePreview} />
+          <PodAppDetail
+            app={selectedApp}
+            onOpenFrame={setFramePreview}
+            // The unfiled app is a presentation device, not a folder, so there is nothing
+            // coherent to delete.
+            onDelete={
+              canDelete && selectedApp.prefix !== UNFILED_POD_APP_PREFIX
+                ? () => setAppPendingDeletion(selectedApp)
+                : undefined
+            }
+          />
         )}
       </div>
+
+      {appPendingDeletion && (
+        <DeletePodAppDialog
+          key={appPendingDeletion.prefix}
+          owner={owner}
+          podId={pod.sId}
+          app={appPendingDeletion}
+          isOpen
+          onClose={() => setAppPendingDeletion(null)}
+        />
+      )}
 
       <PodFrameSheet
         owner={owner}
