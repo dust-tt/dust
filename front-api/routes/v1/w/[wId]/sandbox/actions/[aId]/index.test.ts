@@ -116,6 +116,44 @@ describe("GET /api/v1/w/[wId]/sandbox/actions/[aId] (function invocation)", () =
     expect(body.action.output).toEqual(content);
   });
 
+  it("serves content block _meta (offload descriptor) verbatim", async () => {
+    const { auth, token, workspace, action } = await setupWithAction();
+
+    // Shape produced by the tool-output offload path: a snippet resource block carrying the
+    // machine-readable descriptor in _meta. The route must serve it verbatim so in-sandbox
+    // consumers can resolve the full content.
+    const content = [
+      {
+        type: "resource" as const,
+        resource: {
+          uri: "pod-spc_x/.tool_outputs/fn/1_tool.json",
+          mimeType: "text/plain",
+          text: '{"__dust_offloaded__":true}\n[Full content archived at pod-spc_x/.tool_outputs/fn/1_tool.json]',
+        },
+        _meta: {
+          "tt.dust/offload": {
+            fullContentPath: "pod-spc_x/.tool_outputs/fn/1_tool.json",
+            totalBytes: 123456,
+            contentType: "application/json",
+          },
+        },
+      },
+    ];
+    const writeResult = await action.createOutputItems(
+      auth,
+      content.map((c) => ({ content: c }))
+    );
+    expect(writeResult.isOk()).toBe(true);
+    await action.markAsSucceeded({ executionDurationMs: 42 });
+
+    const response = await getSandboxAction(workspace, token, action.sId);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.status).toBe("success");
+    expect(body.action.output).toEqual(content);
+  });
+
   it("scopes actions to the token's invocation", async () => {
     const { auth, token, workspace, view, sandboxFunction, action } =
       await setupWithAction();
