@@ -4,6 +4,7 @@ import { useAgentMessageConsumption } from "@app/hooks/conversations/useAgentMes
 import { formatCreditValue } from "@app/lib/client/credits";
 import type { AgentMessageConsumptionToolDetails } from "@app/types/assistant/agent_message_consumption";
 import {
+  Chip,
   Icon,
   PopoverContent,
   PopoverRoot,
@@ -41,23 +42,25 @@ function CreditDetailRow({
   value,
 }: CreditDetailRowProps) {
   return (
-    <div className="grid min-h-9 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 rounded-lg px-2 py-1.5 text-sm">
-      <dt className="flex min-w-0 items-start gap-2 font-medium text-foreground">
+    <div className="grid min-h-10 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 text-sm">
+      <dt className="flex min-w-0 items-center gap-2 font-medium text-foreground">
         {icon && (
           <Icon
             visual={icon}
             size="xs"
-            className="mt-0.5 shrink-0 text-muted-foreground"
+            className="shrink-0 text-muted-foreground"
           />
         )}
-        <span>{label}</span>
+        <span className="truncate">{label}</span>
+        {description && (
+          <Chip
+            size="mini"
+            label={description}
+            className="shrink-0 font-normal"
+          />
+        )}
       </dt>
-      <dd className="shrink-0 text-muted-foreground">{value}</dd>
-      {description && (
-        <dd className="col-start-1 text-xs text-muted-foreground">
-          {description}
-        </dd>
-      )}
+      <dd className="shrink-0 tabular-nums text-muted-foreground">{value}</dd>
     </div>
   );
 }
@@ -136,47 +139,32 @@ export function CreditCostPopover({
         role="dialog"
         aria-labelledby={headingId}
         align="start"
-        className="w-80 p-2"
+        className="w-[min(24rem,calc(100vw-1rem))] p-4"
         preventAutoFocusOnClose={false}
       >
-        <h2 id={headingId} className="px-2 py-1 text-sm font-semibold">
-          Credit usage
+        <h2
+          id={headingId}
+          className="mb-1 text-sm font-semibold text-muted-foreground"
+        >
+          Message credits
         </h2>
-        <section aria-labelledby={`${headingId}-charged`}>
-          <h3
-            id={`${headingId}-charged`}
-            className="px-2 py-1 text-xs font-medium text-muted-foreground"
-          >
-            Charged
-          </h3>
+        <section aria-label="Charge summary">
           <dl>
             <CreditDetailRow
-              label="This message"
-              value={formatCreditValue(ownCredits)}
+              label="Charged"
+              value={formatCreditValue(totalCredits)}
             />
-            {childCredits > 0 && (
-              <CreditDetailRow
-                label="Sub-agents"
-                value={formatCreditValue(childCredits)}
-              />
-            )}
           </dl>
         </section>
 
-        <hr className="my-1 border-t border-border" />
+        <hr className="-mx-4 border-t border-border" />
 
-        <section aria-labelledby={`${headingId}-breakdown`}>
-          <h3
-            id={`${headingId}-breakdown`}
-            className="px-2 py-1 text-xs font-medium text-muted-foreground"
-          >
-            Credit breakdown
-          </h3>
+        <section aria-label="Credit breakdown">
           {isConsumptionLoading && !consumption ? (
             <div
               aria-busy="true"
               aria-live="polite"
-              className="flex min-h-9 items-center px-2 py-1.5 text-sm text-muted-foreground"
+              className="flex min-h-10 items-center text-sm text-muted-foreground"
             >
               <span className="flex-1">Loading details</span>
               <span className="h-3 w-8 animate-pulse rounded bg-muted-foreground/20" />
@@ -185,10 +173,16 @@ export function CreditCostPopover({
             <dl>
               <CreditDetailRow
                 label="Agent work and context"
-                description="Longer conversations require more context to process"
                 value={formatCreditValue(details.agentWorkCredits)}
                 icon={InternalActionIcons.ActionBrainIcon}
               />
+              {childCredits > 0 && (
+                <CreditDetailRow
+                  label="Sub-agents"
+                  value={formatCreditValue(childCredits)}
+                  icon={InternalActionIcons.ActionRobotIcon}
+                />
+              )}
               {visibleTools.map((tool) => (
                 <CreditDetailRow
                   key={`${tool.internalMCPServerName ?? "external"}:${tool.toolName}:${tool.label}`}
@@ -200,15 +194,15 @@ export function CreditCostPopover({
               ))}
               {remainingTools.length > 0 && (
                 <CreditDetailRow
-                  label="Other tools"
-                  description={`${remainingTools.length} ${remainingTools.length === 1 ? "tool" : "tools"}, ${remainingToolCallCount} ${remainingToolCallCount === 1 ? "use" : "uses"}`}
+                  label={`${remainingTools.length} other ${remainingTools.length === 1 ? "tool" : "tools"}`}
+                  description={`${remainingToolCallCount} ${remainingToolCallCount === 1 ? "use" : "uses"}`}
                   value={formatCreditValue(remainingToolCredits)}
                   icon={InternalActionIcons.ToolsIcon}
                 />
               )}
             </dl>
           ) : (
-            <div className="px-2 py-1.5 text-sm">
+            <div className="py-2 text-sm">
               <p className="font-medium text-foreground">
                 Detailed explanation unavailable
               </p>

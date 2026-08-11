@@ -64,7 +64,7 @@ describe("CreditCostPopover accessibility", () => {
     await user.keyboard("{Enter}");
 
     expect(
-      await screen.findByRole("dialog", { name: "Credit usage" })
+      await screen.findByRole("dialog", { name: "Message credits" })
     ).toBeInTheDocument();
     expect(trigger).toHaveAttribute("aria-expanded", "true");
 
@@ -72,7 +72,7 @@ describe("CreditCostPopover accessibility", () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByRole("dialog", { name: "Credit usage" })
+        screen.queryByRole("dialog", { name: "Message credits" })
       ).not.toBeInTheDocument();
       expect(trigger).toHaveFocus();
     });
