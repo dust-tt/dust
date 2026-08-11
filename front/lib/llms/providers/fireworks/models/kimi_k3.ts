@@ -26,8 +26,8 @@ export function WithDustMoonshotAiKimiK3Config<
     // onto the class statics.
     static readonly modelConfig = FIREWORKS_KIMI_K3_MODEL_CONFIG;
 
-    // K3 has no `medium`: fold low/medium/high onto its low/high/max. Force
-    // temperature 0 on every request for deterministic sampling.
+    // K3 has no `medium`: fold low/medium/high onto its low/high/max. Use the
+    // lowest Fireworks-supported temperature on every request.
     static readonly configParsers = [
       forceTemperatureToZero,
       mapReasoningEffortToLowHighMax,
