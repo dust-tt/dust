@@ -386,7 +386,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     context.projectSpaceName
   ) {
     return (
-      <div className="relative z-20 mx-auto flex w-full flex-col pt-4 pb-6 md:max-w-conversation">
+      <div className="relative z-20 mx-auto flex w-full flex-col pt-4 pb-6 md:max-w-[calc(var(--container-conversation)+0.5rem)] md:px-1">
         <PodJoinCTA
           owner={context.owner}
           podId={context.projectId}
@@ -463,7 +463,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
 
   if (context.projectId && context.isProjectArchived) {
     return (
-      <div className="mx-auto flex w-full flex-col py-4 md:max-w-conversation">
+      <div className="mx-auto flex w-full flex-col py-4 md:max-w-[calc(var(--container-conversation)+0.5rem)] md:px-1">
         <EmptyCTA
           message="This conversation belongs to an archived Pod. No new messages can be sent."
           action={null}
@@ -475,7 +475,10 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   return (
     <div
       className={classNames(
-        "relative z-20 mx-auto flex w-full flex-col pt-4 pb-6 md:max-w-conversation"
+        // Matches the gutter treatment on the other conversation-column
+        // wrappers: constant md:px-1 so the composer shadow never clips,
+        // max-w widened by the same 0.5rem to keep the wide-viewport width.
+        "relative z-20 mx-auto flex w-full flex-col pt-4 pb-6 md:max-w-[calc(var(--container-conversation)+0.5rem)] md:px-1"
       )}
     >
       <div className="flex w-full justify-center gap-2">

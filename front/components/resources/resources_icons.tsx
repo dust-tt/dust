@@ -121,6 +121,7 @@ const AVATAR_BADGE_CLASSES: Record<
   ResourceAvatarSize,
   { badge: string; icon: string }
 > = {
+  "3xs": { badge: "h-2.5 w-2.5 rounded-xs", icon: "h-1.5 w-1.5" },
   xxs: { badge: "h-3 w-3 rounded-xs", icon: "h-2 w-2" },
   xs: { badge: "h-3.5 w-3.5 rounded-sm", icon: "h-2.5 w-2.5" },
   sm: { badge: "h-4 w-4 rounded-sm", icon: "h-3 w-3" },

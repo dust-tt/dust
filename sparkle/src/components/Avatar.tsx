@@ -7,6 +7,7 @@ import { cva } from "class-variance-authority";
 import React, { useState } from "react";
 
 export const AVATAR_SIZES = [
+  "3xs",
   "xxs",
   "xs",
   "sm",
@@ -26,6 +27,7 @@ const avatarVariants = cva(
   {
     variants: {
       size: {
+        "3xs": "h-4 w-4",
         xxs: "h-5 w-5",
         xs: "h-7 w-7",
         sm: "h-9 w-9",
@@ -47,6 +49,11 @@ const avatarVariants = cva(
       },
     },
     compoundVariants: [
+      {
+        rounded: false,
+        size: "3xs",
+        className: "rounded",
+      },
       {
         rounded: false,
         size: "xxs",
@@ -100,6 +107,7 @@ const avatarVariants = cva(
 const textVariants = cva("select-none font-semibold", {
   variants: {
     size: {
+      "3xs": "text-[8px]",
       xxs: "text-[10px]",
       xs: "text-xs",
       sm: "text-sm",
