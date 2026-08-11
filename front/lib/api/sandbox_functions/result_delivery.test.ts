@@ -53,6 +53,37 @@ describe("parseStdoutResultEnvelope", () => {
     });
   });
 
+  it("preserves the output_truncated code dsbx mints for a cut envelope", () => {
+    expect(
+      parseStdoutResultEnvelope(
+        JSON.stringify({
+          protocolVersion: 3,
+          delivery: "stdout",
+          outcome: {
+            ok: false,
+            error: {
+              code: "output_truncated",
+              message:
+                "function output was truncated in transit (read 2097152 bytes, runner exit 0); " +
+                "return a smaller payload or write large data to a pod file",
+            },
+          },
+        })
+      )
+    ).toEqual({
+      outcome: {
+        ok: false,
+        error: {
+          code: "output_truncated",
+          message:
+            "function output was truncated in transit (read 2097152 bytes, runner exit 0); " +
+            "return a smaller payload or write large data to a pod file",
+        },
+      },
+      timings: null,
+    });
+  });
+
   it("returns invocation_failed for empty or non-JSON stdout", () => {
     expect(parseStdoutResultEnvelope("")).toMatchObject({
       outcome: { ok: false, error: { code: "invocation_failed" } },
