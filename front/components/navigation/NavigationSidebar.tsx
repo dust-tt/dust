@@ -1,6 +1,5 @@
 import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
-import { SidebarBanners } from "@app/components/navigation/AppStatusBanner";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
@@ -113,11 +112,8 @@ export const NavigationSidebar = React.forwardRef<
   const { setIsNavigationBarOpen } = useDesktopNavigation();
 
   return (
-    <div ref={ref} className="flex min-w-0 grow flex-col">
+    <div ref={ref} className="flex min-w-0 grow flex-col pt-2">
       <div className={cn("flex flex-col gap-3")}>
-        <div className={cn("flex flex-col gap-2")}>
-          <SidebarBanners />
-        </div>
         {navs.length > 1 && (
           <NavTabPill value={currentTab?.id ?? "conversations"}>
             <NavTabPillList className="mx-sidebar-side-spacing">

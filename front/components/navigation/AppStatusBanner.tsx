@@ -5,6 +5,7 @@ import {
   isDustCompanyPlan,
   isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
 import { useProgrammaticUsageLimit } from "@app/lib/swr/usage_settings";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
@@ -18,20 +19,30 @@ import { isAdmin } from "@app/types/user";
 import { cn, LinkWrapper } from "@dust-tt/sparkle";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
+import { useMemo } from "react";
 
-const statusBannerVariants = cva("space-y-2 border-y px-3 py-3 text-xs", {
-  variants: {
-    variant: {
-      info: cn("border-info-200", "bg-info-100", "text-info-900"),
-      warning: cn("border-warning-200", "bg-warning-100", "text-warning-900"),
-      success: cn("border-success-200", "bg-success-100", "text-success-900"),
-      danger: cn("border-red-200", "bg-red-100", "text-red-900"),
+const statusBannerVariants = cva(
+  "flex flex-col gap-0.5 border-b px-4 py-2 text-sm",
+  {
+    variants: {
+      variant: {
+        info: cn("border-info-100", "bg-info-50", "text-info-800"),
+        orange: cn(
+          "border-orange-100",
+          "bg-orange-50",
+          "text-orange-800",
+          "dark:border-info-100 dark:bg-info-50 dark:text-info-700"
+        ),
+        warning: cn("border-warning-100", "bg-warning-50", "text-warning-800"),
+        success: cn("border-success-200", "bg-success-50", "text-success-800"),
+        danger: cn("border-red-100", "bg-red-50", "text-red-800"),
+      },
     },
-  },
-  defaultVariants: {
-    variant: "info",
-  },
-});
+    defaultVariants: {
+      variant: "info",
+    },
+  }
+);
 
 interface StatusBannerProps extends VariantProps<typeof statusBannerVariants> {
   title: string;
@@ -47,9 +58,11 @@ function StatusBanner({
 }: StatusBannerProps) {
   return (
     <div className={statusBannerVariants({ variant })}>
-      <div className="font-bold">{title}</div>
-      <div className="font-normal">{description}</div>
-      {footer && <div>{footer}</div>}
+      <div className="font-semibold">{title}</div>
+      <div className="font-normal">
+        {description}
+        {footer && <> {footer}</>}
+      </div>
     </div>
   );
 }
@@ -64,6 +77,7 @@ function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   if (dustStatus) {
     return (
       <StatusBanner
+        variant="orange"
         title={dustStatus.name}
         description={dustStatus.description}
         footer={
@@ -86,6 +100,7 @@ function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   if (providersStatus) {
     return (
       <StatusBanner
+        variant="orange"
         title={providersStatus.name}
         description={providersStatus.description}
       />
@@ -310,9 +325,46 @@ function WorkspaceUsageStatusBanner({
   return <StatusBanner {...banner} />;
 }
 
-export function SidebarBanners() {
+// DEMO ONLY — remove before merging.
+function useDemoAppStatus(): AppStatus | null {
+  const router = useAppRouter();
+  const { demoBanner } = router.query;
+
+  return useMemo(() => {
+    if (demoBanner === "off") {
+      return null;
+    }
+
+    if (demoBanner === "providers") {
+      return {
+        dustStatus: null,
+        providersStatus: {
+          name: "Model provider incident",
+          description:
+            "One of our model providers reports elevated latency. Agents relying on it may be slower than usual.",
+          link: "https://status.dust.tt",
+        },
+      };
+    }
+
+    return {
+      dustStatus: {
+        name: "Degraded performance on conversations",
+        description:
+          "We are investigating elevated error rates on agent conversations. Some messages may fail to send.",
+        link: "https://status.dust.tt",
+      },
+      providersStatus: null,
+    };
+  }, [demoBanner]);
+}
+
+export function StatusBanners() {
   const { workspace: owner, subscription } = useAuth();
-  const { appStatus } = useAppStatus();
+  const { appStatus: liveAppStatus } = useAppStatus();
+  const demoAppStatus = useDemoAppStatus();
+
+  const appStatus = demoAppStatus ?? liveAppStatus;
 
   return (
     <>
