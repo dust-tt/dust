@@ -19,6 +19,7 @@ dsbx version       Print version information
 dsbx forward       Forward sandbox egress traffic to the Dust egress proxy
 dsbx resolve       Run the local synthetic DNS resolver for proxied traffic
 dsbx healthcheck   Report sandbox egress enforcement health as JSON
+dsbx filesystem    Mount the internal conversation/pod filesystem (Linux only)
 dsbx tools         Interact with MCP servers and tools
 dsbx function      Run a sandbox function (run) or print its schema (get)
 ```

@@ -94,7 +94,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.77",
+      tag: "0.8.78",
     });
   });
 
@@ -191,7 +191,7 @@ describe("sandbox image registry", () => {
       expect(command).toContain("/usr/bin/systemd-analyze unit-paths");
       expect(command).toContain("systemd unit path must be absolute");
       expect(command).toContain(
-        "for path in /opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle /usr/local/bin/dust-gcs-token-server.py /usr/local/bin/dust-gcs-write-token.sh /usr/local/bin/dust-gcs-token-firewall.sh /usr/local/bin/dust-fs-overlay.py /opt/bin/litestream"
+        "for path in /opt/bin/dsbx /usr/local/bin/dust-install-trust-bundle /usr/local/bin/dust-gcs-token-server.py /usr/local/bin/dust-gcs-write-token.sh /usr/local/bin/dust-gcs-token-firewall.sh /opt/bin/litestream"
       );
       expect(command).toContain("empty-password local accounts must not exist");
       expect(command).toContain("privileged primary group");
@@ -423,10 +423,10 @@ describe("sandbox image registry", () => {
 
     expect(runCommands).toEqual(
       expect.arrayContaining([
-        "apt-get update && apt-get install -y python3 libfuse2t64",
+        "apt-get update && apt-get install -y python3",
         "mkdir -p /usr/local/bin",
         expect.stringContaining(
-          "chown root:root /usr/local/bin/dust-gcs-token-server.py /usr/local/bin/dust-gcs-write-token.sh /usr/local/bin/dust-gcs-token-firewall.sh /usr/local/bin/dust-fs-overlay.py"
+          "chown root:root /usr/local/bin/dust-gcs-token-server.py /usr/local/bin/dust-gcs-write-token.sh /usr/local/bin/dust-gcs-token-firewall.sh"
         ),
       ])
     );
@@ -453,37 +453,25 @@ describe("sandbox image registry", () => {
     expect(firewall).not.toContain("delete table ip dust-gcs-token");
   });
 
-  test("installs and self-tests the mutation-tracking filesystem overlay", () => {
+  test("installs and self-tests the Rust filesystem overlay", () => {
     const image = getDustBaseImage();
     const operations = getDustBaseImageOperations();
     const runCommands = getRunCommands(operations);
-    const overlay = getCopiedContent(
-      getCopyOperations(operations),
-      "/usr/local/bin/dust-fs-overlay.py"
-    );
-    const temporaryDirectory = mkdtempSync(join(tmpdir(), "dust-fs-overlay-"));
-    const overlayPath = join(temporaryDirectory, "dust-fs-overlay.py");
-
-    try {
-      writeFileSync(overlayPath, overlay);
-      const result = spawnSync("python3", [overlayPath, "--self-test"], {
-        encoding: "utf8",
-      });
-
-      expect(result.status, result.stderr).toBe(0);
-    } finally {
-      rmSync(temporaryDirectory, { recursive: true, force: true });
-    }
 
     expect(image.hasCapability("dust_fs_overlay")).toBe(true);
-    expect(runCommands.join("\n")).toContain("fusepy==3.0.1");
+    expect(runCommands).toContain(
+      "/usr/sbin/runuser -u dust-fs -- /opt/bin/dsbx filesystem --self-test"
+    );
+    expect(runCommands.join("\n")).not.toContain("fusepy");
+    expect(runCommands.join("\n")).not.toContain("libfuse2t64");
+    expect(
+      getCopyOperations(operations).some(
+        (operation) => operation.dest === "/usr/local/bin/dust-fs-overlay.py"
+      )
+    ).toBe(false);
     expect(runCommands.join("\n")).toContain("user_allow_other /etc/fuse.conf");
     expect(runCommands.join("\n")).toContain(
       "useradd --system --no-create-home --gid dust-fs"
-    );
-    expect(overlay).toContain("destinationMount=new_mount.mount");
-    expect(overlay).toContain(
-      'self._mutation_client.apply(mount.mount, "unlink"'
     );
   });
 
@@ -493,7 +481,7 @@ describe("sandbox image registry", () => {
     expect(runCommands).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.45/dsbx-linux-x86_64"
+          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.48/dsbx-linux-x86_64"
         ),
         expect.stringContaining(
           "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx"

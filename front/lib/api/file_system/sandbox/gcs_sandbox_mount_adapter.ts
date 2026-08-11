@@ -32,9 +32,9 @@ const TOKEN_SERVER_POLL_ATTEMPTS = 100;
 const TOKEN_SERVER_POLL_INTERVAL_SECONDS = 0.05;
 const TOKEN_SERVER_EXEC_TIMEOUT_MS = 10_000;
 const TOKEN_BROKER_DENIED_USERS = ["agent", "agent-proxied"] as const;
-const FILE_SYSTEM_OVERLAY_PATH = "/usr/local/bin/dust-fs-overlay.py";
-const FILE_SYSTEM_OVERLAY_PYTHON_PATH = "/opt/venv/bin/python";
+const FILE_SYSTEM_OVERLAY_BINARY_PATH = "/opt/bin/dsbx";
 const FILE_SYSTEM_OVERLAY_RUNTIME_DIRECTORY = "/run/dust-fs";
+const FILE_SYSTEM_OVERLAY_LOG_PATH = `${FILE_SYSTEM_OVERLAY_RUNTIME_DIRECTORY}/overlay.log`;
 const FILE_SYSTEM_OVERLAY_TOKEN_PATH = `${FILE_SYSTEM_OVERLAY_RUNTIME_DIRECTORY}/token`;
 const FILE_SYSTEM_OVERLAY_USER = "dust-fs";
 const FILE_SYSTEM_OVERLAY_MOUNT_POINT = "/files";
@@ -735,8 +735,8 @@ export function buildFileSystemOverlayMountCommand({
     "-u",
     FILE_SYSTEM_OVERLAY_USER,
     "--",
-    FILE_SYSTEM_OVERLAY_PYTHON_PATH,
-    FILE_SYSTEM_OVERLAY_PATH,
+    FILE_SYSTEM_OVERLAY_BINARY_PATH,
+    "filesystem",
     "--mountpoint",
     FILE_SYSTEM_OVERLAY_MOUNT_POINT,
     "--api-url",
@@ -769,11 +769,22 @@ export function buildFileSystemOverlayMountCommand({
       })
     );
   }
-  return rootCommand.stderrToStdout(
-    rootCommand.timeout(
-      rootCommand.exec("/usr/sbin/runuser", args),
-      MOUNT_TIMEOUT_MS / 1_000
+  const startOverlay = rootCommand.background(
+    rootCommand.redirectStdout(
+      rootCommand.nohup(rootCommand.exec("/usr/sbin/runuser", args)),
+      FILE_SYSTEM_OVERLAY_LOG_PATH,
+      { stderrToStdout: true }
     )
+  );
+  const waitForMount = rootCommand.timeout(
+    rootCommand.unsafeShell(
+      `until [ "$(/usr/bin/stat -f -c %t ${FILE_SYSTEM_OVERLAY_MOUNT_POINT} 2>/dev/null)" = "${FUSE_STATFS_MAGIC_HEX}" ]; do /usr/bin/sleep 0.1; done`,
+      "Poll the fixed Dust FUSE mount point until the background dsbx process is ready."
+    ),
+    MOUNT_TIMEOUT_MS / 1_000
+  );
+  return rootCommand.stderrToStdout(
+    rootCommand.and([startOverlay, waitForMount])
   );
 }
 

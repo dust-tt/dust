@@ -24,7 +24,7 @@ sandbox process
 ```
 
 The hidden gcsfuse mounts continue to own GCS transfer, credentials, and object
-storage behavior. The thin `dust-fs-overlay.py` process routes reads to those
+storage behavior. The thin Rust `dsbx filesystem` process routes reads to those
 mounts and sends semantic mutations synchronously to Front.
 
 One FUSE filesystem is mounted at `/files`. Its canonical entries are:
@@ -89,6 +89,10 @@ recreation instead of exposing an untracked writable directory. Tracked hidden
 gcsfuse mounts disable list and metadata caches so they observe namespace
 changes performed by Front.
 
+The service writes structured startup and failure events to
+`/run/dust-fs/overlay.log`, including rejected mutations, exhausted retries, and
+unexpected backing-store I/O errors.
+
 ## Deliberate limitations
 
 - At most one conversation mount and one pod mount are routed by the overlay.
@@ -105,7 +109,7 @@ new architecture decision.
 
 ## Code ownership
 
-- `front/lib/api/sandbox/image/file_system/dust-fs-overlay.py`: FUSE routing and
+- `cli/dust-sandbox/src/commands/filesystem/`: FUSE routing and
   syscall-to-mutation translation;
 - `front/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter.ts`: hidden mounts,
   `/files` startup, credentials, and liveness;

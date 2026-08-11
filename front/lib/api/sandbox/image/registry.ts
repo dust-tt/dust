@@ -26,8 +26,8 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.77";
-const DSBX_CLI_VERSION = "0.1.45";
+const DUST_BASE_IMAGE_VERSION = "0.8.78";
+const DSBX_CLI_VERSION = "0.1.48";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
 // the stable identity used when creating the workload account.
@@ -57,7 +57,6 @@ const LIBREOFFICE_PPA = "ppa:libreoffice/ppa";
 // GCS replica mount.
 const LITESTREAM_VERSION = "0.5.13";
 const EGRESS_LOCAL_DIR = path.resolve(__dirname, "egress");
-const FILE_SYSTEM_LOCAL_DIR = path.resolve(__dirname, "file_system");
 const LITESTREAM_LOCAL_DIR = path.resolve(__dirname, "litestream");
 const PROFILE_LOCAL_DIR = path.resolve(__dirname, "profile");
 const TELEMETRY_LOCAL_DIR = path.resolve(__dirname, "telemetry");
@@ -321,9 +320,9 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   .runCmd(getLocalAccountPrivilegeHardeningCommand(), { user: "root" })
   .runCmd(getAgentProxiedSetupCommand(), { user: "root" })
   .runCmd(getSshHardeningCommand(), { user: "root" })
-  // The root-owned token broker requires /usr/bin/python3. The Dust filesystem
-  // overlay uses fusepy, whose runtime dynamically loads libfuse.so.2.
-  .runCmd("apt-get update && apt-get install -y python3 libfuse2t64", {
+  // The root-owned token broker requires /usr/bin/python3. The filesystem
+  // overlay is part of the statically linked dsbx binary.
+  .runCmd("apt-get update && apt-get install -y python3", {
     user: "root",
   })
   .runCmd(
@@ -348,14 +347,9 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     "/usr/local/bin/dust-gcs-token-firewall.sh",
     { user: "root" }
   )
-  .copy(
-    getLocalContent(FILE_SYSTEM_LOCAL_DIR, "dust-fs-overlay.py"),
-    "/usr/local/bin/dust-fs-overlay.py",
-    { user: "root" }
-  )
   .runCmd(
-    "chown root:root /usr/local/bin/dust-gcs-token-server.py /usr/local/bin/dust-gcs-write-token.sh /usr/local/bin/dust-gcs-token-firewall.sh /usr/local/bin/dust-fs-overlay.py && " +
-      "chmod 755 /usr/local/bin/dust-gcs-token-server.py /usr/local/bin/dust-gcs-write-token.sh /usr/local/bin/dust-gcs-token-firewall.sh /usr/local/bin/dust-fs-overlay.py",
+    "chown root:root /usr/local/bin/dust-gcs-token-server.py /usr/local/bin/dust-gcs-write-token.sh /usr/local/bin/dust-gcs-token-firewall.sh && " +
+      "chmod 755 /usr/local/bin/dust-gcs-token-server.py /usr/local/bin/dust-gcs-write-token.sh /usr/local/bin/dust-gcs-token-firewall.sh",
     { user: "root" }
   )
   .runCmd(getEgressResolverUserSetupCommand(), { user: "root" })
@@ -438,8 +432,6 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     runtime: "python",
   })
   .registerTool(getPythonToolEntries(), { installCmd: getPythonInstallCmd() })
-  // Internal dependency of dust-fs-overlay.py, not an agent-facing tool.
-  .runCmd("uv pip install --python /opt/venv fusepy==3.0.1")
   .registerTool(
     [
       {
@@ -493,6 +485,12 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
       "mv /tmp/dsbx /opt/bin/dsbx && " +
       "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx",
     { user: "root" }
+  )
+  .runCmd(
+    "/usr/sbin/runuser -u dust-fs -- /opt/bin/dsbx filesystem --self-test",
+    {
+      user: "root",
+    }
   )
   .registerTool({
     name: DSBX_TOOL_NAME,

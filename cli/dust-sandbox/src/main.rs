@@ -24,6 +24,8 @@ enum Commands {
     Healthcheck(commands::healthcheck::HealthcheckArgs),
     /// List sandbox environment variables and DSEC allowlists
     Env(commands::env::EnvArgs),
+    /// Mount the Dust conversation and pod filesystem
+    Filesystem(commands::filesystem::FilesystemArgs),
     /// Run or inspect sandbox functions
     Function {
         #[command(subcommand)]
@@ -70,6 +72,7 @@ async fn run() -> anyhow::Result<()> {
         Commands::Resolve(args) => commands::cmd_resolve(args).await?,
         Commands::Healthcheck(args) => commands::cmd_healthcheck(args)?,
         Commands::Env(args) => commands::cmd_env(args)?,
+        Commands::Filesystem(args) => commands::cmd_filesystem(args)?,
         Commands::Function { command } => match command {
             commands::function::FunctionCommand::Run {
                 name,

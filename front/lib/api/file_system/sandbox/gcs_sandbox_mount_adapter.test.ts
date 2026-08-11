@@ -209,8 +209,11 @@ describe("buildFileSystemOverlayMountCommand", () => {
       "/run/dust-fs/data/mount-1"
     );
     expect(command).toContain(
-      "/usr/sbin/runuser -u dust-fs -- /opt/venv/bin/python /usr/local/bin/dust-fs-overlay.py"
+      "/usr/sbin/runuser -u dust-fs -- /opt/bin/dsbx filesystem"
     );
+    expect(command).toContain("/usr/bin/nohup");
+    expect(command).toContain("/run/dust-fs/overlay.log");
+    expect(command).toContain("/usr/bin/stat -f -c %t /files");
     expect(command).toContain("--mountpoint /files");
     expect(command.match(/--mount-spec/g)).toHaveLength(2);
     expect(command).toContain('"name":"conversation-conv1"');
@@ -262,7 +265,7 @@ describe("buildFileSystemOverlayMountCommand", () => {
       getRootCommandCall(execRoot, callIndex)
     );
     const overlayIndexes = commands.flatMap((command, index) =>
-      command.includes("dust-fs-overlay.py") ? [index] : []
+      command.includes("/opt/bin/dsbx filesystem") ? [index] : []
     );
     const hiddenMountIndexes = commands.flatMap((command, index) =>
       command.includes("/usr/bin/gcsfuse") &&
@@ -359,7 +362,7 @@ describe("pod sandbox mount wiring", () => {
       getRootCommandCall(execRoot, callIndex)
     );
     const overlayCommands = commands.filter((command) =>
-      command.includes("dust-fs-overlay.py")
+      command.includes("/opt/bin/dsbx filesystem")
     );
     expect(overlayCommands).toHaveLength(1);
     expect(overlayCommands[0]).toContain("--mountpoint /files");

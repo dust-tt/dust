@@ -55,7 +55,6 @@ export const SANDBOX_ROOT_INVOKED_HELPERS = [
   "/usr/local/bin/dust-gcs-token-server.py",
   "/usr/local/bin/dust-gcs-write-token.sh",
   "/usr/local/bin/dust-gcs-token-firewall.sh",
-  "/usr/local/bin/dust-fs-overlay.py",
   // Root invokes litestream on the pod-state pre-sleep sync (`litestream sync
   // -wait`) and cold-start restore, so it must stay root-owned/non-writable.
   "/opt/bin/litestream",
