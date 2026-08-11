@@ -82,8 +82,6 @@ export type GetWorkspaceUsageStatusResponseBody = {
   canRequestUpgrade: boolean;
   hasPendingUpgradeRequest: boolean;
   willAutoUpgrade: boolean;
-  // Whether the workspace requires a non-empty reason to submit an upgrade
-  // request.
   requireReason: boolean;
 };
 

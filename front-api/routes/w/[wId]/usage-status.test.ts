@@ -163,7 +163,7 @@ describe("/api/w/[wId]/usage-status", () => {
     expect(postResponse.status).toBe(403);
   });
 
-  it("surfaces requireReason when the workspace requires a reason", async () => {
+  it("surfaces requireReason when the setting is enabled", async () => {
     const workspace = await creditPricedWorkspace();
 
     const adminAuth = await Authenticator.internalAdminForWorkspace(

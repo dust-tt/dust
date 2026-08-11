@@ -1,3 +1,5 @@
+import { Authenticator } from "@app/lib/auth";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types/user";
@@ -217,6 +219,48 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
 
       expect(second.status).toBe(200);
       expect((await second.json()).request.sId).toBe(firstSId);
+    });
+
+    it("reuses the pending request on retry once the reason requirement is enabled after creation", async () => {
+      const workspace = await creditPricedWorkspace();
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const configResult = await CreditUsageConfigurationResource.makeNew(
+        adminAuth,
+        {
+          allowMemberUpgradeRequests: true,
+          upgradeRequestEmailEnabled: false,
+          requireUpgradeRequestReason: false,
+          defaultDiscountPercent: 0,
+          usageCapCredits: null,
+        }
+      );
+      if (configResult.isErr()) {
+        throw configResult.error;
+      }
+      const config = configResult.value;
+
+      const { response: first } = await createMemberRequest(workspace);
+      const firstSId = (await first.json()).request.sId;
+
+      // Simulate the workspace toggling the reason requirement on after the
+      // first request already succeeded.
+      await config.updateConfiguration(adminAuth, {
+        requireUpgradeRequestReason: true,
+      });
+
+      // Same authenticated member retries with no reason (e.g. a network
+      // retry from an older client); it must reuse the existing pending
+      // request rather than being rejected.
+      const retry = await honoApp.request(upgradeRequestsUrl(workspace.sId), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+
+      expect(retry.status).toBe(200);
+      expect((await retry.json()).request.sId).toBe(firstSId);
     });
   });
 
