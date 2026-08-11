@@ -3863,22 +3863,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     agentMessageId: ModelId,
     { withToolMetadata = false }: { withToolMetadata?: boolean } = {}
   ): Promise<SkillResource[]> {
-    const skillsByAgentMessageId = await this.listByAgentMessageIds(
+    const agentMessageSkills = await this.listByAgentMessageIds(
       auth,
       [agentMessageId],
       { withToolMetadata }
     );
 
-    return skillsByAgentMessageId.get(agentMessageId) ?? [];
+    return [
+      ...new Map(
+        agentMessageSkills.map(({ skill }) => [skill.sId, skill])
+      ).values(),
+    ];
   }
 
   static async listByAgentMessageIds(
     auth: Authenticator,
     agentMessageIds: ModelId[],
     { withToolMetadata = false }: { withToolMetadata?: boolean } = {}
-  ): Promise<Map<ModelId, SkillResource[]>> {
+  ): Promise<{ agentMessageId: ModelId; skill: SkillResource }[]> {
     if (agentMessageIds.length === 0) {
-      return new Map();
+      return [];
     }
 
     const workspace = auth.getNonNullableWorkspace();
@@ -3898,45 +3902,24 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       withToolMetadata,
     });
     const skillsById = new Map(skills.map((skill) => [skill.sId, skill]));
-    const skillsByAgentMessageId = new Map<ModelId, SkillResource[]>();
-    const seenSkillIdsByAgentMessageId = new Map<ModelId, Set<string>>();
 
-    for (const agentMessageSkill of agentMessageSkills) {
-      const skillId =
-        agentMessageSkill.globalSkillId ??
-        (agentMessageSkill.customSkillId !== null
-          ? this.modelIdToSId({
-              id: agentMessageSkill.customSkillId,
-              workspaceId: workspace.id,
-            })
-          : null);
-      const skill = skillId ? skillsById.get(skillId) : undefined;
-      if (!skill) {
-        continue;
-      }
+    return removeNulls(
+      agentMessageSkills.map((agentMessageSkill) => {
+        const skillId =
+          agentMessageSkill.globalSkillId ??
+          (agentMessageSkill.customSkillId !== null
+            ? this.modelIdToSId({
+                id: agentMessageSkill.customSkillId,
+                workspaceId: workspace.id,
+              })
+            : null);
+        const skill = skillId ? skillsById.get(skillId) : undefined;
 
-      const seenSkillIds =
-        seenSkillIdsByAgentMessageId.get(agentMessageSkill.agentMessageId) ??
-        new Set();
-      if (seenSkillIds.has(skill.sId)) {
-        continue;
-      }
-
-      const messageSkills =
-        skillsByAgentMessageId.get(agentMessageSkill.agentMessageId) ?? [];
-      messageSkills.push(skill);
-      seenSkillIds.add(skill.sId);
-      skillsByAgentMessageId.set(
-        agentMessageSkill.agentMessageId,
-        messageSkills
-      );
-      seenSkillIdsByAgentMessageId.set(
-        agentMessageSkill.agentMessageId,
-        seenSkillIds
-      );
-    }
-
-    return skillsByAgentMessageId;
+        return skill
+          ? { agentMessageId: agentMessageSkill.agentMessageId, skill }
+          : null;
+      })
+    );
   }
 
   static async listByConversationModelId(

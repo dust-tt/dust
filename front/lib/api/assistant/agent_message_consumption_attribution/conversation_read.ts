@@ -21,6 +21,7 @@ import type {
   ConversationConsumptionSkillDetails,
   ConversationConsumptionToolDetails,
 } from "@app/types/assistant/conversation_consumption";
+import type { ModelId } from "@app/types/shared/model_id";
 
 type MessageDetailsEntry = {
   message: ConversationConsumptionMessageFacts;
@@ -169,7 +170,7 @@ export async function getConversationConsumption(
         serialized.toolName === ENABLE_SKILL_TOOL_NAME
       );
     });
-  const [runs, skillsByAgentMessageId, enableSkillActionsWithOutputs] =
+  const [runs, agentMessageSkills, enableSkillActionsWithOutputs] =
     await Promise.all([
       RunResource.listByDustRunIds(auth, { dustRunIds }),
       SkillResource.listByAgentMessageIds(
@@ -183,6 +184,12 @@ export async function getConversationConsumption(
       }),
     ]);
   const usages = await RunResource.listRunUsagesForRuns(auth, { runs });
+  const skillsByAgentMessageId = new Map<ModelId, SkillResource[]>();
+  for (const { agentMessageId, skill } of agentMessageSkills) {
+    const skills = skillsByAgentMessageId.get(agentMessageId) ?? [];
+    skills.push(skill);
+    skillsByAgentMessageId.set(agentMessageId, skills);
+  }
   const enabledSkillIdsByActionId = new Map(
     enableSkillActionsWithOutputs.flatMap((action) => {
       const skillIds = getEnabledSkillIdsFromAction(action);
