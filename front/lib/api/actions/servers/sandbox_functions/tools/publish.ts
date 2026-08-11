@@ -19,6 +19,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export async function publishHandler(
   {
+    confirmFast,
     defaultStake,
     description,
     domains,
@@ -26,6 +27,7 @@ export async function publishHandler(
     path,
     slug,
   }: {
+    confirmFast?: boolean;
     defaultStake: SandboxFunctionStake;
     description: string;
     domains?: string[];
@@ -49,6 +51,7 @@ export async function publishHandler(
     path,
     executionMode,
     defaultStake,
+    confirmFast,
   });
   if (result.isErr()) {
     return new Err(toMCPError(result.error));
@@ -60,7 +63,7 @@ export async function publishHandler(
   //
   // The mode, timestamp and bundle hash are the publisher's receipt: they let the caller confirm
   // this publish landed (list/get echo the same fields) without a second tool call.
-  const { sandboxFunction, byteIdentical } = result.value;
+  const { sandboxFunction, byteIdentical, warnings } = result.value;
   const { slug: publishedSlug } = sandboxFunction;
 
   // Failures become a note, not a publish failure — the function is already
@@ -84,6 +87,9 @@ export async function publishHandler(
         "source file before editing again."
     );
   }
+  // Advisory only: the function is published either way (the lint heuristics have false
+  // positives, and a publish must never be lost to one).
+  lines.push(...warnings);
   if (domainNote) {
     lines.push(domainNote);
   }

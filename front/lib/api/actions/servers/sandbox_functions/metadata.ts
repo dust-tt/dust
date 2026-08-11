@@ -109,6 +109,15 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
             "it; it never grants access on its own. A domain the Pod (or workspace) already " +
             "allows is skipped."
         ),
+      confirmFast: z
+        .boolean()
+        .optional()
+        .describe(
+          "Set to true only after a `fast` publish warned that the bundle looks like it calls " +
+            "Dust tools and you verified the match is a false positive: it confirms the `fast` " +
+            "mode and silences that warning. Has no effect on `durable` publishes, and never " +
+            "changes what is published."
+        ),
     },
     stake: "low",
     displayLabels: {
