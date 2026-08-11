@@ -290,9 +290,6 @@
  *           type: array
  *           items:
  *             type: string
- *         isCompactUIView:
- *           type: boolean
- *           description: Server-resolved compact UI display hint for the conversation
  *         forkingData:
  *           $ref: '#/components/schemas/PrivateConversationForkingData'
  *     PrivateConversationForkUser:

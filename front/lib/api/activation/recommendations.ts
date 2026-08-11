@@ -27,21 +27,33 @@ export interface GetActivationRecommendationsResponseBody {
 
 export interface GetActivationPodResponseBody {
   podId: string | null;
+  isCompactUIView: boolean;
 }
 
-export async function getActivationPodId(
+// Resolves the compact UI display preference from an activation pod.
+// Kept separate from pod-id resolution.
+function resolveCompactUIView(
+  activationPod: ActivationPodResource | null
+): boolean {
+  return activationPod?.isCompactUIView ?? false;
+}
+
+export async function getActivationPodInfo(
   auth: Authenticator
-): Promise<string | null> {
+): Promise<GetActivationPodResponseBody> {
   const activationPod = await ActivationPodResource.fetchByUser(auth);
   if (!activationPod) {
-    return null;
+    return { podId: null, isCompactUIView: resolveCompactUIView(null) };
   }
 
   const [space] = await SpaceResource.fetchByModelIds(auth, [
     activationPod.spaceId,
   ]);
 
-  return space?.sId ?? null;
+  return {
+    podId: space?.sId ?? null,
+    isCompactUIView: resolveCompactUIView(activationPod),
+  };
 }
 
 export interface UpdateActivationRecommendationResponseBody {

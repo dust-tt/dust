@@ -10973,10 +10973,6 @@
               "type": "string"
             }
           },
-          "isCompactUIView": {
-            "type": "boolean",
-            "description": "Server-resolved compact UI display hint for the conversation"
-          },
           "forkingData": {
             "$ref": "#/components/schemas/PrivateConversationForkingData"
           }
@@ -14352,10 +14348,6 @@
                 "type": "string",
                 "description": "Visibility setting of the conversation",
                 "example": "private"
-              },
-              "isCompactUIView": {
-                "type": "boolean",
-                "description": "Server-resolved compact UI display hint for the conversation"
               },
               "content": {
                 "type": "array",

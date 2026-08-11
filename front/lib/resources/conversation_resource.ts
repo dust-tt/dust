@@ -13,7 +13,6 @@ import {
 
 import { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
-import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -200,8 +199,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   constructor(
     model: ModelStaticWorkspaceAware<ConversationModel>,
     blob: Attributes<ConversationModel>,
-    private _space: SpaceResource | null,
-    private _activationPod: ActivationPodResource | null = null
+    private _space: SpaceResource | null
   ) {
     super(ConversationModel, blob);
   }
@@ -302,15 +300,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   private static fromModel(
     conversation: ConversationModel,
-    space: SpaceResource | null,
-    activationPod: ActivationPodResource | null = null
+    space: SpaceResource | null
   ): ConversationResource {
-    const resource = new this(
-      this.model,
-      conversation.get(),
-      space,
-      activationPod
-    );
+    const resource = new this(this.model, conversation.get(), space);
     const forkedFrom = this.getForkedFromData(conversation);
     if (forkedFrom) {
       resource._forkingData = { forkedFrom };
@@ -568,11 +560,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       );
     }
     return this._space;
-  }
-
-  // Server-resolved compact UI display.
-  get isCompactUIView(): boolean {
-    return this._activationPod?.isCompactUIView ?? false;
   }
 
   static async makeNew(
@@ -1097,26 +1084,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));
 
-    const conversationSpaceModelIds = removeNulls(
-      conversations.map((c) => c.spaceId)
-    );
-    const activationPods =
-      conversationSpaceModelIds.length === 0
-        ? []
-        : await ActivationPodResource.fetchBySpaceModelIds(
-            auth,
-            conversationSpaceModelIds
-          );
-    const spaceIdToActivationPodMap = new Map(
-      activationPods.map((p) => [p.spaceId, p])
-    );
-
     if (fetchConversationOptions?.dangerouslySkipPermissionFiltering) {
       return conversations.map((c) =>
         this.fromModel(
           c,
-          c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null,
-          c.spaceId ? (spaceIdToActivationPodMap.get(c.spaceId) ?? null) : null
+          c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null
         )
       );
     }
@@ -1148,13 +1120,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           spaceIdToSpaceMap.has(c.spaceId) &&
           spaceIdToSpaceMap.get(c.spaceId)!.canRead(auth)
       )
-      .map((c) =>
-        this.fromModel(
-          c,
-          spaceIdToSpaceMap.get(c.spaceId) ?? null,
-          spaceIdToActivationPodMap.get(c.spaceId) ?? null
-        )
-      );
+      .map((c) => this.fromModel(c, spaceIdToSpaceMap.get(c.spaceId) ?? null));
 
     // If there are no regular conversations, return the accessible pod conversations immediately.
     if (regularConversations.length === 0) {
@@ -1172,8 +1138,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       .map((c) =>
         this.fromModel(
           c,
-          c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null,
-          c.spaceId ? (spaceIdToActivationPodMap.get(c.spaceId) ?? null) : null
+          c.spaceId ? (spaceIdToSpaceMap.get(c.spaceId) ?? null) : null
         )
       );
 
@@ -5277,7 +5242,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       title: this.title,
       id: this.id,
       depth: this.depth,
-      isCompactUIView: this.isCompactUIView,
       ...(this.forkingData && { forkingData: this.forkingData }),
     };
   }

@@ -243,9 +243,6 @@
  *               type: string
  *               description: Visibility setting of the conversation
  *               example: "private"
- *             isCompactUIView:
- *               type: boolean
- *               description: Server-resolved compact UI display hint for the conversation
  *             content:
  *               type: array
  *               items:

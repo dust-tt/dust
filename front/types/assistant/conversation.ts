@@ -620,9 +620,6 @@ export type ConversationWithoutContentType = ConversationListItemType & {
   id: ModelId;
   depth: number;
   forkingData?: ConversationForkingDataType;
-  // Server-resolved compact UI display. Currently only used for activation
-  // conversations. False for the standard UI.
-  isCompactUIView?: boolean;
 };
 
 export type SelectableConversationSpaceType = SpaceType & {
