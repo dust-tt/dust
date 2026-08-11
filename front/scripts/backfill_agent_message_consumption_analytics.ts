@@ -90,7 +90,7 @@ async function assertConsumptionAnalyticsIndexExists(): Promise<void> {
   }
 }
 
-export async function listAgentMessageRefs({
+async function listAgentMessageRefs({
   afterAgentMessageModelId,
   batchSize,
   fromDate,
