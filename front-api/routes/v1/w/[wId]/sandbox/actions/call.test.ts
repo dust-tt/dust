@@ -113,7 +113,12 @@ describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () =
 
     expect(response.status).toBe(403);
     const body = await response.json();
+    expect(body.error.type).toBe("fast_function_called_tools");
+    // Prod frames string-match this phrase to classify the refusal; keep it stable.
     expect(body.error.message).toContain("published as fast");
+    // Self-heal has already recorded the function as durable by the time the refusal is built,
+    // so the copy must steer the caller to a retry, not a republish.
+    expect(body.error.message).toContain("retrying the invocation will work");
     expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
   });
 
