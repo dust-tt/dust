@@ -204,6 +204,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "ServiceNow MCP tool",
     stage: "on_demand",
   },
+  shopify_tool: {
+    description: "Shopify MCP tool",
+    stage: "on_demand",
+  },
   workday_mcp: {
     description: "Workday MCP tool",
     stage: "on_demand",

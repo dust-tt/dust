@@ -67,6 +67,7 @@ import { default as sandboxServer } from "@app/lib/api/actions/servers/sandbox";
 import { default as sandboxFunctionsServer } from "@app/lib/api/actions/servers/sandbox_functions";
 import { default as searchServer } from "@app/lib/api/actions/servers/search";
 import { default as servicenowServer } from "@app/lib/api/actions/servers/servicenow";
+import { default as shopifyServer } from "@app/lib/api/actions/servers/shopify";
 import { default as skillAuthoringServer } from "@app/lib/api/actions/servers/skill_authoring";
 import { default as skillManagementServer } from "@app/lib/api/actions/servers/skill_management";
 import { default as slabServer } from "@app/lib/api/actions/servers/slab";
@@ -210,6 +211,8 @@ export async function getInternalMCPServer(
       return databricksServer(auth, toolContext);
     case "servicenow":
       return servicenowServer(auth, toolContext);
+    case "shopify":
+      return shopifyServer(auth, toolContext);
     case "jira":
       return jiraServer(auth, toolContext);
     case "luma":

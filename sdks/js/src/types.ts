@@ -786,6 +786,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "sandbox_functions"
   | "self_created_slack_app_connector_rollout"
   | "servicenow_tool"
+  | "shopify_tool"
   | "show_debug_tools"
   | "slack_enhanced_default_agent"
   | "slack_message_splitting"
