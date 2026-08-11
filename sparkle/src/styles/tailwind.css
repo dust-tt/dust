@@ -188,6 +188,17 @@
     min-height: 100%;
   }
 
+  .rounded-squircle-40 {
+    border-radius: 40px;
+    corner-shape: squircle;
+  }
+
+  @supports not (corner-shape: squircle) {
+    .rounded-squircle-40 {
+      border-radius: 24px;
+    }
+  }
+
   .checkerboard {
     background-image:
       linear-gradient(

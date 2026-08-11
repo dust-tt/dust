@@ -101,7 +101,6 @@ import {
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,
-  Type01,
   VoicePicker,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
@@ -381,7 +380,6 @@ const InputBarContainer = ({
   >(undefined);
   const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
-  const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const plusButtonRef = useRef<HTMLDivElement>(null);
   const isWidthConstrained = useIsWidthConstrained();
   const shouldEnableSlashSuggestion = actions.includes("capabilities");
@@ -928,10 +926,6 @@ const InputBarContainer = ({
   useEffect(() => {
     setOverlayOpen("knowledge-picker", showKnowledgePicker);
   }, [showKnowledgePicker, setOverlayOpen]);
-
-  useEffect(() => {
-    setOverlayOpen("toolbar", isToolbarOpen);
-  }, [isToolbarOpen, setOverlayOpen]);
 
   const handleAgentRemove = useCallback(() => {
     setSelectedSingleAgent(null);
@@ -1581,11 +1575,6 @@ const InputBarContainer = ({
     owner.metadata?.allowVoiceTranscription !== false &&
     actions.includes("voice") &&
     !isCompact;
-  // Keep the send button (and its spinner) visible while a submit is in
-  // flight — the editor clears optimistically, which would otherwise swap in
-  // an actionable mic and hide the loading state.
-  const showMicInsteadOfSend =
-    (isEmpty && !isSubmitting) || activeVoiceService.status !== "idle";
 
   const isDefaultAgentUnavailable =
     !conversation &&
@@ -1604,6 +1593,10 @@ const InputBarContainer = ({
 
   const isRecording = activeVoiceService.status === "recording";
   const isVoiceActive = activeVoiceService.status !== "idle";
+  // Keep the send button (and its spinner) while a submit is in flight — the
+  // editor clears optimistically — but let the mic own the row while it is
+  // recording or transcribing, where it shows a timer and a level meter.
+  const showSendButton = !isVoiceActive || isSubmitting;
   const compactPreviewText = editorService.getTrimmedText();
   const compactDisplayPlaceholder =
     (disableInput ? submitBlockMessage : placeholder) ?? "Get work done";
@@ -1732,32 +1725,6 @@ const InputBarContainer = ({
         }}
       >
         <div className="flex w-0 flex-grow flex-col">
-          {!isRecording && editor && (
-            <div
-              className={cn("relative flex px-0 pt-1", !isMobile && "hidden")}
-            >
-              <Button
-                variant="ghost-secondary"
-                icon={Type01}
-                size={buttonSize}
-                onClick={() => setIsToolbarOpen(!isToolbarOpen)}
-              />
-              <Toolbar
-                variant="overlay"
-                className={cn(
-                  isToolbarOpen
-                    ? "pointer-events-auto w-full"
-                    : "pointer-events-none hidden"
-                )}
-                onClose={(e: React.MouseEvent<HTMLButtonElement>) => {
-                  e.stopPropagation();
-                  setIsToolbarOpen(false);
-                }}
-              >
-                <ToolBarContent editor={editor} />
-              </Toolbar>
-            </div>
-          )}
           <div className="relative">
             <EditorContent
               editor={editor}
@@ -2037,7 +2004,7 @@ const InputBarContainer = ({
                       />
                     )}
                   </div>
-                  {canShowVoicePicker && showMicInsteadOfSend ? (
+                  {canShowVoicePicker && (
                     <VoicePicker
                       status={activeVoiceService.status}
                       level={activeVoiceService.level}
@@ -2047,18 +2014,10 @@ const InputBarContainer = ({
                       size={buttonSize}
                       showStopLabel={!isWidthConstrained}
                       disabled={disableInput}
-                      buttonProps={{
-                        className: cn(
-                          "rounded-full",
-                          "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:transition-colors",
-                          "bg-linear-to-b from-highlight-400 to-highlight-500 dark:from-blue-500 dark:to-blue-600 text-white",
-                          "shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_color-mix(in_oklch,var(--color-foreground)_10%,transparent)]",
-                          "dark:shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_rgba(0,0,0,0.1)]",
-                          "hover:after:bg-white/10 active:after:bg-white/10"
-                        ),
-                      }}
+                      buttonProps={{ className: "rounded-full" }}
                     />
-                  ) : (
+                  )}
+                  {showSendButton && (
                     <TooltipProvider>
                       <TooltipRoot
                         open={isBlockTooltipOpen && submitBlockMessage !== null}

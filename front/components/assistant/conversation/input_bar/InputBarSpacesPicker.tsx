@@ -1,7 +1,10 @@
+import { DropdownAnchorTrigger } from "@app/components/assistant/conversation/input_bar/DropdownAnchorTrigger";
 import { getSpaceIcon } from "@app/lib/spaces";
 import type { SelectableConversationSpaceType } from "@app/types/assistant/conversation";
 import {
+  DropdownMenu,
   DropdownMenuCheckboxItem,
+  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSearchbar,
@@ -13,7 +16,16 @@ import {
   Planet,
   Spinner,
 } from "@dust-tt/sparkle";
+import type React from "react";
 import { useMemo, useState } from "react";
+
+export function getSpacesPickerLabel(selectedSpaceIds: string[]): string {
+  if (selectedSpaceIds.length === 0) {
+    return "Spaces";
+  }
+
+  return `${selectedSpaceIds.length} additional Space${selectedSpaceIds.length > 1 ? "s" : ""}`;
+}
 
 interface InputBarSpacesPickerProps {
   canDeselectSelectedSpaces: boolean;
@@ -23,6 +35,10 @@ interface InputBarSpacesPickerProps {
   onSelectedSpaceIdsChange: (spaceIds: string[]) => void;
   selectedSpaceIds: string[];
   spaces: SelectableConversationSpaceType[];
+  type?: "dropdown" | "subdropdown";
+  externalOpen?: boolean;
+  onExternalOpenChange?: (open: boolean) => void;
+  anchorRef?: React.RefObject<HTMLElement | null>;
 }
 
 export function InputBarSpacesPicker({
@@ -33,8 +49,17 @@ export function InputBarSpacesPicker({
   onSelectedSpaceIdsChange,
   selectedSpaceIds,
   spaces,
+  type = "subdropdown",
+  externalOpen,
+  onExternalOpenChange,
+  anchorRef,
 }: InputBarSpacesPickerProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isExternallyControlled = externalOpen !== undefined;
+  const isOpen = isExternallyControlled ? externalOpen : internalOpen;
+  const setIsOpen = isExternallyControlled
+    ? (open: boolean) => onExternalOpenChange?.(open)
+    : setInternalOpen;
 
   const selectedSpaceIdsSet = useMemo(
     () => new Set(selectedSpaceIds),
@@ -52,10 +77,7 @@ export function InputBarSpacesPicker({
     );
   }, [searchText, spaces]);
 
-  const label =
-    selectedSpaceIds.length > 0
-      ? `${selectedSpaceIds.length} additional Space${selectedSpaceIds.length > 1 ? "s" : ""}`
-      : "Spaces";
+  const label = getSpacesPickerLabel(selectedSpaceIds);
 
   const handleSpaceCheckedChange = (spaceId: string, checked: boolean) => {
     if (!checked && !canDeselectSelectedSpaces) {
@@ -74,8 +96,12 @@ export function InputBarSpacesPicker({
     onSelectedSpaceIdsChange(selectedSpaceIds.filter((id) => id !== spaceId));
   };
 
+  const Wrapper = type === "dropdown" ? DropdownMenu : DropdownMenuSub;
+  const ContentWrapper =
+    type === "dropdown" ? DropdownMenuContent : DropdownMenuSubContent;
+
   return (
-    <DropdownMenuSub
+    <Wrapper
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
@@ -85,20 +111,31 @@ export function InputBarSpacesPicker({
         onOpenChange?.(open);
       }}
     >
-      <DropdownMenuSubTrigger
-        label={label}
-        icon={
-          <Icon size="xs" visual={Planet} className="text-muted-foreground" />
-        }
-        disabled={disabled}
-        onClick={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          setIsOpen(true);
-        }}
-      />
-      <DropdownMenuSubContent
-        className="w-80"
+      {type === "dropdown" ? (
+        <DropdownAnchorTrigger anchorRef={anchorRef} />
+      ) : (
+        <DropdownMenuSubTrigger
+          label={label}
+          icon={
+            <Icon size="xs" visual={Planet} className="text-muted-foreground" />
+          }
+          disabled={disabled}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            setIsOpen(true);
+          }}
+        />
+      )}
+      <ContentWrapper
+        className="w-80 max-w-[calc(100vw-1rem)]"
+        collisionPadding={8}
+        {...(type === "dropdown"
+          ? {
+              align: "end" as const,
+              onInteractOutside: () => setIsOpen(false),
+            }
+          : {})}
         dropdownHeaders={
           <>
             <DropdownMenuSearchbar
@@ -149,7 +186,7 @@ export function InputBarSpacesPicker({
             })}
           </div>
         )}
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
+      </ContentWrapper>
+    </Wrapper>
   );
 }

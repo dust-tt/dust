@@ -30,7 +30,7 @@ export function Composer({
   className,
 }: ComposerProps) {
   const cardClassName = cn(
-    "relative flex w-full flex-col items-stretch overflow-hidden rounded-[40px] [corner-shape:squircle]",
+    "rounded-squircle-40 relative flex w-full flex-col items-stretch overflow-hidden",
     variant === "floating" && [
       "border border-white/90",
       "transition-[background-color,box-shadow] duration-150 ease-emphasized motion-reduce:transition-none",
