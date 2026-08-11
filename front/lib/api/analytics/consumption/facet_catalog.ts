@@ -49,13 +49,12 @@ function toolFacetCatalogEntries(
       ];
     }
 
-    // `tool.server_name` does not contain the remote server sId. Tool actions
-    // write their effective configuration name instead: an action override,
-    // then the view name, then the server metadata name. Catalog entries can
-    // cover the latter two; period-scoped ES buckets supplement custom action
-    // overrides and historical names. Keying this facet by server.sId would
-    // therefore never match the indexed field and would create a disabled
-    // duplicate beside the real ES-derived value.
+    // Remote tool documents store a name in `tool.server_name`. They do not
+    // store the remote server ID. The name comes from the action name override,
+    // then the view name, then the server name. This list covers view and server
+    // names. Elasticsearch adds action name overrides and old names found in
+    // the selected period. Using the server ID here would never match the
+    // indexed data and would show a disabled duplicate in the UI.
     return server.views.map((view) => ({
       value: view.name ?? server.name,
       label: getMcpServerViewDisplayName(view),
@@ -63,8 +62,8 @@ function toolFacetCatalogEntries(
     }));
   });
 
-  // A remote server commonly has system and workspace views with the same
-  // effective name. They all map to the same indexed facet value.
+  // The same remote server can have several views with the same name. Keep one
+  // filter option for that name.
   return [...new Map(entries.map((entry) => [entry.value, entry])).values()];
 }
 
