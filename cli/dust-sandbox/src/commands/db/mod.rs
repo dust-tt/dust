@@ -15,11 +15,13 @@ use clap::Subcommand;
 
 use super::function::spawn_runner;
 
+mod delete;
 mod list;
 mod query;
 mod reconcile;
 mod schema;
 
+pub use delete::cmd_db_delete;
 pub use list::cmd_db_list;
 pub use query::cmd_db_query;
 pub use reconcile::cmd_db_reconcile;
@@ -55,6 +57,11 @@ pub enum DbCommand {
     List,
     /// Execute one SQL statement (from stdin) against a pod database (SELECT/DML; DDL is refused)
     Query {
+        /// Database name (resolved to <name>.db in ${DUST_POD_DATABASES_DIR})
+        name: String,
+    },
+    /// Delete a pod database and its SQLite sidecars (live files only; not the replica)
+    Delete {
         /// Database name (resolved to <name>.db in ${DUST_POD_DATABASES_DIR})
         name: String,
     },

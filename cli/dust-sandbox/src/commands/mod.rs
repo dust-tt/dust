@@ -7,7 +7,7 @@ pub mod resolve;
 pub mod tools;
 mod version;
 
-pub use db::{cmd_db_list, cmd_db_query, cmd_db_reconcile, cmd_db_schema};
+pub use db::{cmd_db_delete, cmd_db_list, cmd_db_query, cmd_db_reconcile, cmd_db_schema};
 pub use env::cmd_env;
 pub use forward::cmd_forward;
 pub use function::{cmd_function_build, cmd_function_get, cmd_function_run};

@@ -93,6 +93,7 @@ async fn run() -> anyhow::Result<()> {
             }
             commands::db::DbCommand::List => commands::cmd_db_list()?,
             commands::db::DbCommand::Query { name } => commands::cmd_db_query(&name).await?,
+            commands::db::DbCommand::Delete { name } => commands::cmd_db_delete(&name)?,
         },
         Commands::Tools {
             json,
@@ -294,6 +295,23 @@ mod tests {
             },
             _ => panic!("expected db"),
         }
+    }
+
+    #[test]
+    fn db_delete_parses() {
+        let cli = Cli::try_parse_from(["dsbx", "db", "delete", "chat"]).expect("parse");
+        match cli.command {
+            Commands::Db { command } => match command {
+                commands::db::DbCommand::Delete { name } => assert_eq!(name, "chat"),
+                _ => panic!("expected delete"),
+            },
+            _ => panic!("expected db"),
+        }
+    }
+
+    #[test]
+    fn db_delete_requires_a_name() {
+        assert!(Cli::try_parse_from(["dsbx", "db", "delete"]).is_err());
     }
 
     #[test]
