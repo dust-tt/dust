@@ -5,8 +5,10 @@ import type {
   SandboxFunctionRunContext,
 } from "@app/lib/actions/types";
 import { createProjectManagerTools } from "@app/lib/api/actions/servers/pod_manager/tools";
+import config from "@app/lib/api/config";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { getConversationRoute } from "@app/lib/utils/router";
 import { processEventForDatabase } from "@app/temporal/agent_loop/activities/common";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
@@ -35,6 +37,16 @@ const ListConversationsOutputSchema = z.object({
   conversations: z.array(
     z.object({
       sId: z.string(),
+    })
+  ),
+});
+
+const ListConversationsWithMessagesOutputSchema = z.object({
+  conversations: z.array(
+    z.object({
+      sId: z.string(),
+      conversationUrl: z.string(),
+      url: z.string(),
     })
   ),
 });
@@ -173,6 +185,38 @@ describe("pod_manager create_conversation", () => {
     expect(
       output.conversations.map((conversation) => conversation.sId)
     ).toContain(createdConversation.sId);
+  });
+
+  it("returns an absolute conversationUrl (and the deprecated relative url) with includeMessages", async () => {
+    const { createdConversation, extra, tools, workspace } =
+      await createConversationFromNestedAgent();
+    const result = await getTool(tools, "list_conversations").handler(
+      { includeMessages: true },
+      extra
+    );
+
+    assert(result.isOk());
+    const content = result.value[0];
+    assert(content?.type === "text");
+    const output = ListConversationsWithMessagesOutputSchema.parse(
+      JSON.parse(content.text)
+    );
+
+    const listedConversation = output.conversations.find(
+      (conversation) => conversation.sId === createdConversation.sId
+    );
+    assert(listedConversation);
+    expect(listedConversation.conversationUrl).toBe(
+      getConversationRoute(
+        workspace.sId,
+        createdConversation.sId,
+        undefined,
+        config.getAppUrl()
+      )
+    );
+    expect(listedConversation.url).toBe(
+      `/w/${workspace.sId}/assistant/${createdConversation.sId}`
+    );
   });
 });
 

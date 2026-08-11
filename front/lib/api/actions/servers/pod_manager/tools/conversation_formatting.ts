@@ -2,6 +2,8 @@ import {
   countConversationMessages,
   renderConversationAsText,
 } from "@app/lib/api/assistant/conversation/render_as_text";
+import config from "@app/lib/api/config";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   ConversationType,
   LightConversationType,
@@ -34,6 +36,14 @@ function formatConversationForDisplay(
     hasError: conversation.hasError,
     messageCount: countConversationMessages(conversation),
     messages,
+    conversationUrl: getConversationRoute(
+      workspaceId,
+      conversation.sId,
+      undefined,
+      config.getAppUrl()
+    ),
+    // Deprecated: relative path kept for callers that still read `url`. Use the absolute
+    // `conversationUrl` instead.
     url: `/w/${workspaceId}/assistant/${conversation.sId}`,
   };
 }
