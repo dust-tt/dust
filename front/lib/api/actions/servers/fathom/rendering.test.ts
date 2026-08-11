@@ -6,7 +6,9 @@ import {
 } from "@app/lib/api/actions/servers/fathom/rendering";
 import { describe, expect, it } from "vitest";
 
-function makeMeeting(overrides: Partial<EnrichedMeeting> = {}): EnrichedMeeting {
+function makeMeeting(
+  overrides: Partial<EnrichedMeeting> = {}
+): EnrichedMeeting {
   return {
     title: "Quarterly sync",
     meetingTitle: "Quarterly sync",

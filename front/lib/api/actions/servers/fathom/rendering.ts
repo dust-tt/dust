@@ -39,7 +39,9 @@ export interface FathomMeetingsListPayload {
   nextCursor: string | null;
 }
 
-export function makeMeetingRecord(meeting: EnrichedMeeting): FathomMeetingRecord {
+export function makeMeetingRecord(
+  meeting: EnrichedMeeting
+): FathomMeetingRecord {
   return {
     recordingId: meeting.recordingId,
     title: meeting.title,
