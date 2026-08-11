@@ -158,6 +158,8 @@ interface SkillSuggestionCardProps {
   onSelect?: () => void;
   workspaceId: string;
   disabled?: boolean;
+  isAccepting?: boolean;
+  isDeclining?: boolean;
 }
 
 export function SkillSuggestionCard({
@@ -170,6 +172,8 @@ export function SkillSuggestionCard({
   onSelect,
   workspaceId,
   disabled = false,
+  isAccepting = false,
+  isDeclining = false,
 }: SkillSuggestionCardProps) {
   const { instructionEdits, agentFacingDescriptionEdit } =
     suggestion.suggestion;
@@ -194,6 +198,7 @@ export function SkillSuggestionCard({
                 label="Decline"
                 onClick={() => onDecline(suggestion)}
                 disabled={disabled}
+                isLoading={isDeclining}
               />
               <Button
                 variant="highlight"
@@ -201,6 +206,7 @@ export function SkillSuggestionCard({
                 label="Accept"
                 onClick={() => onAccept(suggestion)}
                 disabled={disabled}
+                isLoading={isAccepting}
               />
             </div>
           )}
