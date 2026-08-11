@@ -1,4 +1,6 @@
 import { createPlugin } from "@app/lib/api/poke/types";
+import { config } from "@app/lib/api/regions/config";
+import { getRegionDisplay } from "@app/lib/poke/regions";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import {
@@ -14,9 +16,11 @@ export const toggleGlobalFeatureFlagPlugin = createPlugin({
     id: "toggle-global-feature-flag",
     name: "Toggle Global Feature Flag",
     description:
-      "Set a global feature flag with a rollout percentage (0-100). " +
+      "Set a global feature flag with a rollout percentage (0-100) " +
+      `in ${getRegionDisplay(config.getCurrentRegion())}. ` +
       "Setting 0 removes the global flag. Setting 100 enables it for all workspaces. " +
-      "Workspace-level flags always take precedence.",
+      "Workspace-level flags always take precedence.\n" +
+      "WARNING: Don't forget to apply for all regions!",
     resourceTypes: ["global"],
     args: {
       feature: {
