@@ -46,14 +46,13 @@ interface EditSpendLimitModalProps {
   onClose: () => void;
   member: MemberUsageType | null;
   owner: WorkspaceType;
-  // When set, the modal skips the "workspace default vs. custom limit"
-  // choice and opens straight into the custom-limit form.
-  forceOverride?: boolean;
   onSavingChange?: (memberId: string, isSaving: boolean) => void;
   // When set, the modal is resolving this pending upgrade request: the limit
   // is submitted together with the approval in a single call instead of a
   // separate spend-limit update, so the two can't drift apart if one half
-  // fails.
+  // fails. It also skips the "workspace default vs. custom limit" choice and
+  // opens straight into the custom-limit form, since approving an overage
+  // request is meant to fix the overage, not reset the member's cap.
   upgradeRequestId?: string | null;
 }
 
@@ -62,10 +61,10 @@ export function EditSpendLimitModal({
   onClose,
   member,
   owner,
-  forceOverride = false,
   onSavingChange,
   upgradeRequestId = null,
 }: EditSpendLimitModalProps) {
+  const forceOverride = upgradeRequestId !== null;
   // Keep the last non-null member so the dialog can render its content through
   // the exit animation after the parent has cleared `member`.
   const lastMemberRef = useRef<MemberUsageType | null>(null);

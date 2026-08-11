@@ -1230,7 +1230,6 @@ export function UsagePage() {
         }}
         member={editSpendLimitMember}
         owner={owner}
-        forceOverride={pendingApproveRequestId !== null}
         onSavingChange={handleUsagePendingChange}
         upgradeRequestId={pendingApproveRequestId}
       />
