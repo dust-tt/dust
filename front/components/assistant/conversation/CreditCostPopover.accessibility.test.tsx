@@ -7,6 +7,13 @@ const { mockUseAgentMessageConsumption } = vi.hoisted(() => ({
   mockUseAgentMessageConsumption: vi.fn(),
 }));
 
+vi.mock(
+  "@app/components/assistant/conversation/ConversationSidePanelContext",
+  () => ({
+    useConversationSidePanelContext: () => ({ openPanel: vi.fn() }),
+  })
+);
+
 vi.mock("@app/hooks/conversations/useAgentMessageConsumption", () => ({
   useAgentMessageConsumption: mockUseAgentMessageConsumption,
 }));

@@ -1,9 +1,11 @@
 import { getActionStepIcon } from "@app/components/assistant/conversation/actions/inline/utils";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import { useAgentMessageConsumption } from "@app/hooks/conversations/useAgentMessageConsumption";
-import { formatCreditValue } from "@app/lib/client/credits";
+import { formatCreditValue, toolUsageLabel } from "@app/lib/client/credits";
 import type { AgentMessageConsumptionToolDetails } from "@app/types/assistant/agent_message_consumption";
 import {
+  Button,
   Chip,
   Icon,
   PopoverContent,
@@ -17,9 +19,7 @@ import { useId, useState } from "react";
 const MAX_VISIBLE_TOOLS = 3;
 
 function toolDescription(tool: AgentMessageConsumptionToolDetails): string {
-  const descriptions = [
-    `${tool.callCount} ${tool.callCount === 1 ? "use" : "uses"}`,
-  ];
+  const descriptions = [toolUsageLabel(tool.callCount)];
 
   if (tool.pending) {
     descriptions.push("Still running");
@@ -60,7 +60,7 @@ function CreditDetailRow({
           />
         )}
       </dt>
-      <dd className="shrink-0 tabular-nums text-muted-foreground">{value}</dd>
+      <dd className="shrink-0 text-muted-foreground">{value}</dd>
     </div>
   );
 }
@@ -84,6 +84,8 @@ export function CreditCostPopover({
 }: CreditCostPopoverProps) {
   const headingId = useId();
   const [hasOpened, setHasOpened] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const { openPanel } = useConversationSidePanelContext();
   const { consumption, isConsumptionLoading, mutateConsumption } =
     useAgentMessageConsumption({
       conversationId,
@@ -119,7 +121,9 @@ export function CreditCostPopover({
 
   return (
     <PopoverRoot
+      open={isOpen}
       onOpenChange={(open) => {
+        setIsOpen(open);
         if (!open) {
           return;
         }
@@ -212,6 +216,19 @@ export function CreditCostPopover({
             </div>
           )}
         </section>
+
+        <div className="-mx-3 -mb-3 border-t border-border px-3 py-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            label="Conversation credits"
+            className="w-full"
+            onClick={() => {
+              setIsOpen(false);
+              openPanel({ type: "credits" });
+            }}
+          />
+        </div>
       </PopoverContent>
     </PopoverRoot>
   );

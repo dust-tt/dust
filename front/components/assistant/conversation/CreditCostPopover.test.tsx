@@ -4,9 +4,17 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockUseAgentMessageConsumption } = vi.hoisted(() => ({
+const { mockOpenPanel, mockUseAgentMessageConsumption } = vi.hoisted(() => ({
+  mockOpenPanel: vi.fn(),
   mockUseAgentMessageConsumption: vi.fn(),
 }));
+
+vi.mock(
+  "@app/components/assistant/conversation/ConversationSidePanelContext",
+  () => ({
+    useConversationSidePanelContext: () => ({ openPanel: mockOpenPanel }),
+  })
+);
 
 vi.mock("@app/hooks/conversations/useAgentMessageConsumption", () => ({
   useAgentMessageConsumption: mockUseAgentMessageConsumption,
@@ -24,6 +32,11 @@ vi.mock("@app/components/resources/resources_icons", () => ({
 
 vi.mock("@dust-tt/sparkle", () => ({
   ShapesPlus: () => null,
+  Button: ({ label, onClick }: { label: string; onClick: () => void }) => (
+    <button type="button" onClick={onClick}>
+      {label}
+    </button>
+  ),
   Chip: ({ label }: { label: string }) => <span>{label}</span>,
   Icon: () => null,
   PopoverRoot: ({
@@ -74,10 +87,11 @@ const defaultProps: ComponentProps<typeof CreditCostPopover> = {
 
 describe("CreditCostPopover", () => {
   beforeEach(() => {
+    mockOpenPanel.mockReset();
     mockUseAgentMessageConsumption.mockReset();
   });
 
-  it("shows the three largest tool contributions and groups the remaining tools", () => {
+  it("shows the tool breakdown and opens conversation credits", () => {
     mockUseAgentMessageConsumption.mockReturnValue({
       consumption: {
         billedCredits: 12,
@@ -112,6 +126,12 @@ describe("CreditCostPopover", () => {
     expect(screen.getByText("15 credits")).toBeInTheDocument();
     expect(screen.getByText("Agent work and context")).toBeInTheDocument();
     expect(screen.getByText("Sub-agents")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Conversation credits" })
+    );
+
+    expect(mockOpenPanel).toHaveBeenCalledWith({ type: "credits" });
   });
 
   it("shows an additive breakdown without a separate savings adjustment", () => {
