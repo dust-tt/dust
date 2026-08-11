@@ -19,6 +19,7 @@ import { UsageFilterMemberGroupsControls } from "@app/components/workspace/analy
 import { UsageFilterModelComplexityControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterModelComplexityControls";
 import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
+import { useUsageFilterStaticPagination } from "@app/components/workspace/analytics/usageFilterPanel/useUsageFilterStaticPagination";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
 import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
@@ -38,8 +39,6 @@ import {
   SearchInput,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
-
-const FILTER_PICKER_PAGE_SIZE = 100;
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
@@ -75,9 +74,6 @@ export function UsageFilterPanel({
     USAGE_MODEL_TIERS[0]
   );
   const [searchText, setSearchText] = useState("");
-  const [visibleOptionCount, setVisibleOptionCount] = useState(
-    FILTER_PICKER_PAGE_SIZE
-  );
   const selectedGroups = useToggleSelectionList<UsageFilterGroup>();
 
   const draftScopeFilter = useMemo(
@@ -145,6 +141,14 @@ export function UsageFilterPanel({
     selectedGroups.items,
   ]);
 
+  const {
+    visibleCount: visibleOptionCount,
+    hasMore: hasMoreOptions,
+    loadMore: handleLoadMoreOptions,
+  } = useUsageFilterStaticPagination({
+    totalCount: filteredOptions.length,
+    resetKey: `${isOpen}|${activeCategory}|${searchText}|${activeScope}|${activeTier}`,
+  });
   const displayedOptions = filteredOptions.slice(0, visibleOptionCount);
   const selectedIdsForActiveCategory = useMemo(
     () =>
@@ -166,7 +170,6 @@ export function UsageFilterPanel({
     0,
     remainingSelectionCapacity
   );
-  const hasMoreOptions = visibleOptionCount < filteredOptions.length;
 
   const appliedSelectionCount = usageFilterSelectionCount(filter);
   const categoriesWithSelection = useMemo(
@@ -177,37 +180,19 @@ export function UsageFilterPanel({
     [draftFilter]
   );
 
-  const resetFilterPicker = () => {
-    setVisibleOptionCount(FILTER_PICKER_PAGE_SIZE);
-  };
-
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (open) {
       setDraftFilter(filter);
       setSearchText("");
       selectedGroups.setItems([]);
-      resetFilterPicker();
     }
   };
 
   const handleCategoryChange = (category: UsageFilterCategory) => {
     setActiveCategory(category);
     setSearchText("");
-    resetFilterPicker();
   };
-
-  const handleSearchTextChange = (text: string) => {
-    setSearchText(text);
-    resetFilterPicker();
-  };
-
-  const withPaginationReset =
-    <T,>(setter: (value: T) => void) =>
-    (value: T) => {
-      setter(value);
-      resetFilterPicker();
-    };
 
   const activeCategorySelectionCount = draftFilter[activeCategory]?.length ?? 0;
 
@@ -251,7 +236,7 @@ export function UsageFilterPanel({
             <SearchInput
               name="usage-filter-search"
               value={searchText}
-              onChange={handleSearchTextChange}
+              onChange={setSearchText}
               placeholder={`Search ${USAGE_FILTER_CATEGORY_LABEL[activeCategory].toLowerCase()}`}
             />
             {activeCategory === "member" && (
@@ -268,14 +253,14 @@ export function UsageFilterPanel({
                 selectedModelIds={selectedIdsForActiveCategory}
                 onToggleModel={(model) => toggleOption("model", model)}
                 activeTier={activeTier}
-                onTierChange={withPaginationReset(setActiveTier)}
+                onTierChange={setActiveTier}
                 isSelectionLimitReached={remainingSelectionCapacity === 0}
               />
             )}
             {activeCategory === "agent" && (
               <UsageFilterAgentScopeControls
                 activeScope={activeScope}
-                onScopeChange={withPaginationReset(setActiveScope)}
+                onScopeChange={setActiveScope}
               />
             )}
             {isFacetsError ? (
@@ -307,11 +292,7 @@ export function UsageFilterPanel({
                 hasMore={hasMoreOptions}
                 isLoading={isFacetsLoading}
                 isUpdating={isFacetsValidating}
-                onLoadMore={() =>
-                  setVisibleOptionCount(
-                    (current) => current + FILTER_PICKER_PAGE_SIZE
-                  )
-                }
+                onLoadMore={handleLoadMoreOptions}
               />
             )}
           </div>
