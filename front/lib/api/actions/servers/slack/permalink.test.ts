@@ -43,30 +43,6 @@ describe("buildSlackPermalink", () => {
       })
     ).toBe("https://acme.slack.com/archives/C012AB3CD/p1234567890123456");
   });
-
-  it("adds thread parameters for thread replies", () => {
-    expect(
-      buildSlackPermalink({
-        teamUrl: "https://acme.slack.com/",
-        channelId: "C012AB3CD",
-        messageTs: "1234567891.000200",
-        threadTs: "1234567890.123456",
-      })
-    ).toBe(
-      "https://acme.slack.com/archives/C012AB3CD/p1234567891000200?thread_ts=1234567890.123456&cid=C012AB3CD"
-    );
-  });
-
-  it("does not add thread parameters when the message is the thread parent", () => {
-    expect(
-      buildSlackPermalink({
-        teamUrl: "https://acme.slack.com/",
-        channelId: "C012AB3CD",
-        messageTs: "1234567890.123456",
-        threadTs: "1234567890.123456",
-      })
-    ).toBe("https://acme.slack.com/archives/C012AB3CD/p1234567890123456");
-  });
 });
 
 describe("getSlackTeamUrl", () => {

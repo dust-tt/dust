@@ -499,24 +499,17 @@ export async function getSlackTeamUrl({
 
 // Builds a Slack archive permalink for a message, matching the format returned by
 // chat.getPermalink (e.g. "https://acme.slack.com/archives/C012AB3CD/p1234567890123456").
-// For thread replies, pass threadTs so the permalink opens the thread view.
 export function buildSlackPermalink({
   teamUrl,
   channelId,
   messageTs,
-  threadTs,
 }: {
   teamUrl: string;
   channelId: string;
   messageTs: string;
-  threadTs?: string;
 }): string {
   const base = teamUrl.endsWith("/") ? teamUrl : `${teamUrl}/`;
-  const permalink = `${base}archives/${channelId}/p${messageTs.replace(".", "")}`;
-  if (threadTs && threadTs !== messageTs) {
-    return `${permalink}?thread_ts=${threadTs}&cid=${channelId}`;
-  }
-  return permalink;
+  return `${base}archives/${channelId}/p${messageTs.replace(".", "")}`;
 }
 
 // Format users as Markdown.
