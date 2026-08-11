@@ -20,7 +20,8 @@ const ResizablePanelGroup: React.FC<ResizablePanelGroupProps> = ({
     className={cn(
       "flex h-full w-full data-[panel-group-direction=vertical]:flex-col",
       animateLayoutChanges && [
-        "[&:not(:has(>[data-resize-handle-state=drag]))>[data-panel]]:transition-[flex-grow]",
+        "[&>[data-panel]]:transition-[flex-grow]",
+        "[&:has(>[data-resize-handle-state=drag])>[data-panel]]:transition-none",
         "[&>[data-panel]]:duration-300",
         "[&>[data-panel]]:ease-out-quint",
       ],

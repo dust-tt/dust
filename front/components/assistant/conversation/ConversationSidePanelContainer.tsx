@@ -5,14 +5,14 @@ import { useHashParam } from "@app/hooks/useHashParams";
 import { useLockDocumentScroll } from "@app/hooks/useLockDocumentScroll";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import {
-  CREDITS_SIDE_PANEL_TYPE,
-  FULL_SCREEN_HASH_PARAM,
-} from "@app/types/conversation_side_panel";
+import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import type { LightWorkspaceType } from "@app/types/user";
 import { cn, ResizableHandle, ResizablePanel } from "@dust-tt/sparkle";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
+
+// Resize events fire on every drag move; avoid re-rendering panel content.
+const MemoizedConversationSidePanelContent = memo(ConversationSidePanelContent);
 
 interface ConversationSidePanelContainerProps {
   conversation?: ConversationWithoutContentType;
@@ -26,7 +26,7 @@ export default function ConversationSidePanelContainer({
   const { currentPanel, setPanelRef, onPanelClosed } =
     useConversationSidePanelContext();
   const panelRef = useRef<ImperativePanelHandle | null>(null);
-  const [panelContentSize, setPanelContentSize] = useState(
+  const [panelContentSizePercent, setPanelContentSizePercent] = useState(
     DEFAULT_RIGHT_PANEL_SIZE
   );
   const [fullScreenHash] = useHashParam(FULL_SCREEN_HASH_PARAM);
@@ -72,14 +72,6 @@ export default function ConversationSidePanelContainer({
     );
   }
 
-  const panelContent = currentPanel && conversation && (
-    <ConversationSidePanelContent
-      conversation={conversation}
-      owner={owner}
-      currentPanel={currentPanel}
-    />
-  );
-
   return (
     <>
       {!!conversation && (
@@ -102,7 +94,7 @@ export default function ConversationSidePanelContainer({
         defaultSize={0}
         onResize={(size) => {
           if (size > 0) {
-            setPanelContentSize(size);
+            setPanelContentSizePercent(size);
           }
         }}
         onTransitionEnd={(event) => {
@@ -126,16 +118,18 @@ export default function ConversationSidePanelContainer({
             "absolute inset-0 bg-panel-background md:relative md:inset-auto"
         )}
       >
-        {currentPanel === CREDITS_SIDE_PANEL_TYPE ? (
+        {currentPanel && conversation && (
           <div
             className="h-full"
-            // Keep the breakdown laid out at its last width while the panel animates.
-            style={{ width: `${panelContentSize}cqw` }}
+            // Keep content width stable while the panel animates.
+            style={{ width: `${panelContentSizePercent}cqw` }}
           >
-            {panelContent}
+            <MemoizedConversationSidePanelContent
+              conversation={conversation}
+              owner={owner}
+              currentPanel={currentPanel}
+            />
           </div>
-        ) : (
-          panelContent
         )}
       </ResizablePanel>
     </>
