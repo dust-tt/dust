@@ -1755,7 +1755,7 @@ function NavigationListWithInbox({
           )}
         />
       </div>
-      <div className="flex flex-col gap-4 pt-6">
+      <div className="flex flex-col gap-4 pt-8">
         {topSection}
         <AnimatePresence initial={false}>
           {triggeredConversations.length > 0 && (
