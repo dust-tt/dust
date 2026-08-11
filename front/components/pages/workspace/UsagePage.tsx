@@ -1075,7 +1075,13 @@ export function UsagePage() {
           ? handleBatchChangeSeat
           : undefined
       }
-      disabled={isReadOnly}
+      // Block starting another bulk mutation while one is still applying —
+      // these run as separate, unordered background workflows.
+      disabled={
+        isReadOnly ||
+        totalAllowedUsagePendingMemberIds.size > 0 ||
+        seatChangePendingMemberIds.size > 0
+      }
     />
   );
 
