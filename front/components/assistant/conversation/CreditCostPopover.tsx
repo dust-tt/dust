@@ -143,7 +143,7 @@ export function CreditCostPopover({
         role="dialog"
         aria-labelledby={headingId}
         align="start"
-        className="w-[min(20rem,calc(100vw-1rem))] p-3"
+        className="w-80 rounded-2xl px-3 py-2"
         preventAutoFocusOnClose={false}
       >
         <h2
@@ -199,7 +199,7 @@ export function CreditCostPopover({
               {remainingTools.length > 0 && (
                 <CreditDetailRow
                   label={`${remainingTools.length} other ${remainingTools.length === 1 ? "tool" : "tools"}`}
-                  description={`${remainingToolCallCount} ${remainingToolCallCount === 1 ? "use" : "uses"}`}
+                  description={toolUsageLabel(remainingToolCallCount)}
                   value={formatCreditValue(remainingToolCredits)}
                   icon={InternalActionIcons.ToolsIcon}
                 />
@@ -217,9 +217,9 @@ export function CreditCostPopover({
           )}
         </section>
 
-        <div className="-mx-3 -mb-3 border-t border-border px-3 py-1">
+        <div className="-mx-3 -mb-2 border-t border-border px-3 py-1">
           <Button
-            variant="ghost"
+            variant="highlight-ghost"
             size="sm"
             label="Conversation credits"
             className="w-full"
