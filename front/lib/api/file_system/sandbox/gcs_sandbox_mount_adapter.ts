@@ -38,6 +38,8 @@ const FILE_SYSTEM_OVERLAY_LOG_PATH = `${FILE_SYSTEM_OVERLAY_RUNTIME_DIRECTORY}/o
 const FILE_SYSTEM_OVERLAY_TOKEN_PATH = `${FILE_SYSTEM_OVERLAY_RUNTIME_DIRECTORY}/token`;
 const FILE_SYSTEM_OVERLAY_USER = "dust-fs";
 const FILE_SYSTEM_OVERLAY_MOUNT_POINT = "/files";
+// Linux FUSE_SUPER_MAGIC as printed by `stat -f -c %t`; used to wait until
+// /files is a mounted FUSE filesystem rather than its underlying directory.
 const FUSE_STATFS_MAGIC_HEX = "65735546";
 
 class GCSMountImageHelperUnavailableError extends Error {
