@@ -1,7 +1,13 @@
+import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import {
   getChronologicalRunsForAgentMessage,
   inferDustRunIdForStepContent,
+  listStepContentBatch,
 } from "@app/scripts/backfill_agent_step_content_dust_run_ids";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
 
 describe("inferDustRunIdForStepContent", () => {
@@ -84,5 +90,95 @@ describe("inferDustRunIdForStepContent", () => {
         runs
       )
     ).toBeNull();
+  });
+});
+
+describe("listStepContentBatch", () => {
+  it("advances a bounded scan past rows that are not backfill candidates", async () => {
+    const { authenticator, workspace } = await createResourceTest({});
+    const agent =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+    const agentMessage = await AgentMessageModel.create({
+      agentConfigurationId: agent.sId,
+      agentConfigurationVersion: agent.version,
+      conversationId: conversation.id,
+      runIds: ["run-0"],
+      skipToolsValidation: true,
+      status: "succeeded",
+      workspaceId: workspace.id,
+    });
+    const fromDate = new Date("2026-08-01T00:00:00.000Z");
+    const toDate = new Date("2026-08-02T00:00:00.000Z");
+    const rows = await AgentStepContentModel.bulkCreate(
+      [
+        {
+          createdAt: new Date("2026-07-31T23:59:00.000Z"),
+          dustRunId: null,
+        },
+        {
+          createdAt: new Date("2026-08-01T00:01:00.000Z"),
+          dustRunId: "already-stamped",
+        },
+        {
+          createdAt: new Date("2026-08-01T00:02:00.000Z"),
+          dustRunId: null,
+        },
+        {
+          createdAt: new Date("2026-08-02T00:00:00.000Z"),
+          dustRunId: null,
+        },
+      ].map(({ createdAt, dustRunId }, index) => ({
+        agentMessageId: agentMessage.id,
+        createdAt,
+        dustRunId,
+        index,
+        step: 0,
+        type: "text_content" as const,
+        value: { type: "text_content" as const, value: `content-${index}` },
+        version: 0,
+        workspaceId: workspace.id,
+      })),
+      { returning: true }
+    );
+
+    const firstBatch = await listStepContentBatch({
+      afterCursor: null,
+      batchSize: 2,
+      fromDate,
+      toDate,
+      workspace,
+    });
+
+    expect(firstBatch.scannedCount).toBe(2);
+    expect(firstBatch.candidates).toEqual([]);
+    expect(firstBatch.nextCursor).toEqual({
+      agentMessageModelId: agentMessage.id,
+      step: 0,
+      index: 1,
+      version: 0,
+    });
+
+    const secondBatch = await listStepContentBatch({
+      afterCursor: firstBatch.nextCursor,
+      batchSize: 2,
+      fromDate,
+      toDate,
+      workspace,
+    });
+
+    expect(secondBatch.scannedCount).toBe(2);
+    expect(secondBatch.candidates.map((candidate) => candidate.id)).toEqual([
+      rows[2].id,
+    ]);
+    expect(secondBatch.nextCursor).toEqual({
+      agentMessageModelId: agentMessage.id,
+      step: 0,
+      index: 3,
+      version: 0,
+    });
   });
 });

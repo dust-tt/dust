@@ -90,7 +90,7 @@ async function assertConsumptionAnalyticsIndexExists(): Promise<void> {
   }
 }
 
-async function listAgentMessageRefs({
+export async function listAgentMessageRefs({
   afterAgentMessageModelId,
   batchSize,
   fromDate,
@@ -125,6 +125,9 @@ async function listAgentMessageRefs({
             as: "conversation",
             attributes: ["sId"],
             required: true,
+            where: {
+              workspaceId: workspace.id,
+            },
           },
         ],
       },

@@ -14,6 +14,9 @@
  * reruns safe. An in-progress message may be skipped until its newest run id has been persisted;
  * rerunning after it settles will pick it up. Cache reads compare dustRunId with Postgres metadata,
  * so an entry cached before this backfill is rejected and refreshed rather than serving stale null.
+ * Pagination scans every step content for each workspace in bounded index-backed batches, then
+ * applies the date and dustRunId filters in memory. This avoids requiring a one-off index and keeps
+ * each database query bounded even when most of a workspace's contents predate the requested range.
  *
  * Run once in each region.
  *
@@ -35,7 +38,6 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
-import type { WhereOptions } from "sequelize";
 import { Op, QueryTypes } from "sequelize";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -59,11 +61,27 @@ type StepContentUpdate = {
   stepContentModelId: ModelId;
 };
 
-type StepContentCursor = {
+export type StepContentCursor = {
   agentMessageModelId: ModelId;
   index: number;
   step: number;
   version: number;
+};
+
+type StepContentScanRow = {
+  id: ModelId;
+  agentMessageId: ModelId;
+  createdAt: Date;
+  dustRunId: string | null;
+  index: number;
+  step: number;
+  version: number;
+};
+
+type StepContentBatch = {
+  candidates: AgentStepContentModel[];
+  nextCursor: StepContentCursor | null;
+  scannedCount: number;
 };
 
 function parseTimestamp(value: string, argumentName: string): Date {
@@ -122,7 +140,7 @@ export function getChronologicalRunsForAgentMessage(
   );
 }
 
-async function listStepContentCandidates({
+export async function listStepContentBatch({
   afterCursor,
   batchSize,
   fromDate,
@@ -134,33 +152,76 @@ async function listStepContentCandidates({
   fromDate: Date;
   toDate: Date;
   workspace: LightWorkspaceType;
-}): Promise<AgentStepContentModel[]> {
-  const afterCursorWhere: WhereOptions<AgentStepContentModel> = afterCursor
-    ? {
-        [Op.or]: [
-          {
-            agentMessageId: { [Op.gt]: afterCursor.agentMessageModelId },
-          },
-          {
-            agentMessageId: afterCursor.agentMessageModelId,
-            step: { [Op.gt]: afterCursor.step },
-          },
-          {
-            agentMessageId: afterCursor.agentMessageModelId,
-            step: afterCursor.step,
-            index: { [Op.gt]: afterCursor.index },
-          },
-          {
-            agentMessageId: afterCursor.agentMessageModelId,
-            step: afterCursor.step,
-            index: afterCursor.index,
-            version: { [Op.gt]: afterCursor.version },
-          },
-        ],
-      }
-    : {};
+}): Promise<StepContentBatch> {
+  const cursorSql = afterCursor
+    ? `
+      AND ("agentMessageId", "step", "index", "version") >
+          (:agentMessageModelId, :step, :index, :version)
+    `
+    : "";
+  const replacements: Record<string, number> = {
+    batchSize,
+    workspaceModelId: workspace.id,
+  };
+  if (afterCursor) {
+    replacements.agentMessageModelId = afterCursor.agentMessageModelId;
+    replacements.step = afterCursor.step;
+    replacements.index = afterCursor.index;
+    replacements.version = afterCursor.version;
+  }
 
-  return AgentStepContentModel.findAll({
+  // Do not put the date or dustRunId predicates in this query. Neither is covered by the existing
+  // index, so PostgreSQL could scan an unbounded number of rows to produce one batch. This query
+  // deliberately scans a bounded page through the existing workspace/order index and filters it
+  // below instead.
+  // biome-ignore lint/plugin/noRawSql: tuple comparison guarantees index-backed keyset pagination.
+  const scannedRows = await frontSequelize.query<StepContentScanRow>(
+    `
+      SELECT
+        "id",
+        "agentMessageId",
+        "createdAt",
+        "dustRunId",
+        "step",
+        "index",
+        "version"
+      FROM "agent_step_contents"
+      WHERE "workspaceId" = :workspaceModelId
+        ${cursorSql}
+      ORDER BY "agentMessageId", "step", "index", "version"
+      LIMIT :batchSize
+    `,
+    { replacements, type: QueryTypes.SELECT }
+  );
+
+  if (scannedRows.length === 0) {
+    return { candidates: [], nextCursor: null, scannedCount: 0 };
+  }
+
+  const lastScannedRow = scannedRows[scannedRows.length - 1];
+  const nextCursor = {
+    agentMessageModelId: lastScannedRow.agentMessageId,
+    step: lastScannedRow.step,
+    index: lastScannedRow.index,
+    version: lastScannedRow.version,
+  };
+  const candidateModelIds = scannedRows.flatMap((row) =>
+    row.dustRunId === null &&
+    row.createdAt.getTime() >= fromDate.getTime() &&
+    row.createdAt.getTime() < toDate.getTime()
+      ? [row.id]
+      : []
+  );
+
+  if (candidateModelIds.length === 0) {
+    return {
+      candidates: [],
+      nextCursor,
+      scannedCount: scannedRows.length,
+    };
+  }
+
+  const candidates = await AgentStepContentModel.findAll({
     attributes: [
       "id",
       "agentMessageId",
@@ -170,8 +231,7 @@ async function listStepContentCandidates({
       "version",
     ],
     where: {
-      ...afterCursorWhere,
-      createdAt: { [Op.gte]: fromDate, [Op.lt]: toDate },
+      id: { [Op.in]: candidateModelIds },
       workspaceId: workspace.id,
       dustRunId: null,
     },
@@ -187,14 +247,13 @@ async function listStepContentCandidates({
         },
       },
     ],
-    order: [
-      ["agentMessageId", "ASC"],
-      ["step", "ASC"],
-      ["index", "ASC"],
-      ["version", "ASC"],
-    ],
-    limit: batchSize,
   });
+
+  return {
+    candidates,
+    nextCursor,
+    scannedCount: scannedRows.length,
+  };
 }
 
 async function inferStepContentUpdates({
@@ -337,7 +396,7 @@ function runScript(): void {
       batchSize: {
         type: "number",
         default: DEFAULT_BATCH_SIZE,
-        description: "Number of null step content rows to fetch per query.",
+        description: "Number of step content rows to scan per query.",
       },
     },
     async (
@@ -353,6 +412,7 @@ function runScript(): void {
 
       let totalCandidates = 0;
       let totalInferred = 0;
+      let totalScanned = 0;
       let totalUpdated = 0;
 
       await runOnAllWorkspaces(
@@ -360,32 +420,29 @@ function runScript(): void {
           let afterCursor: StepContentCursor | null = null;
           let workspaceCandidates = 0;
           let workspaceInferred = 0;
+          let workspaceScanned = 0;
           let workspaceUpdated = 0;
 
           while (true) {
-            const candidates = await listStepContentCandidates({
-              afterCursor,
-              batchSize,
-              fromDate: parsedFromDate,
-              toDate: parsedToDate,
-              workspace,
-            });
-            if (candidates.length === 0) {
+            const { candidates, nextCursor, scannedCount } =
+              await listStepContentBatch({
+                afterCursor,
+                batchSize,
+                fromDate: parsedFromDate,
+                toDate: parsedToDate,
+                workspace,
+              });
+            if (nextCursor === null) {
               break;
             }
 
-            const lastCandidate = candidates[candidates.length - 1];
-            afterCursor = {
-              agentMessageModelId: lastCandidate.agentMessageId,
-              step: lastCandidate.step,
-              index: lastCandidate.index,
-              version: lastCandidate.version,
-            };
+            afterCursor = nextCursor;
             const updates = await inferStepContentUpdates({
               candidates,
               workspace,
             });
 
+            workspaceScanned += scannedCount;
             workspaceCandidates += candidates.length;
             workspaceInferred += updates.length;
             if (execute) {
@@ -399,6 +456,7 @@ function runScript(): void {
               {
                 workspaceId: workspace.sId,
                 afterCursor,
+                workspaceScanned,
                 workspaceCandidates,
                 workspaceInferred,
                 workspaceSkipped: workspaceCandidates - workspaceInferred,
@@ -408,6 +466,7 @@ function runScript(): void {
             );
           }
 
+          totalScanned += workspaceScanned;
           totalCandidates += workspaceCandidates;
           totalInferred += workspaceInferred;
           totalUpdated += workspaceUpdated;
@@ -415,6 +474,7 @@ function runScript(): void {
           logger.info(
             {
               workspaceId: workspace.sId,
+              workspaceScanned,
               workspaceCandidates,
               workspaceInferred,
               workspaceSkipped: workspaceCandidates - workspaceInferred,
@@ -431,6 +491,7 @@ function runScript(): void {
         {
           fromDate: parsedFromDate.toISOString(),
           toDate: parsedToDate.toISOString(),
+          totalScanned,
           totalCandidates,
           totalInferred,
           totalSkipped: totalCandidates - totalInferred,
