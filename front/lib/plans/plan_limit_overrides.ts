@@ -8,6 +8,9 @@ export const OVERRIDABLE_PLAN_LIMITS = [
   "maxUsersInWorkspace",
   "maxFreeUsersInWorkspace",
   "maxLifetimeFreeUsersInWorkspace",
+  "maxVaultsInWorkspace",
+  "maxDataSourcesCount",
+  "maxConnectionsCount",
 ] as const satisfies readonly (keyof PlanAttributes)[];
 
 export type OverridablePlanLimit = (typeof OVERRIDABLE_PLAN_LIMITS)[number];
@@ -22,6 +25,9 @@ export const EMPTY_PLAN_LIMIT_OVERRIDE: PlanLimitOverride = {
   maxUsersInWorkspace: null,
   maxFreeUsersInWorkspace: null,
   maxLifetimeFreeUsersInWorkspace: null,
+  maxVaultsInWorkspace: null,
+  maxDataSourcesCount: null,
+  maxConnectionsCount: null,
 };
 
 export function hasAnyPlanLimitOverride(override: PlanLimitOverride): boolean {

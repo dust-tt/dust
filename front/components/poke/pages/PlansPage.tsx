@@ -6,21 +6,14 @@ import {
   toPlanType,
   useEditingPlan,
 } from "@app/components/poke/plans/form";
+import { NewPlanWarningDialog } from "@app/components/poke/plans/NewPlanWarningDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { usePokePlans } from "@app/lib/swr/poke";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import type { PlanTypeSchema } from "@app/types/api/poke/plans";
 import type { PlanType } from "@app/types/plan";
-import {
-  Button,
-  Check,
-  Edit04,
-  IconButton,
-  Plus,
-  Spinner,
-  XClose,
-} from "@dust-tt/sparkle";
+import { Check, Edit04, IconButton, Spinner, XClose } from "@dust-tt/sparkle";
 import React from "react";
 import { useSWRConfig } from "swr";
 import type { z } from "zod";
@@ -180,11 +173,8 @@ export function PlansPage() {
         </table>
       </div>
       <div>
-        <Button
-          icon={Plus}
-          label="Create a new plan"
-          variant="outline"
-          onClick={() => createNewPlan()}
+        <NewPlanWarningDialog
+          onConfirm={() => createNewPlan()}
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           disabled={editingPlan?.isNewPlan || !!editingPlan}
         />
