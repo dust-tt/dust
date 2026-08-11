@@ -9,13 +9,19 @@ import { z } from "zod";
 
 const UNLIMITED = -1;
 
-const SeatLimitOverridesSchema = z.object({
+const PlanLimitOverridesSchema = z.object({
   overrideMaxUsers: z.boolean(),
   maxUsers: z.number().int().min(UNLIMITED).optional(),
   overrideMaxFreeUsers: z.boolean(),
   maxFreeUsers: z.number().int().min(UNLIMITED).optional(),
   overrideMaxLifetimeFreeUsers: z.boolean(),
   maxLifetimeFreeUsers: z.number().int().min(UNLIMITED).optional(),
+  overrideMaxVaults: z.boolean(),
+  maxVaults: z.number().int().min(UNLIMITED).optional(),
+  overrideMaxDataSources: z.boolean(),
+  maxDataSources: z.number().int().min(UNLIMITED).optional(),
+  overrideMaxConnections: z.boolean(),
+  maxConnections: z.number().int().min(UNLIMITED).optional(),
 });
 
 function resolveOverride(
@@ -32,19 +38,20 @@ function describeLimit(value: number | null): string {
   return value === UNLIMITED ? "unlimited" : `${value}`;
 }
 
-export const overridePlanSeatLimitsPlugin = createPlugin({
+export const overridePlanLimitsPlugin = createPlugin({
   manifest: {
-    id: "override-plan-seat-limits",
-    name: "Override Plan Seat Limits",
+    id: "override-plan-limits",
+    name: "Override Plan Limits",
     description:
-      "Override this workspace's seat limits without creating a dedicated plan. " +
-      "Each limit falls back to the plan value when its toggle is off. Use -1 for unlimited.",
+      "Override this workspace's seat, space and data-source limits without creating a " +
+      "dedicated plan. Each limit falls back to the plan value when its toggle is off. " +
+      "Use -1 for unlimited.",
     explanation:
       "Overrides are workspace-scoped: they survive plan changes and renewals, and they " +
-      "also win over the trial limits. They cap seat assignment and what the product " +
-      "displays — they do not change what is billed (see 'Manage Seat Limits' for billing " +
-      "floors). Raising the lifetime free-seat cap only affects users onboarded from now " +
-      "on; lowering a cap never revokes existing seats.",
+      "also win over the trial limits. They cap what can be created or assigned and what " +
+      "the product displays — they do not change what is billed (see 'Manage Seat Limits' " +
+      "for billing floors). Raising the lifetime free-seat cap only affects users onboarded " +
+      "from now on; lowering a cap never removes what already exists.",
     resourceTypes: ["workspaces"],
     args: {
       overrideMaxUsers: {
@@ -95,6 +102,56 @@ export const overridePlanSeatLimitsPlugin = createPlugin({
         async: true,
         dependsOn: { field: "overrideMaxLifetimeFreeUsers", value: true },
       },
+      overrideMaxVaults: {
+        type: "boolean",
+        variant: "toggle",
+        label: "Override max spaces",
+        async: true,
+        asyncDescription: true,
+      },
+      maxVaults: {
+        type: "number",
+        variant: "text",
+        label: "Max spaces",
+        description:
+          "Maximum regular spaces in the workspace. -1 for unlimited.",
+        async: true,
+        dependsOn: { field: "overrideMaxVaults", value: true },
+      },
+      overrideMaxDataSources: {
+        type: "boolean",
+        variant: "toggle",
+        label: "Override max data sources",
+        async: true,
+        asyncDescription: true,
+      },
+      maxDataSources: {
+        type: "number",
+        variant: "text",
+        label: "Max data sources",
+        description:
+          "Maximum data sources of any kind — folders, websites and connectors. " +
+          "-1 for unlimited.",
+        async: true,
+        dependsOn: { field: "overrideMaxDataSources", value: true },
+      },
+      overrideMaxConnections: {
+        type: "boolean",
+        variant: "toggle",
+        label: "Override max connections",
+        async: true,
+        asyncDescription: true,
+      },
+      maxConnections: {
+        type: "number",
+        variant: "text",
+        label: "Max connections",
+        description:
+          "Maximum user-added managed connectors (Slack, Notion, GDrive…). Excludes " +
+          "folders, websites, bot integrations and the project connector. -1 for unlimited.",
+        async: true,
+        dependsOn: { field: "overrideMaxConnections", value: true },
+      },
     },
     requiredRoles: ["billing"],
   },
@@ -103,28 +160,40 @@ export const overridePlanSeatLimitsPlugin = createPlugin({
     // These limits are already the effective ones: the override is applied when
     // the plan is resolved for the workspace. So prefilling the number fields
     // with them is correct whether or not an override is in place.
-    const planLimits = auth.getNonNullablePlan().limits.users;
+    const { limits } = auth.getNonNullablePlan();
     const override = await getWorkspacePlanLimitOverrides(auth);
 
     return new Ok({
       overrideMaxUsers: override?.maxUsersInWorkspace != null,
       overrideMaxUsersDescription:
         "Override the plan's max-users cap for this workspace only.",
-      maxUsers: planLimits.maxUsers,
+      maxUsers: limits.users.maxUsers,
       overrideMaxFreeUsers: override?.maxFreeUsersInWorkspace != null,
       overrideMaxFreeUsersDescription:
         "Override the plan's active free-seat cap for this workspace only.",
-      maxFreeUsers: planLimits.maxFreeUsers,
+      maxFreeUsers: limits.users.maxFreeUsers,
       overrideMaxLifetimeFreeUsers:
         override?.maxLifetimeFreeUsersInWorkspace != null,
       overrideMaxLifetimeFreeUsersDescription:
         "Override the plan's lifetime free-seat cap for this workspace only.",
-      maxLifetimeFreeUsers: planLimits.maxLifetimeFreeUsers,
+      maxLifetimeFreeUsers: limits.users.maxLifetimeFreeUsers,
+      overrideMaxVaults: override?.maxVaultsInWorkspace != null,
+      overrideMaxVaultsDescription:
+        "Override the plan's space cap for this workspace only.",
+      maxVaults: limits.vaults.maxVaults,
+      overrideMaxDataSources: override?.maxDataSourcesCount != null,
+      overrideMaxDataSourcesDescription:
+        "Override the plan's data-source cap for this workspace only.",
+      maxDataSources: limits.dataSources.count,
+      overrideMaxConnections: override?.maxConnectionsCount != null,
+      overrideMaxConnectionsDescription:
+        "Override the plan's connection cap for this workspace only.",
+      maxConnections: limits.connections.count,
     });
   },
 
   execute: async (auth, _, args) => {
-    const parseResult = SeatLimitOverridesSchema.safeParse(args);
+    const parseResult = PlanLimitOverridesSchema.safeParse(args);
     if (!parseResult.success) {
       return new Err(
         new Error(
@@ -142,6 +211,12 @@ export const overridePlanSeatLimitsPlugin = createPlugin({
       maxFreeUsers,
       overrideMaxLifetimeFreeUsers,
       maxLifetimeFreeUsers,
+      overrideMaxVaults,
+      maxVaults,
+      overrideMaxDataSources,
+      maxDataSources,
+      overrideMaxConnections,
+      maxConnections,
     } = parseResult.data;
 
     const override: PlanLimitOverride = {
@@ -153,6 +228,15 @@ export const overridePlanSeatLimitsPlugin = createPlugin({
       maxLifetimeFreeUsersInWorkspace: resolveOverride(
         overrideMaxLifetimeFreeUsers,
         maxLifetimeFreeUsers
+      ),
+      maxVaultsInWorkspace: resolveOverride(overrideMaxVaults, maxVaults),
+      maxDataSourcesCount: resolveOverride(
+        overrideMaxDataSources,
+        maxDataSources
+      ),
+      maxConnectionsCount: resolveOverride(
+        overrideMaxConnections,
+        maxConnections
       ),
     };
 
@@ -167,6 +251,9 @@ export const overridePlanSeatLimitsPlugin = createPlugin({
         `Max users: ${describeLimit(override.maxUsersInWorkspace)}.`,
         `Max free seats: ${describeLimit(override.maxFreeUsersInWorkspace)}.`,
         `Max lifetime free seats: ${describeLimit(override.maxLifetimeFreeUsersInWorkspace)}.`,
+        `Max spaces: ${describeLimit(override.maxVaultsInWorkspace)}.`,
+        `Max data sources: ${describeLimit(override.maxDataSourcesCount)}.`,
+        `Max connections: ${describeLimit(override.maxConnectionsCount)}.`,
       ].join(" "),
     });
   },

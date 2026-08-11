@@ -12,6 +12,9 @@ const PLAN = {
   maxUsersInWorkspace: 10,
   maxFreeUsersInWorkspace: 3,
   maxLifetimeFreeUsersInWorkspace: 5,
+  maxVaultsInWorkspace: 2,
+  maxDataSourcesCount: 7,
+  maxConnectionsCount: 4,
 };
 
 function override(partial: Partial<PlanLimitOverride>): PlanLimitOverride {
@@ -35,6 +38,25 @@ describe("applyPlanLimitOverrides", () => {
     expect(res.maxUsersInWorkspace).toBe(500);
     expect(res.maxFreeUsersInWorkspace).toBe(3);
     expect(res.maxLifetimeFreeUsersInWorkspace).toBe(5);
+    expect(res.maxVaultsInWorkspace).toBe(2);
+    expect(res.maxDataSourcesCount).toBe(7);
+    expect(res.maxConnectionsCount).toBe(4);
+  });
+
+  it("overrides the space, data-source and connection limits", () => {
+    const res = applyPlanLimitOverrides(
+      PLAN,
+      override({
+        maxVaultsInWorkspace: 50,
+        maxDataSourcesCount: -1,
+        maxConnectionsCount: 12,
+      })
+    );
+
+    expect(res.maxVaultsInWorkspace).toBe(50);
+    expect(res.maxDataSourcesCount).toBe(-1);
+    expect(res.maxConnectionsCount).toBe(12);
+    expect(res.maxUsersInWorkspace).toBe(10);
   });
 
   it("supports raising a limit to unlimited and lowering it to zero", () => {

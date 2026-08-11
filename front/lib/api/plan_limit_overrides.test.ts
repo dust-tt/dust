@@ -21,6 +21,9 @@ function override(partial: Partial<PlanLimitOverride>): PlanLimitOverride {
 const PLAN_MAX_USERS = 4;
 const PLAN_MAX_FREE_USERS = 2;
 const PLAN_MAX_LIFETIME_FREE_USERS = 3;
+const PLAN_MAX_VAULTS = 5;
+const PLAN_MAX_DATA_SOURCES = 6;
+const PLAN_MAX_CONNECTIONS = 3;
 
 describe("workspace plan limit overrides", () => {
   let workspace: LightWorkspaceType;
@@ -31,6 +34,9 @@ describe("workspace plan limit overrides", () => {
       maxUsersInWorkspace: PLAN_MAX_USERS,
       maxFreeUsersInWorkspace: PLAN_MAX_FREE_USERS,
       maxLifetimeFreeUsersInWorkspace: PLAN_MAX_LIFETIME_FREE_USERS,
+      maxVaultsInWorkspace: PLAN_MAX_VAULTS,
+      maxDataSourcesCount: PLAN_MAX_DATA_SOURCES,
+      maxConnectionsCount: PLAN_MAX_CONNECTIONS,
     });
     workspace = await WorkspaceFactory.fromPlan(plan);
     auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
@@ -46,13 +52,41 @@ describe("workspace plan limit overrides", () => {
     return (await activeSubscription()).plan.limits.users;
   }
 
+  async function effectiveLimits() {
+    return (await activeSubscription()).plan.limits;
+  }
+
   it("uses the plan values when the workspace has no override", async () => {
     expect(await getWorkspacePlanLimitOverrides(auth)).toBeNull();
 
-    const limits = await effectiveUserLimits();
-    expect(limits.maxUsers).toBe(PLAN_MAX_USERS);
-    expect(limits.maxFreeUsers).toBe(PLAN_MAX_FREE_USERS);
-    expect(limits.maxLifetimeFreeUsers).toBe(PLAN_MAX_LIFETIME_FREE_USERS);
+    const limits = await effectiveLimits();
+    expect(limits.users.maxUsers).toBe(PLAN_MAX_USERS);
+    expect(limits.users.maxFreeUsers).toBe(PLAN_MAX_FREE_USERS);
+    expect(limits.users.maxLifetimeFreeUsers).toBe(
+      PLAN_MAX_LIFETIME_FREE_USERS
+    );
+    expect(limits.vaults.maxVaults).toBe(PLAN_MAX_VAULTS);
+    expect(limits.dataSources.count).toBe(PLAN_MAX_DATA_SOURCES);
+    expect(limits.connections.count).toBe(PLAN_MAX_CONNECTIONS);
+  });
+
+  it("applies the space, data-source and connection overrides", async () => {
+    const res = await setWorkspacePlanLimitOverrides(
+      auth,
+      override({
+        maxVaultsInWorkspace: 50,
+        maxDataSourcesCount: -1,
+        maxConnectionsCount: 12,
+      })
+    );
+    expect(res.isOk()).toBe(true);
+
+    const limits = await effectiveLimits();
+    expect(limits.vaults.maxVaults).toBe(50);
+    expect(limits.dataSources.count).toBe(-1);
+    expect(limits.connections.count).toBe(12);
+    // Not overridden: still the plan value.
+    expect(limits.users.maxUsers).toBe(PLAN_MAX_USERS);
   });
 
   it("applies the override to the effective plan limits", async () => {

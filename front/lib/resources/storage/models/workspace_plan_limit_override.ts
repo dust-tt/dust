@@ -27,6 +27,9 @@ export class WorkspacePlanLimitOverrideModel extends WorkspaceAwareModel<Workspa
   declare maxUsersInWorkspace: CreationOptional<number | null>;
   declare maxFreeUsersInWorkspace: CreationOptional<number | null>;
   declare maxLifetimeFreeUsersInWorkspace: CreationOptional<number | null>;
+  declare maxVaultsInWorkspace: CreationOptional<number | null>;
+  declare maxDataSourcesCount: CreationOptional<number | null>;
+  declare maxConnectionsCount: CreationOptional<number | null>;
 }
 
 WorkspacePlanLimitOverrideModel.init(
@@ -54,6 +57,21 @@ WorkspacePlanLimitOverrideModel.init(
       defaultValue: null,
     },
     maxLifetimeFreeUsersInWorkspace: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
+    maxVaultsInWorkspace: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
+    maxDataSourcesCount: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
+    maxConnectionsCount: {
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: null,

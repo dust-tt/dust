@@ -18,6 +18,9 @@ function toPlanLimitOverride(
     maxUsersInWorkspace: row.maxUsersInWorkspace,
     maxFreeUsersInWorkspace: row.maxFreeUsersInWorkspace,
     maxLifetimeFreeUsersInWorkspace: row.maxLifetimeFreeUsersInWorkspace,
+    maxVaultsInWorkspace: row.maxVaultsInWorkspace,
+    maxDataSourcesCount: row.maxDataSourcesCount,
+    maxConnectionsCount: row.maxConnectionsCount,
   };
 }
 

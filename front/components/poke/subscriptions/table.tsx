@@ -560,9 +560,12 @@ export function PlanLimitationsTable({
               <PokeTableRow>
                 <PokeTableCell>Max number of spaces</PokeTableCell>
                 <PokeTableCell>
-                  {activePlan.limits.vaults.maxVaults === -1
-                    ? "unlimited"
-                    : activePlan.limits.vaults.maxVaults}
+                  <PlanLimitValue
+                    value={activePlan.limits.vaults.maxVaults}
+                    isOverridden={
+                      planLimitOverride?.maxVaultsInWorkspace != null
+                    }
+                  />
                 </PokeTableCell>
               </PokeTableRow>
 
@@ -603,9 +606,26 @@ export function PlanLimitationsTable({
               <PokeTableRow>
                 <PokeTableCell>Max number of data sources</PokeTableCell>
                 <PokeTableCell>
-                  {activePlan.limits.dataSources.count === -1
-                    ? "unlimited"
-                    : activePlan.limits.dataSources.count}
+                  <PlanLimitValue
+                    value={activePlan.limits.dataSources.count}
+                    isOverridden={
+                      planLimitOverride?.maxDataSourcesCount != null
+                    }
+                  />
+                </PokeTableCell>
+              </PokeTableRow>
+
+              <PokeTableRow>
+                <PokeTableCell>
+                  Max number of connections (user-added connectors)
+                </PokeTableCell>
+                <PokeTableCell>
+                  <PlanLimitValue
+                    value={activePlan.limits.connections.count}
+                    isOverridden={
+                      planLimitOverride?.maxConnectionsCount != null
+                    }
+                  />
                 </PokeTableCell>
               </PokeTableRow>
 

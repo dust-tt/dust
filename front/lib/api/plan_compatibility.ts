@@ -23,7 +23,8 @@ type PlanFitResult = {
  * intentionally not checked here.
  *
  * The workspace's plan-limit overrides apply to `plan` as well (they are
- * workspace-scoped, not plan-scoped), so the seat check uses the effective cap.
+ * workspace-scoped, not plan-scoped), so every overridable limit is checked
+ * against its effective value.
  */
 export async function checkWorkspaceFitsPlanLimits(
   auth: Authenticator,
@@ -37,6 +38,12 @@ export async function checkWorkspaceFitsPlanLimits(
     await WorkspacePlanLimitOverrideResource.fetchByWorkspace({ workspace });
   const maxUsers =
     planLimitOverride?.maxUsersInWorkspace ?? limits.users.maxUsers;
+  const maxVaults =
+    planLimitOverride?.maxVaultsInWorkspace ?? limits.vaults.maxVaults;
+  const maxDataSourcesCount =
+    planLimitOverride?.maxDataSourcesCount ?? limits.dataSources.count;
+  const maxConnectionsCount =
+    planLimitOverride?.maxConnectionsCount ?? limits.connections.count;
 
   if (maxUsers !== -1) {
     const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
@@ -49,35 +56,35 @@ export async function checkWorkspaceFitsPlanLimits(
     }
   }
 
-  if (limits.vaults.maxVaults !== -1) {
+  if (maxVaults !== -1) {
     const spaces = await SpaceResource.listWorkspaceSpaces(auth);
     const regularSpaceCount = spaces.filter((s) => s.kind === "regular").length;
-    if (regularSpaceCount > limits.vaults.maxVaults) {
+    if (regularSpaceCount > maxVaults) {
       violations.push(
-        `regular spaces (${regularSpaceCount}) exceed plan maxVaults (${limits.vaults.maxVaults})`
+        `regular spaces (${regularSpaceCount}) exceed plan maxVaults (${maxVaults})`
       );
     }
   }
 
-  if (limits.dataSources.count !== -1) {
+  if (maxDataSourcesCount !== -1) {
     const dataSources = await getDataSources(auth);
-    if (dataSources.length > limits.dataSources.count) {
+    if (dataSources.length > maxDataSourcesCount) {
       violations.push(
-        `data sources (${dataSources.length}) exceed plan maxDataSourcesCount (${limits.dataSources.count})`
+        `data sources (${dataSources.length}) exceed plan maxDataSourcesCount (${maxDataSourcesCount})`
       );
     }
   }
 
-  if (limits.connections.count !== -1) {
+  if (maxConnectionsCount !== -1) {
     const dataSources = await getDataSources(auth);
     const connectionsCount = dataSources.filter(
       (ds) =>
         ds.connectorProvider !== null &&
         doesConnectorProviderCountTowardConnectionsLimit(ds.connectorProvider)
     ).length;
-    if (connectionsCount > limits.connections.count) {
+    if (connectionsCount > maxConnectionsCount) {
       violations.push(
-        `connected data sources (${connectionsCount}) exceed plan maxConnectionsCount (${limits.connections.count})`
+        `connected data sources (${connectionsCount}) exceed plan maxConnectionsCount (${maxConnectionsCount})`
       );
     }
   }
