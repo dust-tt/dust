@@ -28,6 +28,7 @@ type BlockedActionsContextType = {
     messageId: string;
     blockedAction: AgentLoopBlockedToolExecution;
   }) => void;
+  refreshBlockedActions: () => Promise<void>;
   removeCompletedAction: (actionId: string) => void;
   removeAllBlockedActionsForMessage: (params: {
     messageId: string;
@@ -204,6 +205,10 @@ export function BlockedActionsProvider({
     [stopPulsingAction, mutateBlockedActions]
   );
 
+  const refreshBlockedActions = useCallback(async () => {
+    await mutateBlockedActions();
+  }, [mutateBlockedActions]);
+
   const hasPendingValidations = useCallback(
     (userId: string) => {
       return blockedActionsQueue.some(
@@ -285,6 +290,7 @@ export function BlockedActionsProvider({
   const value = useMemo(
     () => ({
       enqueueBlockedAction,
+      refreshBlockedActions,
       removeCompletedAction,
       removeAllBlockedActionsForMessage,
       hasPendingValidations,
@@ -296,6 +302,7 @@ export function BlockedActionsProvider({
     }),
     [
       enqueueBlockedAction,
+      refreshBlockedActions,
       removeCompletedAction,
       removeAllBlockedActionsForMessage,
       hasPendingValidations,
