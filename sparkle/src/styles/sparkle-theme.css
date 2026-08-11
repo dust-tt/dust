@@ -142,6 +142,9 @@
   height: 1rem;
   overflow: visible;
 }
+.dark .puzzle-spinner-icon {
+  color: var(--color-white);
+}
 .puzzle-spinner-base {
   fill: currentColor;
   opacity: 0.16;
