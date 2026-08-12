@@ -8,6 +8,7 @@ import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
   Button,
+  CheckBoxWithTextAndDescription,
   Checkbox,
   ContentMessage,
   Icon,
@@ -49,7 +50,7 @@ type SheetAction =
   | { type: "sync"; channels: SlackChannel[] }
   | { type: "set_channels"; channels: SlackChannel[] }
   | { type: "toggle_auto_respond" }
-  | { type: "toggle_skip_thread_replies" };
+  | { type: "set_skip_thread_replies"; value: boolean };
 
 function sheetReducer(state: SheetState, action: SheetAction): SheetState {
   switch (action.type) {
@@ -72,10 +73,10 @@ function sheetReducer(state: SheetState, action: SheetAction): SheetState {
         skipThreadRepliesEnabled: next ? state.skipThreadRepliesEnabled : false,
       };
     }
-    case "toggle_skip_thread_replies":
+    case "set_skip_thread_replies":
       return {
         ...state,
-        skipThreadRepliesEnabled: !state.skipThreadRepliesEnabled,
+        skipThreadRepliesEnabled: action.value,
       };
     default:
       return assertNever(action);
@@ -404,25 +405,18 @@ export function SlackSettingsSheet({
                   onClick={() => dispatch({ type: "toggle_auto_respond" })}
                 />
               </div>
-              {autoRespondWithoutMentionEnabled && (
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <span className="text-sm font-medium text-foreground">
-                      Top-level posts only
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      Only respond to new channel messages, not replies within
-                      threads
-                    </span>
-                  </div>
-                  <SliderToggle
-                    selected={skipThreadRepliesEnabled}
-                    onClick={() =>
-                      dispatch({ type: "toggle_skip_thread_replies" })
-                    }
-                  />
-                </div>
-              )}
+              <CheckBoxWithTextAndDescription
+                text="Top-level posts only"
+                description="Only respond to new channel messages, not replies within threads"
+                checked={skipThreadRepliesEnabled}
+                disabled={!autoRespondWithoutMentionEnabled}
+                onCheckedChange={(checked) =>
+                  dispatch({
+                    type: "set_skip_thread_replies",
+                    value: checked === true,
+                  })
+                }
+              />
             </div>
           )}
         </SheetFooter>
