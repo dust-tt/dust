@@ -704,7 +704,9 @@ export class RunResource extends BaseResource<RunModel> {
       modelId: modelConfig.modelId,
       promptTokens: usage.inputTokens,
       providerId: modelConfig.providerId,
-      costMicroUsd: usageCostMicroUsd,
+      // Token pricing can produce fractional micro-dollar values. Run usage stores a BIGINT, so
+      // normalize explicitly instead of relying on coercion that differs between inserts and updates.
+      costMicroUsd: Math.round(usageCostMicroUsd),
       isBatch,
     };
   }
