@@ -15,6 +15,7 @@ import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import tracer from "@app/logger/tracer";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { getModelMaker } from "@app/types/assistant/models/providers";
@@ -35,6 +36,30 @@ export type ConsumptionFacetCatalog = Record<
   ConsumptionScopeDimension,
   ConsumptionFacetCatalogEntry[]
 >;
+
+type ConsumptionFacetCatalogSource =
+  | "members"
+  | "groups"
+  | "agents"
+  | "models"
+  | "mcp_servers"
+  | "skills";
+
+function traceFacetCatalogLoad<T>(
+  source: ConsumptionFacetCatalogSource,
+  fn: () => Promise<T[]>
+): Promise<T[]> {
+  return tracer.trace(
+    "analytics.consumption.facets.catalog.load",
+    { resource: source },
+    async (span) => {
+      span?.setTag("facet.catalog_source", source);
+      const entries = await fn();
+      span?.setTag("facet.catalog_source_entry_count", entries.length);
+      return entries;
+    }
+  );
+}
 
 function toolFacetCatalogEntries(
   mcpServers: MCPServerTypeWithViews[]
@@ -71,31 +96,45 @@ function toolFacetCatalogEntries(
 }
 
 /** Lists current workspace entities that can be selected as consumption filters. */
-export async function listConsumptionFacetCatalog(
+async function listConsumptionFacetCatalogWithoutTracing(
   auth: Authenticator
 ): Promise<ConsumptionFacetCatalog> {
   // TODO(2026-08-11 OBSERVABILITY): This eagerly loads several complete
   // workspace catalogs and is known to perform poorly on large workspaces.
   // Move most facet metadata into Elasticsearch so this endpoint can query ES
   // instead of loading several unbounded database-backed catalogs.
-  const { members } = await getMembers(auth, { activeOnly: true });
-  const groups = await GroupResource.listAllWorkspaceGroups(auth, {
-    groupKinds: [...MANAGEABLE_GROUP_KINDS],
+  const members = await traceFacetCatalogLoad("members", async () => {
+    const result = await getMembers(auth, { activeOnly: true });
+    return result.members;
   });
-  const agents = await getAgentConfigurationsForView({
-    auth,
-    agentsGetView: "all",
-    variant: "extra_light",
-    omitInstructions: true,
+  const groups = await traceFacetCatalogLoad("groups", () =>
+    GroupResource.listAllWorkspaceGroups(auth, {
+      groupKinds: [...MANAGEABLE_GROUP_KINDS],
+    })
+  );
+  const agents = await traceFacetCatalogLoad("agents", () =>
+    getAgentConfigurationsForView({
+      auth,
+      agentsGetView: "all",
+      variant: "extra_light",
+      omitInstructions: true,
+    })
+  );
+  const models = await traceFacetCatalogLoad("models", async () => {
+    const result = await getModelsForAuth(auth);
+    return result.models;
   });
-  const { models } = await getModelsForAuth(auth);
-  const mcpServers = await listMCPServersWithViews(auth);
-  const skills = await SkillResource.listByWorkspace(auth, {
-    status: "active",
-    withInstructions: false,
-    withTools: false,
-    withFileAttachments: false,
-  });
+  const mcpServers = await traceFacetCatalogLoad("mcp_servers", () =>
+    listMCPServersWithViews(auth)
+  );
+  const skills = await traceFacetCatalogLoad("skills", () =>
+    SkillResource.listByWorkspace(auth, {
+      status: "active",
+      withInstructions: false,
+      withTools: false,
+      withFileAttachments: false,
+    })
+  );
 
   return {
     agent: agents.map((agent) => ({
@@ -140,4 +179,13 @@ export async function listConsumptionFacetCatalog(
       pictureUrl: null,
     })),
   };
+}
+
+export async function listConsumptionFacetCatalog(
+  auth: Authenticator
+): Promise<ConsumptionFacetCatalog> {
+  return tracer.trace("analytics.consumption.facets.catalog", async (span) => {
+    span?.setTag("workspace.id", auth.getNonNullableWorkspace().sId);
+    return listConsumptionFacetCatalogWithoutTracing(auth);
+  });
 }
