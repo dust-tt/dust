@@ -1,3 +1,4 @@
+import { runWithGoogleDriveContentConcurrency } from "@connectors/connectors/google_drive/temporal/file/content_concurrency";
 import { syncOneFileTable } from "@connectors/connectors/google_drive/temporal/file/sync_one_file_table";
 import { syncOneFileTextDocument } from "@connectors/connectors/google_drive/temporal/file/sync_one_file_text_document";
 import { isTableFile } from "@connectors/connectors/google_drive/temporal/mime_types";
@@ -94,17 +95,19 @@ export async function syncOneFile(
         ? MAX_LARGE_DOCUMENT_TXT_LEN
         : MAX_DOCUMENT_TXT_LEN;
 
-      if (isTableFile(file)) {
-        return syncOneFileTable(
-          connectorId,
-          oauth2client,
-          file,
-          localLogger,
-          dataSourceConfig,
-          maxDocumentLen,
-          startSyncTs
-        );
-      } else {
+      return runWithGoogleDriveContentConcurrency(() => {
+        if (isTableFile(file)) {
+          return syncOneFileTable(
+            connectorId,
+            oauth2client,
+            file,
+            localLogger,
+            dataSourceConfig,
+            maxDocumentLen,
+            startSyncTs
+          );
+        }
+
         return syncOneFileTextDocument(
           connectorId,
           oauth2client,
@@ -116,7 +119,7 @@ export async function syncOneFile(
           isBatchSync,
           maxDocumentLen
         );
-      }
+      });
     }
   );
 }
