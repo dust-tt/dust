@@ -38,21 +38,6 @@ type SlackChannel = {
   autoRespondWithoutMentionSkipThreadReplies?: boolean;
 };
 
-type LocalState = {
-  localSlackChannels: SlackChannel[];
-  autoRespondWithoutMentionEnabled: boolean;
-  skipThreadRepliesEnabled: boolean;
-};
-
-function stateFromChannels(channels: SlackChannel[] | undefined): LocalState {
-  const ch = channels ?? [];
-  return {
-    localSlackChannels: [...ch],
-    autoRespondWithoutMentionEnabled: ch[0]?.autoRespondWithoutMention ?? false,
-    skipThreadRepliesEnabled:
-      ch[0]?.autoRespondWithoutMentionSkipThreadReplies ?? false,
-  };
-}
 
 interface SlackChannelsListProps {
   disabled?: boolean;
@@ -227,27 +212,27 @@ export function SlackSettingsSheet({
     name: "agentSettings.slackChannels",
   });
 
-  const [
-    {
-      localSlackChannels,
-      autoRespondWithoutMentionEnabled,
-      skipThreadRepliesEnabled,
-    },
-    setLocalState,
-  ] = useState<LocalState>(() => stateFromChannels(slackChannels));
+  const [localSlackChannels, setLocalSlackChannels] = useState<SlackChannel[]>(
+    slackChannels ?? []
+  );
+  const [autoRespondWithoutMentionEnabled, setAutoRespondWithoutMentionEnabled] =
+    useState(slackChannels?.[0]?.autoRespondWithoutMention ?? false);
+  const [skipThreadRepliesEnabled, setSkipThreadRepliesEnabled] = useState(
+    slackChannels?.[0]?.autoRespondWithoutMentionSkipThreadReplies ?? false
+  );
 
   useEffect(() => {
-    setLocalState(stateFromChannels(slackChannels));
+    setLocalSlackChannels([...(slackChannels ?? [])]);
+    setAutoRespondWithoutMentionEnabled(
+      slackChannels?.[0]?.autoRespondWithoutMention ?? false
+    );
+    setSkipThreadRepliesEnabled(
+      slackChannels?.[0]?.autoRespondWithoutMentionSkipThreadReplies ?? false
+    );
   }, [slackChannels]);
 
-  useEffect(() => {
-    if (isOpen) {
-      setLocalState(stateFromChannels(slackChannels));
-    }
-  }, [isOpen, slackChannels]);
-
   const handleSelectionChange = (channels: SlackChannel[]) => {
-    setLocalState((prev) => ({ ...prev, localSlackChannels: channels }));
+    setLocalSlackChannels(channels);
   };
 
   const onSave = () => {
@@ -262,7 +247,13 @@ export function SlackSettingsSheet({
   };
 
   const handleClose = () => {
-    setLocalState(stateFromChannels(slackChannels));
+    setLocalSlackChannels([...(slackChannels ?? [])]);
+    setAutoRespondWithoutMentionEnabled(
+      slackChannels?.[0]?.autoRespondWithoutMention ?? false
+    );
+    setSkipThreadRepliesEnabled(
+      slackChannels?.[0]?.autoRespondWithoutMentionSkipThreadReplies ?? false
+    );
     onOpenChange();
   };
 
@@ -283,10 +274,9 @@ export function SlackSettingsSheet({
     );
 
     const savedAutoRespond =
-      (slackChannels ?? [])[0]?.autoRespondWithoutMention ?? false;
+      slackChannels?.[0]?.autoRespondWithoutMention ?? false;
     const savedSkipThreadReplies =
-      (slackChannels ?? [])[0]?.autoRespondWithoutMentionSkipThreadReplies ??
-      false;
+      slackChannels?.[0]?.autoRespondWithoutMentionSkipThreadReplies ?? false;
 
     return (
       channelSelectionChanged ||
@@ -374,17 +364,13 @@ export function SlackSettingsSheet({
                 </div>
                 <SliderToggle
                   selected={autoRespondWithoutMentionEnabled}
-                  onClick={() =>
-                    setLocalState((prev) => ({
-                      ...prev,
-                      autoRespondWithoutMentionEnabled:
-                        !prev.autoRespondWithoutMentionEnabled,
-                      skipThreadRepliesEnabled:
-                        prev.autoRespondWithoutMentionEnabled
-                          ? false
-                          : prev.skipThreadRepliesEnabled,
-                    }))
-                  }
+                  onClick={() => {
+                    const next = !autoRespondWithoutMentionEnabled;
+                    setAutoRespondWithoutMentionEnabled(next);
+                    if (!next) {
+                      setSkipThreadRepliesEnabled(false);
+                    }
+                  }}
                 />
               </div>
               {autoRespondWithoutMentionEnabled && (
@@ -401,11 +387,7 @@ export function SlackSettingsSheet({
                   <SliderToggle
                     selected={skipThreadRepliesEnabled}
                     onClick={() =>
-                      setLocalState((prev) => ({
-                        ...prev,
-                        skipThreadRepliesEnabled:
-                          !prev.skipThreadRepliesEnabled,
-                      }))
+                      setSkipThreadRepliesEnabled(!skipThreadRepliesEnabled)
                     }
                   />
                 </div>
