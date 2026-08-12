@@ -20,6 +20,7 @@ import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces"
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
+import { launchSkillsSearchIndexation } from "@app/lib/skill_search/indexation";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces_utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -107,8 +108,9 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     "softDeleteSpace: starting agent requestedSpaceIds cleanup"
   );
 
+  let updatedSkillIds: string[] = [];
   try {
-    await withTransaction(async (t) => {
+    updatedSkillIds = await withTransaction(async (t) => {
       // Soft delete all data source views.
       await concurrentExecutor(
         dataSourceViews,
@@ -330,6 +332,8 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       if (res.isErr()) {
         throw res.error;
       }
+
+      return skillsToUpdate.map((skill) => skill.sId);
     });
   } catch (err) {
     logger.error(
@@ -338,6 +342,11 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     );
     throw err;
   }
+
+  await launchSkillsSearchIndexation({
+    workspaceId,
+    skillIds: updatedSkillIds,
+  });
 
   logger.info(
     logContext,

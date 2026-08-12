@@ -19,6 +19,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { launchSkillSearchIndexation } from "@app/lib/skill_search/indexation";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -120,6 +121,7 @@ export async function importSkillsFromGitHub(
   const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
 
   const user = auth.getNonNullableUser();
+  const workspace = auth.getNonNullableWorkspace();
   const imported: SkillResource[] = [];
   const updated: SkillResource[] = [];
   const skipped: { name: string; message: string }[] = [];
@@ -169,6 +171,11 @@ export async function importSkillsFromGitHub(
           repoUrl,
           filePath: skill.skillMdPath,
         },
+      });
+
+      await launchSkillSearchIndexation({
+        workspaceId: workspace.sId,
+        skillId: existing.sId,
       });
 
       await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
@@ -221,6 +228,11 @@ export async function importSkillsFromGitHub(
           fileAttachments,
         }
       );
+
+      await launchSkillSearchIndexation({
+        workspaceId: workspace.sId,
+        skillId: skillResource.sId,
+      });
 
       await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
         skillId: skillResource.sId,
