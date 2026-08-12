@@ -796,7 +796,7 @@ export async function runModel(
     await publishAgentError({
       code: "free_usage_limit_reached",
       message:
-        "The daily free-usage limit has been reached. Please try again later.",
+        "You have reached the free usage credits cap for this 24h period. Please try again later.",
       metadata: null,
     });
     return null;
