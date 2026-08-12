@@ -240,6 +240,24 @@ export interface GroupPermissionsJSON {
  * Holds only grants — it knows nothing about roles. Admin-by-default access is applied by the
  * Authenticator. Because we only load the caller's groups, this is caller-scoped: `forResource`
  * returns the caller's matching groups, which resources fold into an `AccessControlList`.
+ *
+ * Example — the grant rows of a caller belonging to groups 7 and 9:
+ *
+ *   | groupId | grantType | resourceType | resourceId |
+ *   | ------- | --------- | ------------ | ---------- |
+ *   | 7       | member    | space        | 12         |
+ *   | 9       | reader    | space        | 12         |
+ *   | 7       | create    | skill        | -1         |
+ *
+ * become (with read=1, write=2, admin=4, create=8):
+ *
+ *   {
+ *     space: { 12: { 7: 0b0011, 9: 0b0001 } },
+ *     skill: { -1: { 7: 0b1000 } },
+ *   }
+ *
+ * `member` expands to read + write via the registry, so group 7 holds mask 3 on space 12. The
+ * skill row is type-wide (-1), so it answers a "create" check on any skill.
  */
 export class GroupPermissions {
   private constructor(
