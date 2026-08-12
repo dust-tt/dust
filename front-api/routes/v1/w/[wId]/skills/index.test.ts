@@ -311,7 +311,7 @@ describe("GET /api/v1/w/[wId]/skills", () => {
 
 describe("POST /api/v1/w/[wId]/skills", () => {
   it("sets availability when creating and updating imported skills", async () => {
-    const { auth, workspace } = await createPublicApiMockRequest();
+    const { key, workspace } = await createPublicApiMockRequest();
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
@@ -326,6 +326,12 @@ describe("POST /api/v1/w/[wId]/skills", () => {
         resourceType: "skill",
       });
     }
+    // The permission set is resolved once at Authenticator construction, so build the request auth
+    // after the grants above for its snapshot to include them.
+    const { workspaceAuth: auth } = await Authenticator.fromKey(
+      key,
+      workspace.sId
+    );
 
     const importWithAvailability = async ({
       availability,
@@ -371,17 +377,24 @@ describe("POST /api/v1/w/[wId]/skills", () => {
   });
 
   it("rejects discoverable imports without the make-discoverable permission", async () => {
-    const { auth, workspace } = await createPublicApiMockRequest();
+    const { key, workspace } = await createPublicApiMockRequest();
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
     await SpaceFactory.defaults(adminAuth);
+    // Everything but make_discoverable, which is what this test asserts is missing.
     for (const grantType of ["create", "publish"] as const) {
       await GroupPermissionResource.setForEverybody(adminAuth, {
         grantType,
         resourceType: "skill",
       });
     }
+    // The permission set is resolved once at Authenticator construction, so build the request auth
+    // after the grants above for its snapshot to include them.
+    const { workspaceAuth: auth } = await Authenticator.fromKey(
+      key,
+      workspace.sId
+    );
 
     const result = await importSkillsFromFiles(auth, {
       uploadedFiles: [
