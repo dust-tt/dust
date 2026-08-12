@@ -1,9 +1,17 @@
-import { deletePodApp, listPodApps } from "@app/lib/api/projects/apps";
+import {
+  clonePodApp,
+  deletePodApp,
+  listPodApps,
+} from "@app/lib/api/projects/apps";
 import type {
+  ClonePodAppResponseBody,
   DeletePodAppResponseBody,
   GetPodAppsResponseBody,
 } from "@app/types/api/pod_apps";
-import { DeletePodAppParamsSchema } from "@app/types/api/pod_apps";
+import {
+  ClonePodAppRequestBodySchema,
+  DeletePodAppParamsSchema,
+} from "@app/types/api/pod_apps";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -90,6 +98,76 @@ app.delete(
     }
 
     return ctx.json({ app: deleteResult.value });
+  }
+);
+
+/** @ignoreswagger */
+app.post(
+  "/:prefix/clone",
+  validate("param", DeletePodAppParamsSchema),
+  validate("json", ClonePodAppRequestBodySchema),
+  withSpace({ requireCanWrite: true, routeParam: "podId" }),
+  async (ctx): HandlerResult<ClonePodAppResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const { prefix } = ctx.req.valid("param");
+    const { name } = ctx.req.valid("json");
+
+    const cloneResult = await clonePodApp(auth, space, {
+      prefix,
+      newName: name,
+    });
+    if (cloneResult.isErr()) {
+      switch (cloneResult.error.code) {
+        case "not_found":
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: {
+              type: "space_not_found",
+              message: cloneResult.error.message,
+            },
+          });
+        case "name_taken":
+          return apiError(ctx, {
+            status_code: 409,
+            api_error: {
+              type: "invalid_request_error",
+              message: cloneResult.error.message,
+            },
+          });
+        case "not_a_pod":
+        case "cannot_clone_unfiled":
+        case "invalid_name":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: cloneResult.error.message,
+            },
+          });
+        case "sandbox_unavailable":
+          // Publishing and reconciling need a live sandbox; the clone is safe to retry.
+          return apiError(ctx, {
+            status_code: 503,
+            api_error: {
+              type: "service_unavailable",
+              message: cloneResult.error.message,
+            },
+          });
+        case "internal":
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: cloneResult.error.message,
+            },
+          });
+        default:
+          assertNever(cloneResult.error.code);
+      }
+    }
+
+    return ctx.json({ app: cloneResult.value }, 201);
   }
 );
 
