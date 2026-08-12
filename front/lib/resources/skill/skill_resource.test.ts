@@ -87,10 +87,10 @@ describe("SkillResource", () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill With Grants",
       });
-      const editorGroupId = skill.editorGroup?.id;
-      assert(editorGroupId, "skill should have an editor group");
+      const editorGroupModelId = skill.editorGroup?.id;
+      assert(editorGroupModelId, "skill should have an editor group");
 
-      const grants = await fetchSkillGrants(editorGroupId, skill.id);
+      const grants = await fetchSkillGrants(editorGroupModelId, skill.id);
 
       expect(grants).toHaveLength(1);
       expect(grants[0].grantType).toBe("editor");
@@ -101,27 +101,33 @@ describe("SkillResource", () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill To Delete With Grants",
       });
-      const editorGroupId = skill.editorGroup?.id;
-      assert(editorGroupId, "skill should have an editor group");
-      expect(await fetchSkillGrants(editorGroupId, skill.id)).toHaveLength(1);
+      const editorGroupModelId = skill.editorGroup?.id;
+      assert(editorGroupModelId, "skill should have an editor group");
+      expect(await fetchSkillGrants(editorGroupModelId, skill.id)).toHaveLength(
+        1
+      );
 
       const result = await skill.delete(testContext.authenticator);
       expect(result.isOk()).toBe(true);
 
-      expect(await fetchSkillGrants(editorGroupId, skill.id)).toHaveLength(0);
+      expect(await fetchSkillGrants(editorGroupModelId, skill.id)).toHaveLength(
+        0
+      );
     });
 
     it("is idempotent: reconciling twice leaves a single grant", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill Reconciled Twice",
       });
-      const editorGroupId = skill.editorGroup?.id;
-      assert(editorGroupId, "skill should have an editor group");
+      const editorGroupModelId = skill.editorGroup?.id;
+      assert(editorGroupModelId, "skill should have an editor group");
 
       await skill.reconcileGroupPermissions(testContext.authenticator);
       await skill.reconcileGroupPermissions(testContext.authenticator);
 
-      expect(await fetchSkillGrants(editorGroupId, skill.id)).toHaveLength(1);
+      expect(await fetchSkillGrants(editorGroupModelId, skill.id)).toHaveLength(
+        1
+      );
     });
   });
 
@@ -1691,10 +1697,10 @@ describe("SkillResource", () => {
       });
       expect(groupSkillBefore).not.toBeNull();
 
-      const editorGroupId = groupSkillBefore!.groupId;
+      const editorGroupModelId = groupSkillBefore!.groupId;
       const [editorGroupBefore] = await GroupResource.fetchByModelIds(
         testContext.authenticator,
-        [editorGroupId]
+        [editorGroupModelId]
       );
       expect(editorGroupBefore).not.toBeNull();
       expect(editorGroupBefore!.kind).toBe("skill_editors");
@@ -1722,7 +1728,7 @@ describe("SkillResource", () => {
       // Verify the editor group is deleted.
       const editorGroupsAfter = await GroupResource.fetchByModelIds(
         testContext.authenticator,
-        [editorGroupId]
+        [editorGroupModelId]
       );
       expect(editorGroupsAfter).toHaveLength(0);
     });
@@ -2344,15 +2350,15 @@ describe("SkillResource", () => {
       const groupSkills = await GroupSkillModel.findAll({
         where: { workspaceId: testContext.workspace.id },
       });
-      const editorGroupIds = groupSkills.map((gs) => gs.groupId);
-      expect(editorGroupIds.length).toBeGreaterThanOrEqual(2);
+      const editorGroupModelIds = groupSkills.map((gs) => gs.groupId);
+      expect(editorGroupModelIds.length).toBeGreaterThanOrEqual(2);
 
       // Verify editor groups exist.
       const editorGroupsBefore = await GroupResource.fetchByModelIds(
         testContext.authenticator,
-        editorGroupIds
+        editorGroupModelIds
       );
-      expect(editorGroupsBefore.length).toBe(editorGroupIds.length);
+      expect(editorGroupsBefore.length).toBe(editorGroupModelIds.length);
       expect(editorGroupsBefore.every((g) => g.kind === "skill_editors")).toBe(
         true
       );
@@ -2381,7 +2387,7 @@ describe("SkillResource", () => {
       // Verify editor groups are deleted.
       const editorGroupsAfter = await GroupResource.fetchByModelIds(
         testContext.authenticator,
-        editorGroupIds
+        editorGroupModelIds
       );
       expect(editorGroupsAfter).toHaveLength(0);
     });
