@@ -37,13 +37,11 @@ const EMPTY_FACET_OPTIONS: ConsumptionFacetOptions = {
 function baseOption(facet: {
   value: string;
   label: string;
-  documentCount: number;
   disabled: boolean;
 }) {
   return {
     id: facet.value,
     name: facet.label,
-    documentCount: facet.documentCount,
     disabled: facet.disabled,
   };
 }

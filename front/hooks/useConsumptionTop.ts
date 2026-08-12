@@ -30,7 +30,6 @@ export type ConsumptionTopRow = {
   id: string;
   name: string;
   pictureUrl: string | null;
-  documentCount: number;
   credits: number;
   avgCredits: number;
 };
@@ -53,7 +52,6 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.agentId,
       name: row.name,
       pictureUrl: row.pictureUrl,
-      documentCount: row.messageCount,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));
@@ -63,7 +61,6 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.userId,
       name: row.name,
       pictureUrl: row.pictureUrl,
-      documentCount: row.messageCount,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));
@@ -75,7 +72,6 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       pictureUrl: null,
       modelMaker: null,
       tier: null,
-      documentCount: row.messageCount,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));
@@ -85,7 +81,6 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.modelId,
       name: row.name,
       pictureUrl: null,
-      documentCount: row.messageCount,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));
@@ -95,7 +90,6 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.serverName,
       name: row.name,
       pictureUrl: null,
-      documentCount: row.invocationCount,
       credits: row.credits,
       avgCredits: row.avgCreditsPerInvocation,
     }));
@@ -105,7 +99,6 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.skillId,
       name: row.name,
       pictureUrl: null,
-      documentCount: row.invocationCount,
       credits: row.credits,
       avgCredits: row.avgCreditsPerInvocation,
     }));
@@ -115,7 +108,6 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.source,
       name: row.name,
       pictureUrl: null,
-      documentCount: row.messageCount,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));

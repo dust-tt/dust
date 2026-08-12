@@ -77,7 +77,6 @@ export const USAGE_MODEL_TIER_LABEL: Record<UsageModelTier, string> = {
 interface UsageFilterOptionBase {
   id: string;
   name: string;
-  documentCount: number;
   disabled: boolean;
 }
 
@@ -227,13 +226,11 @@ export function setUsageFilterFromAttributionRow(
     id: string;
     name: string;
     pictureUrl: string | null;
-    documentCount: number;
   }
 ): UsageFilter {
   const baseOption = {
     id: row.id,
     name: row.name,
-    documentCount: row.documentCount,
     disabled: false,
   };
 
