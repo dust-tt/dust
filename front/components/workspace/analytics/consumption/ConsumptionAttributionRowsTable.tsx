@@ -114,7 +114,16 @@ export function ConsumptionAttributionRowsTable({
             <tr>
               <td className="max-w-0" colSpan={row.getVisibleCells().length}>
                 <Collapsible open={row.original.isExpanded}>
-                  <CollapsibleContent>
+                  <CollapsibleContent
+                    animated={false}
+                    className={cn(
+                      "transition-none ease-enter motion-reduce:animate-none",
+                      "data-[state=open]:animate-in data-[state=open]:fade-in-0",
+                      "data-[state=open]:slide-in-from-top-1 data-[state=open]:duration-enter",
+                      "data-[state=closed]:animate-out data-[state=closed]:fade-out-0",
+                      "data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-exit"
+                    )}
+                  >
                     <ConsumptionAttributionBreakdown
                       workspaceId={workspaceId}
                       selectedDimension={dimension}
