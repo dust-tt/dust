@@ -229,6 +229,10 @@ app.get(
       // Lets the frame enable member-only tools (e.g. callFunction) client-side;
       // real authorization still happens server-side on invocation.
       isAuthenticatedMember: !!user,
+      // Lets a shared Frame in an app folder resolve bare function references, exactly as it does
+      // when opened from the Pod. Withheld from viewers who cannot read the Pod, who cannot invoke
+      // its functions either.
+      framePath: canRead && auth ? file.toScopedPath(auth) : null,
     });
   }
 );

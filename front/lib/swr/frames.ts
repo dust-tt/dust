@@ -29,6 +29,8 @@ export function usePublicFrame({ shareToken }: { shareToken: string | null }) {
 
   return {
     frameMetadata: data?.file,
+    // Set only when the viewer can read the Pod; null for a Frame outside one.
+    framePath: data?.framePath ?? null,
     // Set only if user is a conversation participant.
     conversationUrl: data?.conversationUrl ?? null,
     // Set only if user can read the project.
