@@ -1,7 +1,6 @@
 import { ClonePodAppDialog } from "@app/components/pod/apps/ClonePodAppDialog";
 import { DeletePodAppDialog } from "@app/components/pod/apps/DeletePodAppDialog";
-import { PodAppDetail } from "@app/components/pod/apps/PodAppDetail";
-import { PodAppList } from "@app/components/pod/apps/PodAppList";
+import { PodAppTile } from "@app/components/pod/apps/PodAppTile";
 import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
 import type { CustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { usePodApps } from "@app/lib/swr/pods";
@@ -9,7 +8,12 @@ import type { PodApp, PodAppFrame } from "@app/types/api/pod_apps";
 import { DEFAULT_POD_FRAME_TAB_ICON } from "@app/types/pod_frame_tab";
 import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
-import { ContentMessage, Spinner } from "@dust-tt/sparkle";
+import {
+  CardGrid,
+  ContentMessage,
+  ScrollArea,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
 interface PodAppsTabProps {
@@ -25,9 +29,8 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
     podId: pod.sId,
   });
 
-  const canDelete = pod.isEditor && !pod.archivedAt;
+  const canEdit = pod.isEditor && !pod.archivedAt;
 
-  const [selectedPrefix, setSelectedPrefix] = useState<string | null>(null);
   const [framePreview, setFramePreview] = useState<PodAppFrame | null>(null);
   const [appPendingDeletion, setAppPendingDeletion] = useState<PodApp | null>(
     null
@@ -41,11 +44,6 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
       ),
     [pod.frameTabs]
   );
-
-  // Selection follows the list until the user picks something, so the detail pane is never blank and
-  // a refresh that drops the selected app falls back rather than showing nothing.
-  const selectedApp =
-    apps.find((app) => app.prefix === selectedPrefix) ?? apps[0] ?? null;
 
   if (isPodAppsLoading) {
     return (
@@ -78,31 +76,44 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
     );
   }
 
+  const collidingApps = apps.filter(
+    (app) => app.collidingFolderNames.length > 0
+  );
+
   return (
-    <div className="flex h-full min-h-0 w-full flex-1 overflow-hidden">
-      <div className="w-72 min-w-56 shrink-0 border-r border-border dark:border-border-night">
-        <PodAppList
-          apps={apps}
-          selectedPrefix={selectedApp?.prefix ?? null}
-          onSelect={setSelectedPrefix}
-          iconByFramePath={iconByFramePath}
-          defaultIcon={DEFAULT_POD_FRAME_TAB_ICON}
-        />
-      </div>
-      <div className="min-w-0 flex-1">
-        {selectedApp && (
-          <PodAppDetail
-            app={selectedApp}
-            onOpenFrame={setFramePreview}
-            onDelete={
-              canDelete ? () => setAppPendingDeletion(selectedApp) : undefined
-            }
-            onClone={
-              canDelete ? () => setAppPendingClone(selectedApp) : undefined
-            }
-          />
-        )}
-      </div>
+    <div className="h-full min-h-0 w-full flex-1 overflow-hidden">
+      <ScrollArea className="h-full">
+        <div className="flex flex-col gap-4 px-6 py-5">
+          {collidingApps.map((app) => (
+            <ContentMessage
+              key={app.prefix}
+              variant="warning"
+              title="Colliding app folders"
+            >
+              {app.collidingFolderNames.join(", ")} all resolve to the same app
+              name (<span className="font-mono">{app.prefix}</span>), so they
+              share the same published functions and databases. Rename all but
+              one, then re-publish its functions.
+            </ContentMessage>
+          ))}
+
+          <CardGrid>
+            {apps.map((app) => (
+              <PodAppTile
+                key={app.prefix}
+                app={app}
+                iconByFramePath={iconByFramePath}
+                defaultIcon={DEFAULT_POD_FRAME_TAB_ICON}
+                onOpenFrame={setFramePreview}
+                onClone={canEdit ? () => setAppPendingClone(app) : undefined}
+                onDelete={
+                  canEdit ? () => setAppPendingDeletion(app) : undefined
+                }
+              />
+            ))}
+          </CardGrid>
+        </div>
+      </ScrollArea>
 
       {appPendingClone && (
         <ClonePodAppDialog
