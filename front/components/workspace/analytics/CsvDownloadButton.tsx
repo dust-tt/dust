@@ -19,7 +19,7 @@ export function CsvDownloadButton({
       iconRight={label ? Download01 : undefined}
       label={label}
       variant="outline"
-      size="sm"
+      size={label ? "sm" : "xs"}
       tooltip={label ? undefined : "Download CSV"}
       onClick={handleDownload}
       disabled={disabled}
