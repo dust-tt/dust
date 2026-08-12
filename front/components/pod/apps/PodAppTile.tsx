@@ -1,12 +1,14 @@
 import type { CustomResourceIconType } from "@app/components/resources/resources_icon_names";
-import { getIcon } from "@app/components/resources/resources_icons";
+import {
+  getIcon,
+  ResourceAvatar,
+} from "@app/components/resources/resources_icons";
 import type { PodApp, PodAppFrame } from "@app/types/api/pod_apps";
 import {
   Card,
   CardActionButton,
   Chip,
   GitBranch01,
-  Icon,
   Trash01,
 } from "@dust-tt/sparkle";
 
@@ -81,23 +83,18 @@ export function PodAppTile({
         )
       }
     >
-      <div className="flex min-w-0 grow flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <Icon
-            visual={getIcon(appIcon(app, iconByFramePath, defaultIcon))}
-            size="sm"
-          />
-          <span className="truncate copy-sm font-semibold">{app.name}</span>
-        </div>
-        <span className="truncate font-mono copy-xs text-muted-foreground dark:text-muted-foreground-night">
-          {frame ? frame.fileName : "No Frame in this app"}
+      <div className="flex min-w-0 grow items-center gap-3">
+        <ResourceAvatar
+          icon={getIcon(appIcon(app, iconByFramePath, defaultIcon))}
+          size="md"
+          backgroundColor="bg-background dark:bg-background-night"
+        />
+        <span className="truncate heading-base text-foreground dark:text-foreground-night">
+          {app.name}
         </span>
-        <div className="flex flex-wrap gap-1">
-          {isDraft && <Chip size="xs" color="primary" label="Draft" />}
-          {frame?.isPinnedAsTab && (
-            <Chip size="xs" color="info" label="Pinned as tab" />
-          )}
-        </div>
+        {isDraft && (
+          <Chip size="xs" color="primary" label="Draft" className="shrink-0" />
+        )}
       </div>
     </Card>
   );

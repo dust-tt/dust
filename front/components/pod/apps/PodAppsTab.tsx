@@ -5,7 +5,6 @@ import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
 import type { CustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { usePodApps } from "@app/lib/swr/pods";
 import type { PodApp, PodAppFrame } from "@app/types/api/pod_apps";
-import { DEFAULT_POD_FRAME_TAB_ICON } from "@app/types/pod_frame_tab";
 import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -20,6 +19,10 @@ interface PodAppsTabProps {
   owner: WorkspaceType;
   pod: PodType;
 }
+
+// Not DEFAULT_POD_FRAME_TAB_ICON (a gauge that reads as a clock at tile size): an app is a Frame,
+// so the fallback is the Frame glyph.
+const DEFAULT_POD_APP_ICON = "ActionFrameIcon" satisfies CustomResourceIconType;
 
 // NavTabPillContent is a bare Radix Tabs.Content with no forceMount, so this only mounts while the
 // Apps tab is active — hence no `disabled` flag on the hook below.
@@ -103,7 +106,7 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
                 key={app.prefix}
                 app={app}
                 iconByFramePath={iconByFramePath}
-                defaultIcon={DEFAULT_POD_FRAME_TAB_ICON}
+                defaultIcon={DEFAULT_POD_APP_ICON}
                 onOpenFrame={setFramePreview}
                 onClone={canEdit ? () => setAppPendingClone(app) : undefined}
                 onDelete={
