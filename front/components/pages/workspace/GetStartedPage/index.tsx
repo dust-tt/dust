@@ -196,7 +196,7 @@ export function GetStartedPage() {
             disabled={isActivationPodLoading}
           />
 
-          <div className="mt-12 rounded-2xl border border-border bg-background px-6 pb-8 pt-6 shadow-sm">
+          <div className="mt-12 rounded-2xl border border-border bg-background px-6 pb-4 pt-6 shadow-sm">
             <h2 className="text-xl font-semibold leading-7 tracking-tight text-foreground">
               Ideas for right now
             </h2>
