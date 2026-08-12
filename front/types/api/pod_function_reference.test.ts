@@ -8,7 +8,7 @@ import {
 import { describe, expect, it } from "vitest";
 
 // viz cannot be imported by alias from front; the same relative hop as sandbox_functions.test.ts.
-import { POD_FUNCTION_REFERENCE_REGEX } from "../../../viz/app/lib/pod-function-slug";
+import { isPodFunctionReference } from "../../../viz/app/lib/pod-function-slug";
 
 const POD_ID = "vlt_abc123";
 
@@ -123,13 +123,41 @@ describe("isRelativePodFunctionReference", () => {
 });
 
 describe("relative references and the viz grammar", () => {
-  it("are rejected by the fully qualified regex viz applies today", () => {
-    // The hazard this feature has to clear: viz turns a reference its regex rejects into a null SWR
-    // key, so the Frame silently issues no request. Until POD_FUNCTION_REFERENCE_REGEX is widened in
-    // viz (step 2), no Frame may use the relative form — this test pins that dependency so the
-    // rollout order cannot be forgotten.
-    expect(POD_FUNCTION_REFERENCE_REGEX.test("add-task")).toBe(false);
-    expect(POD_FUNCTION_REFERENCE_REGEX.test(`${POD_ID}/add-task`)).toBe(true);
+  // viz turns a reference its grammar rejects into a null SWR key, so the Frame silently issues no
+  // request at all. The two sides therefore have to agree on exactly which strings are references —
+  // viz decides what reaches the host, this module decides what the host does with it.
+  it("are accepted by viz, so they reach the host to be resolved", () => {
+    expect(isPodFunctionReference("add-task")).toBe(true);
+    expect(isPodFunctionReference(`${POD_ID}/add-task`)).toBe(true);
+  });
+
+  it("agree with this module on what counts as a reference", () => {
+    const references = [
+      "add-task",
+      "greet",
+      `${POD_ID}/add-task`,
+      `${POD_ID}/tasklist__add-task`,
+      // Neither side treats a prefixed-but-podless name as a reference.
+      "tasklist__add-task",
+      "Add_Task",
+      "add task",
+      "",
+    ];
+
+    for (const reference of references) {
+      expect({
+        reference,
+        accepted: isPodFunctionReference(reference),
+      }).toEqual({
+        reference,
+        // The host resolves anything viz forwards; a reference it refuses outright is one viz should
+        // never have sent.
+        accepted: resolvePodFunctionReference(reference, {
+          podId: POD_ID,
+          appPrefix: "tasklist",
+        }).isOk(),
+      });
+    }
   });
 });
 
