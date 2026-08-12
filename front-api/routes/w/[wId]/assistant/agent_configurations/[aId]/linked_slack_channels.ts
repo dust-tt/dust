@@ -111,7 +111,8 @@ app.patch(
       agentConfigurationId: agentConfiguration.sId,
       slackChannelInternalIds: body.slack_channel_internal_ids,
       autoRespondWithoutMention: body.auto_respond_without_mention,
-      skipThreadReplies: body.auto_respond_without_mention_skip_thread_replies,
+      autoRespondWithoutMentionSkipThreadReplies:
+        body.auto_respond_without_mention_skip_thread_replies,
     });
 
     if (connectorsApiRes.isErr()) {
