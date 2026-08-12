@@ -1,0 +1,23 @@
+[
+  {
+    "name": "Pipeline Review",
+    "agentFacingDescription": "Guidelines to review a sales pipeline: stage hygiene, next steps and risks.",
+    "userFacingDescription": "Review a sales pipeline and surface the deals at risk.",
+    "instructions": "When reviewing a pipeline, always report: deals with no next step, deals stuck in the same stage for more than 30 days, and the three deals most at risk with the reason why.",
+    "instructionsHtml": "<p>When reviewing a pipeline, always report: deals with no next step, deals stuck in the same stage for more than 30 days, and the three deals most at risk with the reason why.</p>"
+  },
+  {
+    "name": "Release Notes",
+    "agentFacingDescription": "Turns a list of merged pull requests into customer-facing release notes.",
+    "userFacingDescription": "Write release notes from merged pull requests.",
+    "instructions": "Group the changes into Added, Improved and Fixed. One line per change, written for a customer, never mentioning internal module names.",
+    "instructionsHtml": "<p>Group the changes into Added, Improved and Fixed. One line per change, written for a customer, never mentioning internal module names.</p>"
+  },
+  {
+    "name": "Support Triage",
+    "agentFacingDescription": "Rules to triage an inbound support ticket: severity, owning team and first response.",
+    "userFacingDescription": "Triage a support ticket and draft the first response.",
+    "instructions": "Assign a severity from S1 to S4, name the owning team, and draft a first response that acknowledges the issue and states the next step.",
+    "instructionsHtml": "<p>Assign a severity from S1 to S4, name the owning team, and draft a first response that acknowledges the issue and states the next step.</p>"
+  }
+]
