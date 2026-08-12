@@ -256,22 +256,20 @@ export function ConsumptionAttributionTable({
     days:
       period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
     filter: normalizedConsumptionFilter(filter),
-    dimension,
   };
 
   const csvDownload = useDownloadCsv({
     url: `/api/w/${workspaceId}/analytics/consumption/export`,
-    filename: `dust_consumption_${dimension}_${workspaceId}.csv`,
+    // The server names the attachment (it knows the resolved cycle date);
+    // this is only the fallback if it didn't set Content-Disposition.
+    filename: `dust_consumption_export_${workspaceId}.csv`,
     body: exportBody,
-    disabled: isTopLoading || rows.length === 0,
   });
 
   return (
     <div>
       <div className="mb-3 flex items-center justify-between gap-4">
-        <h3 className="text-base font-semibold text-foreground">
-          Attribution
-        </h3>
+        <h3 className="text-base font-semibold text-foreground">Attribution</h3>
         <CsvDownloadButton {...csvDownload} label="Download CSV" />
       </div>
       <div className="rounded-lg border border-border bg-card p-4">

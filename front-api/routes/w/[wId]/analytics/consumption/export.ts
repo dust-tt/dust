@@ -1,5 +1,8 @@
 import { fetchConsumptionTopExportCsv } from "@app/lib/api/analytics/consumption/export";
-import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import {
+  consumptionPeriodFilenameSlug,
+  resolveConsumptionPeriod,
+} from "@app/lib/api/analytics/consumption/period";
 import {
   ConsumptionExportBodySchema,
   toConsumptionPeriodInput,
@@ -20,15 +23,13 @@ app.post(
   validate("json", ConsumptionExportBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
-    const { dimension, filter, ...periodQuery } = ctx.req.valid("json");
+    const { filter, ...periodQuery } = ctx.req.valid("json");
+    const periodInput = toConsumptionPeriodInput(periodQuery);
 
-    const period = await resolveConsumptionPeriod(
-      auth,
-      toConsumptionPeriodInput(periodQuery)
-    );
+    const period = await resolveConsumptionPeriod(auth, periodInput);
+    const periodSlug = consumptionPeriodFilenameSlug(periodInput, period);
 
     const result = await fetchConsumptionTopExportCsv(auth, {
-      dimension,
       period,
       filter,
     });
@@ -52,7 +53,7 @@ app.post(
     ctx.header("Content-Type", "text/csv");
     ctx.header(
       "Content-Disposition",
-      `attachment; filename="dust_consumption_${dimension}.csv"`
+      `attachment; filename="dust_consumption_export_${periodSlug}.csv"`
     );
     return ctx.body(result.value);
   }

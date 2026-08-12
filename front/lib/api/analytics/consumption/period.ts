@@ -68,6 +68,18 @@ async function resolveCycleBounds(
   };
 }
 
+// Filesystem-safe label for the resolved period, for naming CSV exports. The
+// cycle's actual start date is included since "this cycle" on its own is
+// ambiguous once the file has been downloaded.
+export function consumptionPeriodFilenameSlug(
+  input: ConsumptionPeriodInput,
+  period: ConsumptionPeriod
+): string {
+  return input.kind === "days"
+    ? `last_${input.days}_days`
+    : `ongoing_cycle_date_${period.startDate.slice(0, 10)}`;
+}
+
 export async function resolveConsumptionPeriod(
   auth: Authenticator,
   input: ConsumptionPeriodInput
