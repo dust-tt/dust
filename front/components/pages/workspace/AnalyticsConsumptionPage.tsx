@@ -87,17 +87,19 @@ export function AnalyticsConsumptionPage() {
           period={period}
           filter={scopeFilter}
         />
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">Explore</h2>
-            <UsageFilterPanel
-              owner={owner}
-              period={period}
-              filter={filter}
-              onFilterChange={setFilter}
-            />
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-foreground">Explore</h2>
+              <UsageFilterPanel
+                owner={owner}
+                period={period}
+                filter={filter}
+                onFilterChange={setFilter}
+              />
+            </div>
+            <UsageFilterSummary filter={filter} onFilterChange={setFilter} />
           </div>
-          <UsageFilterSummary filter={filter} onFilterChange={setFilter} />
           <SafeSuspense fallback={<ChartFallback />}>
             <ConsumptionChart
               workspaceId={owner.sId}
