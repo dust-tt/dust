@@ -26,7 +26,7 @@ export function UsageFilterOptionIcon({ option }: UsageFilterOptionIconProps) {
           name={option.name}
           visual={option.image ?? undefined}
           size="xxs"
-          isRounded
+          isRounded={option.kind === "member"}
         />
       );
     case "source": {

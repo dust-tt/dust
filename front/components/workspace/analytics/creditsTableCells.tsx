@@ -6,16 +6,25 @@ function EmptyCell() {
   return <span className="text-xs text-muted-foreground">—</span>;
 }
 
+interface AvatarNameCellProps {
+  name: string;
+  imageUrl: string | null;
+  isRounded?: boolean;
+}
+
 export function AvatarNameCell({
   name,
   imageUrl,
-}: {
-  name: string;
-  imageUrl: string | null;
-}) {
+  isRounded,
+}: AvatarNameCellProps) {
   return (
     <div className="flex items-center gap-2">
-      <Avatar name={name} visual={imageUrl ?? undefined} size="xs" isRounded />
+      <Avatar
+        name={name}
+        visual={imageUrl ?? undefined}
+        size="xs"
+        isRounded={isRounded}
+      />
       <span className="truncate text-sm">{name}</span>
     </div>
   );
