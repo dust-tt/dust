@@ -128,15 +128,19 @@ export function ConsumptionAttributionBreakdown({
     ...filter,
     [CONSUMPTION_DIMENSION_FILTER_KEYS[selectedDimension]]: [selectedRowId],
   };
+  const visibleDimensions = BREAKDOWN_DIMENSIONS.filter(
+    (dimension) => dimension !== selectedDimension
+  );
 
   return (
     <div
       className={cn(
-        "grid grid-cols-3 gap-20",
+        "grid gap-20",
+        visibleDimensions.length === 2 ? "grid-cols-2" : "grid-cols-3",
         "border-b border-separator px-2 pb-6 pt-4"
       )}
     >
-      {BREAKDOWN_DIMENSIONS.map((dimension) => (
+      {visibleDimensions.map((dimension) => (
         <BreakdownColumn
           key={dimension}
           workspaceId={workspaceId}
