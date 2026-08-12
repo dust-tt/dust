@@ -60,6 +60,7 @@ import { col, fn, Op, QueryTypes } from "sequelize";
 
 export const ADMIN_GROUP_NAME = "dust-admins";
 export const MANAGER_GROUP_NAME = "dust-managers";
+export const GROUP_MEMBERSHIP_RESTORE_TOLERANCE_MS = 60_000;
 
 /**
  * ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
@@ -303,6 +304,9 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * Migrates all group memberships from one user to another within a workspace.
    * Handles duplicate memberships by destroying them first.
+   * Returns regular_auto groups that may carry an affected editor grant. The
+   * result includes both users' membership history so a retry after a completed
+   * migration returns the same groups and can retry a failed invalidation.
    */
   static async migrateUserMemberships(
     auth: Authenticator,
@@ -313,8 +317,27 @@ export class GroupResource extends BaseResource<GroupModel> {
       primaryUser: UserResource;
       secondaryUser: UserResource;
     }
-  ): Promise<void> {
+  ): Promise<ModelId[]> {
     const workspace = auth.getNonNullableWorkspace();
+    const potentiallyAffectedMemberships = await GroupMembershipModel.findAll({
+      attributes: ["groupId"],
+      where: {
+        userId: [primaryUser.id, secondaryUser.id],
+        workspaceId: workspace.id,
+      },
+      include: [
+        {
+          model: GroupModel,
+          as: "group",
+          attributes: [],
+          required: true,
+          where: {
+            workspaceId: workspace.id,
+            kind: "regular_auto",
+          },
+        },
+      ],
+    });
     const primaryMemberships = await GroupMembershipModel.findAll({
       where: { userId: primaryUser.id, workspaceId: workspace.id },
       attributes: ["groupId"],
@@ -341,6 +364,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       [{ user: { id: primaryUser.id }, workspace: { id: workspace.id } }],
       [{ user: { id: secondaryUser.id }, workspace: { id: workspace.id } }],
     ]);
+
+    return [
+      ...new Set(
+        potentiallyAffectedMemberships.map((membership) => membership.groupId)
+      ),
+    ];
   }
 
   static async makeNew(
@@ -1218,7 +1247,9 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * Same as `listUserGroupsInWorkspace`, but also accepts the internal kinds that are never
    * surfaced to users. Reserved for system flows that must act on a user's whole membership
-   * set, such as directory-sync deprovisioning.
+   * set, such as directory-sync deprovisioning. `dangerouslySkipMembershipCheck` also exposes
+   * active group rows for a user without an active workspace membership and is only for trusted
+   * repair or migration flows.
    */
   static async dangerouslyListAllUserGroupsInWorkspace({
     auth,
@@ -1226,12 +1257,14 @@ export class GroupResource extends BaseResource<GroupModel> {
     groupKinds,
     transaction,
     at,
+    dangerouslySkipMembershipCheck,
   }: {
     auth: Authenticator;
     user: UserResource;
     groupKinds: Exclude<GroupKind, "system">[];
     transaction?: Transaction;
     at?: Date;
+    dangerouslySkipMembershipCheck?: boolean;
   }): Promise<GroupResource[]> {
     const { groupModelIds } = await this.listUserGroupModelIdsInWorkspace({
       user,
@@ -1239,6 +1272,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       groupKinds,
       transaction,
       at,
+      dangerouslySkipMembershipCheck,
     });
 
     if (groupModelIds.length === 0) {
@@ -2051,7 +2085,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    * (membership is implicit). Skips groups that no longer exist or where the
    * user already has an active membership.
    *
-   * Returns the number of group memberships restored.
+   * Returns the model IDs of the restored groups.
    *
    * Dangerous: deliberately skips the `canRead` check on the groups — it
    * restores regular_auto memberships together with provisioned and manual
@@ -2061,7 +2095,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     user,
     workspace,
     revokedAt,
-    toleranceMs = 60_000,
+    toleranceMs = GROUP_MEMBERSHIP_RESTORE_TOLERANCE_MS,
     transaction,
   }: {
     user: UserResource;
@@ -2069,7 +2103,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     revokedAt: Date;
     toleranceMs?: number;
     transaction?: Transaction;
-  }): Promise<number> {
+  }): Promise<ModelId[]> {
     const rangeStart = new Date(revokedAt.getTime() - toleranceMs);
     const rangeEnd = new Date(revokedAt.getTime() + toleranceMs);
 
@@ -2087,7 +2121,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
 
     if (revokedMemberships.length === 0) {
-      return 0;
+      return [];
     }
 
     const groupIds = [...new Set(revokedMemberships.map((m) => m.groupId))];
@@ -2103,7 +2137,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
 
     if (groups.length === 0) {
-      return 0;
+      return [];
     }
 
     const validGroupIds = new Set(groups.map((g) => g.id));
@@ -2128,7 +2162,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
 
     if (groupIdsToRestore.length === 0) {
-      return 0;
+      return [];
     }
 
     await GroupMembershipModel.bulkCreate(
@@ -2152,7 +2186,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
     });
 
-    return groupIdsToRestore.length;
+    return groupIdsToRestore;
   }
 
   /**

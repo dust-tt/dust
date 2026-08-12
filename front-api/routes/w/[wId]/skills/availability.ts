@@ -1,5 +1,6 @@
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
+import { launchSkillsSearchIndexation } from "@app/lib/skill_search/indexation";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -112,7 +113,15 @@ app.patch(
       }
     }
 
+    const changedSkillIds = skills
+      .filter((skill) => skill.availability !== availability)
+      .map((skill) => skill.sId);
+
     await SkillResource.updateAvailabilities(auth, skills, availability);
+    await launchSkillsSearchIndexation({
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      skillIds: changedSkillIds,
+    });
 
     // Re-fetch: the bulk update does not refresh the in-memory resources.
     const updatedSkills = await SkillResource.fetchByIds(auth, skillIds);

@@ -29,6 +29,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
+import { launchSkillsSearchIndexation } from "@app/lib/skill_search/indexation";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces_utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -246,6 +247,8 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     "softDeleteSpace: starting agent requestedSpaceIds cleanup"
   );
 
+  const updatedSkillIds: string[] = [];
+  let cleanupError: unknown = null;
   try {
     await withTransaction(async (t) => {
       // Soft delete all data source views.
@@ -437,6 +440,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
           manuallyRequestedSpaceIds,
           requestedSpaceIds,
         });
+        updatedSkillIds.push(skill.sId);
       }
 
       // Strip the space from every agent still referencing it, atomically with
@@ -490,11 +494,32 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       }
     });
   } catch (err) {
+    cleanupError = err;
     logger.error(
       { ...logContext, error: err },
       "softDeleteSpace: agent requestedSpaceIds cleanup failed — scrub workflow will NOT be launched"
     );
-    throw err;
+  }
+
+  if (updatedSkillIds.length > 0) {
+    try {
+      await launchSkillsSearchIndexation({
+        workspaceId,
+        skillIds: updatedSkillIds,
+      });
+    } catch (indexationError) {
+      if (cleanupError === null) {
+        throw indexationError;
+      }
+      logger.error(
+        { ...logContext, error: indexationError },
+        "softDeleteSpace: failed to index skills committed before cleanup failed"
+      );
+    }
+  }
+
+  if (cleanupError !== null) {
+    throw cleanupError;
   }
 
   logger.info(

@@ -2,6 +2,7 @@ import { findSkillEditorsWithoutSpaceAccess } from "@app/lib/api/skills/space_re
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { launchSkillSearchIndexation } from "@app/lib/skill_search/indexation";
 import type {
   PatchSkillEditorsRequestBody,
   SkillEditorsResponseBody,
@@ -149,6 +150,12 @@ app.patch(
     // Editors are per-user grants on the skill (`grantToUser`), not group memberships.
     const addRes = await skillRes.addEditors(auth, usersToAddResources);
     if (addRes.isErr()) {
+      if (usersToAddResources.length > 0) {
+        await launchSkillSearchIndexation({
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          skillId: skillRes.sId,
+        });
+      }
       switch (addRes.error.code) {
         case "unauthorized":
           return apiError(ctx, {
@@ -175,6 +182,12 @@ app.patch(
       auth,
       usersToRemoveResources
     );
+    if (usersToAddResources.length > 0 || usersToRemoveResources.length > 0) {
+      await launchSkillSearchIndexation({
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        skillId: skillRes.sId,
+      });
+    }
     if (removeRes.isErr()) {
       switch (removeRes.error.code) {
         case "unauthorized":

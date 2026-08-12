@@ -12,6 +12,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
+import { launchSkillSearchIndexation } from "@app/lib/skill_search/indexation";
 import logger from "@app/logger/logger";
 import type {
   DeleteSkillResponseBody,
@@ -482,6 +483,11 @@ app.patch(
       ...(shouldActivate ? { status: "active" as const } : {}),
     });
 
+    await launchSkillSearchIndexation({
+      workspaceId: owner.sId,
+      skillId: skill.sId,
+    });
+
     await pruneOutdatedSkillEditSuggestions(auth, skill);
 
     return ctx.json({ skill: skill.toJSON(auth) });
@@ -528,7 +534,13 @@ app.delete(
       );
     }
 
-    await skill.archive(auth);
+    const { affectedCount } = await skill.archive(auth);
+    if (affectedCount > 0) {
+      await launchSkillSearchIndexation({
+        workspaceId: owner.sId,
+        skillId: skill.sId,
+      });
+    }
 
     return ctx.json({ success: true });
   }
