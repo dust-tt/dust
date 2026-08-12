@@ -16,10 +16,6 @@ export const USAGE_FILTER_CATEGORIES = [
   "source",
 ] as const;
 
-// Consumption widgets currently serialize their filters into GET query
-// strings. Keep the total bounded until those reads move to POST bodies.
-export const MAX_USAGE_FILTER_SELECTIONS = 50;
-
 export type UsageFilterCategory = (typeof USAGE_FILTER_CATEGORIES)[number];
 
 export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =
@@ -133,12 +129,6 @@ export function toggleUsageFilterOption<C extends UsageFilterCategory>(
 ): UsageFilter {
   const current = filter[category] ?? [];
   const isSelected = current.some((e) => e.id === option.id);
-  if (
-    !isSelected &&
-    usageFilterSelectionCount(filter) >= MAX_USAGE_FILTER_SELECTIONS
-  ) {
-    return filter;
-  }
   const next = isSelected
     ? current.filter((e) => e.id !== option.id)
     : [...current, option];
@@ -168,13 +158,7 @@ export function selectAllUsageFilterOptions<C extends UsageFilterCategory>(
 ): UsageFilter {
   const current = filter[category] ?? [];
   const currentIds = new Set(current.map((e) => e.id));
-  const remainingCapacity = Math.max(
-    0,
-    MAX_USAGE_FILTER_SELECTIONS - usageFilterSelectionCount(filter)
-  );
-  const additions = options
-    .filter((e) => !currentIds.has(e.id))
-    .slice(0, remainingCapacity);
+  const additions = options.filter((e) => !currentIds.has(e.id));
   if (additions.length === 0) {
     return filter;
   }

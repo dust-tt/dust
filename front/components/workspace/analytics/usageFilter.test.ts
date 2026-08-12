@@ -1,10 +1,4 @@
-import type { UsageFilterSourceOption } from "@app/components/workspace/analytics/usageFilter";
-import {
-  MAX_USAGE_FILTER_SELECTIONS,
-  selectAllUsageFilterOptions,
-  toConsumptionScopeFilter,
-  toggleUsageFilterOption,
-} from "@app/components/workspace/analytics/usageFilter";
+import { toConsumptionScopeFilter } from "@app/components/workspace/analytics/usageFilter";
 import { describe, expect, it } from "vitest";
 
 describe("toConsumptionScopeFilter", () => {
@@ -72,28 +66,5 @@ describe("toConsumptionScopeFilter", () => {
 
   it("omits empty member and group selections", () => {
     expect(toConsumptionScopeFilter({ member: [], group: [] })).toEqual({});
-  });
-
-  it("bounds the total number of selections serialized into analytics URLs", () => {
-    const options: UsageFilterSourceOption[] = Array.from(
-      { length: MAX_USAGE_FILTER_SELECTIONS + 5 },
-      (_, index) => ({
-        id: `source-${index}`,
-        name: `Source ${index}`,
-        kind: "source",
-        connectorProvider: undefined,
-        documentCount: 1,
-        disabled: false,
-      })
-    );
-    const atLimit = selectAllUsageFilterOptions({}, "source", options);
-
-    expect(atLimit.source).toHaveLength(MAX_USAGE_FILTER_SELECTIONS);
-    expect(toggleUsageFilterOption(atLimit, "source", options.at(-1)!)).toBe(
-      atLimit
-    );
-    expect(
-      toggleUsageFilterOption(atLimit, "source", options[0]).source
-    ).toHaveLength(MAX_USAGE_FILTER_SELECTIONS - 1);
   });
 });

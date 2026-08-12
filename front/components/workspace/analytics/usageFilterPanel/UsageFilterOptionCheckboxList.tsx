@@ -24,7 +24,6 @@ interface UsageFilterOptionCheckboxListProps {
   onSelectAll: () => void;
   selectAllLabel: string;
   hasSelectableOptions: boolean;
-  isSelectionLimitReached: boolean;
   isLoadingMore?: boolean;
   isLoading?: boolean;
   isUpdating?: boolean;
@@ -39,7 +38,6 @@ export function UsageFilterOptionCheckboxList({
   onSelectAll,
   selectAllLabel,
   hasSelectableOptions,
-  isSelectionLimitReached,
   isLoadingMore = false,
   isLoading = false,
   isUpdating = false,
@@ -66,11 +64,6 @@ export function UsageFilterOptionCheckboxList({
             {isUpdating && (
               <span className="text-xs text-muted-foreground">Updating…</span>
             )}
-            {isSelectionLimitReached && !isUpdating && (
-              <span className="text-xs text-muted-foreground">
-                Selection limit reached
-              </span>
-            )}
             <Button
               label={selectAllLabel}
               size="xmini"
@@ -94,8 +87,7 @@ export function UsageFilterOptionCheckboxList({
           <>
             {displayedOptions.map((option) => {
               const checked = selectedIds.has(option.id);
-              const disabled =
-                (option.disabled || isSelectionLimitReached) && !checked;
+              const disabled = option.disabled && !checked;
               const checkboxId = `usage-filter-option-${category}-${option.id}`;
               const availabilityDescriptionId = option.disabled
                 ? `${checkboxId}-availability`
