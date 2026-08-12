@@ -1,10 +1,12 @@
-import { AvatarNameCell } from "@app/components/workspace/analytics/creditsTableCells";
+import {
+  AvatarNameCell,
+  CostShareCell,
+} from "@app/components/workspace/analytics/creditsTableCells";
 import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
-import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import { formatCredits } from "@app/lib/client/credits";
 import {
   Button,
@@ -20,6 +22,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
+import { ConsumptionAttributionBreakdown } from "./ConsumptionAttributionBreakdown";
 import type { ConsumptionDimension } from "./consumptionDimensions";
 import {
   CONSUMPTION_DIMENSION_CONFIG,
@@ -29,56 +32,12 @@ import {
 
 const TOP_LIMIT = 25;
 
-const BREAKDOWN_PREVIEW_LIMIT = 3;
-
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
-
-const BREAKDOWN_DIMENSIONS = ["model", "tool", "user"] as const;
-
-type BreakdownDimension = (typeof BREAKDOWN_DIMENSIONS)[number];
-
-const BREAKDOWN_LABELS: Record<BreakdownDimension, string> = {
-  model: "By model",
-  tool: "By tools",
-  user: "By members",
-};
 
 type AttributionRowData = ConsumptionTopRow & {
   isExpanded: boolean;
   onClick: () => void;
 };
-
-function CostShareBar({
-  percentage,
-  className,
-}: {
-  percentage: number;
-  className?: string;
-}) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={cn("h-1.5", className)}
-      preserveAspectRatio="none"
-      viewBox="0 0 100 6"
-    >
-      <rect className="fill-muted" height="6" rx="3" width="100" />
-      <rect className="fill-primary" height="6" rx="3" width={percentage} />
-    </svg>
-  );
-}
-
-function CostShareCell({ share }: { share: number }) {
-  const percentage = Math.round(Math.min(100, share * 100));
-  return (
-    <div className="flex items-center gap-2">
-      <CostShareBar className="w-24" percentage={percentage} />
-      <span className="w-8 text-right text-xs text-muted-foreground tabular-nums">
-        {percentage}%
-      </span>
-    </div>
-  );
-}
 
 function buildColumns({
   hasAvatar,
@@ -173,116 +132,6 @@ function buildColumns({
   ];
 }
 
-interface BreakdownColumnProps {
-  workspaceId: string;
-  dimension: BreakdownDimension;
-  period: ConsumptionPeriodSelection;
-  filter: ConsumptionScopeFilter;
-}
-
-function BreakdownColumn({
-  workspaceId,
-  dimension,
-  period,
-  filter,
-}: BreakdownColumnProps) {
-  const [showAll, setShowAll] = useState(false);
-  const { rows, totalCredits, isTopLoading, isTopError } = useConsumptionTop({
-    workspaceId,
-    dimension,
-    period,
-    limit: TOP_LIMIT,
-    filter,
-  });
-  const visibleRows = showAll ? rows : rows.slice(0, BREAKDOWN_PREVIEW_LIMIT);
-
-  return (
-    <div className="min-w-0">
-      <div className="mb-2 flex h-6 items-center justify-between gap-2">
-        <h4 className="text-sm font-medium text-foreground">
-          {BREAKDOWN_LABELS[dimension]}
-        </h4>
-        {rows.length > BREAKDOWN_PREVIEW_LIMIT && (
-          <Button
-            label={showAll ? "Show less" : "View all"}
-            variant="highlight-ghost"
-            size="xs"
-            onClick={() => setShowAll((current) => !current)}
-          />
-        )}
-      </div>
-      {isTopLoading ? (
-        <div className="flex h-24 items-center justify-center">
-          <Spinner size="sm" />
-        </div>
-      ) : isTopError ? (
-        <div className="flex h-24 items-center text-xs text-muted-foreground">
-          Failed to load breakdown.
-        </div>
-      ) : visibleRows.length === 0 ? (
-        <div className="flex h-24 items-center text-xs text-muted-foreground">
-          No attributed consumption.
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {visibleRows.map((row) => {
-            const share = totalCredits > 0 ? row.credits / totalCredits : 0;
-            const percentage = Math.round(Math.min(100, share * 100));
-            return (
-              <div key={row.id} className="min-w-0">
-                <div className="mb-1 flex items-center justify-between gap-2 text-xs">
-                  <span className="truncate text-muted-foreground">
-                    {row.name}
-                  </span>
-                  <span className="shrink-0 text-muted-foreground tabular-nums">
-                    {percentage}%
-                  </span>
-                </div>
-                <CostShareBar className="w-full" percentage={percentage} />
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-interface AttributionBreakdownProps {
-  workspaceId: string;
-  selectedDimension: ConsumptionDimension;
-  selectedRowId: string;
-  period: ConsumptionPeriodSelection;
-  filter?: ConsumptionScopeFilter;
-}
-
-function AttributionBreakdown({
-  workspaceId,
-  selectedDimension,
-  selectedRowId,
-  period,
-  filter,
-}: AttributionBreakdownProps) {
-  const selectedFilter: ConsumptionScopeFilter = {
-    ...filter,
-    [CONSUMPTION_DIMENSION_FILTER_KEYS[selectedDimension]]: [selectedRowId],
-  };
-
-  return (
-    <div className="grid grid-cols-3 gap-8 border-b border-separator px-2 py-4">
-      {BREAKDOWN_DIMENSIONS.map((dimension) => (
-        <BreakdownColumn
-          key={dimension}
-          workspaceId={workspaceId}
-          dimension={dimension}
-          period={period}
-          filter={selectedFilter}
-        />
-      ))}
-    </div>
-  );
-}
-
 interface AttributionRowsProps {
   workspaceId: string;
   dimension: ConsumptionDimension;
@@ -367,7 +216,7 @@ function AttributionRows({
         widthClassName="min-w-[800px]"
         renderSubComponent={(row) =>
           row.isExpanded ? (
-            <AttributionBreakdown
+            <ConsumptionAttributionBreakdown
               workspaceId={workspaceId}
               selectedDimension={dimension}
               selectedRowId={row.id}
