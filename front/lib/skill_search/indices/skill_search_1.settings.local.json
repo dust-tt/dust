@@ -1,0 +1,21 @@
+{
+  "number_of_shards": 1,
+  "number_of_replicas": 0,
+  "refresh_interval": "1s",
+  "analysis": {
+    "filter": {
+      "skill_name_parts": {
+        "type": "word_delimiter_graph",
+        "catenate_all": true,
+        "preserve_original": true
+      }
+    },
+    "analyzer": {
+      "skill_name_analyzer": {
+        "type": "custom",
+        "tokenizer": "keyword",
+        "filter": ["skill_name_parts", "lowercase"]
+      }
+    }
+  }
+}

@@ -1483,7 +1483,8 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async getActiveMembershipsForGroups(
     auth: Authenticator,
-    groups: GroupResource[]
+    groups: GroupResource[],
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Record<ModelId, ModelId[]>> {
     const owner = auth.getNonNullableWorkspace();
     const res = await GroupMembershipModel.findAll({
@@ -1494,6 +1495,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         startAt: { [Op.lte]: new Date() },
         [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
       },
+      transaction,
     });
 
     return res.reduce<Record<ModelId, ModelId[]>>((acc, m) => {

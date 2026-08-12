@@ -14,11 +14,12 @@ export const CONSUMPTION_ANALYTICS_ALIAS_NAME =
 export const USER_SEARCH_ALIAS_NAME = "front.user_search";
 export const AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME = "front.agent_document_outputs";
 export const CONVERSATION_SEARCH_ALIAS_NAME = "front.conversation_search";
+export const SKILL_SEARCH_ALIAS_NAME = "front.skill_search";
 
 /**
- * Registry of front-owned indices: where the settings/mappings files live and
- * the current version. A version bump here must ship with the matching
- * [name]_[version].settings.[region].json and [name]_[version].mappings.json.
+ * @cc [owner:aubin-tchoi,label:backend] registered-index-files
+ * Every registered index must have matching [name]_[version].mappings.json and
+ * [name]_[version].settings.[region].json files in its directory for each region.
  */
 export const INDEX_REGISTRY: Record<
   string,
@@ -30,6 +31,7 @@ export const INDEX_REGISTRY: Record<
     directory: "lib/analytics/indices",
     version: 1,
   },
+  skill_search: { directory: "lib/skill_search/indices", version: 1 },
   user_search: { directory: "lib/user_search/indices", version: 1 },
 };
 
