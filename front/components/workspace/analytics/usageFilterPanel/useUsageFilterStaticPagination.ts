@@ -1,7 +1,6 @@
 import { FILTER_PICKER_PAGE_SIZE } from "@app/components/workspace/analytics/usageFilterPanel/constants";
 import { useCallback, useState } from "react";
 
-// Every non-member category is already fully loaded client-side;
 export function useUsageFilterStaticPagination({
   totalCount,
   resetKey,
