@@ -13,7 +13,7 @@ import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_perio
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
 import { BarChart01, cn, Page, SafeSuspense, safeLazy } from "@dust-tt/sparkle";
-import { domAnimation, LazyMotion, m, useReducedMotion } from "framer-motion";
+import { domMax, LazyMotion, m, useReducedMotion } from "framer-motion";
 
 import { useMemo, useState } from "react";
 
@@ -89,7 +89,7 @@ export function AnalyticsConsumptionPage() {
           period={period}
           filter={scopeFilter}
         />
-        <LazyMotion features={domAnimation}>
+        <LazyMotion features={domMax}>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col">
               <div className="flex items-center justify-between">
