@@ -37,11 +37,11 @@ import assert from "assert";
  * grant applies to the whole type (or all types) and is only ever a type-level (`-1`) grant.
  */
 
-type ConcreteGrantType = Exclude<GrantType, "*">;
+export type ConcreteGrantType = Exclude<GrantType, "*">;
 
 // A grant applies either to a specific resource instance (resourceId > 0) or to the whole type
 // (resourceId = -1). A role declares the levels at which it can be granted.
-type GrantLevel = "instance" | "type";
+export type GrantLevel = "instance" | "type";
 
 interface RoleDefinition {
   verbs: GrantVerb[];
@@ -63,7 +63,7 @@ export const ROLE_REGISTRY: Record<
     publish: { verbs: ["publish"], levels: ["type"] },
   },
   skill: {
-    editor: { verbs: ["read", "write"], levels: ["instance"] },
+    editor: { verbs: ["read", "write", "admin"], levels: ["instance"] },
     create: { verbs: ["create"], levels: ["type"] },
     publish: { verbs: ["publish"], levels: ["type"] },
     make_discoverable: { verbs: ["make_discoverable"], levels: ["type"] },
@@ -152,7 +152,7 @@ export function grantTypesForVerb(
 
 // Verbs a grant type confers at `level`; empty when the role is not valid at that level, or the
 // resource type is unknown (e.g. a stale grant row for a removed type).
-function verbsForGrantAtLevel(
+export function verbsForGrantAtLevel(
   grantType: ConcreteGrantType,
   resourceType: ConcreteResourceType,
   level: GrantLevel

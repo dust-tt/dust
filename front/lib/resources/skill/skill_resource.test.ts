@@ -8,6 +8,7 @@ import {
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
@@ -29,6 +30,8 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { ModelId } from "@app/types/shared/model_id";
+import assert from "assert";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("SkillResource", () => {
@@ -61,6 +64,64 @@ describe("SkillResource", () => {
 
       expect(skill.canWrite(auth)).toBe(true);
       expect(skill.canAdministrate(auth)).toBe(true);
+    });
+  });
+
+  describe("group_permissions dual-write", () => {
+    // The grants held on a skill by its editor group, straight from the table.
+    async function fetchSkillGrants(
+      editorGroupModelId: ModelId,
+      skillModelId: ModelId
+    ) {
+      return GroupPermissionResource.listForGroups(
+        testContext.authenticator.getNonNullableWorkspace(),
+        {
+          groupModelIds: [editorGroupModelId],
+          resourceType: "skill",
+          resourceId: skillModelId,
+        }
+      );
+    }
+
+    it("writes an editor grant for the editor group when a skill is created", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With Grants",
+      });
+      const editorGroupId = skill.editorGroup?.id;
+      assert(editorGroupId, "skill should have an editor group");
+
+      const grants = await fetchSkillGrants(editorGroupId, skill.id);
+
+      expect(grants).toHaveLength(1);
+      expect(grants[0].grantType).toBe("editor");
+      expect(grants[0].resourceId).toBe(skill.id);
+    });
+
+    it("clears the grants when the skill is deleted", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill To Delete With Grants",
+      });
+      const editorGroupId = skill.editorGroup?.id;
+      assert(editorGroupId, "skill should have an editor group");
+      expect(await fetchSkillGrants(editorGroupId, skill.id)).toHaveLength(1);
+
+      const result = await skill.delete(testContext.authenticator);
+      expect(result.isOk()).toBe(true);
+
+      expect(await fetchSkillGrants(editorGroupId, skill.id)).toHaveLength(0);
+    });
+
+    it("is idempotent: reconciling twice leaves a single grant", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill Reconciled Twice",
+      });
+      const editorGroupId = skill.editorGroup?.id;
+      assert(editorGroupId, "skill should have an editor group");
+
+      await skill.reconcileGroupPermissions(testContext.authenticator);
+      await skill.reconcileGroupPermissions(testContext.authenticator);
+
+      expect(await fetchSkillGrants(editorGroupId, skill.id)).toHaveLength(1);
     });
   });
 
