@@ -6,6 +6,7 @@ import { deletePodDatabaseReplica } from "@app/lib/api/sandbox/db";
 import {
   appPrefixFromPodDatabaseName,
   podDatabaseNameWithoutAppPrefix,
+  podDatabasePrefixFromAppPrefix,
 } from "@app/lib/api/sandbox_functions/db_naming";
 import { deleteDatabaseOnSandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SANDBOX_FUNCTION_SLUG_SEPARATOR } from "@app/lib/api/sandbox_functions/slug";
@@ -247,15 +248,19 @@ async function listPodDatabaseOnDiskNames(
  * `resolvePodDatabaseName` resolves the same case at reconcile time, so the tab attributes a legacy
  * database to exactly the app that keeps writing to it.
  *
- * Two apps declaring the same bare name genuinely share that one database (the transitional case
- * `resolvePodDatabaseName` documents), so it is reported under both rather than arbitrarily assigned.
- * A bare database no app declares falls back to the unfiled app.
+ * Declaring the name is not enough on its own, because `resolvePodDatabaseName` prefers the prefixed
+ * file whenever it exists: an app that has one opens that, and the bare file is not its database at
+ * all. Cloning an app makes this ordinary rather than rare — the copy inherits the schema file, so
+ * both apps declare the name while each opens its own prefixed file, leaving the bare one an orphan.
+ * Attribution therefore follows resolution, and a bare database that no app would open falls back to
+ * the unfiled app.
  */
 function groupDatabasesByAppPrefix(
   onDiskNames: string[],
   foldersByPrefix: Map<string, AppFolder[]>
 ): Map<string, PodAppDatabase[]> {
   const byPrefix = new Map<string, PodAppDatabase[]>();
+  const allOnDiskNames = new Set(onDiskNames);
 
   const attribute = (prefix: string, database: PodAppDatabase) => {
     byPrefix.set(prefix, [...(byPrefix.get(prefix) ?? []), database]);
@@ -273,8 +278,25 @@ function groupDatabasesByAppPrefix(
       continue;
     }
 
-    const declaringPrefixes = [...foldersByPrefix].filter(([, folders]) =>
-      folders.some((folder) => folder.declaredDatabaseNames.has(onDiskName))
+    // Only apps that would actually open this file: they declare the name AND have no prefixed
+    // database of their own to take precedence over it.
+    const declaringPrefixes = [...foldersByPrefix].filter(
+      ([appPrefix, folders]) => {
+        if (
+          !folders.some((folder) =>
+            folder.declaredDatabaseNames.has(onDiskName)
+          )
+        ) {
+          return false;
+        }
+
+        const databasePrefix = podDatabasePrefixFromAppPrefix(appPrefix);
+
+        return (
+          databasePrefix === null ||
+          !allOnDiskNames.has(`${databasePrefix}${onDiskName}`)
+        );
+      }
     );
     if (declaringPrefixes.length === 0) {
       attribute(UNFILED_POD_APP_PREFIX, database);

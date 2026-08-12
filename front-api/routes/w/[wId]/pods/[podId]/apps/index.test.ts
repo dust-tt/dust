@@ -162,6 +162,46 @@ describe("GET /api/w/:wId/pods/:podId/apps", () => {
     ]);
   });
 
+  it("does not attribute a legacy database to an app that has its own prefixed one", async () => {
+    const { workspace, pod } = await setupPod();
+
+    // The state a clone leaves behind: the copy inherits the schema file, so both apps declare
+    // `counter`, but each has its own prefixed database and neither opens the bare legacy file.
+    fileStorageMock.setFilesByPrefix(() => [
+      gcsObject(workspace.sId, pod.sId, "Counter/"),
+      gcsObject(workspace.sId, pod.sId, "Counter/databases/counter.db.ts"),
+      gcsObject(workspace.sId, pod.sId, "Counter Copy/"),
+      gcsObject(workspace.sId, pod.sId, "Counter Copy/databases/counter.db.ts"),
+    ]);
+    fileStorageMock.setSubdirectoryNames(() => [
+      "counter.db",
+      "counter__counter.db",
+      "counter_copy__counter.db",
+    ]);
+
+    const res = await honoApp.request(
+      `/api/w/${workspace.sId}/pods/${pod.sId}/apps`
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const byPrefix = new Map<string, { databases: { onDiskName: string }[] }>(
+      body.apps.map((app: { prefix: string }) => [app.prefix, app])
+    );
+
+    // Each app shows exactly the database it would open — not the orphan as well.
+    expect(
+      byPrefix.get("counter")?.databases.map((db) => db.onDiskName)
+    ).toEqual(["counter__counter"]);
+    expect(
+      byPrefix.get("counter-copy")?.databases.map((db) => db.onDiskName)
+    ).toEqual(["counter_copy__counter"]);
+    // The bare file belongs to neither, so it surfaces as unfiled rather than being double-counted.
+    expect(byPrefix.get("")?.databases.map((db) => db.onDiskName)).toEqual([
+      "counter",
+    ]);
+  });
+
   it("leaves an unprefixed database no app declares in the unfiled app", async () => {
     const { workspace, pod } = await setupPod();
 

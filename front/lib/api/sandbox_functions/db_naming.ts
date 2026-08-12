@@ -40,7 +40,7 @@ const POD_DATABASE_PREFIX_SEPARATOR = SANDBOX_FUNCTION_SLUG_SEPARATOR;
  * unprefixed database names, which is how every pod behaved before namespacing — deliberately not
  * an error, since refusing would leave the app unable to create any database at all.
  */
-function podDatabasePrefixFromAppPrefix(
+export function podDatabasePrefixFromAppPrefix(
   appPrefix: string | null
 ): string | null {
   if (appPrefix === null) {
