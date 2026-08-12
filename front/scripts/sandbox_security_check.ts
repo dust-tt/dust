@@ -378,6 +378,58 @@ test "$(/usr/bin/stat -c '%U:%G %a' /var/empty)" = "root:root 755"
   }
 }
 
+async function checkTelemetrySecretBoundary(
+  provider: E2BSandboxProvider,
+  providerId: string
+): Promise<void> {
+  const envPath = "/run/dust/fluent-bit.env";
+  try {
+    const seed = await runRootBashScript(
+      provider,
+      providerId,
+      `
+set -euo pipefail
+/usr/bin/install -d -o root -g root -m 755 /run/dust
+printf '%s\n' 'DD_API_KEY=sandbox-security-sentinel' > ${envPath}
+/usr/bin/chown root:root ${envPath}
+/usr/bin/chmod 600 ${envPath}
+`
+    );
+    assertCommandSucceeded("telemetry secret boundary seed", seed);
+
+    for (const user of [AGENT_USER, AGENT_PROXIED_USER] as const) {
+      const denial = await runBashScript(
+        provider,
+        providerId,
+        `
+set -euo pipefail
+if /usr/bin/systemctl show-environment >/dev/null 2>&1; then
+  echo "CRITICAL: workload can read the systemd manager environment"
+  exit 1
+fi
+if /bin/cat ${envPath} >/dev/null 2>&1; then
+  echo "CRITICAL: workload can read the Fluent Bit environment file"
+  exit 1
+fi
+if /bin/cat /proc/1/environ >/dev/null 2>&1; then
+  echo "CRITICAL: workload can read a root process environment"
+  exit 1
+fi
+`,
+        { user }
+      );
+      assertCommandSucceeded(`${user} telemetry secret denials`, denial);
+    }
+  } finally {
+    const cleanup = await runRootBashScript(
+      provider,
+      providerId,
+      `/bin/rm -f ${envPath}`
+    );
+    assertCommandSucceeded("telemetry secret boundary cleanup", cleanup);
+  }
+}
+
 async function checkControlledUidEgress(
   provider: E2BSandboxProvider,
   providerId: string
@@ -1292,6 +1344,7 @@ async function checkImage(image: SandboxImage): Promise<void> {
     await checkPamEscalationPaths(provider, providerId);
     await checkBasicSandboxFunctionality(provider, providerId);
     await checkAgentServiceBoundary(provider, providerId);
+    await checkTelemetrySecretBoundary(provider, providerId);
     await checkTargetUserState(provider, providerId);
     await checkEquivalentAccountEscalation(provider, providerId);
     await checkSystemAccountAudit(provider, providerId);

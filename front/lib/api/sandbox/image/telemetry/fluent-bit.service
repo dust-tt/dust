@@ -4,6 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
+EnvironmentFile=/run/dust/fluent-bit.env
 ExecStart=/opt/fluent-bit/bin/fluent-bit -c /etc/fluent-bit/fluent-bit.conf
 Restart=on-failure
 RestartSec=5

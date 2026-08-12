@@ -614,8 +614,8 @@ const config = {
       domain: EnvironmentConfig.getOptionalEnvVariable("E2B_DOMAIN"),
     };
   },
-  getDatadogApiKey: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable("DD_API_KEY");
+  getSandboxDatadogApiKey: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("SANDBOX_DD_API_KEY");
   },
   getSandboxDevFrontHostName: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
