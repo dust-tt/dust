@@ -100,7 +100,7 @@ export function AnalyticsConsumptionPage() {
             </div>
             <UsageFilterSummary filter={filter} onFilterChange={setFilter} />
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-4">
             <h3 className="text-base font-semibold text-foreground">
               Consumption
             </h3>
@@ -114,7 +114,7 @@ export function AnalyticsConsumptionPage() {
             </SafeSuspense>
           </div>
         </div>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-4">
           <h3 className="text-base font-semibold text-foreground">
             Attribution
           </h3>
