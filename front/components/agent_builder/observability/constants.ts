@@ -54,8 +54,6 @@ export const COST_PALETTE = {
   totalCredits: "text-orange-400",
 } as const;
 
-export const CHART_HEIGHT = 260;
-
 export const INDEXED_BASE_COLORS = [
   "orange",
   "golden",

@@ -1,6 +1,5 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import {
-  CHART_HEIGHT,
   COST_PALETTE,
   OTHER_LABEL,
 } from "@app/components/agent_builder/observability/constants";
@@ -12,6 +11,7 @@ import {
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
 import { AnalyticsFilterDropdown } from "@app/components/workspace/analytics/AnalyticsFilterDropdown";
 import type { AnalyticsFilter } from "@app/components/workspace/analytics/analyticsFilter";
 import {
@@ -362,7 +362,7 @@ function UsageChartBars({
       data={chartData}
       width={width}
       height={height}
-      margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
+      margin={CHART_MARGIN}
     >
       <CartesianGrid vertical={false} className="stroke-border" />
       <XAxis

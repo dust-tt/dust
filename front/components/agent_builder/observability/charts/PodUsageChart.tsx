@@ -1,5 +1,4 @@
 import {
-  CHART_HEIGHT,
   OTHER_LABEL,
   UNKNOWN_LABEL,
 } from "@app/components/agent_builder/observability/constants";
@@ -7,6 +6,7 @@ import { useObservabilityContext } from "@app/components/agent_builder/observabi
 import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { CHART_HEIGHT } from "@app/components/charts/constants";
 import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import { useAgentPodUsage } from "@app/lib/swr/assistants";
 import { isString } from "@app/types/shared/utils/general";

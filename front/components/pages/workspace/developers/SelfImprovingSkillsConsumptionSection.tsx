@@ -1,10 +1,8 @@
-import {
-  CHART_HEIGHT,
-  COST_PALETTE,
-} from "@app/components/agent_builder/observability/constants";
+import { COST_PALETTE } from "@app/components/agent_builder/observability/constants";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
 import { ConsumptionProgressBarWithNumbers } from "@app/components/pages/workspace/developers/ConsumptionProgressBar";
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import type { ReinforcementBillingUnit } from "@app/lib/reinforcement/enforcement";
@@ -290,10 +288,7 @@ function SelfImprovingSpendChart({
         </DropdownMenu>
       }
     >
-      <ChartComponent
-        data={chartData}
-        margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
-      >
+      <ChartComponent data={chartData} margin={CHART_MARGIN}>
         <CartesianGrid vertical={false} className="stroke-border" />
         <XAxis
           dataKey="timestamp"
