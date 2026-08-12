@@ -6203,7 +6203,7 @@
                           "type": "string"
                         }
                       },
-                      "teams": {
+                      "groups": {
                         "type": "array",
                         "items": {
                           "type": "string"
@@ -6279,7 +6279,7 @@
                       "required": [
                         "agent",
                         "user",
-                        "team",
+                        "group",
                         "model",
                         "tool",
                         "skill",
@@ -6298,7 +6298,7 @@
                             "$ref": "#/components/schemas/PrivateConsumptionFacet"
                           }
                         },
-                        "team": {
+                        "group": {
                           "type": "array",
                           "items": {
                             "$ref": "#/components/schemas/PrivateConsumptionFacet"
