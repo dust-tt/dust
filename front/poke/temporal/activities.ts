@@ -87,6 +87,7 @@ import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_v
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
+import { launchWorkspaceSkillSearchDeletion } from "@app/lib/skill_search/indexation";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -657,6 +658,7 @@ export async function deleteSkillsActivity({
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
   await SkillResource.deleteAllForWorkspace(auth);
+  await launchWorkspaceSkillSearchDeletion({ workspaceId });
 
   hardDeleteLogger.info({ workspaceId }, "Deleted all skills");
 }

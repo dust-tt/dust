@@ -1,13 +1,14 @@
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissions } from "@app/lib/resources/group_permission_registry";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 async function setup() {
   const { workspace, user, globalSpace } = await createPrivateApiMockRequest({
@@ -40,6 +41,10 @@ function get(workspace: { sId: string }, sId: string) {
 }
 
 describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("refuses to change the editors of an archived skill", async () => {
     const { workspace, auth } = await setup();
 
@@ -90,6 +95,11 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     expect(data.editors.map((e: { sId: string }) => e.sId)).toContain(
       builderUser.sId
     );
+    expect(vi.mocked(launchIndexSkillSearchWorkflow)).toHaveBeenCalledOnce();
+    expect(vi.mocked(launchIndexSkillSearchWorkflow)).toHaveBeenCalledWith({
+      workspaceId: workspace.sId,
+      skillId: skill.sId,
+    });
   });
 
   it("allows adding admin as editor", async () => {
@@ -226,6 +236,7 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     const editorsResponse = await get(workspace, skill.sId);
     const data = await editorsResponse.json();
     expect(data.editors.map((e: { sId: string }) => e.sId)).toEqual([user.sId]);
+    expect(vi.mocked(launchIndexSkillSearchWorkflow)).not.toHaveBeenCalled();
   });
 
   it("allows adding an editor that is a member of the restricted space", async () => {
