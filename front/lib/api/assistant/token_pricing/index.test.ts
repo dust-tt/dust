@@ -6,7 +6,7 @@ import {
 import { describe, expect, it } from "vitest";
 
 describe("computeTokensCostForUsageInMicroUsd", () => {
-  it("uses standard Grok 4.5 pricing through 200k prompt tokens", () => {
+  it("uses long-context Grok 4.5 pricing at 200k prompt tokens", () => {
     expect(
       computeTokensCostForUsageInMicroUsd({
         modelId: GROK_4_5_MODEL_ID,
@@ -14,7 +14,7 @@ describe("computeTokensCostForUsageInMicroUsd", () => {
         completionTokens: 1_000,
         cachedTokens: null,
       })
-    ).toBe(406_000);
+    ).toBe(812_000);
   });
 
   it("uses long-context Grok 4.5 pricing above 200k prompt tokens", () => {
@@ -39,7 +39,7 @@ describe("computeTokensCostForUsageInMicroUsd", () => {
     ).toBe(460_004);
   });
 
-  it("uses Grok 4.6 cached input pricing through 200k prompt tokens", () => {
+  it("uses Grok 4.6 long-context cached input pricing at 200k prompt tokens", () => {
     expect(
       computeTokensCostForUsageInMicroUsd({
         modelId: GROK_4_6_MODEL_ID,
@@ -47,7 +47,7 @@ describe("computeTokensCostForUsageInMicroUsd", () => {
         completionTokens: 1_000,
         cachedTokens: 100_000,
       })
-    ).toBe(256_000);
+    ).toBe(512_000);
   });
 
   it("uses Grok 4.6 long-context pricing above 200k prompt tokens", () => {
