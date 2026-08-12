@@ -95,30 +95,35 @@ export async function syncOneFile(
         ? MAX_LARGE_DOCUMENT_TXT_LEN
         : MAX_DOCUMENT_TXT_LEN;
 
-      return runWithGoogleDriveContentConcurrency(() => {
-        if (isTableFile(file)) {
-          return syncOneFileTable(
+      return runWithGoogleDriveContentConcurrency({
+        logger: localLogger,
+        fileSizeBytes: file.size ?? null,
+        mimeType: file.mimeType,
+        task: () => {
+          if (isTableFile(file)) {
+            return syncOneFileTable(
+              connectorId,
+              oauth2client,
+              file,
+              localLogger,
+              dataSourceConfig,
+              maxDocumentLen,
+              startSyncTs
+            );
+          }
+
+          return syncOneFileTextDocument(
             connectorId,
             oauth2client,
             file,
             localLogger,
+            config,
             dataSourceConfig,
-            maxDocumentLen,
-            startSyncTs
+            startSyncTs,
+            isBatchSync,
+            maxDocumentLen
           );
-        }
-
-        return syncOneFileTextDocument(
-          connectorId,
-          oauth2client,
-          file,
-          localLogger,
-          config,
-          dataSourceConfig,
-          startSyncTs,
-          isBatchSync,
-          maxDocumentLen
-        );
+        },
       });
     }
   );
