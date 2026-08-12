@@ -107,37 +107,40 @@ export function PodAppTile({
       <div className="flex min-w-0 grow flex-col gap-2">
         <div className="flex h-7 items-center gap-2">
           {canChangeIcon ? (
-            <PopoverRoot
-              open={isIconPickerOpen}
-              onOpenChange={setIsIconPickerOpen}
-            >
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  icon={IconComponent}
-                  tooltip="Change icon"
-                  disabled={isSavingIcon}
-                  // The whole card opens the Frame; picking the icon must not.
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </PopoverTrigger>
-              <PopoverContent
-                className="w-fit p-0"
-                mountPortalContainer={
-                  typeof document !== "undefined" ? document.body : undefined
-                }
-                onOpenAutoFocus={(e) => e.preventDefault()}
+            // The whole card opens the Frame; interacting with the picker must not. The popover
+            // content is portaled to document.body, but React portal events still bubble through
+            // the React tree, so this wrapper catches clicks from the trigger AND the picker.
+            <div onClick={(e) => e.stopPropagation()}>
+              <PopoverRoot
+                open={isIconPickerOpen}
+                onOpenChange={setIsIconPickerOpen}
               >
-                <IconPicker
-                  icons={ActionIcons}
-                  selectedIcon={iconName}
-                  onIconSelect={(selected: string) =>
-                    void handleIconSelect(selected)
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    icon={IconComponent}
+                    tooltip="Change icon"
+                    disabled={isSavingIcon}
+                  />
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-fit p-0"
+                  mountPortalContainer={
+                    typeof document !== "undefined" ? document.body : undefined
                   }
-                />
-              </PopoverContent>
-            </PopoverRoot>
+                  onOpenAutoFocus={(e) => e.preventDefault()}
+                >
+                  <IconPicker
+                    icons={ActionIcons}
+                    selectedIcon={iconName}
+                    onIconSelect={(selected: string) =>
+                      void handleIconSelect(selected)
+                    }
+                  />
+                </PopoverContent>
+              </PopoverRoot>
+            </div>
           ) : (
             <Icon visual={IconComponent} size="sm" />
           )}
@@ -146,12 +149,11 @@ export function PodAppTile({
         <span className="truncate font-mono copy-xs text-muted-foreground dark:text-muted-foreground-night">
           {frame ? frame.fileName : "No Frame in this app"}
         </span>
-        <div className="flex flex-wrap gap-1">
-          {isDraft && <Chip size="xs" color="primary" label="Draft" />}
-          {frame?.isPinnedAsTab && (
-            <Chip size="xs" color="info" label="Pinned as tab" />
-          )}
-        </div>
+        {isDraft && (
+          <div className="flex flex-wrap gap-1">
+            <Chip size="xs" color="primary" label="Draft" />
+          </div>
+        )}
       </div>
     </Card>
   );
