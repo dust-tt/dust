@@ -50,10 +50,12 @@ function CostShareCell({ share }: { share: number }) {
 
 function buildColumns({
   hasAvatar,
+  isAvatarRounded,
   avgLabel,
   totalCredits,
 }: {
   hasAvatar: boolean;
+  isAvatarRounded: boolean;
   avgLabel: string;
   totalCredits: number;
 }): ColumnDef<AttributionRowData>[] {
@@ -68,7 +70,11 @@ function buildColumns({
         return (
           <DataTable.CellContent className="w-full justify-start text-left">
             {hasAvatar ? (
-              <AvatarNameCell name={name} imageUrl={pictureUrl} />
+              <AvatarNameCell
+                name={name}
+                imageUrl={pictureUrl}
+                isRounded={isAvatarRounded}
+              />
             ) : (
               <span className="truncate text-sm">{name}</span>
             )}
@@ -157,8 +163,14 @@ function AttributionRows({
   }, [allRows, search]);
 
   const columns = useMemo(
-    () => buildColumns({ hasAvatar, avgLabel, totalCredits }),
-    [hasAvatar, avgLabel, totalCredits]
+    () =>
+      buildColumns({
+        hasAvatar,
+        isAvatarRounded: dimension === "user",
+        avgLabel,
+        totalCredits,
+      }),
+    [hasAvatar, dimension, avgLabel, totalCredits]
   );
 
   if (isTopLoading) {
