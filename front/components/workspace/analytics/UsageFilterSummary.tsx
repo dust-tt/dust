@@ -7,7 +7,7 @@ import {
   getUsageFilterSummaries,
 } from "@app/components/workspace/analytics/usageFilter";
 import { Button, Chip } from "@dust-tt/sparkle";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import { Fragment } from "react";
 
 interface UsageFilterSummaryProps {
@@ -46,24 +46,22 @@ export function UsageFilterSummary({
   return (
     <AnimatePresence initial={false}>
       {summaries.length > 0 && (
-        <motion.div
+        <m.div
           key="usage-filter-summary"
           initial={
-            shouldReduceMotion ? false : { height: 0, marginTop: 0, opacity: 0 }
+            shouldReduceMotion ? false : { opacity: 0, scale: 0.98, y: -4 }
           }
-          animate={{ height: "auto", marginTop: 8, opacity: 1 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={
-            shouldReduceMotion
-              ? undefined
-              : { height: 0, marginTop: 0, opacity: 0 }
+            shouldReduceMotion ? undefined : { opacity: 0, scale: 0.98, y: -4 }
           }
           transition={transition}
-          className="overflow-hidden"
+          className="mt-2 origin-top"
         >
           <div className="flex flex-wrap items-center gap-2">
             <AnimatePresence initial={false}>
               {summaries.map((summary) => (
-                <motion.div
+                <m.div
                   key={summary.category}
                   layout={!shouldReduceMotion}
                   initial={
@@ -91,19 +89,19 @@ export function UsageFilterSummary({
                       options={summary.options}
                     />
                   </Chip>
-                </motion.div>
+                </m.div>
               ))}
             </AnimatePresence>
-            <motion.div layout={!shouldReduceMotion} transition={transition}>
+            <m.div layout={!shouldReduceMotion} transition={transition}>
               <Button
                 label="Clear all"
                 size="xs"
                 variant="ghost-secondary"
                 onClick={() => onFilterChange({})}
               />
-            </motion.div>
+            </m.div>
           </div>
-        </motion.div>
+        </m.div>
       )}
     </AnimatePresence>
   );

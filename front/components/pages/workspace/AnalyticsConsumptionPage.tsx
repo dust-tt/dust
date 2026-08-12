@@ -13,6 +13,7 @@ import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_perio
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
 import { BarChart01, cn, Page, SafeSuspense, safeLazy } from "@dust-tt/sparkle";
+import { domAnimation, LazyMotion, m, useReducedMotion } from "framer-motion";
 
 import { useMemo, useState } from "react";
 
@@ -41,6 +42,7 @@ export function AnalyticsConsumptionPage() {
   const dimension = consumptionDimensionFromQueryParam(dimensionParam.value);
   const [filter, setFilter] = useState<UsageFilter>({});
   const scopeFilter = useMemo(() => toConsumptionScopeFilter(filter), [filter]);
+  const shouldReduceMotion = useReducedMotion();
 
   const handleDimensionChange = (nextDimension: ConsumptionDimension) => {
     dimensionParam.setParam(nextDimension);
@@ -87,33 +89,41 @@ export function AnalyticsConsumptionPage() {
           period={period}
           filter={scopeFilter}
         />
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">Explore</h2>
-              <UsageFilterPanel
-                owner={owner}
-                period={period}
-                filter={filter}
-                onFilterChange={setFilter}
-              />
-            </div>
-            <UsageFilterSummary filter={filter} onFilterChange={setFilter} />
-          </div>
+        <LazyMotion features={domAnimation}>
           <div className="flex flex-col gap-4">
-            <h3 className="text-base font-semibold text-foreground">
-              Consumption
-            </h3>
-            <SafeSuspense fallback={<ChartFallback />}>
-              <ConsumptionChart
-                workspaceId={owner.sId}
-                period={period}
-                dimension={dimension}
-                filter={scopeFilter}
-              />
-            </SafeSuspense>
+            <div className="flex flex-col">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-foreground">
+                  Explore
+                </h2>
+                <UsageFilterPanel
+                  owner={owner}
+                  period={period}
+                  filter={filter}
+                  onFilterChange={setFilter}
+                />
+              </div>
+              <UsageFilterSummary filter={filter} onFilterChange={setFilter} />
+            </div>
+            <m.div
+              layout={!shouldReduceMotion}
+              transition={{ duration: shouldReduceMotion ? 0 : 0.18 }}
+              className="flex flex-col gap-4"
+            >
+              <h3 className="text-base font-semibold text-foreground">
+                Consumption
+              </h3>
+              <SafeSuspense fallback={<ChartFallback />}>
+                <ConsumptionChart
+                  workspaceId={owner.sId}
+                  period={period}
+                  dimension={dimension}
+                  filter={scopeFilter}
+                />
+              </SafeSuspense>
+            </m.div>
           </div>
-        </div>
+        </LazyMotion>
         <div className="flex flex-col gap-4">
           <h3 className="text-base font-semibold text-foreground">
             Attribution
