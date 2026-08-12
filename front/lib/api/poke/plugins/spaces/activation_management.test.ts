@@ -104,6 +104,8 @@ describe("activationManagementPlugin.execute", () => {
         context: expect.objectContaining({ workAreas, activationPlaybook }),
       })
     );
+
+    expect(ActivationPodResource.makeNew).toHaveBeenCalled();
   });
 
   it("returns Err and does not report success when starting the schedule fails", async () => {

@@ -1,5 +1,5 @@
 import type { GetActivationPodResponseBody } from "@app/lib/api/activation/recommendations";
-import { getActivationPodId } from "@app/lib/api/activation/recommendations";
+import { getActivationPodInfo } from "@app/lib/api/activation/recommendations";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
@@ -10,9 +10,9 @@ const app = workspaceApp();
 app.get("/", async (ctx): HandlerResult<GetActivationPodResponseBody> => {
   const auth = ctx.get("auth");
 
-  const podId = await getActivationPodId(auth);
+  const podInfo = await getActivationPodInfo(auth);
 
-  return ctx.json({ podId });
+  return ctx.json(podInfo);
 });
 
 export default app;
