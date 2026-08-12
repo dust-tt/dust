@@ -42,14 +42,17 @@ import { removeNulls } from "@app/types/shared/utils/general";
 /** A litestream replica directory is named after the database file it replicates. */
 const POD_DATABASE_FILE_SUFFIX = ".db";
 
-/** Subfolders whose presence marks a pod-root folder as app-shaped. */
-const APP_SHAPED_SUBFOLDERS = ["functions", "databases"];
-
 /** The app subfolder holding one drizzle schema file per database. */
 const APP_DATABASES_SUBFOLDER = "databases";
 
 /** The app subfolder holding one source file per published function. */
 const APP_FUNCTIONS_SUBFOLDER = "functions";
+
+/** Subfolders whose presence marks a pod-root folder as app-shaped. */
+const APP_SHAPED_SUBFOLDERS = [
+  APP_FUNCTIONS_SUBFOLDER,
+  APP_DATABASES_SUBFOLDER,
+];
 
 /** Suffix of a database's schema file, e.g. `chat.db.ts` declares the `chat` database. */
 const POD_DATABASE_SCHEMA_FILE_SUFFIX = ".db.ts";
