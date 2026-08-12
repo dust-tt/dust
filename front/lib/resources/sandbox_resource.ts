@@ -436,7 +436,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   //
   // The sandbox row and its owner association are preserved (recreation
   // updates the row in place), as are the owner's egress policy file and GCS
-  // files; only the provider runtime and provider-specific legacy state go.
+  // files; only the provider runtime goes.
   //
   // /!\ Both callbacks run while the lifecycle lock is held: they must not
   // call back into any lifecycle operation on the same owner, and `commit`

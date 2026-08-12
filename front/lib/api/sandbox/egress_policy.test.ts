@@ -52,7 +52,6 @@ const mockAuth = {
 } as unknown as Authenticator;
 
 const WORKSPACE_PATH = "w/workspace-sid/sandbox-egress-policy.json";
-const LEGACY_WORKSPACE_PATH = "workspaces/workspace-sid.json";
 const OWNER_PATH = "w/workspace-sid/sandboxes/owner-sid.json";
 
 const NOT_FOUND = { code: 404 };
@@ -100,33 +99,7 @@ describe("workspace egress policy storage", () => {
     expect(mockFetchFileContent).toHaveBeenCalledWith(WORKSPACE_PATH);
   });
 
-  it("falls back to the legacy path when the new object is absent", async () => {
-    setGcsObjects({
-      [LEGACY_WORKSPACE_PATH]: { allowedDomains: ["legacy.example.com"] },
-    });
-
-    const result = await readWorkspacePolicy(mockAuth);
-
-    expect(result).toEqual(new Ok({ allowedDomains: ["legacy.example.com"] }));
-    expect(mockFetchFileContent).toHaveBeenCalledWith(WORKSPACE_PATH);
-    expect(mockFetchFileContent).toHaveBeenCalledWith(LEGACY_WORKSPACE_PATH);
-  });
-
-  it("prefers the new layout over the legacy path when both exist", async () => {
-    setGcsObjects({
-      [WORKSPACE_PATH]: { allowedDomains: ["new.example.com"] },
-      [LEGACY_WORKSPACE_PATH]: { allowedDomains: ["legacy.example.com"] },
-    });
-
-    const result = await readWorkspacePolicy(mockAuth);
-
-    expect(result).toEqual(new Ok({ allowedDomains: ["new.example.com"] }));
-    expect(mockFetchFileContent).not.toHaveBeenCalledWith(
-      LEGACY_WORKSPACE_PATH
-    );
-  });
-
-  it("returns an empty policy when neither layout has a file", async () => {
+  it("returns an empty policy when no file exists", async () => {
     setGcsObjects({});
 
     const result = await readWorkspacePolicy(mockAuth);
@@ -134,7 +107,7 @@ describe("workspace egress policy storage", () => {
     expect(result).toEqual(new Ok({ allowedDomains: [] }));
   });
 
-  it("writes normalized policy files to both layouts", async () => {
+  it("writes the normalized policy file", async () => {
     const result = await writeWorkspacePolicy(mockAuth, {
       policy: {
         allowedDomains: ["API.GitHub.COM", "*.GitHub.COM"],
@@ -146,36 +119,14 @@ describe("workspace egress policy storage", () => {
         allowedDomains: ["api.github.com", "*.github.com"],
       })
     );
-    const content = JSON.stringify({
-      allowedDomains: ["api.github.com", "*.github.com"],
-    });
+    expect(mockUploadRawContentToBucket).toHaveBeenCalledTimes(1);
     expect(mockUploadRawContentToBucket).toHaveBeenCalledWith({
-      content,
+      content: JSON.stringify({
+        allowedDomains: ["api.github.com", "*.github.com"],
+      }),
       contentType: "application/json",
       filePath: WORKSPACE_PATH,
     });
-    // Dual-write to the legacy path for front rollback safety.
-    expect(mockUploadRawContentToBucket).toHaveBeenCalledWith({
-      content,
-      contentType: "application/json",
-      filePath: LEGACY_WORKSPACE_PATH,
-    });
-  });
-
-  it("succeeds when only the legacy dual-write fails", async () => {
-    mockUploadRawContentToBucket.mockImplementation(
-      async ({ filePath }: { filePath: string }) => {
-        if (filePath === LEGACY_WORKSPACE_PATH) {
-          throw new Error("legacy write failed");
-        }
-      }
-    );
-
-    const result = await writeWorkspacePolicy(mockAuth, {
-      policy: { allowedDomains: ["api.github.com"] },
-    });
-
-    expect(result).toEqual(new Ok({ allowedDomains: ["api.github.com"] }));
   });
 
   it("does not write invalid domain entries", async () => {
@@ -189,14 +140,12 @@ describe("workspace egress policy storage", () => {
     expect(mockUploadRawContentToBucket).not.toHaveBeenCalled();
   });
 
-  it("deletes both layouts and ignores missing objects", async () => {
+  it("deletes the policy file and ignores missing objects", async () => {
     const result = await deleteWorkspacePolicy(mockAuth);
 
     expect(result).toEqual(new Ok(undefined));
+    expect(mockDelete).toHaveBeenCalledTimes(1);
     expect(mockDelete).toHaveBeenCalledWith(WORKSPACE_PATH, {
-      ignoreNotFound: true,
-    });
-    expect(mockDelete).toHaveBeenCalledWith(LEGACY_WORKSPACE_PATH, {
       ignoreNotFound: true,
     });
   });
