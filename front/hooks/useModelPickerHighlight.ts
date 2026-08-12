@@ -6,6 +6,11 @@ const LOCAL_STORAGE_KEY = "modelPickerHighlightViews";
 // control is assumed to have been noticed and it never comes back.
 const MAX_VIEWS = 2;
 
+// The campaign runs for two weeks. Encoded as a date rather than left to a
+// manual revert so it dies on its own even if the code outlives the campaign —
+// otherwise someone signing up in three months would still be nudged.
+const CAMPAIGN_END = Date.parse("2026-08-26T23:59:59Z");
+
 function readViews(): number {
   if (typeof window === "undefined") {
     return MAX_VIEWS;
@@ -23,20 +28,28 @@ function readViews(): number {
   }
 }
 
+interface UseModelPickerHighlightOptions {
+  // Surfaces that opt out keep their view count untouched, so disabling one does
+  // not silently spend the allowance meant for another.
+  disabled: boolean;
+}
+
 /**
  * Visibility of the model picker's discovery highlight, capped at `MAX_VIEWS`
- * page loads per browser.
+ * page loads per browser and expiring at `CAMPAIGN_END`.
  *
  * The count is spent per page load rather than per click, so a user who never
  * clicks the picker still stops seeing it. Dismissal is deliberately
  * session-scoped: clicking retires the highlight for the rest of the visit, and
  * the stored count decides whether it returns on the next load.
  */
-export const useModelPickerHighlight = () => {
+export const useModelPickerHighlight = ({
+  disabled,
+}: UseModelPickerHighlightOptions) => {
   // Resolved once per page load: the highlight must not vanish mid-visit
   // because the stored count moved.
   const [isHighlightVisible, setIsHighlightVisible] = useState<boolean>(
-    () => readViews() < MAX_VIEWS
+    () => !disabled && Date.now() <= CAMPAIGN_END && readViews() < MAX_VIEWS
   );
   const hasCountedViewRef = useRef(false);
 

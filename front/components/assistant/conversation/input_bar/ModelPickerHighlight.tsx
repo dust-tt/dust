@@ -1,4 +1,5 @@
 import { useModelPickerHighlight } from "@app/hooks/useModelPickerHighlight";
+import { useClientType } from "@app/lib/context/clientType";
 import { cn } from "@dust-tt/sparkle";
 import type React from "react";
 import { useEffect, useRef } from "react";
@@ -32,12 +33,19 @@ interface ModelPickerHighlightProps {
  * extra sweep on hover. Clicking the picker retires it for the rest of the visit;
  * `useModelPickerHighlight` caps how many page loads ever show it.
  *
+ * Web only. The extension has its own localStorage, so highlighting there would
+ * spend a second pair of views on the same person, and its input bar is too
+ * cramped to take an extra ring.
+ *
  * Every overlay is absolutely positioned and `pointer-events-none`, so the
  * button's own box, layout and hit area are untouched whether the highlight is on
  * or off. Remove this wrapper and nothing shifts.
  */
 export function ModelPickerHighlight({ children }: ModelPickerHighlightProps) {
-  const { isHighlightVisible, dismissHighlight } = useModelPickerHighlight();
+  const clientType = useClientType();
+  const { isHighlightVisible, dismissHighlight } = useModelPickerHighlight({
+    disabled: clientType === "extension",
+  });
   const hostRef = useRef<HTMLSpanElement>(null);
 
   // Listened for on the host rather than declared as an onClick prop: the span
