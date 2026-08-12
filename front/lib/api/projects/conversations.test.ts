@@ -11,6 +11,7 @@ import {
   UserConversationReadsModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -92,6 +93,10 @@ describe("moveConversationToProject", () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
+    await ProjectMetadataResource.makeNew(internalAdminAuth, projectSpace, {
+      description: null,
+      useDatabaseFileSystem: true,
+    });
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
 
@@ -156,6 +161,10 @@ describe("moveConversationToProject", () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
+    await ProjectMetadataResource.makeNew(internalAdminAuth, projectSpace, {
+      description: null,
+      useDatabaseFileSystem: true,
+    });
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
 
@@ -322,6 +331,10 @@ describe("moveConversationToProject", () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
+    await ProjectMetadataResource.makeNew(internalAdminAuth, projectSpace, {
+      description: null,
+      useDatabaseFileSystem: true,
+    });
     const projectSpaceGroup = await fetchRegularAutoGroup(
       projectSpace,
       internalAdminAuth
@@ -521,6 +534,10 @@ describe("moveConversationToProject", () => {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
+    await ProjectMetadataResource.makeNew(internalAdminAuth, projectSpace, {
+      description: null,
+      useDatabaseFileSystem: true,
+    });
     const projectSpaceGroup = await fetchRegularAutoGroup(
       projectSpace,
       internalAdminAuth

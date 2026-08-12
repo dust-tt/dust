@@ -52,6 +52,7 @@ export async function moveConversationToProject(
       | "conversation_not_found"
       | "space_not_found"
       | "conversation_agent_running"
+      | "invalid_request_error"
     >
   >
 > {
@@ -108,6 +109,19 @@ export async function moveConversationToProject(
       new DustError(
         "unauthorized",
         `You must be a member of "${project.name}".`
+      )
+    );
+  }
+
+  const conversationUsesDatabaseFileSystem =
+    conversation.metadata?.useDatabaseFileSystem === true;
+  const projectUsesDatabaseFileSystem =
+    await project.fetchUseDatabaseFileSystem(transaction);
+  if (conversationUsesDatabaseFileSystem !== projectUsesDatabaseFileSystem) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "This conversation and Pod use different filesystems and cannot be combined."
       )
     );
   }

@@ -145,6 +145,9 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     const model = await ProjectMetadataModel.create(
       {
         ...blob,
+        // Existing rows received FALSE in the migration. Only metadata rows
+        // created after this code ships opt into the database filesystem.
+        useDatabaseFileSystem: blob.useDatabaseFileSystem ?? true,
         workspaceId: auth.getNonNullableWorkspace().id,
         spaceId: space.id,
       },
