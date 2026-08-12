@@ -12,6 +12,8 @@ import {
   Button,
   ChevronDown,
   ChevronUp,
+  Collapsible,
+  CollapsibleContent,
   cn,
   DataTable,
   SearchInput,
@@ -214,17 +216,19 @@ function AttributionRows({
         data={data}
         columns={columns}
         widthClassName="min-w-[800px]"
-        renderSubComponent={(row) =>
-          row.isExpanded ? (
-            <ConsumptionAttributionBreakdown
-              workspaceId={workspaceId}
-              selectedDimension={dimension}
-              selectedRowId={row.id}
-              period={period}
-              filter={filter}
-            />
-          ) : null
-        }
+        renderSubComponent={(row) => (
+          <Collapsible open={row.isExpanded}>
+            <CollapsibleContent>
+              <ConsumptionAttributionBreakdown
+                workspaceId={workspaceId}
+                selectedDimension={dimension}
+                selectedRowId={row.id}
+                period={period}
+                filter={filter}
+              />
+            </CollapsibleContent>
+          </Collapsible>
+        )}
       />
     </div>
   );

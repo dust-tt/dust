@@ -132,10 +132,8 @@ export function ConsumptionAttributionBreakdown({
   return (
     <div
       className={cn(
-        "grid animate-in grid-cols-3 gap-20",
-        "border-b border-separator px-2 pb-6 pt-4",
-        "fade-in-0 slide-in-from-top-1 duration-enter ease-enter",
-        "motion-reduce:animate-none"
+        "grid grid-cols-3 gap-20",
+        "border-b border-separator px-2 pb-6 pt-4"
       )}
     >
       {BREAKDOWN_DIMENSIONS.map((dimension) => (
