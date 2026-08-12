@@ -26,8 +26,7 @@ type ConsumptionExportCsvRow = {
   avgCredits: number;
 };
 
-// Credits are raw division results with long float tails (and, for very
-// small values, JS's exponential notation, e.g. `5e-7`), which spreadsheet
+// Credits are raw division results with long float tails which spreadsheet
 // apps render as text rather than a number. Round to a couple of decimals so
 // every numeric cell serializes as a plain, consistently-typed number.
 function roundToCents(value: number): number {
@@ -42,13 +41,7 @@ const CONSUMPTION_EXPORT_HEADERS: (keyof ConsumptionExportCsvRow)[] = [
   "avgCredits",
 ];
 
-// Exports the full breakdown across every dimension in a single CSV, rather
-// than just whichever tab the attribution table currently has toggled.
-// Goes through `fetchConsumptionAllGroups`, which pages a composite
-// aggregation instead of capping a `terms` aggregation at some `limit`, so a
-// workspace with more entities than any UI page size doesn't get a silently
-// truncated export. The list of dimensions is small and static, so fetching
-// them all in parallel is fine ([GEN7]/[BACK7]).
+// Exports the full breakdown across every dimension in a single CSV
 export async function fetchConsumptionTopExportCsv(
   auth: Authenticator,
   {

@@ -31,10 +31,9 @@ export type ConsumptionTopGroup = {
 
 export type ConsumptionTopGroups = {
   groups: ConsumptionTopGroup[];
-  // Gross credits over the whole scoped period, every document included. Not
-  // necessarily the sum of `groups` — a capped ranking only sums to part of
-  // it, and a dimension that only exists on some documents (a tool, a skill)
-  // accounts for part of the total even when uncapped.
+  // Gross credits over the whole scoped period, every document included. Not the
+  // sum of `groups` — the ranking is capped at `limit`, and a dimension that only
+  // exists on some documents (a tool, a skill) accounts for part of the total.
   totalCredits: number;
 };
 
@@ -82,10 +81,7 @@ type CompositeTopAggs = {
   total_credit_micro?: estypes.AggregationsSumAggregate;
 };
 
-// Page size for the composite aggregation backing the unbounded export,
-// matching the size already used for composite pagination elsewhere
-// (`programmatic_cost_export.ts`). Exported for tests only.
-export const EXPORT_PAGE_SIZE = 10_000;
+const EXPORT_PAGE_SIZE = 10_000;
 
 function countFromBucket(
   bucket: GroupBucket,
@@ -168,10 +164,7 @@ export async function fetchConsumptionTopGroups(
 }
 
 /**
- * Every key of `dimension` by gross credits over the period, with no cap: pages
- * through a composite aggregation (rather than a `terms` aggregation, whose
- * `size` both bounds the result and gets less exact as it grows) so the CSV
- * export is a genuinely complete breakdown, not a plausible-looking top slice.
+ * Every key of `dimension` by gross credits over the period, with no cap
  */
 export async function fetchConsumptionAllGroups(
   auth: Authenticator,

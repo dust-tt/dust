@@ -1,9 +1,6 @@
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import {
-  EXPORT_PAGE_SIZE,
-  fetchConsumptionAllGroups,
-} from "@app/lib/api/analytics/consumption/top";
+import { fetchConsumptionAllGroups } from "@app/lib/api/analytics/consumption/top";
 import { fetchConsumptionTopAgents } from "@app/lib/api/analytics/consumption/top_agents";
 import { fetchConsumptionTopGroups } from "@app/lib/api/analytics/consumption/top_groups";
 import { fetchConsumptionTopModels } from "@app/lib/api/analytics/consumption/top_models";
@@ -420,6 +417,9 @@ describe("consumption top rankings", () => {
 // composite aggregation until it has seen every bucket. These tests guard
 // that no page is silently dropped and that credits are re-sorted once every
 // page has been merged, not just within each page.
+// Mirrors the private EXPORT_PAGE_SIZE in top.ts.
+const EXPORT_PAGE_SIZE = 10_000;
+
 describe("fetchConsumptionAllGroups (uncapped export ranking)", () => {
   afterEach(() => {
     vi.mocked(searchConsumptionAnalytics).mockReset();

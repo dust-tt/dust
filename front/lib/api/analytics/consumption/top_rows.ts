@@ -7,14 +7,9 @@ import type { GetConsumptionTopToolsResponse } from "@app/lib/api/analytics/cons
 import type { GetConsumptionTopUsersResponse } from "@app/lib/api/analytics/consumption/top_users";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 
-// Shared by the attribution table (client-side ranking) and the CSV export
-// (server-side full breakdown): the per-dimension `top-*` endpoints return
-// differently-shaped responses, normalized here to a common row.
-//
 // Imported by frontend code, so this file must only pull in types — never the
 // `fetchConsumptionTop*` functions themselves, which drag Sequelize/
-// Elasticsearch into the browser bundle. The dispatch table that calls them
-// lives in `export.ts`, the only backend-only consumer that needs it.
+// Elasticsearch into the browser bundle.
 
 export type ConsumptionTopRow = {
   id: string;
