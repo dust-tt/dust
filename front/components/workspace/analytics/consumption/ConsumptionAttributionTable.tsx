@@ -261,7 +261,7 @@ export function ConsumptionAttributionTable({
   });
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="rounded-lg border border-border bg-panel-background p-4">
       <Tabs
         value={dimension}
         onValueChange={(value) => {

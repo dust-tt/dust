@@ -196,6 +196,7 @@ function ConsumptionDailyChart({
   return (
     <ChartContainer
       title="Daily credits"
+      className="bg-panel-background"
       isLoading={isTimeseriesLoading}
       errorMessage={
         isTimeseriesError ? "Failed to load consumption." : undefined

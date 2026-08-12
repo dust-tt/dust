@@ -168,6 +168,7 @@ export function ConsumptionBurnUpChart({
   return (
     <ChartContainer
       title="Cumulative credits"
+      className="bg-panel-background"
       isLoading={isTimeseriesLoading}
       errorMessage={
         isTimeseriesError ? "Failed to load consumption." : undefined
