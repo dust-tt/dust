@@ -40,6 +40,9 @@ export function useConsumptionQuery<TBody extends object, TResponse>({
   const { cache } = useSWRConfig();
   const requestControllerRef = useRef<AbortController | null>(null);
   const previousCacheKeyRef = useRef<string | null>(null);
+  const unmountAbortTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
 
   const bodyKey = JSON.stringify(body);
   const { debouncedValue: debouncedBodyKey, isDebouncing } = useDebouncedValue(
@@ -79,12 +82,29 @@ export function useConsumptionQuery<TBody extends object, TResponse>({
     previousCacheKeyRef.current = cacheKey;
   }, [cache, cacheKey]);
 
-  useEffect(
-    () => () => {
-      requestControllerRef.current?.abort();
-    },
-    []
-  );
+  // Cancels the in-flight request on a real unmount, e.g. when the user
+  // switches period/filter fast enough to tear this widget down mid-request:
+  // without this, a slow response could still land after the fact and
+  // overwrite the cache with data for a view the user already left.
+  // Deferred so StrictMode's dev-only mount -> cleanup -> mount replay can
+  // cancel the timeout first instead of aborting the request before it
+  // reaches the network. Without this, local dev (StrictMode) breaks every
+  // request; prod is unaffected. Recreating the controller per-effect (as a
+  // plain fetch-in-effect would) isn't an option: SWR treats this request as
+  // already cached for the replay's second mount, so it would never fire a
+  // second one to replace the one we just aborted.
+  useEffect(() => {
+    if (unmountAbortTimeoutRef.current !== null) {
+      clearTimeout(unmountAbortTimeoutRef.current);
+      unmountAbortTimeoutRef.current = null;
+    }
+
+    return () => {
+      unmountAbortTimeoutRef.current = setTimeout(() => {
+        requestControllerRef.current?.abort();
+      }, 0);
+    };
+  }, []);
 
   const { data, error, isValidating } = useSWRWithDefaults(
     cacheKey,
