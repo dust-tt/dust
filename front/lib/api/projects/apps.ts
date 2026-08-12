@@ -1,13 +1,19 @@
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import { getPodStateBasePath } from "@app/lib/api/files/mount_path";
+import { getFileContent } from "@app/lib/api/files/utils";
 import { deleteProjectFile } from "@app/lib/api/projects/context";
+import { createPodFrameFile } from "@app/lib/api/projects/pod_frame_file";
 import { deletePodDatabaseReplica } from "@app/lib/api/sandbox/db";
 import {
   appPrefixFromPodDatabaseName,
   podDatabaseNameWithoutAppPrefix,
 } from "@app/lib/api/sandbox_functions/db_naming";
-import { deleteDatabaseOnSandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
+import {
+  deleteDatabaseOnSandbox,
+  reconcileDatabaseFromPodPath,
+} from "@app/lib/api/sandbox_functions/dsbx_db";
+import { publishSandboxFunction } from "@app/lib/api/sandbox_functions/publish_sandbox_function";
 import { SANDBOX_FUNCTION_SLUG_SEPARATOR } from "@app/lib/api/sandbox_functions/slug";
 import { unpublishSandboxFunction } from "@app/lib/api/sandbox_functions/unpublish_sandbox_function";
 import type { Authenticator } from "@app/lib/auth";
@@ -42,6 +48,9 @@ const APP_SHAPED_SUBFOLDERS = ["functions", "databases"];
 /** The app subfolder holding one drizzle schema file per database. */
 const APP_DATABASES_SUBFOLDER = "databases";
 
+/** The app subfolder holding one source file per published function. */
+const APP_FUNCTIONS_SUBFOLDER = "functions";
+
 /** Suffix of a database's schema file, e.g. `chat.db.ts` declares the `chat` database. */
 const POD_DATABASE_SCHEMA_FILE_SUFFIX = ".db.ts";
 
@@ -60,6 +69,13 @@ type AppFolder = {
    */
   declaredDatabaseNames: Set<string>;
 };
+
+/** Drop the last extension from a file name, e.g. `add-task.ts` -> `add-task`. */
+function stripExtension(fileName: string): string {
+  const dotIndex = fileName.lastIndexOf(".");
+
+  return dotIndex <= 0 ? fileName : fileName.slice(0, dotIndex);
+}
 
 /**
  * Path segments of a pod entry relative to the pod root, e.g. `MyApp/functions/list-notes.ts` for
@@ -613,5 +629,277 @@ export async function deletePodApp(
     deletedFunctionSlugs,
     deletedDatabaseNames,
     deletedFolderNames: folderNames,
+  });
+}
+
+export type PodAppCloneErrorCode =
+  | "not_a_pod"
+  | "not_found"
+  | "cannot_clone_unfiled"
+  | "invalid_name"
+  | "name_taken"
+  | "sandbox_unavailable"
+  | "internal";
+
+export class PodAppCloneError extends Error {
+  constructor(
+    readonly code: PodAppCloneErrorCode,
+    message: string
+  ) {
+    super(message);
+    this.name = "PodAppCloneError";
+  }
+}
+
+export interface ClonePodAppResult {
+  prefix: string;
+  name: string;
+  copiedFileCount: number;
+  clonedFrameNames: string[];
+  publishedFunctionSlugs: string[];
+  reconciledDatabaseNames: string[];
+  /** Functions or databases whose source file the copy does not have, so they were not recreated. */
+  skipped: string[];
+}
+
+/** The files under an app folder, Frames included, as a listing reports them. */
+function fileEntriesOf(entries: FileSystemEntry[]): FileSystemFileEntry[] {
+  return entries.flatMap((entry) => (entry.isDirectory ? [] : [entry]));
+}
+
+/**
+ * Clone a Pod app into a new folder in the same Pod.
+ *
+ * What carries over: every file under the app folder, its published functions (re-published under the
+ * copy's prefix), and its databases as **fresh, empty** ones reconciled from the copied schema files.
+ * What does not: database rows, share tokens, the pinned tab, and invocation history. The copy's Frame
+ * is left unpublished, so the author decides when it becomes a shareable artifact.
+ *
+ * A Frame cannot simply be copied as an object — it needs a FileResource to be publishable at all —
+ * so Frames are recreated through `createPodFrameFile` and every other file is copied directly.
+ *
+ * Nothing rewrites the copied Frame's source. A Frame that refers to its functions by bare name
+ * resolves them against the copy's own folder and is correct by construction; one that hard-codes
+ * `<podId>/<prefix>__<name>` keeps calling the ORIGINAL app's functions, and its author has to fix
+ * that themselves.
+ */
+export async function clonePodApp(
+  auth: Authenticator,
+  pod: SpaceResource,
+  { prefix, newName }: { prefix: string; newName: string }
+): Promise<Result<ClonePodAppResult, PodAppCloneError>> {
+  if (!pod.isProject()) {
+    return new Err(
+      new PodAppCloneError("not_a_pod", "Apps only exist on Pod spaces.")
+    );
+  }
+  if (prefix === UNFILED_POD_APP_PREFIX) {
+    return new Err(
+      new PodAppCloneError(
+        "cannot_clone_unfiled",
+        "Artifacts published outside an app folder are not an app and cannot be cloned."
+      )
+    );
+  }
+
+  const folderName = newName.trim();
+  const newPrefix = normalizeAppPrefix(folderName);
+  if (!newPrefix) {
+    return new Err(
+      new PodAppCloneError(
+        "invalid_name",
+        `'${newName}' has no letters or digits to name an app with.`
+      )
+    );
+  }
+  if (folderName.includes("/")) {
+    return new Err(
+      new PodAppCloneError("invalid_name", "An app name cannot contain '/'.")
+    );
+  }
+
+  const appsResult = await listPodApps(auth, pod);
+  if (appsResult.isErr()) {
+    return new Err(new PodAppCloneError("internal", appsResult.error.message));
+  }
+
+  const source = appsResult.value.find((app) => app.prefix === prefix);
+  if (!source || !source.folderPath) {
+    return new Err(
+      new PodAppCloneError("not_found", `No app '${prefix}' in this Pod.`)
+    );
+  }
+
+  // Two folders whose names normalize onto one prefix share published slugs and databases, so the
+  // check is on the prefix rather than the folder name.
+  if (appsResult.value.some((app) => app.prefix === newPrefix)) {
+    return new Err(
+      new PodAppCloneError(
+        "name_taken",
+        `This Pod already has an app named '${newPrefix}'.`
+      )
+    );
+  }
+
+  const fsResult = await DustFileSystem.forPod(auth, pod);
+  if (fsResult.isErr()) {
+    return new Err(
+      new PodAppCloneError("internal", "Failed to initialise file system.")
+    );
+  }
+  const dustFs = fsResult.value;
+
+  const podRoot = `${SCOPED_PREFIX_POD}${pod.sId}`;
+  const sourceFolderPath = source.folderPath;
+  const destFolderPath = `${podRoot}/${folderName}`;
+
+  const listResult = await dustFs.list(sourceFolderPath);
+  if (listResult.isErr()) {
+    return new Err(new PodAppCloneError("internal", listResult.error.message));
+  }
+  const sourceEntries = fileEntriesOf(listResult.value);
+
+  // Copy everything except the Frames, which need a FileResource of their own.
+  let copiedFileCount = 0;
+  for (const entry of sourceEntries) {
+    if (isInteractiveContentType(entry.contentType)) {
+      continue;
+    }
+
+    const relPath = entry.path.slice(sourceFolderPath.length + 1);
+    const copyResult = await dustFs.copy({
+      src: entry.path,
+      dest: `${destFolderPath}/${relPath}`,
+    });
+    if (copyResult.isErr()) {
+      return new Err(
+        new PodAppCloneError("internal", copyResult.error.message)
+      );
+    }
+    copiedFileCount += 1;
+  }
+
+  // Recreate the Frames so the copy owns publishable files rather than bare objects.
+  const clonedFrameNames: string[] = [];
+  for (const frame of source.frames) {
+    if (!frame.fileId) {
+      continue;
+    }
+    const sourceFile = await FileResource.fetchById(auth, frame.fileId);
+    if (!sourceFile) {
+      continue;
+    }
+    if (!isInteractiveContentType(sourceFile.contentType)) {
+      continue;
+    }
+    const content = await getFileContent(auth, sourceFile, "original");
+    if (content === null) {
+      return new Err(
+        new PodAppCloneError(
+          "internal",
+          `Could not read the source of Frame '${frame.fileName}'.`
+        )
+      );
+    }
+
+    const createResult = await createPodFrameFile(auth, {
+      space: pod,
+      folderName,
+      fileName: frame.fileName,
+      contentType: sourceFile.contentType,
+      content,
+    });
+    if (createResult.isErr()) {
+      return new Err(
+        new PodAppCloneError("internal", createResult.error.message)
+      );
+    }
+    clonedFrameNames.push(frame.fileName);
+    copiedFileCount += 1;
+  }
+
+  const copiedPathByRelPath = new Map(
+    sourceEntries.map((entry) => {
+      const relPath = entry.path.slice(sourceFolderPath.length + 1);
+
+      return [relPath, `${destFolderPath}/${relPath}`] as const;
+    })
+  );
+  const skipped: string[] = [];
+
+  // Publish the copy's functions. The source path decides the prefix, so publishing from the copy's
+  // folder is what gives the clone its own functions; description and execution mode are carried over
+  // so the contract is identical.
+  const publishedFunctionSlugs: string[] = [];
+  for (const fn of source.functions) {
+    const sourceRelPath = [...copiedPathByRelPath.keys()].find(
+      (relPath) =>
+        relPath.startsWith(`${APP_FUNCTIONS_SUBFOLDER}/`) &&
+        relPath.slice(`${APP_FUNCTIONS_SUBFOLDER}/`.length).split("/")
+          .length === 1 &&
+        stripExtension(relPath.split("/").at(-1) ?? "") === fn.name
+    );
+    if (!sourceRelPath) {
+      skipped.push(`function ${fn.name}`);
+      continue;
+    }
+
+    const publishResult = await publishSandboxFunction(auth, {
+      space: pod,
+      slug: fn.name,
+      description: fn.description,
+      path: copiedPathByRelPath.get(sourceRelPath) ?? "",
+      executionMode: fn.executionMode,
+    });
+    if (publishResult.isErr()) {
+      return new Err(
+        new PodAppCloneError(
+          publishResult.error.code === "sandbox_unavailable"
+            ? "sandbox_unavailable"
+            : "internal",
+          publishResult.error.message
+        )
+      );
+    }
+    publishedFunctionSlugs.push(publishResult.value.slug);
+  }
+
+  // Reconcile the copy's databases from its own schema files, which creates them empty under the
+  // copy's prefix. Data is deliberately not carried over.
+  const reconciledDatabaseNames: string[] = [];
+  for (const database of source.databases) {
+    const schemaRelPath = `${APP_DATABASES_SUBFOLDER}/${database.name}${POD_DATABASE_SCHEMA_FILE_SUFFIX}`;
+    const schemaPath = copiedPathByRelPath.get(schemaRelPath);
+    if (!schemaPath) {
+      skipped.push(`database ${database.name}`);
+      continue;
+    }
+
+    const reconcileResult = await reconcileDatabaseFromPodPath(auth, {
+      space: pod,
+      database: database.name,
+      path: schemaPath,
+    });
+    if (reconcileResult.isErr()) {
+      return new Err(
+        new PodAppCloneError(
+          reconcileResult.error.code === "sandbox_unavailable"
+            ? "sandbox_unavailable"
+            : "internal",
+          reconcileResult.error.message
+        )
+      );
+    }
+    reconciledDatabaseNames.push(reconcileResult.value.database);
+  }
+
+  return new Ok({
+    prefix: newPrefix,
+    name: folderName,
+    copiedFileCount,
+    clonedFrameNames,
+    publishedFunctionSlugs,
+    reconciledDatabaseNames,
+    skipped,
   });
 }
