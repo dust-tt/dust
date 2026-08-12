@@ -90,7 +90,10 @@ describe("activationManagementPlugin.execute", () => {
       pushedResource: [],
       workAreas,
       activationPlaybook,
-      podName: "",
+      targetingMode: ["users"],
+      guidance: ["curated"],
+      pctActivated: 0,
+      pctNotActivated: 0,
       forceRecreate: false,
     });
 
@@ -121,7 +124,10 @@ describe("activationManagementPlugin.execute", () => {
       pushedResource: [],
       workAreas: "",
       activationPlaybook: "",
-      podName: "",
+      targetingMode: ["users"],
+      guidance: ["curated"],
+      pctActivated: 0,
+      pctNotActivated: 0,
       forceRecreate: false,
     });
 

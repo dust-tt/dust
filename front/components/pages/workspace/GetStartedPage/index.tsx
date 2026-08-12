@@ -26,7 +26,7 @@ import { usePodMetadata } from "@app/lib/swr/pods";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { resolveDefaultAgentId } from "@app/types/user";
 import { Button, Spinner } from "@dust-tt/sparkle";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const QUICK_PROMPTS = [
   {
@@ -135,6 +135,27 @@ export function GetStartedPage() {
   }, [startConversation]);
 
   const firstName = user?.firstName ?? user?.fullName?.split(" ")[0] ?? "there";
+
+  // The whole surface is scoped to the user's activation Pod, so without one
+  // there is nothing to show. Redirect to the workspace home once the Pod
+  // check resolves rather than rendering an empty page.
+  useEffect(() => {
+    if (!isActivationPodLoading && activationPodId === null) {
+      void router.replace(getConversationRoute(owner.sId));
+    }
+  }, [isActivationPodLoading, activationPodId, owner.sId, router]);
+
+  // Hold on a spinner while the Pod check is in flight or while the redirect
+  // above is taking effect, so the page never flashes for a Pod-less user.
+  if (isActivationPodLoading || activationPodId === null) {
+    return (
+      <AssistantLayout owner={owner} user={user}>
+        <div className="flex min-h-full w-full items-center justify-center">
+          <Spinner size="md" />
+        </div>
+      </AssistantLayout>
+    );
+  }
 
   return (
     <AssistantLayout owner={owner} user={user}>

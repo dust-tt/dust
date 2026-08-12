@@ -1235,8 +1235,7 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     id: 1039,
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) =>
-      !featureFlags.includes("activation_skill"),
+    isRestricted: undefined,
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
@@ -1247,8 +1246,7 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     id: 1040,
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) =>
-      !featureFlags.includes("activation_skill"),
+    isRestricted: undefined,
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,

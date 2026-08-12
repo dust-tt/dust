@@ -4,6 +4,7 @@ import {
   postActivationNudge,
 } from "@app/lib/api/activation/nudge";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -86,6 +87,11 @@ export async function determineEligibleActivationUsers(
   }
   const byUser = activationResult.value;
 
+  // When forced, nudge users even if they are already considered activated:
+  // the activated-user filter below is skipped so every candidate is eligible.
+  const flags = await getFeatureFlags(auth);
+  const forceNudge = flags.includes("activation_force_nudge");
+
   const eligible: NudgePlan[] = [];
   const skipped: SkippedUser[] = [];
   for (const candidate of candidates) {
@@ -105,7 +111,7 @@ export async function determineEligibleActivationUsers(
         "[Activation] Evaluation result"
       );
     }
-    if (result?.activated) {
+    if (result?.activated && !forceNudge) {
       skipped.push({
         userId: candidate.userId,
         podId: candidate.podId,

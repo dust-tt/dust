@@ -312,12 +312,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Model picker in the conversation input bar: keep Auto (the agent's configured model) or pick a specific model and reasoning effort.",
     stage: "dust_only",
   },
-  activation_skill: {
-    description: "Enable the Activation skill for agentic user activation pods",
-    stage: "dust_only",
-  },
-  activation_scheduler: {
-    description: "Enable the per-workspace Activation scheduler workflow",
+  activation_force_nudge: {
+    description:
+      "Bypass the activated-user check in the activation orchestrator so already-activated users are still nudged",
     stage: "dust_only",
   },
   admin_controlled_pods: {

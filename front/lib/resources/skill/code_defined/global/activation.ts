@@ -5,7 +5,6 @@ import {
   SET_FILES_SIDE_PANEL_TOOL_NAME,
 } from "@app/lib/api/actions/servers/conversation_side_panel/metadata";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
@@ -475,8 +474,5 @@ export const activationSkill = {
   ],
   version: 7,
   icon: "ActionRocketIcon",
-  isRestricted: async (auth) => {
-    const flags = await getFeatureFlags(auth);
-    return !flags.includes("activation_skill");
-  },
+  isRestricted: undefined,
 } as const satisfies GlobalSkillDefinition;
