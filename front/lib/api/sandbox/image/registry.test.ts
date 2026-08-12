@@ -91,11 +91,25 @@ function getCommandPath(command: string): string {
 }
 
 describe("sandbox image registry", () => {
-  test("pins the current dust-base image tag", () => {
+  test("pins the current dust-base and sbx bedrock image tags", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
       tag: "0.8.84",
     });
+    expect(getDustBaseImage().baseImage).toEqual({
+      type: "docker",
+      imageRef: "dust-sbx-bedrock:1.11.0",
+    });
+  });
+
+  test("loads Fluent Bit credentials from a root-only runtime file", () => {
+    const serviceUnit = getCopiedContent(
+      getCopyOperations(getDustBaseImageOperations()),
+      "/etc/systemd/system/fluent-bit.service"
+    );
+
+    expect(serviceUnit).toContain("EnvironmentFile=/run/dust/fluent-bit.env");
+    expect(serviceUnit).not.toContain("Environment=DD_API_KEY");
   });
 
   test("creates the dormant proxied user and shared-path permissions", () => {
@@ -267,6 +281,10 @@ describe("sandbox image registry", () => {
       copyOperations,
       "/etc/dbus-1/system.d/dust-resolve1.conf"
     );
+    const systemd1Policy = getCopiedContent(
+      copyOperations,
+      "/etc/dbus-1/system.d/dust-systemd1.conf"
+    );
     const resolvedIpcDropIn = getCopiedContent(
       copyOperations,
       "/etc/systemd/system/systemd-resolved.service.d/dust-ipc.conf"
@@ -325,6 +343,14 @@ describe("sandbox image registry", () => {
     expect(
       resolve1Policy.match(
         /<deny send_destination="org\.freedesktop\.resolve1"\/>/g
+      )
+    ).toHaveLength(2);
+    for (const user of ["agent", "agent-proxied"]) {
+      expect(systemd1Policy).toContain(`<policy user="${user}">`);
+    }
+    expect(
+      systemd1Policy.match(
+        /<deny send_destination="org\.freedesktop\.systemd1"\/>/g
       )
     ).toHaveLength(2);
     expect(resolvedIpcDropIn).toContain("[Service]");

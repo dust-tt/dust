@@ -25,7 +25,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import fs from "fs";
 import path from "path";
 
-const DUST_BEDROCK_IMAGE_VERSION = "1.10.0";
+const DUST_BEDROCK_IMAGE_VERSION = "1.11.0";
 const DUST_BASE_IMAGE_VERSION = "0.8.84";
 const DSBX_CLI_VERSION = "0.1.50";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
@@ -703,6 +703,11 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   .copy(
     getLocalContent(EGRESS_LOCAL_DIR, "dust-resolve1.conf"),
     "/etc/dbus-1/system.d/dust-resolve1.conf",
+    { user: "root" }
+  )
+  .copy(
+    getLocalContent(EGRESS_LOCAL_DIR, "dust-systemd1.conf"),
+    "/etc/dbus-1/system.d/dust-systemd1.conf",
     { user: "root" }
   )
   .copy(
