@@ -1,12 +1,8 @@
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import { getPodStateBasePath } from "@app/lib/api/files/mount_path";
-import { getFileContent } from "@app/lib/api/files/utils";
 import { deleteProjectFile } from "@app/lib/api/projects/context";
-import {
-  createPodFrameFile,
-  publishPodFrameFile,
-} from "@app/lib/api/projects/pod_frame_file";
+import { clonePodFrame } from "@app/lib/api/projects/pod_frame_file";
 import { deletePodDatabaseReplica } from "@app/lib/api/sandbox/db";
 import {
   appPrefixFromPodDatabaseName,
@@ -702,55 +698,25 @@ export async function clonePodApp(
     copiedFileCount += 1;
   }
 
-  // Recreate the Frames so the copy owns publishable files rather than bare objects.
+  // Recreate the Frames so the copy owns publishable files rather than bare objects, mirroring
+  // whether each was published.
   const clonedFrameNames: string[] = [];
   for (const frame of source.frames) {
-    if (!frame.fileId) {
-      continue;
-    }
-    const sourceFile = await FileResource.fetchById(auth, frame.fileId);
-    if (!sourceFile) {
-      continue;
-    }
-    if (!isInteractiveContentType(sourceFile.contentType)) {
-      continue;
-    }
-    const content = await getFileContent(auth, sourceFile, "original");
-    if (content === null) {
-      return new Err(
-        new PodAppCloneError(
-          "internal",
-          `Could not read the source of Frame '${frame.fileName}'.`
-        )
-      );
-    }
-
-    const createResult = await createPodFrameFile(auth, {
+    const frameResult = await clonePodFrame(auth, {
       space: pod,
       folderName,
-      fileName: frame.fileName,
-      contentType: sourceFile.contentType,
-      content,
+      frame,
     });
-    if (createResult.isErr()) {
+    if (frameResult.isErr()) {
       return new Err(
-        new PodAppCloneError("internal", createResult.error.message)
+        new PodAppCloneError("internal", frameResult.error.message)
       );
     }
-    // Publish the copy's Frame when the source's was published, so the clone is as usable as the
-    // original — openable, shareable, rendering its bundle. A source still being authored has no
-    // bundle to mirror, so the copy stays unpublished too and renders its source like any draft.
-    if (frame.isPublished) {
-      const publishResult = await publishPodFrameFile(auth, createResult.value);
-      if (publishResult.isErr()) {
-        return new Err(
-          new PodAppCloneError("internal", publishResult.error.message)
-        );
-      }
+    // Null means the source Frame had nothing to copy; the rest of the app is still worth cloning.
+    if (frameResult.value) {
+      clonedFrameNames.push(frame.fileName);
+      copiedFileCount += 1;
     }
-
-    clonedFrameNames.push(frame.fileName);
-    copiedFileCount += 1;
   }
 
   const skipped: string[] = [];

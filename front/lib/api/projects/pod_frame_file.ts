@@ -1,6 +1,7 @@
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import { splitFrameEntryScopedPath } from "@app/lib/api/files/mount_path";
+import { getFileContent } from "@app/lib/api/files/utils";
 import { moveProjectFile } from "@app/lib/api/projects/context";
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import { publishFrame } from "@app/lib/api/viz/publish_frame";
@@ -8,7 +9,9 @@ import { uploadFrameContent } from "@app/lib/api/viz/upload_frame_content";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import type { PodAppFrame } from "@app/types/api/pod_apps";
 import type { InteractiveContentFileContentType } from "@app/types/files";
+import { isInteractiveContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -31,7 +34,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
  * Frame's own directory is the bundling root, so the bundler resolves its relative imports from the
  * folder it sits in.
  */
-export async function publishPodFrameFile(
+async function publishPodFrameFile(
   auth: Authenticator,
   file: FileResource
 ): Promise<Result<void, Error>> {
@@ -87,7 +90,7 @@ export function podRelativePathFromScopedPath(
   return relativePath.length > 0 ? relativePath : null;
 }
 
-export async function createPodFrameFile(
+async function createPodFrameFile(
   auth: Authenticator,
   {
     space,
@@ -159,4 +162,68 @@ export async function createPodFrameFile(
   } catch (error) {
     return new Err(normalizeError(error));
   }
+}
+
+/**
+ * Copy one Frame into an app folder in the same Pod, mirroring whether it was published.
+ *
+ * The whole Frame side of cloning an app: read the source, create a real file in the target folder,
+ * and publish it when the source was published. Callers get one operation rather than two steps they
+ * have to sequence correctly — creating before publishing, and publishing only from the folder the
+ * copy now lives in, which is what makes its bare function references resolve to the copy's own
+ * functions.
+ *
+ * Returns null when the source Frame has nothing to copy: a listing entry with no FileResource, or a
+ * file that is not interactive content. Those are skipped rather than failing the clone, since the
+ * app's other parts are still worth copying.
+ */
+export async function clonePodFrame(
+  auth: Authenticator,
+  {
+    space,
+    folderName,
+    frame,
+  }: {
+    space: SpaceResource;
+    folderName: string;
+    frame: PodAppFrame;
+  }
+): Promise<Result<FileResource | null, Error>> {
+  if (!frame.fileId) {
+    return new Ok(null);
+  }
+
+  const sourceFile = await FileResource.fetchById(auth, frame.fileId);
+  if (!sourceFile || !isInteractiveContentType(sourceFile.contentType)) {
+    return new Ok(null);
+  }
+
+  const content = await getFileContent(auth, sourceFile, "original");
+  if (content === null) {
+    return new Err(
+      new Error(`Could not read the source of Frame '${frame.fileName}'.`)
+    );
+  }
+
+  const createResult = await createPodFrameFile(auth, {
+    space,
+    folderName,
+    fileName: frame.fileName,
+    contentType: sourceFile.contentType,
+    content,
+  });
+  if (createResult.isErr()) {
+    return createResult;
+  }
+
+  // A source still being authored has no bundle to mirror, so the copy stays a draft and renders its
+  // source, exactly as the original does.
+  if (frame.isPublished) {
+    const publishResult = await publishPodFrameFile(auth, createResult.value);
+    if (publishResult.isErr()) {
+      return publishResult;
+    }
+  }
+
+  return new Ok(createResult.value);
 }
