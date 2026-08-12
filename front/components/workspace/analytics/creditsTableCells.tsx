@@ -21,13 +21,12 @@ export function AvatarNameCell({
   );
 }
 
-export function CostShareBar({
-  percentage,
-  className,
-}: {
+interface CostShareBarProps {
   percentage: number;
   className?: string;
-}) {
+}
+
+export function CostShareBar({ percentage, className }: CostShareBarProps) {
   return (
     <progress
       aria-hidden="true"
