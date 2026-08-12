@@ -177,11 +177,14 @@ export class ModelsTierResource {
       return [];
     }
 
-    const grants = await GroupPermissionResource.listForGroups(auth, {
-      groupModelIds: [globalGroup.id],
-      grantType: MODELS_TIER_GRANT_TYPE,
-      resourceType: MODELS_TIER_RESOURCE_TYPE,
-    });
+    const grants = await GroupPermissionResource.listForGroups(
+      auth.getNonNullableWorkspace(),
+      {
+        groupModelIds: [globalGroup.id],
+        grantType: MODELS_TIER_GRANT_TYPE,
+        resourceType: MODELS_TIER_RESOURCE_TYPE,
+      }
+    );
 
     return grants.flatMap((grant) => {
       const tierName = this.tierNameFromResourceId(grant.resourceId);
@@ -622,11 +625,14 @@ export class ModelsTierResource {
       return new Map();
     }
 
-    const grants = await GroupPermissionResource.listForGroups(auth, {
-      groupModelIds,
-      grantType: MODELS_TIER_GRANT_TYPE,
-      resourceType: MODELS_TIER_RESOURCE_TYPE,
-    });
+    const grants = await GroupPermissionResource.listForGroups(
+      auth.getNonNullableWorkspace(),
+      {
+        groupModelIds,
+        grantType: MODELS_TIER_GRANT_TYPE,
+        resourceType: MODELS_TIER_RESOURCE_TYPE,
+      }
+    );
 
     const tiersByGroupId = new Map<ModelId, ModelsTierName[]>();
     for (const grant of grants) {
