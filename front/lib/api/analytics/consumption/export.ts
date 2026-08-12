@@ -4,8 +4,10 @@ import type {
   ConsumptionScopeDimension,
   ConsumptionScopeFilter,
 } from "@app/lib/api/analytics/consumption/scope";
-import { CONSUMPTION_SCOPE_DIMENSIONS } from "@app/lib/api/analytics/consumption/scope";
-import type { ConsumptionTopUnit } from "@app/lib/api/analytics/consumption/top";
+import {
+  CONSUMPTION_DIMENSION_UNIT,
+  CONSUMPTION_SCOPE_DIMENSIONS,
+} from "@app/lib/api/analytics/consumption/scope";
 import {
   avgCreditsPerUnit,
   fetchConsumptionAllGroups,
@@ -15,22 +17,6 @@ import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
-
-// The unit each dimension's `top-*` endpoint ranks on (see the individual
-// `top_*.ts` files), duplicated here since the export goes straight through
-// `fetchConsumptionAllGroups` rather than those per-dimension wrappers.
-const CONSUMPTION_DIMENSION_UNIT: Record<
-  ConsumptionScopeDimension,
-  ConsumptionTopUnit
-> = {
-  agent: "message",
-  user: "message",
-  group: "message",
-  model: "message",
-  tool: "invocation",
-  skill: "invocation",
-  source: "message",
-};
 
 type ConsumptionExportCsvRow = {
   dimension: ConsumptionScopeDimension;

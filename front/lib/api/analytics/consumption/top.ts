@@ -2,6 +2,7 @@ import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/perio
 import type {
   ConsumptionScopeDimension,
   ConsumptionScopeFilter,
+  ConsumptionTopUnit,
 } from "@app/lib/api/analytics/consumption/scope";
 import {
   AGENT_MESSAGE_ID_FIELD,
@@ -20,11 +21,6 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
-
-// Unit a ranking's count — and therefore its average — is denominated in.
-// "message" is the count of distinct messages,
-// "invocation" is used for the count of tool documents.
-export type ConsumptionTopUnit = "message" | "invocation";
 
 export type ConsumptionTopGroup = {
   key: string;
