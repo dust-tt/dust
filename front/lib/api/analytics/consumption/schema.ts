@@ -1,5 +1,8 @@
 import type { ConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/period";
-import { CONSUMPTION_SCOPE_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
+import {
+  CONSUMPTION_SCOPE_DIMENSIONS,
+  CONSUMPTION_SCOPE_FILTER_KEYS,
+} from "@app/lib/api/analytics/consumption/scope";
 import { z } from "zod";
 
 /** Shared validation for consumption analytics periods and filters. */
@@ -46,6 +49,14 @@ export const ConsumptionTopBodySchema = ConsumptionBodySchema.extend({
 });
 
 export type ConsumptionTopBody = z.infer<typeof ConsumptionTopBodySchema>;
+
+// The attribution table's CSV export: same period/filter as the `top-*`
+// endpoints, scoped to whichever dimension tab is currently toggled.
+export const ConsumptionExportBodySchema = ConsumptionBodySchema.extend({
+  dimension: z.enum(CONSUMPTION_SCOPE_DIMENSIONS),
+});
+
+export type ConsumptionExportBody = z.infer<typeof ConsumptionExportBodySchema>;
 
 export function toConsumptionPeriodInput({
   period,
