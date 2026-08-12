@@ -1,5 +1,5 @@
 import { useClientType } from "@app/lib/context/clientType";
-import { cn } from "@dust-tt/sparkle";
+import { DiscoveryGlint } from "@dust-tt/sparkle";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -33,26 +33,13 @@ function readDismissals(): number {
   }
 }
 
-interface GlintStreaksProps {
-  className: string;
-}
-
-function GlintStreaks({ className }: GlintStreaksProps) {
-  return (
-    <span className={cn("absolute inset-0", className)}>
-      <span className="absolute -top-1/4 left-0 h-[150%] w-[3px] rotate-[30deg] bg-blue-50 blur-[1px]" />
-      <span className="absolute -top-1/3 left-[5px] h-[165%] w-[3px] rotate-[30deg] bg-blue-50/70 blur-[1px]" />
-    </span>
-  );
-}
-
 interface ModelPickerHighlightProps {
   children: React.ReactNode;
 }
 
 export function ModelPickerHighlight({ children }: ModelPickerHighlightProps) {
   const isExtension = useClientType() === "extension";
-  const [isVisible, setIsVisible] = useState<boolean>(
+  const [isActive, setIsActive] = useState<boolean>(
     () =>
       !isExtension &&
       (isReplayRequested() ||
@@ -66,14 +53,16 @@ export function ModelPickerHighlight({ children }: ModelPickerHighlightProps) {
       hasSpentDismissalRef.current = true;
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY, String(readDismissals() + 1));
-      } catch {}
+      } catch {
+        // localStorage may be full or unavailable.
+      }
     }
-    setIsVisible(false);
+    setIsActive(false);
   }, []);
 
   useEffect(() => {
     const host = hostRef.current;
-    if (!host || !isVisible) {
+    if (!host || !isActive) {
       return;
     }
     const onPointerDown = (event: PointerEvent) => {
@@ -83,26 +72,13 @@ export function ModelPickerHighlight({ children }: ModelPickerHighlightProps) {
     };
     host.addEventListener("pointerdown", onPointerDown);
     return () => host.removeEventListener("pointerdown", onPointerDown);
-  }, [isVisible, dismiss]);
+  }, [isActive, dismiss]);
 
   return (
-    <span ref={hostRef} className="glint-host relative inline-flex">
-      {children}
-      {isVisible && (
-        <>
-          <span
-            aria-hidden
-            className="glint-ring-pulse pointer-events-none absolute inset-0 rounded-lg border border-blue-200"
-          />
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg"
-          >
-            <GlintStreaks className="glint-sweep" />
-            <GlintStreaks className="glint-sweep-hover" />
-          </span>
-        </>
-      )}
+    <span ref={hostRef} className="inline-flex">
+      <DiscoveryGlint isActive={isActive} radius="lg">
+        {children}
+      </DiscoveryGlint>
     </span>
   );
 }

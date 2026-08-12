@@ -116,6 +116,11 @@ export {
 } from "./Dialog";
 export { DiffBlock, type DiffChange } from "./DiffBlock";
 export type {
+  DiscoveryGlintProps,
+  DiscoveryGlintRadius,
+} from "./DiscoveryGlint";
+export { DISCOVERY_GLINT_RADII, DiscoveryGlint } from "./DiscoveryGlint";
+export type {
   DropdownMenuFilterOption,
   DropdownMenuItemProps,
   DropdownTooltipProps,
