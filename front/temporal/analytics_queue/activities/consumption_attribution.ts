@@ -20,10 +20,10 @@ async function storeAgentMessageConsumptionAttribution(
       conversationId: message.conversationId,
       event: {
         type: "agent_message_consumption_updated",
-        created: Date.now(),
         conversationId: message.conversationId,
-        messageId: message.agentMessageId,
         costCredits: consumptionUpdate.costCredits,
+        created: Date.now(),
+        messageId: message.agentMessageId,
       },
     });
   }

@@ -290,10 +290,10 @@ export type AgentMessageDoneEvent = {
 // Event sent once the persisted credit attribution is available to read.
 export type AgentMessageConsumptionUpdatedEvent = {
   type: "agent_message_consumption_updated";
-  created: number;
   conversationId: string;
-  messageId: string;
   costCredits: number | null;
+  created: number;
+  messageId: string;
 };
 
 // Event sent when an error occurred during the tool call.
