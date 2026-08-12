@@ -9,7 +9,7 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 export const USAGE_FILTER_CATEGORIES = [
   "agent",
   "member",
-  "team",
+  "group",
   "model",
   "tool",
   "skill",
@@ -26,7 +26,7 @@ export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =
   {
     agent: "Agents",
     member: "Members",
-    team: "Teams",
+    group: "Groups",
     model: "Models",
     tool: "Tools",
     skill: "Skills",
@@ -69,8 +69,8 @@ export interface UsageFilterMemberOption extends UsageFilterOptionBase {
   image: string | null;
 }
 
-export interface UsageFilterTeamOption extends UsageFilterOptionBase {
-  kind: "team";
+export interface UsageFilterGroupOption extends UsageFilterOptionBase {
+  kind: "group";
 }
 
 export interface UsageFilterSourceOption extends UsageFilterOptionBase {
@@ -100,7 +100,7 @@ export interface UsageFilterSkillOption extends UsageFilterOptionBase {
 export type UsageFilterOption =
   | UsageFilterAgentOption
   | UsageFilterMemberOption
-  | UsageFilterTeamOption
+  | UsageFilterGroupOption
   | UsageFilterSourceOption
   | UsageFilterModelOption
   | UsageFilterToolOption

@@ -21,11 +21,11 @@ describe("toConsumptionScopeFilter", () => {
             disabled: false,
           },
         ],
-        team: [
+        group: [
           {
-            id: "team-1",
+            id: "group-1",
             name: "Engineering",
-            kind: "team",
+            kind: "group",
             documentCount: 1,
             disabled: false,
           },
@@ -63,15 +63,15 @@ describe("toConsumptionScopeFilter", () => {
       })
     ).toEqual({
       users: ["member-1"],
-      teams: ["team-1"],
+      groups: ["group-1"],
       tools: ["tool-1"],
       skills: ["skill-1"],
       sources: ["slack"],
     });
   });
 
-  it("omits empty member and team selections", () => {
-    expect(toConsumptionScopeFilter({ member: [], team: [] })).toEqual({});
+  it("omits empty member and group selections", () => {
+    expect(toConsumptionScopeFilter({ member: [], group: [] })).toEqual({});
   });
 
   it("bounds the total number of selections serialized into analytics URLs", () => {

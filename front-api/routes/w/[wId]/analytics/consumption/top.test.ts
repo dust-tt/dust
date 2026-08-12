@@ -4,6 +4,10 @@ import {
   type GetConsumptionTopAgentsResponse,
 } from "@app/lib/api/analytics/consumption/top_agents";
 import {
+  fetchConsumptionTopGroups,
+  type GetConsumptionTopGroupsResponse,
+} from "@app/lib/api/analytics/consumption/top_groups";
+import {
   fetchConsumptionTopModels,
   type GetConsumptionTopModelsResponse,
 } from "@app/lib/api/analytics/consumption/top_models";
@@ -15,10 +19,6 @@ import {
   fetchConsumptionTopSources,
   type GetConsumptionTopSourcesResponse,
 } from "@app/lib/api/analytics/consumption/top_sources";
-import {
-  fetchConsumptionTopTeams,
-  type GetConsumptionTopTeamsResponse,
-} from "@app/lib/api/analytics/consumption/top_teams";
 import {
   fetchConsumptionTopTools,
   type GetConsumptionTopToolsResponse,
@@ -63,10 +63,10 @@ vi.mock(
   }
 );
 vi.mock(
-  import("@app/lib/api/analytics/consumption/top_teams"),
+  import("@app/lib/api/analytics/consumption/top_groups"),
   async (orig) => {
     const mod = await orig();
-    return { ...mod, fetchConsumptionTopTeams: vi.fn() };
+    return { ...mod, fetchConsumptionTopGroups: vi.fn() };
   }
 );
 vi.mock(
@@ -147,12 +147,12 @@ const TOP_SOURCES: GetConsumptionTopSourcesResponse = {
   ],
 };
 
-const TOP_TEAMS: GetConsumptionTopTeamsResponse = {
+const TOP_GROUPS: GetConsumptionTopGroupsResponse = {
   period: PERIOD,
   totalCredits: 5000,
-  teams: [
+  groups: [
     {
-      teamId: "team1",
+      groupId: "group1",
       name: "Engineering",
       credits: 200,
       messageCount: 4,
@@ -227,11 +227,13 @@ const RANKINGS = [
     lastCall: () => vi.mocked(fetchConsumptionTopSources).mock.lastCall,
   },
   {
-    path: "top-teams",
-    body: TOP_TEAMS,
+    path: "top-groups",
+    body: TOP_GROUPS,
     arrangeOk: () =>
-      vi.mocked(fetchConsumptionTopTeams).mockResolvedValue(new Ok(TOP_TEAMS)),
-    lastCall: () => vi.mocked(fetchConsumptionTopTeams).mock.lastCall,
+      vi
+        .mocked(fetchConsumptionTopGroups)
+        .mockResolvedValue(new Ok(TOP_GROUPS)),
+    lastCall: () => vi.mocked(fetchConsumptionTopGroups).mock.lastCall,
   },
   {
     path: "top-tools",

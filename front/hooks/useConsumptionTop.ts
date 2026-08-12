@@ -3,10 +3,10 @@ import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_
 import { consumptionQueryString } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/consumption/top_agents";
+import type { GetConsumptionTopGroupsResponse } from "@app/lib/api/analytics/consumption/top_groups";
 import type { GetConsumptionTopModelsResponse } from "@app/lib/api/analytics/consumption/top_models";
 import type { GetConsumptionTopSkillsResponse } from "@app/lib/api/analytics/consumption/top_skills";
 import type { GetConsumptionTopSourcesResponse } from "@app/lib/api/analytics/consumption/top_sources";
-import type { GetConsumptionTopTeamsResponse } from "@app/lib/api/analytics/consumption/top_teams";
 import type { GetConsumptionTopToolsResponse } from "@app/lib/api/analytics/consumption/top_tools";
 import type { GetConsumptionTopUsersResponse } from "@app/lib/api/analytics/consumption/top_users";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -17,7 +17,7 @@ import type { Fetcher } from "swr";
 const CONSUMPTION_TOP_ENDPOINTS = {
   agent: "top-agents",
   user: "top-users",
-  team: "top-teams",
+  group: "top-groups",
   model: "top-models",
   tool: "top-tools",
   skill: "top-skills",
@@ -35,7 +35,7 @@ export type ConsumptionTopRow = {
 type ConsumptionTopResponse =
   | GetConsumptionTopAgentsResponse
   | GetConsumptionTopUsersResponse
-  | GetConsumptionTopTeamsResponse
+  | GetConsumptionTopGroupsResponse
   | GetConsumptionTopModelsResponse
   | GetConsumptionTopToolsResponse
   | GetConsumptionTopSkillsResponse
@@ -63,9 +63,9 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       avgCredits: row.avgCreditsPerMessage,
     }));
   }
-  if ("teams" in data) {
-    return data.teams.map((row) => ({
-      id: row.teamId,
+  if ("groups" in data) {
+    return data.groups.map((row) => ({
+      id: row.groupId,
       name: row.name,
       pictureUrl: null,
       modelMaker: null,

@@ -3,7 +3,7 @@ import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/perio
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import {
   avgCreditsPerUnit,
-  fetchConsumptionTopGroups,
+  fetchConsumptionTopGroups as fetchConsumptionTopGroupBuckets,
 } from "@app/lib/api/analytics/consumption/top";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
@@ -11,30 +11,30 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 
 /**
- * Teams ranked by the credits consumed by their members over the period,
- * averaged per message. A member can belong to several teams, in which case
- * their consumption is attributed to each team they belonged to when the
+ * Groups ranked by the credits consumed by their members over the period,
+ * averaged per message. A member can belong to several groups, in which case
+ * their consumption is attributed to each group they belonged to when the
  * message completed.
  */
 
-export type ConsumptionTopTeamRow = {
-  teamId: string;
+export type ConsumptionTopGroupRow = {
+  groupId: string;
   name: string;
   credits: number;
   messageCount: number;
   avgCreditsPerMessage: number;
 };
 
-export type ConsumptionTopTeams = {
+export type ConsumptionTopGroups = {
   period: ConsumptionPeriod;
   totalCredits: number;
   // Highest credits first.
-  teams: ConsumptionTopTeamRow[];
+  groups: ConsumptionTopGroupRow[];
 };
 
-export type GetConsumptionTopTeamsResponse = ConsumptionTopTeams;
+export type GetConsumptionTopGroupsResponse = ConsumptionTopGroups;
 
-export async function fetchConsumptionTopTeams(
+export async function fetchConsumptionTopGroups(
   auth: Authenticator,
   {
     period,
@@ -45,9 +45,9 @@ export async function fetchConsumptionTopTeams(
     limit: number;
     filter?: ConsumptionScopeFilter;
   }
-): Promise<Result<ConsumptionTopTeams, ElasticsearchError>> {
-  const result = await fetchConsumptionTopGroups(auth, {
-    dimension: "team",
+): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
+  const result = await fetchConsumptionTopGroupBuckets(auth, {
+    dimension: "group",
     unit: "message",
     period,
     limit,
@@ -60,15 +60,15 @@ export async function fetchConsumptionTopTeams(
 
   const labels = await resolveDimensionLabels(
     auth,
-    "team",
+    "group",
     groups.map((group) => group.key)
   );
 
   return new Ok({
     period,
     totalCredits,
-    teams: groups.map((group) => ({
-      teamId: group.key,
+    groups: groups.map((group) => ({
+      groupId: group.key,
       name: labels.get(group.key)?.name ?? group.key,
       credits: group.credits,
       messageCount: group.count,
