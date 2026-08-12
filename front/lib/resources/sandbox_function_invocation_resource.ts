@@ -90,7 +90,11 @@ const POD_USER_IDENTITY_ENV = "DUST_POD_USER_IDENTITY";
 // operators are dust superusers, not members of the workspace they inspect, so "viewer" would
 // find no user and return nothing. Kept distinct from "system", which is reserved for paths that
 // already validated a server-owned invocation token.
-type SandboxFunctionInvocationReadAccess = "viewer" | "system" | "admin";
+type SandboxFunctionInvocationReadAccess =
+  | "viewer"
+  | "email_viewer"
+  | "system"
+  | "admin";
 
 // A listing row: the DB columns only, without the invocation's GCS blob. `baseFetch` always
 // hydrates the blob, and an unhydrated resource reports `input: undefined` rather than "not
@@ -1112,21 +1116,29 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     // User-facing reads expose the caller's invocations, or every invocation to a Pod
     // administrator. Execution and callback paths use the explicit system access after validating
     // their server-owned invocation token or workflow input.
-    let viewerModelId: ModelId | undefined;
+    // undefined → no userId filter; { userId } → scoped to that value (a member's id, or null for
+    // external email viewers).
+    let userIdWhere: { userId: ModelId | null } | undefined;
     switch (access) {
       case "viewer": {
         const viewer = await getAuthenticatedWorkspaceUser(auth);
         if (!viewer) {
           return [];
         }
-        viewerModelId = sandboxFunction.space.canAdministrate(auth)
+        userIdWhere = sandboxFunction.space.canAdministrate(auth)
           ? undefined
-          : viewer.id;
+          : { userId: viewer.id };
         break;
       }
+      case "email_viewer":
+        // External email viewers are userless; scope to userless invocations so one viewer cannot
+        // read a member's invocation. Same-frame viewers share userId=null — the unguessable
+        // invocationId is the per-request capability.
+        userIdWhere = { userId: null };
+        break;
       case "system":
       case "admin":
-        viewerModelId = undefined;
+        userIdWhere = undefined;
         break;
       default:
         return assertNever(access);
@@ -1137,7 +1149,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         ...where,
         sandboxFunctionId: sandboxFunction.id,
         workspaceId: auth.getNonNullableWorkspace().id,
-        ...(viewerModelId !== undefined ? { userId: viewerModelId } : {}),
+        ...(userIdWhere ?? {}),
       },
       ...rest,
     });

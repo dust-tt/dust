@@ -78,13 +78,20 @@ type ProtectedVisualization = BaseVisualization & {
 
 export type Visualization = PublicVisualization | ProtectedVisualization;
 
+export type FrameInvocationRoute =
+  | { kind: "workspace" }
+  | { kind: "public"; shareToken: string };
+
 export function getFrameRuntimeAccess(
   workspaceId: string,
   canInvokeFunctions: boolean,
-  scopedUserIdentity?: ScopedWorkspaceUserIdentity
+  scopedUserIdentity?: ScopedWorkspaceUserIdentity,
+  isEmailViewer?: boolean,
+  shareToken?: string
 ): {
   canInvokeFunctions: boolean;
   userIdentity: UserIdentityState;
+  invocationRoute: FrameInvocationRoute;
 } {
   const userIdentity: UserIdentityState =
     scopedUserIdentity?.workspaceId === workspaceId
@@ -102,8 +109,15 @@ export function getFrameRuntimeAccess(
         };
 
   return {
-    canInvokeFunctions: canInvokeFunctions && userIdentity.isWorkspaceMember,
+    // Members invoke via their workspace session; grant-authorized email viewers invoke via the
+    // public frame endpoint. Server auth re-checks either way, so this only gates the attempt.
+    canInvokeFunctions:
+      (canInvokeFunctions && userIdentity.isWorkspaceMember) || !!isEmailViewer,
     userIdentity,
+    invocationRoute:
+      isEmailViewer && shareToken
+        ? { kind: "public", shareToken }
+        : { kind: "workspace" },
   };
 }
 
@@ -194,6 +208,7 @@ interface SandboxFunctionInvocationProps {
   workspaceId: string;
   functionId: string;
   invocationId: string;
+  invocationRoute: FrameInvocationRoute;
   onBlocked: (eventId: string, event: SandboxFunctionBlockingEvent) => void;
   onSettle: (
     invocationId: string,
@@ -220,12 +235,16 @@ function SandboxFunctionInvocation({
   workspaceId,
   functionId,
   invocationId,
+  invocationRoute,
   onBlocked,
   onSettle,
 }: SandboxFunctionInvocationProps) {
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
-      const esURL = `/api/sse/w/${workspaceId}/sandbox-functions/${functionId}/invocations/${invocationId}/events`;
+      const esURL =
+        invocationRoute.kind === "public"
+          ? `/api/sse/v1/public/frames/${encodeURIComponent(invocationRoute.shareToken)}/sandbox-functions/${functionId}/invocations/${invocationId}/events`
+          : `/api/sse/w/${workspaceId}/sandbox-functions/${functionId}/invocations/${invocationId}/events`;
       let lastEventId = "";
       if (lastEvent) {
         const eventPayload: { eventId: string } = JSON.parse(lastEvent);
@@ -233,7 +252,7 @@ function SandboxFunctionInvocation({
       }
       return esURL + "?lastEventId=" + lastEventId;
     },
-    [workspaceId, functionId, invocationId]
+    [invocationRoute, workspaceId, functionId, invocationId]
   );
 
   const onEventCallback = useCallback(
@@ -630,6 +649,8 @@ export interface VisualizationActionIframeProps {
   visualization: Visualization;
   vizUrl: string;
   workspaceId: string;
+  shareToken?: string;
+  isEmailViewer?: boolean;
 }
 
 export const VisualizationActionIframe = forwardRef<
@@ -746,9 +767,11 @@ export const VisualizationActionIframe = forwardRef<
     canInvokeFunctions,
     conversationId,
     isEditable = false,
+    isEmailViewer = false,
     isInDrawer = false,
     onEditText,
     scopedUserIdentity,
+    shareToken,
     spaceId,
     viewer,
     visualization,
@@ -764,9 +787,17 @@ export const VisualizationActionIframe = forwardRef<
     return getFrameRuntimeAccess(
       workspaceId,
       canInvokeFunctions,
-      scopedUserIdentity
+      scopedUserIdentity,
+      isEmailViewer,
+      shareToken
     );
-  }, [canInvokeFunctions, scopedUserIdentity, workspaceId]);
+  }, [
+    canInvokeFunctions,
+    isEmailViewer,
+    scopedUserIdentity,
+    shareToken,
+    workspaceId,
+  ]);
 
   const isPublic = visualization.accessToken !== undefined;
 
@@ -838,16 +869,17 @@ export const VisualizationActionIframe = forwardRef<
         };
 
         const encodedFunctionIdOrSlug = encodeURIComponent(functionIdOrSlug);
-        const response = await clientFetch(
-          `/api/w/${workspaceId}/sandbox-functions/${encodedFunctionIdOrSlug}/invocations`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(body),
-          }
-        );
+        const url =
+          runtimeAccess.invocationRoute.kind === "public"
+            ? `/api/v1/public/frames/${encodeURIComponent(runtimeAccess.invocationRoute.shareToken)}/sandbox-functions/${encodedFunctionIdOrSlug}/invocations`
+            : `/api/w/${workspaceId}/sandbox-functions/${encodedFunctionIdOrSlug}/invocations`;
+        const response = await clientFetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        });
 
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
@@ -872,7 +904,11 @@ export const VisualizationActionIframe = forwardRef<
         });
       }
     },
-    [runtimeAccess.canInvokeFunctions, workspaceId]
+    [
+      runtimeAccess.canInvokeFunctions,
+      runtimeAccess.invocationRoute,
+      workspaceId,
+    ]
   );
 
   useVisualizationDataHandler({
@@ -953,6 +989,7 @@ export const VisualizationActionIframe = forwardRef<
           workspaceId={workspaceId}
           functionId={invocation.functionId}
           invocationId={invocation.invocationId}
+          invocationRoute={runtimeAccess.invocationRoute}
           onBlocked={enqueueBlockedAction}
           onSettle={settleSandboxFunctionInvocation}
         />

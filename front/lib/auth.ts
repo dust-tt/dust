@@ -95,7 +95,8 @@ export type AuthMethodType =
   | "oauth"
   | "session"
   | "sandbox_token"
-  | "internal";
+  | "internal"
+  | "frame_viewer";
 
 // Bearer tokens are identified by their prefix: API keys start with `sk-`,
 // sandbox exec tokens with `sbt-`. Anything else is treated as an OAuth
@@ -596,6 +597,26 @@ export class Authenticator {
       role = "user";
       baseGroupModelIds = [globalGroup.id];
       subscription = activeSubscription;
+
+      // The userless base is [global] only, so for a restricted pod the intersection below would
+      // drop the pod's group and the sandbox callback couldn't reach the function. Re-grant the
+      // pod's groups from claims.spaceId (safe: the token is minted only after invoke-time auth).
+      if (
+        isSandboxFunctionInvocationTokenPayload(claims) &&
+        isResourceSId("space", claims.spaceId)
+      ) {
+        const podSpaceModelId = getResourceIdFromSId(claims.spaceId);
+        if (podSpaceModelId !== null) {
+          const podGroups = await GroupSpaceModel.findAll({
+            where: { vaultId: [podSpaceModelId], workspaceId: workspace.id },
+            attributes: ["groupId"],
+          });
+          baseGroupModelIds = [
+            ...baseGroupModelIds,
+            ...podGroups.map((sg) => sg.groupId),
+          ];
+        }
+      }
     }
 
     // Restrict groups to the sandbox owner's spaces so sandbox auth can only
@@ -1012,6 +1033,53 @@ export class Authenticator {
       workspace,
       role: "admin",
       groupModelIds: groups.map((g) => g.id),
+      subscription,
+      providersHealth,
+    });
+  }
+
+  /**
+   * Userless Authenticator for an external frame viewer, confined to a single pod. Used to run a
+   * sandbox function invoked from a shared frame. Role is "user" (not "none") so the pod groups
+   * grant access; the caller must have verified the viewer's email + active grant beforehand.
+   */
+  static async frameViewerForPod(
+    workspaceId: string,
+    podSpaceId: string
+  ): Promise<Authenticator> {
+    const workspace = await WorkspaceResource.fetchById(workspaceId);
+    if (!workspace) {
+      throw new Error(`Could not find workspace with sId ${workspaceId}`);
+    }
+
+    if (!isResourceSId("space", podSpaceId)) {
+      throw new Error(`Invalid pod space sId ${podSpaceId}`);
+    }
+    const podSpaceModelId = getResourceIdFromSId(podSpaceId);
+    if (podSpaceModelId === null) {
+      throw new Error(`Invalid pod space sId ${podSpaceId}`);
+    }
+
+    const [spaceGroups, subscription] = await Promise.all([
+      GroupSpaceModel.findAll({
+        where: { vaultId: [podSpaceModelId], workspaceId: workspace.id },
+        attributes: ["groupId"],
+      }),
+      SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id),
+    ]);
+
+    const groupModelIds = spaceGroups.map((sg) => sg.groupId);
+
+    const providersHealth = await this.fetchByokProvidersHealth(
+      workspace,
+      subscription
+    );
+
+    return new Authenticator({
+      authMethod: "frame_viewer",
+      workspace,
+      role: "user",
+      groupModelIds,
       subscription,
       providersHealth,
     });

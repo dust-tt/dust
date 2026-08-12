@@ -21,6 +21,7 @@ const VizAccessTokenPayloadSchema = z.object({
   fileToken: z.string(),
   shareScope: fileShareScopeSchema,
   userId: z.string().optional(),
+  isEmailViewer: z.boolean().optional(),
   workspaceId: z.string(),
 });
 
@@ -30,12 +31,14 @@ export function generateVizAccessToken({
   contentType,
   fileToken,
   userId,
+  isEmailViewer,
   shareScope,
   workspaceId,
 }: {
   contentType: InteractiveContentFileContentType;
   fileToken: string;
   userId?: string;
+  isEmailViewer?: boolean;
   shareScope: FileShareScope;
   workspaceId: string;
 }): string {
@@ -44,6 +47,7 @@ export function generateVizAccessToken({
     fileToken,
     shareScope,
     userId,
+    isEmailViewer,
     workspaceId,
   };
 

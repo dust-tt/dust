@@ -36,6 +36,7 @@ export function usePublicFrame({ shareToken }: { shareToken: string | null }) {
     accessToken: data?.accessToken ?? null,
     isFrameLoading: !error && !data,
     isAuthenticatedMember: data?.isAuthenticatedMember ?? false,
+    isEmailViewer: data?.isEmailViewer ?? false,
     error,
     mutateFrame: mutate,
   };

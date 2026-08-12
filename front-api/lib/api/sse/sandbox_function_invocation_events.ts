@@ -18,10 +18,12 @@ export async function streamSandboxFunctionInvocationEventsForRoute(
     functionId,
     invocationId,
     lastEventId,
+    access = "viewer",
   }: {
     functionId: string;
     invocationId: string;
     lastEventId: string | null;
+    access?: "viewer" | "email_viewer";
   }
 ) {
   const sandboxFunction = await SandboxFunctionResource.fetchById(
@@ -35,6 +37,7 @@ export async function streamSandboxFunctionInvocationEventsForRoute(
   const invocation = await SandboxFunctionInvocationResource.fetchById(auth, {
     sandboxFunction,
     invocationId,
+    access,
   });
   if (!invocation) {
     return ctx.notFound();

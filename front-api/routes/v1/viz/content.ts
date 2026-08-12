@@ -30,7 +30,7 @@ app.get("/", async (ctx): HandlerResult<PublicVizContentResponseBodyType> => {
     });
   }
   const tokenPayload = tokenRes.value;
-  const { fileToken, userId } = tokenPayload;
+  const { fileToken, userId, isEmailViewer } = tokenPayload;
 
   const result = await FileResource.fetchByShareTokenWithContent(fileToken);
   if (!result) {
@@ -127,6 +127,7 @@ app.get("/", async (ctx): HandlerResult<PublicVizContentResponseBodyType> => {
       spaceId: result.file.useCaseMetadata?.spaceId,
     },
     isAuthenticatedMember: !!userId,
+    isEmailViewer: !!isEmailViewer,
   });
 });
 

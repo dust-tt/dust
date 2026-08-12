@@ -20,6 +20,7 @@ import { resolveOptionalAuth } from "@front-api/routes/v1/public/frames/shared_a
 import { getCookie } from "hono/cookie";
 import { z } from "zod";
 
+import sandboxFunctions from "./sandbox-functions";
 import verifyCode from "./verify-code";
 import verifyEmail from "./verify-email";
 
@@ -127,6 +128,9 @@ app.get(
       });
     }
 
+    // Set when access is granted to a non-member through an active email grant (external viewer).
+    let isEmailViewer = false;
+
     // Handle email-based share scopes (treat legacy "workspace" as "workspace_and_emails").
     if (
       shareScope === "emails_only" ||
@@ -179,6 +183,8 @@ app.get(
           email: verifiedEmail!,
           shareableFileId,
         });
+
+        isEmailViewer = authUserModelId === null;
       }
     }
 
@@ -207,6 +213,7 @@ app.get(
       contentType: file.contentType,
       fileToken: token,
       userId: user?.sId,
+      isEmailViewer,
       shareScope,
       workspaceId: workspace.sId,
     });
@@ -229,10 +236,13 @@ app.get(
       // Lets the frame enable member-only tools (e.g. callFunction) client-side;
       // real authorization still happens server-side on invocation.
       isAuthenticatedMember: !!user,
+      // Grant-authorized external viewer: enables callFunction via the public invocation endpoint.
+      isEmailViewer,
     });
   }
 );
 
+app.route("/sandbox-functions", sandboxFunctions);
 app.route("/verify-code", verifyCode);
 app.route("/verify-email", verifyEmail);
 

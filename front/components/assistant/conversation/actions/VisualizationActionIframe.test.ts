@@ -44,6 +44,7 @@ describe("getFrameRuntimeAccess", () => {
         isPodEditor: true,
         user,
       },
+      invocationRoute: { kind: "workspace" },
     });
   });
 
@@ -61,6 +62,7 @@ describe("getFrameRuntimeAccess", () => {
         isPodEditor: false,
         user: null,
       },
+      invocationRoute: { kind: "workspace" },
     });
   });
 
@@ -75,6 +77,21 @@ describe("getFrameRuntimeAccess", () => {
         isPodEditor: false,
         user,
       },
+      invocationRoute: { kind: "workspace" },
+    });
+  });
+
+  it("enables access and routes to the public endpoint for an email viewer", () => {
+    expect(
+      getFrameRuntimeAccess("w_current", false, undefined, true, "share-token")
+    ).toEqual({
+      canInvokeFunctions: true,
+      userIdentity: {
+        isAuthenticated: false,
+        isWorkspaceMember: false,
+        user: null,
+      },
+      invocationRoute: { kind: "public", shareToken: "share-token" },
     });
   });
 });
