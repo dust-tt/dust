@@ -11,9 +11,7 @@ const app = workspaceApp();
 app.get(
   "/",
   ensureIsAdmin(),
-  async (
-    ctx
-  ): HandlerResult<GetSlackUserPrivateChannelsResponseBody> => {
+  async (ctx): HandlerResult<GetSlackUserPrivateChannelsResponseBody> => {
     const auth = ctx.get("auth");
 
     const result = await listUserPrivateSlackChannels(auth);
