@@ -11,32 +11,7 @@ const DEFAULT_TIMEOUT_SECONDS = 60;
 const OUTPUT_BUDGET_CHARS = 50_000;
 const STDERR_MIN_CHARS = 1_000;
 const TIMEOUT_EXIT_CODE = 124;
-const TIMEOUT_KILLED_EXIT_CODE = 137;
 const MAX_BUFFER_BYTES = 500 * 1024 * 1024;
-
-// GNU `timeout` puts the command in its own process group and signals the
-// whole group, so background jobs and parallel fan-outs die with the command
-// instead of outliving it. `spawnSync`'s own timeout only signals the direct
-// child, which shares this process' group. Never pass `--foreground`: it
-// disables the group kill, which is the entire point.
-//
-// Always present in the sandbox image (coreutils). The candidate list and the
-// fallback below only matter when the tests drive dust-tools on a host that
-// lacks it, such as macOS; there the group kill is not enforced.
-const TIMEOUT_BIN_CANDIDATES = [
-  "/usr/bin/timeout",
-  "/usr/local/bin/gtimeout",
-  "/opt/homebrew/bin/gtimeout",
-];
-const TIMEOUT_KILL_GRACE_SECONDS = 5;
-// `spawnSync`'s timeout is only a backstop for a wedged `timeout`. It must
-// stay strictly later than the SIGKILL escalation or it kills `timeout` before
-// it can signal the group, and the group leaks.
-const TIMEOUT_BACKSTOP_BUFFER_MS = 5_000;
-
-function findTimeoutBin(): string | null {
-  return TIMEOUT_BIN_CANDIDATES.find((bin) => fs.existsSync(bin)) ?? null;
-}
 
 export const help = `shell - Execute shell command with strategic output truncation
 
@@ -143,46 +118,19 @@ export async function run(
       : DEFAULT_TIMEOUT_SECONDS;
   const timeoutMs = timeoutSec * 1000;
 
-  const timeoutBin = findTimeoutBin();
-  const spawnTarget =
-    timeoutBin !== null
-      ? {
-          file: timeoutBin,
-          args: [
-            "-k",
-            String(TIMEOUT_KILL_GRACE_SECONDS),
-            String(timeoutSec),
-            "bash",
-            "-c",
-            cmd,
-          ],
-          backstopMs:
-            timeoutMs +
-            TIMEOUT_KILL_GRACE_SECONDS * 1000 +
-            TIMEOUT_BACKSTOP_BUFFER_MS,
-        }
-      : { file: "bash", args: ["-c", cmd], backstopMs: timeoutMs };
-
-  const startedAtMs = Date.now();
-  const result = spawnSync(spawnTarget.file, spawnTarget.args, {
+  const result = spawnSync("bash", ["-c", cmd], {
     encoding: "utf8",
-    timeout: spawnTarget.backstopMs,
+    timeout: timeoutMs,
     killSignal: "SIGTERM",
     maxBuffer: MAX_BUFFER_BYTES,
   });
-  const elapsedMs = Date.now() - startedAtMs;
 
   const stdoutRaw = result.stdout ?? "";
   let stderrRaw = result.stderr ?? "";
 
   const errorCode =
     result.error && "code" in result.error ? result.error.code : undefined;
-  // 137 is also what an OOM kill looks like, so only read it as a timeout when
-  // the command actually reached its deadline.
-  const timedOut =
-    errorCode === "ETIMEDOUT" ||
-    result.status === TIMEOUT_EXIT_CODE ||
-    (result.status === TIMEOUT_KILLED_EXIT_CODE && elapsedMs >= timeoutMs);
+  const timedOut = errorCode === "ETIMEDOUT";
   const bufferOverflowed = errorCode === "ENOBUFS";
   if (timedOut) {
     const separator =

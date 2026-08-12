@@ -5,15 +5,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { cleanupTempDir, createTempDir, runBashFunction } from "./_test_utils";
 
-// Killing the whole process group needs GNU `timeout`, which the sandbox image
-// always has. On a host without it (macOS) `shell` falls back to signalling
-// only the direct child, so the group-kill guarantee cannot be asserted there.
-const hasGnuTimeout = [
-  "/usr/bin/timeout",
-  "/usr/local/bin/gtimeout",
-  "/opt/homebrew/bin/gtimeout",
-].some((bin) => fs.existsSync(bin));
-
 describe("shell", () => {
   let tempDir: string;
 
@@ -112,26 +103,4 @@ describe("shell", () => {
     expect(exitCode).toBe(124);
     expect(stderr).toContain("timed out after 1s");
   });
-
-  // A background job that outlives its command keeps the sandbox token it was
-  // given, and every tool call it makes afterwards is rejected.
-  it.skipIf(!hasGnuTimeout)(
-    "kills background children when the command times out",
-    async () => {
-      const beatsPath = path.join(tempDir, "beats");
-      const background = `( for i in 1 2 3 4 5 6 7 8 9 10; do echo x >> ${beatsPath}; sleep 0.3; done ) &`;
-
-      const { exitCode } = runBashFunction(
-        `shell "${background} sleep 30" 1`,
-        tempDir
-      );
-      expect(exitCode).toBe(124);
-      expect(fs.existsSync(beatsPath)).toBe(true);
-
-      fs.rmSync(beatsPath, { force: true });
-      await new Promise((resolve) => setTimeout(resolve, 1_500));
-
-      expect(fs.existsSync(beatsPath)).toBe(false);
-    }
-  );
 });
