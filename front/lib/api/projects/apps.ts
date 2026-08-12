@@ -68,11 +68,6 @@ type AppFolder = {
   fileCount: number;
   frameEntries: FileSystemFileEntry[];
   hasAppShapedSubfolder: boolean;
-  /**
-   * App-relative names of the databases this folder declares, one per `databases/{name}.db.ts`. Used
-   * to attribute databases whose on-disk name carries no app prefix.
-   */
-  declaredDatabaseNames: Set<string>;
 };
 
 /** Drop the last extension from a file name, e.g. `add-task.ts` -> `add-task`. */
@@ -120,7 +115,6 @@ function collectAppFolders(
       fileCount: 0,
       frameEntries: [],
       hasAppShapedSubfolder: false,
-      declaredDatabaseNames: new Set(),
     };
     folders.set(name, folder);
 
@@ -164,19 +158,6 @@ function collectAppFolders(
     // of how the app is laid out.
     if (segments.length === 2 && isInteractiveContentType(entry.contentType)) {
       folder.frameEntries.push(entry);
-    }
-
-    if (
-      segments.length === 3 &&
-      segments[1] === APP_DATABASES_SUBFOLDER &&
-      entry.fileName.endsWith(POD_DATABASE_SCHEMA_FILE_SUFFIX)
-    ) {
-      folder.declaredDatabaseNames.add(
-        entry.fileName.slice(
-          0,
-          entry.fileName.length - POD_DATABASE_SCHEMA_FILE_SUFFIX.length
-        )
-      );
     }
   }
 
@@ -260,51 +241,39 @@ async function listPodDatabaseOnDiskNames(
 }
 
 /**
- * Group the pod's databases by the app prefix that owns each one.
+ * Group the pod's databases by the app prefix their filename carries.
  *
- * A namespaced database carries its app in its filename, so its prefix decides. A database created
- * before app namespacing has a bare filename instead, and the only remaining evidence of ownership is
- * the schema file that declares it — `<AppName>/databases/{name}.db.ts`. This mirrors how
- * `resolvePodDatabaseName` resolves the same case at reconcile time, so the tab attributes a legacy
- * database to exactly the app that keeps writing to it.
+ * Only namespaced databases are listed. A database created before app namespacing has a bare
+ * filename, which says nothing about which app owns it — the only evidence left is the schema file
+ * that declares it, and that evidence stops being reliable as soon as apps can be copied, because a
+ * copy inherits the declaration while opening its own prefixed file. Rather than infer ownership,
+ * such a database is left out of the listing entirely.
  *
- * Two apps declaring the same bare name genuinely share that one database (the transitional case
- * `resolvePodDatabaseName` documents), so it is reported under both rather than arbitrarily assigned.
- * A bare database no app declares falls back to the unfiled app.
+ * Two consequences worth knowing, both accepted deliberately:
+ *
+ *  - An app whose only database predates namespacing shows none, even though `resolvePodDatabaseName`
+ *    step 2 still opens that bare file at run time.
+ *  - Deleting an app does not remove such a database, because `deletePodApp` works from this listing.
+ *    The file and its replica outlive the app.
+ *
+ * Both go away once bare databases are migrated to their prefixed names, which is also what lets the
+ * step 2 fallback be deleted from the runtime (see `resolvePodDatabaseName`).
  */
 function groupDatabasesByAppPrefix(
-  onDiskNames: string[],
-  foldersByPrefix: Map<string, AppFolder[]>
+  onDiskNames: string[]
 ): Map<string, PodAppDatabase[]> {
   const byPrefix = new Map<string, PodAppDatabase[]>();
 
-  const attribute = (prefix: string, database: PodAppDatabase) => {
-    byPrefix.set(prefix, [...(byPrefix.get(prefix) ?? []), database]);
-  };
-
   for (const onDiskName of onDiskNames) {
-    const database = {
-      name: podDatabaseNameWithoutAppPrefix(onDiskName),
-      onDiskName,
-    };
-
-    const prefixFromName = appPrefixFromPodDatabaseName(onDiskName);
-    if (prefixFromName !== null) {
-      attribute(prefixFromName, database);
+    const prefix = appPrefixFromPodDatabaseName(onDiskName);
+    if (prefix === null) {
       continue;
     }
 
-    const declaringPrefixes = [...foldersByPrefix].filter(([, folders]) =>
-      folders.some((folder) => folder.declaredDatabaseNames.has(onDiskName))
-    );
-    if (declaringPrefixes.length === 0) {
-      attribute(UNFILED_POD_APP_PREFIX, database);
-      continue;
-    }
-
-    for (const [prefix] of declaringPrefixes) {
-      attribute(prefix, database);
-    }
+    byPrefix.set(prefix, [
+      ...(byPrefix.get(prefix) ?? []),
+      { name: podDatabaseNameWithoutAppPrefix(onDiskName), onDiskName },
+    ]);
   }
 
   return byPrefix;
@@ -406,12 +375,7 @@ export async function listPodApps(
     ]);
   }
 
-  // Needs foldersByPrefix: a database created before app namespacing has no prefix in its filename,
-  // so only the schema file that declares it says which app owns it.
-  const databasesByPrefix = groupDatabasesByAppPrefix(
-    databaseOnDiskNames,
-    foldersByPrefix
-  );
+  const databasesByPrefix = groupDatabasesByAppPrefix(databaseOnDiskNames);
 
   const realPrefixes = new Set([
     ...foldersByPrefix.keys(),
@@ -461,16 +425,17 @@ export async function listPodApps(
 
   // Artifacts published from the pod root have no folder to be found under, so they get a synthetic
   // app rather than disappearing from the listing. Appended after the sort so it always sits last.
+  // Only functions can be unfiled now: a database with no app prefix is not listed at all, and one
+  // with a prefix belongs to that app.
   const unfiledFunctions = functionsByPrefix.get(UNFILED_POD_APP_PREFIX) ?? [];
-  const unfiledDatabases = databasesByPrefix.get(UNFILED_POD_APP_PREFIX) ?? [];
-  if (unfiledFunctions.length > 0 || unfiledDatabases.length > 0) {
+  if (unfiledFunctions.length > 0) {
     apps.push({
       prefix: UNFILED_POD_APP_PREFIX,
       name: null,
       folderPath: null,
       frames: [],
       functions: unfiledFunctions,
-      databases: unfiledDatabases,
+      databases: [],
       fileCount: 0,
       collidingFolderNames: [],
     });
