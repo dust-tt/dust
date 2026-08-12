@@ -75,7 +75,7 @@ export function ChartContainer({
         {isLoading || message ? (
           <div
             className="flex items-center justify-center"
-            style={{ height: CHART_HEIGHT }}
+            style={{ height: height ?? CHART_HEIGHT }}
           >
             {isLoading ? (
               <Spinner size="lg" />
