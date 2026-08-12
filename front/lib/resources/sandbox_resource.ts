@@ -60,6 +60,12 @@ export type SandboxCreateBlob = {
   version: string;
 };
 
+// The strict provider destroy inside a scope transition failed: the
+// transition was aborted fail-closed with the kill request left in place.
+// Typed so transition callers can map it without widening their own error
+// unions.
+export class ScopeTransitionDestroyError extends Error {}
+
 export type SandboxLifecycleOwner = {
   lockKey: string;
   // Must return a sandbox scoped to the same workspace as the Authenticator
@@ -421,17 +427,26 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * then delete the owner link and DB row.
    */
   // Runs an owner scope transition (e.g. a conversation move) under the
-  // lifecycle lock: strictly destroys the owner's sandbox, marks it deleted,
-  // then executes the database transition — all without releasing the lock,
-  // so no concurrent ensureActive can create or wake a sandbox from the
-  // pre-transition scope. The next access recreates the sandbox from the
-  // post-transition scope via the existing deleted-state recreate path.
+  // lifecycle lock, in three phases without releasing it:
+  //
+  //   1. `prepare` — re-read and validate against CURRENT state (the caller's
+  //      view predates the lock and may have been invalidated by a concurrent
+  //      transition). An Err aborts with the runtime untouched: no kill
+  //      request, no destroy.
+  //   2. Strict destroy — killRequestedAt, provider destroy, mark deleted.
+  //   3. `commit` — the database transition, fed by what `prepare` resolved.
+  //
+  // Holding the lock across all three means no concurrent ensureActive can
+  // create or wake a sandbox from the pre-transition scope, and no concurrent
+  // transition can validate against a state this one is about to change. The
+  // next access recreates the sandbox from the post-transition scope via the
+  // existing deleted-state recreate path.
   //
   // Ordering is the crash-recovery story: killRequestedAt is set before the
   // provider call (a crash after it leaves the kill-requested branch or the
   // reaper to finish the destroy), the sandbox is marked deleted only after
-  // the provider destroy succeeded, and a crash before the transition leaves
-  // the sandbox gone but the owner unmoved — its next access recreates the
+  // the provider destroy succeeded, and a crash before `commit` leaves the
+  // sandbox gone but the owner unmoved — its next access recreates the
   // still-current scope.
   //
   // Unlike other lifecycle operations this must run even where no sandbox
@@ -444,16 +459,29 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   // updates the row in place), as are the owner's egress policy file and GCS
   // files; only the provider runtime and provider-specific legacy state go.
   //
-  // /!\ The transition callback runs while the lifecycle lock is held: it
-  // must not call back into any lifecycle operation on the same owner.
-  static async runScopeTransition<T>(
+  // /!\ Both callbacks run while the lifecycle lock is held: they must not
+  // call back into any lifecycle operation on the same owner, and `commit`
+  // must create and commit its own transaction — a transaction that outlives
+  // the lock hold reopens the race this method exists to close.
+  static async runScopeTransition<TPrep, T, E extends Error>(
     auth: Authenticator,
     owner: SandboxLifecycleOwner,
-    transition: () => Promise<Result<T, Error>>
-  ): Promise<Result<T, Error>> {
-    return executeWithLock(
+    {
+      prepare,
+      commit,
+    }: {
+      prepare: () => Promise<Result<TPrep, E>>;
+      commit: (prep: TPrep) => Promise<Result<T, E>>;
+    }
+  ): Promise<Result<T, E | ScopeTransitionDestroyError>> {
+    return executeWithLock<Result<T, E | ScopeTransitionDestroyError>>(
       `sandbox:lifecycle:${owner.lockKey}`,
       async () => {
+        const prepResult = await prepare();
+        if (prepResult.isErr()) {
+          return prepResult;
+        }
+
         const existing = await owner.fetchSandbox();
         if (existing && existing.status !== "deleted") {
           await existing.requestKill();
@@ -468,7 +496,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
               !(destroyResult.error instanceof SandboxNotFoundError)
             ) {
               return new Err(
-                new Error(
+                new ScopeTransitionDestroyError(
                   `Failed to destroy sandbox for scope transition: ${destroyResult.error.message}`
                 )
               );
@@ -484,11 +512,12 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           );
         }
 
-        return transition();
+        return commit(prepResult.value);
       },
       undefined,
       {
         traceAcquireResource: "sandbox:lifecycle",
+        lockTtlMs: SANDBOX_LIFECYCLE_LOCK_TTL_MS,
         retryIntervalMs: 25,
       }
     );

@@ -25,19 +25,7 @@ import { isPodConversation } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
 import { Op } from "sequelize";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-// The scope-transition lock (executeWithLock) needs Redis, which these
-// DB-level tests don't run; its ordering semantics are pinned in
-// sandbox_resource.test.ts. Here the callback just runs.
-vi.mock(import("@app/lib/lock"), async (importOriginal) => {
-  const actual = await importOriginal();
-  return {
-    ...actual,
-    executeWithLock: async <T>(_lockName: string, callback: () => Promise<T>) =>
-      callback(),
-  };
-});
+import { beforeEach, describe, expect, it } from "vitest";
 
 async function fetchRegularAutoGroup(
   space: SpaceResource,
@@ -970,6 +958,41 @@ describe("moveConversationOutOfProject", () => {
     );
     expect(sandbox?.status).toBe("deleted");
     expect(sandbox?.killRequestedAt).toEqual(expect.any(Date));
+  });
+
+  it("validates against the conversation's current state, not the caller's snapshot", async () => {
+    // The caller's snapshot claims the conversation is in a pod (as a
+    // concurrent move could make true stale), but the database says
+    // standalone. Validation must run against the under-lock re-fetch, fail
+    // the move, and leave the sandbox untouched.
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent Description",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+    await SandboxFactory.create(auth, conversation);
+    const staleSnapshot = {
+      ...conversation,
+      spaceId: generateRandomModelSId("spc"),
+    };
+
+    const result = await moveConversationOutOfProject(auth, {
+      conversation: staleSnapshot,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("internal_error");
+    }
+    const sandbox = await ConversationSandboxAdapter.fetchSandbox(
+      auth,
+      conversation
+    );
+    expect(sandbox?.status).toBe("running");
+    expect(sandbox?.killRequestedAt).toBeNull();
   });
 
   it("returns internal_error when conversation is not in a project", async () => {

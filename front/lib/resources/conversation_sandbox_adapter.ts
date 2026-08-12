@@ -7,6 +7,7 @@ import type {
   SandboxCreateBlob,
   SandboxDeleteOwner,
   SandboxLifecycleOwner,
+  ScopeTransitionDestroyError,
 } from "@app/lib/resources/sandbox_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
@@ -31,6 +32,11 @@ export type ConversationSandboxScope = {
   // The pod's space sId when the conversation lives in one.
   spaceId: string | null;
 };
+
+// The conversation vanished between the caller's read and the lock-held
+// re-fetch (deleted, or no longer visible to this Authenticator). Typed so
+// move callers can map it to their not-found error rather than a 500.
+export class ConversationGoneError extends Error {}
 
 type ConversationSandboxLifecycleOwner = Pick<
   ConversationResource,
@@ -241,23 +247,65 @@ export class ConversationSandboxAdapter {
   }
 
   // Wraps a conversation scope transition (a move between/out of pods):
-  // strictly destroys the conversation's sandbox and runs the database
-  // transition under one lifecycle-lock hold, so a concurrent Computer
-  // command can neither keep a pre-move sandbox alive nor create one from
-  // the pre-move scope. See SandboxResource.runScopeTransition for the
-  // ordering and crash-recovery contract.
-  static async withScopeTransition<T>(
+  // one lifecycle-lock hold covers re-reading the conversation, the caller's
+  // validation (`prepare`), the strict sandbox destroy, and the database
+  // transition (`commit`) — so a concurrent Computer command can neither
+  // keep a pre-move sandbox alive nor create one from the pre-move scope,
+  // and a concurrent move cannot validate against state this one changes.
+  // Both callbacks receive the conversation as re-fetched UNDER the lock;
+  // the caller's own conversation object is trusted for identity only. A
+  // `prepare` Err aborts with the runtime untouched. See
+  // SandboxResource.runScopeTransition for ordering and crash recovery.
+  static async withScopeTransition<TPrep, T, E extends Error>(
     auth: Authenticator,
     conversation: ConversationSandboxOwner,
-    transition: () => Promise<Result<T, Error>>
-  ): Promise<Result<T, Error>> {
-    return SandboxResource.runScopeTransition(
+    {
+      prepare,
+      commit,
+    }: {
+      prepare: (
+        freshConversation: ConversationResource
+      ) => Promise<Result<TPrep, E>>;
+      commit: (
+        freshConversation: ConversationResource,
+        prep: TPrep
+      ) => Promise<Result<T, E>>;
+    }
+  ): Promise<
+    Result<T, E | ConversationGoneError | ScopeTransitionDestroyError>
+  > {
+    return SandboxResource.runScopeTransition<
+      { freshConversation: ConversationResource; prep: TPrep },
+      T,
+      E | ConversationGoneError
+    >(
       auth,
       {
         lockKey: conversation.sId,
         fetchSandbox: () => this.fetchSandbox(auth, conversation),
       },
-      transition
+      {
+        prepare: async () => {
+          const freshConversation = await ConversationResource.fetchById(
+            auth,
+            conversation.sId
+          );
+          if (!freshConversation) {
+            return new Err(
+              new ConversationGoneError(
+                `Conversation ${conversation.sId} not found.`
+              )
+            );
+          }
+          const prepResult = await prepare(freshConversation);
+          if (prepResult.isErr()) {
+            return prepResult;
+          }
+          return new Ok({ freshConversation, prep: prepResult.value });
+        },
+        commit: ({ freshConversation, prep }) =>
+          commit(freshConversation, prep),
+      }
     );
   }
 
