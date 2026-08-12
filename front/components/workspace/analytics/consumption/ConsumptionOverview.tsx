@@ -4,9 +4,7 @@ import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionOverview as ConsumptionOverviewType } from "@app/lib/api/analytics/consumption/overview";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
-import { computeCreditUsageStatus } from "@app/lib/api/credits/usage_status";
 import { formatCredits } from "@app/lib/client/credits";
-import { useAwuPoolSummary } from "@app/lib/swr/credits";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { CreditUsagePace } from "@app/types/api/credits/usage_status";
 import { ArrowUpRight, Button, Chip } from "@dust-tt/sparkle";
@@ -20,10 +18,14 @@ const PACE_CHIP: Record<
   critical: { label: "Critical", color: "warning" },
 };
 
-function cycleElapsedPercent(period: ConsumptionPeriod, nowMs: number): number {
-  const startMs = new Date(period.startDate).getTime();
-  const endMs = new Date(period.endDate).getTime();
-  const elapsedRatio = (nowMs - startMs) / (endMs - startMs);
+// The counterpart the used share of the cap is read against.
+function cycleElapsedPercent({
+  startDate,
+  endDate,
+}: ConsumptionPeriod): number {
+  const startMs = new Date(startDate).getTime();
+  const endMs = new Date(endDate).getTime();
+  const elapsedRatio = (Date.now() - startMs) / (endMs - startMs);
   return Math.round(Math.min(Math.max(elapsedRatio, 0), 1) * 100);
 }
 
@@ -52,44 +54,27 @@ function SummaryCard({ label, value, hint }: SummaryCardProps) {
 interface ConsumptionSummaryProps {
   workspaceId: string;
   overview: ConsumptionOverviewType;
-  period: ConsumptionPeriodSelection;
 }
 
 function ConsumptionSummary({
   workspaceId,
   overview,
-  period,
 }: ConsumptionSummaryProps) {
-  const { totalActiveCredits } = useAwuPoolSummary({ workspaceId });
-
-  const cap = period.kind === "cycle" ? totalActiveCredits : 0;
-  const nowMs = Date.now();
-  const status = computeCreditUsageStatus({
-    consumedAwuCredits: overview.totalCredits,
-    limitAwuCredits: cap,
-    billingCycle: {
-      cycleStart: new Date(overview.period.startDate),
-      cycleEnd: new Date(overview.period.endDate),
-    },
-    nowMs,
-  });
-
-  const { topAgent, totalCredits } = overview;
+  const { topAgent, totalCredits, creditUsage } = overview;
 
   return (
     <div className="flex flex-col gap-4">
-      {status && (
+      {creditUsage && (
         <div className="flex items-center justify-between gap-4 rounded-xl border border-border p-2">
           <div className="flex items-center gap-2">
             <Chip
               size="mini"
-              color={PACE_CHIP[status.pace].color}
-              label={PACE_CHIP[status.pace].label}
+              color={PACE_CHIP[creditUsage.status.pace].color}
+              label={PACE_CHIP[creditUsage.status.pace].label}
             />
             <span className="text-sm text-muted-foreground">
-              {status.usedPercentage}% of the cap used,{" "}
-              {cycleElapsedPercent(overview.period, nowMs)}% of the cycle
-              elapsed
+              {creditUsage.status.usedPercentage}% of the cap used,{" "}
+              {cycleElapsedPercent(overview.period)}% of the cycle elapsed
             </span>
           </div>
           <Button
@@ -106,8 +91,8 @@ function ConsumptionSummary({
           label="Used this period"
           value={formatCredits(totalCredits)}
           hint={
-            status
-              ? `${status.usedPercentage}% of ${formatCredits(cap)} cap`
+            creditUsage
+              ? `${creditUsage.status.usedPercentage}% of ${formatCredits(creditUsage.capCredits)} cap`
               : null
           }
         />
@@ -165,11 +150,7 @@ export function ConsumptionOverview({
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">{header.join("  |  ")}</p>
-      <ConsumptionSummary
-        workspaceId={workspaceId}
-        overview={overview}
-        period={periodSelection}
-      />
+      <ConsumptionSummary workspaceId={workspaceId} overview={overview} />
     </div>
   );
 }
