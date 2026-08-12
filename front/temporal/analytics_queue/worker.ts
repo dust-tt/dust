@@ -14,7 +14,7 @@ import { QUEUE_NAME } from "./config";
 // Must match the deployment's terminationGracePeriodSeconds minus 10s buffer.
 const SHUTDOWN_GRACE_TIME_MS = 70 * 1_000;
 
-const MAX_CONCURRENT_ACTIVITY_TASK_EXECUTIONS = 32;
+const MAX_CONCURRENT_ACTIVITY_TASK_EXECUTIONS = 24;
 
 export async function runAnalyticsWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
