@@ -519,7 +519,8 @@ export class ConnectorsAPI {
           agent_configuration_id: agentConfigurationId,
           slack_channel_internal_ids: slackChannelInternalIds,
           auto_respond_without_mention: autoRespondWithoutMention,
-          auto_respond_without_mention_skip_thread_replies: autoRespondWithoutMentionSkipThreadReplies,
+          auto_respond_without_mention_skip_thread_replies:
+            autoRespondWithoutMentionSkipThreadReplies,
         }),
       }
     );

@@ -294,7 +294,8 @@ function AgentBuilderForm({
         slackChannelId: channel.slackChannelId,
         slackChannelName: channel.slackChannelName,
         autoRespondWithoutMention: channel.autoRespondWithoutMention,
-        autoRespondWithoutMentionSkipThreadReplies: channel.autoRespondWithoutMentionSkipThreadReplies,
+        autoRespondWithoutMentionSkipThreadReplies:
+          channel.autoRespondWithoutMentionSkipThreadReplies,
       }));
   }, [agentConfiguration, slackChannelsLinkedWithAgent]);
 

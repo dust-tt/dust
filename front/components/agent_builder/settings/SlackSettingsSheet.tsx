@@ -3,6 +3,7 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 import type { DataSourceType } from "@app/types/data_source";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
@@ -24,7 +25,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { useController } from "react-hook-form";
@@ -256,7 +256,11 @@ export function SlackSettingsSheet({
   });
 
   const [
-    { localSlackChannels, autoRespondWithoutMentionEnabled, skipThreadRepliesEnabled },
+    {
+      localSlackChannels,
+      autoRespondWithoutMentionEnabled,
+      skipThreadRepliesEnabled,
+    },
     dispatch,
   ] = useReducer(sheetReducer, slackChannels ?? [], (channels) => ({
     localSlackChannels: [...channels],

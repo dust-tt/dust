@@ -210,7 +210,10 @@ const _webhookSlackBotAPIHandler = async (
                   const isThreadReply =
                     !!event.thread_ts && event.thread_ts !== event.ts;
 
-                  if (isThreadReply && channel.autoRespondWithoutMentionSkipThreadReplies) {
+                  if (
+                    isThreadReply &&
+                    channel.autoRespondWithoutMentionSkipThreadReplies
+                  ) {
                     logger.info(
                       {
                         slackChannelId: event.channel,
@@ -227,7 +230,8 @@ const _webhookSlackBotAPIHandler = async (
                       agentConfigurationId: channel.agentConfigurationId,
                       autoRespondWithoutMention:
                         channel.autoRespondWithoutMention,
-                      autoRespondWithoutMentionSkipThreadReplies: channel.autoRespondWithoutMentionSkipThreadReplies,
+                      autoRespondWithoutMentionSkipThreadReplies:
+                        channel.autoRespondWithoutMentionSkipThreadReplies,
                     },
                     "Found enhanced default agent for channel - processing message"
                   );
