@@ -1,4 +1,7 @@
-import { toConsumptionScopeFilter } from "@app/components/workspace/analytics/usageFilter";
+import {
+  getUsageFilterSummaries,
+  toConsumptionScopeFilter,
+} from "@app/components/workspace/analytics/usageFilter";
 import { describe, expect, it } from "vitest";
 
 describe("toConsumptionScopeFilter", () => {
@@ -66,5 +69,60 @@ describe("toConsumptionScopeFilter", () => {
 
   it("omits empty member and group selections", () => {
     expect(toConsumptionScopeFilter({ member: [], group: [] })).toEqual({});
+  });
+});
+
+describe("getUsageFilterSummaries", () => {
+  it("flattens selected options into ordered, human-readable categories", () => {
+    expect(
+      getUsageFilterSummaries({
+        agent: [
+          {
+            id: "agent-1",
+            name: "@dust",
+            kind: "agent",
+            image: null,
+            documentCount: 1,
+            disabled: false,
+          },
+        ],
+        member: [
+          {
+            id: "member-1",
+            name: "Nath",
+            kind: "member",
+            image: null,
+            documentCount: 1,
+            disabled: false,
+          },
+          {
+            id: "member-2",
+            name: "Adrien",
+            kind: "member",
+            image: null,
+            documentCount: 1,
+            disabled: false,
+          },
+        ],
+      })
+    ).toEqual([
+      {
+        category: "agent",
+        categoryLabel: "Agent",
+        options: [{ id: "agent-1", name: "@dust" }],
+      },
+      {
+        category: "member",
+        categoryLabel: "Member",
+        options: [
+          { id: "member-1", name: "Nath" },
+          { id: "member-2", name: "Adrien" },
+        ],
+      },
+    ]);
+  });
+
+  it("omits empty categories", () => {
+    expect(getUsageFilterSummaries({ group: [] })).toEqual([]);
   });
 });

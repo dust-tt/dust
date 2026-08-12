@@ -4,6 +4,7 @@ import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/c
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { consumptionDimensionFromQueryParam } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
+import { UsageFilterSummary } from "@app/components/workspace/analytics/UsageFilterSummary";
 import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
 import { toConsumptionScopeFilter } from "@app/components/workspace/analytics/usageFilter";
 import { useQueryParams } from "@app/hooks/useQueryParams";
@@ -96,6 +97,7 @@ export function AnalyticsConsumptionPage() {
               onFilterChange={setFilter}
             />
           </div>
+          <UsageFilterSummary filter={filter} onFilterChange={setFilter} />
           <SafeSuspense fallback={<ChartFallback />}>
             <ConsumptionChart
               workspaceId={owner.sId}
