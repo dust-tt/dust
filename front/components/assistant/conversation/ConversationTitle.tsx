@@ -85,7 +85,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const breadcrumbItems: BreadcrumbsItem[] = [];
 
   if (spaceId && spaceInfo) {
-    const isActivationPod = hasActivationSkill && spaceId === activationPodId;
+    const isActivationPod = spaceId === activationPodId;
     breadcrumbItems.push({
       icon: isMobile ? undefined : ArrowLeft,
       label: isActivationPod ? "For you" : spaceInfo.name,
