@@ -1,15 +1,44 @@
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
-export const DISCOVERY_GLINT_RADII = ["md", "lg", "xl", "full"] as const;
-export type DiscoveryGlintRadius = (typeof DISCOVERY_GLINT_RADII)[number];
+function findVisualBox(host: HTMLElement | null): HTMLElement | null {
+  let element = host?.firstElementChild ?? null;
+  while (element instanceof HTMLElement) {
+    if (window.getComputedStyle(element).borderRadius !== "0px") {
+      return element;
+    }
+    const child = element.firstElementChild;
+    if (!child) {
+      return element;
+    }
+    element = child;
+  }
+  return null;
+}
 
-const RADIUS_CLASSES: Record<DiscoveryGlintRadius, string> = {
-  md: "rounded-md",
-  lg: "rounded-lg",
-  xl: "rounded-xl",
-  full: "rounded-full",
-};
+function useMatchedRadius(
+  hostRef: React.RefObject<HTMLElement | null>,
+  isEnabled: boolean
+): string | undefined {
+  const [radius, setRadius] = React.useState<string>();
+
+  React.useEffect(() => {
+    if (!isEnabled) {
+      return;
+    }
+    const target = findVisualBox(hostRef.current);
+    if (!target) {
+      return;
+    }
+    const read = () => setRadius(window.getComputedStyle(target).borderRadius);
+    read();
+    const observer = new ResizeObserver(read);
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [hostRef, isEnabled]);
+
+  return radius;
+}
 
 interface GlintStreaksProps {
   className: string;
@@ -18,8 +47,8 @@ interface GlintStreaksProps {
 function GlintStreaks({ className }: GlintStreaksProps) {
   return (
     <span className={cn("absolute inset-0", className)}>
-      <span className="absolute -top-1/4 left-0 h-[150%] w-[3px] rotate-[30deg] bg-blue-50 blur-[1px]" />
-      <span className="absolute -top-1/3 left-[5px] h-[165%] w-[3px] rotate-[30deg] bg-blue-50/70 blur-[1px]" />
+      <span className="absolute -top-1/2 left-0 h-[200%] w-[max(7px,5%)] rotate-[30deg] bg-linear-to-b from-transparent via-blue-50 to-transparent blur-[2px]" />
+      <span className="absolute -top-1/2 left-[max(9px,7%)] h-[200%] w-[max(3px,2%)] rotate-[30deg] bg-linear-to-b from-transparent via-blue-50/60 to-transparent blur-[2px]" />
     </span>
   );
 }
@@ -27,20 +56,25 @@ function GlintStreaks({ className }: GlintStreaksProps) {
 export interface DiscoveryGlintProps {
   children: React.ReactNode;
   isActive?: boolean;
-  radius?: DiscoveryGlintRadius;
+  isBouncing?: boolean;
+  isSweeping?: boolean;
   className?: string;
 }
 
 export function DiscoveryGlint({
   children,
   isActive = true,
-  radius = "lg",
+  isBouncing = true,
+  isSweeping = true,
   className,
 }: DiscoveryGlintProps) {
-  const radiusClass = RADIUS_CLASSES[radius];
+  const hostRef = React.useRef<HTMLSpanElement>(null);
+  const radius = useMatchedRadius(hostRef, isActive);
+  const radiusStyle = radius ? { borderRadius: radius } : undefined;
 
   return (
     <span
+      ref={hostRef}
       className={cn("glint-host relative inline-flex", className)}
       data-glint-active={isActive ? "true" : undefined}
     >
@@ -50,20 +84,21 @@ export function DiscoveryGlint({
           <span
             aria-hidden
             className={cn(
-              "glint-ring-pulse pointer-events-none absolute inset-0 border border-blue-200",
-              radiusClass
+              "pointer-events-none absolute inset-0 border border-blue-200",
+              isBouncing && "glint-ring-pulse"
             )}
+            style={radiusStyle}
           />
-          <span
-            aria-hidden
-            className={cn(
-              "pointer-events-none absolute inset-0 overflow-hidden",
-              radiusClass
-            )}
-          >
-            <GlintStreaks className="glint-sweep" />
-            <GlintStreaks className="glint-sweep-hover" />
-          </span>
+          {isSweeping && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 overflow-hidden"
+              style={radiusStyle}
+            >
+              <GlintStreaks className="glint-sweep" />
+              <GlintStreaks className="glint-sweep-hover" />
+            </span>
+          )}
         </>
       )}
     </span>

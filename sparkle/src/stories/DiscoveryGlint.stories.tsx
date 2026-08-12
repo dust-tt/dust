@@ -29,7 +29,8 @@ Wraps any element without touching it. The ring and the streaks are absolutely p
 
 **Guidelines**
 - Own the campaign yourself. This component only takes **isActive**; how many times a user sees it, when it stops and what dismisses it are product decisions that belong in the app.
-- Match **radius** to the wrapped element, otherwise the ring will not hug it.
+- **isBouncing** and **isSweeping** turn the two halves of the effect on and off independently, for tuning or for a quieter variant.
+- The corner radius is read off the wrapped element and mirrored, so the ring hugs a 9px button, a 12px one and a pill without being told.
 - Pass \`className="flex w-full"\` for block-level targets such as a sidebar row; the wrapper is \`inline-flex\` by default.
 - Motion is dropped entirely under \`prefers-reduced-motion\`, leaving the static ring to carry the highlight.`,
       },
@@ -39,10 +40,8 @@ Wraps any element without touching it. The ring and the streaks are absolutely p
     children: { control: false },
     className: { control: false },
     isActive: { control: "boolean" },
-    radius: {
-      control: { type: "select" },
-      options: ["md", "lg", "xl", "full"],
-    },
+    isBouncing: { control: "boolean" },
+    isSweeping: { control: "boolean" },
   },
 } satisfies Meta<typeof DiscoveryGlint>;
 
@@ -52,7 +51,8 @@ type Story = StoryObj<typeof DiscoveryGlint>;
 export const Default: Story = {
   args: {
     isActive: true,
-    radius: "lg",
+    isBouncing: true,
+    isSweeping: true,
     children: (
       <Button
         variant="ghost-secondary"
@@ -72,9 +72,9 @@ export const Targets: Story = {
     <div className="flex flex-col gap-8">
       <div className="flex flex-col items-start gap-2">
         <p className="text-sm text-muted-foreground">
-          Icon-only button — <code>radius="lg"</code>
+          Icon-only button — <code></code>
         </p>
-        <DiscoveryGlint radius="lg">
+        <DiscoveryGlint>
           <Button
             variant="ghost-secondary"
             size="xs"
@@ -87,9 +87,9 @@ export const Targets: Story = {
 
       <div className="flex flex-col items-start gap-2">
         <p className="text-sm text-muted-foreground">
-          Button with a label — <code>radius="lg"</code>
+          Button with a label — <code></code>
         </p>
-        <DiscoveryGlint radius="lg">
+        <DiscoveryGlint>
           <Button
             variant="outline"
             size="sm"
@@ -101,9 +101,9 @@ export const Targets: Story = {
 
       <div className="flex flex-col items-start gap-2">
         <p className="text-sm text-muted-foreground">
-          Pill — <code>radius="full"</code>
+          Pill — <code></code>
         </p>
-        <DiscoveryGlint radius="full">
+        <DiscoveryGlint>
           <Button
             variant="outline"
             size="sm"
@@ -116,13 +116,12 @@ export const Targets: Story = {
 
       <div className="flex flex-col items-start gap-2">
         <p className="text-sm text-muted-foreground">
-          Sidebar row — <code>radius="xl"</code> with{" "}
-          <code>className="flex w-full"</code>
+          Sidebar row — <code></code> with <code>className="flex w-full"</code>
         </p>
         <div className="w-64 rounded-xl bg-muted-background p-2">
           <NavigationList>
             <NavigationListItem label="Conversations" />
-            <DiscoveryGlint radius="xl" className="flex w-full">
+            <DiscoveryGlint className="flex w-full">
               <NavigationListItem label="Skills" icon={Stars01} />
             </DiscoveryGlint>
             <NavigationListItem label="Spaces" />
@@ -148,7 +147,7 @@ export const Dismissal: Story = {
           decides whether it comes back on the next visit.
         </p>
         <span onPointerDown={() => setIsActive(false)}>
-          <DiscoveryGlint isActive={isActive} radius="lg">
+          <DiscoveryGlint isActive={isActive}>
             <Button
               variant="ghost-secondary"
               size="xs"

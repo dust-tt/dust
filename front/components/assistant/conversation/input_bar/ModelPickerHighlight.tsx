@@ -76,9 +76,7 @@ export function ModelPickerHighlight({ children }: ModelPickerHighlightProps) {
 
   return (
     <span ref={hostRef} className="inline-flex">
-      <DiscoveryGlint isActive={isActive} radius="lg">
-        {children}
-      </DiscoveryGlint>
+      <DiscoveryGlint isActive={isActive}>{children}</DiscoveryGlint>
     </span>
   );
 }
