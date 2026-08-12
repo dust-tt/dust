@@ -141,6 +141,54 @@ export function usePodApps({
   };
 }
 
+export function useDeletePodApp({
+  owner,
+  podId,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutatePodApps } = usePodApps({ owner, podId, disabled: true });
+
+  return async (app: PodApp): Promise<Result<void, Error>> => {
+    const appName = app.name ?? app.prefix;
+
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/pods/${podId}/apps/${encodeURIComponent(app.prefix)}`,
+        { method: "DELETE" }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: `Failed to delete ${appName}`,
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      sendNotification({
+        type: "success",
+        title: `${appName} deleted`,
+      });
+      await mutatePodApps();
+
+      return new Ok(undefined);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: `Failed to delete ${appName}`,
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
 export function usePodFiles({
   owner,
   podId,

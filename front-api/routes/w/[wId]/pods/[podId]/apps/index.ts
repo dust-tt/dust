@@ -1,8 +1,14 @@
-import { listPodApps } from "@app/lib/api/projects/apps";
-import type { GetPodAppsResponseBody } from "@app/types/api/pod_apps";
+import { deletePodApp, listPodApps } from "@app/lib/api/projects/apps";
+import type {
+  DeletePodAppResponseBody,
+  GetPodAppsResponseBody,
+} from "@app/types/api/pod_apps";
+import { DeletePodAppParamsSchema } from "@app/types/api/pod_apps";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 
 // Mounted under /api/w/:wId/pods/:podId/apps.
@@ -28,6 +34,62 @@ app.get(
     }
 
     return ctx.json({ apps: appsResult.value });
+  }
+);
+
+/** @ignoreswagger */
+app.delete(
+  "/:prefix",
+  validate("param", DeletePodAppParamsSchema),
+  withSpace({ requireCanWrite: true, routeParam: "podId" }),
+  async (ctx): HandlerResult<DeletePodAppResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const { prefix } = ctx.req.valid("param");
+
+    const deleteResult = await deletePodApp(auth, space, prefix);
+    if (deleteResult.isErr()) {
+      switch (deleteResult.error.code) {
+        case "not_found":
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: {
+              type: "space_not_found",
+              message: deleteResult.error.message,
+            },
+          });
+        case "not_a_pod":
+        case "cannot_delete_unfiled":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: deleteResult.error.message,
+            },
+          });
+        case "sandbox_unavailable":
+          // Databases can only be removed on a live sandbox, and the delete is safe to retry.
+          return apiError(ctx, {
+            status_code: 503,
+            api_error: {
+              type: "service_unavailable",
+              message: deleteResult.error.message,
+            },
+          });
+        case "internal":
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: deleteResult.error.message,
+            },
+          });
+        default:
+          assertNever(deleteResult.error.code);
+      }
+    }
+
+    return ctx.json({ app: deleteResult.value });
   }
 );
 

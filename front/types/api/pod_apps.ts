@@ -1,4 +1,5 @@
 import type { SandboxFunctionExecutionMode } from "@app/types/api/sandbox_functions";
+import { z } from "zod";
 
 /**
  * A Pod app is a folder at the pod root that owns a Frame, published functions and databases. It has
@@ -6,6 +7,14 @@ import type { SandboxFunctionExecutionMode } from "@app/types/api/sandbox_functi
  * computes from the folder name — the same prefix that already namespaces published function slugs
  * and database filenames. So these types describe a view assembled at read time, never stored.
  */
+
+/**
+ * The prefix of the synthetic app collecting everything published from the pod root, which has no app
+ * folder. Empty so it can never collide with a real prefix, which `normalizeAppPrefix` guarantees is
+ * non-empty. Lives here rather than in `lib/api` so components can branch on it without pulling
+ * server-only modules into the browser bundle.
+ */
+export const UNFILED_POD_APP_PREFIX = "";
 
 export type PodAppFrame = {
   /** sId of the Frame's FileResource, or null for a source file with no row yet. */
@@ -63,4 +72,26 @@ export type PodApp = {
 
 export type GetPodAppsResponseBody = {
   apps: PodApp[];
+};
+
+/**
+ * An app's prefix is its identifier — apps have no sId, since the folder is the app. Constrained to
+ * what `normalizeAppPrefix` can produce, so a path segment can never smuggle anything else in.
+ */
+export const DeletePodAppParamsSchema = z.object({
+  prefix: z
+    .string()
+    .min(1)
+    .max(128)
+    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/),
+});
+
+export type DeletePodAppResponseBody = {
+  app: {
+    prefix: string;
+    name: string | null;
+    deletedFunctionSlugs: string[];
+    deletedDatabaseNames: string[];
+    deletedFolderNames: string[];
+  };
 };

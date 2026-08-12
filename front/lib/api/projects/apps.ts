@@ -1,14 +1,18 @@
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import { getPodStateBasePath } from "@app/lib/api/files/mount_path";
+import { deleteProjectFile } from "@app/lib/api/projects/context";
+import { deletePodDatabaseReplica } from "@app/lib/api/sandbox/db";
 import {
   appPrefixFromPodDatabaseName,
   podDatabaseNameWithoutAppPrefix,
 } from "@app/lib/api/sandbox_functions/db_naming";
+import { deleteDatabaseOnSandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
 import {
   normalizeAppPrefix,
   SANDBOX_FUNCTION_SLUG_SEPARATOR,
 } from "@app/lib/api/sandbox_functions/slug";
+import { unpublishSandboxFunction } from "@app/lib/api/sandbox_functions/unpublish_sandbox_function";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -25,16 +29,11 @@ import type {
   PodAppFrame,
   PodAppFunction,
 } from "@app/types/api/pod_apps";
+import { UNFILED_POD_APP_PREFIX } from "@app/types/api/pod_apps";
 import { isInteractiveContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-
-/**
- * The prefix of the synthetic app collecting everything published from the pod root, which has no
- * app folder (`deriveAppPrefix` returns null for those paths). Empty so it can never collide with a
- * real prefix, which `normalizeAppPrefix` guarantees is non-empty.
- */
-export const UNFILED_POD_APP_PREFIX = "";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 /** A litestream replica directory is named after the database file it replicates. */
 const POD_DATABASE_FILE_SUFFIX = ".db";
@@ -459,4 +458,162 @@ export async function listPodApps(
   }
 
   return new Ok(apps);
+}
+
+export type PodAppDeleteErrorCode =
+  | "not_a_pod"
+  | "not_found"
+  | "cannot_delete_unfiled"
+  | "sandbox_unavailable"
+  | "internal";
+
+export class PodAppDeleteError extends Error {
+  constructor(
+    readonly code: PodAppDeleteErrorCode,
+    message: string
+  ) {
+    super(message);
+    this.name = "PodAppDeleteError";
+  }
+}
+
+export interface DeletePodAppResult {
+  prefix: string;
+  name: string | null;
+  deletedFunctionSlugs: string[];
+  deletedDatabaseNames: string[];
+  deletedFolderNames: string[];
+}
+
+/**
+ * Delete a Pod app: its published functions, its databases (live files and replicas), its shared
+ * Frames and pinned tabs, and finally its source folder.
+ *
+ * **The step order is the design.** Two constraints fix it:
+ *
+ *  - Functions go first, so no invocation can arrive while the data underneath it is being removed.
+ *  - A database's live files must go before its replica, because a running litestream keeps
+ *    replicating a database it can still see (the same hazard the pod-scrub path notes).
+ *
+ * And the source folder goes LAST on purpose. Every step is idempotent, and the folder is what makes
+ * the app appear in the Apps tab, so a failure part-way through leaves the app still listed and
+ * simply re-deletable. Deleting the folder first would instead leave an invisible half-deleted app.
+ *
+ * Deleting databases needs a live sandbox, so this wakes a sleeping pod (`execDbCommand` does it) and
+ * can take as long as a cold start.
+ */
+export async function deletePodApp(
+  auth: Authenticator,
+  pod: SpaceResource,
+  prefix: string
+): Promise<Result<DeletePodAppResult, PodAppDeleteError>> {
+  if (!pod.isProject()) {
+    return new Err(
+      new PodAppDeleteError("not_a_pod", "Apps only exist on Pod spaces.")
+    );
+  }
+
+  // The unfiled app is a presentation device, not a folder: its artifacts each belong to whoever
+  // published them at the pod root, so there is nothing coherent to delete.
+  if (prefix === UNFILED_POD_APP_PREFIX) {
+    return new Err(
+      new PodAppDeleteError(
+        "cannot_delete_unfiled",
+        "Artifacts published outside an app folder cannot be deleted as an app."
+      )
+    );
+  }
+
+  const appsResult = await listPodApps(auth, pod);
+  if (appsResult.isErr()) {
+    return new Err(new PodAppDeleteError("internal", appsResult.error.message));
+  }
+
+  const app = appsResult.value.find((candidate) => candidate.prefix === prefix);
+  if (!app) {
+    return new Err(
+      new PodAppDeleteError("not_found", `No app '${prefix}' in this Pod.`)
+    );
+  }
+
+  // 1. Unpublish first: stop new invocations before their data goes away.
+  for (const fn of app.functions) {
+    const unpublishResult = await unpublishSandboxFunction(auth, {
+      space: pod,
+      slug: fn.slug,
+    });
+    // Already gone is fine — this whole flow is meant to be safe to retry.
+    if (unpublishResult.isErr() && unpublishResult.error.code !== "not_found") {
+      return new Err(
+        new PodAppDeleteError("internal", unpublishResult.error.message)
+      );
+    }
+  }
+
+  // 2. Live database files, then 3. their replicas. Wakes the pod if it is asleep.
+  for (const database of app.databases) {
+    const deleteLiveResult = await deleteDatabaseOnSandbox(auth, {
+      space: pod,
+      database: database.onDiskName,
+    });
+    if (deleteLiveResult.isErr()) {
+      return new Err(
+        new PodAppDeleteError(
+          deleteLiveResult.error.code === "sandbox_unavailable"
+            ? "sandbox_unavailable"
+            : "internal",
+          deleteLiveResult.error.message
+        )
+      );
+    }
+
+    const deleteReplicaResult = await deletePodDatabaseReplica(auth, pod, {
+      database: database.onDiskName,
+    });
+    if (deleteReplicaResult.isErr()) {
+      return new Err(
+        new PodAppDeleteError("internal", deleteReplicaResult.error.message)
+      );
+    }
+  }
+
+  // 4. Drop the Frames' pinned tabs before their files go, mirroring the delete_frame poke plugin.
+  const metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
+  if (metadata) {
+    for (const frame of app.frames) {
+      if (frame.isPinnedAsTab) {
+        await metadata.removeFramePath(frame.path);
+      }
+    }
+  }
+
+  // 5. Source folder last. `deleteProjectFile` recurses and deletes each FileResource underneath,
+  // which is what revokes the Frames' share tokens along with them. Colliding folders all normalize
+  // onto this one prefix, so every one of them belongs to the app being deleted.
+  const folderNames =
+    app.collidingFolderNames.length > 0
+      ? app.collidingFolderNames
+      : removeNulls([app.name]);
+  for (const folderName of folderNames) {
+    const deleteFolderResult = await deleteProjectFile(auth, {
+      space: pod,
+      relativeFilePath: folderName,
+    });
+    if (deleteFolderResult.isErr()) {
+      return new Err(
+        new PodAppDeleteError("internal", deleteFolderResult.error.message)
+      );
+    }
+  }
+
+  const deletedFunctionSlugs = app.functions.map((fn) => fn.slug);
+  const deletedDatabaseNames = app.databases.map((db) => db.onDiskName);
+
+  return new Ok({
+    prefix: app.prefix,
+    name: app.name,
+    deletedFunctionSlugs,
+    deletedDatabaseNames,
+    deletedFolderNames: folderNames,
+  });
 }
