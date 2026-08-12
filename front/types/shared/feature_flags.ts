@@ -28,11 +28,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Opt into Anthropic prompt-cache diagnostics to report cache-miss reasons on agent-loop steps",
     stage: "dust_only",
   },
-  agent_loop_qos_routing: {
-    description:
-      "Route agent loop workflows to per-surface QoS task queues (schedules/interactive/programmatic/batch) instead of the single default queue. Requires the per-queue worker deployments to be running.",
-    stage: "rolling_out",
-  },
   use_vertex_for_supported_models: {
     description:
       "Route LLM calls through Vertex AI when supported instead of the direct provider's API",
