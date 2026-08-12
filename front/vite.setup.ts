@@ -74,10 +74,34 @@ function createStatefulMockRedisClient() {
       }
       return entry.value;
     }),
-    set: vi.fn(async (key: string, value: string, opts?: { EX?: number }) => {
-      const expiresAtMs = opts?.EX ? Date.now() + opts.EX * 1000 : 0;
-      redisStore.set(key, { value, expiresAtMs });
-    }),
+    set: vi.fn(
+      async (
+        key: string,
+        value: string,
+        opts?: { EX?: number; PX?: number; NX?: boolean }
+      ) => {
+        // NX and the "OK" return matter: distributedLock acquires with
+        // SET NX PX and treats anything but "OK" as acquisition failure —
+        // a mock that returns undefined spins executeWithLock's acquire
+        // loop until its 30s timeout in every suite that takes a lock.
+        if (opts?.NX) {
+          const existing = redisStore.get(key);
+          if (
+            existing &&
+            (existing.expiresAtMs === 0 || Date.now() <= existing.expiresAtMs)
+          ) {
+            return null;
+          }
+        }
+        const expiresAtMs = opts?.EX
+          ? Date.now() + opts.EX * 1000
+          : opts?.PX
+            ? Date.now() + opts.PX
+            : 0;
+        redisStore.set(key, { value, expiresAtMs });
+        return "OK";
+      }
+    ),
     del: vi.fn(async (key: string) => {
       redisStore.delete(key);
       redisHashStore.delete(key);
@@ -104,7 +128,21 @@ function createStatefulMockRedisClient() {
     subscribe: vi.fn().mockResolvedValue(undefined),
     unsubscribe: vi.fn().mockResolvedValue(undefined),
     ping: vi.fn().mockResolvedValue("PONG"),
-    eval: vi.fn().mockResolvedValue(1),
+    eval: vi.fn(
+      async (
+        _script: string,
+        opts?: { keys?: string[]; arguments?: string[] }
+      ) => {
+        // Faithful enough for distributedUnlock's compare-and-delete script.
+        const key = opts?.keys?.[0];
+        const owner = opts?.arguments?.[0];
+        if (key !== undefined && redisStore.get(key)?.value === owner) {
+          redisStore.delete(key);
+          return 1;
+        }
+        return 0;
+      }
+    ),
     exists: vi.fn(async (key: string) => {
       const entry = redisStore.get(key);
       if (!entry) {
