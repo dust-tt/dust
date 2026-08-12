@@ -87,17 +87,8 @@ describe("storeAgentMessageConsumptionAnalyticsActivity", () => {
   });
 
   it("completes when indexing succeeds", async () => {
-    const calls: string[] = [];
-    vi.mocked(
-      computeAndStoreAgentMessageConsumptionAttribution
-    ).mockImplementation(async () => {
-      calls.push("attribution");
-    });
-    vi.mocked(indexAgentMessageConsumptionAnalytics).mockImplementation(
-      async () => {
-        calls.push("indexing");
-        return new Ok(undefined);
-      }
+    vi.mocked(indexAgentMessageConsumptionAnalytics).mockResolvedValue(
+      new Ok(undefined)
     );
 
     await expect(
@@ -105,11 +96,6 @@ describe("storeAgentMessageConsumptionAnalyticsActivity", () => {
         message,
       })
     ).resolves.toBeUndefined();
-
-    expect(
-      computeAndStoreAgentMessageConsumptionAttribution
-    ).toHaveBeenCalledWith(expect.anything(), message);
-    expect(calls).toEqual(["attribution", "indexing"]);
   });
 
   it("throws the Elasticsearch error so Temporal retries the activity", async () => {

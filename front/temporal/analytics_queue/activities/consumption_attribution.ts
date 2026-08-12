@@ -43,11 +43,6 @@ export async function storeAgentMessageConsumptionAnalyticsActivity(
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
 
-  // This activity retries independently from the attribution activity that precedes it in the
-  // workflow. Refresh attribution on every attempt so a retry can observe facts committed after
-  // the preceding activity (and so already-retrying workflows can apply newer attribution logic).
-  await computeAndStoreAgentMessageConsumptionAttribution(auth, message);
-
   const result = await indexAgentMessageConsumptionAnalytics(auth, {
     agentMessageId: message.agentMessageId,
   });
