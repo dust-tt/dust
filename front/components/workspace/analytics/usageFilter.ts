@@ -218,6 +218,8 @@ export function selectAllUsageFilterOptions<C extends UsageFilterCategory>(
   return { ...filter, [category]: [...current, ...additions] };
 }
 
+// Maps an attribution row to the filter UI option shape, replacing that
+// dimension while preserving the other filters.
 export function setUsageFilterFromAttributionRow(
   filter: UsageFilter,
   dimension: ConsumptionScopeDimension,
