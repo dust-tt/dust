@@ -94,7 +94,7 @@ export function AnalyticsConsumptionPage() {
         />
         <LazyMotion features={domMax}>
           <div className="flex flex-col gap-4">
-            <div className="sticky top-0 z-30 -mb-4 flex flex-col bg-app-background pb-4 pt-4">
+            <div className="sticky top-0 z-30 -mb-4 flex flex-col bg-panel-background pb-4 pt-4">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="text-lg font-semibold text-foreground">
                   Explore
