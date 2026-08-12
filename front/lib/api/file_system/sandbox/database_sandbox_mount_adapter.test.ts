@@ -95,12 +95,16 @@ describe("DatabaseSandboxMountAdapter", () => {
     const tokenCommand = commandAt(execRoot, 0);
     expect(tokenCommand).not.toContain("scoped-filesystem-token");
     expect(tokenCommand).toContain("/run/dust-filesystem/token");
+    expect(tokenCommand).toContain("-m 700 /run/dust-filesystem");
 
     const mountCommand = commandAt(execRoot, 1);
     expect(mountCommand).toContain("/opt/bin/dsbx filesystem mount");
     expect(mountCommand).toContain("--mountpoint /files");
     expect(mountCommand).toContain("--api-url 'https://api.example.test'");
     expect(mountCommand).toContain("/usr/bin/mountpoint -q /files");
+    expect(mountCommand).toContain(
+      "/usr/bin/chmod 700 /run/dust-filesystem/staging"
+    );
   });
 
   it("fails closed when the image does not contain the daemon", async () => {

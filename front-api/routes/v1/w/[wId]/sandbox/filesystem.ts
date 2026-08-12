@@ -1,4 +1,4 @@
-import { FileResourceFileSystemBinding } from "@app/lib/api/file_system/file_resource_binding";
+import { UnboundFileSystemFileBinding } from "@app/lib/api/file_system/file_binding";
 import {
   applyFileSystemOperation,
   FileSystemOperationSchema,
@@ -52,7 +52,7 @@ app.post("/", validate("json", FileSystemOperationSchema), async (ctx) => {
   const result = await applyFileSystemOperation(
     ctx.get("auth"),
     fileSystemScopeFromSandboxClaims(claims),
-    new FileResourceFileSystemBinding(),
+    new UnboundFileSystemFileBinding(),
     ctx.req.valid("json")
   );
   if (result.isErr()) {

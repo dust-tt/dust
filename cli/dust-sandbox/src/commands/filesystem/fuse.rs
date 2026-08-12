@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::{self, File};
-use std::io;
+use std::io::{self, Read};
 use std::os::unix::fs::FileExt;
-use std::os::unix::fs::PermissionsExt;
+use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -15,7 +15,7 @@ use fuser::{
     ReplyCreate, ReplyData, ReplyDirectory, ReplyEmpty, ReplyEntry, ReplyOpen, ReplyStatfs,
     ReplyWrite, Request, SessionACL, TimeOrNow, WriteFlags,
 };
-use tracing::info;
+use tracing::{debug, info, warn};
 
 use super::store::{is_writable, FileStore, Node, NodeKind, ROOT_ID};
 
@@ -29,17 +29,7 @@ pub fn mount(
     workspace_id: &str,
     token_file: &Path,
 ) -> anyhow::Result<()> {
-    let metadata = fs::metadata(token_file).context("failed to inspect filesystem token file")?;
-    if metadata.permissions().mode() & 0o077 != 0 {
-        anyhow::bail!("filesystem token file must not be readable by group or others");
-    }
-    let token = fs::read_to_string(token_file)
-        .context("failed to read filesystem token file")?
-        .trim()
-        .to_owned();
-    if token.is_empty() {
-        anyhow::bail!("filesystem token file is empty");
-    }
+    let token = read_token(token_file)?;
     let store = FileStore::open(
         staging_dir,
         api_url,
@@ -68,6 +58,32 @@ pub fn mount(
     );
     fuser::mount(filesystem, mountpoint, &config)
         .with_context(|| format!("failed to mount {}", mountpoint.display()))
+}
+
+fn read_token(token_file: &Path) -> anyhow::Result<String> {
+    // The sandbox user cannot write the root-owned runtime directory, but do
+    // not rely on that alone: opening without following links prevents a
+    // swapped token path from escaping that directory.
+    let mut token_handle = fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+        .open(token_file)
+        .context("failed to open filesystem token file")?;
+    let metadata = token_handle
+        .metadata()
+        .context("failed to inspect filesystem token file")?;
+    if metadata.permissions().mode() & 0o077 != 0 {
+        anyhow::bail!("filesystem token file must not be readable by group or others");
+    }
+    let mut token = String::new();
+    token_handle
+        .read_to_string(&mut token)
+        .context("failed to read filesystem token file")?;
+    let token = token.trim().to_owned();
+    if token.is_empty() {
+        anyhow::bail!("filesystem token file is empty");
+    }
+    Ok(token)
 }
 
 struct OpenHandle {
@@ -163,6 +179,7 @@ impl DustFuse {
                 writable,
             },
         );
+        debug!(handle, node_id, writable, "opened filesystem handle");
         Ok(handle)
     }
 
@@ -333,6 +350,11 @@ impl Filesystem for DustFuse {
             let inner = self.lock()?;
             let source = inner.store.lookup(parent.0, name)?;
             if Self::is_open(&inner, source.id) {
+                debug!(
+                    node_id = source.id,
+                    open_handles = inner.handles.len(),
+                    "rename rejected because source is open"
+                );
                 return Err(errno(libc::EBUSY));
             }
             match inner.store.lookup(new_parent.0, new_name) {
@@ -431,6 +453,7 @@ impl Filesystem for DustFuse {
     ) {
         let result = (|| {
             let mut inner = self.lock()?;
+            debug!(handle = handle.0, "flushing filesystem handle");
             Self::commit_handle(&mut inner, handle.0)
         })();
         reply_empty(result, reply);
@@ -447,9 +470,27 @@ impl Filesystem for DustFuse {
         reply: ReplyEmpty,
     ) {
         let result = self.lock().and_then(|mut inner| {
-            Self::commit_handle(&mut inner, handle.0)?;
+            debug!(handle = handle.0, "releasing filesystem handle");
+            // Linux ignores errors returned by RELEASE. Flush/fsync already
+            // had the opportunity to report a write failure to the caller, so
+            // never retain the local descriptor after the kernel has dropped
+            // its last reference.
+            let commit_result = Self::commit_handle(&mut inner, handle.0);
             inner.handles.remove(&handle.0);
-            Ok(())
+            debug!(
+                handle = handle.0,
+                remaining_handles = inner.handles.len(),
+                "released filesystem handle"
+            );
+            if let Err(error) = &commit_result {
+                warn!(
+                    handle = handle.0,
+                    errno = error.raw_os_error(),
+                    error = %error,
+                    "final filesystem handle commit failed during release"
+                );
+            }
+            commit_result
         });
         reply_empty(result, reply);
     }
@@ -627,4 +668,33 @@ fn reply_empty(result: io::Result<()>, reply: ReplyEmpty) {
 
 fn errno(code: i32) -> io::Error {
     io::Error::from_raw_os_error(code)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use std::os::unix::fs::{symlink, PermissionsExt};
+
+    use tempfile::tempdir;
+
+    use super::read_token;
+
+    #[test]
+    fn token_open_never_follows_a_symbolic_link() {
+        let directory = tempdir().expect("temporary directory");
+        let target = directory.path().join("target");
+        let link = directory.path().join("token");
+        fs::write(&target, "secret").expect("write target");
+        fs::set_permissions(&target, fs::Permissions::from_mode(0o600)).expect("restrict target");
+        symlink(&target, &link).expect("create link");
+
+        let error = read_token(&link).expect_err("reject link");
+        assert_eq!(
+            error
+                .root_cause()
+                .downcast_ref::<std::io::Error>()
+                .and_then(std::io::Error::raw_os_error),
+            Some(libc::ELOOP)
+        );
+    }
 }

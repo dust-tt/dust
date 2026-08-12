@@ -266,14 +266,7 @@ impl FileStore {
             .get(&node_id)
             .map(|cached| cached.path.clone())
             .ok_or_else(|| errno(libc::EIO))?;
-        let writable = is_writable(flags);
-        let mut options = OpenOptions::new();
-        options
-            .read(true)
-            .write(writable)
-            .append(flags & libc::O_APPEND != 0)
-            .custom_flags(flags & !(libc::O_ACCMODE | libc::O_CREAT | libc::O_EXCL));
-        let file = options.open(path)?;
+        let file = open_staged_file(&path, flags)?;
         Ok(OpenedContent {
             file,
             expected_blob_id: content.blob_id,
@@ -336,6 +329,23 @@ impl FileStore {
     fn content_path(&self, node_id: u64) -> PathBuf {
         self.staging_dir.join(format!("inode-{node_id}"))
     }
+}
+
+fn open_staged_file(path: &Path, flags: i32) -> io::Result<File> {
+    let writable = is_writable(flags);
+    let mut options = OpenOptions::new();
+    options
+        .read(true)
+        .write(writable)
+        .append(flags & libc::O_APPEND != 0)
+        // Cached content lives outside the FUSE tree. Never let an unexpected
+        // local link turn a filesystem open into access to another host path.
+        .custom_flags(
+            flags & !(libc::O_ACCMODE | libc::O_CREAT | libc::O_EXCL)
+                | libc::O_NOFOLLOW
+                | libc::O_CLOEXEC,
+        );
+    options.open(path)
 }
 
 impl Node {
@@ -404,12 +414,29 @@ fn errno(code: i32) -> io::Error {
 
 #[cfg(test)]
 mod tests {
-    use super::{fuse_id, remote_id, ROOT_ID};
+    use std::fs;
+    use std::os::unix::fs::symlink;
+
+    use tempfile::tempdir;
+
+    use super::{fuse_id, open_staged_file, remote_id, ROOT_ID};
 
     #[test]
     fn remote_inode_numbers_never_collide_with_the_virtual_root() {
         assert_ne!(fuse_id(1), ROOT_ID);
         assert_eq!(remote_id(fuse_id(42)).ok(), Some(42));
         assert!(remote_id(ROOT_ID).is_err());
+    }
+
+    #[test]
+    fn staged_content_open_never_follows_a_symbolic_link() {
+        let directory = tempdir().expect("temporary directory");
+        let target = directory.path().join("target");
+        let link = directory.path().join("inode-3");
+        fs::write(&target, b"secret").expect("write target");
+        symlink(&target, &link).expect("create link");
+
+        let error = open_staged_file(&link, libc::O_RDONLY).expect_err("reject link");
+        assert_eq!(error.raw_os_error(), Some(libc::ELOOP));
     }
 }

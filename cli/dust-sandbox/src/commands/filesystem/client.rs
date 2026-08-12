@@ -1,11 +1,13 @@
-use std::fs::File;
-use std::io;
+use std::fs::{File, OpenOptions};
+use std::io::{self, Read};
+use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::PathBuf;
 use std::sync::Mutex;
 
 use reqwest::blocking::{Body, Client};
 use reqwest::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
+use tracing::warn;
 
 const FILESYSTEM_ERROR_HEADER: &str = "x-dust-filesystem-error";
 
@@ -157,11 +159,18 @@ impl FileSystemClient {
             response
         };
         if !response.status().is_success() {
+            let status = response.status();
             let code = response
                 .headers()
                 .get(FILESYSTEM_ERROR_HEADER)
-                .and_then(|value| value.to_str().ok());
-            return Err(filesystem_error(code));
+                .and_then(|value| value.to_str().ok())
+                .map(str::to_owned);
+            warn!(
+                %status,
+                filesystem_error = code.as_deref(),
+                "filesystem metadata request failed"
+            );
+            return Err(filesystem_error(code.as_deref()));
         }
         response.json().map_err(network_error)
     }
@@ -178,7 +187,7 @@ impl FileSystemClient {
     }
 
     fn reload_token(&self) -> io::Result<()> {
-        let token = std::fs::read_to_string(&self.token_file)?.trim().to_owned();
+        let token = read_token_file(&self.token_file)?;
         if token.is_empty() {
             return Err(errno(libc::EACCES));
         }
@@ -315,6 +324,14 @@ impl FileSystemClient {
         if response.status().is_success() {
             Ok(())
         } else {
+            let status = response.status();
+            let detail = response
+                .text()
+                .unwrap_or_default()
+                .chars()
+                .take(1024)
+                .collect::<String>();
+            warn!(%status, %detail, "filesystem content upload failed");
             Err(errno(libc::EIO))
         }
     }
@@ -336,6 +353,23 @@ impl FileSystemClient {
     }
 }
 
+fn read_token_file(path: &std::path::Path) -> io::Result<String> {
+    let mut file = OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+        .open(path)?;
+    if file.metadata()?.permissions().mode() & 0o077 != 0 {
+        return Err(errno(libc::EACCES));
+    }
+    let mut token = String::new();
+    file.read_to_string(&mut token)?;
+    let token = token.trim().to_owned();
+    if token.is_empty() {
+        return Err(errno(libc::EACCES));
+    }
+    Ok(token)
+}
+
 fn filesystem_error(code: Option<&str>) -> io::Error {
     match code {
         Some("already_exists") => errno(libc::EEXIST),
@@ -350,7 +384,31 @@ fn filesystem_error(code: Option<&str>) -> io::Error {
 }
 
 fn network_error(error: reqwest::Error) -> io::Error {
-    io::Error::new(io::ErrorKind::Other, error)
+    // reqwest's Display includes the full URL. Filesystem content URLs are
+    // signed credentials, so return only a stable category to callers/logs.
+    let (kind, message) = if error.is_timeout() {
+        (io::ErrorKind::TimedOut, "filesystem HTTP request timed out")
+    } else if error.is_connect() {
+        (
+            io::ErrorKind::ConnectionRefused,
+            "filesystem HTTP connection failed",
+        )
+    } else if error.is_decode() {
+        (
+            io::ErrorKind::InvalidData,
+            "filesystem HTTP response was invalid",
+        )
+    } else {
+        (io::ErrorKind::Other, "filesystem HTTP request failed")
+    };
+    warn!(
+        timeout = error.is_timeout(),
+        connect = error.is_connect(),
+        decode = error.is_decode(),
+        status = error.status().map(|status| status.as_u16()),
+        "filesystem HTTP transport error"
+    );
+    io::Error::new(kind, message)
 }
 
 fn invalid_response() -> io::Error {
@@ -363,7 +421,12 @@ fn errno(code: i32) -> io::Error {
 
 #[cfg(test)]
 mod tests {
-    use super::{filesystem_error, Operation};
+    use std::fs;
+    use std::os::unix::fs::{symlink, PermissionsExt};
+
+    use tempfile::tempdir;
+
+    use super::{filesystem_error, network_error, read_token_file, Operation};
 
     #[test]
     fn maps_front_errors_to_posix_errors() {
@@ -398,5 +461,28 @@ mod tests {
                 "newName": "new"
             }))
         );
+    }
+
+    #[test]
+    fn token_reload_never_follows_a_symbolic_link() {
+        let directory = tempdir().expect("temporary directory");
+        let target = directory.path().join("target");
+        let link = directory.path().join("token");
+        fs::write(&target, "secret").expect("write target");
+        fs::set_permissions(&target, fs::Permissions::from_mode(0o600)).expect("restrict target");
+        symlink(&target, &link).expect("create link");
+
+        let error = read_token_file(&link).expect_err("reject link");
+        assert_eq!(error.raw_os_error(), Some(libc::ELOOP));
+    }
+
+    #[test]
+    fn network_errors_do_not_expose_request_urls() {
+        let request_error = reqwest::blocking::Client::new()
+            .get("http://[invalid/signed-secret")
+            .send()
+            .expect_err("invalid URL");
+        let error = network_error(request_error);
+        assert!(!error.to_string().contains("signed-secret"));
     }
 }

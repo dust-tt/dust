@@ -56,7 +56,16 @@ export class DatabaseSandboxMountAdapter implements SandboxMountAdapter {
     const result = await sandbox.execRoot(
       auth,
       rootCommand.and([
-        rootCommand.exec("/usr/bin/mkdir", ["-p", FILE_SYSTEM_DIRECTORY]),
+        rootCommand.exec("/usr/bin/install", [
+          "-d",
+          "-o",
+          "root",
+          "-g",
+          "root",
+          "-m",
+          "700",
+          FILE_SYSTEM_DIRECTORY,
+        ]),
         rootCommand.exec("/usr/bin/install", [
           "-o",
           "root",
@@ -127,6 +136,7 @@ export class DatabaseSandboxMountAdapter implements SandboxMountAdapter {
           auth,
           rootCommand.unsafeShell(
             `/usr/bin/mkdir -p ${STAGING_DIRECTORY} ${MOUNT_POINT}; ` +
+              `/usr/bin/chmod 700 ${STAGING_DIRECTORY}; ` +
               `if /usr/bin/mountpoint -q ${MOUNT_POINT}; then exit 0; fi; ` +
               `(/usr/bin/nohup /opt/bin/dsbx filesystem mount ` +
               `--mountpoint ${MOUNT_POINT} ` +
