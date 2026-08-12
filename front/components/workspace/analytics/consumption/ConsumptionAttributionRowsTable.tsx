@@ -112,7 +112,7 @@ export function ConsumptionAttributionRowsTable({
               ))}
             </DataTable.Row>
             <tr>
-              <td colSpan={row.getVisibleCells().length}>
+              <td className="max-w-0" colSpan={row.getVisibleCells().length}>
                 <Collapsible open={row.original.isExpanded}>
                   <CollapsibleContent>
                     <ConsumptionAttributionBreakdown
