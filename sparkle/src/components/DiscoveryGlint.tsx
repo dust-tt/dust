@@ -8,7 +8,7 @@ const DEFAULT_START_DELAY_SECONDS = 0.5;
 
 const SWEEP_FROM = "translateX(-100%)";
 const SWEEP_TO = "translateX(160%)";
-const SWEEP_EASING = "cubic-bezier(0.645, 0.045, 0.355, 1)";
+const EASING = "cubic-bezier(0.645, 0.045, 0.355, 1)";
 const PULSE_SCALE = 1.08;
 
 function prefersReducedMotion(): boolean {
@@ -92,6 +92,7 @@ function useGlintTimeline(
       duration: intervalMs,
       delay: startDelaySeconds * 1000,
       iterations: Number.POSITIVE_INFINITY,
+      easing: "linear",
     };
     const pulseEnd = pulseDurationMs / intervalMs;
     const sweepEnd = (pulseDurationMs + sweepDurationMs) / intervalMs;
@@ -102,14 +103,22 @@ function useGlintTimeline(
       animations.push(
         ringRef.current.animate(
           [
-            { offset: 0, transform: "scale(1)" },
-            { offset: pulseEnd * 0.25, transform: `scale(${PULSE_SCALE})` },
-            { offset: pulseEnd * 0.5, transform: "scale(1)" },
-            { offset: pulseEnd * 0.75, transform: `scale(${PULSE_SCALE})` },
+            { offset: 0, transform: "scale(1)", easing: EASING },
+            {
+              offset: pulseEnd * 0.25,
+              transform: `scale(${PULSE_SCALE})`,
+              easing: EASING,
+            },
+            { offset: pulseEnd * 0.5, transform: "scale(1)", easing: EASING },
+            {
+              offset: pulseEnd * 0.75,
+              transform: `scale(${PULSE_SCALE})`,
+              easing: EASING,
+            },
             { offset: pulseEnd, transform: "scale(1)" },
             { offset: 1, transform: "scale(1)" },
           ],
-          { ...options, easing: SWEEP_EASING }
+          options
         )
       );
     }
@@ -119,7 +128,7 @@ function useGlintTimeline(
         sweepRef.current.animate(
           [
             { offset: 0, transform: SWEEP_FROM },
-            { offset: pulseEnd, transform: SWEEP_FROM, easing: SWEEP_EASING },
+            { offset: pulseEnd, transform: SWEEP_FROM, easing: EASING },
             { offset: sweepEnd, transform: SWEEP_TO },
             { offset: 1, transform: SWEEP_TO },
           ],
