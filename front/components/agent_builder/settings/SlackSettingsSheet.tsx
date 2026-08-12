@@ -394,28 +394,27 @@ export function SlackSettingsSheet({
                   }}
                 />
               </div>
-              <div
-                className={`flex items-center justify-between gap-4 pl-4 ${!autoRespondWithoutMentionEnabled ? "cursor-not-allowed opacity-50" : ""}`}
-              >
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <span className="text-sm font-medium text-foreground">
-                    Top-level posts only
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    Only respond to new channel messages, not replies within
-                    threads
-                  </span>
+              {autoRespondWithoutMentionEnabled && (
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <span className="text-sm font-medium text-foreground">
+                      Top-level posts only
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Only respond to new channel messages, not replies within
+                      threads
+                    </span>
+                  </div>
+                  <SliderToggle
+                    selected={autoRespondWithoutMentionSkipThreadRepliesEnabled}
+                    onClick={() =>
+                      setSkipThreadRepliesEnabled(
+                        !autoRespondWithoutMentionSkipThreadRepliesEnabled
+                      )
+                    }
+                  />
                 </div>
-                <SliderToggle
-                  selected={autoRespondWithoutMentionSkipThreadRepliesEnabled}
-                  disabled={!autoRespondWithoutMentionEnabled}
-                  onClick={() =>
-                    setSkipThreadRepliesEnabled(
-                      !autoRespondWithoutMentionSkipThreadRepliesEnabled
-                    )
-                  }
-                />
-              </div>
+              )}
             </div>
           )}
         </SheetFooter>
