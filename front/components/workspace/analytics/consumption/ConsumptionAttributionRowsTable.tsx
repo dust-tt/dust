@@ -52,10 +52,10 @@ export function ConsumptionAttributionRowsTable({
   });
 
   return (
-    <DataTable.Root className="min-w-[800px]">
+    <DataTable.Root className="min-w-150">
       <DataTable.Header>
         {table.getHeaderGroups().map((headerGroup) => (
-          <DataTable.Row key={headerGroup.id} widthClassName="min-w-[800px]">
+          <DataTable.Row key={headerGroup.id} widthClassName="w-full">
             {headerGroup.headers.map((header) => (
               <DataTable.Head
                 column={header.column}
@@ -101,7 +101,7 @@ export function ConsumptionAttributionRowsTable({
         {table.getRowModel().rows.map((row) => (
           <Fragment key={row.id}>
             <DataTable.Row
-              widthClassName="min-w-[800px]"
+              widthClassName="w-full"
               onClick={row.original.onClick}
               rowData={row.original}
             >
