@@ -1,3 +1,4 @@
+import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -9,6 +10,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockAddOwnerPolicyDomain,
+  mockRequestOwnerPolicyDomain,
+  mockRequestWorkspacePolicyDomain,
   mockReadNewDenyLogEntries,
   mockEmitAuditLogEvent,
   mockGenerateExecId,
@@ -24,6 +27,8 @@ const {
   mockFetchActionById,
 } = vi.hoisted(() => ({
   mockAddOwnerPolicyDomain: vi.fn(),
+  mockRequestOwnerPolicyDomain: vi.fn(),
+  mockRequestWorkspacePolicyDomain: vi.fn(),
   mockReadNewDenyLogEntries: vi.fn(),
   mockEmitAuditLogEvent: vi.fn(),
   mockGenerateExecId: vi.fn(),
@@ -57,6 +62,8 @@ vi.mock("@app/lib/api/sandbox/egress_policy", async (importOriginal) => {
   return {
     ...actual,
     addOwnerPolicyDomain: mockAddOwnerPolicyDomain,
+    requestOwnerPolicyDomain: mockRequestOwnerPolicyDomain,
+    requestWorkspacePolicyDomain: mockRequestWorkspacePolicyDomain,
   };
 });
 
@@ -124,16 +131,20 @@ import {
   addEgressDomainTool,
   buildDescribeToolsetOutput,
   createSandboxTools,
+  requestEgressDomainTool,
   runSandboxBashTool,
 } from "./index";
 
 describe("createSandboxTools", () => {
-  it("omits add_egress_domain by default", async () => {
+  it("keeps request_egress_domain but omits self-serve add_egress_domain by default", async () => {
     const { authenticator: auth } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "sandbox_functions");
 
     const tools = await createSandboxTools(auth);
+    const names = tools.map((tool) => tool.name);
 
-    expect(tools.map((tool) => tool.name)).not.toContain("add_egress_domain");
+    expect(names).not.toContain("add_egress_domain");
+    expect(names).toContain("request_egress_domain");
   });
 
   it("includes add_egress_domain when Computer and metadata are enabled", async () => {
@@ -145,13 +156,16 @@ describe("createSandboxTools", () => {
       user.sId,
       workspace.sId
     );
+    await FeatureFlagFactory.basic(auth, "sandbox_functions");
 
     const tools = await createSandboxTools(auth);
+    const names = tools.map((tool) => tool.name);
 
-    expect(tools.map((tool) => tool.name)).toContain("add_egress_domain");
+    expect(names).toContain("add_egress_domain");
+    expect(names).toContain("request_egress_domain");
   });
 
-  it("omits add_egress_domain when Computer is disabled", async () => {
+  it("omits both egress tools when Computer is disabled", async () => {
     const { workspace, user } = await createResourceTest({});
     await WorkspaceResource.updateMetadata(workspace.id, {
       sandboxAllowAgentEgressRequests: true,
@@ -160,23 +174,46 @@ describe("createSandboxTools", () => {
       user.sId,
       workspace.sId
     );
+    await FeatureFlagFactory.basic(auth, "sandbox_functions");
     await FeatureFlagFactory.basic(auth, "disable_computer_feature");
 
     const tools = await createSandboxTools(auth);
+    const names = tools.map((tool) => tool.name);
 
-    expect(tools.map((tool) => tool.name)).not.toContain("add_egress_domain");
+    expect(names).not.toContain("add_egress_domain");
+    expect(names).not.toContain("request_egress_domain");
   });
 
-  it("omits add_egress_domain when metadata is off", async () => {
+  it("omits request_egress_domain when sandbox_functions is off", async () => {
     const { workspace, user } = await createResourceTest({});
+    await WorkspaceResource.updateMetadata(workspace.id, {
+      sandboxAllowAgentEgressRequests: true,
+    });
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
     );
 
     const tools = await createSandboxTools(auth);
+    const names = tools.map((tool) => tool.name);
 
-    expect(tools.map((tool) => tool.name)).not.toContain("add_egress_domain");
+    expect(names).toContain("add_egress_domain");
+    expect(names).not.toContain("request_egress_domain");
+  });
+
+  it("keeps request_egress_domain when the on-the-fly toggle is off", async () => {
+    const { workspace, user } = await createResourceTest({});
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    await FeatureFlagFactory.basic(auth, "sandbox_functions");
+
+    const tools = await createSandboxTools(auth);
+    const names = tools.map((tool) => tool.name);
+
+    expect(names).not.toContain("add_egress_domain");
+    expect(names).toContain("request_egress_domain");
   });
 });
 
@@ -230,7 +267,7 @@ describe("runSandboxBashTool", () => {
 
   function makeExtra(
     overrides: {
-      // The fixture is an untyped fake (the runContext is cast as never), so
+      // The fixture is an untyped fake (cast to ToolHandlerExtra via unknown), so
       // this Picks only the fields the tools read — typed against the real
       // conversation shape so renames surface at compile time.
       conversation?: Pick<ConversationWithoutContentType, "sId"> &
@@ -265,7 +302,7 @@ describe("runSandboxBashTool", () => {
         },
       },
       signal: new AbortController().signal,
-    } as never;
+    } as unknown as ToolHandlerExtra;
   }
 
   it("executes as agent-proxied when the forwarder is healthy", async () => {
@@ -765,7 +802,7 @@ describe("runSandboxBashTool", () => {
           }),
         },
         signal: new AbortController().signal,
-      } as never;
+      } as unknown as ToolHandlerExtra;
     }
 
     it("runs wait-and-collect when resumeState carries a valid execId", async () => {
@@ -861,7 +898,7 @@ describe("addEgressDomainTool", () => {
         },
       },
       signal: new AbortController().signal,
-    } as never;
+    } as unknown as ToolHandlerExtra;
   }
 
   it("refuses to run when agent egress requests are disabled", async () => {
@@ -1067,5 +1104,169 @@ describe("addEgressDomainTool", () => {
 
     expect(result.isErr()).toBe(true);
     expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe("requestEgressDomainTool", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRequestOwnerPolicyDomain.mockResolvedValue(
+      new Ok({
+        outcome: "requested",
+        policy: {
+          allowedDomains: [],
+          requestedDomains: [{ domain: "api.stripe.com", requestedAtMs: 1 }],
+        },
+      })
+    );
+    mockRequestWorkspacePolicyDomain.mockResolvedValue(
+      new Ok({
+        outcome: "requested",
+        policy: {
+          allowedDomains: [],
+          requestedDomains: [{ domain: "api.stripe.com", requestedAtMs: 1 }],
+        },
+      })
+    );
+  });
+
+  function makeExtra({
+    conversationSpaceId = "pod-space-id",
+    allowAgentEgressRequests = true,
+  }: {
+    conversationSpaceId?: string | null;
+    allowAgentEgressRequests?: boolean;
+  } = {}) {
+    return {
+      auth: {
+        getNonNullableWorkspace: () => ({
+          name: "Workspace",
+          sId: "workspace-id",
+          metadata: {
+            sandboxAllowAgentEgressRequests: allowAgentEgressRequests,
+          },
+        }),
+      },
+      runContext: {
+        contextType: "agent_loop",
+        conversation: {
+          sId: "conversation-id",
+          spaceId: conversationSpaceId,
+        },
+      },
+      signal: new AbortController().signal,
+    } as unknown as ToolHandlerExtra;
+  }
+
+  it("errors on pod scope outside a Pod", async () => {
+    const result = await requestEgressDomainTool(
+      { domain: "api.stripe.com", scope: "pod" },
+      makeExtra({ conversationSpaceId: null })
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("not in a Pod");
+    }
+    expect(mockRequestOwnerPolicyDomain).not.toHaveBeenCalled();
+  });
+
+  it("records a pod request against the Pod's own policy file", async () => {
+    const result = await requestEgressDomainTool(
+      { domain: "api.stripe.com", scope: "pod" },
+      makeExtra()
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value[0].text).toContain("Requested for the Pod");
+    }
+    expect(mockRequestOwnerPolicyDomain).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        ownerId: "pod-space-id",
+        domain: "api.stripe.com",
+      }
+    );
+  });
+
+  it("records a workspace request against the workspace policy file", async () => {
+    const result = await requestEgressDomainTool(
+      { domain: "api.stripe.com", scope: "workspace" },
+      // Workspace scope needs no Pod.
+      makeExtra({ conversationSpaceId: null })
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value[0].text).toContain("Requested for the workspace");
+    }
+    expect(mockRequestWorkspacePolicyDomain).toHaveBeenCalledWith(
+      expect.anything(),
+      { domain: "api.stripe.com" }
+    );
+    expect(mockRequestOwnerPolicyDomain).not.toHaveBeenCalled();
+  });
+
+  it("accepts a wildcard domain", async () => {
+    const result = await requestEgressDomainTool(
+      { domain: "*.Stripe.COM", scope: "pod" },
+      makeExtra()
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(mockRequestOwnerPolicyDomain).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        ownerId: "pod-space-id",
+        domain: "*.stripe.com",
+      }
+    );
+  });
+
+  it("reports when the domain is already allowed", async () => {
+    mockRequestOwnerPolicyDomain.mockResolvedValue(
+      new Ok({ outcome: "already_allowed", policy: { allowedDomains: [] } })
+    );
+
+    const result = await requestEgressDomainTool(
+      { domain: "api.stripe.com", scope: "pod" },
+      makeExtra()
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value[0].text).toContain("Already allowed for the Pod");
+    }
+  });
+
+  it("surfaces an already-pending request to the caller", async () => {
+    mockRequestOwnerPolicyDomain.mockResolvedValue(
+      new Ok({ outcome: "already_requested", policy: { allowedDomains: [] } })
+    );
+
+    const result = await requestEgressDomainTool(
+      { domain: "api.stripe.com", scope: "pod" },
+      makeExtra()
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value[0].text).toContain("Already requested for the Pod");
+    }
+  });
+
+  it("still records a request when the on-the-fly egress toggle is off", async () => {
+    const result = await requestEgressDomainTool(
+      { domain: "api.stripe.com", scope: "pod" },
+      makeExtra({ allowAgentEgressRequests: false })
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(mockRequestOwnerPolicyDomain).toHaveBeenCalled();
   });
 });
