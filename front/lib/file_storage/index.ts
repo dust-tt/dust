@@ -294,6 +294,22 @@ export class FileStorage {
     return signedUrl.toString();
   }
 
+  async getSignedUploadUrl(
+    filename: string,
+    {
+      contentType,
+      expirationDelayMs,
+    }: { contentType: string; expirationDelayMs: number }
+  ): Promise<string> {
+    const [signedUrl] = await this.file(filename).getSignedUrl({
+      version: "v4",
+      action: "write",
+      expires: Date.now() + expirationDelayMs,
+      contentType,
+    });
+    return signedUrl;
+  }
+
   file(filename: string) {
     return this.bucket.file(filename);
   }
