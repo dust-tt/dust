@@ -85,6 +85,7 @@ export const WEBHOOK_REQUEST_TRIGGER_STATUSES = [
   "workflow_start_failed",
   "not_matched",
   "rate_limited",
+  "credits_exhausted",
 ] as const;
 
 export type WebhookRequestTriggerStatus =

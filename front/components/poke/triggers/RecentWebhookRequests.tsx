@@ -31,6 +31,7 @@ const STATUS_FILTER_LABELS: Record<WebhookRequestTriggerStatus, string> = {
   workflow_start_failed: "Failed",
   not_matched: "Not Matched",
   rate_limited: "Rate Limited",
+  credits_exhausted: "Out Of Credits",
 };
 
 export function PokeRecentWebhookRequests({
@@ -107,8 +108,10 @@ function PokeRecentWebhookRequestsContent({
     );
   }
 
-  const wasRateLimited = webhookRequests.some(
-    (request) => request.status === "rate_limited"
+  const lastBlocked = webhookRequests.find(
+    (request) =>
+      request.status === "rate_limited" ||
+      request.status === "credits_exhausted"
   );
 
   return (
@@ -146,9 +149,10 @@ function PokeRecentWebhookRequestsContent({
         </p>
       ) : (
         <>
-          {wasRateLimited && !statusFilter && (
+          {lastBlocked && !statusFilter && (
             <div className="text-sm text-muted-foreground">
-              Some requests were rate limited.
+              {lastBlocked.errorMessage ??
+                `Some requests were blocked (${STATUS_FILTER_LABELS[lastBlocked.status]}).`}
             </div>
           )}
           <div className="flex flex-col px-4">
@@ -166,7 +170,12 @@ function PokeRecentWebhookRequestsContent({
                     </div>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    {request.payload ? (
+                    {request.errorMessage && (
+                      <p className="pb-2 text-sm text-muted-foreground">
+                        {request.errorMessage}
+                      </p>
+                    )}
+                    {request.payload && (
                       <div className="rounded">
                         <pre className="max-h-64 overflow-auto text-xs">
                           <Markdown
@@ -175,7 +184,8 @@ function PokeRecentWebhookRequestsContent({
                           />
                         </pre>
                       </div>
-                    ) : (
+                    )}
+                    {!request.payload && !request.errorMessage && (
                       <p className="text-sm text-muted-foreground">
                         No payload available.
                       </p>
