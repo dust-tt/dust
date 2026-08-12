@@ -116,7 +116,7 @@ interface DataTableProps<TData extends TBaseData> {
   enableSortingRemoval?: boolean;
   /** Omit the default bottom divider on tbody rows (e.g. dense custom lists). */
   hideRowDivider?: boolean;
-  renderSubComponent?: (row: Row<TData>) => ReactNode;
+  renderSubComponent?: (row: TData) => ReactNode;
 }
 
 export function DataTable<TData extends TBaseData>({
@@ -294,47 +294,49 @@ export function DataTable<TData extends TBaseData>({
               }
               row.original.onClick?.();
             };
-            const subComponent = renderSubComponent?.(row);
-
-            return (
-              <React.Fragment key={row.id}>
-                <DataTable.Row
-                  widthClassName={widthClassName}
-                  hideBottomBorder={hideRowDivider}
-                  onClick={
-                    enableRowSelection ? handleRowClick : row.original.onClick
+            const renderedRow = (
+              <DataTable.Row
+                widthClassName={widthClassName}
+                key={row.id}
+                hideBottomBorder={hideRowDivider}
+                onClick={
+                  enableRowSelection ? handleRowClick : row.original.onClick
+                }
+                onDoubleClick={row.original.onDoubleClick}
+                rowData={row.original}
+                {...(enableRowSelection && {
+                  "data-selected": row.getIsSelected(),
+                })}
+              >
+                {row.getVisibleCells().map((cell) => {
+                  const breakpoint = columnsBreakpoints[cell.column.id];
+                  if (
+                    !windowSize.width ||
+                    !shouldRenderColumn(windowSize.width, breakpoint)
+                  ) {
+                    return null;
                   }
-                  onDoubleClick={row.original.onDoubleClick}
-                  rowData={row.original}
-                  {...(enableRowSelection && {
-                    "data-selected": row.getIsSelected(),
-                  })}
-                >
-                  {row.getVisibleCells().map((cell) => {
-                    const breakpoint = columnsBreakpoints[cell.column.id];
-                    if (
-                      !windowSize.width ||
-                      !shouldRenderColumn(windowSize.width, breakpoint)
-                    ) {
-                      return null;
-                    }
-                    return (
-                      <DataTable.Cell column={cell.column} key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </DataTable.Cell>
-                    );
-                  })}
-                </DataTable.Row>
-                {subComponent != null && (
-                  <tr>
-                    <td colSpan={row.getVisibleCells().length}>
-                      {subComponent}
-                    </td>
-                  </tr>
-                )}
+                  return (
+                    <DataTable.Cell column={cell.column} key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </DataTable.Cell>
+                  );
+                })}
+              </DataTable.Row>
+            );
+
+            const subComponent = renderSubComponent?.(row.original);
+            return subComponent == null ? (
+              renderedRow
+            ) : (
+              <React.Fragment key={row.id}>
+                {renderedRow}
+                <tr>
+                  <td colSpan={row.getVisibleCells().length}>{subComponent}</td>
+                </tr>
               </React.Fragment>
             );
           })}

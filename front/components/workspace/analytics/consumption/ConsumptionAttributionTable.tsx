@@ -33,7 +33,9 @@ const BREAKDOWN_PREVIEW_LIMIT = 3;
 
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
 
-type BreakdownDimension = "model" | "tool" | "user";
+const BREAKDOWN_DIMENSIONS = ["model", "tool", "user"] as const;
+
+type BreakdownDimension = (typeof BREAKDOWN_DIMENSIONS)[number];
 
 const BREAKDOWN_LABELS: Record<BreakdownDimension, string> = {
   model: "By model",
@@ -42,7 +44,6 @@ const BREAKDOWN_LABELS: Record<BreakdownDimension, string> = {
 };
 
 type AttributionRowData = ConsumptionTopRow & {
-  breakdownId: string;
   isExpanded: boolean;
   onClick: () => void;
 };
@@ -54,8 +55,6 @@ function CostShareBar({
   percentage: number;
   className?: string;
 }) {
-  const clampedPercentage = Math.min(100, Math.max(0, percentage));
-
   return (
     <svg
       aria-hidden="true"
@@ -64,18 +63,13 @@ function CostShareBar({
       viewBox="0 0 100 6"
     >
       <rect className="fill-muted" height="6" rx="3" width="100" />
-      <rect
-        className="fill-primary"
-        height="6"
-        rx="3"
-        width={clampedPercentage}
-      />
+      <rect className="fill-primary" height="6" rx="3" width={percentage} />
     </svg>
   );
 }
 
 function CostShareCell({ share }: { share: number }) {
-  const percentage = Math.min(100, Math.max(0, share * 100));
+  const percentage = Math.min(100, share * 100);
   return (
     <div className="flex items-center gap-2">
       <CostShareBar className="w-24" percentage={percentage} />
@@ -154,7 +148,7 @@ function buildColumns({
     },
     {
       id: "details",
-      header: () => <span className="sr-only">Details</span>,
+      header: "",
       enableSorting: false,
       meta: { sizeRatio: 6, headerAlign: "right" },
       cell: (info) => {
@@ -165,10 +159,8 @@ function buildColumns({
               icon={row.isExpanded ? ChevronDown : ChevronRight}
               variant="ghost-secondary"
               size="xs"
-              className="h-11 w-11"
               aria-label={`${row.isExpanded ? "Collapse" : "Expand"} breakdown for ${row.name}`}
               aria-expanded={row.isExpanded}
-              aria-controls={row.breakdownId}
               onClick={(event) => {
                 event.stopPropagation();
                 row.onClick();
@@ -235,7 +227,7 @@ function BreakdownColumn({
         <div className="flex flex-col gap-2">
           {visibleRows.map((row) => {
             const share = totalCredits > 0 ? row.credits / totalCredits : 0;
-            const percentage = Math.min(100, Math.max(0, share * 100));
+            const percentage = Math.min(100, share * 100);
             return (
               <div key={row.id} className="min-w-0">
                 <div className="mb-1 flex items-center justify-between gap-2 text-xs">
@@ -257,7 +249,6 @@ function BreakdownColumn({
 }
 
 interface AttributionBreakdownProps {
-  id: string;
   workspaceId: string;
   selectedDimension: ConsumptionDimension;
   selectedRowId: string;
@@ -266,44 +257,28 @@ interface AttributionBreakdownProps {
 }
 
 function AttributionBreakdown({
-  id,
   workspaceId,
   selectedDimension,
   selectedRowId,
   period,
   filter,
 }: AttributionBreakdownProps) {
-  const selectedFilter = useMemo<ConsumptionScopeFilter>(
-    () => ({
-      ...filter,
-      [CONSUMPTION_DIMENSION_FILTER_KEYS[selectedDimension]]: [selectedRowId],
-    }),
-    [filter, selectedDimension, selectedRowId]
-  );
+  const selectedFilter: ConsumptionScopeFilter = {
+    ...filter,
+    [CONSUMPTION_DIMENSION_FILTER_KEYS[selectedDimension]]: [selectedRowId],
+  };
 
   return (
-    <div
-      id={id}
-      className="grid grid-cols-3 gap-8 border-b border-separator px-2 py-4"
-    >
-      <BreakdownColumn
-        workspaceId={workspaceId}
-        dimension="model"
-        period={period}
-        filter={selectedFilter}
-      />
-      <BreakdownColumn
-        workspaceId={workspaceId}
-        dimension="tool"
-        period={period}
-        filter={selectedFilter}
-      />
-      <BreakdownColumn
-        workspaceId={workspaceId}
-        dimension="user"
-        period={period}
-        filter={selectedFilter}
-      />
+    <div className="grid grid-cols-3 gap-8 border-b border-separator px-2 py-4">
+      {BREAKDOWN_DIMENSIONS.map((dimension) => (
+        <BreakdownColumn
+          key={dimension}
+          workspaceId={workspaceId}
+          dimension={dimension}
+          period={period}
+          filter={selectedFilter}
+        />
+      ))}
     </div>
   );
 }
@@ -324,10 +299,7 @@ function AttributionRows({
   search,
 }: AttributionRowsProps) {
   const { hasAvatar, avgLabel } = CONSUMPTION_DIMENSION_CONFIG[dimension];
-  const [expandedRow, setExpandedRow] = useState<{
-    dimension: ConsumptionDimension;
-    id: string;
-  } | null>(null);
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
   const {
     rows: allRows,
@@ -380,24 +352,12 @@ function AttributionRows({
     );
   }
 
-  const toggleRow = (rowId: string) => {
-    setExpandedRow((current) =>
-      current?.dimension === dimension && current.id === rowId
-        ? null
-        : { dimension, id: rowId }
-    );
-  };
-
-  const data: AttributionRowData[] = rows.map((row) => {
-    const isExpanded =
-      expandedRow?.dimension === dimension && expandedRow.id === row.id;
-    return {
-      ...row,
-      breakdownId: `consumption-breakdown-${dimension}-${row.id}`,
-      isExpanded,
-      onClick: () => toggleRow(row.id),
-    };
-  });
+  const data: AttributionRowData[] = rows.map((row) => ({
+    ...row,
+    isExpanded: expandedRowId === row.id,
+    onClick: () =>
+      setExpandedRowId((current) => (current === row.id ? null : row.id)),
+  }));
 
   return (
     <div className="overflow-x-auto">
@@ -405,20 +365,17 @@ function AttributionRows({
         data={data}
         columns={columns}
         widthClassName="min-w-[800px]"
-        getRowId={(row) => row.id}
-        renderSubComponent={(tableRow) => {
-          const row = tableRow.original;
-          return row.isExpanded ? (
+        renderSubComponent={(row) =>
+          row.isExpanded ? (
             <AttributionBreakdown
-              id={row.breakdownId}
               workspaceId={workspaceId}
               selectedDimension={dimension}
               selectedRowId={row.id}
               period={period}
               filter={filter}
             />
-          ) : null;
-        }}
+          ) : null
+        }
       />
     </div>
   );
