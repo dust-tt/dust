@@ -109,7 +109,7 @@ export async function listConsumptionFacetCatalog(
       label: member.fullName,
       pictureUrl: member.image,
     })),
-    team: groups.map((group) => ({
+    group: groups.map((group) => ({
       value: group.sId,
       label: group.name,
       pictureUrl: null,

@@ -48,7 +48,7 @@ export function UsageFilterOptionIcon({ option }: UsageFilterOptionIconProps) {
       ) : null;
     case "skill":
       return <Icon visual={getSkillIcon(option.icon)} size="sm" />;
-    case "team":
+    case "group":
       return null;
     default:
       assertNeverAndIgnore(option);

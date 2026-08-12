@@ -18,7 +18,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
  * The expected mapping is:
  * - "agent": agent sIds
  * - "user": user sIds
- * - "team": group sIds
+ * - "group": group sIds
  * - "model": raw model ids
  * - "tool": MCP server names
  * - "skill": skill sIds
@@ -76,7 +76,7 @@ export async function resolveDimensionLabels(
       );
     }
 
-    case "team": {
+    case "group": {
       const groups = await GroupResource.listAllWorkspaceGroups(auth, {
         groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
       });

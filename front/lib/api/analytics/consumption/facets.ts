@@ -53,7 +53,7 @@ export type ConsumptionFacets = {
   facets: {
     agent: ConsumptionAgentFacet[];
     user: ConsumptionFacet[];
-    team: ConsumptionFacet[];
+    group: ConsumptionFacet[];
     model: ConsumptionModelFacet[];
     tool: ConsumptionFacet[];
     skill: ConsumptionFacet[];
@@ -266,11 +266,11 @@ export async function fetchConsumptionFacets(
     getFacetBuckets(bucketsByDimension, "user"),
     catalog.user
   );
-  const teamFacets = await resolveFacets(
+  const groupFacets = await resolveFacets(
     auth,
-    "team",
-    getFacetBuckets(bucketsByDimension, "team"),
-    catalog.team
+    "group",
+    getFacetBuckets(bucketsByDimension, "group"),
+    catalog.group
   );
   const modelFacets = await resolveFacets(
     auth,
@@ -302,7 +302,7 @@ export async function fetchConsumptionFacets(
     facets: {
       agent: agentFacets,
       user: userFacets,
-      team: teamFacets,
+      group: groupFacets,
       model: modelFacets,
       tool: toolFacets,
       skill: skillFacets,

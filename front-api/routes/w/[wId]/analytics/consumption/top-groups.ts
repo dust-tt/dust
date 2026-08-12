@@ -3,17 +3,17 @@ import {
   ConsumptionTopQuerySchema,
   toConsumptionPeriodInput,
 } from "@app/lib/api/analytics/consumption/schema";
-import type { GetConsumptionTopTeamsResponse } from "@app/lib/api/analytics/consumption/top_teams";
-import { fetchConsumptionTopTeams } from "@app/lib/api/analytics/consumption/top_teams";
+import type { GetConsumptionTopGroupsResponse } from "@app/lib/api/analytics/consumption/top_groups";
+import { fetchConsumptionTopGroups } from "@app/lib/api/analytics/consumption/top_groups";
 import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
-export type { GetConsumptionTopTeamsResponse };
+export type { GetConsumptionTopGroupsResponse };
 
-// Mounted at /api/w/:wId/analytics/consumption/top-teams.
+// Mounted at /api/w/:wId/analytics/consumption/top-groups.
 const app = workspaceApp();
 
 /** @ignoreswagger */
@@ -21,7 +21,7 @@ app.get(
   "/",
   ensureIsManager(),
   validate("query", ConsumptionTopQuerySchema),
-  async (ctx): HandlerResult<GetConsumptionTopTeamsResponse> => {
+  async (ctx): HandlerResult<GetConsumptionTopGroupsResponse> => {
     const auth = ctx.get("auth");
     const { limit, filter, ...periodQuery } = ctx.req.valid("query");
 
@@ -30,7 +30,7 @@ app.get(
       toConsumptionPeriodInput(periodQuery)
     );
 
-    const result = await fetchConsumptionTopTeams(auth, {
+    const result = await fetchConsumptionTopGroups(auth, {
       period,
       limit,
       filter,
@@ -41,13 +41,13 @@ app.get(
           workspaceId: auth.getNonNullableWorkspace().sId,
           err: result.error,
         },
-        "[ConsumptionAnalytics] Failed to retrieve top-teams."
+        "[ConsumptionAnalytics] Failed to retrieve top-groups."
       );
       return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
-          message: "Failed to retrieve top teams.",
+          message: "Failed to retrieve top groups.",
         },
       });
     }

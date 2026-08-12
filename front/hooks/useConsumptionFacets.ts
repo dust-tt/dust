@@ -1,12 +1,12 @@
 import type {
   UsageFilterAgentOption,
   UsageFilterCategory,
+  UsageFilterGroupOption,
   UsageFilterMemberOption,
   UsageFilterModelOption,
   UsageFilterOptionForCategory,
   UsageFilterSkillOption,
   UsageFilterSourceOption,
-  UsageFilterTeamOption,
   UsageFilterToolOption,
 } from "@app/components/workspace/analytics/usageFilter";
 import { usageModelTierFromModelsTierName } from "@app/components/workspace/analytics/usageFilter";
@@ -28,7 +28,7 @@ export type ConsumptionFacetOptions = {
 const EMPTY_FACET_OPTIONS: ConsumptionFacetOptions = {
   agent: [],
   member: [],
-  team: [],
+  group: [],
   model: [],
   tool: [],
   skill: [],
@@ -101,9 +101,9 @@ function toFacetOptions(
       kind: "member",
       image: facet.pictureUrl,
     })),
-    team: data.facets.team.map<UsageFilterTeamOption>((facet) => ({
+    group: data.facets.group.map<UsageFilterGroupOption>((facet) => ({
       ...baseOption(facet),
-      kind: "team",
+      kind: "group",
     })),
     model: data.facets.model.map<UsageFilterModelOption>((facet) => ({
       ...baseOption(facet),

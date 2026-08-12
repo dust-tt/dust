@@ -28,7 +28,7 @@ const RESPONSE: GetConsumptionFacetsResponse = {
       },
     ],
     user: [],
-    team: [],
+    group: [],
     model: [],
     tool: [],
     skill: [],

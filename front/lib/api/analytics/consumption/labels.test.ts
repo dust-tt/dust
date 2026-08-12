@@ -109,17 +109,17 @@ describe("resolveDimensionLabels", () => {
     });
   });
 
-  it("labels teams with their group name", async () => {
+  it("labels groups with their group name", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
-    const team = await GroupFactory.regularManual(workspace, "Engineering");
+    const group = await GroupFactory.regularManual(workspace, "Engineering");
 
-    const labels = await resolveDimensionLabels(authenticator, "team", [
-      team.sId,
+    const labels = await resolveDimensionLabels(authenticator, "group", [
+      group.sId,
     ]);
 
-    expect(labels.get(team.sId)).toEqual({
+    expect(labels.get(group.sId)).toEqual({
       name: "Engineering",
       pictureUrl: null,
     });

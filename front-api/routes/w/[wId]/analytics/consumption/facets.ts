@@ -55,7 +55,7 @@ const app = workspaceApp();
  *                     type: array
  *                     items:
  *                       type: string
- *                   teams:
+ *                   groups:
  *                     type: array
  *                     items:
  *                       type: string
@@ -98,7 +98,7 @@ const app = workspaceApp();
  *                       format: date-time
  *                 facets:
  *                   type: object
- *                   required: [agent, user, team, model, tool, skill, source]
+ *                   required: [agent, user, group, model, tool, skill, source]
  *                   properties:
  *                     agent:
  *                       type: array
@@ -108,7 +108,7 @@ const app = workspaceApp();
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/PrivateConsumptionFacet'
- *                     team:
+ *                     group:
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/PrivateConsumptionFacet'
