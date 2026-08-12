@@ -116,6 +116,7 @@ interface DataTableProps<TData extends TBaseData> {
   enableSortingRemoval?: boolean;
   /** Omit the default bottom divider on tbody rows (e.g. dense custom lists). */
   hideRowDivider?: boolean;
+  renderSubComponent?: (row: Row<TData>) => ReactNode;
 }
 
 export function DataTable<TData extends TBaseData>({
@@ -141,6 +142,7 @@ export function DataTable<TData extends TBaseData>({
   getRowId,
   enableSortingRemoval = true,
   hideRowDivider = false,
+  renderSubComponent,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
 
@@ -292,39 +294,48 @@ export function DataTable<TData extends TBaseData>({
               }
               row.original.onClick?.();
             };
+            const subComponent = renderSubComponent?.(row);
 
             return (
-              <DataTable.Row
-                widthClassName={widthClassName}
-                key={row.id}
-                hideBottomBorder={hideRowDivider}
-                onClick={
-                  enableRowSelection ? handleRowClick : row.original.onClick
-                }
-                onDoubleClick={row.original.onDoubleClick}
-                rowData={row.original}
-                {...(enableRowSelection && {
-                  "data-selected": row.getIsSelected(),
-                })}
-              >
-                {row.getVisibleCells().map((cell) => {
-                  const breakpoint = columnsBreakpoints[cell.column.id];
-                  if (
-                    !windowSize.width ||
-                    !shouldRenderColumn(windowSize.width, breakpoint)
-                  ) {
-                    return null;
+              <React.Fragment key={row.id}>
+                <DataTable.Row
+                  widthClassName={widthClassName}
+                  hideBottomBorder={hideRowDivider}
+                  onClick={
+                    enableRowSelection ? handleRowClick : row.original.onClick
                   }
-                  return (
-                    <DataTable.Cell column={cell.column} key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </DataTable.Cell>
-                  );
-                })}
-              </DataTable.Row>
+                  onDoubleClick={row.original.onDoubleClick}
+                  rowData={row.original}
+                  {...(enableRowSelection && {
+                    "data-selected": row.getIsSelected(),
+                  })}
+                >
+                  {row.getVisibleCells().map((cell) => {
+                    const breakpoint = columnsBreakpoints[cell.column.id];
+                    if (
+                      !windowSize.width ||
+                      !shouldRenderColumn(windowSize.width, breakpoint)
+                    ) {
+                      return null;
+                    }
+                    return (
+                      <DataTable.Cell column={cell.column} key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </DataTable.Cell>
+                    );
+                  })}
+                </DataTable.Row>
+                {subComponent != null && (
+                  <tr>
+                    <td colSpan={row.getVisibleCells().length}>
+                      {subComponent}
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
             );
           })}
         </DataTable.Body>
@@ -346,7 +357,7 @@ export function DataTable<TData extends TBaseData>({
 }
 
 export interface ScrollableDataTableProps<TData extends TBaseData>
-  extends DataTableProps<TData> {
+  extends Omit<DataTableProps<TData>, "renderSubComponent"> {
   maxHeight?: string | boolean;
   onLoadMore?: () => void;
   isLoading?: boolean;
