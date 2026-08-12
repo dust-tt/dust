@@ -1,8 +1,5 @@
 import { fetchConsumptionTopExportCsv } from "@app/lib/api/analytics/consumption/export";
-import {
-  consumptionPeriodFilenameSlug,
-  resolveConsumptionPeriod,
-} from "@app/lib/api/analytics/consumption/period";
+import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import {
   ConsumptionExportBodySchema,
   toConsumptionPeriodInput,
@@ -23,11 +20,11 @@ app.post(
   validate("json", ConsumptionExportBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
+    const workspaceId = auth.getNonNullableWorkspace().sId;
     const { filter, ...periodQuery } = ctx.req.valid("json");
     const periodInput = toConsumptionPeriodInput(periodQuery);
 
     const period = await resolveConsumptionPeriod(auth, periodInput);
-    const periodSlug = consumptionPeriodFilenameSlug(periodInput, period);
 
     const result = await fetchConsumptionTopExportCsv(auth, {
       period,
@@ -35,10 +32,7 @@ app.post(
     });
     if (result.isErr()) {
       logger.error(
-        {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          err: result.error,
-        },
+        { workspaceId, err: result.error },
         "[ConsumptionAnalytics] Failed to export attribution."
       );
       return apiError(ctx, {
@@ -53,7 +47,7 @@ app.post(
     ctx.header("Content-Type", "text/csv");
     ctx.header(
       "Content-Disposition",
-      `attachment; filename="dust_consumption_export_${periodSlug}.csv"`
+      `attachment; filename="dust_consumption_export_${workspaceId}.csv"`
     );
     return ctx.body(result.value);
   }

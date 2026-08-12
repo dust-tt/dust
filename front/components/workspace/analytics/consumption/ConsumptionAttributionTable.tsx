@@ -260,8 +260,6 @@ export function ConsumptionAttributionTable({
 
   const csvDownload = useDownloadCsv({
     url: `/api/w/${workspaceId}/analytics/consumption/export`,
-    // The server names the attachment (it knows the resolved cycle date);
-    // this is only the fallback if it didn't set Content-Disposition.
     filename: `dust_consumption_export_${workspaceId}.csv`,
     body: exportBody,
   });

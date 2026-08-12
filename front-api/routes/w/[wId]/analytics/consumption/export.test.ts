@@ -73,8 +73,8 @@ describe("POST /api/w/:wId/analytics/consumption/export", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toContain("text/csv");
-    expect(response.headers.get("Content-Disposition")).toMatch(
-      /filename="dust_consumption_export_ongoing_cycle_date_\d{4}-\d{2}-\d{2}\.csv"/
+    expect(response.headers.get("Content-Disposition")).toContain(
+      `filename="dust_consumption_export_${workspace.sId}.csv"`
     );
     const csv = await response.text();
     expect(csv).toContain("dimension,name,costSharePercent,credits,avgCredits");
@@ -91,22 +91,6 @@ describe("POST /api/w/:wId/analytics/consumption/export", () => {
     expect(vi.mocked(fetchConsumptionAllGroups)).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ dimension: "tool", unit: "invocation" })
-    );
-  });
-
-  it("names the attachment after a relative day period", async () => {
-    mockGroups({});
-    mockLabels({});
-    const { workspace } = await setupTest({ role: "admin" });
-
-    const response = await postExportRequest(workspace.sId, {
-      period: "days",
-      days: 7,
-    });
-
-    expect(response.status).toBe(200);
-    expect(response.headers.get("Content-Disposition")).toContain(
-      'filename="dust_consumption_export_last_7_days.csv"'
     );
   });
 

@@ -10,17 +10,6 @@ interface UseDownloadCsvOptions {
   body?: unknown;
 }
 
-// The server knows things the client doesn't when it names the attachment
-// (e.g. the actual resolved billing cycle date), so prefer its
-// Content-Disposition filename and fall back to the caller's name only if
-// it didn't set one.
-function filenameFromContentDisposition(
-  contentDisposition: string | null
-): string | null {
-  const match = contentDisposition?.match(/filename="([^"]+)"/);
-  return match ? match[1] : null;
-}
-
 export function useDownloadCsv({
   url,
   filename,
@@ -49,10 +38,7 @@ export function useDownloadCsv({
       const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = objectUrl;
-      a.download =
-        filenameFromContentDisposition(
-          response.headers.get("Content-Disposition")
-        ) ?? filename;
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(objectUrl);
     } finally {
