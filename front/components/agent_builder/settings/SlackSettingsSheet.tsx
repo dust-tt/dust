@@ -1,7 +1,13 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useSlackUserPrivateChannels } from "@app/lib/swr/assistants";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
+import {
+  useCreatePersonalConnection,
+  useMCPServer,
+} from "@app/lib/swr/mcp_servers";
 import type { DataSourceType } from "@app/types/data_source";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
@@ -11,6 +17,7 @@ import {
   ContentMessage,
   Icon,
   LinkExternal01,
+  Lock01,
   SearchInput,
   Sheet,
   SheetContainer,
@@ -36,6 +43,7 @@ type SlackChannel = {
   sourceUrl?: string | null;
   autoRespondWithoutMention?: boolean;
   autoRespondWithoutMentionSkipThreadReplies?: boolean;
+  isPrivate?: boolean;
 };
 
 interface SlackChannelsListProps {
@@ -54,6 +62,10 @@ function SlackChannelsList({
   slackDataSource,
 }: SlackChannelsListProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [isConnectingPersonalSlack, setIsConnectingPersonalSlack] =
+    useState(false);
+  const sendNotification = useSendNotification();
+  const { createPersonalConnection } = useCreatePersonalConnection(owner);
 
   const { resources, isResourcesLoading, isResourcesError } =
     useConnectorPermissions({
@@ -65,7 +77,24 @@ function SlackChannelsList({
       viewType: "all",
     });
 
-  const filteredChannels = useMemo(() => {
+  const {
+    status: privateChannelsStatus,
+    privateChannels,
+    mcpServerId,
+    isPrivateChannelsLoading,
+    mutatePrivateChannels,
+  } = useSlackUserPrivateChannels({
+    workspaceId: owner.sId,
+    disabled,
+  });
+
+  const { server: slackMcpServer } = useMCPServer({
+    owner,
+    serverId: mcpServerId ?? "",
+    disabled: !mcpServerId || privateChannelsStatus !== "not_connected",
+  });
+
+  const publicChannels = useMemo(() => {
     if (!resources) {
       return [];
     }
@@ -80,15 +109,41 @@ function SlackChannelsList({
         ),
         slackChannelName: resource.title,
         sourceUrl: resource.sourceUrl,
-      }))
-      .filter(
-        (channel) =>
-          searchQuery.trim() === "" ||
-          channel.slackChannelName
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase())
-      );
-  }, [resources, searchQuery]);
+        isPrivate: false as const,
+      }));
+  }, [resources]);
+
+  const mergedChannels = useMemo(() => {
+    const byId = new Map<string, SlackChannel>();
+
+    for (const channel of publicChannels) {
+      byId.set(channel.slackChannelId, channel);
+    }
+
+    for (const channel of privateChannels) {
+      // Prefer the private-channel entry so admins see the lock affordance.
+      byId.set(channel.slackChannelId, {
+        slackChannelId: channel.slackChannelId,
+        slackChannelName: channel.slackChannelName,
+        sourceUrl: channel.sourceUrl,
+        isPrivate: true,
+      });
+    }
+
+    return Array.from(byId.values()).sort((a, b) =>
+      a.slackChannelName.localeCompare(b.slackChannelName)
+    );
+  }, [publicChannels, privateChannels]);
+
+  const filteredChannels = useMemo(() => {
+    if (searchQuery.trim() === "") {
+      return mergedChannels;
+    }
+    const query = searchQuery.toLowerCase();
+    return mergedChannels.filter((channel) =>
+      channel.slackChannelName.toLowerCase().includes(query)
+    );
+  }, [mergedChannels, searchQuery]);
 
   const handleChannelToggle = useCallback(
     (channel: SlackChannel, isChecked?: boolean) => {
@@ -102,6 +157,7 @@ function SlackChannelsList({
           slackChannelId: channel.slackChannelId,
           slackChannelName: channel.slackChannelName,
           sourceUrl: channel.sourceUrl,
+          isPrivate: channel.isPrivate,
         };
         onSelectionChange([...existingSelection, channelForSelection]);
       } else {
@@ -123,6 +179,55 @@ function SlackChannelsList({
     [existingSelection]
   );
 
+  const handleConnectPersonalSlack = useCallback(async () => {
+    if (!mcpServerId || !slackMcpServer?.authorization) {
+      sendNotification({
+        type: "error",
+        title: "Slack Tools unavailable",
+        description:
+          "Activate Slack Tools in your workspace and try again, or ask an admin.",
+      });
+      return;
+    }
+
+    setIsConnectingPersonalSlack(true);
+    try {
+      const result = await createPersonalConnection({
+        mcpServerId,
+        mcpServerDisplayName: "Slack",
+        authorization: slackMcpServer.authorization,
+        provider: "slack_tools",
+        useCase: "personal_actions",
+      });
+
+      if (!result.success) {
+        sendNotification({
+          type: "error",
+          title: "Failed to connect Slack",
+          description:
+            result.error ?? "Could not connect your Slack account. Try again.",
+        });
+        return;
+      }
+
+      await mutatePrivateChannels();
+      sendNotification({
+        type: "success",
+        title: "Slack connected",
+        description:
+          "Private channels you belong to can now appear in this list.",
+      });
+    } finally {
+      setIsConnectingPersonalSlack(false);
+    }
+  }, [
+    createPersonalConnection,
+    mcpServerId,
+    mutatePrivateChannels,
+    sendNotification,
+    slackMcpServer?.authorization,
+  ]);
+
   if (isResourcesError) {
     return (
       <div className="text-sm text-warning">
@@ -131,8 +236,65 @@ function SlackChannelsList({
     );
   }
 
+  const isLoading = isResourcesLoading || isPrivateChannelsLoading;
+
   return (
     <div className="space-y-4">
+      {privateChannelsStatus === "not_connected" && (
+        <ContentMessage
+          size="md"
+          variant="info"
+          title="Show private channels"
+          icon={Lock01}
+        >
+          <div className="flex flex-col gap-3">
+            <p>
+              Connect your personal Slack account to list private channels you
+              are a member of (and where the Dust app is present). This stays
+              scoped to you — other admins will not see your private channels.
+            </p>
+            <div>
+              <Button
+                label={
+                  isConnectingPersonalSlack
+                    ? "Connecting..."
+                    : "Connect Slack account"
+                }
+                variant="outline"
+                size="sm"
+                icon={SlackLogo}
+                disabled={isConnectingPersonalSlack || !mcpServerId}
+                onClick={() => {
+                  void handleConnectPersonalSlack();
+                }}
+              />
+            </div>
+          </div>
+        </ContentMessage>
+      )}
+
+      {privateChannelsStatus === "tool_unavailable" && (
+        <ContentMessage
+          size="md"
+          variant="warning"
+          title="Private channels unavailable"
+          icon={InformationCircleIcon}
+        >
+          <p>
+            Activate the Slack Tools integration in your workspace to list
+            private channels you belong to.
+          </p>
+        </ContentMessage>
+      )}
+
+      {privateChannelsStatus === "ok" && privateChannels.length > 0 && (
+        <div className="text-xs text-muted-foreground">
+          Including {privateChannels.length} private channel
+          {privateChannels.length === 1 ? "" : "s"} from your Slack account.
+          Dust must still be added to a private channel to reply there.
+        </div>
+      )}
+
       <SearchInput
         name="slack-channel-search"
         placeholder="Search channels..."
@@ -140,7 +302,7 @@ function SlackChannelsList({
         onChange={setSearchQuery}
       />
 
-      {isResourcesLoading ? (
+      {isLoading ? (
         <div className="flex justify-center py-8">
           <Spinner size="sm" />
         </div>
@@ -170,6 +332,13 @@ function SlackChannelsList({
                   <span className="text-sm font-medium text-primary-900">
                     {channel.slackChannelName}
                   </span>
+                  {channel.isPrivate && (
+                    <Icon
+                      visual={Lock01}
+                      size="xs"
+                      className="text-muted-foreground"
+                    />
+                  )}
                 </div>
                 {channel.sourceUrl && (
                   <div className="opacity-0 transition-opacity group-hover:opacity-100">
@@ -213,20 +382,24 @@ export function SlackSettingsSheet({
 
   const stateFromChannels = useCallback(
     (channels: typeof slackChannels) => {
-      const ch = channels || [];
+      const ch = channels ?? [];
       return {
         localSlackChannels: [...ch],
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        autoRespondWithoutMentionEnabled: ch[0]?.autoRespondWithoutMention || false,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        skipThreadRepliesEnabled: ch[0]?.autoRespondWithoutMentionSkipThreadReplies || false,
+        autoRespondWithoutMentionEnabled:
+          ch[0]?.autoRespondWithoutMention ?? false,
+        skipThreadRepliesEnabled:
+          ch[0]?.autoRespondWithoutMentionSkipThreadReplies ?? false,
       };
     },
     []
   );
 
   const [
-    { localSlackChannels, autoRespondWithoutMentionEnabled, skipThreadRepliesEnabled },
+    {
+      localSlackChannels,
+      autoRespondWithoutMentionEnabled,
+      skipThreadRepliesEnabled,
+    },
     setLocalState,
   ] = useState(() => stateFromChannels(slackChannels));
 
@@ -248,9 +421,8 @@ export function SlackSettingsSheet({
     const channelsWithSettings = localSlackChannels.map((channel) => ({
       ...channel,
       autoRespondWithoutMention: autoRespondWithoutMentionEnabled,
-      autoRespondWithoutMentionSkipThreadReplies: autoRespondWithoutMentionEnabled
-        ? skipThreadRepliesEnabled
-        : false,
+      autoRespondWithoutMentionSkipThreadReplies:
+        autoRespondWithoutMentionEnabled ? skipThreadRepliesEnabled : false,
     }));
     onChange(channelsWithSettings);
     onOpenChange();
@@ -263,7 +435,7 @@ export function SlackSettingsSheet({
 
   const hasUnsavedChanges = useMemo(() => {
     const currentChannelIds = new Set(
-      (slackChannels || []).map((c) => c.slackChannelId)
+      (slackChannels ?? []).map((c) => c.slackChannelId)
     );
     const localChannelIds = new Set(
       localSlackChannels.map((c) => c.slackChannelId)
@@ -277,10 +449,11 @@ export function SlackSettingsSheet({
       (id) => !localChannelIds.has(id as string)
     );
 
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    const savedAutoRespond = (slackChannels || [])[0]?.autoRespondWithoutMention || false;
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    const savedSkipThreadReplies = (slackChannels || [])[0]?.autoRespondWithoutMentionSkipThreadReplies || false;
+    const savedAutoRespond =
+      (slackChannels ?? [])[0]?.autoRespondWithoutMention ?? false;
+    const savedSkipThreadReplies =
+      (slackChannels ?? [])[0]?.autoRespondWithoutMentionSkipThreadReplies ??
+      false;
 
     return (
       channelSelectionChanged ||
@@ -371,10 +544,12 @@ export function SlackSettingsSheet({
                   onClick={() =>
                     setLocalState((prev) => ({
                       ...prev,
-                      autoRespondWithoutMentionEnabled: !prev.autoRespondWithoutMentionEnabled,
-                      skipThreadRepliesEnabled: prev.autoRespondWithoutMentionEnabled
-                        ? false
-                        : prev.skipThreadRepliesEnabled,
+                      autoRespondWithoutMentionEnabled:
+                        !prev.autoRespondWithoutMentionEnabled,
+                      skipThreadRepliesEnabled:
+                        prev.autoRespondWithoutMentionEnabled
+                          ? false
+                          : prev.skipThreadRepliesEnabled,
                     }))
                   }
                 />
@@ -395,7 +570,8 @@ export function SlackSettingsSheet({
                     onClick={() =>
                       setLocalState((prev) => ({
                         ...prev,
-                        skipThreadRepliesEnabled: !prev.skipThreadRepliesEnabled,
+                        skipThreadRepliesEnabled:
+                          !prev.skipThreadRepliesEnabled,
                       }))
                     }
                   />
