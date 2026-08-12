@@ -70,9 +70,10 @@ impl FileStore {
         api_url: &str,
         workspace_id: &str,
         token: String,
+        token_file: PathBuf,
     ) -> io::Result<Self> {
         fs::create_dir_all(staging_dir)?;
-        let client = FileSystemClient::new(api_url, workspace_id, token)?;
+        let client = FileSystemClient::new(api_url, workspace_id, token, token_file)?;
         let roots = client
             .initialize()?
             .into_iter()

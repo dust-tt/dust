@@ -40,8 +40,14 @@ pub fn mount(
     if token.is_empty() {
         anyhow::bail!("filesystem token file is empty");
     }
-    let store = FileStore::open(staging_dir, api_url, workspace_id, token)
-        .context("failed to initialize filesystem namespace")?;
+    let store = FileStore::open(
+        staging_dir,
+        api_url,
+        workspace_id,
+        token,
+        token_file.to_path_buf(),
+    )
+    .context("failed to initialize filesystem namespace")?;
     let filesystem = DustFuse::new(store);
     let mut config = Config::default();
     config.mount_options = vec![

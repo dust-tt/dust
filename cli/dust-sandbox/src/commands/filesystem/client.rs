@@ -1,5 +1,7 @@
 use std::fs::File;
 use std::io;
+use std::path::PathBuf;
+use std::sync::Mutex;
 
 use reqwest::blocking::{Body, Client};
 use reqwest::header::{CONTENT_LENGTH, CONTENT_TYPE};
@@ -114,15 +116,20 @@ enum Operation<'a> {
     },
 }
 
-#[derive(Clone)]
 pub struct FileSystemClient {
     http: Client,
     endpoint: String,
-    token: String,
+    token: Mutex<String>,
+    token_file: PathBuf,
 }
 
 impl FileSystemClient {
-    pub fn new(api_url: &str, workspace_id: &str, token: String) -> io::Result<Self> {
+    pub fn new(
+        api_url: &str,
+        workspace_id: &str,
+        token: String,
+        token_file: PathBuf,
+    ) -> io::Result<Self> {
         let http = Client::builder()
             .build()
             .map_err(|error| io::Error::new(io::ErrorKind::Other, error))?;
@@ -133,18 +140,22 @@ impl FileSystemClient {
                 api_url.trim_end_matches('/'),
                 workspace_id
             ),
-            token,
+            token: Mutex::new(token),
+            token_file,
         })
     }
 
     fn operation(&self, operation: &Operation<'_>) -> io::Result<OperationResponse> {
-        let response = self
-            .http
-            .post(&self.endpoint)
-            .bearer_auth(&self.token)
-            .json(operation)
-            .send()
-            .map_err(network_error)?;
+        let response = self.send_operation(operation)?;
+        // Front rotates the scoped token file during the normal sandbox
+        // runtime refresh. Keep using the in-memory token until Front rejects
+        // it, then reload once so a long-running mount never needs a restart.
+        let response = if response.status() == reqwest::StatusCode::UNAUTHORIZED {
+            self.reload_token()?;
+            self.send_operation(operation)?
+        } else {
+            response
+        };
         if !response.status().is_success() {
             let code = response
                 .headers()
@@ -153,6 +164,27 @@ impl FileSystemClient {
             return Err(filesystem_error(code));
         }
         response.json().map_err(network_error)
+    }
+
+    fn send_operation(&self, operation: &Operation<'_>) -> io::Result<reqwest::blocking::Response> {
+        let token = self.token.lock().map_err(|_| errno(libc::EIO))?.clone();
+        self.http
+            .post(&self.endpoint)
+            .bearer_auth(token)
+            .json(operation)
+            .timeout(std::time::Duration::from_secs(30))
+            .send()
+            .map_err(network_error)
+    }
+
+    fn reload_token(&self) -> io::Result<()> {
+        let token = std::fs::read_to_string(&self.token_file)?.trim().to_owned();
+        if token.is_empty() {
+            return Err(errno(libc::EACCES));
+        }
+        let mut current = self.token.lock().map_err(|_| errno(libc::EIO))?;
+        *current = token;
+        Ok(())
     }
 
     pub fn initialize(&self) -> io::Result<Vec<RemoteNode>> {
