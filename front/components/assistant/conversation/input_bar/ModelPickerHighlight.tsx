@@ -1,19 +1,49 @@
-import { useModelPickerHighlight } from "@app/hooks/useModelPickerHighlight";
 import { useClientType } from "@app/lib/context/clientType";
 import { cn } from "@dust-tt/sparkle";
 import type React from "react";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+const LOCAL_STORAGE_KEY = "modelPickerHighlightDismissals";
+
+// Two presses are taken as proof the control has been understood. Reloading
+// brings the highlight back; only a press spends the allowance.
+const MAX_DISMISSALS = 2;
+
+// Ends the campaign on its own, so the highlight dies even if the code outlives
+// it — including for anyone who never presses the picker.
+const CAMPAIGN_END = Date.parse("2026-08-26T23:59:59Z");
+
+// Add `?replayHighlight` to any URL to force the highlight on and spend nothing,
+// so a deploy preview can still be checked once the allowance is gone.
+const REPLAY_PARAM = "replayHighlight";
+
+function isReplayRequested(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).has(REPLAY_PARAM)
+  );
+}
+
+function readDismissals(): number {
+  if (typeof window === "undefined") {
+    return MAX_DISMISSALS;
+  }
+  try {
+    const parsed = Number.parseInt(
+      localStorage.getItem(LOCAL_STORAGE_KEY) ?? "",
+      10
+    );
+    return Number.isNaN(parsed) ? 0 : parsed;
+  } catch {
+    // No way to remember the count: stay quiet rather than nag forever.
+    return MAX_DISMISSALS;
+  }
+}
 
 interface GlintStreaksProps {
   className: string;
 }
 
-/**
- * The two diagonal light streaks, as one sweepable layer. The leading streak
- * reads brighter than the one trailing it, the way a highlight travelling over a
- * surface does. Both overshoot the box vertically so the 30° rotation still
- * covers its full height.
- */
 function GlintStreaks({ className }: GlintStreaksProps) {
   return (
     <span className={cn("absolute inset-0", className)}>
@@ -28,61 +58,63 @@ interface ModelPickerHighlightProps {
 }
 
 /**
- * Temporary treatment drawing attention to the model picker: a blue ring that
- * pulses twice every 7s, a light sweep chained right after each pulse, and one
- * extra sweep on hover. Clicking the picker retires it for the rest of the visit;
- * `useModelPickerHighlight` caps how many page loads ever show it.
- *
- * Web only. The extension has its own localStorage, so highlighting there would
- * spend a second pair of views on the same person, and its input bar is too
- * cramped to take an extra ring.
- *
- * Every overlay is absolutely positioned and `pointer-events-none`, so the
- * button's own box, layout and hit area are untouched whether the highlight is on
- * or off. Remove this wrapper and nothing shifts.
+ * Temporary discovery treatment for the model picker: a blue ring pulsing twice
+ * every 7s, a light sweep chained after each pulse, and one extra sweep on hover.
+ * Web only — the extension has its own storage and a more cramped input bar.
  */
 export function ModelPickerHighlight({ children }: ModelPickerHighlightProps) {
-  const clientType = useClientType();
-  const { isHighlightVisible, dismissHighlight } = useModelPickerHighlight({
-    disabled: clientType === "extension",
-  });
+  const isExtension = useClientType() === "extension";
+  const [isVisible, setIsVisible] = useState<boolean>(
+    () =>
+      !isExtension &&
+      (isReplayRequested() ||
+        (Date.now() <= CAMPAIGN_END && readDismissals() < MAX_DISMISSALS))
+  );
   const hostRef = useRef<HTMLSpanElement>(null);
+  const hasSpentDismissalRef = useRef(false);
 
-  // Listened for on the host rather than declared as a prop: the span only
-  // observes the button's presses, it is not itself interactive.
+  const dismiss = useCallback(() => {
+    // Ref-guarded rather than guarded inside the state updater, which has to stay
+    // pure or React would double-count it under StrictMode.
+    if (!hasSpentDismissalRef.current && !isReplayRequested()) {
+      hasSpentDismissalRef.current = true;
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, String(readDismissals() + 1));
+      } catch {
+        // Nothing to do if the write is refused.
+      }
+    }
+    setIsVisible(false);
+  }, []);
+
   useEffect(() => {
     const host = hostRef.current;
-    if (!host || !isHighlightVisible) {
+    if (!host || !isVisible) {
       return;
     }
     // `pointerdown`, not `click`: Radix opens the menu on pointerdown and, being
-    // modal, sets `pointer-events: none` on the body. The mouseup that follows
-    // then hit-tests to <html> rather than the button, so no click event ever
-    // reaches this subtree. Restricted to the primary button to match Radix's
-    // own condition for opening.
-    const dismissOnPrimaryButton = (event: PointerEvent) => {
+    // modal, sets `pointer-events: none` on the body — the mouseup that follows
+    // hit-tests to <html>, so no click event ever reaches this subtree.
+    const onPointerDown = (event: PointerEvent) => {
       if (event.button === 0) {
-        dismissHighlight();
+        dismiss();
       }
     };
-    host.addEventListener("pointerdown", dismissOnPrimaryButton);
-    return () =>
-      host.removeEventListener("pointerdown", dismissOnPrimaryButton);
-  }, [isHighlightVisible, dismissHighlight]);
+    host.addEventListener("pointerdown", onPointerDown);
+    return () => host.removeEventListener("pointerdown", onPointerDown);
+  }, [isVisible, dismiss]);
 
   return (
-    // The host stays mounted after dismissal, so clicking cannot remount the
-    // picker and close the dropdown it just opened.
+    // The host stays mounted after dismissal: swapping it out would remount the
+    // picker and close the dropdown the press just opened.
     <span ref={hostRef} className="glint-host relative inline-flex">
       {children}
-      {isHighlightVisible && (
+      {isVisible && (
         <>
           <span
             aria-hidden
             className="glint-ring-pulse pointer-events-none absolute inset-0 rounded-lg border border-blue-200"
           />
-          {/* The swept layers span the button, so the keyframes' percentage
-              translations scale with it and the streaks cross the whole box. */}
           <span
             aria-hidden
             className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg"

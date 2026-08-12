@@ -97,12 +97,8 @@
   }
 }
 
-/* Light catching new plastic: two thin diagonal streaks cross the element, then
-   wait out the rest of the cycle. Both ends of the travel sit clear of the box,
-   so the streaks are never parked over it — the effect only exists while it is
-   moving. The streaks are hidden by their overflow-hidden parent rather than by
-   an opacity animation, which keeps the whole thing to one composited
-   `transform` on one element. */
+/* Light catching new plastic. Both ends of the travel sit clear of the box, so
+   the streaks are never parked over it — the effect only exists while moving. */
 @keyframes glint-pass {
   from {
     transform: translateX(-100%);
@@ -113,15 +109,9 @@
   }
 }
 
-/* Both the pulse and the sweep run on the same 7s cycle so they stay in step: the
-   ring pulses twice over the first 800ms, then the streaks cross. Expressed as
-   percentages of one shared duration rather than two animations with
-   hand-matched delays, which would drift apart over successive iterations.
-
-   The pass runs from 800ms to 1640ms (11.429% → 23.429%), of which ~410ms has a
-   streak actually over the element; the rest of the travel is the run-up and
-   run-out that keep it from ever resting on top. The remaining 76% of the cycle
-   holds the streaks past the far edge. */
+/* Pulse and sweep share one 7s cycle, expressed as percentages of a single
+   duration rather than two animations with hand-matched delays that would drift
+   apart. Ring pulses over the first 800ms, streaks cross from 800ms to 1640ms. */
 @keyframes glint-sweep {
   0%,
   11.429% {
@@ -134,8 +124,8 @@
   }
 }
 
-/* Two bounces of 400ms at the head of the cycle. Scaling the ring overlay rather
-   than the element keeps the button and its icon perfectly still. */
+/* Scaling the ring overlay rather than the element keeps the icon perfectly
+   still. */
 @keyframes glint-ring-pulse {
   0%,
   5.714%,
@@ -252,20 +242,12 @@
     }
   }
 
-  /* ease-in-out rather than an ease-out throughout: light crossing a surface
-     travels at a near-steady clip. A strong ease-out spent the whole pass in the
-     first 200ms and then crawled off-screen. */
   .glint-sweep,
   .glint-sweep-hover {
-    /* Resting off-screen matters: during the initial delay, and after the hover
-       pass is torn down on mouse-out, no animation value applies — an
-       untransformed layer would park the streaks over the element, the very
-       thing the travel exists to avoid. */
+    /* No animation value applies during the delay, or once the hover pass is torn
+       down: without this the layer would park its streaks over the element. */
     transform: translateX(-100%);
-    /* A 3px blurred bar at 30° is exactly the shape that shows subpixel jitter
-       at the start and end of a transform. Promoting it also rasterises the blur
-       once instead of every frame. Safe to leave on: three small nodes that only
-       exist while the capped highlight is running. */
+    /* A 3px blurred bar at 30° is the shape that shows subpixel jitter. */
     will-change: transform;
   }
 
@@ -280,8 +262,7 @@
     }
   }
 
-  /* Same duration and delay as the sweep: one shared cycle, so the streaks
-     always follow the pulse. */
+  /* Same duration and delay as the sweep, so the streaks follow the pulse. */
   .glint-ring-pulse {
     animation: glint-ring-pulse 7s cubic-bezier(0.645, 0.045, 0.355, 1) infinite;
     animation-delay: 0.5s;
@@ -289,9 +270,8 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    /* The streaks are hidden rather than merely un-animated: parked at their
-       resting transform they would still clip a corner of the element. The
-       static ring carries the highlight on its own. */
+    /* Hidden rather than merely un-animated: parked at their resting transform
+       the streaks would still clip a corner. The static ring suffices. */
     .glint-sweep,
     .glint-sweep-hover {
       animation: none;
