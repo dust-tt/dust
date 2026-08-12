@@ -3,7 +3,7 @@ import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
-import { Button, Spinner } from "@dust-tt/sparkle";
+import { Button, LoadingBlock } from "@dust-tt/sparkle";
 import { useState } from "react";
 import type { ConsumptionDimension } from "./consumptionDimensions";
 
@@ -16,8 +16,26 @@ type BreakdownDimension = (typeof BREAKDOWN_DIMENSIONS)[number];
 const BREAKDOWN_LABELS: Record<BreakdownDimension, string> = {
   model: "By model",
   tool: "By tools",
-  user: "By members",
+  user: "By users",
 };
+
+const SKELETON_LABEL_WIDTHS = ["w-28", "w-20", "w-24"];
+
+function BreakdownColumnSkeleton() {
+  return (
+    <div className="flex flex-col gap-2">
+      {SKELETON_LABEL_WIDTHS.map((width) => (
+        <div key={width}>
+          <div className="mb-1 flex h-4 items-center justify-between">
+            <LoadingBlock className={`h-3 ${width}`} />
+            <LoadingBlock className="h-3 w-7" />
+          </div>
+          <LoadingBlock className="h-1.5 w-full rounded-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 interface BreakdownColumnProps {
   workspaceId: string;
@@ -45,7 +63,7 @@ function BreakdownColumn({
   return (
     <div className="min-w-0">
       <div className="mb-2 flex h-6 items-center justify-between gap-2">
-        <h4 className="text-sm font-medium text-foreground">
+        <h4 className="text-sm font-medium text-muted-foreground">
           {BREAKDOWN_LABELS[dimension]}
         </h4>
         {rows.length > BREAKDOWN_PREVIEW_LIMIT && (
@@ -58,9 +76,7 @@ function BreakdownColumn({
         )}
       </div>
       {isTopLoading ? (
-        <div className="flex h-24 items-center justify-center">
-          <Spinner size="sm" />
-        </div>
+        <BreakdownColumnSkeleton />
       ) : isTopError ? (
         <div className="flex h-24 items-center text-xs text-muted-foreground">
           Failed to load breakdown.
@@ -116,7 +132,7 @@ export function ConsumptionAttributionBreakdown({
   };
 
   return (
-    <div className="grid grid-cols-3 gap-8 border-b border-separator px-2 py-4">
+    <div className="grid animate-in grid-cols-3 gap-20 border-b border-separator px-2 pb-6 pt-4 fade-in-0 slide-in-from-top-1 duration-enter ease-enter motion-reduce:animate-none">
       {BREAKDOWN_DIMENSIONS.map((dimension) => (
         <BreakdownColumn
           key={dimension}
