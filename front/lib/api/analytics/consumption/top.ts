@@ -274,9 +274,6 @@ export type ResolvedConsumptionGroup = {
   avgCredits: number;
 };
 
-// Shared by every per-dimension `top_<dimension>.ts` ranking and the CSV
-// export: both need the same key -> display label lookup and average
-// computation over a dimension's groups, only the final field names differ.
 export async function resolveConsumptionGroupLabels(
   auth: Authenticator,
   dimension: ConsumptionScopeDimension,
