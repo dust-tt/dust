@@ -273,26 +273,6 @@ export async function addOwnerPolicyDomain(
   }
 }
 
-// Deletes the legacy per-providerId policy file written before the
-// owner-keyed layout. Still called on sandbox destroy so pre-migration files
-// get cleaned up as their sandboxes die. No proxy cache invalidation: the
-// sandbox (and its token) is gone, so the cached entry just ages out with
-// the TTL.
-// TODO(2026-08-15 EGRESS_RELAYOUT): remove with the legacy layout.
-export async function deleteLegacySandboxPolicy(
-  sandboxProviderId: string
-): Promise<Result<void, Error>> {
-  try {
-    await getPolicyBucket().delete(`sandboxes/${sandboxProviderId}.json`, {
-      ignoreNotFound: true,
-    });
-
-    return new Ok(undefined);
-  } catch (error) {
-    return new Err(normalizeError(error));
-  }
-}
-
 // Owner files outlive individual sandboxes by design; they are deleted when
 // their owner is (conversation destruction, pod space deletion), not when a
 // sandbox is destroyed.

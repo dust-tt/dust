@@ -39,7 +39,6 @@ vi.mock("@app/lib/file_storage", () => ({
 
 import {
   addOwnerPolicyDomain,
-  deleteLegacySandboxPolicy,
   deleteOwnerPolicy,
   deleteWorkspacePolicy,
   parseExactEgressDomain,
@@ -361,16 +360,6 @@ describe("owner egress policy storage", () => {
         expect.anything()
       );
     });
-  });
-
-  it("deletes legacy per-provider policy files without invalidation", async () => {
-    const result = await deleteLegacySandboxPolicy("provider-id");
-
-    expect(result).toEqual(new Ok(undefined));
-    expect(mockDelete).toHaveBeenCalledWith("sandboxes/provider-id.json", {
-      ignoreNotFound: true,
-    });
-    expect(mockMintEgressInvalidationJwt).not.toHaveBeenCalled();
   });
 
   it("parses exact domains and rejects malformed entries", () => {
