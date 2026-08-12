@@ -1,6 +1,6 @@
 import { resolvePodForRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import type { Authenticator } from "@app/lib/auth";
-import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import type {
   EnsureSandboxResult,
@@ -15,7 +15,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -24,11 +24,13 @@ type ConversationSandboxOwner = Pick<
   "id" | "sId"
 >;
 
-// ensureSandboxActive additionally needs the conversation's space (a string
-// sId, so ConversationResource — whose spaceId is a ModelId — does not
-// qualify) to inject pod-scoped env vars for conversations inside a pod.
-type ConversationSandboxEnsureOwner = ConversationSandboxOwner &
-  Pick<ConversationWithoutContentType, "spaceId">;
+// The conversation's authorization scope, resolved from the database inside
+// the lifecycle lock — never from the caller's conversation object, which is
+// typically an agent-loop snapshot that a concurrent move can invalidate.
+export type ConversationSandboxScope = {
+  // The pod's space sId when the conversation lives in one.
+  spaceId: string | null;
+};
 
 type ConversationSandboxLifecycleOwner = Pick<
   ConversationResource,
@@ -144,13 +146,31 @@ export class ConversationSandboxAdapter {
 
   static async ensureSandboxActive(
     auth: Authenticator,
-    conversation: ConversationSandboxEnsureOwner
-  ): Promise<Result<EnsureSandboxResult, Error>> {
+    conversation: ConversationSandboxOwner
+  ): Promise<Result<EnsureSandboxResult<ConversationSandboxScope>, Error>> {
     return SandboxResource.ensureActive(auth, {
       lockKey: conversation.sId,
+      // Runs under the lifecycle lock: the conversation's pod association is
+      // an authorization input (egress claims, pod env vars, pod mounts) and
+      // a move — which holds the same lock — can change it at any time
+      // before the lock is acquired. Only the conversation's identity is
+      // trusted from the caller.
+      resolveScope: async () => {
+        const fresh = await ConversationResource.fetchById(
+          auth,
+          conversation.sId
+        );
+        if (!fresh) {
+          return new Err(
+            new Error(`Conversation ${conversation.sId} not found.`)
+          );
+        }
+        return new Ok({ spaceId: fresh.spaceSId });
+      },
       // Factory form: the pod-scope loads only run when a sandbox is
       // actually created.
-      envVars: () => this.buildConversationEnvVars(auth, conversation),
+      envVars: (scope) =>
+        this.buildConversationEnvVars(auth, conversation, scope),
       logLabel: "conversation",
       fetchSandbox: () => this.fetchSandbox(auth, conversation),
       createSandbox: (blob) =>
@@ -167,14 +187,15 @@ export class ConversationSandboxAdapter {
   // rule, keeping the file and the env consistent.
   private static async buildConversationEnvVars(
     auth: Authenticator,
-    conversation: ConversationSandboxEnsureOwner
+    conversation: ConversationSandboxOwner,
+    scope: ConversationSandboxScope
   ): Promise<Result<Record<string, string>, Error>> {
     const baseEnv = { CONVERSATION_ID: conversation.sId };
 
     const runtimeOwner = {
       kind: "conversation" as const,
       conversationId: conversation.sId,
-      spaceId: conversation.spaceId ?? null,
+      spaceId: scope.spaceId,
     };
     const podResult = await resolvePodForRuntimeOwner(auth, runtimeOwner);
     if (podResult.isErr()) {
