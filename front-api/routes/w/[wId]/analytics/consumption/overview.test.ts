@@ -29,7 +29,7 @@ const OVERVIEW: GetConsumptionOverviewResponse = {
     status: {
       usedPercentage: 36,
       resetAt: "2026-08-01T00:00:00.000Z",
-      pace: "on_pace",
+      target: "on_target",
     },
   },
 };

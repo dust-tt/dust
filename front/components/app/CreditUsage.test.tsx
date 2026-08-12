@@ -6,7 +6,7 @@ import { CreditUsage } from "./CreditUsage";
 const ON_PACE_STATE = {
   usedPercentage: 80,
   resetInDays: 5,
-  pace: "on_pace",
+  target: "on_target",
 } satisfies CreditUsageState;
 
 describe("CreditUsage", () => {
@@ -29,7 +29,7 @@ describe("CreditUsage", () => {
           ...ON_PACE_STATE,
           usedPercentage: 120,
           resetInDays: 1,
-          pace: "critical",
+          target: "critical",
         }}
         variant="companion"
       />
@@ -37,7 +37,7 @@ describe("CreditUsage", () => {
 
     expect(screen.getByText("100%")).toBeInTheDocument();
     expect(
-      screen.getByText("Usage is well above pace · Credit reset in 1 day")
+      screen.getByText("Usage is well above target · Credit reset in 1 day")
     ).toBeInTheDocument();
     const progressbar = rendered.getByRole("progressbar", {
       name: "Credits used",
@@ -49,7 +49,7 @@ describe("CreditUsage", () => {
   it("uses the warning treatment for elevated usage", () => {
     render(
       <CreditUsage
-        state={{ ...ON_PACE_STATE, pace: "elevated" }}
+        state={{ ...ON_PACE_STATE, target: "elevated" }}
         variant="companion"
       />
     );

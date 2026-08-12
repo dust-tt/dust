@@ -8,7 +8,7 @@ const billingCycle = {
 };
 
 describe("computeCreditUsageStatus", () => {
-  it("marks usage with enough remaining-cycle coverage as on pace", () => {
+  it("marks usage with enough remaining-cycle coverage as on target", () => {
     expect(
       computeCreditUsageStatus({
         consumedAwuCredits: 80,
@@ -19,7 +19,7 @@ describe("computeCreditUsageStatus", () => {
     ).toEqual({
       usedPercentage: 80,
       resetAt: "2026-09-01T00:00:00.000Z",
-      pace: "on_pace",
+      target: "on_target",
     });
   });
 
@@ -33,7 +33,7 @@ describe("computeCreditUsageStatus", () => {
       })
     ).toMatchObject({
       usedPercentage: 65,
-      pace: "elevated",
+      target: "elevated",
     });
   });
 
@@ -47,7 +47,7 @@ describe("computeCreditUsageStatus", () => {
       })
     ).toMatchObject({
       usedPercentage: 80,
-      pace: "critical",
+      target: "critical",
     });
   });
 
@@ -61,7 +61,7 @@ describe("computeCreditUsageStatus", () => {
       })
     ).toMatchObject({
       usedPercentage: 100,
-      pace: "critical",
+      target: "critical",
     });
   });
 
