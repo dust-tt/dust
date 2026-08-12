@@ -36,6 +36,10 @@ const SandboxTokenPayloadSchema = z
     spaceId: z.string().optional(),
     sandboxFunctionId: z.string().optional(),
     invocationId: z.string().optional(),
+    // A filesystem token is long-lived for the lifetime of one sandbox. It
+    // names only the roots mounted in that sandbox; the filesystem endpoint
+    // does not accept roots from the request body.
+    filesystem: z.literal(true).optional(),
     // Set for a fast Pod function, published on the promise that it does not call tools. A tool
     // call can wait on the user for as long as they take, which a fast invocation has no way to
     // survive, so the token it runs under cannot make one.
@@ -51,6 +55,12 @@ const SandboxTokenPayloadSchema = z
     const hasAction =
       payload.cId !== undefined && actionClaims.every(isDefined);
     const hasInvocation = invocationClaims.every(isDefined);
+    const hasFileSystem =
+      payload.filesystem === true &&
+      (payload.cId !== undefined || payload.spaceId !== undefined) &&
+      !actionClaims.some(isDefined) &&
+      payload.sandboxFunctionId === undefined &&
+      payload.invocationId === undefined;
 
     if (actionClaims.some(isDefined) && !hasAction) {
       ctx.addIssue({
@@ -58,17 +68,26 @@ const SandboxTokenPayloadSchema = z
         message: "Incomplete sandbox action token claims.",
       });
     }
-    if (invocationClaims.some(isDefined) && !hasInvocation) {
+    if (invocationClaims.some(isDefined) && !hasInvocation && !hasFileSystem) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Incomplete sandbox function invocation token claims.",
       });
     }
-    if (!hasAction && !hasInvocation) {
+    if (payload.filesystem === true && !hasFileSystem) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Invalid sandbox filesystem token claims.",
+      });
+    }
+    const tokenKindCount = [hasAction, hasInvocation, hasFileSystem].filter(
+      Boolean
+    ).length;
+    if (tokenKindCount !== 1) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          "Sandbox token payload must include action or function invocation claims.",
+          "Sandbox token payload must include exactly one supported claim set.",
       });
     }
   });
@@ -88,6 +107,10 @@ export type SandboxFunctionInvocationTokenPayload = SandboxTokenPayload & {
   sandboxFunctionId: string;
   invocationId: string;
 };
+
+export type SandboxFileSystemTokenPayload = SandboxTokenPayload & {
+  filesystem: true;
+} & ({ cId: string; spaceId?: string } | { cId?: string; spaceId: string });
 
 export function isSandboxExecTokenPayload(
   payload: SandboxTokenPayload
@@ -169,6 +192,20 @@ export function isSandboxFunctionInvocationTokenPayload(
     payload.spaceId !== undefined &&
     payload.sandboxFunctionId !== undefined &&
     payload.invocationId !== undefined
+  );
+}
+
+export function isSandboxFileSystemTokenPayload(
+  payload: SandboxTokenPayload
+): payload is SandboxFileSystemTokenPayload {
+  return (
+    payload.filesystem === true &&
+    (payload.cId !== undefined || payload.spaceId !== undefined) &&
+    payload.aId === undefined &&
+    payload.mId === undefined &&
+    payload.actionId === undefined &&
+    payload.sandboxFunctionId === undefined &&
+    payload.invocationId === undefined
   );
 }
 
@@ -318,6 +355,50 @@ export async function generateSandboxFunctionInvocationToken(
   const token = jwt.sign(payload, secret, {
     algorithm: "HS256",
     expiresIn: expiryMs / 1000, // expiresIn is in seconds
+  });
+
+  return `${SANDBOX_TOKEN_PREFIX}${token}`;
+}
+
+export async function generateSandboxFileSystemToken(
+  auth: Authenticator,
+  {
+    sandbox,
+    conversationId,
+    spaceId,
+    expiryMs = EXEC_TOKEN_REDIS_TTL_SECONDS * 1000,
+  }: {
+    sandbox: SandboxResource;
+    conversationId?: string;
+    spaceId?: string;
+    expiryMs?: number;
+  }
+): Promise<string> {
+  const common = {
+    wId: auth.getNonNullableWorkspace().sId,
+    uId: auth.user()?.sId,
+    sbId: sandbox.sId,
+    execId: `filesystem-${sandbox.sId}`,
+    filesystem: true as const,
+  };
+  let payload: SandboxFileSystemTokenPayload;
+  if (conversationId) {
+    payload = {
+      ...common,
+      cId: conversationId,
+      ...(spaceId ? { spaceId } : {}),
+    };
+  } else if (spaceId) {
+    payload = { ...common, spaceId };
+  } else {
+    throw new Error("A filesystem token requires a conversation or Pod root.");
+  }
+
+  await registerExecToken(payload);
+
+  const token = jwt.sign(payload, config.getSandboxJwtSecret(), {
+    algorithm: "HS256",
+    expiresIn: expiryMs / 1000,
   });
 
   return `${SANDBOX_TOKEN_PREFIX}${token}`;

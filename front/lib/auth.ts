@@ -2,11 +2,13 @@ import config from "@app/lib/api/config";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import type {
   SandboxExecTokenPayload,
+  SandboxFileSystemTokenPayload,
   SandboxFunctionInvocationTokenPayload,
   SandboxTokenPayload,
 } from "@app/lib/api/sandbox/access_tokens";
 import {
   isSandboxExecTokenPayload,
+  isSandboxFileSystemTokenPayload,
   isSandboxFunctionInvocationTokenPayload,
   SANDBOX_TOKEN_PREFIX,
 } from "@app/lib/api/sandbox/access_tokens";
@@ -624,6 +626,18 @@ export class Authenticator {
       }
       groupModelIdSets.push(groupModelIdsRes.value);
     }
+    if (isSandboxFileSystemTokenPayload(claims)) {
+      const groupModelIdsRes =
+        await this.restrictGroupsToSandboxFileSystemSpaces(
+          baseGroupModelIds,
+          claims,
+          workspace.id
+        );
+      if (groupModelIdsRes.isErr()) {
+        return new Err(groupModelIdsRes.error);
+      }
+      groupModelIdSets.push(groupModelIdsRes.value);
+    }
     if (groupModelIdSets.length === 0) {
       return new Err({
         status_code: 401,
@@ -812,6 +826,48 @@ export class Authenticator {
       spaceGroups.map((sg) => Number(sg.groupId) as ModelId)
     );
 
+    return new Ok(userGroupIds.filter((id) => allowedGroupIds.has(id)));
+  }
+
+  private static async restrictGroupsToSandboxFileSystemSpaces(
+    userGroupIds: ModelId[],
+    claims: SandboxFileSystemTokenPayload,
+    workspaceId: ModelId
+  ): Promise<Result<ModelId[], APIErrorWithContentfulStatusCode>> {
+    // The filesystem endpoint is the only endpoint that accepts this token
+    // kind. Keep its Authenticator limited to the Pod carried by the token.
+    // A conversation outside a Pod needs no group access for inode operations.
+    if (!claims.spaceId) {
+      return new Ok([]);
+    }
+    if (!isResourceSId("space", claims.spaceId)) {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "invalid_sandbox_token_error",
+          message: "The sandbox filesystem Pod is invalid.",
+        },
+      });
+    }
+
+    const podModelId = getResourceIdFromSId(claims.spaceId);
+    if (podModelId === null) {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "invalid_sandbox_token_error",
+          message: "The sandbox filesystem Pod was not found.",
+        },
+      });
+    }
+
+    const groupSpaces = await GroupSpaceModel.findAll({
+      where: { workspaceId, vaultId: podModelId },
+      attributes: ["groupId"],
+    });
+    const allowedGroupIds = new Set(
+      groupSpaces.map((groupSpace) => Number(groupSpace.groupId) as ModelId)
+    );
     return new Ok(userGroupIds.filter((id) => allowedGroupIds.has(id)));
   }
 
