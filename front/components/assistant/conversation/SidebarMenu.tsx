@@ -39,7 +39,7 @@ import { usePodsSectionCollapsed } from "@app/hooks/usePodsSectionCollapsed";
 import { useSearchPods } from "@app/hooks/useSearchPods";
 import { useStarredPodsSectionCollapsed } from "@app/hooks/useStarredPodsSectionCollapsed";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
@@ -436,13 +436,10 @@ export function AgentSidebarMenu({
 
   const { providersHealth } = useAuth();
   const noHealthyProviders = !hasHealthyProviders(providersHealth);
-  const { hasFeature } = useFeatureFlags();
-  const hasActivationSkill = hasFeature("activation_skill");
   const { activationPodId } = useActivationPod({
     workspaceId: owner.sId,
-    disabled: !hasActivationSkill,
   });
-  const showGetStarted = hasActivationSkill && activationPodId !== null;
+  const showGetStarted = activationPodId !== null;
   const { recommendations: activationRecsForBadge } =
     useActivationRecommendations({
       workspaceId: owner.sId,
