@@ -109,7 +109,7 @@ function buildColumns({
       id: "details",
       header: "",
       enableSorting: false,
-      meta: { sizeRatio: 6, headerAlign: "right" },
+      meta: { className: "w-12", headerAlign: "right" },
       cell: (info) => {
         const row = info.row.original;
         return (
