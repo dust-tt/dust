@@ -389,7 +389,7 @@ describe("AgentMessage compact UI view", () => {
         interactiveFiles: [frameFile],
       });
 
-      renderAgentMessage({ isCompactUIView: true });
+      renderAgentMessage({ uiView: "compact" });
 
       expect(screen.queryByTestId("top-frame-link")).not.toBeInTheDocument();
 
@@ -417,7 +417,7 @@ describe("AgentMessage compact UI view", () => {
         interactiveFiles: frameFiles,
       });
 
-      renderAgentMessage({ isCompactUIView: true });
+      renderAgentMessage({ uiView: "compact" });
 
       expect(screen.queryByTestId("top-frame-link")).not.toBeInTheDocument();
       expect(screen.getAllByTestId("bottom-frame-citation")).toHaveLength(2);
@@ -426,7 +426,7 @@ describe("AgentMessage compact UI view", () => {
     it("renders no Frame container for a compact Activation Pod message without a Frame", () => {
       useAutoOpenSidePanelMock.mockReturnValue({ interactiveFiles: [] });
 
-      renderAgentMessage({ isCompactUIView: true });
+      renderAgentMessage({ uiView: "compact" });
 
       expect(screen.queryByTestId("top-frame-link")).not.toBeInTheDocument();
       expect(
@@ -440,7 +440,7 @@ describe("AgentMessage compact UI view", () => {
         interactiveFiles: [frameFile],
       });
 
-      renderAgentMessage({ isCompactUIView: false });
+      renderAgentMessage({ uiView: "standard" });
 
       expect(screen.getByTestId("top-frame-link")).toHaveTextContent(
         frameFile.title
@@ -452,7 +452,7 @@ describe("AgentMessage compact UI view", () => {
 
     it("suppresses the inline Frame preview directive for compact Activation Pod messages", () => {
       renderAgentMessage({
-        isCompactUIView: true,
+        uiView: "compact",
         agentMessageOverrides: {
           content:
             'Here is your frame: :preview_file{path="conv_1/frame.html" title="Quarterly Report" contentType="application/vnd.dust.frame"}',
@@ -465,7 +465,7 @@ describe("AgentMessage compact UI view", () => {
 
     it("keeps the inline Frame preview directive for non-Activation-Pod messages", () => {
       renderAgentMessage({
-        isCompactUIView: false,
+        uiView: "standard",
         agentMessageOverrides: {
           content:
             'Here is your frame: :preview_file{path="conv_1/frame.html" title="Quarterly Report" contentType="application/vnd.dust.frame"}',
@@ -478,7 +478,7 @@ describe("AgentMessage compact UI view", () => {
 
     it("keeps non-Frame inline file previews for compact Activation Pod messages", () => {
       renderAgentMessage({
-        isCompactUIView: true,
+        uiView: "compact",
         agentMessageOverrides: {
           content:
             'See the report: :preview_file{path="conv_1/report.pdf" title="Report.pdf" contentType="application/pdf"}',

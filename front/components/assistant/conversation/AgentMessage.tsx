@@ -1058,7 +1058,13 @@ export function AgentMessage({
 
   const messageContent = (
     <ConversationMessageContent
-      citations={isDeleted || uiView === "compact" ? undefined : citations}
+      citations={
+        isDeleted
+          ? undefined
+          : uiView === "compact"
+            ? frameCitations
+            : citations
+      }
       type="agent"
     >
       {isDeleted ? (
@@ -1085,7 +1091,7 @@ export function AgentMessage({
           additionalMarkdownComponents={additionalMarkdownComponents}
           additionalMarkdownPlugins={additionalMarkdownPlugins}
           uiView={uiView}
-          interactiveFiles={isCompactUIView ? [] : interactiveFiles}
+          interactiveFiles={uiView === "compact" ? [] : interactiveFiles}
         />
       )}
     </ConversationMessageContent>
@@ -1301,9 +1307,9 @@ function AgentMessageContent({
       quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
       toolSetup: getToolSetupPlugin(owner, handleToolSetupComplete),
       action_card: getActionCardPlugin(onQuickReplySend, isLastMessage),
-      // In the compact Activation Pod UI, the inline Frame preview directive is
+      // In the compact UI, the inline Frame preview directive is
       // suppressed here, the Frame is instead rendered as a bottom citation card.
-      ...(isCompactUIView
+      ...(uiView === "compact"
         ? {
             file_preview: getFilePreviewPlugin({
               hideInteractiveContent: true,
@@ -1323,7 +1329,7 @@ function AgentMessageContent({
       handleToolSetupComplete,
       propsAdditionalMarkdownComponents,
       spaceId,
-      isCompactUIView,
+      uiView,
     ]
   );
 
