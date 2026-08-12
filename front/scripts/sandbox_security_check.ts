@@ -383,6 +383,7 @@ async function checkTelemetrySecretBoundary(
   providerId: string
 ): Promise<void> {
   const envPath = "/run/dust/fluent-bit.env";
+  const processPidPath = "/run/dust/telemetry-secret-probe.pid";
   try {
     const seed = await runRootBashScript(
       provider,
@@ -393,7 +394,14 @@ set -euo pipefail
 printf '%s\n' 'DD_API_KEY=sandbox-security-sentinel' > ${envPath}
 /usr/bin/chown root:root ${envPath}
 /usr/bin/chmod 600 ${envPath}
-`
+/usr/bin/nohup /usr/bin/sleep 300 >/dev/null 2>&1 &
+printf '%s\n' "$!" > ${processPidPath}
+/usr/bin/chown root:root ${processPidPath}
+/usr/bin/chmod 644 ${processPidPath}
+secret_pid=$(/bin/cat ${processPidPath})
+/usr/bin/test -r "/proc/$secret_pid/environ"
+`,
+      { envVars: { DUST_TELEMETRY_SECRET: "sandbox-security-sentinel" } }
     );
     assertCommandSucceeded("telemetry secret boundary seed", seed);
 
@@ -411,7 +419,8 @@ if /bin/cat ${envPath} >/dev/null 2>&1; then
   echo "CRITICAL: workload can read the Fluent Bit environment file"
   exit 1
 fi
-if /bin/cat /proc/1/environ >/dev/null 2>&1; then
+secret_pid=$(/bin/cat ${processPidPath})
+if /bin/cat "/proc/$secret_pid/environ" >/dev/null 2>&1; then
   echo "CRITICAL: workload can read a root process environment"
   exit 1
 fi
@@ -424,7 +433,8 @@ fi
     const cleanup = await runRootBashScript(
       provider,
       providerId,
-      `/bin/rm -f ${envPath}`
+      `if [ -f ${processPidPath} ]; then /usr/bin/kill "$(/bin/cat ${processPidPath})" >/dev/null 2>&1 || true; fi
+/bin/rm -f ${envPath} ${processPidPath}`
     );
     assertCommandSucceeded("telemetry secret boundary cleanup", cleanup);
   }
