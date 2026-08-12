@@ -63,7 +63,7 @@ describe("FeedbackSelector", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Provide feedback on @Helper" })
+      screen.getByRole("heading", { name: "Provide feedback on Helper" })
     ).toBeInTheDocument();
     expect(screen.getByText("Glad you liked it! Tell us more?")).toBeVisible();
 
@@ -135,7 +135,7 @@ describe("FeedbackSelector", () => {
       isConversationShared: false,
     });
     expect(
-      screen.queryByRole("heading", { name: "Provide feedback on @Helper" })
+      screen.queryByRole("heading", { name: "Provide feedback on Helper" })
     ).not.toBeInTheDocument();
   });
 });
