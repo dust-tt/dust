@@ -123,8 +123,9 @@ export type VirtuosoMessageListContext = {
   ) => Promise<Result<undefined, DustError>>;
   draftKey: string;
   conversation?: ConversationWithoutContentType;
-  // Server-resolved compact UI display
-  isCompactUIView: boolean;
+  // Whether the conversation should render its compact UI variant (currently:
+  // conversations that live in the user's activation pod).
+  uiView: UiView;
   agentBuilderContext?: {
     draftAgent?: LightAgentConfigurationType;
     isSubmitting: boolean;
@@ -148,7 +149,6 @@ export type VirtuosoMessageListContext = {
   isAutoScrollEnabledRef: MutableRefObject<boolean>;
   isNoSeat?: boolean;
   setLimitReachedCode?: (code: WorkspaceLimit) => void;
-  uiView: UiView;
 };
 
 export const areSameRank = (

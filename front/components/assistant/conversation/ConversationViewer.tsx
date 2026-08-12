@@ -332,7 +332,7 @@ export const ConversationViewer = ({
   });
 
   const { hasFeature } = useFeatureFlags();
-  const { activationPodId, isCompactUIView } = useActivationPod({
+  const { activationPodId } = useActivationPod({
     workspaceId: owner.sId,
     disabled: !hasFeature("activation_skill"),
   });
@@ -1443,7 +1443,10 @@ export const ConversationViewer = ({
       handleSubmit,
       conversation,
       isOnboardingConversation,
-      isCompactUIView,
+      uiView:
+        conversation?.spaceId && conversation.spaceId === activationPodId
+          ? "compact"
+          : "standard",
       draftKey: `conversation-${conversationId}`,
       agentBuilderContext,
       feedbacksByMessageId,
@@ -1457,10 +1460,6 @@ export const ConversationViewer = ({
       isAutoScrollEnabledRef,
       isNoSeat: limitReachedCode === "no_seat",
       setLimitReachedCode,
-      uiView:
-        conversation?.spaceId && conversation.spaceId === activationPodId
-          ? "compact"
-          : "standard",
     };
   }, [
     user,
@@ -1468,7 +1467,7 @@ export const ConversationViewer = ({
     handleSubmit,
     conversation,
     isOnboardingConversation,
-    isCompactUIView,
+    activationPodId,
     conversationId,
     agentBuilderContext,
     feedbacksByMessageId,
@@ -1478,7 +1477,6 @@ export const ConversationViewer = ({
     spaceInfo?.isRestricted,
     spaceInfo?.archivedAt,
     spaceInfo?.name,
-    activationPodId,
     limitReachedCode,
     setLimitReachedCode,
   ]);

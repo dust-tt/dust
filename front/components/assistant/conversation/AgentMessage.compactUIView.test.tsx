@@ -1,5 +1,6 @@
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
+import type { UiView } from "@app/components/assistant/conversation/types";
 import { makeInitialMessageStreamState } from "@app/components/assistant/conversation/types";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import type { LightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
@@ -198,17 +199,17 @@ const messageFeedback: FeedbackSelectorBaseProps = {
 };
 
 function renderAgentMessage({
-  isCompactUIView,
+  uiView,
   agentMessageOverrides,
 }: {
-  isCompactUIView: boolean;
+  uiView: UiView;
   agentMessageOverrides?: Partial<LightAgentMessageWithActionsType>;
 }) {
   return render(
     <AgentMessage
       conversationId="conv_1"
       spaceId={null}
-      isCompactUIView={isCompactUIView}
+      uiView={uiView}
       hideHeader={false}
       isLastMessage={false}
       agentMessage={buildAgentMessage(agentMessageOverrides)}
@@ -227,7 +228,7 @@ describe("AgentMessage compact UI view", () => {
   describe("bottom citations", () => {
     it("hides the bottom citation list for compact UI conversations but keeps inline citations", () => {
       const { container } = renderAgentMessage({
-        isCompactUIView: true,
+        uiView: "compact",
       });
 
       expect(
@@ -240,7 +241,7 @@ describe("AgentMessage compact UI view", () => {
 
     it("keeps the bottom citation list for non-compact UI conversations", () => {
       const { container } = renderAgentMessage({
-        isCompactUIView: false,
+        uiView: "standard",
       });
 
       expect(
@@ -253,7 +254,7 @@ describe("AgentMessage compact UI view", () => {
 
     it("renders no bottom citation container for an compact UI conversation with no citations", () => {
       const { container } = renderAgentMessage({
-        isCompactUIView: true,
+        uiView: "compact",
         agentMessageOverrides: { content: "No sources here.", citations: {} },
       });
 
@@ -284,7 +285,7 @@ describe("AgentMessage compact UI view", () => {
 
     it("hides the bottom generated file cards for compact UI conversations", () => {
       renderAgentMessage({
-        isCompactUIView: true,
+        uiView: "compact",
         agentMessageOverrides: generatedFilesOverrides,
       });
 
@@ -294,7 +295,7 @@ describe("AgentMessage compact UI view", () => {
 
     it("keeps the bottom generated file cards for non-compact UI conversations", () => {
       renderAgentMessage({
-        isCompactUIView: false,
+        uiView: "standard",
         agentMessageOverrides: generatedFilesOverrides,
       });
 

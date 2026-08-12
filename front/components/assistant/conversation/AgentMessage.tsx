@@ -17,6 +17,7 @@ import { useGenerationContext } from "@app/components/assistant/conversation/Gen
 import type {
   AgentMessageStateWithControlEvent,
   AgentMessageWithStreaming,
+  UiView,
   VirtuosoMessage,
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
@@ -191,7 +192,7 @@ function PrunedContextChip() {
 interface AgentMessageProps {
   conversationId: string;
   spaceId: string | null;
-  isCompactUIView: boolean;
+  uiView: UiView;
   hideHeader: boolean;
   isLastMessage: boolean;
   agentMessage: AgentMessageWithStreaming;
@@ -216,7 +217,7 @@ interface AgentMessageProps {
 export function AgentMessage({
   conversationId,
   spaceId,
-  isCompactUIView,
+  uiView,
   hideHeader,
   isLastMessage,
   agentMessage,
@@ -1042,7 +1043,7 @@ export function AgentMessage({
 
   const messageContent = (
     <ConversationMessageContent
-      citations={isDeleted || isCompactUIView ? undefined : citations}
+      citations={isDeleted || uiView === "compact" ? undefined : citations}
       type="agent"
     >
       {isDeleted ? (
@@ -1068,7 +1069,7 @@ export function AgentMessage({
           isAgentMessageHandingOver={isAgentMessageHandingOver}
           additionalMarkdownComponents={additionalMarkdownComponents}
           additionalMarkdownPlugins={additionalMarkdownPlugins}
-          isCompactUIView={isCompactUIView}
+          uiView={uiView}
         />
       )}
     </ConversationMessageContent>
@@ -1152,7 +1153,7 @@ function AgentMessageContent({
   isAgentMessageHandingOver,
   additionalMarkdownComponents: propsAdditionalMarkdownComponents,
   additionalMarkdownPlugins,
-  isCompactUIView,
+  uiView,
 }: {
   onOpenDetails?: (messageId: string, actionId?: string) => void;
   triggeringUser: UserType | null;
@@ -1185,7 +1186,7 @@ function AgentMessageContent({
   isAgentMessageHandingOver: boolean;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
-  isCompactUIView: boolean;
+  uiView: UiView;
 }) {
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
@@ -1440,7 +1441,7 @@ function AgentMessageContent({
               />
             </div>
           )}
-        {!isCompactUIView && generatedFiles.length > 0 && (
+        {uiView !== "compact" && generatedFiles.length > 0 && (
           <div className="mt-2 grid grid-cols-2 gap-2 @xs:grid-cols-3 @sm:grid-cols-4 @md:grid-cols-5">
             {generatedFiles.map((file) => (
               <ToolGeneratedFileDetails
