@@ -149,7 +149,18 @@ export function ConsumptionOverview({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground">{header.join("  |  ")}</p>
+      <p className="text-sm text-muted-foreground">
+        {header.map((item, index) => (
+          <span key={item}>
+            {index > 0 && (
+              <span className="mx-2" aria-hidden="true">
+                |
+              </span>
+            )}
+            {item}
+          </span>
+        ))}
+      </p>
       <ConsumptionSummary workspaceId={workspaceId} overview={overview} />
     </div>
   );
