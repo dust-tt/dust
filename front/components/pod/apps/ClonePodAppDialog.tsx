@@ -117,21 +117,6 @@ export function ClonePodAppDialog({
                 created from the same schema but hold no data, and its Frame is
                 left unpublished so you can review it first.
               </ContentMessage>
-
-              {app.frames.length > 0 && (
-                <ContentMessage
-                  variant="warning"
-                  title="Check the Frame's calls"
-                >
-                  If the Frame names its functions by bare name it will use the
-                  copy's. If it spells out{" "}
-                  <span className="font-mono">
-                    &lt;podId&gt;/{app.prefix}__&lt;name&gt;
-                  </span>
-                  , the copy keeps calling {sourceName}'s functions and writing
-                  to its data until you change those references.
-                </ContentMessage>
-              )}
             </DialogContainer>
             <DialogFooter
               leftButtonProps={{
