@@ -89,28 +89,27 @@ export function AnalyticsConsumptionPage() {
           period={period}
           filter={scopeFilter}
         />
-        <div className="flex flex-col gap-4">
-          <div className="sticky top-0 z-30 flex flex-col bg-background pb-4 pt-4">
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="text-lg font-semibold text-foreground">Explore</h2>
-              <UsageFilterPanel
-                owner={owner}
-                period={period}
-                filter={filter}
-                onFilterChange={setFilter}
-              />
+        <LazyMotion features={domMax}>
+          <div className="flex flex-col gap-4">
+            <div className="sticky top-0 z-30 -mb-4 flex flex-col bg-background pb-4 pt-4">
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-lg font-semibold text-foreground">
+                  Explore
+                </h2>
+                <UsageFilterPanel
+                  owner={owner}
+                  period={period}
+                  filter={filter}
+                  onFilterChange={setFilter}
+                />
+              </div>
+              <UsageFilterSummary filter={filter} onFilterChange={setFilter} />
             </div>
-            <UsageFilterSummary filter={filter} onFilterChange={setFilter} />
-          </div>
-          <LazyMotion features={domMax}>
             <m.div
               layout={!shouldReduceMotion}
               transition={{ duration: shouldReduceMotion ? 0 : 0.18 }}
-              className="flex flex-col gap-4"
+              className="flex flex-col"
             >
-              <h3 className="text-base font-semibold text-foreground">
-                Consumption
-              </h3>
               <SafeSuspense fallback={<ChartFallback />}>
                 <ConsumptionChart
                   workspaceId={owner.sId}
@@ -120,20 +119,20 @@ export function AnalyticsConsumptionPage() {
                 />
               </SafeSuspense>
             </m.div>
-          </LazyMotion>
-          <div className="flex flex-col gap-4">
-            <h3 className="text-base font-semibold text-foreground">
-              Attribution
-            </h3>
-            <ConsumptionAttributionTable
-              workspaceId={owner.sId}
-              period={period}
-              filter={scopeFilter}
-              dimension={dimension}
-              onDimensionChange={handleDimensionChange}
-            />
+            <div className="flex flex-col gap-4">
+              <h3 className="text-base font-semibold text-foreground">
+                Attribution
+              </h3>
+              <ConsumptionAttributionTable
+                workspaceId={owner.sId}
+                period={period}
+                filter={scopeFilter}
+                dimension={dimension}
+                onDimensionChange={handleDimensionChange}
+              />
+            </div>
           </div>
-        </div>
+        </LazyMotion>
       </div>
     </Page.Vertical>
   );
