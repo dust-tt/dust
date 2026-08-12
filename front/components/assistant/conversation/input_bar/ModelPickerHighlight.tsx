@@ -48,15 +48,26 @@ export function ModelPickerHighlight({ children }: ModelPickerHighlightProps) {
   });
   const hostRef = useRef<HTMLSpanElement>(null);
 
-  // Listened for on the host rather than declared as an onClick prop: the span
-  // only observes the button's clicks, it is not itself interactive.
+  // Listened for on the host rather than declared as a prop: the span only
+  // observes the button's presses, it is not itself interactive.
   useEffect(() => {
     const host = hostRef.current;
     if (!host || !isHighlightVisible) {
       return;
     }
-    host.addEventListener("click", dismissHighlight);
-    return () => host.removeEventListener("click", dismissHighlight);
+    // `pointerdown`, not `click`: Radix opens the menu on pointerdown and, being
+    // modal, sets `pointer-events: none` on the body. The mouseup that follows
+    // then hit-tests to <html> rather than the button, so no click event ever
+    // reaches this subtree. Restricted to the primary button to match Radix's
+    // own condition for opening.
+    const dismissOnPrimaryButton = (event: PointerEvent) => {
+      if (event.button === 0) {
+        dismissHighlight();
+      }
+    };
+    host.addEventListener("pointerdown", dismissOnPrimaryButton);
+    return () =>
+      host.removeEventListener("pointerdown", dismissOnPrimaryButton);
   }, [isHighlightVisible, dismissHighlight]);
 
   return (
