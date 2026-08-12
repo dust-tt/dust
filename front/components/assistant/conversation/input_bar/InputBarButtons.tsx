@@ -1,5 +1,8 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
-import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
+import {
+  CapabilitiesPicker,
+  CapabilitySetupDialog,
+} from "@app/components/assistant/CapabilitiesPicker";
 import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
 import { InputBarPlusMenu } from "@app/components/assistant/conversation/input_bar/InputBarPlusMenu";
@@ -10,7 +13,7 @@ import {
 import type useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import type { MCPServerViewLightType } from "@app/lib/api/mcp";
+import type { MCPServerType, MCPServerViewLightType } from "@app/lib/api/mcp";
 import { useAppRouter } from "@app/lib/platform";
 import { useIsMobile, useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
 import { setQueryParam } from "@app/lib/utils/router";
@@ -131,6 +134,8 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   const router = useAppRouter();
   const isMobile = useIsMobile();
   const isWidthConstrained = useIsWidthConstrained();
+  const [serverToSetup, setServerToSetup] =
+    React.useState<MCPServerType | null>(null);
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
@@ -234,6 +239,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       selectedMCPServerViews={selectedMCPServerViews}
       onSelect={onMCPServerViewSelect}
       onSkillSelect={onSkillSelect}
+      onSetupServer={setServerToSetup}
       onOpenChange={onCapabilitiesPickerOpenChange}
       buttonSize={buttonSize}
       disabled={isInputDisabled}
@@ -302,6 +308,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             selectedMCPServerViews={selectedMCPServerViews}
             onMCPServerViewSelect={onMCPServerViewSelect}
             onSkillSelect={onSkillSelect}
+            onSetupServer={setServerToSetup}
             fileUploaderService={fileUploaderService}
             onNodeSelect={onNodeSelect}
             onNodeUnselect={onNodeUnselect}
@@ -318,6 +325,14 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             onAttachmentsPickerOpenChange={onAttachmentsPickerOpenChange}
           />
         </>
+      )}
+      {serverToSetup && (
+        <CapabilitySetupDialog
+          owner={owner}
+          server={serverToSetup}
+          onClose={() => setServerToSetup(null)}
+          onServerViewAdded={onMCPServerViewSelect}
+        />
       )}
     </>
   );
