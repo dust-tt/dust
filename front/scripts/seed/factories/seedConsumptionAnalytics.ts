@@ -35,8 +35,7 @@ import type { SeedContext } from "./types";
  * panel offers are exactly the ones the seeded documents carry.
  */
 
-// Consumption keys are part of the document id, so a second run overwrites the
-// first run's dataset instead of doubling it.
+// Keeps a second run overwriting the first run's documents instead of doubling them.
 const SEED_CONSUMPTION_KEY_PREFIX = "seed-consumption";
 
 const DEFAULT_DAYS_BACK = 90;
@@ -48,12 +47,10 @@ const MS_PER_HOUR = 60 * 60 * 1000;
 const LLM_CREDIT_RANGE = { min: 0.2, max: 8 };
 const TOOL_DIRECT_CREDIT_RANGE = { min: 0.01, max: 0.4 };
 const TOOL_MODEL_CREDIT_RANGE = { min: 0.01, max: 0.2 };
-// Triggered messages are spread over that many fake triggers.
 const TRIGGER_COUNT = 3;
 const MAX_LLM_STEPS = 3;
 const MAX_TOOL_CALLS = 3;
-// Share of messages that delegate to a sub-agent, which consumes under its own
-// agent message at depth 1.
+// Share of messages that delegate to a sub-agent.
 const SUB_AGENT_RATE = 0.15;
 // Messages land between these hours, so the daily buckets of the chart are not
 // perfectly flat.
@@ -116,9 +113,8 @@ function pick<T>(random: Random, items: T[]): T {
   return items[randomInt(random, 0, items.length - 1)];
 }
 
-// Rank-weighted pick: the first items of the list are much more likely, so the
-// rankings have a couple of heavy hitters and a long tail (and therefore an
-// "others" series in the chart).
+// Weighted towards the head of the list: the rankings need heavy hitters and a
+// long tail, and the chart an "others" series.
 function pickByRank<T>(random: Random, items: T[]): T {
   const weights = items.map((_, index) => 1 / (index + 1));
   const total = weights.reduce((sum, weight) => sum + weight, 0);
@@ -156,10 +152,6 @@ type ConsumptionPools = {
   skillIds: string[];
 };
 
-/**
- * Reads the workspace's consumption facet catalog — the very list the filter
- * panel offers — and turns it into the pools the documents are sampled from.
- */
 async function loadConsumptionPools(
   ctx: SeedContext
 ): Promise<ConsumptionPools> {
@@ -167,9 +159,7 @@ async function loadConsumptionPools(
 
   const catalog = await listConsumptionFacetCatalog(auth);
 
-  // The `team` dimension reads `user.group_ids`, which production fills with the
-  // cap-eligible groups the member belonged to. Mirror the real memberships so
-  // the team rankings match the workspace.
+  // Real memberships, so the Teams tab matches the workspace.
   const groups = await GroupResource.listAllWorkspaceGroups(auth, {
     groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
   });
@@ -228,10 +218,6 @@ function makeAgent(
   };
 }
 
-/**
- * Plans the messages of one day: a top-level message per entry, plus a
- * sub-agent message for the share of them that delegates.
- */
 function planDayMessages(
   random: Random,
   pools: ConsumptionPools,
@@ -289,8 +275,7 @@ function planDayMessages(
   return messages;
 }
 
-// The fields both document types carry, mirroring `makeBaseDocument` of the
-// production pipeline.
+// Fields both document types carry.
 type SeedConsumptionBaseFields = Pick<
   AgentMessageConsumptionAnalyticsData,
   | "agent"
@@ -412,8 +397,6 @@ function makeToolDocument(
   const directCreditMicro = roundCreditsToMicroCredits(
     randomCredits(random, TOOL_DIRECT_CREDIT_RANGE)
   );
-  // The tool document also carries the model cost of emitting the call and of
-  // the result footprint, so it is always above its direct charge.
   const creditMicro =
     directCreditMicro +
     roundCreditsToMicroCredits(randomCredits(random, TOOL_MODEL_CREDIT_RANGE));
@@ -507,8 +490,7 @@ function planDocuments(
     const dayStartMs = todayStartMs - dayOffset * MS_PER_DAY;
     const dayOfWeek = new Date(dayStartMs).getUTCDay();
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-    // Volume grows over the window and drops on weekends, so the timeseries has
-    // a trend and a weekly rhythm rather than noise around a flat line.
+    // A trend and a weekly rhythm, rather than noise around a flat line.
     const growth = 0.5 + (daysBack - dayOffset) / daysBack;
     const dayMessageCount = Math.max(
       1,
@@ -591,8 +573,7 @@ export async function seedConsumptionAnalytics(
     }
   }
 
-  // The production path leaves refreshing to Elasticsearch. Force it so the
-  // page shows the seeded data right away.
+  // Force a refresh so the page shows the seeded data right away.
   const refreshResult = await withEs((client) =>
     client.indices.refresh({ index: CONSUMPTION_ANALYTICS_ALIAS_NAME })
   );
