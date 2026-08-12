@@ -1,48 +1,35 @@
+import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type {
   ConsumptionScopeDimension,
   ConsumptionScopeFilter,
 } from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_SCOPE_DIMENSIONS } from "@app/lib/api/analytics/consumption/scope";
-import { fetchConsumptionTopAgents } from "@app/lib/api/analytics/consumption/top_agents";
-import { fetchConsumptionTopGroups } from "@app/lib/api/analytics/consumption/top_groups";
-import { fetchConsumptionTopModels } from "@app/lib/api/analytics/consumption/top_models";
-import type { ConsumptionTopResponse } from "@app/lib/api/analytics/consumption/top_rows";
-import { toConsumptionTopRows } from "@app/lib/api/analytics/consumption/top_rows";
-import { fetchConsumptionTopSkills } from "@app/lib/api/analytics/consumption/top_skills";
-import { fetchConsumptionTopSources } from "@app/lib/api/analytics/consumption/top_sources";
-import { fetchConsumptionTopTools } from "@app/lib/api/analytics/consumption/top_tools";
-import { fetchConsumptionTopUsers } from "@app/lib/api/analytics/consumption/top_users";
+import type { ConsumptionTopUnit } from "@app/lib/api/analytics/consumption/top";
+import {
+  avgCreditsPerUnit,
+  fetchConsumptionAllGroups,
+} from "@app/lib/api/analytics/consumption/top";
 import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 
-// The attribution table caps its ranking to keep the UI readable; the export
-// returns the full breakdown for the toggled dimension instead.
-const CONSUMPTION_EXPORT_LIMIT = 1000;
-
-// Backend-only: calls the actual `fetchConsumptionTop*` functions, so this
-// dispatch table must not be imported from frontend code (see top_rows.ts).
-const CONSUMPTION_TOP_FETCHERS: Record<
+// The unit each dimension's `top-*` endpoint ranks on (see the individual
+// `top_*.ts` files), duplicated here since the export goes straight through
+// `fetchConsumptionAllGroups` rather than those per-dimension wrappers.
+const CONSUMPTION_DIMENSION_UNIT: Record<
   ConsumptionScopeDimension,
-  (
-    auth: Authenticator,
-    opts: {
-      period: ConsumptionPeriod;
-      limit: number;
-      filter?: ConsumptionScopeFilter;
-    }
-  ) => Promise<Result<ConsumptionTopResponse, ElasticsearchError>>
+  ConsumptionTopUnit
 > = {
-  agent: fetchConsumptionTopAgents,
-  user: fetchConsumptionTopUsers,
-  group: fetchConsumptionTopGroups,
-  model: fetchConsumptionTopModels,
-  tool: fetchConsumptionTopTools,
-  skill: fetchConsumptionTopSkills,
-  source: fetchConsumptionTopSources,
+  agent: "message",
+  user: "message",
+  group: "message",
+  model: "message",
+  tool: "invocation",
+  skill: "invocation",
+  source: "message",
 };
 
 type ConsumptionExportCsvRow = {
@@ -70,9 +57,12 @@ const CONSUMPTION_EXPORT_HEADERS: (keyof ConsumptionExportCsvRow)[] = [
 ];
 
 // Exports the full breakdown across every dimension in a single CSV, rather
-// than just whichever tab the attribution table currently has toggled — the
-// list of dimensions is small and static, so fetching them all in parallel
-// is fine ([GEN7]/[BACK7]).
+// than just whichever tab the attribution table currently has toggled.
+// Goes through `fetchConsumptionAllGroups`, which pages a composite
+// aggregation instead of capping a `terms` aggregation at some `limit`, so a
+// workspace with more entities than any UI page size doesn't get a silently
+// truncated export. The list of dimensions is small and static, so fetching
+// them all in parallel is fine ([GEN7]/[BACK7]).
 export async function fetchConsumptionTopExportCsv(
   auth: Authenticator,
   {
@@ -85,9 +75,10 @@ export async function fetchConsumptionTopExportCsv(
 ): Promise<Result<string, ElasticsearchError>> {
   const results = await Promise.all(
     CONSUMPTION_SCOPE_DIMENSIONS.map((dimension) =>
-      CONSUMPTION_TOP_FETCHERS[dimension](auth, {
+      fetchConsumptionAllGroups(auth, {
+        dimension,
+        unit: CONSUMPTION_DIMENSION_UNIT[dimension],
         period,
-        limit: CONSUMPTION_EXPORT_LIMIT,
         filter,
       })
     )
@@ -100,17 +91,23 @@ export async function fetchConsumptionTopExportCsv(
     }
 
     const dimension = CONSUMPTION_SCOPE_DIMENSIONS[index];
-    const { totalCredits } = result.value;
+    const { groups, totalCredits } = result.value;
+    const labels = await resolveDimensionLabels(
+      auth,
+      dimension,
+      groups.map((group) => group.key)
+    );
+
     rows.push(
-      ...toConsumptionTopRows(result.value).map((row) => ({
+      ...groups.map((group) => ({
         dimension,
-        name: row.name,
+        name: labels.get(group.key)?.name ?? group.key,
         costSharePercent:
           totalCredits > 0
-            ? roundToCents((row.credits / totalCredits) * 100)
+            ? roundToCents((group.credits / totalCredits) * 100)
             : 0,
-        credits: roundToCents(row.credits),
-        avgCredits: roundToCents(row.avgCredits),
+        credits: roundToCents(group.credits),
+        avgCredits: roundToCents(avgCreditsPerUnit(group.credits, group.count)),
       }))
     );
   }

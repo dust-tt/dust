@@ -3,7 +3,6 @@ import {
   AvatarNameCell,
   CostShareCell,
 } from "@app/components/workspace/analytics/creditsTableCells";
-import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
@@ -12,6 +11,7 @@ import { normalizedConsumptionFilter } from "@app/lib/analytics/consumption_peri
 import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
 import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/api/analytics/consumption/schema";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionTopRow } from "@app/lib/api/analytics/consumption/top_rows";
 import { formatCredits } from "@app/lib/client/credits";
 import {
   Button,

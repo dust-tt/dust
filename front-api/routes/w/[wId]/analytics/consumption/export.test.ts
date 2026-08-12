@@ -1,14 +1,7 @@
-import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import {
-  fetchConsumptionTopAgents,
-  type GetConsumptionTopAgentsResponse,
-} from "@app/lib/api/analytics/consumption/top_agents";
-import { fetchConsumptionTopGroups } from "@app/lib/api/analytics/consumption/top_groups";
-import { fetchConsumptionTopModels } from "@app/lib/api/analytics/consumption/top_models";
-import { fetchConsumptionTopSkills } from "@app/lib/api/analytics/consumption/top_skills";
-import { fetchConsumptionTopSources } from "@app/lib/api/analytics/consumption/top_sources";
-import { fetchConsumptionTopTools } from "@app/lib/api/analytics/consumption/top_tools";
-import { fetchConsumptionTopUsers } from "@app/lib/api/analytics/consumption/top_users";
+import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
+import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionTopGroups } from "@app/lib/api/analytics/consumption/top";
+import { fetchConsumptionAllGroups } from "@app/lib/api/analytics/consumption/top";
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
@@ -16,96 +9,36 @@ import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock(
-  import("@app/lib/api/analytics/consumption/top_agents"),
-  async (orig) => {
-    const mod = await orig();
-    return { ...mod, fetchConsumptionTopAgents: vi.fn() };
-  }
-);
-vi.mock(
-  import("@app/lib/api/analytics/consumption/top_users"),
-  async (orig) => {
-    const mod = await orig();
-    return { ...mod, fetchConsumptionTopUsers: vi.fn() };
-  }
-);
-vi.mock(
-  import("@app/lib/api/analytics/consumption/top_groups"),
-  async (orig) => {
-    const mod = await orig();
-    return { ...mod, fetchConsumptionTopGroups: vi.fn() };
-  }
-);
-vi.mock(
-  import("@app/lib/api/analytics/consumption/top_models"),
-  async (orig) => {
-    const mod = await orig();
-    return { ...mod, fetchConsumptionTopModels: vi.fn() };
-  }
-);
-vi.mock(
-  import("@app/lib/api/analytics/consumption/top_tools"),
-  async (orig) => {
-    const mod = await orig();
-    return { ...mod, fetchConsumptionTopTools: vi.fn() };
-  }
-);
-vi.mock(
-  import("@app/lib/api/analytics/consumption/top_skills"),
-  async (orig) => {
-    const mod = await orig();
-    return { ...mod, fetchConsumptionTopSkills: vi.fn() };
-  }
-);
-vi.mock(
-  import("@app/lib/api/analytics/consumption/top_sources"),
-  async (orig) => {
-    const mod = await orig();
-    return { ...mod, fetchConsumptionTopSources: vi.fn() };
-  }
-);
+vi.mock(import("@app/lib/api/analytics/consumption/top"), async (orig) => {
+  const mod = await orig();
+  return { ...mod, fetchConsumptionAllGroups: vi.fn() };
+});
+vi.mock(import("@app/lib/api/analytics/consumption/labels"), async (orig) => {
+  const mod = await orig();
+  return { ...mod, resolveDimensionLabels: vi.fn() };
+});
 
-const PERIOD: ConsumptionPeriod = {
-  startDate: "2026-07-01T00:00:00.000Z",
-  endDate: "2026-08-01T00:00:00.000Z",
-};
+const EMPTY_GROUPS: ConsumptionTopGroups = { groups: [], totalCredits: 0 };
 
-const EMPTY_RESULT = { period: PERIOD, totalCredits: 0 };
+// `fetchConsumptionAllGroups` is called once per dimension (see
+// `CONSUMPTION_SCOPE_DIMENSIONS`); default every dimension to empty and let
+// the test override the ones it cares about.
+function mockGroups(
+  overrides: Partial<Record<ConsumptionScopeDimension, ConsumptionTopGroups>>
+) {
+  vi.mocked(fetchConsumptionAllGroups).mockImplementation(
+    async (_auth, { dimension }) => new Ok(overrides[dimension] ?? EMPTY_GROUPS)
+  );
+}
 
-const TOP_AGENTS: GetConsumptionTopAgentsResponse = {
-  period: PERIOD,
-  totalCredits: 5000,
-  agents: [
-    {
-      agentId: "agent1",
-      name: "@dust",
-      pictureUrl: null,
-      credits: 2500,
-      messageCount: 10,
-      avgCreditsPerMessage: 250,
-    },
-  ],
-};
-
-function mockOtherDimensionsEmpty() {
-  vi.mocked(fetchConsumptionTopUsers).mockResolvedValue(
-    new Ok({ ...EMPTY_RESULT, users: [] })
-  );
-  vi.mocked(fetchConsumptionTopGroups).mockResolvedValue(
-    new Ok({ ...EMPTY_RESULT, groups: [] })
-  );
-  vi.mocked(fetchConsumptionTopModels).mockResolvedValue(
-    new Ok({ ...EMPTY_RESULT, models: [] })
-  );
-  vi.mocked(fetchConsumptionTopTools).mockResolvedValue(
-    new Ok({ ...EMPTY_RESULT, tools: [] })
-  );
-  vi.mocked(fetchConsumptionTopSkills).mockResolvedValue(
-    new Ok({ ...EMPTY_RESULT, skills: [] })
-  );
-  vi.mocked(fetchConsumptionTopSources).mockResolvedValue(
-    new Ok({ ...EMPTY_RESULT, sources: [] })
+function mockLabels(labels: Record<string, string>) {
+  vi.mocked(resolveDimensionLabels).mockImplementation(
+    async (_a, _d, keys) =>
+      new Map(
+        keys
+          .filter((key) => key in labels)
+          .map((key) => [key, { name: labels[key], pictureUrl: null }])
+      )
   );
 }
 
@@ -127,8 +60,13 @@ function postExportRequest(wId: string, body: Record<string, unknown>) {
 
 describe("POST /api/w/:wId/analytics/consumption/export", () => {
   it("returns the breakdown for every dimension as a single CSV attachment", async () => {
-    vi.mocked(fetchConsumptionTopAgents).mockResolvedValue(new Ok(TOP_AGENTS));
-    mockOtherDimensionsEmpty();
+    mockGroups({
+      agent: {
+        groups: [{ key: "agent1", credits: 2500, count: 10 }],
+        totalCredits: 5000,
+      },
+    });
+    mockLabels({ agent1: "@dust" });
     const { workspace } = await setupTest({ role: "admin" });
 
     const response = await postExportRequest(workspace.sId, {});
@@ -141,15 +79,24 @@ describe("POST /api/w/:wId/analytics/consumption/export", () => {
     const csv = await response.text();
     expect(csv).toContain("dimension,name,costSharePercent,credits,avgCredits");
     expect(csv).toContain("agent,'@dust,50,2500,250");
-    expect(vi.mocked(fetchConsumptionTopAgents)).toHaveBeenCalledWith(
+    expect(vi.mocked(fetchConsumptionAllGroups)).toHaveBeenCalledTimes(7);
+    expect(vi.mocked(fetchConsumptionAllGroups)).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ limit: 1000, filter: undefined })
+      expect.objectContaining({
+        dimension: "agent",
+        unit: "message",
+        filter: undefined,
+      })
+    );
+    expect(vi.mocked(fetchConsumptionAllGroups)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ dimension: "tool", unit: "invocation" })
     );
   });
 
   it("names the attachment after a relative day period", async () => {
-    vi.mocked(fetchConsumptionTopAgents).mockResolvedValue(new Ok(TOP_AGENTS));
-    mockOtherDimensionsEmpty();
+    mockGroups({});
+    mockLabels({});
     const { workspace } = await setupTest({ role: "admin" });
 
     const response = await postExportRequest(workspace.sId, {
@@ -182,10 +129,9 @@ describe("POST /api/w/:wId/analytics/consumption/export", () => {
   });
 
   it("returns 500 when a dimension search fails", async () => {
-    vi.mocked(fetchConsumptionTopAgents).mockResolvedValue(
+    vi.mocked(fetchConsumptionAllGroups).mockResolvedValue(
       new Err(new ElasticsearchError("query_error", "boom"))
     );
-    mockOtherDimensionsEmpty();
     const { workspace } = await setupTest();
 
     const response = await postExportRequest(workspace.sId, {});

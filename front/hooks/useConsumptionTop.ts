@@ -13,8 +13,6 @@ import { toConsumptionTopRows } from "@app/lib/api/analytics/consumption/top_row
 import { emptyArray } from "@app/lib/swr/swr";
 import { useMemo } from "react";
 
-export type { ConsumptionTopRow };
-
 const CONSUMPTION_TOP_ENDPOINTS = {
   agent: "top-agents",
   user: "top-users",

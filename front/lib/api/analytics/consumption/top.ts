@@ -24,7 +24,7 @@ import type { estypes } from "@elastic/elasticsearch";
 // Unit a ranking's count — and therefore its average — is denominated in.
 // "message" is the count of distinct messages,
 // "invocation" is used for the count of tool documents.
-type ConsumptionTopUnit = "message" | "invocation";
+export type ConsumptionTopUnit = "message" | "invocation";
 
 export type ConsumptionTopGroup = {
   key: string;
@@ -35,9 +35,10 @@ export type ConsumptionTopGroup = {
 
 export type ConsumptionTopGroups = {
   groups: ConsumptionTopGroup[];
-  // Gross credits over the whole scoped period, every document included. Not the
-  // sum of `groups` — the ranking is capped at `limit`, and a dimension that only
-  // exists on some documents (a tool, a skill) accounts for part of the total.
+  // Gross credits over the whole scoped period, every document included. Not
+  // necessarily the sum of `groups` — a capped ranking only sums to part of
+  // it, and a dimension that only exists on some documents (a tool, a skill)
+  // accounts for part of the total even when uncapped.
   totalCredits: number;
 };
 
@@ -53,10 +54,42 @@ type GroupBucket = {
   [MESSAGES_AGG]?: estypes.AggregationsCardinalityAggregate;
 };
 
+function subAggs(unit: ConsumptionTopUnit) {
+  return {
+    [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
+    ...(unit === "message"
+      ? { [MESSAGES_AGG]: { cardinality: { field: AGENT_MESSAGE_ID_FIELD } } }
+      : {}),
+  };
+}
+
 type TopAggs = {
   by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
   total_credit_micro?: estypes.AggregationsSumAggregate;
 };
+
+// Composite source name for the paginated (export) ranking, kept private to
+// this module.
+const GROUP_SOURCE = "group";
+
+type CompositeGroupBucket = {
+  key: Record<typeof GROUP_SOURCE, string>;
+  doc_count: number;
+  [CREDIT_AGG]?: estypes.AggregationsSumAggregate;
+  [MESSAGES_AGG]?: estypes.AggregationsCardinalityAggregate;
+};
+
+type CompositeTopAggs = {
+  by_group?: estypes.AggregationsCompositeAggregate & {
+    buckets: CompositeGroupBucket[];
+  };
+  total_credit_micro?: estypes.AggregationsSumAggregate;
+};
+
+// Page size for the composite aggregation backing the unbounded export,
+// matching the size already used for composite pagination elsewhere
+// (`programmatic_cost_export.ts`). Exported for tests only.
+export const EXPORT_PAGE_SIZE = 10_000;
 
 function countFromBucket(
   bucket: GroupBucket,
@@ -111,16 +144,7 @@ export async function fetchConsumptionTopGroups(
           size: limit,
           order: { [CREDIT_AGG]: "desc" },
         },
-        aggs: {
-          [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
-          ...(unit === "message"
-            ? {
-                [MESSAGES_AGG]: {
-                  cardinality: { field: AGENT_MESSAGE_ID_FIELD },
-                },
-              }
-            : {}),
-        },
+        aggs: subAggs(unit),
       },
       total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
     },
@@ -144,6 +168,103 @@ export async function fetchConsumptionTopGroups(
     totalCredits: microCreditsToCredits(
       result.value.aggregations?.total_credit_micro?.value ?? 0
     ),
+  });
+}
+
+/**
+ * Every key of `dimension` by gross credits over the period, with no cap: pages
+ * through a composite aggregation (rather than a `terms` aggregation, whose
+ * `size` both bounds the result and gets less exact as it grows) so the CSV
+ * export is a genuinely complete breakdown, not a plausible-looking top slice.
+ */
+export async function fetchConsumptionAllGroups(
+  auth: Authenticator,
+  {
+    dimension,
+    unit,
+    period,
+    filter,
+  }: {
+    dimension: ConsumptionScopeDimension;
+    unit: ConsumptionTopUnit;
+    period: ConsumptionPeriod;
+    filter?: ConsumptionScopeFilter;
+  }
+): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
+  const query = buildConsumptionScopeQuery({
+    auth,
+    startDate: period.startDate,
+    endDate: period.endDate,
+    filter,
+  });
+
+  const buckets: GroupBucket[] = [];
+  let totalCreditsMicro = 0;
+  let afterKey: estypes.AggregationsCompositeAggregateKey | undefined;
+
+  for (;;) {
+    const result = await searchConsumptionAnalytics<never, CompositeTopAggs>(
+      query,
+      {
+        aggregations: {
+          by_group: {
+            composite: {
+              size: EXPORT_PAGE_SIZE,
+              sources: [
+                {
+                  [GROUP_SOURCE]: {
+                    terms: { field: CONSUMPTION_DIMENSION_FIELDS[dimension] },
+                  },
+                },
+              ],
+              ...(afterKey ? { after: afterKey } : {}),
+            },
+            aggs: subAggs(unit),
+          },
+          total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
+        },
+        size: 0,
+      }
+    );
+
+    if (result.isErr()) {
+      return result;
+    }
+
+    const page = result.value.aggregations?.by_group;
+    const pageBuckets = bucketsToArray<CompositeGroupBucket>(page?.buckets);
+    buckets.push(
+      ...pageBuckets.map(
+        (bucket): GroupBucket => ({
+          key: String(bucket.key[GROUP_SOURCE]),
+          doc_count: bucket.doc_count,
+          [CREDIT_AGG]: bucket[CREDIT_AGG],
+          [MESSAGES_AGG]: bucket[MESSAGES_AGG],
+        })
+      )
+    );
+    // The overall total does not depend on the composite cursor, but the
+    // aggregation is cheap to repeat and this keeps every page self-contained.
+    totalCreditsMicro =
+      result.value.aggregations?.total_credit_micro?.value ?? totalCreditsMicro;
+
+    if (!page?.after_key || pageBuckets.length < EXPORT_PAGE_SIZE) {
+      break;
+    }
+    afterKey = page.after_key;
+  }
+
+  const groups = buckets
+    .map((bucket) => ({
+      key: bucket.key,
+      credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
+      count: countFromBucket(bucket, unit),
+    }))
+    .sort((a, b) => b.credits - a.credits);
+
+  return new Ok({
+    groups,
+    totalCredits: microCreditsToCredits(totalCreditsMicro),
   });
 }
 

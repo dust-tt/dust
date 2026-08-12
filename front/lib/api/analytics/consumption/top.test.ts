@@ -1,5 +1,9 @@
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import {
+  EXPORT_PAGE_SIZE,
+  fetchConsumptionAllGroups,
+} from "@app/lib/api/analytics/consumption/top";
 import { fetchConsumptionTopAgents } from "@app/lib/api/analytics/consumption/top_agents";
 import { fetchConsumptionTopGroups } from "@app/lib/api/analytics/consumption/top_groups";
 import { fetchConsumptionTopModels } from "@app/lib/api/analytics/consumption/top_models";
@@ -407,5 +411,121 @@ describe("consumption top rankings", () => {
       return;
     }
     expect(result.value.agents[0].avgCreditsPerMessage).toBe(0);
+  });
+});
+
+// `fetchConsumptionAllGroups` is what the CSV export uses instead of the
+// capped `terms` aggregation above: a `terms` aggregation's `size` both
+// bounds and (at scale) skews the ranking, so the export instead pages a
+// composite aggregation until it has seen every bucket. These tests guard
+// that no page is silently dropped and that credits are re-sorted once every
+// page has been merged, not just within each page.
+describe("fetchConsumptionAllGroups (uncapped export ranking)", () => {
+  afterEach(() => {
+    vi.mocked(searchConsumptionAnalytics).mockReset();
+  });
+
+  it("issues a single composite aggregation when the first page is not full", async () => {
+    const { auth } = await setup();
+    mockAggs({
+      buckets: [
+        {
+          key: { group: "agent1" },
+          doc_count: 3,
+          credit_micro: { value: 3_000_000 },
+          messages: { value: 2 },
+        },
+      ],
+      totalMicro: 3_000_000,
+    });
+
+    const result = await fetchConsumptionAllGroups(auth, {
+      dimension: "agent",
+      unit: "message",
+      period: PERIOD,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.groups).toEqual([
+      { key: "agent1", credits: 3, count: 2 },
+    ]);
+    expect(result.value.totalCredits).toBe(3);
+    expect(vi.mocked(searchConsumptionAnalytics)).toHaveBeenCalledTimes(1);
+
+    const [, options] = lastSearchCall();
+    expect(options?.aggregations?.by_group?.composite).toMatchObject({
+      size: EXPORT_PAGE_SIZE,
+      sources: [{ group: { terms: { field: "agent.id" } } }],
+    });
+    expect(options?.aggregations?.by_group?.composite?.after).toBeUndefined();
+    expect(options?.aggregations?.by_group?.terms).toBeUndefined();
+  });
+
+  it("pages until a partial page, merging and re-sorting buckets across pages", async () => {
+    const { auth } = await setup();
+
+    const firstPageBuckets = Array.from(
+      { length: EXPORT_PAGE_SIZE },
+      (_, i) => ({
+        key: { group: `agent${i}` },
+        doc_count: 1,
+        credit_micro: { value: (i + 1) * 1_000 },
+        messages: { value: 1 },
+      })
+    );
+    const lastKey = `agent${EXPORT_PAGE_SIZE - 1}`;
+
+    vi.mocked(searchConsumptionAnalytics)
+      .mockImplementationOnce(async () =>
+        esResponse({
+          by_group: {
+            buckets: firstPageBuckets,
+            after_key: { group: lastKey },
+          },
+          total_credit_micro: { value: 999_000_000 },
+        })
+      )
+      .mockImplementationOnce(async () =>
+        esResponse({
+          by_group: {
+            buckets: [
+              {
+                key: { group: "agent_top" },
+                doc_count: 1,
+                // Higher than any bucket in the first page: only correct if
+                // the two pages are merged and re-sorted together.
+                credit_micro: { value: 999_000_000 },
+                messages: { value: 1 },
+              },
+            ],
+          },
+          total_credit_micro: { value: 999_000_000 },
+        })
+      );
+
+    const result = await fetchConsumptionAllGroups(auth, {
+      dimension: "agent",
+      unit: "message",
+      period: PERIOD,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.groups).toHaveLength(EXPORT_PAGE_SIZE + 1);
+    // Bucket from the second page outranks every bucket from the (full)
+    // first page, so it must lead once everything is merged and re-sorted.
+    expect(result.value.groups[0].key).toBe("agent_top");
+    expect(vi.mocked(searchConsumptionAnalytics)).toHaveBeenCalledTimes(2);
+
+    const [, secondCallOptions] = vi.mocked(searchConsumptionAnalytics).mock
+      .calls[1];
+    expect(secondCallOptions?.aggregations?.by_group?.composite?.after).toEqual(
+      { group: lastKey }
+    );
   });
 });
