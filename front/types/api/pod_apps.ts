@@ -93,25 +93,31 @@ export const ClonePodAppRequestBodySchema = z.object({
   name: z.string().min(1).max(MAX_POD_APP_NAME_LENGTH),
 });
 
+/** What a clone created, as the business layer reports it and the endpoint returns it. */
+export type PodAppCloneSummary = {
+  prefix: string;
+  name: string;
+  copiedFileCount: number;
+  clonedFrameNames: string[];
+  publishedFunctionSlugs: string[];
+  reconciledDatabaseNames: string[];
+  /** Functions or databases the copy had no source for, so they were not recreated. */
+  skipped: string[];
+};
+
 export type ClonePodAppResponseBody = {
-  app: {
-    prefix: string;
-    name: string;
-    copiedFileCount: number;
-    clonedFrameNames: string[];
-    publishedFunctionSlugs: string[];
-    reconciledDatabaseNames: string[];
-    /** Functions or databases the copy had no source for, so they were not recreated. */
-    skipped: string[];
-  };
+  app: PodAppCloneSummary;
+};
+
+/** What a delete removed, as the business layer reports it and the endpoint returns it. */
+export type PodAppDeleteSummary = {
+  prefix: string;
+  name: string | null;
+  deletedFunctionSlugs: string[];
+  deletedDatabaseNames: string[];
+  deletedFolderNames: string[];
 };
 
 export type DeletePodAppResponseBody = {
-  app: {
-    prefix: string;
-    name: string | null;
-    deletedFunctionSlugs: string[];
-    deletedDatabaseNames: string[];
-    deletedFolderNames: string[];
-  };
+  app: PodAppDeleteSummary;
 };

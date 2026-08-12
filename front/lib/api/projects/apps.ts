@@ -28,7 +28,9 @@ import type {
 } from "@app/types/api/file_system/types";
 import type {
   PodApp,
+  PodAppCloneSummary,
   PodAppDatabase,
+  PodAppDeleteSummary,
   PodAppFrame,
   PodAppFunction,
 } from "@app/types/api/pod_apps";
@@ -494,13 +496,7 @@ export class PodAppDeleteError extends Error {
   }
 }
 
-export interface DeletePodAppResult {
-  prefix: string;
-  name: string | null;
-  deletedFunctionSlugs: string[];
-  deletedDatabaseNames: string[];
-  deletedFolderNames: string[];
-}
+export type DeletePodAppResult = PodAppDeleteSummary;
 
 /**
  * Delete a Pod app: its published functions, its databases (live files and replicas), its shared
@@ -654,16 +650,7 @@ export class PodAppCloneError extends Error {
   }
 }
 
-export interface ClonePodAppResult {
-  prefix: string;
-  name: string;
-  copiedFileCount: number;
-  clonedFrameNames: string[];
-  publishedFunctionSlugs: string[];
-  reconciledDatabaseNames: string[];
-  /** Functions or databases whose source file the copy does not have, so they were not recreated. */
-  skipped: string[];
-}
+export type ClonePodAppResult = PodAppCloneSummary;
 
 /** The files under an app folder, Frames included, as a listing reports them. */
 function fileEntriesOf(entries: FileSystemEntry[]): FileSystemFileEntry[] {
@@ -762,7 +749,9 @@ export async function clonePodApp(
   }
   const sourceEntries = fileEntriesOf(listResult.value);
 
-  // Copy everything except the Frames, which need a FileResource of their own.
+  // Copy everything except the Frames, which need a FileResource of their own. Every copy lands at
+  // `{destFolderPath}/{relPath}`, so recording the relative paths is enough to address them later.
+  const copiedRelPaths = new Set<string>();
   let copiedFileCount = 0;
   for (const entry of sourceEntries) {
     if (isInteractiveContentType(entry.contentType)) {
@@ -779,6 +768,7 @@ export async function clonePodApp(
         new PodAppCloneError("internal", copyResult.error.message)
       );
     }
+    copiedRelPaths.add(relPath);
     copiedFileCount += 1;
   }
 
@@ -821,25 +811,21 @@ export async function clonePodApp(
     copiedFileCount += 1;
   }
 
-  const copiedPathByRelPath = new Map(
-    sourceEntries.map((entry) => {
-      const relPath = entry.path.slice(sourceFolderPath.length + 1);
-
-      return [relPath, `${destFolderPath}/${relPath}`] as const;
-    })
-  );
   const skipped: string[] = [];
 
   // The copy's function sources, indexed by the name they publish under. A function's source is one
   // file directly under `functions/`, named after it; anything nested below that (`functions/lib/`)
   // is a helper the bundler pulls in, not a function of its own.
   const functionSourceByName = new Map<string, string>();
-  for (const [relPath, destPath] of copiedPathByRelPath) {
+  for (const relPath of copiedRelPaths) {
     const segments = relPath.split("/");
     if (segments.length !== 2 || segments[0] !== APP_FUNCTIONS_SUBFOLDER) {
       continue;
     }
-    functionSourceByName.set(stripExtension(segments[1]), destPath);
+    functionSourceByName.set(
+      stripExtension(segments[1]),
+      `${destFolderPath}/${relPath}`
+    );
   }
 
   // Publish the copy's functions. The source path decides the prefix, so publishing from the copy's
@@ -878,11 +864,11 @@ export async function clonePodApp(
   const reconciledDatabaseNames: string[] = [];
   for (const database of source.databases) {
     const schemaRelPath = `${APP_DATABASES_SUBFOLDER}/${database.name}${POD_DATABASE_SCHEMA_FILE_SUFFIX}`;
-    const schemaPath = copiedPathByRelPath.get(schemaRelPath);
-    if (!schemaPath) {
+    if (!copiedRelPaths.has(schemaRelPath)) {
       skipped.push(`database ${database.name}`);
       continue;
     }
+    const schemaPath = `${destFolderPath}/${schemaRelPath}`;
 
     const reconcileResult = await reconcileDatabaseFromPodPath(auth, {
       space: pod,
