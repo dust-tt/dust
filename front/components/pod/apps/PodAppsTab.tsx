@@ -3,6 +3,7 @@ import { DeletePodAppDialog } from "@app/components/pod/apps/DeletePodAppDialog"
 import { PodAppTile } from "@app/components/pod/apps/PodAppTile";
 import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
 import type { CustomResourceIconType } from "@app/components/resources/resources_icon_names";
+import { usePodFrameTabs } from "@app/hooks/usePodFrameTabs";
 import { usePodApps } from "@app/lib/swr/pods";
 import type { PodApp, PodAppFrame } from "@app/types/api/pod_apps";
 import { DEFAULT_POD_FRAME_TAB_ICON } from "@app/types/pod_frame_tab";
@@ -30,6 +31,14 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
   });
 
   const canEdit = pod.isEditor && !pod.archivedAt;
+
+  const { updateFrameTab } = usePodFrameTabs({
+    owner,
+    podId: pod.sId,
+    frameTabs: pod.frameTabs ?? [],
+    tabsOrder: pod.tabsOrder,
+    isEditor: canEdit,
+  });
 
   const [framePreview, setFramePreview] = useState<PodAppFrame | null>(null);
   const [appPendingDeletion, setAppPendingDeletion] = useState<PodApp | null>(
@@ -108,6 +117,11 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
                 onClone={canEdit ? () => setAppPendingClone(app) : undefined}
                 onDelete={
                   canEdit ? () => setAppPendingDeletion(app) : undefined
+                }
+                onChangeIcon={
+                  canEdit
+                    ? (framePath, icon) => updateFrameTab(framePath, { icon })
+                    : undefined
                 }
               />
             ))}
