@@ -139,7 +139,10 @@ function buildColumns({
 }
 
 interface AttributionRowsProps {
+  workspaceId: string;
   dimension: ConsumptionDimension;
+  period: ConsumptionPeriodSelection;
+  filter?: ConsumptionScopeFilter;
   rows: ConsumptionTopRow[];
   totalCredits: number;
   isTopLoading: boolean;
@@ -148,7 +151,10 @@ interface AttributionRowsProps {
 }
 
 function AttributionRows({
+  workspaceId,
   dimension,
+  period,
+  filter,
   rows: allRows,
   totalCredits,
   isTopLoading,
@@ -298,7 +304,10 @@ export function ConsumptionAttributionTable({
         />
         <div className="pt-3">
           <AttributionRows
+            workspaceId={workspaceId}
             dimension={dimension}
+            period={period}
+            filter={filter}
             rows={rows}
             totalCredits={totalCredits}
             isTopLoading={isTopLoading}
