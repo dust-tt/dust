@@ -47,18 +47,40 @@ type AttributionRowData = ConsumptionTopRow & {
   onClick: () => void;
 };
 
+function CostShareBar({
+  percentage,
+  className,
+}: {
+  percentage: number;
+  className?: string;
+}) {
+  const clampedPercentage = Math.min(100, Math.max(0, percentage));
+
+  return (
+    <svg
+      aria-hidden="true"
+      className={cn("h-1.5", className)}
+      preserveAspectRatio="none"
+      viewBox="0 0 100 6"
+    >
+      <rect className="fill-muted" height="6" rx="3" width="100" />
+      <rect
+        className="fill-primary"
+        height="6"
+        rx="3"
+        width={clampedPercentage}
+      />
+    </svg>
+  );
+}
+
 function CostShareCell({ share }: { share: number }) {
-  const percent = Math.round(share * 100);
+  const percentage = Math.min(100, Math.max(0, share * 100));
   return (
     <div className="flex items-center gap-2">
-      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full bg-primary"
-          style={{ width: `${Math.min(100, share * 100)}%` }}
-        />
-      </div>
+      <CostShareBar className="w-24" percentage={percentage} />
       <span className="w-8 text-right text-xs text-muted-foreground tabular-nums">
-        {percent}%
+        {Math.round(percentage)}%
       </span>
     </div>
   );
@@ -213,7 +235,7 @@ function BreakdownColumn({
         <div className="flex flex-col gap-2">
           {visibleRows.map((row) => {
             const share = totalCredits > 0 ? row.credits / totalCredits : 0;
-            const percent = Math.round(share * 100);
+            const percentage = Math.min(100, Math.max(0, share * 100));
             return (
               <div key={row.id} className="min-w-0">
                 <div className="mb-1 flex items-center justify-between gap-2 text-xs">
@@ -221,15 +243,10 @@ function BreakdownColumn({
                     {row.name}
                   </span>
                   <span className="shrink-0 text-muted-foreground tabular-nums">
-                    {percent}%
+                    {Math.round(percentage)}%
                   </span>
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary"
-                    style={{ width: `${Math.min(100, share * 100)}%` }}
-                  />
-                </div>
+                <CostShareBar className="w-full" percentage={percentage} />
               </div>
             );
           })}
