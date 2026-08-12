@@ -1,3 +1,4 @@
+import { ClonePodAppDialog } from "@app/components/pod/apps/ClonePodAppDialog";
 import { DeletePodAppDialog } from "@app/components/pod/apps/DeletePodAppDialog";
 import { PodAppDetail } from "@app/components/pod/apps/PodAppDetail";
 import { PodAppList } from "@app/components/pod/apps/PodAppList";
@@ -32,6 +33,7 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
   const [appPendingDeletion, setAppPendingDeletion] = useState<PodApp | null>(
     null
   );
+  const [appPendingClone, setAppPendingClone] = useState<PodApp | null>(null);
 
   const iconByFramePath = useMemo(
     () =>
@@ -100,9 +102,26 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
                 ? () => setAppPendingDeletion(selectedApp)
                 : undefined
             }
+            onClone={
+              canDelete && selectedApp.prefix !== UNFILED_POD_APP_PREFIX
+                ? () => setAppPendingClone(selectedApp)
+                : undefined
+            }
           />
         )}
       </div>
+
+      {appPendingClone && (
+        <ClonePodAppDialog
+          key={`clone-${appPendingClone.prefix}`}
+          owner={owner}
+          podId={pod.sId}
+          app={appPendingClone}
+          existingPrefixes={apps.map((candidate) => candidate.prefix)}
+          isOpen
+          onClose={() => setAppPendingClone(null)}
+        />
+      )}
 
       {appPendingDeletion && (
         <DeletePodAppDialog

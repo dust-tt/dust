@@ -86,6 +86,26 @@ export const DeletePodAppParamsSchema = z.object({
     .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/),
 });
 
+/** Max app folder name length, matching what a prefix can be derived from comfortably. */
+export const MAX_POD_APP_NAME_LENGTH = 128;
+
+export const ClonePodAppRequestBodySchema = z.object({
+  name: z.string().min(1).max(MAX_POD_APP_NAME_LENGTH),
+});
+
+export type ClonePodAppResponseBody = {
+  app: {
+    prefix: string;
+    name: string;
+    copiedFileCount: number;
+    clonedFrameNames: string[];
+    publishedFunctionSlugs: string[];
+    reconciledDatabaseNames: string[];
+    /** Functions or databases the copy had no source for, so they were not recreated. */
+    skipped: string[];
+  };
+};
+
 export type DeletePodAppResponseBody = {
   app: {
     prefix: string;

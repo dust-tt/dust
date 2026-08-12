@@ -2,6 +2,7 @@ import type { PodApp, PodAppFrame } from "@app/types/api/pod_apps";
 import {
   Button,
   Chip,
+  Clipboard,
   ContentMessage,
   Eye,
   ScrollArea,
@@ -13,6 +14,8 @@ interface PodAppDetailProps {
   onOpenFrame: (frame: PodAppFrame) => void;
   /** Absent when the viewer cannot delete (no write access, or the unfiled app). */
   onDelete?: () => void;
+  /** Absent when the app cannot be cloned (no write access, or the unfiled app). */
+  onClone?: () => void;
 }
 
 interface DetailSectionProps {
@@ -47,6 +50,7 @@ export function PodAppDetail({
   app,
   onOpenFrame,
   onDelete,
+  onClone,
 }: PodAppDetailProps) {
   return (
     <ScrollArea className="h-full">
@@ -59,16 +63,28 @@ export function PodAppDetail({
                 "Published from the Pod root, so these are not owned by an app folder."}
             </span>
           </div>
-          {onDelete && (
-            <Button
-              variant="warning"
-              size="xs"
-              icon={Trash01}
-              label="Delete"
-              tooltip="Delete this app and everything it owns"
-              onClick={onDelete}
-            />
-          )}
+          <div className="flex shrink-0 items-center gap-2">
+            {onClone && (
+              <Button
+                variant="outline"
+                size="xs"
+                icon={Clipboard}
+                label="Clone"
+                tooltip="Copy this app into a new folder, with empty databases"
+                onClick={onClone}
+              />
+            )}
+            {onDelete && (
+              <Button
+                variant="warning"
+                size="xs"
+                icon={Trash01}
+                label="Delete"
+                tooltip="Delete this app and everything it owns"
+                onClick={onDelete}
+              />
+            )}
+          </div>
         </div>
 
         {app.collidingFolderNames.length > 0 && (
