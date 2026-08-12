@@ -9,7 +9,6 @@ import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/orga
 import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
-import { ActivationNudgeModel } from "@app/lib/models/activation/activation_nudge";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
   AgentChildAgentConfigurationModel,
@@ -271,16 +270,6 @@ export async function scrubSpaceActivity({
 
     await UserProjectPreferencesResource.deleteAllBySpace(auth, space.id);
   }
-
-  // Delete activation nudges sent for this Pod. The FK to spaces is
-  // `onDelete: "RESTRICT"`, so these rows must be removed before the space
-  // can be hard-deleted.
-  await ActivationNudgeModel.destroy({
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      spaceId: space.id,
-    },
-  });
 
   const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
   if (activationPod) {
