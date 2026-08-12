@@ -3,7 +3,7 @@ import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
-import { Button, LoadingBlock } from "@dust-tt/sparkle";
+import { Button, cn, LoadingBlock } from "@dust-tt/sparkle";
 import { useState } from "react";
 import type { ConsumptionDimension } from "./consumptionDimensions";
 
@@ -132,7 +132,14 @@ export function ConsumptionAttributionBreakdown({
   };
 
   return (
-    <div className="grid animate-in grid-cols-3 gap-20 border-b border-separator px-2 pb-6 pt-4 fade-in-0 slide-in-from-top-1 duration-enter ease-enter motion-reduce:animate-none">
+    <div
+      className={cn(
+        "grid animate-in grid-cols-3 gap-20",
+        "border-b border-separator px-2 pb-6 pt-4",
+        "fade-in-0 slide-in-from-top-1 duration-enter ease-enter",
+        "motion-reduce:animate-none"
+      )}
+    >
       {BREAKDOWN_DIMENSIONS.map((dimension) => (
         <BreakdownColumn
           key={dimension}

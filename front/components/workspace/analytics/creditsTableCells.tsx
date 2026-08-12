@@ -33,8 +33,11 @@ export function CostShareBar({
       aria-hidden="true"
       className={cn(
         "h-1.5 appearance-none overflow-hidden rounded-full bg-muted",
-        "[&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-primary",
-        "[&::-moz-progress-bar]:rounded-full [&::-moz-progress-bar]:bg-primary",
+        "[&::-webkit-progress-bar]:bg-muted",
+        "[&::-webkit-progress-value]:rounded-full",
+        "[&::-webkit-progress-value]:bg-primary",
+        "[&::-moz-progress-bar]:rounded-full",
+        "[&::-moz-progress-bar]:bg-primary",
         className
       )}
       max={100}
