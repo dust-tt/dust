@@ -88,6 +88,28 @@ async function resolveAgentConfigurationId(
 }
 
 export class ConversationFactory {
+  static async setDatabaseFileSystemForTest(
+    auth: Authenticator,
+    conversationId: string,
+    enabled: boolean
+  ): Promise<void> {
+    const conversation = await ConversationModel.findOne({
+      where: {
+        sId: conversationId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    if (!conversation) {
+      throw new Error("Conversation not found.");
+    }
+    await conversation.update({
+      metadata: {
+        ...conversation.metadata,
+        useDatabaseFileSystem: enabled,
+      },
+    });
+  }
+
   static async create(
     auth: Authenticator,
     {

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import type { FileSystemScope } from "@app/lib/api/file_system/namespace_scope";
 import { FileSystemOperationError } from "@app/lib/api/file_system/namespace_types";
 import type { Authenticator } from "@app/lib/auth";
@@ -18,6 +19,7 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 import type { Transaction, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
@@ -138,6 +140,96 @@ export class FileSystemContentResource {
         contentType: node.value.contentType,
       },
     });
+  }
+
+  /** Read an inode directly from its immutable GCS blob. */
+  static async getReadStream(
+    auth: Authenticator,
+    scope: FileSystemScope,
+    nodeId: number
+  ): Promise<Result<Readable, FileSystemOperationError>> {
+    const node = await this.fetchFile(auth, scope, nodeId);
+    if (node.isErr()) {
+      return node;
+    }
+    if (node.value.blobId === null) {
+      return new Ok(Readable.from([]));
+    }
+    return new Ok(
+      getPrivateUploadBucket()
+        .file(this.objectPath(auth, node.value.id, node.value.blobId))
+        .createReadStream()
+    );
+  }
+
+  /**
+   * Write application-owned content without sending bytes through the sandbox API.
+   * The object is registered before upload and attached with the same CAS used by
+   * the FUSE daemon, so a failed or stale write remains safe to clean up.
+   */
+  static async writeContent(
+    auth: Authenticator,
+    scope: FileSystemScope,
+    request: {
+      nodeId: number;
+      expectedBlobId: string | null;
+      content: Buffer | string | Readable;
+      contentType: string;
+    }
+  ): Promise<Result<number, FileSystemOperationError>> {
+    const prepared = await this.prepareUpload(auth, scope, request);
+    if (prepared.isErr()) {
+      return prepared;
+    }
+
+    const { blobId, contentType } = prepared.value.upload;
+    const file = getPrivateUploadBucket().file(
+      this.objectPath(auth, request.nodeId, blobId)
+    );
+    if (isString(request.content) || Buffer.isBuffer(request.content)) {
+      const content = isString(request.content)
+        ? Buffer.from(request.content)
+        : request.content;
+      await file.save(content, { contentType });
+    } else {
+      await pipeline(
+        request.content,
+        file.createWriteStream({ contentType, resumable: false })
+      );
+    }
+
+    return this.commitUpload(auth, scope, {
+      nodeId: request.nodeId,
+      expectedBlobId: request.expectedBlobId,
+      blobId,
+      contentType,
+    });
+  }
+
+  static async getDownloadUrl(
+    auth: Authenticator,
+    scope: FileSystemScope,
+    nodeId: number,
+    expirationDelayMs: number
+  ): Promise<Result<string, FileSystemOperationError>> {
+    const node = await this.fetchFile(auth, scope, nodeId);
+    if (node.isErr()) {
+      return node;
+    }
+    if (node.value.blobId === null) {
+      return new Err(
+        new FileSystemOperationError(
+          "not_found",
+          "The file does not have content yet."
+        )
+      );
+    }
+    return new Ok(
+      await getPrivateUploadBucket().getSignedUrl(
+        this.objectPath(auth, node.value.id, node.value.blobId),
+        { expirationDelayMs }
+      )
+    );
   }
 
   static async prepareUpload(

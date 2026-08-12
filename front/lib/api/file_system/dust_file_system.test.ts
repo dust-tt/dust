@@ -11,7 +11,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { ConversationFactory as BaseConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -21,6 +21,28 @@ import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// This suite exercises the established GCS backend. Database-backed behavior
+// has its own focused suite so backend expectations never get mixed together.
+const ConversationFactory = {
+  create: async (
+    ...args: Parameters<typeof BaseConversationFactory.create>
+  ) => {
+    const conversation = await BaseConversationFactory.create(...args);
+    await BaseConversationFactory.setDatabaseFileSystemForTest(
+      args[0],
+      conversation.sId,
+      false
+    );
+    return {
+      ...conversation,
+      metadata: {
+        ...conversation.metadata,
+        useDatabaseFileSystem: false,
+      },
+    };
+  },
+};
 
 async function sessionAuthForUser(
   user: UserResource,
@@ -865,9 +887,25 @@ describe("DustFileSystem.forAgentLoop", () => {
           messagesCreatedAt: [],
         }
       );
+      await BaseConversationFactory.setDatabaseFileSystemForTest(
+        refreshedAdminAuth,
+        podConversation.sId,
+        true
+      );
+      await BaseConversationFactory.setDatabaseFileSystemForTest(
+        userSessionAuth,
+        userConversation.sId,
+        true
+      );
 
       const result = await DustFileSystem.forAgentLoop(userSessionAuth, {
-        conversation: userConversation,
+        conversation: {
+          ...userConversation,
+          metadata: {
+            ...userConversation.metadata,
+            useDatabaseFileSystem: true,
+          },
+        },
         scopedPaths: [`conversation-${podConversation.sId}/open.pdf`],
       });
 

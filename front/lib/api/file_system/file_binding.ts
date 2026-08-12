@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { FileSystemRootKind } from "@app/lib/resources/storage/models/file_system_node";
 import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 
 export type FileSystemBindingLocation = {
   rootKind: FileSystemRootKind;
@@ -26,4 +27,19 @@ export interface FileSystemFileBinding {
     fileResourceId: string,
     location: FileSystemBindingLocation
   ): Promise<Result<void, Error>>;
+}
+
+/** Milestone 1 has stable inode identity but no product-object attachment. */
+export class UnboundFileSystemFileBinding implements FileSystemFileBinding {
+  async resolveFileModelId(): Promise<null> {
+    return null;
+  }
+
+  async deleteFile(): Promise<Result<void, Error>> {
+    return new Ok(undefined);
+  }
+
+  async moveFile(): Promise<Result<void, Error>> {
+    return new Ok(undefined);
+  }
 }

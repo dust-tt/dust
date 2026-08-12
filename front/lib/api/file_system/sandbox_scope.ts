@@ -11,7 +11,7 @@ export function fileSystemScopeFromSandboxClaims(
           {
             kind: "conversation" as const,
             id: claims.cId,
-            name: "conversation",
+            name: `conversation-${claims.cId}`,
             permissions: { canRead: true, canWrite: true },
           },
         ]
@@ -21,7 +21,7 @@ export function fileSystemScopeFromSandboxClaims(
           {
             kind: "pod" as const,
             id: claims.spaceId,
-            name: "pod",
+            name: `pod-${claims.spaceId}`,
             permissions: { canRead: true, canWrite: true },
           },
         ]

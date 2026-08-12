@@ -101,12 +101,7 @@ impl FileStore {
     pub fn lookup(&self, parent_id: u64, name: &str) -> io::Result<Node> {
         validate_name(name)?;
         if parent_id == ROOT_ID {
-            return self
-                .roots
-                .iter()
-                .find(|root| root.name == name)
-                .cloned()
-                .ok_or_else(|| errno(libc::ENOENT));
+            return self.root_by_name(name).ok_or_else(|| errno(libc::ENOENT));
         }
         let mut node = Node::from_remote(self.client.lookup(remote_id(parent_id)?, name)?);
         self.apply_staged_size(&mut node);
@@ -115,7 +110,14 @@ impl FileStore {
 
     pub fn children(&self, parent_id: u64) -> io::Result<Vec<Node>> {
         if parent_id == ROOT_ID {
-            return Ok(self.roots.clone());
+            let mut roots = self.roots.clone();
+            for alias in ["conversation", "pod"] {
+                if let Some(mut root) = self.root_by_name(alias) {
+                    root.name = alias.to_owned();
+                    roots.push(root);
+                }
+            }
+            return Ok(roots);
         }
         self.client
             .children(remote_id(parent_id)?)?
@@ -126,6 +128,23 @@ impl FileStore {
                 Ok(node)
             })
             .collect()
+    }
+
+    fn root_by_name(&self, name: &str) -> Option<Node> {
+        self.roots
+            .iter()
+            .find(|root| root.name == name)
+            .or_else(|| match name {
+                // Keep the paths used in prompts and older tools while the canonical
+                // root names continue to include their stable Dust identifiers.
+                "conversation" => self
+                    .roots
+                    .iter()
+                    .find(|root| root.name.starts_with("conversation-")),
+                "pod" => self.roots.iter().find(|root| root.name.starts_with("pod-")),
+                _ => None,
+            })
+            .cloned()
     }
 
     pub fn create_file(&self, parent_id: u64, name: &str, mode: u16) -> io::Result<Node> {
