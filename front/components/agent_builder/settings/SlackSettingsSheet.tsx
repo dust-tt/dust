@@ -38,6 +38,22 @@ type SlackChannel = {
   autoRespondWithoutMentionSkipThreadReplies?: boolean;
 };
 
+type LocalState = {
+  localSlackChannels: SlackChannel[];
+  autoRespondWithoutMentionEnabled: boolean;
+  skipThreadRepliesEnabled: boolean;
+};
+
+function stateFromChannels(channels: SlackChannel[] | undefined): LocalState {
+  const ch = channels ?? [];
+  return {
+    localSlackChannels: [...ch],
+    autoRespondWithoutMentionEnabled: ch[0]?.autoRespondWithoutMention ?? false,
+    skipThreadRepliesEnabled:
+      ch[0]?.autoRespondWithoutMentionSkipThreadReplies ?? false,
+  };
+}
+
 interface SlackChannelsListProps {
   disabled?: boolean;
   existingSelection: SlackChannel[];
@@ -211,20 +227,6 @@ export function SlackSettingsSheet({
     name: "agentSettings.slackChannels",
   });
 
-  const stateFromChannels = useCallback(
-    (channels: typeof slackChannels) => {
-      const ch = channels ?? [];
-      return {
-        localSlackChannels: [...ch],
-        autoRespondWithoutMentionEnabled:
-          ch[0]?.autoRespondWithoutMention ?? false,
-        skipThreadRepliesEnabled:
-          ch[0]?.autoRespondWithoutMentionSkipThreadReplies ?? false,
-      };
-    },
-    []
-  );
-
   const [
     {
       localSlackChannels,
@@ -232,17 +234,17 @@ export function SlackSettingsSheet({
       skipThreadRepliesEnabled,
     },
     setLocalState,
-  ] = useState(() => stateFromChannels(slackChannels));
+  ] = useState<LocalState>(() => stateFromChannels(slackChannels));
 
   useEffect(() => {
     setLocalState(stateFromChannels(slackChannels));
-  }, [slackChannels, stateFromChannels]);
+  }, [slackChannels]);
 
   useEffect(() => {
     if (isOpen) {
       setLocalState(stateFromChannels(slackChannels));
     }
-  }, [isOpen, slackChannels, stateFromChannels]);
+  }, [isOpen, slackChannels]);
 
   const handleSelectionChange = (channels: SlackChannel[]) => {
     setLocalState((prev) => ({ ...prev, localSlackChannels: channels }));
