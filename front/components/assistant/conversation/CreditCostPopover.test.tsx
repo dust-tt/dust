@@ -4,15 +4,28 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockOpenPanel, mockUseAgentMessageConsumption } = vi.hoisted(() => ({
-  mockOpenPanel: vi.fn(),
-  mockUseAgentMessageConsumption: vi.fn(),
-}));
+const { mockOpenPanel, mockSidePanelContext, mockUseAgentMessageConsumption } =
+  vi.hoisted(() => {
+    const mockOpenPanel = vi.fn();
+    const mockSidePanelContext: {
+      currentPanel: "credits" | undefined;
+      openPanel: typeof mockOpenPanel;
+    } = {
+      currentPanel: undefined,
+      openPanel: mockOpenPanel,
+    };
+
+    return {
+      mockOpenPanel,
+      mockSidePanelContext,
+      mockUseAgentMessageConsumption: vi.fn(),
+    };
+  });
 
 vi.mock(
   "@app/components/assistant/conversation/ConversationSidePanelContext",
   () => ({
-    useConversationSidePanelContext: () => ({ openPanel: mockOpenPanel }),
+    useConversationSidePanelContext: () => mockSidePanelContext,
   })
 );
 
@@ -89,6 +102,7 @@ const defaultProps: ComponentProps<typeof CreditCostPopover> = {
 describe("CreditCostPopover", () => {
   beforeEach(() => {
     mockOpenPanel.mockReset();
+    mockSidePanelContext.currentPanel = undefined;
     mockUseAgentMessageConsumption.mockReset();
   });
 
@@ -159,6 +173,21 @@ describe("CreditCostPopover", () => {
     expect(screen.queryByText("Saved through reuse")).not.toBeInTheDocument();
     expect(screen.getByText("3 credits")).toBeInTheDocument();
     expect(screen.getByText("7 credits")).toBeInTheDocument();
+  });
+
+  it("hides the conversation credits button when the credits panel is open", () => {
+    mockSidePanelContext.currentPanel = "credits";
+    mockUseAgentMessageConsumption.mockReturnValue({
+      consumption: { billedCredits: 10, details: null },
+      isConsumptionLoading: false,
+      mutateConsumption: vi.fn(),
+    });
+
+    render(<CreditCostPopover {...defaultProps} />);
+
+    expect(
+      screen.queryByRole("button", { name: "Conversation credits" })
+    ).not.toBeInTheDocument();
   });
 
   it("keeps the exact charge visible when attribution details are unavailable", () => {
