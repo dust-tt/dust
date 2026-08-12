@@ -1,4 +1,5 @@
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import { CONSUMPTION_SCOPE_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 
 export const CONSUMPTION_PERIOD_DAY_OPTIONS = [7, 30, 90] as const;
 
@@ -53,21 +54,21 @@ export function consumptionPeriodFromKey(
   );
 }
 
-/**
- * Query string shared by every consumption endpoint. Kept in one place so the
- * SWR keys of the different widgets stay in sync — two widgets disagreeing on
- * the window would show numbers that do not add up.
- */
-export function consumptionQueryString(
-  selection: ConsumptionPeriodSelection,
-  filter?: ConsumptionScopeFilter
-): string {
-  const params = new URLSearchParams({ period: selection.kind });
-  if (selection.kind === "days") {
-    params.set("days", String(selection.days));
+// Sorted, empty-dimension-free filter, so the same selection always produces
+// the same request body, needed for the SWR cache key to stay stable.
+export function normalizedConsumptionFilter(
+  filter: ConsumptionScopeFilter | undefined
+): ConsumptionScopeFilter | undefined {
+  if (!filter) {
+    return undefined;
   }
-  if (filter && Object.keys(filter).length > 0) {
-    params.set("filter", JSON.stringify(filter));
+
+  const normalized: ConsumptionScopeFilter = {};
+  for (const key of CONSUMPTION_SCOPE_FILTER_KEYS) {
+    const values = filter[key];
+    if (values && values.length > 0) {
+      normalized[key] = [...values].sort();
+    }
   }
-  return params.toString();
+  return normalized;
 }

@@ -1,6 +1,9 @@
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
+import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import { consumptionQueryString } from "@app/lib/analytics/consumption_period";
+import { normalizedConsumptionFilter } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionTopBody } from "@app/lib/api/analytics/consumption/schema";
+import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/api/analytics/consumption/schema";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/consumption/top_agents";
 import type { GetConsumptionTopGroupsResponse } from "@app/lib/api/analytics/consumption/top_groups";
@@ -9,10 +12,9 @@ import type { GetConsumptionTopSkillsResponse } from "@app/lib/api/analytics/con
 import type { GetConsumptionTopSourcesResponse } from "@app/lib/api/analytics/consumption/top_sources";
 import type { GetConsumptionTopToolsResponse } from "@app/lib/api/analytics/consumption/top_tools";
 import type { GetConsumptionTopUsersResponse } from "@app/lib/api/analytics/consumption/top_users";
-import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray } from "@app/lib/swr/swr";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useMemo } from "react";
-import type { Fetcher } from "swr";
 
 const CONSUMPTION_TOP_ENDPOINTS = {
   agent: "top-agents",
@@ -129,18 +131,19 @@ export function useConsumptionTop({
   filter?: ConsumptionScopeFilter;
   disabled?: boolean;
 }) {
-  const { fetcher } = useFetcher();
-  const topFetcher: Fetcher<ConsumptionTopResponse> = fetcher;
+  const url = `/api/w/${workspaceId}/analytics/consumption/${CONSUMPTION_TOP_ENDPOINTS[dimension]}`;
+  const body: ConsumptionTopBody = {
+    period: period.kind,
+    days:
+      period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
+    filter: normalizedConsumptionFilter(filter),
+    limit,
+  };
 
-  const params = new URLSearchParams(consumptionQueryString(period, filter));
-  params.set("limit", String(limit));
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/analytics/consumption/` +
-      `${CONSUMPTION_TOP_ENDPOINTS[dimension]}?${params.toString()}`,
-    topFetcher,
-    { disabled }
-  );
+  const { data, error, isValidating } = useConsumptionQuery<
+    ConsumptionTopBody,
+    ConsumptionTopResponse
+  >({ url, body, disabled });
 
   const rows = useMemo(
     () => (data ? toRows(data) : emptyArray<ConsumptionTopRow>()),

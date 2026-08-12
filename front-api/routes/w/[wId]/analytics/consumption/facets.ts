@@ -2,7 +2,7 @@ import type { GetConsumptionFacetsResponse } from "@app/lib/api/analytics/consum
 import { fetchConsumptionFacets } from "@app/lib/api/analytics/consumption/facets";
 import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import {
-  ConsumptionFacetsBodySchema,
+  ConsumptionBodySchema,
   toConsumptionPeriodInput,
 } from "@app/lib/api/analytics/consumption/schema";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -138,7 +138,7 @@ const app = workspaceApp();
 app.post(
   "/",
   ensureIsManager(),
-  validate("json", ConsumptionFacetsBodySchema),
+  validate("json", ConsumptionBodySchema),
   async (ctx): HandlerResult<GetConsumptionFacetsResponse> => {
     const auth = ctx.get("auth");
     const { filter, ...periodInput } = ctx.req.valid("json");
