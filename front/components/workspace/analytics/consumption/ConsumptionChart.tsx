@@ -1,7 +1,7 @@
-import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
 import { useConsumptionTimeseries } from "@app/hooks/useConsumptionTimeseries";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
@@ -214,10 +214,7 @@ export function ConsumptionChart({
       height={CHART_HEIGHT}
       legendItems={legendItems}
     >
-      <BarChart
-        data={chartData}
-        margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
-      >
+      <BarChart data={chartData} margin={{ ...CHART_MARGIN, top: 24 }}>
         <CartesianGrid vertical={false} className="stroke-border" />
         <XAxis
           dataKey="timestamp"

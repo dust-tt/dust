@@ -1,5 +1,4 @@
 import {
-  CHART_HEIGHT,
   USAGE_METRICS_LEGEND,
   USAGE_METRICS_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
@@ -13,6 +12,7 @@ import {
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { legendFromConstant } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
 import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import {
@@ -178,10 +178,7 @@ export function UsageMetricsChart({
       height={CHART_HEIGHT}
       legendItems={legendItems}
     >
-      <LineChart
-        data={data}
-        margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
-      >
+      <LineChart data={data} margin={CHART_MARGIN}>
         <defs>
           {/* Gradients use currentColor; color is set via classes */}
           <linearGradient

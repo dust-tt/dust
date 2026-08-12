@@ -1,5 +1,4 @@
 import { ChartsTooltip } from "@app/components/agent_builder/observability/charts/ChartsTooltip";
-import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import { useToolUsageData } from "@app/components/agent_builder/observability/hooks";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import type {
@@ -9,6 +8,7 @@ import type {
 import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { RoundedBarShape } from "@app/components/charts/ChartShapes";
+import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
 import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import { useAgentMcpConfigurations } from "@app/lib/swr/assistants";
 import { ButtonsSwitch, ButtonsSwitchList, cn } from "@dust-tt/sparkle";
@@ -128,11 +128,7 @@ export function ToolUsageChart({
       height={CHART_HEIGHT}
       legendItems={legendItems}
     >
-      <BarChart
-        data={chartData}
-        margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
-        stackOffset="expand"
-      >
+      <BarChart data={chartData} margin={CHART_MARGIN} stackOffset="expand">
         <CartesianGrid vertical={false} className="stroke-border" />
         <XAxis
           dataKey="label"
