@@ -92,8 +92,13 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import { isDefaultFromAvailability } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
+import type { GrantVerb } from "@app/types/group_permissions";
 import { SKILL_GROUP_PREFIX } from "@app/types/groups";
-import type { GroupGrant } from "@app/types/resource_permissions";
+import type {
+  AccessControlList,
+  GroupGrant,
+  RoleGrant,
+} from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -257,6 +262,13 @@ export interface SkillResource
 
 // The role a skill's editor group holds on the skill. Its verbs live in ROLE_REGISTRY.skill.
 const SKILL_EDITOR_GRANT_TYPE = "editor" as const;
+
+const SKILL_ROLE_GRANTS: RoleGrant[] = [
+  { role: "admin", permissions: ["read", "admin"] },
+  { role: "manager", permissions: ["read"] },
+  { role: "user", permissions: ["read"] },
+  { role: "builder", permissions: ["read"] },
+];
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SkillResource extends BaseResource<SkillConfigurationModel> {
@@ -2117,7 +2129,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return false;
     }
 
-    return this.editorGroup.canWrite(auth);
+    const legacyAcls = this.editorGroup.getAccessControlLists(auth);
+    this.shadowCompareSkillPermission(auth, legacyAcls, "write");
+
+    return auth.hasPermissionForAcls("write", legacyAcls);
   }
 
   canAdministrate(auth: Authenticator): boolean {
@@ -2131,7 +2146,55 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return false;
     }
 
-    return this.editorGroup.canAdministrate(auth);
+    const legacyAcls = this.editorGroup.getAccessControlLists(auth);
+    this.shadowCompareSkillPermission(auth, legacyAcls, "admin");
+
+    return auth.hasPermissionForAcls("admin", legacyAcls);
+  }
+
+  /**
+   * The skill's access-control list built from governance data: the code role rules plus the
+   * groups held in `group_permissions`. Stands on its own — it reads nothing from the editor-group
+   * association — so at the flip (#9480) this becomes the served `getAccessControlLists(auth)` and
+   * the legacy path is deleted without touching it.
+   *
+   * Until then it is the shadow-compare candidate.
+   */
+  governanceAcls(auth: Authenticator): AccessControlList[] {
+    return [
+      {
+        roles: SKILL_ROLE_GRANTS,
+        groups: auth.getGroupPermissions("skill", this.id),
+        workspaceId: this.workspaceId,
+      },
+    ];
+  }
+
+  // Shadow-compare (#9479): while the `group_permissions_shadow` flag is on for the workspace, check
+  // whether the governance ACL yields the same decision as the legacy editor-group ACL. Legacy is
+  // the editor group's own `getAccessControlLists(auth)` (the group listed inline); the candidate is
+  // `governanceAcls`, built independently from the table. Delegates the flag lookup + compare + log
+  // to the Authenticator as fire-and-forget — never changes the served result.
+  //
+  // Callers skip this for API keys (code-ruled: any key may write any skill, which the table has no
+  // way to express) and for skills without an editor group (global/system skills, not part of the
+  // migration).
+  private shadowCompareSkillPermission(
+    auth: Authenticator,
+    legacyAcls: AccessControlList[],
+    permission: GrantVerb
+  ): void {
+    auth.shadowComparePermission(
+      permission,
+      legacyAcls,
+      this.governanceAcls(auth),
+      {
+        resource: "skill",
+        skillId: this.sId,
+        permission,
+        workspaceId: this.workspaceId,
+      }
+    );
   }
 
   // The group grants a skill confers, derived from its `group_skills` association: the editor
