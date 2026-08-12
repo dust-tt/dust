@@ -162,13 +162,13 @@ describe("GET /api/w/:wId/pods/:podId/apps", () => {
     const body = await res.json();
     expect(body.apps).toHaveLength(1);
     expect(body.apps[0].prefix).toBe("productmanager");
-    // Only the namespaced one; the bare `products` appears nowhere, not even as unfiled.
+    // Only the namespaced one; the bare `products` appears nowhere at all.
     expect(body.apps[0].databases).toEqual([
       { name: "stock", onDiskName: "productmanager__stock" },
     ]);
   });
 
-  it("does not create an unfiled app for unprefixed databases alone", async () => {
+  it("lists nothing for a Pod holding only unprefixed databases", async () => {
     const { workspace, pod } = await setupPod();
 
     fileStorageMock.setSubdirectoryNames(() => ["orphaned.db"]);
@@ -179,7 +179,6 @@ describe("GET /api/w/:wId/pods/:podId/apps", () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    // The unfiled app exists for functions published at the Pod root, not for databases.
     expect(body.apps).toEqual([]);
   });
 
@@ -200,9 +199,11 @@ describe("GET /api/w/:wId/pods/:podId/apps", () => {
     expect(body.apps).toEqual([]);
   });
 
-  it("collects artifacts published from the Pod root into the unfiled app", async () => {
+  it("does not list a function published outside an app folder", async () => {
     const { workspace, pod, auth } = await setupPod();
 
+    // A prefix-less slug belongs to no app. It stays published and callable; there is just no app for
+    // it to be listed under, so no synthetic one is invented to hold it.
     await publishFunction(auth, pod, {
       slug: "orphan",
       fileName: "orphan.ts",
@@ -214,12 +215,7 @@ describe("GET /api/w/:wId/pods/:podId/apps", () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.apps).toHaveLength(1);
-    expect(body.apps[0].prefix).toBe("");
-    expect(body.apps[0].name).toBeNull();
-    expect(
-      body.apps[0].functions.map((fn: { slug: string }) => fn.slug)
-    ).toEqual(["orphan"]);
+    expect(body.apps).toEqual([]);
   });
 
   it("reports folders that normalize onto the same app prefix as one colliding app", async () => {

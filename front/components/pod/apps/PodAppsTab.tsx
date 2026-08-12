@@ -6,7 +6,6 @@ import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
 import type { CustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { usePodApps } from "@app/lib/swr/pods";
 import type { PodApp, PodAppFrame } from "@app/types/api/pod_apps";
-import { UNFILED_POD_APP_PREFIX } from "@app/types/api/pod_apps";
 import { DEFAULT_POD_FRAME_TAB_ICON } from "@app/types/pod_frame_tab";
 import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
@@ -95,12 +94,8 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
           <PodAppDetail
             app={selectedApp}
             onOpenFrame={setFramePreview}
-            // The unfiled app is a presentation device, not a folder, so there is nothing
-            // coherent to delete.
             onDelete={
-              canDelete && selectedApp.prefix !== UNFILED_POD_APP_PREFIX
-                ? () => setAppPendingDeletion(selectedApp)
-                : undefined
+              canDelete ? () => setAppPendingDeletion(selectedApp) : undefined
             }
             onClone={
               canDelete && selectedApp.prefix !== UNFILED_POD_APP_PREFIX

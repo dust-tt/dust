@@ -75,7 +75,7 @@ export function PodAppList({
                   size="sm"
                 />
                 <span className="grow truncate copy-sm font-semibold">
-                  {app.name ?? "Unfiled"}
+                  {app.name}
                 </span>
                 {app.functions.length === 0 && app.databases.length === 0 && (
                   <Chip size="xs" color="primary" label="Draft" />

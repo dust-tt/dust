@@ -67,7 +67,6 @@ app.delete(
             },
           });
         case "not_a_pod":
-        case "cannot_delete_unfiled":
           return apiError(ctx, {
             status_code: 400,
             api_error: {

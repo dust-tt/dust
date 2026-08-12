@@ -226,8 +226,8 @@ describe("DELETE /api/w/:wId/pods/:podId/apps/:prefix", () => {
       fileName: "orphan.ts",
     });
 
-    // The unfiled app's prefix is empty, so it cannot even be addressed as a path segment; a bare
-    // prefix-less delete must not be mistaken for one.
+    // A prefix-less function belongs to no app, so there is nothing to address: an empty path segment
+    // must not be mistaken for a deletable app.
     const res = await honoApp.request(
       `/api/w/${workspace.sId}/pods/${pod.sId}/apps/`,
       { method: "DELETE" }
