@@ -10,16 +10,15 @@ import type {
   UsageFilterToolOption,
 } from "@app/components/workspace/analytics/usageFilter";
 import { usageModelTierFromModelsTierName } from "@app/components/workspace/analytics/usageFilter";
+import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import { normalizedConsumptionFilter } from "@app/lib/analytics/consumption_period";
 import type { GetConsumptionFacetsResponse } from "@app/lib/api/analytics/consumption/facets";
-import type { ConsumptionFacetsBody } from "@app/lib/api/analytics/consumption/schema";
+import type { ConsumptionBody } from "@app/lib/api/analytics/consumption/schema";
 import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/api/analytics/consumption/schema";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
-import { CONSUMPTION_SCOPE_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
-import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { isConnectorProvider } from "@app/types/data_source";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSWRConfig } from "swr";
+import { useMemo } from "react";
 
 export type ConsumptionFacetOptions = {
   [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
@@ -34,43 +33,6 @@ const EMPTY_FACET_OPTIONS: ConsumptionFacetOptions = {
   skill: [],
   source: [],
 };
-
-const FACET_FILTER_DEBOUNCE_MS = 300;
-
-function normalizedFilter(
-  filter: ConsumptionScopeFilter | undefined
-): ConsumptionScopeFilter | undefined {
-  if (!filter) {
-    return undefined;
-  }
-
-  const normalized: ConsumptionScopeFilter = {};
-  for (const key of CONSUMPTION_SCOPE_FILTER_KEYS) {
-    const values = filter[key];
-    if (values && values.length > 0) {
-      normalized[key] = [...values].sort();
-    }
-  }
-  return normalized;
-}
-
-function useDebouncedValue<T>(value: T, delay: number) {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    if (Object.is(value, debouncedValue)) {
-      return;
-    }
-
-    const timeout = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(timeout);
-  }, [debouncedValue, delay, value]);
-
-  return {
-    debouncedValue,
-    isDebouncing: !Object.is(value, debouncedValue),
-  };
-}
 
 function baseOption(facet: {
   value: string;
@@ -142,73 +104,18 @@ export function useConsumptionFacets({
   filter?: ConsumptionScopeFilter;
   disabled?: boolean;
 }) {
-  const { fetcherWithBody } = useFetcher();
-  const { cache } = useSWRConfig();
-  const requestControllerRef = useRef<AbortController | null>(null);
-  const previousCacheKeyRef = useRef<string | null>(null);
   const url = `/api/w/${workspaceId}/analytics/consumption/facets`;
-  const bodyKey = JSON.stringify({
+  const body: ConsumptionBody = {
     period: period.kind,
     days:
       period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
-    filter: normalizedFilter(filter),
-  } satisfies ConsumptionFacetsBody);
-  const { debouncedValue: debouncedBodyKey, isDebouncing } = useDebouncedValue(
-    bodyKey,
-    FACET_FILTER_DEBOUNCE_MS
-  );
-  const cacheKey = JSON.stringify([url, debouncedBodyKey]);
+    filter: normalizedConsumptionFilter(filter),
+  };
 
-  const fetchFacets =
-    useCallback(async (): Promise<GetConsumptionFacetsResponse> => {
-      requestControllerRef.current?.abort();
-      const controller = new AbortController();
-      requestControllerRef.current = controller;
-
-      try {
-        const body = JSON.parse(debouncedBodyKey) as ConsumptionFacetsBody;
-        return await fetcherWithBody([url, body, "POST"], {
-          signal: controller.signal,
-        });
-      } finally {
-        if (requestControllerRef.current === controller) {
-          requestControllerRef.current = null;
-        }
-      }
-    }, [debouncedBodyKey, fetcherWithBody, url]);
-
-  useEffect(() => {
-    if (disabled || isDebouncing) {
-      requestControllerRef.current?.abort();
-    }
-  }, [disabled, isDebouncing]);
-
-  useEffect(() => {
-    const previousCacheKey = previousCacheKeyRef.current;
-    if (previousCacheKey && previousCacheKey !== cacheKey) {
-      cache.delete(previousCacheKey);
-    }
-    previousCacheKeyRef.current = cacheKey;
-  }, [cache, cacheKey]);
-
-  useEffect(
-    () => () => {
-      requestControllerRef.current?.abort();
-    },
-    []
-  );
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    cacheKey,
-    fetchFacets,
-    {
-      disabled: disabled || isDebouncing,
-      errorRetryCount: 0,
-      keepPreviousData: true,
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-    }
-  );
+  const { data, error, isValidating } = useConsumptionQuery<
+    ConsumptionBody,
+    GetConsumptionFacetsResponse
+  >({ url, body, disabled });
 
   const options = useMemo(
     () => (data ? toFacetOptions(data) : EMPTY_FACET_OPTIONS),
@@ -219,6 +126,6 @@ export function useConsumptionFacets({
     options,
     isFacetsLoading: !error && !data && !disabled,
     isFacetsError: error,
-    isFacetsValidating: isValidating || isDebouncing,
+    isFacetsValidating: isValidating,
   };
 }

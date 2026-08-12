@@ -261,18 +261,19 @@ async function setupTest({
   return createPrivateApiMockRequest({ role });
 }
 
-function getRankingRequest(
+function postRankingRequest(
   wId: string,
   path: string,
-  query: Record<string, string> = {}
+  body: Record<string, unknown> = {}
 ) {
-  const qs = new URLSearchParams(query).toString();
-  return honoApp.request(
-    `/api/w/${wId}/analytics/consumption/${path}${qs ? `?${qs}` : ""}`
-  );
+  return honoApp.request(`/api/w/${wId}/analytics/consumption/${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
 
-describe("GET /api/w/:wId/analytics/consumption/top-*", () => {
+describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
   it.each(
     RANKINGS
   )("$path is mounted, returns the ranking and defaults its period and limit", async ({
@@ -284,7 +285,7 @@ describe("GET /api/w/:wId/analytics/consumption/top-*", () => {
     arrangeOk();
     const { workspace } = await setupTest({ role: "admin" });
 
-    const response = await getRankingRequest(workspace.sId, path);
+    const response = await postRankingRequest(workspace.sId, path);
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(body);
@@ -299,7 +300,7 @@ describe("GET /api/w/:wId/analytics/consumption/top-*", () => {
   it.each(RANKINGS)("$path is refused to non-managers", async ({ path }) => {
     const { workspace } = await setupTest({ role: "user" });
 
-    const response = await getRankingRequest(workspace.sId, path);
+    const response = await postRankingRequest(workspace.sId, path);
 
     expect(response.status).toBe(403);
   });
@@ -308,11 +309,11 @@ describe("GET /api/w/:wId/analytics/consumption/top-*", () => {
     vi.mocked(fetchConsumptionTopAgents).mockResolvedValue(new Ok(TOP_AGENTS));
     const { workspace } = await setupTest();
 
-    const response = await getRankingRequest(workspace.sId, "top-agents", {
-      limit: "5",
+    const response = await postRankingRequest(workspace.sId, "top-agents", {
+      limit: 5,
       period: "days",
-      days: "7",
-      filter: JSON.stringify({ sources: ["slack"] }),
+      days: 7,
+      filter: { sources: ["slack"] },
     });
 
     expect(response.status).toBe(200);
@@ -328,8 +329,8 @@ describe("GET /api/w/:wId/analytics/consumption/top-*", () => {
   it("returns 400 on a limit above the cap", async () => {
     const { workspace } = await setupTest();
 
-    const response = await getRankingRequest(workspace.sId, "top-agents", {
-      limit: "1000",
+    const response = await postRankingRequest(workspace.sId, "top-agents", {
+      limit: 1000,
     });
 
     expect(response.status).toBe(400);
@@ -344,7 +345,7 @@ describe("GET /api/w/:wId/analytics/consumption/top-*", () => {
     );
     const { workspace } = await setupTest();
 
-    const response = await getRankingRequest(workspace.sId, "top-tools");
+    const response = await postRankingRequest(workspace.sId, "top-tools");
 
     expect(response.status).toBe(500);
     expect(await response.json()).toMatchObject({
