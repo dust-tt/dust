@@ -7,8 +7,8 @@ import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces"
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type {
-  AccessControlList,
-  GroupGrant,
+  CombinedResourcePermissions,
+  GroupPermission,
 } from "@app/types/resource_permissions";
 import assert from "assert";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
@@ -141,16 +141,14 @@ export class GroupSpaceViewerResource extends GroupSpaceBaseResource {
     return false;
   }
 
-  async getAccessControlLists(
-    auth: Authenticator
-  ): Promise<AccessControlList[]> {
+  async requestedPermissions(): Promise<CombinedResourcePermissions[]> {
     assert(
       this.space.isProject(),
       "Viewer permissions only apply to project spaces"
     );
     // Only gets the editor groups correponding to the space management mode
     const editorGroupSpaces = await this.getEditorGroupSpaces(true);
-    const editorGroupsPermissions: GroupGrant[] = editorGroupSpaces.map(
+    const editorGroupsPermissions: GroupPermission[] = editorGroupSpaces.map(
       (egs) => ({
         id: egs.groupId,
         permissions: ["admin", "read", "write"],

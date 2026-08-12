@@ -20,7 +20,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type { UserType } from "@app/types/user";
 import assert from "assert";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { Op } from "sequelize";
@@ -395,11 +395,8 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
 
   // Read grants for the given groups, optionally narrowed by grant type / resource type /
   // resource. The (workspaceId, resourceType, resourceId) index backs type/resource-scoped reads.
-  // Grants for the given groups in a workspace. Takes a LightWorkspaceType (not an Authenticator) so
-  // it can resolve a caller's grant set before an Authenticator exists (see
-  // `Authenticator.resolvePermissions`). Omit the filters to load every grant.
   static async listForGroups(
-    workspace: LightWorkspaceType,
+    auth: Authenticator,
     { groupModelIds, grantType, resourceType, resourceId }: ListForGroupsSpec
   ): Promise<GroupPermissionResource[]> {
     if (groupModelIds.length === 0) {
@@ -408,7 +405,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
 
     const rows = await GroupPermissionModel.findAll({
       where: {
-        workspaceId: workspace.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
         groupId: groupModelIds,
         ...(grantType !== undefined ? { grantType } : {}),
         ...(resourceType !== undefined ? { resourceType } : {}),

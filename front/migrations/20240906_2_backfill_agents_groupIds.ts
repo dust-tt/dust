@@ -100,7 +100,7 @@
 //   const groupIds = (
 //     await DataSourceViewResource.fetchByIds(auth, dataSourceViewIds)
 //   ).flatMap((view) =>
-//     view.getAccessControlLists().flatMap((rp) => rp.groups.map((g) => g.id))
+//     view.requestedPermissions().flatMap((rp) => rp.groups.map((g) => g.id))
 //   );
 //
 //   if (execute) {
