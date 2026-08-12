@@ -333,10 +333,6 @@ export class LLMTraceBuffer {
     return this.outputByteSize;
   }
 
-  get runTokenUsage(): TokenUsage | undefined {
-    return this.tokenUsage;
-  }
-
   get currentOutput(): LLMTraceOutput {
     const processedEvents = this.getProcessedEvents();
 
