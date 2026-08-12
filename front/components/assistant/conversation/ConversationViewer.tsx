@@ -979,6 +979,27 @@ export const ConversationViewer = ({
             window.dispatchEvent(new AgentMessageCompletedEvent());
             void mutateConversationAttachments();
             break;
+          case "agent_message_consumption_updated":
+            virtuosoMessageListRef.current?.data.map((message) =>
+              isAgentMessageWithStreaming(message) &&
+              message.sId === event.messageId
+                ? { ...message, costCredits: event.costCredits }
+                : message
+            );
+            void mutateMessages(
+              (pages) =>
+                pages?.map((page) => ({
+                  ...page,
+                  messages: page.messages.map((message) =>
+                    isLightAgentMessageType(message) &&
+                    message.sId === event.messageId
+                      ? { ...message, costCredits: event.costCredits }
+                      : message
+                  ),
+                })),
+              { revalidate: false }
+            );
+            break;
           case "compaction_message_new":
             if (virtuosoMessageListRef.current) {
               const compactionMessage = event.message;

@@ -1,5 +1,6 @@
 import { indexAgentMessageConsumptionAnalytics } from "@app/lib/analytics/agent_message_consumption";
 import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
+import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -11,7 +12,21 @@ async function storeAgentMessageConsumptionAttribution(
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
 
-  await computeAndStoreAgentMessageConsumptionAttribution(auth, message);
+  const consumptionUpdate =
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, message);
+
+  if (consumptionUpdate) {
+    await publishConversationRelatedEvent({
+      conversationId: message.conversationId,
+      event: {
+        type: "agent_message_consumption_updated",
+        conversationId: message.conversationId,
+        costCredits: consumptionUpdate.costCredits,
+        created: Date.now(),
+        messageId: message.agentMessageId,
+      },
+    });
+  }
 }
 
 export async function storeAgentMessageConsumptionAttributionForMessageActivity(

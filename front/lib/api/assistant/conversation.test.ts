@@ -4347,6 +4347,18 @@ describe("isConversationEventAllowedForAuth", () => {
     expect(result).toBe(true);
   });
 
+  it("returns true for agent_message_consumption_updated event", async () => {
+    const event = {
+      type: "agent_message_consumption_updated" as const,
+      created: Date.now(),
+      conversationId: "conv-1",
+      messageId: "msg-1",
+      costCredits: 12,
+    };
+    const result = await isConversationEventAllowedForAuth(auth, { event });
+    expect(result).toBe(true);
+  });
+
   it("returns true for conversation_title event", async () => {
     const event = {
       type: "conversation_title" as const,
