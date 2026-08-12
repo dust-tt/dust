@@ -2071,6 +2071,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         icon: def.icon,
         source: null,
         sourceMetadata: null,
+        metadata: null,
         availability: SystemSkillsRegistry.isSystemSkill(def.sId)
           ? "workspace_users"
           : "users_and_agents",
@@ -2373,6 +2374,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           requestedSpaceIds: versionModel.requestedSpaceIds,
           source: versionModel.source,
           sourceMetadata: versionModel.sourceMetadata,
+          metadata: versionModel.metadata,
           availability: versionModel.availability,
           favoriteCount: this.favoriteCount,
           reinforcement: "auto",
