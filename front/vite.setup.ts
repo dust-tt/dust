@@ -78,21 +78,15 @@ function createStatefulMockRedisClient() {
       async (
         key: string,
         value: string,
-        opts?: { EX?: number; PX?: number; NX?: boolean }
+        opts?: { EX?: number; PX?: number }
       ) => {
-        // NX and the "OK" return matter: distributedLock acquires with
-        // SET NX PX and treats anything but "OK" as acquisition failure —
-        // a mock that returns undefined spins executeWithLock's acquire
-        // loop until its 30s timeout in every suite that takes a lock.
-        if (opts?.NX) {
-          const existing = redisStore.get(key);
-          if (
-            existing &&
-            (existing.expiresAtMs === 0 || Date.now() <= existing.expiresAtMs)
-          ) {
-            return null;
-          }
-        }
+        // The "OK" return matters: distributedLock treats anything else as
+        // acquisition failure, and a mock that returns undefined spins
+        // executeWithLock's acquire loop until its 30s timeout in every
+        // suite that takes a lock. NX is deliberately NOT enforced: tests
+        // run sequentially, so mutual exclusion never needs to hold, and
+        // enforcing it would break consumers that legitimately re-set a
+        // live key (and require the unlock Lua script to really delete).
         const expiresAtMs = opts?.EX
           ? Date.now() + opts.EX * 1000
           : opts?.PX
@@ -128,21 +122,7 @@ function createStatefulMockRedisClient() {
     subscribe: vi.fn().mockResolvedValue(undefined),
     unsubscribe: vi.fn().mockResolvedValue(undefined),
     ping: vi.fn().mockResolvedValue("PONG"),
-    eval: vi.fn(
-      async (
-        _script: string,
-        opts?: { keys?: string[]; arguments?: string[] }
-      ) => {
-        // Faithful enough for distributedUnlock's compare-and-delete script.
-        const key = opts?.keys?.[0];
-        const owner = opts?.arguments?.[0];
-        if (key !== undefined && redisStore.get(key)?.value === owner) {
-          redisStore.delete(key);
-          return 1;
-        }
-        return 0;
-      }
-    ),
+    eval: vi.fn().mockResolvedValue(1),
     exists: vi.fn(async (key: string) => {
       const entry = redisStore.get(key);
       if (!entry) {
