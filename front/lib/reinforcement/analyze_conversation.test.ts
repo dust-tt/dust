@@ -18,6 +18,7 @@ function makeSkill(overrides: Partial<SkillType> = {}): SkillType {
     icon: null,
     source: null,
     sourceMetadata: null,
+    metadata: null,
     reinforcement: "auto",
     selfImprovementLock: false,
     selfImprovementCostsCapMicroUsd: null,

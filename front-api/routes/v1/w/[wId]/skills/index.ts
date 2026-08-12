@@ -5,8 +5,14 @@ import {
 import type { ImportSkillsResponseBody } from "@app/lib/api/skills/detection/github/import_skills";
 import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_skills";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
-import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillMetadata,
+  SkillType,
+} from "@app/types/assistant/skill_configuration";
+import {
+  SKILL_AVAILABILITIES,
+  SkillMetadataSchema,
+} from "@app/types/assistant/skill_configuration";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { createHono } from "@front-api/lib/hono";
 import type { PublicApiCtx } from "@front-api/middlewares/ctx";
@@ -16,6 +22,7 @@ import { validate } from "@front-api/middlewares/validator";
 import type { HttpBindings } from "@hono/node-server";
 import formidable from "formidable";
 import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 import skill from "./[skillId]";
 
@@ -148,6 +155,9 @@ app.route("/:skillId", skill);
  *                 type: string
  *                 enum: [editors, workspace_users, users_and_agents]
  *                 description: Optional availability to apply to imported or updated skills. editors is unpublished, workspace_users is published, and users_and_agents is discoverable. New skills default to editors and existing skills keep their current availability when omitted.
+ *               metadata:
+ *                 type: string
+ *                 description: 'Optional client-owned labels, sent as a JSON-encoded string-to-string map (e.g. ''{"managedBy":"my-ci"}''), stamped on each imported skill. Returned on GET as the skill''s metadata field. Lets an external system tag skills it manages and reconcile them (list, then archive skills no longer in its desired state) without storing skill IDs. Sending metadata on re-import overwrites it; omitting it preserves the existing value.'
  *     responses:
  *       200:
  *         description: Skills import result.
@@ -309,6 +319,37 @@ app.post("/", async (ctx): HandlerResult<ImportSkillsResponseBody> => {
     });
   }
 
+  // Optional client-owned labels, sent as a JSON-encoded string→string map, that
+  // the caller stamps on imported skills to tag skills it manages.
+  let metadata: SkillMetadata | undefined;
+  const rawMetadata = fields.metadata?.[0];
+  if (rawMetadata !== undefined) {
+    let parsedJson: unknown;
+    try {
+      parsedJson = JSON.parse(rawMetadata);
+    } catch (err) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Invalid metadata: ${normalizeError(err).message}`,
+        },
+      });
+    }
+
+    const metadataValidation = SkillMetadataSchema.safeParse(parsedJson);
+    if (!metadataValidation.success) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Invalid metadata: ${fromError(metadataValidation.error).toString()}`,
+        },
+      });
+    }
+    metadata = metadataValidation.data;
+  }
+
   const result = await importSkillsFromFiles(auth, {
     uploadedFiles,
     availability: availabilityValidation.data,
@@ -316,6 +357,7 @@ app.post("/", async (ctx): HandlerResult<ImportSkillsResponseBody> => {
     names,
     source: "api",
     onConflict,
+    metadata,
   });
   if (result.isErr()) {
     return apiError(ctx, {

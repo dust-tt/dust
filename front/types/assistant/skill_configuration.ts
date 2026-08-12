@@ -78,6 +78,7 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
   icon: z.string().nullable(),
   source: z.enum(SKILL_SOURCES).nullable(),
   sourceMetadata: SkillSourceMetadataSchema.nullable(),
+  metadata: SkillMetadataSchema.nullable(),
   reinforcement: z.enum(SKILL_REINFORCEMENT_MODES),
   lastReinforcementAnalysisAt: z.string().nullable().optional(),
   selfImprovementLock: z.boolean(),

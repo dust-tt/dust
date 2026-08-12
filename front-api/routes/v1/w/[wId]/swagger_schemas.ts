@@ -712,6 +712,14 @@
  *           nullable: true
  *           allOf:
  *             - $ref: '#/components/schemas/SkillSourceMetadata'
+ *         metadata:
+ *           type: object
+ *           nullable: true
+ *           additionalProperties:
+ *             type: string
+ *           description: Client-owned key/value labels attached to the skill. Set at import and used by external systems to tag and reconcile the skills they manage.
+ *           example:
+ *             managedBy: "my-ci"
  *         reinforcement:
  *           type: string
  *           enum: [auto, "on", "off"]

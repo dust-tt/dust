@@ -289,6 +289,55 @@ describe("GET /api/v1/w/[wId]/skills", () => {
     expect(editorsSkillNames).toEqual(["Unpublished Skill"]);
   });
 
+  it("exposes client-owned metadata so managed skills can be filtered", async () => {
+    const { auth, workspace, key } = await createPublicApiMockRequest({
+      role: "admin",
+    });
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await SpaceFactory.defaults(adminAuth);
+    await GroupPermissionResource.setForEverybody(adminAuth, {
+      grantType: "create",
+      resourceType: "skill",
+    });
+
+    const managed = await importSkillsFromFiles(auth, {
+      uploadedFiles: [
+        await makeSkillZipFile({ name: "Managed Skill", instructions: "m" }),
+      ],
+      source: "api",
+      onConflict: "error",
+      metadata: { managedBy: "acme-ci" },
+    });
+    if (managed.isErr()) {
+      throw managed.error;
+    }
+    const unmanaged = await importSkillsFromFiles(auth, {
+      uploadedFiles: [
+        await makeSkillZipFile({ name: "Unmanaged Skill", instructions: "u" }),
+      ],
+      source: "api",
+      onConflict: "error",
+    });
+    if (unmanaged.isErr()) {
+      throw unmanaged.error;
+    }
+
+    // Imported skills default to editors (unpublished), so an admin key with the
+    // bypass is required to surface them — the reconcile loop the CI runs.
+    const response = await getSkills(workspace, key, {
+      bypassEditorVisibility: "true",
+    });
+    expect(response.status).toBe(200);
+    const skills = (await response.json()).skills as {
+      name: string;
+      metadata: Record<string, string> | null;
+    }[];
+    const mine = skills.filter((s) => s.metadata?.managedBy === "acme-ci");
+    expect(mine.map((s) => s.name)).toEqual(["Managed Skill"]);
+  });
+
   it("rejects bypassEditorVisibility for non-admin API keys", async () => {
     const { workspace, key } = await createPublicApiMockRequest();
     await SpaceFactory.defaults(
@@ -500,6 +549,95 @@ describe("POST /api/v1/w/[wId]/skills", () => {
         .map((email) => email.toLowerCase())
         .sort()
     );
+  });
+
+  it("persists client-owned metadata and overwrites it on re-import", async () => {
+    const { auth, workspace } = await createPublicApiMockRequest();
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await SpaceFactory.defaults(adminAuth);
+    await GroupPermissionResource.setForEverybody(adminAuth, {
+      grantType: "create",
+      resourceType: "skill",
+    });
+
+    const first = await importSkillsFromFiles(auth, {
+      uploadedFiles: [
+        await makeSkillZipFile({ name: "Managed Skill", instructions: "v1" }),
+      ],
+      source: "api",
+      onConflict: "error",
+      metadata: { managedBy: "acme-ci", env: "prod" },
+    });
+    if (first.isErr()) {
+      throw first.error;
+    }
+    expect(first.value.imported[0]?.toJSON(auth).metadata).toEqual({
+      managedBy: "acme-ci",
+      env: "prod",
+    });
+
+    // Re-importing with metadata overwrites the previous value.
+    const second = await importSkillsFromFiles(auth, {
+      uploadedFiles: [
+        await makeSkillZipFile({ name: "Managed Skill", instructions: "v2" }),
+      ],
+      source: "api",
+      onConflict: "error",
+      metadata: { managedBy: "acme-ci", env: "staging" },
+    });
+    if (second.isErr()) {
+      throw second.error;
+    }
+    expect(second.value.updated[0]?.toJSON(auth).metadata).toEqual({
+      managedBy: "acme-ci",
+      env: "staging",
+    });
+
+    // Re-importing without metadata preserves the existing value.
+    const third = await importSkillsFromFiles(auth, {
+      uploadedFiles: [
+        await makeSkillZipFile({ name: "Managed Skill", instructions: "v3" }),
+      ],
+      source: "api",
+      onConflict: "error",
+    });
+    if (third.isErr()) {
+      throw third.error;
+    }
+    const refetched = await SkillResource.fetchById(
+      auth,
+      first.value.imported[0].sId
+    );
+    expect(refetched?.toJSON(auth).metadata).toEqual({
+      managedBy: "acme-ci",
+      env: "staging",
+    });
+  });
+
+  it("defaults metadata to null when none is provided at import", async () => {
+    const { auth, workspace } = await createPublicApiMockRequest();
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await SpaceFactory.defaults(adminAuth);
+    await GroupPermissionResource.setForEverybody(adminAuth, {
+      grantType: "create",
+      resourceType: "skill",
+    });
+
+    const result = await importSkillsFromFiles(auth, {
+      uploadedFiles: [
+        await makeSkillZipFile({ name: "Unmanaged Skill", instructions: "v1" }),
+      ],
+      source: "api",
+      onConflict: "error",
+    });
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value.imported[0]?.toJSON(auth).metadata).toBeNull();
   });
 
   it("rejects the import for a non-builder API key", async () => {
