@@ -171,7 +171,7 @@ const getTableColumns = ({
             </div>
             <div className="flex min-w-0 grow flex-col">
               <div className="heading-sm overflow-hidden truncate text-foreground">
-                {`@${info.getValue()}`}
+                {info.getValue()}
               </div>
               <div className="overflow-hidden truncate text-sm text-muted-foreground">
                 {info.row.original.description}

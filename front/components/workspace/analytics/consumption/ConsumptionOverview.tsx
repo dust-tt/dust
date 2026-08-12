@@ -98,7 +98,7 @@ function ConsumptionSummary({
         />
         <SummaryCard
           label="Top agent"
-          value={topAgent ? `@${topAgent.name}` : "—"}
+          value={topAgent?.name ?? "—"}
           hint={
             topAgent && totalCredits > 0
               ? `${Math.round((topAgent.credits / totalCredits) * 100)}% of total spend`

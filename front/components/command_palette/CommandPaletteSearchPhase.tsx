@@ -179,7 +179,7 @@ export function CommandPaletteSearchPhase({
               >
                 <Avatar visual={agent.pictureUrl} size="xs" />
                 <div className="flex min-w-0 items-center gap-1.5">
-                  <span className="shrink-0 font-medium">@{agent.name}</span>
+                  <span className="shrink-0 font-medium">{agent.name}</span>
                   <span className="shrink-0 text-muted-foreground">-</span>
                   <span className="min-w-0 truncate text-muted-foreground">
                     {agent.description}
