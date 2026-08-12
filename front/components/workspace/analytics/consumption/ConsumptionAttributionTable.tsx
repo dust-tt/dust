@@ -288,7 +288,9 @@ export function ConsumptionAttributionTable({
         className="mt-3 w-full"
       />
       <div className="pt-3">
+        {/* A dimension selects a different dataset, so its table state must not carry over. */}
         <AttributionRows
+          key={dimension}
           workspaceId={workspaceId}
           dimension={dimension}
           period={period}
