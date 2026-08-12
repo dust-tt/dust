@@ -111,12 +111,25 @@ export const ThinkingStep = memo(function ThinkingStep({
       }
     : undefined;
 
+  const handleKeyDown = needsTruncation
+    ? (e: React.KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          setIsExpanded((prev) => !prev);
+        }
+      }
+    : undefined;
+
   // Compact UI view, collapsed: no content preview at all, just a label.
   if (forceCollapsed && !isExpanded) {
     return (
       <div
         className={cn(needsTruncation && "cursor-pointer")}
         onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        role={needsTruncation ? "button" : undefined}
+        tabIndex={needsTruncation ? 0 : undefined}
+        aria-expanded={needsTruncation ? isExpanded : undefined}
       >
         <TimelineRow
           icon={isStreaming && !content ? null : "circle"}
@@ -140,6 +153,10 @@ export const ThinkingStep = memo(function ThinkingStep({
     <div
       className={cn(needsTruncation && "cursor-pointer")}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      role={needsTruncation ? "button" : undefined}
+      tabIndex={needsTruncation ? 0 : undefined}
+      aria-expanded={needsTruncation ? isExpanded : undefined}
     >
       <TimelineRow icon="circle" isLast={isLast}>
         <div
