@@ -51,18 +51,15 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
     {
       pod,
       user,
-      isCompactUIView,
     }: {
       pod: SpaceResource;
       user: UserResource;
-      isCompactUIView?: boolean;
     }
   ): Promise<ActivationPodResource> {
     const model = await this.model.create({
       workspaceId: auth.getNonNullableWorkspace().id,
       spaceId: pod.id,
       userId: user.id,
-      isCompactUIView: isCompactUIView ?? false,
     });
 
     return new this(this.model, model.get());

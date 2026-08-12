@@ -105,10 +105,7 @@ describe("activationManagementPlugin.execute", () => {
       })
     );
 
-    expect(ActivationPodResource.makeNew).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ isCompactUIView: true })
-    );
+    expect(ActivationPodResource.makeNew).toHaveBeenCalled();
   });
 
   it("returns Err and does not report success when starting the schedule fails", async () => {

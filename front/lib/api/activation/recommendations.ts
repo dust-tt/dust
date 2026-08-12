@@ -41,7 +41,9 @@ export async function getActivationPodInfo(
     activationPod.spaceId,
   ]);
 
-  return { podId: space?.sId ?? null };
+  return {
+    podId: space?.sId ?? null,
+  };
 }
 
 export interface UpdateActivationRecommendationResponseBody {
