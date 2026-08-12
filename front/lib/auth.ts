@@ -1638,7 +1638,13 @@ export class Authenticator {
       clientIp: authType.clientIp,
       permissions: authType.permissions
         ? GroupPermissions.fromJSON(authType.permissions)
-        : GroupPermissions.empty(),
+        : // Payloads serialized before governance grants existed (in-flight Temporal workflows
+          // across the deploy) carry no permissions: resolve them from the groups rather than
+          // running with an empty grant set, which would silently deny every capability check.
+          await this.resolvePermissions({
+            workspace,
+            groupModelIds: groupIds,
+          }),
     });
   }
 
