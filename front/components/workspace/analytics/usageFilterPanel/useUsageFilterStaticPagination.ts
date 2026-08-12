@@ -11,8 +11,6 @@ export function useUsageFilterStaticPagination({
 }) {
   const [visibleCount, setVisibleCount] = useState(FILTER_PICKER_PAGE_SIZE);
 
-  // Reset visible count whenever resetKey changes, adjusted during render
-  // rather than in an Effect since resetKey itself isn't otherwise used.
   const [prevResetKey, setPrevResetKey] = useState(resetKey);
   if (prevResetKey !== resetKey) {
     setPrevResetKey(resetKey);
