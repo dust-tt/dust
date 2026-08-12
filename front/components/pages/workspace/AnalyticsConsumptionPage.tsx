@@ -92,7 +92,7 @@ export function AnalyticsConsumptionPage() {
         <LazyMotion features={domMax}>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <h2 className="text-lg font-semibold text-foreground">
                   Explore
                 </h2>

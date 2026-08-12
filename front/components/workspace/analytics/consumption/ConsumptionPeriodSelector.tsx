@@ -28,7 +28,7 @@ export function ConsumptionPeriodSelector({
       <DropdownMenuTrigger asChild>
         <Button
           label={consumptionPeriodLabel(period)}
-          size="xs"
+          size="sm"
           variant="outline"
           isSelect
         />

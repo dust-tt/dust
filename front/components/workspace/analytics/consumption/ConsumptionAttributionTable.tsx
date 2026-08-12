@@ -210,15 +210,6 @@ export function ConsumptionAttributionTable({
 
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <div className="mb-3 flex justify-end">
-        <SearchInput
-          name="consumption-attribution-search"
-          placeholder="Search…"
-          value={inputValue}
-          onChange={setValue}
-          className="w-64"
-        />
-      </div>
       <Tabs
         value={dimension}
         onValueChange={(value) => {
@@ -237,6 +228,13 @@ export function ConsumptionAttributionTable({
           ))}
         </TabsList>
       </Tabs>
+      <SearchInput
+        name="consumption-attribution-search"
+        placeholder="Search…"
+        value={inputValue}
+        onChange={setValue}
+        className="mt-3 w-full"
+      />
       <div className="pt-3">
         <AttributionRows
           workspaceId={workspaceId}
