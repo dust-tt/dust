@@ -1,19 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
-const LOCAL_STORAGE_KEY = "modelPickerHighlightViews";
+const LOCAL_STORAGE_KEY = "modelPickerHighlightDismissals";
 
-// Temporary discovery treatment: after two page loads showing the highlight, the
-// control is assumed to have been noticed and it never comes back.
-const MAX_VIEWS = 2;
+// Temporary discovery treatment: two presses of the picker are taken as proof the
+// control has been understood, after which the highlight never comes back.
+const MAX_DISMISSALS = 2;
 
 // The campaign runs for two weeks. Encoded as a date rather than left to a
 // manual revert so it dies on its own even if the code outlives the campaign —
-// otherwise someone signing up in three months would still be nudged.
+// otherwise someone signing up in three months would still be nudged, and so
+// would anyone who never presses the picker.
 const CAMPAIGN_END = Date.parse("2026-08-26T23:59:59Z");
 
-function readViews(): number {
+function readDismissals(): number {
   if (typeof window === "undefined") {
-    return MAX_VIEWS;
+    return MAX_DISMISSALS;
   }
   try {
     const parsed = Number.parseInt(
@@ -24,24 +25,23 @@ function readViews(): number {
   } catch {
     // localStorage unavailable: with no way to remember the count, staying quiet
     // beats highlighting on every single page load forever.
-    return MAX_VIEWS;
+    return MAX_DISMISSALS;
   }
 }
 
 interface UseModelPickerHighlightOptions {
-  // Surfaces that opt out keep their view count untouched, so disabling one does
+  // Surfaces that opt out keep the stored count untouched, so disabling one does
   // not silently spend the allowance meant for another.
   disabled: boolean;
 }
 
 /**
- * Visibility of the model picker's discovery highlight, capped at `MAX_VIEWS`
- * page loads per browser and expiring at `CAMPAIGN_END`.
+ * Visibility of the model picker's discovery highlight.
  *
- * The count is spent per page load rather than per click, so a user who never
- * clicks the picker still stops seeing it. Dismissal is deliberately
- * session-scoped: clicking retires the highlight for the rest of the visit, and
- * the stored count decides whether it returns on the next load.
+ * The allowance is spent by *pressing* the picker, not by loading the page:
+ * reloading brings the highlight back, and only the second press retires it for
+ * good. A press also hides it for the rest of the current visit, so it never
+ * lingers over a control the user has just used.
  */
 export const useModelPickerHighlight = ({
   disabled,
@@ -49,23 +49,25 @@ export const useModelPickerHighlight = ({
   // Resolved once per page load: the highlight must not vanish mid-visit
   // because the stored count moved.
   const [isHighlightVisible, setIsHighlightVisible] = useState<boolean>(
-    () => !disabled && Date.now() <= CAMPAIGN_END && readViews() < MAX_VIEWS
+    () =>
+      !disabled &&
+      Date.now() <= CAMPAIGN_END &&
+      readDismissals() < MAX_DISMISSALS
   );
-  const hasCountedViewRef = useRef(false);
 
-  useEffect(() => {
-    if (!isHighlightVisible || hasCountedViewRef.current) {
-      return;
-    }
-    hasCountedViewRef.current = true;
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, String(readViews() + 1));
-    } catch {
-      // localStorage may be full or unavailable — silently ignore.
-    }
-  }, [isHighlightVisible]);
+  // Guarded by a ref rather than by the state updater, which must stay pure: a
+  // second press within the same visit must not spend a second dismissal.
+  const hasCountedDismissalRef = useRef(false);
 
   const dismissHighlight = useCallback(() => {
+    if (!hasCountedDismissalRef.current) {
+      hasCountedDismissalRef.current = true;
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, String(readDismissals() + 1));
+      } catch {
+        // localStorage may be full or unavailable — silently ignore.
+      }
+    }
     setIsHighlightVisible(false);
   }, []);
 
