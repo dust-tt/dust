@@ -7,7 +7,10 @@ import type { ModelResponseEvent } from "@app/lib/model_constructors/types/outpu
 import { RunResource } from "@app/lib/resources/run_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import {
+  GPT_5_6_LUNA_MODEL_CONFIG,
+  GPT_5_MINI_MODEL_CONFIG,
+} from "@app/types/assistant/models/openai";
 import { describe, expect, it } from "vitest";
 
 class ThrowingNoopStream extends DustNoopNoopGlobalNoopStream {
@@ -138,6 +141,32 @@ describe("LLMRunLifecycle", () => {
       },
     ]);
     expect(await run.listRunUsages(auth)).toHaveLength(1);
+  });
+
+  it("persists fractional micro-dollar token costs as integers", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const parameters = {
+      ...makeLifecycleParameters(),
+      modelId: GPT_5_6_LUNA_MODEL_CONFIG.modelId,
+      providerId: GPT_5_6_LUNA_MODEL_CONFIG.providerId,
+    };
+    const lifecycle = await LLMRunLifecycle.start(auth, parameters);
+
+    await lifecycle.recordTokenUsage({
+      inputTokens: 13_331,
+      totalOutputTokens: 36,
+      reasoningTokens: 22,
+      totalTokens: 13_367,
+      cachedTokens: 13_328,
+      cacheCreationTokens: 0,
+    });
+
+    const run = await RunResource.fetchByDustRunId(auth, {
+      dustRunId: parameters.dustRunId,
+    });
+    expect(await run?.listRunUsages(auth)).toMatchObject([
+      { costMicroUsd: 310 },
+    ]);
   });
 });
 
