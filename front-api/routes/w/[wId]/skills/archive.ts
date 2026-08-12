@@ -1,5 +1,6 @@
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
+import { launchSkillSearchIndexation } from "@app/lib/skill_search/indexation";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -72,7 +73,13 @@ app.post(
     // Archiving a skill updates its dependent agents, parent skills, and editor
     // memberships in one transaction, so preserve that resource-level operation.
     for (const skill of skills) {
-      await skill.archive(auth);
+      const { affectedCount } = await skill.archive(auth);
+      if (affectedCount > 0) {
+        await launchSkillSearchIndexation({
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          skillId: skill.sId,
+        });
+      }
     }
 
     return ctx.json({ archived: skills.length });
