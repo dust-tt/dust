@@ -92,13 +92,6 @@ impl GcsPolicyProvider {
     // Legacy per-sandbox policy, keyed by the ephemeral provider id. Still
     // read (unioned with the owner policy) so in-flight approvals from before
     // the layout migration keep working until those sandboxes age out.
-    // TODO(2026-08-15 EGRESS_RELAYOUT): drop once pre-migration sandboxes are
-    // gone.
-    pub async fn get_sandbox_policy(&self, sb_id: &str) -> Result<Option<Policy>> {
-        self.get_policy(&format!("s:{sb_id}"), &format!("sandboxes/{sb_id}.json"))
-            .await
-    }
-
     // Owner policy: the stable per-owner allowlist at
     // `w/{wId}/sandboxes/{ownerId}.json`, where ownerId is a conversation sId
     // (conversation sandboxes) or a space sId (pod sandboxes). Survives
@@ -111,16 +104,15 @@ impl GcsPolicyProvider {
         .await
     }
 
-    // A domain is allowed if ANY of the workspace, owner, pod, or legacy
-    // sandbox policies allows it. `pod_id` is the inherited pod layer for
-    // conversation sandboxes running inside a pod — same file scheme as
-    // owner policies. Every lookup fails closed: a GCS error never grants.
+    // A domain is allowed if ANY of the workspace, owner, or pod policies
+    // allows it. `pod_id` is the inherited pod layer for conversation
+    // sandboxes running inside a pod — same file scheme as owner policies.
+    // Every lookup fails closed: a GCS error never grants.
     pub async fn evaluate(
         &self,
         w_id: Option<&str>,
         owner_id: Option<&str>,
         pod_id: Option<&str>,
-        sb_id: &str,
         domain: &str,
     ) -> bool {
         let workspace_allows = match w_id {
@@ -139,8 +131,7 @@ impl GcsPolicyProvider {
             return true;
         }
 
-        // The owner path needs both ids; tokens minted before the layout
-        // migration carry no ownerId and skip straight to the legacy file.
+        // The owner path needs both ids.
         let owner_allows = match (w_id, owner_id) {
             (Some(w_id), Some(owner_id)) => match self.get_owner_policy(w_id, owner_id).await {
                 Ok(Some(policy)) => policy.allows(domain),
@@ -169,18 +160,7 @@ impl GcsPolicyProvider {
             _ => false,
         };
 
-        if pod_allows {
-            return true;
-        }
-
-        match self.get_sandbox_policy(sb_id).await {
-            Ok(Some(policy)) => policy.allows(domain),
-            Ok(None) => false,
-            Err(error) => {
-                warn!(error = %error, sb_id, "sandbox policy lookup failed");
-                false
-            }
-        }
+        pod_allows
     }
 
     async fn get_policy(&self, cache_key: &str, object_name: &str) -> Result<Option<Policy>> {
