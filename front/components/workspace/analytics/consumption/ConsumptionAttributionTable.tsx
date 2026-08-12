@@ -69,12 +69,12 @@ function CostShareBar({
 }
 
 function CostShareCell({ share }: { share: number }) {
-  const percentage = Math.min(100, share * 100);
+  const percentage = Math.round(Math.min(100, share * 100));
   return (
     <div className="flex items-center gap-2">
       <CostShareBar className="w-24" percentage={percentage} />
       <span className="w-8 text-right text-xs text-muted-foreground tabular-nums">
-        {Math.round(percentage)}%
+        {percentage}%
       </span>
     </div>
   );
@@ -227,7 +227,7 @@ function BreakdownColumn({
         <div className="flex flex-col gap-2">
           {visibleRows.map((row) => {
             const share = totalCredits > 0 ? row.credits / totalCredits : 0;
-            const percentage = Math.min(100, share * 100);
+            const percentage = Math.round(Math.min(100, share * 100));
             return (
               <div key={row.id} className="min-w-0">
                 <div className="mb-1 flex items-center justify-between gap-2 text-xs">
@@ -235,7 +235,7 @@ function BreakdownColumn({
                     {row.name}
                   </span>
                   <span className="shrink-0 text-muted-foreground tabular-nums">
-                    {Math.round(percentage)}%
+                    {percentage}%
                   </span>
                 </div>
                 <CostShareBar className="w-full" percentage={percentage} />
