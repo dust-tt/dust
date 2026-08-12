@@ -168,7 +168,7 @@ export function GetStartedPage() {
               : "/static/activation/for-you-orb-small.svg"
           }
         />
-        <div className="relative ml-[9%] w-[53%] pb-16 pt-[15vh]">
+        <div className="relative mx-auto w-full max-w-2xl px-4 pb-16 pt-[15vh] sm:px-8 lg:mx-0 lg:ml-[9%] lg:w-[53%] lg:max-w-none lg:px-0">
           <div className="flex flex-col gap-1">
             <h1 className="text-5xl font-medium leading-[52px] tracking-[-0.06em] text-foreground">
               Welcome back, {firstName}.
@@ -196,7 +196,7 @@ export function GetStartedPage() {
             disabled={isActivationPodLoading}
           />
 
-          <div className="mt-12 rounded-2xl border border-border bg-background px-6 pb-8 pt-6 shadow-sm">
+          <div className="mt-12 rounded-2xl border border-border bg-background px-6 pb-4 pt-6 shadow-sm">
             <h2 className="text-xl font-semibold leading-7 tracking-tight text-foreground">
               Ideas for right now
             </h2>
