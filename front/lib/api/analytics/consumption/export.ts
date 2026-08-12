@@ -1,4 +1,3 @@
-import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type {
   ConsumptionScopeDimension,
@@ -9,8 +8,8 @@ import {
   CONSUMPTION_SCOPE_DIMENSIONS,
 } from "@app/lib/api/analytics/consumption/scope";
 import {
-  avgCreditsPerUnit,
   fetchConsumptionAllGroups,
+  resolveConsumptionGroupLabels,
 } from "@app/lib/api/analytics/consumption/top";
 import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
@@ -71,22 +70,22 @@ export async function fetchConsumptionTopExportCsv(
 
     const dimension = CONSUMPTION_SCOPE_DIMENSIONS[index];
     const { groups, totalCredits } = result.value;
-    const labels = await resolveDimensionLabels(
+    const resolvedRows = await resolveConsumptionGroupLabels(
       auth,
       dimension,
-      groups.map((group) => group.key)
+      groups
     );
 
     rows.push(
-      ...groups.map((group) => ({
+      ...resolvedRows.map((row) => ({
         dimension,
-        name: labels.get(group.key)?.name ?? group.key,
+        name: row.name,
         costSharePercent:
           totalCredits > 0
-            ? roundToCents((group.credits / totalCredits) * 100)
+            ? roundToCents((row.credits / totalCredits) * 100)
             : 0,
-        credits: roundToCents(group.credits),
-        avgCredits: roundToCents(avgCreditsPerUnit(group.credits, group.count)),
+        credits: roundToCents(row.credits),
+        avgCredits: roundToCents(row.avgCredits),
       }))
     );
   }
