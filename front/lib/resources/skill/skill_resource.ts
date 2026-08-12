@@ -2939,6 +2939,59 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
+   * Batch list the user IDs holding an editor grant, keyed by skill model ID.
+   * Unlike `batchListEditors`, this includes users without a current workspace
+   * membership so permission projections do not churn when membership changes.
+   */
+  static async batchListEditorGrantUserIdsByModelId(
+    auth: Authenticator,
+    skillModelIds: ModelId[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Map<ModelId, ModelId[]>> {
+    const uniqueSkillModelIds = [...new Set(skillModelIds)];
+    const result = new Map<ModelId, ModelId[]>(
+      uniqueSkillModelIds.map((skillModelId) => [skillModelId, []])
+    );
+    if (uniqueSkillModelIds.length === 0) {
+      return result;
+    }
+
+    const editorGrantSpec = (skillModelId: ModelId) => ({
+      grantType: SKILL_EDITOR_GRANT_TYPE,
+      resourceType: "skill" as const,
+      resourceId: skillModelId,
+    });
+    const groupByGrant =
+      await GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
+        grants: uniqueSkillModelIds.map(editorGrantSpec),
+        transaction,
+      });
+    const groupBySkillModelId = new Map<ModelId, GroupResource>(
+      removeNulls(
+        uniqueSkillModelIds.map((skillModelId) => {
+          const group = groupByGrant.get(
+            grantKey(editorGrantSpec(skillModelId))
+          );
+          return group ? ([skillModelId, group] as const) : null;
+        })
+      )
+    );
+    const membershipsByGroupId =
+      await GroupResource.getActiveMembershipsForGroups(
+        auth,
+        [...groupBySkillModelId.values()],
+        { transaction }
+      );
+    for (const skillModelId of uniqueSkillModelIds) {
+      const group = groupBySkillModelId.get(skillModelId);
+      const userIds = group ? (membershipsByGroupId[group.id] ?? []) : [];
+      result.set(skillModelId, [...new Set(userIds)]);
+    }
+
+    return result;
+  }
+
+  /**
    * Batch list editors for multiple skills. Keyed by skill sId. The batched counterpart of
    * `listEditors` — see it for why editors are only ever read through these two methods.
    */
@@ -2957,64 +3010,41 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return result;
     }
 
-    // Editors come from the per-user grants: one regular_auto group per skill — see `listEditors`.
-    const editorGrantSpec = (skill: SkillResource) => ({
-      grantType: SKILL_EDITOR_GRANT_TYPE,
-      resourceType: "skill" as const,
-      resourceId: skill.id,
-    });
-
-    const groupByGrant =
-      await GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
-        grants: customSkills.map(editorGrantSpec),
-      });
-
-    const groupBySkillModelId = new Map<ModelId, GroupResource>(
-      removeNulls(
-        customSkills.map((skill) => {
-          const group = groupByGrant.get(grantKey(editorGrantSpec(skill)));
-
-          return group ? ([skill.id, group] as const) : null;
-        })
-      )
-    );
-
-    const membershipsByGroupId =
-      await GroupResource.getActiveMembershipsForGroups(auth, [
-        ...groupBySkillModelId.values(),
-      ]);
-
-    const allUserIds = [...new Set(Object.values(membershipsByGroupId).flat())];
-
-    if (allUserIds.length === 0) {
+    const grantUserIdsBySkillModelId =
+      await this.batchListEditorGrantUserIdsByModelId(
+        auth,
+        customSkills.map((skill) => skill.id)
+      );
+    const allGrantUserIds = [
+      ...new Set([...grantUserIdsBySkillModelId.values()].flat()),
+    ];
+    if (allGrantUserIds.length === 0) {
       return result;
     }
 
-    const allUsers = await UserResource.fetchByModelIds(allUserIds);
-
-    // Filter to only keep users with an active workspace membership,
-    // matching the behavior of getActiveMembers.
+    const allGrantUsers = await UserResource.fetchByModelIds(allGrantUserIds);
     const workspace = auth.getNonNullableWorkspace();
     const { memberships: workspaceMemberships } =
       await MembershipResource.getActiveMemberships({
-        users: allUsers,
+        users: allGrantUsers,
         workspace,
       });
     const activeWorkspaceUserIds = new Set(
-      workspaceMemberships.map((m) => m.userId)
+      workspaceMemberships.map((membership) => membership.userId)
     );
-
-    const userById = new Map(
-      allUsers
-        .filter((u) => activeWorkspaceUserIds.has(u.id))
-        .map((u) => [u.id, u])
-    );
+    const grantUserById = new Map(allGrantUsers.map((user) => [user.id, user]));
 
     for (const skill of customSkills) {
-      const group = groupBySkillModelId.get(skill.id);
-      const userIds = group ? (membershipsByGroupId[group.id] ?? []) : [];
-      const users = removeNulls(userIds.map((id) => userById.get(id) ?? null));
-      result.set(skill.sId, users);
+      const editorIds = grantUserIdsBySkillModelId.get(skill.id) ?? [];
+      const activeEditors = removeNulls(
+        editorIds.map((editorId) => {
+          if (!activeWorkspaceUserIds.has(editorId)) {
+            return null;
+          }
+          return grantUserById.get(editorId) ?? null;
+        })
+      );
+      result.set(skill.sId, activeEditors);
     }
 
     return result;

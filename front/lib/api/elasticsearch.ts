@@ -14,6 +14,7 @@ export const CONSUMPTION_ANALYTICS_ALIAS_NAME =
 export const USER_SEARCH_ALIAS_NAME = "front.user_search";
 export const AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME = "front.agent_document_outputs";
 export const CONVERSATION_SEARCH_ALIAS_NAME = "front.conversation_search";
+export const SKILL_SEARCH_ALIAS_NAME = "front.skill_search";
 
 /**
  * Mapping of index names to their directory locations.
@@ -24,6 +25,7 @@ export const INDEX_DIRECTORIES: Record<string, string> = {
   agent_message_analytics: "lib/analytics/indices",
   agent_message_consumption_analytics: "lib/analytics/indices",
   conversation_search: "lib/conversation_search/indices",
+  skill_search: "lib/skill_search/indices",
   user_search: "lib/user_search/indices",
 };
 
