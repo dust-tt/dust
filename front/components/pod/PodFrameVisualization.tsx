@@ -9,6 +9,8 @@ interface PodFrameVisualizationProps {
   vizUrl: string;
   identifier: string;
   isPodEditor?: boolean;
+  /** Scoped path of the Frame, so one inside an app folder can call its functions by bare name. */
+  framePath?: string | null;
 }
 
 /**
@@ -22,6 +24,7 @@ export function PodFrameVisualization({
   vizUrl,
   identifier,
   isPodEditor,
+  framePath,
 }: PodFrameVisualizationProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -37,6 +40,7 @@ export function PodFrameVisualization({
       }}
       conversationId={null}
       spaceId={spaceId}
+      framePath={framePath}
       isInDrawer={true}
       isPodEditor={isPodEditor}
       ref={iframeRef}

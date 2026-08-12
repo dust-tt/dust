@@ -1,6 +1,6 @@
-import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartLegend } from "@app/components/charts/ChartLegend";
+import { CHART_HEIGHT } from "@app/components/charts/constants";
 import {
   Button,
   Maximize01,

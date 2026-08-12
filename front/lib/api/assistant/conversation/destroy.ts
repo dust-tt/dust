@@ -230,19 +230,18 @@ export async function destroyConversation(
     const owner = auth.getNonNullableWorkspace();
 
     // Delete the conversation's sandbox egress allowlist file (owner-keyed, so
-    // it is not deleted with individual sandboxes). Pod conversations never own
-    // a file (they share the Pod's policy file, which is scrubbed by
-    // hardDeleteSpace) so skip them. A GCS failure aborts the destroy before
-    // any row is touched; callers run in Temporal activities, whose retry
-    // policy retries the whole destroy.
-    if (conversation.spaceId === null) {
-      const deleteOwnerPolicyRes = await deleteOwnerPolicy(
-        auth,
-        conversation.sId
-      );
-      if (deleteOwnerPolicyRes.isErr()) {
-        return deleteOwnerPolicyRes;
-      }
+    // it is not deleted with individual sandboxes). Every conversation owns
+    // its own file — inside or outside a Pod (the Pod's own file is scrubbed
+    // by hardDeleteSpace) — and the delete ignores missing objects for
+    // conversations that never approved a domain. A GCS failure aborts the
+    // destroy before any row is touched; callers run in Temporal activities,
+    // whose retry policy retries the whole destroy.
+    const deleteOwnerPolicyRes = await deleteOwnerPolicy(
+      auth,
+      conversation.sId
+    );
+    if (deleteOwnerPolicyRes.isErr()) {
+      return deleteOwnerPolicyRes;
     }
 
     await ConversationForkResource.deleteForConversationModelId(auth, {

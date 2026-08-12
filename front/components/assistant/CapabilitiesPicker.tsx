@@ -8,7 +8,6 @@ import {
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerType, MCPServerViewLightType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
@@ -50,7 +49,7 @@ import {
   LoadingBlock,
   ShapesPlus,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 interface CapabilityPickerItemBase extends CapabilitySearchIndexItem {
   description?: string;
@@ -169,6 +168,7 @@ interface CapabilitiesPickerProps {
   selectedMCPServerViews: MCPServerViewLightType[];
   onSelect: (serverView: MCPServerViewLightType) => void;
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
+  onSetupServer: (server: MCPServerType) => void;
   isLoading?: boolean;
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
@@ -185,6 +185,7 @@ export function CapabilitiesPicker({
   selectedMCPServerViews,
   onSelect,
   onSkillSelect,
+  onSetupServer,
   isLoading = false,
   disabled = false,
   buttonSize = "xs",
@@ -202,12 +203,6 @@ export function CapabilitiesPicker({
   const setIsOpen = isExternallyControlled
     ? (open: boolean) => onExternalOpenChange?.(open)
     : setInternalOpen;
-  const [setupSheetServer, setSetupSheetServer] =
-    useState<MCPServerType | null>(null);
-  const [setupSheetRemoteServerConfig, setSetupSheetRemoteServerConfig] =
-    useState<DefaultRemoteMCPServerConfig | null>(null);
-  const [pendingServerToAdd, setPendingServerToAdd] =
-    useState<MCPServerType | null>(null);
 
   const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
     string | null
@@ -224,46 +219,14 @@ export function CapabilitiesPicker({
 
   const isAdmin = owner.role === "admin";
 
-  const {
-    serverViews,
-    isLoading: isServerViewsLoading,
-    mutateServerViews,
-  } = useJITMCPServerViewsFromSpaces(
-    owner,
-    globalSpaces,
-    CAPABILITIES_SWR_OPTIONS
-  );
+  const { serverViews, isLoading: isServerViewsLoading } =
+    useJITMCPServerViewsFromSpaces(
+      owner,
+      globalSpaces,
+      CAPABILITIES_SWR_OPTIONS
+    );
 
   const normalizedSearchText = searchText.trim().toLowerCase();
-
-  // Fallback: add server to conversation when it appears in serverViews.
-  useEffect(() => {
-    if (pendingServerToAdd) {
-      const newServerView = serverViews.find(
-        (v) => v.server.name === pendingServerToAdd.name
-      );
-
-      if (newServerView) {
-        trackEvent({
-          area: TRACKING_AREAS.TOOLS,
-          object: "tool_select",
-          action: TRACKING_ACTIONS.SELECT,
-          extra: {
-            tool_id: newServerView.sId,
-            tool_name: newServerView.server.name,
-            from_setup: true,
-          },
-        });
-        onSelect(newServerView);
-        setPendingServerToAdd(null);
-      }
-    }
-  }, [serverViews, pendingServerToAdd, onSelect]);
-
-  const existingViewNames = useMemo(
-    () => serverViews.map((v) => v.name ?? v.server.name),
-    [serverViews]
-  );
 
   const { availableMCPServers, isAvailableMCPServersLoading } =
     useAvailableMCPServers({
@@ -281,9 +244,6 @@ export function CapabilitiesPicker({
   const isSkillsDataReady = !isSkillsLoading;
   const isToolsDataReady =
     !isServerViewsLoading && (!isAdmin || !isAvailableMCPServersLoading);
-
-  const shouldShowSetupSheet =
-    !!setupSheetServer || !!setupSheetRemoteServerConfig;
 
   const closeDropdown = () => {
     setSearchText("");
@@ -319,18 +279,7 @@ export function CapabilitiesPicker({
   };
 
   const setupServer = (server: MCPServerType) => {
-    const remoteMcpServerConfig = getDefaultRemoteMCPServerByName(server.name);
-
-    if (remoteMcpServerConfig) {
-      // Remote servers always use the remote flow, even if they have OAuth.
-      setSetupSheetServer(null);
-      setSetupSheetRemoteServerConfig(remoteMcpServerConfig);
-    } else {
-      // Internal servers (with or without OAuth)
-      setSetupSheetServer(server);
-      setSetupSheetRemoteServerConfig(null);
-    }
-
+    onSetupServer(server);
     setIsOpen(false);
   };
 
@@ -566,51 +515,6 @@ export function CapabilitiesPicker({
         </ContentWrapper>
       </Wrapper>
 
-      {shouldShowSetupSheet && (
-        <CreateMCPServerDialog
-          owner={owner}
-          internalMCPServer={setupSheetServer ?? undefined}
-          defaultServerConfig={setupSheetRemoteServerConfig ?? undefined}
-          existingViewNames={existingViewNames}
-          setMCPServerToShow={async (createdServer) => {
-            const updatedData = await mutateServerViews();
-
-            const newServerView = updatedData?.serverViews?.find(
-              (v: MCPServerViewLightType) =>
-                v.server.name === createdServer.name
-            );
-
-            if (newServerView) {
-              trackEvent({
-                area: TRACKING_AREAS.TOOLS,
-                object: "tool_select",
-                action: TRACKING_ACTIONS.SELECT,
-                extra: {
-                  tool_id: newServerView.sId,
-                  tool_name: newServerView.server.name,
-                  from_setup: true,
-                },
-              });
-              onSelect(newServerView);
-            } else {
-              setPendingServerToAdd(createdServer);
-            }
-
-            setSetupSheetServer(null);
-            setSetupSheetRemoteServerConfig(null);
-          }}
-          setIsLoading={() => {}}
-          isOpen={shouldShowSetupSheet}
-          setIsOpen={(isOpen) => {
-            if (!isOpen) {
-              setSetupSheetServer(null);
-              setSetupSheetRemoteServerConfig(null);
-              setPendingServerToAdd(null);
-            }
-          }}
-        />
-      )}
-
       <CapabilityDetailsSheets
         owner={owner}
         user={user}
@@ -620,5 +524,73 @@ export function CapabilitiesPicker({
         onCloseTool={() => setSelectedServerViewForDetails(null)}
       />
     </>
+  );
+}
+
+interface CapabilitySetupDialogProps {
+  owner: WorkspaceType;
+  server: MCPServerType;
+  onClose: () => void;
+  onServerViewAdded: (serverView: MCPServerViewLightType) => void;
+}
+
+// Mount outside of the menu the picker lives in: selecting an item closes that menu, which
+// unmounts its content.
+export function CapabilitySetupDialog({
+  owner,
+  server,
+  onClose,
+  onServerViewAdded,
+}: CapabilitySetupDialogProps) {
+  const { spaces: globalSpaces } = useSpaces({
+    workspaceId: owner.sId,
+    kinds: ["global"],
+    swrOptions: CAPABILITIES_SWR_OPTIONS,
+  });
+
+  const { serverViews, mutateServerViews } = useJITMCPServerViewsFromSpaces(
+    owner,
+    globalSpaces,
+    CAPABILITIES_SWR_OPTIONS
+  );
+
+  // Remote servers always use the remote flow, even if they have OAuth.
+  const remoteServerConfig = getDefaultRemoteMCPServerByName(server.name);
+
+  return (
+    <CreateMCPServerDialog
+      owner={owner}
+      internalMCPServer={remoteServerConfig ? undefined : server}
+      defaultServerConfig={remoteServerConfig ?? undefined}
+      existingViewNames={serverViews.map((v) => v.name ?? v.server.name)}
+      setMCPServerToShow={async (newServer) => {
+        const updatedData = await mutateServerViews();
+
+        const newServerView = updatedData?.serverViews?.find(
+          (v: MCPServerViewLightType) => v.server.name === newServer.name
+        );
+
+        if (newServerView) {
+          trackEvent({
+            area: TRACKING_AREAS.TOOLS,
+            object: "tool_select",
+            action: TRACKING_ACTIONS.SELECT,
+            extra: {
+              tool_id: newServerView.sId,
+              tool_name: newServerView.server.name,
+              from_setup: true,
+            },
+          });
+          onServerViewAdded(newServerView);
+        }
+      }}
+      setIsLoading={() => {}}
+      isOpen
+      setIsOpen={(isOpen) => {
+        if (!isOpen) {
+          onClose();
+        }
+      }}
+    />
   );
 }

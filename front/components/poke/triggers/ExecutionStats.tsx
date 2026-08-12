@@ -40,7 +40,12 @@ export function ExecutionStats({ owner, triggerId }: ExecutionStatsProps) {
 
   const maxDailyCount = Math.max(
     ...data.dailyVolume.map(
-      (d) => d.succeeded + d.failed + d.notMatched + d.rateLimited
+      (d) =>
+        d.succeeded +
+        d.failed +
+        d.notMatched +
+        d.rateLimited +
+        d.creditsExhausted
     ),
     1
   );
@@ -84,11 +89,19 @@ export function ExecutionStats({ owner, triggerId }: ExecutionStatsProps) {
               <div className="h-2.5 w-2.5 rounded-sm bg-yellow-400" />
               <span>Not matched</span>
             </div>
+            <div className="flex items-center gap-1">
+              <div className="h-2.5 w-2.5 rounded-sm bg-red-400" />
+              <span>Out of credits</span>
+            </div>
           </div>
           <div className="flex flex-col gap-1">
             {data.dailyVolume.map((day) => {
               const total =
-                day.succeeded + day.failed + day.notMatched + day.rateLimited;
+                day.succeeded +
+                day.failed +
+                day.notMatched +
+                day.rateLimited +
+                day.creditsExhausted;
               const barWidth = (total / maxDailyCount) * 100;
 
               return (
@@ -141,6 +154,20 @@ export function ExecutionStats({ owner, triggerId }: ExecutionStatsProps) {
                               className="h-full bg-yellow-400"
                               style={{
                                 width: `${(day.notMatched / total) * 100}%`,
+                              }}
+                            />
+                          }
+                        />
+                      )}
+                      {day.creditsExhausted > 0 && (
+                        <Tooltip
+                          tooltipTriggerAsChild
+                          label={`Out of credits: ${day.creditsExhausted}`}
+                          trigger={
+                            <div
+                              className="h-full bg-red-400"
+                              style={{
+                                width: `${(day.creditsExhausted / total) * 100}%`,
                               }}
                             />
                           }

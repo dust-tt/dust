@@ -17,6 +17,7 @@ export const GetAgentConfigurationsQuerySchema = z.object({
     .enum([
       "admin_internal",
       "all",
+      "analytics",
       "archived",
       "current_user",
       "global",

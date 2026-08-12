@@ -52,6 +52,9 @@ class FileStorageMock {
   ) => { name: string; metadata: Record<string, unknown> }[] | null = () =>
     null;
   private _subdirectoryNames: (prefix: string) => string[] | null = () => null;
+  private _deletedPrefixes: string[] = [];
+  private _onDeleteByPrefix: (prefix: string) => void = () => {};
+  private _ignoreDeleteByPrefixInListings = false;
 
   get writeStreamCalls(): readonly WriteStreamCall[] {
     return this._writeStreamCalls;
@@ -140,6 +143,22 @@ class FileStorageMock {
   }
 
   /**
+   * Observe every `bucket.deleteByPrefix(prefix)` call, e.g. to assert the order of a delete
+   * sequence. Reset between tests via `reset()`.
+   */
+  setOnDeleteByPrefix(fn: (prefix: string) => void): void {
+    this._onDeleteByPrefix = fn;
+  }
+
+  /**
+   * Make `listSubdirectoryNames` ignore prior `deleteByPrefix` calls, so a prefix keeps being listed
+   * after it was deleted. Simulates a silently-failed prefix wipe. Reset between tests via `reset()`.
+   */
+  setIgnoreDeleteByPrefixInListings(ignore: boolean): void {
+    this._ignoreDeleteByPrefixInListings = ignore;
+  }
+
+  /**
    * Makes `fetchFileContent(path)` throw a GCS-shaped not-found error
    * (`{ code: 404 }`) for matching paths that were not previously written via
    * `uploadRawContentToBucket` and have no `setFileContent` override. Enables
@@ -174,6 +193,9 @@ class FileStorageMock {
     this._copyFileShouldFail = () => false;
     this._filesByPrefix = () => null;
     this._subdirectoryNames = () => null;
+    this._deletedPrefixes.length = 0;
+    this._onDeleteByPrefix = () => {};
+    this._ignoreDeleteByPrefixInListings = false;
   }
 
   /**
@@ -333,6 +355,8 @@ class FileStorageMock {
         return Promise.resolve(undefined);
       }),
       deleteByPrefix: vi.fn(async (prefix: string) => {
+        this._deletedPrefixes.push(prefix);
+        this._onDeleteByPrefix(prefix);
         for (const path of [...this._objectStore.keys()]) {
           if (path.startsWith(prefix)) {
             this._objectStore.delete(path);
@@ -346,9 +370,16 @@ class FileStorageMock {
           pageFetchCount: 1,
         })
       ),
-      listSubdirectoryNames: vi.fn(({ prefix }: { prefix: string }) =>
-        Promise.resolve(this._subdirectoryNames(prefix) ?? [])
-      ),
+      listSubdirectoryNames: vi.fn(({ prefix }: { prefix: string }) => {
+        const normalized = prefix.endsWith("/") ? prefix : `${prefix}/`;
+        const names = (this._subdirectoryNames(prefix) ?? []).filter(
+          (name) =>
+            this._ignoreDeleteByPrefixInListings ||
+            (!this._deletedPrefixes.includes(`${normalized}${name}/`) &&
+              !this._deletedPrefixes.includes(normalized))
+        );
+        return Promise.resolve(names);
+      }),
       getSortedFileVersions: vi.fn(({ filePath }: { filePath: string }) =>
         Promise.resolve(new Ok(this._sortedFileVersions(filePath) ?? []))
       ),

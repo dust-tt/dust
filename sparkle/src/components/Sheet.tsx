@@ -27,6 +27,7 @@ const SheetOverlay = React.forwardRef<
       "bg-muted-foreground/75 dark:bg-muted-background/75",
       "data-[state=open]:animate-in data-[state=closed]:animate-out",
       "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "duration-300 ease-out-quint",
       className
     )}
     {...props}
@@ -55,7 +56,7 @@ const sheetVariants = cva(
   cn(
     "fixed z-50 overflow-hidden flex flex-col h-full w-full",
     "bg-modal-background",
-    "transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500"
+    "data-[state=open]:animate-in data-[state=closed]:animate-out duration-300 ease-out-quint"
   ),
   {
     variants: {

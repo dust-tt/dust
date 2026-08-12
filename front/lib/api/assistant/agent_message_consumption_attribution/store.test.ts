@@ -92,9 +92,14 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
     const { auth, conversationId, agentMessageId, agentMessageModelId } =
       await setupSettledMessageWithUsage();
 
-    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
-      agentMessageId,
-      conversationId,
+    const consumptionUpdate =
+      await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+        agentMessageId,
+        conversationId,
+      });
+
+    expect(consumptionUpdate).toEqual({
+      costCredits: BILLED_CREDIT_AMOUNT_MICRO / 1_000_000,
     });
 
     const items =
@@ -712,10 +717,13 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
       }
     );
 
-    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
-      agentMessageId: agentMessage.sId,
-      conversationId: conversation.sId,
-    });
+    const consumptionUpdate =
+      await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+        agentMessageId: agentMessage.sId,
+        conversationId: conversation.sId,
+      });
+
+    expect(consumptionUpdate).toBeUndefined();
 
     const items =
       await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(

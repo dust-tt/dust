@@ -1,9 +1,6 @@
-import type { UsageFilterSourceOption } from "@app/components/workspace/analytics/usageFilter";
 import {
-  MAX_USAGE_FILTER_SELECTIONS,
-  selectAllUsageFilterOptions,
+  getUsageFilterSummaries,
   toConsumptionScopeFilter,
-  toggleUsageFilterOption,
 } from "@app/components/workspace/analytics/usageFilter";
 import { describe, expect, it } from "vitest";
 
@@ -21,11 +18,11 @@ describe("toConsumptionScopeFilter", () => {
             disabled: false,
           },
         ],
-        team: [
+        group: [
           {
-            id: "team-1",
+            id: "group-1",
             name: "Engineering",
-            kind: "team",
+            kind: "group",
             documentCount: 1,
             disabled: false,
           },
@@ -63,37 +60,69 @@ describe("toConsumptionScopeFilter", () => {
       })
     ).toEqual({
       users: ["member-1"],
-      teams: ["team-1"],
+      groups: ["group-1"],
       tools: ["tool-1"],
       skills: ["skill-1"],
       sources: ["slack"],
     });
   });
 
-  it("omits empty member and team selections", () => {
-    expect(toConsumptionScopeFilter({ member: [], team: [] })).toEqual({});
+  it("omits empty member and group selections", () => {
+    expect(toConsumptionScopeFilter({ member: [], group: [] })).toEqual({});
+  });
+});
+
+describe("getUsageFilterSummaries", () => {
+  it("flattens selected options into ordered, human-readable categories", () => {
+    expect(
+      getUsageFilterSummaries({
+        agent: [
+          {
+            id: "agent-1",
+            name: "@dust",
+            kind: "agent",
+            image: null,
+            documentCount: 1,
+            disabled: false,
+          },
+        ],
+        member: [
+          {
+            id: "member-1",
+            name: "Nath",
+            kind: "member",
+            image: null,
+            documentCount: 1,
+            disabled: false,
+          },
+          {
+            id: "member-2",
+            name: "Adrien",
+            kind: "member",
+            image: null,
+            documentCount: 1,
+            disabled: false,
+          },
+        ],
+      })
+    ).toEqual([
+      {
+        category: "agent",
+        categoryLabel: "Agent",
+        options: [{ id: "agent-1", name: "@dust" }],
+      },
+      {
+        category: "member",
+        categoryLabel: "Member",
+        options: [
+          { id: "member-1", name: "Nath" },
+          { id: "member-2", name: "Adrien" },
+        ],
+      },
+    ]);
   });
 
-  it("bounds the total number of selections serialized into analytics URLs", () => {
-    const options: UsageFilterSourceOption[] = Array.from(
-      { length: MAX_USAGE_FILTER_SELECTIONS + 5 },
-      (_, index) => ({
-        id: `source-${index}`,
-        name: `Source ${index}`,
-        kind: "source",
-        connectorProvider: undefined,
-        documentCount: 1,
-        disabled: false,
-      })
-    );
-    const atLimit = selectAllUsageFilterOptions({}, "source", options);
-
-    expect(atLimit.source).toHaveLength(MAX_USAGE_FILTER_SELECTIONS);
-    expect(toggleUsageFilterOption(atLimit, "source", options.at(-1)!)).toBe(
-      atLimit
-    );
-    expect(
-      toggleUsageFilterOption(atLimit, "source", options[0]).source
-    ).toHaveLength(MAX_USAGE_FILTER_SELECTIONS - 1);
+  it("omits empty categories", () => {
+    expect(getUsageFilterSummaries({ group: [] })).toEqual([]);
   });
 });

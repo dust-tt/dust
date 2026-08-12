@@ -19,6 +19,7 @@ import {
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import tracer from "@app/logger/tracer";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
@@ -53,7 +54,7 @@ export type ConsumptionFacets = {
   facets: {
     agent: ConsumptionAgentFacet[];
     user: ConsumptionFacet[];
-    team: ConsumptionFacet[];
+    group: ConsumptionFacet[];
     model: ConsumptionModelFacet[];
     tool: ConsumptionFacet[];
     skill: ConsumptionFacet[];
@@ -99,17 +100,41 @@ function filterWithoutDimension(
   return { ...filter, [filterKey]: undefined };
 }
 
-async function fetchDimensionFacetBuckets({
-  auth,
-  period,
-  filter,
-  dimension,
-}: {
+type FetchDimensionFacetBucketsArgs = {
   auth: Authenticator;
   period: ConsumptionPeriod;
   filter: ConsumptionScopeFilter;
   dimension: ConsumptionScopeDimension;
-}): Promise<Result<FacetBuckets, ElasticsearchError>> {
+};
+
+async function fetchDimensionFacetBuckets(
+  args: FetchDimensionFacetBucketsArgs
+): Promise<Result<FacetBuckets, ElasticsearchError>> {
+  const { dimension } = args;
+  return tracer.trace(
+    "analytics.consumption.facets.fetch_buckets",
+    { resource: dimension },
+    async (span) => {
+      span?.setTag("facet.dimension", dimension);
+      const result = await fetchDimensionFacetBucketsWithoutTracing(args);
+      if (result.isErr()) {
+        span?.setTag("error", result.error);
+      } else {
+        span?.setTag("facet.bucket_count", result.value.contextual.size);
+      }
+      return result;
+    }
+  );
+}
+
+async function fetchDimensionFacetBucketsWithoutTracing({
+  auth,
+  period,
+  filter,
+  dimension,
+}: FetchDimensionFacetBucketsArgs): Promise<
+  Result<FacetBuckets, ElasticsearchError>
+> {
   const contextual = new Map<string, number>();
   let afterKey: { value: string } | undefined;
 
@@ -192,10 +217,17 @@ async function resolveFacets(
   const missingCatalogValues = historicalValues.filter(
     (value) => !catalogByValue.has(value)
   );
-  const historicalLabels = await resolveDimensionLabels(
-    auth,
-    dimension,
-    missingCatalogValues
+  const historicalLabels = await tracer.trace(
+    "analytics.consumption.facets.resolve_labels",
+    { resource: dimension },
+    async (span) => {
+      span?.setTag("facet.dimension", dimension);
+      span?.setTag(
+        "facet.missing_catalog_value_count",
+        missingCatalogValues.length
+      );
+      return resolveDimensionLabels(auth, dimension, missingCatalogValues);
+    }
   );
   const entries = [
     ...catalogEntries,
@@ -226,7 +258,7 @@ async function resolveFacets(
  * filters except its own dimension, so choosing one value never hides its
  * siblings.
  */
-export async function fetchConsumptionFacets(
+async function fetchConsumptionFacetsWithoutTracing(
   auth: Authenticator,
   {
     period,
@@ -266,11 +298,11 @@ export async function fetchConsumptionFacets(
     getFacetBuckets(bucketsByDimension, "user"),
     catalog.user
   );
-  const teamFacets = await resolveFacets(
+  const groupFacets = await resolveFacets(
     auth,
-    "team",
-    getFacetBuckets(bucketsByDimension, "team"),
-    catalog.team
+    "group",
+    getFacetBuckets(bucketsByDimension, "group"),
+    catalog.group
   );
   const modelFacets = await resolveFacets(
     auth,
@@ -302,11 +334,28 @@ export async function fetchConsumptionFacets(
     facets: {
       agent: agentFacets,
       user: userFacets,
-      team: teamFacets,
+      group: groupFacets,
       model: modelFacets,
       tool: toolFacets,
       skill: skillFacets,
       source: sourceFacets,
     },
+  });
+}
+
+export async function fetchConsumptionFacets(
+  auth: Authenticator,
+  input: {
+    period: ConsumptionPeriod;
+    filter?: ConsumptionScopeFilter;
+  }
+): Promise<Result<ConsumptionFacets, ElasticsearchError>> {
+  return tracer.trace("analytics.consumption.facets", async (span) => {
+    span?.setTag("workspace.id", auth.getNonNullableWorkspace().sId);
+    const result = await fetchConsumptionFacetsWithoutTracing(auth, input);
+    if (result.isErr()) {
+      span?.setTag("error", result.error);
+    }
+    return result;
   });
 }

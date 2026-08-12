@@ -33,11 +33,13 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { verbsForGrantAtLevel } from "@app/lib/resources/group_permission_registry";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import {
-  createResourcePermissionsFromSpacesWithMap,
+  createAccessControlListFromSpacesWithMap,
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
@@ -91,6 +93,7 @@ import type {
 import { isDefaultFromAvailability } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
 import { SKILL_GROUP_PREFIX } from "@app/types/groups";
+import type { GroupGrant } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -251,6 +254,10 @@ export interface SkillResource
  * @see GlobalSkillsRegistry for global skill definitions
  * @see SystemSkillsRegistry for always-enabled system skill definitions
  */
+
+// The role a skill's editor group holds on the skill. Its verbs live in ROLE_REGISTRY.skill.
+const SKILL_EDITOR_GRANT_TYPE = "editor" as const;
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
@@ -510,6 +517,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       await skillResource.normalizeSkillReferenceTags(auth, { transaction });
       await skillResource.syncSkillReferences(auth, { transaction });
 
+      // Mirror the editor-group association into group_permissions, in the same transaction as the
+      // association itself.
+      await skillResource.writeGroupPermissions(auth, { transaction });
+
       return skillResource;
     });
   }
@@ -667,10 +678,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     const allowedCustomSkills = validCustomSkills.filter((skill) =>
-      auth.canRead(
-        createResourcePermissionsFromSpacesWithMap(
+      auth.hasPermissionForAcls(
+        "read",
+        createAccessControlListFromSpacesWithMap(
           spaceIdToGroupsMap,
-          skill.requestedSpaceIds
+          skill.requestedSpaceIds,
+          auth.getNonNullableWorkspace().id
         )
       )
     );
@@ -2119,6 +2132,74 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return this.editorGroup.canAdministrate(auth);
+  }
+
+  // The group grants a skill confers, derived from its `group_skills` association: the editor
+  // group holds the `editor` role. The verbs come from the registry rather than being restated
+  // here, so this cannot drift from `ROLE_REGISTRY.skill.editor`.
+  private skillGroupGrants(): GroupGrant[] {
+    if (!this.editorGroup) {
+      return [];
+    }
+
+    return [
+      {
+        id: this.editorGroup.id,
+        permissions: verbsForGrantAtLevel(
+          SKILL_EDITOR_GRANT_TYPE,
+          "skill",
+          "instance"
+        ),
+      },
+    ];
+  }
+
+  // Writes this skill's `group_permissions` rows directly from its `group_skills` association
+  // (see `skillGroupGrants`). The skill mutation paths call this to keep the table in sync as it
+  // becomes the source of truth. Idempotent — it clears the skill's instance grants then
+  // re-inserts the desired set, so it is safe to re-run.
+  async writeGroupPermissions(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    // Clear this skill's instance grants, then re-insert the desired set. `resourceId` is the
+    // skill id (> 0), so the type-wide governance rows (-1) are never touched.
+    await GroupPermissionResource.deleteAllForResource(auth, {
+      resourceType: "skill",
+      resourceId: this.id,
+      transaction,
+    });
+
+    const desiredGrants = this.skillGroupGrants();
+    if (desiredGrants.length === 0) {
+      return;
+    }
+
+    const groups = await GroupResource.fetchByModelIds(
+      auth,
+      desiredGrants.map((grant) => grant.id),
+      { transaction }
+    );
+
+    await GroupPermissionResource.grantMany(auth, {
+      grants: groups.map((group) => ({
+        group,
+        grantType: SKILL_EDITOR_GRANT_TYPE,
+        resourceType: "skill" as const,
+        resourceId: this.id,
+      })),
+      transaction,
+    });
+  }
+
+  // Backfill entry: (re-)derive this skill's `group_permissions` from its `group_skills`
+  // association. Delegates to `writeGroupPermissions` — the same logic the mutation paths use — so
+  // the one-off backfill and the ongoing writes can never disagree. Idempotent; safe to re-run.
+  async reconcileGroupPermissions(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    return this.writeGroupPermissions(auth, { transaction });
   }
 
   private async listActiveAgents(
@@ -3671,6 +3752,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
         await GroupSkillModel.destroy({
           where: whereWorkspaceIdAndSkillId,
+          transaction,
+        });
+
+        // Drop the skill's instance grants before the editor group goes away: group_permissions
+        // rows are keyed by both, and this also covers grants held by any other group.
+        await GroupPermissionResource.deleteAllForResource(auth, {
+          resourceType: "skill",
+          resourceId: this.id,
           transaction,
         });
 

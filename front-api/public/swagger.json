@@ -6203,7 +6203,7 @@
                           "type": "string"
                         }
                       },
-                      "teams": {
+                      "groups": {
                         "type": "array",
                         "items": {
                           "type": "string"
@@ -6279,7 +6279,7 @@
                       "required": [
                         "agent",
                         "user",
-                        "team",
+                        "group",
                         "model",
                         "tool",
                         "skill",
@@ -6298,7 +6298,7 @@
                             "$ref": "#/components/schemas/PrivateConsumptionFacet"
                           }
                         },
-                        "team": {
+                        "group": {
                           "type": "array",
                           "items": {
                             "$ref": "#/components/schemas/PrivateConsumptionFacet"
@@ -6373,6 +6373,7 @@
               "type": "string",
               "enum": [
                 "all",
+                "analytics",
                 "list",
                 "favorites",
                 "published",
@@ -12855,6 +12856,9 @@
             "$ref": "#/components/schemas/PrivateAgentMessageNewEvent"
           },
           {
+            "$ref": "#/components/schemas/PrivateAgentMessageConsumptionUpdatedEvent"
+          },
+          {
             "$ref": "#/components/schemas/PrivateAgentMessageDoneEvent"
           },
           {
@@ -12965,6 +12969,37 @@
               "success",
               "error"
             ]
+          }
+        }
+      },
+      "PrivateAgentMessageConsumptionUpdatedEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "conversationId",
+          "messageId",
+          "costCredits"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "agent_message_consumption_updated"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "costCredits": {
+            "type": "number",
+            "nullable": true
           }
         }
       },

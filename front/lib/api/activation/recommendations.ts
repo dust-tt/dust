@@ -29,19 +29,21 @@ export interface GetActivationPodResponseBody {
   podId: string | null;
 }
 
-export async function getActivationPodId(
+export async function getActivationPodInfo(
   auth: Authenticator
-): Promise<string | null> {
+): Promise<GetActivationPodResponseBody> {
   const activationPod = await ActivationPodResource.fetchByUser(auth);
   if (!activationPod) {
-    return null;
+    return { podId: null };
   }
 
   const [space] = await SpaceResource.fetchByModelIds(auth, [
     activationPod.spaceId,
   ]);
 
-  return space?.sId ?? null;
+  return {
+    podId: space?.sId ?? null,
+  };
 }
 
 export interface UpdateActivationRecommendationResponseBody {

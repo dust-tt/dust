@@ -1,7 +1,7 @@
 import { CoinsStacked01, cn } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
-export type CreditUsageTone = "on_pace" | "elevated" | "critical";
+export type CreditUsageTone = "on_target" | "elevated" | "critical";
 export type CreditUsageCardVariant = "profile_menu" | "companion";
 
 const CONTAINER_CLASSES: Record<CreditUsageCardVariant, string> = {
@@ -11,13 +11,13 @@ const CONTAINER_CLASSES: Record<CreditUsageCardVariant, string> = {
 };
 
 const TONE_BAR_CLASSES: Record<CreditUsageTone, string> = {
-  on_pace: "bg-highlight-500",
+  on_target: "bg-highlight-500",
   elevated: "bg-warning-500",
   critical: "bg-red-500",
 };
 
 const TONE_TEXT_CLASSES: Record<CreditUsageTone, string> = {
-  on_pace: "text-highlight-500",
+  on_target: "text-highlight-500",
   elevated: "text-warning-500",
   critical: "text-red-500",
 };

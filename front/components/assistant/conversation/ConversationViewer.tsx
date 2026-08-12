@@ -52,6 +52,7 @@ import { useSubmitMessage } from "@app/hooks/useSubmitMessage";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
 import type { DustError } from "@app/lib/error";
 import {
@@ -59,6 +60,7 @@ import {
   CompactionCompletedEvent,
   CompactionStartedEvent,
 } from "@app/lib/notifications/events";
+import { useActivationPod } from "@app/lib/swr/activation";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
@@ -327,6 +329,12 @@ export const ConversationViewer = ({
     workspaceId: owner.sId,
     spaceId: conversation?.spaceId ?? "",
     disabled: !conversation?.spaceId,
+  });
+
+  const { hasFeature } = useFeatureFlags();
+  const { activationPodId } = useActivationPod({
+    workspaceId: owner.sId,
+    disabled: !hasFeature("activation_skill"),
   });
 
   useConversationMarkAsRead({
@@ -974,6 +982,27 @@ export const ConversationViewer = ({
             window.dispatchEvent(new AgentMessageCompletedEvent());
             void mutateConversationAttachments();
             break;
+          case "agent_message_consumption_updated":
+            virtuosoMessageListRef.current?.data.map((message) =>
+              isAgentMessageWithStreaming(message) &&
+              message.sId === event.messageId
+                ? { ...message, costCredits: event.costCredits }
+                : message
+            );
+            void mutateMessages(
+              (pages) =>
+                pages?.map((page) => ({
+                  ...page,
+                  messages: page.messages.map((message) =>
+                    isLightAgentMessageType(message) &&
+                    message.sId === event.messageId
+                      ? { ...message, costCredits: event.costCredits }
+                      : message
+                  ),
+                })),
+              { revalidate: false }
+            );
+            break;
           case "compaction_message_new":
             if (virtuosoMessageListRef.current) {
               const compactionMessage = event.message;
@@ -1435,6 +1464,10 @@ export const ConversationViewer = ({
       handleSubmit,
       conversation,
       isOnboardingConversation,
+      uiView:
+        conversation?.spaceId && conversation.spaceId === activationPodId
+          ? "compact"
+          : "standard",
       draftKey: `conversation-${conversationId}`,
       agentBuilderContext,
       feedbacksByMessageId,
@@ -1455,6 +1488,7 @@ export const ConversationViewer = ({
     handleSubmit,
     conversation,
     isOnboardingConversation,
+    activationPodId,
     conversationId,
     agentBuilderContext,
     feedbacksByMessageId,

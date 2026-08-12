@@ -5,10 +5,6 @@ import type {
 } from "@app/lib/api/activation/nudge";
 import { postActivationNudge } from "@app/lib/api/activation/nudge";
 import { listActivationPodsByUser } from "@app/lib/api/activation/pods";
-import {
-  createActivationTrigger,
-  getOrCreateActivationWebhookSourceView,
-} from "@app/lib/api/activation/trigger";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { createPlugin } from "@app/lib/api/poke/types";
@@ -24,7 +20,6 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { activationSkill } from "@app/lib/resources/skill/code_defined/global/activation";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { startActivationWorkspaceSchedule } from "@app/temporal/activation_scheduler/client";
@@ -192,11 +187,10 @@ async function pinActivationSkill(
 }
 
 // Provisions a fresh Learning Space owned by `creator`: creates the restricted
-// project, pins the Activation skill, creates the user-owned activation trigger,
-// and records the canonical ActivationPod row.
+// project, pins the Activation skill, and records the canonical ActivationPod
+// row.
 async function provisionTrainingPod(
   auth: Authenticator,
-  adminAuth: Authenticator,
   {
     creator,
     otherUsers,
@@ -228,52 +222,12 @@ async function provisionTrainingPod(
 
   await pinActivationSkill(auth, pod);
 
-  const podViewResult = await getOrCreateActivationWebhookSourceView(
-    adminAuth,
-    pod
-  );
-  if (podViewResult.isErr()) {
-    return new Err(
-      new Error(
-        `Failed to get or create Activation Pod webhook view: ${podViewResult.error.message}`
-      )
-    );
-  }
-
-  const podMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
-    creator.sId,
-    workspace.sId
-  );
-  const triggerResult = await createActivationTrigger(podMemberAuth, {
-    pod,
-    creator,
-    podView: podViewResult.value,
-  });
-  if (triggerResult.isErr()) {
-    return new Err(
-      new Error(
-        `Failed to create Activation Pod trigger: ${triggerResult.error.message}`
-      )
-    );
-  }
-
-  const trigger = await TriggerResource.fetchById(
-    adminAuth,
-    triggerResult.value.triggerId
-  );
-  if (!trigger) {
-    return new Err(
-      new Error("Activation trigger not found after provisioning.")
-    );
-  }
-
   // Record the canonical ActivationPod row now that the pod's owner is known.
   // `isEligibleForNudge` and the activation scheduler rely on this row to find
   // the pod, so it must exist for the pod to ever be nudged.
   const activationPod = await ActivationPodResource.makeNew(auth, {
     pod,
     user: creator,
-    trigger,
   });
 
   // Ensure the workspace has a running Activation schedule now that it has a
@@ -685,7 +639,7 @@ export const activationManagementPlugin = createPlugin({
       }
 
       const otherUsers = users.filter((u) => u.sId !== user.sId);
-      const provisionResult = await provisionTrainingPod(auth, adminAuth, {
+      const provisionResult = await provisionTrainingPod(auth, {
         creator: user,
         otherUsers,
       });

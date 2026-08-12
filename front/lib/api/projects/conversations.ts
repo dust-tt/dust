@@ -3,6 +3,7 @@ import {
   rebuildConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
 import { Authenticator } from "@app/lib/auth";
+import type { DustErrorCode } from "@app/lib/error";
 import { DustError } from "@app/lib/error";
 import {
   AgentMessageModel,
@@ -10,7 +11,12 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import {
+  ConversationGoneError,
+  ConversationSandboxAdapter,
+} from "@app/lib/resources/conversation_sandbox_adapter";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
+import { ScopeTransitionDestroyError } from "@app/lib/resources/sandbox_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -19,16 +25,36 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import {
   getConversationDisplayTitle,
   HIDDEN_MESSAGE_ORIGINS,
-  isPodConversation,
 } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { UserType } from "@app/types/user";
 import uniq from "lodash/uniq";
 import uniqBy from "lodash/uniqBy";
-import type { Transaction, WhereOptions } from "sequelize";
+import type { WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 import { getAgentConfigurations } from "../assistant/configuration/agent";
+
+// Maps a scope-transition failure to the move's error union: the caller's
+// own validation errors pass through, the under-lock re-fetch miss becomes
+// not-found, and a destroy failure is internal — fail closed, the
+// association is unchanged and the kill request left behind lets the next
+// access finish the sandbox reset.
+function toMoveError<E extends DustError<DustErrorCode>>(
+  error: E | ConversationGoneError | ScopeTransitionDestroyError
+): E | DustError<"conversation_not_found" | "internal_error"> {
+  if (error instanceof ConversationGoneError) {
+    return new DustError("conversation_not_found", "Conversation not found");
+  }
+  if (error instanceof ScopeTransitionDestroyError) {
+    return new DustError(
+      "internal_error",
+      `Could not recycle the conversation's sandbox for the move: ${error.message}`
+    );
+  }
+  return error;
+}
 
 export async function moveConversationToProject(
   auth: Authenticator,
@@ -36,12 +62,10 @@ export async function moveConversationToProject(
     conversation,
     currentAgentConversationId,
     spaceId,
-    transaction,
   }: {
     conversation: ConversationWithoutContentType;
     currentAgentConversationId?: string;
     spaceId: string;
-    transaction?: Transaction;
   }
 ): Promise<
   Result<
@@ -67,36 +91,8 @@ export async function moveConversationToProject(
     );
   }
 
-  if (isPodConversation(conversation)) {
-    if (conversation.spaceId === spaceId) {
-      return new Err(
-        new DustError(
-          "internal_error",
-          "Conversation is already in the project"
-        )
-      );
-    } else {
-      const previousProject = await SpaceResource.fetchById(
-        auth,
-        conversation.spaceId
-      );
-      if (!previousProject) {
-        return new Err(
-          new DustError("space_not_found", "Previous project not found")
-        );
-      }
-
-      if (!previousProject.canAdministrate(auth)) {
-        return new Err(
-          new DustError(
-            "unauthorized",
-            `You must be an editor of "${previousProject.name}".`
-          )
-        );
-      }
-    }
-  }
-
+  // The destination does not race with the conversation's own state, so it
+  // can be validated before the lock as a fast fail.
   const project = await SpaceResource.fetchById(auth, spaceId);
 
   if (!project || !project.isProject()) {
@@ -112,60 +108,114 @@ export async function moveConversationToProject(
     );
   }
 
-  const conversationResource = await ConversationResource.fetchById(
+  // One lifecycle-lock hold covers source validation, the strict sandbox
+  // destroy, and the database move — validated against the conversation as
+  // re-fetched under the lock, never the caller's snapshot, so a concurrent
+  // move cannot slip between validation and commit. The next Computer
+  // command recreates the sandbox with the new pod's egress claims, env
+  // vars, and mounts.
+  const transitionRes = await ConversationSandboxAdapter.withScopeTransition(
     auth,
-    conversation.sId
-  );
-  if (!conversationResource) {
-    return new Err(
-      new DustError("conversation_not_found", "Conversation not found")
-    );
-  }
+    conversation,
+    {
+      prepare: async (
+        freshConversation
+      ): Promise<
+        Result<
+          undefined,
+          DustError<"internal_error" | "space_not_found" | "unauthorized">
+        >
+      > => {
+        const sourceSpaceId = freshConversation.spaceSId;
+        if (sourceSpaceId === project.sId) {
+          return new Err(
+            new DustError(
+              "internal_error",
+              "Conversation is already in the project"
+            )
+          );
+        }
+        if (sourceSpaceId) {
+          const previousProject = await SpaceResource.fetchById(
+            auth,
+            sourceSpaceId
+          );
+          if (!previousProject) {
+            return new Err(
+              new DustError("space_not_found", "Previous project not found")
+            );
+          }
+          if (!previousProject.canAdministrate(auth)) {
+            return new Err(
+              new DustError(
+                "unauthorized",
+                `You must be an editor of "${previousProject.name}".`
+              )
+            );
+          }
+        }
+        return new Ok(undefined);
+      },
+      commit: async (freshConversation) => {
+        await withTransaction(async (t) => {
+          // Before moving the conversation, capture the current state:
+          // - Current updatedAt timestamp
+          // - All participants with their lastReadAt status
+          const oldUpdatedAt = freshConversation.updatedAt;
+          const participants = await freshConversation.listParticipants(auth);
 
-  await withTransaction(async (t) => {
-    // Before moving the conversation, capture the current state:
-    // - Current updatedAt timestamp
-    // - All participants with their lastReadAt status
-    const oldUpdatedAt = conversationResource.updatedAt;
-    const participants = await conversationResource.listParticipants(auth);
+          // Move the conversation to the project (this will update updatedAt)
+          await freshConversation.updateSpaceId(auth, project, t);
+          // See front/lib/api/assistant/conversation/mentions.ts updateConversationRequirements for more details
+          await freshConversation.updateRequirements(auth, [project.id], t);
 
-    // Move the conversation to the project (this will update updatedAt)
-    await conversationResource.updateSpaceId(auth, project, t);
-    // See front/lib/api/assistant/conversation/mentions.ts updateConversationRequirements for more details
-    await conversationResource.updateRequirements(auth, [project.id], t);
+          // The requirements above drop every Space the conversation used to require, including the ones
+          // that were selected from the input bar. Their selections must go with them: they no longer
+          // have any ACL backing, and moving the conversation out of the project later rebuilds
+          // requirements from agents and content fragments only, which would make them live again.
+          await ConversationSelectedSpaceResource.removeAllForConversation(
+            auth,
+            {
+              conversation: freshConversation,
+              transaction: t,
+            }
+          );
 
-    // The requirements above drop every Space the conversation used to require, including the ones
-    // that were selected from the input bar. Their selections must go with them: they no longer
-    // have any ACL backing, and moving the conversation out of the project later rebuilds
-    // requirements from agents and content fragments only, which would make them live again.
-    await ConversationSelectedSpaceResource.removeAllForConversation(auth, {
-      conversation: conversationResource,
-      transaction: t,
-    });
+          // For participants who had already read the conversation (unread = false),
+          // mark them as read using markAsReadForAuthUser to preserve their read status.
+          // Participants who were already unread should stay unread.
+          const workspaceId = auth.getNonNullableWorkspace().sId;
 
-    // For participants who had already read the conversation (unread = false),
-    // mark them as read using markAsReadForAuthUser to preserve their read status.
-    // Participants who were already unread should stay unread.
-    const workspaceId = auth.getNonNullableWorkspace().sId;
+          for (const participant of participants) {
+            // A participant was read if they had a lastReadAt and it was >= oldUpdatedAt
+            const wasRead =
+              participant.lastReadAt !== null &&
+              participant.lastReadAt >= oldUpdatedAt;
 
-    for (const participant of participants) {
-      // A participant was read if they had a lastReadAt and it was >= oldUpdatedAt
-      const wasRead =
-        participant.lastReadAt !== null &&
-        participant.lastReadAt >= oldUpdatedAt;
-
-      if (wasRead) {
-        const participantAuth = await Authenticator.fromUserIdAndWorkspaceId(
-          participant.sId,
-          workspaceId
-        );
-        await ConversationResource.markAsReadForAuthUser(participantAuth, {
-          conversation,
-          transaction: t,
+            if (wasRead) {
+              const participantAuth =
+                await Authenticator.fromUserIdAndWorkspaceId(
+                  participant.sId,
+                  workspaceId
+                );
+              await ConversationResource.markAsReadForAuthUser(
+                participantAuth,
+                {
+                  conversation,
+                  transaction: t,
+                }
+              );
+            }
+          }
         });
-      }
+
+        return new Ok(undefined);
+      },
     }
-  }, transaction);
+  );
+  if (transitionRes.isErr()) {
+    return new Err(toMoveError(transitionRes.error));
+  }
 
   return new Ok(undefined);
 }
@@ -188,49 +238,72 @@ export async function moveConversationOutOfProject(
     >
   >
 > {
-  if (!isPodConversation(conversation)) {
-    return new Err(
-      new DustError("internal_error", "Conversation is not in a project")
-    );
-  }
-
-  const project = await SpaceResource.fetchById(auth, conversation.spaceId);
-  if (!project) {
-    return new Err(new DustError("space_not_found", "Project not found"));
-  }
-
-  if (!project.canAdministrate(auth)) {
-    return new Err(
-      new DustError(
-        "unauthorized",
-        `You must be an editor of "${project.name}".`
-      )
-    );
-  }
-
-  const conversationResource = await ConversationResource.fetchById(
+  // Same contract as moveConversationToProject: source validation, the
+  // strict sandbox destroy, and the association change happen under one
+  // lifecycle-lock hold against the conversation as re-fetched under the
+  // lock, so the Pod's egress scope, env vars, and secrets are gone before
+  // the conversation is — and a concurrent move cannot double-validate
+  // against the same source pod. Participant processing stays outside the
+  // lock: it is slow, and not part of the scope the lock protects. The
+  // pre-move read state it needs is captured in `prepare` and threaded out.
+  const transitionRes = await ConversationSandboxAdapter.withScopeTransition(
     auth,
-    conversation.sId
+    conversation,
+    {
+      prepare: async (
+        freshConversation
+      ): Promise<
+        Result<
+          {
+            oldUpdatedAt: Date;
+            participants: (UserType & { lastReadAt: Date | null })[];
+          },
+          DustError<"internal_error" | "space_not_found" | "unauthorized">
+        >
+      > => {
+        const sourceSpaceId = freshConversation.spaceSId;
+        if (!sourceSpaceId) {
+          return new Err(
+            new DustError("internal_error", "Conversation is not in a project")
+          );
+        }
+        const project = await SpaceResource.fetchById(auth, sourceSpaceId);
+        if (!project) {
+          return new Err(new DustError("space_not_found", "Project not found"));
+        }
+        if (!project.canAdministrate(auth)) {
+          return new Err(
+            new DustError(
+              "unauthorized",
+              `You must be an editor of "${project.name}".`
+            )
+          );
+        }
+
+        // Pre-move read state for the participant processing below:
+        // updateSpaceId bumps updatedAt, so it must be captured here.
+        const oldUpdatedAt = freshConversation.updatedAt;
+        const participants = await freshConversation.listParticipants(auth);
+        return new Ok({ oldUpdatedAt, participants });
+      },
+      commit: async (freshConversation, prep) => {
+        // Remove the project association.
+        await freshConversation.updateSpaceId(auth, null);
+
+        // Rebuild requestedSpaceIds from all agents and content fragments in
+        // the conversation. When a conversation is in a project, its
+        // requestedSpaceIds is set to [projectSpaceId] only. Moving out
+        // requires recalculating the full set of space requirements.
+        await rebuildConversationRequirements(auth, freshConversation);
+
+        return new Ok({ ...prep, freshConversation });
+      },
+    }
   );
-  if (!conversationResource) {
-    return new Err(
-      new DustError("conversation_not_found", "Conversation not found")
-    );
+  if (transitionRes.isErr()) {
+    return new Err(toMoveError(transitionRes.error));
   }
-
-  // Before moving the conversation, capture the current state:
-  // - Current updatedAt timestamp
-  // - All participants with their lastReadAt status
-  const oldUpdatedAt = conversationResource.updatedAt;
-  const participants = await conversationResource.listParticipants(auth);
-
-  // Remove the project association.
-  await conversationResource.updateSpaceId(auth, null);
-
-  // Rebuild requestedSpaceIds from all agents and content fragments in the conversation.
-  // When a conversation is in a project, its requestedSpaceIds is set to [projectSpaceId] only.
-  // Moving out requires recalculating the full set of space requirements.
-  await rebuildConversationRequirements(auth, conversationResource);
+  const { oldUpdatedAt, participants, freshConversation } = transitionRes.value;
 
   const workspaceId = auth.getNonNullableWorkspace().sId;
 
@@ -247,7 +320,7 @@ export async function moveConversationOutOfProject(
         participant.sId,
         workspaceId
       );
-      await conversationResource.leaveConversation(participantAuth);
+      await freshConversation.leaveConversation(participantAuth);
       continue;
     }
 

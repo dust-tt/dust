@@ -2,6 +2,7 @@ import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/
 import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
+import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ConnectorProvider } from "@app/types/data_source";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -9,16 +10,12 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 export const USAGE_FILTER_CATEGORIES = [
   "agent",
   "member",
-  "team",
+  "group",
   "model",
   "tool",
   "skill",
   "source",
 ] as const;
-
-// Consumption widgets currently serialize their filters into GET query
-// strings. Keep the total bounded until those reads move to POST bodies.
-export const MAX_USAGE_FILTER_SELECTIONS = 50;
 
 export type UsageFilterCategory = (typeof USAGE_FILTER_CATEGORIES)[number];
 
@@ -26,19 +23,39 @@ export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =
   {
     agent: "Agents",
     member: "Members",
-    team: "Teams",
+    group: "Groups",
     model: "Models",
     tool: "Tools",
     skill: "Skills",
     source: "Sources",
   };
 
-export const USAGE_FILTER_SCOPE_LABEL: Record<AgentConfigurationScope, string> =
-  {
-    global: "Company",
-    visible: "Shared",
-    hidden: "Private",
-  };
+export const USAGE_FILTER_CATEGORY_SINGULAR_LABEL: Record<
+  UsageFilterCategory,
+  string
+> = {
+  agent: "Agent",
+  member: "Member",
+  group: "Group",
+  model: "Model",
+  tool: "Tool",
+  skill: "Skill",
+  source: "Source",
+};
+
+export const USAGE_FILTER_AGENT_SCOPES = [
+  ...AGENT_CONFIGURATION_SCOPES,
+  "all",
+] as const;
+
+export type UsageFilterAgentScope = (typeof USAGE_FILTER_AGENT_SCOPES)[number];
+
+export const USAGE_FILTER_SCOPE_LABEL: Record<UsageFilterAgentScope, string> = {
+  global: "Company",
+  visible: "Shared",
+  hidden: "Private",
+  all: "All",
+};
 
 export const USAGE_MODEL_TIERS = ["fast", "standard", "complex"] as const;
 
@@ -69,8 +86,8 @@ export interface UsageFilterMemberOption extends UsageFilterOptionBase {
   image: string | null;
 }
 
-export interface UsageFilterTeamOption extends UsageFilterOptionBase {
-  kind: "team";
+export interface UsageFilterGroupOption extends UsageFilterOptionBase {
+  kind: "group";
 }
 
 export interface UsageFilterSourceOption extends UsageFilterOptionBase {
@@ -100,7 +117,7 @@ export interface UsageFilterSkillOption extends UsageFilterOptionBase {
 export type UsageFilterOption =
   | UsageFilterAgentOption
   | UsageFilterMemberOption
-  | UsageFilterTeamOption
+  | UsageFilterGroupOption
   | UsageFilterSourceOption
   | UsageFilterModelOption
   | UsageFilterToolOption
@@ -119,6 +136,31 @@ export type UsageFilter = {
   [C in UsageFilterCategory]?: UsageFilterOptionForCategory<C>[];
 };
 
+export interface UsageFilterSummary {
+  category: UsageFilterCategory;
+  categoryLabel: string;
+  options: Array<{ id: string; name: string }>;
+}
+
+export function getUsageFilterSummaries(
+  filter: UsageFilter
+): UsageFilterSummary[] {
+  return USAGE_FILTER_CATEGORIES.flatMap((category) => {
+    const options = filter[category];
+    if (!options?.length) {
+      return [];
+    }
+
+    return [
+      {
+        category,
+        categoryLabel: USAGE_FILTER_CATEGORY_SINGULAR_LABEL[category],
+        options: options.map(({ id, name }) => ({ id, name })),
+      },
+    ];
+  });
+}
+
 export function usageFilterSelectionCount(filter: UsageFilter): number {
   return USAGE_FILTER_CATEGORIES.reduce(
     (count, category) => count + (filter[category]?.length ?? 0),
@@ -133,12 +175,6 @@ export function toggleUsageFilterOption<C extends UsageFilterCategory>(
 ): UsageFilter {
   const current = filter[category] ?? [];
   const isSelected = current.some((e) => e.id === option.id);
-  if (
-    !isSelected &&
-    usageFilterSelectionCount(filter) >= MAX_USAGE_FILTER_SELECTIONS
-  ) {
-    return filter;
-  }
   const next = isSelected
     ? current.filter((e) => e.id !== option.id)
     : [...current, option];
@@ -168,13 +204,7 @@ export function selectAllUsageFilterOptions<C extends UsageFilterCategory>(
 ): UsageFilter {
   const current = filter[category] ?? [];
   const currentIds = new Set(current.map((e) => e.id));
-  const remainingCapacity = Math.max(
-    0,
-    MAX_USAGE_FILTER_SELECTIONS - usageFilterSelectionCount(filter)
-  );
-  const additions = options
-    .filter((e) => !currentIds.has(e.id))
-    .slice(0, remainingCapacity);
+  const additions = options.filter((e) => !currentIds.has(e.id));
   if (additions.length === 0) {
     return filter;
   }

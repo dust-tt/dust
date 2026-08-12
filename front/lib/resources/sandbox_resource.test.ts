@@ -51,6 +51,7 @@ vi.mock("@app/lib/lock", () => ({
   executeWithLock: mockExecuteWithLock,
 }));
 
+import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
@@ -171,6 +172,198 @@ describe("SandboxResource.updateStatus", () => {
     expect(reloaded?.statusChangedAt?.getTime()).toBeLessThanOrEqual(
       afterTransition
     );
+  });
+});
+
+describe("ConversationSandboxAdapter.withScopeTransition", () => {
+  let authenticator: Authenticator;
+  let conversationResource: ConversationResource;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockExecuteWithLock.mockImplementation(
+      async (_key: string, fn: () => Promise<unknown>) => fn()
+    );
+    mockGetSandboxProvider.mockReturnValue({
+      destroy: mockProviderDestroy,
+    });
+    mockProviderDestroy.mockResolvedValue(new Ok(undefined));
+    mockDeleteLegacySandboxPolicy.mockResolvedValue(new Ok(undefined));
+
+    const testSetup = await createResourceTest({ role: "admin" });
+    authenticator = testSetup.authenticator;
+
+    const agentConfig =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date()],
+    });
+    const fetched = await ConversationResource.fetchById(
+      authenticator,
+      conversation.sId
+    );
+    if (!fetched) {
+      throw new Error("Conversation not found.");
+    }
+    conversationResource = fetched;
+  });
+
+  it("validates, destroys, marks deleted, and commits in order under the lock", async () => {
+    const sandbox = await SandboxFactory.create(
+      authenticator,
+      conversationResource.toJSON()
+    );
+    const prepare = vi.fn().mockResolvedValue(new Ok("validated"));
+    const commit = vi.fn().mockResolvedValue(new Ok("moved"));
+
+    const result = await ConversationSandboxAdapter.withScopeTransition(
+      authenticator,
+      conversationResource,
+      { prepare, commit }
+    );
+
+    expect(result).toEqual(new Ok("moved"));
+    // Both callbacks receive the conversation as re-fetched under the lock —
+    // a fresh resource, not the caller's object.
+    const freshArg = prepare.mock.calls[0][0];
+    expect(freshArg).toBeInstanceOf(ConversationResource);
+    expect(freshArg).not.toBe(conversationResource);
+    expect(freshArg.sId).toBe(conversationResource.sId);
+    expect(commit).toHaveBeenCalledWith(
+      expect.any(ConversationResource),
+      "validated"
+    );
+    // Ordering: validate BEFORE the destroy, commit after it.
+    expect(prepare.mock.invocationCallOrder[0]).toBeLessThan(
+      mockProviderDestroy.mock.invocationCallOrder[0]
+    );
+    expect(mockProviderDestroy.mock.invocationCallOrder[0]).toBeLessThan(
+      commit.mock.invocationCallOrder[0]
+    );
+    expect(mockProviderDestroy).toHaveBeenCalledWith(sandbox.providerId, {
+      workspaceId: authenticator.getNonNullableWorkspace().sId,
+    });
+    // The row survives as deleted with its owner link intact, so the next
+    // access recreates it in place from the post-transition scope.
+    const reloaded = await ConversationSandboxAdapter.fetchSandbox(
+      authenticator,
+      conversationResource
+    );
+    expect(reloaded?.status).toBe("deleted");
+    expect(reloaded?.killRequestedAt).toEqual(expect.any(Date));
+  });
+
+  it("leaves the runtime untouched when validation fails", async () => {
+    await SandboxFactory.create(authenticator, conversationResource.toJSON());
+    const validationError = new Error("not allowed");
+    const prepare = vi.fn().mockResolvedValue(new Err(validationError));
+    const commit = vi.fn().mockResolvedValue(new Ok(undefined));
+
+    const result = await ConversationSandboxAdapter.withScopeTransition(
+      authenticator,
+      conversationResource,
+      { prepare, commit }
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBe(validationError);
+    }
+    expect(commit).not.toHaveBeenCalled();
+    // A rejected move must not grief the sandbox: no destroy, no kill mark.
+    expect(mockProviderDestroy).not.toHaveBeenCalled();
+    const reloaded = await ConversationSandboxAdapter.fetchSandbox(
+      authenticator,
+      conversationResource
+    );
+    expect(reloaded?.status).toBe("running");
+    expect(reloaded?.killRequestedAt).toBeNull();
+  });
+
+  it("fails the transition when the provider destroy fails, leaving the kill request", async () => {
+    await SandboxFactory.create(authenticator, conversationResource.toJSON());
+    mockProviderDestroy.mockResolvedValue(
+      new Err(new Error("provider unavailable"))
+    );
+    const commit = vi.fn().mockResolvedValue(new Ok(undefined));
+
+    const result = await ConversationSandboxAdapter.withScopeTransition(
+      authenticator,
+      conversationResource,
+      { prepare: async () => new Ok(undefined), commit }
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(commit).not.toHaveBeenCalled();
+    // killRequestedAt was set before the provider call: the next access (or
+    // the reaper) completes the reset even though this transition failed.
+    const reloaded = await ConversationSandboxAdapter.fetchSandbox(
+      authenticator,
+      conversationResource
+    );
+    expect(reloaded?.status).not.toBe("deleted");
+    expect(reloaded?.killRequestedAt).toEqual(expect.any(Date));
+  });
+
+  it("treats provider NotFound as already destroyed and proceeds", async () => {
+    await SandboxFactory.create(authenticator, conversationResource.toJSON());
+    mockProviderDestroy.mockResolvedValue(
+      new Err(new SandboxNotFoundError("gone"))
+    );
+    const commit = vi.fn().mockResolvedValue(new Ok(undefined));
+
+    const result = await ConversationSandboxAdapter.withScopeTransition(
+      authenticator,
+      conversationResource,
+      { prepare: async () => new Ok(undefined), commit }
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(commit).toHaveBeenCalledTimes(1);
+    const reloaded = await ConversationSandboxAdapter.fetchSandbox(
+      authenticator,
+      conversationResource
+    );
+    expect(reloaded?.status).toBe("deleted");
+  });
+
+  it("runs the transition without provider calls when no sandbox exists", async () => {
+    const commit = vi.fn().mockResolvedValue(new Ok(undefined));
+
+    const result = await ConversationSandboxAdapter.withScopeTransition(
+      authenticator,
+      conversationResource,
+      { prepare: async () => new Ok(undefined), commit }
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(commit).toHaveBeenCalledTimes(1);
+    expect(mockProviderDestroy).not.toHaveBeenCalled();
+  });
+
+  it("marks the sandbox deleted without a provider call when no provider is configured", async () => {
+    // Environments without a sandbox provider still move conversations: the
+    // runtime destroy is vacuous (nothing can be running), the transition is
+    // mandatory.
+    mockGetSandboxProvider.mockReturnValue(undefined);
+    await SandboxFactory.create(authenticator, conversationResource.toJSON());
+    const commit = vi.fn().mockResolvedValue(new Ok(undefined));
+
+    const result = await ConversationSandboxAdapter.withScopeTransition(
+      authenticator,
+      conversationResource,
+      { prepare: async () => new Ok(undefined), commit }
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(commit).toHaveBeenCalledTimes(1);
+    expect(mockProviderDestroy).not.toHaveBeenCalled();
+    const reloaded = await ConversationSandboxAdapter.fetchSandbox(
+      authenticator,
+      conversationResource
+    );
+    expect(reloaded?.status).toBe("deleted");
   });
 });
 
@@ -1163,9 +1356,22 @@ describe("SandboxResource.ensureActive", () => {
       throw podSecretResult.error;
     }
 
+    // The pod association is resolved from the database under the lifecycle
+    // lock, so the conversation must actually live in the pod — a spaceId on
+    // the passed object would be (correctly) ignored.
+    const conversationResource = await ConversationResource.fetchById(
+      authenticator,
+      conversation.sId
+    );
+    if (!conversationResource) {
+      throw new Error("Test conversation not found");
+    }
+    await conversationResource.updateSpaceId(authenticator, pod);
+    await authenticator.refresh();
+
     const result = await ConversationSandboxAdapter.ensureSandboxActive(
       authenticator,
-      { id: conversation.id, sId: conversation.sId, spaceId: pod.sId }
+      { id: conversation.id, sId: conversation.sId }
     );
     expect(result.isOk()).toBe(true);
 

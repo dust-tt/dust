@@ -93,13 +93,16 @@ skill covers creating it and moving it into the app folder with \`${FILES_MOVE_T
 
 Functions that no Frame calls still get an app folder, named after what they do together.
 
-**Copying an app folder does not finish the job.** The databases and the published slugs follow the
-new folder on their own, but a Frame addresses its functions by \`<podId>/<slug>\` written into its
-source, so the copy's Frame still calls the ORIGINAL app's functions and therefore reads and writes
-the original's data. After copying \`MyApp/\` to \`MyAppCopy/\`: publish the copy's functions, reconcile
-its databases, then edit the copy's Frame so every function reference carries the new prefix
-(\`myappcopy__list-notes\`, not \`myapp__list-notes\`) and re-publish it. The same applies to renaming
-an app folder.
+**Copying an app folder still needs two steps of its own.** The databases and the published slugs
+follow the new folder, but nothing is live until you publish the copy's functions and reconcile its
+databases. After copying \`MyApp/\` to \`MyAppCopy/\`, do both, and the copy is a separate app with its
+own data. Renaming an app folder is the same.
+
+The copy's Frame needs no edit **as long as it refers to its own functions by bare name** (see
+"Calling a function from a Frame"), because those references resolve against whichever app folder the
+Frame ends up in. A Frame that instead hard-codes \`<podId>/myapp__list-notes\` keeps calling the
+ORIGINAL app's functions after the copy, and so reads and writes the original's data: rewrite those
+references to bare names and re-publish it.
 
 #### Authoring a function
 
@@ -262,8 +265,10 @@ overwritten from within the Computer.
 
 **The published slug is \`<app>__<name>\`.** You pass the bare \`<name>\`; publish derives the prefix
 from the app folder in \`path\` (\`TaskList\` becomes \`tasklist\`, \`Task List\` becomes \`task-list\`) and
-reports the full slug back. Use that reported slug everywhere afterwards: \`${toolName("get")}\`,
-\`${toolName("call")}\`, \`${toolName("unpublish")}\`, and a Frame's reference. Only the app folder
+reports the full slug back. Use that reported slug for the tools that address the function:
+\`${toolName("get")}\`, \`${toolName("call")}\` and \`${toolName("unpublish")}\`. A Frame in the same
+app is the exception and uses the bare \`<name>\` instead, see "Calling a function from a Frame".
+Only the app folder
 contributes, so \`functions/\` and any folder nested under it never appear in the slug, and moving a
 source inside its app does not rename the function. A source at the Pod root has no app folder and
 keeps its bare name; moving it into one later *does* rename its function, leaving the old slug
@@ -292,11 +297,21 @@ return inline is written to a pod file whose path it reports), and \`${toolName(
 #### Calling a function from a Frame
 
 A Frame calls published functions through the injected \`@dust/react-hooks\` module, not the
-\`call\` tool. Always pass the fully qualified \`<podId>/<slug>\` reference reported by
-\`${toolName("get")}\`. Never pass a bare slug or infer the function from the Frame's current Pod.
-This keeps the reference stable if the Frame is moved. The slug in that reference is the full
-published slug, app prefix included (\`<podId>/tasklist__add-task\`), never the bare name you passed
-to \`${toolName("publish")}\`.
+\`call\` tool. There are two ways to name a function, and which one you use matters:
+
+- **A Frame inside an app folder refers to its own app's functions by bare name**: pass
+  \`add-task\`, the same name you passed to \`${toolName("publish")}\`, with no Pod and no app
+  prefix. The reference resolves against the app folder the Frame itself lives in, so the app stays
+  copyable: a copy's Frame calls the copy's functions with no edit to its source. Use this for every
+  function the Frame's own app publishes.
+- **Anything else takes the fully qualified \`<podId>/<slug>\` reference** reported by
+  \`${toolName("get")}\`, app prefix included (\`<podId>/tasklist__add-task\`). This is the only way
+  to reach a function in another app or another Pod, and it is what a Frame that does not live in an
+  app folder must use for everything.
+
+Never write your own app's prefix into a reference. \`tasklist__add-task\` with no Pod is not a
+shorthand and is refused: inside the app use \`add-task\`, outside it use the full
+\`<podId>/tasklist__add-task\`.
 
 ##### Designing functions for a Frame
 
@@ -317,7 +332,7 @@ disable the query.
 import { usePodFunction } from "@dust/react-hooks"
 
 const { data, error, isLoading, isValidating, mutate } = usePodFunction(
-  "<podId>/list-comments",
+  "list-comments",
   { threadId }
 )
 \`\`\`
@@ -330,8 +345,8 @@ to the query cache without revalidating.
 \`\`\`tsx
 import { usePodFunction, usePodFunctionMutation } from "@dust/react-hooks"
 
-const comments = usePodFunction("<podId>/list-comments", { threadId })
-const addComment = usePodFunctionMutation("<podId>/post-comment")
+const comments = usePodFunction("list-comments", { threadId })
+const addComment = usePodFunctionMutation("post-comment")
 
 async function handleAddComment(body: string) {
   const updatedComments = await addComment.trigger({ threadId, body })
@@ -446,7 +461,7 @@ one \`notes\` function taking an \`action\` field is not. If a capability must b
 subset of members, keep that list in the database and check it against \`currentUser().sId\` —
 the platform only tells you the caller is a workspace member, not what they are allowed to do.`,
   mcpServers: [{ name: SANDBOX_FUNCTIONS_SERVER_NAME }],
-  version: 6,
+  version: 7,
   icon: "PuzzleIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);

@@ -9,7 +9,7 @@ import type { UsageFilterOption } from "@app/components/workspace/analytics/usag
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { getSkillIcon } from "@app/lib/skill";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { Avatar, Icon } from "@dust-tt/sparkle";
+import { Avatar, Icon, Lock01, Tooltip } from "@dust-tt/sparkle";
 
 interface UsageFilterOptionIconProps {
   option: UsageFilterOption;
@@ -19,14 +19,36 @@ export function UsageFilterOptionIcon({ option }: UsageFilterOptionIconProps) {
   const { isDark } = useTheme();
 
   switch (option.kind) {
-    case "member":
     case "agent":
-      return (
+      return option.scope === "hidden" ? (
+        <Tooltip
+          label="This agent is private"
+          tooltipTriggerAsChild
+          trigger={
+            <span className="flex shrink-0">
+              <Avatar
+                icon={Lock01}
+                iconColor="text-muted-foreground"
+                size="xxs"
+              />
+            </span>
+          }
+        />
+      ) : (
         <Avatar
           name={option.name}
           visual={option.image ?? undefined}
           size="xxs"
           isRounded
+        />
+      );
+    case "member":
+      return (
+        <Avatar
+          name={option.name}
+          visual={option.image ?? undefined}
+          size="xxs"
+          isRounded={option.kind === "member"}
         />
       );
     case "source": {
@@ -48,7 +70,7 @@ export function UsageFilterOptionIcon({ option }: UsageFilterOptionIconProps) {
       ) : null;
     case "skill":
       return <Icon visual={getSkillIcon(option.icon)} size="sm" />;
-    case "team":
+    case "group":
       return null;
     default:
       assertNeverAndIgnore(option);

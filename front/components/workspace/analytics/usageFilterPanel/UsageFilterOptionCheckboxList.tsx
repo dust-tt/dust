@@ -3,6 +3,7 @@ import type {
   UsageFilterCategory,
   UsageFilterOption,
 } from "@app/components/workspace/analytics/usageFilter";
+import { FILTER_PICKER_PAGE_SIZE } from "@app/components/workspace/analytics/usageFilterPanel/constants";
 import { UsageFilterAvailabilityStatus } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAvailabilityStatus";
 import { UsageFilterOptionIcon } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionIcon";
 import {
@@ -23,10 +24,7 @@ interface UsageFilterOptionCheckboxListProps {
   onSelectAll: () => void;
   selectAllLabel: string;
   hasSelectableOptions: boolean;
-  isSelectionLimitReached: boolean;
-  hasMore?: boolean;
   isLoadingMore?: boolean;
-  onLoadMore?: () => void;
   isLoading?: boolean;
   isUpdating?: boolean;
 }
@@ -40,10 +38,7 @@ export function UsageFilterOptionCheckboxList({
   onSelectAll,
   selectAllLabel,
   hasSelectableOptions,
-  isSelectionLimitReached,
-  hasMore = false,
   isLoadingMore = false,
-  onLoadMore,
   isLoading = false,
   isUpdating = false,
 }: UsageFilterOptionCheckboxListProps) {
@@ -52,6 +47,13 @@ export function UsageFilterOptionCheckboxList({
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
     null
   );
+  // Reset on category/search/scope change by remounting this component with
+  // a fresh `key` from the parent instead of tracking a reset key here.
+  const [visibleCount, setVisibleCount] = useState(FILTER_PICKER_PAGE_SIZE);
+  const displayedOptions = options.slice(0, visibleCount);
+  const hasMore = visibleCount < options.length;
+  const loadMore = () =>
+    setVisibleCount((current) => current + FILTER_PICKER_PAGE_SIZE);
   return (
     <>
       <NavigationListLabel
@@ -61,11 +63,6 @@ export function UsageFilterOptionCheckboxList({
           <div className="flex items-center gap-2">
             {isUpdating && (
               <span className="text-xs text-muted-foreground">Updating…</span>
-            )}
-            {isSelectionLimitReached && !isUpdating && (
-              <span className="text-xs text-muted-foreground">
-                Selection limit reached
-              </span>
             )}
             <Button
               label={selectAllLabel}
@@ -86,12 +83,11 @@ export function UsageFilterOptionCheckboxList({
           <div className="flex h-24 items-center justify-center">
             <Spinner size="xs" />
           </div>
-        ) : options.length > 0 ? (
+        ) : displayedOptions.length > 0 ? (
           <>
-            {options.map((option) => {
+            {displayedOptions.map((option) => {
               const checked = selectedIds.has(option.id);
-              const disabled =
-                (option.disabled || isSelectionLimitReached) && !checked;
+              const disabled = option.disabled && !checked;
               const checkboxId = `usage-filter-option-${category}-${option.id}`;
               const availabilityDescriptionId = option.disabled
                 ? `${checkboxId}-availability`
@@ -134,9 +130,9 @@ export function UsageFilterOptionCheckboxList({
                 </div>
               );
             })}
-            {onLoadMore && (
+            {hasMore && (
               <InfiniteScroll
-                nextPage={onLoadMore}
+                nextPage={loadMore}
                 hasMore={hasMore}
                 showLoader={isLoadingMore}
                 loader={

@@ -1,7 +1,7 @@
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import { fetchConsumptionOverview } from "@app/lib/api/analytics/consumption/overview";
 import {
-  ConsumptionQuerySchema,
+  ConsumptionBodySchema,
   toConsumptionPeriodInput,
 } from "@app/lib/api/analytics/consumption/schema";
 import logger from "@app/logger/logger";
@@ -14,17 +14,17 @@ import { validate } from "@front-api/middlewares/validator";
 const app = workspaceApp();
 
 /** @ignoreswagger */
-app.get(
+app.post(
   "/",
   ensureIsManager(),
-  validate("query", ConsumptionQuerySchema),
+  validate("json", ConsumptionBodySchema),
   async (ctx): HandlerResult<GetConsumptionOverviewResponse> => {
     const auth = ctx.get("auth");
-    const query = ctx.req.valid("query");
+    const body = ctx.req.valid("json");
 
     const result = await fetchConsumptionOverview(auth, {
-      periodInput: toConsumptionPeriodInput(query),
-      filter: query.filter,
+      periodInput: toConsumptionPeriodInput(body),
+      filter: body.filter,
     });
     if (result.isErr()) {
       logger.error(

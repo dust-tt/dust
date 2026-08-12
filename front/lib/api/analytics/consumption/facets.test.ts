@@ -84,7 +84,7 @@ describe("fetchConsumptionFacets", () => {
           pictureUrl: null,
         },
       ],
-      team: [],
+      group: [],
       model: [],
       tool: [],
       skill: [],

@@ -94,25 +94,32 @@ function RecentWebhookRequestsContent({
     );
   }
 
-  const wasRateLimited = webhookRequests.some(
-    (request) => request.status === "rate_limited"
+  const lastBlocked = webhookRequests.find(
+    (request) =>
+      request.status === "rate_limited" ||
+      request.status === "credits_exhausted"
   );
 
   return (
     <div className="space-y-2">
-      {wasRateLimited && (
+      {lastBlocked && (
         <div className="text-sm text-muted-foreground">
           <p>
-            Some requests were rate limited.
-            <br />
-            Contact{" "}
-            <LinkWrapper
-              href="mailto:support@dust.tt?subject=Increase%20Webhook%20Trigger%20Rate%20Limit"
-              className="underline"
-            >
-              support@dust.tt
-            </LinkWrapper>{" "}
-            to increase the rate limit for this trigger.
+            {lastBlocked.errorMessage ??
+              "Some requests were not processed for this trigger."}
+            {lastBlocked.status === "rate_limited" && (
+              <>
+                <br />
+                Contact{" "}
+                <LinkWrapper
+                  href="mailto:support@dust.tt?subject=Increase%20Webhook%20Trigger%20Rate%20Limit"
+                  className="underline"
+                >
+                  support@dust.tt
+                </LinkWrapper>{" "}
+                to increase the rate limit for this trigger.
+              </>
+            )}
           </p>
         </div>
       )}
@@ -131,7 +138,12 @@ function RecentWebhookRequestsContent({
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                {request.payload ? (
+                {request.errorMessage && (
+                  <p className="pb-2 text-sm text-muted-foreground">
+                    {request.errorMessage}
+                  </p>
+                )}
+                {request.payload && (
                   <div className="rounded">
                     <pre className="max-h-64 overflow-auto text-xs">
                       <Markdown
@@ -140,7 +152,8 @@ function RecentWebhookRequestsContent({
                       />
                     </pre>
                   </div>
-                ) : (
+                )}
+                {!request.payload && !request.errorMessage && (
                   <p className="text-sm text-muted-foreground">
                     No payload available.
                   </p>

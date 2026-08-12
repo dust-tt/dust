@@ -45,7 +45,6 @@ interface UsageFilterModelComplexityControlsProps {
   onToggleModel: (model: UsageFilterModelOption) => void;
   activeTier: UsageModelTier;
   onTierChange: (tier: UsageModelTier) => void;
-  isSelectionLimitReached: boolean;
 }
 
 function getModelSelectionStatus({
@@ -75,7 +74,6 @@ export function UsageFilterModelComplexityControls({
   onToggleModel,
   activeTier,
   onTierChange,
-  isSelectionLimitReached,
 }: UsageFilterModelComplexityControlsProps) {
   const { isDark } = useTheme();
   const [isMoreModelsOpen, setIsMoreModelsOpen] = useState(false);
@@ -109,8 +107,7 @@ export function UsageFilterModelComplexityControls({
     return labModels.length > 0 ? [{ lab, models: labModels }] : [];
   });
   const isModelSelectionDisabled = (model: UsageFilterModelOption) =>
-    (model.disabled || isSelectionLimitReached) &&
-    !selectedModelIds.has(model.id);
+    model.disabled && !selectedModelIds.has(model.id);
 
   return (
     <>

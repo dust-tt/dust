@@ -4,6 +4,8 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { PROJECT_FILES_MAX_CONCURRENT_REQUESTS_PER_PROCESS } from ".";
+
 const getAllFilesByPrefixMock = vi.hoisted(() => vi.fn());
 const getSignedUrlMock = vi.hoisted(() => vi.fn());
 
@@ -162,5 +164,63 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_files", () => {
     const body = await response.json();
     expect(body.files).toHaveLength(1);
     expect(body.files[0].path).toBe(`pod-${space.sId}/a.txt`);
+  });
+
+  it("limits concurrent connector listings and releases slots", async () => {
+    const { workspace, key } = await createPublicApiMockRequest({
+      systemKey: true,
+    });
+
+    const space = await SpaceFactory.project(workspace);
+    let releaseListings: (() => void) | undefined;
+    const listingsReleased = new Promise<{
+      files: never[];
+      pageFetchCount: number;
+    }>((resolve) => {
+      releaseListings = () => resolve({ files: [], pageFetchCount: 1 });
+    });
+    getAllFilesByPrefixMock.mockImplementation(() => listingsReleased);
+
+    const activeRequests = Array.from(
+      { length: PROJECT_FILES_MAX_CONCURRENT_REQUESTS_PER_PROCESS },
+      () => getProjectFiles(workspace, key, space.sId)
+    );
+
+    await vi.waitFor(() => {
+      expect(getAllFilesByPrefixMock).toHaveBeenCalledTimes(
+        PROJECT_FILES_MAX_CONCURRENT_REQUESTS_PER_PROCESS
+      );
+    });
+
+    const rejectedResponse = await getProjectFiles(workspace, key, space.sId);
+
+    expect(rejectedResponse.status).toBe(429);
+    expect(rejectedResponse.headers.get("Retry-After")).toBe("1");
+    expect(await rejectedResponse.json()).toEqual({
+      error: {
+        type: "rate_limit_error",
+        message: "Too many concurrent project file listings. Retry later.",
+      },
+    });
+
+    releaseListings?.();
+    const completedResponses = [];
+    for (const request of activeRequests) {
+      completedResponses.push(await request);
+    }
+    expect(
+      completedResponses.every((response) => response.status === 200)
+    ).toBe(true);
+
+    getAllFilesByPrefixMock.mockResolvedValue({
+      files: [],
+      pageFetchCount: 1,
+    });
+    const responseAfterRelease = await getProjectFiles(
+      workspace,
+      key,
+      space.sId
+    );
+    expect(responseAfterRelease.status).toBe(200);
   });
 });

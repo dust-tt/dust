@@ -5,6 +5,7 @@ import {
   awuFromMicroUsd,
   isFreeOrigin,
 } from "@app/lib/credits/agent_message_billing";
+import { isEnterpriseOrDust } from "@app/lib/plans/plan_codes";
 import {
   addRateLimiterCount,
   getRateLimiterCount,
@@ -12,11 +13,20 @@ import {
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType } from "@app/types/user";
 
-// Per-user cost cap on free (unbilled) LLM usage — utility calls (title/skill
-// suggestions, etc.) and free agent calls (sidekick). Counted in AWU credits
-// (the fair-use unit; 1 AWU = $0.0085), so $5/day ≈ 589 credits.
+// Per-user daily cost cap on free (unbilled) LLM usage — utility calls
+// (title/skill suggestions, etc.) and free agent calls (sidekick). Counted in
+// AWU credits. Enterprise (and Dust internal) accounts get a higher allowance.
 const FREE_USAGE_COST_WINDOW_SECONDS = 24 * 60 * 60;
 const FREE_USAGE_AWU_CREDITS_LIMIT_PER_DAY = awuFromMicroUsd(5 * 1_000_000);
+const ENTERPRISE_FREE_USAGE_AWU_CREDITS_LIMIT_PER_DAY = awuFromMicroUsd(
+  50 * 1_000_000
+);
+
+function freeUsageAwuCreditsLimitForAuth(auth: Authenticator): number {
+  return isEnterpriseOrDust(auth.plan())
+    ? ENTERPRISE_FREE_USAGE_AWU_CREDITS_LIMIT_PER_DAY
+    : FREE_USAGE_AWU_CREDITS_LIMIT_PER_DAY;
+}
 
 const makeFreeUsageCostRateLimitKeyForUser = (
   owner: LightWorkspaceType,
@@ -72,7 +82,7 @@ export async function isFreeUsageBlocked(
   if (result.isErr()) {
     return false;
   }
-  return result.value >= FREE_USAGE_AWU_CREDITS_LIMIT_PER_DAY;
+  return result.value >= freeUsageAwuCreditsLimitForAuth(auth);
 }
 
 // Contribute a free call's cost (converted to AWU credits) to the user's daily

@@ -3128,6 +3128,8 @@ export async function isConversationEventAllowedForAuth(
     case "user_message_new":
     case "agent_message_new":
       return true;
+
+    case "agent_message_consumption_updated":
     case "agent_message_done":
     case "compaction_message_new":
     case "compaction_message_done":
@@ -3137,6 +3139,7 @@ export async function isConversationEventAllowedForAuth(
     case "plan_updated":
     case "wake_up_updated":
       return true;
+
     default:
       assertNever(type);
   }

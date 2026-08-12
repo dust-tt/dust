@@ -1,14 +1,21 @@
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import { getPodStateBasePath } from "@app/lib/api/files/mount_path";
+import { getFileContent } from "@app/lib/api/files/utils";
+import { deleteProjectFile } from "@app/lib/api/projects/context";
+import { createPodFrameFile } from "@app/lib/api/projects/pod_frame_file";
+import { deletePodDatabaseReplica } from "@app/lib/api/sandbox/db";
 import {
   appPrefixFromPodDatabaseName,
   podDatabaseNameWithoutAppPrefix,
 } from "@app/lib/api/sandbox_functions/db_naming";
 import {
-  normalizeAppPrefix,
-  SANDBOX_FUNCTION_SLUG_SEPARATOR,
-} from "@app/lib/api/sandbox_functions/slug";
+  deleteDatabaseOnSandbox,
+  reconcileDatabaseFromPodPath,
+} from "@app/lib/api/sandbox_functions/dsbx_db";
+import { publishSandboxFunction } from "@app/lib/api/sandbox_functions/publish_sandbox_function";
+import { SANDBOX_FUNCTION_SLUG_SEPARATOR } from "@app/lib/api/sandbox_functions/slug";
+import { unpublishSandboxFunction } from "@app/lib/api/sandbox_functions/unpublish_sandbox_function";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -21,29 +28,31 @@ import type {
 } from "@app/types/api/file_system/types";
 import type {
   PodApp,
+  PodAppCloneSummary,
   PodAppDatabase,
+  PodAppDeleteSummary,
   PodAppFrame,
   PodAppFunction,
 } from "@app/types/api/pod_apps";
+import { normalizeAppPrefix } from "@app/types/api/pod_function_reference";
 import { isInteractiveContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-/**
- * The prefix of the synthetic app collecting everything published from the pod root, which has no
- * app folder (`deriveAppPrefix` returns null for those paths). Empty so it can never collide with a
- * real prefix, which `normalizeAppPrefix` guarantees is non-empty.
- */
-export const UNFILED_POD_APP_PREFIX = "";
-
 /** A litestream replica directory is named after the database file it replicates. */
 const POD_DATABASE_FILE_SUFFIX = ".db";
 
-/** Subfolders whose presence marks a pod-root folder as app-shaped. */
-const APP_SHAPED_SUBFOLDERS = ["functions", "databases"];
-
 /** The app subfolder holding one drizzle schema file per database. */
 const APP_DATABASES_SUBFOLDER = "databases";
+
+/** The app subfolder holding one source file per published function. */
+const APP_FUNCTIONS_SUBFOLDER = "functions";
+
+/** Subfolders whose presence marks a pod-root folder as app-shaped. */
+const APP_SHAPED_SUBFOLDERS = [
+  APP_FUNCTIONS_SUBFOLDER,
+  APP_DATABASES_SUBFOLDER,
+];
 
 /** Suffix of a database's schema file, e.g. `chat.db.ts` declares the `chat` database. */
 const POD_DATABASE_SCHEMA_FILE_SUFFIX = ".db.ts";
@@ -57,12 +66,14 @@ type AppFolder = {
   fileCount: number;
   frameEntries: FileSystemFileEntry[];
   hasAppShapedSubfolder: boolean;
-  /**
-   * App-relative names of the databases this folder declares, one per `databases/{name}.db.ts`. Used
-   * to attribute databases whose on-disk name carries no app prefix.
-   */
-  declaredDatabaseNames: Set<string>;
 };
+
+/** Drop the last extension from a file name, e.g. `add-task.ts` -> `add-task`. */
+function stripExtension(fileName: string): string {
+  const dotIndex = fileName.lastIndexOf(".");
+
+  return dotIndex <= 0 ? fileName : fileName.slice(0, dotIndex);
+}
 
 /**
  * Path segments of a pod entry relative to the pod root, e.g. `MyApp/functions/list-notes.ts` for
@@ -81,8 +92,7 @@ function relativeSegments(entry: FileSystemEntry, podRoot: string): string[] {
 
 /**
  * Group a pod's recursive file listing by the folder each entry sits in at the pod root. Entries
- * directly at the root belong to no app, so they are skipped: anything published from there surfaces
- * under the unfiled app instead.
+ * directly at the root belong to no app, so they are skipped.
  */
 function collectAppFolders(
   entries: FileSystemEntry[],
@@ -102,7 +112,6 @@ function collectAppFolders(
       fileCount: 0,
       frameEntries: [],
       hasAppShapedSubfolder: false,
-      declaredDatabaseNames: new Set(),
     };
     folders.set(name, folder);
 
@@ -146,19 +155,6 @@ function collectAppFolders(
     // of how the app is laid out.
     if (segments.length === 2 && isInteractiveContentType(entry.contentType)) {
       folder.frameEntries.push(entry);
-    }
-
-    if (
-      segments.length === 3 &&
-      segments[1] === APP_DATABASES_SUBFOLDER &&
-      entry.fileName.endsWith(POD_DATABASE_SCHEMA_FILE_SUFFIX)
-    ) {
-      folder.declaredDatabaseNames.add(
-        entry.fileName.slice(
-          0,
-          entry.fileName.length - POD_DATABASE_SCHEMA_FILE_SUFFIX.length
-        )
-      );
     }
   }
 
@@ -242,57 +238,51 @@ async function listPodDatabaseOnDiskNames(
 }
 
 /**
- * Group the pod's databases by the app prefix that owns each one.
+ * Group the pod's databases by the app prefix their filename carries.
  *
- * A namespaced database carries its app in its filename, so its prefix decides. A database created
- * before app namespacing has a bare filename instead, and the only remaining evidence of ownership is
- * the schema file that declares it — `<AppName>/databases/{name}.db.ts`. This mirrors how
- * `resolvePodDatabaseName` resolves the same case at reconcile time, so the tab attributes a legacy
- * database to exactly the app that keeps writing to it.
+ * Only namespaced databases are listed. A database created before app namespacing has a bare
+ * filename, which says nothing about which app owns it — the only evidence left is the schema file
+ * that declares it, and that evidence stops being reliable as soon as apps can be copied, because a
+ * copy inherits the declaration while opening its own prefixed file. Rather than infer ownership,
+ * such a database is left out of the listing entirely.
  *
- * Two apps declaring the same bare name genuinely share that one database (the transitional case
- * `resolvePodDatabaseName` documents), so it is reported under both rather than arbitrarily assigned.
- * A bare database no app declares falls back to the unfiled app.
+ * Two consequences worth knowing, both accepted deliberately:
+ *
+ *  - An app whose only database predates namespacing shows none, even though `resolvePodDatabaseName`
+ *    step 2 still opens that bare file at run time.
+ *  - Deleting an app does not remove such a database, because `deletePodApp` works from this listing.
+ *    The file and its replica outlive the app.
+ *
+ * Both go away once bare databases are migrated to their prefixed names, which is also what lets the
+ * step 2 fallback be deleted from the runtime (see `resolvePodDatabaseName`).
  */
 function groupDatabasesByAppPrefix(
-  onDiskNames: string[],
-  foldersByPrefix: Map<string, AppFolder[]>
+  onDiskNames: string[]
 ): Map<string, PodAppDatabase[]> {
   const byPrefix = new Map<string, PodAppDatabase[]>();
 
-  const attribute = (prefix: string, database: PodAppDatabase) => {
-    byPrefix.set(prefix, [...(byPrefix.get(prefix) ?? []), database]);
-  };
-
   for (const onDiskName of onDiskNames) {
-    const database = {
-      name: podDatabaseNameWithoutAppPrefix(onDiskName),
-      onDiskName,
-    };
-
-    const prefixFromName = appPrefixFromPodDatabaseName(onDiskName);
-    if (prefixFromName !== null) {
-      attribute(prefixFromName, database);
+    const prefix = appPrefixFromPodDatabaseName(onDiskName);
+    if (prefix === null) {
       continue;
     }
 
-    const declaringPrefixes = [...foldersByPrefix].filter(([, folders]) =>
-      folders.some((folder) => folder.declaredDatabaseNames.has(onDiskName))
-    );
-    if (declaringPrefixes.length === 0) {
-      attribute(UNFILED_POD_APP_PREFIX, database);
-      continue;
-    }
-
-    for (const [prefix] of declaringPrefixes) {
-      attribute(prefix, database);
-    }
+    byPrefix.set(prefix, [
+      ...(byPrefix.get(prefix) ?? []),
+      { name: podDatabaseNameWithoutAppPrefix(onDiskName), onDiskName },
+    ]);
   }
 
   return byPrefix;
 }
 
-/** The pod's published functions, grouped by the app prefix each one's slug carries. */
+/**
+ * The pod's published functions, grouped by the app prefix their slug carries.
+ *
+ * A function published from the pod root has no prefix and so belongs to no app. Like an unprefixed
+ * database, it is left out rather than gathered into a synthetic app: it is still callable, it simply
+ * has no app to be listed under.
+ */
 function groupFunctionsByAppPrefix(
   sandboxFunctions: SandboxFunctionResource[]
 ): Map<string, PodAppFunction[]> {
@@ -302,11 +292,11 @@ function groupFunctionsByAppPrefix(
     const separatorIndex = sandboxFunction.slug.indexOf(
       SANDBOX_FUNCTION_SLUG_SEPARATOR
     );
-    const prefix =
-      separatorIndex > 0
-        ? sandboxFunction.slug.slice(0, separatorIndex)
-        : UNFILED_POD_APP_PREFIX;
+    if (separatorIndex <= 0) {
+      continue;
+    }
 
+    const prefix = sandboxFunction.slug.slice(0, separatorIndex);
     byPrefix.set(prefix, [
       ...(byPrefix.get(prefix) ?? []),
       sandboxFunction.toPodAppJSON(),
@@ -328,8 +318,8 @@ function groupFunctionsByAppPrefix(
  * A folder qualifies as an app when it holds a `functions/` or `databases/` subfolder, or a Frame at
  * its top, or any published function or database under its prefix. A prefix that owns published
  * artifacts but has no folder left is still listed, since those artifacts are live and would
- * otherwise be invisible; so is anything published from the pod root, gathered into a synthetic
- * unfiled app.
+ * otherwise be invisible. Anything published at the pod root carries no prefix and so belongs to no
+ * app; it is left out rather than gathered into a synthetic one.
  */
 export async function listPodApps(
   auth: Authenticator,
@@ -388,19 +378,13 @@ export async function listPodApps(
     ]);
   }
 
-  // Needs foldersByPrefix: a database created before app namespacing has no prefix in its filename,
-  // so only the schema file that declares it says which app owns it.
-  const databasesByPrefix = groupDatabasesByAppPrefix(
-    databaseOnDiskNames,
-    foldersByPrefix
-  );
+  const databasesByPrefix = groupDatabasesByAppPrefix(databaseOnDiskNames);
 
   const realPrefixes = new Set([
     ...foldersByPrefix.keys(),
     ...functionsByPrefix.keys(),
     ...databasesByPrefix.keys(),
   ]);
-  realPrefixes.delete(UNFILED_POD_APP_PREFIX);
 
   const apps: PodApp[] = [];
 
@@ -439,24 +423,404 @@ export async function listPodApps(
     });
   }
 
-  apps.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
-
-  // Artifacts published from the pod root have no folder to be found under, so they get a synthetic
-  // app rather than disappearing from the listing. Appended after the sort so it always sits last.
-  const unfiledFunctions = functionsByPrefix.get(UNFILED_POD_APP_PREFIX) ?? [];
-  const unfiledDatabases = databasesByPrefix.get(UNFILED_POD_APP_PREFIX) ?? [];
-  if (unfiledFunctions.length > 0 || unfiledDatabases.length > 0) {
-    apps.push({
-      prefix: UNFILED_POD_APP_PREFIX,
-      name: null,
-      folderPath: null,
-      frames: [],
-      functions: unfiledFunctions,
-      databases: unfiledDatabases,
-      fileCount: 0,
-      collidingFolderNames: [],
-    });
-  }
+  apps.sort((a, b) => a.name.localeCompare(b.name));
 
   return new Ok(apps);
+}
+
+export type PodAppDeleteErrorCode =
+  | "not_a_pod"
+  | "not_found"
+  | "sandbox_unavailable"
+  | "internal";
+
+export class PodAppDeleteError extends Error {
+  constructor(
+    readonly code: PodAppDeleteErrorCode,
+    message: string
+  ) {
+    super(message);
+    this.name = "PodAppDeleteError";
+  }
+}
+
+export type DeletePodAppResult = PodAppDeleteSummary;
+
+/**
+ * Delete a Pod app: its published functions, its databases (live files and replicas), its shared
+ * Frames and pinned tabs, and finally its source folder.
+ *
+ * **The step order is the design.** Two constraints fix it:
+ *
+ *  - Functions go first, so no invocation can arrive while the data underneath it is being removed.
+ *  - A database's live files must go before its replica, because a running litestream keeps
+ *    replicating a database it can still see (the same hazard the pod-scrub path notes).
+ *
+ * And the source folder goes LAST on purpose. Every step is idempotent, and the folder is what makes
+ * the app appear in the Apps tab, so a failure part-way through leaves the app still listed and
+ * simply re-deletable. Deleting the folder first would instead leave an invisible half-deleted app.
+ *
+ * Deleting databases needs a live sandbox, so this wakes a sleeping pod (`execDbCommand` does it) and
+ * can take as long as a cold start.
+ */
+export async function deletePodApp(
+  auth: Authenticator,
+  pod: SpaceResource,
+  prefix: string
+): Promise<Result<DeletePodAppResult, PodAppDeleteError>> {
+  if (!pod.isProject()) {
+    return new Err(
+      new PodAppDeleteError("not_a_pod", "Apps only exist on Pod spaces.")
+    );
+  }
+
+  const appsResult = await listPodApps(auth, pod);
+  if (appsResult.isErr()) {
+    return new Err(new PodAppDeleteError("internal", appsResult.error.message));
+  }
+
+  const app = appsResult.value.find((candidate) => candidate.prefix === prefix);
+  if (!app) {
+    return new Err(
+      new PodAppDeleteError("not_found", `No app '${prefix}' in this Pod.`)
+    );
+  }
+
+  // 1. Unpublish first: stop new invocations before their data goes away.
+  for (const fn of app.functions) {
+    const unpublishResult = await unpublishSandboxFunction(auth, {
+      space: pod,
+      slug: fn.slug,
+    });
+    // Already gone is fine — this whole flow is meant to be safe to retry.
+    if (unpublishResult.isErr() && unpublishResult.error.code !== "not_found") {
+      return new Err(
+        new PodAppDeleteError("internal", unpublishResult.error.message)
+      );
+    }
+  }
+
+  // 2. Live database files, then 3. their replicas. Wakes the pod if it is asleep.
+  for (const database of app.databases) {
+    const deleteLiveResult = await deleteDatabaseOnSandbox(auth, {
+      space: pod,
+      database: database.onDiskName,
+    });
+    if (deleteLiveResult.isErr()) {
+      return new Err(
+        new PodAppDeleteError(
+          deleteLiveResult.error.code === "sandbox_unavailable"
+            ? "sandbox_unavailable"
+            : "internal",
+          deleteLiveResult.error.message
+        )
+      );
+    }
+
+    const deleteReplicaResult = await deletePodDatabaseReplica(auth, pod, {
+      database: database.onDiskName,
+    });
+    if (deleteReplicaResult.isErr()) {
+      return new Err(
+        new PodAppDeleteError("internal", deleteReplicaResult.error.message)
+      );
+    }
+  }
+
+  // 4. Drop the Frames' pinned tabs before their files go, mirroring the delete_frame poke plugin.
+  const metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
+  if (metadata) {
+    for (const frame of app.frames) {
+      if (frame.isPinnedAsTab) {
+        await metadata.removeFramePath(frame.path);
+      }
+    }
+  }
+
+  // 5. Source folder last. `deleteProjectFile` recurses and deletes each FileResource underneath,
+  // which is what revokes the Frames' share tokens along with them. Colliding folders all normalize
+  // onto this one prefix, so every one of them belongs to the app being deleted.
+  const folderNames =
+    app.collidingFolderNames.length > 0 ? app.collidingFolderNames : [app.name];
+  for (const folderName of folderNames) {
+    const deleteFolderResult = await deleteProjectFile(auth, {
+      space: pod,
+      relativeFilePath: folderName,
+    });
+    if (deleteFolderResult.isErr()) {
+      return new Err(
+        new PodAppDeleteError("internal", deleteFolderResult.error.message)
+      );
+    }
+  }
+
+  const deletedFunctionSlugs = app.functions.map((fn) => fn.slug);
+  const deletedDatabaseNames = app.databases.map((db) => db.onDiskName);
+
+  return new Ok({
+    prefix: app.prefix,
+    name: app.name,
+    deletedFunctionSlugs,
+    deletedDatabaseNames,
+    deletedFolderNames: folderNames,
+  });
+}
+
+export type PodAppCloneErrorCode =
+  | "not_a_pod"
+  | "not_found"
+  | "invalid_name"
+  | "name_taken"
+  | "sandbox_unavailable"
+  | "internal";
+
+export class PodAppCloneError extends Error {
+  constructor(
+    readonly code: PodAppCloneErrorCode,
+    message: string
+  ) {
+    super(message);
+    this.name = "PodAppCloneError";
+  }
+}
+
+export type ClonePodAppResult = PodAppCloneSummary;
+
+/** The files under an app folder, Frames included, as a listing reports them. */
+function fileEntriesOf(entries: FileSystemEntry[]): FileSystemFileEntry[] {
+  return entries.flatMap((entry) => (entry.isDirectory ? [] : [entry]));
+}
+
+/**
+ * Clone a Pod app into a new folder in the same Pod.
+ *
+ * What carries over: every file under the app folder, its published functions (re-published under the
+ * copy's prefix), and its databases as **fresh, empty** ones reconciled from the copied schema files.
+ * What does not: database rows, share tokens, the pinned tab, and invocation history. The copy's Frame
+ * is left unpublished, so the author decides when it becomes a shareable artifact.
+ *
+ * A Frame cannot simply be copied as an object — it needs a FileResource to be publishable at all —
+ * so Frames are recreated through `createPodFrameFile` and every other file is copied directly.
+ *
+ * Nothing rewrites the copied Frame's source. A Frame that refers to its functions by bare name
+ * resolves them against the copy's own folder and is correct by construction; one that hard-codes
+ * `<podId>/<prefix>__<name>` keeps calling the ORIGINAL app's functions, and its author has to fix
+ * that themselves.
+ */
+export async function clonePodApp(
+  auth: Authenticator,
+  pod: SpaceResource,
+  { prefix, newName }: { prefix: string; newName: string }
+): Promise<Result<ClonePodAppResult, PodAppCloneError>> {
+  if (!pod.isProject()) {
+    return new Err(
+      new PodAppCloneError("not_a_pod", "Apps only exist on Pod spaces.")
+    );
+  }
+
+  const folderName = newName.trim();
+  const newPrefix = normalizeAppPrefix(folderName);
+  if (!newPrefix) {
+    return new Err(
+      new PodAppCloneError(
+        "invalid_name",
+        `'${newName}' has no letters or digits to name an app with.`
+      )
+    );
+  }
+  if (folderName.includes("/")) {
+    return new Err(
+      new PodAppCloneError("invalid_name", "An app name cannot contain '/'.")
+    );
+  }
+
+  const appsResult = await listPodApps(auth, pod);
+  if (appsResult.isErr()) {
+    return new Err(new PodAppCloneError("internal", appsResult.error.message));
+  }
+
+  const source = appsResult.value.find((app) => app.prefix === prefix);
+  if (!source || !source.folderPath) {
+    return new Err(
+      new PodAppCloneError("not_found", `No app '${prefix}' in this Pod.`)
+    );
+  }
+
+  // Two folders whose names normalize onto one prefix share published slugs and databases, so the
+  // check is on the prefix rather than the folder name.
+  if (appsResult.value.some((app) => app.prefix === newPrefix)) {
+    return new Err(
+      new PodAppCloneError(
+        "name_taken",
+        `This Pod already has an app named '${newPrefix}'.`
+      )
+    );
+  }
+
+  const fsResult = await DustFileSystem.forPod(auth, pod);
+  if (fsResult.isErr()) {
+    return new Err(
+      new PodAppCloneError("internal", "Failed to initialise file system.")
+    );
+  }
+  const dustFs = fsResult.value;
+
+  const podRoot = `${SCOPED_PREFIX_POD}${pod.sId}`;
+  const sourceFolderPath = source.folderPath;
+  const destFolderPath = `${podRoot}/${folderName}`;
+
+  const listResult = await dustFs.list(sourceFolderPath);
+  if (listResult.isErr()) {
+    return new Err(new PodAppCloneError("internal", listResult.error.message));
+  }
+  const sourceEntries = fileEntriesOf(listResult.value);
+
+  // Copy everything except the Frames, which need a FileResource of their own. Every copy lands at
+  // `{destFolderPath}/{relPath}`, so recording the relative paths is enough to address them later.
+  const copiedRelPaths = new Set<string>();
+  let copiedFileCount = 0;
+  for (const entry of sourceEntries) {
+    if (isInteractiveContentType(entry.contentType)) {
+      continue;
+    }
+
+    const relPath = entry.path.slice(sourceFolderPath.length + 1);
+    const copyResult = await dustFs.copy({
+      src: entry.path,
+      dest: `${destFolderPath}/${relPath}`,
+    });
+    if (copyResult.isErr()) {
+      return new Err(
+        new PodAppCloneError("internal", copyResult.error.message)
+      );
+    }
+    copiedRelPaths.add(relPath);
+    copiedFileCount += 1;
+  }
+
+  // Recreate the Frames so the copy owns publishable files rather than bare objects.
+  const clonedFrameNames: string[] = [];
+  for (const frame of source.frames) {
+    if (!frame.fileId) {
+      continue;
+    }
+    const sourceFile = await FileResource.fetchById(auth, frame.fileId);
+    if (!sourceFile) {
+      continue;
+    }
+    if (!isInteractiveContentType(sourceFile.contentType)) {
+      continue;
+    }
+    const content = await getFileContent(auth, sourceFile, "original");
+    if (content === null) {
+      return new Err(
+        new PodAppCloneError(
+          "internal",
+          `Could not read the source of Frame '${frame.fileName}'.`
+        )
+      );
+    }
+
+    const createResult = await createPodFrameFile(auth, {
+      space: pod,
+      folderName,
+      fileName: frame.fileName,
+      contentType: sourceFile.contentType,
+      content,
+    });
+    if (createResult.isErr()) {
+      return new Err(
+        new PodAppCloneError("internal", createResult.error.message)
+      );
+    }
+    clonedFrameNames.push(frame.fileName);
+    copiedFileCount += 1;
+  }
+
+  const skipped: string[] = [];
+
+  // The copy's function sources, indexed by the name they publish under. A function's source is one
+  // file directly under `functions/`, named after it; anything nested below that (`functions/lib/`)
+  // is a helper the bundler pulls in, not a function of its own.
+  const functionSourceByName = new Map<string, string>();
+  for (const relPath of copiedRelPaths) {
+    const segments = relPath.split("/");
+    if (segments.length !== 2 || segments[0] !== APP_FUNCTIONS_SUBFOLDER) {
+      continue;
+    }
+    functionSourceByName.set(
+      stripExtension(segments[1]),
+      `${destFolderPath}/${relPath}`
+    );
+  }
+
+  // Publish the copy's functions. The source path decides the prefix, so publishing from the copy's
+  // folder is what gives the clone its own functions; description and execution mode are carried over
+  // so the contract is identical.
+  const publishedFunctionSlugs: string[] = [];
+  for (const fn of source.functions) {
+    const sourcePath = functionSourceByName.get(fn.name);
+    if (!sourcePath) {
+      skipped.push(`function ${fn.name}`);
+      continue;
+    }
+
+    const publishResult = await publishSandboxFunction(auth, {
+      space: pod,
+      slug: fn.name,
+      description: fn.description,
+      path: sourcePath,
+      executionMode: fn.executionMode,
+    });
+    if (publishResult.isErr()) {
+      return new Err(
+        new PodAppCloneError(
+          publishResult.error.code === "sandbox_unavailable"
+            ? "sandbox_unavailable"
+            : "internal",
+          publishResult.error.message
+        )
+      );
+    }
+    publishedFunctionSlugs.push(publishResult.value.slug);
+  }
+
+  // Reconcile the copy's databases from its own schema files, which creates them empty under the
+  // copy's prefix. Data is deliberately not carried over.
+  const reconciledDatabaseNames: string[] = [];
+  for (const database of source.databases) {
+    const schemaRelPath = `${APP_DATABASES_SUBFOLDER}/${database.name}${POD_DATABASE_SCHEMA_FILE_SUFFIX}`;
+    if (!copiedRelPaths.has(schemaRelPath)) {
+      skipped.push(`database ${database.name}`);
+      continue;
+    }
+    const schemaPath = `${destFolderPath}/${schemaRelPath}`;
+
+    const reconcileResult = await reconcileDatabaseFromPodPath(auth, {
+      space: pod,
+      database: database.name,
+      path: schemaPath,
+    });
+    if (reconcileResult.isErr()) {
+      return new Err(
+        new PodAppCloneError(
+          reconcileResult.error.code === "sandbox_unavailable"
+            ? "sandbox_unavailable"
+            : "internal",
+          reconcileResult.error.message
+        )
+      );
+    }
+    reconciledDatabaseNames.push(reconcileResult.value.database);
+  }
+
+  return new Ok({
+    prefix: newPrefix,
+    name: folderName,
+    copiedFileCount,
+    clonedFrameNames,
+    publishedFunctionSlugs,
+    reconciledDatabaseNames,
+    skipped,
+  });
 }

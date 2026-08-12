@@ -3202,6 +3202,10 @@ export const PublicFrameResponseBodySchema = z.object({
   projectUrl: z.string().nullable(),
   file: FileTypeSchema,
   isAuthenticatedMember: z.boolean().optional(),
+  // Scoped path of the Frame, so a shared Frame that lives in a Pod app folder can call that app's
+  // functions by bare name. Only sent to a viewer who can read the Pod: nobody else can invoke a pod
+  // function anyway, so there is no reason to hand out the Pod's layout.
+  framePath: z.string().nullable().optional(),
 });
 
 export type PublicFrameResponseBodyType = z.infer<

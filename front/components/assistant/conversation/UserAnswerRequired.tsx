@@ -290,9 +290,8 @@ export function UserAnswerRequired({
       className={cn(
         "flex flex-col gap-4 rounded-2xl border border-dark bg-background p-5 outline-hidden",
         "ease-enter motion-reduce:animate-none",
-        submission?.phase === "exiting"
-          ? "animate-out fill-mode-forwards fade-out-0 duration-exit"
-          : "animate-in fade-in-0 duration-enter",
+        submission?.phase === "exiting" &&
+          "animate-out fill-mode-forwards fade-out-0 duration-exit",
         isKeyboardNavigating && "cursor-none"
       )}
     >
@@ -333,7 +332,6 @@ export function UserAnswerRequired({
           ))}
           <OptionCard
             type="input"
-            counterValue={question.options.length + 1}
             selected={isCustomResponseActive}
             disableHover={isKeyboardNavigating}
             className={cn(isKeyboardNavigating && "cursor-none")}
@@ -392,6 +390,7 @@ export function UserAnswerRequired({
           disabled={isSubmitting || answerDraft.answerToSubmit === null}
           onClick={handleSubmit}
           aria-label="Send answer"
+          className="rounded-full"
         />
       </div>
     </div>

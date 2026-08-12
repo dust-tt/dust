@@ -1,7 +1,4 @@
-import {
-  CHART_HEIGHT,
-  CONVERSATION_FILES_AGGREGATE_KEY,
-} from "@app/components/agent_builder/observability/constants";
+import { CONVERSATION_FILES_AGGREGATE_KEY } from "@app/components/agent_builder/observability/constants";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import {
   getIndexedBaseColor,
@@ -9,6 +6,7 @@ import {
 } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { CHART_HEIGHT } from "@app/components/charts/constants";
 import type { DatasourceRetrievalTreemapNode } from "@app/components/charts/DatasourceRetrievalTreemapContent";
 import { DatasourceRetrievalTreemapContent } from "@app/components/charts/DatasourceRetrievalTreemapContent";
 import {

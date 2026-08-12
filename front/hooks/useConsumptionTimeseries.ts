@@ -1,13 +1,20 @@
+import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import { consumptionQueryString } from "@app/lib/analytics/consumption_period";
+import { normalizedConsumptionFilter } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionBody } from "@app/lib/api/analytics/consumption/schema";
+import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/api/analytics/consumption/schema";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type {
   ConsumptionBreakdownDimension,
   ConsumptionTimeseriesMode,
   GetConsumptionTimeseriesResponse,
 } from "@app/lib/api/analytics/consumption/timeseries";
-import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { Fetcher } from "swr";
+
+type ConsumptionTimeseriesBody = ConsumptionBody & {
+  mode: ConsumptionTimeseriesMode;
+  breakdownBy?: ConsumptionBreakdownDimension;
+  breakdownCount?: number;
+};
 
 export function useConsumptionTimeseries({
   workspaceId,
@@ -27,23 +34,21 @@ export function useConsumptionTimeseries({
   filter?: ConsumptionScopeFilter;
   disabled?: boolean;
 }) {
-  const { fetcher } = useFetcher();
-  const timeseriesFetcher: Fetcher<GetConsumptionTimeseriesResponse> = fetcher;
+  const url = `/api/w/${workspaceId}/analytics/consumption/timeseries`;
+  const body: ConsumptionTimeseriesBody = {
+    period: period.kind,
+    days:
+      period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
+    filter: normalizedConsumptionFilter(filter),
+    mode,
+    breakdownBy,
+    breakdownCount,
+  };
 
-  const params = new URLSearchParams(consumptionQueryString(period, filter));
-  params.set("mode", mode);
-  if (breakdownBy) {
-    params.set("breakdownBy", breakdownBy);
-  }
-  if (breakdownCount !== undefined) {
-    params.set("breakdownCount", String(breakdownCount));
-  }
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/analytics/consumption/timeseries?${params.toString()}`,
-    timeseriesFetcher,
-    { disabled }
-  );
+  const { data, error, isValidating } = useConsumptionQuery<
+    ConsumptionTimeseriesBody,
+    GetConsumptionTimeseriesResponse
+  >({ url, body, disabled });
 
   return {
     timeseries: data ?? null,

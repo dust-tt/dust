@@ -1,6 +1,5 @@
 import { FeedbackDistributionTooltip } from "@app/components/agent_builder/observability/charts/ChartsTooltip";
 import {
-  CHART_HEIGHT,
   FEEDBACK_DISTRIBUTION_LEGEND,
   FEEDBACK_DISTRIBUTION_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
@@ -12,6 +11,7 @@ import {
 } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { legendFromConstant } from "@app/components/charts/ChartLegend";
+import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
 import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import {
   useAgentFeedbackDistribution,
@@ -113,10 +113,7 @@ export function FeedbackDistributionChart({
       height={CHART_HEIGHT}
       legendItems={legendItems}
     >
-      <LineChart
-        data={data}
-        margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
-      >
+      <LineChart data={data} margin={CHART_MARGIN}>
         <CartesianGrid vertical={false} className="stroke-border" />
         <XAxis
           dataKey="date"

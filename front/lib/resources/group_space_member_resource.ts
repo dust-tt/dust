@@ -8,8 +8,8 @@ import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { GroupKind } from "@app/types/groups";
 import type {
-  CombinedResourcePermissions,
-  GroupPermission,
+  AccessControlList,
+  GroupGrant,
 } from "@app/types/resource_permissions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -141,8 +141,8 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
         return true;
       }
     }
-    const requestedPermissions = await this.requestedPermissions();
-    return auth.canWrite(requestedPermissions);
+    const acls = await this.getAccessControlLists(auth);
+    return auth.hasPermissionForAcls("write", acls);
   }
 
   async canRemoveMember(
@@ -157,11 +157,13 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
         return true;
       }
     }
-    const requestedPermissions = await this.requestedPermissions();
-    return auth.canWrite(requestedPermissions);
+    const acls = await this.getAccessControlLists(auth);
+    return auth.hasPermissionForAcls("write", acls);
   }
 
-  async requestedPermissions(): Promise<CombinedResourcePermissions[]> {
+  async getAccessControlLists(
+    auth: Authenticator
+  ): Promise<AccessControlList[]> {
     switch (this.space.kind) {
       case "system":
         return [
@@ -214,11 +216,12 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
       case "project": {
         // Only gets the editor groups correponding to the space management mode
         const editorGroupSpaces = await this.getEditorGroupSpaces(true);
-        const editorGroupsPermissions: GroupPermission[] =
-          editorGroupSpaces.map((egs) => ({
+        const editorGroupsPermissions: GroupGrant[] = editorGroupSpaces.map(
+          (egs) => ({
             id: egs.groupId,
             permissions: ["admin", "read", "write"],
-          }));
+          })
+        );
         return [
           {
             groups: [

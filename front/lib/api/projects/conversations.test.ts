@@ -11,12 +11,14 @@ import {
   UserConversationReadsModel,
 } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { isPodConversation } from "@app/types/assistant/conversation";
@@ -139,6 +141,57 @@ describe("moveConversationToProject", () => {
     expect(updatedConversation.requestedSpaceIds).toHaveLength(1);
     expect(updatedConversation.requestedSpaceIds[0]).toBe(projectSpace.sId);
     expect(isPodConversation(updatedConversation)).toBe(true);
+  });
+
+  it("destroys the conversation sandbox as part of the move", async () => {
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent Description",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+    const projectSpace = await SpaceFactory.project(workspace);
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const projectSpaceGroup = await fetchRegularAutoGroup(
+      projectSpace,
+      internalAdminAuth
+    );
+    if (!projectSpaceGroup) {
+      throw new Error("Project space regular group not found");
+    }
+    const addRes = await projectSpaceGroup.dangerouslyAddMember(
+      internalAdminAuth,
+      { user: auth.getNonNullableUser().toJSON() }
+    );
+    if (addRes.isErr()) {
+      throw new Error(
+        `Failed to add user to project space group: ${addRes.error.message}`
+      );
+    }
+    await auth.refresh();
+    await SandboxFactory.create(auth, conversation);
+
+    const result = await moveConversationToProject(auth, {
+      conversation,
+      spaceId: projectSpace.sId,
+    });
+
+    expect(result.isOk()).toBe(true);
+    // The scope transition strictly destroys the sandbox under the lifecycle
+    // lock before the association changes: egress claims, pod env vars, and
+    // mounts are all creation-time state, so the next Computer command must
+    // rebuild the sandbox from the conversation's new scope. The row survives
+    // as deleted with its owner link intact for the in-place recreate.
+    const sandbox = await ConversationSandboxAdapter.fetchSandbox(
+      auth,
+      conversation
+    );
+    expect(sandbox?.status).toBe("deleted");
+    expect(sandbox?.killRequestedAt).toEqual(expect.any(Date));
   });
 
   it("returns conversation_agent_running when an agent loop is running", async () => {
@@ -864,6 +917,82 @@ describe("moveConversationOutOfProject", () => {
     // The conversation should no longer be associated to a project.
     expect(updatedConversation.spaceId).toBeNull();
     expect(isPodConversation(updatedConversation)).toBe(false);
+  });
+
+  it("destroys the sandbox so the Pod's scope, env, and secrets are dropped", async () => {
+    const user = auth.getNonNullableUser();
+    const projectSpace = await SpaceFactory.project(workspace, user.id);
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const projectSpaceGroup = await fetchRegularAutoGroup(
+      projectSpace,
+      internalAdminAuth
+    );
+    if (!projectSpaceGroup) {
+      throw new Error("Project space regular group not found");
+    }
+    await projectSpaceGroup.dangerouslyAddMember(internalAdminAuth, {
+      user: user.toJSON(),
+    });
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent Description",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      spaceId: projectSpace.id,
+    });
+    await auth.refresh();
+    await SandboxFactory.create(auth, conversation);
+
+    const result = await moveConversationOutOfProject(auth, {
+      conversation,
+    });
+
+    expect(result.isOk()).toBe(true);
+    const sandbox = await ConversationSandboxAdapter.fetchSandbox(
+      auth,
+      conversation
+    );
+    expect(sandbox?.status).toBe("deleted");
+    expect(sandbox?.killRequestedAt).toEqual(expect.any(Date));
+  });
+
+  it("validates against the conversation's current state, not the caller's snapshot", async () => {
+    // The caller's snapshot claims the conversation is in a pod (as a
+    // concurrent move could make true stale), but the database says
+    // standalone. Validation must run against the under-lock re-fetch, fail
+    // the move, and leave the sandbox untouched.
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent Description",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+    await SandboxFactory.create(auth, conversation);
+    const staleSnapshot = {
+      ...conversation,
+      spaceId: generateRandomModelSId("spc"),
+    };
+
+    const result = await moveConversationOutOfProject(auth, {
+      conversation: staleSnapshot,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("internal_error");
+    }
+    const sandbox = await ConversationSandboxAdapter.fetchSandbox(
+      auth,
+      conversation
+    );
+    expect(sandbox?.status).toBe("running");
+    expect(sandbox?.killRequestedAt).toBeNull();
   });
 
   it("returns internal_error when conversation is not in a project", async () => {

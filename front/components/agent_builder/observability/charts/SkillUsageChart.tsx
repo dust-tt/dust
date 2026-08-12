@@ -1,5 +1,4 @@
 import { ChartsTooltip } from "@app/components/agent_builder/observability/charts/ChartsTooltip";
-import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import {
   useSkillSourceData,
   useSkillVersionData,
@@ -14,6 +13,7 @@ import { getIndexedColor } from "@app/components/agent_builder/observability/uti
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { RoundedBarShape } from "@app/components/charts/ChartShapes";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
 import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import {
   Button,
@@ -280,7 +280,7 @@ export function SkillUsageChart({
       {skillMode === "version" ? (
         <BarChart
           data={versionData.chartData}
-          margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
+          margin={CHART_MARGIN}
           stackOffset="expand"
         >
           <CartesianGrid vertical={false} className="stroke-border" />
@@ -348,10 +348,7 @@ export function SkillUsageChart({
           ))}
         </BarChart>
       ) : (
-        <BarChart
-          data={filteredSourceItems}
-          margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
-        >
+        <BarChart data={filteredSourceItems} margin={CHART_MARGIN}>
           <CartesianGrid vertical={false} className="stroke-border" />
           <XAxis
             dataKey="skillName"

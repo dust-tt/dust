@@ -722,3 +722,52 @@ export async function deletePodStatePrefix(
     return new Err(normalizeError(err));
   }
 }
+
+/**
+ * Delete ONE database's litestream replica: the GCS prefix the directory watcher keys on that
+ * database's filename.
+ *
+ * The replica is the durable copy of a pod database, and `setupPodStateOnColdStart` restores every
+ * replica it finds. So a replica that survives resurrects a database whose live files were deleted —
+ * which makes this the step that actually makes a database deletion stick.
+ *
+ * Call it AFTER the live files are gone: a running litestream keeps replicating a database it can
+ * still see, so wiping the prefix first just gets it recreated. The delete is verified by re-listing,
+ * because a silently-surviving replica is indistinguishable from success until the pod next boots.
+ */
+export async function deletePodDatabaseReplica(
+  auth: Authenticator,
+  space: SpaceResource,
+  { database }: { database: string }
+): Promise<Result<void, Error>> {
+  if (!isValidPodDatabaseName(database)) {
+    return new Err(new Error(`Invalid pod database name: '${database}'.`));
+  }
+
+  const statePrefix = getPodStateBasePath({
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    podId: space.sId,
+  });
+  const replicaDirName = `${database}.db`;
+
+  try {
+    const bucket = getPrivateUploadBucket();
+    await bucket.deleteByPrefix(`${statePrefix}${replicaDirName}/`);
+
+    const remaining = await bucket.listSubdirectoryNames({
+      prefix: statePrefix,
+    });
+    if (remaining.includes(replicaDirName)) {
+      return new Err(
+        new Error(
+          `Replica of pod database '${database}' still present after deletion; ` +
+            "the database would be restored on the pod's next cold start."
+        )
+      );
+    }
+
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}

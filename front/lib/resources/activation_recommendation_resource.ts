@@ -6,7 +6,6 @@ import type { ActivationPodResource } from "@app/lib/resources/activation_pod_re
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -243,18 +242,6 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
         activationPodId: activationPod.id,
       },
     });
-
-    if (activationPod.triggerId !== null) {
-      const [trigger] = await TriggerResource.fetchByModelIds(auth, [
-        activationPod.triggerId,
-      ]);
-      if (trigger) {
-        const deleteTriggerRes = await trigger.delete(auth);
-        if (deleteTriggerRes.isErr()) {
-          throw deleteTriggerRes.error;
-        }
-      }
-    }
   }
 
   static async deleteAllForWorkspace(auth: Authenticator): Promise<undefined> {

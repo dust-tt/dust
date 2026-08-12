@@ -2115,7 +2115,6 @@ describe("searchProjectsByNamePaginated", () => {
 // List of all known models that have a foreign key relationship to Space (via vaultId or spaceId)
 // These are Sequelize model names (modelName property), not TypeScript class names
 const KNOWN_SPACE_RELATED_MODELS = [
-  "activation_nudge",
   "activation_pod",
   "agent_project_configuration",
   "app",

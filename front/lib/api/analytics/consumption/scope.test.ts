@@ -40,7 +40,7 @@ describe("buildConsumptionScopeQuery", () => {
       filter: {
         agents: ["a1"],
         users: ["u1", "u2"],
-        teams: ["team1"],
+        groups: ["group1"],
         models: ["gpt-5.6-luna"],
         tools: ["web_search_&_browse"],
         skills: ["s1"],
@@ -53,7 +53,7 @@ describe("buildConsumptionScopeQuery", () => {
       expect.objectContaining({ range: expect.anything() }),
       { term: { "agent.id": "a1" } },
       { terms: { "user.id": ["u1", "u2"] } },
-      { term: { "user.group_ids": "team1" } },
+      { term: { "user.group_ids": "group1" } },
       { term: { "model.model_id": "gpt-5.6-luna" } },
       { term: { "tool.server_name": "web_search_&_browse" } },
       { term: { "tool.attributed_skill_ids": "s1" } },

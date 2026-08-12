@@ -214,7 +214,7 @@ export function FeedbackSelector({
       >
         <DialogContent size="lg">
           <DialogHeader>
-            <DialogTitle>Provide feedback on @{agentName}</DialogTitle>
+            <DialogTitle>Provide feedback on {agentName}</DialogTitle>
           </DialogHeader>
 
           <DialogContainer className="py-3">
