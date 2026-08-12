@@ -494,7 +494,11 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
 
   const conversation = await ConversationResource.fetchById(
     auth,
-    conversationId
+    conversationId,
+    {
+      dangerouslySkipPermissionFiltering: true,
+      includeDeleted: true,
+    }
   );
   if (!conversation) {
     logger.warn(

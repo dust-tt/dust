@@ -3,6 +3,7 @@ import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
@@ -15,6 +16,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RunFactory } from "@app/tests/utils/RunFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -37,22 +39,36 @@ const TOKENS_PER_FOOTPRINT = 2;
 
 async function setupSettledMessageWithUsage({
   runCount = 1,
+  restrictedConversation = false,
 }: {
   runCount?: number;
+  restrictedConversation?: boolean;
 } = {}) {
   const {
-    authenticator: auth,
+    authenticator,
     globalSpace,
+    user,
     workspace,
   } = await createResourceTest({ role: "admin" });
 
+  let auth = authenticator;
   const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
     auth,
     { name: `Attribution ${generateRandomModelSId()}` }
   );
+  const conversationSpace = restrictedConversation
+    ? await SpaceFactory.project(workspace, user.id)
+    : undefined;
+  if (conversationSpace) {
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+  }
   const conversation = await ConversationFactory.create(auth, {
     agentConfigurationId: agentConfiguration.sId,
     messagesCreatedAt: [],
+    spaceId: conversationSpace?.id,
   });
   const runs = [];
   for (let index = 0; index < runCount; index++) {
@@ -156,6 +172,42 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
         0
       )
     ).toBe(BILLED_CREDIT_AMOUNT_MICRO);
+  });
+
+  it("writes attribution for a project conversation hidden from the workflow auth", async () => {
+    const {
+      workspace,
+      conversationId,
+      agentMessageId,
+      agentMessageModelId,
+    } = await setupSettledMessageWithUsage({ restrictedConversation: true });
+    const workflowAuth = await Authenticator.internalBuilderForWorkspace(
+      workspace.sId
+    );
+
+    expect(
+      await ConversationResource.fetchById(workflowAuth, conversationId)
+    ).toBeNull();
+
+    await computeAndStoreAgentMessageConsumptionAttribution(workflowAuth, {
+      agentMessageId,
+      conversationId,
+    });
+
+    const items =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        workflowAuth,
+        {
+          agentMessageModelIds: [agentMessageModelId],
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      );
+
+    expect(items.map((item) => item.itemType).sort()).toEqual([
+      "input",
+      "output",
+      "reasoning",
+    ]);
   });
 
   it("is idempotent across repeated runs", async () => {

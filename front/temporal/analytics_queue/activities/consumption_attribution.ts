@@ -43,6 +43,10 @@ export async function storeAgentMessageConsumptionAnalyticsActivity(
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
 
+  // TEMPORARY: activity 2 retries independently, so workflows already stuck here will not rerun
+  // their completed attribution activity. Recompute until that retry backlog has drained.
+  await computeAndStoreAgentMessageConsumptionAttribution(auth, message);
+
   const result = await indexAgentMessageConsumptionAnalytics(auth, {
     agentMessageId: message.agentMessageId,
   });
