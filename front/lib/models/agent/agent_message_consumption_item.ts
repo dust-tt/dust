@@ -69,10 +69,12 @@ function validateConsumptionItemShape(
 }
 
 // Each row explains one component of an agent message's cost (a model token bucket or a tool call).
-// `grossAttributedCreditAmountMicro` is immutable cache-naive evidence and is not expected to sum
-// to the bill. `reconciledCreditAmountMicro` materializes the item's share of the authoritative
-// Metronome AWU charge. It remains null until a complete attribution version can be allocated.
-// See attribution_builder.ts and allocation.ts for the pricing and reconciliation rationale.
+// `grossAttributedCreditAmountMicro` is cache-naive evidence and is not expected to sum to the
+// bill. It is stable once complete except for one monotonic correction: terminal messages remove a
+// final tool result that never reached another model run. `reconciledCreditAmountMicro`
+// materializes the item's share of the authoritative Metronome AWU charge. It remains null until a
+// complete attribution version can be allocated. See attribution_builder.ts and allocation.ts for
+// the pricing and reconciliation rationale.
 export class AgentMessageConsumptionItemModel extends WorkspaceAwareModel<AgentMessageConsumptionItemModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;

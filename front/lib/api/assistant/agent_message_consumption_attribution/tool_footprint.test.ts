@@ -7,7 +7,10 @@ import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import { GPT_5_MODEL_ID } from "@app/types/assistant/models/openai";
+import {
+  GPT_4_1_MODEL_CONFIG,
+  GPT_5_MODEL_ID,
+} from "@app/types/assistant/models/openai";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -169,6 +172,20 @@ describe("measureToolCallFootprints", () => {
 
     expect(res.isErr()).toBe(true);
     expect(tokenCountForTexts).not.toHaveBeenCalled();
+  });
+
+  it("tokenizes historical runs whose model is no longer served", async () => {
+    const res = await measureToolCallFootprints(auth, {
+      modelId: GPT_4_1_MODEL_CONFIG.modelId,
+      toolCalls: [footprintInput(makeAction())],
+    });
+
+    expect(res.isOk()).toBe(true);
+    expect(tokenCountForTexts).toHaveBeenCalledWith(
+      expect.any(Array),
+      GPT_4_1_MODEL_CONFIG,
+      expect.anything()
+    );
   });
 
   it("measures the call and result footprint of each action, aligned by position", async () => {
