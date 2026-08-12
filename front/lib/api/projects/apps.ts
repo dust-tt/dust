@@ -34,12 +34,10 @@ import type {
   PodAppFrame,
   PodAppFunction,
 } from "@app/types/api/pod_apps";
-import { UNFILED_POD_APP_PREFIX } from "@app/types/api/pod_apps";
 import { normalizeAppPrefix } from "@app/types/api/pod_function_reference";
 import { isInteractiveContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { removeNulls } from "@app/types/shared/utils/general";
 
 /** A litestream replica directory is named after the database file it replicates. */
 const POD_DATABASE_FILE_SUFFIX = ".db";
@@ -68,11 +66,6 @@ type AppFolder = {
   fileCount: number;
   frameEntries: FileSystemFileEntry[];
   hasAppShapedSubfolder: boolean;
-  /**
-   * App-relative names of the databases this folder declares, one per `databases/{name}.db.ts`. Used
-   * to attribute databases whose on-disk name carries no app prefix.
-   */
-  declaredDatabaseNames: Set<string>;
 };
 
 /** Drop the last extension from a file name, e.g. `add-task.ts` -> `add-task`. */
@@ -99,8 +92,7 @@ function relativeSegments(entry: FileSystemEntry, podRoot: string): string[] {
 
 /**
  * Group a pod's recursive file listing by the folder each entry sits in at the pod root. Entries
- * directly at the root belong to no app, so they are skipped: anything published from there surfaces
- * under the unfiled app instead.
+ * directly at the root belong to no app, so they are skipped.
  */
 function collectAppFolders(
   entries: FileSystemEntry[],
@@ -120,7 +112,6 @@ function collectAppFolders(
       fileCount: 0,
       frameEntries: [],
       hasAppShapedSubfolder: false,
-      declaredDatabaseNames: new Set(),
     };
     folders.set(name, folder);
 
@@ -164,19 +155,6 @@ function collectAppFolders(
     // of how the app is laid out.
     if (segments.length === 2 && isInteractiveContentType(entry.contentType)) {
       folder.frameEntries.push(entry);
-    }
-
-    if (
-      segments.length === 3 &&
-      segments[1] === APP_DATABASES_SUBFOLDER &&
-      entry.fileName.endsWith(POD_DATABASE_SCHEMA_FILE_SUFFIX)
-    ) {
-      folder.declaredDatabaseNames.add(
-        entry.fileName.slice(
-          0,
-          entry.fileName.length - POD_DATABASE_SCHEMA_FILE_SUFFIX.length
-        )
-      );
     }
   }
 
@@ -260,57 +238,51 @@ async function listPodDatabaseOnDiskNames(
 }
 
 /**
- * Group the pod's databases by the app prefix that owns each one.
+ * Group the pod's databases by the app prefix their filename carries.
  *
- * A namespaced database carries its app in its filename, so its prefix decides. A database created
- * before app namespacing has a bare filename instead, and the only remaining evidence of ownership is
- * the schema file that declares it — `<AppName>/databases/{name}.db.ts`. This mirrors how
- * `resolvePodDatabaseName` resolves the same case at reconcile time, so the tab attributes a legacy
- * database to exactly the app that keeps writing to it.
+ * Only namespaced databases are listed. A database created before app namespacing has a bare
+ * filename, which says nothing about which app owns it — the only evidence left is the schema file
+ * that declares it, and that evidence stops being reliable as soon as apps can be copied, because a
+ * copy inherits the declaration while opening its own prefixed file. Rather than infer ownership,
+ * such a database is left out of the listing entirely.
  *
- * Two apps declaring the same bare name genuinely share that one database (the transitional case
- * `resolvePodDatabaseName` documents), so it is reported under both rather than arbitrarily assigned.
- * A bare database no app declares falls back to the unfiled app.
+ * Two consequences worth knowing, both accepted deliberately:
+ *
+ *  - An app whose only database predates namespacing shows none, even though `resolvePodDatabaseName`
+ *    step 2 still opens that bare file at run time.
+ *  - Deleting an app does not remove such a database, because `deletePodApp` works from this listing.
+ *    The file and its replica outlive the app.
+ *
+ * Both go away once bare databases are migrated to their prefixed names, which is also what lets the
+ * step 2 fallback be deleted from the runtime (see `resolvePodDatabaseName`).
  */
 function groupDatabasesByAppPrefix(
-  onDiskNames: string[],
-  foldersByPrefix: Map<string, AppFolder[]>
+  onDiskNames: string[]
 ): Map<string, PodAppDatabase[]> {
   const byPrefix = new Map<string, PodAppDatabase[]>();
 
-  const attribute = (prefix: string, database: PodAppDatabase) => {
-    byPrefix.set(prefix, [...(byPrefix.get(prefix) ?? []), database]);
-  };
-
   for (const onDiskName of onDiskNames) {
-    const database = {
-      name: podDatabaseNameWithoutAppPrefix(onDiskName),
-      onDiskName,
-    };
-
-    const prefixFromName = appPrefixFromPodDatabaseName(onDiskName);
-    if (prefixFromName !== null) {
-      attribute(prefixFromName, database);
+    const prefix = appPrefixFromPodDatabaseName(onDiskName);
+    if (prefix === null) {
       continue;
     }
 
-    const declaringPrefixes = [...foldersByPrefix].filter(([, folders]) =>
-      folders.some((folder) => folder.declaredDatabaseNames.has(onDiskName))
-    );
-    if (declaringPrefixes.length === 0) {
-      attribute(UNFILED_POD_APP_PREFIX, database);
-      continue;
-    }
-
-    for (const [prefix] of declaringPrefixes) {
-      attribute(prefix, database);
-    }
+    byPrefix.set(prefix, [
+      ...(byPrefix.get(prefix) ?? []),
+      { name: podDatabaseNameWithoutAppPrefix(onDiskName), onDiskName },
+    ]);
   }
 
   return byPrefix;
 }
 
-/** The pod's published functions, grouped by the app prefix each one's slug carries. */
+/**
+ * The pod's published functions, grouped by the app prefix their slug carries.
+ *
+ * A function published from the pod root has no prefix and so belongs to no app. Like an unprefixed
+ * database, it is left out rather than gathered into a synthetic app: it is still callable, it simply
+ * has no app to be listed under.
+ */
 function groupFunctionsByAppPrefix(
   sandboxFunctions: SandboxFunctionResource[]
 ): Map<string, PodAppFunction[]> {
@@ -320,11 +292,11 @@ function groupFunctionsByAppPrefix(
     const separatorIndex = sandboxFunction.slug.indexOf(
       SANDBOX_FUNCTION_SLUG_SEPARATOR
     );
-    const prefix =
-      separatorIndex > 0
-        ? sandboxFunction.slug.slice(0, separatorIndex)
-        : UNFILED_POD_APP_PREFIX;
+    if (separatorIndex <= 0) {
+      continue;
+    }
 
+    const prefix = sandboxFunction.slug.slice(0, separatorIndex);
     byPrefix.set(prefix, [
       ...(byPrefix.get(prefix) ?? []),
       sandboxFunction.toPodAppJSON(),
@@ -346,8 +318,8 @@ function groupFunctionsByAppPrefix(
  * A folder qualifies as an app when it holds a `functions/` or `databases/` subfolder, or a Frame at
  * its top, or any published function or database under its prefix. A prefix that owns published
  * artifacts but has no folder left is still listed, since those artifacts are live and would
- * otherwise be invisible; so is anything published from the pod root, gathered into a synthetic
- * unfiled app.
+ * otherwise be invisible. Anything published at the pod root carries no prefix and so belongs to no
+ * app; it is left out rather than gathered into a synthetic one.
  */
 export async function listPodApps(
   auth: Authenticator,
@@ -406,19 +378,13 @@ export async function listPodApps(
     ]);
   }
 
-  // Needs foldersByPrefix: a database created before app namespacing has no prefix in its filename,
-  // so only the schema file that declares it says which app owns it.
-  const databasesByPrefix = groupDatabasesByAppPrefix(
-    databaseOnDiskNames,
-    foldersByPrefix
-  );
+  const databasesByPrefix = groupDatabasesByAppPrefix(databaseOnDiskNames);
 
   const realPrefixes = new Set([
     ...foldersByPrefix.keys(),
     ...functionsByPrefix.keys(),
     ...databasesByPrefix.keys(),
   ]);
-  realPrefixes.delete(UNFILED_POD_APP_PREFIX);
 
   const apps: PodApp[] = [];
 
@@ -457,24 +423,7 @@ export async function listPodApps(
     });
   }
 
-  apps.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
-
-  // Artifacts published from the pod root have no folder to be found under, so they get a synthetic
-  // app rather than disappearing from the listing. Appended after the sort so it always sits last.
-  const unfiledFunctions = functionsByPrefix.get(UNFILED_POD_APP_PREFIX) ?? [];
-  const unfiledDatabases = databasesByPrefix.get(UNFILED_POD_APP_PREFIX) ?? [];
-  if (unfiledFunctions.length > 0 || unfiledDatabases.length > 0) {
-    apps.push({
-      prefix: UNFILED_POD_APP_PREFIX,
-      name: null,
-      folderPath: null,
-      frames: [],
-      functions: unfiledFunctions,
-      databases: unfiledDatabases,
-      fileCount: 0,
-      collidingFolderNames: [],
-    });
-  }
+  apps.sort((a, b) => a.name.localeCompare(b.name));
 
   return new Ok(apps);
 }
@@ -482,7 +431,6 @@ export async function listPodApps(
 export type PodAppDeleteErrorCode =
   | "not_a_pod"
   | "not_found"
-  | "cannot_delete_unfiled"
   | "sandbox_unavailable"
   | "internal";
 
@@ -523,17 +471,6 @@ export async function deletePodApp(
   if (!pod.isProject()) {
     return new Err(
       new PodAppDeleteError("not_a_pod", "Apps only exist on Pod spaces.")
-    );
-  }
-
-  // The unfiled app is a presentation device, not a folder: its artifacts each belong to whoever
-  // published them at the pod root, so there is nothing coherent to delete.
-  if (prefix === UNFILED_POD_APP_PREFIX) {
-    return new Err(
-      new PodAppDeleteError(
-        "cannot_delete_unfiled",
-        "Artifacts published outside an app folder cannot be deleted as an app."
-      )
     );
   }
 
@@ -604,9 +541,7 @@ export async function deletePodApp(
   // which is what revokes the Frames' share tokens along with them. Colliding folders all normalize
   // onto this one prefix, so every one of them belongs to the app being deleted.
   const folderNames =
-    app.collidingFolderNames.length > 0
-      ? app.collidingFolderNames
-      : removeNulls([app.name]);
+    app.collidingFolderNames.length > 0 ? app.collidingFolderNames : [app.name];
   for (const folderName of folderNames) {
     const deleteFolderResult = await deleteProjectFile(auth, {
       space: pod,
@@ -634,7 +569,6 @@ export async function deletePodApp(
 export type PodAppCloneErrorCode =
   | "not_a_pod"
   | "not_found"
-  | "cannot_clone_unfiled"
   | "invalid_name"
   | "name_taken"
   | "sandbox_unavailable"
@@ -681,14 +615,6 @@ export async function clonePodApp(
   if (!pod.isProject()) {
     return new Err(
       new PodAppCloneError("not_a_pod", "Apps only exist on Pod spaces.")
-    );
-  }
-  if (prefix === UNFILED_POD_APP_PREFIX) {
-    return new Err(
-      new PodAppCloneError(
-        "cannot_clone_unfiled",
-        "Artifacts published outside an app folder are not an app and cannot be cloned."
-      )
     );
   }
 

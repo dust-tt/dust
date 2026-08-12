@@ -8,14 +8,6 @@ import { z } from "zod";
  * and database filenames. So these types describe a view assembled at read time, never stored.
  */
 
-/**
- * The prefix of the synthetic app collecting everything published from the pod root, which has no app
- * folder. Empty so it can never collide with a real prefix, which `normalizeAppPrefix` guarantees is
- * non-empty. Lives here rather than in `lib/api` so components can branch on it without pulling
- * server-only modules into the browser bundle.
- */
-export const UNFILED_POD_APP_PREFIX = "";
-
 export type PodAppFrame = {
   /** sId of the Frame's FileResource, or null for a source file with no row yet. */
   fileId: string | null;
@@ -51,13 +43,12 @@ export type PodAppDatabase = {
 
 export type PodApp = {
   /**
-   * The normalized app prefix, which is this app's identifier — apps have no sId. Empty string for
-   * the synthetic "unfiled" app collecting artifacts published from the pod root.
+   * The normalized app prefix, which is this app's identifier — apps have no sId.
    */
   prefix: string;
-  /** The folder name as authored (`TaskList`), or null for the unfiled app. */
-  name: string | null;
-  /** Canonical scoped path of the app folder, or null for the unfiled app. */
+  /** The folder name as authored (`TaskList`), falling back to the prefix if the folder is gone. */
+  name: string;
+  /** Canonical scoped path of the app folder, or null when only published artifacts remain. */
   folderPath: string | null;
   frames: PodAppFrame[];
   functions: PodAppFunction[];
@@ -112,7 +103,7 @@ export type ClonePodAppResponseBody = {
 /** What a delete removed, as the business layer reports it and the endpoint returns it. */
 export type PodAppDeleteSummary = {
   prefix: string;
-  name: string | null;
+  name: string;
   deletedFunctionSlugs: string[];
   deletedDatabaseNames: string[];
   deletedFolderNames: string[];

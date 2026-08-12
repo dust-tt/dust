@@ -240,7 +240,7 @@ describe("POST /api/w/:wId/pods/:podId/apps/:prefix/clone", () => {
       fileName: "orphan.ts",
     });
 
-    // The unfiled app's prefix is empty, so it cannot be addressed as a path segment at all.
+    // A prefix-less function belongs to no app, so an empty path segment addresses nothing.
     const res = await clone(workspace.sId, pod.sId, "", "Copy");
 
     expect([400, 404]).toContain(res.status);

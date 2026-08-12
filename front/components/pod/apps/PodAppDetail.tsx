@@ -12,9 +12,9 @@ import {
 interface PodAppDetailProps {
   app: PodApp;
   onOpenFrame: (frame: PodAppFrame) => void;
-  /** Absent when the viewer cannot delete (no write access, or the unfiled app). */
+  /** Absent when the viewer cannot delete (no write access). */
   onDelete?: () => void;
-  /** Absent when the app cannot be cloned (no write access, or the unfiled app). */
+  /** Absent when the app cannot be cloned (no write access). */
   onClone?: () => void;
 }
 
@@ -56,12 +56,8 @@ export function PodAppDetail({
     <ScrollArea className="h-full">
       <div className="flex flex-col gap-6 px-6 py-5">
         <div className="flex items-start justify-between gap-4">
-          <div className="flex min-w-0 flex-col gap-1">
-            <h3 className="heading-lg">{app.name ?? "Unfiled"}</h3>
-            <span className="copy-xs text-muted-foreground dark:text-muted-foreground-night">
-              {app.folderPath ??
-                "Published from the Pod root, so these are not owned by an app folder."}
-            </span>
+          <div className="min-w-0">
+            <h3 className="heading-lg">{app.name}</h3>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {onClone && (
