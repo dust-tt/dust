@@ -827,19 +827,25 @@ export async function clonePodApp(
   );
   const skipped: string[] = [];
 
+  // The copy's function sources, indexed by the name they publish under. A function's source is one
+  // file directly under `functions/`, named after it; anything nested below that (`functions/lib/`)
+  // is a helper the bundler pulls in, not a function of its own.
+  const functionSourceByName = new Map<string, string>();
+  for (const [relPath, destPath] of copiedPathByRelPath) {
+    const segments = relPath.split("/");
+    if (segments.length !== 2 || segments[0] !== APP_FUNCTIONS_SUBFOLDER) {
+      continue;
+    }
+    functionSourceByName.set(stripExtension(segments[1]), destPath);
+  }
+
   // Publish the copy's functions. The source path decides the prefix, so publishing from the copy's
   // folder is what gives the clone its own functions; description and execution mode are carried over
   // so the contract is identical.
   const publishedFunctionSlugs: string[] = [];
   for (const fn of source.functions) {
-    const sourceRelPath = [...copiedPathByRelPath.keys()].find(
-      (relPath) =>
-        relPath.startsWith(`${APP_FUNCTIONS_SUBFOLDER}/`) &&
-        relPath.slice(`${APP_FUNCTIONS_SUBFOLDER}/`.length).split("/")
-          .length === 1 &&
-        stripExtension(relPath.split("/").at(-1) ?? "") === fn.name
-    );
-    if (!sourceRelPath) {
+    const sourcePath = functionSourceByName.get(fn.name);
+    if (!sourcePath) {
       skipped.push(`function ${fn.name}`);
       continue;
     }
@@ -848,7 +854,7 @@ export async function clonePodApp(
       space: pod,
       slug: fn.name,
       description: fn.description,
-      path: copiedPathByRelPath.get(sourceRelPath) ?? "",
+      path: sourcePath,
       executionMode: fn.executionMode,
     });
     if (publishResult.isErr()) {
