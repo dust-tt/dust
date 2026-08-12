@@ -26,7 +26,7 @@ import {
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useReducer } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { useController } from "react-hook-form";
 
 const SLACK_CHANNEL_INTERNAL_ID_PREFIX = "slack-channel-";
