@@ -2,16 +2,33 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { z } from "zod";
 
+// A domain an agent asked to add to a Pod's allowlist, pending admin
+// approval. Lives as a section of the Pod's policy file: the proxy ignores
+// unknown fields, so only allowedDomains is authorization state — this
+// section is admin-workflow state riding along for atomic approve
+// transitions (one write moves a domain from requested to allowed).
+export type EgressDomainRequest = {
+  domain: string;
+  requestedAtMs: number;
+};
+
 export type EgressPolicy = {
   allowedDomains: string[];
+  requestedDomains?: EgressDomainRequest[];
 };
 
 export const EMPTY_EGRESS_POLICY = Object.freeze({
   allowedDomains: Object.freeze([]),
 }) as unknown as EgressPolicy;
 
+const EgressDomainRequestSchema = z.object({
+  domain: z.string(),
+  requestedAtMs: z.number(),
+});
+
 const EgressPolicyShapeSchema = z.object({
   allowedDomains: z.array(z.string()),
+  requestedDomains: z.array(EgressDomainRequestSchema).optional(),
 });
 
 function normalizeDnsName(value: string): Result<string, Error> {
@@ -138,8 +155,31 @@ export function normalizeEgressPolicy(
     return domains;
   }
 
+  // Requested domains are normalized but never rejected wholesale: a single
+  // malformed pending request must not brick reads (and thereby writes) of
+  // the whole policy file, so invalid entries are dropped. Requests whose
+  // domain is already allowed are dropped too — approve transitions and
+  // out-of-band allowlist additions both resolve them.
+  const allowed = new Set(domains.value);
+  const requestedByDomain = new Map<string, EgressDomainRequest>();
+  for (const request of policy.requestedDomains ?? []) {
+    const normalized = normalizeEgressPolicyDomain(request.domain);
+    if (normalized.isErr() || allowed.has(normalized.value)) {
+      continue;
+    }
+    if (!requestedByDomain.has(normalized.value)) {
+      requestedByDomain.set(normalized.value, {
+        ...request,
+        domain: normalized.value,
+      });
+    }
+  }
+
   return new Ok({
     allowedDomains: domains.value,
+    ...(requestedByDomain.size > 0
+      ? { requestedDomains: [...requestedByDomain.values()] }
+      : {}),
   });
 }
 
