@@ -13,14 +13,19 @@ import {
   ChevronDown,
   ChevronUp,
   DataTable,
+  DataTableLoadingSkeleton,
+  MOTION_DURATIONS,
+  MOTION_EASINGS,
   SearchInput,
-  Spinner,
   Tabs,
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import type { Transition, Variants } from "framer-motion";
+import { AnimatePresence, m, useReducedMotion } from "framer-motion";
+import type { ReactNode } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { AttributionRowData } from "./ConsumptionAttributionRowsTable";
 import { ConsumptionAttributionRowsTable } from "./ConsumptionAttributionRowsTable";
 import type { ConsumptionDimension } from "./consumptionDimensions";
@@ -33,6 +38,52 @@ import {
 const TOP_LIMIT = 25;
 
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
+
+type AttributionTransitionDirection = -1 | 0 | 1;
+
+interface AttributionTransition {
+  target: ConsumptionDimension | null;
+  direction: AttributionTransitionDirection;
+}
+
+const ATTRIBUTION_BODY_DISTANCE_PX = 4;
+
+const ATTRIBUTION_BODY_TRANSITION = {
+  duration: MOTION_DURATIONS.exit,
+  ease: MOTION_EASINGS.enter,
+} satisfies Transition;
+
+const ATTRIBUTION_BODY_VARIANTS: Variants = {
+  initial: (direction: number) => ({
+    opacity: direction === 0 ? 1 : 0,
+    x: direction * ATTRIBUTION_BODY_DISTANCE_PX,
+  }),
+  animate: {
+    opacity: 1,
+    x: 0,
+    transition: ATTRIBUTION_BODY_TRANSITION,
+  },
+  exit: (direction: number) => ({
+    opacity: direction === 0 ? 1 : 0,
+    pointerEvents: "none",
+    transition: direction === 0 ? { duration: 0 } : ATTRIBUTION_BODY_TRANSITION,
+    x: direction * -ATTRIBUTION_BODY_DISTANCE_PX,
+  }),
+};
+
+function getAttributionTransitionDirection(
+  currentDimension: ConsumptionDimension,
+  nextDimension: ConsumptionDimension
+): AttributionTransitionDirection {
+  const currentIndex = CONSUMPTION_DIMENSIONS.indexOf(currentDimension);
+  const nextIndex = CONSUMPTION_DIMENSIONS.indexOf(nextDimension);
+
+  if (currentIndex === nextIndex) {
+    return 0;
+  }
+
+  return nextIndex > currentIndex ? 1 : -1;
+}
 
 function buildColumns({
   hasAvatar,
@@ -155,6 +206,7 @@ function AttributionRows({
 }: AttributionRowsProps) {
   const { hasAvatar, avgLabel } = CONSUMPTION_DIMENSION_CONFIG[dimension];
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  const shouldReduceMotion = useReducedMotion();
 
   const {
     rows: allRows,
@@ -189,49 +241,71 @@ function AttributionRows({
     [hasAvatar, dimension, avgLabel, totalCredits]
   );
 
+  let contentKey = "content";
+  let content: ReactNode;
+
   if (isTopLoading) {
-    return (
-      <div className="flex h-48 items-center justify-center">
-        <Spinner size="lg" />
-      </div>
+    contentKey = "loading";
+    content = (
+      <DataTableLoadingSkeleton
+        rows={4}
+        showSelectionColumn={false}
+        showTrailingCell
+      />
     );
-  }
-  if (isTopError) {
-    return (
+  } else if (isTopError) {
+    content = (
       <div className="text-sm text-muted-foreground">
         Failed to load attribution.
       </div>
     );
-  }
-  if (rows.length === 0) {
-    return (
+  } else if (rows.length === 0) {
+    content = (
       <div className="text-sm text-muted-foreground">
         {search.trim()
           ? `No match for "${search.trim()}".`
           : "No consumption over this period."}
       </div>
     );
+  } else {
+    const data: AttributionRowData[] = rows.map((row) => ({
+      ...row,
+      isExpanded: expandedRowId === row.id,
+      onClick: () =>
+        setExpandedRowId((current) => (current === row.id ? null : row.id)),
+    }));
+
+    content = (
+      <div className="overflow-x-auto">
+        <ConsumptionAttributionRowsTable
+          data={data}
+          columns={columns}
+          workspaceId={workspaceId}
+          dimension={dimension}
+          period={period}
+          filter={filter}
+          onViewAll={onViewAll}
+        />
+      </div>
+    );
   }
 
-  const data: AttributionRowData[] = rows.map((row) => ({
-    ...row,
-    isExpanded: expandedRowId === row.id,
-    onClick: () =>
-      setExpandedRowId((current) => (current === row.id ? null : row.id)),
-  }));
-
   return (
-    <div className="overflow-x-auto">
-      <ConsumptionAttributionRowsTable
-        data={data}
-        columns={columns}
-        workspaceId={workspaceId}
-        dimension={dimension}
-        period={period}
-        filter={filter}
-        onViewAll={onViewAll}
-      />
-    </div>
+    <AnimatePresence initial={false} mode="popLayout">
+      <m.div
+        key={contentKey}
+        initial={shouldReduceMotion ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={shouldReduceMotion ? undefined : { opacity: 0 }}
+        transition={{
+          duration: shouldReduceMotion ? 0 : 0.1,
+          ease: MOTION_EASINGS.enter,
+        }}
+        aria-busy={isTopLoading}
+      >
+        {content}
+      </m.div>
+    </AnimatePresence>
   );
 }
 
@@ -259,6 +333,16 @@ export function ConsumptionAttributionTable({
   const { inputValue, debouncedValue, setValue } = useDebounce("", {
     delay: SEARCH_DEBOUNCE_DELAY_MS,
   });
+  const pendingPointerDimension = useRef<ConsumptionDimension | null>(null);
+  const [transition, setTransition] = useState<AttributionTransition>({
+    target: null,
+    direction: 0,
+  });
+  const shouldReduceMotion = useReducedMotion();
+  const effectiveTransitionDirection =
+    shouldReduceMotion || transition.target !== dimension
+      ? 0
+      : transition.direction;
 
   return (
     <div className="rounded-lg border border-border bg-panel-background p-4">
@@ -266,6 +350,14 @@ export function ConsumptionAttributionTable({
         value={dimension}
         onValueChange={(value) => {
           if (isConsumptionDimension(value)) {
+            setTransition({
+              target: value,
+              direction:
+                pendingPointerDimension.current === value
+                  ? getAttributionTransitionDirection(dimension, value)
+                  : 0,
+            });
+            pendingPointerDimension.current = null;
             onDimensionChange(value);
           }
         }}
@@ -276,6 +368,15 @@ export function ConsumptionAttributionTable({
               key={tabDimension}
               value={tabDimension}
               label={CONSUMPTION_DIMENSION_CONFIG[tabDimension].label}
+              onPointerDown={() => {
+                pendingPointerDimension.current = tabDimension;
+              }}
+              onPointerCancel={() => {
+                pendingPointerDimension.current = null;
+              }}
+              onKeyDown={() => {
+                pendingPointerDimension.current = null;
+              }}
             />
           ))}
         </TabsList>
@@ -287,17 +388,31 @@ export function ConsumptionAttributionTable({
         onChange={setValue}
         className="mt-3 w-full"
       />
-      <div className="pt-3">
-        {/* A dimension selects a different dataset, so its table state must not carry over. */}
-        <AttributionRows
-          key={dimension}
-          workspaceId={workspaceId}
-          dimension={dimension}
-          period={period}
-          filter={filter}
-          search={debouncedValue}
-          onViewAll={onViewAll}
-        />
+      <div className="relative overflow-hidden pt-3">
+        <AnimatePresence
+          initial={false}
+          mode="popLayout"
+          custom={effectiveTransitionDirection}
+        >
+          <m.div
+            key={dimension}
+            custom={effectiveTransitionDirection}
+            variants={ATTRIBUTION_BODY_VARIANTS}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            {/* A dimension selects a different dataset, so its table state must not carry over. */}
+            <AttributionRows
+              workspaceId={workspaceId}
+              dimension={dimension}
+              period={period}
+              filter={filter}
+              search={debouncedValue}
+              onViewAll={onViewAll}
+            />
+          </m.div>
+        </AnimatePresence>
       </div>
     </div>
   );
