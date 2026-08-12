@@ -1,25 +1,31 @@
-import type { ConsumptionPaceStatus } from "@app/components/workspace/analytics/consumption/consumptionPace";
-import {
-  consumptionPace,
-  formatRatioAsPercent,
-} from "@app/components/workspace/analytics/consumption/consumptionPace";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionOverview as ConsumptionOverviewType } from "@app/lib/api/analytics/consumption/overview";
+import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import { computeCreditUsageStatus } from "@app/lib/api/credits/usage_status";
 import { formatCredits } from "@app/lib/client/credits";
 import { useAwuPoolSummary } from "@app/lib/swr/credits";
 import { timeAgoFrom } from "@app/lib/utils";
+import type { CreditUsagePace } from "@app/types/api/credits/usage_status";
 import { ArrowUpRight, Button, Chip } from "@dust-tt/sparkle";
 
 const PACE_CHIP: Record<
-  ConsumptionPaceStatus,
-  { label: string; color: "highlight" | "info" }
+  CreditUsagePace,
+  { label: string; color: "highlight" | "info" | "warning" }
 > = {
   on_pace: { label: "On pace", color: "highlight" },
-  off_pace: { label: "Off pace", color: "info" },
+  elevated: { label: "Off pace", color: "info" },
+  critical: { label: "Critical", color: "warning" },
 };
+
+function cycleElapsedPercent(period: ConsumptionPeriod, nowMs: number): number {
+  const startMs = new Date(period.startDate).getTime();
+  const endMs = new Date(period.endDate).getTime();
+  const elapsedRatio = (nowMs - startMs) / (endMs - startMs);
+  return Math.round(Math.min(Math.max(elapsedRatio, 0), 1) * 100);
+}
 
 interface SummaryCardProps {
   label: string;
@@ -56,35 +62,34 @@ function ConsumptionSummary({
 }: ConsumptionSummaryProps) {
   const { totalActiveCredits } = useAwuPoolSummary({ workspaceId });
 
-  // The pool cap covers the billing cycle, so it only lines up with the
-  // period's spend when the period *is* the cycle. Over a "last N days" window
-  // we report the raw total and leave the cap out.
   const cap = period.kind === "cycle" ? totalActiveCredits : 0;
-  const pace =
-    cap > 0
-      ? consumptionPace({
-          usedCredits: overview.totalCredits,
-          capCredits: cap,
-          period: overview.period,
-          nowMs: Date.now(),
-        })
-      : null;
+  const nowMs = Date.now();
+  const status = computeCreditUsageStatus({
+    consumedAwuCredits: overview.totalCredits,
+    limitAwuCredits: cap,
+    billingCycle: {
+      cycleStart: new Date(overview.period.startDate),
+      cycleEnd: new Date(overview.period.endDate),
+    },
+    nowMs,
+  });
 
   const { topAgent, totalCredits } = overview;
 
   return (
     <div className="flex flex-col gap-4">
-      {pace && (
+      {status && (
         <div className="flex items-center justify-between gap-4 rounded-xl border border-border p-2">
           <div className="flex items-center gap-2">
             <Chip
               size="mini"
-              color={PACE_CHIP[pace.status].color}
-              label={PACE_CHIP[pace.status].label}
+              color={PACE_CHIP[status.pace].color}
+              label={PACE_CHIP[status.pace].label}
             />
             <span className="text-sm text-muted-foreground">
-              {formatRatioAsPercent(pace.usedRatio)} of the cap used,{" "}
-              {formatRatioAsPercent(pace.elapsedRatio)} of the cycle elapsed
+              {status.usedPercentage}% of the cap used,{" "}
+              {cycleElapsedPercent(overview.period, nowMs)}% of the cycle
+              elapsed
             </span>
           </div>
           <Button
@@ -101,8 +106,8 @@ function ConsumptionSummary({
           label="Used this period"
           value={formatCredits(totalCredits)}
           hint={
-            cap > 0
-              ? `${formatRatioAsPercent(totalCredits / cap)} of ${formatCredits(cap)} cap`
+            status
+              ? `${status.usedPercentage}% of ${formatCredits(cap)} cap`
               : null
           }
         />
@@ -111,7 +116,7 @@ function ConsumptionSummary({
           value={topAgent ? `@${topAgent.name}` : "—"}
           hint={
             topAgent && totalCredits > 0
-              ? `${formatRatioAsPercent(topAgent.credits / totalCredits)} of total spend`
+              ? `${Math.round((topAgent.credits / totalCredits) * 100)}% of total spend`
               : null
           }
         />

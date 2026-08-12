@@ -1,3 +1,4 @@
+import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type {
   ConsumptionPeriod,
   ConsumptionPeriodInput,
@@ -21,7 +22,6 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
-import { resolveDimensionLabels } from "./labels";
 
 export type ConsumptionOverviewTopAgent = {
   agentId: string;
