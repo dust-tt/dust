@@ -55,7 +55,7 @@ export function consumptionPeriodFromKey(
 }
 
 // Sorted, empty-dimension-free filter, so the same selection always produces
-// the same request body — needed for the SWR cache key to stay stable.
+// the same request body, needed for the SWR cache key to stay stable.
 export function normalizedConsumptionFilter(
   filter: ConsumptionScopeFilter | undefined
 ): ConsumptionScopeFilter | undefined {
