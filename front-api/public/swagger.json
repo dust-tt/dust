@@ -3630,6 +3630,10 @@
                       "users_and_agents"
                     ],
                     "description": "Optional availability to apply to imported or updated skills. editors is unpublished, workspace_users is published, and users_and_agents is discoverable. New skills default to editors and existing skills keep their current availability when omitted."
+                  },
+                  "metadata": {
+                    "type": "string",
+                    "description": "Optional client-owned labels, sent as a JSON-encoded string-to-string map (e.g. '{\"managedBy\":\"my-ci\"}'), stamped on each imported skill. Returned on GET as the skill's metadata field. Lets an external system tag skills it manages and reconcile them (list, then archive skills no longer in its desired state) without storing skill IDs. Sending metadata on re-import overwrites it; omitting it preserves the existing value."
                   }
                 }
               }
@@ -15005,6 +15009,17 @@
                 "$ref": "#/components/schemas/SkillSourceMetadata"
               }
             ]
+          },
+          "metadata": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Client-owned key/value labels attached to the skill. Set at import and used by external systems to tag and reconcile the skills they manage.",
+            "example": {
+              "managedBy": "my-ci"
+            }
           },
           "reinforcement": {
             "type": "string",

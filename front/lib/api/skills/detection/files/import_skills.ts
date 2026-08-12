@@ -16,6 +16,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   SkillAvailability,
+  SkillMetadata,
   SkillSourceType,
 } from "@app/types/assistant/skill_configuration";
 import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
@@ -66,6 +67,7 @@ export async function importSkillsFromFiles(
     availability,
     source = "local_file",
     onConflict = "skip",
+    metadata,
   }: {
     uploadedFiles: formidable.File[];
     names?: string[];
@@ -73,6 +75,7 @@ export async function importSkillsFromFiles(
     availability?: SkillAvailability;
     source?: FileImportSource;
     onConflict?: ImportConflictStrategyType;
+    metadata?: SkillMetadata;
   }
 ): Promise<Result<ImportSkillsResult, Error>> {
   const canCreateSkills = await auth.hasWorkspacePermission("create", "skill");
@@ -258,6 +261,7 @@ export async function importSkillsFromFiles(
         fileAttachments,
         source,
         sourceMetadata: { filePath: skill.skillMdPath },
+        metadata,
       });
 
       await FileResource.bulkSetUseCaseMetadata(auth, fileAttachments, {
@@ -305,6 +309,7 @@ export async function importSkillsFromFiles(
           icon,
           source,
           sourceMetadata: { filePath: skill.skillMdPath },
+          metadata: metadata ?? null,
           availability: availability ?? DEFAULT_SKILL_AVAILABILITY,
         },
         {

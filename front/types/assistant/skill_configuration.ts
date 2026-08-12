@@ -58,6 +58,13 @@ export const SkillSourceMetadataSchema = z.object({
 
 export type SkillSourceMetadata = z.infer<typeof SkillSourceMetadataSchema>;
 
+// Client-owned key/value labels attached to a skill (akin to Kubernetes labels
+// or cloud-resource tags). Dust does not prescribe the keys; external systems
+// use them to tag skills they manage and reconcile them without storing sIds.
+export const SkillMetadataSchema = z.record(z.string(), z.string());
+
+export type SkillMetadata = z.infer<typeof SkillMetadataSchema>;
+
 export const SkillWithoutInstructionsAndToolsSchema = z.object({
   id: z.number(),
   sId: z.string(),
@@ -71,6 +78,7 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
   icon: z.string().nullable(),
   source: z.enum(SKILL_SOURCES).nullable(),
   sourceMetadata: SkillSourceMetadataSchema.nullable(),
+  metadata: SkillMetadataSchema.nullable(),
   reinforcement: z.enum(SKILL_REINFORCEMENT_MODES),
   lastReinforcementAnalysisAt: z.string().nullable().optional(),
   selfImprovementLock: z.boolean(),

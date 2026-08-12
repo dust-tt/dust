@@ -11,6 +11,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   SkillAvailability,
+  SkillMetadata,
   SkillReinforcementMode,
   SkillSourceMetadata,
   SkillSourceType,
@@ -71,6 +72,10 @@ const SKILL_MODEL_ATTRIBUTES = {
     type: DataTypes.JSONB,
     allowNull: true,
   },
+  metadata: {
+    type: DataTypes.JSONB,
+    allowNull: true,
+  },
   availability: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -113,6 +118,7 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
 
   declare source: SkillSourceType | null;
   declare sourceMetadata: SkillSourceMetadata | null;
+  declare metadata: SkillMetadata | null;
   declare availability: CreationOptional<SkillAvailability>;
   declare favoriteCount: CreationOptional<number>;
 

@@ -81,6 +81,7 @@ import type {
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type {
   SkillAvailability,
+  SkillMetadata,
   SkillReinforcementMode,
   SkillSourceMetadata,
   SkillSourceType,
@@ -2069,6 +2070,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         icon: def.icon,
         source: null,
         sourceMetadata: null,
+        metadata: null,
         availability: SystemSkillsRegistry.isSystemSkill(def.sId)
           ? "workspace_users"
           : "users_and_agents",
@@ -2371,6 +2373,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           requestedSpaceIds: versionModel.requestedSpaceIds,
           source: versionModel.source,
           sourceMetadata: versionModel.sourceMetadata,
+          metadata: versionModel.metadata,
           availability: versionModel.availability,
           favoriteCount: this.favoriteCount,
           reinforcement: "auto",
@@ -2933,6 +2936,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       requestedSpaceIds,
       source,
       sourceMetadata,
+      metadata,
       status,
       userFacingDescription,
     }: {
@@ -2949,6 +2953,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       requestedSpaceIds: ModelId[];
       source?: SkillSourceType;
       sourceMetadata?: SkillSourceMetadata;
+      metadata?: SkillMetadata;
       status?: SkillStatus;
       userFacingDescription: string;
     }
@@ -3013,6 +3018,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           ...(status ? { status } : {}),
           ...(source ? { source } : {}),
           ...(sourceMetadata ? { sourceMetadata } : {}),
+          ...(metadata ? { metadata } : {}),
           ...(availability !== undefined ? { availability } : {}),
           ...(reinforcement !== undefined ? { reinforcement } : {}),
         },
@@ -4205,6 +4211,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       selfImprovementCostsCapAwuCredits: this.selfImprovementCostsCapAwuCredits,
       source: this.source,
       sourceMetadata: this.sourceMetadata,
+      metadata: this.metadata,
       tools: this.mcpServerViews.map((view) => {
         const serializedView = view.toJSON();
         const server = serializedView.server;
@@ -4320,6 +4327,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         ),
         source: skill.source,
         sourceMetadata: skill.sourceMetadata,
+        metadata: skill.metadata,
         createdAt: skill.createdAt,
         updatedAt: skill.updatedAt,
         availability: skill.availability,
