@@ -4,6 +4,7 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import type {
   AgentStateClassification,
   PendingToolCall,
+  UiView,
 } from "@app/components/assistant/conversation/types";
 import { getPendingToolCallKey } from "@app/components/assistant/conversation/types";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
@@ -27,6 +28,7 @@ interface InlineActivityStepsProps {
   onOpenDetails?: (messageId: string, actionId?: string) => void;
   owner: WorkspaceType;
   isLastMessage: boolean;
+  uiView: UiView;
 }
 
 function getCompletionLabel(
@@ -66,6 +68,7 @@ export function InlineActivitySteps({
   pendingToolCalls,
   onOpenDetails,
   owner,
+  uiView,
 }: InlineActivityStepsProps) {
   const isAgentMessageWithActions =
     isLightAgentMessageWithActionsType(agentMessage);
@@ -232,6 +235,7 @@ export function InlineActivitySteps({
         />
       )}
       extraBelowCollapse={extraBelowCollapse}
+      uiView={uiView}
     />
   );
 }

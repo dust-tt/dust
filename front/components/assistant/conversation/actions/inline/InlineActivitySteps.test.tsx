@@ -89,6 +89,7 @@ describe("InlineActivitySteps", () => {
         pendingToolCalls={[]}
         owner={mockOwner}
         isLastMessage
+        uiView="standard"
       />
     );
 
