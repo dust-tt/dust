@@ -35,7 +35,11 @@ const BILLED_CREDIT_AMOUNT_MICRO = 10_000_000;
 // footprints are deterministic in the assertions below.
 const TOKENS_PER_FOOTPRINT = 2;
 
-async function setupSettledMessageWithUsage() {
+async function setupSettledMessageWithUsage({
+  runCount = 1,
+}: {
+  runCount?: number;
+} = {}) {
   const {
     authenticator: auth,
     globalSpace,
@@ -50,17 +54,25 @@ async function setupSettledMessageWithUsage() {
     agentConfigurationId: agentConfiguration.sId,
     messagesCreatedAt: [],
   });
-  const { run } = await RunFactory.createWithUsage(auth, {
-    inputTokens: INPUT_TOKENS_COUNT,
-    outputTokens: OUTPUT_TOKENS_COUNT,
-    reasoningTokens: REASONING_TOKENS_COUNT,
-  });
+  const runs = [];
+  for (let index = 0; index < runCount; index++) {
+    const { run } = await RunFactory.createWithUsage(auth, {
+      inputTokens: INPUT_TOKENS_COUNT,
+      outputTokens: OUTPUT_TOKENS_COUNT,
+      reasoningTokens: REASONING_TOKENS_COUNT,
+    });
+    runs.push(run);
+  }
+  const run = runs[0];
+  if (!run) {
+    throw new Error("At least one run is required");
+  }
   // The default factory status is "created", which is a tracked status, so attribution runs.
   const { agentMessage } = await ConversationFactory.createAgentMessage(auth, {
     workspace,
     conversation,
     agentConfig: agentConfiguration,
-    runIds: [run.dustRunId],
+    runIds: runs.map(({ dustRunId }) => dustRunId),
   });
   await ConversationResource.updateAgentMessageCostCredits(auth, {
     agentMessageModelId: agentMessage.agentMessageId,
@@ -73,6 +85,7 @@ async function setupSettledMessageWithUsage() {
     workspace,
     conversation,
     run,
+    runs,
     conversationId: conversation.sId,
     agentMessageId: agentMessage.sId,
     agentMessageModelId: agentMessage.agentMessageId,
@@ -258,6 +271,124 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
     expect(
       (outputItem?.outputTokensCount ?? 0) + (toolItem?.outputTokensCount ?? 0)
     ).toBe(OUTPUT_TOKENS_COUNT - REASONING_TOKENS_COUNT);
+  });
+
+  it("removes only the last run's tool result footprint when the message stops", async () => {
+    const {
+      auth,
+      workspace,
+      conversation,
+      runs,
+      conversationId,
+      agentMessageId,
+      agentMessageModelId,
+    } = await setupSettledMessageWithUsage({ runCount: 2 });
+    const firstRun = runs[0];
+    const lastRun = runs[1];
+    if (!firstRun || !lastRun) {
+      throw new Error("Expected two runs");
+    }
+
+    const actions = [];
+    for (const run of [firstRun, lastRun]) {
+      const { action } = await AgentMCPActionFactory.create(auth, {
+        workspace,
+        conversationModelId: conversation.id,
+        agentMessageModelId,
+        status: "succeeded",
+        dustRunId: run.dustRunId,
+      });
+      actions.push(action);
+    }
+    const consumedAction = actions[0];
+    const unconsumedAction = actions[1];
+    if (!consumedAction || !unconsumedAction) {
+      throw new Error("Expected two actions");
+    }
+
+    const getItems = async () => {
+      const items =
+        await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+          auth,
+          {
+            agentMessageModelIds: [agentMessageModelId],
+            maxAttributionVersion:
+              AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+          }
+        );
+      return {
+        items,
+        toolByActionModelId: new Map(
+          items
+            .filter((item) => item.itemType === "tool")
+            .map((item) => [item.agentMCPActionId, item])
+        ),
+      };
+    };
+
+    // A resumable pass records both result footprints because either can still reach a later run.
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+    const { toolByActionModelId: toolsBeforeStop } = await getItems();
+    const consumedToolBeforeStop = toolsBeforeStop.get(consumedAction.id);
+    const unconsumedToolBeforeStop = toolsBeforeStop.get(unconsumedAction.id);
+    expect(consumedToolBeforeStop?.inputTokensCount).toBe(TOKENS_PER_FOOTPRINT);
+    expect(unconsumedToolBeforeStop?.inputTokensCount).toBe(
+      TOKENS_PER_FOOTPRINT
+    );
+
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId,
+      status: "gracefully_stopped",
+    });
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+
+    const { items: itemsAfterStop, toolByActionModelId: toolsAfterStop } =
+      await getItems();
+    const consumedToolAfterStop = toolsAfterStop.get(consumedAction.id);
+    const unconsumedToolAfterStop = toolsAfterStop.get(unconsumedAction.id);
+
+    expect(consumedToolAfterStop).toMatchObject({
+      inputTokensCount: TOKENS_PER_FOOTPRINT,
+      grossAttributedCreditAmountMicro:
+        consumedToolBeforeStop?.grossAttributedCreditAmountMicro,
+      directCreditAmountMicro: consumedToolBeforeStop?.directCreditAmountMicro,
+    });
+    expect(unconsumedToolAfterStop).toMatchObject({
+      inputTokensCount: 0,
+      directCreditAmountMicro:
+        unconsumedToolBeforeStop?.directCreditAmountMicro,
+    });
+    expect(
+      unconsumedToolAfterStop?.grossAttributedCreditAmountMicro
+    ).toBeLessThan(
+      unconsumedToolBeforeStop?.grossAttributedCreditAmountMicro ?? 0
+    );
+    expect(
+      itemsAfterStop.reduce(
+        (total, item) => total + (item.reconciledCreditAmountMicro ?? 0),
+        0
+      )
+    ).toBe(BILLED_CREDIT_AMOUNT_MICRO);
+
+    // A retry cannot subtract the result twice or restore it from stale potential evidence.
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+    expect(
+      (await getItems()).toolByActionModelId.get(unconsumedAction.id)
+    ).toMatchObject({
+      inputTokensCount: 0,
+      grossAttributedCreditAmountMicro:
+        unconsumedToolAfterStop?.grossAttributedCreditAmountMicro,
+    });
   });
 
   it("stores a sandbox child Frame call as direct-charge-only", async () => {
