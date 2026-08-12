@@ -91,7 +91,7 @@ function BreakdownColumn({
 
             return (
               <div key={row.id} className="min-w-0">
-                <div className="mb-1 flex items-center justify-between gap-2 text-xs">
+                <div className="mb-1 flex h-4 items-center justify-between gap-2 text-xs">
                   <span className="truncate text-muted-foreground">
                     {row.name}
                   </span>

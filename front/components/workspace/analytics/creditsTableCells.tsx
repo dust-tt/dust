@@ -32,7 +32,7 @@ export function CostShareBar({
     <progress
       aria-hidden="true"
       className={cn(
-        "h-1.5 appearance-none overflow-hidden rounded-full bg-muted",
+        "block h-1.5 appearance-none overflow-hidden rounded-full bg-muted",
         "[&::-webkit-progress-bar]:bg-muted",
         "[&::-webkit-progress-value]:rounded-full",
         "[&::-webkit-progress-value]:bg-primary",
