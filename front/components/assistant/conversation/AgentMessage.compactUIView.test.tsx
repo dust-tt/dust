@@ -383,7 +383,7 @@ describe("AgentMessage compact UI view", () => {
   });
 
   describe("Frame link relocation", () => {
-    it("renders one Frame card at the bottom (not the top) for a compact Activation Pod message with one Frame", () => {
+    it("renders one Frame card at the bottom (not the top) for a compact UI message with one Frame", () => {
       const frameFile = buildFrameFile();
       useAutoOpenSidePanelMock.mockReturnValue({
         interactiveFiles: [frameFile],
@@ -408,7 +408,7 @@ describe("AgentMessage compact UI view", () => {
       });
     });
 
-    it("renders one bottom Frame card per Frame for a compact Activation Pod message with multiple Frames", () => {
+    it("renders one bottom Frame card per Frame for a compact UI message with multiple Frames", () => {
       const frameFiles = [
         buildFrameFile({ fileId: "fil_frame_1", title: "First Frame" }),
         buildFrameFile({ fileId: "fil_frame_2", title: "Second Frame" }),
@@ -423,7 +423,7 @@ describe("AgentMessage compact UI view", () => {
       expect(screen.getAllByTestId("bottom-frame-citation")).toHaveLength(2);
     });
 
-    it("renders no Frame container for a compact Activation Pod message without a Frame", () => {
+    it("renders no Frame container for a compact UI message without a Frame", () => {
       useAutoOpenSidePanelMock.mockReturnValue({ interactiveFiles: [] });
 
       renderAgentMessage({ uiView: "compact" });
@@ -434,7 +434,7 @@ describe("AgentMessage compact UI view", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("keeps the Frame link at the top for non-Activation-Pod messages", () => {
+    it("keeps the Frame link at the top for non-compact UI messages", () => {
       const frameFile = buildFrameFile();
       useAutoOpenSidePanelMock.mockReturnValue({
         interactiveFiles: [frameFile],
@@ -450,7 +450,7 @@ describe("AgentMessage compact UI view", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("suppresses the inline Frame preview directive for compact Activation Pod messages", () => {
+    it("suppresses the inline Frame preview directive for compact UI messages", () => {
       renderAgentMessage({
         uiView: "compact",
         agentMessageOverrides: {
@@ -463,7 +463,7 @@ describe("AgentMessage compact UI view", () => {
       expect(screen.queryByText("Quarterly Report")).not.toBeInTheDocument();
     });
 
-    it("keeps the inline Frame preview directive for non-Activation-Pod messages", () => {
+    it("keeps the inline Frame preview directive for non-compact UI messages", () => {
       renderAgentMessage({
         uiView: "standard",
         agentMessageOverrides: {
@@ -476,7 +476,7 @@ describe("AgentMessage compact UI view", () => {
       expect(screen.getByText("Quarterly Report")).toBeInTheDocument();
     });
 
-    it("keeps non-Frame inline file previews for compact Activation Pod messages", () => {
+    it("keeps non-Frame inline file previews for compact UI messages", () => {
       renderAgentMessage({
         uiView: "compact",
         agentMessageOverrides: {

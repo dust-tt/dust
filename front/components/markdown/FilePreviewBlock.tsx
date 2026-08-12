@@ -1,4 +1,5 @@
 import { PreviewableCitation } from "@app/components/assistant/conversation/attachment/PreviewableCitation";
+import type { UiView } from "@app/components/assistant/conversation/types";
 import {
   FILE_PREVIEW_COMPONENT_NAME,
   FILE_PREVIEW_DIRECTIVE_NAME,
@@ -12,10 +13,9 @@ import { visit } from "unist-util-visit";
 
 interface FilePreviewBlockProps {
   contentType?: string;
-  // When true, the compact Activation Pod UI is used
-  hideInteractiveContent?: boolean;
   path: string;
   title?: string;
+  uiView?: UiView;
 }
 
 function getDirectiveLabelText(children: unknown): string | undefined {
@@ -43,9 +43,9 @@ function getDirectiveLabelText(children: unknown): string | undefined {
 
 export function FilePreviewBlock({
   contentType,
-  hideInteractiveContent,
   path,
   title,
+  uiView,
 }: FilePreviewBlockProps) {
   if (!path) {
     return null;
@@ -57,7 +57,7 @@ export function FilePreviewBlock({
     fileName,
   });
 
-  if (hideInteractiveContent && isInteractiveContentType(fileContentType)) {
+  if (uiView === "compact" && isInteractiveContentType(fileContentType)) {
     return null;
   }
 
@@ -77,15 +77,13 @@ export function FilePreviewBlock({
   );
 }
 
-export function getFilePreviewPlugin(options?: {
-  hideInteractiveContent?: boolean;
-}) {
-  if (!options?.hideInteractiveContent) {
+export function getFilePreviewPlugin(options?: { uiView?: UiView }) {
+  if (options?.uiView !== "compact") {
     return FilePreviewBlock;
   }
 
   return function CompactFilePreviewBlock(props: FilePreviewBlockProps) {
-    return <FilePreviewBlock {...props} hideInteractiveContent />;
+    return <FilePreviewBlock {...props} uiView="compact" />;
   };
 }
 

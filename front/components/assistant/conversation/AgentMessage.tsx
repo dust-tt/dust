@@ -1309,13 +1309,7 @@ function AgentMessageContent({
       action_card: getActionCardPlugin(onQuickReplySend, isLastMessage),
       // In the compact UI, the inline Frame preview directive is
       // suppressed here, the Frame is instead rendered as a bottom citation card.
-      ...(uiView === "compact"
-        ? {
-            file_preview: getFilePreviewPlugin({
-              hideInteractiveContent: true,
-            }),
-          }
-        : {}),
+      file_preview: getFilePreviewPlugin({ uiView }),
       ...propsAdditionalMarkdownComponents,
     }),
     [
@@ -1568,7 +1562,7 @@ function getCitations({
   });
 }
 
-// Renders Frame files as bottom citation cards for the compact Activation Pod UI
+// Renders Frame files as bottom citation cards for the compact UI
 function getFrameCitations({
   files,
   openPanel,

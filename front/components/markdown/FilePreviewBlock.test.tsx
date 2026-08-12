@@ -235,8 +235,8 @@ describe("getFilePreviewPlugin", () => {
     expect(screen.getByText("data.csv")).toBeInTheDocument();
   });
 
-  it("hides Frame files when hideInteractiveContent is set", () => {
-    const FilePreview = getFilePreviewPlugin({ hideInteractiveContent: true });
+  it("hides Frame files when uiView is compact", () => {
+    const FilePreview = getFilePreviewPlugin({ uiView: "compact" });
 
     render(
       <FilePreviewProvider owner={mockOwner}>
@@ -251,8 +251,8 @@ describe("getFilePreviewPlugin", () => {
     expect(screen.queryByText("frame.tsx")).not.toBeInTheDocument();
   });
 
-  it("still renders non-Frame files when hideInteractiveContent is set", () => {
-    const FilePreview = getFilePreviewPlugin({ hideInteractiveContent: true });
+  it("still renders non-Frame files when uiView is compact", () => {
+    const FilePreview = getFilePreviewPlugin({ uiView: "compact" });
 
     render(
       <FilePreviewProvider owner={mockOwner}>
