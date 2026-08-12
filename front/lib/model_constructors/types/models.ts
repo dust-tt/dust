@@ -43,6 +43,7 @@ export const GLM_5 = "glm-5" as const;
 export const GLM_5P2 = "glm-5p2" as const;
 
 export const GROK_4_5 = "grok-4.5" as const;
+export const GROK_4_6 = "grok-4.6" as const;
 
 // Dummy model used for local/dev testing (static replies, simulated credit
 // consumption). Served by the in-process noop endpoint, not an external API.
@@ -90,6 +91,7 @@ export const MODELS = [
   GLM_5,
   GLM_5P2,
   GROK_4_5,
+  GROK_4_6,
   NOOP_MODEL,
 ] as const;
 
@@ -114,5 +116,6 @@ export const ORDERED_LARGE_MODELS = [
   GPT_5,
   GPT_5_1,
   GEMINI_3_1_PRO,
+  GROK_4_6,
   GROK_4_5,
 ];

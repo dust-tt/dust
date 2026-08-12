@@ -395,6 +395,11 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     medium: "balanced",
     high: "balanced",
   },
+  "grok-4.6": {
+    light: "balanced",
+    medium: "balanced",
+    high: "balanced",
+  },
   "grok-4-latest": {
     none: "balanced",
     light: "balanced",

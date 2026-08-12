@@ -1,6 +1,7 @@
 import type { ModelConfigurationType } from "./types";
 
 export const GROK_4_5_MODEL_ID = "grok-4.5" as const;
+export const GROK_4_6_MODEL_ID = "grok-4.6" as const;
 
 // Deprecated. As of 19/05/26, legacy Grok model IDs point to grok-4.3,
 // including older IDs such as grok-3-mini-high.
@@ -80,7 +81,7 @@ export const GROK_3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   },
 };
 
-// https://docs.x.ai/developers/models/grok-4.5
+// Verified 2026-08-12: https://docs.x.ai/developers/models/grok-4.5
 export const GROK_4_5_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "xai",
   modelId: GROK_4_5_MODEL_ID,
@@ -91,9 +92,9 @@ export const GROK_4_5_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description:
     "xAI's Grok 4.5 flagship model (500k context, reasoning, vision).",
-  shortDescription: "xAI's latest flagship model.",
+  shortDescription: "xAI's previous flagship model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 8_192,
   supportsVision: true,
   supportedReasoningEfforts: {
@@ -108,6 +109,47 @@ export const GROK_4_5_MODEL_CONFIG: ModelConfigurationType = {
     featureFlag: "xai_feature",
   },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
+};
+
+// Specs verified 2026-08-12 against
+// https://docs.x.ai/developers/models/grok-4.6 (500k native context, text and
+// image input, function calling, structured output, reasoning). Dust caps the
+// usable context at 256k and output at 64k, leaving a 192k prompt budget below
+// xAI's 200k long-context pricing threshold.
+export const GROK_4_6_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "xai",
+  modelId: GROK_4_6_MODEL_ID,
+  displayName: "Grok 4.6",
+  contextSize: 256_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "xAI's Grok 4.6 flagship model for coding and long-running agentic work (256k context, reasoning, vision).",
+  shortDescription: "xAI's latest flagship model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportedReasoningEfforts: {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "high",
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  availableIfOneOf: {
+    featureFlag: "xai_feature",
+  },
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
+  // xAI lists only US clusters (us-east-1 and us-west-2) at launch:
+  // https://docs.x.ai/developers/models/grok-4.6 (2026-08-12).
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": false,

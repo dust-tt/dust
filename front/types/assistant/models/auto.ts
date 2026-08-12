@@ -23,7 +23,7 @@ import type {
   ModelProviderIdType,
   ReasoningEffort,
 } from "./types";
-import { GROK_3_MINI_MODEL_ID, GROK_4_5_MODEL_ID } from "./xai";
+import { GROK_3_MINI_MODEL_ID, GROK_4_6_MODEL_ID } from "./xai";
 
 // Auto-routing meta-models: sentinels that never name a concrete model but are
 // resolved to one at message-send time by walking an ordered candidate pool (a
@@ -97,7 +97,7 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       },
       {
         providerId: "xai",
-        modelId: GROK_4_5_MODEL_ID,
+        modelId: GROK_4_6_MODEL_ID,
         reasoningEffort: "high",
       },
       {
