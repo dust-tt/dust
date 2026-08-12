@@ -11,6 +11,20 @@ export type GetSkillsResponseBody = {
   })[];
 };
 
+export type SkillSearchResult = Pick<
+  SkillWithoutInstructionsAndToolsType,
+  | "editedBy"
+  | "icon"
+  | "name"
+  | "requestedSpaceIds"
+  | "sId"
+  | "userFacingDescription"
+>;
+
+export type SearchSkillsResponseBody = {
+  skills: SkillSearchResult[];
+};
+
 export type GetSkillsWithRelationsResponseBody = {
   skills: (SkillWithoutInstructionsAndToolsWithRelationsType & {
     isFavorite?: boolean;
