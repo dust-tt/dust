@@ -29,6 +29,19 @@ export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =
     source: "Sources",
   };
 
+export const USAGE_FILTER_CATEGORY_SINGULAR_LABEL: Record<
+  UsageFilterCategory,
+  string
+> = {
+  agent: "Agent",
+  member: "Member",
+  group: "Group",
+  model: "Model",
+  tool: "Tool",
+  skill: "Skill",
+  source: "Source",
+};
+
 export const USAGE_FILTER_SCOPE_LABEL: Record<AgentConfigurationScope, string> =
   {
     global: "Company",
@@ -114,6 +127,31 @@ export type UsageFilterOptionForCategory<C extends UsageFilterCategory> =
 export type UsageFilter = {
   [C in UsageFilterCategory]?: UsageFilterOptionForCategory<C>[];
 };
+
+export interface UsageFilterSummary {
+  category: UsageFilterCategory;
+  categoryLabel: string;
+  options: Array<{ id: string; name: string }>;
+}
+
+export function getUsageFilterSummaries(
+  filter: UsageFilter
+): UsageFilterSummary[] {
+  return USAGE_FILTER_CATEGORIES.flatMap((category) => {
+    const options = filter[category];
+    if (!options?.length) {
+      return [];
+    }
+
+    return [
+      {
+        category,
+        categoryLabel: USAGE_FILTER_CATEGORY_SINGULAR_LABEL[category],
+        options: options.map(({ id, name }) => ({ id, name })),
+      },
+    ];
+  });
+}
 
 export function usageFilterSelectionCount(filter: UsageFilter): number {
   return USAGE_FILTER_CATEGORIES.reduce(
