@@ -30,6 +30,16 @@ export function formatConsumptionDate(date: string | number): string {
   });
 }
 
+// The endpoints bucket the whole period, so the tail of a series is the part of
+// the cycle still to come. The bucket holding the present is the last one that
+// has started, which is all it takes to tell the two apart.
+export function findPartialTimestamp(
+  points: { timestamp: number }[]
+): number | undefined {
+  const nowMs = Date.now();
+  return points.findLast((point) => point.timestamp <= nowMs)?.timestamp;
+}
+
 export function consumptionPeriodLabel(
   selection: ConsumptionPeriodSelection
 ): string {

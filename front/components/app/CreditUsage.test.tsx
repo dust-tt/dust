@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { CreditUsageState } from "./CreditUsage";
 import { CreditUsage } from "./CreditUsage";
 
-const ON_PACE_STATE = {
+const ON_TARGET_STATE = {
   usedPercentage: 80,
   resetInDays: 5,
   target: "on_target",
@@ -11,7 +11,7 @@ const ON_PACE_STATE = {
 
 describe("CreditUsage", () => {
   it("renders the compact profile menu presentation", () => {
-    render(<CreditUsage state={ON_PACE_STATE} variant="profile_menu" />);
+    render(<CreditUsage state={ON_TARGET_STATE} variant="profile_menu" />);
 
     expect(screen.getByText("Credits")).toBeInTheDocument();
     expect(screen.getByText("80%")).toBeInTheDocument();
@@ -26,7 +26,7 @@ describe("CreditUsage", () => {
     const rendered = render(
       <CreditUsage
         state={{
-          ...ON_PACE_STATE,
+          ...ON_TARGET_STATE,
           usedPercentage: 120,
           resetInDays: 1,
           target: "critical",
@@ -49,7 +49,7 @@ describe("CreditUsage", () => {
   it("uses the warning treatment for elevated usage", () => {
     render(
       <CreditUsage
-        state={{ ...ON_PACE_STATE, target: "elevated" }}
+        state={{ ...ON_TARGET_STATE, target: "elevated" }}
         variant="companion"
       />
     );
