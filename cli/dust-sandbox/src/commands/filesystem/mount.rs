@@ -9,14 +9,29 @@ pub struct MountArgs {
     /// Directory where the filesystem will appear
     #[arg(long)]
     mountpoint: PathBuf,
-    /// Directory containing files.sqlite3 and file contents
+    /// Local directory used only for open files and write staging
     #[arg(long)]
-    state_dir: PathBuf,
+    staging_dir: PathBuf,
+    /// Front base URL, for example http://host.docker.internal:3000
+    #[arg(long)]
+    api_url: String,
+    /// Workspace string ID carried by the sandbox filesystem token
+    #[arg(long)]
+    workspace_id: String,
+    /// Mode-0600 file containing the sandbox filesystem token
+    #[arg(long)]
+    token_file: PathBuf,
 }
 
 #[cfg(target_os = "linux")]
 pub fn run(args: MountArgs) -> anyhow::Result<()> {
-    super::fuse::mount(&args.mountpoint, &args.state_dir)
+    super::fuse::mount(
+        &args.mountpoint,
+        &args.staging_dir,
+        &args.api_url,
+        &args.workspace_id,
+        &args.token_file,
+    )
 }
 
 #[cfg(not(target_os = "linux"))]

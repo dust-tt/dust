@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use std::ffi::OsStr;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io;
 use std::os::unix::fs::FileExt;
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -16,13 +17,31 @@ use fuser::{
 };
 use tracing::info;
 
-use super::store::{FileStore, Node, NodeKind, ROOT_ID};
+use super::store::{is_writable, FileStore, Node, NodeKind, ROOT_ID};
 
 const METADATA_CACHE_TTL: Duration = Duration::from_secs(1);
 const BLOCK_SIZE: u32 = 4096;
 
-pub fn mount(mountpoint: &Path, state_dir: &Path) -> anyhow::Result<()> {
-    let store = FileStore::open(state_dir).context("failed to open filesystem state")?;
+pub fn mount(
+    mountpoint: &Path,
+    staging_dir: &Path,
+    api_url: &str,
+    workspace_id: &str,
+    token_file: &Path,
+) -> anyhow::Result<()> {
+    let metadata = fs::metadata(token_file).context("failed to inspect filesystem token file")?;
+    if metadata.permissions().mode() & 0o077 != 0 {
+        anyhow::bail!("filesystem token file must not be readable by group or others");
+    }
+    let token = fs::read_to_string(token_file)
+        .context("failed to read filesystem token file")?
+        .trim()
+        .to_owned();
+    if token.is_empty() {
+        anyhow::bail!("filesystem token file is empty");
+    }
+    let store = FileStore::open(staging_dir, api_url, workspace_id, token)
+        .context("failed to initialize filesystem namespace")?;
     let filesystem = DustFuse::new(store);
     let mut config = Config::default();
     config.mount_options = vec![
@@ -38,7 +57,7 @@ pub fn mount(mountpoint: &Path, state_dir: &Path) -> anyhow::Result<()> {
 
     info!(
         mountpoint = %mountpoint.display(),
-        state_dir = %state_dir.display(),
+        staging_dir = %staging_dir.display(),
         "mounting sandbox filesystem"
     );
     fuser::mount(filesystem, mountpoint, &config)
@@ -48,6 +67,10 @@ pub fn mount(mountpoint: &Path, state_dir: &Path) -> anyhow::Result<()> {
 struct OpenHandle {
     node_id: u64,
     file: File,
+    expected_blob_id: Option<String>,
+    content_type: String,
+    dirty: bool,
+    writable: bool,
 }
 
 struct Inner {
@@ -106,14 +129,57 @@ impl DustFuse {
     }
 
     fn open_node(&self, inner: &mut Inner, node_id: u64, flags: i32) -> io::Result<u64> {
-        if flags & libc::O_TRUNC != 0 {
-            inner.store.set_size(node_id, 0)?;
+        let writable = is_writable(flags);
+        if writable
+            && inner
+                .handles
+                .values()
+                .any(|open| open.node_id == node_id && open.writable)
+        {
+            return Err(errno(libc::EBUSY));
         }
-        let file = inner.store.open_content(node_id, flags)?;
+        let opened = inner.store.open_content(node_id, flags)?;
+        let dirty = writable && flags & libc::O_TRUNC != 0;
+        if dirty {
+            opened.file.set_len(0)?;
+            inner.store.record_size(node_id, 0);
+        }
         let handle = inner.next_handle;
         inner.next_handle = inner.next_handle.saturating_add(1);
-        inner.handles.insert(handle, OpenHandle { node_id, file });
+        inner.handles.insert(
+            handle,
+            OpenHandle {
+                node_id,
+                file: opened.file,
+                expected_blob_id: opened.expected_blob_id,
+                content_type: opened.content_type,
+                dirty,
+                writable,
+            },
+        );
         Ok(handle)
+    }
+
+    fn commit_handle(inner: &mut Inner, handle: u64) -> io::Result<()> {
+        let Inner { store, handles, .. } = inner;
+        let open = handles.get_mut(&handle).ok_or_else(|| errno(libc::EBADF))?;
+        if !open.dirty {
+            return open.file.sync_data();
+        }
+        let committed = store.commit_content(
+            open.node_id,
+            open.expected_blob_id.as_deref(),
+            &open.content_type,
+            &open.file,
+        )?;
+        open.expected_blob_id = committed.blob_id().map(str::to_owned);
+        open.content_type = committed.content_type().to_owned();
+        open.dirty = false;
+        Ok(())
+    }
+
+    fn is_open(inner: &Inner, node_id: u64) -> bool {
+        inner.handles.values().any(|open| open.node_id == node_id)
     }
 }
 
@@ -156,7 +222,7 @@ impl Filesystem for DustFuse {
         _atime: Option<TimeOrNow>,
         _mtime: Option<TimeOrNow>,
         _ctime: Option<SystemTime>,
-        _handle: Option<FileHandle>,
+        handle: Option<FileHandle>,
         _creation_time: Option<SystemTime>,
         _change_time: Option<SystemTime>,
         _backup_time: Option<SystemTime>,
@@ -169,7 +235,18 @@ impl Filesystem for DustFuse {
             }
             let mut inner = self.lock()?;
             if let Some(size) = size {
-                inner.store.set_size(inode.0, size)?;
+                if let Some(handle) = handle {
+                    let open = inner
+                        .handles
+                        .get_mut(&handle.0)
+                        .filter(|open| open.node_id == inode.0 && open.writable)
+                        .ok_or_else(|| errno(libc::EBADF))?;
+                    open.file.set_len(size)?;
+                    open.dirty = true;
+                    inner.store.record_size(inode.0, size);
+                } else {
+                    inner.store.set_size(inode.0, size)?;
+                }
             }
             if let Some(mode) = mode {
                 let permissions = u16::try_from(mode & 0o7777).map_err(|_| errno(libc::EINVAL))?;
@@ -195,7 +272,7 @@ impl Filesystem for DustFuse {
         let result = (|| {
             let name = utf8_name(name)?;
             let permissions = permissions(mode, umask)?;
-            let mut inner = self.lock()?;
+            let inner = self.lock()?;
             inner.store.create_directory(parent.0, name, permissions)
         })();
         match result {
@@ -208,6 +285,10 @@ impl Filesystem for DustFuse {
         let result = (|| {
             let name = utf8_name(name)?;
             let mut inner = self.lock()?;
+            let node = inner.store.lookup(parent.0, name)?;
+            if Self::is_open(&inner, node.id) {
+                return Err(errno(libc::EBUSY));
+            }
             inner.store.remove_file(parent.0, name)
         })();
         reply_empty(result, reply);
@@ -217,6 +298,10 @@ impl Filesystem for DustFuse {
         let result = (|| {
             let name = utf8_name(name)?;
             let mut inner = self.lock()?;
+            let node = inner.store.lookup(parent.0, name)?;
+            if Self::is_open(&inner, node.id) {
+                return Err(errno(libc::EBUSY));
+            }
             inner.store.remove_directory(parent.0, name)
         })();
         reply_empty(result, reply);
@@ -239,7 +324,19 @@ impl Filesystem for DustFuse {
         let result = (|| {
             let name = utf8_name(name)?;
             let new_name = utf8_name(new_name)?;
-            let mut inner = self.lock()?;
+            let inner = self.lock()?;
+            let source = inner.store.lookup(parent.0, name)?;
+            if Self::is_open(&inner, source.id) {
+                return Err(errno(libc::EBUSY));
+            }
+            match inner.store.lookup(new_parent.0, new_name) {
+                Ok(destination) if Self::is_open(&inner, destination.id) => {
+                    return Err(errno(libc::EBUSY));
+                }
+                Ok(_) => {}
+                Err(error) if error.raw_os_error() == Some(libc::ENOENT) => {}
+                Err(error) => return Err(error),
+            }
             inner.store.rename(parent.0, name, new_parent.0, new_name)?;
             Ok(())
         })();
@@ -303,12 +400,13 @@ impl Filesystem for DustFuse {
             let mut inner = self.lock()?;
             let open = inner
                 .handles
-                .get(&handle.0)
+                .get_mut(&handle.0)
                 .ok_or_else(|| errno(libc::EBADF))?;
             let node_id = open.node_id;
             let written = open.file.write_at(data, offset)?;
             let size = open.file.metadata()?.len();
-            inner.store.record_size(node_id, size)?;
+            open.dirty = true;
+            inner.store.record_size(node_id, size);
             u32::try_from(written).map_err(|_| errno(libc::EOVERFLOW))
         })();
         match result {
@@ -326,12 +424,8 @@ impl Filesystem for DustFuse {
         reply: ReplyEmpty,
     ) {
         let result = (|| {
-            let inner = self.lock()?;
-            let open = inner
-                .handles
-                .get(&handle.0)
-                .ok_or_else(|| errno(libc::EBADF))?;
-            open.file.sync_data()
+            let mut inner = self.lock()?;
+            Self::commit_handle(&mut inner, handle.0)
         })();
         reply_empty(result, reply);
     }
@@ -347,11 +441,9 @@ impl Filesystem for DustFuse {
         reply: ReplyEmpty,
     ) {
         let result = self.lock().and_then(|mut inner| {
-            inner
-                .handles
-                .remove(&handle.0)
-                .map(|_| ())
-                .ok_or_else(|| errno(libc::EBADF))
+            Self::commit_handle(&mut inner, handle.0)?;
+            inner.handles.remove(&handle.0);
+            Ok(())
         });
         reply_empty(result, reply);
     }
@@ -365,7 +457,8 @@ impl Filesystem for DustFuse {
         reply: ReplyEmpty,
     ) {
         let result = (|| {
-            let inner = self.lock()?;
+            let mut inner = self.lock()?;
+            Self::commit_handle(&mut inner, handle.0)?;
             let open = inner
                 .handles
                 .get(&handle.0)

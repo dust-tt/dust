@@ -1,0 +1,370 @@
+use std::fs::File;
+use std::io;
+
+use reqwest::blocking::{Body, Client};
+use reqwest::header::{CONTENT_LENGTH, CONTENT_TYPE};
+use serde::{Deserialize, Serialize};
+
+const FILESYSTEM_ERROR_HEADER: &str = "x-dust-filesystem-error";
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum NodeKind {
+    File,
+    Directory,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteNode {
+    pub id: u64,
+    pub parent_id: Option<u64>,
+    pub name: String,
+    pub kind: NodeKind,
+    pub mode: u16,
+    pub size: u64,
+    pub content_type: Option<String>,
+    pub blob_id: Option<String>,
+    pub created_at_ms: i64,
+    pub modified_at_ms: i64,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContentDownload {
+    pub blob_id: Option<String>,
+    pub download_url: Option<String>,
+    pub content_type: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContentUpload {
+    pub blob_id: String,
+    pub upload_url: String,
+    pub content_type: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct OperationResponse {
+    roots: Option<Vec<RemoteNode>>,
+    node: Option<RemoteNode>,
+    nodes: Option<Vec<RemoteNode>>,
+    next_after_name: Option<String>,
+    content: Option<ContentDownload>,
+    upload: Option<ContentUpload>,
+}
+
+#[derive(Serialize)]
+#[serde(
+    tag = "operation",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+enum Operation<'a> {
+    Initialize,
+    Lookup {
+        parent_id: u64,
+        name: &'a str,
+    },
+    GetAttr {
+        node_id: u64,
+    },
+    ReadDir {
+        node_id: u64,
+        after_name: Option<&'a str>,
+        limit: u16,
+    },
+    Create {
+        parent_id: u64,
+        name: &'a str,
+        kind: NodeKind,
+        mode: u16,
+    },
+    SetAttributes {
+        node_id: u64,
+        mode: u16,
+    },
+    GetContent {
+        node_id: u64,
+    },
+    PrepareContentUpload {
+        node_id: u64,
+        expected_blob_id: Option<&'a str>,
+        content_type: &'a str,
+    },
+    CommitContentUpload {
+        node_id: u64,
+        expected_blob_id: Option<&'a str>,
+        blob_id: &'a str,
+        content_type: &'a str,
+    },
+    Remove {
+        request_id: &'a str,
+        parent_id: u64,
+        name: &'a str,
+    },
+    Rename {
+        request_id: &'a str,
+        parent_id: u64,
+        name: &'a str,
+        new_parent_id: u64,
+        new_name: &'a str,
+    },
+}
+
+#[derive(Clone)]
+pub struct FileSystemClient {
+    http: Client,
+    endpoint: String,
+    token: String,
+}
+
+impl FileSystemClient {
+    pub fn new(api_url: &str, workspace_id: &str, token: String) -> io::Result<Self> {
+        let http = Client::builder()
+            .build()
+            .map_err(|error| io::Error::new(io::ErrorKind::Other, error))?;
+        Ok(Self {
+            http,
+            endpoint: format!(
+                "{}/api/v1/w/{}/sandbox/filesystem",
+                api_url.trim_end_matches('/'),
+                workspace_id
+            ),
+            token,
+        })
+    }
+
+    fn operation(&self, operation: &Operation<'_>) -> io::Result<OperationResponse> {
+        let response = self
+            .http
+            .post(&self.endpoint)
+            .bearer_auth(&self.token)
+            .json(operation)
+            .send()
+            .map_err(network_error)?;
+        if !response.status().is_success() {
+            let code = response
+                .headers()
+                .get(FILESYSTEM_ERROR_HEADER)
+                .and_then(|value| value.to_str().ok());
+            return Err(filesystem_error(code));
+        }
+        response.json().map_err(network_error)
+    }
+
+    pub fn initialize(&self) -> io::Result<Vec<RemoteNode>> {
+        self.operation(&Operation::Initialize)?
+            .roots
+            .ok_or_else(invalid_response)
+    }
+
+    pub fn lookup(&self, parent_id: u64, name: &str) -> io::Result<RemoteNode> {
+        self.operation(&Operation::Lookup { parent_id, name })?
+            .node
+            .ok_or_else(|| errno(libc::ENOENT))
+    }
+
+    pub fn node(&self, node_id: u64) -> io::Result<RemoteNode> {
+        self.operation(&Operation::GetAttr { node_id })?
+            .node
+            .ok_or_else(|| errno(libc::ENOENT))
+    }
+
+    pub fn children(&self, node_id: u64) -> io::Result<Vec<RemoteNode>> {
+        let mut nodes = Vec::new();
+        let mut after_name: Option<String> = None;
+        loop {
+            let response = self.operation(&Operation::ReadDir {
+                node_id,
+                after_name: after_name.as_deref(),
+                limit: 256,
+            })?;
+            nodes.extend(response.nodes.ok_or_else(invalid_response)?);
+            match response.next_after_name {
+                Some(next) => after_name = Some(next),
+                None => return Ok(nodes),
+            }
+        }
+    }
+
+    pub fn create(
+        &self,
+        parent_id: u64,
+        name: &str,
+        kind: NodeKind,
+        mode: u16,
+    ) -> io::Result<RemoteNode> {
+        self.operation(&Operation::Create {
+            parent_id,
+            name,
+            kind,
+            mode,
+        })?
+        .node
+        .ok_or_else(invalid_response)
+    }
+
+    pub fn set_mode(&self, node_id: u64, mode: u16) -> io::Result<RemoteNode> {
+        self.operation(&Operation::SetAttributes { node_id, mode })?
+            .node
+            .ok_or_else(invalid_response)
+    }
+
+    pub fn remove(&self, request_id: &str, parent_id: u64, name: &str) -> io::Result<()> {
+        self.operation(&Operation::Remove {
+            request_id,
+            parent_id,
+            name,
+        })?;
+        Ok(())
+    }
+
+    pub fn rename(
+        &self,
+        request_id: &str,
+        parent_id: u64,
+        name: &str,
+        new_parent_id: u64,
+        new_name: &str,
+    ) -> io::Result<RemoteNode> {
+        self.operation(&Operation::Rename {
+            request_id,
+            parent_id,
+            name,
+            new_parent_id,
+            new_name,
+        })?
+        .node
+        .ok_or_else(invalid_response)
+    }
+
+    pub fn content(&self, node_id: u64) -> io::Result<ContentDownload> {
+        self.operation(&Operation::GetContent { node_id })?
+            .content
+            .ok_or_else(invalid_response)
+    }
+
+    pub fn download(&self, url: &str, destination: &mut File) -> io::Result<()> {
+        let mut response = self.http.get(url).send().map_err(network_error)?;
+        if !response.status().is_success() {
+            return Err(errno(libc::EIO));
+        }
+        io::copy(&mut response, destination)?;
+        Ok(())
+    }
+
+    pub fn prepare_upload(
+        &self,
+        node_id: u64,
+        expected_blob_id: Option<&str>,
+        content_type: &str,
+    ) -> io::Result<ContentUpload> {
+        self.operation(&Operation::PrepareContentUpload {
+            node_id,
+            expected_blob_id,
+            content_type,
+        })?
+        .upload
+        .ok_or_else(invalid_response)
+    }
+
+    pub fn upload(&self, upload: &ContentUpload, file: File, size: u64) -> io::Result<()> {
+        let response = self
+            .http
+            .put(&upload.upload_url)
+            .header(CONTENT_TYPE, &upload.content_type)
+            .header(CONTENT_LENGTH, size)
+            .body(Body::new(file))
+            .send()
+            .map_err(network_error)?;
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(errno(libc::EIO))
+        }
+    }
+
+    pub fn commit_upload(
+        &self,
+        node_id: u64,
+        expected_blob_id: Option<&str>,
+        upload: &ContentUpload,
+    ) -> io::Result<RemoteNode> {
+        self.operation(&Operation::CommitContentUpload {
+            node_id,
+            expected_blob_id,
+            blob_id: &upload.blob_id,
+            content_type: &upload.content_type,
+        })?
+        .node
+        .ok_or_else(invalid_response)
+    }
+}
+
+fn filesystem_error(code: Option<&str>) -> io::Error {
+    match code {
+        Some("already_exists") => errno(libc::EEXIST),
+        Some("busy") => errno(libc::EBUSY),
+        Some("invalid_operation") => errno(libc::EINVAL),
+        Some("not_empty") => errno(libc::ENOTEMPTY),
+        Some("not_found") => errno(libc::ENOENT),
+        Some("stale") => errno(libc::ESTALE),
+        Some("unauthorized") => errno(libc::EACCES),
+        _ => errno(libc::EIO),
+    }
+}
+
+fn network_error(error: reqwest::Error) -> io::Error {
+    io::Error::new(io::ErrorKind::Other, error)
+}
+
+fn invalid_response() -> io::Error {
+    errno(libc::EIO)
+}
+
+fn errno(code: i32) -> io::Error {
+    io::Error::from_raw_os_error(code)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{filesystem_error, Operation};
+
+    #[test]
+    fn maps_front_errors_to_posix_errors() {
+        assert_eq!(
+            filesystem_error(Some("not_empty")).raw_os_error(),
+            Some(libc::ENOTEMPTY)
+        );
+        assert_eq!(
+            filesystem_error(Some("stale")).raw_os_error(),
+            Some(libc::ESTALE)
+        );
+        assert_eq!(filesystem_error(None).raw_os_error(), Some(libc::EIO));
+    }
+
+    #[test]
+    fn serializes_front_field_names() {
+        let value = serde_json::to_value(Operation::Rename {
+            request_id: "request",
+            parent_id: 10,
+            name: "old",
+            new_parent_id: 20,
+            new_name: "new",
+        });
+        assert_eq!(
+            value.ok(),
+            Some(serde_json::json!({
+                "operation": "rename",
+                "requestId": "request",
+                "parentId": 10,
+                "name": "old",
+                "newParentId": 20,
+                "newName": "new"
+            }))
+        );
+    }
+}
