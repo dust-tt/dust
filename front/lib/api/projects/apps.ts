@@ -8,10 +8,7 @@ import {
   podDatabaseNameWithoutAppPrefix,
 } from "@app/lib/api/sandbox_functions/db_naming";
 import { deleteDatabaseOnSandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
-import {
-  normalizeAppPrefix,
-  SANDBOX_FUNCTION_SLUG_SEPARATOR,
-} from "@app/lib/api/sandbox_functions/slug";
+import { SANDBOX_FUNCTION_SLUG_SEPARATOR } from "@app/lib/api/sandbox_functions/slug";
 import { unpublishSandboxFunction } from "@app/lib/api/sandbox_functions/unpublish_sandbox_function";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -30,6 +27,7 @@ import type {
   PodAppFunction,
 } from "@app/types/api/pod_apps";
 import { UNFILED_POD_APP_PREFIX } from "@app/types/api/pod_apps";
+import { normalizeAppPrefix } from "@app/types/api/pod_function_reference";
 import { isInteractiveContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
