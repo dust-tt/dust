@@ -115,7 +115,7 @@ async function listConsumptionFacetCatalogWithoutTracing(
   const agents = await traceFacetCatalogLoad("agents", () =>
     getAgentConfigurationsForView({
       auth,
-      agentsGetView: "all",
+      agentsGetView: "analytics",
       variant: "extra_light",
       omitInstructions: true,
     })

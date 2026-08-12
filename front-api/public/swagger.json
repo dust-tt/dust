@@ -6373,6 +6373,7 @@
               "type": "string",
               "enum": [
                 "all",
+                "analytics",
                 "list",
                 "favorites",
                 "published",
