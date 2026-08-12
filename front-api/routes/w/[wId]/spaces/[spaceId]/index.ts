@@ -5,7 +5,6 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { softDeleteSpaceAndLaunchScrubWorkflow } from "@app/lib/api/spaces";
-import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -345,8 +344,6 @@ app.get(
       ? await ProjectMetadataResource.fetchBySpace(auth, space)
       : undefined;
 
-    const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
-
     return ctx.json({
       space: {
         ...space.toJSON(),
@@ -367,7 +364,6 @@ app.get(
           (meta?.frameTabs ?? []).map((tab) => tab.path)
         ),
         isAdminControlled: meta?.isAdminControlled ?? false,
-        isCompactUIView: activationPod !== null,
       },
     });
   }

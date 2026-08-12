@@ -9,6 +9,7 @@ import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversation } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useActivationPod } from "@app/lib/swr/activation";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
@@ -50,6 +51,10 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     spaceId: conversation?.spaceId ?? null,
   });
   const hasActivationSkill = hasFeature("activation_skill");
+  const { activationPodId } = useActivationPod({
+    workspaceId: owner.sId,
+    disabled: !hasActivationSkill,
+  });
   const isMobile = useIsMobile();
 
   const [showRenameDialog, setShowRenameDialog] = useState(false);
@@ -80,7 +85,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const breadcrumbItems: BreadcrumbsItem[] = [];
 
   if (spaceId && spaceInfo) {
-    const isActivationPod = hasActivationSkill && spaceInfo.isCompactUIView;
+    const isActivationPod = hasActivationSkill && spaceId === activationPodId;
     breadcrumbItems.push({
       icon: isMobile ? undefined : ArrowLeft,
       label: isActivationPod ? "For you" : spaceInfo.name,

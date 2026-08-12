@@ -59,6 +59,7 @@ import {
   CompactionCompletedEvent,
   CompactionStartedEvent,
 } from "@app/lib/notifications/events";
+import { useActivationPod } from "@app/lib/swr/activation";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
@@ -327,6 +328,10 @@ export const ConversationViewer = ({
     workspaceId: owner.sId,
     spaceId: conversation?.spaceId ?? "",
     disabled: !conversation?.spaceId,
+  });
+
+  const { activationPodId } = useActivationPod({
+    workspaceId: owner.sId,
   });
 
   useConversationMarkAsRead({
@@ -1448,7 +1453,10 @@ export const ConversationViewer = ({
       isAutoScrollEnabledRef,
       isNoSeat: limitReachedCode === "no_seat",
       setLimitReachedCode,
-      uiView: spaceInfo?.isCompactUIView ? "compact" : "standard",
+      uiView:
+        conversation?.spaceId && conversation.spaceId === activationPodId
+          ? "compact"
+          : "standard",
     };
   }, [
     user,
@@ -1465,7 +1473,7 @@ export const ConversationViewer = ({
     spaceInfo?.isRestricted,
     spaceInfo?.archivedAt,
     spaceInfo?.name,
-    spaceInfo?.isCompactUIView,
+    activationPodId,
     limitReachedCode,
     setLimitReachedCode,
   ]);
