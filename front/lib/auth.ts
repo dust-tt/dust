@@ -18,10 +18,10 @@ import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
+import type { GroupPermissionsJSON } from "@app/lib/resources/group_permission_registry";
 import {
   allWorkspacePermissions,
   GroupPermissions,
-  type GroupPermissionsJSON,
   grantTypesForVerb,
 } from "@app/lib/resources/group_permission_registry";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -343,7 +343,6 @@ export class Authenticator {
         providersHealth,
         permissions: await this.resolvePermissions({
           workspace,
-          role,
           groupModelIds,
         }),
       });
@@ -383,7 +382,6 @@ export class Authenticator {
       // Group memberships changed, so capabilities may have changed too: re-resolve them.
       this._permissions = await Authenticator.resolvePermissions({
         workspace: this._workspace,
-        role: this._role,
         groupModelIds: this._groupModelIds,
       });
     }
@@ -438,7 +436,6 @@ export class Authenticator {
       providersHealth,
       permissions: await this.resolvePermissions({
         workspace,
-        role,
         groupModelIds,
       }),
     });
@@ -492,7 +489,6 @@ export class Authenticator {
       providersHealth,
       permissions: await this.resolvePermissions({
         workspace,
-        role,
         groupModelIds,
       }),
     });
@@ -543,7 +539,6 @@ export class Authenticator {
         providersHealth,
         permissions: await this.resolvePermissions({
           workspace,
-          role: authData.role,
           groupModelIds: authData.groupModelIds,
         }),
       })
@@ -691,7 +686,6 @@ export class Authenticator {
         providersHealth,
         permissions: await this.resolvePermissions({
           workspace,
-          role,
           groupModelIds,
         }),
       })
@@ -963,18 +957,28 @@ export class Authenticator {
       : [];
     const keyGroupModelIds = allGroups.map((g) => g.id);
 
-    const [permissions, keyPermissions] = await Promise.all([
-      this.resolvePermissions({
+    let permissions: GroupPermissions;
+    let keyPermissions: GroupPermissions;
+    if (isKeyWorkspace) {
+      // Same workspace and same groups: both Authenticators share one resolution rather than
+      // running the same query twice. Safe to share the instance, GroupPermissions is immutable.
+      permissions = await this.resolvePermissions({
         workspace,
-        role,
         groupModelIds: workspaceGroupModelIds,
-      }),
-      this.resolvePermissions({
-        workspace: keyWorkspace,
-        role: "builder",
-        groupModelIds: keyGroupModelIds,
-      }),
-    ]);
+      });
+      keyPermissions = permissions;
+    } else {
+      [permissions, keyPermissions] = await Promise.all([
+        this.resolvePermissions({
+          workspace,
+          groupModelIds: workspaceGroupModelIds,
+        }),
+        this.resolvePermissions({
+          workspace: keyWorkspace,
+          groupModelIds: keyGroupModelIds,
+        }),
+      ]);
+    }
 
     return {
       workspaceAuth: new Authenticator({
@@ -1035,7 +1039,6 @@ export class Authenticator {
       providersHealth,
       permissions: await this.resolvePermissions({
         workspace,
-        role: "builder",
         groupModelIds,
       }),
     });
@@ -1088,7 +1091,6 @@ export class Authenticator {
       providersHealth,
       permissions: await this.resolvePermissions({
         workspace,
-        role: "admin",
         groupModelIds,
       }),
     });
@@ -1173,7 +1175,6 @@ export class Authenticator {
       providersHealth: auth._providersHealth,
       permissions: await Authenticator.resolvePermissions({
         workspace: auth._workspace,
-        role: "user",
         groupModelIds,
       }),
     });
@@ -1281,7 +1282,6 @@ export class Authenticator {
     groupModelIds,
   }: {
     workspace?: WorkspaceResource | null;
-    role: RoleType;
     groupModelIds: ModelId[];
   }): Promise<GroupPermissions> {
     if (!workspace) {
