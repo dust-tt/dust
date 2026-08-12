@@ -5,8 +5,19 @@ import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import {
+  GPT_4_1_MINI_MODEL_CONFIG,
+  GPT_4_1_MODEL_CONFIG,
+} from "@app/types/assistant/models/openai";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+
+// Consumption attribution also runs for historical messages. These models are no longer in the
+// serving registry, but their immutable tokenizer configurations remain valid for old run usage.
+const HISTORICAL_TOKENIZATION_MODEL_CONFIGS = [
+  GPT_4_1_MODEL_CONFIG,
+  GPT_4_1_MINI_MODEL_CONFIG,
+];
 
 /**
  * The two texts an MCP action contributes to the model's token budget: the tool call the model
@@ -77,7 +88,11 @@ export async function measureToolCallFootprints(
     return new Ok([]);
   }
 
-  const model = getModelConfigByModelId(modelId);
+  const model =
+    getModelConfigByModelId(modelId) ??
+    HISTORICAL_TOKENIZATION_MODEL_CONFIGS.find(
+      (configuration) => configuration.modelId === modelId
+    );
   if (!model) {
     return new Err(
       new Error(`Cannot tokenize tool footprints: unknown model ${modelId}.`)
