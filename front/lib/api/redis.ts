@@ -64,6 +64,7 @@ export type RedisUsageTagsType =
   | "force_reload_commits"
   | "key_usage_tracking"
   | "lock"
+  | "sandbox_exec_activity"
   | "sandbox_exec_tokens"
   | "sandbox_function_invocation_events"
   | "mcp_client_side_request"

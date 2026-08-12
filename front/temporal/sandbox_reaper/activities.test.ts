@@ -19,6 +19,7 @@ const {
   mockHeartbeat,
   mockProviderDestroy,
   mockProviderSleep,
+  mockReadSandboxExecActivity,
 } = vi.hoisted(() => ({
   mockEnsurePodStateHealthOnSleep: vi.fn(),
   mockExecuteWithLock: vi.fn(),
@@ -27,6 +28,7 @@ const {
   mockHeartbeat: vi.fn(),
   mockProviderDestroy: vi.fn(),
   mockProviderSleep: vi.fn(),
+  mockReadSandboxExecActivity: vi.fn(),
 }));
 
 vi.mock("@temporalio/activity", () => ({
@@ -36,6 +38,19 @@ vi.mock("@temporalio/activity", () => ({
 vi.mock("@app/lib/api/sandbox", () => ({
   getSandboxProvider: mockGetSandboxProvider,
 }));
+
+// The sleep and kill flows read the exec-activity counters from Redis, which
+// these tests do not run. The reaper contract under test is the phase
+// orchestration; the guard's own behavior is covered in sandbox_resource
+// tests.
+vi.mock("@app/lib/api/sandbox/exec_activity", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/sandbox/exec_activity")>();
+  return {
+    ...actual,
+    readSandboxExecActivity: mockReadSandboxExecActivity,
+  };
+});
 
 vi.mock("@app/lib/api/sandbox/image", () => ({
   getSandboxImage: mockGetSandboxImage,
@@ -64,6 +79,9 @@ describe("reapSandboxPhaseActivity", () => {
     vi.clearAllMocks();
     mockExecuteWithLock.mockImplementation(
       async (_key: string, fn: () => Promise<unknown>) => fn()
+    );
+    mockReadSandboxExecActivity.mockResolvedValue(
+      new Ok({ started: 0, inFlight: 0 })
     );
     mockEnsurePodStateHealthOnSleep.mockImplementation(
       async (...args: Parameters<typeof ensurePodStateHealthOnSleep>) => {
