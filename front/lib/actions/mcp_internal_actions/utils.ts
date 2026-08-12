@@ -10,6 +10,8 @@ import type {
   FileAuthRequiredOutputResourceType,
   SingleResourceToolOutput,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { ToolContext } from "@app/lib/actions/types";
+import { isSandboxFunctionRunContext } from "@app/lib/actions/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { hasNoRequiredProperties } from "@app/lib/utils/json_schemas";
@@ -23,6 +25,25 @@ export function makeInternalMCPServer(
   const serverInfo = getInternalMCPServerInfo(name);
 
   return new McpServer(serverInfo);
+}
+
+// Returns an MCPError when the tool call originates from a sandbox-function run context, null
+// otherwise. Pod functions must not create conversations or invoke agents: a spawned agent
+// exposes no run-status or completion signal to the function, so the pattern fails silently.
+// Read-only conversation tools (e.g. pod_manager.list_conversations) remain available to
+// functions and must not use this guard.
+export function agentInvocationFromFunctionGuard(
+  toolContext: ToolContext | undefined
+): MCPError | null {
+  if (isSandboxFunctionRunContext(toolContext?.runContext)) {
+    return new MCPError(
+      "Creating conversations or invoking agents from a Pod function is not supported. " +
+        "Link users into a conversation from the Frame instead, or use a wakeup/trigger " +
+        "that runs the agent in a normal conversation.",
+      { tracked: false }
+    );
+  }
+  return null;
 }
 
 // Returns an MCPError when the caller is not a workspace admin, null otherwise.

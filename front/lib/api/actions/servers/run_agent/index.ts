@@ -10,6 +10,7 @@ import type {
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
+  agentInvocationFromFunctionGuard,
   makeInternalMCPServer,
   makeMCPToolExit,
 } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -169,6 +170,13 @@ export const runAgent = async (
     childAgentBlob?: ChildAgentBlob;
   }
 ): Promise<ToolHandlerResult> => {
+  // Pod functions cannot invoke agents: return a typed refusal instead of tripping the
+  // agent-loop assert below into an opaque internal error.
+  const invocationGuardError = agentInvocationFromFunctionGuard(toolContext);
+  if (invocationGuardError) {
+    return new Err(invocationGuardError);
+  }
+
   assert(
     isAgentLoopRunContext(toolContext?.runContext),
     "AgentLoopRunContext expected"
