@@ -30,6 +30,7 @@ Wraps any element without touching it. The ring and the streaks are absolutely p
 **Guidelines**
 - Own the campaign yourself. This component only takes **isActive**; how many times a user sees it, when it stops and what dismisses it are product decisions that belong in the app.
 - **isBouncing** and **isSweeping** turn the two halves of the effect on and off independently, for tuning or for a quieter variant.
+- The timing knobs are **intervalSeconds**, **pulseDurationMs**, **sweepDurationMs** and **startDelaySeconds**. The sweep starts the moment the pulse ends and the rest of the interval is idle, so raising the interval spaces the effect out instead of slowing it down.
 - The corner radius is read off the wrapped element and mirrored, so the ring hugs a 9px button, a 12px one and a pill without being told.
 - Pass \`className="flex w-full"\` for block-level targets such as a sidebar row; the wrapper is \`inline-flex\` by default.
 - Motion is dropped entirely under \`prefers-reduced-motion\`, leaving the static ring to carry the highlight.`,
@@ -42,6 +43,22 @@ Wraps any element without touching it. The ring and the streaks are absolutely p
     isActive: { control: "boolean" },
     isBouncing: { control: "boolean" },
     isSweeping: { control: "boolean" },
+    intervalSeconds: {
+      control: { type: "number", min: 1, step: 0.5 },
+      description: "Seconds between two replays of the whole effect.",
+    },
+    pulseDurationMs: {
+      control: { type: "number", min: 100, step: 50 },
+      description: "How long the ring spends on its two bounces.",
+    },
+    sweepDurationMs: {
+      control: { type: "number", min: 100, step: 50 },
+      description: "How long a light pass takes to cross the element.",
+    },
+    startDelaySeconds: {
+      control: { type: "number", min: 0, step: 0.1 },
+      description: "Quiet time after mount before the first replay.",
+    },
   },
 } satisfies Meta<typeof DiscoveryGlint>;
 
@@ -53,6 +70,10 @@ export const Default: Story = {
     isActive: true,
     isBouncing: true,
     isSweeping: true,
+    intervalSeconds: 7,
+    pulseDurationMs: 800,
+    sweepDurationMs: 840,
+    startDelaySeconds: 0.5,
     children: (
       <Button
         variant="ghost-secondary"
