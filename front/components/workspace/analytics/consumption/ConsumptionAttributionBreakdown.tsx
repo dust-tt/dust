@@ -17,20 +17,30 @@ const BREAKDOWN_LABELS: Record<BreakdownDimension, string> = {
   user: "By users",
 };
 
-const SKELETON_LABEL_WIDTHS = ["w-28", "w-20", "w-24"];
-
 function BreakdownColumnSkeleton() {
   return (
     <div className="flex flex-col gap-2">
-      {SKELETON_LABEL_WIDTHS.map((width) => (
-        <div key={width}>
-          <div className="mb-1 flex h-4 items-center justify-between">
-            <LoadingBlock className={`h-3 ${width}`} />
-            <LoadingBlock className="h-3 w-7" />
-          </div>
-          <LoadingBlock className="h-1.5 w-full rounded-full" />
+      <div>
+        <div className="mb-1 flex h-4 items-center justify-between">
+          <LoadingBlock className="h-3 w-28" />
+          <LoadingBlock className="h-3 w-7" />
         </div>
-      ))}
+        <LoadingBlock className="h-1.5 w-full rounded-full" />
+      </div>
+      <div>
+        <div className="mb-1 flex h-4 items-center justify-between">
+          <LoadingBlock className="h-3 w-20" />
+          <LoadingBlock className="h-3 w-7" />
+        </div>
+        <LoadingBlock className="h-1.5 w-full rounded-full" />
+      </div>
+      <div>
+        <div className="mb-1 flex h-4 items-center justify-between">
+          <LoadingBlock className="h-3 w-24" />
+          <LoadingBlock className="h-3 w-7" />
+        </div>
+        <LoadingBlock className="h-1.5 w-full rounded-full" />
+      </div>
     </div>
   );
 }
