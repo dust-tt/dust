@@ -2,7 +2,6 @@ import {
   AvatarNameCell,
   CostShareCell,
 } from "@app/components/workspace/analytics/creditsTableCells";
-import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
@@ -12,8 +11,6 @@ import {
   Button,
   ChevronDown,
   ChevronUp,
-  Collapsible,
-  CollapsibleContent,
   cn,
   DataTable,
   SearchInput,
@@ -24,7 +21,8 @@ import {
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
-import { ConsumptionAttributionBreakdown } from "./ConsumptionAttributionBreakdown";
+import type { AttributionRowData } from "./ConsumptionAttributionRowsTable";
+import { ConsumptionAttributionRowsTable } from "./ConsumptionAttributionRowsTable";
 import type { ConsumptionDimension } from "./consumptionDimensions";
 import {
   CONSUMPTION_DIMENSION_CONFIG,
@@ -35,11 +33,6 @@ import {
 const TOP_LIMIT = 25;
 
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
-
-type AttributionRowData = ConsumptionTopRow & {
-  isExpanded: boolean;
-  onClick: () => void;
-};
 
 function buildColumns({
   hasAvatar,
@@ -212,23 +205,13 @@ function AttributionRows({
 
   return (
     <div className="overflow-x-auto">
-      <DataTable<AttributionRowData>
+      <ConsumptionAttributionRowsTable
         data={data}
         columns={columns}
-        widthClassName="min-w-[800px]"
-        renderSubComponent={(row) => (
-          <Collapsible open={row.isExpanded}>
-            <CollapsibleContent>
-              <ConsumptionAttributionBreakdown
-                workspaceId={workspaceId}
-                selectedDimension={dimension}
-                selectedRowId={row.id}
-                period={period}
-                filter={filter}
-              />
-            </CollapsibleContent>
-          </Collapsible>
-        )}
+        workspaceId={workspaceId}
+        dimension={dimension}
+        period={period}
+        filter={filter}
       />
     </div>
   );

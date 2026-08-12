@@ -116,7 +116,6 @@ interface DataTableProps<TData extends TBaseData> {
   enableSortingRemoval?: boolean;
   /** Omit the default bottom divider on tbody rows (e.g. dense custom lists). */
   hideRowDivider?: boolean;
-  renderSubComponent?: (row: TData) => ReactNode;
 }
 
 export function DataTable<TData extends TBaseData>({
@@ -142,7 +141,6 @@ export function DataTable<TData extends TBaseData>({
   getRowId,
   enableSortingRemoval = true,
   hideRowDivider = false,
-  renderSubComponent,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
 
@@ -294,7 +292,8 @@ export function DataTable<TData extends TBaseData>({
               }
               row.original.onClick?.();
             };
-            const renderedRow = (
+
+            return (
               <DataTable.Row
                 widthClassName={widthClassName}
                 key={row.id}
@@ -327,18 +326,6 @@ export function DataTable<TData extends TBaseData>({
                 })}
               </DataTable.Row>
             );
-
-            const subComponent = renderSubComponent?.(row.original);
-            return subComponent == null ? (
-              renderedRow
-            ) : (
-              <React.Fragment key={row.id}>
-                {renderedRow}
-                <tr>
-                  <td colSpan={row.getVisibleCells().length}>{subComponent}</td>
-                </tr>
-              </React.Fragment>
-            );
           })}
         </DataTable.Body>
       </DataTable.Root>
@@ -359,7 +346,7 @@ export function DataTable<TData extends TBaseData>({
 }
 
 export interface ScrollableDataTableProps<TData extends TBaseData>
-  extends Omit<DataTableProps<TData>, "renderSubComponent"> {
+  extends DataTableProps<TData> {
   maxHeight?: string | boolean;
   onLoadMore?: () => void;
   isLoading?: boolean;
