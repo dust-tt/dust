@@ -1,5 +1,8 @@
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
-import { GROK_4_5_MODEL_ID } from "@app/types/assistant/models/xai";
+import {
+  GROK_4_5_MODEL_ID,
+  GROK_4_6_MODEL_ID,
+} from "@app/types/assistant/models/xai";
 import { describe, expect, it } from "vitest";
 
 describe("computeTokensCostForUsageInMicroUsd", () => {
@@ -34,5 +37,27 @@ describe("computeTokensCostForUsageInMicroUsd", () => {
         cachedTokens: 100_000,
       })
     ).toBe(460_004);
+  });
+
+  it("uses Grok 4.6 cached input pricing through 200k prompt tokens", () => {
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        modelId: GROK_4_6_MODEL_ID,
+        promptTokens: 200_000,
+        completionTokens: 1_000,
+        cachedTokens: 100_000,
+      })
+    ).toBe(256_000);
+  });
+
+  it("uses Grok 4.6 long-context pricing above 200k prompt tokens", () => {
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        modelId: GROK_4_6_MODEL_ID,
+        promptTokens: 200_001,
+        completionTokens: 1_000,
+        cachedTokens: 100_000,
+      })
+    ).toBe(512_004);
   });
 });

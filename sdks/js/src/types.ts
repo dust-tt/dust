@@ -102,6 +102,7 @@ export type KnownModelLLMId =
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
   | "grok-4.5" // xAI
+  | "grok-4.6" // xAI
   | "grok-4-latest" // xAI
   | "grok-4-fast-non-reasoning-latest"
   | "grok-4-fast-reasoning-latest"

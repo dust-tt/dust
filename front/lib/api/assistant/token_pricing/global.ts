@@ -434,6 +434,18 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
       cache_read_input_tokens: 0.6,
     },
   },
+  // Verified 2026-08-12: https://docs.x.ai/developers/pricing
+  "grok-4.6": {
+    input: 2.0,
+    output: 6.0,
+    cache_read_input_tokens: 0.5,
+    long_context: {
+      prompt_token_threshold: 200_000,
+      input: 4.0,
+      output: 12.0,
+      cache_read_input_tokens: 1.0,
+    },
+  },
   "grok-4-latest": {
     input: 1.25,
     output: 2.5,
