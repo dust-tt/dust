@@ -17,6 +17,7 @@ import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 
 async function isSlackToolsAvailable(auth: Authenticator): Promise<boolean> {
   const servers = await InternalMCPServerInMemoryResource.listByWorkspace(auth);
@@ -184,10 +185,9 @@ export async function listUserPrivateSlackChannels(
     );
   }
 
-  const teamId =
-    typeof tokenRes.value.connection.metadata.team_id === "string"
-      ? tokenRes.value.connection.metadata.team_id
-      : null;
+  const teamId = isString(tokenRes.value.connection.metadata.team_id)
+    ? tokenRes.value.connection.metadata.team_id
+    : null;
 
   const [userChannelsRes, botChannelIdsRes] = await Promise.all([
     listPrivateChannelsWithToken(tokenRes.value.access_token, teamId),
