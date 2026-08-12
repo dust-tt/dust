@@ -20,6 +20,7 @@ const PatchLinkedSlackChannelsRequestBodySchema = z.object({
   slack_channel_internal_ids: z.array(z.string()),
   provider: z.enum(["slack", "slack_bot"]),
   auto_respond_without_mention: z.boolean().optional(),
+  auto_respond_without_mention_skip_thread_replies: z.boolean().optional(),
 });
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/linked_slack_channels.
@@ -110,6 +111,7 @@ app.patch(
       agentConfigurationId: agentConfiguration.sId,
       slackChannelInternalIds: body.slack_channel_internal_ids,
       autoRespondWithoutMention: body.auto_respond_without_mention,
+      skipThreadReplies: body.auto_respond_without_mention_skip_thread_replies,
     });
 
     if (connectorsApiRes.isErr()) {

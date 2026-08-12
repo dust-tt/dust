@@ -501,11 +501,13 @@ export class ConnectorsAPI {
     slackChannelInternalIds,
     agentConfigurationId,
     autoRespondWithoutMention,
+    autoRespondWithoutMentionSkipThreadReplies,
   }: {
     connectorId: string;
     slackChannelInternalIds: string[];
     agentConfigurationId: string;
     autoRespondWithoutMention?: boolean;
+    autoRespondWithoutMentionSkipThreadReplies?: boolean;
   }): Promise<ConnectorsAPIResponse<{ success: true }>> {
     const res = await this._fetchWithError(
       `${this._url}/slack/channels/linked_with_agent`,
@@ -517,6 +519,7 @@ export class ConnectorsAPI {
           agent_configuration_id: agentConfigurationId,
           slack_channel_internal_ids: slackChannelInternalIds,
           auto_respond_without_mention: autoRespondWithoutMention,
+          auto_respond_without_mention_skip_thread_replies: autoRespondWithoutMentionSkipThreadReplies,
         }),
       }
     );
@@ -535,6 +538,7 @@ export class ConnectorsAPI {
         slackChannelName: string;
         agentConfigurationId: string;
         autoRespondWithoutMention: boolean;
+        autoRespondWithoutMentionSkipThreadReplies: boolean;
       }[];
     }>
   > {

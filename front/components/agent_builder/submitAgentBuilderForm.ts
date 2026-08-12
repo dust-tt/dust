@@ -575,12 +575,15 @@ export async function submitAgentBuilderForm({
         slackChannels.length > 0
           ? slackChannels[0].autoRespondWithoutMention
           : false;
+      const autoRespondWithoutMentionSkipThreadReplies =
+        slackChannels.length > 0 ? slackChannels[0].autoRespondWithoutMentionSkipThreadReplies : false;
       const slackRequestBody = JSON.stringify({
         provider: slackProvider,
         slack_channel_internal_ids: slackChannels.map(
           ({ slackChannelId }) => slackChannelId
         ),
         auto_respond_without_mention: autoRespondWithoutMention,
+        auto_respond_without_mention_skip_thread_replies: autoRespondWithoutMentionSkipThreadReplies,
       });
       const slackLinkRes = await clientFetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/linked_slack_channels`,
