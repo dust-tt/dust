@@ -117,9 +117,13 @@ export type SandboxDeleteOwner = SandboxLifecycleOwner & {
 // expires mid-operation, a concurrent ensure or move can acquire the lock
 // and the scope-serialization guarantee is gone. The cost of a generous TTL
 // is that a crashed holder strands the lock for up to this long; waiters
-// give up at executeWithLock's 30s acquisition timeout well before that.
-// TODO(2026-09-30 SANDBOX): replace with a renewable lease so the TTL can
-// shrink to heartbeat scale.
+// give up at executeWithLock's 30s acquisition timeout well before that,
+// and the kill-requested recovery self-heals once the lease expires. That
+// trade is deliberate: a heartbeat-renewed lease would shrink the stranding
+// window, but the machinery it needs (an extend loop, abort semantics for
+// a lost lease mid-operation) is only worth building if crash-stranded
+// locks show up in practice — a rare event with a bounded,
+// one-conversation blast radius.
 const SANDBOX_LIFECYCLE_LOCK_TTL_MS = 5 * 60 * 1000;
 
 const LAST_ACTIVITY_WRITE_INTERVAL_MS = 30_000;
