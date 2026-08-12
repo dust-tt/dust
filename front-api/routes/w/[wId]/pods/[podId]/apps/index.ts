@@ -135,7 +135,6 @@ app.post(
             },
           });
         case "not_a_pod":
-        case "cannot_clone_unfiled":
         case "invalid_name":
           return apiError(ctx, {
             status_code: 400,

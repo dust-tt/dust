@@ -14,7 +14,7 @@ interface PodAppDetailProps {
   onOpenFrame: (frame: PodAppFrame) => void;
   /** Absent when the viewer cannot delete (no write access). */
   onDelete?: () => void;
-  /** Absent when the app cannot be cloned (no write access, or the unfiled app). */
+  /** Absent when the app cannot be cloned (no write access). */
   onClone?: () => void;
 }
 

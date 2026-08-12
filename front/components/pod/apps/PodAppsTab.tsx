@@ -98,9 +98,7 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
               canDelete ? () => setAppPendingDeletion(selectedApp) : undefined
             }
             onClone={
-              canDelete && selectedApp.prefix !== UNFILED_POD_APP_PREFIX
-                ? () => setAppPendingClone(selectedApp)
-                : undefined
+              canDelete ? () => setAppPendingClone(selectedApp) : undefined
             }
           />
         )}

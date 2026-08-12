@@ -318,8 +318,8 @@ function groupFunctionsByAppPrefix(
  * A folder qualifies as an app when it holds a `functions/` or `databases/` subfolder, or a Frame at
  * its top, or any published function or database under its prefix. A prefix that owns published
  * artifacts but has no folder left is still listed, since those artifacts are live and would
- * otherwise be invisible; so is anything published from the pod root, gathered into a synthetic
- * unfiled app.
+ * otherwise be invisible. Anything published at the pod root carries no prefix and so belongs to no
+ * app; it is left out rather than gathered into a synthetic one.
  */
 export async function listPodApps(
   auth: Authenticator,
@@ -569,7 +569,6 @@ export async function deletePodApp(
 export type PodAppCloneErrorCode =
   | "not_a_pod"
   | "not_found"
-  | "cannot_clone_unfiled"
   | "invalid_name"
   | "name_taken"
   | "sandbox_unavailable"
@@ -616,14 +615,6 @@ export async function clonePodApp(
   if (!pod.isProject()) {
     return new Err(
       new PodAppCloneError("not_a_pod", "Apps only exist on Pod spaces.")
-    );
-  }
-  if (prefix === UNFILED_POD_APP_PREFIX) {
-    return new Err(
-      new PodAppCloneError(
-        "cannot_clone_unfiled",
-        "Artifacts published outside an app folder are not an app and cannot be cloned."
-      )
     );
   }
 
