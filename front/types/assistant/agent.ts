@@ -287,6 +287,15 @@ export type AgentMessageDoneEvent = {
   status: "success" | "error";
 };
 
+// Event sent once the persisted credit attribution is available to read.
+export type AgentMessageConsumptionUpdatedEvent = {
+  type: "agent_message_consumption_updated";
+  created: number;
+  conversationId: string;
+  messageId: string;
+  costCredits: number | null;
+};
+
 // Event sent when an error occurred during the tool call.
 export type ToolErrorEvent = {
   type: "tool_error";

@@ -12855,6 +12855,9 @@
             "$ref": "#/components/schemas/PrivateAgentMessageNewEvent"
           },
           {
+            "$ref": "#/components/schemas/PrivateAgentMessageConsumptionUpdatedEvent"
+          },
+          {
             "$ref": "#/components/schemas/PrivateAgentMessageDoneEvent"
           },
           {
@@ -12965,6 +12968,37 @@
               "success",
               "error"
             ]
+          }
+        }
+      },
+      "PrivateAgentMessageConsumptionUpdatedEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "conversationId",
+          "messageId",
+          "costCredits"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "agent_message_consumption_updated"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "costCredits": {
+            "type": "number",
+            "nullable": true
           }
         }
       },

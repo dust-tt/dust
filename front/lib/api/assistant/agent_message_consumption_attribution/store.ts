@@ -318,11 +318,11 @@ async function persistMessageConsumptionAttribution(
     runs: RunResource[];
     usages: RunUsageWithRunKeyType[];
   }
-): Promise<void> {
+): Promise<boolean> {
   // Store the immutable evidence first, then materialize the newest complete allocation against the
   // authoritative bill in the same transaction. An incomplete version keeps its evidence with null
   // reconciliation and can be completed by a later finalize.
-  await withTransaction(async (transaction) => {
+  return withTransaction(async (transaction) => {
     await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
       conversation,
       agentMessageModelId,
@@ -350,13 +350,14 @@ async function persistMessageConsumptionAttribution(
       usages,
     });
     if (!allocation) {
-      return;
+      return false;
     }
 
     await AgentMessageConsumptionItemResource.setReconciledCreditAmounts(auth, {
       reconciledCreditAmountByItem: allocation.reconciledCreditAmounts.byItem,
       transaction,
     });
+    return true;
   });
 }
 
@@ -392,7 +393,7 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
     agentMessageId,
     conversationId,
   }: { agentMessageId: string; conversationId: string }
-): Promise<void> {
+): Promise<{ costCredits: number | null } | undefined> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
 
   const creditContext =
@@ -520,15 +521,20 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
     pendingToolItems.push(...usageEvidence.pendingToolItems);
   }
 
-  await persistMessageConsumptionAttribution(auth, {
-    actions,
-    agentMessageModelId,
-    billedCredits,
-    conversation,
-    dustRunIds,
-    pendingToolItems,
-    records,
-    runs,
-    usages,
-  });
+  const hasCompleteAllocation = await persistMessageConsumptionAttribution(
+    auth,
+    {
+      actions,
+      agentMessageModelId,
+      billedCredits,
+      conversation,
+      dustRunIds,
+      pendingToolItems,
+      records,
+      runs,
+      usages,
+    }
+  );
+
+  return hasCompleteAllocation ? { costCredits: billedCredits } : undefined;
 }
