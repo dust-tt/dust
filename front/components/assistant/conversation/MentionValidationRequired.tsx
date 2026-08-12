@@ -123,7 +123,7 @@ export function MentionValidationRequired({
     case "pending_project_membership":
       description = isAgentMessageWithStreaming(message) ? (
         <>
-          <span className="font-semibold">@{message.configuration.name}</span>{" "}
+          <span className="font-semibold">{message.configuration.name}</span>{" "}
           mentioned <span className="font-semibold">{mention.label}</span>. Do
           you want to add them to this Pod?
         </>
@@ -134,7 +134,7 @@ export function MentionValidationRequired({
     case "pending_conversation_access":
       description = isAgentMessageWithStreaming(message) ? (
         <>
-          <span className="font-semibold">@{message.configuration.name}</span>{" "}
+          <span className="font-semibold">{message.configuration.name}</span>{" "}
           mentioned <span className="font-semibold">{mention.label}</span>. Do
           you want to invite them? They'll see the full history and be able to
           reply.

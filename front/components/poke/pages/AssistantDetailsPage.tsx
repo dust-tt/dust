@@ -134,7 +134,7 @@ export function AssistantDetailsPage() {
               owner={owner}
               spacesById={spacesById}
             />
-            <div className="flex flex-grow flex-col">
+            <div className="flex grow flex-col">
               <PluginList
                 pluginResourceTarget={{
                   resourceId: agentConfigurations[0].sId,
@@ -176,7 +176,7 @@ export function AssistantDetailsPage() {
                 return (
                   <ContextItem
                     key={a.version}
-                    title={`@${a.name} (${a.sId}) v${a.version}`}
+                    title={`${a.name} (${a.sId}) v${a.version}`}
                     visual={<></>}
                   >
                     <ContextItem.Description>

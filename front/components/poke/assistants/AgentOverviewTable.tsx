@@ -35,10 +35,10 @@ export function AgentOverviewTable({
 
   return (
     <>
-      <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4">
+      <div className="border-material-200 flex grow flex-col rounded-lg border p-4">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-md flex-grow pb-4 font-bold">
-            @{agentConfiguration.name}
+          <h2 className="text-md grow pb-4 font-bold">
+            {agentConfiguration.name}
           </h2>
         </div>
         {restrictedSpaces.length > 0 && (
