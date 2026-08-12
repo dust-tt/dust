@@ -35,10 +35,10 @@ export function SidebarUserMenu({
               DAY_DURATION_MS
           )
         ),
-        pace: creditUsageStatus.pace,
+        target: creditUsageStatus.target,
       }
     : null;
-  const showCreditUsageInProfileMenu = creditUsageState?.pace === "on_pace";
+  const showCreditUsageInProfileMenu = creditUsageState?.target === "on_target";
 
   return (
     <>

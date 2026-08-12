@@ -6,15 +6,15 @@ import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/perio
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { formatCredits } from "@app/lib/client/credits";
 import { timeAgoFrom } from "@app/lib/utils";
-import type { CreditUsagePace } from "@app/types/api/credits/usage_status";
+import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
 import { ArrowUpRight, Button, Chip } from "@dust-tt/sparkle";
 
-const PACE_CHIP: Record<
-  CreditUsagePace,
+const TARGET_CHIP: Record<
+  CreditUsageTarget,
   { label: string; color: "highlight" | "info" | "warning" }
 > = {
-  on_pace: { label: "On pace", color: "highlight" },
-  elevated: { label: "Off pace", color: "info" },
+  on_target: { label: "On target", color: "highlight" },
+  elevated: { label: "Off target", color: "info" },
   critical: { label: "Critical", color: "warning" },
 };
 
@@ -69,8 +69,8 @@ function ConsumptionSummary({
           <div className="flex items-center gap-2">
             <Chip
               size="mini"
-              color={PACE_CHIP[creditUsage.status.pace].color}
-              label={PACE_CHIP[creditUsage.status.pace].label}
+              color={TARGET_CHIP[creditUsage.status.target].color}
+              label={TARGET_CHIP[creditUsage.status.target].label}
             />
             <span className="text-sm text-muted-foreground">
               {creditUsage.status.usedPercentage}% of the cap used,{" "}

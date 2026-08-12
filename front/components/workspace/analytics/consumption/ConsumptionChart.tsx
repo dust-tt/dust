@@ -4,15 +4,19 @@ import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
 import { useConsumptionTimeseries } from "@app/hooks/useConsumptionTimeseries";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
+import {
+  findPartialTimestamp,
+  formatConsumptionDate,
+} from "@app/lib/analytics/consumption_period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type {
   ConsumptionTimeseriesGroup,
+  ConsumptionTimeseriesMode,
   ConsumptionTimeseriesPoint,
 } from "@app/lib/api/analytics/consumption/timeseries";
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
-import { cn } from "@dust-tt/sparkle";
-import { useCallback, useMemo } from "react";
+import { ButtonsSwitch, ButtonsSwitchList, cn } from "@dust-tt/sparkle";
+import { useCallback, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -24,8 +28,8 @@ import {
   YAxis,
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
+import { ConsumptionBurnUpChart } from "./ConsumptionBurnUpChart";
 import type { ConsumptionDimension } from "./consumptionDimensions";
-import { CONSUMPTION_DIMENSION_CONFIG } from "./consumptionDimensions";
 
 // The bucket in progress (if mapped to today) is drawn faded across every series.
 const PARTIAL_BAR_OPACITY = "opacity-40";
@@ -65,30 +69,20 @@ function isConsumptionTimeseriesPoint(
   );
 }
 
-// The endpoint buckets the whole period, so the tail of the series is the part
-// of the cycle still to come. The bucket holding the present is the last one
-// that has started, which is all it takes to tell the two apart.
-function findPartialTimestamp(
-  points: ConsumptionTimeseriesPoint[]
-): number | undefined {
-  const nowMs = Date.now();
-  return points.findLast((point) => point.timestamp <= nowMs)?.timestamp;
-}
-
-interface ConsumptionChartTooltipProps
+interface ConsumptionDailyTooltipProps
   extends TooltipContentProps<number, string> {
   groups: ConsumptionTimeseriesGroup[];
   colorByGroupKey: Map<string, string>;
   partialTimestamp: number | undefined;
 }
 
-function ConsumptionChartTooltip({
+function ConsumptionDailyTooltip({
   active,
   payload,
   groups,
   colorByGroupKey,
   partialTimestamp,
-}: ConsumptionChartTooltipProps) {
+}: ConsumptionDailyTooltipProps) {
   const datum = payload?.[0]?.payload;
   if (!active || !isConsumptionTimeseriesPoint(datum)) {
     return null;
@@ -134,19 +128,19 @@ function ConsumptionChartTooltip({
   );
 }
 
-interface ConsumptionChartProps {
+interface ConsumptionDailyChartProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   dimension: ConsumptionDimension;
   filter?: ConsumptionScopeFilter;
 }
 
-export function ConsumptionChart({
+function ConsumptionDailyChart({
   workspaceId,
   period,
   dimension,
   filter,
-}: ConsumptionChartProps) {
+}: ConsumptionDailyChartProps) {
   const { timeseries, isTimeseriesLoading, isTimeseriesError } =
     useConsumptionTimeseries({
       workspaceId,
@@ -179,7 +173,7 @@ export function ConsumptionChart({
 
   const renderTooltip = useCallback(
     (props: TooltipContentProps<number, string>) => (
-      <ConsumptionChartTooltip
+      <ConsumptionDailyTooltip
         {...props}
         groups={groups}
         colorByGroupKey={colorByGroupKey}
@@ -201,7 +195,7 @@ export function ConsumptionChart({
 
   return (
     <ChartContainer
-      title={`Daily credits by ${CONSUMPTION_DIMENSION_CONFIG[dimension].breakdownLabel}`}
+      title="Daily credits"
       isLoading={isTimeseriesLoading}
       errorMessage={
         isTimeseriesError ? "Failed to load consumption." : undefined
@@ -272,5 +266,55 @@ export function ConsumptionChart({
         ))}
       </BarChart>
     </ChartContainer>
+  );
+}
+
+interface ConsumptionChartProps {
+  workspaceId: string;
+  period: ConsumptionPeriodSelection;
+  dimension: ConsumptionDimension;
+  filter?: ConsumptionScopeFilter;
+}
+
+export function ConsumptionChart({
+  workspaceId,
+  period,
+  dimension,
+  filter,
+}: ConsumptionChartProps) {
+  const [mode, setMode] = useState<ConsumptionTimeseriesMode>("daily");
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-semibold text-foreground">Consumption</h2>
+        <ButtonsSwitchList value={mode} size="sm">
+          <ButtonsSwitch
+            value="daily"
+            label="Daily"
+            onClick={() => setMode("daily")}
+          />
+          <ButtonsSwitch
+            value="cumulative"
+            label="Cumulative"
+            onClick={() => setMode("cumulative")}
+          />
+        </ButtonsSwitchList>
+      </div>
+      {mode === "cumulative" ? (
+        <ConsumptionBurnUpChart
+          workspaceId={workspaceId}
+          period={period}
+          filter={filter}
+        />
+      ) : (
+        <ConsumptionDailyChart
+          workspaceId={workspaceId}
+          period={period}
+          dimension={dimension}
+          filter={filter}
+        />
+      )}
+    </div>
   );
 }
