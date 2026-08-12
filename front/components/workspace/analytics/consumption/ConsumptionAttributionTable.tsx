@@ -11,7 +11,7 @@ import { formatCredits } from "@app/lib/client/credits";
 import {
   Button,
   ChevronDown,
-  ChevronRight,
+  ChevronUp,
   cn,
   DataTable,
   SearchInput,
@@ -115,7 +115,7 @@ function buildColumns({
         return (
           <DataTable.CellContent className="w-full justify-end">
             <Button
-              icon={row.isExpanded ? ChevronDown : ChevronRight}
+              icon={row.isExpanded ? ChevronUp : ChevronDown}
               variant="ghost-secondary"
               size="xs"
               aria-label={`${row.isExpanded ? "Collapse" : "Expand"} breakdown for ${row.name}`}
