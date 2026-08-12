@@ -39,10 +39,30 @@ export class FileSystemMutationResource {
         });
   }
 
-  private static response(
+  private static async completedResponse(
+    auth: Authenticator,
+    scope: FileSystemScope,
     mutation: FileSystemMutationModel
-  ): FileSystemOperationResponse {
-    return (mutation.result ?? {}) as FileSystemOperationResponse;
+  ): Promise<Result<FileSystemOperationResponse, FileSystemOperationError>> {
+    if (mutation.kind === "remove") {
+      return new Ok({
+        removedNodeId: mutation.nodeId,
+        removedFileResourceId: mutation.removedFileResourceId,
+      });
+    }
+    const node = await FileSystemNodeResource.getAttr(
+      auth,
+      scope,
+      mutation.nodeId
+    );
+    return node.isErr()
+      ? node
+      : new Ok({
+          node: node.value,
+          ...(mutation.replacedNodeId
+            ? { removedNodeId: mutation.replacedNodeId }
+            : {}),
+        });
   }
 
   private static async findByRequest(
@@ -91,6 +111,9 @@ export class FileSystemMutationResource {
           "That request ID belongs to a different filesystem operation."
         )
       );
+    }
+    if (mutation.state === "completed") {
+      return this.completedResponse(auth, scope, mutation);
     }
     return this.resume(auth, scope, binding, mutation);
   }
@@ -170,6 +193,12 @@ export class FileSystemMutationResource {
           )
         );
       }
+      const sourceRelativePath = await FileSystemNodeResource.relativePath(
+        auth,
+        scope,
+        source,
+        transaction
+      );
 
       let destination: FileSystemNodeModel | null = null;
       let destinationParent: FileSystemNodeModel | null = null;
@@ -203,27 +232,31 @@ export class FileSystemMutationResource {
           source.parentId === destinationParent.id &&
           source.name === request.newName
         ) {
-          const result = { node: FileSystemNodeResource.render(auth, source) };
           const completed = await FileSystemMutationModel.create(
             {
               workspaceId: source.workspaceId,
+              completedAt: new Date(),
               requestId: request.requestId,
               kind: "rename",
               state: "completed",
               nodeId: source.id,
+              nodeKind: source.kind,
               sourceRootKind: source.rootKind,
               sourceRootId: source.rootId,
               sourceParentId: parent.id,
               sourceName: source.name,
+              sourceRelativePath,
               destinationRootKind: destinationParent.rootKind,
               destinationRootId: destinationParent.rootId,
               destinationParentId: destinationParent.id,
               destinationName: request.newName,
+              destinationRelativePath: sourceRelativePath,
               replacedNodeId: null,
               sourceBlobId: source.blobId,
               replacedBlobId: null,
               removedFileResourceId: this.fileSId(auth, source.fileId),
-              result,
+              lastError: null,
+              attempts: 0,
             },
             { transaction }
           );
@@ -296,24 +329,29 @@ export class FileSystemMutationResource {
       const mutation = await FileSystemMutationModel.create(
         {
           workspaceId: source.workspaceId,
+          completedAt: null,
           requestId: request.requestId,
           kind: request.operation,
           state: "prepared",
           nodeId: source.id,
+          nodeKind: source.kind,
           sourceRootKind: source.rootKind,
           sourceRootId: source.rootId,
           sourceParentId: parent.id,
           sourceName: source.name,
+          sourceRelativePath,
           destinationRootKind: destinationParent?.rootKind ?? null,
           destinationRootId: destinationParent?.rootId ?? null,
           destinationParentId: destinationParent?.id ?? null,
           destinationName:
             request.operation === "rename" ? request.newName : null,
+          destinationRelativePath: destinationPath,
           replacedNodeId: destination?.id ?? null,
           sourceBlobId: source.blobId,
           replacedBlobId: destination?.blobId ?? null,
           removedFileResourceId: this.fileSId(auth, effectiveFileId),
-          result: destinationPath ? { destinationPath } : null,
+          lastError: null,
+          attempts: 0,
         },
         { transaction }
       );
@@ -335,7 +373,7 @@ export class FileSystemMutationResource {
     mutation: FileSystemMutationModel
   ): Promise<Result<FileSystemOperationResponse, FileSystemOperationError>> {
     if (mutation.state === "completed") {
-      return new Ok(this.response(mutation));
+      return this.completedResponse(auth, scope, mutation);
     }
     const fileResourceId = mutation.removedFileResourceId;
     if (fileResourceId) {
@@ -345,10 +383,14 @@ export class FileSystemMutationResource {
           : await binding.moveFile(auth, fileResourceId, {
               rootKind: mutation.destinationRootKind!,
               rootId: mutation.destinationRootId!,
-              relativePath: String(mutation.result?.destinationPath ?? ""),
+              relativePath: mutation.destinationRelativePath!,
               fileName: mutation.destinationName!,
             });
       if (externalResult.isErr()) {
+        await mutation.update({
+          attempts: mutation.attempts + 1,
+          lastError: externalResult.error.message,
+        });
         return new Err(
           new FileSystemOperationError(
             "busy",
@@ -376,7 +418,7 @@ export class FileSystemMutationResource {
         );
       }
       if (current.state === "completed") {
-        return new Ok(this.response(current));
+        return this.completedResponse(auth, scope, current);
       }
       const source = await FileSystemNodeResource.fetch(
         auth,
@@ -406,7 +448,14 @@ export class FileSystemMutationResource {
           removedFileResourceId: current.removedFileResourceId,
         };
         await source.destroy({ transaction });
-        await current.update({ state: "completed", result }, { transaction });
+        await current.update(
+          {
+            state: "completed",
+            completedAt: new Date(),
+            lastError: null,
+          },
+          { transaction }
+        );
         return new Ok(result);
       }
 
@@ -465,7 +514,14 @@ export class FileSystemMutationResource {
         node: FileSystemNodeResource.render(auth, source),
         ...(destination ? { removedNodeId: destination.id } : {}),
       };
-      await current.update({ state: "completed", result }, { transaction });
+      await current.update(
+        {
+          state: "completed",
+          completedAt: new Date(),
+          lastError: null,
+        },
+        { transaction }
+      );
       return new Ok(result);
     });
   }
@@ -506,7 +562,7 @@ export class FileSystemMutationResource {
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         state: "completed" satisfies FileSystemMutationState,
-        updatedAt: {
+        completedAt: {
           [Op.lt]: new Date(Date.now() - COMPLETED_RETENTION_MS),
         },
       },
