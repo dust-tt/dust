@@ -1590,7 +1590,11 @@ export function resolveInternalMCPServerToolStakeLevel(
 export function getInternalMCPServerToolDisplayLabels(
   name: InternalMCPServerNameType
 ): Record<string, ToolDisplayLabels> | null {
-  const server = INTERNAL_MCP_SERVERS[name];
+  const server: InternalMCPServerEntry | undefined = INTERNAL_MCP_SERVERS[name];
+  if (!server) {
+    return null;
+  }
+
   const displayLabelsByTool: Record<string, ToolDisplayLabels> = {};
   let hasDisplayLabels = false;
 
