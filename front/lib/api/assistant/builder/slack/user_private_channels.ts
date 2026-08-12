@@ -83,8 +83,7 @@ async function listPrivateChannelIdsWithToken(
 }
 
 // Resolves the workspace Slack / Slack Bot connector and returns the set of
-// private channel IDs the Dust bot has joined. Used to keep private-channel
-// picker parity with public channels (write permission = bot is present).
+// private channel IDs the Dust bot has joined.
 async function listDustBotPrivateChannelIds(
   auth: Authenticator
 ): Promise<Result<Set<string>, Error>> {
