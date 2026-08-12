@@ -26,7 +26,7 @@ import {
   parseReasoningMetadata,
   parseResponseFormatSchema,
 } from "@app/lib/api/llm/utils";
-import { getOpenAIPromptCacheKey } from "@app/lib/api/llm/utils/prompt_cache_key";
+import { getPromptCacheKey } from "@app/lib/api/llm/utils/prompt_cache_key";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
@@ -40,9 +40,11 @@ import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/conf
 import type { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { NoopRequest } from "@app/lib/model_constructors/stream/endpoints/noop_noop_global_noop";
 import { NoopNoopGlobalNoopStream } from "@app/lib/model_constructors/stream/endpoints/noop_noop_global_noop";
+import type { Host } from "@app/lib/model_constructors/types/hosts";
 import {
   AGENT_PLATFORM_HOST,
   OPENAI_RESPONSES_HOST,
+  XAI_HOST,
 } from "@app/lib/model_constructors/types/hosts";
 import type {
   InputConfig,
@@ -733,9 +735,9 @@ abstract class BaseTransition extends LLM {
     configParsers: Array<(config: InputConfig) => InputConfig> = [
       (config) => config,
     ],
-    // Prompt cache key, forwarded only by surfaces whose config schema accepts
-    // it (OpenAI Responses). Left undefined elsewhere so the provider schemas
-    // that guard `cacheKey` to `undefined` still parse.
+    // Prompt cache key, forwarded only by OpenAI-compatible Responses surfaces
+    // whose config schema accepts it. Left undefined elsewhere so provider
+    // schemas that guard `cacheKey` to `undefined` still parse.
     cacheKey?: string
   ): InputConfig {
     const {
@@ -829,14 +831,13 @@ export class StreamEndpointTransition extends BaseTransition {
     // Agent-platform (Vertex) has no request-level automatic cache_control, so it
     // needs an explicit breakpoint on the conversation tail (legacy's isLast).
     const explicitTailBreakpoint = api === AGENT_PLATFORM_HOST;
-    // Only OpenAI Responses consumes a prompt cache key (as `prompt_cache_key`);
-    // use the workspace and agent configuration so requests can reuse cached
-    // prefixes across conversations. Other surfaces guard `cacheKey` to
-    // undefined, so leave it unset for them.
-    const cacheKey =
-      api === OPENAI_RESPONSES_HOST && metadata
-        ? getOpenAIPromptCacheKey(metadata)
-        : undefined;
+    // OpenAI-compatible Responses hosts consume `prompt_cache_key`. Use the
+    // workspace and agent configuration so requests can reuse cached prefixes
+    // across conversations. xAI recommends always setting it to route stable
+    // prefixes to the same server:
+    // https://docs.x.ai/developers/advanced-api-usage/prompt-caching/maximizing-cache-hits
+    // (verified 2026-08-12). Other surfaces guard `cacheKey` to undefined.
+    const cacheKey = getPromptCacheKeyForHost(api, metadata);
     return this.model.buildRequestPayload(
       this.buildPayload(streamParameters, { explicitTailBreakpoint }),
       this.buildConfig(
@@ -857,6 +858,17 @@ export class StreamEndpointTransition extends BaseTransition {
       yield handleGenericError(err, this.metadata);
     }
   }
+}
+
+const PROMPT_CACHE_KEY_HOSTS = new Set<Host>([OPENAI_RESPONSES_HOST, XAI_HOST]);
+
+export function getPromptCacheKeyForHost(
+  host: Host,
+  metadata?: LLMStreamMetadata
+): string | undefined {
+  return metadata && PROMPT_CACHE_KEY_HOSTS.has(host)
+    ? getPromptCacheKey(metadata)
+    : undefined;
 }
 
 /**

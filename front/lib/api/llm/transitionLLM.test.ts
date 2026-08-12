@@ -1,5 +1,6 @@
 import {
   convertToOldEvent,
+  getPromptCacheKeyForHost,
   reasoningContentToLegacyMetadata,
   toBaseMessages,
   withMessageCacheBreakpoints,
@@ -7,6 +8,11 @@ import {
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { assistantReasoningMessageToInputItems } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
+import {
+  ANTHROPIC_HOST,
+  OPENAI_RESPONSES_HOST,
+  XAI_HOST,
+} from "@app/lib/model_constructors/types/hosts";
 import type { BaseMessage } from "@app/lib/model_constructors/types/input/messages";
 import type { ProviderPassthroughEvent } from "@app/lib/model_constructors/types/output/events";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
@@ -33,6 +39,26 @@ const serverToolUseBlock = {
   name: "tool_search_tool_bm25",
   input: { query: "x" },
 };
+
+describe("getPromptCacheKeyForHost", () => {
+  const metadata = {
+    workspaceId: "workspace",
+    agentConfigurationId: "agent",
+  };
+
+  it("uses a stable key for OpenAI and xAI Responses hosts", () => {
+    expect(getPromptCacheKeyForHost(OPENAI_RESPONSES_HOST, metadata)).toBe(
+      "workspace:agent"
+    );
+    expect(getPromptCacheKeyForHost(XAI_HOST, metadata)).toBe(
+      "workspace:agent"
+    );
+  });
+
+  it("omits the key for other hosts", () => {
+    expect(getPromptCacheKeyForHost(ANTHROPIC_HOST, metadata)).toBeUndefined();
+  });
+});
 
 function reasoningMessage({
   provider,

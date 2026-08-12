@@ -1,6 +1,6 @@
 import type { LLMStreamMetadata } from "@app/lib/api/llm/types/options";
 
-export function getOpenAIPromptCacheKey({
+export function getPromptCacheKey({
   agentConfigurationId,
   workspaceId,
 }: LLMStreamMetadata): string {
