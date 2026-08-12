@@ -54,42 +54,35 @@ interface ComplianceColumn {
 const COLUMNS: ComplianceColumn[] = [
   {
     code: "01",
-    title: "Security & compliance",
+    title: "Security and privacy",
     accent: "red",
     items: [
       "SOC 2 Type II certified",
-      "GDPR compliant, EU data residency",
-      "HIPAA-ready deployment",
-      "SSO (SAML, OIDC) + SCIM",
-      "Audit logs, 365-day retention",
-      "RBAC + dual-layer agent permissions",
-      "AES-256 at rest, TLS 1.3 in transit",
-      "Zero model training on your data",
+      "Data residency in the US or EU",
+      "Dedicated single-tenant deployment",
+      "Custom data retention policies",
     ],
   },
   {
     code: "02",
-    title: "Performance & scale",
+    title: "Governance and access",
     accent: "green",
     items: [
-      "99.9% uptime SLA",
-      "10,000+ users per workspace",
-      "Concurrent agent execution",
-      "Sub-2s response time (p95)",
+      "Single sign-on with your identity provider",
+      "Automated user provisioning and deprovisioning",
+      "Separate data and permissions by team",
+      "Audit logs and advanced security controls",
     ],
   },
   {
     code: "03",
-    title: "Integration architecture",
+    title: "Enterprise deployment",
     accent: "blue",
     items: [
-      "RESTful API for custom integrations",
-      "MCP for proprietary systems",
-      "Webhook support for event-driven workflows",
-      "OAuth2 for third-party permissions",
-      "Bi-directional sync, read + write",
-      "Incremental data refresh",
-      "100+ production connectors",
+      "Connect to your existing tools",
+      "Shared workspace credits and volume pricing",
+      "Dedicated customer success support",
+      "Priority support with an SLA",
     ],
   },
 ];
@@ -137,8 +130,6 @@ function PadlockIcon({ accent }: { accent: Accent }) {
   );
 }
 
-const TOTAL_CONTROLS = COLUMNS.reduce((sum, c) => sum + c.items.length, 0);
-
 export function HomeSecuritySection() {
   return (
     <section className="w-full bg-background py-14 lg:py-24">
@@ -149,8 +140,7 @@ export function HomeSecuritySection() {
           </HomeReveal>
           <HomeReveal delay={80}>
             <H2 className="max-w-[820px] text-balance font-semibold leading-[1.08] tracking-[-0.03em] text-foreground">
-              When AI has access to your company&apos;s knowledge, &ldquo;mostly
-              secure&rdquo; doesn&apos;t cut it.
+              Use AI on your terms, without giving up control of your data
             </H2>
           </HomeReveal>
           <HomeReveal delay={160}>
@@ -158,11 +148,11 @@ export function HomeSecuritySection() {
               size="sm"
               className="max-w-[820px] leading-[1.6] text-muted-foreground"
             >
-              Your operators build fast. Your data stays locked down.
               Dust&apos;s dual-layer permission model separates what agents can
-              access from who can use them, with SCIM-synced groups, admin-gated
-              overrides, and zero privilege escalation. Granular enough for your
-              CISO, invisible to everyone else.
+              access from who can use them. SCIM-synced groups, admin-gated
+              overrides, zero privilege escalation, and audit logs let teams
+              move quickly while keeping company data locked down. Granular
+              enough for your CISO, invisible to everyone else.
             </P>
           </HomeReveal>
         </div>
@@ -171,10 +161,7 @@ export function HomeSecuritySection() {
           {/* Caption strip — small, kept on-brand: foreground sans, mono only on the link */}
           <div className="flex flex-wrap items-baseline justify-between gap-3 px-1">
             <span className="text-sm text-muted-foreground">
-              Trust datasheet,{" "}
-              <span className="font-medium text-foreground">
-                {TOTAL_CONTROLS} controls live
-              </span>
+              Trust datasheet
             </span>
             <a
               href="https://dust.tt/security"
