@@ -2,6 +2,7 @@ import {
   AvatarNameCell,
   CostShareCell,
 } from "@app/components/workspace/analytics/creditsTableCells";
+import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
@@ -138,6 +139,10 @@ interface AttributionRowsProps {
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
   search: string;
+  onViewAll: (
+    dimension: ConsumptionDimension,
+    selectedRow: ConsumptionTopRow
+  ) => void;
 }
 
 function AttributionRows({
@@ -146,6 +151,7 @@ function AttributionRows({
   period,
   filter,
   search,
+  onViewAll,
 }: AttributionRowsProps) {
   const { hasAvatar, avgLabel } = CONSUMPTION_DIMENSION_CONFIG[dimension];
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
@@ -223,6 +229,7 @@ function AttributionRows({
         dimension={dimension}
         period={period}
         filter={filter}
+        onViewAll={onViewAll}
       />
     </div>
   );
@@ -235,6 +242,10 @@ interface ConsumptionAttributionTableProps {
   // Owned by the page: the selected tab also drives the chart's breakdown.
   dimension: ConsumptionDimension;
   onDimensionChange: (dimension: ConsumptionDimension) => void;
+  onViewAll: (
+    dimension: ConsumptionDimension,
+    selectedRow: ConsumptionTopRow
+  ) => void;
 }
 
 export function ConsumptionAttributionTable({
@@ -243,6 +254,7 @@ export function ConsumptionAttributionTable({
   filter,
   dimension,
   onDimensionChange,
+  onViewAll,
 }: ConsumptionAttributionTableProps) {
   const { inputValue, debouncedValue, setValue } = useDebounce("", {
     delay: SEARCH_DEBOUNCE_DELAY_MS,
@@ -282,6 +294,7 @@ export function ConsumptionAttributionTable({
           period={period}
           filter={filter}
           search={debouncedValue}
+          onViewAll={onViewAll}
         />
       </div>
     </div>

@@ -1,7 +1,9 @@
 import {
   getUsageFilterSummaries,
+  setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
 } from "@app/components/workspace/analytics/usageFilter";
+import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import { describe, expect, it } from "vitest";
 
 describe("toConsumptionScopeFilter", () => {
@@ -69,6 +71,76 @@ describe("toConsumptionScopeFilter", () => {
 
   it("omits empty member and group selections", () => {
     expect(toConsumptionScopeFilter({ member: [], group: [] })).toEqual({});
+  });
+});
+
+describe("setUsageFilterFromAttributionRow", () => {
+  const row = {
+    id: "selected-row",
+    name: "Selected row",
+    pictureUrl: "https://example.com/avatar.png",
+    documentCount: 12,
+  };
+
+  it.each<{
+    dimension: ConsumptionScopeDimension;
+    expectedScopeFilter: Record<string, string[]>;
+  }>([
+    { dimension: "agent", expectedScopeFilter: { agents: [row.id] } },
+    { dimension: "user", expectedScopeFilter: { users: [row.id] } },
+    { dimension: "group", expectedScopeFilter: { groups: [row.id] } },
+    { dimension: "model", expectedScopeFilter: { models: [row.id] } },
+    { dimension: "tool", expectedScopeFilter: { tools: [row.id] } },
+    { dimension: "skill", expectedScopeFilter: { skills: [row.id] } },
+    { dimension: "source", expectedScopeFilter: { sources: [row.id] } },
+  ])("maps a $dimension row to its page-level filter", ({
+    dimension,
+    expectedScopeFilter,
+  }) => {
+    const filter = setUsageFilterFromAttributionRow({}, dimension, row);
+
+    expect(toConsumptionScopeFilter(filter)).toEqual(expectedScopeFilter);
+  });
+
+  it("replaces the selected dimension while preserving other filters", () => {
+    const filter = setUsageFilterFromAttributionRow(
+      {
+        agent: [
+          {
+            id: "previous-agent",
+            name: "Previous agent",
+            kind: "agent",
+            image: null,
+            documentCount: 1,
+            disabled: false,
+          },
+        ],
+        tool: [
+          {
+            id: "tool-1",
+            name: "Web search",
+            kind: "tool",
+            icon: null,
+            documentCount: 1,
+            disabled: false,
+          },
+        ],
+      },
+      "agent",
+      row
+    );
+
+    expect(filter.agent).toEqual([
+      {
+        id: row.id,
+        name: row.name,
+        kind: "agent",
+        image: row.pictureUrl,
+        documentCount: row.documentCount,
+        disabled: false,
+      },
+    ]);
+    expect(filter.tool?.map(({ id }) => id)).toEqual(["tool-1"]);
   });
 });
 

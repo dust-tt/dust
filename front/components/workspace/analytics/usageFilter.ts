@@ -1,11 +1,18 @@
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type {
+  ConsumptionScopeDimension,
+  ConsumptionScopeFilter,
+} from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ConnectorProvider } from "@app/types/data_source";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { isConnectorProvider } from "@app/types/data_source";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 
 export const USAGE_FILTER_CATEGORIES = [
   "agent",
@@ -209,6 +216,67 @@ export function selectAllUsageFilterOptions<C extends UsageFilterCategory>(
     return filter;
   }
   return { ...filter, [category]: [...current, ...additions] };
+}
+
+export function setUsageFilterFromAttributionRow(
+  filter: UsageFilter,
+  dimension: ConsumptionScopeDimension,
+  row: {
+    id: string;
+    name: string;
+    pictureUrl: string | null;
+    documentCount: number;
+  }
+): UsageFilter {
+  const baseOption = {
+    id: row.id,
+    name: row.name,
+    documentCount: row.documentCount,
+    disabled: false,
+  };
+
+  switch (dimension) {
+    case "agent":
+      return {
+        ...filter,
+        agent: [{ ...baseOption, kind: "agent", image: row.pictureUrl }],
+      };
+    case "user":
+      return {
+        ...filter,
+        member: [{ ...baseOption, kind: "member", image: row.pictureUrl }],
+      };
+    case "group":
+      return { ...filter, group: [{ ...baseOption, kind: "group" }] };
+    case "model":
+      return {
+        ...filter,
+        model: [{ ...baseOption, kind: "model", tier: undefined }],
+      };
+    case "tool":
+      return {
+        ...filter,
+        tool: [{ ...baseOption, kind: "tool", icon: null }],
+      };
+    case "skill":
+      return {
+        ...filter,
+        skill: [{ ...baseOption, kind: "skill", icon: null }],
+      };
+    case "source":
+      return {
+        ...filter,
+        source: [
+          {
+            ...baseOption,
+            kind: "source",
+            connectorProvider: isConnectorProvider(row.id) ? row.id : undefined,
+          },
+        ],
+      };
+    default:
+      return assertNever(dimension);
+  }
 }
 
 // "member" maps to the "user" dimension; every other category maps directly

@@ -6,7 +6,10 @@ import { consumptionDimensionFromQueryParam } from "@app/components/workspace/an
 import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
 import { UsageFilterSummary } from "@app/components/workspace/analytics/UsageFilterSummary";
 import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
-import { toConsumptionScopeFilter } from "@app/components/workspace/analytics/usageFilter";
+import {
+  setUsageFilterFromAttributionRow,
+  toConsumptionScopeFilter,
+} from "@app/components/workspace/analytics/usageFilter";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
@@ -129,6 +132,16 @@ export function AnalyticsConsumptionPage() {
                 filter={scopeFilter}
                 dimension={dimension}
                 onDimensionChange={handleDimensionChange}
+                onViewAll={(nextDimension, selectedRow) => {
+                  setFilter((current) =>
+                    setUsageFilterFromAttributionRow(
+                      current,
+                      dimension,
+                      selectedRow
+                    )
+                  );
+                  handleDimensionChange(nextDimension);
+                }}
               />
             </div>
           </div>
