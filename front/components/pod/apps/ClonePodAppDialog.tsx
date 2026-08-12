@@ -114,8 +114,8 @@ export function ClonePodAppDialog({
 
               <ContentMessage variant="info" title="The copy starts empty">
                 Its {app.databases.length === 1 ? "database" : "databases"} are
-                created from the same schema but hold no data, and its Frame is
-                left unpublished so you can review it first.
+                created from the same schema but hold no data. Everything else
+                is published like the original's.
               </ContentMessage>
             </DialogContainer>
             <DialogFooter

@@ -1,5 +1,9 @@
+import { DustFileSystem } from "@app/lib/api/file_system";
 import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
+import { splitFrameEntryScopedPath } from "@app/lib/api/files/mount_path";
 import { moveProjectFile } from "@app/lib/api/projects/context";
+import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
+import { publishFrame } from "@app/lib/api/viz/publish_frame";
 import { uploadFrameContent } from "@app/lib/api/viz/upload_frame_content";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -22,6 +26,46 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
  * is what makes the Frame belong to the app, and therefore what makes its bare function references
  * resolve against that app.
  */
+/**
+ * Publish a Frame that lives in a Pod folder, exactly as the interactive-content tool does: the
+ * Frame's own directory is the bundling root, so the bundler resolves its relative imports from the
+ * folder it sits in.
+ */
+export async function publishPodFrameFile(
+  auth: Authenticator,
+  file: FileResource
+): Promise<Result<void, Error>> {
+  const scopedPath = file.toScopedPath(auth);
+  if (!scopedPath) {
+    return new Err(
+      new Error(`Frame '${file.sId}' has no Pod path to publish from.`)
+    );
+  }
+
+  const splitResult = splitFrameEntryScopedPath(scopedPath);
+  if (splitResult.isErr()) {
+    return new Err(splitResult.error);
+  }
+  const { root, entryRelPath } = splitResult.value;
+
+  const fsResult = await DustFileSystem.fromScopedPath(auth, root);
+  if (fsResult.isErr()) {
+    return new Err(fsResult.error);
+  }
+
+  const publishResult = await publishFrame(auth, {
+    file,
+    reader: createMountFrameSourceReader(fsResult.value, root),
+    entryRelPath,
+    rootScopedPath: root,
+  });
+  if (publishResult.isErr()) {
+    return new Err(new Error(publishResult.error.message));
+  }
+
+  return new Ok(undefined);
+}
+
 /**
  * The path a Pod file has relative to the Pod's files root, from its canonical scoped path.
  *

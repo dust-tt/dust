@@ -3,7 +3,10 @@ import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import { getPodStateBasePath } from "@app/lib/api/files/mount_path";
 import { getFileContent } from "@app/lib/api/files/utils";
 import { deleteProjectFile } from "@app/lib/api/projects/context";
-import { createPodFrameFile } from "@app/lib/api/projects/pod_frame_file";
+import {
+  createPodFrameFile,
+  publishPodFrameFile,
+} from "@app/lib/api/projects/pod_frame_file";
 import { deletePodDatabaseReplica } from "@app/lib/api/sandbox/db";
 import {
   appPrefixFromPodDatabaseName,
@@ -595,9 +598,10 @@ function fileEntriesOf(entries: FileSystemEntry[]): FileSystemFileEntry[] {
  * Clone a Pod app into a new folder in the same Pod.
  *
  * What carries over: every file under the app folder, its published functions (re-published under the
- * copy's prefix), and its databases as **fresh, empty** ones reconciled from the copied schema files.
- * What does not: database rows, share tokens, the pinned tab, and invocation history. The copy's Frame
- * is left unpublished, so the author decides when it becomes a shareable artifact.
+ * copy's prefix), its databases as **fresh, empty** ones reconciled from the copied schema files, and
+ * the published state of its Frames — a published Frame is published in the copy too, so the clone
+ * opens and renders exactly like the original.
+ * What does not: database rows, share tokens, the pinned tab, and invocation history.
  *
  * A Frame cannot simply be copied as an object — it needs a FileResource to be publishable at all —
  * so Frames are recreated through `createPodFrameFile` and every other file is copied directly.
@@ -733,6 +737,18 @@ export async function clonePodApp(
         new PodAppCloneError("internal", createResult.error.message)
       );
     }
+    // Publish the copy's Frame when the source's was published, so the clone is as usable as the
+    // original — openable, shareable, rendering its bundle. A source still being authored has no
+    // bundle to mirror, so the copy stays unpublished too and renders its source like any draft.
+    if (frame.isPublished) {
+      const publishResult = await publishPodFrameFile(auth, createResult.value);
+      if (publishResult.isErr()) {
+        return new Err(
+          new PodAppCloneError("internal", publishResult.error.message)
+        );
+      }
+    }
+
     clonedFrameNames.push(frame.fileName);
     copiedFileCount += 1;
   }
