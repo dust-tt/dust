@@ -19,7 +19,6 @@ import { UsageFilterMemberGroupsControls } from "@app/components/workspace/analy
 import { UsageFilterModelComplexityControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterModelComplexityControls";
 import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
-import { useUsageFilterStaticPagination } from "@app/components/workspace/analytics/usageFilterPanel/useUsageFilterStaticPagination";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
 import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
@@ -141,15 +140,7 @@ export function UsageFilterPanel({
     selectedGroups.items,
   ]);
 
-  const {
-    visibleCount: visibleOptionCount,
-    hasMore: hasMoreOptions,
-    loadMore: handleLoadMoreOptions,
-  } = useUsageFilterStaticPagination({
-    totalCount: filteredOptions.length,
-    resetKey: `${isOpen}|${activeCategory}|${searchText}|${activeScope}|${activeTier}`,
-  });
-  const displayedOptions = filteredOptions.slice(0, visibleOptionCount);
+  const optionListKey = `${isOpen}|${activeCategory}|${searchText}|${activeScope}|${activeTier}`;
   const selectedIdsForActiveCategory = useMemo(
     () =>
       new Set((draftFilter[activeCategory] ?? []).map((option) => option.id)),
@@ -269,9 +260,10 @@ export function UsageFilterPanel({
               </div>
             ) : (
               <UsageFilterOptionCheckboxList
+                key={optionListKey}
                 category={activeCategory}
                 categoryLabel={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
-                options={displayedOptions}
+                options={filteredOptions}
                 selectedIds={selectedIdsForActiveCategory}
                 onToggleOption={(option) =>
                   toggleOption(activeCategory, option)
@@ -289,10 +281,8 @@ export function UsageFilterPanel({
                 }
                 hasSelectableOptions={bulkSelectableOptions.length > 0}
                 isSelectionLimitReached={remainingSelectionCapacity === 0}
-                hasMore={hasMoreOptions}
                 isLoading={isFacetsLoading}
                 isUpdating={isFacetsValidating}
-                onLoadMore={handleLoadMoreOptions}
               />
             )}
           </div>
