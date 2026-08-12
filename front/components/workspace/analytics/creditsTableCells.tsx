@@ -29,14 +29,14 @@ export function CostShareBar({
   className?: string;
 }) {
   return (
-    <svg
-      aria-hidden="true"
-      className={cn("h-1.5", className)}
-      preserveAspectRatio="none"
-      viewBox="0 0 100 6"
-    >
-      <rect className="fill-muted" height="6" rx="3" width="100" />
-      <rect className="fill-primary" height="6" rx="3" width={percentage} />
+    <svg aria-hidden="true" className={cn("h-1.5", className)}>
+      <rect className="fill-muted" height="100%" rx="3" width="100%" />
+      <rect
+        className="fill-primary"
+        height="100%"
+        rx="3"
+        width={`${percentage}%`}
+      />
     </svg>
   );
 }
