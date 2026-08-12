@@ -52,6 +52,7 @@ import { useSubmitMessage } from "@app/hooks/useSubmitMessage";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
 import type { DustError } from "@app/lib/error";
 import {
@@ -330,8 +331,10 @@ export const ConversationViewer = ({
     disabled: !conversation?.spaceId,
   });
 
+  const { hasFeature } = useFeatureFlags();
   const { activationPodId } = useActivationPod({
     workspaceId: owner.sId,
+    disabled: !hasFeature("activation_skill"),
   });
 
   useConversationMarkAsRead({
@@ -1461,6 +1464,10 @@ export const ConversationViewer = ({
       handleSubmit,
       conversation,
       isOnboardingConversation,
+      uiView:
+        conversation?.spaceId && conversation.spaceId === activationPodId
+          ? "compact"
+          : "standard",
       draftKey: `conversation-${conversationId}`,
       agentBuilderContext,
       feedbacksByMessageId,
@@ -1474,10 +1481,6 @@ export const ConversationViewer = ({
       isAutoScrollEnabledRef,
       isNoSeat: limitReachedCode === "no_seat",
       setLimitReachedCode,
-      uiView:
-        conversation?.spaceId && conversation.spaceId === activationPodId
-          ? "compact"
-          : "standard",
     };
   }, [
     user,
@@ -1485,6 +1488,7 @@ export const ConversationViewer = ({
     handleSubmit,
     conversation,
     isOnboardingConversation,
+    activationPodId,
     conversationId,
     agentBuilderContext,
     feedbacksByMessageId,
@@ -1494,7 +1498,6 @@ export const ConversationViewer = ({
     spaceInfo?.isRestricted,
     spaceInfo?.archivedAt,
     spaceInfo?.name,
-    activationPodId,
     limitReachedCode,
     setLimitReachedCode,
   ]);
