@@ -16,6 +16,7 @@ import type {
   GetSkillsResponseBody,
   GetSkillsWithRelationsResponseBody,
   GetSkillWithRelationsResponseBody,
+  SearchSkillsResponseBody,
 } from "@app/types/api/skills";
 import type { GetSimilarSkillsResponseBody } from "@app/types/api/skills/existing_skill_checker";
 import type {
@@ -30,12 +31,13 @@ import { isAPIErrorResponse } from "@app/types/error";
 import { Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
 import type { SWRMutationConfiguration } from "swr/mutation";
 import useSWRMutation from "swr/mutation";
 
 const DETECT_SKILLS_DEBOUNCE_MS = 1_000;
+const SEARCH_SKILLS_DEBOUNCE_MS = 250;
 
 export function useSkill(options: {
   workspaceId: string;
@@ -157,6 +159,53 @@ export function useSkills({
     isSkillsError: !!error,
     isSkillsLoading: isLoading,
     mutateSkills: mutate,
+  };
+}
+
+export function useSearchSkills({
+  owner,
+  searchTerm,
+  disabled,
+  swrOptions,
+}: {
+  owner: LightWorkspaceType;
+  searchTerm: string;
+  disabled?: boolean;
+  swrOptions?: SWRConfiguration;
+}) {
+  const { fetcher } = useFetcher();
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
+
+  // The delayed value controls the external network request; search-result
+  // filtering and ordering remain derived synchronously by the caller.
+  useEffect(() => {
+    const timeout = setTimeout(
+      () => setDebouncedSearchTerm(searchTerm),
+      SEARCH_SKILLS_DEBOUNCE_MS
+    );
+    return () => clearTimeout(timeout);
+  }, [searchTerm]);
+
+  const queryParams = new URLSearchParams({
+    query: debouncedSearchTerm.slice(0, 200),
+  });
+  const skillsFetcher: Fetcher<SearchSkillsResponseBody> = fetcher;
+  const { data, error, isValidating } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/skills/search?${queryParams.toString()}`,
+    skillsFetcher,
+    {
+      ...swrOptions,
+      disabled,
+      keepPreviousData: true,
+    }
+  );
+
+  return {
+    skills:
+      data?.skills ?? emptyArray<SearchSkillsResponseBody["skills"][number]>(),
+    isSkillsError: !!error,
+    isSkillsLoading:
+      searchTerm !== debouncedSearchTerm || (!error && (!data || isValidating)),
   };
 }
 
