@@ -1,11 +1,16 @@
-import { AvatarNameCell } from "@app/components/workspace/analytics/creditsTableCells";
-import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
+import {
+  AvatarNameCell,
+  CostShareCell,
+} from "@app/components/workspace/analytics/creditsTableCells";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { formatCredits } from "@app/lib/client/credits";
 import {
+  Button,
+  ChevronDown,
+  ChevronUp,
   DataTable,
   SearchInput,
   Spinner,
@@ -14,7 +19,9 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import type { AttributionRowData } from "./ConsumptionAttributionRowsTable";
+import { ConsumptionAttributionRowsTable } from "./ConsumptionAttributionRowsTable";
 import type { ConsumptionDimension } from "./consumptionDimensions";
 import {
   CONSUMPTION_DIMENSION_CONFIG,
@@ -25,28 +32,6 @@ import {
 const TOP_LIMIT = 25;
 
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
-
-type AttributionRowData = ConsumptionTopRow & {
-  onClick?: () => void;
-  onDoubleClick?: () => void;
-};
-
-function CostShareCell({ share }: { share: number }) {
-  const percent = Math.round(share * 100);
-  return (
-    <div className="flex items-center gap-2">
-      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full bg-primary"
-          style={{ width: `${Math.min(100, share * 100)}%` }}
-        />
-      </div>
-      <span className="w-8 text-right text-xs text-muted-foreground tabular-nums">
-        {percent}%
-      </span>
-    </div>
-  );
-}
 
 function buildColumns({
   hasAvatar,
@@ -64,7 +49,7 @@ function buildColumns({
       id: "name",
       accessorKey: "name",
       header: "Name",
-      meta: { sizeRatio: 34, headerAlign: "left" },
+      meta: { sizeRatio: 32, headerAlign: "left" },
       cell: (info) => {
         const { name, pictureUrl } = info.row.original;
         return (
@@ -85,7 +70,7 @@ function buildColumns({
     {
       id: "costShare",
       header: "Cost share",
-      meta: { sizeRatio: 22, headerAlign: "left" },
+      meta: { sizeRatio: 20, headerAlign: "left" },
       cell: (info) => (
         <DataTable.CellContent className="w-full justify-start">
           <CostShareCell
@@ -100,7 +85,7 @@ function buildColumns({
       id: "credits",
       accessorKey: "credits",
       header: "Total credits",
-      meta: { sizeRatio: 22, headerAlign: "right" },
+      meta: { sizeRatio: 20, headerAlign: "right" },
       cell: (info) => (
         <DataTable.BasicCellContent
           className="justify-end text-right tabular-nums"
@@ -119,6 +104,30 @@ function buildColumns({
           label={formatCredits(info.row.original.avgCredits)}
         />
       ),
+    },
+    {
+      id: "details",
+      header: "",
+      enableSorting: false,
+      meta: { className: "w-12", headerAlign: "right" },
+      cell: (info) => {
+        const row = info.row.original;
+        return (
+          <DataTable.CellContent className="w-full justify-end">
+            <Button
+              icon={row.isExpanded ? ChevronUp : ChevronDown}
+              variant="ghost-secondary"
+              size="xs"
+              aria-label={`${row.isExpanded ? "Collapse" : "Expand"} breakdown for ${row.name}`}
+              aria-expanded={row.isExpanded}
+              onClick={(event) => {
+                event.stopPropagation();
+                row.onClick();
+              }}
+            />
+          </DataTable.CellContent>
+        );
+      },
     },
   ];
 }
@@ -139,6 +148,7 @@ function AttributionRows({
   search,
 }: AttributionRowsProps) {
   const { hasAvatar, avgLabel } = CONSUMPTION_DIMENSION_CONFIG[dimension];
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
   const {
     rows: allRows,
@@ -197,7 +207,25 @@ function AttributionRows({
     );
   }
 
-  return <DataTable<AttributionRowData> data={rows} columns={columns} />;
+  const data: AttributionRowData[] = rows.map((row) => ({
+    ...row,
+    isExpanded: expandedRowId === row.id,
+    onClick: () =>
+      setExpandedRowId((current) => (current === row.id ? null : row.id)),
+  }));
+
+  return (
+    <div className="overflow-x-auto">
+      <ConsumptionAttributionRowsTable
+        data={data}
+        columns={columns}
+        workspaceId={workspaceId}
+        dimension={dimension}
+        period={period}
+        filter={filter}
+      />
+    </div>
+  );
 }
 
 interface ConsumptionAttributionTableProps {

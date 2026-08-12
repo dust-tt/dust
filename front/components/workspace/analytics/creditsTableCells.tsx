@@ -1,5 +1,5 @@
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
-import { Avatar, Tooltip } from "@dust-tt/sparkle";
+import { Avatar, cn, Tooltip } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
 function EmptyCell() {
@@ -26,6 +26,38 @@ export function AvatarNameCell({
         isRounded={isRounded}
       />
       <span className="truncate text-sm">{name}</span>
+    </div>
+  );
+}
+
+interface CostShareBarProps {
+  percentage: number;
+  className?: string;
+}
+
+export function CostShareBar({ percentage, className }: CostShareBarProps) {
+  return (
+    <progress
+      aria-hidden="true"
+      className={cn(
+        "block h-1.5 overflow-hidden rounded-full bg-muted accent-primary",
+        className
+      )}
+      max={100}
+      value={percentage}
+    />
+  );
+}
+
+export function CostShareCell({ share }: { share: number }) {
+  const percentage = Math.round(Math.min(100, share * 100));
+
+  return (
+    <div className="flex items-center gap-2">
+      <CostShareBar className="w-24" percentage={percentage} />
+      <span className="w-8 text-right text-xs text-muted-foreground tabular-nums">
+        {percentage}%
+      </span>
     </div>
   );
 }
