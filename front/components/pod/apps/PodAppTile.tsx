@@ -5,7 +5,7 @@ import {
   Card,
   CardActionButton,
   Chip,
-  Clipboard,
+  GitBranch01,
   Icon,
   Trash01,
 } from "@dust-tt/sparkle";
@@ -64,8 +64,8 @@ export function PodAppTile({
             {onClone && (
               <CardActionButton
                 size="icon"
-                icon={Clipboard}
-                tooltip="Copy this app into a new folder, with empty databases"
+                icon={GitBranch01}
+                tooltip="Clone this app into a new folder, with empty databases"
                 onClick={onClone}
               />
             )}
