@@ -68,30 +68,17 @@ impl GcsPolicyProvider {
         self.cache.invalidate(cache_key).await;
     }
 
-    // Workspace policy lives at `w/{wId}/sandbox-egress-policy.json`. During the layout
-    // migration we fall back to the legacy `workspaces/{wId}.json` path when
-    // the new object is absent (not on errors: those stay fail-closed).
-    // TODO(2026-08-15 EGRESS_RELAYOUT): drop the legacy fallback once the
-    // backfill has run and legacy objects are deleted.
+    // Workspace policy lives at `w/{wId}/sandbox-egress-policy.json`. The
+    // "w2:" cache key is load-bearing: invalidation tokens minted by older
+    // front builds evict exactly this key.
     pub async fn get_workspace_policy(&self, w_id: &str) -> Result<Option<Policy>> {
-        let current = self
-            .get_policy(
-                &format!("w2:{w_id}"),
-                &format!("w/{w_id}/sandbox-egress-policy.json"),
-            )
-            .await?;
-
-        if current.is_some() {
-            return Ok(current);
-        }
-
-        self.get_policy(&format!("w:{w_id}"), &format!("workspaces/{w_id}.json"))
-            .await
+        self.get_policy(
+            &format!("w2:{w_id}"),
+            &format!("w/{w_id}/sandbox-egress-policy.json"),
+        )
+        .await
     }
 
-    // Legacy per-sandbox policy, keyed by the ephemeral provider id. Still
-    // read (unioned with the owner policy) so in-flight approvals from before
-    // the layout migration keep working until those sandboxes age out.
     // Owner policy: the stable per-owner allowlist at
     // `w/{wId}/sandboxes/{ownerId}.json`, where ownerId is a conversation sId
     // (conversation sandboxes) or a space sId (pod sandboxes). Survives

@@ -61,7 +61,6 @@ enum MockGcsResponse {
 #[derive(Default)]
 struct MockPolicies {
     workspace: Option<MockGcsResponse>,
-    workspace_new: Option<MockGcsResponse>,
     owner: Option<MockGcsResponse>,
     // The pod's policy file — same `w/{wId}/sandboxes/{id}.json` scheme as
     // owner files, keyed by the pod space sId.
@@ -194,7 +193,6 @@ async fn workspace_policy_allows_domain() -> Result<()> {
     let proxy = start_proxy_with_mock_gcs(
         MockPolicies {
             workspace: Some(policy_response(&["localhost"])),
-            workspace_new: None,
             owner: None,
             pod: None,
         },
@@ -221,67 +219,6 @@ async fn workspace_policy_allows_domain() -> Result<()> {
 
     drop(stream);
     wait_for_upstream_completion(&mut upstream_handles, Duration::from_secs(2)).await?;
-    Ok(())
-}
-
-#[tokio::test]
-async fn workspace_policy_new_layout_allows_domain() -> Result<()> {
-    let (upstream_port, mut upstream_handles) =
-        start_localhost_servers(UpstreamBehavior::EchoFixed { read_len: 4 }).await?;
-    let proxy = start_proxy_with_mock_gcs(
-        MockPolicies {
-            workspace: None,
-            workspace_new: Some(policy_response(&["localhost"])),
-            owner: None,
-            pod: None,
-        },
-        None,
-        true,
-        "test",
-    )
-    .await?;
-    let token = make_token(SECRET, 60);
-    let mut stream = connect_forwarder(&proxy).await?;
-
-    stream
-        .write_all(&build_frame(&token, "localhost", upstream_port)?)
-        .await?;
-
-    let mut response = [0; 1];
-    stream.read_exact(&mut response).await?;
-    assert_eq!(response[0], ALLOW_RESPONSE);
-
-    stream.write_all(b"ping").await?;
-    let mut echoed = [0; 4];
-    stream.read_exact(&mut echoed).await?;
-    assert_eq!(&echoed, b"ping");
-
-    drop(stream);
-    wait_for_upstream_completion(&mut upstream_handles, Duration::from_secs(2)).await?;
-    Ok(())
-}
-
-#[tokio::test]
-async fn workspace_policy_new_layout_preferred_over_legacy() -> Result<()> {
-    // When the new-layout file exists, the legacy file is NOT consulted:
-    // fallback happens only when the new object is absent.
-    let proxy = start_proxy_with_mock_gcs(
-        MockPolicies {
-            workspace: Some(policy_response(&["localhost"])),
-            workspace_new: Some(policy_response(&["other.example.com"])),
-            owner: None,
-            pod: None,
-        },
-        None,
-        false,
-        "production",
-    )
-    .await?;
-    let token = make_token(SECRET, 60);
-
-    let response = send_handshake(&proxy, &token, "localhost", 254).await?;
-
-    assert_eq!(response, Some(DENY_RESPONSE));
     Ok(())
 }
 
@@ -292,7 +229,6 @@ async fn owner_policy_allows_domain() -> Result<()> {
     let proxy = start_proxy_with_mock_gcs(
         MockPolicies {
             workspace: None,
-            workspace_new: None,
             owner: Some(policy_response(&["localhost"])),
             pod: None,
         },
@@ -331,7 +267,6 @@ async fn owner_policy_ignored_without_owner_id_claim() -> Result<()> {
     let proxy = start_proxy_with_mock_gcs(
         MockPolicies {
             workspace: None,
-            workspace_new: None,
             owner: Some(policy_response(&["localhost"])),
             pod: None,
         },
@@ -358,7 +293,6 @@ async fn pod_policy_allows_conversation_inside_pod() -> Result<()> {
     let proxy = start_proxy_with_mock_gcs(
         MockPolicies {
             workspace: None,
-            workspace_new: None,
             owner: None,
             pod: Some(policy_response(&["localhost"])),
         },
@@ -397,7 +331,6 @@ async fn pod_policy_ignored_without_pod_id_claim() -> Result<()> {
     let proxy = start_proxy_with_mock_gcs(
         MockPolicies {
             workspace: None,
-            workspace_new: None,
             owner: None,
             pod: Some(policy_response(&["localhost"])),
         },
@@ -424,7 +357,6 @@ async fn pod_id_without_owner_id_is_rejected() -> Result<()> {
     let proxy = start_proxy_with_mock_gcs(
         MockPolicies {
             workspace: None,
-            workspace_new: None,
             owner: None,
             pod: Some(policy_response(&["localhost"])),
         },
@@ -450,7 +382,6 @@ async fn pod_function_allowed_through_pod_file_as_owner() -> Result<()> {
     let proxy = start_proxy_with_mock_gcs(
         MockPolicies {
             workspace: None,
-            workspace_new: None,
             owner: None,
             pod: Some(policy_response(&["localhost"])),
         },
@@ -477,7 +408,6 @@ async fn conversation_policy_does_not_apply_to_pod_function() -> Result<()> {
     let proxy = start_proxy_with_mock_gcs(
         MockPolicies {
             workspace: None,
-            workspace_new: None,
             owner: Some(policy_response(&["localhost"])),
             pod: None,
         },
@@ -499,7 +429,6 @@ async fn denied_when_no_policy_allows_with_owner_id() -> Result<()> {
     let proxy = start_proxy_with_mock_gcs(
         MockPolicies {
             workspace: Some(policy_response(&["a.example.com"])),
-            workspace_new: Some(policy_response(&["b.example.com"])),
             owner: Some(policy_response(&["c.example.com"])),
             pod: None,
         },
@@ -523,7 +452,6 @@ async fn owner_gcs_failure_denies_connection() -> Result<()> {
     let proxy = start_proxy_with_mock_gcs(
         MockPolicies {
             workspace: None,
-            workspace_new: None,
             owner: Some(MockGcsResponse::Status(StatusCode::INTERNAL_SERVER_ERROR)),
             pod: None,
         },
@@ -541,10 +469,10 @@ async fn owner_gcs_failure_denies_connection() -> Result<()> {
 }
 
 #[tokio::test]
-async fn legacy_token_without_workspace_id_is_denied() -> Result<()> {
-    // The legacy per-sandbox policy layer is gone: a pre-relayout token
-    // carrying only sbId can no longer be allowed by anything, even when a
-    // workspace policy would allow the domain.
+async fn token_without_workspace_id_is_denied() -> Result<()> {
+    // Every policy layer requires the wId claim: a token carrying only sbId
+    // can never be allowed by anything, even when a workspace policy would
+    // allow the domain.
     let proxy = start_proxy_with_workspace_policy(&["localhost"], true, "test").await?;
     let token = make_token_with_claims(
         SECRET,
@@ -571,7 +499,6 @@ async fn denied_when_workspace_policy_does_not_allow_domain() -> Result<()> {
     let proxy = start_proxy_with_mock_gcs(
         MockPolicies {
             workspace: Some(policy_response(&["other.example.com"])),
-            workspace_new: None,
             owner: None,
             pod: None,
         },
@@ -1027,7 +954,6 @@ async fn invalidate_policy_evicts_cached_workspace_entry() -> Result<()> {
     let proxy = start_proxy_with_mock_gcs(
         MockPolicies {
             workspace: Some(policy_response(&["localhost"])),
-            workspace_new: None,
             owner: None,
             pod: None,
         },
@@ -1131,7 +1057,6 @@ async fn invalidate_policy_evicts_cached_owner_entry() -> Result<()> {
     let proxy = start_proxy_with_mock_gcs(
         MockPolicies {
             workspace: None,
-            workspace_new: None,
             owner: Some(policy_response(&["localhost"])),
             pod: None,
         },
@@ -1181,8 +1106,7 @@ async fn invalidate_policy_workspace_evicts_both_layouts() -> Result<()> {
         start_localhost_servers(UpstreamBehavior::EchoFixed { read_len: 4 }).await?;
     let proxy = start_proxy_with_mock_gcs(
         MockPolicies {
-            workspace: None,
-            workspace_new: Some(policy_response(&["localhost"])),
+            workspace: Some(policy_response(&["localhost"])),
             owner: None,
             pod: None,
         },
@@ -1295,8 +1219,7 @@ async fn start_proxy_with_workspace_policy(
 ) -> Result<ProxyProcess> {
     start_proxy_with_mock_gcs(
         MockPolicies {
-            workspace: None,
-            workspace_new: Some(policy_response(allowed_domains)),
+            workspace: Some(policy_response(allowed_domains)),
             owner: None,
             pod: None,
         },
@@ -1361,12 +1284,9 @@ async fn start_proxy_with_mock_gcs(
 async fn start_mock_gcs_server(policies: MockPolicies) -> Result<MockGcsServer> {
     let mut objects = HashMap::new();
     if let Some(workspace) = policies.workspace {
-        objects.insert(format!("workspaces/{TEST_WORKSPACE_ID}.json"), workspace);
-    }
-    if let Some(workspace_new) = policies.workspace_new {
         objects.insert(
             format!("w/{TEST_WORKSPACE_ID}/sandbox-egress-policy.json"),
-            workspace_new,
+            workspace,
         );
     }
     if let Some(owner) = policies.owner {
@@ -1597,9 +1517,8 @@ fn build_oversized_domain_frame(token: &str) -> Vec<u8> {
     frame
 }
 
-// The baseline token: front has always minted the wId claim since the
-// owner-keyed layout, and with the legacy per-sandbox layer gone a token
-// without it can never be allowed by any policy.
+// The baseline token: front always mints the wId claim, and every policy
+// layer requires it — a token without it can never be allowed.
 fn make_token(secret: &str, exp_offset_seconds: i64) -> String {
     make_token_with_claims(
         secret,
