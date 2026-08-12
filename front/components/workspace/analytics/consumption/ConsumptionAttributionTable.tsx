@@ -6,7 +6,6 @@ import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { formatCredits } from "@app/lib/client/credits";
 import {
-  cn,
   DataTable,
   SearchInput,
   Spinner,
@@ -210,9 +209,8 @@ export function ConsumptionAttributionTable({
   });
 
   return (
-    <div className={cn("rounded-lg border border-border bg-card p-4")}>
-      <div className="mb-3 flex items-center justify-between gap-4">
-        <h3 className="text-base font-medium text-foreground">Attribution</h3>
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="mb-3 flex justify-end">
         <SearchInput
           name="consumption-attribution-search"
           placeholder="Search…"

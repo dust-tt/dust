@@ -88,7 +88,7 @@ export function AnalyticsConsumptionPage() {
           filter={scopeFilter}
         />
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-foreground">Explore</h2>
               <UsageFilterPanel
@@ -100,22 +100,32 @@ export function AnalyticsConsumptionPage() {
             </div>
             <UsageFilterSummary filter={filter} onFilterChange={setFilter} />
           </div>
-          <SafeSuspense fallback={<ChartFallback />}>
-            <ConsumptionChart
-              workspaceId={owner.sId}
-              period={period}
-              dimension={dimension}
-              filter={scopeFilter}
-            />
-          </SafeSuspense>
+          <div className="flex flex-col gap-2">
+            <h3 className="text-base font-semibold text-foreground">
+              Consumption
+            </h3>
+            <SafeSuspense fallback={<ChartFallback />}>
+              <ConsumptionChart
+                workspaceId={owner.sId}
+                period={period}
+                dimension={dimension}
+                filter={scopeFilter}
+              />
+            </SafeSuspense>
+          </div>
         </div>
-        <ConsumptionAttributionTable
-          workspaceId={owner.sId}
-          period={period}
-          filter={scopeFilter}
-          dimension={dimension}
-          onDimensionChange={handleDimensionChange}
-        />
+        <div className="flex flex-col gap-2">
+          <h3 className="text-base font-semibold text-foreground">
+            Attribution
+          </h3>
+          <ConsumptionAttributionTable
+            workspaceId={owner.sId}
+            period={period}
+            filter={scopeFilter}
+            dimension={dimension}
+            onDimensionChange={handleDimensionChange}
+          />
+        </div>
       </div>
     </Page.Vertical>
   );
