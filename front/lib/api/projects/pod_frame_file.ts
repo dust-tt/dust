@@ -1,3 +1,4 @@
+import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import { moveProjectFile } from "@app/lib/api/projects/context";
 import { uploadFrameContent } from "@app/lib/api/viz/upload_frame_content";
 import type { Authenticator } from "@app/lib/auth";
@@ -21,6 +22,27 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
  * is what makes the Frame belong to the app, and therefore what makes its bare function references
  * resolve against that app.
  */
+/**
+ * The path a Pod file has relative to the Pod's files root, from its canonical scoped path.
+ *
+ * `moveProjectFile` takes a relative path. It also accepts a scoped one, but only the legacy
+ * `pod/...` form — the canonical `pod-{podId}/...` that `toScopedPath` returns is not recognised and
+ * would be treated as relative, nesting the scope prefix inside the GCS mount path.
+ */
+export function podRelativePathFromScopedPath(
+  scopedPath: string,
+  podId: string
+): string | null {
+  const podScopePrefix = `${SCOPED_PREFIX_POD}${podId}/`;
+  if (!scopedPath.startsWith(podScopePrefix)) {
+    return null;
+  }
+
+  const relativePath = scopedPath.slice(podScopePrefix.length);
+
+  return relativePath.length > 0 ? relativePath : null;
+}
+
 export async function createPodFrameFile(
   auth: Authenticator,
   {
@@ -65,9 +87,17 @@ export async function createPodFrameFile(
       );
     }
 
+    // Derived from the path actually claimed, which may be sId-disambiguated if the name was taken.
+    const relativePath = podRelativePathFromScopedPath(scopedPath, space.sId);
+    if (!relativePath) {
+      return new Err(
+        new Error(`Frame '${fileName}' landed outside the Pod: ${scopedPath}.`)
+      );
+    }
+
     const moveResult = await moveProjectFile(auth, {
       space,
-      sourcePath: scopedPath,
+      sourcePath: relativePath,
       destRelativeFilePath: `${folderName}/${fileName}`,
     });
     if (moveResult.isErr()) {
