@@ -1,5 +1,7 @@
 import * as projectsContext from "@app/lib/api/projects/context";
+import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -132,6 +134,32 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
           newFileName: "new.txt",
         }
       );
+    });
+
+    it("returns 404 for a workspace member outside the pod even when app sharing is enabled", async () => {
+      // App sharing grants function invocation only — file writes stay pod-member territory.
+      const { workspace, project } = await setupProject();
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await ProjectMetadataResource.makeNew(adminAuth, project, {
+        description: null,
+        appSharingEnabled: true,
+      });
+
+      // Authenticate subsequent requests as a workspace user who is not in the pod.
+      await createPrivateApiMockRequest({ role: "user", workspace });
+
+      const response = await fileRequest(
+        workspace,
+        project.sId,
+        ["pod", "old.txt"],
+        { method: "PATCH", body: { fileName: "new.txt" } }
+      );
+
+      expect(response.status).toBe(404);
+      expect((await response.json()).error.type).toBe("space_not_found");
+      expect(projectsContext.renameProjectFile).not.toHaveBeenCalled();
     });
 
     it("returns 400 when fileName is missing", async () => {

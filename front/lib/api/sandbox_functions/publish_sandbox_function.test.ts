@@ -2,12 +2,15 @@ import { buildSandboxFunctionOnSandbox } from "@app/lib/api/sandbox_functions/bu
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { publishSandboxFunction } from "@app/lib/api/sandbox_functions/publish_sandbox_function";
 import { Authenticator } from "@app/lib/auth";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { sandboxFunctionContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -125,6 +128,31 @@ describe("publishSandboxFunction", () => {
 
     const listed = await SandboxFunctionResource.listBySpace(auth, space);
     expect(listed.map(({ id }) => id)).toEqual([fn.id]);
+  });
+
+  it("refuses a workspace member outside the pod even when app sharing is enabled", async () => {
+    // App sharing grants function invocation only — publishing stays pod-member territory.
+    const { workspace, space, auth } = await setupPod();
+    await ProjectMetadataResource.makeNew(auth, space, {
+      description: null,
+      appSharingEnabled: true,
+    });
+    const outsider = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, outsider, { role: "user" });
+    const outsiderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      outsider.sId,
+      workspace.sId
+    );
+
+    const result = await publishSandboxFunction(outsiderAuth, {
+      space,
+      slug: "greet",
+      description: "Greet someone.",
+      path: `pod-${space.sId}/Greeter/functions/greet.ts`,
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(buildSandboxFunctionOnSandbox).not.toHaveBeenCalled();
   });
 
   it("publishes as durable unless the caller asks for fast", async () => {

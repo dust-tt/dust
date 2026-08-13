@@ -253,12 +253,17 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
 });
 
 describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata appSharingEnabled", () => {
-  it("lets an editor enable app sharing", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest({
-      role: "admin",
+  it("lets a pod editor enable app sharing", async () => {
+    // A plain-role user who created the pod: editor group membership, not admin role.
+    const { workspace, user } = await createPrivateApiMockRequest({
+      role: "user",
     });
-    await FeatureFlagFactory.basic(auth, "sandbox_functions");
-    const projectSpace = await SpaceFactory.project(workspace);
+    const { Authenticator } = await import("@app/lib/auth");
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await FeatureFlagFactory.basic(adminAuth, "sandbox_functions");
+    const projectSpace = await SpaceFactory.project(workspace, user.id);
 
     const response = await patchMetadata(workspace, projectSpace.sId, {
       appSharingEnabled: true,

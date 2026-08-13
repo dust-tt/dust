@@ -326,6 +326,43 @@ export class DustFileSystem {
   }
 
   /**
+   * Build a DustFileSystem for provisioning a pod's sandbox (mount setup and
+   * mount credential refresh). Unlike `forPod`, this does not require read
+   * access on the space: the sandbox is shared at the pod level and its mounts
+   * are identical whoever triggers the boot — in particular an invoker
+   * authorized only through app sharing, who holds no read on the Pod. Must
+   * only be called from sandbox provisioning paths, never user-facing file
+   * APIs; API-level permissions on the mount still derive from the caller, so
+   * they fail closed.
+   */
+  static async forPodSandboxProvisioning(
+    auth: Authenticator,
+    space: SpaceResource,
+    { sandboxOnlyMounts = [] }: { sandboxOnlyMounts?: SandboxOnlyMount[] } = {}
+  ): Promise<Result<DustFileSystem, DustFileSystemError>> {
+    const owner = auth.getNonNullableWorkspace();
+    if (space.workspaceId !== owner.id) {
+      return new Err(
+        new DustFileSystemError(
+          "unauthorized",
+          "The space belongs to another workspace."
+        )
+      );
+    }
+
+    const mount = createPodMount(auth, space, { includeLegacy: false });
+
+    const backend = new GCSFileSystemBackend(
+      owner.sId,
+      fileStorageConfig.getGcsPrivateUploadsBucket()
+    );
+
+    return new Ok(
+      new DustFileSystem(auth, [mount], backend, sandboxOnlyMounts)
+    );
+  }
+
+  /**
    * Build a DustFileSystem scoped to the authenticated user's own memory space.
    *
    * The scope is always `auth.user()` and cannot be overridden, so an agent can never
