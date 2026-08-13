@@ -1992,7 +1992,21 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       })
     );
 
-    await GroupPermissionResource.grantMany(auth, { grants, transaction });
+    // A regular_auto group (a space's manual member group) is the single backing group of its
+    // grant tuple, so it must go through `grant()`, which takes the per-tuple lock and enforces
+    // that invariant; `grantMany` rejects them. A space holds at most one, so the bulk path still
+    // covers every other group.
+    const autoGrants = grants.filter(({ group }) => group.isRegularAuto());
+    const bulkGrants = grants.filter(({ group }) => !group.isRegularAuto());
+
+    await GroupPermissionResource.grantMany(auth, {
+      grants: bulkGrants,
+      transaction,
+    });
+
+    for (const grant of autoGrants) {
+      await GroupPermissionResource.grant(auth, { ...grant, transaction });
+    }
   }
 
   // Backfill entry (#9478): (re-)derive this space's `group_permissions` from its `group_vaults`
