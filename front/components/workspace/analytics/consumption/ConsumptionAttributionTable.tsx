@@ -45,8 +45,6 @@ interface AttributionTransition {
   direction: AttributionTransitionDirection;
 }
 
-const ATTRIBUTION_BODY_DISTANCE_PX = 4;
-
 const ATTRIBUTION_BODY_TRANSITION = {
   duration: MOTION_DURATIONS.exit,
   ease: MOTION_EASINGS.enter,
@@ -55,7 +53,7 @@ const ATTRIBUTION_BODY_TRANSITION = {
 const ATTRIBUTION_BODY_VARIANTS: Variants = {
   initial: (direction: number) => ({
     opacity: direction === 0 ? 1 : 0,
-    x: direction * ATTRIBUTION_BODY_DISTANCE_PX,
+    x: direction * 4,
   }),
   animate: {
     opacity: 1,
@@ -66,7 +64,7 @@ const ATTRIBUTION_BODY_VARIANTS: Variants = {
     opacity: direction === 0 ? 1 : 0,
     pointerEvents: "none",
     transition: direction === 0 ? { duration: 0 } : ATTRIBUTION_BODY_TRANSITION,
-    x: direction * -ATTRIBUTION_BODY_DISTANCE_PX,
+    x: direction * -4,
   }),
 };
 
