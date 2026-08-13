@@ -489,4 +489,46 @@ describe("AgentMessage compact UI view", () => {
       expect(screen.getByText("Report.pdf")).toBeInTheDocument();
     });
   });
+
+  describe("thinking step", () => {
+    const thinkingContent =
+      "Because the user asked about pricing, I should check the plan tiers first.";
+    const thinkingStepOverrides: Partial<LightAgentMessageWithActionsType> = {
+      activitySteps: [
+        { type: "thinking", content: thinkingContent, id: "step_1" },
+      ],
+    };
+
+    it("collapses the thinking step to a bare label for compact UI conversations", () => {
+      renderAgentMessage({
+        uiView: "compact",
+        agentMessageOverrides: thinkingStepOverrides,
+      });
+
+      expect(screen.getByText("Thinking…")).toBeInTheDocument();
+      expect(screen.queryByText(thinkingContent)).not.toBeInTheDocument();
+    });
+
+    it("shows the thinking step content directly for non-compact UI conversations", () => {
+      renderAgentMessage({
+        uiView: "standard",
+        agentMessageOverrides: thinkingStepOverrides,
+      });
+
+      expect(screen.getByText(thinkingContent)).toBeInTheDocument();
+      expect(screen.queryByText("Thinking…")).not.toBeInTheDocument();
+    });
+
+    it("expands the compact thinking step on click to reveal its content", () => {
+      renderAgentMessage({
+        uiView: "compact",
+        agentMessageOverrides: thinkingStepOverrides,
+      });
+
+      fireEvent.click(screen.getByText("Thinking…"));
+
+      expect(screen.getByText(thinkingContent)).toBeInTheDocument();
+      expect(screen.queryByText("Thinking…")).not.toBeInTheDocument();
+    });
+  });
 });
