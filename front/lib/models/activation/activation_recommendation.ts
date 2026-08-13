@@ -32,6 +32,8 @@ export class ActivationRecommendationModel extends WorkspaceAwareModel<Activatio
   declare ctaLabel: string | null;
   declare sourceIcon: string | null;
   declare sourceLabel: string | null;
+  // Set after the user answers Useful / Not Useful on an executed recommendation.
+  declare isUseful: boolean | null;
 
   // The conversation in which the recommendation was (originally) made
   declare conversationId: ForeignKey<ConversationModel["id"]> | null;
@@ -92,6 +94,10 @@ ActivationRecommendationModel.init(
     },
     sourceLabel: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    isUseful: {
+      type: DataTypes.BOOLEAN,
       allowNull: true,
     },
     conversationId: {
