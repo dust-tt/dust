@@ -244,6 +244,9 @@ export async function fetchConsumptionAllGroups(
             : {}),
         },
         size: 0,
+        // filter_path applies to error responses too — keep "error" so a
+        // failed request still carries a diagnosable reason.
+        filterPath: ["aggregations", "error"],
       }
     );
 

@@ -272,6 +272,9 @@ export async function searchConsumptionAnalytics<
     from?: number;
     sort?: estypes.Sort;
     search_after?: estypes.SortResults;
+    // Restricts the response to these top-level paths, so ES skips
+    // serializing fields the caller has no use for (shard stats, hits, ...).
+    filterPath?: string | string[];
   }
 ): Promise<
   Result<estypes.SearchResponse<TDocument, TAggregations>, ElasticsearchError>
@@ -284,5 +287,6 @@ export async function searchConsumptionAnalytics<
     from: options?.from,
     sort: options?.sort,
     search_after: options?.search_after,
+    filter_path: options?.filterPath,
   });
 }
