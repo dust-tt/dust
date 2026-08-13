@@ -12,8 +12,7 @@ import { Op } from "sequelize";
 
 // `20260810_migrate_sonnet46_medium_to_auto.ts` moved every active agent on Claude Sonnet 4.6 with
 // medium reasoning to the Auto meta-model. It swept in agents that had only landed on Sonnet 4.6
-// medium because an earlier in-place migration put them there (e.g.
-// `20260518_migrate_legacy_anthropic_models.ts`), burying a model the builder had actually picked.
+// after another model change,  burying a model the builder had actually picked.
 //
 // Nothing was on Auto before that migration ran, so any version showing Auto and created by the end
 // of the migration window is one it flipped in place. From there we walk the agent's whole history:
