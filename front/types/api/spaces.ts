@@ -110,6 +110,8 @@ export type RichSpaceType = SpaceType & {
   tabsOrder: string[];
   /** Workspace admins control membership and connected data (project spaces only). */
   isAdminControlled: boolean;
+  /** Workspace members may invoke this Pod's published functions (project spaces only). */
+  appSharingEnabled: boolean;
 };
 
 export type GetSpaceResponseBody = {

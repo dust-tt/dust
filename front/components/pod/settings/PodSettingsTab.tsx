@@ -3,6 +3,7 @@ import { CapabilitiesPickerItemsList } from "@app/components/assistant/Capabilit
 import { ConfirmContext } from "@app/components/Confirm";
 import { MarkdownFileEditor } from "@app/components/editor/MarkdownFileEditor";
 import { AdminControlledPodTile } from "@app/components/pod/settings/AdminControlledPodTile";
+import { AppSharingPodTile } from "@app/components/pod/settings/AppSharingPodTile";
 import { DeletePodDialog } from "@app/components/pod/settings/DeletePodDialog";
 import { PodMembersTable } from "@app/components/pod/settings/PodMembersTable";
 import { PodNetworkSection } from "@app/components/pod/settings/PodNetworkSection";
@@ -101,6 +102,7 @@ export function PodSettingsTab({
   const { isAdmin } = useAuth();
   const hasWorkspaceDefaultAgentFeature = hasFeature("workspace_default_agent");
   const hasAdminControlledPodsFeature = hasFeature("admin_controlled_pods");
+  const hasSandboxFunctionsFeature = hasFeature("sandbox_functions");
   // The pod sandbox admin sections (network allowlist, env vars) are
   // workspace-admin only (matching the API) and part of the Sandbox
   // Functions surface.
@@ -776,6 +778,12 @@ export function PodSettingsTab({
             {hasAdminControlledPodsFeature && (
               <div className="border-t border-border">
                 <AdminControlledPodTile owner={owner} pod={pod} />
+              </div>
+            )}
+
+            {hasSandboxFunctionsFeature && (
+              <div className="border-t border-border">
+                <AppSharingPodTile owner={owner} pod={pod} />
               </div>
             )}
 

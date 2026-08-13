@@ -1161,6 +1161,9 @@
  *             isAdminControlled:
  *               type: boolean
  *               description: Whether workspace admins control membership and connected data for this Pod.
+ *             appSharingEnabled:
+ *               type: boolean
+ *               description: Whether all workspace members may invoke this Pod's published functions.
  *     PrivateDataSourceView:
  *       type: object
  *       description: A view on a data source within a space.
