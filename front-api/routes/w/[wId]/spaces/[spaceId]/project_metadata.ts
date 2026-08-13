@@ -115,18 +115,6 @@ app.patch(
       }
     }
 
-    if (body.appSharingEnabled !== undefined) {
-      if (!(await hasFeatureFlag(auth, "sandbox_functions"))) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "feature_flag_not_found",
-            message: "Sandbox Functions are not enabled for this workspace.",
-          },
-        });
-      }
-    }
-
     if (body.pinnedFramePath !== undefined) {
       const validation = await validatePinnedFramePath(
         auth,
