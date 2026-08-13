@@ -62,32 +62,43 @@ export async function fetchConsumptionTopExportCsv(
     )
   );
 
+  // Label resolution hits the database (users, groups, skills, ...); run it
+  // for every dimension concurrently rather than awaiting one at a time.
+  const dimensionRows = await Promise.all(
+    results.map(async (result, index) => {
+      if (result.isErr()) {
+        return result;
+      }
+
+      const dimension = CONSUMPTION_SCOPE_DIMENSIONS[index];
+      const { groups, totalCredits } = result.value;
+      const resolvedRows = await resolveConsumptionGroupLabels(
+        auth,
+        dimension,
+        groups
+      );
+
+      return new Ok(
+        resolvedRows.map((row) => ({
+          dimension,
+          name: row.name,
+          costSharePercent:
+            totalCredits > 0
+              ? roundToCents((row.credits / totalCredits) * 100)
+              : 0,
+          credits: roundToCents(row.credits),
+          avgCredits: roundToCents(row.avgCredits),
+        }))
+      );
+    })
+  );
+
   const rows: ConsumptionExportCsvRow[] = [];
-  for (const [index, result] of results.entries()) {
+  for (const result of dimensionRows) {
     if (result.isErr()) {
       return result;
     }
-
-    const dimension = CONSUMPTION_SCOPE_DIMENSIONS[index];
-    const { groups, totalCredits } = result.value;
-    const resolvedRows = await resolveConsumptionGroupLabels(
-      auth,
-      dimension,
-      groups
-    );
-
-    rows.push(
-      ...resolvedRows.map((row) => ({
-        dimension,
-        name: row.name,
-        costSharePercent:
-          totalCredits > 0
-            ? roundToCents((row.credits / totalCredits) * 100)
-            : 0,
-        credits: roundToCents(row.credits),
-        avgCredits: roundToCents(row.avgCredits),
-      }))
-    );
+    rows.push(...result.value);
   }
 
   return new Ok(rowsToCsv(CONSUMPTION_EXPORT_HEADERS, rows));
