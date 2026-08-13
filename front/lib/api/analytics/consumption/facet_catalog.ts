@@ -7,7 +7,7 @@ import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumpti
 import { SOURCE_ORIGIN_LABELS } from "@app/lib/api/analytics/source_labels";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
-import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
+import type { MCPServerTypeWithLightViews } from "@app/lib/api/mcp";
 import { listMCPServersWithViews } from "@app/lib/api/mcp/servers";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -62,7 +62,7 @@ function traceFacetCatalogLoad<T>(
 }
 
 function toolFacetCatalogEntries(
-  mcpServers: MCPServerTypeWithViews[]
+  mcpServers: MCPServerTypeWithLightViews[]
 ): ConsumptionFacetCatalogEntry[] {
   const entries = mcpServers.flatMap<ConsumptionFacetCatalogEntry>((server) => {
     if (!isRemoteMCPServerType(server)) {

@@ -29,6 +29,7 @@ import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/
 import type {
   MCPServerLightType,
   MCPServerType,
+  MCPServerViewInServerListType,
   MCPServerViewLightType,
   MCPServerViewType,
   MCPToolType,
@@ -1866,6 +1867,14 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         enabled: t.enabled,
       })),
     };
+  }
+
+  toJSONForServerList(): MCPServerViewInServerListType {
+    const { server, ...rest } = this.toJSON();
+    const { tools, ...serverWithoutTools } = server;
+    void tools;
+
+    return { ...rest, server: serverWithoutTools };
   }
 
   /**

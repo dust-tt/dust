@@ -17,7 +17,10 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
-import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
+import type {
+  MCPServerType,
+  MCPServerViewInServerListType,
+} from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
 import {
   useCreateInternalMCPServer,
@@ -26,18 +29,25 @@ import {
   useMCPServersUsage,
 } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
+import { emptyArray } from "@app/lib/swr/swr";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { SkillUsageType } from "@app/types/assistant/skill_configuration";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
-import { Chip, cn, DataTable, EmptyCTA, Spinner } from "@dust-tt/sparkle";
+import {
+  Chip,
+  cn,
+  DataTable,
+  DataTableLoadingSkeleton,
+  EmptyCTA,
+} from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
 type RowData = {
   mcpServer: MCPServerType;
-  mcpServerView?: MCPServerViewType;
+  mcpServerView?: MCPServerViewInServerListType;
   usage: SkillUsageType | null;
   isConnected: boolean;
   account: string;
@@ -412,15 +422,16 @@ export const AdminActionsList = ({
         createRemoteMCPServer={onCreateRemoteMCPServer}
         createInternalMCPServer={onCreateInternalMCPServer}
       />
-      {rows.length > 0 &&
+      {(showLoader || rows.length > 0) &&
         portalToHeader(
           <AddToolsButton onClick={() => setIsAddToolsOpen(true)} />
         )}
 
       {showLoader && (
-        <div className="mt-16 flex justify-center">
-          <Spinner />
-        </div>
+        <>
+          <DataTable data={emptyArray<RowData>()} columns={columns} />
+          <DataTableLoadingSkeleton rows={5} showSelectionColumn={false} />
+        </>
       )}
 
       {!showLoader &&

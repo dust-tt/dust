@@ -200,6 +200,17 @@ export type MCPServerTypeWithViews = MCPServerType & {
   views: MCPServerViewType[];
 };
 
+export type MCPServerViewInServerListType = Omit<
+  MCPServerViewType,
+  "server"
+> & {
+  server: Omit<MCPServerType, "tools">;
+};
+
+export type MCPServerTypeWithLightViews = MCPServerType & {
+  views: MCPServerViewInServerListType[];
+};
+
 export type DeveloperSecretSelectionType = "required" | "optional";
 
 export type GetMCPServerViewsNotActivatedResponseBody = {
@@ -209,7 +220,7 @@ export type GetMCPServerViewsNotActivatedResponseBody = {
 
 export type GetMCPServersResponseBody = {
   success: true;
-  servers: MCPServerTypeWithViews[];
+  servers: MCPServerTypeWithLightViews[];
 };
 
 export type CreateMCPServerResponseBody = {
