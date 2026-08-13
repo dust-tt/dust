@@ -64,6 +64,7 @@ describe("fetchConsumptionFacets", () => {
             {
               name: value === "agent_disabled" ? "Alpha" : "Zulu",
               pictureUrl: null,
+              description: null,
             },
           ])
         )

@@ -26,6 +26,7 @@ import { Ok } from "@app/types/shared/result";
 export type ConsumptionTopSkillRow = {
   skillId: string;
   name: string;
+  description: string | null;
   credits: number;
   invocationCount: number;
   avgCreditsPerInvocation: number;
@@ -76,6 +77,7 @@ export async function fetchConsumptionTopSkills(
     skills: groups.map((group) => ({
       skillId: group.key,
       name: labels.get(group.key)?.name ?? group.key,
+      description: labels.get(group.key)?.description ?? null,
       credits: group.credits,
       invocationCount: group.count,
       avgCreditsPerInvocation: avgCreditsPerUnit(group.credits, group.count),
