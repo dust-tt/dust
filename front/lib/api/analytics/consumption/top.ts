@@ -1,3 +1,4 @@
+import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type {
   ConsumptionScopeDimension,
@@ -148,4 +149,34 @@ export async function fetchConsumptionTopGroups(
 // non-finite average.
 export function avgCreditsPerUnit(credits: number, count: number): number {
   return count > 0 ? credits / count : 0;
+}
+
+export type ResolvedConsumptionGroup = {
+  key: string;
+  name: string;
+  pictureUrl: string | null;
+  credits: number;
+  count: number;
+  avgCredits: number;
+};
+
+export async function resolveConsumptionGroupLabels(
+  auth: Authenticator,
+  dimension: ConsumptionScopeDimension,
+  groups: ConsumptionTopGroup[]
+): Promise<ResolvedConsumptionGroup[]> {
+  const labels = await resolveDimensionLabels(
+    auth,
+    dimension,
+    groups.map((group) => group.key)
+  );
+
+  return groups.map((group) => ({
+    key: group.key,
+    name: labels.get(group.key)?.name ?? group.key,
+    pictureUrl: labels.get(group.key)?.pictureUrl ?? null,
+    credits: group.credits,
+    count: group.count,
+    avgCredits: avgCreditsPerUnit(group.credits, group.count),
+  }));
 }
