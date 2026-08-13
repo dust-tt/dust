@@ -159,6 +159,8 @@ function buildColumns({
   avgLabel,
   totalCredits,
   isDark,
+  expandedRowId,
+  selectedIdSet,
 }: {
   dimension: ConsumptionDimension;
   hasAvatar: boolean;
@@ -166,6 +168,8 @@ function buildColumns({
   avgLabel: string;
   totalCredits: number;
   isDark: boolean;
+  expandedRowId: string | null;
+  selectedIdSet: Set<string>;
 }): ColumnDef<AttributionRowData>[] {
   return [
     {
@@ -280,14 +284,15 @@ function buildColumns({
       meta: { className: "w-12", headerAlign: "right" },
       cell: (info) => {
         const row = info.row.original;
+        const isExpanded = expandedRowId === row.id;
         return (
           <DataTable.CellContent className="w-full justify-end">
             <Button
-              icon={row.isExpanded ? ChevronUp : ChevronDown}
+              icon={isExpanded ? ChevronUp : ChevronDown}
               variant="ghost-secondary"
               size="xs"
-              aria-label={`${row.isExpanded ? "Collapse" : "Expand"} breakdown for ${row.name}`}
-              aria-expanded={row.isExpanded}
+              aria-label={`${isExpanded ? "Collapse" : "Expand"} breakdown for ${row.name}`}
+              aria-expanded={isExpanded}
               onClick={(event) => {
                 event.stopPropagation();
                 row.onClick();
@@ -304,18 +309,19 @@ function buildColumns({
       meta: { className: "w-12", headerAlign: "right" },
       cell: (info) => {
         const row = info.row.original;
+        const isFilterSelected = selectedIdSet.has(row.id);
         return (
           <DataTable.CellContent className="w-full justify-end">
             <Button
               icon={BarChart01}
               variant="ghost-secondary"
               size="xs"
-              disabled={row.isFilterSelected}
+              disabled={isFilterSelected}
               tooltip={
-                row.isFilterSelected ? "Already in filters" : "Add to filters"
+                isFilterSelected ? "Already in filters" : "Add to filters"
               }
               aria-label={
-                row.isFilterSelected
+                isFilterSelected
                   ? `${row.name} is already in filters`
                   : `Add ${row.name} to filters`
               }
@@ -383,6 +389,11 @@ function AttributionRows({
       : allRows;
   }, [allRows, search]);
 
+  const selectedIdSet = useMemo(
+    () => new Set(filter?.[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]] ?? []),
+    [dimension, filter]
+  );
+
   const columns = useMemo(
     () =>
       buildColumns({
@@ -392,8 +403,29 @@ function AttributionRows({
         avgLabel,
         totalCredits,
         isDark,
+        expandedRowId,
+        selectedIdSet,
       }),
-    [hasAvatar, dimension, avgLabel, totalCredits, isDark]
+    [
+      hasAvatar,
+      dimension,
+      avgLabel,
+      totalCredits,
+      isDark,
+      expandedRowId,
+      selectedIdSet,
+    ]
+  );
+
+  const data = useMemo<AttributionRowData[]>(
+    () =>
+      rows.map((row) => ({
+        ...row,
+        onClick: () =>
+          setExpandedRowId((current) => (current === row.id ? null : row.id)),
+        onAddFilter: () => onAddFilter(row),
+      })),
+    [rows, onAddFilter]
   );
 
   let contentKey = "content";
@@ -403,7 +435,7 @@ function AttributionRows({
     contentKey = "loading";
     content = (
       <ConsumptionAttributionRowsTable
-        data={[]}
+        data={data}
         columns={columns}
         workspaceId={workspaceId}
         dimension={dimension}
@@ -412,6 +444,7 @@ function AttributionRows({
         onViewAll={onViewAll}
         pagination={pagination}
         setPagination={setPagination}
+        expandedRowId={expandedRowId}
         isLoading
         hasAvatar={hasAvatar}
         isAvatarRounded={dimension === "user"}
@@ -432,18 +465,6 @@ function AttributionRows({
       </div>
     );
   } else {
-    const selectedIdSet = new Set(
-      filter?.[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]] ?? []
-    );
-    const data: AttributionRowData[] = rows.map((row) => ({
-      ...row,
-      isExpanded: expandedRowId === row.id,
-      isFilterSelected: selectedIdSet.has(row.id),
-      onClick: () =>
-        setExpandedRowId((current) => (current === row.id ? null : row.id)),
-      onAddFilter: () => onAddFilter(row),
-    }));
-
     content = (
       <div>
         <div className="overflow-x-auto">
@@ -457,6 +478,7 @@ function AttributionRows({
             onViewAll={onViewAll}
             pagination={pagination}
             setPagination={setPagination}
+            expandedRowId={expandedRowId}
           />
         </div>
         <div className="mt-2 p-1">

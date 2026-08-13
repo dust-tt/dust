@@ -26,8 +26,6 @@ import { ConsumptionAttributionBreakdown } from "./ConsumptionAttributionBreakdo
 import type { ConsumptionDimension } from "./consumptionDimensions";
 
 export type AttributionRowData = ConsumptionTopRow & {
-  isExpanded: boolean;
-  isFilterSelected: boolean;
   onClick: () => void;
   onAddFilter: () => void;
 };
@@ -111,6 +109,7 @@ interface ConsumptionAttributionRowsTableProps {
   ) => void;
   pagination: PaginationState;
   setPagination: Dispatch<SetStateAction<PaginationState>>;
+  expandedRowId: string | null;
   isLoading?: boolean;
   hasAvatar?: boolean;
   isAvatarRounded?: boolean;
@@ -126,6 +125,7 @@ export function ConsumptionAttributionRowsTable({
   onViewAll,
   pagination,
   setPagination,
+  expandedRowId,
   isLoading = false,
   hasAvatar = false,
   isAvatarRounded = false,
@@ -230,7 +230,7 @@ export function ConsumptionAttributionRowsTable({
                     className="max-w-0"
                     colSpan={row.getVisibleCells().length}
                   >
-                    <Collapsible open={row.original.isExpanded}>
+                    <Collapsible open={expandedRowId === row.original.id}>
                       <CollapsibleContent
                         animated={false}
                         className={cn(

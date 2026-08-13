@@ -1,6 +1,12 @@
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -40,6 +46,40 @@ vi.mock(
 const period = { kind: "days", days: 30 } as const;
 
 describe("ConsumptionAttributionTable", () => {
+  it("keeps the selected page after pagination renders new rows", async () => {
+    const rows = Array.from({ length: 30 }, (_, index) => ({
+      id: `agent-${index + 1}`,
+      name: `Agent ${index + 1}`,
+      pictureUrl: null,
+      credits: 100 - index,
+      avgCredits: 10,
+    }));
+    mockUseConsumptionTop.mockReturnValue({
+      rows,
+      totalCredits: 2_565,
+      isTopLoading: false,
+      isTopError: undefined,
+    });
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="agent"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "2" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Showing 26-30 of 30 items")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Agent 30")).toBeInTheDocument();
+  });
+
   it("resets expanded rows when switching dimensions", () => {
     mockUseConsumptionTop.mockImplementation(
       ({ dimension }: { dimension: ConsumptionDimension }) => ({
@@ -77,7 +117,11 @@ describe("ConsumptionAttributionTable", () => {
       name: "Expand breakdown for Research agent",
     });
     fireEvent.click(expandAgent);
-    expect(expandAgent).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByRole("button", {
+        name: "Collapse breakdown for Research agent",
+      })
+    ).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Attribution breakdown")).toBeInTheDocument();
 
     rerender(
