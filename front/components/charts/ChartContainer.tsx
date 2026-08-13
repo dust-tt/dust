@@ -3,7 +3,6 @@ import { ChartLegend } from "@app/components/charts/ChartLegend";
 import { CHART_HEIGHT } from "@app/components/charts/constants";
 import {
   Button,
-  cn,
   Maximize01,
   Sheet,
   SheetContainer,
@@ -29,7 +28,6 @@ interface ChartContainerProps {
   description?: string;
   legendItems?: LegendItem[];
   isAllowFullScreen?: boolean;
-  className?: string;
 }
 
 export function ChartContainer({
@@ -45,18 +43,12 @@ export function ChartContainer({
   description,
   legendItems,
   isAllowFullScreen,
-  className,
 }: ChartContainerProps) {
   const message = isLoading ? null : (errorMessage ?? emptyMessage);
   const [isFullscreen, setIsFullscreen] = useState(false);
   return (
     <>
-      <div
-        className={cn(
-          "observability-chart-container rounded-lg border border-border bg-background p-4",
-          className
-        )}
-      >
+      <div className="observability-chart-container rounded-lg border border-border bg-background p-4">
         <div className="flex items-center justify-between">
           <div className="flex shrink-0 items-center justify-between gap-2">
             <h3 className="text-base font-medium text-foreground">{title}</h3>
