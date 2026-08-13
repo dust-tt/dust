@@ -22,6 +22,11 @@ export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataMod
    * (Space DataSourceViews) to this Pod. Opt-in; gated by `admin_controlled_pods`.
    */
   declare isAdminControlled: CreationOptional<boolean>;
+  /**
+   * When true, every active workspace member may invoke this Pod's published functions
+   * (and use its shared Frames) without membership. Grants no read/write on the Pod.
+   */
+  declare appSharingEnabled: CreationOptional<boolean>;
   declare spaceId: ForeignKey<SpaceModel["id"]>;
 
   declare description: string | null;
@@ -69,6 +74,11 @@ ProjectMetadataModel.init(
       defaultValue: false,
     },
     isAdminControlled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    appSharingEnabled: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,

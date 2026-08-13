@@ -16,4 +16,5 @@ export interface PodMetadataType {
   defaultAgentId: string | null;
   defaultSkillIds: string[];
   isAdminControlled: boolean;
+  appSharingEnabled: boolean;
 }

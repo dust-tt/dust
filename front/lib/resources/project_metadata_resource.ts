@@ -211,6 +211,13 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     await this.update({ isAdminControlled }, transaction);
   }
 
+  async updateAppSharingEnabled(
+    appSharingEnabled: boolean,
+    transaction?: Transaction
+  ) {
+    await this.update({ appSharingEnabled }, transaction);
+  }
+
   async updateInitialTodoAnalysisLookback(
     initialTodoAnalysisLookback: string | null,
     transaction?: Transaction
@@ -319,6 +326,7 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       defaultAgentId: this.defaultAgentId ?? null,
       defaultSkillIds: this.defaultSkillIds,
       isAdminControlled: this.isAdminControlled,
+      appSharingEnabled: this.appSharingEnabled,
     };
   }
 }
