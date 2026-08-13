@@ -781,7 +781,9 @@ export function PodSettingsTab({
               </div>
             )}
 
-            {hasSandboxFunctionsFeature && (
+            {/* An open Pod already lets every workspace member use its apps, so the
+                tile only makes sense on restricted Pods. */}
+            {hasSandboxFunctionsFeature && !isOpen && (
               <div className="border-t border-border">
                 <AppSharingPodTile owner={owner} pod={pod} />
               </div>
