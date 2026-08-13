@@ -188,6 +188,7 @@ export function useConsumptionTop({
     // Everything the workspace consumed over the period, so a row's share of it
     // is `credits / totalCredits`.
     totalCredits: data?.totalCredits ?? 0,
+    totalCount: data?.totalCount ?? 0,
     hasMore: data?.hasMore ?? false,
     isTopLoading: !error && !data && !disabled,
     isTopError: error,

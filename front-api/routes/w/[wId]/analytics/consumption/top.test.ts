@@ -92,6 +92,7 @@ const PERIOD: ConsumptionPeriod = {
 const TOP_AGENTS: GetConsumptionTopAgentsResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  totalCount: 1,
   hasMore: false,
   agents: [
     {
@@ -111,6 +112,7 @@ const TOP_AGENTS: GetConsumptionTopAgentsResponse = {
 const TOP_USERS: GetConsumptionTopUsersResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  totalCount: 1,
   hasMore: false,
   users: [
     {
@@ -127,6 +129,7 @@ const TOP_USERS: GetConsumptionTopUsersResponse = {
 const TOP_MODELS: GetConsumptionTopModelsResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  totalCount: 1,
   hasMore: false,
   models: [
     {
@@ -142,6 +145,7 @@ const TOP_MODELS: GetConsumptionTopModelsResponse = {
 const TOP_SOURCES: GetConsumptionTopSourcesResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  totalCount: 1,
   hasMore: false,
   sources: [
     {
@@ -157,6 +161,7 @@ const TOP_SOURCES: GetConsumptionTopSourcesResponse = {
 const TOP_GROUPS: GetConsumptionTopGroupsResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  totalCount: 1,
   hasMore: false,
   groups: [
     {
@@ -172,6 +177,7 @@ const TOP_GROUPS: GetConsumptionTopGroupsResponse = {
 const TOP_TOOLS: GetConsumptionTopToolsResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  totalCount: 1,
   hasMore: false,
   tools: [
     {
@@ -188,6 +194,7 @@ const TOP_TOOLS: GetConsumptionTopToolsResponse = {
 const TOP_SKILLS: GetConsumptionTopSkillsResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  totalCount: 1,
   hasMore: false,
   skills: [
     {

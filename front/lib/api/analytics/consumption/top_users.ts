@@ -33,6 +33,7 @@ export type ConsumptionTopUsers = {
   period: ConsumptionPeriod;
   totalCredits: number;
   hasMore: boolean;
+  totalCount: number;
   // Highest credits first.
   users: ConsumptionTopUserRow[];
 };
@@ -63,7 +64,7 @@ export async function fetchConsumptionTopUsers(
   if (result.isErr()) {
     return result;
   }
-  const { groups, hasMore, totalCredits } = result.value;
+  const { groups, hasMore, totalCount, totalCredits } = result.value;
 
   const labels = await resolveDimensionLabels(
     auth,
@@ -75,6 +76,7 @@ export async function fetchConsumptionTopUsers(
     period,
     totalCredits,
     hasMore,
+    totalCount,
     users: groups.map((group) => ({
       userId: group.key,
       name: labels.get(group.key)?.name ?? group.key,

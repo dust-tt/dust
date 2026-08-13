@@ -35,6 +35,7 @@ export type ConsumptionTopTools = {
   period: ConsumptionPeriod;
   totalCredits: number;
   hasMore: boolean;
+  totalCount: number;
   // Highest credits first.
   tools: ConsumptionTopToolRow[];
 };
@@ -65,7 +66,7 @@ export async function fetchConsumptionTopTools(
   if (result.isErr()) {
     return result;
   }
-  const { groups, hasMore, totalCredits } = result.value;
+  const { groups, hasMore, totalCount, totalCredits } = result.value;
 
   const labels = await resolveDimensionLabels(
     auth,
@@ -77,6 +78,7 @@ export async function fetchConsumptionTopTools(
     period,
     totalCredits,
     hasMore,
+    totalCount,
     tools: groups.map((group) => ({
       serverName: group.key,
       name: labels.get(group.key)?.name ?? group.key,

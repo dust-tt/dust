@@ -46,8 +46,8 @@ vi.mock(
 const period = { kind: "days", days: 30 } as const;
 
 describe("ConsumptionAttributionTable", () => {
-  it("fetches the next fixed-size page when pagination changes", async () => {
-    const rows = Array.from({ length: 30 }, (_, index) => ({
+  it("shows every page upfront and fetches the selected fixed-size page", async () => {
+    const rows = Array.from({ length: 80 }, (_, index) => ({
       id: `agent-${index + 1}`,
       name: `Agent ${index + 1}`,
       pictureUrl: null,
@@ -58,6 +58,7 @@ describe("ConsumptionAttributionTable", () => {
       ({ limit, offset }: { limit: number; offset: number }) => ({
         rows: rows.slice(offset, offset + limit),
         totalCredits: 2_565,
+        totalCount: rows.length,
         hasMore: offset + limit < rows.length,
         isTopLoading: false,
         isTopError: undefined,
@@ -80,13 +81,14 @@ describe("ConsumptionAttributionTable", () => {
       expect.objectContaining({ limit: 25, offset: 0 })
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "2" }));
+    expect(screen.getByRole("button", { name: "4" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "4" }));
 
     await waitFor(() => {
       expect(mockUseConsumptionTop).toHaveBeenCalledWith(
-        expect.objectContaining({ limit: 25, offset: 25 })
+        expect.objectContaining({ limit: 25, offset: 75 })
       );
-      expect(screen.getByText("Agent 30")).toBeInTheDocument();
+      expect(screen.getByText("Agent 80")).toBeInTheDocument();
     });
   });
 
@@ -107,6 +109,7 @@ describe("ConsumptionAttributionTable", () => {
           },
         ],
         totalCredits: 100,
+        totalCount: 1,
         hasMore: false,
         isTopLoading: false,
         isTopError: undefined,

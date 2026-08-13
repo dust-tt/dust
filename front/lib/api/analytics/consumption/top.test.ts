@@ -36,14 +36,17 @@ function esResponse(aggregations: unknown) {
 
 function mockAggs({
   buckets,
+  totalCount = buckets.length,
   totalMicro,
 }: {
   buckets: unknown[];
+  totalCount?: number;
   totalMicro: number;
 }) {
   vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
     esResponse({
       by_group: { buckets },
+      total_count: { value: totalCount },
       total_credit_micro: { value: totalMicro },
     })
   );
@@ -117,6 +120,7 @@ describe("consumption top rankings", () => {
     }
     expect(result.value.period).toEqual(PERIOD);
     expect(result.value.totalCredits).toBe(5);
+    expect(result.value.totalCount).toBe(1);
     expect(result.value.hasMore).toBe(false);
     expect(result.value.agents).toEqual([
       {
@@ -141,7 +145,7 @@ describe("consumption top rankings", () => {
     });
     expect(options?.aggregations?.by_group?.terms).toMatchObject({
       field: "agent.id",
-      size: 11,
+      size: 10,
       order: { credit_micro: "desc" },
     });
     expect(
@@ -153,9 +157,13 @@ describe("consumption top rankings", () => {
     expect(options?.aggregations?.total_credit_micro?.sum?.field).toBe(
       "credit_micro"
     );
+    expect(options?.aggregations?.total_count?.cardinality).toEqual({
+      field: "agent.id",
+      precision_threshold: 40_000,
+    });
   });
 
-  it("returns one ranked page and reports whether another page exists", async () => {
+  it("returns one ranked page with the total number of groups", async () => {
     const { auth } = await setup();
     mockLabels({ agent2: "Agent 2", agent3: "Agent 3" });
     mockAggs({
@@ -203,8 +211,9 @@ describe("consumption top rankings", () => {
       "agent3",
     ]);
     expect(result.value.hasMore).toBe(true);
+    expect(result.value.totalCount).toBe(4);
     expect(lastSearchCall()[1]?.aggregations?.by_group?.terms).toMatchObject({
-      size: 4,
+      size: 3,
     });
   });
 

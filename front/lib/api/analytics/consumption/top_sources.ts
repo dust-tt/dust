@@ -30,6 +30,7 @@ export type ConsumptionTopSources = {
   period: ConsumptionPeriod;
   totalCredits: number;
   hasMore: boolean;
+  totalCount: number;
   // Highest credits first.
   sources: ConsumptionTopSourceRow[];
 };
@@ -60,7 +61,7 @@ export async function fetchConsumptionTopSources(
   if (result.isErr()) {
     return result;
   }
-  const { groups, hasMore, totalCredits } = result.value;
+  const { groups, hasMore, totalCount, totalCredits } = result.value;
 
   const labels = await resolveDimensionLabels(
     auth,
@@ -72,6 +73,7 @@ export async function fetchConsumptionTopSources(
     period,
     totalCredits,
     hasMore,
+    totalCount,
     sources: groups.map((group) => ({
       source: group.key,
       name: labels.get(group.key)?.name ?? group.key,

@@ -371,7 +371,7 @@ function AttributionRows({
   const {
     rows: allRows,
     totalCredits,
-    hasMore,
+    totalCount,
     isTopLoading,
     isTopError,
     isTopValidating,
@@ -431,10 +431,6 @@ function AttributionRows({
     [rows, onAddFilter]
   );
   const isLoading = isTopLoading || isTopValidating;
-  const paginationRowCount =
-    pagination.pageIndex * pagination.pageSize +
-    allRows.length +
-    (hasMore ? 1 : 0);
 
   let contentKey = "content";
   let content: ReactNode;
@@ -485,14 +481,14 @@ function AttributionRows({
             />
           </div>
         )}
-        {(pagination.pageIndex > 0 || hasMore) && (
+        {totalCount > pagination.pageSize && (
           <div className="mt-2 p-1">
             <Pagination
               size="xs"
               showDetails={false}
               pagination={pagination}
               setPagination={setPagination}
-              rowCount={paginationRowCount}
+              rowCount={totalCount}
             />
           </div>
         )}
