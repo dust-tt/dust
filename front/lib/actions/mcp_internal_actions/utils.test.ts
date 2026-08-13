@@ -1,7 +1,7 @@
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { workspaceAdminGuard } from "@app/lib/actions/mcp_internal_actions/utils";
+import { workspaceManagerGuard } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { ToolContext } from "@app/lib/actions/types";
 import { Authenticator } from "@app/lib/auth";
@@ -16,12 +16,12 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { describe, expect, it } from "vitest";
 
 // Two artificial tools to exercise the guard's behaviour through the real MCP
-// stack, decoupled from any feature tool: one wraps workspaceAdminGuard, the
+// stack, decoupled from any feature tool: one wraps workspaceManagerGuard, the
 // other (control) does not.
 const TEST_TOOLS_METADATA = [
   {
     name: "guarded_tool",
-    description: "Admin-guarded test tool.",
+    description: "Manager-guarded test tool.",
     schema: {},
     stake: "never_ask",
     displayLabels: { running: "Running", done: "Ran" },
@@ -41,7 +41,7 @@ const TEST_TOOLS_METADATA = [
 
 const handlers: ToolHandlers<typeof TEST_TOOLS_METADATA> = {
   guarded_tool: async (_params, { auth }) => {
-    const denied = workspaceAdminGuard(auth);
+    const denied = workspaceManagerGuard(auth);
     if (denied) {
       return new Err(denied);
     }
@@ -74,16 +74,19 @@ async function callTestTool(auth: Authenticator, toolName: string) {
       agentMessage: { sId: "message-id" },
     },
   } as unknown as ToolContext;
-  const server = new McpServer({ name: "admin_guard_test", version: "1.0.0" });
+  const server = new McpServer({
+    name: "manager_guard_test",
+    version: "1.0.0",
+  });
   for (const tool of TEST_TOOLS) {
     registerTool(auth, toolContext, server, tool, {
-      monitoringName: "admin_guard_test",
+      monitoringName: "manager_guard_test",
     });
   }
 
   const [clientTransport, serverTransport] =
     InMemoryWithAuthTransport.createLinkedPair();
-  const client = new Client({ name: "admin_guard_test", version: "1.0.0" });
+  const client = new Client({ name: "manager_guard_test", version: "1.0.0" });
   await server.connect(serverTransport);
   await client.connect(clientTransport);
 
@@ -92,9 +95,17 @@ async function callTestTool(auth: Authenticator, toolName: string) {
   return result;
 }
 
-describe("workspaceAdminGuard (via an in-memory MCP tool)", () => {
+describe("workspaceManagerGuard (via an in-memory MCP tool)", () => {
   it("lets an admin call a guarded tool", async () => {
     const auth = await authForRole("admin");
+    const result = await callTestTool(auth, "guarded_tool");
+
+    expect(result.isError).toBeFalsy();
+    expect(JSON.stringify(result.content)).toContain("guarded ok");
+  });
+
+  it("lets a manager call a guarded tool", async () => {
+    const auth = await authForRole("manager");
     const result = await callTestTool(auth, "guarded_tool");
 
     expect(result.isError).toBeFalsy();

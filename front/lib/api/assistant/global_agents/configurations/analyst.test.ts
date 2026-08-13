@@ -48,8 +48,18 @@ describe("analyst global agent visibility", () => {
     expect(agents[0].skills).toContain("frames");
   });
 
+  it("is available to managers by default", async () => {
+    const agents = await fetchAnalyst("manager");
+    expect(agents).toHaveLength(1);
+    expect(agents[0].sId).toBe(GLOBAL_AGENTS_SID.ANALYST);
+  });
+
   it("is hidden from admins when the workspace opts out", async () => {
     expect(await fetchAnalyst("admin", true)).toEqual([]);
+  });
+
+  it("is hidden from managers when the workspace opts out", async () => {
+    expect(await fetchAnalyst("manager", true)).toEqual([]);
   });
 
   it("is hidden from builders even by default", async () => {

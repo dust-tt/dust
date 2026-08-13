@@ -333,8 +333,8 @@ export const WORKSPACE_ANALYTICS_SERVER = {
     name: "workspace_analytics",
     version: "1.0.0",
     description:
-      "Answer workspace usage questions for admins (top agents, and more to " +
-      "come).",
+      "Answer workspace usage questions for admins and managers (top agents, " +
+      "and more to come).",
     icon: "ActionPieChartIcon",
     authorization: null,
     documentationUrl: null,
