@@ -351,6 +351,9 @@ export async function fetchConsumptionFacets(
   }
 ): Promise<Result<ConsumptionFacets, ElasticsearchError>> {
   return tracer.trace("analytics.consumption.facets", async (span) => {
+    // This endpoint has too little traffic to reliably survive service-level
+    // head sampling, but its traces are needed to diagnose slow facet loads.
+    span?.setTag("manual.keep", true);
     span?.setTag("workspace.id", auth.getNonNullableWorkspace().sId);
     const result = await fetchConsumptionFacetsWithoutTracing(auth, input);
     if (result.isErr()) {
