@@ -1,4 +1,9 @@
 import { getModelLogoByModelId } from "@app/components/providers/types";
+import {
+  getAvatarFromIcon,
+  isCustomResourceIconType,
+  isInternalAllowedIcon,
+} from "@app/components/resources/resources_icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import {
@@ -9,6 +14,7 @@ import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/constants";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { normalizedConsumptionFilter } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
@@ -152,12 +158,14 @@ function buildColumns({
   isAvatarRounded,
   avgLabel,
   totalCredits,
+  isDark,
 }: {
   dimension: ConsumptionDimension;
   hasAvatar: boolean;
   isAvatarRounded: boolean;
   avgLabel: string;
   totalCredits: number;
+  isDark: boolean;
 }): ColumnDef<AttributionRowData>[] {
   return [
     {
@@ -167,18 +175,41 @@ function buildColumns({
       meta: { sizeRatio: 32, headerAlign: "left" },
       cell: (info) => {
         const row = info.row.original;
-        const { name, pictureUrl, description } = row;
-        const content = hasAvatar ? (
-          <div className="min-w-0">
-            <AvatarNameCell
-              name={name}
-              imageUrl={pictureUrl}
-              isRounded={isAvatarRounded}
-            />
-          </div>
-        ) : (
-          <span className="truncate text-sm">{name}</span>
-        );
+        const { name, pictureUrl, description, icon } = row;
+        const toolIcon =
+          icon &&
+          (isCustomResourceIconType(icon) || isInternalAllowedIcon(icon))
+            ? icon
+            : DEFAULT_MCP_SERVER_ICON;
+        const content =
+          dimension === "model" ? (
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="flex size-7 shrink-0 items-center justify-center">
+                <Icon
+                  visual={
+                    getModelLogoByModelId(row.id, isDark) ?? DustLogoSquare
+                  }
+                  size="sm"
+                />
+              </span>
+              <span className="truncate text-sm">{name}</span>
+            </div>
+          ) : dimension === "tool" ? (
+            <div className="flex min-w-0 items-center gap-2">
+              {getAvatarFromIcon(toolIcon, "xs")}
+              <span className="truncate text-sm">{name}</span>
+            </div>
+          ) : hasAvatar ? (
+            <div className="min-w-0">
+              <AvatarNameCell
+                name={name}
+                imageUrl={pictureUrl}
+                isRounded={isAvatarRounded}
+              />
+            </div>
+          ) : (
+            <span className="truncate text-sm">{name}</span>
+          );
 
         return (
           <DataTable.CellContent className="w-full justify-start text-left">
@@ -317,6 +348,7 @@ function AttributionRows({
   onViewAll,
 }: AttributionRowsProps) {
   const { hasAvatar, avgLabel } = CONSUMPTION_DIMENSION_CONFIG[dimension];
+  const { isDark } = useTheme();
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const shouldReduceMotion = useReducedMotion();
 
@@ -350,8 +382,9 @@ function AttributionRows({
         isAvatarRounded: dimension === "user",
         avgLabel,
         totalCredits,
+        isDark,
       }),
-    [hasAvatar, dimension, avgLabel, totalCredits]
+    [hasAvatar, dimension, avgLabel, totalCredits, isDark]
   );
 
   let contentKey = "content";

@@ -697,6 +697,27 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return this.baseFetch(auth, findOptions, { includeHeavyAttributes });
   }
 
+  static async resolveIconsByNames(
+    auth: Authenticator,
+    names: string[]
+  ): Promise<Map<string, CustomResourceIconType | InternalAllowedIconType>> {
+    const uniqueNames = [...new Set(names)];
+    if (uniqueNames.length === 0) {
+      return new Map();
+    }
+
+    const views = await this.baseFetch(
+      auth,
+      { where: { name: { [Op.in]: uniqueNames } } },
+      { includeMetadata: false }
+    );
+    return new Map(
+      views.flatMap((view) =>
+        view.name ? [[view.name, view.getServerDisplayMetadata().icon]] : []
+      )
+    );
+  }
+
   static async listBySpaces(
     auth: Authenticator,
     spaces: SpaceResource[],
