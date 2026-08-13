@@ -10,6 +10,7 @@ import {
   cn,
   DataTable,
   Icon,
+  LoadingBlock,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -27,6 +28,90 @@ export type AttributionRowData = ConsumptionTopRow & {
   onClick: () => void;
 };
 
+const ATTRIBUTION_SKELETON_ROW_COUNT = 10;
+
+const ATTRIBUTION_SKELETON_NAME_WIDTHS = [
+  "w-28",
+  "w-36",
+  "w-24",
+  "w-40",
+  "w-32",
+] as const;
+
+const ATTRIBUTION_SKELETON_NUMBER_WIDTHS = [
+  "w-16",
+  "w-12",
+  "w-20",
+  "w-14",
+] as const;
+
+interface AttributionSkeletonCellProps {
+  columnId: string;
+  rowIndex: number;
+  hasAvatar: boolean;
+  isAvatarRounded: boolean;
+}
+
+function AttributionSkeletonCell({
+  columnId,
+  rowIndex,
+  hasAvatar,
+  isAvatarRounded,
+}: AttributionSkeletonCellProps) {
+  switch (columnId) {
+    case "name":
+      return (
+        <div className="flex h-12 items-center gap-2">
+          {hasAvatar && (
+            <LoadingBlock
+              className={cn(
+                "h-7 w-7 shrink-0",
+                isAvatarRounded ? "rounded-full" : "rounded-md"
+              )}
+            />
+          )}
+          <LoadingBlock
+            className={cn(
+              "h-3",
+              ATTRIBUTION_SKELETON_NAME_WIDTHS[
+                rowIndex % ATTRIBUTION_SKELETON_NAME_WIDTHS.length
+              ]
+            )}
+          />
+        </div>
+      );
+    case "costShare":
+      return (
+        <div className="flex h-12 items-center gap-2">
+          <LoadingBlock className="h-1.5 w-24 rounded-full" />
+          <LoadingBlock className="h-3 w-7" />
+        </div>
+      );
+    case "credits":
+    case "avgCredits":
+      return (
+        <div className="flex h-12 items-center justify-end">
+          <LoadingBlock
+            className={cn(
+              "h-3",
+              ATTRIBUTION_SKELETON_NUMBER_WIDTHS[
+                rowIndex % ATTRIBUTION_SKELETON_NUMBER_WIDTHS.length
+              ]
+            )}
+          />
+        </div>
+      );
+    case "details":
+      return (
+        <div className="flex h-12 items-center justify-end">
+          <LoadingBlock className="h-4 w-4" />
+        </div>
+      );
+    default:
+      return null;
+  }
+}
+
 interface ConsumptionAttributionRowsTableProps {
   data: AttributionRowData[];
   columns: ColumnDef<AttributionRowData>[];
@@ -38,6 +123,9 @@ interface ConsumptionAttributionRowsTableProps {
     dimension: ConsumptionDimension,
     selectedRow: ConsumptionTopRow
   ) => void;
+  isLoading?: boolean;
+  hasAvatar?: boolean;
+  isAvatarRounded?: boolean;
 }
 
 export function ConsumptionAttributionRowsTable({
@@ -48,6 +136,9 @@ export function ConsumptionAttributionRowsTable({
   period,
   filter,
   onViewAll,
+  isLoading = false,
+  hasAvatar = false,
+  isAvatarRounded = false,
 }: ConsumptionAttributionRowsTableProps) {
   const table = useReactTable({
     data,
@@ -103,46 +194,74 @@ export function ConsumptionAttributionRowsTable({
         ))}
       </DataTable.Header>
       <DataTable.Body>
-        {table.getRowModel().rows.map((row) => (
-          <Fragment key={row.id}>
-            <DataTable.Row
-              widthClassName="w-full"
-              onClick={row.original.onClick}
-              rowData={row.original}
-            >
-              {row.getVisibleCells().map((cell) => (
-                <DataTable.Cell column={cell.column} key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </DataTable.Cell>
-              ))}
-            </DataTable.Row>
-            <tr>
-              <td className="max-w-0" colSpan={row.getVisibleCells().length}>
-                <Collapsible open={row.original.isExpanded}>
-                  <CollapsibleContent
-                    animated={false}
-                    className={cn(
-                      "transition-none ease-enter motion-reduce:animate-none",
-                      "data-[state=open]:animate-in data-[state=open]:fade-in-0",
-                      "data-[state=open]:slide-in-from-top-1 data-[state=open]:duration-enter",
-                      "data-[state=closed]:animate-out data-[state=closed]:fade-out-0",
-                      "data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-exit"
-                    )}
+        {isLoading
+          ? Array.from(
+              { length: ATTRIBUTION_SKELETON_ROW_COUNT },
+              (_, rowIndex) => (
+                <DataTable.Row
+                  key={rowIndex}
+                  widthClassName="w-full"
+                  aria-hidden="true"
+                >
+                  {table.getAllLeafColumns().map((column) => (
+                    <DataTable.Cell column={column} key={column.id}>
+                      <AttributionSkeletonCell
+                        columnId={column.id}
+                        rowIndex={rowIndex}
+                        hasAvatar={hasAvatar}
+                        isAvatarRounded={isAvatarRounded}
+                      />
+                    </DataTable.Cell>
+                  ))}
+                </DataTable.Row>
+              )
+            )
+          : table.getRowModel().rows.map((row) => (
+              <Fragment key={row.id}>
+                <DataTable.Row
+                  widthClassName="w-full"
+                  onClick={row.original.onClick}
+                  rowData={row.original}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <DataTable.Cell column={cell.column} key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </DataTable.Cell>
+                  ))}
+                </DataTable.Row>
+                <tr>
+                  <td
+                    className="max-w-0"
+                    colSpan={row.getVisibleCells().length}
                   >
-                    <ConsumptionAttributionBreakdown
-                      workspaceId={workspaceId}
-                      selectedDimension={dimension}
-                      selectedRow={row.original}
-                      period={period}
-                      filter={filter}
-                      onViewAll={onViewAll}
-                    />
-                  </CollapsibleContent>
-                </Collapsible>
-              </td>
-            </tr>
-          </Fragment>
-        ))}
+                    <Collapsible open={row.original.isExpanded}>
+                      <CollapsibleContent
+                        animated={false}
+                        className={cn(
+                          "transition-none ease-enter motion-reduce:animate-none",
+                          "data-[state=open]:animate-in data-[state=open]:fade-in-0",
+                          "data-[state=open]:slide-in-from-top-1 data-[state=open]:duration-enter",
+                          "data-[state=closed]:animate-out data-[state=closed]:fade-out-0",
+                          "data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-exit"
+                        )}
+                      >
+                        <ConsumptionAttributionBreakdown
+                          workspaceId={workspaceId}
+                          selectedDimension={dimension}
+                          selectedRow={row.original}
+                          period={period}
+                          filter={filter}
+                          onViewAll={onViewAll}
+                        />
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </td>
+                </tr>
+              </Fragment>
+            ))}
       </DataTable.Body>
     </DataTable.Root>
   );

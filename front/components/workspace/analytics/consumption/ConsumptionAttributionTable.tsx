@@ -13,7 +13,6 @@ import {
   ChevronDown,
   ChevronUp,
   DataTable,
-  DataTableLoadingSkeleton,
   MOTION_DURATIONS,
   MOTION_EASINGS,
   SearchInput,
@@ -247,10 +246,17 @@ function AttributionRows({
   if (isTopLoading) {
     contentKey = "loading";
     content = (
-      <DataTableLoadingSkeleton
-        rows={4}
-        showSelectionColumn={false}
-        showTrailingCell
+      <ConsumptionAttributionRowsTable
+        data={[]}
+        columns={columns}
+        workspaceId={workspaceId}
+        dimension={dimension}
+        period={period}
+        filter={filter}
+        onViewAll={onViewAll}
+        isLoading
+        hasAvatar={hasAvatar}
+        isAvatarRounded={dimension === "user"}
       />
     );
   } else if (isTopError) {

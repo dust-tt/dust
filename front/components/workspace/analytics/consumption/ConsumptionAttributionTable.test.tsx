@@ -45,6 +45,7 @@ describe("ConsumptionAttributionTable", () => {
         period={period}
         dimension="agent"
         onDimensionChange={vi.fn()}
+        onViewAll={vi.fn()}
       />
     );
 
@@ -61,6 +62,7 @@ describe("ConsumptionAttributionTable", () => {
         period={period}
         dimension="model"
         onDimensionChange={vi.fn()}
+        onViewAll={vi.fn()}
       />
     );
 
