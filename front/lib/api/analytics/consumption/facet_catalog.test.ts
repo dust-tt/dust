@@ -50,7 +50,10 @@ describe("listConsumptionFacetCatalog", () => {
     );
   });
 
-  it("lists private agents of other users for admins", async () => {
+  it.each([
+    "admin",
+    "manager",
+  ] as const)("lists private agents of other users for %ss", async (role) => {
     const { workspace, authenticator: editorAuth } = await createResourceTest({
       role: "user",
     });
@@ -58,21 +61,21 @@ describe("listConsumptionFacetCatalog", () => {
       name: "Secret agent",
       scope: "hidden",
     });
-    const adminUser = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, adminUser, { role: "admin" });
-    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      adminUser.sId,
+    const reportingUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, reportingUser, { role });
+    const reportingAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      reportingUser.sId,
       workspace.sId
     );
 
-    const catalog = await listConsumptionFacetCatalog(adminAuth);
+    const catalog = await listConsumptionFacetCatalog(reportingAuth);
 
     expect(catalog.agent).toContainEqual(
       expect.objectContaining({ value: agent.sId, label: "Secret agent" })
     );
   });
 
-  it("hides private agents of other users below the admin role", async () => {
+  it("hides private agents of other users below the manager role", async () => {
     const { workspace, authenticator: editorAuth } = await createResourceTest({
       role: "user",
     });
@@ -80,16 +83,16 @@ describe("listConsumptionFacetCatalog", () => {
       name: "Secret agent",
       scope: "hidden",
     });
-    const managerUser = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, managerUser, {
-      role: "manager",
+    const memberUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, memberUser, {
+      role: "user",
     });
-    const managerAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      managerUser.sId,
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      memberUser.sId,
       workspace.sId
     );
 
-    const catalog = await listConsumptionFacetCatalog(managerAuth);
+    const catalog = await listConsumptionFacetCatalog(memberAuth);
 
     expect(catalog.agent).not.toContainEqual(
       expect.objectContaining({ value: agent.sId })

@@ -155,10 +155,10 @@ function groupTermsAggFor(
   return terms;
 }
 
-function fallbackGroupName(groupBy: CreditBreakdownBy): string {
+function fallbackGroupName(
+  groupBy: Exclude<CreditBreakdownBy, "agent">
+): string {
   switch (groupBy) {
-    case "agent":
-      return "Unknown agent";
     case "user":
       return "Programmatic usage";
     case "origin":
@@ -345,10 +345,13 @@ export async function fetchCreditUsage(
     ranked.map((row) => row.groupKey)
   );
 
-  const rows: CreditUsageRow[] = ranked.map((row) => ({
-    ...row,
-    name: namesById.get(row.groupKey) ?? fallbackGroupName(groupBy),
-  }));
+  const rows: CreditUsageRow[] = ranked.flatMap((row) => {
+    const name = namesById.get(row.groupKey);
+    if (groupBy === "agent") {
+      return name ? [{ ...row, name }] : [];
+    }
+    return [{ ...row, name: name ?? fallbackGroupName(groupBy) }];
+  });
 
   return new Ok({ totalCredits, rows });
 }

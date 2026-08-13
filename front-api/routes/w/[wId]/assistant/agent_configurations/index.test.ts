@@ -252,10 +252,10 @@ describe("GET /api/w/:wId/assistant/agent_configurations", () => {
     );
   });
 
-  it("narrows the analytics view to non-private agents below the admin role", async () => {
+  it("narrows the analytics view to non-private agents below the manager role", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "GET",
-      role: "manager",
+      role: "user",
     });
     const { agentOwner } = await setupAgentOwner(workspace, "user");
     await setupTestAgents(workspace, agentOwner);
