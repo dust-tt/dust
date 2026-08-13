@@ -592,6 +592,7 @@ export async function createSpaceAndGroup(
     }
 
     const space = await SpaceResource.makeNew(
+      auth,
       {
         name,
         kind: spaceKind,
@@ -599,8 +600,7 @@ export async function createSpaceAndGroup(
         workspaceId: owner.id,
       },
       { members: [membersGroup], editors: editorGroups },
-      t,
-      auth
+      t
     );
 
     if (!isRestricted) {

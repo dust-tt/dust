@@ -85,6 +85,7 @@ describe("SpaceResource", () => {
       });
 
       regularSpace = await SpaceResource.makeNew(
+        adminAuth,
         {
           name: "Test Regular Space",
           kind: "regular",
@@ -953,6 +954,7 @@ describe("SpaceResource", () => {
           });
 
           projectSpace = await SpaceResource.makeNew(
+            adminAuth,
             {
               name: "Test Project Space",
               kind: "project",
@@ -1182,6 +1184,7 @@ describe("SpaceResource", () => {
           });
 
           projectSpace = await SpaceResource.makeNew(
+            adminAuth,
             {
               name: "Admin Controlled Project",
               kind: "project",
@@ -1415,6 +1418,7 @@ describe("SpaceResource", () => {
           });
 
           projectSpace = await SpaceResource.makeNew(
+            adminAuth,
             {
               name: "Test Project Space",
               kind: "project",
@@ -1810,6 +1814,7 @@ describe("SpaceResource", () => {
       });
 
       const openSpace = await SpaceResource.makeNew(
+        adminAuth,
         {
           name: "Open Space",
           kind: "regular",
@@ -1830,6 +1835,7 @@ describe("SpaceResource", () => {
       });
 
       const restrictedSpace = await SpaceResource.makeNew(
+        adminAuth,
         {
           name: "Restricted Space",
           kind: "regular",
@@ -2001,6 +2007,7 @@ describe("SpaceResource", () => {
         });
 
         const openSpace = await SpaceResource.makeNew(
+          adminAuth,
           {
             name: "Open Space",
             kind: "regular",
@@ -2024,6 +2031,7 @@ describe("SpaceResource", () => {
         });
 
         const restrictedSpace = await SpaceResource.makeNew(
+          adminAuth,
           {
             name: "Restricted Space",
             kind: "regular",
@@ -2066,6 +2074,7 @@ describe("SpaceResource", () => {
         });
 
         const projectSpace = await SpaceResource.makeNew(
+          adminAuth,
           {
             name: "Open Project",
             kind: "project",
@@ -2090,6 +2099,7 @@ describe("SpaceResource", () => {
         });
 
         const projectSpace = await SpaceResource.makeNew(
+          adminAuth,
           {
             name: "Restricted Project",
             kind: "project",

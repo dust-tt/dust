@@ -167,10 +167,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   static async makeNew(
+    auth: Authenticator,
     blob: CreationAttributes<SpaceModel>,
     groups: { members: GroupResource[]; editors?: GroupResource[] },
-    transaction?: Transaction,
-    auth?: Authenticator
+    transaction?: Transaction
   ) {
     return withTransaction(async (t: Transaction) => {
       const space = await SpaceModel.create(blob, { transaction: t });
@@ -218,11 +218,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         groupSpaces.map(SpaceGroupReference.fromGroupSpaceModel)
       );
 
-      // Write group_permissions directly from the created associations. Requires an admin `auth`;
-      // callers that create through paths without one (e.g. some tests) can seed grants separately.
-      if (auth) {
-        await spaceResource.writeGroupPermissions(auth, { transaction: t });
-      }
+      // Write group_permissions directly from the created associations, so a space is never
+      // persisted without its grants. `auth` only needs to be in the space's workspace: the write
+      // itself authorizes nothing (see `writeGroupPermissions`); who may create a space is gated by
+      // the callers (`makeDefaultsForWorkspace`, `createSpaceAndGroup`).
+      await spaceResource.writeGroupPermissions(auth, { transaction: t });
 
       return spaceResource;
     }, transaction);
@@ -248,6 +248,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       existingSpaces.find((s) => s.isSystem()) ||
       (await SpaceResource.makeNew(
+        auth,
         {
           name: "System",
           kind: "system",
@@ -261,6 +262,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       existingSpaces.find((s) => s.isGlobal()) ||
       (await SpaceResource.makeNew(
+        auth,
         {
           name: GLOBAL_SPACE_NAME,
           kind: "global",
@@ -274,6 +276,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       existingSpaces.find((s) => s.isConversations()) ||
       (await SpaceResource.makeNew(
+        auth,
         {
           name: "Conversations",
           kind: "conversations",
@@ -283,11 +286,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         transaction
       ));
 
-    // Write group_permissions for the default spaces (covers both freshly created and pre-existing).
-    await systemSpace.writeGroupPermissions(auth, { transaction });
-    await globalSpace.writeGroupPermissions(auth, { transaction });
-    await conversationsSpace.writeGroupPermissions(auth, { transaction });
-
+    // No explicit group_permissions write here: `makeNew` writes the grants of every space it
+    // creates, and both production callers run this straight after `WorkspaceResource.makeNew`, so
+    // the `find(...) ||` branches only ever hit on a re-run. Spaces that predate the dual-write are
+    // the backfill script's job (`20260728_backfill_space_group_permissions`), which covers every
+    // space in every workspace rather than just these three.
     return {
       systemSpace,
       globalSpace,

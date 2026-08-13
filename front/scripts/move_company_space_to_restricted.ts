@@ -226,6 +226,7 @@ makeScript(
 
       // Create a new global space.
       const newGlobalSpace = await SpaceResource.makeNew(
+        auth,
         {
           name: GLOBAL_SPACE_NAME,
           kind: "global",

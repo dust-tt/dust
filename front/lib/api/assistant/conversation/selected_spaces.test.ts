@@ -127,6 +127,7 @@ describe("selected conversation Spaces", () => {
       kind: "regular_auto",
     });
     return SpaceResource.makeNew(
+      await Authenticator.internalAdminForWorkspace(workspace.sId),
       {
         name: "Open Space",
         kind: "regular",
