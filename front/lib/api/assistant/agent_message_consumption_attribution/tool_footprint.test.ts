@@ -3,6 +3,8 @@ import {
   measureToolCallFootprints,
   toolCallFootprintTexts,
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/tool_footprint";
+import { renderActionForMultiActionsModel } from "@app/lib/api/assistant/conversation_rendering/helpers";
+import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
@@ -257,6 +259,34 @@ describe("measureToolCallFootprints", () => {
         inputTokensCount: "result-of-b".length,
       },
     ]);
+  });
+
+  it("tokenizes the same result content as conversation rendering", async () => {
+    const action = makeAction({
+      output: [{ type: "text", text: "Email sent." }],
+      userEditedInputs: {
+        subject: "New subject",
+      },
+    });
+    const renderedResult = await renderActionForMultiActionsModel(
+      auth,
+      action,
+      GPT_4_1_MODEL_CONFIG,
+      { conversationId }
+    );
+    const renderedResultText = getTextContentFromMessage(renderedResult);
+
+    const res = await measureToolCallFootprints(auth, {
+      conversationId,
+      modelId: GPT_4_1_MODEL_CONFIG.modelId,
+      toolCalls: [footprintInput(action)],
+    });
+
+    const [inputTexts] = vi.mocked(tokenCountForTexts).mock.calls[1];
+    expect(inputTexts).toEqual([renderedResultText]);
+    expect(res.isOk() && res.value[0].inputTokensCount).toBe(
+      renderedResultText.length
+    );
   });
 
   it("propagates a tokenizer failure", async () => {
