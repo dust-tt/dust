@@ -15,6 +15,10 @@ CREATE TABLE "file_system_nodes" (
   "contentRevision" INTEGER NOT NULL DEFAULT 0
 );
 
+-- FUSE reserves inode 1 for /files. Starting database nodes at 2 lets every
+-- other Linux inode equal file_system_nodes.id with no translation layer.
+ALTER SEQUENCE "file_system_nodes_id_seq" START WITH 2 RESTART WITH 2;
+
 CREATE UNIQUE INDEX "file_system_nodes_parent_name_idx" ON "file_system_nodes"
   ("workspaceId", "parentId", "name") WHERE "parentId" IS NOT NULL;
 CREATE UNIQUE INDEX "file_system_nodes_root_idx" ON "file_system_nodes"

@@ -61,7 +61,8 @@ One row per file or directory:
 
 `(workspaceId, parentId, name)` is unique, so one directory cannot contain two
 entries with the same name. `(workspaceId, rootKind, rootId)` is unique for
-root rows.
+root rows. Linux reserves inode `1` for `/files`; database IDs start at `2`, and
+every visible file or directory reports its database ID as its inode number.
 
 ### `file_system_mutations`
 

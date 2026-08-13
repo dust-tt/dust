@@ -14,7 +14,6 @@ use uuid::Uuid;
 use super::client::{FileSystemClient, NodeKind as RemoteNodeKind, RemoteNode};
 
 pub const ROOT_ID: u64 = 1;
-const REMOTE_INODE_OFFSET: u64 = 2;
 const DEFAULT_CONTENT_TYPE: &str = "application/octet-stream";
 const METADATA_CACHE_TTL: Duration = Duration::from_secs(1);
 const NODE_CACHE_CAPACITY: usize = 4096;
@@ -139,7 +138,7 @@ impl FileStore {
             .initialize()?
             .into_iter()
             .map(Node::from_remote)
-            .collect();
+            .collect::<io::Result<Vec<_>>>()?;
         Ok(Self {
             client,
             staging_dir: staging_dir.to_path_buf(),
@@ -163,7 +162,7 @@ impl FileStore {
             return Ok(node);
         }
         let remote_id = remote_id(node_id)?;
-        let node = Node::from_remote(self.client.node(remote_id)?);
+        let node = Node::from_remote(self.client.node(remote_id)?)?;
         self.cache_node(node.clone())?;
         Ok(node)
     }
@@ -173,7 +172,7 @@ impl FileStore {
         if parent_id == ROOT_ID {
             return self.root_by_name(name).ok_or_else(|| errno(libc::ENOENT));
         }
-        let node = Node::from_remote(self.client.lookup(remote_id(parent_id)?, name)?);
+        let node = Node::from_remote(self.client.lookup(remote_id(parent_id)?, name)?)?;
         self.cache_node(node.clone())?;
         Ok(node)
     }
@@ -196,7 +195,7 @@ impl FileStore {
             .client
             .children(remote_id(parent_id)?)?
             .into_iter()
-            .map(|remote| Ok(Node::from_remote(remote)))
+            .map(Node::from_remote)
             .collect::<io::Result<Vec<_>>>()?;
         self.cache_children(parent_id, children.clone())?;
         Ok(children)
@@ -238,16 +237,13 @@ impl FileStore {
         if parent_id == ROOT_ID {
             return Err(errno(libc::EPERM));
         }
-        let node = self
-            .client
-            .create(
-                &Uuid::new_v4().to_string(),
-                remote_id(parent_id)?,
-                name,
-                kind,
-                mode,
-            )
-            .map(Node::from_remote)?;
+        let node = Node::from_remote(self.client.create(
+            &Uuid::new_v4().to_string(),
+            remote_id(parent_id)?,
+            name,
+            kind,
+            mode,
+        )?)?;
         self.invalidate_directory(parent_id)?;
         self.cache_node(node.clone())?;
         Ok(node)
@@ -299,16 +295,13 @@ impl FileStore {
         if parent_id == ROOT_ID || new_parent_id == ROOT_ID {
             return Err(errno(libc::EPERM));
         }
-        let node = self
-            .client
-            .rename(
-                &Uuid::new_v4().to_string(),
-                remote_id(parent_id)?,
-                name,
-                remote_id(new_parent_id)?,
-                new_name,
-            )
-            .map(Node::from_remote)?;
+        let node = Node::from_remote(self.client.rename(
+            &Uuid::new_v4().to_string(),
+            remote_id(parent_id)?,
+            name,
+            remote_id(new_parent_id)?,
+            new_name,
+        )?)?;
         self.invalidate_directory(parent_id)?;
         self.invalidate_directory(new_parent_id)?;
         self.cache_node(node.clone())?;
@@ -319,10 +312,7 @@ impl FileStore {
         if node_id == ROOT_ID {
             return Err(errno(libc::EPERM));
         }
-        let node = self
-            .client
-            .set_mode(remote_id(node_id)?, mode)
-            .map(Node::from_remote)?;
+        let node = Node::from_remote(self.client.set_mode(remote_id(node_id)?, mode)?)?;
         self.cache_node(node.clone())?;
         Ok(node)
     }
@@ -430,7 +420,7 @@ impl FileStore {
         let remote = self
             .client
             .commit_upload(remote_id, expected_blob_id, &upload)?;
-        let node = Node::from_remote(remote);
+        let node = Node::from_remote(remote)?;
         self.update_cached_content(node_id, &node, size)?;
         self.cache_node(node.clone())?;
         Ok(node)
@@ -698,10 +688,15 @@ impl Node {
         }
     }
 
-    fn from_remote(remote: RemoteNode) -> Self {
-        Self {
-            id: fuse_id(remote.id),
-            parent_id: Some(remote.parent_id.map(fuse_id).unwrap_or(ROOT_ID)),
+    fn from_remote(remote: RemoteNode) -> io::Result<Self> {
+        // Linux reserves inode 1 for the FUSE root. PostgreSQL starts real
+        // filesystem nodes at 2, so every other inode can be the database ID.
+        if remote.id == ROOT_ID || remote.parent_id == Some(ROOT_ID) {
+            return Err(errno(libc::EIO));
+        }
+        Ok(Self {
+            id: remote.id,
+            parent_id: Some(remote.parent_id.unwrap_or(ROOT_ID)),
             name: remote.name,
             kind: match remote.kind {
                 RemoteNodeKind::File => NodeKind::File,
@@ -714,18 +709,13 @@ impl Node {
             remote_id: Some(remote.id),
             blob_id: remote.blob_id,
             content_type: remote.content_type,
-        }
+        })
     }
 }
 
-fn fuse_id(remote_id: u64) -> u64 {
-    remote_id.saturating_add(REMOTE_INODE_OFFSET)
-}
-
 fn remote_id(fuse_id: u64) -> io::Result<u64> {
-    fuse_id
-        .checked_sub(REMOTE_INODE_OFFSET)
-        .filter(|id| *id > 0)
+    (fuse_id != ROOT_ID)
+        .then_some(fuse_id)
         .ok_or_else(|| errno(libc::EINVAL))
 }
 
@@ -754,10 +744,10 @@ mod tests {
 
     use tempfile::tempdir;
 
-    use super::super::client::FileSystemClient;
+    use super::super::client::{FileSystemClient, NodeKind as RemoteNodeKind, RemoteNode};
     use super::{
-        fuse_id, open_staged_file, prepare_staging_directory, remote_id, CachedContent,
-        ContentCache, FileStore, MetadataCache, Node, NodeKind, NODE_CACHE_CAPACITY, ROOT_ID,
+        open_staged_file, prepare_staging_directory, remote_id, CachedContent, ContentCache,
+        FileStore, MetadataCache, Node, NodeKind, NODE_CACHE_CAPACITY, ROOT_ID,
     };
 
     fn empty_store(staging_dir: &std::path::Path, cache_capacity_bytes: u64) -> FileStore {
@@ -783,9 +773,23 @@ mod tests {
     }
 
     #[test]
-    fn remote_inode_numbers_never_collide_with_the_virtual_root() {
-        assert_ne!(fuse_id(1), ROOT_ID);
-        assert_eq!(remote_id(fuse_id(42)).ok(), Some(42));
+    fn database_ids_are_exposed_as_inode_numbers() {
+        let node = Node::from_remote(RemoteNode {
+            id: 42,
+            parent_id: Some(20),
+            name: "file.txt".to_owned(),
+            kind: RemoteNodeKind::File,
+            mode: 0o644,
+            size: 0,
+            content_type: None,
+            blob_id: None,
+            created_at_ms: 0,
+            modified_at_ms: 0,
+        })
+        .expect("database node");
+        assert_eq!(node.id, 42);
+        assert_eq!(node.parent_id, Some(20));
+        assert_eq!(remote_id(42).ok(), Some(42));
         assert!(remote_id(ROOT_ID).is_err());
     }
 
