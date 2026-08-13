@@ -381,16 +381,11 @@ function AttributionRows({
     period,
     limit: pagination.pageSize,
     offset: pagination.pageIndex * pagination.pageSize,
+    search,
     filter,
   });
 
-  // Client-side filter over the loaded ranking returned by the endpoint.
-  const rows = useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    return needle
-      ? allRows.filter((row) => row.name.toLowerCase().includes(needle))
-      : allRows;
-  }, [allRows, search]);
+  const rows = allRows;
 
   const selectedIdSet = useMemo(
     () => new Set(filter?.[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]] ?? []),

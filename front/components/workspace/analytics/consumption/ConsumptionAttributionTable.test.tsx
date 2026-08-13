@@ -92,6 +92,59 @@ describe("ConsumptionAttributionTable", () => {
     });
   });
 
+  it("sends the search to the backend and renders a match beyond page one", async () => {
+    const firstPageRow = {
+      id: "agent-1",
+      name: "Agent 1",
+      pictureUrl: null,
+      description: null,
+      icon: null,
+      modelId: null,
+      modelDisplayName: null,
+      credits: 100,
+      avgCredits: 10,
+    };
+    const searchedRow = {
+      ...firstPageRow,
+      id: "agent-80",
+      name: "Pagination Agent 080",
+      credits: 1,
+    };
+    mockUseConsumptionTop.mockImplementation(
+      ({ search }: { search: string }) => ({
+        rows: search === "Agent 080" ? [searchedRow] : [firstPageRow],
+        totalCredits: 100,
+        totalCount: search === "Agent 080" ? 1 : 80,
+        hasMore: search !== "Agent 080",
+        isTopLoading: false,
+        isTopError: undefined,
+        isTopValidating: false,
+      })
+    );
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="agent"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("Search…"), {
+      target: { value: "Agent 080" },
+    });
+
+    await waitFor(() => {
+      expect(mockUseConsumptionTop).toHaveBeenCalledWith(
+        expect.objectContaining({ search: "Agent 080", offset: 0, limit: 25 })
+      );
+      expect(screen.getByText("Pagination Agent 080")).toBeInTheDocument();
+    });
+  });
+
   it("resets expanded rows when switching dimensions", () => {
     mockUseConsumptionTop.mockImplementation(
       ({ dimension }: { dimension: ConsumptionDimension }) => ({

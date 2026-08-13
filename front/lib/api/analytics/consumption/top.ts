@@ -1,3 +1,4 @@
+import { listConsumptionFacetCatalog } from "@app/lib/api/analytics/consumption/facet_catalog";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type {
@@ -65,9 +66,13 @@ function subAggs(unit: ConsumptionTopUnit) {
   };
 }
 
-type TopAggs = {
+type RankingAggs = {
   by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
   [TOTAL_COUNT_AGG]?: estypes.AggregationsCardinalityAggregate;
+};
+
+type TopAggs = RankingAggs & {
+  ranking?: estypes.AggregationsSingleBucketAggregateBase & RankingAggs;
   total_credit_micro?: estypes.AggregationsSumAggregate;
 };
 
@@ -100,16 +105,33 @@ export async function fetchConsumptionTopGroups(
     period,
     limit,
     offset = 0,
+    search,
     filter,
   }: {
     dimension: ConsumptionScopeDimension;
     period: ConsumptionPeriod;
     limit: number;
     offset?: number;
+    search?: string;
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
   const unit = CONSUMPTION_DIMENSION_UNIT[dimension];
+  const dimensionField = CONSUMPTION_DIMENSION_FIELDS[dimension];
+  const normalizedSearch = search?.trim().toLowerCase();
+  let matchingValues: string[] | undefined;
+  if (normalizedSearch) {
+    const catalog = await listConsumptionFacetCatalog(auth);
+    matchingValues = catalog[dimension]
+      .filter((entry) => entry.label.toLowerCase().includes(normalizedSearch))
+      .map((entry) => entry.value);
+  }
+  const rankingFilter: estypes.QueryDslQueryContainer | null =
+    matchingValues
+      ? matchingValues.length > 0
+        ? { terms: { [dimensionField]: matchingValues } }
+        : { match_none: {} }
+      : null;
   const query = buildConsumptionScopeQuery({
     auth,
     startDate: period.startDate,
@@ -117,24 +139,28 @@ export async function fetchConsumptionTopGroups(
     filter,
   });
   const requestedBucketCount = offset + limit;
-  const dimensionField = CONSUMPTION_DIMENSION_FIELDS[dimension];
+  const rankingAggregations = {
+    by_group: {
+      terms: {
+        field: dimensionField,
+        size: requestedBucketCount,
+        order: { [CREDIT_AGG]: "desc" },
+      },
+      aggs: subAggs(unit),
+    },
+    [TOTAL_COUNT_AGG]: {
+      cardinality: {
+        field: dimensionField,
+        precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+      },
+    },
+  } satisfies Record<string, estypes.AggregationsAggregationContainer>;
 
   const result = await searchConsumptionAnalytics<never, TopAggs>(query, {
     aggregations: {
-      by_group: {
-        terms: {
-          field: dimensionField,
-          size: requestedBucketCount,
-          order: { [CREDIT_AGG]: "desc" },
-        },
-        aggs: subAggs(unit),
-      },
-      [TOTAL_COUNT_AGG]: {
-        cardinality: {
-          field: dimensionField,
-          precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
-        },
-      },
+      ...(rankingFilter
+        ? { ranking: { filter: rankingFilter, aggs: rankingAggregations } }
+        : rankingAggregations),
       total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
     },
     size: 0,
@@ -144,16 +170,17 @@ export async function fetchConsumptionTopGroups(
     return result;
   }
 
+  const ranking = rankingFilter
+    ? result.value.aggregations?.ranking
+    : result.value.aggregations;
   const rankedGroups = bucketsToArray<GroupBucket>(
-    result.value.aggregations?.by_group?.buckets
+    ranking?.by_group?.buckets
   ).map((bucket) => ({
     key: String(bucket.key),
     credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
     count: countFromBucket(bucket, unit),
   }));
-  const totalCount = Math.round(
-    result.value.aggregations?.[TOTAL_COUNT_AGG]?.value ?? 0
-  );
+  const totalCount = Math.round(ranking?.[TOTAL_COUNT_AGG]?.value ?? 0);
 
   return new Ok({
     groups: rankedGroups.slice(offset, offset + limit),

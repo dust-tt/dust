@@ -314,6 +314,7 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
       limit: 10,
       offset: 0,
       period: { startDate: expect.any(String), endDate: expect.any(String) },
+      search: undefined,
       filter: undefined,
     });
   });
@@ -326,7 +327,7 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
     expect(response.status).toBe(403);
   });
 
-  it("forwards the page, the period and the filter", async () => {
+  it("forwards the page, the period, the search and the filter", async () => {
     vi.mocked(fetchConsumptionTopAgents).mockResolvedValue(new Ok(TOP_AGENTS));
     const { workspace } = await setupTest();
 
@@ -335,6 +336,7 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
       offset: 25,
       period: "days",
       days: 7,
+      search: "  Agent 080  ",
       filter: { sources: ["slack"] },
     });
 
@@ -344,6 +346,7 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
       expect.objectContaining({
         limit: 5,
         offset: 25,
+        search: "Agent 080",
         filter: { sources: ["slack"] },
       })
     );
