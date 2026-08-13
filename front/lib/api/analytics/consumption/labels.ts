@@ -1,15 +1,21 @@
+import {
+  getInternalMCPServerIconByName,
+  isInternalMCPServerName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
 import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
 import { getUserDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
-import { resolveServerDisplayNames } from "@app/lib/api/assistant/observability/tool_usage";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 
 /**
  * Resolve display names / labels (and pictureUrl where applicable)
@@ -34,7 +40,7 @@ export type DimensionLabel = {
   // Only agents have model metadata.
   modelId?: string;
   modelDisplayName?: string;
-  // Only skills have an icon.
+  // Only tools and skills have an icon.
   icon?: string | null;
 };
 
@@ -117,11 +123,26 @@ export async function resolveDimensionLabels(
       );
 
     case "tool": {
-      // The key is the MCP server name. Internal servers get their display name
-      // from the name itself; remote ones are keyed by sId and need a lookup.
-      const displayNames = await resolveServerDisplayNames(auth, keys);
-      return labelsFromNames(
-        new Map(keys.map((key) => [key, displayNames.get(key) || key]))
+      const [remoteMetadata, viewIcons] = await Promise.all([
+        RemoteMCPServerResource.resolveDisplayMetadataByIdentifiers(auth, keys),
+        MCPServerViewResource.resolveIconsByNames(auth, keys),
+      ]);
+      return new Map(
+        keys.map((key) => {
+          const remote = remoteMetadata.get(key);
+          const icon = isInternalMCPServerName(key)
+            ? getInternalMCPServerIconByName(key)
+            : (viewIcons.get(key) ?? remote?.icon ?? null);
+          return [
+            key,
+            {
+              name: remote?.name ?? asDisplayToolName(key),
+              pictureUrl: null,
+              description: null,
+              icon,
+            },
+          ];
+        })
       );
     }
 

@@ -56,7 +56,7 @@ export const CONSUMPTION_DIMENSION_CONFIG: Record<
   tool: {
     label: "Tools",
     breakdownLabel: "tool",
-    hasAvatar: false,
+    hasAvatar: true,
     avgLabel: INVOCATION_AVG_LABEL,
   },
   skill: {

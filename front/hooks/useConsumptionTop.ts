@@ -109,7 +109,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       name: row.name,
       pictureUrl: null,
       description: null,
-      icon: null,
+      icon: row.icon,
       modelId: null,
       modelDisplayName: null,
       credits: row.credits,

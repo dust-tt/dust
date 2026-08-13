@@ -25,6 +25,7 @@ export type ConsumptionTopToolRow = {
   // The MCP server name, which is also what the `tool` filter takes.
   serverName: string;
   name: string;
+  icon: string | null;
   credits: number;
   invocationCount: number;
   avgCreditsPerInvocation: number;
@@ -74,6 +75,7 @@ export async function fetchConsumptionTopTools(
     tools: groups.map((group) => ({
       serverName: group.key,
       name: labels.get(group.key)?.name ?? group.key,
+      icon: labels.get(group.key)?.icon ?? null,
       credits: group.credits,
       invocationCount: group.count,
       avgCreditsPerInvocation: avgCreditsPerUnit(group.credits, group.count),

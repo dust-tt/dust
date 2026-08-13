@@ -16,6 +16,7 @@ export class RemoteMCPServerFactory {
       url?: string;
       description?: string;
       tools?: MCPToolType[];
+      viewName?: string;
     } = {}
   ) {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -40,6 +41,7 @@ export class RemoteMCPServerFactory {
       version: DEFAULT_MCP_ACTION_VERSION,
       authorization: null,
       oAuthUseCase: null,
+      viewName: options.viewName,
     });
   }
 }
