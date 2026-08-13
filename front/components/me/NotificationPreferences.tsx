@@ -350,7 +350,7 @@ export function NotificationPreferences({
       {displayForYouOption && (
         <SettingsList.Row
           title="Allow For You Notifications"
-          description="Email when Dust has a new recommendation for you"
+          description="Receive email notifications when Dust has a new recommendation for you"
           action={
             <SliderToggle
               selected={allowForYouField.value}
