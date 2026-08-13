@@ -80,7 +80,6 @@ export const AUDIT_ACTIONS = [
   // Projects.
   "project.joined",
   "project.left",
-  "project.app_sharing_updated",
   // Self-improvement.
   "self_improvement.enabled",
   "self_improvement.batch_mode_updated",

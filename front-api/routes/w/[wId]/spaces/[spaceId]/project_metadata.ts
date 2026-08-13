@@ -1,9 +1,4 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import {
-  buildAuditLogTarget,
-  emitAuditLogEvent,
-  getAuditLogContext,
-} from "@app/lib/api/audit/workos_audit";
 import { validatePodFrameTabs } from "@app/lib/api/projects/frame_tabs";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { hasFeatureFlag } from "@app/lib/auth";
@@ -238,7 +233,6 @@ app.patch(
     const priorLastTodoAnalysisAt = metadata?.lastTodoAnalysisAt ?? null;
     const priorTodoGenerationEnabled = metadata?.todoGenerationEnabled ?? false;
     const priorIsAdminControlled = metadata?.isAdminControlled ?? false;
-    const priorAppSharingEnabled = metadata?.appSharingEnabled ?? false;
 
     if (
       body.isAdminControlled !== undefined &&
@@ -374,25 +368,6 @@ app.patch(
           spaceId: space.sId,
         });
       }
-    }
-
-    if (
-      body.appSharingEnabled !== undefined &&
-      body.appSharingEnabled !== priorAppSharingEnabled
-    ) {
-      void emitAuditLogEvent({
-        auth,
-        action: "project.app_sharing_updated",
-        targets: [
-          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-          buildAuditLogTarget("space", space),
-        ],
-        context: getAuditLogContext(auth),
-        metadata: {
-          space_name: space.name,
-          app_sharing_enabled: String(body.appSharingEnabled),
-        },
-      });
     }
 
     if (resolvedDefaultSkills) {
