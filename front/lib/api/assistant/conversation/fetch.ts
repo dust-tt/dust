@@ -57,6 +57,68 @@ type MessageTypeForView<V extends "light" | "full"> = V extends "light"
     ? MessageType
     : never;
 
+// Keep the hot conversation fetch from hydrating subtype columns that message rendering never
+// reads. In particular, agent and compaction runIds can grow over a message's lifetime.
+const USER_MESSAGE_RENDER_ATTRIBUTES: Array<keyof UserMessageModel> = [
+  "id",
+  "content",
+  "clientSideMCPServerIds",
+  "userContextUsername",
+  "userContextTimezone",
+  "userContextFullName",
+  "userContextEmail",
+  "userContextProfilePictureUrl",
+  "userContextOrigin",
+  "userContextLastTriggerRunAt",
+  "agenticMessageType",
+  "agenticOriginMessageId",
+  "requestedProviderId",
+  "requestedModelId",
+  "requestedReasoningEffort",
+  "userId",
+];
+
+const AGENT_MESSAGE_RENDER_ATTRIBUTES: Array<keyof AgentMessageModel> = [
+  "id",
+  "status",
+  "errorCode",
+  "errorMessage",
+  "errorMetadata",
+  "skipToolsValidation",
+  "agentConfigurationId",
+  "modelInteractionDurationMs",
+  "completedAt",
+  "prunedContext",
+  "costCredits",
+  "resolvedProviderId",
+  "resolvedModelId",
+  "resolvedReasoningEffort",
+  "modelResolutionMethod",
+];
+
+const CONTENT_FRAGMENT_RENDER_ATTRIBUTES: Array<keyof ContentFragmentModel> = [
+  "id",
+  "sId",
+  "title",
+  "contentType",
+  "sourceUrl",
+  "textBytes",
+  "userContextUsername",
+  "userContextFullName",
+  "userContextEmail",
+  "userContextProfilePictureUrl",
+  "fileId",
+  "nodeId",
+  "nodeDataSourceViewId",
+  "nodeType",
+  "version",
+  "expiredReason",
+];
+
+const COMPACTION_MESSAGE_RENDER_ATTRIBUTES: Array<
+  keyof CompactionMessageModel
+> = ["id", "sourceConversationId", "status", "content"];
+
 export const getConversation = async (
   auth: Authenticator,
   conversationId: string,
@@ -198,12 +260,14 @@ async function _getConversation<V extends "light" | "full">(
         {
           model: UserMessageModel,
           as: "userMessage",
+          attributes: USER_MESSAGE_RENDER_ATTRIBUTES,
           required: false,
           where: sideTableWhere,
         },
         {
           model: AgentMessageModel,
           as: "agentMessage",
+          attributes: AGENT_MESSAGE_RENDER_ATTRIBUTES,
           required: false,
           where: sideTableWhere,
         },
@@ -213,12 +277,14 @@ async function _getConversation<V extends "light" | "full">(
         {
           model: ContentFragmentModel,
           as: "contentFragment",
+          attributes: CONTENT_FRAGMENT_RENDER_ATTRIBUTES,
           required: false,
           where: sideTableWhere,
         },
         {
           model: CompactionMessageModel,
           as: "compactionMessage",
+          attributes: COMPACTION_MESSAGE_RENDER_ATTRIBUTES,
           required: false,
           where: sideTableWhere,
         },
