@@ -1,6 +1,7 @@
 import { createFrameSession } from "@app/lib/api/share/frame_session";
 import { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import {
   ExternalViewerSessionModel,
   SharingGrantModel,
@@ -135,6 +136,45 @@ describe("GET /api/v1/public/frames/[token]", () => {
       const body = await response.json();
       // Such a viewer cannot invoke the Pod's functions either, so there is no reason to hand them
       // the Pod's layout.
+      expect(body.framePath).toBeNull();
+    });
+
+    const createWorkspaceMemberOutsidePod = async () => {
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, {
+        role: "user",
+      });
+      return Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+    };
+
+    it("returns the scoped path for a workspace member outside the pod when app sharing is enabled", async () => {
+      const { pod, token } = await createPodAppFrame();
+      await ProjectMetadataResource.makeNew(auth, pod, {
+        description: null,
+        appSharingEnabled: true,
+      });
+      const memberAuth = await createWorkspaceMemberOutsidePod();
+      vi.mocked(resolveOptionalAuth).mockResolvedValue(memberAuth);
+
+      const response = await requestFrame(token);
+
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.framePath).toBe(`pod-${pod.sId}/TaskList/TaskList.tsx`);
+    });
+
+    it("withholds it from a workspace member outside the pod when app sharing is disabled", async () => {
+      const { token } = await createPodAppFrame();
+      const memberAuth = await createWorkspaceMemberOutsidePod();
+      vi.mocked(resolveOptionalAuth).mockResolvedValue(memberAuth);
+
+      const response = await requestFrame(token);
+
+      expect(response.status).toBe(200);
+      const body = await response.json();
       expect(body.framePath).toBeNull();
     });
   });

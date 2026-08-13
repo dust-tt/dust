@@ -6,6 +6,7 @@ import {
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
@@ -202,6 +203,16 @@ app.get(
       spaceId && auth ? await SpaceResource.fetchById(auth, spaceId) : null;
     const canRead = space && space.isProject() && auth && space.canRead(auth);
 
+    // A workspace member viewing a frame from an app-sharing Pod can invoke its functions
+    // (function resolution extends to them), so they need framePath for bare function
+    // references — the same reasoning that grants it to Pod readers. External viewers
+    // never reach this branch.
+    let canInvokeViaAppSharing = false;
+    if (space && space.isProject() && auth && auth.isUser() && !canRead) {
+      const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
+      canInvokeViaAppSharing = metadata?.appSharingEnabled === true;
+    }
+
     // Generate access token for viz rendering.
     const accessToken = generateVizAccessToken({
       contentType: file.contentType,
@@ -230,9 +241,12 @@ app.get(
       // real authorization still happens server-side on invocation.
       isAuthenticatedMember: !!user,
       // Lets a shared Frame in an app folder resolve bare function references, exactly as it does
-      // when opened from the Pod. Withheld from viewers who cannot read the Pod, who cannot invoke
-      // its functions either.
-      framePath: canRead && auth ? file.toScopedPath(auth) : null,
+      // when opened from the Pod. Withheld from viewers who cannot invoke the Pod's functions —
+      // those who can neither read the Pod nor reach it through app sharing.
+      framePath:
+        (canRead || canInvokeViaAppSharing) && auth
+          ? file.toScopedPath(auth)
+          : null,
     });
   }
 );
