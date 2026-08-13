@@ -2,11 +2,13 @@ import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/perio
 import type {
   ConsumptionScopeDimension,
   ConsumptionScopeFilter,
+  ConsumptionTopUnit,
 } from "@app/lib/api/analytics/consumption/scope";
 import {
   AGENT_MESSAGE_ID_FIELD,
   buildConsumptionScopeQuery,
   CONSUMPTION_DIMENSION_FIELDS,
+  CONSUMPTION_DIMENSION_UNIT,
   CREDIT_MICRO_FIELD,
 } from "@app/lib/api/analytics/consumption/scope";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
@@ -21,12 +23,7 @@ import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
 
-// Unit a ranking's count — and therefore its average — is denominated in.
-// "message" is the count of distinct messages,
-// "invocation" is used for the count of tool documents.
-type ConsumptionTopUnit = "message" | "invocation";
-
-export type ConsumptionTopGroup = {
+type ConsumptionTopGroup = {
   key: string;
   credits: number;
   // Distinct messages, or tool invocations, per the ranking's unit.
@@ -53,10 +50,23 @@ type GroupBucket = {
   [MESSAGES_AGG]?: estypes.AggregationsCardinalityAggregate;
 };
 
+function subAggs(unit: ConsumptionTopUnit) {
+  return {
+    [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
+    ...(unit === "message"
+      ? { [MESSAGES_AGG]: { cardinality: { field: AGENT_MESSAGE_ID_FIELD } } }
+      : {}),
+  };
+}
+
 type TopAggs = {
   by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
   total_credit_micro?: estypes.AggregationsSumAggregate;
 };
+
+// Shared with the raw-lines export's own pagination in this module's sibling
+// file.
+export const EXPORT_PAGE_SIZE = 10_000;
 
 function countFromBucket(
   bucket: GroupBucket,
@@ -84,18 +94,17 @@ export async function fetchConsumptionTopGroups(
   auth: Authenticator,
   {
     dimension,
-    unit,
     period,
     limit,
     filter,
   }: {
     dimension: ConsumptionScopeDimension;
-    unit: ConsumptionTopUnit;
     period: ConsumptionPeriod;
     limit: number;
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
+  const unit = CONSUMPTION_DIMENSION_UNIT[dimension];
   const query = buildConsumptionScopeQuery({
     auth,
     startDate: period.startDate,
@@ -111,16 +120,7 @@ export async function fetchConsumptionTopGroups(
           size: limit,
           order: { [CREDIT_AGG]: "desc" },
         },
-        aggs: {
-          [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
-          ...(unit === "message"
-            ? {
-                [MESSAGES_AGG]: {
-                  cardinality: { field: AGENT_MESSAGE_ID_FIELD },
-                },
-              }
-            : {}),
-        },
+        aggs: subAggs(unit),
       },
       total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
     },

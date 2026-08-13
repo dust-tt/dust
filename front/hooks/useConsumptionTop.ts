@@ -5,15 +5,12 @@ import { normalizedConsumptionFilter } from "@app/lib/analytics/consumption_peri
 import type { ConsumptionTopBody } from "@app/lib/api/analytics/consumption/schema";
 import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/api/analytics/consumption/schema";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
-import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/consumption/top_agents";
-import type { GetConsumptionTopGroupsResponse } from "@app/lib/api/analytics/consumption/top_groups";
-import type { GetConsumptionTopModelsResponse } from "@app/lib/api/analytics/consumption/top_models";
-import type { GetConsumptionTopSkillsResponse } from "@app/lib/api/analytics/consumption/top_skills";
-import type { GetConsumptionTopSourcesResponse } from "@app/lib/api/analytics/consumption/top_sources";
-import type { GetConsumptionTopToolsResponse } from "@app/lib/api/analytics/consumption/top_tools";
-import type { GetConsumptionTopUsersResponse } from "@app/lib/api/analytics/consumption/top_users";
+import type {
+  ConsumptionTopResponse,
+  ConsumptionTopRow,
+} from "@app/lib/api/analytics/consumption/top_rows";
+import { toConsumptionTopRows } from "@app/lib/api/analytics/consumption/top_rows";
 import { emptyArray } from "@app/lib/swr/swr";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useMemo } from "react";
 
 const CONSUMPTION_TOP_ENDPOINTS = {
@@ -25,96 +22,6 @@ const CONSUMPTION_TOP_ENDPOINTS = {
   skill: "top-skills",
   source: "top-sources",
 } as const satisfies Record<ConsumptionDimension, string>;
-
-export type ConsumptionTopRow = {
-  id: string;
-  name: string;
-  pictureUrl: string | null;
-  credits: number;
-  avgCredits: number;
-};
-
-type ConsumptionTopResponse =
-  | GetConsumptionTopAgentsResponse
-  | GetConsumptionTopUsersResponse
-  | GetConsumptionTopGroupsResponse
-  | GetConsumptionTopModelsResponse
-  | GetConsumptionTopToolsResponse
-  | GetConsumptionTopSkillsResponse
-  | GetConsumptionTopSourcesResponse;
-
-// Narrowed on the collection each response carries rather than on the requested
-// dimension, so a row shape that drifts from its endpoint is a type error here
-// instead of a silently empty table.
-function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
-  if ("agents" in data) {
-    return data.agents.map((row) => ({
-      id: row.agentId,
-      name: row.name,
-      pictureUrl: row.pictureUrl,
-      credits: row.credits,
-      avgCredits: row.avgCreditsPerMessage,
-    }));
-  }
-  if ("users" in data) {
-    return data.users.map((row) => ({
-      id: row.userId,
-      name: row.name,
-      pictureUrl: row.pictureUrl,
-      credits: row.credits,
-      avgCredits: row.avgCreditsPerMessage,
-    }));
-  }
-  if ("groups" in data) {
-    return data.groups.map((row) => ({
-      id: row.groupId,
-      name: row.name,
-      pictureUrl: null,
-      modelMaker: null,
-      tier: null,
-      credits: row.credits,
-      avgCredits: row.avgCreditsPerMessage,
-    }));
-  }
-  if ("models" in data) {
-    return data.models.map((row) => ({
-      id: row.modelId,
-      name: row.name,
-      pictureUrl: null,
-      credits: row.credits,
-      avgCredits: row.avgCreditsPerMessage,
-    }));
-  }
-  if ("tools" in data) {
-    return data.tools.map((row) => ({
-      id: row.serverName,
-      name: row.name,
-      pictureUrl: null,
-      credits: row.credits,
-      avgCredits: row.avgCreditsPerInvocation,
-    }));
-  }
-  if ("skills" in data) {
-    return data.skills.map((row) => ({
-      id: row.skillId,
-      name: row.name,
-      pictureUrl: null,
-      credits: row.credits,
-      avgCredits: row.avgCreditsPerInvocation,
-    }));
-  }
-  if ("sources" in data) {
-    return data.sources.map((row) => ({
-      id: row.source,
-      name: row.name,
-      pictureUrl: null,
-      credits: row.credits,
-      avgCredits: row.avgCreditsPerMessage,
-    }));
-  }
-  assertNeverAndIgnore(data);
-  return [];
-}
 
 export function useConsumptionTop({
   workspaceId,
@@ -146,7 +53,7 @@ export function useConsumptionTop({
   >({ url, body, disabled });
 
   const rows = useMemo(
-    () => (data ? toRows(data) : emptyArray<ConsumptionTopRow>()),
+    () => (data ? toConsumptionTopRows(data) : emptyArray<ConsumptionTopRow>()),
     [data]
   );
 

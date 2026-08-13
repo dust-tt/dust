@@ -1,11 +1,17 @@
+import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import {
   AvatarNameCell,
   CostShareCell,
 } from "@app/components/workspace/analytics/creditsTableCells";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useDebounce } from "@app/hooks/useDebounce";
+import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import { normalizedConsumptionFilter } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
+import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/api/analytics/consumption/schema";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionTopRow } from "@app/lib/api/analytics/consumption/top_rows";
 import { formatCredits } from "@app/lib/client/credits";
 import {
   Button,
@@ -137,6 +143,10 @@ interface AttributionRowsProps {
   dimension: ConsumptionDimension;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
+  rows: ConsumptionTopRow[];
+  totalCredits: number;
+  isTopLoading: boolean;
+  isTopError: boolean;
   search: string;
 }
 
@@ -145,23 +155,14 @@ function AttributionRows({
   dimension,
   period,
   filter,
+  rows: allRows,
+  totalCredits,
+  isTopLoading,
+  isTopError,
   search,
 }: AttributionRowsProps) {
   const { hasAvatar, avgLabel } = CONSUMPTION_DIMENSION_CONFIG[dimension];
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
-
-  const {
-    rows: allRows,
-    totalCredits,
-    isTopLoading,
-    isTopError,
-  } = useConsumptionTop({
-    workspaceId,
-    dimension,
-    period,
-    limit: TOP_LIMIT,
-    filter,
-  });
 
   // Client-side filter over the loaded ranking. A row outside the top
   // TOP_LIMIT will not appear — the endpoint has no server-side search yet.
@@ -248,41 +249,76 @@ export function ConsumptionAttributionTable({
     delay: SEARCH_DEBOUNCE_DELAY_MS,
   });
 
+  const { rows, totalCredits, isTopLoading, isTopError } = useConsumptionTop({
+    workspaceId,
+    dimension,
+    period,
+    limit: TOP_LIMIT,
+    filter,
+  });
+
+  const exportBody: ConsumptionExportBody = {
+    period: period.kind,
+    days:
+      period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
+    filter: normalizedConsumptionFilter(filter),
+  };
+
+  // Every raw consumption line with no aggregation, for users who want to
+  // build their own analysis on top of it.
+  const rawCsvDownload = useDownloadCsv({
+    url: `/api/w/${workspaceId}/analytics/consumption/export-raw`,
+    filename: `dust_consumption_lines_export_${workspaceId}.zip`,
+    body: exportBody,
+  });
+
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <Tabs
-        value={dimension}
-        onValueChange={(value) => {
-          if (isConsumptionDimension(value)) {
-            onDimensionChange(value);
-          }
-        }}
-      >
-        <TabsList border>
-          {CONSUMPTION_DIMENSIONS.map((tabDimension) => (
-            <TabsTrigger
-              key={tabDimension}
-              value={tabDimension}
-              label={CONSUMPTION_DIMENSION_CONFIG[tabDimension].label}
-            />
-          ))}
-        </TabsList>
-      </Tabs>
-      <SearchInput
-        name="consumption-attribution-search"
-        placeholder="Search…"
-        value={inputValue}
-        onChange={setValue}
-        className="mt-3 w-full"
-      />
-      <div className="pt-3">
-        <AttributionRows
-          workspaceId={workspaceId}
-          dimension={dimension}
-          period={period}
-          filter={filter}
-          search={debouncedValue}
+    <div>
+      <div className="mb-3 flex items-center justify-between gap-4">
+        <h3 className="text-base font-semibold text-foreground">Attribution</h3>
+        <div className="flex items-center gap-2">
+          <CsvDownloadButton {...rawCsvDownload} label="Download raw data" />
+        </div>
+      </div>
+      <div className="rounded-lg border border-border bg-card p-4">
+        <Tabs
+          value={dimension}
+          onValueChange={(value) => {
+            if (isConsumptionDimension(value)) {
+              onDimensionChange(value);
+            }
+          }}
+        >
+          <TabsList border>
+            {CONSUMPTION_DIMENSIONS.map((tabDimension) => (
+              <TabsTrigger
+                key={tabDimension}
+                value={tabDimension}
+                label={CONSUMPTION_DIMENSION_CONFIG[tabDimension].label}
+              />
+            ))}
+          </TabsList>
+        </Tabs>
+        <SearchInput
+          name="consumption-attribution-search"
+          placeholder="Search…"
+          value={inputValue}
+          onChange={setValue}
+          className="mt-3 w-full"
         />
+        <div className="pt-3">
+          <AttributionRows
+            workspaceId={workspaceId}
+            dimension={dimension}
+            period={period}
+            filter={filter}
+            rows={rows}
+            totalCredits={totalCredits}
+            isTopLoading={isTopLoading}
+            isTopError={isTopError}
+            search={debouncedValue}
+          />
+        </div>
       </div>
     </div>
   );

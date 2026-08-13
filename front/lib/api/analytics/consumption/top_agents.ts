@@ -48,7 +48,6 @@ export async function fetchConsumptionTopAgents(
 ): Promise<Result<ConsumptionTopAgents, ElasticsearchError>> {
   const result = await fetchConsumptionTopGroups(auth, {
     dimension: "agent",
-    unit: "message",
     period,
     limit,
     filter,

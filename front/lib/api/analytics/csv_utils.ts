@@ -9,6 +9,13 @@ export function sanitizeCsvCell(value: string | number): string | number {
   return value;
 }
 
+// Credits are raw division results with long float tails which spreadsheet
+// apps render as text rather than a number. Round to a couple of decimals so
+// every numeric cell serializes as a plain, consistently-typed number.
+export function roundToCents(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
 // Serialize keyed rows to CSV with a header row, sanitizing every cell. Shared
 // serializer for all analytics CSV exports.
 export function rowsToCsv<
