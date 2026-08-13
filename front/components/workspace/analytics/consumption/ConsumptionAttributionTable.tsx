@@ -25,12 +25,12 @@ import { formatCredits } from "@app/lib/client/credits";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import {
   Avatar,
-  BarChart01,
   Button,
   ChevronDown,
   ChevronUp,
   DataTable,
   DustLogoSquare,
+  FilterFunnel01,
   Icon,
   MOTION_DURATIONS,
   MOTION_EASINGS,
@@ -319,7 +319,7 @@ function buildColumns({
         return (
           <DataTable.CellContent className="w-full justify-end">
             <Button
-              icon={BarChart01}
+              icon={FilterFunnel01}
               variant="ghost-secondary"
               size="xs"
               disabled={isFilterSelected}
