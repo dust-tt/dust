@@ -3,11 +3,7 @@ import type {
   ActivationWorkAreaStatus,
   PublicActivationWorkAreaStatus,
 } from "@app/lib/models/activation/activation_work_area";
-import {
-  ActivationWorkAreaModel,
-  matchingActivationWorkAreaStatuses,
-  publicActivationWorkAreaStatus,
-} from "@app/lib/models/activation/activation_work_area";
+import { ActivationWorkAreaModel } from "@app/lib/models/activation/activation_work_area";
 import type { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -16,6 +12,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   Attributes,
   CreationAttributes,
@@ -24,6 +21,38 @@ import type {
   WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
+
+// Maps a stored status (which may hold legacy values) to the public status
+// exposed to callers. Legacy `candidate`/`confirmed` rows read as `suggested`.
+function publicActivationWorkAreaStatus(
+  status: ActivationWorkAreaStatus
+): PublicActivationWorkAreaStatus {
+  switch (status) {
+    case "dismissed":
+      return "dismissed";
+    case "suggested":
+    case "candidate":
+    case "confirmed":
+      return "suggested";
+    default:
+      assertNever(status);
+  }
+}
+
+// Expands a public status into the set of stored values that match it, so
+// filtering by `suggested` also returns legacy `candidate`/`confirmed` rows.
+function matchingActivationWorkAreaStatuses(
+  status: PublicActivationWorkAreaStatus
+): ActivationWorkAreaStatus[] {
+  switch (status) {
+    case "dismissed":
+      return ["dismissed"];
+    case "suggested":
+      return ["suggested", "candidate", "confirmed"];
+    default:
+      assertNever(status);
+  }
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ActivationWorkAreaResource
