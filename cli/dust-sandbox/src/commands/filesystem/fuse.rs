@@ -14,9 +14,9 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use anyhow::Context;
 use fuser::{
     AccessFlags, BsdFileFlags, Config, Errno, FileAttr, FileHandle, FileType, Filesystem,
-    FopenFlags, Generation, INodeNo, LockOwner, MountOption, OpenFlags, RenameFlags, ReplyAttr,
-    ReplyCreate, ReplyData, ReplyDirectory, ReplyEmpty, ReplyEntry, ReplyOpen, ReplyStatfs,
-    ReplyWrite, Request, SessionACL, TimeOrNow, WriteFlags,
+    FopenFlags, Generation, INodeNo, InitFlags, KernelConfig, LockOwner, MountOption, OpenFlags,
+    RenameFlags, ReplyAttr, ReplyCreate, ReplyData, ReplyDirectory, ReplyEmpty, ReplyEntry,
+    ReplyOpen, ReplyStatfs, ReplyWrite, Request, SessionACL, TimeOrNow, WriteFlags,
 };
 use tracing::{debug, info, warn};
 
@@ -102,6 +102,7 @@ struct OpenHandle {
     expected_blob_id: Option<String>,
     content_type: String,
     dirty: bool,
+    defer_truncate_commit: bool,
     writable: bool,
     unlinked: bool,
 }
@@ -342,6 +343,7 @@ impl DustFuse {
                     expected_blob_id: opened.expected_blob_id,
                     content_type: opened.content_type,
                     dirty,
+                    defer_truncate_commit: dirty,
                     writable,
                     unlinked: false,
                 })),
@@ -375,7 +377,7 @@ impl DustFuse {
             .ok_or_else(|| errno(libc::EBADF))
     }
 
-    fn commit_handle(&self, handle: u64) -> io::Result<()> {
+    fn commit_handle(&self, handle: u64, commit_deferred_truncate: bool) -> io::Result<()> {
         let shared = self.handle(handle)?;
         let mut open = shared.lock().map_err(|_| errno(libc::EIO))?;
         if open.unlinked {
@@ -385,6 +387,13 @@ impl DustFuse {
             return Ok(());
         }
         if !open.dirty {
+            return open.file.sync_data();
+        }
+        // Shells commonly dup the descriptor returned for `> file`. Closing
+        // the original descriptor sends FLUSH before the command writes to
+        // stdout. Keep an O_TRUNC-only empty file local until a write, fsync,
+        // or the final release so one shell overwrite creates one revision.
+        if open.defer_truncate_commit && !commit_deferred_truncate {
             return open.file.sync_data();
         }
         let committed = self.store.commit_content(
@@ -397,16 +406,17 @@ impl DustFuse {
         open.content_type = committed.content_type().to_owned();
         open.node = committed;
         open.dirty = false;
+        open.defer_truncate_commit = false;
         self.staged_sizes()?.remove(&open.node.id);
         Ok(())
     }
 
     fn release_handle(&self, handle: u64) -> io::Result<()> {
         debug!(handle, "releasing filesystem handle");
-        // Linux ignores errors returned by RELEASE. Flush/fsync already had
-        // the opportunity to report a write failure to the caller, so never
-        // retain the local descriptor after the kernel drops its last one.
-        let mut commit_result = self.commit_handle(handle);
+        // Linux ignores errors returned by RELEASE. Written data and fsync had
+        // the opportunity to report a failure. An O_TRUNC-only handle reaches
+        // this final commit intentionally, so log any error before dropping it.
+        let mut commit_result = self.commit_handle(handle, true);
         let removed = self.handles()?.remove(&handle);
         if let Some(open) = removed {
             let open = open.lock().map_err(|_| errno(libc::EIO))?;
@@ -443,7 +453,7 @@ impl DustFuse {
     }
 
     fn sync_handle(&self, handle: u64, data_only: bool) -> io::Result<()> {
-        self.commit_handle(handle)?;
+        self.commit_handle(handle, true)?;
         let shared = self.handle(handle)?;
         let open = shared.lock().map_err(|_| errno(libc::EIO))?;
         if data_only {
@@ -463,6 +473,7 @@ impl DustFuse {
             open.file.set_len(size)?;
             open.node.size = size;
             open.dirty = true;
+            open.defer_truncate_commit = false;
             self.staged_sizes()?.insert(inode, size);
             return Ok(Some(open.node.clone()));
         }
@@ -550,6 +561,14 @@ impl DustFuse {
 }
 
 impl Filesystem for DustFuse {
+    fn init(&mut self, _request: &Request, config: &mut KernelConfig) -> io::Result<()> {
+        // With this capability Linux carries O_TRUNC on OPEN instead of
+        // issuing a separate SETATTR that could become its own revision.
+        config
+            .add_capabilities(InitFlags::FUSE_ATOMIC_O_TRUNC)
+            .map_err(|_| errno(libc::ENOTSUP))
+    }
+
     fn lookup(&self, _request: &Request, parent: INodeNo, name: &OsStr, reply: ReplyEntry) {
         let name = match utf8_name(name) {
             Ok(name) => name.to_owned(),
@@ -881,6 +900,7 @@ impl Filesystem for DustFuse {
             let size = open.file.metadata()?.len();
             open.node.size = size;
             open.dirty = true;
+            open.defer_truncate_commit = false;
             self.staged_sizes()?.insert(node_id, size);
             u32::try_from(written).map_err(|_| errno(libc::EOVERFLOW))
         })();
@@ -905,7 +925,7 @@ impl Filesystem for DustFuse {
         let filesystem = self.clone();
         self.spawn_remote("flush", permit, move || {
             debug!(handle = handle.0, "flushing filesystem handle");
-            reply_empty(filesystem.commit_handle(handle.0), reply);
+            reply_empty(filesystem.commit_handle(handle.0, false), reply);
         });
     }
 

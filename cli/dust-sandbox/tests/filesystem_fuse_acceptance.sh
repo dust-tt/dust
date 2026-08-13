@@ -30,8 +30,8 @@ printf updated >"$CONVERSATION_DIR/file.txt"
 test "$(stat -c %i "$CONVERSATION_DIR/file.txt")" = "$FILE_INODE"
 test "$(cat "$CONVERSATION_DIR/file.txt")" = updated
 
-# Node and Bun follow O_TRUNC with SETATTR(size=0) without always returning a
-# FUSE file handle. The daemon must reuse the open writer or fsync becomes stale.
+# O_TRUNC is applied to the staged handle. Repeated fsync calls must not create
+# extra uploads or revisions once that handle is clean.
 if [[ -x /opt/bin/bun ]]; then
   JS_RUNTIME=/opt/bin/bun
 elif [[ -x /usr/bin/node ]]; then
@@ -47,9 +47,16 @@ printf seed >"$DUST_TRUNCATE_PATH"
   const fd = fs.openSync(process.env.DUST_TRUNCATE_PATH, fs.constants.O_WRONLY | fs.constants.O_TRUNC);
   fs.writeSync(fd, Buffer.from("javascript"));
   fs.fsyncSync(fd);
+  fs.fsyncSync(fd);
   fs.closeSync(fd);
 '
 test "$(cat "$DUST_TRUNCATE_PATH")" = javascript
+
+# A truncate with no following write is still published when its final handle
+# closes, even though an earlier flush from a duplicated shell fd is deferred.
+printf non-empty >"$CONVERSATION_DIR/truncate-only.txt"
+: >"$CONVERSATION_DIR/truncate-only.txt"
+test ! -s "$CONVERSATION_DIR/truncate-only.txt"
 
 # A conversation-to-Pod move changes only the name and parent, not identity.
 mv "$CONVERSATION_DIR/file.txt" "$POD_DIR/file.txt"

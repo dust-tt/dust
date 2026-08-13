@@ -175,6 +175,33 @@ async function prepareFixtures(
   }
 }
 
+async function benchmarkOverwriteRevision(
+  workspaceId: number,
+  rootId: string,
+  benchmarkDirectory: string
+): Promise<number> {
+  let node = await FileSystemNodeModel.findOne({
+    where: {
+      workspaceId,
+      rootKind: "conversation",
+      rootId,
+      parentId: null,
+    },
+  });
+  for (const name of [benchmarkDirectory, "write", "target-4096-0.bin"]) {
+    if (!node) {
+      break;
+    }
+    node = await FileSystemNodeModel.findOne({
+      where: { workspaceId, parentId: node.id, name },
+    });
+  }
+  if (!node || node.kind !== "file") {
+    throw new Error("Could not resolve the database benchmark write target.");
+  }
+  return node.contentRevision;
+}
+
 async function createSandbox(
   auth: Authenticator,
   image: SandboxImage
@@ -483,6 +510,12 @@ makeScript(
         "two-gcsfuse-mounts",
         benchmarkDirectory
       );
+      const workspaceId = auth.getNonNullableWorkspace().id;
+      const revisionBefore = await benchmarkOverwriteRevision(
+        workspaceId,
+        conversationId,
+        benchmarkDirectory
+      );
       const databaseResult = await runBenchmark(
         auth,
         databaseSandbox,
@@ -490,6 +523,16 @@ makeScript(
         "dust-database-fuse",
         benchmarkDirectory
       );
+      const revisionAfter = await benchmarkOverwriteRevision(
+        workspaceId,
+        conversationId,
+        benchmarkDirectory
+      );
+      if (revisionAfter !== revisionBefore + 1) {
+        throw new Error(
+          `A truncating overwrite created ${revisionAfter - revisionBefore} revisions; expected 1.`
+        );
+      }
       const result = {
         measuredAt: new Date().toISOString(),
         image: image.imageId ? formatSandboxImageId(image.imageId) : null,
@@ -500,6 +543,7 @@ makeScript(
           readdirEntries: 20,
           concurrentFiles: 8,
         },
+        atomicTruncate: { revisionBefore, revisionAfter },
         results: [gcsResult, databaseResult],
       };
       await writeFile(output, `${JSON.stringify(result, null, 2)}\n`, {

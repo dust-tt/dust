@@ -140,6 +140,13 @@ entries; local namespace mutations invalidate affected entries immediately.
 
 The sandbox never sends file bytes through Front.
 
+The mount negotiates atomic `O_TRUNC`, so opening an existing file with `>`
+truncates its staged write handle instead of first committing a separate empty
+revision. Shells often duplicate that handle and trigger an early `flush`; an
+`O_TRUNC`-only flush stays local until data is written, `fsync` is called, or
+the final handle is released. A pure `: > file` therefore still publishes the
+empty file, while `echo value > file` publishes only the final bytes.
+
 ### Open rename and delete
 
 Open handles use local files and are independent from slow metadata requests.
