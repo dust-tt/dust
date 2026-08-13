@@ -50,7 +50,7 @@ export const CONSUMPTION_DIMENSION_CONFIG: Record<
   model: {
     label: "Models",
     breakdownLabel: "model",
-    hasAvatar: false,
+    hasAvatar: true,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   tool: {
