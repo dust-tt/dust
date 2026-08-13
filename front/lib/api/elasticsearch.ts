@@ -272,6 +272,7 @@ export async function searchConsumptionAnalytics<
     from?: number;
     sort?: estypes.Sort;
     search_after?: estypes.SortResults;
+    source?: estypes.SearchSourceConfig;
   }
 ): Promise<
   Result<estypes.SearchResponse<TDocument, TAggregations>, ElasticsearchError>
@@ -284,5 +285,6 @@ export async function searchConsumptionAnalytics<
     from: options?.from,
     sort: options?.sort,
     search_after: options?.search_after,
+    _source: options?.source,
   });
 }
