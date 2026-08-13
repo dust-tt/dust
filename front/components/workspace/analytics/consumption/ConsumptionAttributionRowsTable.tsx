@@ -12,13 +12,15 @@ import {
   Icon,
   LoadingBlock,
 } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import {
   flexRender,
   getCoreRowModel,
+  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import type { Dispatch, SetStateAction } from "react";
 import { Fragment } from "react";
 import { ConsumptionAttributionBreakdown } from "./ConsumptionAttributionBreakdown";
 import type { ConsumptionDimension } from "./consumptionDimensions";
@@ -107,6 +109,8 @@ interface ConsumptionAttributionRowsTableProps {
     dimension: ConsumptionDimension,
     selectedRow: ConsumptionTopRow
   ) => void;
+  pagination: PaginationState;
+  setPagination: Dispatch<SetStateAction<PaginationState>>;
   isLoading?: boolean;
   hasAvatar?: boolean;
   isAvatarRounded?: boolean;
@@ -120,6 +124,8 @@ export function ConsumptionAttributionRowsTable({
   period,
   filter,
   onViewAll,
+  pagination,
+  setPagination,
   isLoading = false,
   hasAvatar = false,
   isAvatarRounded = false,
@@ -129,6 +135,9 @@ export function ConsumptionAttributionRowsTable({
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    onPaginationChange: setPagination,
+    state: { pagination },
   });
 
   return (

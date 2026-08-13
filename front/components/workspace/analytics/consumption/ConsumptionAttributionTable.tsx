@@ -34,13 +34,14 @@ import {
   Icon,
   MOTION_DURATIONS,
   MOTION_EASINGS,
+  Pagination,
   SearchInput,
   Tabs,
   TabsList,
   TabsTrigger,
   Tooltip,
 } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import type { Transition, Variants } from "framer-motion";
 import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
@@ -54,9 +55,8 @@ import {
   isConsumptionDimension,
 } from "./consumptionDimensions";
 
-const TOP_LIMIT = 100;
-
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
+const ATTRIBUTION_PAGE_SIZE = 25;
 
 type AttributionTransitionDirection = -1 | 0 | 1;
 
@@ -356,6 +356,10 @@ function AttributionRows({
   const { hasAvatar, avgLabel } = CONSUMPTION_DIMENSION_CONFIG[dimension];
   const { isDark } = useTheme();
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: ATTRIBUTION_PAGE_SIZE,
+  });
   const shouldReduceMotion = useReducedMotion();
 
   const {
@@ -367,12 +371,11 @@ function AttributionRows({
     workspaceId,
     dimension,
     period,
-    limit: TOP_LIMIT,
+    limit: null,
     filter,
   });
 
-  // Client-side filter over the loaded ranking. A row outside the top
-  // TOP_LIMIT will not appear — the endpoint has no server-side search yet.
+  // Client-side filter over the complete ranking returned by the endpoint.
   const rows = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return needle
@@ -407,6 +410,8 @@ function AttributionRows({
         period={period}
         filter={filter}
         onViewAll={onViewAll}
+        pagination={pagination}
+        setPagination={setPagination}
         isLoading
         hasAvatar={hasAvatar}
         isAvatarRounded={dimension === "user"}
@@ -440,16 +445,28 @@ function AttributionRows({
     }));
 
     content = (
-      <div className="overflow-x-auto">
-        <ConsumptionAttributionRowsTable
-          data={data}
-          columns={columns}
-          workspaceId={workspaceId}
-          dimension={dimension}
-          period={period}
-          filter={filter}
-          onViewAll={onViewAll}
-        />
+      <div>
+        <div className="overflow-x-auto">
+          <ConsumptionAttributionRowsTable
+            data={data}
+            columns={columns}
+            workspaceId={workspaceId}
+            dimension={dimension}
+            period={period}
+            filter={filter}
+            onViewAll={onViewAll}
+            pagination={pagination}
+            setPagination={setPagination}
+          />
+        </div>
+        <div className="mt-2 p-1">
+          <Pagination
+            size="xs"
+            pagination={pagination}
+            setPagination={setPagination}
+            rowCount={data.length}
+          />
+        </div>
       </div>
     );
   }

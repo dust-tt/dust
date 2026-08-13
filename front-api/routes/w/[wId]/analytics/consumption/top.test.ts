@@ -332,6 +332,21 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
     );
   });
 
+  it("accepts a null limit to request the complete ranking", async () => {
+    vi.mocked(fetchConsumptionTopAgents).mockResolvedValue(new Ok(TOP_AGENTS));
+    const { workspace } = await setupTest();
+
+    const response = await postRankingRequest(workspace.sId, "top-agents", {
+      limit: null,
+    });
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetchConsumptionTopAgents)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ limit: null })
+    );
+  });
+
   it("returns 400 on a limit above the cap", async () => {
     const { workspace } = await setupTest();
 
