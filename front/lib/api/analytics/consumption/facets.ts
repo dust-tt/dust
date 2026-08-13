@@ -12,6 +12,7 @@ import {
   CONSUMPTION_DIMENSION_FILTER_KEYS,
   CONSUMPTION_SCOPE_DIMENSIONS,
 } from "@app/lib/api/analytics/consumption/scope";
+import { canonicalSourceForOrigin } from "@app/lib/api/analytics/source_labels";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
@@ -189,8 +190,13 @@ async function fetchDimensionFacetBucketsWithoutTracing({
     const aggregation = result.value.aggregations?.values;
     const page = bucketsToArray<CompositeFacetBucket>(aggregation?.buckets);
     for (const bucket of page) {
-      const value = String(bucket.key.value);
-      contextual.set(value, bucket.contextual?.doc_count ?? 0);
+      const rawValue = String(bucket.key.value);
+      const value =
+        dimension === "source" ? canonicalSourceForOrigin(rawValue) : rawValue;
+      contextual.set(
+        value,
+        (contextual.get(value) ?? 0) + (bucket.contextual?.doc_count ?? 0)
+      );
     }
 
     afterKey = aggregation?.after_key;

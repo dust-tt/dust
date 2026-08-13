@@ -6,7 +6,6 @@ import {
 } from "@app/components/resources/resources_icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { UsageFilterOption } from "@app/components/workspace/analytics/usageFilter";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { getSkillIcon } from "@app/lib/skill";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Avatar, Icon, Lock01, Tooltip } from "@dust-tt/sparkle";
@@ -50,13 +49,6 @@ export function UsageFilterOptionIcon({ option }: UsageFilterOptionIconProps) {
           isRounded
         />
       );
-    case "source": {
-      const logo = getConnectorProviderLogoWithFallback({
-        provider: option.connectorProvider ?? null,
-        isDark,
-      });
-      return <Icon visual={logo} size="sm" />;
-    }
     case "model":
       return option.lab ? (
         <Icon visual={getModelMakerLogo(option.lab, isDark)} size="sm" />
@@ -69,6 +61,7 @@ export function UsageFilterOptionIcon({ option }: UsageFilterOptionIconProps) {
       ) : null;
     case "skill":
       return <Icon visual={getSkillIcon(option.icon)} size="sm" />;
+    case "source":
     case "group":
     case "api_key":
       return null;

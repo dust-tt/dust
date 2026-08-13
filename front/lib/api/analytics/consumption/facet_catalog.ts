@@ -1,6 +1,6 @@
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
-import { SOURCE_ORIGIN_LABELS } from "@app/lib/api/analytics/source_labels";
+import { SOURCE_LABELS } from "@app/lib/api/analytics/source_labels";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import { getMembers } from "@app/lib/api/workspace";
@@ -224,7 +224,7 @@ async function listConsumptionFacetCatalogWithoutTracing(
       pictureUrl: null,
       icon: skill.icon,
     })),
-    source: Object.entries(SOURCE_ORIGIN_LABELS).map(([value, label]) => ({
+    source: Object.entries(SOURCE_LABELS).map(([value, label]) => ({
       value,
       label,
       pictureUrl: null,

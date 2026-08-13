@@ -7,6 +7,7 @@ import {
   OTHERS_GROUP_KEY,
   TOTAL_GROUP_KEY,
 } from "@app/lib/api/analytics/consumption/timeseries";
+import { PROGRAMMATIC_SOURCE_ORIGIN_COUNT } from "@app/lib/api/analytics/source_labels";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -63,15 +64,27 @@ function mockBuckets(buckets: unknown[]) {
 // A breakdown runs two searches: the ranking first, then the histogram.
 function mockBreakdown({
   rankedKeys,
+  rankedMicroCredits,
   buckets,
 }: {
   rankedKeys: string[];
+  // Defaults to a descending value per ranked key.
+  rankedMicroCredits?: Record<string, number>;
   buckets: unknown[];
 }) {
   vi.mocked(searchConsumptionAnalytics)
     .mockResolvedValueOnce(
       esResponse({
-        by_group: { buckets: rankedKeys.map((key) => ({ key })) },
+        by_group: {
+          buckets: rankedKeys.map((key, index) => ({
+            key,
+            metric: {
+              value:
+                rankedMicroCredits?.[key] ??
+                (rankedKeys.length - index) * 1_000_000,
+            },
+          })),
+        },
       })
     )
     .mockResolvedValueOnce(esResponse({ by_date: { buckets } }));
@@ -192,7 +205,7 @@ describe("fetchConsumptionTimeseries", () => {
       expect.arrayContaining([
         { term: { "agent.id": "a1" } },
         { term: { "tool.attributed_skill_ids": "s1" } },
-        { terms: { context_origin: ["web", "slack"] } },
+        { terms: { context_origin: ["web", "slack", "slack_workflow"] } },
       ])
     );
   });
@@ -268,7 +281,8 @@ describe("fetchConsumptionTimeseries", () => {
         .calls[0];
       expect(rankingOptions?.aggregations?.by_group?.terms).toMatchObject({
         field,
-        size: 10,
+        size:
+          10 + (dimension === "source" ? PROGRAMMATIC_SOURCE_ORIGIN_COUNT : 0),
         order: { metric: "desc" },
       });
 
@@ -381,6 +395,54 @@ describe("fetchConsumptionTimeseries", () => {
         "skill2",
       ]);
       expect(result.value.points[0].values).toEqual({ skill1: 2, skill2: 2 });
+    });
+
+    it("breaks down programmatic origins into their surface's series", async () => {
+      const { auth, period } = await setup();
+      mockGroupNames({ triggered: "Trigger", web: "Conversation" });
+      mockBreakdown({
+        rankedKeys: ["web", "triggered", "triggered_programmatic"],
+        rankedMicroCredits: {
+          web: 3_000_000,
+          triggered: 2_000_000,
+          triggered_programmatic: 2_000_000,
+        },
+        buckets: [
+          groupDayBucket(0, 7_000_000, {
+            web: 3_000_000,
+            triggered: 2_000_000,
+            triggered_programmatic: 2_000_000,
+          }),
+        ],
+      });
+
+      const result = await fetchConsumptionTimeseries(auth, {
+        period,
+        granularity: "day",
+        mode: "daily",
+        breakdownBy: "source",
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) {
+        return;
+      }
+      // Both trigger origins are one series, which their sum lifts above "web".
+      expect(result.value.groups).toEqual([
+        { groupKey: "triggered", name: "Trigger" },
+        { groupKey: "web", name: "Conversation" },
+      ]);
+      expect(result.value.points[0].values).toEqual({
+        triggered: 4,
+        web: 3,
+      });
+      const [, histogramOptions] = vi.mocked(searchConsumptionAnalytics).mock
+        .calls[1];
+      expect(
+        histogramOptions?.aggregations?.by_date?.aggs?.by_group?.terms
+      ).toMatchObject({
+        include: ["triggered", "triggered_programmatic", "web"],
+      });
     });
 
     it("falls back to a total series when nothing was consumed", async () => {

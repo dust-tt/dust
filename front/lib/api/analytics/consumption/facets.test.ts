@@ -229,7 +229,7 @@ describe("fetchConsumptionFacets", () => {
       term: { "user.id": "user_1" },
     });
     expect(agentContext?.filter?.bool?.filter).toContainEqual({
-      term: { context_origin: "slack" },
+      terms: { context_origin: ["slack", "slack_workflow"] },
     });
     expect(agentContext?.filter?.bool?.filter).not.toContainEqual({
       term: { "agent.id": "agent_enabled" },
@@ -323,6 +323,57 @@ describe("fetchConsumptionFacets", () => {
     const result = await facetsPromise;
     expect(result.isOk()).toBe(true);
     expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(8);
+  });
+
+  it("offers one source facet per surface, counting its programmatic origin", async () => {
+    const { authenticator } = await createResourceTest({ role: "manager" });
+    vi.mocked(resolveDimensionLabels).mockResolvedValue(new Map());
+    vi.mocked(listConsumptionFacetCatalog).mockResolvedValue({
+      agent: [],
+      user: [],
+      group: [],
+      model: [],
+      tool: [],
+      skill: [],
+      source: [{ value: "cli", label: "CLI", pictureUrl: null }],
+    });
+    // Every dimension gets the same buckets back; only source is asserted on.
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      esResponse({
+        values: {
+          buckets: [
+            {
+              key: { value: "cli" },
+              doc_count: 4,
+              contextual: { doc_count: 2 },
+            },
+            {
+              key: { value: "cli_programmatic" },
+              doc_count: 6,
+              contextual: { doc_count: 3 },
+            },
+          ],
+        },
+      })
+    );
+
+    const result = await fetchConsumptionFacets(authenticator, {
+      period: PERIOD,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.facets.source).toEqual([
+      {
+        value: "cli",
+        label: "CLI",
+        pictureUrl: null,
+        documentCount: 5,
+        disabled: false,
+      },
+    ]);
   });
 
   it("returns the Elasticsearch failure before resolving historical labels", async () => {

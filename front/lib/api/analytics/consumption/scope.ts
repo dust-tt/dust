@@ -1,3 +1,4 @@
+import { originsForSource } from "@app/lib/api/analytics/source_labels";
 import type { Authenticator } from "@app/lib/auth";
 import { MICRO_CREDITS_PER_CREDIT } from "@app/lib/credits/units";
 import type { estypes } from "@elastic/elasticsearch";
@@ -167,10 +168,12 @@ export function buildConsumptionScopeQuery({
   ];
 
   for (const dimension of CONSUMPTION_SCOPE_DIMENSIONS) {
+    const values = filter[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]];
     filters.push(
       ...termFilter(
         CONSUMPTION_DIMENSION_FIELDS[dimension],
-        filter[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]]
+        values &&
+          (dimension === "source" ? values.flatMap(originsForSource) : values)
       )
     );
   }

@@ -587,6 +587,61 @@ describe("consumption top rankings", () => {
     });
   });
 
+  it("ranks a programmatic origin with its surface, on the surface's key", async () => {
+    const { auth } = await setup();
+    mockLabels({ cli: "CLI", web: "Conversation" });
+    mockAggs({
+      buckets: [
+        {
+          key: "web",
+          doc_count: 6,
+          credit_micro: { value: 3_000_000 },
+          messages: { value: 3 },
+        },
+        {
+          key: "cli",
+          doc_count: 4,
+          credit_micro: { value: 2_000_000 },
+          messages: { value: 2 },
+        },
+        {
+          key: "cli_programmatic",
+          doc_count: 2,
+          credit_micro: { value: 2_000_000 },
+          messages: { value: 2 },
+        },
+      ],
+      totalMicro: 7_000_000,
+    });
+
+    const result = await fetchConsumptionTopSources(auth, {
+      period: PERIOD,
+      limit: 10,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    // Both CLI origins are one row, which their total lifts above "web".
+    expect(result.value.sources).toEqual([
+      {
+        source: "cli",
+        name: "CLI",
+        credits: 4,
+        messageCount: 4,
+        avgCreditsPerMessage: 1,
+      },
+      {
+        source: "web",
+        name: "Conversation",
+        credits: 3,
+        messageCount: 3,
+        avgCreditsPerMessage: 1,
+      },
+    ]);
+  });
+
   it("narrows the scope with the requested filter", async () => {
     const { auth } = await setup();
     mockLabels({});
@@ -600,7 +655,7 @@ describe("consumption top rankings", () => {
 
     const [query] = lastSearchCall();
     expect(query.bool?.filter).toContainEqual({
-      term: { context_origin: "slack" },
+      terms: { context_origin: ["slack", "slack_workflow"] },
     });
     expect(query.bool?.filter).toContainEqual({
       terms: { "user.id": ["u1", "u2"] },

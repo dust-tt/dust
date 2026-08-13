@@ -63,6 +63,21 @@ describe("buildConsumptionScopeQuery", () => {
     ]);
   });
 
+  it("expands a source to every origin it covers", async () => {
+    const { authenticator } = await createResourceTest({
+      role: "admin",
+    });
+    const query = buildConsumptionScopeQuery({
+      auth: authenticator,
+      ...WINDOW,
+      filter: { sources: ["cli", "web"] },
+    });
+
+    expect(query.bool?.filter).toContainEqual({
+      terms: { context_origin: ["cli", "cli_programmatic", "web"] },
+    });
+  });
+
   it("ignores empty selections", async () => {
     const { authenticator } = await createResourceTest({
       role: "admin",

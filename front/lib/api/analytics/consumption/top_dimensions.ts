@@ -1,8 +1,17 @@
 import type {
   ConsumptionGroupBucket,
   ConsumptionMetric,
+  ConsumptionScopeDimension,
 } from "@app/lib/api/analytics/consumption/scope";
-import { metricSubAgg } from "@app/lib/api/analytics/consumption/scope";
+import {
+  CONSUMPTION_DIMENSION_FIELDS,
+  metricSubAgg,
+  metricValue,
+} from "@app/lib/api/analytics/consumption/scope";
+import {
+  canonicalSourceForOrigin,
+  PROGRAMMATIC_SOURCE_ORIGIN_COUNT,
+} from "@app/lib/api/analytics/source_labels";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
   bucketsToArray,
@@ -17,20 +26,30 @@ type RankingAggs = {
 };
 
 /**
- * Top `limit` keys of a dimension by metric over the whole period.
+ * Top `limit` canonical values of a dimension by metric over the whole period.
  */
 export async function fetchTopDimensions(
   query: estypes.QueryDslQueryContainer,
   {
-    field,
+    dimension,
     limit,
     metric,
-  }: { field: string; limit: number; metric: ConsumptionMetric }
+  }: {
+    dimension: ConsumptionScopeDimension;
+    limit: number;
+    metric: ConsumptionMetric;
+  }
 ): Promise<Result<string[], ElasticsearchError>> {
   const result = await searchConsumptionAnalytics<never, RankingAggs>(query, {
     aggregations: {
       by_group: {
-        terms: { field, size: limit, order: { metric: "desc" } },
+        terms: {
+          field: CONSUMPTION_DIMENSION_FIELDS[dimension],
+          size:
+            limit +
+            (dimension === "source" ? PROGRAMMATIC_SOURCE_ORIGIN_COUNT : 0),
+          order: { metric: "desc" },
+        },
         aggs: metricSubAgg(metric),
       },
     },
@@ -41,9 +60,23 @@ export async function fetchTopDimensions(
     return result;
   }
 
+  const metricByValue = new Map<string, number>();
+  for (const bucket of bucketsToArray<ConsumptionGroupBucket>(
+    result.value.aggregations?.by_group?.buckets
+  )) {
+    const rawValue = String(bucket.key);
+    const value =
+      dimension === "source" ? canonicalSourceForOrigin(rawValue) : rawValue;
+    metricByValue.set(
+      value,
+      (metricByValue.get(value) ?? 0) + metricValue(metric, bucket.metric)
+    );
+  }
+
   return new Ok(
-    bucketsToArray<ConsumptionGroupBucket>(
-      result.value.aggregations?.by_group?.buckets
-    ).map((bucket) => String(bucket.key))
+    [...metricByValue]
+      .sort(([, left], [, right]) => right - left)
+      .slice(0, limit)
+      .map(([value]) => value)
   );
 }
