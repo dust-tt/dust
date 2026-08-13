@@ -91,43 +91,48 @@ describe("fetchConsumptionFacets", () => {
       skill: [],
       source: [],
     });
-    vi.mocked(searchConsumptionAnalytics)
-      .mockResolvedValueOnce(
-        esResponse({
+    vi.mocked(searchConsumptionAnalytics).mockImplementation(
+      async (_query, options) => {
+        const composite = options?.aggregations?.values?.composite;
+        const field = composite?.sources?.[0]?.value?.terms?.field;
+
+        if (field === "agent.id" && composite?.after) {
+          return esResponse({
+            values: {
+              buckets: [
+                {
+                  key: { value: "agent_disabled" },
+                  doc_count: 4,
+                  contextual: { doc_count: 0 },
+                },
+              ],
+            },
+          });
+        }
+
+        if (field === "agent.id") {
+          return esResponse({
+            values: {
+              buckets: [
+                {
+                  key: { value: "agent_enabled" },
+                  doc_count: 10,
+                  contextual: { doc_count: 3 },
+                },
+              ],
+              after_key: { value: "agent_enabled" },
+            },
+          });
+        }
+
+        return esResponse({
           values: {
-            buckets: [
-              {
-                key: { value: "agent_enabled" },
-                doc_count: 10,
-                contextual: { doc_count: 3 },
-              },
-            ],
-            after_key: { value: "agent_enabled" },
+            // All remaining dimensions are empty in this fixture.
+            buckets: [],
           },
-        })
-      )
-      .mockResolvedValueOnce(
-        esResponse({
-          values: {
-            buckets: [
-              {
-                key: { value: "agent_disabled" },
-                doc_count: 4,
-                contextual: { doc_count: 0 },
-              },
-            ],
-          },
-        })
-      )
-      .mockResolvedValue(
-        esResponse({
-          values: {
-            buckets: [
-              // All remaining dimensions are empty in this fixture.
-            ],
-          },
-        })
-      );
+        });
+      }
+    );
 
     const result = await fetchConsumptionFacets(authenticator, {
       period: PERIOD,
@@ -214,13 +219,25 @@ describe("fetchConsumptionFacets", () => {
       term: { "agent.id": "agent_enabled" },
     });
 
-    const [, secondAgentOptions] = vi.mocked(searchConsumptionAnalytics).mock
-      .calls[1];
+    const secondAgentCall = vi
+      .mocked(searchConsumptionAnalytics)
+      .mock.calls.find(
+        ([, callOptions]) =>
+          callOptions?.aggregations?.values?.composite?.after !== undefined
+      );
+    const secondAgentOptions = secondAgentCall?.[1];
     expect(secondAgentOptions?.aggregations?.values?.composite).toMatchObject({
       after: { value: "agent_enabled" },
     });
 
-    const [, userOptions] = vi.mocked(searchConsumptionAnalytics).mock.calls[2];
+    const userCall = vi
+      .mocked(searchConsumptionAnalytics)
+      .mock.calls.find(
+        ([, callOptions]) =>
+          callOptions?.aggregations?.values?.composite?.sources?.[0]?.value
+            ?.terms?.field === "user.id"
+      );
+    const userOptions = userCall?.[1];
     const userContext = userOptions?.aggregations?.values?.aggs?.contextual;
     expect(userContext?.filter?.bool?.filter).toContainEqual({
       term: { "agent.id": "agent_enabled" },
@@ -229,24 +246,65 @@ describe("fetchConsumptionFacets", () => {
       term: { "user.id": "user_1" },
     });
 
-    expect(
-      vi
-        .mocked(searchConsumptionAnalytics)
-        .mock.calls.map(
-          ([, callOptions]) =>
-            callOptions?.aggregations?.values?.composite?.sources?.[0]?.value
-              ?.terms?.field
-        )
-    ).toEqual([
-      "agent.id",
-      "agent.id",
-      "user.id",
-      "user.group_ids",
-      "model.model_id",
-      "tool.server_name",
-      "tool.attributed_skill_ids",
-      "context_origin",
-    ]);
+    const queriedFields = vi
+      .mocked(searchConsumptionAnalytics)
+      .mock.calls.map(
+        ([, callOptions]) =>
+          callOptions?.aggregations?.values?.composite?.sources?.[0]?.value
+            ?.terms?.field
+      );
+    expect(queriedFields).toHaveLength(8);
+    expect(new Set(queriedFields)).toEqual(
+      new Set([
+        "agent.id",
+        "user.id",
+        "user.group_ids",
+        "model.model_id",
+        "tool.server_name",
+        "tool.attributed_skill_ids",
+        "context_origin",
+      ])
+    );
+    expect(queriedFields.filter((field) => field === "agent.id")).toHaveLength(
+      2
+    );
+  });
+
+  it("limits concurrent dimension queries", async () => {
+    const { authenticator } = await createResourceTest({ role: "manager" });
+    vi.mocked(listConsumptionFacetCatalog).mockResolvedValue({
+      agent: [],
+      user: [],
+      group: [],
+      model: [],
+      tool: [],
+      skill: [],
+      source: [],
+    });
+
+    let releaseQueries = () => {};
+    const queryGate = new Promise<void>((resolve) => {
+      releaseQueries = resolve;
+    });
+    vi.mocked(searchConsumptionAnalytics).mockImplementation(async () => {
+      await queryGate;
+      return esResponse({ values: { buckets: [] } });
+    });
+
+    const facetsPromise = fetchConsumptionFacets(authenticator, {
+      period: PERIOD,
+    });
+    try {
+      await vi.waitFor(() => {
+        expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(6);
+      });
+    } finally {
+      releaseQueries();
+    }
+
+    const result = await facetsPromise;
+    expect(result.isOk()).toBe(true);
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(7);
   });
 
   it("returns the Elasticsearch failure before resolving historical labels", async () => {
