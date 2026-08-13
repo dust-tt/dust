@@ -1,4 +1,4 @@
-import type { FileSystemFileBinding } from "@app/lib/api/file_system/file_binding";
+import { randomUUID } from "node:crypto";
 import type { FileSystemScope } from "@app/lib/api/file_system/namespace_scope";
 import type {
   FileSystemOperation,
@@ -6,7 +6,6 @@ import type {
 } from "@app/lib/api/file_system/namespace_types";
 import { FileSystemOperationError } from "@app/lib/api/file_system/namespace_types";
 import type { Authenticator } from "@app/lib/auth";
-import { FileSystemBlobCleanupResource } from "@app/lib/resources/file_system_blob_cleanup_resource";
 import { FileSystemContentResource } from "@app/lib/resources/file_system_content_resource";
 import { FileSystemMutationResource } from "@app/lib/resources/file_system_mutation_resource";
 import { FileSystemNodeResource } from "@app/lib/resources/file_system_node_resource";
@@ -28,14 +27,11 @@ export {
 export async function applyFileSystemOperation(
   auth: Authenticator,
   scope: FileSystemScope,
-  binding: FileSystemFileBinding,
   request: FileSystemOperation
 ): Promise<Result<FileSystemOperationResponse, FileSystemOperationError>> {
   switch (request.operation) {
     case "initialize": {
       const roots = await FileSystemNodeResource.ensureRoots(auth, scope);
-      await FileSystemMutationResource.repairPrepared(auth, scope, binding);
-      await FileSystemBlobCleanupResource.repairPending(auth);
       return new Ok({ roots });
     }
     case "lookup": {
@@ -60,8 +56,10 @@ export async function applyFileSystemOperation(
       return result.isErr() ? result : new Ok(result.value);
     }
     case "create": {
-      const node = await FileSystemNodeResource.create(auth, scope, request);
-      return node.isErr() ? node : new Ok({ node: node.value });
+      return FileSystemMutationResource.apply(auth, scope, {
+        ...request,
+        requestId: request.requestId ?? randomUUID(),
+      });
     }
     case "setAttributes": {
       const node = await FileSystemNodeResource.setMode(
@@ -94,17 +92,7 @@ export async function applyFileSystemOperation(
     }
     case "remove":
     case "rename":
-      return FileSystemMutationResource.apply(auth, scope, binding, request);
-    case "attachFileResource": {
-      const node = await FileSystemNodeResource.attachFileResource(
-        auth,
-        scope,
-        binding,
-        request.nodeId,
-        request.fileResourceId
-      );
-      return node.isErr() ? node : new Ok({ node: node.value });
-    }
+      return FileSystemMutationResource.apply(auth, scope, request);
     default:
       return new Err(
         new FileSystemOperationError(

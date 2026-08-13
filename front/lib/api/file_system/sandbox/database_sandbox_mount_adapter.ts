@@ -22,8 +22,7 @@ import type { SandboxMountAdapter } from "./sandbox_mount_adapter";
 const FILE_SYSTEM_DIRECTORY = "/run/dust-filesystem";
 const TOKEN_PATH = `${FILE_SYSTEM_DIRECTORY}/token`;
 const STAGING_DIRECTORY = `${FILE_SYSTEM_DIRECTORY}/staging`;
-const LOG_PATH = `${FILE_SYSTEM_DIRECTORY}/daemon.log`;
-const PID_PATH = `${FILE_SYSTEM_DIRECTORY}/daemon.pid`;
+const SYSTEMD_UNIT = "dust-filesystem.service";
 const MOUNT_POINT = "/files";
 const MOUNT_TIMEOUT_MS = 30_000;
 
@@ -129,6 +128,8 @@ export class DatabaseSandboxMountAdapter implements SandboxMountAdapter {
 
     const apiUrl = config.getDustAPIConfig().url;
     const workspaceId = auth.getNonNullableWorkspace().sId;
+    // systemd restarts the supervisor itself. The Rust supervisor separately
+    // restarts a crashed FUSE child and detaches its stale mount before retrying.
     const startResult = await traceSandboxStartupPhase(
       "filesystem.database_mount",
       () =>
@@ -137,21 +138,24 @@ export class DatabaseSandboxMountAdapter implements SandboxMountAdapter {
           rootCommand.unsafeShell(
             `/usr/bin/mkdir -p ${STAGING_DIRECTORY} ${MOUNT_POINT}; ` +
               `/usr/bin/chmod 700 ${STAGING_DIRECTORY}; ` +
-              `if /usr/bin/mountpoint -q ${MOUNT_POINT}; then exit 0; fi; ` +
-              `(/usr/bin/nohup /opt/bin/dsbx filesystem mount ` +
+              `if /usr/bin/mountpoint -q ${MOUNT_POINT} && /usr/bin/stat -f ${MOUNT_POINT} >/dev/null 2>&1; then exit 0; fi; ` +
+              `if ! /usr/bin/systemctl is-active --quiet ${SYSTEMD_UNIT}; then ` +
+              `/usr/bin/systemctl reset-failed ${SYSTEMD_UNIT} >/dev/null 2>&1 || true; ` +
+              `/usr/bin/systemd-run --unit=${SYSTEMD_UNIT} --collect ` +
+              `--property=Type=simple --property=Restart=always --property=RestartSec=1s ` +
+              `--property=KillMode=control-group --property=TimeoutStopSec=10s ` +
+              `/opt/bin/dsbx filesystem supervise ` +
               `--mountpoint ${MOUNT_POINT} ` +
               `--staging-dir ${STAGING_DIRECTORY} ` +
               `--api-url '${apiUrl}' ` +
               `--workspace-id '${workspaceId}' ` +
-              `--token-file ${TOKEN_PATH} >${LOG_PATH} 2>&1 & ` +
-              `/usr/bin/printf '%s' $! >${PID_PATH}); ` +
+              `--token-file ${TOKEN_PATH}; fi; ` +
               `i=0; while [ $i -lt 200 ]; do ` +
-              `if /usr/bin/mountpoint -q ${MOUNT_POINT}; then exit 0; fi; ` +
-              `if [ -s ${PID_PATH} ] && ! /usr/bin/kill -0 "$(/usr/bin/cat ${PID_PATH})" 2>/dev/null; then ` +
-              `/usr/bin/cat ${LOG_PATH} >&2; exit 1; fi; ` +
+              `if /usr/bin/mountpoint -q ${MOUNT_POINT} && /usr/bin/stat -f ${MOUNT_POINT} >/dev/null 2>&1; then exit 0; fi; ` +
               `/usr/bin/sleep 0.05; i=$((i+1)); done; ` +
               `/usr/bin/printf 'Dust filesystem mount timed out\n' >&2; ` +
-              `/usr/bin/cat ${LOG_PATH} >&2; exit 1`,
+              `/usr/bin/systemctl status ${SYSTEMD_UNIT} --no-pager >&2; ` +
+              `/usr/bin/journalctl --unit=${SYSTEMD_UNIT} --no-pager -n 100 >&2; exit 1`,
             "Start the Dust filesystem daemon and wait for /files to mount"
           ),
           { timeoutMs: MOUNT_TIMEOUT_MS }

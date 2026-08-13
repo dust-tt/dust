@@ -1,6 +1,5 @@
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes, Op } from "@app/lib/resources/storage/data_types";
-import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey } from "sequelize";
@@ -24,8 +23,6 @@ export class FileSystemNodeModel extends WorkspaceAwareModel<FileSystemNodeModel
   declare contentType: string | null;
   declare blobId: string | null;
   declare contentRevision: number;
-  declare fileId: ForeignKey<FileModel["id"]> | null;
-  declare pendingMutationId: number | null;
 }
 
 FileSystemNodeModel.init(
@@ -54,8 +51,6 @@ FileSystemNodeModel.init(
       allowNull: false,
       defaultValue: 0,
     },
-    fileId: { type: DataTypes.BIGINT, allowNull: true },
-    pendingMutationId: { type: DataTypes.INTEGER, allowNull: true },
   },
   {
     modelName: "file_system_node",
@@ -73,21 +68,10 @@ FileSystemNodeModel.init(
         fields: ["workspaceId", "rootKind", "rootId"],
         where: { parentId: { [Op.is]: null } },
       },
-      {
-        name: "file_system_nodes_file_unique_idx",
-        unique: true,
-        fields: ["workspaceId", "fileId"],
-        where: { fileId: { [Op.ne]: null } },
-      },
       { name: "file_system_nodes_parent_id_idx", fields: ["parentId"] },
-      { name: "file_system_nodes_file_id_idx", fields: ["fileId"] },
       {
         name: "file_system_nodes_workspace_id_idx",
         fields: ["workspaceId", "id"],
-      },
-      {
-        name: "file_system_nodes_pending_mutation_idx",
-        fields: ["pendingMutationId"],
       },
     ],
   }
@@ -97,10 +81,6 @@ FileSystemNodeModel.belongsTo(FileSystemNodeModel, {
   as: "parent",
   foreignKey: { name: "parentId", allowNull: true },
   onDelete: "CASCADE",
-});
-FileSystemNodeModel.belongsTo(FileModel, {
-  foreignKey: { name: "fileId", allowNull: true },
-  onDelete: "SET NULL",
 });
 FileSystemNodeModel.belongsTo(WorkspaceModel, {
   foreignKey: { name: "workspaceId", allowNull: false },

@@ -4,6 +4,7 @@ const QUEUE_VERSION = 1;
 export const QUEUE_NAME = `sandbox-reaper-queue-v${QUEUE_VERSION}`;
 
 export const SCHEDULE_ID = "sandbox-reaper-schedule";
+export const FILE_SYSTEM_CLEANUP_SCHEDULE_ID = "file-system-cleanup-schedule";
 
 export const BATCH_SIZE = 128;
 

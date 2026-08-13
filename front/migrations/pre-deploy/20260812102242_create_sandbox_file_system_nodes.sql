@@ -12,18 +12,12 @@ CREATE TABLE "file_system_nodes" (
   "size" BIGINT NOT NULL DEFAULT 0,
   "contentType" VARCHAR(255),
   "blobId" VARCHAR(255),
-  "contentRevision" INTEGER NOT NULL DEFAULT 0,
-  "fileId" BIGINT REFERENCES "files" ("id") ON DELETE SET NULL,
-  "pendingMutationId" INTEGER
+  "contentRevision" INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE UNIQUE INDEX "file_system_nodes_parent_name_idx" ON "file_system_nodes"
   ("workspaceId", "parentId", "name") WHERE "parentId" IS NOT NULL;
 CREATE UNIQUE INDEX "file_system_nodes_root_idx" ON "file_system_nodes"
   ("workspaceId", "rootKind", "rootId") WHERE "parentId" IS NULL;
-CREATE UNIQUE INDEX "file_system_nodes_file_unique_idx" ON "file_system_nodes"
-  ("workspaceId", "fileId") WHERE "fileId" IS NOT NULL;
 CREATE INDEX "file_system_nodes_parent_id_idx" ON "file_system_nodes" ("parentId");
-CREATE INDEX "file_system_nodes_file_id_idx" ON "file_system_nodes" ("fileId");
 CREATE INDEX "file_system_nodes_workspace_id_idx" ON "file_system_nodes" ("workspaceId", "id");
-CREATE INDEX "file_system_nodes_pending_mutation_idx" ON "file_system_nodes" ("pendingMutationId");

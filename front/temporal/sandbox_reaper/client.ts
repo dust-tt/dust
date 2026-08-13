@@ -1,7 +1,14 @@
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
-import { QUEUE_NAME, SCHEDULE_ID } from "@app/temporal/sandbox_reaper/config";
-import { sandboxReaperWorkflow } from "@app/temporal/sandbox_reaper/workflows";
+import {
+  FILE_SYSTEM_CLEANUP_SCHEDULE_ID,
+  QUEUE_NAME,
+  SCHEDULE_ID,
+} from "@app/temporal/sandbox_reaper/config";
+import {
+  fileSystemCleanupWorkflow,
+  sandboxReaperWorkflow,
+} from "@app/temporal/sandbox_reaper/workflows";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -35,6 +42,33 @@ export async function launchSandboxReaperSchedule(): Promise<
     if (!(err instanceof ScheduleAlreadyRunning)) {
       logger.error({}, "Failed to start sandbox reaper schedule.");
 
+      return new Err(normalizeError(err));
+    }
+  }
+
+  return new Ok(undefined);
+}
+
+export async function launchFileSystemCleanupSchedule(): Promise<
+  Result<undefined, Error>
+> {
+  const client = await getTemporalClientForFrontNamespace();
+
+  try {
+    await client.schedule.create({
+      action: {
+        type: "startWorkflow",
+        workflowType: fileSystemCleanupWorkflow,
+        args: [],
+        taskQueue: QUEUE_NAME,
+      },
+      scheduleId: FILE_SYSTEM_CLEANUP_SCHEDULE_ID,
+      policies: { overlap: ScheduleOverlapPolicy.SKIP },
+      spec: { intervals: [{ every: "10m" }] },
+    });
+  } catch (err) {
+    if (!(err instanceof ScheduleAlreadyRunning)) {
+      logger.error({}, "Failed to start filesystem blob cleanup schedule.");
       return new Err(normalizeError(err));
     }
   }

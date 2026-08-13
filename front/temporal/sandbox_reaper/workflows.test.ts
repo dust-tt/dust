@@ -4,10 +4,18 @@ import type {
   ReapSandboxPhaseActivityResult,
 } from "@app/temporal/sandbox_reaper/activities";
 import { BATCH_SIZE } from "@app/temporal/sandbox_reaper/config";
-import { sandboxReaperWorkflow } from "@app/temporal/sandbox_reaper/workflows";
+import {
+  fileSystemCleanupWorkflow,
+  sandboxReaperWorkflow,
+} from "@app/temporal/sandbox_reaper/workflows";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockLogWarn, mockReapSandboxPhaseActivity } = vi.hoisted(() => ({
+const {
+  mockCleanupFileSystemActivity,
+  mockLogWarn,
+  mockReapSandboxPhaseActivity,
+} = vi.hoisted(() => ({
+  mockCleanupFileSystemActivity: vi.fn(),
   mockLogWarn: vi.fn(),
   mockReapSandboxPhaseActivity: vi.fn(),
 }));
@@ -15,9 +23,20 @@ const { mockLogWarn, mockReapSandboxPhaseActivity } = vi.hoisted(() => ({
 vi.mock("@temporalio/workflow", () => ({
   log: { warn: mockLogWarn },
   proxyActivities: () => ({
+    cleanupFileSystemActivity: mockCleanupFileSystemActivity,
     reapSandboxPhaseActivity: mockReapSandboxPhaseActivity,
   }),
 }));
+
+describe("fileSystemCleanupWorkflow", () => {
+  it("runs the independent blob cleanup activity", async () => {
+    mockCleanupFileSystemActivity.mockResolvedValue(undefined);
+
+    await fileSystemCleanupWorkflow();
+
+    expect(mockCleanupFileSystemActivity).toHaveBeenCalledOnce();
+  });
+});
 
 function makeResult(
   nextCursor: ReaperCursor | null

@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import type { Readable } from "node:stream";
 
 import type { FileSystemBackend } from "@app/lib/api/file_system/backends/file_system_backend";
-import { UnboundFileSystemFileBinding } from "@app/lib/api/file_system/file_binding";
 import { FileSystemScope } from "@app/lib/api/file_system/namespace_scope";
 import type { FileSystemNode } from "@app/lib/api/file_system/namespace_types";
 import { FileSystemOperationError } from "@app/lib/api/file_system/namespace_types";
@@ -44,7 +43,6 @@ const DIRECTORY_PAGE_SIZE = 256;
 /** PostgreSQL owns names and inodes; GCS stores only immutable file bytes. */
 export class DatabaseFileSystemBackend implements FileSystemBackend {
   private readonly scope: FileSystemScope;
-  private readonly binding = new UnboundFileSystemFileBinding();
   private rootsPromise: Promise<FileSystemNode[]> | null = null;
 
   constructor(
@@ -442,7 +440,6 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
     const removed = await FileSystemMutationResource.apply(
       this.auth,
       this.scope,
-      this.binding,
       {
         operation: "remove",
         requestId: randomUUID(),
@@ -578,7 +575,6 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
       const moved = await FileSystemMutationResource.apply(
         this.auth,
         this.scope,
-        this.binding,
         {
           operation: "rename",
           requestId: randomUUID(),

@@ -98,10 +98,22 @@ describe("DatabaseSandboxMountAdapter", () => {
     expect(tokenCommand).toContain("-m 700 /run/dust-filesystem");
 
     const mountCommand = commandAt(execRoot, 1);
-    expect(mountCommand).toContain("/opt/bin/dsbx filesystem mount");
+    expect(mountCommand).toContain(
+      "/usr/bin/systemd-run --unit=dust-filesystem.service --collect"
+    );
+    expect(mountCommand).toContain("--property=Restart=always");
+    expect(mountCommand).toContain("--property=KillMode=control-group");
+    expect(mountCommand).toContain("/opt/bin/dsbx filesystem supervise");
     expect(mountCommand).toContain("--mountpoint /files");
     expect(mountCommand).toContain("--api-url 'https://api.example.test'");
     expect(mountCommand).toContain("/usr/bin/mountpoint -q /files");
+    expect(mountCommand).toContain("/usr/bin/stat -f /files");
+    expect(mountCommand).toContain(
+      "/usr/bin/systemctl is-active --quiet dust-filesystem.service"
+    );
+    expect(mountCommand).toContain(
+      "/usr/bin/journalctl --unit=dust-filesystem.service"
+    );
     expect(mountCommand).toContain(
       "/usr/bin/chmod 700 /run/dust-filesystem/staging"
     );

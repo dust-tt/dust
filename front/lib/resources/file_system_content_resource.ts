@@ -75,40 +75,6 @@ export class FileSystemContentResource {
     return FileSystemBlobCleanupResource.objectPath(auth, nodeId, blobId);
   }
 
-  static async getAttachedReadStream({
-    workspaceModelId,
-    workspaceId,
-    fileModelId,
-  }: {
-    workspaceModelId: number;
-    workspaceId: string;
-    fileModelId: number;
-  }): Promise<Readable | null> {
-    const node = await FileSystemNodeModel.findOne({
-      attributes: ["id", "blobId"],
-      where: {
-        workspaceId: workspaceModelId,
-        fileId: fileModelId,
-        kind: "file",
-      },
-    });
-    if (!node) {
-      return null;
-    }
-    if (node.blobId === null) {
-      return Readable.from([]);
-    }
-    return getPrivateUploadBucket()
-      .file(
-        FileSystemBlobCleanupResource.objectPathForWorkspace(
-          workspaceId,
-          node.id,
-          node.blobId
-        )
-      )
-      .createReadStream();
-  }
-
   static async getDownload(
     auth: Authenticator,
     scope: FileSystemScope,
@@ -253,14 +219,6 @@ export class FileSystemContentResource {
         )
       );
     }
-    if (node.value.pendingMutationId !== null) {
-      return new Err(
-        new FileSystemOperationError(
-          "busy",
-          "The file has a rename or delete in progress."
-        )
-      );
-    }
     if (node.value.blobId !== request.expectedBlobId) {
       return new Err(
         new FileSystemOperationError(
@@ -367,14 +325,6 @@ export class FileSystemContentResource {
           new FileSystemOperationError(
             "stale",
             "The file changed while content was uploading."
-          )
-        );
-      }
-      if (node.value.pendingMutationId !== null) {
-        return new Err(
-          new FileSystemOperationError(
-            "busy",
-            "The file has a rename or delete in progress."
           )
         );
       }

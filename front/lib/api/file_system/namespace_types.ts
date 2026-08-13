@@ -3,25 +3,28 @@ import { z } from "zod";
 export const FileSystemRootKindSchema = z.enum(["conversation", "pod"]);
 export const FileSystemNodeKindSchema = z.enum(["file", "directory"]);
 
-export type FileSystemNode = {
-  id: number;
-  parentId: number | null;
-  rootKind: z.infer<typeof FileSystemRootKindSchema>;
-  rootId: string;
-  name: string;
-  kind: z.infer<typeof FileSystemNodeKindSchema>;
-  mode: number;
-  size: number;
-  contentType: string | null;
-  blobId: string | null;
-  contentRevision: number;
-  fileResourceId: string | null;
-  createdAtMs: number;
-  modifiedAtMs: number;
-};
-
 const NodeIdSchema = z.number().int().positive();
 const NameSchema = z.string().min(1).max(255);
+const FileSystemNodeSchema = z.object({
+  id: NodeIdSchema,
+  parentId: NodeIdSchema.nullable(),
+  rootKind: FileSystemRootKindSchema,
+  rootId: z.string().min(1),
+  name: z.string(),
+  kind: FileSystemNodeKindSchema,
+  mode: z.number().int().min(0).max(0o7777),
+  size: z.number().int().nonnegative(),
+  contentType: z.string().nullable(),
+  blobId: z.string().uuid().nullable(),
+  contentRevision: z.number().int().nonnegative(),
+  // Kept in the internal response while callers migrate; Milestone 1 does
+  // not attach product objects to filesystem nodes.
+  fileResourceId: z.string().nullable(),
+  createdAtMs: z.number(),
+  modifiedAtMs: z.number(),
+});
+
+export type FileSystemNode = z.infer<typeof FileSystemNodeSchema>;
 
 export const FileSystemOperationSchema = z.discriminatedUnion("operation", [
   z.object({ operation: z.literal("initialize") }),
@@ -39,6 +42,9 @@ export const FileSystemOperationSchema = z.discriminatedUnion("operation", [
   }),
   z.object({
     operation: z.literal("create"),
+    // Optional for older local daemon builds. Current builds always send it,
+    // making a lost HTTP response safe to retry.
+    requestId: z.string().uuid().optional(),
     parentId: NodeIdSchema,
     name: NameSchema,
     kind: FileSystemNodeKindSchema,
@@ -77,30 +83,38 @@ export const FileSystemOperationSchema = z.discriminatedUnion("operation", [
     newParentId: NodeIdSchema,
     newName: NameSchema,
   }),
-  z.object({
-    operation: z.literal("attachFileResource"),
-    nodeId: NodeIdSchema,
-    fileResourceId: z.string().min(1),
-  }),
 ]);
 
 export type FileSystemOperation = z.infer<typeof FileSystemOperationSchema>;
 
-export type FileSystemOperationResponse = {
-  roots?: FileSystemNode[];
-  node?: FileSystemNode | null;
-  nodes?: FileSystemNode[];
-  nextAfterName?: string | null;
-  content?: {
-    blobId: string | null;
-    downloadUrl: string | null;
-    size: number;
-    contentType: string | null;
-  };
-  upload?: { blobId: string; uploadUrl: string; contentType: string };
-  removedNodeId?: number;
-  removedFileResourceId?: string | null;
-};
+export const FileSystemOperationResponseSchema = z.object({
+  roots: z.array(FileSystemNodeSchema).optional(),
+  node: FileSystemNodeSchema.nullable().optional(),
+  nodes: z.array(FileSystemNodeSchema).optional(),
+  nextAfterName: z.string().nullable().optional(),
+  content: z
+    .object({
+      blobId: z.string().uuid().nullable(),
+      downloadUrl: z.string().nullable(),
+      size: z.number().int().nonnegative(),
+      contentType: z.string().nullable(),
+    })
+    .optional(),
+  upload: z
+    .object({
+      blobId: z.string().uuid(),
+      uploadUrl: z.string(),
+      contentType: z.string(),
+    })
+    .optional(),
+  removedNodeId: NodeIdSchema.optional(),
+  // Kept for response compatibility; the database filesystem always returns null.
+  removedFileResourceId: z.string().nullable().optional(),
+});
+
+export type FileSystemOperationResponse = z.infer<
+  typeof FileSystemOperationResponseSchema
+>;
 
 export type FileSystemOperationErrorCode =
   | "already_exists"

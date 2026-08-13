@@ -101,10 +101,10 @@ export class FileSystemBlobCleanupResource {
     const rows = await this.model.findAll({
       attributes: ["workspaceId"],
       where: { notBefore: { [Op.lte]: new Date() } },
-      order: [
-        ["notBefore", "ASC"],
-        ["id", "ASC"],
-      ],
+      // Group before limiting so one workspace with a large backlog cannot
+      // hide every other workspace from the scheduled sweep.
+      group: ["workspaceId"],
+      order: [["workspaceId", "ASC"]],
       limit: CLEANUP_WORKSPACE_SCAN_SIZE,
       raw: true,
       // WORKSPACE_ISOLATION_BYPASS: only discovers workspace IDs. The caller
