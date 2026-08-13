@@ -194,7 +194,7 @@ import { runYourQueueWorker } from "@app/temporal/your_queue/worker";
 
 // 2. Add to WorkerName type
 export type WorkerName =
-  | "agent_loop"
+  | "agent_loop_interactive"
   // ... existing workers
   | "your_queue"; // <- Add this
 

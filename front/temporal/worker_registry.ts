@@ -5,7 +5,6 @@ import {
   runAgentLoopInteractiveWorker,
   runAgentLoopProgrammaticWorker,
   runAgentLoopSchedulesWorker,
-  runAgentLoopWorker,
 } from "@app/temporal/agent_loop/worker";
 import { runAnalyticsWorker } from "@app/temporal/analytics_queue/worker";
 import { runConversationForkQueueWorker } from "@app/temporal/conversation_fork_queue/worker";
@@ -36,7 +35,6 @@ import { runWorkOSEventsWorker } from "@app/temporal/workos_events_queue/worker"
 
 export type WorkerName =
   | "activation_scheduler"
-  | "agent_loop"
   | "agent_loop_batch"
   | "agent_loop_interactive"
   | "agent_loop_programmatic"
@@ -71,7 +69,6 @@ export type WorkerName =
 
 export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   activation_scheduler: runActivationSchedulerWorker,
-  agent_loop: runAgentLoopWorker,
   agent_loop_batch: runAgentLoopBatchWorker,
   agent_loop_interactive: runAgentLoopInteractiveWorker,
   agent_loop_programmatic: runAgentLoopProgrammaticWorker,
