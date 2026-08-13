@@ -187,24 +187,30 @@ class E2BTemplateBuilder {
   }
 }
 
-interface E2BTemplateInfo {
+export interface E2BTemplateInfo {
   templateId: string;
   aliases: readonly string[];
+  // Null until a build completes: E2B registers the template (and its alias) as
+  // soon as a build starts, and only attaches an envd version once one of them
+  // succeeds. A template without it can never be started.
+  envdVersion: string | null;
+}
+
+function createE2BApiClient(apiKey?: string): ApiClient {
+  const e2bConfig = config.getE2BSandboxConfig();
+  const connectionConfig = new ConnectionConfig({
+    apiKey: apiKey ?? e2bConfig.apiKey,
+    ...(e2bConfig.domain ? { domain: e2bConfig.domain } : {}),
+  });
+
+  return new ApiClient(connectionConfig, { requireApiKey: true });
 }
 
 export async function listE2BTemplates(
   apiKey?: string
 ): Promise<Result<E2BTemplateInfo[], Error>> {
-  const e2bConfig = config.getE2BSandboxConfig();
-  const key = apiKey ?? e2bConfig.apiKey;
-  const domain = e2bConfig.domain;
-
   try {
-    const connectionConfig = new ConnectionConfig({
-      apiKey: key,
-      ...(domain ? { domain } : {}),
-    });
-    const client = new ApiClient(connectionConfig, { requireApiKey: true });
+    const client = createE2BApiClient(apiKey);
 
     const response = await client.api.GET("/templates");
 
@@ -217,6 +223,7 @@ export async function listE2BTemplates(
       templates.map((t) => ({
         templateId: t.templateID,
         aliases: t.aliases ?? [],
+        envdVersion: t.envdVersion || null,
       }))
     );
   } catch (err) {
@@ -225,21 +232,85 @@ export async function listE2BTemplates(
   }
 }
 
-export async function templateExists(
+export async function findE2BTemplate(
   imageId: SandboxImageId,
   apiKey?: string
-): Promise<Result<boolean, Error>> {
+): Promise<Result<E2BTemplateInfo | null, Error>> {
   const templatesResult = await listE2BTemplates(apiKey);
   if (templatesResult.isErr()) {
     return templatesResult;
   }
 
   const expectedAlias = formatSandboxImageId(imageId);
-  const exists = templatesResult.value.some((template) =>
-    template.aliases.includes(expectedAlias)
+  const template = templatesResult.value.find((t) =>
+    t.aliases.includes(expectedAlias)
   );
 
-  return new Ok(exists);
+  return new Ok(template ?? null);
+}
+
+export async function templateExists(
+  imageId: SandboxImageId,
+  apiKey?: string
+): Promise<Result<boolean, Error>> {
+  const templateResult = await findE2BTemplate(imageId, apiKey);
+  if (templateResult.isErr()) {
+    return templateResult;
+  }
+
+  return new Ok(templateResult.value !== null);
+}
+
+// Reciprocal of a failed build: E2B registers the template and its alias the
+// moment a build starts, so a failure leaves an alias that
+// `sandbox_image_check.ts` reads as "already built". A template carrying an
+// envd version completed a build and may be serving sandboxes, so it is never
+// touched here.
+export async function deleteUnbuiltE2BTemplate(
+  imageId: SandboxImageId,
+  apiKey?: string
+): Promise<Result<boolean, Error>> {
+  const templateResult = await findE2BTemplate(imageId, apiKey);
+  if (templateResult.isErr()) {
+    return templateResult;
+  }
+
+  const template = templateResult.value;
+  if (!template || template.envdVersion) {
+    return new Ok(false);
+  }
+
+  const deleteResult = await deleteE2BTemplate(template.templateId, apiKey);
+  if (deleteResult.isErr()) {
+    return deleteResult;
+  }
+
+  return new Ok(true);
+}
+
+export async function deleteE2BTemplate(
+  templateId: string,
+  apiKey?: string
+): Promise<Result<void, Error>> {
+  try {
+    const client = createE2BApiClient(apiKey);
+
+    const response = await client.api.DELETE("/templates/{templateID}", {
+      params: { path: { templateID: templateId } },
+    });
+
+    if (response.error) {
+      throw new Error(`E2B API error: ${JSON.stringify(response.error)}`);
+    }
+
+    return new Ok(undefined);
+  } catch (err) {
+    logger.error(
+      { err: normalizeError(err), templateId },
+      "Failed to delete E2B template"
+    );
+    return new Err(normalizeError(err));
+  }
 }
 
 export async function buildSandboxImage(

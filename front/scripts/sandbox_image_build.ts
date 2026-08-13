@@ -8,6 +8,7 @@ import {
 import {
   buildSandboxImage,
   createGCPRegistryFactory,
+  deleteUnbuiltE2BTemplate,
   templateExists,
 } from "@app/lib/api/sandbox/providers/e2b_template";
 import logger from "@app/logger/logger";
@@ -186,6 +187,18 @@ async function buildImage(args: BuildArgs): Promise<void> {
   });
 
   if (result.isErr()) {
+    const cleanupResult = await deleteUnbuiltE2BTemplate(imageId);
+    if (cleanupResult.isErr()) {
+      logger.error(
+        { err: cleanupResult.error, imageId: formatSandboxImageId(imageId) },
+        "Failed to delete the template left behind by the failed build"
+      );
+    } else if (cleanupResult.value) {
+      logger.info(
+        { imageId: formatSandboxImageId(imageId) },
+        "Deleted the template left behind by the failed build"
+      );
+    }
     process.exit(1);
   }
 
