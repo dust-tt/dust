@@ -118,6 +118,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
       defaultSkillIds: [],
       description: "Test project description",
       isAdminControlled: false,
+      appSharingEnabled: false,
       lastTodoAnalysisAt: null,
       pinnedFramePath: null,
       frameTabs: [],

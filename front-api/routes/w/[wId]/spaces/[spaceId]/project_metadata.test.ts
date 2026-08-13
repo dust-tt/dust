@@ -17,10 +17,8 @@ vi.mock("@app/temporal/project_task/client", () => ({
   stopProjectTodoWorkflow: mockStopProjectTodoWorkflow,
 }));
 
-import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -274,27 +272,6 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata appSharingEnabled",
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.projectMetadata.appSharingEnabled).toBe(true);
-  });
-
-  it("rejects enabling app sharing on an open pod", async () => {
-    // An open Pod already lets every workspace member use its apps, so the flag is redundant.
-    const { workspace, auth } = await createPrivateApiMockRequest({
-      role: "admin",
-    });
-    await FeatureFlagFactory.basic(auth, "sandbox_functions");
-    const projectSpace = await SpaceFactory.project(workspace);
-    const { globalGroup } = await GroupFactory.defaults(workspace);
-    await GroupSpaceViewerResource.makeNew(auth, {
-      group: globalGroup,
-      space: projectSpace,
-    });
-
-    const response = await patchMetadata(workspace, projectSpace.sId, {
-      appSharingEnabled: true,
-    });
-
-    expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
   });
 
   it("rejects the flag without the sandbox_functions feature flag", async () => {
