@@ -2447,8 +2447,6 @@ describe("SpaceResource group_permissions shadow-compare", () => {
     expectAclParity(memberAuth, space);
   });
 
-  // The default spaces are dual-written like any other (system -> member, global/conversations ->
-  // reader), so they are compared too — they used to be skipped.
   it("reaches parity on the system, global and conversations spaces", async () => {
     const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth, {
       includeConversationsSpace: true,
