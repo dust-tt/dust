@@ -57,6 +57,7 @@ import {
 
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
 const ATTRIBUTION_PAGE_SIZE = 25;
+const ATTRIBUTION_TOP_LIMIT = 100;
 
 type AttributionTransitionDirection = -1 | 0 | 1;
 
@@ -377,11 +378,11 @@ function AttributionRows({
     workspaceId,
     dimension,
     period,
-    limit: null,
+    limit: ATTRIBUTION_TOP_LIMIT,
     filter,
   });
 
-  // Client-side filter over the complete ranking returned by the endpoint.
+  // Client-side filter over the loaded ranking returned by the endpoint.
   const rows = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return needle

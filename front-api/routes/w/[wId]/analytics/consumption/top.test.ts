@@ -332,7 +332,7 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
     );
   });
 
-  it("accepts a null limit to request the complete ranking", async () => {
+  it("normalizes a null limit to the default", async () => {
     vi.mocked(fetchConsumptionTopAgents).mockResolvedValue(new Ok(TOP_AGENTS));
     const { workspace } = await setupTest();
 
@@ -343,7 +343,7 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
     expect(response.status).toBe(200);
     expect(vi.mocked(fetchConsumptionTopAgents)).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ limit: null })
+      expect.objectContaining({ limit: 10 })
     );
   });
 

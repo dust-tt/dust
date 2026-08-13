@@ -1,6 +1,5 @@
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import type { ConsumptionTopLimit } from "@app/lib/api/analytics/consumption/schema";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import {
   avgCreditsPerUnit,
@@ -47,7 +46,7 @@ export async function fetchConsumptionTopUsers(
     filter,
   }: {
     period: ConsumptionPeriod;
-    limit: ConsumptionTopLimit;
+    limit: number;
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionTopUsers, ElasticsearchError>> {

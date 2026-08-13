@@ -72,6 +72,10 @@ describe("ConsumptionAttributionTable", () => {
       />
     );
 
+    expect(mockUseConsumptionTop).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 100 })
+    );
+
     fireEvent.click(screen.getByRole("button", { name: "2" }));
 
     await waitFor(() => {

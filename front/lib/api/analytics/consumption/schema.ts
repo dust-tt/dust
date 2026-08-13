@@ -8,8 +8,6 @@ export const DEFAULT_CONSUMPTION_PERIOD_DAYS = 30;
 
 export const DEFAULT_CONSUMPTION_TOP_LIMIT = 10;
 
-export type ConsumptionTopLimit = number | null;
-
 const ConsumptionFilterSchema = z.record(
   z.enum(CONSUMPTION_SCOPE_FILTER_KEYS),
   z.string().array()
@@ -45,7 +43,8 @@ export const ConsumptionTopBodySchema = ConsumptionBodySchema.extend({
     .max(100)
     .nullable()
     .optional()
-    .default(DEFAULT_CONSUMPTION_TOP_LIMIT),
+    .default(DEFAULT_CONSUMPTION_TOP_LIMIT)
+    .transform((limit) => limit ?? DEFAULT_CONSUMPTION_TOP_LIMIT),
 });
 
 export type ConsumptionTopBody = z.infer<typeof ConsumptionTopBodySchema>;

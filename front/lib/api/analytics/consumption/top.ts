@@ -1,5 +1,4 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import type { ConsumptionTopLimit } from "@app/lib/api/analytics/consumption/schema";
 import type {
   ConsumptionScopeDimension,
   ConsumptionScopeFilter,
@@ -22,7 +21,6 @@ import { microCreditsToCredits } from "@app/lib/credits/units";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isString } from "@app/types/shared/utils/general";
 import type { estypes } from "@elastic/elasticsearch";
 
 type ConsumptionTopGroup = {
@@ -35,8 +33,8 @@ type ConsumptionTopGroup = {
 export type ConsumptionTopGroups = {
   groups: ConsumptionTopGroup[];
   // Gross credits over the whole scoped period, every document included. Not the
-  // sum of `groups` — a dimension that only exists on some documents (a tool, a
-  // skill) accounts for part of the total, and callers can cap the ranking.
+  // sum of `groups` — the ranking is capped at `limit`, and a dimension that only
+  // exists on some documents (a tool, a skill) accounts for part of the total.
   totalCredits: number;
 };
 
@@ -44,10 +42,9 @@ export type ConsumptionTopGroups = {
 // bucket reads below cannot drift apart.
 const CREDIT_AGG = "credit_micro";
 const MESSAGES_AGG = "messages";
-const TOP_GROUPS_COMPOSITE_PAGE_SIZE = 1_000;
 
 type GroupBucket = {
-  key: string | { value: string };
+  key: string;
   doc_count: number;
   [CREDIT_AGG]?: estypes.AggregationsSumAggregate;
   [MESSAGES_AGG]?: estypes.AggregationsCardinalityAggregate;
@@ -63,9 +60,7 @@ function subAggs(unit: ConsumptionTopUnit) {
 }
 
 type TopAggs = {
-  by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket> & {
-    after_key?: { value: string };
-  };
+  by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
   total_credit_micro?: estypes.AggregationsSumAggregate;
 };
 
@@ -87,22 +82,9 @@ function countFromBucket(
   }
 }
 
-function groupFromBucket(
-  bucket: GroupBucket,
-  unit: ConsumptionTopUnit
-): ConsumptionTopGroup {
-  const key = isString(bucket.key) ? bucket.key : String(bucket.key.value);
-  return {
-    key,
-    credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
-    count: countFromBucket(bucket, unit),
-  };
-}
-
 /**
- * Keys of `dimension` ranked by gross credits over the period, with the count
- * each one's average is denominated in. A numeric `limit` returns only the top
- * rows; `null` exhausts the composite aggregation before ranking every row.
+ * Top `limit` keys of `dimension` by gross credits over the period, with the
+ * count each one's average is denominated in.
  */
 export async function fetchConsumptionTopGroups(
   auth: Authenticator,
@@ -114,7 +96,7 @@ export async function fetchConsumptionTopGroups(
   }: {
     dimension: ConsumptionScopeDimension;
     period: ConsumptionPeriod;
-    limit: ConsumptionTopLimit;
+    limit: number;
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
@@ -126,69 +108,38 @@ export async function fetchConsumptionTopGroups(
     filter,
   });
 
-  const groups: ConsumptionTopGroup[] = [];
-  let afterKey: { value: string } | undefined;
-  let bucketCount: number;
-  let totalCredits = 0;
-
-  do {
-    const result = await searchConsumptionAnalytics<never, TopAggs>(query, {
-      aggregations: {
-        by_group: {
-          ...(limit === null
-            ? {
-                composite: {
-                  size: TOP_GROUPS_COMPOSITE_PAGE_SIZE,
-                  sources: [
-                    {
-                      value: {
-                        terms: {
-                          field: CONSUMPTION_DIMENSION_FIELDS[dimension],
-                        },
-                      },
-                    },
-                  ],
-                  ...(afterKey ? { after: afterKey } : {}),
-                },
-              }
-            : {
-                terms: {
-                  field: CONSUMPTION_DIMENSION_FIELDS[dimension],
-                  size: limit,
-                  order: { [CREDIT_AGG]: "desc" },
-                },
-              }),
-          aggs: subAggs(unit),
+  const result = await searchConsumptionAnalytics<never, TopAggs>(query, {
+    aggregations: {
+      by_group: {
+        terms: {
+          field: CONSUMPTION_DIMENSION_FIELDS[dimension],
+          size: limit,
+          order: { [CREDIT_AGG]: "desc" },
         },
-        total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
+        aggs: subAggs(unit),
       },
-      size: 0,
-    });
+      total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
+    },
+    size: 0,
+  });
 
-    if (result.isErr()) {
-      return result;
-    }
+  if (result.isErr()) {
+    return result;
+  }
 
-    const aggregation = result.value.aggregations?.by_group;
-    const page = bucketsToArray<GroupBucket>(aggregation?.buckets);
-    bucketCount = page.length;
-    groups.push(...page.map((bucket) => groupFromBucket(bucket, unit)));
-    totalCredits = microCreditsToCredits(
-      result.value.aggregations?.total_credit_micro?.value ?? 0
-    );
-
-    afterKey = aggregation?.after_key;
-  } while (limit === null && afterKey !== undefined && bucketCount > 0);
+  const groups = bucketsToArray<GroupBucket>(
+    result.value.aggregations?.by_group?.buckets
+  ).map((bucket) => ({
+    key: String(bucket.key),
+    credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
+    count: countFromBucket(bucket, unit),
+  }));
 
   return new Ok({
-    groups:
-      limit === null
-        ? groups.sort(
-            (left, right) =>
-              right.credits - left.credits || left.key.localeCompare(right.key)
-          )
-        : groups,
-    totalCredits,
+    groups,
+    totalCredits: microCreditsToCredits(
+      result.value.aggregations?.total_credit_micro?.value ?? 0
+    ),
   });
 }
 
