@@ -292,7 +292,7 @@ export function ModelPicker({
           size={buttonSize}
           icon={buttonIcon}
           label={showLabel ? label : undefined}
-          tooltip={showLabel ? undefined : label}
+          tooltip={showLabel ? undefined : `Model picker: ${label}`}
           disabled={disabled}
         />
       </DropdownMenuTrigger>

@@ -22,6 +22,7 @@ import {
   BarLow,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   Icon,
   Lock01,
@@ -80,6 +81,8 @@ export function ModelPickerContent({
 }: ModelPickerContentProps) {
   return (
     <DropdownMenuContent className="w-72" align="start" side={side}>
+      <DropdownMenuLabel label="Model" />
+
       {MODEL_TIERS.map((tier) => {
         const isSelected = isTierDisplayed(tier.id, shown.display);
         const isDefault = isTierDisplayed(tier.id, agentDefault.display);
