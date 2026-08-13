@@ -10,8 +10,8 @@ import assert from "assert";
 
 /**
  * Loads, projects, and indexes the complete consumption analytics snapshot for one agent message.
- * Callers only identify the message. This module owns the ordering and completeness requirements
- * of the indexed snapshot.
+ * The attribution activity may reuse its already-loaded action snapshot; this module still owns
+ * the ordering, projection, and completeness requirements of the indexed snapshot.
  */
 export async function indexAgentMessageConsumptionAnalytics(
   auth: Authenticator,
