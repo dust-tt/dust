@@ -37,15 +37,14 @@ interface CostShareBarProps {
 
 export function CostShareBar({ percentage, className }: CostShareBarProps) {
   return (
-    <progress
-      aria-hidden="true"
-      className={cn(
-        "block h-1.5 overflow-hidden rounded-full bg-muted accent-primary",
-        className
-      )}
-      max={100}
-      value={percentage}
-    />
+    <div
+      className={cn("h-1.5 overflow-hidden rounded-full bg-muted", className)}
+    >
+      <div
+        className="h-full rounded-full bg-primary"
+        style={{ width: `${percentage}%` }}
+      />
+    </div>
   );
 }
 
