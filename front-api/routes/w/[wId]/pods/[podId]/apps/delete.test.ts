@@ -22,6 +22,16 @@ vi.mock("@app/lib/api/sandbox/lifecycle", () => ({
 
 const EMPTY_SCHEMA = { type: "object", properties: {} } as const;
 
+/** Records every root command front runs on the sandbox (the litestream restart), answering ok. */
+function mockSandboxExecRoot(sandbox: SandboxResource): string[] {
+  const commands: string[] = [];
+  vi.spyOn(sandbox, "execRoot").mockImplementation(async (_auth, command) => {
+    commands.push(command.command);
+    return new Ok({ exitCode: 0, stdout: "", stderr: "" });
+  });
+  return commands;
+}
+
 /** Records every command front runs on the sandbox, answering db execs with an ok envelope. */
 function mockSandboxExec(sandbox: SandboxResource): string[] {
   const commands: string[] = [];
@@ -50,8 +60,9 @@ async function setupPod() {
   vi.mocked(ensurePodSandboxReady).mockResolvedValue(
     new Ok({ sandbox, freshlyCreated: false })
   );
+  const rootCommands = mockSandboxExecRoot(sandbox);
 
-  return { workspace, user, auth, pod, sandbox };
+  return { workspace, user, auth, pod, sandbox, rootCommands };
 }
 
 function gcsObject(
@@ -151,7 +162,7 @@ describe("DELETE /api/w/:wId/pods/:podId/apps/:prefix", () => {
     );
   });
 
-  it("deletes the live database before wiping its replica", async () => {
+  it("deletes the live database, restarts litestream, then wipes the replica", async () => {
     const { workspace, pod, sandbox } = await setupPod();
 
     const order: string[] = [];
@@ -164,6 +175,12 @@ describe("DELETE /api/w/:wId/pods/:podId/apps/:prefix", () => {
         stdout: `${JSON.stringify({ ok: true })}\n`,
         stderr: "",
       });
+    });
+    vi.spyOn(sandbox, "execRoot").mockImplementation(async (_auth, command) => {
+      if (command.command.includes("systemctl restart litestream")) {
+        order.push("restart");
+      }
+      return new Ok({ exitCode: 0, stdout: "", stderr: "" });
     });
 
     fileStorageMock.setFilesByPrefix(() => [
@@ -183,8 +200,40 @@ describe("DELETE /api/w/:wId/pods/:podId/apps/:prefix", () => {
     );
 
     expect(res.status).toBe(200);
-    // A live litestream re-replicates a database it can still see, so this order is load-bearing.
-    expect(order).toEqual(["live", "replica"]);
+    // A live litestream re-replicates a database it can still see, and removing the files does not
+    // make it let go — only the restart does. This whole order is load-bearing.
+    expect(order).toEqual(["live", "restart", "replica"]);
+  });
+
+  it("does not wipe the replica when the litestream restart fails", async () => {
+    const { workspace, pod, sandbox } = await setupPod();
+    mockSandboxExec(sandbox);
+
+    vi.spyOn(sandbox, "execRoot").mockResolvedValue(
+      new Ok({ exitCode: 1, stdout: "", stderr: "Job for litestream failed." })
+    );
+
+    fileStorageMock.setFilesByPrefix(() => [
+      gcsObject(workspace.sId, pod.sId, "TaskList/"),
+      gcsObject(workspace.sId, pod.sId, "TaskList/databases/tasks.db.ts"),
+    ]);
+    fileStorageMock.setSubdirectoryNames(() => ["tasklist__tasks.db"]);
+    const wipedPrefixes: string[] = [];
+    fileStorageMock.setOnDeleteByPrefix((prefix) => {
+      wipedPrefixes.push(prefix);
+    });
+
+    const res = await honoApp.request(
+      `/api/w/${workspace.sId}/pods/${pod.sId}/apps/tasklist`,
+      { method: "DELETE" }
+    );
+
+    // A daemon still holding the deleted database would recreate the prefix right after the wipe,
+    // and the pod's next cold start would restore the database from it. Better to fail and be retried.
+    expect(res.status).toBe(500);
+    expect(
+      wipedPrefixes.filter((prefix) => prefix.includes("tasklist__tasks.db/"))
+    ).toEqual([]);
   });
 
   it("fails when the replica survives, rather than reporting a delete that would come back", async () => {
