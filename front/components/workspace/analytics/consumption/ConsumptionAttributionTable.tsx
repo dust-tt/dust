@@ -271,11 +271,6 @@ function AttributionRows({
       : allRows;
   }, [allRows, search]);
 
-  // Derived, not stored: a narrower search (or a ranking that shrank) can
-  // leave `pagination.pageIndex` past the last page. Clamping here — instead
-  // of writing the correction back with a render-phase setState — keeps the
-  // effective page always valid without any risk of a setState-during-render
-  // loop if `rows` ever fails to stay referentially stable across renders.
   const clampedPagination: PaginationState = useMemo(() => {
     const pageCount = Math.max(1, Math.ceil(rows.length / pagination.pageSize));
     return {
