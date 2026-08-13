@@ -2105,7 +2105,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       {
         resource: "space",
         spaceId: this.sId,
-        spaceKind: this.kind,
         permission,
         workspaceId: this.workspaceId,
       }
