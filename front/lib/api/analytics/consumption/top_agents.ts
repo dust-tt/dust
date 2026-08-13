@@ -20,6 +20,7 @@ export type ConsumptionTopAgentRow = {
   agentId: string;
   name: string;
   pictureUrl: string | null;
+  description: string | null;
   credits: number;
   messageCount: number;
   avgCreditsPerMessage: number;
@@ -71,6 +72,7 @@ export async function fetchConsumptionTopAgents(
       agentId: group.key,
       name: labels.get(group.key)?.name ?? group.key,
       pictureUrl: labels.get(group.key)?.pictureUrl ?? null,
+      description: labels.get(group.key)?.description ?? null,
       credits: group.credits,
       messageCount: group.count,
       avgCreditsPerMessage: avgCreditsPerUnit(group.credits, group.count),

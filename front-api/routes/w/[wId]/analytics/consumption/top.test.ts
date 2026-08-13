@@ -97,6 +97,7 @@ const TOP_AGENTS: GetConsumptionTopAgentsResponse = {
       agentId: "agent1",
       name: "@dust",
       pictureUrl: null,
+      description: "Answers questions about Dust",
       credits: 2230,
       messageCount: 10,
       avgCreditsPerMessage: 223,
@@ -182,6 +183,7 @@ const TOP_SKILLS: GetConsumptionTopSkillsResponse = {
     {
       skillId: "skl_1",
       name: "Research",
+      description: "Researches a topic in depth",
       credits: 40,
       invocationCount: 8,
       avgCreditsPerInvocation: 5,

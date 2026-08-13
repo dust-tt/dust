@@ -54,7 +54,7 @@ function mockLabels(labels: Record<string, string>) {
     new Map(
       Object.entries(labels).map(([key, name]) => [
         key,
-        { name, pictureUrl: null },
+        { name, pictureUrl: null, description: null },
       ])
     )
   );
@@ -81,7 +81,16 @@ describe("consumption top rankings", () => {
   it("ranks agents on gross credits and averages over distinct messages", async () => {
     const { auth } = await setup();
     vi.mocked(resolveDimensionLabels).mockResolvedValue(
-      new Map([["agent1", { name: "@dust", pictureUrl: "http://pic/dust" }]])
+      new Map([
+        [
+          "agent1",
+          {
+            name: "@dust",
+            pictureUrl: "http://pic/dust",
+            description: "Answers questions about Dust",
+          },
+        ],
+      ])
     );
     mockAggs({
       buckets: [
@@ -111,6 +120,7 @@ describe("consumption top rankings", () => {
         agentId: "agent1",
         name: "@dust",
         pictureUrl: "http://pic/dust",
+        description: "Answers questions about Dust",
         credits: 3,
         // The 7 documents of the bucket belong to 2 messages.
         messageCount: 2,
@@ -185,7 +195,18 @@ describe("consumption top rankings", () => {
 
   it("credits a skill with the invocations attributed to it", async () => {
     const { auth } = await setup();
-    mockLabels({ skl_1: "Research" });
+    vi.mocked(resolveDimensionLabels).mockResolvedValue(
+      new Map([
+        [
+          "skl_1",
+          {
+            name: "Research",
+            pictureUrl: null,
+            description: "Researches a topic in depth",
+          },
+        ],
+      ])
+    );
     mockAggs({
       buckets: [
         { key: "skl_1", doc_count: 5, credit_micro: { value: 2_500_000 } },
@@ -206,6 +227,7 @@ describe("consumption top rankings", () => {
       {
         skillId: "skl_1",
         name: "Research",
+        description: "Researches a topic in depth",
         credits: 2.5,
         invocationCount: 5,
         avgCreditsPerInvocation: 0.5,
@@ -379,6 +401,7 @@ describe("consumption top rankings", () => {
       agentId: "agent_gone",
       name: "agent_gone",
       pictureUrl: null,
+      description: null,
     });
   });
 

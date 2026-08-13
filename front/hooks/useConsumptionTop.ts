@@ -30,6 +30,7 @@ export type ConsumptionTopRow = {
   id: string;
   name: string;
   pictureUrl: string | null;
+  description: string | null;
   credits: number;
   avgCredits: number;
 };
@@ -52,6 +53,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.agentId,
       name: row.name,
       pictureUrl: row.pictureUrl,
+      description: row.description,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));
@@ -61,6 +63,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.userId,
       name: row.name,
       pictureUrl: row.pictureUrl,
+      description: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));
@@ -70,6 +73,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.groupId,
       name: row.name,
       pictureUrl: null,
+      description: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));
@@ -79,6 +83,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.modelId,
       name: row.name,
       pictureUrl: null,
+      description: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));
@@ -88,6 +93,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.serverName,
       name: row.name,
       pictureUrl: null,
+      description: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerInvocation,
     }));
@@ -97,6 +103,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.skillId,
       name: row.name,
       pictureUrl: null,
+      description: row.description,
       credits: row.credits,
       avgCredits: row.avgCreditsPerInvocation,
     }));
@@ -106,6 +113,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.source,
       name: row.name,
       pictureUrl: null,
+      description: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));

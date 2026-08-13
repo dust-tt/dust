@@ -7,6 +7,7 @@ import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -93,14 +94,15 @@ describe("resolveDimensionLabels", () => {
     expect(labels.get(user.sId)).toEqual({
       name: user.fullName(),
       pictureUrl: user.imageUrl ?? null,
+      description: null,
     });
   });
 
-  it("labels agents with their name and picture", async () => {
+  it("labels agents with their name, picture and description", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
-      { name: "Analytics agent" }
+      { name: "Analytics agent", description: "Answers analytics questions" }
     );
 
     const labels = await resolveDimensionLabels(authenticator, "agent", [
@@ -110,6 +112,25 @@ describe("resolveDimensionLabels", () => {
     expect(labels.get(agent.sId)).toEqual({
       name: "Analytics agent",
       pictureUrl: agent.pictureUrl,
+      description: "Answers analytics questions",
+    });
+  });
+
+  it("labels skills with their name and user-facing description", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const skill = await SkillFactory.create(authenticator, {
+      name: "Research",
+      userFacingDescription: "Researches a topic in depth",
+    });
+
+    const labels = await resolveDimensionLabels(authenticator, "skill", [
+      skill.sId,
+    ]);
+
+    expect(labels.get(skill.sId)).toEqual({
+      name: "Research",
+      pictureUrl: null,
+      description: "Researches a topic in depth",
     });
   });
 
@@ -126,6 +147,7 @@ describe("resolveDimensionLabels", () => {
     expect(labels.get(group.sId)).toEqual({
       name: "Engineering",
       pictureUrl: null,
+      description: null,
     });
   });
 });

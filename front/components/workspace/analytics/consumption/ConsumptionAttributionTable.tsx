@@ -21,6 +21,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { Transition, Variants } from "framer-motion";
@@ -102,17 +103,27 @@ function buildColumns({
       header: "Name",
       meta: { sizeRatio: 32, headerAlign: "left" },
       cell: (info) => {
-        const { name, pictureUrl } = info.row.original;
+        const { name, pictureUrl, description } = info.row.original;
+        const content = hasAvatar ? (
+          <AvatarNameCell
+            name={name}
+            imageUrl={pictureUrl}
+            isRounded={isAvatarRounded}
+          />
+        ) : (
+          <span className="truncate text-sm">{name}</span>
+        );
+
         return (
           <DataTable.CellContent className="w-full justify-start text-left">
-            {hasAvatar ? (
-              <AvatarNameCell
-                name={name}
-                imageUrl={pictureUrl}
-                isRounded={isAvatarRounded}
+            {description ? (
+              <Tooltip
+                label={description}
+                tooltipTriggerAsChild
+                trigger={content}
               />
             ) : (
-              <span className="truncate text-sm">{name}</span>
+              content
             )}
           </DataTable.CellContent>
         );

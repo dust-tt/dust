@@ -29,13 +29,18 @@ export type DimensionLabel = {
   name: string;
   // Only agents and users have one; null for every other dimension.
   pictureUrl: string | null;
+  // Only agents and skills have one; null for every other dimension.
+  description: string | null;
 };
 
 function labelsFromNames(
   names: Map<string, string>
 ): Map<string, DimensionLabel> {
   return new Map(
-    [...names].map(([key, name]) => [key, { name, pictureUrl: null }])
+    [...names].map(([key, name]) => [
+      key,
+      { name, pictureUrl: null, description: null },
+    ])
   );
 }
 
@@ -53,8 +58,19 @@ export async function resolveDimensionLabels(
       const labels = await resolveAnalyticsAgentLabels(auth, keys);
       return new Map(
         keys.map((key) => {
-          const label = labels.get(key) ?? { name: key, pictureUrl: null };
-          return [key, { name: label.name, pictureUrl: label.pictureUrl }];
+          const label = labels.get(key) ?? {
+            name: key,
+            pictureUrl: null,
+            description: null,
+          };
+          return [
+            key,
+            {
+              name: label.name,
+              pictureUrl: label.pictureUrl,
+              description: label.description || null,
+            },
+          ];
         })
       );
     }
@@ -70,6 +86,7 @@ export async function resolveDimensionLabels(
             {
               name: getUserDisplayName(user),
               pictureUrl: user?.imageUrl ?? null,
+              description: null,
             },
           ];
         })
@@ -107,9 +124,19 @@ export async function resolveDimensionLabels(
 
     case "skill": {
       const skills = await SkillResource.fetchByIds(auth, keys);
-      const namesById = new Map(skills.map((skill) => [skill.sId, skill.name]));
-      return labelsFromNames(
-        new Map(keys.map((key) => [key, namesById.get(key) ?? key]))
+      const skillsById = new Map(skills.map((skill) => [skill.sId, skill]));
+      return new Map(
+        keys.map((key) => {
+          const skill = skillsById.get(key);
+          return [
+            key,
+            {
+              name: skill?.name ?? key,
+              pictureUrl: null,
+              description: skill?.userFacingDescription ?? null,
+            },
+          ];
+        })
       );
     }
 
