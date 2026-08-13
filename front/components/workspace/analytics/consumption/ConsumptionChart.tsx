@@ -40,10 +40,6 @@ const CONSUMPTION_CHART_COLORS = [
   "text-blue-700",
   "text-blue-600",
   "text-blue-500",
-  "text-blue-400",
-  "text-blue-300",
-  "text-blue-200",
-  "text-blue-100",
   "text-blue-50",
 ] as const;
 
