@@ -1,7 +1,9 @@
 import {
   getUsageFilterSummaries,
+  setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
 } from "@app/components/workspace/analytics/usageFilter";
+import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import { describe, expect, it } from "vitest";
 
 describe("toConsumptionScopeFilter", () => {
@@ -14,7 +16,6 @@ describe("toConsumptionScopeFilter", () => {
             name: "Ada",
             kind: "member",
             image: null,
-            documentCount: 1,
             disabled: false,
           },
         ],
@@ -23,7 +24,6 @@ describe("toConsumptionScopeFilter", () => {
             id: "group-1",
             name: "Engineering",
             kind: "group",
-            documentCount: 1,
             disabled: false,
           },
         ],
@@ -33,7 +33,6 @@ describe("toConsumptionScopeFilter", () => {
             name: "Web search",
             kind: "tool",
             icon: null,
-            documentCount: 1,
             disabled: false,
           },
         ],
@@ -43,7 +42,6 @@ describe("toConsumptionScopeFilter", () => {
             name: "Research",
             kind: "skill",
             icon: null,
-            documentCount: 1,
             disabled: false,
           },
         ],
@@ -53,7 +51,6 @@ describe("toConsumptionScopeFilter", () => {
             name: "Slack",
             kind: "source",
             connectorProvider: "slack",
-            documentCount: 1,
             disabled: false,
           },
         ],
@@ -72,6 +69,72 @@ describe("toConsumptionScopeFilter", () => {
   });
 });
 
+describe("setUsageFilterFromAttributionRow", () => {
+  const row = {
+    id: "selected-row",
+    name: "Selected row",
+    pictureUrl: "https://example.com/avatar.png",
+  };
+
+  it.each<{
+    dimension: ConsumptionScopeDimension;
+    expectedScopeFilter: Record<string, string[]>;
+  }>([
+    { dimension: "agent", expectedScopeFilter: { agents: [row.id] } },
+    { dimension: "user", expectedScopeFilter: { users: [row.id] } },
+    { dimension: "group", expectedScopeFilter: { groups: [row.id] } },
+    { dimension: "model", expectedScopeFilter: { models: [row.id] } },
+    { dimension: "tool", expectedScopeFilter: { tools: [row.id] } },
+    { dimension: "skill", expectedScopeFilter: { skills: [row.id] } },
+    { dimension: "source", expectedScopeFilter: { sources: [row.id] } },
+  ])("maps a $dimension row to its page-level filter", ({
+    dimension,
+    expectedScopeFilter,
+  }) => {
+    const filter = setUsageFilterFromAttributionRow({}, dimension, row);
+
+    expect(toConsumptionScopeFilter(filter)).toEqual(expectedScopeFilter);
+  });
+
+  it("replaces the selected dimension while preserving other filters", () => {
+    const filter = setUsageFilterFromAttributionRow(
+      {
+        agent: [
+          {
+            id: "previous-agent",
+            name: "Previous agent",
+            kind: "agent",
+            image: null,
+            disabled: false,
+          },
+        ],
+        tool: [
+          {
+            id: "tool-1",
+            name: "Web search",
+            kind: "tool",
+            icon: null,
+            disabled: false,
+          },
+        ],
+      },
+      "agent",
+      row
+    );
+
+    expect(filter.agent).toEqual([
+      {
+        id: row.id,
+        name: row.name,
+        kind: "agent",
+        image: row.pictureUrl,
+        disabled: false,
+      },
+    ]);
+    expect(filter.tool?.map(({ id }) => id)).toEqual(["tool-1"]);
+  });
+});
+
 describe("getUsageFilterSummaries", () => {
   it("flattens selected options into ordered, human-readable categories", () => {
     expect(
@@ -82,7 +145,6 @@ describe("getUsageFilterSummaries", () => {
             name: "@dust",
             kind: "agent",
             image: null,
-            documentCount: 1,
             disabled: false,
           },
         ],
@@ -92,7 +154,6 @@ describe("getUsageFilterSummaries", () => {
             name: "Nath",
             kind: "member",
             image: null,
-            documentCount: 1,
             disabled: false,
           },
           {
@@ -100,7 +161,6 @@ describe("getUsageFilterSummaries", () => {
             name: "Adrien",
             kind: "member",
             image: null,
-            documentCount: 1,
             disabled: false,
           },
         ],

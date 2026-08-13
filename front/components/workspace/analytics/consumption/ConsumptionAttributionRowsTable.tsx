@@ -34,6 +34,10 @@ interface ConsumptionAttributionRowsTableProps {
   dimension: ConsumptionDimension;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
+  onViewAll: (
+    dimension: ConsumptionDimension,
+    selectedRow: ConsumptionTopRow
+  ) => void;
 }
 
 export function ConsumptionAttributionRowsTable({
@@ -43,6 +47,7 @@ export function ConsumptionAttributionRowsTable({
   dimension,
   period,
   filter,
+  onViewAll,
 }: ConsumptionAttributionRowsTableProps) {
   const table = useReactTable({
     data,
@@ -127,9 +132,10 @@ export function ConsumptionAttributionRowsTable({
                     <ConsumptionAttributionBreakdown
                       workspaceId={workspaceId}
                       selectedDimension={dimension}
-                      selectedRowId={row.original.id}
+                      selectedRow={row.original}
                       period={period}
                       filter={filter}
+                      onViewAll={onViewAll}
                     />
                   </CollapsibleContent>
                 </Collapsible>

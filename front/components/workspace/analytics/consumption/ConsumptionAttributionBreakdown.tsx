@@ -1,10 +1,12 @@
 import { CostShareBar } from "@app/components/workspace/analytics/creditsTableCells";
+import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
-import { cn, LoadingBlock } from "@dust-tt/sparkle";
+import { Button, cn, LoadingBlock } from "@dust-tt/sparkle";
 import type { ConsumptionDimension } from "./consumptionDimensions";
+import { CONSUMPTION_DIMENSION_CONFIG } from "./consumptionDimensions";
 
 const BREAKDOWN_LIMIT = 3;
 
@@ -50,6 +52,8 @@ interface BreakdownColumnProps {
   dimension: BreakdownDimension;
   period: ConsumptionPeriodSelection;
   filter: ConsumptionScopeFilter;
+  selectedRowName: string;
+  onViewAll: () => void;
 }
 
 function BreakdownColumn({
@@ -57,6 +61,8 @@ function BreakdownColumn({
   dimension,
   period,
   filter,
+  selectedRowName,
+  onViewAll,
 }: BreakdownColumnProps) {
   const { rows, totalCredits, isTopLoading, isTopError } = useConsumptionTop({
     workspaceId,
@@ -68,10 +74,17 @@ function BreakdownColumn({
 
   return (
     <div className="min-w-0">
-      <div className="mb-2 flex h-6 items-center">
+      <div className="mb-2 flex h-6 items-center justify-between gap-2">
         <h4 className="text-sm font-medium text-muted-foreground">
           {BREAKDOWN_LABELS[dimension]}
         </h4>
+        <Button
+          label="View all"
+          variant="highlight-ghost"
+          size="xs"
+          aria-label={`View all ${CONSUMPTION_DIMENSION_CONFIG[dimension].label.toLowerCase()} for ${selectedRowName}`}
+          onClick={onViewAll}
+        />
       </div>
       {isTopLoading ? (
         <BreakdownColumnSkeleton />
@@ -112,21 +125,26 @@ function BreakdownColumn({
 interface ConsumptionAttributionBreakdownProps {
   workspaceId: string;
   selectedDimension: ConsumptionDimension;
-  selectedRowId: string;
+  selectedRow: ConsumptionTopRow;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
+  onViewAll: (
+    dimension: ConsumptionDimension,
+    selectedRow: ConsumptionTopRow
+  ) => void;
 }
 
 export function ConsumptionAttributionBreakdown({
   workspaceId,
   selectedDimension,
-  selectedRowId,
+  selectedRow,
   period,
   filter,
+  onViewAll,
 }: ConsumptionAttributionBreakdownProps) {
   const selectedFilter: ConsumptionScopeFilter = {
     ...filter,
-    [CONSUMPTION_DIMENSION_FILTER_KEYS[selectedDimension]]: [selectedRowId],
+    [CONSUMPTION_DIMENSION_FILTER_KEYS[selectedDimension]]: [selectedRow.id],
   };
   const visibleDimensions = BREAKDOWN_DIMENSIONS.filter(
     (dimension) => dimension !== selectedDimension
@@ -147,6 +165,8 @@ export function ConsumptionAttributionBreakdown({
           dimension={dimension}
           period={period}
           filter={selectedFilter}
+          selectedRowName={selectedRow.name}
+          onViewAll={() => onViewAll(dimension, selectedRow)}
         />
       ))}
     </div>
