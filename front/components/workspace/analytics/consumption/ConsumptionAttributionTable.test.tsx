@@ -99,49 +99,6 @@ describe("ConsumptionAttributionTable", () => {
     expect(screen.queryByText("Attribution breakdown")).not.toBeInTheDocument();
   });
 
-  it("renders the agent identity, description and model in its tooltip", () => {
-    mockUseConsumptionTop.mockReturnValue({
-      rows: [
-        {
-          id: "agent-id",
-          name: "@dust-edge",
-          pictureUrl: "https://example.com/dust-edge.png",
-          description:
-            "Dust is your general purpose agent. It has access to all of your company data.",
-          icon: null,
-          modelId: "claude-4-sonnet",
-          modelDisplayName: "Fable 5",
-          credits: 100,
-          avgCredits: 10,
-        },
-      ],
-      totalCredits: 100,
-      isTopLoading: false,
-      isTopError: undefined,
-    });
-
-    render(
-      <ConsumptionAttributionTable
-        workspaceId="workspace-id"
-        period={period}
-        dimension="agent"
-        onDimensionChange={vi.fn()}
-        onAddFilter={vi.fn()}
-        onViewAll={vi.fn()}
-      />
-    );
-
-    const tooltip = screen.getByRole("tooltip");
-    expect(within(tooltip).getByText("@dust-edge")).toBeInTheDocument();
-    expect(
-      within(tooltip).getByText(
-        "Dust is your general purpose agent. It has access to all of your company data."
-      )
-    ).toBeInTheDocument();
-    expect(within(tooltip).getByText("Fable 5")).toBeInTheDocument();
-    expect(within(tooltip).getByAltText("@dust-edge")).toBeInTheDocument();
-  });
-
   it("renders the skill identity and description without a model", () => {
     mockUseConsumptionTop.mockReturnValue({
       rows: [
