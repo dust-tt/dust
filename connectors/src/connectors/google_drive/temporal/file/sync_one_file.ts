@@ -1,4 +1,4 @@
-import { runWithGoogleDriveContentConcurrency } from "@connectors/connectors/google_drive/temporal/file/content_concurrency";
+import { runWithGoogleDriveContentMemoryTelemetry } from "@connectors/connectors/google_drive/temporal/file/content_memory_telemetry";
 import { syncOneFileTable } from "@connectors/connectors/google_drive/temporal/file/sync_one_file_table";
 import { syncOneFileTextDocument } from "@connectors/connectors/google_drive/temporal/file/sync_one_file_text_document";
 import { isTableFile } from "@connectors/connectors/google_drive/temporal/mime_types";
@@ -95,7 +95,7 @@ export async function syncOneFile(
         ? MAX_LARGE_DOCUMENT_TXT_LEN
         : MAX_DOCUMENT_TXT_LEN;
 
-      return runWithGoogleDriveContentConcurrency({
+      return runWithGoogleDriveContentMemoryTelemetry({
         logger: localLogger,
         fileSizeBytes: file.size ?? null,
         mimeType: file.mimeType,
