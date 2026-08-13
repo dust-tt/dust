@@ -71,7 +71,7 @@ export function AnalyticsConsumptionPage() {
   }
 
   return (
-    <Page.Vertical align="stretch" gap="xl">
+    <Page.Vertical align="stretch" gap="none">
       <Page.Header
         title={
           <div className="flex w-full flex-row justify-between">
@@ -83,7 +83,7 @@ export function AnalyticsConsumptionPage() {
           </div>
         }
       />
-      <div className="flex flex-col gap-8 pb-8">
+      <div className="flex flex-col gap-8 pb-8 pt-4">
         <ConsumptionOverview
           workspaceId={owner.sId}
           period={period}
