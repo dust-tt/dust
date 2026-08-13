@@ -1,5 +1,6 @@
 import { getModelLogoByModelId } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import {
   AvatarNameCell,
   CostShareCell,
@@ -7,7 +8,11 @@ import {
 import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useDebounce } from "@app/hooks/useDebounce";
+import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import { normalizedConsumptionFilter } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
+import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/api/analytics/consumption/schema";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import { formatCredits } from "@app/lib/client/credits";
@@ -466,76 +471,99 @@ export function ConsumptionAttributionTable({
       ? 0
       : transition.direction;
 
+  const exportBody: ConsumptionExportBody = {
+    period: period.kind,
+    days:
+      period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
+    filter: normalizedConsumptionFilter(filter),
+  };
+
+  // Every raw consumption line with no aggregation, for users who want to
+  // build their own analysis on top of it.
+  const rawCsvDownload = useDownloadCsv({
+    url: `/api/w/${workspaceId}/analytics/consumption/export-raw`,
+    filename: `dust_consumption_lines_export_${workspaceId}.zip`,
+    body: exportBody,
+  });
+
   return (
-    <div className="rounded-lg border border-border bg-panel-background p-4">
-      <Tabs
-        value={dimension}
-        onValueChange={(value) => {
-          if (isConsumptionDimension(value)) {
-            setTransition({
-              target: value,
-              direction:
-                pendingPointerDimension.current === value
-                  ? getAttributionTransitionDirection(dimension, value)
-                  : 0,
-            });
-            pendingPointerDimension.current = null;
-            onDimensionChange(value);
-          }
-        }}
-      >
-        <TabsList border>
-          {CONSUMPTION_DIMENSIONS.map((tabDimension) => (
-            <TabsTrigger
-              key={tabDimension}
-              value={tabDimension}
-              label={CONSUMPTION_DIMENSION_CONFIG[tabDimension].label}
-              onPointerDown={() => {
-                pendingPointerDimension.current = tabDimension;
-              }}
-              onPointerCancel={() => {
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-4">
+        <h3 className="text-base font-semibold text-foreground">Attribution</h3>
+        <CsvDownloadButton {...rawCsvDownload} label="Download raw data" />
+      </div>
+      <div className="rounded-lg border border-border bg-panel-background p-4">
+        <div className="flex flex-col gap-3">
+          <Tabs
+            value={dimension}
+            onValueChange={(value) => {
+              if (isConsumptionDimension(value)) {
+                setTransition({
+                  target: value,
+                  direction:
+                    pendingPointerDimension.current === value
+                      ? getAttributionTransitionDirection(dimension, value)
+                      : 0,
+                });
                 pendingPointerDimension.current = null;
-              }}
-              onKeyDown={() => {
-                pendingPointerDimension.current = null;
-              }}
-            />
-          ))}
-        </TabsList>
-      </Tabs>
-      <SearchInput
-        name="consumption-attribution-search"
-        placeholder="Search…"
-        value={inputValue}
-        onChange={setValue}
-        className="mt-3 w-full"
-      />
-      <div className="relative overflow-hidden pt-3">
-        <AnimatePresence
-          initial={false}
-          mode="popLayout"
-          custom={effectiveTransitionDirection}
-        >
-          <m.div
-            key={dimension}
-            custom={effectiveTransitionDirection}
-            variants={ATTRIBUTION_BODY_VARIANTS}
-            initial="initial"
-            animate="animate"
-            exit="exit"
+                onDimensionChange(value);
+              }
+            }}
           >
-            {/* A dimension selects a different dataset, so its table state must not carry over. */}
-            <AttributionRows
-              workspaceId={workspaceId}
-              dimension={dimension}
-              period={period}
-              filter={filter}
-              onAddFilter={onAddFilter}
-              search={debouncedValue}
-              onViewAll={onViewAll}
-            />
-          </m.div>
-        </AnimatePresence>
+            <TabsList border>
+              {CONSUMPTION_DIMENSIONS.map((tabDimension) => (
+                <TabsTrigger
+                  key={tabDimension}
+                  value={tabDimension}
+                  label={CONSUMPTION_DIMENSION_CONFIG[tabDimension].label}
+                  onPointerDown={() => {
+                    pendingPointerDimension.current = tabDimension;
+                  }}
+                  onPointerCancel={() => {
+                    pendingPointerDimension.current = null;
+                  }}
+                  onKeyDown={() => {
+                    pendingPointerDimension.current = null;
+                  }}
+                />
+              ))}
+            </TabsList>
+          </Tabs>
+          <SearchInput
+            name="consumption-attribution-search"
+            placeholder="Search…"
+            value={inputValue}
+            onChange={setValue}
+            className="w-full"
+          />
+          <div className="relative overflow-hidden">
+            <AnimatePresence
+              initial={false}
+              mode="popLayout"
+              custom={effectiveTransitionDirection}
+            >
+              <m.div
+                key={dimension}
+                custom={effectiveTransitionDirection}
+                variants={ATTRIBUTION_BODY_VARIANTS}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+              >
+                {/* A dimension selects a different dataset, so its table state must not carry over. */}
+                <AttributionRows
+                  workspaceId={workspaceId}
+                  dimension={dimension}
+                  period={period}
+                  filter={filter}
+                  onAddFilter={onAddFilter}
+                  search={debouncedValue}
+                  onViewAll={onViewAll}
+                />
+              </m.div>
+            </AnimatePresence>
+          </div>
+        </div>
       </div>
     </div>
   );

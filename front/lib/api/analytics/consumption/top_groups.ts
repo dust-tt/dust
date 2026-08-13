@@ -48,7 +48,6 @@ export async function fetchConsumptionTopGroups(
 ): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
   const result = await fetchConsumptionTopGroupBuckets(auth, {
     dimension: "group",
-    unit: "message",
     period,
     limit,
     filter,

@@ -34,6 +34,21 @@ export const CONSUMPTION_DIMENSION_FIELDS: Record<
   source: "context_origin",
 };
 
+export type ConsumptionTopUnit = "message" | "invocation";
+
+export const CONSUMPTION_DIMENSION_UNIT: Record<
+  ConsumptionScopeDimension,
+  ConsumptionTopUnit
+> = {
+  agent: "message",
+  user: "message",
+  group: "message",
+  model: "message",
+  tool: "invocation",
+  skill: "invocation",
+  source: "message",
+};
+
 export const CONSUMPTION_SCOPE_FILTER_KEYS = [
   "agents",
   "users",
