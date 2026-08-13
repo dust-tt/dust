@@ -7,8 +7,10 @@ import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import { formatCredits } from "@app/lib/client/credits";
 import {
+  BarChart01,
   Button,
   ChevronDown,
   ChevronUp,
@@ -178,6 +180,37 @@ function buildColumns({
         );
       },
     },
+    {
+      id: "filter",
+      header: "",
+      enableSorting: false,
+      meta: { className: "w-12", headerAlign: "right" },
+      cell: (info) => {
+        const row = info.row.original;
+        return (
+          <DataTable.CellContent className="w-full justify-end">
+            <Button
+              icon={BarChart01}
+              variant="ghost-secondary"
+              size="xs"
+              disabled={row.isFilterSelected}
+              tooltip={
+                row.isFilterSelected ? "Already in filters" : "Add to filters"
+              }
+              aria-label={
+                row.isFilterSelected
+                  ? `${row.name} is already in filters`
+                  : `Add ${row.name} to filters`
+              }
+              onClick={(event) => {
+                event.stopPropagation();
+                row.onAddFilter();
+              }}
+            />
+          </DataTable.CellContent>
+        );
+      },
+    },
   ];
 }
 
@@ -186,6 +219,7 @@ interface AttributionRowsProps {
   dimension: ConsumptionDimension;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
+  onAddFilter: (row: ConsumptionTopRow) => void;
   search: string;
   onViewAll: (
     dimension: ConsumptionDimension,
@@ -198,6 +232,7 @@ function AttributionRows({
   dimension,
   period,
   filter,
+  onAddFilter,
   search,
   onViewAll,
 }: AttributionRowsProps) {
@@ -272,11 +307,14 @@ function AttributionRows({
       </div>
     );
   } else {
+    const selectedIds = filter?.[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]];
     const data: AttributionRowData[] = rows.map((row) => ({
       ...row,
       isExpanded: expandedRowId === row.id,
+      isFilterSelected: selectedIds?.includes(row.id) ?? false,
       onClick: () =>
         setExpandedRowId((current) => (current === row.id ? null : row.id)),
+      onAddFilter: () => onAddFilter(row),
     }));
 
     content = (
@@ -317,6 +355,7 @@ interface ConsumptionAttributionTableProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
+  onAddFilter: (row: ConsumptionTopRow) => void;
   // Owned by the page: the selected tab also drives the chart's breakdown.
   dimension: ConsumptionDimension;
   onDimensionChange: (dimension: ConsumptionDimension) => void;
@@ -330,6 +369,7 @@ export function ConsumptionAttributionTable({
   workspaceId,
   period,
   filter,
+  onAddFilter,
   dimension,
   onDimensionChange,
   onViewAll,
@@ -412,6 +452,7 @@ export function ConsumptionAttributionTable({
               dimension={dimension}
               period={period}
               filter={filter}
+              onAddFilter={onAddFilter}
               search={debouncedValue}
               onViewAll={onViewAll}
             />

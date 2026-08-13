@@ -25,7 +25,9 @@ import type { ConsumptionDimension } from "./consumptionDimensions";
 
 export type AttributionRowData = ConsumptionTopRow & {
   isExpanded: boolean;
+  isFilterSelected: boolean;
   onClick: () => void;
+  onAddFilter: () => void;
 };
 
 const ATTRIBUTION_SKELETON_ROW_COUNT = 10;
@@ -83,6 +85,7 @@ function AttributionSkeletonCell({
         </div>
       );
     case "details":
+    case "filter":
       return (
         <div className="flex h-12 items-center justify-end">
           <LoadingBlock className="h-4 w-4" />
