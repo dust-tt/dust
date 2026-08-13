@@ -2,6 +2,7 @@ import {
   resolveDimensionDisplayNames,
   resolveDimensionLabels,
 } from "@app/lib/api/analytics/consumption/labels";
+import { getAgentModelDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
 import { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -113,6 +114,8 @@ describe("resolveDimensionLabels", () => {
       name: "Analytics agent",
       pictureUrl: agent.pictureUrl,
       description: "Answers analytics questions",
+      modelId: agent.model.modelId,
+      modelDisplayName: getAgentModelDisplayName(agent.model),
     });
   });
 
@@ -131,6 +134,7 @@ describe("resolveDimensionLabels", () => {
       name: "Research",
       pictureUrl: null,
       description: "Researches a topic in depth",
+      icon: skill.icon,
     });
   });
 

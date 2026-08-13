@@ -27,6 +27,7 @@ export type ConsumptionTopSkillRow = {
   skillId: string;
   name: string;
   description: string | null;
+  icon: string | null;
   credits: number;
   invocationCount: number;
   avgCreditsPerInvocation: number;
@@ -78,6 +79,7 @@ export async function fetchConsumptionTopSkills(
       skillId: group.key,
       name: labels.get(group.key)?.name ?? group.key,
       description: labels.get(group.key)?.description ?? null,
+      icon: labels.get(group.key)?.icon ?? null,
       credits: group.credits,
       invocationCount: group.count,
       avgCreditsPerInvocation: avgCreditsPerUnit(group.credits, group.count),

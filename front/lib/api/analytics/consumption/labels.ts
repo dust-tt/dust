@@ -31,6 +31,11 @@ export type DimensionLabel = {
   pictureUrl: string | null;
   // Only agents and skills have one; null for every other dimension.
   description: string | null;
+  // Only agents have model metadata.
+  modelId?: string;
+  modelDisplayName?: string;
+  // Only skills have an icon.
+  icon?: string | null;
 };
 
 function labelsFromNames(
@@ -58,17 +63,15 @@ export async function resolveDimensionLabels(
       const labels = await resolveAnalyticsAgentLabels(auth, keys);
       return new Map(
         keys.map((key) => {
-          const label = labels.get(key) ?? {
-            name: key,
-            pictureUrl: null,
-            description: null,
-          };
+          const label = labels.get(key);
           return [
             key,
             {
-              name: label.name,
-              pictureUrl: label.pictureUrl,
-              description: label.description || null,
+              name: label?.name ?? key,
+              pictureUrl: label?.pictureUrl ?? null,
+              description: label?.description || null,
+              modelId: label?.modelId,
+              modelDisplayName: label?.modelDisplayName,
             },
           ];
         })
@@ -134,6 +137,7 @@ export async function resolveDimensionLabels(
               name: skill?.name ?? key,
               pictureUrl: null,
               description: skill?.userFacingDescription ?? null,
+              icon: skill?.icon ?? null,
             },
           ];
         })
