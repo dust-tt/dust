@@ -71,6 +71,7 @@ import {
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { decodeUtf8HeaderValue } from "@app/types/shared/utils/http_headers";
 import type {
@@ -1476,6 +1477,65 @@ export class Authenticator {
     resourceId: number
   ): GroupGrant[] {
     return this._permissions.forResource(resourceType, resourceId);
+  }
+
+  /**
+   * Shadow-compare (#9479) for the group_permissions rollout: while the `group_permissions_shadow`
+   * flag is on for the workspace, compare two composed decisions for the same check — the served
+   * `legacyAcls` and the `candidateAcls` (the same roles routed through the group_permissions
+   * table) — and log mismatches so a Datadog monitor can confirm parity before the flip (#9480).
+   * The caller builds both shapes. Fire-and-forget: never changes the served result and swallows its
+   * own failures. (Inlined rather than reusing `lib/api/permissions/shadow` to avoid an auth <->
+   * shadow import cycle.)
+   */
+  shadowComparePermission(
+    verb: GrantVerb,
+    legacyAcls: AccessControlList[],
+    candidateAcls: AccessControlList[],
+    context: Record<string, string | number | boolean | null>
+  ): void {
+    void this.runShadowComparePermission(
+      verb,
+      legacyAcls,
+      candidateAcls,
+      context
+    );
+  }
+
+  private async runShadowComparePermission(
+    verb: GrantVerb,
+    legacyAcls: AccessControlList[],
+    candidateAcls: AccessControlList[],
+    context: Record<string, string | number | boolean | null>
+  ): Promise<void> {
+    try {
+      const flags = await getFeatureFlags(this);
+      if (!flags.includes("group_permissions_shadow")) {
+        return;
+      }
+
+      const legacyResult = this.hasPermissionForAcls(verb, legacyAcls);
+      const candidateResult = this.hasPermissionForAcls(verb, candidateAcls);
+
+      // The literal message is the Datadog monitor key — keep it stable.
+      if (legacyResult !== candidateResult) {
+        logger.warn(
+          {
+            ...context,
+            legacyResult,
+            candidateResult,
+            legacyAcls,
+            candidateAcls,
+          },
+          "group_permissions_shadow_mismatch"
+        );
+      }
+    } catch (err) {
+      logger.error(
+        { ...context, err: normalizeError(err) },
+        "group_permissions_shadow_error"
+      );
+    }
   }
 
   /**
