@@ -361,13 +361,14 @@ const deleteEnvelopeSchema = z.union([
  * listing never has to check what is live first.
  *
  * Only the LIVE files go. The litestream replica is the durable copy, so a caller deleting a database
- * for good must also wipe its replica prefix (`deletePodDatabaseReplica`), or the next cold-start
- * restore brings the database back.
+ * for good must also restart the daemon (`restartLitestreamDaemon`, which is what makes it let go of
+ * the removed files) and wipe the replica prefix (`deletePodDatabaseReplica`), or the next cold-start
+ * restore brings the database back. Returns the sandbox so that restart needs no second lookup.
  */
 export async function deleteDatabaseOnSandbox(
   auth: Authenticator,
   { space, database }: { space: SpaceResource; database: string }
-): Promise<Result<void, SandboxFunctionError>> {
+): Promise<Result<{ sandbox: SandboxResource }, SandboxFunctionError>> {
   // The name contract (`^[a-z][a-z0-9_]{0,63}$`) admits no separator or dot, so a validated name
   // cannot escape the databases directory. The same guard runs on the replica path.
   if (!isValidPodDatabaseName(database)) {
@@ -400,7 +401,7 @@ export async function deleteDatabaseOnSandbox(
   if (result.isErr()) {
     return result;
   }
-  const { envelope } = result.value;
+  const { envelope, sandbox } = result.value;
 
   if ("ok" in envelope && envelope.ok) {
     logger.info(
@@ -411,7 +412,7 @@ export async function deleteDatabaseOnSandbox(
       },
       "Pod database deleted: removed live files"
     );
-    return new Ok(undefined);
+    return new Ok({ sandbox });
   }
 
   return new Err(dbErrorToSandboxFunctionError(database, envelope, "internal"));
