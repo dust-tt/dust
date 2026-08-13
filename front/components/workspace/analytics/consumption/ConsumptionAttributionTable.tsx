@@ -22,7 +22,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import type { Transition, Variants } from "framer-motion";
 import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
@@ -36,7 +36,12 @@ import {
   isConsumptionDimension,
 } from "./consumptionDimensions";
 
-const TOP_LIMIT = 25;
+// The consumption endpoints rank via an Elasticsearch terms aggregation
+// (no offset/cursor support), so we fetch the maximum allowed batch once and
+// paginate over it client-side.
+const TOP_FETCH_LIMIT = 100;
+
+const ATTRIBUTION_PAGE_SIZE = 25;
 
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
 
@@ -238,6 +243,10 @@ function AttributionRows({
 }: AttributionRowsProps) {
   const { hasAvatar, avgLabel } = CONSUMPTION_DIMENSION_CONFIG[dimension];
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: ATTRIBUTION_PAGE_SIZE,
+  });
   const shouldReduceMotion = useReducedMotion();
 
   const {
@@ -249,18 +258,31 @@ function AttributionRows({
     workspaceId,
     dimension,
     period,
-    limit: TOP_LIMIT,
+    limit: TOP_FETCH_LIMIT,
     filter,
   });
 
   // Client-side filter over the loaded ranking. A row outside the top
-  // TOP_LIMIT will not appear — the endpoint has no server-side search yet.
+  // TOP_FETCH_LIMIT will not appear — the endpoint has no server-side search yet.
   const rows = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return needle
       ? allRows.filter((row) => row.name.toLowerCase().includes(needle))
       : allRows;
   }, [allRows, search]);
+
+  // Derived, not stored: a narrower search (or a ranking that shrank) can
+  // leave `pagination.pageIndex` past the last page. Clamping here — instead
+  // of writing the correction back with a render-phase setState — keeps the
+  // effective page always valid without any risk of a setState-during-render
+  // loop if `rows` ever fails to stay referentially stable across renders.
+  const clampedPagination: PaginationState = useMemo(() => {
+    const pageCount = Math.max(1, Math.ceil(rows.length / pagination.pageSize));
+    return {
+      pageSize: pagination.pageSize,
+      pageIndex: Math.min(pagination.pageIndex, pageCount - 1),
+    };
+  }, [rows.length, pagination.pageSize, pagination.pageIndex]);
 
   const columns = useMemo(
     () =>
@@ -272,6 +294,20 @@ function AttributionRows({
       }),
     [hasAvatar, dimension, avgLabel, totalCredits]
   );
+
+  const attributionData: AttributionRowData[] = useMemo(() => {
+    const selectedIdSet = new Set(
+      filter?.[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]] ?? []
+    );
+    return rows.map((row) => ({
+      ...row,
+      isExpanded: expandedRowId === row.id,
+      isFilterSelected: selectedIdSet.has(row.id),
+      onClick: () =>
+        setExpandedRowId((current) => (current === row.id ? null : row.id)),
+      onAddFilter: () => onAddFilter(row),
+    }));
+  }, [rows, expandedRowId, filter, dimension, onAddFilter]);
 
   let contentKey = "content";
   let content: ReactNode;
@@ -287,6 +323,8 @@ function AttributionRows({
         period={period}
         filter={filter}
         onViewAll={onViewAll}
+        pagination={pagination}
+        setPagination={setPagination}
         isLoading
         hasAvatar={hasAvatar}
         isAvatarRounded={dimension === "user"}
@@ -307,28 +345,18 @@ function AttributionRows({
       </div>
     );
   } else {
-    const selectedIdSet = new Set(
-      filter?.[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]] ?? []
-    );
-    const data: AttributionRowData[] = rows.map((row) => ({
-      ...row,
-      isExpanded: expandedRowId === row.id,
-      isFilterSelected: selectedIdSet.has(row.id),
-      onClick: () =>
-        setExpandedRowId((current) => (current === row.id ? null : row.id)),
-      onAddFilter: () => onAddFilter(row),
-    }));
-
     content = (
       <div className="overflow-x-auto">
         <ConsumptionAttributionRowsTable
-          data={data}
+          data={attributionData}
           columns={columns}
           workspaceId={workspaceId}
           dimension={dimension}
           period={period}
           filter={filter}
           onViewAll={onViewAll}
+          pagination={clampedPagination}
+          setPagination={setPagination}
         />
       </div>
     );

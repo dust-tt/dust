@@ -11,11 +11,17 @@ import {
   DataTable,
   Icon,
   LoadingBlock,
+  Pagination,
 } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
+import type {
+  ColumnDef,
+  PaginationState,
+  Updater,
+} from "@tanstack/react-table";
 import {
   flexRender,
   getCoreRowModel,
+  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
@@ -107,6 +113,8 @@ interface ConsumptionAttributionRowsTableProps {
     dimension: ConsumptionDimension,
     selectedRow: ConsumptionTopRow
   ) => void;
+  pagination: PaginationState;
+  setPagination: (pagination: PaginationState) => void;
   isLoading?: boolean;
   hasAvatar?: boolean;
   isAvatarRounded?: boolean;
@@ -120,6 +128,8 @@ export function ConsumptionAttributionRowsTable({
   period,
   filter,
   onViewAll,
+  pagination,
+  setPagination,
   isLoading = false,
   hasAvatar = false,
   isAvatarRounded = false,
@@ -129,124 +139,143 @@ export function ConsumptionAttributionRowsTable({
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    onPaginationChange: (updater: Updater<PaginationState>) => {
+      const newValue =
+        typeof updater === "function" ? updater(pagination) : updater;
+      setPagination(newValue);
+    },
+    state: {
+      pagination,
+    },
   });
 
   return (
-    <DataTable.Root className="min-w-150">
-      <DataTable.Header>
-        {table.getHeaderGroups().map((headerGroup) => (
-          <DataTable.Row key={headerGroup.id} widthClassName="w-full">
-            {headerGroup.headers.map((header) => (
-              <DataTable.Head
-                column={header.column}
-                key={header.id}
-                onClick={
-                  header.column.getCanSort()
-                    ? header.column.getToggleSortingHandler()
-                    : undefined
-                }
-                className={cn(header.column.getCanSort() && "cursor-pointer")}
-              >
-                <div
-                  className={cn(
-                    "flex items-center space-x-1 whitespace-nowrap",
-                    header.column.columnDef.meta?.headerAlign === "right" &&
-                      "justify-end"
-                  )}
+    <div className="flex flex-col gap-2">
+      <DataTable.Root className="min-w-150">
+        <DataTable.Header>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <DataTable.Row key={headerGroup.id} widthClassName="w-full">
+              {headerGroup.headers.map((header) => (
+                <DataTable.Head
+                  column={header.column}
+                  key={header.id}
+                  onClick={
+                    header.column.getCanSort()
+                      ? header.column.getToggleSortingHandler()
+                      : undefined
+                  }
+                  className={cn(header.column.getCanSort() && "cursor-pointer")}
                 >
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext()
-                  )}
-                  {header.column.getCanSort() && (
-                    <Icon
-                      visual={
-                        header.column.getIsSorted() === "asc"
-                          ? ArrowUp
-                          : header.column.getIsSorted() === "desc"
-                            ? ArrowDown
-                            : ChevronSelectorVertical
-                      }
-                      size="xs"
-                      className="ml-1"
-                    />
-                  )}
-                </div>
-              </DataTable.Head>
-            ))}
-          </DataTable.Row>
-        ))}
-      </DataTable.Header>
-      <DataTable.Body>
-        {isLoading
-          ? Array.from(
-              { length: ATTRIBUTION_SKELETON_ROW_COUNT },
-              (_, rowIndex) => (
-                <DataTable.Row
-                  key={rowIndex}
-                  widthClassName="w-full"
-                  aria-hidden="true"
-                >
-                  {table.getAllLeafColumns().map((column) => (
-                    <DataTable.Cell column={column} key={column.id}>
-                      <AttributionSkeletonCell
-                        columnId={column.id}
-                        rowIndex={rowIndex}
-                        hasAvatar={hasAvatar}
-                        isAvatarRounded={isAvatarRounded}
-                      />
-                    </DataTable.Cell>
-                  ))}
-                </DataTable.Row>
-              )
-            )
-          : table.getRowModel().rows.map((row) => (
-              <Fragment key={row.id}>
-                <DataTable.Row
-                  widthClassName="w-full"
-                  onClick={row.original.onClick}
-                  rowData={row.original}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <DataTable.Cell column={cell.column} key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </DataTable.Cell>
-                  ))}
-                </DataTable.Row>
-                <tr>
-                  <td
-                    className="max-w-0"
-                    colSpan={row.getVisibleCells().length}
+                  <div
+                    className={cn(
+                      "flex items-center space-x-1 whitespace-nowrap",
+                      header.column.columnDef.meta?.headerAlign === "right" &&
+                        "justify-end"
+                    )}
                   >
-                    <Collapsible open={row.original.isExpanded}>
-                      <CollapsibleContent
-                        animated={false}
-                        className={cn(
-                          "transition-none ease-enter motion-reduce:animate-none",
-                          "data-[state=open]:animate-in data-[state=open]:fade-in-0",
-                          "data-[state=open]:slide-in-from-top-1 data-[state=open]:duration-enter",
-                          "data-[state=closed]:animate-out data-[state=closed]:fade-out-0",
-                          "data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-exit"
-                        )}
-                      >
-                        <ConsumptionAttributionBreakdown
-                          workspaceId={workspaceId}
-                          selectedDimension={dimension}
-                          selectedRow={row.original}
-                          period={period}
-                          filter={filter}
-                          onViewAll={onViewAll}
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
+                    {header.column.getCanSort() && (
+                      <Icon
+                        visual={
+                          header.column.getIsSorted() === "asc"
+                            ? ArrowUp
+                            : header.column.getIsSorted() === "desc"
+                              ? ArrowDown
+                              : ChevronSelectorVertical
+                        }
+                        size="xs"
+                        className="ml-1"
+                      />
+                    )}
+                  </div>
+                </DataTable.Head>
+              ))}
+            </DataTable.Row>
+          ))}
+        </DataTable.Header>
+        <DataTable.Body>
+          {isLoading
+            ? Array.from(
+                { length: ATTRIBUTION_SKELETON_ROW_COUNT },
+                (_, rowIndex) => (
+                  <DataTable.Row
+                    key={rowIndex}
+                    widthClassName="w-full"
+                    aria-hidden="true"
+                  >
+                    {table.getAllLeafColumns().map((column) => (
+                      <DataTable.Cell column={column} key={column.id}>
+                        <AttributionSkeletonCell
+                          columnId={column.id}
+                          rowIndex={rowIndex}
+                          hasAvatar={hasAvatar}
+                          isAvatarRounded={isAvatarRounded}
                         />
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </td>
-                </tr>
-              </Fragment>
-            ))}
-      </DataTable.Body>
-    </DataTable.Root>
+                      </DataTable.Cell>
+                    ))}
+                  </DataTable.Row>
+                )
+              )
+            : table.getRowModel().rows.map((row) => (
+                <Fragment key={row.id}>
+                  <DataTable.Row
+                    widthClassName="w-full"
+                    onClick={row.original.onClick}
+                    rowData={row.original}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <DataTable.Cell column={cell.column} key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </DataTable.Cell>
+                    ))}
+                  </DataTable.Row>
+                  <tr>
+                    <td
+                      className="max-w-0"
+                      colSpan={row.getVisibleCells().length}
+                    >
+                      <Collapsible open={row.original.isExpanded}>
+                        <CollapsibleContent
+                          animated={false}
+                          className={cn(
+                            "transition-none ease-enter motion-reduce:animate-none",
+                            "data-[state=open]:animate-in data-[state=open]:fade-in-0",
+                            "data-[state=open]:slide-in-from-top-1 data-[state=open]:duration-enter",
+                            "data-[state=closed]:animate-out data-[state=closed]:fade-out-0",
+                            "data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-exit"
+                          )}
+                        >
+                          <ConsumptionAttributionBreakdown
+                            workspaceId={workspaceId}
+                            selectedDimension={dimension}
+                            selectedRow={row.original}
+                            period={period}
+                            filter={filter}
+                            onViewAll={onViewAll}
+                          />
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </td>
+                  </tr>
+                </Fragment>
+              ))}
+        </DataTable.Body>
+      </DataTable.Root>
+      {!isLoading && (
+        <Pagination
+          size="xs"
+          pagination={pagination}
+          setPagination={setPagination}
+          rowCount={table.getRowCount()}
+        />
+      )}
+    </div>
   );
 }
