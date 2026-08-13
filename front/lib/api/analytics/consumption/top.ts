@@ -128,9 +128,10 @@ export async function fetchConsumptionTopGroups(
 
   const groups: ConsumptionTopGroup[] = [];
   let afterKey: { value: string } | undefined;
+  let bucketCount: number;
   let totalCredits = 0;
 
-  while (true) {
+  do {
     const result = await searchConsumptionAnalytics<never, TopAggs>(query, {
       aggregations: {
         by_group: {
@@ -170,16 +171,14 @@ export async function fetchConsumptionTopGroups(
 
     const aggregation = result.value.aggregations?.by_group;
     const page = bucketsToArray<GroupBucket>(aggregation?.buckets);
+    bucketCount = page.length;
     groups.push(...page.map((bucket) => groupFromBucket(bucket, unit)));
     totalCredits = microCreditsToCredits(
       result.value.aggregations?.total_credit_micro?.value ?? 0
     );
 
     afterKey = aggregation?.after_key;
-    if (limit !== null || !afterKey || page.length === 0) {
-      break;
-    }
-  }
+  } while (limit === null && afterKey !== undefined && bucketCount > 0);
 
   return new Ok({
     groups:
