@@ -217,17 +217,16 @@ export function selectAllUsageFilterOptions<C extends UsageFilterCategory>(
   return { ...filter, [category]: [...current, ...additions] };
 }
 
-// Maps an attribution row to the filter UI option shape, replacing that
-// dimension while preserving the other filters.
-export function setUsageFilterFromAttributionRow(
-  filter: UsageFilter,
+type AttributionFilterRow = {
+  id: string;
+  name: string;
+  pictureUrl: string | null;
+};
+
+function usageFilterOptionFromAttributionRow(
   dimension: ConsumptionScopeDimension,
-  row: {
-    id: string;
-    name: string;
-    pictureUrl: string | null;
-  }
-): UsageFilter {
+  row: AttributionFilterRow
+): UsageFilterOption {
   const baseOption = {
     id: row.id,
     name: row.name,
@@ -236,46 +235,74 @@ export function setUsageFilterFromAttributionRow(
 
   switch (dimension) {
     case "agent":
-      return {
-        ...filter,
-        agent: [{ ...baseOption, kind: "agent", image: row.pictureUrl }],
-      };
+      return { ...baseOption, kind: "agent", image: row.pictureUrl };
     case "user":
-      return {
-        ...filter,
-        member: [{ ...baseOption, kind: "member", image: row.pictureUrl }],
-      };
+      return { ...baseOption, kind: "member", image: row.pictureUrl };
     case "group":
-      return { ...filter, group: [{ ...baseOption, kind: "group" }] };
+      return { ...baseOption, kind: "group" };
     case "model":
-      return {
-        ...filter,
-        model: [{ ...baseOption, kind: "model", tier: undefined }],
-      };
+      return { ...baseOption, kind: "model", tier: undefined };
     case "tool":
-      return {
-        ...filter,
-        tool: [{ ...baseOption, kind: "tool", icon: null }],
-      };
+      return { ...baseOption, kind: "tool", icon: null };
     case "skill":
-      return {
-        ...filter,
-        skill: [{ ...baseOption, kind: "skill", icon: null }],
-      };
+      return { ...baseOption, kind: "skill", icon: null };
     case "source":
       return {
-        ...filter,
-        source: [
-          {
-            ...baseOption,
-            kind: "source",
-            connectorProvider: isConnectorProvider(row.id) ? row.id : undefined,
-          },
-        ],
+        ...baseOption,
+        kind: "source",
+        connectorProvider: isConnectorProvider(row.id) ? row.id : undefined,
       };
     default:
       return assertNever(dimension);
   }
+}
+
+function addUsageFilterOption(
+  filter: UsageFilter,
+  option: UsageFilterOption
+): UsageFilter {
+  switch (option.kind) {
+    case "agent":
+      return selectAllUsageFilterOptions(filter, "agent", [option]);
+    case "member":
+      return selectAllUsageFilterOptions(filter, "member", [option]);
+    case "group":
+      return selectAllUsageFilterOptions(filter, "group", [option]);
+    case "model":
+      return selectAllUsageFilterOptions(filter, "model", [option]);
+    case "tool":
+      return selectAllUsageFilterOptions(filter, "tool", [option]);
+    case "skill":
+      return selectAllUsageFilterOptions(filter, "skill", [option]);
+    case "source":
+      return selectAllUsageFilterOptions(filter, "source", [option]);
+    default:
+      return assertNever(option);
+  }
+}
+
+export function addUsageFilterFromAttributionRow(
+  filter: UsageFilter,
+  dimension: ConsumptionScopeDimension,
+  row: AttributionFilterRow
+): UsageFilter {
+  return addUsageFilterOption(
+    filter,
+    usageFilterOptionFromAttributionRow(dimension, row)
+  );
+}
+
+// Maps an attribution row to the filter UI option shape, replacing that
+// dimension while preserving the other filters.
+export function setUsageFilterFromAttributionRow(
+  filter: UsageFilter,
+  dimension: ConsumptionScopeDimension,
+  row: AttributionFilterRow
+): UsageFilter {
+  return {
+    ...filter,
+    ...addUsageFilterFromAttributionRow({}, dimension, row),
+  };
 }
 
 // "member" maps to the "user" dimension; every other category maps directly

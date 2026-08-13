@@ -1,4 +1,5 @@
 import {
+  addUsageFilterFromAttributionRow,
   getUsageFilterSummaries,
   setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
@@ -184,5 +185,43 @@ describe("getUsageFilterSummaries", () => {
 
   it("omits empty categories", () => {
     expect(getUsageFilterSummaries({ group: [] })).toEqual([]);
+  });
+});
+
+describe("addUsageFilterFromAttributionRow", () => {
+  const row = {
+    id: "selected-member",
+    name: "Ada",
+    pictureUrl: null,
+  };
+
+  it("adds a row while preserving existing selections", () => {
+    const filter = addUsageFilterFromAttributionRow(
+      {
+        member: [
+          {
+            id: "existing-member",
+            name: "Grace",
+            kind: "member",
+            image: null,
+            disabled: false,
+          },
+        ],
+      },
+      "user",
+      row
+    );
+
+    expect(filter.member?.map(({ id }) => id)).toEqual([
+      "existing-member",
+      row.id,
+    ]);
+  });
+
+  it("does not duplicate an already selected row", () => {
+    const once = addUsageFilterFromAttributionRow({}, "user", row);
+    const twice = addUsageFilterFromAttributionRow(once, "user", row);
+
+    expect(twice).toEqual(once);
   });
 });
