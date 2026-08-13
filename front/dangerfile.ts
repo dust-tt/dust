@@ -506,7 +506,7 @@ async function checkDiffFiles() {
 
   // Documented API files (front-api owns OpenAPI generation).
   const modifiedDocumentedApiFiles = diffFiles.filter((path) => {
-    return path.startsWith("front-api/routes/");
+    return path.startsWith("front-api/routes/v1/");
   });
 
   if (modifiedDocumentedApiFiles.length > 0) {
