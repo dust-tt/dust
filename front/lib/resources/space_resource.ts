@@ -286,11 +286,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         transaction
       ));
 
-    // No explicit group_permissions write here: `makeNew` writes the grants of every space it
-    // creates, and both production callers run this straight after `WorkspaceResource.makeNew`, so
-    // the `find(...) ||` branches only ever hit on a re-run. Spaces that predate the dual-write are
-    // the backfill script's job (`20260728_backfill_space_group_permissions`), which covers every
-    // space in every workspace rather than just these three.
     return {
       systemSpace,
       globalSpace,
@@ -1105,6 +1100,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           transaction: t,
         });
         if (setMembersRes.isErr()) {
+          await this.writeGroupPermissions(auth, { transaction: t });
           return setMembersRes;
         }
 
@@ -1154,6 +1150,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             transaction: t,
           });
           if (setEditorsRes.isErr()) {
+            await this.writeGroupPermissions(auth, { transaction: t });
             return setEditorsRes;
           }
         }
@@ -1176,6 +1173,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           groupIds
         );
         if (selectedGroupsResult.isErr()) {
+          // The provisioned groups just removed above stay removed, so their grants must be removed too.
+          await this.writeGroupPermissions(auth, { transaction: t });
           return selectedGroupsResult;
         }
         const selectedGroups = selectedGroupsResult.value;
@@ -1198,6 +1197,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             editorGroupIds
           );
           if (editorGroupsResult.isErr()) {
+            await this.writeGroupPermissions(auth, { transaction: t });
             return editorGroupsResult;
           }
           const selectedEditorGroups = editorGroupsResult.value;
@@ -1215,7 +1215,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         }
       }
 
-      // Write the updated group associations into group_permissions (#9478).
+      // Write the updated group associations into group_permissions
       await this.writeGroupPermissions(auth, { transaction: t });
 
       return new Ok(undefined);
