@@ -2,7 +2,6 @@ import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/label
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { buildConsumptionScopeQuery } from "@app/lib/api/analytics/consumption/scope";
-import { EXPORT_PAGE_SIZE } from "@app/lib/api/analytics/consumption/top";
 import { roundToCents, rowsToCsv } from "@app/lib/api/analytics/csv_utils";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
@@ -14,6 +13,8 @@ import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { estypes } from "@elastic/elasticsearch";
 import AdmZip from "adm-zip";
+
+const EXPORT_PAGE_SIZE = 10_000;
 
 // One document per unit of billed credit consumption
 async function fetchAllConsumptionDocuments(
@@ -253,9 +254,7 @@ async function buildConsumptionLineExportRows(
   });
 }
 
-// Exports every raw consumption document over the period as a single CSV,
-// bundled as a zip archive — one row per LLM run-step or tool call, with no
-// aggregation, for users who want to build their own analysis on top of it.
+// Exports every raw consumption under zipped csv format
 export async function fetchConsumptionLinesExportZip(
   auth: Authenticator,
   {

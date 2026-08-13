@@ -34,9 +34,6 @@ export const CONSUMPTION_DIMENSION_FIELDS: Record<
   source: "context_origin",
 };
 
-// Unit a ranking's count — and therefore its average — is denominated in.
-// "message" is the count of distinct messages, "invocation" is used for the
-// count of tool documents.
 export type ConsumptionTopUnit = "message" | "invocation";
 
 export const CONSUMPTION_DIMENSION_UNIT: Record<

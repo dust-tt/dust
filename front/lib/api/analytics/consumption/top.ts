@@ -64,10 +64,6 @@ type TopAggs = {
   total_credit_micro?: estypes.AggregationsSumAggregate;
 };
 
-// Shared with the raw-lines export's own pagination in this module's sibling
-// file.
-export const EXPORT_PAGE_SIZE = 10_000;
-
 function countFromBucket(
   bucket: GroupBucket,
   unit: ConsumptionTopUnit
