@@ -92,6 +92,7 @@ const PERIOD: ConsumptionPeriod = {
 const TOP_AGENTS: GetConsumptionTopAgentsResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  hasMore: false,
   agents: [
     {
       agentId: "agent1",
@@ -110,6 +111,7 @@ const TOP_AGENTS: GetConsumptionTopAgentsResponse = {
 const TOP_USERS: GetConsumptionTopUsersResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  hasMore: false,
   users: [
     {
       userId: "user1",
@@ -125,6 +127,7 @@ const TOP_USERS: GetConsumptionTopUsersResponse = {
 const TOP_MODELS: GetConsumptionTopModelsResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  hasMore: false,
   models: [
     {
       modelId: "claude-4-sonnet",
@@ -139,6 +142,7 @@ const TOP_MODELS: GetConsumptionTopModelsResponse = {
 const TOP_SOURCES: GetConsumptionTopSourcesResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  hasMore: false,
   sources: [
     {
       source: "web",
@@ -153,6 +157,7 @@ const TOP_SOURCES: GetConsumptionTopSourcesResponse = {
 const TOP_GROUPS: GetConsumptionTopGroupsResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  hasMore: false,
   groups: [
     {
       groupId: "group1",
@@ -167,6 +172,7 @@ const TOP_GROUPS: GetConsumptionTopGroupsResponse = {
 const TOP_TOOLS: GetConsumptionTopToolsResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  hasMore: false,
   tools: [
     {
       serverName: "web_search_browse",
@@ -182,6 +188,7 @@ const TOP_TOOLS: GetConsumptionTopToolsResponse = {
 const TOP_SKILLS: GetConsumptionTopSkillsResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  hasMore: false,
   skills: [
     {
       skillId: "skl_1",
@@ -298,6 +305,7 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
     // The period is resolved by the route, so only its shape is asserted here.
     expect(lastCall()?.[1]).toEqual({
       limit: 10,
+      offset: 0,
       period: { startDate: expect.any(String), endDate: expect.any(String) },
       filter: undefined,
     });
@@ -311,12 +319,13 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
     expect(response.status).toBe(403);
   });
 
-  it("forwards the limit, the period and the filter", async () => {
+  it("forwards the page, the period and the filter", async () => {
     vi.mocked(fetchConsumptionTopAgents).mockResolvedValue(new Ok(TOP_AGENTS));
     const { workspace } = await setupTest();
 
     const response = await postRankingRequest(workspace.sId, "top-agents", {
       limit: 5,
+      offset: 25,
       period: "days",
       days: 7,
       filter: { sources: ["slack"] },
@@ -327,6 +336,7 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
       expect.anything(),
       expect.objectContaining({
         limit: 5,
+        offset: 25,
         filter: { sources: ["slack"] },
       })
     );

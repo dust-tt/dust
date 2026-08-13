@@ -117,6 +117,7 @@ describe("consumption top rankings", () => {
     }
     expect(result.value.period).toEqual(PERIOD);
     expect(result.value.totalCredits).toBe(5);
+    expect(result.value.hasMore).toBe(false);
     expect(result.value.agents).toEqual([
       {
         agentId: "agent1",
@@ -140,7 +141,7 @@ describe("consumption top rankings", () => {
     });
     expect(options?.aggregations?.by_group?.terms).toMatchObject({
       field: "agent.id",
-      size: 10,
+      size: 11,
       order: { credit_micro: "desc" },
     });
     expect(
@@ -152,6 +153,59 @@ describe("consumption top rankings", () => {
     expect(options?.aggregations?.total_credit_micro?.sum?.field).toBe(
       "credit_micro"
     );
+  });
+
+  it("returns one ranked page and reports whether another page exists", async () => {
+    const { auth } = await setup();
+    mockLabels({ agent2: "Agent 2", agent3: "Agent 3" });
+    mockAggs({
+      buckets: [
+        {
+          key: "agent1",
+          doc_count: 1,
+          credit_micro: { value: 4_000_000 },
+          messages: { value: 1 },
+        },
+        {
+          key: "agent2",
+          doc_count: 1,
+          credit_micro: { value: 3_000_000 },
+          messages: { value: 1 },
+        },
+        {
+          key: "agent3",
+          doc_count: 1,
+          credit_micro: { value: 2_000_000 },
+          messages: { value: 1 },
+        },
+        {
+          key: "agent4",
+          doc_count: 1,
+          credit_micro: { value: 1_000_000 },
+          messages: { value: 1 },
+        },
+      ],
+      totalMicro: 10_000_000,
+    });
+
+    const result = await fetchConsumptionTopAgents(auth, {
+      period: PERIOD,
+      limit: 2,
+      offset: 1,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.agents.map((agent) => agent.agentId)).toEqual([
+      "agent2",
+      "agent3",
+    ]);
+    expect(result.value.hasMore).toBe(true);
+    expect(lastSearchCall()[1]?.aggregations?.by_group?.terms).toMatchObject({
+      size: 4,
+    });
   });
 
   it("counts tool invocations as documents, with no message sub-agg", async () => {

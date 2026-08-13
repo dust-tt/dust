@@ -36,6 +36,7 @@ export type ConsumptionTopSkillRow = {
 export type ConsumptionTopSkills = {
   period: ConsumptionPeriod;
   totalCredits: number;
+  hasMore: boolean;
   // Highest credits first.
   skills: ConsumptionTopSkillRow[];
 };
@@ -47,10 +48,12 @@ export async function fetchConsumptionTopSkills(
   {
     period,
     limit,
+    offset = 0,
     filter,
   }: {
     period: ConsumptionPeriod;
     limit: number;
+    offset?: number;
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionTopSkills, ElasticsearchError>> {
@@ -58,12 +61,13 @@ export async function fetchConsumptionTopSkills(
     dimension: "skill",
     period,
     limit,
+    offset,
     filter,
   });
   if (result.isErr()) {
     return result;
   }
-  const { groups, totalCredits } = result.value;
+  const { groups, hasMore, totalCredits } = result.value;
 
   const labels = await resolveDimensionLabels(
     auth,
@@ -74,6 +78,7 @@ export async function fetchConsumptionTopSkills(
   return new Ok({
     period,
     totalCredits,
+    hasMore,
     skills: groups.map((group) => ({
       skillId: group.key,
       name: labels.get(group.key)?.name ?? group.key,

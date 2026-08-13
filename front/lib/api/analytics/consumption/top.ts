@@ -32,6 +32,7 @@ type ConsumptionTopGroup = {
 
 export type ConsumptionTopGroups = {
   groups: ConsumptionTopGroup[];
+  hasMore: boolean;
   // Gross credits over the whole scoped period, every document included. Not the
   // sum of `groups`. The ranking is capped at `limit`, and a dimension that only
   // exists on some documents (a tool, a skill) accounts for part of the total.
@@ -92,11 +93,13 @@ export async function fetchConsumptionTopGroups(
     dimension,
     period,
     limit,
+    offset = 0,
     filter,
   }: {
     dimension: ConsumptionScopeDimension;
     period: ConsumptionPeriod;
     limit: number;
+    offset?: number;
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
@@ -107,13 +110,14 @@ export async function fetchConsumptionTopGroups(
     endDate: period.endDate,
     filter,
   });
+  const requestedBucketCount = offset + limit + 1;
 
   const result = await searchConsumptionAnalytics<never, TopAggs>(query, {
     aggregations: {
       by_group: {
         terms: {
           field: CONSUMPTION_DIMENSION_FIELDS[dimension],
-          size: limit,
+          size: requestedBucketCount,
           order: { [CREDIT_AGG]: "desc" },
         },
         aggs: subAggs(unit),
@@ -127,7 +131,7 @@ export async function fetchConsumptionTopGroups(
     return result;
   }
 
-  const groups = bucketsToArray<GroupBucket>(
+  const rankedGroups = bucketsToArray<GroupBucket>(
     result.value.aggregations?.by_group?.buckets
   ).map((bucket) => ({
     key: String(bucket.key),
@@ -136,7 +140,8 @@ export async function fetchConsumptionTopGroups(
   }));
 
   return new Ok({
-    groups,
+    groups: rankedGroups.slice(offset, offset + limit),
+    hasMore: rankedGroups.length > offset + limit,
     totalCredits: microCreditsToCredits(
       result.value.aggregations?.total_credit_micro?.value ?? 0
     ),
