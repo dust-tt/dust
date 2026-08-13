@@ -2376,6 +2376,25 @@ describe("SpaceResource group_permissions shadow-compare", () => {
     return space;
   }
 
+  // The two sides shadowCompareSpacePermission compares must agree on every verb: the served ACLs
+  // (roles + `group_vaults` groups) and the governance ACLs (same roles, groups from the table).
+  function expectAclParity(auth: Authenticator, space: SpaceResource): void {
+    const legacyAcls = space.getAccessControlLists(auth);
+    const candidateAcls = space.governanceAcls(auth);
+
+    for (const permission of ["read", "write", "admin"] as const) {
+      expect({
+        spaceKind: space.kind,
+        permission,
+        granted: auth.hasPermissionForAcls(permission, candidateAcls),
+      }).toEqual({
+        spaceKind: space.kind,
+        permission,
+        granted: auth.hasPermissionForAcls(permission, legacyAcls),
+      });
+    }
+  }
+
   // Space creation dual-writes the space's grants (#9478), so divergence has to be introduced on
   // purpose: dropping the rows models a space whose grants were never backfilled.
   async function clearTableGrants(space: SpaceResource): Promise<void> {
@@ -2423,19 +2442,30 @@ describe("SpaceResource group_permissions shadow-compare", () => {
       workspace.sId
     );
 
-    // Legacy: the served ACLs (roles + inline groups). Candidate: same roles, groups from the
-    // group_permissions table — mirroring shadowCompareSpacePermission.
-    const legacyAcls = space.getAccessControlLists(adminAuth);
-    const candidateAcls = legacyAcls.map((acl) => ({
-      roles: acl.roles,
-      groups: memberAuth.getGroupPermissions("space", space.id),
-      workspaceId: acl.workspaceId,
-    }));
+    // Legacy: the served ACLs (roles + inline groups). Candidate: the governance ACLs, as
+    // shadowCompareSpacePermission builds them.
+    expectAclParity(memberAuth, space);
+  });
 
-    for (const permission of ["read", "write", "admin"] as const) {
-      expect(memberAuth.hasPermissionForAcls(permission, candidateAcls)).toBe(
-        memberAuth.hasPermissionForAcls(permission, legacyAcls)
-      );
+  // The default spaces are dual-written like any other (system -> member, global/conversations ->
+  // reader), so they are compared too — they used to be skipped.
+  it("reaches parity on the system, global and conversations spaces", async () => {
+    const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth, {
+      includeConversationsSpace: true,
+    });
+    const defaultSpaces = spaces.filter(
+      (space) => space.isSystem() || space.isGlobal() || space.isConversations()
+    );
+    expect(defaultSpaces.length).toBeGreaterThan(0);
+
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      memberUser.sId,
+      workspace.sId
+    );
+
+    for (const space of defaultSpaces) {
+      expectAclParity(memberAuth, space);
+      expectAclParity(adminAuth, space);
     }
   });
 

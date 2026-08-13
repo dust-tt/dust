@@ -36,6 +36,7 @@ import {
 import type {
   AccessControlList,
   GroupGrant,
+  RoleGrant,
 } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -1809,78 +1810,70 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    * @returns Array of AccessControlList objects based on space type
    */
   getAccessControlLists(auth: Authenticator): AccessControlList[] {
-    const groups = this.legacySpaceGroupGrants();
+    return [
+      {
+        workspaceId: this.workspaceId,
+        roles: this.spaceRoleGrants(),
+        groups: this.legacySpaceGroupGrants(),
+      },
+    ];
+  }
 
+  /**
+   * The space's access-control list built from governance data: the code role rules plus the groups
+   *  held in `group_permissions`. At the flip this becomes the served `getAccessControlLists(auth)`
+   *  and `legacySpaceGroupGrants` is deleted without touching it.
+   *
+   * Until then it is the shadow-compare candidate.
+   */
+  governanceAcls(auth: Authenticator): AccessControlList[] {
+    return [
+      {
+        workspaceId: this.workspaceId,
+        roles: this.spaceRoleGrants(),
+        groups: auth.getGroupPermissions("space", this.id),
+      },
+    ];
+  }
+
+  // The verbs each workspace role holds on this space, by space kind.
+  private spaceRoleGrants(): RoleGrant[] {
     // System space.
     if (this.isSystem()) {
-      return [
-        {
-          workspaceId: this.workspaceId,
-          roles: [{ role: "admin", permissions: ["admin", "write"] }],
-          groups,
-        },
-      ];
+      return [{ role: "admin", permissions: ["admin", "write"] }];
     }
 
     // Global Workspace space and Conversations space.
     if (this.isGlobal() || this.isConversations()) {
       return [
-        {
-          workspaceId: this.workspaceId,
-          roles: [
-            { role: "admin", permissions: ["admin", "read", "write"] },
-            // TODO(governance): remove once manager is available for everyone
-            { role: "builder", permissions: ["read", "write"] },
-            { role: "manager", permissions: ["read", "write"] },
-          ],
-          groups,
-        },
+        { role: "admin", permissions: ["admin", "read", "write"] },
+        // TODO(governance): remove once manager is available for everyone
+        { role: "builder", permissions: ["read", "write"] },
+        { role: "manager", permissions: ["read", "write"] },
       ];
     }
 
     // Open space.
-    // Currently only using global group for simplicity.
-    // TODO(2024-10-25 flav): Refactor to store a list of AccessControlList on conversations and
-    // agent_configurations. This will allow proper handling of multiple groups instead of only
-    // using the global group as a temporary solution.
     if (this.isRegularAndOpen()) {
       return [
-        {
-          workspaceId: this.workspaceId,
-          roles: [
-            { role: "admin", permissions: ["admin", "read", "write"] },
-            // TODO(governance): remove once manager is available for everyone
-            { role: "builder", permissions: ["read", "write"] },
-            { role: "manager", permissions: ["read", "write"] },
-            { role: "user", permissions: ["read"] },
-          ],
-          groups,
-        },
+        { role: "admin", permissions: ["admin", "read", "write"] },
+        // TODO(governance): remove once manager is available for everyone
+        { role: "builder", permissions: ["read", "write"] },
+        { role: "manager", permissions: ["read", "write"] },
+        { role: "user", permissions: ["read"] },
       ];
     }
 
     if (this.isProject()) {
       return [
-        {
-          workspaceId: this.workspaceId,
-          roles: [
-            { role: "admin", permissions: ["admin"] },
-            { role: "manager", permissions: this.isOpen() ? ["read"] : [] }, // Non-restricted projects are visible to all users
-            { role: "user", permissions: this.isOpen() ? ["read"] : [] }, // Non-restricted projects are visible to all users
-          ],
-          groups,
-        },
+        { role: "admin", permissions: ["admin"] },
+        { role: "manager", permissions: this.isOpen() ? ["read"] : [] }, // Non-restricted projects are visible to all users
+        { role: "user", permissions: this.isOpen() ? ["read"] : [] }, // Non-restricted projects are visible to all users
       ];
     }
 
     // Restricted regular space.
-    return [
-      {
-        workspaceId: this.workspaceId,
-        roles: [{ role: "admin", permissions: ["admin"] }],
-        groups,
-      },
-    ];
+    return [{ role: "admin", permissions: ["admin"] }];
   }
 
   // The role each of this space's `group_vaults` associations confers, as a registry grant type.
@@ -2095,36 +2088,28 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return auth.hasPermissionForAcls("read", perms);
   }
 
-  // Shadow-compare (#9479): while the `group_permissions_shadow` flag is on for the workspace, check
-  // whether routing group access through the group_permissions table yields the same decision as the
-  // legacy inline-group ACL, once composed with the (unchanged) code role rules. The served ACL is
-  // `getAccessControlLists(auth)` (legacy inline groups); the candidate keeps the same roles but
-  // takes its groups from `auth.getGroupPermissions("space", id)` (the table). Delegates the flag
-  // lookup + compare + log to the Authenticator as fire-and-forget — never changes the served
-  // result. Kept off system/global/conversations spaces, which stay code-ruled and are not part of
-  // the migration.
+  // Shadow-compare: while the `group_permissions_shadow` flag is on for the workspace, check
+  // whether the governance ACL yields the same decision as the legacy inline-group ACL. Legacy is
+  // the served `getAccessControlLists(auth)` (groups from the `group_vaults` associations); the
+  // candidate is `governanceAcls`, built independently from the table. Delegates the flag lookup +
+  // compare + log to the Authenticator as fire-and-forget — never changes the served result.
   private shadowCompareSpacePermission(
     auth: Authenticator,
     legacyAcls: AccessControlList[],
     permission: GrantVerb
   ): void {
-    if (this.isSystem() || this.isGlobal() || this.isConversations()) {
-      return;
-    }
-
-    const candidateAcls: AccessControlList[] = legacyAcls.map((acl) => ({
-      roles: acl.roles,
-      groups: auth.getGroupPermissions("space", this.id),
-      workspaceId: acl.workspaceId,
-    }));
-
-    auth.shadowComparePermission(permission, legacyAcls, candidateAcls, {
-      resource: "space",
-      spaceId: this.sId,
-      spaceKind: this.kind,
+    auth.shadowComparePermission(
       permission,
-      workspaceId: this.workspaceId,
-    });
+      legacyAcls,
+      this.governanceAcls(auth),
+      {
+        resource: "space",
+        spaceId: this.sId,
+        spaceKind: this.kind,
+        permission,
+        workspaceId: this.workspaceId,
+      }
+    );
   }
 
   canReadOrAdministrate(auth: Authenticator) {
