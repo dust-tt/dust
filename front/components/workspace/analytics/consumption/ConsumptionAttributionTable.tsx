@@ -158,12 +158,14 @@ function buildColumns({
   isAvatarRounded,
   avgLabel,
   totalCredits,
+  isDark,
 }: {
   dimension: ConsumptionDimension;
   hasAvatar: boolean;
   isAvatarRounded: boolean;
   avgLabel: string;
   totalCredits: number;
+  isDark: boolean;
 }): ColumnDef<AttributionRowData>[] {
   return [
     {
@@ -189,6 +191,18 @@ function buildColumns({
           ) : dimension === "tool" ? (
             <div className="flex min-w-0 items-center gap-2">
               {getAvatarFromIcon(toolIcon, "xs")}
+              <span className="truncate text-sm">{name}</span>
+            </div>
+          ) : dimension === "model" ? (
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="flex size-7 shrink-0 items-center justify-center">
+                <Icon
+                  visual={
+                    getModelLogoByModelId(row.id, isDark) ?? DustLogoSquare
+                  }
+                  size="sm"
+                />
+              </span>
               <span className="truncate text-sm">{name}</span>
             </div>
           ) : hasAvatar ? (
@@ -340,6 +354,7 @@ function AttributionRows({
   onViewAll,
 }: AttributionRowsProps) {
   const { hasAvatar, avgLabel } = CONSUMPTION_DIMENSION_CONFIG[dimension];
+  const { isDark } = useTheme();
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const shouldReduceMotion = useReducedMotion();
 
@@ -373,8 +388,9 @@ function AttributionRows({
         isAvatarRounded: dimension === "user",
         avgLabel,
         totalCredits,
+        isDark,
       }),
-    [hasAvatar, dimension, avgLabel, totalCredits]
+    [hasAvatar, dimension, avgLabel, totalCredits, isDark]
   );
 
   let contentKey = "content";
