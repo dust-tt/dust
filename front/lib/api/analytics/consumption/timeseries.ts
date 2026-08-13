@@ -179,7 +179,20 @@ async function fetchTimeseriesBreakdown(
   if (rankingResult.isErr()) {
     return rankingResult;
   }
-  const topDimensionKeys = rankingResult.value;
+  const rankedKeys = rankingResult.value;
+
+  if (rankedKeys.length === 0) {
+    return fetchTimeseries(query, scope);
+  }
+
+  // We resolve names before the histogram so a key not readable by the caller is dropped
+  // from the breakdown.
+  const names = await resolveDimensionDisplayNames(
+    auth,
+    breakdownBy,
+    rankedKeys
+  );
+  const topDimensionKeys = rankedKeys.filter((groupKey) => names.has(groupKey));
 
   if (topDimensionKeys.length === 0) {
     return fetchTimeseries(query, scope);
@@ -200,11 +213,6 @@ async function fetchTimeseriesBreakdown(
     topDimensionKeys
   );
 
-  const names = await resolveDimensionDisplayNames(
-    auth,
-    breakdownBy,
-    topDimensionKeys
-  );
   const rankedGroups = topDimensionKeys.map((groupKey) => ({
     groupKey,
     name: names.get(groupKey) ?? groupKey,

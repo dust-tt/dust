@@ -1,5 +1,6 @@
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
+import { CONSUMPTION_DIMENSIONS } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import {
   fireEvent,
@@ -71,6 +72,7 @@ describe("ConsumptionAttributionTable", () => {
       <ConsumptionAttributionTable
         workspaceId="workspace-id"
         period={period}
+        dimensions={CONSUMPTION_DIMENSIONS}
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
@@ -179,6 +181,7 @@ describe("ConsumptionAttributionTable", () => {
       <ConsumptionAttributionTable
         workspaceId="workspace-id"
         period={period}
+        dimensions={CONSUMPTION_DIMENSIONS}
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
@@ -226,6 +229,7 @@ describe("ConsumptionAttributionTable", () => {
       <ConsumptionAttributionTable
         workspaceId="workspace-id"
         period={period}
+        dimensions={CONSUMPTION_DIMENSIONS}
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
@@ -248,6 +252,7 @@ describe("ConsumptionAttributionTable", () => {
       <ConsumptionAttributionTable
         workspaceId="workspace-id"
         period={period}
+        dimensions={CONSUMPTION_DIMENSIONS}
         dimension="model"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
@@ -294,6 +299,7 @@ describe("ConsumptionAttributionTable", () => {
       <ConsumptionAttributionTable
         workspaceId="workspace-id"
         period={period}
+        dimensions={CONSUMPTION_DIMENSIONS}
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
@@ -321,6 +327,7 @@ describe("ConsumptionAttributionTable", () => {
       <ConsumptionAttributionTable
         workspaceId="workspace-id"
         period={period}
+        dimensions={CONSUMPTION_DIMENSIONS}
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
@@ -353,6 +360,7 @@ describe("ConsumptionAttributionTable", () => {
       <ConsumptionAttributionTable
         workspaceId="workspace-id"
         period={period}
+        dimensions={CONSUMPTION_DIMENSIONS}
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
@@ -395,6 +403,7 @@ describe("ConsumptionAttributionTable", () => {
       <ConsumptionAttributionTable
         workspaceId="workspace-id"
         period={period}
+        dimensions={CONSUMPTION_DIMENSIONS}
         dimension="skill"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}

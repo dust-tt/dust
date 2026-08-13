@@ -61,6 +61,38 @@ describe("buildConsumptionScopeQuery", () => {
     ]);
   });
 
+  it("confines a non-manager to their own user, dropping the group filter", async () => {
+    const { authenticator } = await createResourceTest({ role: "user" });
+    const query = buildConsumptionScopeQuery({
+      auth: authenticator,
+      ...WINDOW,
+      filter: {
+        agents: ["a1"],
+        users: ["someone-else", "another-member"],
+        groups: ["group1"],
+      },
+    });
+
+    expect(query.bool?.filter).toEqual([
+      { term: { workspace_id: authenticator.getNonNullableWorkspace().sId } },
+      expect.objectContaining({ range: expect.anything() }),
+      { term: { "agent.id": "a1" } },
+      { term: { "user.id": authenticator.getNonNullableUser().sId } },
+    ]);
+  });
+
+  it("confines a non-manager even when no filter is sent", async () => {
+    const { authenticator } = await createResourceTest({ role: "user" });
+    const query = buildConsumptionScopeQuery({
+      auth: authenticator,
+      ...WINDOW,
+    });
+
+    expect(query.bool?.filter).toContainEqual({
+      term: { "user.id": authenticator.getNonNullableUser().sId },
+    });
+  });
+
   it("ignores empty selections", async () => {
     const { authenticator } = await createResourceTest({
       role: "admin",

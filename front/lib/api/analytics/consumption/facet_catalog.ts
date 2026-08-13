@@ -4,6 +4,7 @@ import {
   isRemoteMCPServerType,
 } from "@app/lib/actions/mcp_helper";
 import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
+import { isPersonalConsumptionScope } from "@app/lib/api/analytics/consumption/scope";
 import { SOURCE_ORIGIN_LABELS } from "@app/lib/api/analytics/source_labels";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
@@ -110,24 +111,27 @@ async function listConsumptionFacetCatalogWithoutTracing(
   // workspace catalogs and is known to perform poorly on large workspaces.
   // Move most facet metadata into Elasticsearch so this endpoint can query ES
   // instead of loading several unbounded database-backed catalogs.
-  const members = await traceFacetCatalogLoad(
-    "members",
-    "user",
-    requestedDimension,
-    async () => {
-      const result = await getMembers(auth, { activeOnly: true });
-      return result.members;
-    }
-  );
-  const groups = await traceFacetCatalogLoad(
-    "groups",
-    "group",
-    requestedDimension,
-    () =>
-      GroupResource.listAllWorkspaceGroups(auth, {
-        groupKinds: [...MANAGEABLE_GROUP_KINDS],
-      })
-  );
+  // A personal scope has no member or group filter, so their catalogs are never
+  // read.
+  const isPersonalScope = isPersonalConsumptionScope(auth);
+  const members = isPersonalScope
+    ? []
+    : await traceFacetCatalogLoad(
+        "members",
+        "user",
+        requestedDimension,
+        async () => {
+          const result = await getMembers(auth, { activeOnly: true });
+          return result.members;
+        }
+      );
+  const groups = isPersonalScope
+    ? []
+    : await traceFacetCatalogLoad("groups", "group", requestedDimension, () =>
+        GroupResource.listAllWorkspaceGroups(auth, {
+          groupKinds: [...MANAGEABLE_GROUP_KINDS],
+        })
+      );
   const agents = await traceFacetCatalogLoad(
     "agents",
     "agent",

@@ -99,6 +99,7 @@ interface ConsumptionAttributionRowsTableProps {
   columns: ColumnDef<AttributionRowData>[];
   workspaceId: string;
   dimension: ConsumptionDimension;
+  dimensions: ConsumptionDimension[];
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
   onViewAll: (
@@ -117,6 +118,7 @@ export function ConsumptionAttributionRowsTable({
   columns,
   workspaceId,
   dimension,
+  dimensions,
   period,
   filter,
   onViewAll,
@@ -234,6 +236,7 @@ export function ConsumptionAttributionRowsTable({
                         <ConsumptionAttributionBreakdown
                           workspaceId={workspaceId}
                           selectedDimension={dimension}
+                          dimensions={dimensions}
                           selectedRow={row.original}
                           period={period}
                           filter={filter}

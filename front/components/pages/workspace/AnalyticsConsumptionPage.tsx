@@ -2,19 +2,29 @@ import { ConsumptionAttributionTable } from "@app/components/workspace/analytics
 import { ConsumptionOverview } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import { consumptionDimensionFromQueryParam } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
+import {
+  CONSUMPTION_DIMENSIONS,
+  consumptionDimensionFromQueryParam,
+} from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
 import { UsageFilterSummary } from "@app/components/workspace/analytics/UsageFilterSummary";
 import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
 import {
   addUsageFilterFromAttributionRow,
+  PERSONAL_USAGE_FILTER_CATEGORIES,
   setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
+  USAGE_FILTER_CATEGORIES,
 } from "@app/components/workspace/analytics/usageFilter";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
-import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
+import { PERSONAL_CONSUMPTION_SCOPE_DIMENSIONS } from "@app/lib/api/analytics/consumption/scope";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
 import { cn, Page, SafeSuspense, safeLazy } from "@dust-tt/sparkle";
 import { domMax, LazyMotion, m, useReducedMotion } from "framer-motion";
@@ -37,13 +47,27 @@ function ChartFallback() {
 
 export function AnalyticsConsumptionPage() {
   const owner = useWorkspace();
+  const { isManager } = useAuth();
   const { hasFeature } = useFeatureFlags();
   const isEnabled = hasFeature("enable_analytics_consumption");
+
+  const isPersonalScope = !isManager;
+
+  const dimensions = isPersonalScope
+    ? PERSONAL_CONSUMPTION_SCOPE_DIMENSIONS
+    : CONSUMPTION_DIMENSIONS;
+  const filterCategories = isPersonalScope
+    ? PERSONAL_USAGE_FILTER_CATEGORIES
+    : USAGE_FILTER_CATEGORIES;
+
   const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
     DEFAULT_CONSUMPTION_PERIOD
   );
   const { dimension: dimensionParam } = useQueryParams(["dimension"]);
-  const dimension = consumptionDimensionFromQueryParam(dimensionParam.value);
+  const dimension = consumptionDimensionFromQueryParam(
+    dimensionParam.value,
+    dimensions
+  );
   const [filter, setFilter] = useState<UsageFilter>({});
   const scopeFilter = useMemo(() => toConsumptionScopeFilter(filter), [filter]);
   const shouldReduceMotion = useReducedMotion();
@@ -88,6 +112,7 @@ export function AnalyticsConsumptionPage() {
           workspaceId={owner.sId}
           period={period}
           filter={scopeFilter}
+          isPersonalScope={isPersonalScope}
         />
         <LazyMotion features={domMax}>
           <div className="flex flex-col gap-4">
@@ -101,6 +126,7 @@ export function AnalyticsConsumptionPage() {
                   period={period}
                   filter={filter}
                   onFilterChange={setFilter}
+                  categories={filterCategories}
                 />
               </div>
               <UsageFilterSummary filter={filter} onFilterChange={setFilter} />
@@ -131,6 +157,7 @@ export function AnalyticsConsumptionPage() {
             );
           }}
           dimension={dimension}
+          dimensions={dimensions}
           onDimensionChange={handleDimensionChange}
           onViewAll={(nextDimension, selectedRow) => {
             setFilter((current) =>

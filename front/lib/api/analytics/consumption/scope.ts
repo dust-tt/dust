@@ -139,6 +139,30 @@ function termFilter(
   ];
 }
 
+export function isPersonalConsumptionScope(auth: Authenticator): boolean {
+  return !auth.isManager();
+}
+
+export const PERSONAL_CONSUMPTION_SCOPE_DIMENSIONS: ConsumptionScopeDimension[] =
+  CONSUMPTION_SCOPE_DIMENSIONS.filter(
+    (dimension) => dimension !== "user" && dimension !== "group"
+  );
+
+function scopedFilterForAuth(
+  auth: Authenticator,
+  filter: ConsumptionScopeFilter
+): ConsumptionScopeFilter {
+  if (!isPersonalConsumptionScope(auth)) {
+    return filter;
+  }
+
+  return {
+    ...filter,
+    users: [auth.getNonNullableUser().sId],
+    groups: undefined,
+  };
+}
+
 /**
  * Workspace-scoped query over a half-open [startDate, endDate) window.
  */
@@ -156,6 +180,7 @@ export function buildConsumptionScopeQuery({
   extraFilters?: estypes.QueryDslQueryContainer[];
 }): estypes.QueryDslQueryContainer {
   const workspaceId = auth.getNonNullableWorkspace().sId;
+  const scopedFilter = scopedFilterForAuth(auth, filter);
   const filters: estypes.QueryDslQueryContainer[] = [
     { term: { workspace_id: workspaceId } },
     { range: { [COMPLETED_AT_FIELD]: { gte: startDate, lt: endDate } } },
@@ -165,7 +190,7 @@ export function buildConsumptionScopeQuery({
     filters.push(
       ...termFilter(
         CONSUMPTION_DIMENSION_FIELDS[dimension],
-        filter[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]]
+        scopedFilter[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]]
       )
     );
   }

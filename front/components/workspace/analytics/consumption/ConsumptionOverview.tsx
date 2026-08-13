@@ -54,17 +54,19 @@ function SummaryCard({ label, value, hint }: SummaryCardProps) {
 interface ConsumptionSummaryProps {
   workspaceId: string;
   overview: ConsumptionOverviewType;
+  isPersonalScope: boolean;
 }
 
 function ConsumptionSummary({
   workspaceId,
   overview,
+  isPersonalScope,
 }: ConsumptionSummaryProps) {
   const { topAgent, totalCredits, creditUsage } = overview;
 
   return (
     <div className="flex flex-col gap-4">
-      {creditUsage && (
+      {!isPersonalScope && creditUsage && (
         <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-panel-background p-2">
           <div className="flex items-center gap-2">
             <Chip
@@ -114,12 +116,14 @@ interface ConsumptionOverviewProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
+  isPersonalScope: boolean;
 }
 
 export function ConsumptionOverview({
   workspaceId,
   period: periodSelection,
   filter,
+  isPersonalScope,
 }: ConsumptionOverviewProps) {
   const { overview, isOverviewLoading, isOverviewError } =
     useConsumptionOverview({ workspaceId, period: periodSelection, filter });
@@ -141,7 +145,11 @@ export function ConsumptionOverview({
 
   const header = [
     `${formatConsumptionDate(period.startDate)} to ${formatConsumptionDate(period.endDate)}`,
-    `${members.active.toLocaleString()} of ${members.total.toLocaleString()} members active`,
+    ...(isPersonalScope
+      ? []
+      : [
+          `${members.active.toLocaleString()} of ${members.total.toLocaleString()} members active`,
+        ]),
     ...(lastRecordAt
       ? [`Updated ${timeAgoFrom(new Date(lastRecordAt).getTime())} ago`]
       : []),
@@ -161,7 +169,11 @@ export function ConsumptionOverview({
           </span>
         ))}
       </p>
-      <ConsumptionSummary workspaceId={workspaceId} overview={overview} />
+      <ConsumptionSummary
+        workspaceId={workspaceId}
+        overview={overview}
+        isPersonalScope={isPersonalScope}
+      />
     </div>
   );
 }

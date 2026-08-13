@@ -67,14 +67,20 @@ describe("resolveDimensionDisplayNames", () => {
     const skills = await resolveDimensionDisplayNames(auth, "skill", [
       "deleted_skill",
     ]);
-    const agents = await resolveDimensionDisplayNames(auth, "agent", [
-      "deleted_agent",
-    ]);
 
     expect(names.get("deleted_model")).toBe("deleted_model");
     expect(origins.get("deleted_origin")).toBe("deleted_origin");
     expect(skills.get("deleted_skill")).toBe("deleted_skill");
-    expect(agents.get("deleted_agent")).toBe("deleted_agent");
+  });
+
+  // Callers drop the row instead, so an unreadable agent never surfaces as a
+  // bare sId.
+  it("omits an agent it cannot resolve", async () => {
+    const agents = await resolveDimensionDisplayNames(auth, "agent", [
+      "deleted_agent",
+    ]);
+
+    expect(agents.has("deleted_agent")).toBe(false);
   });
 
   it("returns nothing for an empty breakdown", async () => {

@@ -51,13 +51,15 @@ function postOverviewRequest(wId: string, body: Record<string, unknown> = {}) {
 }
 
 describe("POST /api/w/:wId/analytics/consumption/overview", () => {
-  it("returns 403 for non-manager users", async () => {
+  // The scope is enforced in the query builder, not by a guard on the route.
+  it("serves members, who read their own consumption", async () => {
+    vi.mocked(fetchConsumptionOverview).mockResolvedValue(new Ok(OVERVIEW));
     const { workspace } = await setupTest({ role: "user" });
 
     const response = await postOverviewRequest(workspace.sId);
 
-    expect(response.status).toBe(403);
-    expect(vi.mocked(fetchConsumptionOverview)).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetchConsumptionOverview)).toHaveBeenCalled();
   });
 
   it("returns the overview for managers, defaulting to the current cycle", async () => {

@@ -439,5 +439,42 @@ describe("fetchConsumptionTimeseries", () => {
         { agent1: 0, agent2: 0 },
       ]);
     });
+
+    it("folds an unlabelled group into others instead of charting its sId", async () => {
+      const { auth, period } = await setup();
+      // "unreadable" ranks but resolves to no name.
+      mockGroupNames({ agent1: "@dust" });
+      mockBreakdown({
+        rankedKeys: ["agent1", "unreadable"],
+        buckets: [groupDayBucket(0, 3_000_000, { agent1: 2_000_000 })],
+      });
+
+      const result = await fetchConsumptionTimeseries(auth, {
+        period,
+        granularity: "day",
+        mode: "daily",
+        breakdownBy: "agent",
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) {
+        return;
+      }
+      expect(result.value.groups).toEqual([
+        { groupKey: "agent1", name: "@dust" },
+        { groupKey: OTHERS_GROUP_KEY, name: "Others" },
+      ]);
+      // The histogram only ever asked for the readable key.
+      const [, histogramOptions] = vi.mocked(searchConsumptionAnalytics).mock
+        .calls[1];
+      expect(
+        histogramOptions?.aggregations?.by_date?.aggs?.by_group?.terms
+      ).toMatchObject({ include: ["agent1"] });
+      // The dropped group's credits survive as "others", so the total holds.
+      expect(result.value.points[0]?.values).toEqual({
+        agent1: 2,
+        [OTHERS_GROUP_KEY]: 1,
+      });
+    });
   });
 });

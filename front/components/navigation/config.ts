@@ -265,9 +265,18 @@ export const subNavigationAdmin = ({
   const canAdminBilling = hasPermission("admin", "billing");
   const canAdminSecurity = hasPermission("admin", "security");
 
+  const hasConsumptionAnalytics = featureFlags.includes(
+    "enable_analytics_consumption"
+  );
+
   // Admins and managers see the admin sidebar; builders and members do
   // not. Each item is then individually enabled/disabled based on permission.
-  if (!isManager(owner) && !canAdminBilling && !canAdminSecurity) {
+  if (
+    !isManager(owner) &&
+    !canAdminBilling &&
+    !canAdminSecurity &&
+    !hasConsumptionAnalytics
+  ) {
     return nav;
   }
 
@@ -346,7 +355,7 @@ export const subNavigationAdmin = ({
         current: isCurrent("analytics"),
         disabled: !hasManagerRole,
       },
-      ...(featureFlags.includes("enable_analytics_consumption")
+      ...(hasConsumptionAnalytics
         ? [
             {
               id: "analytics_consumption" as const,
@@ -354,7 +363,6 @@ export const subNavigationAdmin = ({
               icon: BarChart01,
               href: `/w/${owner.sId}/analytics/consumption`,
               current: isCurrent("analytics_consumption"),
-              disabled: !hasManagerRole,
             },
           ]
         : []),

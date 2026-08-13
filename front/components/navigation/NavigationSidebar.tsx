@@ -36,7 +36,8 @@ function getAdminSectionHref(
   hasPermission: (
     verb: GrantVerb,
     resourceType: ConcreteResourceType
-  ) => boolean
+  ) => boolean,
+  hasConsumptionAnalytics: boolean
 ): string | null {
   if (isManager(owner)) {
     return `/w/${owner.sId}/members`;
@@ -46,6 +47,9 @@ function getAdminSectionHref(
   }
   if (hasPermission("admin", "security")) {
     return `/w/${owner.sId}/identity-and-provisioning`;
+  }
+  if (hasConsumptionAnalytics) {
+    return `/w/${owner.sId}/analytics/consumption`;
   }
   return null;
 }
@@ -85,7 +89,11 @@ export const NavigationSidebar = React.forwardRef<
   const { hasFeature } = useFeatureFlags();
   const { hasPermission } = useWorkspacePermissions();
 
-  const adminSectionHref = getAdminSectionHref(owner, hasPermission);
+  const adminSectionHref = getAdminSectionHref(
+    owner,
+    hasPermission,
+    hasFeature("enable_analytics_consumption")
+  );
 
   const showAdminSection = adminSectionHref !== null;
 

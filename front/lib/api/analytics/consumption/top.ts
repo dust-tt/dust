@@ -312,16 +312,27 @@ export async function resolveConsumptionGroupLabels(
     groups.map((group) => group.key)
   );
 
-  return groups.map((group) => ({
-    key: group.key,
-    name: labels.get(group.key)?.name ?? group.key,
-    pictureUrl: labels.get(group.key)?.pictureUrl ?? null,
-    description: labels.get(group.key)?.description ?? null,
-    modelId: labels.get(group.key)?.modelId,
-    modelDisplayName: labels.get(group.key)?.modelDisplayName,
-    icon: labels.get(group.key)?.icon,
-    credits: group.credits,
-    count: group.count,
-    avgCredits: avgCreditsPerUnit(group.credits, group.count),
-  }));
+  return groups.flatMap((group) => {
+    const label = labels.get(group.key);
+    // Agent labels are permission-gated: `resolveDimensionLabels` omits an agent
+    // the caller cannot read, and it gets no row rather than a bare sId. Its
+    // credits stay in `totalCredits`. Every other dimension falls back to the key.
+    if (!label && dimension === "agent") {
+      return [];
+    }
+    return [
+      {
+        key: group.key,
+        name: label?.name ?? group.key,
+        pictureUrl: label?.pictureUrl ?? null,
+        description: label?.description ?? null,
+        modelId: label?.modelId,
+        modelDisplayName: label?.modelDisplayName,
+        icon: label?.icon,
+        credits: group.credits,
+        count: group.count,
+        avgCredits: avgCreditsPerUnit(group.credits, group.count),
+      },
+    ];
+  });
 }

@@ -362,6 +362,42 @@ describe("consumption top rankings", () => {
     expect(options?.aggregations?.by_group?.aggs?.messages).toBeUndefined();
   });
 
+  it("drops an agent it cannot label, keeping its credits in the total", async () => {
+    const { auth } = await setup();
+    mockLabels({ agent1: "@dust" });
+    mockAggs({
+      buckets: [
+        {
+          key: "agent1",
+          doc_count: 4,
+          credit_micro: { value: 3_000_000 },
+          messages: { value: 2 },
+        },
+        {
+          key: "unreadable",
+          doc_count: 2,
+          credit_micro: { value: 1_000_000 },
+          messages: { value: 1 },
+        },
+      ],
+      totalMicro: 5_000_000,
+    });
+
+    const result = await fetchConsumptionTopAgents(auth, {
+      period: PERIOD,
+      limit: 10,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.agents.map((agent) => agent.agentId)).toEqual([
+      "agent1",
+    ]);
+    expect(result.value.totalCredits).toBe(5);
+  });
+
   it("credits a skill with the invocations attributed to it", async () => {
     const { auth } = await setup();
     vi.mocked(resolveDimensionLabels).mockResolvedValue(
@@ -544,22 +580,18 @@ describe("consumption top rankings", () => {
     });
   });
 
+  // Agents are the exception — they get dropped instead, see above.
   it("falls back to the raw key when a group has no label left", async () => {
     const { auth } = await setup();
     mockLabels({});
     mockAggs({
       buckets: [
-        {
-          key: "agent_gone",
-          doc_count: 1,
-          credit_micro: { value: 1_000_000 },
-          messages: { value: 1 },
-        },
+        { key: "skl_gone", doc_count: 1, credit_micro: { value: 1_000_000 } },
       ],
       totalMicro: 1_000_000,
     });
 
-    const result = await fetchConsumptionTopAgents(auth, {
+    const result = await fetchConsumptionTopSkills(auth, {
       period: PERIOD,
       limit: 10,
     });
@@ -568,10 +600,9 @@ describe("consumption top rankings", () => {
     if (!result.isOk()) {
       return;
     }
-    expect(result.value.agents[0]).toMatchObject({
-      agentId: "agent_gone",
-      name: "agent_gone",
-      pictureUrl: null,
+    expect(result.value.skills[0]).toMatchObject({
+      skillId: "skl_gone",
+      name: "skl_gone",
       description: null,
     });
   });
