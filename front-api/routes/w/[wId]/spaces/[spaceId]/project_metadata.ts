@@ -125,19 +125,6 @@ app.patch(
           },
         });
       }
-
-      // An open Pod already lets every workspace member use its apps, so the
-      // flag would be redundant. Disabling stays allowed as cleanup.
-      if (body.appSharingEnabled && space.isOpen()) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "App sharing is only available on restricted Pods: an open Pod's apps are already usable by the whole workspace.",
-          },
-        });
-      }
     }
 
     if (body.pinnedFramePath !== undefined) {
