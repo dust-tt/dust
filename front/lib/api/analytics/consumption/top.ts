@@ -164,6 +164,15 @@ export async function fetchConsumptionTopGroups(
   });
 }
 
+// Dimensions whose distinct values are bounded well under a single composite
+// page (the models, tools and origins a workspace can use), so a single
+// terms request beats paginating through the composite cursor.
+const BOUNDED_DIMENSIONS: ReadonlySet<ConsumptionScopeDimension> = new Set([
+  "model",
+  "tool",
+  "source",
+]);
+
 /**
  * Every key of `dimension` by gross credits over the period, with no cap
  */
@@ -181,6 +190,16 @@ export async function fetchConsumptionAllGroups(
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
+  if (BOUNDED_DIMENSIONS.has(dimension)) {
+    return fetchConsumptionTopGroups(auth, {
+      dimension,
+      unit,
+      period,
+      limit: EXPORT_PAGE_SIZE,
+      filter,
+    });
+  }
+
   const query = buildConsumptionScopeQuery({
     auth,
     startDate: period.startDate,
