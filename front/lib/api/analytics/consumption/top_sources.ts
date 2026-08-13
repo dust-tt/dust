@@ -1,9 +1,8 @@
-import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import {
-  avgCreditsPerUnit,
   fetchConsumptionTopGroups,
+  resolveConsumptionGroupLabels,
 } from "@app/lib/api/analytics/consumption/top";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
@@ -63,23 +62,19 @@ export async function fetchConsumptionTopSources(
   }
   const { groups, hasMore, totalCount, totalCredits } = result.value;
 
-  const labels = await resolveDimensionLabels(
-    auth,
-    "source",
-    groups.map((group) => group.key)
-  );
+  const rows = await resolveConsumptionGroupLabels(auth, "source", groups);
 
   return new Ok({
     period,
     totalCredits,
     hasMore,
     totalCount,
-    sources: groups.map((group) => ({
-      source: group.key,
-      name: labels.get(group.key)?.name ?? group.key,
-      credits: group.credits,
-      messageCount: group.count,
-      avgCreditsPerMessage: avgCreditsPerUnit(group.credits, group.count),
+    sources: rows.map((row) => ({
+      source: row.key,
+      name: row.name,
+      credits: row.credits,
+      messageCount: row.count,
+      avgCreditsPerMessage: row.avgCredits,
     })),
   });
 }
