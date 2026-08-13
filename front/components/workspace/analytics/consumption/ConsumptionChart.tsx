@@ -205,10 +205,14 @@ function ConsumptionDailyChart({
       legendItems={legendItems}
     >
       <BarChart data={chartData} margin={{ ...CHART_MARGIN, top: 24 }}>
-        <CartesianGrid vertical={false} className="stroke-border" />
+        <CartesianGrid
+          vertical={false}
+          strokeDasharray="4 4"
+          className="stroke-border"
+        />
         <XAxis
           dataKey="timestamp"
-          className="text-xs text-muted-foreground"
+          className="text-xs text-faint"
           tickLine={false}
           axisLine={false}
           tickMargin={8}
@@ -218,7 +222,7 @@ function ConsumptionDailyChart({
           }
         />
         <YAxis
-          className="text-xs text-muted-foreground"
+          className="text-xs text-faint"
           tickLine={false}
           axisLine={false}
           tickMargin={8}
@@ -232,7 +236,7 @@ function ConsumptionDailyChart({
         {partialTimestamp !== undefined && (
           <ReferenceLine
             x={partialTimestamp}
-            stroke="hsl(var(--primary))"
+            className="stroke-muted-foreground"
             strokeDasharray="5 5"
             label={{ value: "Today (partial)", position: "top", fontSize: 11 }}
             ifOverflow="extendDomain"
