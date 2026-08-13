@@ -13,9 +13,10 @@ import assert from "assert";
 // tool-call emission out of the assistant output bucket. Version 3 expands an enabled skill's tool
 // input footprint with the instructions and tool definitions that the action adds to later model
 // requests. Version 4 keeps sandbox-child actions as direct-charge-only rows because their calls
-// and results reach the outer model through their parent Computer action. Each version remains a
-// separate, self-consistent set of rows.
-export const AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION = 4;
+// and results reach the outer model through their parent Computer action. Version 5 removes the
+// context-window safety padding from tool footprints and uses o200k for GPT-5 provider accounting.
+// Each version remains a separate, self-consistent set of rows.
+export const AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION = 5;
 
 export type RunUsageForAttribution = Pick<
   RunUsageType,
