@@ -61,7 +61,7 @@ export function UsageFilterSelectionSummary({
         label={`${selectionCount} filter${pluralize(selectionCount)} selected`}
       />
       <NavigationList className="min-h-0 flex-1">
-        {categoriesWithSelection.length > 0 ? (
+        {categoriesWithSelection.length > 0 &&
           categoriesWithSelection.map((category) => {
             const isCategoryOpen = !collapsedCategories.has(category);
             return (
@@ -114,12 +114,7 @@ export function UsageFilterSelectionSummary({
                 </Collapsible>
               </div>
             );
-          })
-        ) : (
-          <div className="flex items-center p-2 text-sm text-muted-foreground">
-            No filters selected
-          </div>
-        )}
+          })}
       </NavigationList>
     </div>
   );

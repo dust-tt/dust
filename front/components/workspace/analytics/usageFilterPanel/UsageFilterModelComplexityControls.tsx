@@ -113,7 +113,7 @@ export function UsageFilterModelComplexityControls({
     <>
       <NavigationListLabel
         label="Complexity"
-        className="bg-transparent font-medium"
+        className="bg-transparent font-medium pt-2 pb-0"
         action={
           <DropdownMenu
             open={isMoreModelsOpen}

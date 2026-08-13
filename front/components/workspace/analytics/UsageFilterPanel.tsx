@@ -10,7 +10,6 @@ import {
   USAGE_FILTER_AGENT_SCOPES,
   USAGE_FILTER_CATEGORIES,
   USAGE_FILTER_CATEGORY_LABEL,
-  USAGE_MODEL_TIERS,
   usageFilterSelectionCount,
 } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
@@ -37,6 +36,8 @@ import {
   SearchInput,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
+
+const DEFAULT_MODEL_TIER: UsageModelTier = "standard";
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
@@ -66,9 +67,8 @@ export function UsageFilterPanel({
   const [activeCategory, setActiveCategory] =
     useState<UsageFilterCategory>("agent");
   const [activeScope, setActiveScope] = useState<UsageFilterAgentScope>("all");
-  const [activeTier, setActiveTier] = useState<UsageModelTier>(
-    USAGE_MODEL_TIERS[0]
-  );
+  const [activeTier, setActiveTier] =
+    useState<UsageModelTier>(DEFAULT_MODEL_TIER);
   const [searchText, setSearchText] = useState("");
   const selectedGroups = useToggleSelectionList<UsageFilterGroup>();
 
