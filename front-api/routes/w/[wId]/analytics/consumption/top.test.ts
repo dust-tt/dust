@@ -333,7 +333,7 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
 
     const response = await postRankingRequest(workspace.sId, "top-agents", {
       limit: 5,
-      offset: 25,
+      offset: 995,
       period: "days",
       days: 7,
       search: "  Agent 080  ",
@@ -345,7 +345,7 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
       expect.anything(),
       expect.objectContaining({
         limit: 5,
-        offset: 25,
+        offset: 995,
         search: "Agent 080",
         filter: { sources: ["slack"] },
       })
@@ -372,6 +372,20 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
 
     const response = await postRankingRequest(workspace.sId, "top-agents", {
       limit: 1000,
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: { type: "invalid_request_error" },
+    });
+  });
+
+  it("returns 400 when the ranked page extends beyond the bucket cap", async () => {
+    const { workspace } = await setupTest();
+
+    const response = await postRankingRequest(workspace.sId, "top-agents", {
+      limit: 5,
+      offset: 996,
     });
 
     expect(response.status).toBe(400);

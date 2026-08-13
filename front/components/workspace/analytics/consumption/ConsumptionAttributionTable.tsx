@@ -18,7 +18,10 @@ import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/constants";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { normalizedConsumptionFilter } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
-import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/api/analytics/consumption/schema";
+import {
+  DEFAULT_CONSUMPTION_PERIOD_DAYS,
+  MAX_CONSUMPTION_TOP_BUCKETS,
+} from "@app/lib/api/analytics/consumption/schema";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import { formatCredits } from "@app/lib/client/credits";
@@ -483,7 +486,7 @@ function AttributionRows({
               showDetails={false}
               pagination={pagination}
               setPagination={setPagination}
-              rowCount={totalCount}
+              rowCount={Math.min(totalCount, MAX_CONSUMPTION_TOP_BUCKETS)}
             />
           </div>
         )}
