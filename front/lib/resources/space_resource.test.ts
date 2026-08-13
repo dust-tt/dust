@@ -3,6 +3,7 @@ import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
@@ -84,6 +85,7 @@ describe("SpaceResource", () => {
       });
 
       regularSpace = await SpaceResource.makeNew(
+        adminAuth,
         {
           name: "Test Regular Space",
           kind: "regular",
@@ -102,6 +104,25 @@ describe("SpaceResource", () => {
       await MembershipFactory.associate(workspace, user2, { role: "user" });
       await MembershipFactory.associate(workspace, user3, { role: "user" });
     });
+
+    // The grants `regularSpace` confers on `groups`, as (group, grantType) pairs sorted by group so
+    // they can be compared with a literal.
+    const spaceGrantsForGroups = async (groups: GroupResource[]) => {
+      const grants = await GroupPermissionResource.listForGroups(
+        adminAuth.getNonNullableWorkspace(),
+        {
+          groupModelIds: groups.map((group) => group.id),
+          resourceType: "space",
+          resourceId: regularSpace.id,
+        }
+      );
+      return grants
+        .map((grant) => ({
+          groupId: grant.groupId,
+          grantType: grant.grantType,
+        }))
+        .sort((a, b) => a.groupId - b.groupId);
+    };
 
     it("should delete selected spaces before hard deleting a space", async () => {
       const agent = await AgentConfigurationFactory.createTestAgent(adminAuth, {
@@ -359,6 +380,55 @@ describe("SpaceResource", () => {
         expect(spaceAfterManual?.managementMode).toBe("manual");
       });
 
+      it("should drop the provisioned group's grant when switching from group to manual mode", async () => {
+        const provisionedGroup = await GroupResource.makeNew({
+          name: "Provisioned Group",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+        });
+
+        // Group mode: the provisioned group is granted on the space.
+        const groupResult = await regularSpace.updatePermissions(adminAuth, {
+          name: "Test Space",
+          isRestricted: true,
+          managementMode: "group",
+          groupIds: [provisionedGroup.sId],
+          editorGroupIds: [],
+        });
+        expect(groupResult.isOk()).toBe(true);
+
+        expect(
+          await spaceGrantsForGroups([regularGroup, provisionedGroup])
+        ).toEqual(
+          [
+            { groupId: regularGroup.id, grantType: "member" },
+            { groupId: provisionedGroup.id, grantType: "member" },
+          ].sort((a, b) => a.groupId - b.groupId)
+        );
+
+        // Switching to manual mode drops the provisioned group's grant: provisioned groups do not
+        // carry grants on manually-managed spaces.
+        const spaceAfterGroup = await SpaceResource.fetchById(
+          adminAuth,
+          regularSpace.sId
+        );
+        const manualResult = await spaceAfterGroup!.updatePermissions(
+          adminAuth,
+          {
+            name: "Test Space",
+            isRestricted: true,
+            managementMode: "manual",
+            memberIds: [user1.sId],
+            editorIds: [],
+          }
+        );
+        expect(manualResult.isOk()).toBe(true);
+
+        expect(
+          await spaceGrantsForGroups([regularGroup, provisionedGroup])
+        ).toEqual([{ groupId: regularGroup.id, grantType: "member" }]);
+      });
+
       it("should restore suspended members when switching from group to manual mode", async () => {
         // Add members first
         await regularGroup.dangerouslyAddMembers(adminAuth, {
@@ -562,6 +632,54 @@ describe("SpaceResource", () => {
           regularSpace.sId
         );
         expect(spaceAfterGroup?.managementMode).toBe("group");
+      });
+
+      it("should add the provisioned group's grant when switching from manual to group mode", async () => {
+        const provisionedGroup = await GroupResource.makeNew({
+          name: "Provisioned Group",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+        });
+
+        // Manual mode: only the space's own member group is granted.
+        const manualResult = await regularSpace.updatePermissions(adminAuth, {
+          name: "Test Space",
+          isRestricted: true,
+          managementMode: "manual",
+          memberIds: [user1.sId],
+          editorIds: [],
+        });
+        expect(manualResult.isOk()).toBe(true);
+
+        expect(
+          await spaceGrantsForGroups([regularGroup, provisionedGroup])
+        ).toEqual([{ groupId: regularGroup.id, grantType: "member" }]);
+
+        // Switching to group mode grants the selected provisioned group.
+        const spaceAfterManual = await SpaceResource.fetchById(
+          adminAuth,
+          regularSpace.sId
+        );
+        const groupResult = await spaceAfterManual!.updatePermissions(
+          adminAuth,
+          {
+            name: "Test Space",
+            isRestricted: true,
+            managementMode: "group",
+            groupIds: [provisionedGroup.sId],
+            editorGroupIds: [],
+          }
+        );
+        expect(groupResult.isOk()).toBe(true);
+
+        expect(
+          await spaceGrantsForGroups([regularGroup, provisionedGroup])
+        ).toEqual(
+          [
+            { groupId: regularGroup.id, grantType: "member" },
+            { groupId: provisionedGroup.id, grantType: "member" },
+          ].sort((a, b) => a.groupId - b.groupId)
+        );
       });
 
       it("should suspend active members when switching from manual to group mode", async () => {
@@ -836,6 +954,7 @@ describe("SpaceResource", () => {
           });
 
           projectSpace = await SpaceResource.makeNew(
+            adminAuth,
             {
               name: "Test Project Space",
               kind: "project",
@@ -1065,6 +1184,7 @@ describe("SpaceResource", () => {
           });
 
           projectSpace = await SpaceResource.makeNew(
+            adminAuth,
             {
               name: "Admin Controlled Project",
               kind: "project",
@@ -1298,6 +1418,7 @@ describe("SpaceResource", () => {
           });
 
           projectSpace = await SpaceResource.makeNew(
+            adminAuth,
             {
               name: "Test Project Space",
               kind: "project",
@@ -1693,6 +1814,7 @@ describe("SpaceResource", () => {
       });
 
       const openSpace = await SpaceResource.makeNew(
+        adminAuth,
         {
           name: "Open Space",
           kind: "regular",
@@ -1713,6 +1835,7 @@ describe("SpaceResource", () => {
       });
 
       const restrictedSpace = await SpaceResource.makeNew(
+        adminAuth,
         {
           name: "Restricted Space",
           kind: "regular",
@@ -1884,6 +2007,7 @@ describe("SpaceResource", () => {
         });
 
         const openSpace = await SpaceResource.makeNew(
+          adminAuth,
           {
             name: "Open Space",
             kind: "regular",
@@ -1907,6 +2031,7 @@ describe("SpaceResource", () => {
         });
 
         const restrictedSpace = await SpaceResource.makeNew(
+          adminAuth,
           {
             name: "Restricted Space",
             kind: "regular",
@@ -1949,6 +2074,7 @@ describe("SpaceResource", () => {
         });
 
         const projectSpace = await SpaceResource.makeNew(
+          adminAuth,
           {
             name: "Open Project",
             kind: "project",
@@ -1973,6 +2099,7 @@ describe("SpaceResource", () => {
         });
 
         const projectSpace = await SpaceResource.makeNew(
+          adminAuth,
           {
             name: "Restricted Project",
             kind: "project",

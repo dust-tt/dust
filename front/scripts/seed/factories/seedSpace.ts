@@ -39,6 +39,7 @@ export async function seedSpace(
 
     // Create the restricted space
     const restrictedSpace = await SpaceResource.makeNew(
+      auth,
       {
         name,
         kind: "regular",

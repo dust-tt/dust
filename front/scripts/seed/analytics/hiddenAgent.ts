@@ -34,6 +34,7 @@ async function findOrCreateRestrictedSpace(
     kind: "regular_auto",
   });
   const space = await SpaceResource.makeNew(
+    internalAuth,
     { name: SPACE_NAME, kind: "regular", workspaceId: workspace.id },
     { members: [spaceGroup] }
   );

@@ -161,7 +161,7 @@ export function verbsForGrantAtLevel(
   if (!role || !role.levels.includes(level)) {
     return [];
   }
-  return role.verbs;
+  return [...role.verbs];
 }
 
 // Every verb valid at `level` on `resourceType` — used to expand a "*" grant.
