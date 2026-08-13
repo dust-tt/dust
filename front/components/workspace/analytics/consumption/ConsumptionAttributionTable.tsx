@@ -1,4 +1,9 @@
 import { getModelLogoByModelId } from "@app/components/providers/types";
+import {
+  getAvatarFromIcon,
+  isCustomResourceIconType,
+  isInternalAllowedIcon,
+} from "@app/components/resources/resources_icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import {
@@ -9,6 +14,7 @@ import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/constants";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { normalizedConsumptionFilter } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
@@ -169,10 +175,20 @@ function buildColumns({
         const row = info.row.original;
         const { name, pictureUrl, description, icon } = row;
         const SkillAvatar = getSkillAvatarIcon(icon);
+        const toolIcon =
+          icon &&
+          (isCustomResourceIconType(icon) || isInternalAllowedIcon(icon))
+            ? icon
+            : DEFAULT_MCP_SERVER_ICON;
         const content =
           dimension === "skill" ? (
             <div className="flex min-w-0 items-center gap-2">
               <SkillAvatar name={name} size="xs" />
+              <span className="truncate text-sm">{name}</span>
+            </div>
+          ) : dimension === "tool" ? (
+            <div className="flex min-w-0 items-center gap-2">
+              {getAvatarFromIcon(toolIcon, "xs")}
               <span className="truncate text-sm">{name}</span>
             </div>
           ) : hasAvatar ? (

@@ -171,6 +171,7 @@ const TOP_TOOLS: GetConsumptionTopToolsResponse = {
     {
       serverName: "web_search_browse",
       name: "Web Search & Browse",
+      icon: "Globe01Icon",
       credits: 60,
       invocationCount: 12,
       avgCreditsPerInvocation: 5,

@@ -156,7 +156,19 @@ describe("consumption top rankings", () => {
 
   it("counts tool invocations as documents, with no message sub-agg", async () => {
     const { auth } = await setup();
-    mockLabels({ web_search_browse: "Web Search & Browse" });
+    vi.mocked(resolveDimensionLabels).mockResolvedValue(
+      new Map([
+        [
+          "web_search_browse",
+          {
+            name: "Web Search & Browse",
+            pictureUrl: null,
+            description: null,
+            icon: "Globe01Icon",
+          },
+        ],
+      ])
+    );
     mockAggs({
       buckets: [
         {
@@ -181,6 +193,7 @@ describe("consumption top rankings", () => {
       {
         serverName: "web_search_browse",
         name: "Web Search & Browse",
+        icon: "Globe01Icon",
         credits: 2,
         // 4 tool documents, one per call — not a message cardinality.
         invocationCount: 4,
