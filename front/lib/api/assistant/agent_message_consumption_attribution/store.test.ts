@@ -44,12 +44,8 @@ async function setupSettledMessageWithUsage({
   runCount?: number;
   restrictedConversation?: boolean;
 } = {}) {
-  const {
-    authenticator,
-    globalSpace,
-    user,
-    workspace,
-  } = await createResourceTest({ role: "admin" });
+  const { authenticator, globalSpace, user, workspace } =
+    await createResourceTest({ role: "admin" });
 
   let auth = authenticator;
   const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
@@ -175,12 +171,8 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
   });
 
   it("writes attribution for a project conversation hidden from the workflow auth", async () => {
-    const {
-      workspace,
-      conversationId,
-      agentMessageId,
-      agentMessageModelId,
-    } = await setupSettledMessageWithUsage({ restrictedConversation: true });
+    const { workspace, conversationId, agentMessageId, agentMessageModelId } =
+      await setupSettledMessageWithUsage({ restrictedConversation: true });
     const workflowAuth = await Authenticator.internalBuilderForWorkspace(
       workspace.sId
     );
