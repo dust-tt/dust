@@ -1,4 +1,4 @@
-import { listConsumptionFacetCatalogDimension } from "@app/lib/api/analytics/consumption/facet_catalog";
+import { listConsumptionFacetCatalog } from "@app/lib/api/analytics/consumption/facet_catalog";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { fetchConsumptionTopAgents } from "@app/lib/api/analytics/consumption/top_agents";
@@ -23,7 +23,7 @@ vi.mock(
   import("@app/lib/api/analytics/consumption/facet_catalog"),
   async (orig) => {
     const mod = await orig();
-    return { ...mod, listConsumptionFacetCatalogDimension: vi.fn() };
+    return { ...mod, listConsumptionFacetCatalog: vi.fn() };
   }
 );
 
@@ -92,7 +92,7 @@ function lastSearchCall() {
 describe("consumption top rankings", () => {
   afterEach(() => {
     vi.mocked(searchConsumptionAnalytics).mockReset();
-    vi.mocked(listConsumptionFacetCatalogDimension).mockReset();
+    vi.mocked(listConsumptionFacetCatalog).mockReset();
     vi.mocked(resolveDimensionLabels).mockReset();
   });
 
@@ -177,7 +177,6 @@ describe("consumption top rankings", () => {
       precision_threshold: 40_000,
     });
     expect(options?.aggregations?.ranking).toBeUndefined();
-    expect(listConsumptionFacetCatalogDimension).not.toHaveBeenCalled();
   });
 
   it("returns one ranked page with the total number of groups", async () => {
@@ -234,63 +233,22 @@ describe("consumption top rankings", () => {
     });
   });
 
-  it("searches the complete dimension catalog before ranking a page", async () => {
+  it.each([
+    ["AGENT 080", { terms: { "agent.id": ["agent80"] } }],
+    ["missing", { match_none: {} }],
+  ])("filters the ranking for search %s", async (search, expectedFilter) => {
     const { auth } = await setup();
-    vi.mocked(listConsumptionFacetCatalogDimension).mockResolvedValue([
-      { value: "agent1", label: "Agent 1", pictureUrl: null },
-      { value: "agent80", label: "Pagination Agent 080", pictureUrl: null },
-    ]);
-    mockLabels({ agent80: "Pagination Agent 080" });
-    mockAggs({
-      buckets: [
-        {
-          key: "agent80",
-          doc_count: 1,
-          credit_micro: { value: 1_000_000 },
-          messages: { value: 1 },
-        },
+    vi.mocked(listConsumptionFacetCatalog).mockResolvedValue({
+      agent: [
+        { value: "agent80", label: "Pagination Agent 080", pictureUrl: null },
       ],
-      totalCount: 1,
-      totalMicro: 10_000_000,
-      filtered: true,
+      user: [],
+      group: [],
+      model: [],
+      tool: [],
+      skill: [],
+      source: [],
     });
-
-    const result = await fetchConsumptionTopAgents(auth, {
-      period: PERIOD,
-      limit: 25,
-      search: "  AGENT 080  ",
-    });
-
-    expect(result.isOk()).toBe(true);
-    if (!result.isOk()) {
-      return;
-    }
-    expect(result.value.agents.map((agent) => agent.agentId)).toEqual([
-      "agent80",
-    ]);
-    expect(result.value.totalCount).toBe(1);
-    // Searching only narrows the ranking. Cost share still uses all scoped
-    // consumption, so the period total remains unchanged.
-    expect(result.value.totalCredits).toBe(10);
-    expect(listConsumptionFacetCatalogDimension).toHaveBeenCalledWith(
-      auth,
-      "agent"
-    );
-
-    const [query, options] = lastSearchCall();
-    expect(query.bool?.filter).not.toContainEqual({
-      terms: { "agent.id": ["agent80"] },
-    });
-    expect(options?.aggregations?.ranking?.filter).toEqual({
-      terms: { "agent.id": ["agent80"] },
-    });
-  });
-
-  it("returns no ranked rows when no catalog entry matches the search", async () => {
-    const { auth } = await setup();
-    vi.mocked(listConsumptionFacetCatalogDimension).mockResolvedValue([
-      { value: "agent1", label: "Agent 1", pictureUrl: null },
-    ]);
     mockLabels({});
     mockAggs({
       buckets: [],
@@ -302,18 +260,18 @@ describe("consumption top rankings", () => {
     const result = await fetchConsumptionTopAgents(auth, {
       period: PERIOD,
       limit: 25,
-      search: "missing",
+      search,
     });
 
     expect(result.isOk()).toBe(true);
     if (!result.isOk()) {
       return;
     }
-    expect(result.value.agents).toEqual([]);
-    expect(result.value.totalCount).toBe(0);
-    expect(lastSearchCall()[1]?.aggregations?.ranking?.filter).toEqual({
-      match_none: {},
-    });
+    expect(result.value.totalCredits).toBe(10);
+    expect(listConsumptionFacetCatalog).toHaveBeenCalledWith(auth);
+    expect(lastSearchCall()[1]?.aggregations?.ranking?.filter).toEqual(
+      expectedFilter
+    );
   });
 
   it("counts tool invocations as documents, with no message sub-agg", async () => {
