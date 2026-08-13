@@ -88,6 +88,8 @@ describe("consumption top rankings", () => {
             name: "@dust",
             pictureUrl: "http://pic/dust",
             description: "Answers questions about Dust",
+            modelId: "claude-4-sonnet",
+            modelDisplayName: "Claude 4 Sonnet",
           },
         ],
       ])
@@ -121,6 +123,8 @@ describe("consumption top rankings", () => {
         name: "@dust",
         pictureUrl: "http://pic/dust",
         description: "Answers questions about Dust",
+        modelId: "claude-4-sonnet",
+        modelDisplayName: "Claude 4 Sonnet",
         credits: 3,
         // The 7 documents of the bucket belong to 2 messages.
         messageCount: 2,
@@ -203,6 +207,7 @@ describe("consumption top rankings", () => {
             name: "Research",
             pictureUrl: null,
             description: "Researches a topic in depth",
+            icon: "search",
           },
         ],
       ])
@@ -228,6 +233,7 @@ describe("consumption top rankings", () => {
         skillId: "skl_1",
         name: "Research",
         description: "Researches a topic in depth",
+        icon: "search",
         credits: 2.5,
         invocationCount: 5,
         avgCreditsPerInvocation: 0.5,

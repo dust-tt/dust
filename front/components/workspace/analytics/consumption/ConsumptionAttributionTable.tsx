@@ -1,3 +1,5 @@
+import { getModelLogoByModelId } from "@app/components/providers/types";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
   AvatarNameCell,
   CostShareCell,
@@ -9,12 +11,16 @@ import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import { formatCredits } from "@app/lib/client/credits";
+import { getSkillAvatarIcon } from "@app/lib/skill";
 import {
+  Avatar,
   BarChart01,
   Button,
   ChevronDown,
   ChevronUp,
   DataTable,
+  DustLogoSquare,
+  Icon,
   MOTION_DURATIONS,
   MOTION_EASINGS,
   SearchInput,
@@ -85,12 +91,64 @@ function getAttributionTransitionDirection(
   return nextIndex > currentIndex ? 1 : -1;
 }
 
+function AttributionTooltipCard({
+  row,
+  dimension,
+}: {
+  row: ConsumptionTopRow;
+  dimension: "agent" | "skill";
+}) {
+  const { isDark } = useTheme();
+  const SkillAvatar = getSkillAvatarIcon(row.icon);
+  const ModelLogo = row.modelId
+    ? getModelLogoByModelId(row.modelId, isDark)
+    : undefined;
+
+  return (
+    <div className="flex w-64 flex-col gap-3 py-1 text-left">
+      <div className="flex min-w-0 items-center gap-2">
+        {dimension === "agent" ? (
+          <Avatar
+            name={row.name}
+            visual={row.pictureUrl ?? undefined}
+            size="xs"
+          />
+        ) : (
+          <SkillAvatar name={row.name} size="xs" />
+        )}
+        <span className="truncate text-base font-semibold text-primary-50">
+          {row.name}
+        </span>
+      </div>
+      <span className="text-sm leading-5 text-primary-200">
+        {row.description}
+      </span>
+      {dimension === "agent" && row.modelDisplayName && (
+        <div className="flex items-center gap-2">
+          <span className="flex size-5 shrink-0 items-center justify-center rounded-sm bg-primary-50">
+            <Icon
+              visual={ModelLogo ?? DustLogoSquare}
+              size="xs"
+              className="text-primary-950"
+            />
+          </span>
+          <span className="text-sm font-medium text-primary-50">
+            {row.modelDisplayName}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function buildColumns({
+  dimension,
   hasAvatar,
   isAvatarRounded,
   avgLabel,
   totalCredits,
 }: {
+  dimension: ConsumptionDimension;
   hasAvatar: boolean;
   isAvatarRounded: boolean;
   avgLabel: string;
@@ -103,7 +161,8 @@ function buildColumns({
       header: "Name",
       meta: { sizeRatio: 32, headerAlign: "left" },
       cell: (info) => {
-        const { name, pictureUrl, description } = info.row.original;
+        const row = info.row.original;
+        const { name, pictureUrl, description } = row;
         const content = hasAvatar ? (
           <div className="min-w-0">
             <AvatarNameCell
@@ -118,9 +177,12 @@ function buildColumns({
 
         return (
           <DataTable.CellContent className="w-full justify-start text-left">
-            {description ? (
+            {description && (dimension === "agent" || dimension === "skill") ? (
               <Tooltip
-                label={description}
+                label={
+                  <AttributionTooltipCard row={row} dimension={dimension} />
+                }
+                className="p-3"
                 tooltipTriggerAsChild
                 trigger={content}
               />
@@ -278,6 +340,7 @@ function AttributionRows({
   const columns = useMemo(
     () =>
       buildColumns({
+        dimension,
         hasAvatar,
         isAvatarRounded: dimension === "user",
         avgLabel,

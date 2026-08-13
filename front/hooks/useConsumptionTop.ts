@@ -31,6 +31,9 @@ export type ConsumptionTopRow = {
   name: string;
   pictureUrl: string | null;
   description: string | null;
+  icon: string | null;
+  modelId: string | null;
+  modelDisplayName: string | null;
   credits: number;
   avgCredits: number;
 };
@@ -54,6 +57,9 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       name: row.name,
       pictureUrl: row.pictureUrl,
       description: row.description,
+      icon: null,
+      modelId: row.modelId,
+      modelDisplayName: row.modelDisplayName,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));
@@ -64,6 +70,9 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       name: row.name,
       pictureUrl: row.pictureUrl,
       description: null,
+      icon: null,
+      modelId: null,
+      modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));
@@ -74,6 +83,9 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       name: row.name,
       pictureUrl: null,
       description: null,
+      icon: null,
+      modelId: null,
+      modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));
@@ -84,6 +96,9 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       name: row.name,
       pictureUrl: null,
       description: null,
+      icon: null,
+      modelId: null,
+      modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));
@@ -94,6 +109,9 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       name: row.name,
       pictureUrl: null,
       description: null,
+      icon: null,
+      modelId: null,
+      modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerInvocation,
     }));
@@ -104,6 +122,9 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       name: row.name,
       pictureUrl: null,
       description: row.description,
+      icon: row.icon,
+      modelId: null,
+      modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerInvocation,
     }));
@@ -114,6 +135,9 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       name: row.name,
       pictureUrl: null,
       description: null,
+      icon: null,
+      modelId: null,
+      modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
     }));

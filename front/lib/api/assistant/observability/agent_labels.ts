@@ -8,6 +8,7 @@ import type { Authenticator } from "@app/lib/auth";
 export type AnalyticsAgentLabel = {
   name: string;
   pictureUrl: string | null;
+  modelId: string;
   modelDisplayName: string;
   description: string;
 };
@@ -46,6 +47,7 @@ export async function resolveAnalyticsAgentLabels(
       labels.set(agentId, {
         name: agent.name,
         pictureUrl: agent.pictureUrl,
+        modelId: agent.model.modelId,
         modelDisplayName: getAgentModelDisplayName(agent.model),
         description: agent.canRead
           ? agent.description
@@ -59,6 +61,7 @@ export async function resolveAnalyticsAgentLabels(
       labels.set(agentId, {
         name: fallback.name,
         pictureUrl: fallback.pictureUrl,
+        modelId: fallback.model.modelId,
         modelDisplayName: getAgentModelDisplayName(fallback.model),
         description: PRIVATE_AGENT_DESCRIPTION,
       });

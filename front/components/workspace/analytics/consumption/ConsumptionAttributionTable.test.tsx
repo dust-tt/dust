@@ -1,6 +1,7 @@
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 const { mockUseConsumptionTop } = vi.hoisted(() => ({
@@ -10,6 +11,24 @@ const { mockUseConsumptionTop } = vi.hoisted(() => ({
 vi.mock("@app/hooks/useConsumptionTop", () => ({
   useConsumptionTop: mockUseConsumptionTop,
 }));
+
+vi.mock("@app/components/sparkle/ThemeContext", () => ({
+  useTheme: () => ({ isDark: false }),
+}));
+
+vi.mock("@dust-tt/sparkle", async (importOriginal) => {
+  const sparkle = await importOriginal<typeof import("@dust-tt/sparkle")>();
+
+  return {
+    ...sparkle,
+    Tooltip: ({ label, trigger }: { label: ReactNode; trigger: ReactNode }) => (
+      <>
+        {trigger}
+        <div role="tooltip">{label}</div>
+      </>
+    ),
+  };
+});
 
 vi.mock(
   "@app/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown",
@@ -29,6 +48,10 @@ describe("ConsumptionAttributionTable", () => {
             id: "shared-row-id",
             name: dimension === "agent" ? "Research agent" : "Large model",
             pictureUrl: null,
+            description: null,
+            icon: null,
+            modelId: null,
+            modelDisplayName: null,
             credits: 100,
             avgCredits: 10,
           },
@@ -74,5 +97,44 @@ describe("ConsumptionAttributionTable", () => {
       })
     ).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByText("Attribution breakdown")).not.toBeInTheDocument();
+  });
+
+  it("renders the skill identity and description without a model", () => {
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [
+        {
+          id: "skill-id",
+          name: "Research",
+          pictureUrl: null,
+          description: "Researches a topic in depth.",
+          icon: "search",
+          modelId: null,
+          modelDisplayName: null,
+          credits: 100,
+          avgCredits: 10,
+        },
+      ],
+      totalCredits: 100,
+      isTopLoading: false,
+      isTopError: undefined,
+    });
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="skill"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    const tooltip = screen.getByRole("tooltip");
+    expect(within(tooltip).getByText("Research")).toBeInTheDocument();
+    expect(
+      within(tooltip).getByText("Researches a topic in depth.")
+    ).toBeInTheDocument();
+    expect(tooltip.querySelector("svg")).toBeInTheDocument();
   });
 });
