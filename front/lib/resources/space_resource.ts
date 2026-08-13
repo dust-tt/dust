@@ -4,7 +4,6 @@ import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/pr
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConcreteGrantType } from "@app/lib/resources/group_permission_registry";
-import { verbsForGrantAtLevel } from "@app/lib/resources/group_permission_registry";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
@@ -1809,7 +1808,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    * @returns Array of AccessControlList objects based on space type
    */
   getAccessControlLists(auth: Authenticator): AccessControlList[] {
-    const groups = this.spaceGroupGrants();
+    const groups = this.legacySpaceGroupGrants();
 
     // System space.
     if (this.isSystem()) {
@@ -1885,8 +1884,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   // The role each of this space's `group_vaults` associations confers, as a registry grant type.
   // This is the single mapping the governance model needs — space kind + group kind -> role — and
-  // the only thing `group_permissions` stores (see `writeGroupPermissions`). Verbs are never
-  // written by hand: `spaceGroupGrants` expands these roles through `ROLE_REGISTRY.space`.
+  // the only thing `group_permissions` stores (see `writeGroupPermissions`). Verbs are never stored:
+  // they are `ROLE_REGISTRY.space`'s to expand when the table is read back.
   private spaceGroupRoles(): {
     groupId: ModelId;
     grantType: ConcreteGrantType;
@@ -1935,13 +1934,54 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }));
   }
 
-  // The group grants this space confers, as the verbs its roles expand to in the registry. Kept in
-  // lockstep with the stored grant types by construction: both come from `spaceGroupRoles`, so the
-  // ACL served here cannot drift from what `GroupPermissions.fromGrants` rebuilds from the table.
-  private spaceGroupGrants(): GroupGrant[] {
-    return this.spaceGroupRoles().map(({ groupId, grantType }) => ({
-      id: groupId,
-      permissions: verbsForGrantAtLevel(grantType, "space", "instance"),
+  // The group grants this space confers, derived from its `group_vaults` associations in code, with
+  // the verbs stated literally as `GroupResource.getAccessControlLists` does. This is the legacy
+  // path: what `getAccessControlLists` serves until the flip.
+  private legacySpaceGroupGrants(): GroupGrant[] {
+    // System space: its groups manage the workspace's connections.
+    if (this.isSystem()) {
+      return this.groups.map((group) => ({
+        id: group.groupId,
+        permissions: ["read", "write"],
+      }));
+    }
+
+    // Global Workspace space and Conversations space: write comes from the role grants.
+    if (this.isGlobal() || this.isConversations()) {
+      return this.groups.map((group) => ({
+        id: group.groupId,
+        permissions: ["read"],
+      }));
+    }
+
+    // Provisioned groups do not carry grants on manually-managed spaces.
+    const groups =
+      this.managementMode === "manual"
+        ? this.groups.filter((group) => !group.isProvisioned())
+        : this.groups;
+
+    // Open regular space: every group only reads; write comes from the role grants.
+    if (this.isRegularAndOpen()) {
+      return groups.map((group) => ({
+        id: group.groupId,
+        permissions: ["read"],
+      }));
+    }
+
+    if (this.isProject()) {
+      return groups.map((group) => ({
+        id: group.groupId,
+        permissions:
+          group.groupSpaceKind === "project_editor"
+            ? ["admin", "read", "write"]
+            : ["read", "write"],
+      }));
+    }
+
+    // Restricted regular space.
+    return groups.map((group) => ({
+      id: group.groupId,
+      permissions: ["read", "write"],
     }));
   }
 
