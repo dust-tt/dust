@@ -193,6 +193,11 @@ export async function fetchConsumptionAllGroups(
   let afterKey: estypes.AggregationsCompositeAggregateKey | undefined;
 
   for (;;) {
+    // The overall total does not depend on the composite cursor, so it is
+    // only requested on the first page — repeating a full-dataset sum on
+    // every subsequent page would be pure waste.
+    const isFirstPage = afterKey === undefined;
+
     const result = await searchConsumptionAnalytics<never, CompositeTopAggs>(
       query,
       {
@@ -211,7 +216,13 @@ export async function fetchConsumptionAllGroups(
             },
             aggs: subAggs(unit),
           },
-          total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
+          ...(isFirstPage
+            ? {
+                total_credit_micro: {
+                  sum: { field: CREDIT_MICRO_FIELD },
+                },
+              }
+            : {}),
         },
         size: 0,
       }
@@ -233,10 +244,10 @@ export async function fetchConsumptionAllGroups(
         })
       )
     );
-    // The overall total does not depend on the composite cursor, but the
-    // aggregation is cheap to repeat and this keeps every page self-contained.
-    totalCreditsMicro =
-      result.value.aggregations?.total_credit_micro?.value ?? totalCreditsMicro;
+    if (isFirstPage) {
+      totalCreditsMicro =
+        result.value.aggregations?.total_credit_micro?.value ?? 0;
+    }
 
     if (!page?.after_key || pageBuckets.length < EXPORT_PAGE_SIZE) {
       break;
