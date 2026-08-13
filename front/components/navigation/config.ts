@@ -354,7 +354,7 @@ export const subNavigationAdmin = ({
               icon: BarChart01,
               href: `/w/${owner.sId}/analytics/consumption`,
               current: isCurrent("analytics_consumption"),
-              disabled: !hasAdminRole,
+              disabled: !hasManagerRole,
             },
           ]
         : []),

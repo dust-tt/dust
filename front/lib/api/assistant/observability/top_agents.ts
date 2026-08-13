@@ -1,7 +1,4 @@
-import {
-  resolveAnalyticsAgentLabels,
-  UNKNOWN_AGENT_LABEL,
-} from "@app/lib/api/assistant/observability/agent_labels";
+import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
 import {
   fetchAgentCostStats,
   getAgentCostStats,
@@ -114,18 +111,23 @@ export async function fetchTopAgents(
   }
   const costStatsMap = costStatsResult.value;
 
-  const rows = buckets.map((bucket) => {
+  const rows = buckets.flatMap((bucket) => {
     const agentId = String(bucket.key);
-    const label = agents.get(agentId) ?? UNKNOWN_AGENT_LABEL;
-    return {
-      agentId,
-      name: label.name,
-      pictureUrl: label.pictureUrl,
-      messageCount: bucket.doc_count ?? 0,
-      userCount: Math.round(bucket.unique_users?.value ?? 0),
-      totalCostCredits: getAgentCostStats(costStatsMap, agentId)
-        .totalCostCredits,
-    };
+    const label = agents.get(agentId);
+    if (!label) {
+      return [];
+    }
+    return [
+      {
+        agentId,
+        name: label.name,
+        pictureUrl: label.pictureUrl,
+        messageCount: bucket.doc_count ?? 0,
+        userCount: Math.round(bucket.unique_users?.value ?? 0),
+        totalCostCredits: getAgentCostStats(costStatsMap, agentId)
+          .totalCostCredits,
+      },
+    ];
   });
 
   return new Ok(rows);
