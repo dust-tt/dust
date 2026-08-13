@@ -1,6 +1,12 @@
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -40,6 +46,52 @@ vi.mock(
 const period = { kind: "days", days: 30 } as const;
 
 describe("ConsumptionAttributionTable", () => {
+  it("shows every page upfront and fetches the selected fixed-size page", async () => {
+    const rows = Array.from({ length: 80 }, (_, index) => ({
+      id: `agent-${index + 1}`,
+      name: `Agent ${index + 1}`,
+      pictureUrl: null,
+      credits: 100 - index,
+      avgCredits: 10,
+    }));
+    mockUseConsumptionTop.mockImplementation(
+      ({ limit, offset }: { limit: number; offset: number }) => ({
+        rows: rows.slice(offset, offset + limit),
+        totalCredits: 2_565,
+        totalCount: rows.length,
+        hasMore: offset + limit < rows.length,
+        isTopLoading: false,
+        isTopError: undefined,
+        isTopValidating: false,
+      })
+    );
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="agent"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    expect(mockUseConsumptionTop).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 25, offset: 0 })
+    );
+
+    expect(screen.getByRole("button", { name: "4" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "4" }));
+
+    await waitFor(() => {
+      expect(mockUseConsumptionTop).toHaveBeenCalledWith(
+        expect.objectContaining({ limit: 25, offset: 75 })
+      );
+      expect(screen.getByText("Agent 80")).toBeInTheDocument();
+    });
+  });
+
   it("resets expanded rows when switching dimensions", () => {
     mockUseConsumptionTop.mockImplementation(
       ({ dimension }: { dimension: ConsumptionDimension }) => ({
@@ -57,8 +109,11 @@ describe("ConsumptionAttributionTable", () => {
           },
         ],
         totalCredits: 100,
+        totalCount: 1,
+        hasMore: false,
         isTopLoading: false,
         isTopError: undefined,
+        isTopValidating: false,
       })
     );
 
@@ -77,7 +132,11 @@ describe("ConsumptionAttributionTable", () => {
       name: "Expand breakdown for Research agent",
     });
     fireEvent.click(expandAgent);
-    expect(expandAgent).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByRole("button", {
+        name: "Collapse breakdown for Research agent",
+      })
+    ).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Attribution breakdown")).toBeInTheDocument();
 
     rerender(

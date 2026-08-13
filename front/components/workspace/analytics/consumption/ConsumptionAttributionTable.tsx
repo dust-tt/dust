@@ -34,13 +34,14 @@ import {
   Icon,
   MOTION_DURATIONS,
   MOTION_EASINGS,
+  Pagination,
   SearchInput,
   Tabs,
   TabsList,
   TabsTrigger,
   Tooltip,
 } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import type { Transition, Variants } from "framer-motion";
 import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
@@ -54,9 +55,8 @@ import {
   isConsumptionDimension,
 } from "./consumptionDimensions";
 
-const TOP_LIMIT = 25;
-
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
+const ATTRIBUTION_PAGE_SIZE = 25;
 
 type AttributionTransitionDirection = -1 | 0 | 1;
 
@@ -159,6 +159,8 @@ function buildColumns({
   avgLabel,
   totalCredits,
   isDark,
+  expandedRowId,
+  selectedIdSet,
 }: {
   dimension: ConsumptionDimension;
   hasAvatar: boolean;
@@ -166,6 +168,8 @@ function buildColumns({
   avgLabel: string;
   totalCredits: number;
   isDark: boolean;
+  expandedRowId: string | null;
+  selectedIdSet: Set<string>;
 }): ColumnDef<AttributionRowData>[] {
   return [
     {
@@ -280,14 +284,15 @@ function buildColumns({
       meta: { className: "w-12", headerAlign: "right" },
       cell: (info) => {
         const row = info.row.original;
+        const isExpanded = expandedRowId === row.id;
         return (
           <DataTable.CellContent className="w-full justify-end">
             <Button
-              icon={row.isExpanded ? ChevronUp : ChevronDown}
+              icon={isExpanded ? ChevronUp : ChevronDown}
               variant="ghost-secondary"
               size="xs"
-              aria-label={`${row.isExpanded ? "Collapse" : "Expand"} breakdown for ${row.name}`}
-              aria-expanded={row.isExpanded}
+              aria-label={`${isExpanded ? "Collapse" : "Expand"} breakdown for ${row.name}`}
+              aria-expanded={isExpanded}
               onClick={(event) => {
                 event.stopPropagation();
                 row.onClick();
@@ -304,18 +309,19 @@ function buildColumns({
       meta: { className: "w-12", headerAlign: "right" },
       cell: (info) => {
         const row = info.row.original;
+        const isFilterSelected = selectedIdSet.has(row.id);
         return (
           <DataTable.CellContent className="w-full justify-end">
             <Button
               icon={BarChart01}
               variant="ghost-secondary"
               size="xs"
-              disabled={row.isFilterSelected}
+              disabled={isFilterSelected}
               tooltip={
-                row.isFilterSelected ? "Already in filters" : "Add to filters"
+                isFilterSelected ? "Already in filters" : "Add to filters"
               }
               aria-label={
-                row.isFilterSelected
+                isFilterSelected
                   ? `${row.name} is already in filters`
                   : `Add ${row.name} to filters`
               }
@@ -356,29 +362,40 @@ function AttributionRows({
   const { hasAvatar, avgLabel } = CONSUMPTION_DIMENSION_CONFIG[dimension];
   const { isDark } = useTheme();
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: ATTRIBUTION_PAGE_SIZE,
+  });
   const shouldReduceMotion = useReducedMotion();
 
   const {
     rows: allRows,
     totalCredits,
+    totalCount,
     isTopLoading,
     isTopError,
+    isTopValidating,
   } = useConsumptionTop({
     workspaceId,
     dimension,
     period,
-    limit: TOP_LIMIT,
+    limit: pagination.pageSize,
+    offset: pagination.pageIndex * pagination.pageSize,
     filter,
   });
 
-  // Client-side filter over the loaded ranking. A row outside the top
-  // TOP_LIMIT will not appear — the endpoint has no server-side search yet.
+  // Client-side filter over the loaded ranking returned by the endpoint.
   const rows = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return needle
       ? allRows.filter((row) => row.name.toLowerCase().includes(needle))
       : allRows;
   }, [allRows, search]);
+
+  const selectedIdSet = useMemo(
+    () => new Set(filter?.[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]] ?? []),
+    [dimension, filter]
+  );
 
   const columns = useMemo(
     () =>
@@ -389,24 +406,47 @@ function AttributionRows({
         avgLabel,
         totalCredits,
         isDark,
+        expandedRowId,
+        selectedIdSet,
       }),
-    [hasAvatar, dimension, avgLabel, totalCredits, isDark]
+    [
+      hasAvatar,
+      dimension,
+      avgLabel,
+      totalCredits,
+      isDark,
+      expandedRowId,
+      selectedIdSet,
+    ]
   );
+
+  const data = useMemo<AttributionRowData[]>(
+    () =>
+      rows.map((row) => ({
+        ...row,
+        onClick: () =>
+          setExpandedRowId((current) => (current === row.id ? null : row.id)),
+        onAddFilter: () => onAddFilter(row),
+      })),
+    [rows, onAddFilter]
+  );
+  const isLoading = isTopLoading || isTopValidating;
 
   let contentKey = "content";
   let content: ReactNode;
 
-  if (isTopLoading) {
+  if (isLoading) {
     contentKey = "loading";
     content = (
       <ConsumptionAttributionRowsTable
-        data={[]}
+        data={data}
         columns={columns}
         workspaceId={workspaceId}
         dimension={dimension}
         period={period}
         filter={filter}
         onViewAll={onViewAll}
+        expandedRowId={expandedRowId}
         isLoading
         hasAvatar={hasAvatar}
         isAvatarRounded={dimension === "user"}
@@ -418,38 +458,40 @@ function AttributionRows({
         Failed to load attribution.
       </div>
     );
-  } else if (rows.length === 0) {
-    content = (
-      <div className="text-sm text-muted-foreground">
-        {search.trim()
-          ? `No match for "${search.trim()}".`
-          : "No consumption over this period."}
-      </div>
-    );
   } else {
-    const selectedIdSet = new Set(
-      filter?.[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]] ?? []
-    );
-    const data: AttributionRowData[] = rows.map((row) => ({
-      ...row,
-      isExpanded: expandedRowId === row.id,
-      isFilterSelected: selectedIdSet.has(row.id),
-      onClick: () =>
-        setExpandedRowId((current) => (current === row.id ? null : row.id)),
-      onAddFilter: () => onAddFilter(row),
-    }));
-
     content = (
-      <div className="overflow-x-auto">
-        <ConsumptionAttributionRowsTable
-          data={data}
-          columns={columns}
-          workspaceId={workspaceId}
-          dimension={dimension}
-          period={period}
-          filter={filter}
-          onViewAll={onViewAll}
-        />
+      <div>
+        {rows.length === 0 ? (
+          <div className="text-sm text-muted-foreground">
+            {search.trim()
+              ? `No match for "${search.trim()}".`
+              : "No consumption over this period."}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <ConsumptionAttributionRowsTable
+              data={data}
+              columns={columns}
+              workspaceId={workspaceId}
+              dimension={dimension}
+              period={period}
+              filter={filter}
+              onViewAll={onViewAll}
+              expandedRowId={expandedRowId}
+            />
+          </div>
+        )}
+        {totalCount > pagination.pageSize && (
+          <div className="mt-2 p-1">
+            <Pagination
+              size="xs"
+              showDetails={false}
+              pagination={pagination}
+              setPagination={setPagination}
+              rowCount={totalCount}
+            />
+          </div>
+        )}
       </div>
     );
   }
@@ -465,7 +507,7 @@ function AttributionRows({
           duration: shouldReduceMotion ? 0 : 0.1,
           ease: MOTION_EASINGS.enter,
         }}
-        aria-busy={isTopLoading}
+        aria-busy={isLoading}
       >
         {content}
       </m.div>
@@ -589,8 +631,13 @@ export function ConsumptionAttributionTable({
                 animate="animate"
                 exit="exit"
               >
-                {/* A dimension selects a different dataset, so its table state must not carry over. */}
+                {/* Reset table state whenever its dataset or local search changes. */}
                 <AttributionRows
+                  key={JSON.stringify({
+                    period,
+                    filter,
+                    search: debouncedValue,
+                  })}
                   workspaceId={workspaceId}
                   dimension={dimension}
                   period={period}

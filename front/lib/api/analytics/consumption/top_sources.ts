@@ -29,6 +29,8 @@ export type ConsumptionTopSourceRow = {
 export type ConsumptionTopSources = {
   period: ConsumptionPeriod;
   totalCredits: number;
+  hasMore: boolean;
+  totalCount: number;
   // Highest credits first.
   sources: ConsumptionTopSourceRow[];
 };
@@ -40,10 +42,12 @@ export async function fetchConsumptionTopSources(
   {
     period,
     limit,
+    offset = 0,
     filter,
   }: {
     period: ConsumptionPeriod;
     limit: number;
+    offset?: number;
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionTopSources, ElasticsearchError>> {
@@ -51,12 +55,13 @@ export async function fetchConsumptionTopSources(
     dimension: "source",
     period,
     limit,
+    offset,
     filter,
   });
   if (result.isErr()) {
     return result;
   }
-  const { groups, totalCredits } = result.value;
+  const { groups, hasMore, totalCount, totalCredits } = result.value;
 
   const labels = await resolveDimensionLabels(
     auth,
@@ -67,6 +72,8 @@ export async function fetchConsumptionTopSources(
   return new Ok({
     period,
     totalCredits,
+    hasMore,
+    totalCount,
     sources: groups.map((group) => ({
       source: group.key,
       name: labels.get(group.key)?.name ?? group.key,

@@ -151,6 +151,7 @@ export function useConsumptionTop({
   dimension,
   period,
   limit,
+  offset = 0,
   filter,
   disabled,
 }: {
@@ -158,6 +159,7 @@ export function useConsumptionTop({
   dimension: ConsumptionDimension;
   period: ConsumptionPeriodSelection;
   limit: number;
+  offset?: number;
   filter?: ConsumptionScopeFilter;
   disabled?: boolean;
 }) {
@@ -168,6 +170,7 @@ export function useConsumptionTop({
       period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
     filter: normalizedConsumptionFilter(filter),
     limit,
+    offset,
   };
 
   const { data, error, isValidating } = useConsumptionQuery<
@@ -185,6 +188,8 @@ export function useConsumptionTop({
     // Everything the workspace consumed over the period, so a row's share of it
     // is `credits / totalCredits`.
     totalCredits: data?.totalCredits ?? 0,
+    totalCount: data?.totalCount ?? 0,
+    hasMore: data?.hasMore ?? false,
     isTopLoading: !error && !data && !disabled,
     isTopError: error,
     isTopValidating: isValidating,

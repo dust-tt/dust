@@ -32,8 +32,11 @@ type ConsumptionTopGroup = {
 
 export type ConsumptionTopGroups = {
   groups: ConsumptionTopGroup[];
+  hasMore: boolean;
+  // Distinct dimension values over the scoped period.
+  totalCount: number;
   // Gross credits over the whole scoped period, every document included. Not the
-  // sum of `groups` — the ranking is capped at `limit`, and a dimension that only
+  // sum of `groups`. The ranking is capped at `limit`, and a dimension that only
   // exists on some documents (a tool, a skill) accounts for part of the total.
   totalCredits: number;
 };
@@ -42,6 +45,8 @@ export type ConsumptionTopGroups = {
 // bucket reads below cannot drift apart.
 const CREDIT_AGG = "credit_micro";
 const MESSAGES_AGG = "messages";
+const TOTAL_COUNT_AGG = "total_count";
+const CARDINALITY_PRECISION_THRESHOLD = 40_000;
 
 type GroupBucket = {
   key: string;
@@ -61,6 +66,7 @@ function subAggs(unit: ConsumptionTopUnit) {
 
 type TopAggs = {
   by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
+  [TOTAL_COUNT_AGG]?: estypes.AggregationsCardinalityAggregate;
   total_credit_micro?: estypes.AggregationsSumAggregate;
 };
 
@@ -92,11 +98,13 @@ export async function fetchConsumptionTopGroups(
     dimension,
     period,
     limit,
+    offset = 0,
     filter,
   }: {
     dimension: ConsumptionScopeDimension;
     period: ConsumptionPeriod;
     limit: number;
+    offset?: number;
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
@@ -107,16 +115,24 @@ export async function fetchConsumptionTopGroups(
     endDate: period.endDate,
     filter,
   });
+  const requestedBucketCount = offset + limit;
+  const dimensionField = CONSUMPTION_DIMENSION_FIELDS[dimension];
 
   const result = await searchConsumptionAnalytics<never, TopAggs>(query, {
     aggregations: {
       by_group: {
         terms: {
-          field: CONSUMPTION_DIMENSION_FIELDS[dimension],
-          size: limit,
+          field: dimensionField,
+          size: requestedBucketCount,
           order: { [CREDIT_AGG]: "desc" },
         },
         aggs: subAggs(unit),
+      },
+      [TOTAL_COUNT_AGG]: {
+        cardinality: {
+          field: dimensionField,
+          precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+        },
       },
       total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
     },
@@ -127,16 +143,21 @@ export async function fetchConsumptionTopGroups(
     return result;
   }
 
-  const groups = bucketsToArray<GroupBucket>(
+  const rankedGroups = bucketsToArray<GroupBucket>(
     result.value.aggregations?.by_group?.buckets
   ).map((bucket) => ({
     key: String(bucket.key),
     credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
     count: countFromBucket(bucket, unit),
   }));
+  const totalCount = Math.round(
+    result.value.aggregations?.[TOTAL_COUNT_AGG]?.value ?? 0
+  );
 
   return new Ok({
-    groups,
+    groups: rankedGroups.slice(offset, offset + limit),
+    hasMore: totalCount > offset + limit,
+    totalCount,
     totalCredits: microCreditsToCredits(
       result.value.aggregations?.total_credit_micro?.value ?? 0
     ),

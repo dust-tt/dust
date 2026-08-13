@@ -41,8 +41,11 @@ export const ConsumptionTopBodySchema = ConsumptionBodySchema.extend({
     .int()
     .positive()
     .max(100)
+    .nullable()
     .optional()
-    .default(DEFAULT_CONSUMPTION_TOP_LIMIT),
+    .default(DEFAULT_CONSUMPTION_TOP_LIMIT)
+    .transform((limit) => limit ?? DEFAULT_CONSUMPTION_TOP_LIMIT),
+  offset: z.number().int().nonnegative().optional().default(0),
 });
 
 export type ConsumptionTopBody = z.infer<typeof ConsumptionTopBodySchema>;

@@ -34,6 +34,8 @@ export type ConsumptionTopToolRow = {
 export type ConsumptionTopTools = {
   period: ConsumptionPeriod;
   totalCredits: number;
+  hasMore: boolean;
+  totalCount: number;
   // Highest credits first.
   tools: ConsumptionTopToolRow[];
 };
@@ -45,10 +47,12 @@ export async function fetchConsumptionTopTools(
   {
     period,
     limit,
+    offset = 0,
     filter,
   }: {
     period: ConsumptionPeriod;
     limit: number;
+    offset?: number;
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionTopTools, ElasticsearchError>> {
@@ -56,12 +60,13 @@ export async function fetchConsumptionTopTools(
     dimension: "tool",
     period,
     limit,
+    offset,
     filter,
   });
   if (result.isErr()) {
     return result;
   }
-  const { groups, totalCredits } = result.value;
+  const { groups, hasMore, totalCount, totalCredits } = result.value;
 
   const labels = await resolveDimensionLabels(
     auth,
@@ -72,6 +77,8 @@ export async function fetchConsumptionTopTools(
   return new Ok({
     period,
     totalCredits,
+    hasMore,
+    totalCount,
     tools: groups.map((group) => ({
       serverName: group.key,
       name: labels.get(group.key)?.name ?? group.key,
