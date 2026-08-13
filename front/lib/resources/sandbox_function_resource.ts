@@ -9,6 +9,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -313,6 +314,31 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         )
         .map((space) => [space.id, space])
     );
+
+    // A Pod with app sharing enabled extends function resolution (and therefore invocation) to
+    // every workspace member, without granting read on the Pod itself. Per-function userIdentity
+    // policies still apply on top at invocation time.
+    if (auth.isUser()) {
+      const sharingCandidates = spaces.filter(
+        (space) => space.isProject() && !accessibleSpacesById.has(space.id)
+      );
+      if (sharingCandidates.length > 0) {
+        const metadatas = await ProjectMetadataResource.fetchBySpaceModelIds(
+          auth,
+          sharingCandidates.map((space) => space.id)
+        );
+        const sharingSpaceIds = new Set(
+          metadatas
+            .filter((metadata) => metadata.appSharingEnabled)
+            .map((metadata) => metadata.spaceId)
+        );
+        for (const space of sharingCandidates) {
+          if (sharingSpaceIds.has(space.id)) {
+            accessibleSpacesById.set(space.id, space);
+          }
+        }
+      }
+    }
 
     const files = await FileResource.fetchByModelIdsWithAuth(
       auth,

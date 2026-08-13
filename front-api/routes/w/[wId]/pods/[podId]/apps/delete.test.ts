@@ -1,5 +1,6 @@
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import type { Authenticator } from "@app/lib/auth";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -266,6 +267,26 @@ describe("DELETE /api/w/:wId/pods/:podId/apps/:prefix", () => {
     );
 
     expect(res.status).toBe(404);
+  });
+
+  it("stays denied to a workspace member outside the pod when app sharing is enabled", async () => {
+    // App sharing grants function invocation only — never write access such as app deletion.
+    const { workspace, auth, pod } = await setupPod();
+    await ProjectMetadataResource.makeNew(auth, pod, {
+      description: null,
+      appSharingEnabled: true,
+    });
+
+    // Authenticate subsequent requests as a workspace user who is not in the pod.
+    await createPrivateApiMockRequest({ role: "user", workspace });
+
+    const res = await honoApp.request(
+      `/api/w/${workspace.sId}/pods/${pod.sId}/apps/tasklist`,
+      { method: "DELETE" }
+    );
+
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.type).toBe("space_not_found");
   });
 
   it("refuses to delete artifacts published outside an app folder", async () => {

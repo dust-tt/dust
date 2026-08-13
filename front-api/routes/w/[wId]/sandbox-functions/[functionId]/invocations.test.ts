@@ -3,6 +3,7 @@ import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
@@ -99,11 +100,13 @@ async function setupSandboxFunction({
   addCallerToSpace = true,
   addCallerToEditors = false,
   withSandboxFunctionsFeatureFlag = true,
+  appSharingEnabled = false,
   userIdentity = "optional",
 }: {
   addCallerToSpace?: boolean;
   addCallerToEditors?: boolean;
   withSandboxFunctionsFeatureFlag?: boolean;
+  appSharingEnabled?: boolean;
   userIdentity?: SandboxFunctionUserIdentityPolicy;
 } = {}) {
   const { workspace, auth: adminAuth } = await createPrivateApiMockRequest({
@@ -113,6 +116,12 @@ async function setupSandboxFunction({
     await FeatureFlagFactory.basic(adminAuth, "sandbox_functions");
   }
   const space = await SpaceFactory.project(workspace);
+  if (appSharingEnabled) {
+    await ProjectMetadataResource.makeNew(adminAuth, space, {
+      description: null,
+      appSharingEnabled: true,
+    });
+  }
   const file = await FileFactory.create(adminAuth, null, {
     contentType: sandboxFunctionContentType,
     fileName: "function.ts",
@@ -611,6 +620,51 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
     expect(await response.json()).toMatchObject({
       error: { type: "sandbox_function_not_found" },
     });
+  });
+
+  it("allows a workspace member outside the pod when app sharing is enabled", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction({
+      addCallerToSpace: false,
+      appSharingEnabled: true,
+    });
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(201);
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
+  });
+
+  it("still denies a pod-editor-required function to a non-editor when app sharing is enabled", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction({
+      addCallerToSpace: false,
+      appSharingEnabled: true,
+      userIdentity: "pod_editor_required",
+    });
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(401);
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+  });
+
+  it("resolves by pod id and slug for a workspace member outside the pod when app sharing is enabled", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction({
+      addCallerToSpace: false,
+      appSharingEnabled: true,
+    });
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: `${sandboxFunction.space.sId}/${sandboxFunction.slug}`,
+    });
+
+    expect(response.status).toBe(201);
   });
 
   it("does not require Computer access", async () => {
