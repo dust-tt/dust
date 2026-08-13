@@ -1,10 +1,13 @@
 use std::collections::{HashMap, HashSet};
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Seek, SeekFrom};
+use std::num::NonZeroUsize;
 use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
+use std::time::{Duration, Instant};
 
+use lru::LruCache;
 use tempfile::NamedTempFile;
 use uuid::Uuid;
 
@@ -13,6 +16,10 @@ use super::client::{FileSystemClient, NodeKind as RemoteNodeKind, RemoteNode};
 pub const ROOT_ID: u64 = 1;
 const REMOTE_INODE_OFFSET: u64 = 2;
 const DEFAULT_CONTENT_TYPE: &str = "application/octet-stream";
+const METADATA_CACHE_TTL: Duration = Duration::from_secs(1);
+const NODE_CACHE_CAPACITY: usize = 4096;
+const DIRECTORY_CACHE_CAPACITY: usize = 256;
+const DIRECTORY_ENTRY_CACHE_CAPACITY: usize = 8192;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NodeKind {
@@ -67,11 +74,46 @@ struct ContentCache {
     access_sequence: u64,
 }
 
+#[derive(Clone)]
+struct CachedNode {
+    node: Node,
+    validated_at: Instant,
+}
+
+#[derive(Clone)]
+struct CachedDirectory {
+    children: Vec<Node>,
+    validated_at: Instant,
+}
+
+struct MetadataCache {
+    nodes: LruCache<u64, CachedNode>,
+    directories: LruCache<u64, CachedDirectory>,
+    directory_entries: usize,
+}
+
+impl MetadataCache {
+    fn new() -> io::Result<Self> {
+        let node_capacity =
+            NonZeroUsize::new(NODE_CACHE_CAPACITY).ok_or_else(|| errno(libc::EINVAL))?;
+        let directory_capacity =
+            NonZeroUsize::new(DIRECTORY_CACHE_CAPACITY).ok_or_else(|| errno(libc::EINVAL))?;
+        Ok(Self {
+            nodes: LruCache::new(node_capacity),
+            directories: LruCache::new(directory_capacity),
+            directory_entries: 0,
+        })
+    }
+}
+
 pub struct FileStore {
     client: FileSystemClient,
     staging_dir: PathBuf,
     roots: Vec<Node>,
     cache: Mutex<ContentCache>,
+    // Match the one-second FUSE attribute TTL so repeated opens and readdir
+    // stay local without extending the period in which another writer is hidden.
+    metadata: Mutex<MetadataCache>,
     // A fixed number of stripes prevents two downloads of the same inode from
     // replacing each other's cache file without growing one lock per file.
     // Different files can still download and upload in parallel.
@@ -108,6 +150,7 @@ impl FileStore {
                 cached_bytes: 0,
                 access_sequence: 0,
             }),
+            metadata: Mutex::new(MetadataCache::new()?),
             content_locks: std::array::from_fn(|_| Mutex::new(())),
         })
     }
@@ -116,8 +159,13 @@ impl FileStore {
         if node_id == ROOT_ID {
             return Ok(Node::root());
         }
+        if let Some(node) = self.cached_node(node_id)? {
+            return Ok(node);
+        }
         let remote_id = remote_id(node_id)?;
-        Ok(Node::from_remote(self.client.node(remote_id)?))
+        let node = Node::from_remote(self.client.node(remote_id)?);
+        self.cache_node(node.clone())?;
+        Ok(node)
     }
 
     pub fn lookup(&self, parent_id: u64, name: &str) -> io::Result<Node> {
@@ -125,9 +173,9 @@ impl FileStore {
         if parent_id == ROOT_ID {
             return self.root_by_name(name).ok_or_else(|| errno(libc::ENOENT));
         }
-        Ok(Node::from_remote(
-            self.client.lookup(remote_id(parent_id)?, name)?,
-        ))
+        let node = Node::from_remote(self.client.lookup(remote_id(parent_id)?, name)?);
+        self.cache_node(node.clone())?;
+        Ok(node)
     }
 
     pub fn children(&self, parent_id: u64) -> io::Result<Vec<Node>> {
@@ -141,11 +189,17 @@ impl FileStore {
             }
             return Ok(roots);
         }
-        self.client
+        if let Some(children) = self.cached_children(parent_id)? {
+            return Ok(children);
+        }
+        let children = self
+            .client
             .children(remote_id(parent_id)?)?
             .into_iter()
             .map(|remote| Ok(Node::from_remote(remote)))
-            .collect()
+            .collect::<io::Result<Vec<_>>>()?;
+        self.cache_children(parent_id, children.clone())?;
+        Ok(children)
     }
 
     fn root_by_name(&self, name: &str) -> Option<Node> {
@@ -184,7 +238,8 @@ impl FileStore {
         if parent_id == ROOT_ID {
             return Err(errno(libc::EPERM));
         }
-        self.client
+        let node = self
+            .client
             .create(
                 &Uuid::new_v4().to_string(),
                 remote_id(parent_id)?,
@@ -192,7 +247,10 @@ impl FileStore {
                 kind,
                 mode,
             )
-            .map(Node::from_remote)
+            .map(Node::from_remote)?;
+        self.invalidate_directory(parent_id)?;
+        self.cache_node(node.clone())?;
+        Ok(node)
     }
 
     pub fn remove_file(&self, parent_id: u64, name: &str) -> io::Result<()> {
@@ -217,6 +275,8 @@ impl FileStore {
         }
         self.client
             .remove(&Uuid::new_v4().to_string(), remote_id(parent_id)?, name)?;
+        self.invalidate_node(node_id)?;
+        self.invalidate_directory(parent_id)?;
         self.forget_content(node_id);
         Ok(())
     }
@@ -239,7 +299,8 @@ impl FileStore {
         if parent_id == ROOT_ID || new_parent_id == ROOT_ID {
             return Err(errno(libc::EPERM));
         }
-        self.client
+        let node = self
+            .client
             .rename(
                 &Uuid::new_v4().to_string(),
                 remote_id(parent_id)?,
@@ -247,16 +308,23 @@ impl FileStore {
                 remote_id(new_parent_id)?,
                 new_name,
             )
-            .map(Node::from_remote)
+            .map(Node::from_remote)?;
+        self.invalidate_directory(parent_id)?;
+        self.invalidate_directory(new_parent_id)?;
+        self.cache_node(node.clone())?;
+        Ok(node)
     }
 
     pub fn set_mode(&self, node_id: u64, mode: u16) -> io::Result<Node> {
         if node_id == ROOT_ID {
             return Err(errno(libc::EPERM));
         }
-        self.client
+        let node = self
+            .client
             .set_mode(remote_id(node_id)?, mode)
-            .map(Node::from_remote)
+            .map(Node::from_remote)?;
+        self.cache_node(node.clone())?;
+        Ok(node)
     }
 
     pub fn open_content(
@@ -266,38 +334,48 @@ impl FileStore {
         pinned_node_ids: &HashSet<u64>,
     ) -> io::Result<OpenedContent> {
         let _content = self.content_lock(node_id)?;
-        let node = self.node(node_id)?;
+        let mut node = self.node(node_id)?;
         if node.kind != NodeKind::File {
             return Err(errno(libc::EISDIR));
         }
         let remote_id = node.remote_id.ok_or_else(|| errno(libc::EIO))?;
-        let content = self.client.content(remote_id)?;
         let cache_current = {
             let cache = self.cache()?;
             cache
                 .entries
                 .get(&node_id)
-                .map(|cached| cached.blob_id == content.blob_id && cached.path.exists())
+                .map(|cached| cached.blob_id == node.blob_id && cached.path.exists())
                 .unwrap_or(false)
         };
         if !cache_current {
             let mut temporary = NamedTempFile::new_in(&self.staging_dir)?;
-            if let Some(url) = content.download_url.as_deref() {
-                self.client.download(url, temporary.as_file_mut())?;
+            let mut opened_node = node.clone();
+            if node.blob_id.is_some() {
+                let content = self.client.content(remote_id)?;
+                if let Some(url) = content.download_url.as_deref() {
+                    self.client.download(url, temporary.as_file_mut())?;
+                }
+                opened_node.blob_id = content.blob_id;
+                if content.content_type.is_some() {
+                    opened_node.content_type = content.content_type;
+                }
             }
             temporary.as_file_mut().sync_data()?;
             let size_bytes = temporary.as_file().metadata()?.len();
+            opened_node.size = size_bytes;
             let path = self.content_path(node_id);
             temporary.persist(&path).map_err(|error| error.error)?;
             self.insert_cached_content(
                 node_id,
                 CachedContent {
-                    blob_id: content.blob_id.clone(),
+                    blob_id: opened_node.blob_id.clone(),
                     path,
                     size_bytes,
                     last_access: 0,
                 },
             )?;
+            self.cache_node(opened_node.clone())?;
+            node = opened_node;
         } else {
             self.touch_cached_content(node_id)?;
         }
@@ -313,14 +391,11 @@ impl FileStore {
             .map(|cached| cached.path.clone())
             .ok_or_else(|| errno(libc::EIO))?;
         let file = open_staged_file(&path, flags)?;
-        let content_type = content
-            .content_type
-            .unwrap_or_else(|| node.content_type().to_owned());
         Ok(OpenedContent {
+            expected_blob_id: node.blob_id.clone(),
+            content_type: node.content_type().to_owned(),
             node,
             file,
-            expected_blob_id: content.blob_id,
-            content_type,
         })
     }
 
@@ -356,7 +431,8 @@ impl FileStore {
             .client
             .commit_upload(remote_id, expected_blob_id, &upload)?;
         let node = Node::from_remote(remote);
-        self.update_cached_content(node_id, node.blob_id.clone(), size)?;
+        self.update_cached_content(node_id, &node, size)?;
+        self.cache_node(node.clone())?;
         Ok(node)
     }
 
@@ -400,12 +476,7 @@ impl FileStore {
         Ok(())
     }
 
-    fn update_cached_content(
-        &self,
-        node_id: u64,
-        blob_id: Option<String>,
-        size_bytes: u64,
-    ) -> io::Result<()> {
+    fn update_cached_content(&self, node_id: u64, node: &Node, size_bytes: u64) -> io::Result<()> {
         let mut cache = self.cache()?;
         cache.access_sequence = cache.access_sequence.saturating_add(1);
         let access_sequence = cache.access_sequence;
@@ -415,7 +486,7 @@ impl FileStore {
             cache.cached_bytes = cache.cached_bytes.saturating_add(size_bytes);
         }
         if let Some(cached) = cache.entries.get_mut(&node_id) {
-            cached.blob_id = blob_id;
+            cached.blob_id = node.blob_id.clone();
             cached.size_bytes = size_bytes;
             cached.last_access = access_sequence;
         }
@@ -440,6 +511,111 @@ impl FileStore {
 
     fn cache(&self) -> io::Result<MutexGuard<'_, ContentCache>> {
         self.cache.lock().map_err(|_| errno(libc::EIO))
+    }
+
+    fn metadata(&self) -> io::Result<MutexGuard<'_, MetadataCache>> {
+        self.metadata.lock().map_err(|_| errno(libc::EIO))
+    }
+
+    fn cached_node(&self, node_id: u64) -> io::Result<Option<Node>> {
+        let mut metadata = self.metadata()?;
+        match metadata.nodes.get(&node_id).cloned() {
+            Some(cached) if cached.validated_at.elapsed() <= METADATA_CACHE_TTL => {
+                Ok(Some(cached.node))
+            }
+            Some(_) => {
+                metadata.nodes.pop(&node_id);
+                Ok(None)
+            }
+            None => Ok(None),
+        }
+    }
+
+    fn cache_node(&self, node: Node) -> io::Result<()> {
+        let mut metadata = self.metadata()?;
+        metadata.nodes.put(
+            node.id,
+            CachedNode {
+                node,
+                validated_at: Instant::now(),
+            },
+        );
+        Ok(())
+    }
+
+    fn cached_children(&self, parent_id: u64) -> io::Result<Option<Vec<Node>>> {
+        let mut metadata = self.metadata()?;
+        match metadata.directories.get(&parent_id).cloned() {
+            Some(cached) if cached.validated_at.elapsed() <= METADATA_CACHE_TTL => {
+                Ok(Some(cached.children))
+            }
+            Some(_) => {
+                if let Some(expired) = metadata.directories.pop(&parent_id) {
+                    metadata.directory_entries = metadata
+                        .directory_entries
+                        .saturating_sub(expired.children.len());
+                }
+                Ok(None)
+            }
+            None => Ok(None),
+        }
+    }
+
+    fn cache_children(&self, parent_id: u64, children: Vec<Node>) -> io::Result<()> {
+        let mut metadata = self.metadata()?;
+        for child in &children {
+            metadata.nodes.put(
+                child.id,
+                CachedNode {
+                    node: child.clone(),
+                    validated_at: Instant::now(),
+                },
+            );
+        }
+        let child_count = children.len();
+        if let Some((_, previous)) = metadata.directories.push(
+            parent_id,
+            CachedDirectory {
+                children,
+                validated_at: Instant::now(),
+            },
+        ) {
+            metadata.directory_entries = metadata
+                .directory_entries
+                .saturating_sub(previous.children.len());
+        }
+        metadata.directory_entries = metadata.directory_entries.saturating_add(child_count);
+        while metadata.directory_entries > DIRECTORY_ENTRY_CACHE_CAPACITY {
+            if let Some((_, removed)) = metadata.directories.pop_lru() {
+                metadata.directory_entries = metadata
+                    .directory_entries
+                    .saturating_sub(removed.children.len());
+            } else {
+                break;
+            }
+        }
+        Ok(())
+    }
+
+    fn invalidate_node(&self, node_id: u64) -> io::Result<()> {
+        let mut metadata = self.metadata()?;
+        metadata.nodes.pop(&node_id);
+        if let Some(removed) = metadata.directories.pop(&node_id) {
+            metadata.directory_entries = metadata
+                .directory_entries
+                .saturating_sub(removed.children.len());
+        }
+        Ok(())
+    }
+
+    fn invalidate_directory(&self, node_id: u64) -> io::Result<()> {
+        let mut metadata = self.metadata()?;
+        if let Some(removed) = metadata.directories.pop(&node_id) {
+            metadata.directory_entries = metadata
+                .directory_entries
+                .saturating_sub(removed.children.len());
+        }
+        Ok(())
     }
 
     fn content_lock(&self, node_id: u64) -> io::Result<MutexGuard<'_, ()>> {
@@ -581,7 +757,7 @@ mod tests {
     use super::super::client::FileSystemClient;
     use super::{
         fuse_id, open_staged_file, prepare_staging_directory, remote_id, CachedContent,
-        ContentCache, FileStore, ROOT_ID,
+        ContentCache, FileStore, MetadataCache, Node, NodeKind, NODE_CACHE_CAPACITY, ROOT_ID,
     };
 
     fn empty_store(staging_dir: &std::path::Path, cache_capacity_bytes: u64) -> FileStore {
@@ -601,6 +777,7 @@ mod tests {
                 cached_bytes: 0,
                 access_sequence: 0,
             }),
+            metadata: Mutex::new(MetadataCache::new().expect("metadata cache")),
             content_locks: std::array::from_fn(|_| Mutex::new(())),
         }
     }
@@ -610,6 +787,40 @@ mod tests {
         assert_ne!(fuse_id(1), ROOT_ID);
         assert_eq!(remote_id(fuse_id(42)).ok(), Some(42));
         assert!(remote_id(ROOT_ID).is_err());
+    }
+
+    #[test]
+    fn metadata_cache_is_bounded_and_directory_entries_can_be_invalidated() {
+        let directory = tempdir().expect("temporary directory");
+        let store = empty_store(directory.path(), 1024);
+        let make_node = |id| Node {
+            id,
+            parent_id: Some(2),
+            name: format!("node-{id}"),
+            kind: NodeKind::File,
+            mode: 0o644,
+            size: 0,
+            created_at_ms: 0,
+            modified_at_ms: 0,
+            remote_id: Some(id),
+            blob_id: None,
+            content_type: None,
+        };
+
+        for id in 2..=u64::try_from(NODE_CACHE_CAPACITY + 2).expect("cache size") {
+            store.cache_node(make_node(id)).expect("cache node");
+        }
+        assert_eq!(
+            store.metadata().expect("metadata cache").nodes.len(),
+            NODE_CACHE_CAPACITY
+        );
+
+        store
+            .cache_children(2, vec![make_node(50)])
+            .expect("cache directory");
+        assert!(store.cached_children(2).expect("read directory").is_some());
+        store.invalidate_directory(2).expect("invalidate directory");
+        assert!(store.cached_children(2).expect("read directory").is_none());
     }
 
     #[test]

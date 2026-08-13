@@ -122,8 +122,9 @@ async function main() {
   const label = argument("label");
   const conversationRoot = argument("conversation-root");
   const podRoot = argument("pod-root");
-  const benchmarkRoot = `${conversationRoot}/dust-fs-benchmark`;
-  const podBenchmarkRoot = `${podRoot}/dust-fs-benchmark`;
+  const benchmarkDirectory = argument("benchmark-directory");
+  const benchmarkRoot = `${conversationRoot}/${benchmarkDirectory}`;
+  const podBenchmarkRoot = `${podRoot}/${benchmarkDirectory}`;
   const sizes = [4096, 1024 * 1024, 8 * 1024 * 1024];
   const payloads = new Map(
     sizes.map((size) => [size, new Uint8Array(size).fill(0x5a)])

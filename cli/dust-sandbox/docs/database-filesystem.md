@@ -1,6 +1,7 @@
 # Dust database filesystem
 
-Status: Milestone 1 implementation in progress.
+Status: Milestone 1 implementation and qualification complete; rollout is not
+enabled yet.
 
 This is the current design. The sandbox sees one FUSE mount at `/files`. That
 mount contains the allowed conversation and Pod roots. PostgreSQL stores names
@@ -123,6 +124,12 @@ The local cache defaults to 512 MiB and can be changed with
 stay pinned and may temporarily exceed the cap so an existing descriptor never
 loses its backing file.
 
+Node metadata and directory listings use the same one-second freshness window
+reported to the Linux FUSE client. This removes a Front round trip from repeated
+opens and listings while keeping changes from another writer visible quickly.
+The cache is bounded to 4,096 nodes, 256 directories, and 8,192 total directory
+entries; local namespace mutations invalidate affected entries immediately.
+
 ### Writing bytes
 
 1. FUSE writes into the local staged file.
@@ -212,7 +219,7 @@ the same mode.
 
 ## Qualification completed so far
 
-- Linux-targeted Rust filesystem tests: 13 passing, including token/cache
+- Linux-targeted Rust filesystem tests: 14 passing, including token/cache
   symlink safety and remote-operation admission limits.
 - Front filesystem/cleanup/Temporal/adapter tests: 12 passing; Front API route
   tests: 2 passing.
@@ -252,17 +259,47 @@ the same mode.
   The first commit won, the second received `ESTALE`, and both mounts then read
   the winner. This verifies that a late writer cannot overwrite newer content.
 
-## Work still required before Milestone 1 is production-ready
+## Production-image benchmark
 
-- On the same production sandbox image and GCS fixtures, benchmark the legacy
-  two-gcsfuse-mount setup against the new single Dust FUSE mount. Record cold
-  and warm reads, write plus `fsync`, `stat`, `readdir`, create, rename, delete,
-  conversation-to-Pod move, concurrent I/O, CPU, and memory.
+Measured on 2026-08-13 using two fresh `dust-base_0-8-80` sandboxes, identical
+fixtures, and the same Bun workload. The optimized Linux binary SHA-256 was
+`5d6c2261d59e347f2484493f0a567ee3c0e702cbb6d01458e84114b27d5bde32`.
+Values are p50 wall time; lower is better.
+
+| Operation | Two gcsfuse mounts | Dust FUSE | Dust/gcsfuse |
+| --- | ---: | ---: | ---: |
+| Cold read 4 KiB | 560.9 ms | 313.1 ms | 0.56x |
+| Cold read 1 MiB | 1,042.1 ms | 712.0 ms | 0.68x |
+| Cold read 8 MiB | 1,321.9 ms | 1,098.6 ms | 0.83x |
+| Warm read 4 KiB | 0.64 ms | 0.36 ms | 0.56x |
+| Warm read 1 MiB | 1.24 ms | 1.76 ms | 1.42x |
+| Warm read 8 MiB | 3.49 ms | 11.33 ms | 3.25x |
+| `stat` | 0.27 ms | 0.01 ms | 0.03x |
+| `readdir` with 20 entries | 0.31 ms | 0.38 ms | 1.26x |
+| Write + `fsync`, 4 KiB | 903.5 ms | 913.1 ms | 1.01x |
+| Write + `fsync`, 1 MiB | 1,392.6 ms | 1,533.0 ms | 1.10x |
+| Write + `fsync`, 8 MiB | 1,711.4 ms | 1,800.9 ms | 1.05x |
+| Create | 575.5 ms | 79.0 ms | 0.14x |
+| Rename | 493.5 ms | 190.0 ms | 0.39x |
+| Unlink | 377.5 ms | 170.1 ms | 0.45x |
+| Conversation-to-Pod move | 1,020.5 ms | 202.9 ms | 0.20x |
+
+The cross-root gcsfuse cases were five copy/delete fallbacks; all five Dust
+moves were native inode-preserving renames. Eight concurrent 1 MiB writes plus
+`fsync` took 5.87 s on gcsfuse and 5.50 s on Dust. Peak filesystem-process RSS
+was 243.1 MiB for two gcsfuse processes and 11.5 MiB for one Dust process.
+
+This passes the Milestone 1 performance gate: durable writes remain within
+1–10%, namespace changes are faster, and the remaining warm 8 MiB difference
+is about 8 ms absolute. This is a small-sample filesystem comparison, not a
+Front/PostgreSQL capacity test; rollout still needs a canary with API and
+database latency/error monitoring.
 
 The reproducible orchestrator is
 `front/scripts/benchmark_sandbox_filesystems.ts`. It creates two fresh
 sandboxes from the same registered image, prepares byte-identical fixtures
 outside the timed phases, injects the local Linux `dsbx` only into the database
 filesystem sandbox, runs the shared workload, records JSON, and removes the
-sandboxes and visible fixtures. Its E2B run requires a temporary HTTPS URL that
-reaches the local Front API.
+sandboxes and uniquely named fixture directories. Its E2B run requires a
+temporary HTTPS URL that reaches the local Front API and existing conversation
+and Pod IDs so the scoped token exercises normal authentication.

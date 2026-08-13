@@ -25,7 +25,7 @@ import type { Result } from "@app/types/shared/result";
 import { Op } from "sequelize";
 import { z } from "zod";
 
-const BENCHMARK_DIRECTORY = "dust-fs-benchmark";
+const BENCHMARK_DIRECTORY_PREFIX = "dust-fs-benchmark";
 const BENCHMARK_RUNNER_PATH = "/run/dust-filesystem-benchmark.ts";
 const DATABASE_BINARY_PATH = "/opt/bin/dsbx-filesystem-benchmark";
 const DATABASE_RUNTIME_DIRECTORY = "/run/dust-filesystem-benchmark";
@@ -78,10 +78,11 @@ function expectOk<T, E extends Error>(
 async function prepareFixtures(
   backend: FileSystemBackend,
   conversationPrefix: string,
-  podPrefix: string
+  podPrefix: string,
+  benchmarkDirectory: string
 ): Promise<void> {
-  const conversationRoot = `${conversationPrefix}/${BENCHMARK_DIRECTORY}`;
-  const podRoot = `${podPrefix}/${BENCHMARK_DIRECTORY}`;
+  const conversationRoot = `${conversationPrefix}/${benchmarkDirectory}`;
+  const podRoot = `${podPrefix}/${benchmarkDirectory}`;
   const directories = [
     conversationRoot,
     `${conversationRoot}/read`,
@@ -282,7 +283,8 @@ async function runBenchmark(
   auth: Authenticator,
   sandbox: SandboxResource,
   runner: Buffer,
-  label: string
+  label: string,
+  benchmarkDirectory: string
 ): Promise<BenchmarkResult> {
   expectOk(
     await sandbox.writeFile(auth, BENCHMARK_RUNNER_PATH, arrayBuffer(runner)),
@@ -299,6 +301,8 @@ async function runBenchmark(
         `${MOUNT_POINT}/conversation`,
         "--pod-root",
         `${MOUNT_POINT}/pod`,
+        "--benchmark-directory",
+        benchmarkDirectory,
       ]),
       { timeoutMs: COMMAND_TIMEOUT_MS }
     ),
@@ -356,6 +360,16 @@ makeScript(
       demandOption: true,
       description: "Local user string ID",
     },
+    conversationId: {
+      type: "string",
+      demandOption: true,
+      description: "Existing conversation string ID used by the scoped token",
+    },
+    podId: {
+      type: "string",
+      demandOption: true,
+      description: "Existing Pod string ID used by the scoped token",
+    },
     dsbxPath: {
       type: "string",
       demandOption: true,
@@ -378,7 +392,17 @@ makeScript(
     },
   },
   async (
-    { wId, userId, dsbxPath, runnerPath, apiUrl, output, execute },
+    {
+      wId,
+      userId,
+      conversationId,
+      podId,
+      dsbxPath,
+      runnerPath,
+      apiUrl,
+      output,
+      execute,
+    },
     logger
   ) => {
     const configuredApiUrl = config.getDustAPIConfig().url;
@@ -395,11 +419,8 @@ makeScript(
     ).withNetwork({
       mode: "allow_all",
     });
-    const runId = `filesystem-benchmark-${Date.now()}`;
-    const mounts = [
-      mount("conversation", `${runId}-conversation`),
-      mount("pod", `${runId}-pod`),
-    ];
+    const benchmarkDirectory = `${BENCHMARK_DIRECTORY_PREFIX}-${Date.now()}`;
+    const mounts = [mount("conversation", conversationId), mount("pod", podId)];
     const conversationPrefix = mounts[0].scopedPrefix;
     const podPrefix = mounts[1].scopedPrefix;
     const gcsBackend = new GCSFileSystemBackend(
@@ -426,8 +447,18 @@ makeScript(
     let databaseSandbox: SandboxResource | null = null;
     try {
       logger.info({}, "Preparing identical filesystem benchmark fixtures");
-      await prepareFixtures(gcsBackend, conversationPrefix, podPrefix);
-      await prepareFixtures(databaseBackend, conversationPrefix, podPrefix);
+      await prepareFixtures(
+        gcsBackend,
+        conversationPrefix,
+        podPrefix,
+        benchmarkDirectory
+      );
+      await prepareFixtures(
+        databaseBackend,
+        conversationPrefix,
+        podPrefix,
+        benchmarkDirectory
+      );
 
       gcsSandbox = await createSandbox(auth, image);
       databaseSandbox = await createSandbox(auth, image);
@@ -449,13 +480,15 @@ makeScript(
         auth,
         gcsSandbox,
         runner,
-        "two-gcsfuse-mounts"
+        "two-gcsfuse-mounts",
+        benchmarkDirectory
       );
       const databaseResult = await runBenchmark(
         auth,
         databaseSandbox,
         runner,
-        "dust-database-fuse"
+        "dust-database-fuse",
+        benchmarkDirectory
       );
       const result = {
         measuredAt: new Date().toISOString(),
@@ -486,7 +519,7 @@ makeScript(
       for (const backend of [gcsBackend, databaseBackend]) {
         for (const prefix of [conversationPrefix, podPrefix]) {
           const cleanup = await backend.delete(
-            `${prefix}/${BENCHMARK_DIRECTORY}`,
+            `${prefix}/${benchmarkDirectory}`,
             {
               ignoreNotFound: true,
             }
