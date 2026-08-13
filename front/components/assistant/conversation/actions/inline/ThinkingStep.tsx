@@ -120,34 +120,8 @@ export const ThinkingStep = memo(function ThinkingStep({
       }
     : undefined;
 
-  // Compact UI view, collapsed: no content preview at all, just a label.
-  if (forceCollapsed && !isExpanded) {
-    return (
-      <div
-        className={cn(needsTruncation && "cursor-pointer")}
-        onClick={handleClick}
-        onKeyDown={handleKeyDown}
-        role={needsTruncation ? "button" : undefined}
-        tabIndex={needsTruncation ? 0 : undefined}
-        aria-expanded={needsTruncation ? isExpanded : undefined}
-      >
-        <TimelineRow
-          icon={isStreaming && !content ? null : "circle"}
-          spinner={isStreaming && !content}
-          isLast={isLast}
-        >
-          <span className="flex items-center gap-1 text-sm text-muted-foreground">
-            {isStreaming ? <AnimatedText>Thinking…</AnimatedText> : "Thinking…"}
-          </span>
-          <Icon
-            size="xs"
-            visual={ChevronRight}
-            className="mt-0.5 shrink-0 text-muted-foreground"
-          />
-        </TimelineRow>
-      </div>
-    );
-  }
+  // Compact UI view: thinking is collapsed automatically
+  const isCompactCollapsed = forceCollapsed && !isExpanded;
 
   return (
     <div
@@ -158,20 +132,33 @@ export const ThinkingStep = memo(function ThinkingStep({
       tabIndex={needsTruncation ? 0 : undefined}
       aria-expanded={needsTruncation ? isExpanded : undefined}
     >
-      <TimelineRow icon="circle" isLast={isLast}>
-        <div
-          className={cn(
-            "relative min-w-0 flex-1",
-            styles.root,
-            (!needsTruncation || isExpanded) && styles.expanded
-          )}
+      {isCompactCollapsed ? (
+        <TimelineRow
+          icon={isStreaming && !content ? null : "circle"}
+          spinner={isStreaming && !content}
+          isLast={isLast}
         >
-          <div ref={contentRef} className={styles.content}>
-            {markdown}
+          <span className="flex items-center gap-1 text-sm text-muted-foreground">
+            {isStreaming ? <AnimatedText>Thinking…</AnimatedText> : "Thinking…"}
+            <Icon size="xs" visual={ChevronRight} className="shrink-0" />
+          </span>
+        </TimelineRow>
+      ) : (
+        <TimelineRow icon="circle" isLast={isLast}>
+          <div
+            className={cn(
+              "relative min-w-0 flex-1",
+              styles.root,
+              (!needsTruncation || isExpanded) && styles.expanded
+            )}
+          >
+            <div ref={contentRef} className={styles.content}>
+              {markdown}
+            </div>
+            {needsTruncation && <div className={styles.fade} aria-hidden />}
           </div>
-          {needsTruncation && <div className={styles.fade} aria-hidden />}
-        </div>
-      </TimelineRow>
+        </TimelineRow>
+      )}
     </div>
   );
 });
