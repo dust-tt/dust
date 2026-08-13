@@ -167,18 +167,25 @@ function buildColumns({
       meta: { sizeRatio: 32, headerAlign: "left" },
       cell: (info) => {
         const row = info.row.original;
-        const { name, pictureUrl, description } = row;
-        const content = hasAvatar ? (
-          <div className="min-w-0">
-            <AvatarNameCell
-              name={name}
-              imageUrl={pictureUrl}
-              isRounded={isAvatarRounded}
-            />
-          </div>
-        ) : (
-          <span className="truncate text-sm">{name}</span>
-        );
+        const { name, pictureUrl, description, icon } = row;
+        const SkillAvatar = getSkillAvatarIcon(icon);
+        const content =
+          dimension === "skill" ? (
+            <div className="flex min-w-0 items-center gap-2">
+              <SkillAvatar name={name} size="xs" />
+              <span className="truncate text-sm">{name}</span>
+            </div>
+          ) : hasAvatar ? (
+            <div className="min-w-0">
+              <AvatarNameCell
+                name={name}
+                imageUrl={pictureUrl}
+                isRounded={isAvatarRounded}
+              />
+            </div>
+          ) : (
+            <span className="truncate text-sm">{name}</span>
+          );
 
         return (
           <DataTable.CellContent className="w-full justify-start text-left">
