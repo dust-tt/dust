@@ -9,6 +9,7 @@ import { tokenCountForTexts } from "@app/lib/tokenization";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import {
   GPT_4_1_MODEL_CONFIG,
+  GPT_5_6_SOL_MODEL_ID,
   GPT_5_MODEL_ID,
 } from "@app/types/assistant/models/openai";
 import { Err, Ok } from "@app/types/shared/result";
@@ -183,7 +184,28 @@ describe("measureToolCallFootprints", () => {
     expect(res.isOk()).toBe(true);
     expect(tokenCountForTexts).toHaveBeenCalledWith(
       expect.any(Array),
-      GPT_4_1_MODEL_CONFIG,
+      {
+        ...GPT_4_1_MODEL_CONFIG,
+        tokenCountAdjustment: 1,
+      },
+      expect.anything()
+    );
+  });
+
+  it("tokenizes GPT-5 footprints without safety padding using o200k", async () => {
+    const res = await measureToolCallFootprints(auth, {
+      modelId: GPT_5_6_SOL_MODEL_ID,
+      toolCalls: [footprintInput(makeAction())],
+    });
+
+    expect(res.isOk()).toBe(true);
+    expect(tokenCountForTexts).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({
+        modelId: GPT_5_6_SOL_MODEL_ID,
+        tokenCountAdjustment: 1,
+        tokenizer: { type: "tiktoken", base: "o200k_base" },
+      }),
       expect.anything()
     );
   });
