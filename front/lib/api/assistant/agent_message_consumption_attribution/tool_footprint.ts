@@ -67,6 +67,7 @@ export async function toolCallFootprintTexts(
     model: ModelConfigurationType;
   }
 ): Promise<ToolFootprintTexts> {
+  // This applies model-facing output rewrites, such as semantic search rendering.
   const renderedResult = await renderActionForMultiActionsModel(
     auth,
     action,
