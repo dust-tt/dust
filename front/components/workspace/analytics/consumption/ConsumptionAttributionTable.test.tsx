@@ -46,7 +46,7 @@ vi.mock(
 const period = { kind: "days", days: 30 } as const;
 
 describe("ConsumptionAttributionTable", () => {
-  it("keeps the selected page after pagination renders new rows", async () => {
+  it("fetches the next fixed-size page when pagination changes", async () => {
     const rows = Array.from({ length: 30 }, (_, index) => ({
       id: `agent-${index + 1}`,
       name: `Agent ${index + 1}`,
@@ -54,12 +54,16 @@ describe("ConsumptionAttributionTable", () => {
       credits: 100 - index,
       avgCredits: 10,
     }));
-    mockUseConsumptionTop.mockReturnValue({
-      rows,
-      totalCredits: 2_565,
-      isTopLoading: false,
-      isTopError: undefined,
-    });
+    mockUseConsumptionTop.mockImplementation(
+      ({ limit, offset }: { limit: number; offset: number }) => ({
+        rows: rows.slice(offset, offset + limit),
+        totalCredits: 2_565,
+        hasMore: offset + limit < rows.length,
+        isTopLoading: false,
+        isTopError: undefined,
+        isTopValidating: false,
+      })
+    );
 
     render(
       <ConsumptionAttributionTable
@@ -73,15 +77,17 @@ describe("ConsumptionAttributionTable", () => {
     );
 
     expect(mockUseConsumptionTop).toHaveBeenCalledWith(
-      expect.objectContaining({ limit: 100 })
+      expect.objectContaining({ limit: 25, offset: 0 })
     );
 
     fireEvent.click(screen.getByRole("button", { name: "2" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Showing 26-30 of 30 items")).toBeInTheDocument();
+      expect(mockUseConsumptionTop).toHaveBeenCalledWith(
+        expect.objectContaining({ limit: 25, offset: 25 })
+      );
+      expect(screen.getByText("Agent 30")).toBeInTheDocument();
     });
-    expect(screen.getByText("Agent 30")).toBeInTheDocument();
   });
 
   it("resets expanded rows when switching dimensions", () => {
@@ -101,8 +107,10 @@ describe("ConsumptionAttributionTable", () => {
           },
         ],
         totalCredits: 100,
+        hasMore: false,
         isTopLoading: false,
         isTopError: undefined,
+        isTopValidating: false,
       })
     );
 

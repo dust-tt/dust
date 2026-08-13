@@ -57,7 +57,6 @@ import {
 
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
 const ATTRIBUTION_PAGE_SIZE = 25;
-const ATTRIBUTION_TOP_LIMIT = 100;
 
 type AttributionTransitionDirection = -1 | 0 | 1;
 
@@ -372,13 +371,16 @@ function AttributionRows({
   const {
     rows: allRows,
     totalCredits,
+    hasMore,
     isTopLoading,
     isTopError,
+    isTopValidating,
   } = useConsumptionTop({
     workspaceId,
     dimension,
     period,
-    limit: ATTRIBUTION_TOP_LIMIT,
+    limit: pagination.pageSize,
+    offset: pagination.pageIndex * pagination.pageSize,
     filter,
   });
 
@@ -428,11 +430,16 @@ function AttributionRows({
       })),
     [rows, onAddFilter]
   );
+  const isLoading = isTopLoading || isTopValidating;
+  const paginationRowCount =
+    pagination.pageIndex * pagination.pageSize +
+    allRows.length +
+    (hasMore ? 1 : 0);
 
   let contentKey = "content";
   let content: ReactNode;
 
-  if (isTopLoading) {
+  if (isLoading) {
     contentKey = "loading";
     content = (
       <ConsumptionAttributionRowsTable
@@ -443,8 +450,6 @@ function AttributionRows({
         period={period}
         filter={filter}
         onViewAll={onViewAll}
-        pagination={pagination}
-        setPagination={setPagination}
         expandedRowId={expandedRowId}
         isLoading
         hasAvatar={hasAvatar}
@@ -457,39 +462,40 @@ function AttributionRows({
         Failed to load attribution.
       </div>
     );
-  } else if (rows.length === 0) {
-    content = (
-      <div className="text-sm text-muted-foreground">
-        {search.trim()
-          ? `No match for "${search.trim()}".`
-          : "No consumption over this period."}
-      </div>
-    );
   } else {
     content = (
       <div>
-        <div className="overflow-x-auto">
-          <ConsumptionAttributionRowsTable
-            data={data}
-            columns={columns}
-            workspaceId={workspaceId}
-            dimension={dimension}
-            period={period}
-            filter={filter}
-            onViewAll={onViewAll}
-            pagination={pagination}
-            setPagination={setPagination}
-            expandedRowId={expandedRowId}
-          />
-        </div>
-        <div className="mt-2 p-1">
-          <Pagination
-            size="xs"
-            pagination={pagination}
-            setPagination={setPagination}
-            rowCount={data.length}
-          />
-        </div>
+        {rows.length === 0 ? (
+          <div className="text-sm text-muted-foreground">
+            {search.trim()
+              ? `No match for "${search.trim()}".`
+              : "No consumption over this period."}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <ConsumptionAttributionRowsTable
+              data={data}
+              columns={columns}
+              workspaceId={workspaceId}
+              dimension={dimension}
+              period={period}
+              filter={filter}
+              onViewAll={onViewAll}
+              expandedRowId={expandedRowId}
+            />
+          </div>
+        )}
+        {(pagination.pageIndex > 0 || hasMore) && (
+          <div className="mt-2 p-1">
+            <Pagination
+              size="xs"
+              showDetails={false}
+              pagination={pagination}
+              setPagination={setPagination}
+              rowCount={paginationRowCount}
+            />
+          </div>
+        )}
       </div>
     );
   }
@@ -505,7 +511,7 @@ function AttributionRows({
           duration: shouldReduceMotion ? 0 : 0.1,
           ease: MOTION_EASINGS.enter,
         }}
-        aria-busy={isTopLoading}
+        aria-busy={isLoading}
       >
         {content}
       </m.div>
@@ -629,8 +635,13 @@ export function ConsumptionAttributionTable({
                 animate="animate"
                 exit="exit"
               >
-                {/* A dimension selects a different dataset, so its table state must not carry over. */}
+                {/* Reset table state whenever its dataset or local search changes. */}
                 <AttributionRows
+                  key={JSON.stringify({
+                    period,
+                    filter,
+                    search: debouncedValue,
+                  })}
                   workspaceId={workspaceId}
                   dimension={dimension}
                   period={period}
