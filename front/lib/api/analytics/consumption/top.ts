@@ -33,7 +33,7 @@ type ConsumptionTopGroup = {
 export type ConsumptionTopGroups = {
   groups: ConsumptionTopGroup[];
   // Gross credits over the whole scoped period, every document included. Not the
-  // sum of `groups` — the ranking is capped at `limit`, and a dimension that only
+  // sum of `groups`. The ranking is capped at `limit`, and a dimension that only
   // exists on some documents (a tool, a skill) accounts for part of the total.
   totalCredits: number;
 };
