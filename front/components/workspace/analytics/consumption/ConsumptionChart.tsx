@@ -36,7 +36,11 @@ const TODAY_PARTIAL_LABEL = "Today (partial)";
 
 // Renders the reference line's label as a pill with the same fill as the
 // line itself, since the default text-only label has no background.
-function TodayPartialLabel({ viewBox }: RechartsLabelProps) {
+interface TodayPartialLabelProps {
+  viewBox?: RechartsLabelProps["viewBox"];
+}
+
+function TodayPartialLabel({ viewBox }: TodayPartialLabelProps) {
   const textRef = useRef<SVGTextElement>(null);
   const [textWidth, setTextWidth] = useState(0);
 
