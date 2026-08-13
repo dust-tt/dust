@@ -105,11 +105,13 @@ function buildColumns({
       cell: (info) => {
         const { name, pictureUrl, description } = info.row.original;
         const content = hasAvatar ? (
-          <AvatarNameCell
-            name={name}
-            imageUrl={pictureUrl}
-            isRounded={isAvatarRounded}
-          />
+          <div className="min-w-0">
+            <AvatarNameCell
+              name={name}
+              imageUrl={pictureUrl}
+              isRounded={isAvatarRounded}
+            />
+          </div>
         ) : (
           <span className="truncate text-sm">{name}</span>
         );
