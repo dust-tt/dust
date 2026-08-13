@@ -1,5 +1,6 @@
 import { getEnabledSkillInputTextByActionId } from "@app/lib/api/assistant/agent_message_consumption_attribution/enabled_skill_footprint";
-import { renderToolResultForModelAsText } from "@app/lib/api/assistant/conversation_rendering/helpers";
+import { renderActionForMultiActionsModel } from "@app/lib/api/assistant/conversation_rendering/helpers";
+import { getTextContentFromMessage } from "@app/lib/api/assistant/utils";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
@@ -9,6 +10,7 @@ import {
   GPT_4_1_MINI_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -51,17 +53,33 @@ export interface ToolCallFootprintInput {
   functionCallArguments: string;
 }
 
-export function toolCallFootprintTexts(
+export async function toolCallFootprintTexts(
+  auth: Authenticator,
   { action, functionCallArguments }: ToolCallFootprintInput,
-  additionalInputText?: string
-): ToolFootprintTexts {
+  {
+    additionalInputText,
+    conversationId,
+    model,
+  }: {
+    additionalInputText?: string;
+    conversationId: string;
+    model: ModelConfigurationType;
+  }
+): Promise<ToolFootprintTexts> {
+  const renderedResult = await renderActionForMultiActionsModel(
+    auth,
+    action,
+    model,
+    { conversationId }
+  );
+
   return {
     // The tool call as the model emitted it: its name plus the arguments it generated.
     callText: `${action.functionCallName}\n${functionCallArguments}`,
     // Tool input means the model input created by this execution. Most tools contribute only their
     // rendered result. Enabling a skill also adds its instructions and tool definitions to later
     // requests, so those consequences belong to the same tool row.
-    inputText: [renderToolResultForModelAsText(action), additionalInputText]
+    inputText: [getTextContentFromMessage(renderedResult), additionalInputText]
       .filter((text): text is string => text !== undefined)
       .join("\n"),
   };
@@ -77,9 +95,11 @@ export function toolCallFootprintTexts(
 export async function measureToolCallFootprints(
   auth: Authenticator,
   {
+    conversationId,
     modelId,
     toolCalls,
   }: {
+    conversationId: string;
     modelId: string;
     toolCalls: ToolCallFootprintInput[];
   }
@@ -111,10 +131,15 @@ export async function measureToolCallFootprints(
 
   // Tokenize the calls and inputs as two homogeneous lists so each count maps back to its call by
   // plain index, with no call-vs-input position juggling.
-  const footprints = toolCalls.map((toolCall) =>
-    toolCallFootprintTexts(
-      toolCall,
-      enabledSkillInputTextByActionId.get(toolCall.action.sId)
+  const footprints = await Promise.all(
+    toolCalls.map((toolCall) =>
+      toolCallFootprintTexts(auth, toolCall, {
+        additionalInputText: enabledSkillInputTextByActionId.get(
+          toolCall.action.sId
+        ),
+        conversationId,
+        model,
+      })
     )
   );
   const [callCountsRes, inputCountsRes] = await Promise.all([

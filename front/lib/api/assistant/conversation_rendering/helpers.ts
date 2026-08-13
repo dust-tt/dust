@@ -197,7 +197,7 @@ function renderEnabledSkillMessagesForAction(
 /**
  * Renders an action result for multi-actions model
  */
-async function renderActionForMultiActionsModel(
+export async function renderActionForMultiActionsModel(
   auth: Authenticator,
   action: AgentMCPActionWithOutputType,
   model: ModelConfigurationType,

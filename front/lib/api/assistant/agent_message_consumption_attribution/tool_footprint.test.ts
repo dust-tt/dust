@@ -58,10 +58,22 @@ function footprintInput(
 
 // The auth is only forwarded to getLlmCredentials, which is mocked, so a bare stub is enough.
 const auth = {} as Authenticator;
+const conversationId = "conversation_1";
+
+function renderFootprintTexts(
+  toolCall: ToolCallFootprintInput,
+  additionalInputText?: string
+) {
+  return toolCallFootprintTexts(auth, toolCall, {
+    additionalInputText,
+    conversationId,
+    model: GPT_4_1_MODEL_CONFIG,
+  });
+}
 
 describe("toolCallFootprintTexts", () => {
-  it("serializes a call from the emitted arguments, not the augmented params", () => {
-    const { callText } = toolCallFootprintTexts(
+  it("serializes a call from the emitted arguments, not the augmented params", async () => {
+    const { callText } = await renderFootprintTexts(
       footprintInput(
         makeAction({
           functionCallName: "search",
@@ -75,8 +87,8 @@ describe("toolCallFootprintTexts", () => {
     expect(callText).toBe('search\n{"query":"hello"}');
   });
 
-  it("renders a denied action as the rejection notice, ignoring any output", () => {
-    const { inputText } = toolCallFootprintTexts(
+  it("renders a denied action as the rejection notice, ignoring any output", async () => {
+    const { inputText } = await renderFootprintTexts(
       footprintInput(
         makeAction({
           status: "denied",
@@ -90,8 +102,8 @@ describe("toolCallFootprintTexts", () => {
     );
   });
 
-  it("renders an action awaiting validation as the validation notice", () => {
-    const { inputText } = toolCallFootprintTexts(
+  it("renders an action awaiting validation as the validation notice", async () => {
+    const { inputText } = await renderFootprintTexts(
       footprintInput(makeAction({ status: "blocked_validation_required" }))
     );
 
@@ -100,16 +112,16 @@ describe("toolCallFootprintTexts", () => {
     );
   });
 
-  it("renders an empty output as the no-output notice", () => {
-    const { inputText } = toolCallFootprintTexts(
+  it("renders an empty output as the no-output notice", async () => {
+    const { inputText } = await renderFootprintTexts(
       footprintInput(makeAction({ status: "succeeded", output: [] }))
     );
 
     expect(inputText).toBe("Successfully executed action, no output.");
   });
 
-  it("joins text output items with newlines", () => {
-    const { inputText } = toolCallFootprintTexts(
+  it("joins text output items with newlines", async () => {
+    const { inputText } = await renderFootprintTexts(
       footprintInput(
         makeAction({
           status: "succeeded",
@@ -124,8 +136,8 @@ describe("toolCallFootprintTexts", () => {
     expect(inputText).toBe("first\nsecond");
   });
 
-  it("serializes non-text output as JSON with the mime type stripped", () => {
-    const { inputText } = toolCallFootprintTexts(
+  it("serializes non-text output as JSON with the mime type stripped", async () => {
+    const { inputText } = await renderFootprintTexts(
       footprintInput(
         makeAction({
           status: "succeeded",
@@ -141,6 +153,23 @@ describe("toolCallFootprintTexts", () => {
 
     expect(inputText).toBe(JSON.stringify([{ uri: "u", text: "body" }]));
   });
+
+  it("includes the user-edited inputs rendered in the model result", async () => {
+    const { inputText } = await renderFootprintTexts(
+      footprintInput(
+        makeAction({
+          output: [{ type: "text", text: "Email sent." }],
+          userEditedInputs: {
+            subject: "New subject",
+          },
+        })
+      )
+    );
+
+    expect(inputText).toBe(
+      `The tool was executed with these user-edited input values:\n- subject: "New subject".\nEmail sent.`
+    );
+  });
 });
 
 describe("measureToolCallFootprints", () => {
@@ -155,6 +184,7 @@ describe("measureToolCallFootprints", () => {
 
   it("returns an empty result without tokenizing when there are no actions", async () => {
     const res = await measureToolCallFootprints(auth, {
+      conversationId,
       modelId: GPT_5_MODEL_ID,
       toolCalls: [],
     });
@@ -166,6 +196,7 @@ describe("measureToolCallFootprints", () => {
 
   it("fails when the run's model is not a known configuration", async () => {
     const res = await measureToolCallFootprints(auth, {
+      conversationId,
       modelId: "not-a-real-model",
       toolCalls: [footprintInput(makeAction())],
     });
@@ -176,6 +207,7 @@ describe("measureToolCallFootprints", () => {
 
   it("tokenizes historical runs whose model is no longer served", async () => {
     const res = await measureToolCallFootprints(auth, {
+      conversationId,
       modelId: GPT_4_1_MODEL_CONFIG.modelId,
       toolCalls: [footprintInput(makeAction())],
     });
@@ -201,6 +233,7 @@ describe("measureToolCallFootprints", () => {
     ];
 
     const res = await measureToolCallFootprints(auth, {
+      conversationId,
       modelId: GPT_5_MODEL_ID,
       toolCalls,
     });
@@ -232,6 +265,7 @@ describe("measureToolCallFootprints", () => {
     );
 
     const res = await measureToolCallFootprints(auth, {
+      conversationId,
       modelId: GPT_5_MODEL_ID,
       toolCalls: [footprintInput(makeAction())],
     });

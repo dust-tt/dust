@@ -158,12 +158,14 @@ function runUsageModelIdsWithUnconsumedToolResults({
 async function buildRunUsageConsumptionEvidence(
   auth: Authenticator,
   {
+    conversationId,
     enrichedActionByModelId,
     includeToolResultFootprints,
     runActions,
     triggeringUserMessageOrigin,
     usage,
   }: {
+    conversationId: string;
     enrichedActionByModelId: ReadonlyMap<ModelId, AgentMCPActionWithOutputType>;
     includeToolResultFootprints: boolean;
     runActions: AgentMCPActionResource[];
@@ -200,6 +202,7 @@ async function buildRunUsageConsumptionEvidence(
   // Selected usages need both sides of every model-visible tool call so their shared provider
   // output budget is partitioned consistently with the immutable evidence already stored.
   const footprintsRes = await measureToolCallFootprints(auth, {
+    conversationId,
     modelId: usage.modelId,
     // TODO(2026-07-31 FLAV) Refactor `enrichActionsWithOutputItems` so it still returns the
     // resource.
@@ -585,6 +588,7 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
     const dustRunId = dustRunIdByRunModelId.get(usage.runModelId);
     const runActions = (dustRunId && actionsByDustRunId.get(dustRunId)) || [];
     const usageEvidence = await buildRunUsageConsumptionEvidence(auth, {
+      conversationId: conversation.sId,
       enrichedActionByModelId,
       includeToolResultFootprints: !unconsumedToolResultRunUsageModelIds.has(
         usage.runUsageModelId
