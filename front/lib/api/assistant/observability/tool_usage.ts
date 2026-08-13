@@ -1,14 +1,16 @@
 import {
-  bucketsToArray,
-  formatDateFromMillis,
-  searchAnalytics,
-} from "@app/lib/api/elasticsearch";
+  fetchNestedTermsBuckets,
+  fetchNestedUsageMetrics,
+} from "@app/lib/api/assistant/observability/nested_usage_metrics";
 import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { estypes } from "@elastic/elasticsearch";
+
+const TOOLS_NESTED_PATH = "tools_used";
+const TOOLS_SERVER_NAME_FIELD = "tools_used.server_name";
 
 export type ToolUsagePoint = {
   timestamp: number;
@@ -31,199 +33,38 @@ export type GetWorkspaceToolUsageResponse = {
   points: ToolUsagePoint[];
 };
 
-type DateBucket = {
-  key: number;
-  key_as_string: string;
-  doc_count: number;
-  tools_nested: {
-    doc_count: number;
-    unique_users: {
-      doc_count: number;
-      cardinality: estypes.AggregationsCardinalityAggregate;
-    };
-  };
-};
-
-type ToolUsageAggs = {
-  by_date: estypes.AggregationsMultiBucketAggregateBase<DateBucket>;
-};
-
-type FilteredDateBucket = {
-  key: number;
-  key_as_string: string;
-  doc_count: number;
-  tools_nested: {
-    filtered: {
-      doc_count: number;
-      unique_users: {
-        doc_count: number;
-        cardinality: estypes.AggregationsCardinalityAggregate;
-      };
-    };
-  };
-};
-
-type FilteredToolUsageAggs = {
-  by_date: estypes.AggregationsMultiBucketAggregateBase<FilteredDateBucket>;
-};
-
-type ToolBucket = {
-  key: string;
-  doc_count: number;
-};
-
-type ToolListAggs = {
-  tools_nested: {
-    by_server: estypes.AggregationsMultiBucketAggregateBase<ToolBucket>;
-  };
-};
-
-function bucketToPoint(bucket: DateBucket, timezone: string): ToolUsagePoint {
-  return {
-    timestamp: bucket.key,
-    date: formatDateFromMillis(bucket.key, timezone),
-    uniqueUsers: bucket.tools_nested?.unique_users?.cardinality?.value ?? 0,
-    executionCount: bucket.tools_nested?.doc_count ?? 0,
-  };
-}
-
-function filteredBucketToPoint(
-  bucket: FilteredDateBucket,
-  timezone: string
-): ToolUsagePoint {
-  return {
-    timestamp: bucket.key,
-    date: formatDateFromMillis(bucket.key, timezone),
-    uniqueUsers:
-      bucket.tools_nested?.filtered?.unique_users?.cardinality?.value ?? 0,
-    executionCount: bucket.tools_nested?.filtered?.doc_count ?? 0,
-  };
-}
-
 export async function fetchToolUsageMetrics(
   baseQuery: estypes.QueryDslQueryContainer,
   serverName: string | null,
   timezone: string = "UTC"
 ): Promise<Result<ToolUsagePoint[], Error>> {
-  // When serverName is provided, filter the nested tools_used aggregation
-  // When null, aggregate across all tools
-  const nestedAggs: Record<string, estypes.AggregationsAggregationContainer> =
-    serverName
-      ? {
-          filtered: {
-            filter: { term: { "tools_used.server_name": serverName } },
-            aggs: {
-              unique_users: {
-                reverse_nested: {},
-                aggs: {
-                  cardinality: {
-                    cardinality: { field: "user_id" },
-                  },
-                },
-              },
-            },
-          },
-        }
-      : {
-          unique_users: {
-            reverse_nested: {},
-            aggs: {
-              cardinality: {
-                cardinality: { field: "user_id" },
-              },
-            },
-          },
-        };
-
-  const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
-    by_date: {
-      date_histogram: {
-        field: "timestamp",
-        calendar_interval: "day",
-        time_zone: timezone,
-      },
-      aggs: {
-        tools_nested: {
-          nested: { path: "tools_used" },
-          aggs: nestedAggs,
-        },
-      },
-    },
-  };
-
-  if (serverName) {
-    const result = await searchAnalytics<never, FilteredToolUsageAggs>(
-      baseQuery,
-      { aggregations: aggs, size: 0 }
-    );
-
-    if (result.isErr()) {
-      return new Err(new Error(result.error.message));
-    }
-
-    const dateBuckets = bucketsToArray<FilteredDateBucket>(
-      result.value.aggregations?.by_date?.buckets
-    );
-
-    return new Ok(
-      dateBuckets.map((bucket) => filteredBucketToPoint(bucket, timezone))
-    );
-  }
-
-  const result = await searchAnalytics<never, ToolUsageAggs>(baseQuery, {
-    aggregations: aggs,
-    size: 0,
+  return fetchNestedUsageMetrics(baseQuery, {
+    nestedPath: TOOLS_NESTED_PATH,
+    filterField: TOOLS_SERVER_NAME_FIELD,
+    filterValue: serverName,
+    timezone,
   });
-
-  if (result.isErr()) {
-    return new Err(new Error(result.error.message));
-  }
-
-  const dateBuckets = bucketsToArray<DateBucket>(
-    result.value.aggregations?.by_date?.buckets
-  );
-
-  return new Ok(dateBuckets.map((bucket) => bucketToPoint(bucket, timezone)));
 }
 
 export async function fetchAvailableTools(
   baseQuery: estypes.QueryDslQueryContainer
 ): Promise<Result<AvailableTool[], Error>> {
-  const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
-    tools_nested: {
-      nested: { path: "tools_used" },
-      aggs: {
-        by_server: {
-          terms: {
-            field: "tools_used.server_name",
-            size: 100,
-            order: { _count: "desc" },
-          },
-        },
-      },
-    },
-  };
-
-  const result = await searchAnalytics<never, ToolListAggs>(baseQuery, {
-    aggregations: aggs,
-    size: 0,
+  const result = await fetchNestedTermsBuckets(baseQuery, {
+    nestedPath: TOOLS_NESTED_PATH,
+    field: TOOLS_SERVER_NAME_FIELD,
   });
 
   if (result.isErr()) {
-    return new Err(new Error(result.error.message));
+    return result;
   }
 
-  const toolBuckets = bucketsToArray<ToolBucket>(
-    result.value.aggregations?.tools_nested?.by_server?.buckets
+  return new Ok(
+    result.value.map((bucket) => ({
+      serverName: bucket.key,
+      displayName: bucket.key,
+      totalExecutions: bucket.docCount,
+    }))
   );
-
-  const tools: AvailableTool[] = toolBuckets.map((bucket) => ({
-    serverName: bucket.key,
-    displayName: bucket.key,
-    totalExecutions: bucket.doc_count,
-  }));
-
-  return new Ok(tools);
 }
 
 export async function resolveServerDisplayNames(

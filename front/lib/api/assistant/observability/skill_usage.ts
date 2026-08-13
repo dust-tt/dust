@@ -1,11 +1,14 @@
 import {
-  bucketsToArray,
-  formatDateFromMillis,
-  searchAnalytics,
-} from "@app/lib/api/elasticsearch";
+  fetchNestedTermsBuckets,
+  fetchNestedUsageMetrics,
+} from "@app/lib/api/assistant/observability/nested_usage_metrics";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
+
+const SKILLS_NESTED_PATH = "skills_used";
+const SKILLS_NAME_FIELD = "skills_used.skill_name";
+const SKILLS_ID_FIELD = "skills_used.skill_id";
 
 export type SkillUsagePoint = {
   timestamp: number;
@@ -28,200 +31,35 @@ export type GetWorkspaceSkillsResponse = {
   skills: AvailableSkill[];
 };
 
-type DateBucket = {
-  key: number;
-  key_as_string: string;
-  doc_count: number;
-  skills_nested: {
-    doc_count: number;
-    unique_users: {
-      doc_count: number;
-      cardinality: estypes.AggregationsCardinalityAggregate;
-    };
-  };
-};
-
-type SkillUsageAggs = {
-  by_date: estypes.AggregationsMultiBucketAggregateBase<DateBucket>;
-};
-
-type FilteredDateBucket = {
-  key: number;
-  key_as_string: string;
-  doc_count: number;
-  skills_nested: {
-    filtered: {
-      doc_count: number;
-      unique_users: {
-        doc_count: number;
-        cardinality: estypes.AggregationsCardinalityAggregate;
-      };
-    };
-  };
-};
-
-type FilteredSkillUsageAggs = {
-  by_date: estypes.AggregationsMultiBucketAggregateBase<FilteredDateBucket>;
-};
-
-type SkillBucket = {
-  key: string;
-  doc_count: number;
-};
-
-type SkillListAggs = {
-  skills_nested: {
-    by_skill: estypes.AggregationsMultiBucketAggregateBase<SkillBucket>;
-  };
-};
-
-type SkillIdListAggs = {
-  skills_nested: {
-    by_skill_id: estypes.AggregationsMultiBucketAggregateBase<SkillBucket>;
-  };
-};
-
-function bucketToPoint(bucket: DateBucket, timezone: string): SkillUsagePoint {
-  return {
-    timestamp: bucket.key,
-    date: formatDateFromMillis(bucket.key, timezone),
-    uniqueUsers: bucket.skills_nested?.unique_users?.cardinality?.value ?? 0,
-    executionCount: bucket.skills_nested?.doc_count ?? 0,
-  };
-}
-
-function filteredBucketToPoint(
-  bucket: FilteredDateBucket,
-  timezone: string
-): SkillUsagePoint {
-  return {
-    timestamp: bucket.key,
-    date: formatDateFromMillis(bucket.key, timezone),
-    uniqueUsers:
-      bucket.skills_nested?.filtered?.unique_users?.cardinality?.value ?? 0,
-    executionCount: bucket.skills_nested?.filtered?.doc_count ?? 0,
-  };
-}
-
 export async function fetchSkillUsageMetrics(
   baseQuery: estypes.QueryDslQueryContainer,
   skillName: string | null,
   timezone: string = "UTC"
 ): Promise<Result<SkillUsagePoint[], Error>> {
-  const nestedAggs: Record<string, estypes.AggregationsAggregationContainer> =
-    skillName
-      ? {
-          filtered: {
-            filter: { term: { "skills_used.skill_name": skillName } },
-            aggs: {
-              unique_users: {
-                reverse_nested: {},
-                aggs: {
-                  cardinality: {
-                    cardinality: { field: "user_id" },
-                  },
-                },
-              },
-            },
-          },
-        }
-      : {
-          unique_users: {
-            reverse_nested: {},
-            aggs: {
-              cardinality: {
-                cardinality: { field: "user_id" },
-              },
-            },
-          },
-        };
-
-  const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
-    by_date: {
-      date_histogram: {
-        field: "timestamp",
-        calendar_interval: "day",
-        time_zone: timezone,
-      },
-      aggs: {
-        skills_nested: {
-          nested: { path: "skills_used" },
-          aggs: nestedAggs,
-        },
-      },
-    },
-  };
-
-  if (skillName) {
-    const result = await searchAnalytics<never, FilteredSkillUsageAggs>(
-      baseQuery,
-      { aggregations: aggs, size: 0 }
-    );
-
-    if (result.isErr()) {
-      return new Err(new Error(result.error.message));
-    }
-
-    const dateBuckets = bucketsToArray<FilteredDateBucket>(
-      result.value.aggregations?.by_date?.buckets
-    );
-
-    return new Ok(
-      dateBuckets.map((bucket) => filteredBucketToPoint(bucket, timezone))
-    );
-  }
-
-  const result = await searchAnalytics<never, SkillUsageAggs>(baseQuery, {
-    aggregations: aggs,
-    size: 0,
+  return fetchNestedUsageMetrics(baseQuery, {
+    nestedPath: SKILLS_NESTED_PATH,
+    filterField: SKILLS_NAME_FIELD,
+    filterValue: skillName,
+    timezone,
   });
-
-  if (result.isErr()) {
-    return new Err(new Error(result.error.message));
-  }
-
-  const dateBuckets = bucketsToArray<DateBucket>(
-    result.value.aggregations?.by_date?.buckets
-  );
-
-  return new Ok(dateBuckets.map((bucket) => bucketToPoint(bucket, timezone)));
 }
 
 export async function fetchAvailableSkills(
   baseQuery: estypes.QueryDslQueryContainer
 ): Promise<Result<AvailableSkill[], Error>> {
-  const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
-    skills_nested: {
-      nested: { path: "skills_used" },
-      aggs: {
-        by_skill: {
-          terms: {
-            field: "skills_used.skill_name",
-            size: 100,
-            order: { _count: "desc" },
-          },
-        },
-      },
-    },
-  };
-
-  const result = await searchAnalytics<never, SkillListAggs>(baseQuery, {
-    aggregations: aggs,
-    size: 0,
+  const result = await fetchNestedTermsBuckets(baseQuery, {
+    nestedPath: SKILLS_NESTED_PATH,
+    field: SKILLS_NAME_FIELD,
   });
 
   if (result.isErr()) {
-    return new Err(new Error(result.error.message));
+    return result;
   }
 
-  const skillBuckets = bucketsToArray<SkillBucket>(
-    result.value.aggregations?.skills_nested?.by_skill?.buckets
-  );
-
   return new Ok(
-    skillBuckets.map((bucket) => ({
+    result.value.map((bucket) => ({
       skillName: bucket.key,
-      totalExecutions: bucket.doc_count,
+      totalExecutions: bucket.docCount,
     }))
   );
 }
@@ -229,38 +67,19 @@ export async function fetchAvailableSkills(
 export async function fetchAvailableSkillsBySkillId(
   baseQuery: estypes.QueryDslQueryContainer
 ): Promise<Result<AvailableSkillById[], Error>> {
-  const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
-    skills_nested: {
-      nested: { path: "skills_used" },
-      aggs: {
-        by_skill_id: {
-          terms: {
-            field: "skills_used.skill_id",
-            size: 100,
-            order: { _count: "desc" },
-          },
-        },
-      },
-    },
-  };
-
-  const result = await searchAnalytics<never, SkillIdListAggs>(baseQuery, {
-    aggregations: aggs,
-    size: 0,
+  const result = await fetchNestedTermsBuckets(baseQuery, {
+    nestedPath: SKILLS_NESTED_PATH,
+    field: SKILLS_ID_FIELD,
   });
 
   if (result.isErr()) {
-    return new Err(new Error(result.error.message));
+    return result;
   }
 
-  const skillBuckets = bucketsToArray<SkillBucket>(
-    result.value.aggregations?.skills_nested?.by_skill_id?.buckets
-  );
-
   return new Ok(
-    skillBuckets.map((bucket) => ({
+    result.value.map((bucket) => ({
       skillId: bucket.key,
-      totalExecutions: bucket.doc_count,
+      totalExecutions: bucket.docCount,
     }))
   );
 }
@@ -268,33 +87,15 @@ export async function fetchAvailableSkillsBySkillId(
 export async function fetchUsedSkills(
   baseQuery: estypes.QueryDslQueryContainer
 ): Promise<Result<string[], Error>> {
-  const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
-    skills_nested: {
-      nested: { path: "skills_used" },
-      aggs: {
-        by_skill_id: {
-          terms: {
-            field: "skills_used.skill_id",
-            size: 1000,
-            order: { _count: "desc" },
-          },
-        },
-      },
-    },
-  };
-
-  const result = await searchAnalytics<never, SkillIdListAggs>(baseQuery, {
-    aggregations: aggs,
-    size: 0,
+  const result = await fetchNestedTermsBuckets(baseQuery, {
+    nestedPath: SKILLS_NESTED_PATH,
+    field: SKILLS_ID_FIELD,
+    size: 1000,
   });
 
   if (result.isErr()) {
-    return new Err(new Error(result.error.message));
+    return result;
   }
 
-  const skillIdBuckets = bucketsToArray<SkillBucket>(
-    result.value.aggregations?.skills_nested?.by_skill_id?.buckets
-  );
-
-  return new Ok(skillIdBuckets.map((bucket) => bucket.key));
+  return new Ok(result.value.map((bucket) => bucket.key));
 }
