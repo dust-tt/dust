@@ -1,9 +1,13 @@
 import { indexAgentMessageConsumptionAnalytics } from "@app/lib/analytics/agent_message_consumption";
-import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
+import {
+  computeAndStoreAgentMessageConsumptionAttribution,
+  computeAndStoreAgentMessageConsumptionAttributionForAnalytics,
+} from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import {
   storeAgentMessageConsumptionAnalyticsActivity,
   storeAgentMessageConsumptionAttributionForMessageActivity,
@@ -25,7 +29,10 @@ vi.mock(
 
 vi.mock(
   "@app/lib/api/assistant/agent_message_consumption_attribution/store",
-  () => ({ computeAndStoreAgentMessageConsumptionAttribution: vi.fn() })
+  () => ({
+    computeAndStoreAgentMessageConsumptionAttribution: vi.fn(),
+    computeAndStoreAgentMessageConsumptionAttributionForAnalytics: vi.fn(),
+  })
 );
 
 vi.mock("@app/lib/api/assistant/streaming/events", () => ({
@@ -87,9 +94,10 @@ describe("storeAgentMessageConsumptionAnalyticsActivity", () => {
   });
 
   it("completes when indexing succeeds", async () => {
+    const actions: AgentMCPActionResource[] = [];
     vi.mocked(
-      computeAndStoreAgentMessageConsumptionAttribution
-    ).mockResolvedValue(undefined);
+      computeAndStoreAgentMessageConsumptionAttributionForAnalytics
+    ).mockResolvedValue({ actions });
     vi.mocked(indexAgentMessageConsumptionAnalytics).mockResolvedValue(
       new Ok(undefined)
     );
@@ -101,11 +109,18 @@ describe("storeAgentMessageConsumptionAnalyticsActivity", () => {
     ).resolves.toBeUndefined();
 
     expect(
-      computeAndStoreAgentMessageConsumptionAttribution
+      computeAndStoreAgentMessageConsumptionAttributionForAnalytics
     ).toHaveBeenCalledWith(expect.anything(), message);
+    expect(indexAgentMessageConsumptionAnalytics).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        agentMessageId: message.agentMessageId,
+        preloadedActions: actions,
+      }
+    );
     expect(
-      vi.mocked(computeAndStoreAgentMessageConsumptionAttribution).mock
-        .invocationCallOrder[0]
+      vi.mocked(computeAndStoreAgentMessageConsumptionAttributionForAnalytics)
+        .mock.invocationCallOrder[0]
     ).toBeLessThan(
       vi.mocked(indexAgentMessageConsumptionAnalytics).mock
         .invocationCallOrder[0]
@@ -114,6 +129,9 @@ describe("storeAgentMessageConsumptionAnalyticsActivity", () => {
 
   it("throws the Elasticsearch error so Temporal retries the activity", async () => {
     const error = new ElasticsearchError("query_error", "invalid mapping", 400);
+    vi.mocked(
+      computeAndStoreAgentMessageConsumptionAttributionForAnalytics
+    ).mockResolvedValue({});
     vi.mocked(indexAgentMessageConsumptionAnalytics).mockResolvedValue(
       new Err(error)
     );
