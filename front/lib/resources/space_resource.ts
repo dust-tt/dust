@@ -2012,16 +2012,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }
   }
 
-  // Backfill entry (#9478): (re-)derive this space's `group_permissions` from its `group_vaults`
-  // associations. Delegates to `writeGroupPermissions` — the same logic the mutation paths use — so
-  // the one-off backfill and the ongoing writes can never disagree. Idempotent; safe to re-run.
-  async reconcileGroupPermissions(
-    auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<void> {
-    return this.writeGroupPermissions(auth, { transaction });
-  }
-
   async canAddMember(auth: Authenticator, userId: string): Promise<boolean> {
     // Only regular spaces and projects can have manual members.
     if (!this.isRegular() && !this.isProject()) {

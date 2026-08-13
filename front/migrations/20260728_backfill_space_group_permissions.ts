@@ -1,18 +1,19 @@
 import { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
 
+const WORKSPACE_CONCURRENCY = 2;
+const SPACE_CONCURRENCY = 4;
+
 // Backfill (#9478): (re-)derive every space's group_permissions from its group_vaults associations.
-// The write goes through SpaceResource.reconcileGroupPermissions, which delegates to the same
-// writeGroupPermissions the space mutation paths use, so the backfill and the ongoing writes can
-// never disagree. Idempotent (clears + re-inserts), so it is safe to re-run if grants get corrupted.
+// The write goes through SpaceResource.writeGroupPermissions — the same method the space mutation
+// paths call — so the backfill and the ongoing writes can never disagree. Idempotent (clears +
+// re-inserts), so it is safe to re-run if grants get corrupted.
 async function backfillWorkspaceSpaceGroupPermissions(
   execute: boolean,
   logger: Logger,
@@ -51,7 +52,7 @@ async function backfillWorkspaceSpaceGroupPermissions(
 
       // One transaction per space so a space is never left without its grants mid-reconcile.
       await frontSequelize.transaction(async (transaction) => {
-        await space.reconcileGroupPermissions(auth, { transaction });
+        await space.writeGroupPermissions(auth, { transaction });
       });
 
       logger.info(
@@ -64,7 +65,7 @@ async function backfillWorkspaceSpaceGroupPermissions(
         "Reconciled space group permissions"
       );
     },
-    { concurrency: 4 }
+    { concurrency: SPACE_CONCURRENCY }
   );
 }
 
@@ -75,28 +76,16 @@ makeScript(
   async ({ wId, execute }, logger) => {
     logger.info("Starting space group_permissions backfill");
 
-    if (wId) {
-      const ws = await WorkspaceResource.fetchById(wId);
-      if (!ws) {
-        throw new Error(`Workspace not found: ${wId}`);
-      }
-      await backfillWorkspaceSpaceGroupPermissions(
-        execute,
-        logger,
-        renderLightWorkspaceType({ workspace: ws })
-      );
-    } else {
-      await runOnAllWorkspaces(
-        async (workspace) => {
-          await backfillWorkspaceSpaceGroupPermissions(
-            execute,
-            logger,
-            workspace
-          );
-        },
-        { concurrency: 4 }
-      );
-    }
+    await runOnAllWorkspaces(
+      async (workspace) => {
+        await backfillWorkspaceSpaceGroupPermissions(
+          execute,
+          logger,
+          workspace
+        );
+      },
+      { concurrency: WORKSPACE_CONCURRENCY, wId }
+    );
 
     logger.info("Space group_permissions backfill completed");
   }
