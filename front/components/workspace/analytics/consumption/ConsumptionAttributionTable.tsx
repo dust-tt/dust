@@ -489,9 +489,7 @@ export function ConsumptionAttributionTable({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-4">
-        <h3 className="text-base font-semibold text-foreground">
-          Attribution
-        </h3>
+        <h3 className="text-base font-semibold text-foreground">Attribution</h3>
         <CsvDownloadButton {...rawCsvDownload} label="Download raw data" />
       </div>
       <div className="rounded-lg border border-border bg-panel-background p-4">

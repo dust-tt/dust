@@ -2,7 +2,10 @@ import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/label
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { buildConsumptionScopeQuery } from "@app/lib/api/analytics/consumption/scope";
-import { roundToCents, rowsToCsv } from "@app/lib/api/analytics/csv_utils";
+import {
+  roundToTwoDecimals,
+  rowsToCsv,
+} from "@app/lib/api/analytics/csv_utils";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
@@ -15,48 +18,6 @@ import type { estypes } from "@elastic/elasticsearch";
 import AdmZip from "adm-zip";
 
 const EXPORT_PAGE_SIZE = 10_000;
-
-// One document per unit of billed credit consumption
-async function fetchAllConsumptionDocuments(
-  query: estypes.QueryDslQueryContainer
-): Promise<Result<AgentMessageConsumptionAnalyticsData[], ElasticsearchError>> {
-  const allDocs: AgentMessageConsumptionAnalyticsData[] = [];
-  let searchAfter: estypes.SortResults | undefined;
-
-  for (;;) {
-    const result =
-      await searchConsumptionAnalytics<AgentMessageConsumptionAnalyticsData>(
-        query,
-        {
-          size: EXPORT_PAGE_SIZE,
-          sort: [
-            { completed_at: "asc" },
-            { agent_message_id: "asc" },
-            { consumption_key: "asc" },
-          ],
-          search_after: searchAfter,
-        }
-      );
-
-    if (result.isErr()) {
-      return result;
-    }
-
-    const { hits } = result.value.hits;
-    for (const hit of hits) {
-      if (hit._source) {
-        allDocs.push(hit._source);
-      }
-    }
-
-    if (hits.length < EXPORT_PAGE_SIZE) {
-      break;
-    }
-    searchAfter = hits[hits.length - 1].sort;
-  }
-
-  return new Ok(allDocs);
-}
 
 type ConsumptionLineExportRow = {
   completedAt: string;
@@ -145,6 +106,47 @@ const CONSUMPTION_LINE_EXPORT_HEADERS: (keyof ConsumptionLineExportRow)[] = [
   "stepIndex",
   "executionTimeMs",
 ];
+
+// One document per unit of billed credit consumption
+async function fetchAllConsumptionDocuments(
+  query: estypes.QueryDslQueryContainer
+): Promise<Result<AgentMessageConsumptionAnalyticsData[], ElasticsearchError>> {
+  const allDocs: AgentMessageConsumptionAnalyticsData[] = [];
+  let searchAfter: estypes.SortResults | undefined;
+  let hitCount: number;
+
+  do {
+    const result =
+      await searchConsumptionAnalytics<AgentMessageConsumptionAnalyticsData>(
+        query,
+        {
+          size: EXPORT_PAGE_SIZE,
+          sort: [
+            { completed_at: "asc" },
+            { agent_message_id: "asc" },
+            { consumption_key: "asc" },
+          ],
+          search_after: searchAfter,
+        }
+      );
+
+    if (result.isErr()) {
+      return result;
+    }
+
+    const { hits } = result.value.hits;
+    for (const hit of hits) {
+      if (hit._source) {
+        allDocs.push(hit._source);
+      }
+    }
+
+    hitCount = hits.length;
+    searchAfter = hits[hits.length - 1]?.sort;
+  } while (hitCount === EXPORT_PAGE_SIZE);
+
+  return new Ok(allDocs);
+}
 
 async function buildConsumptionLineExportRows(
   auth: Authenticator,
@@ -237,14 +239,20 @@ async function buildConsumptionLineExportRows(
       attributedSkillNames: (tool?.attributed_skill_ids ?? [])
         .map((id) => skillLabels.get(id)?.name ?? id)
         .join("; "),
-      creditsSystem: roundToCents(microCreditsToCredits(gross.system ?? 0)),
-      creditsInput: roundToCents(microCreditsToCredits(gross.input ?? 0)),
-      creditsOutput: roundToCents(microCreditsToCredits(gross.output ?? 0)),
-      creditsReasoning: roundToCents(
+      creditsSystem: roundToTwoDecimals(
+        microCreditsToCredits(gross.system ?? 0)
+      ),
+      creditsInput: roundToTwoDecimals(microCreditsToCredits(gross.input ?? 0)),
+      creditsOutput: roundToTwoDecimals(
+        microCreditsToCredits(gross.output ?? 0)
+      ),
+      creditsReasoning: roundToTwoDecimals(
         microCreditsToCredits(gross.reasoning ?? 0)
       ),
-      creditsDirect: roundToCents(microCreditsToCredits(gross.direct ?? 0)),
-      totalCredits: roundToCents(microCreditsToCredits(doc.credit_micro)),
+      creditsDirect: roundToTwoDecimals(
+        microCreditsToCredits(gross.direct ?? 0)
+      ),
+      totalCredits: roundToTwoDecimals(microCreditsToCredits(doc.credit_micro)),
       usageType: doc.usage_type,
       status: doc.status,
       stepIndex: doc.step_index,

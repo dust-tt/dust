@@ -138,11 +138,7 @@ export function AnalyticsConsumptionPage() {
           onDimensionChange={handleDimensionChange}
           onViewAll={(nextDimension, selectedRow) => {
             setFilter((current) =>
-              setUsageFilterFromAttributionRow(
-                current,
-                dimension,
-                selectedRow
-              )
+              setUsageFilterFromAttributionRow(current, dimension, selectedRow)
             );
             handleDimensionChange(nextDimension);
           }}
