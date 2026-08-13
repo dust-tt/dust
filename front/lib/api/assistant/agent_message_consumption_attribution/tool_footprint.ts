@@ -5,6 +5,7 @@ import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { tokenCountForTexts } from "@app/lib/tokenization";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import {
   GPT_4_1_MINI_MODEL_CONFIG,
@@ -129,19 +130,21 @@ export async function measureToolCallFootprints(
       toolCalls.map(({ action }) => action)
     );
 
-  // Tokenize the calls and inputs as two homogeneous lists so each count maps back to its call by
-  // plain index, with no call-vs-input position juggling.
-  const footprints = await Promise.all(
-    toolCalls.map((toolCall) =>
+  // Rendering can sign model-facing file URLs, so keep it bounded while preserving input order.
+  const footprints = await concurrentExecutor(
+    toolCalls,
+    (toolCall) =>
       toolCallFootprintTexts(auth, toolCall, {
         additionalInputText: enabledSkillInputTextByActionId.get(
           toolCall.action.sId
         ),
         conversationId,
         model,
-      })
-    )
+      }),
+    { concurrency: 5 }
   );
+  // Tokenize the calls and inputs as two homogeneous lists so each count maps back to its call by
+  // plain index, with no call-vs-input position juggling.
   const [callCountsRes, inputCountsRes] = await Promise.all([
     tokenCountForTexts(
       footprints.map((footprint) => footprint.callText),
