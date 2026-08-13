@@ -126,7 +126,10 @@ function mockLabels(labels: Record<string, string>) {
       new Map(
         keys
           .filter((key) => key in labels)
-          .map((key) => [key, { name: labels[key], pictureUrl: null }])
+          .map((key) => [
+            key,
+            { name: labels[key], pictureUrl: null, description: null },
+          ])
       )
   );
 }
