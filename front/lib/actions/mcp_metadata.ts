@@ -34,11 +34,13 @@ import {
 } from "@app/lib/actions/mcp_oauth_provider";
 import type { ToolContext } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
+import { internalAgent } from "@app/lib/api/internal_fetch";
 import type {
   MCPServerType,
   MCPToolType,
   ToolDisplayLabels,
 } from "@app/lib/api/mcp";
+import { isInClusterMCPUrlAllowed } from "@app/lib/api/mcp/in_cluster";
 import { invalidateOAuthConnectionAccessTokenCache } from "@app/lib/api/oauth_access_token";
 import { isHostUnderVerifiedDomain } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
@@ -69,6 +71,7 @@ import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type { Dispatcher } from "undici";
 import { z } from "zod";
 
 const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 25_000;
@@ -101,9 +104,13 @@ function extractMCPErrorMessage(errorMessage: string): string {
 // disconnected and waiting further won't help.
 const CLIENT_SIDE_CONNECT_TIMEOUT_MS = 5_000;
 
-type MCPProxyKind = "static_ip_proxy" | "untrusted_egress_proxy" | "direct";
+type MCPProxyKind =
+  | "static_ip_proxy"
+  | "untrusted_egress_proxy"
+  | "in_cluster"
+  | "direct";
 type MCPProxyConfig = {
-  dispatcher?: ReturnType<typeof getUntrustedEgressAgent>;
+  dispatcher?: Dispatcher;
   fetch?: FetchLike;
   proxyKind: MCPProxyKind;
 };
@@ -164,9 +171,18 @@ export type MCPConnectionParams =
  */
 async function createMCPProxyConfig(
   auth: Authenticator,
-  host: string
+  url: URL
 ): Promise<MCPProxyConfig> {
   const workspace = auth.getNonNullableWorkspace();
+  const host = url.hostname;
+
+  if (await isInClusterMCPUrlAllowed(auth, url)) {
+    return {
+      dispatcher: internalAgent,
+      fetch: createProxyFetch(internalAgent),
+      proxyKind: "in_cluster" as const,
+    };
+  }
 
   // Check if workspace should use static IP:
   // 1. Legacy hardcoded check for specific workspaces
@@ -593,7 +609,7 @@ export async function connectToMCPServer(
             dispatcher,
             fetch: proxyFetch,
             proxyKind,
-          } = await createMCPProxyConfig(auth, url.hostname);
+          } = await createMCPProxyConfig(auth, url);
 
           try {
             const req = {
@@ -692,7 +708,7 @@ export async function connectToMCPServer(
       }
       const { dispatcher, fetch: proxyFetch } = await createMCPProxyConfig(
         auth,
-        url.hostname
+        url
       );
       const req = {
         requestInit: {

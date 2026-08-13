@@ -1,6 +1,7 @@
 import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
 import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
+import { isInClusterMCPUrlAllowed } from "@app/lib/api/mcp/in_cluster";
 import { validateExternalUrl } from "@app/lib/api/url_safety";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import type { DiscoverOAuthMetadataResponseBody } from "@app/types/api/oauth/providers/mcp";
@@ -35,15 +36,17 @@ app.post(
     const auth = ctx.get("auth");
     const { url, customHeaders } = ctx.req.valid("json");
 
-    const urlError = await validateExternalUrl(url);
-    if (urlError) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: urlError,
-        },
-      });
+    if (!(await isInClusterMCPUrlAllowed(auth, url))) {
+      const urlError = await validateExternalUrl(url);
+      if (urlError) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: urlError,
+          },
+        });
+      }
     }
 
     const headers = headersArrayToRecord(customHeaders);

@@ -1,6 +1,6 @@
 import config from "@app/lib/api/config";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
-import type { RequestInfo, RequestInit, Response } from "undici";
+import type { Dispatcher, RequestInfo, RequestInit, Response } from "undici";
 import { ProxyAgent, fetch as undiciFetch } from "undici";
 
 export function getUntrustedEgressAgent(): ProxyAgent | undefined {
@@ -49,14 +49,14 @@ export function untrustedFetch(
 }
 
 /**
- * Creates a fetch function that routes all requests through the given proxy agent.
+ * Creates a fetch function that routes all requests through the given dispatcher.
  *
  * Used by MCP transports: the MCP SDK does NOT forward `requestInit.dispatcher`
  * to its internal EventSource/GET connections. Passing this as `opts.fetch`
- * ensures ALL fetch calls (SSE GET + POST) go through the proxy.
+ * ensures ALL fetch calls (SSE GET + POST) go through the dispatcher.
  */
 export function createProxyFetch(
-  agent: ProxyAgent
+  agent: Dispatcher
 ): (
   input: string | URL,
   init?: globalThis.RequestInit

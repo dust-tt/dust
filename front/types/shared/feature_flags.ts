@@ -186,6 +186,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "NetSuite MCP tool for querying records and interacting with your NetSuite account",
     stage: "on_demand",
   },
+  dust_internal_dangerous_in_cluster_mcp_servers: {
+    description:
+      "EXPERIMENTAL FEATURE. DUST INTERNAL ONLY. Allow remote MCP servers pointing at hosts on the MCP_IN_CLUSTER_HOSTS allowlist, reached in-cluster instead of through the untrusted egress proxy.",
+    stage: "dust_only",
+  },
   discord_bot: {
     description:
       "Discord bot integration for workspace-level Discord integration",
