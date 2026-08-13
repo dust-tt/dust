@@ -56,7 +56,7 @@ function TodayPartialLabel({ viewBox }: RechartsLabelProps) {
   const fontSize = 11;
   const rectWidth = textWidth + paddingX * 2;
   const rectHeight = fontSize + paddingY * 2;
-  const rectY = y - rectHeight - 4;
+  const rectY = y - rectHeight + 16;
 
   return (
     <g>
@@ -289,7 +289,7 @@ function ConsumptionDailyChart({
         {partialTimestamp !== undefined && (
           <ReferenceLine
             x={partialTimestamp}
-            className="stroke-muted-foreground"
+            stroke="var(--color-primary)"
             strokeDasharray="5 5"
             label={{ position: "top", content: TodayPartialLabel }}
             ifOverflow="extendDomain"
