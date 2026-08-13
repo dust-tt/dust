@@ -16,19 +16,10 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-const FILTER_OPTION_SKELETON_WIDTHS = [
-  "w-24",
-  "w-32",
-  "w-20",
-  "w-36",
-  "w-28",
-  "w-24",
-] as const;
-
 function UsageFilterOptionListSkeleton() {
   return (
     <div aria-hidden="true" className="flex flex-col gap-0.5">
-      {FILTER_OPTION_SKELETON_WIDTHS.map((width, index) => (
+      {["w-24", "w-32", "w-20", "w-36", "w-28", "w-24"].map((width, index) => (
         <div key={index} className="flex items-center gap-2 py-1 pl-1 pr-2">
           <LoadingBlock className="h-4 w-4 shrink-0 rounded" />
           <LoadingBlock className="h-4 w-4 shrink-0 rounded" />
