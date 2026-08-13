@@ -30,21 +30,6 @@ export type AttributionRowData = ConsumptionTopRow & {
 
 const ATTRIBUTION_SKELETON_ROW_COUNT = 10;
 
-const ATTRIBUTION_SKELETON_NAME_WIDTHS = [
-  "w-28",
-  "w-36",
-  "w-24",
-  "w-40",
-  "w-32",
-] as const;
-
-const ATTRIBUTION_SKELETON_NUMBER_WIDTHS = [
-  "w-16",
-  "w-12",
-  "w-20",
-  "w-14",
-] as const;
-
 interface AttributionSkeletonCellProps {
   columnId: string;
   rowIndex: number;
@@ -73,9 +58,7 @@ function AttributionSkeletonCell({
           <LoadingBlock
             className={cn(
               "h-3",
-              ATTRIBUTION_SKELETON_NAME_WIDTHS[
-                rowIndex % ATTRIBUTION_SKELETON_NAME_WIDTHS.length
-              ]
+              ["w-28", "w-36", "w-24", "w-40", "w-32"][rowIndex % 5]
             )}
           />
         </div>
@@ -94,9 +77,7 @@ function AttributionSkeletonCell({
           <LoadingBlock
             className={cn(
               "h-3",
-              ATTRIBUTION_SKELETON_NUMBER_WIDTHS[
-                rowIndex % ATTRIBUTION_SKELETON_NUMBER_WIDTHS.length
-              ]
+              ["w-16", "w-12", "w-20", "w-14"][rowIndex % 4]
             )}
           />
         </div>
