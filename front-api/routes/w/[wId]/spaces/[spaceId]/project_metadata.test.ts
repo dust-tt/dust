@@ -18,6 +18,7 @@ vi.mock("@app/temporal/project_task/client", () => ({
 }));
 
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -248,5 +249,67 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
       expect.objectContaining({ spaceId: projectSpace.sId })
     );
     expect(mockStopProjectTodoWorkflow).not.toHaveBeenCalled();
+  });
+});
+
+describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata appSharingEnabled", () => {
+  it("lets an editor enable app sharing", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    await FeatureFlagFactory.basic(auth, "sandbox_functions");
+    const projectSpace = await SpaceFactory.project(workspace);
+
+    const response = await patchMetadata(workspace, projectSpace.sId, {
+      appSharingEnabled: true,
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.projectMetadata.appSharingEnabled).toBe(true);
+  });
+
+  it("rejects the flag without the sandbox_functions feature flag", async () => {
+    const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
+    const projectSpace = await SpaceFactory.project(workspace);
+
+    const response = await patchMetadata(workspace, projectSpace.sId, {
+      appSharingEnabled: true,
+    });
+
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.type).toBe("feature_flag_not_found");
+  });
+
+  it("rejects a pod member who is not an editor", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+
+    const projectSpace = await SpaceFactory.project(workspace);
+
+    const { Authenticator } = await import("@app/lib/auth");
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await FeatureFlagFactory.basic(adminAuth, "sandbox_functions");
+    const [spaceGroup] = await projectSpace.fetchGroupResources(adminAuth, {
+      groupReferences: projectSpace.groups.filter((group) =>
+        group.isRegularAuto()
+      ),
+    });
+    if (!spaceGroup) {
+      throw new Error("Expected the project member group to exist.");
+    }
+    await spaceGroup.dangerouslyAddMembers(adminAuth, {
+      users: [user.toJSON()],
+    });
+
+    const response = await patchMetadata(workspace, projectSpace.sId, {
+      appSharingEnabled: true,
+    });
+
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.type).toBe("workspace_auth_error");
   });
 });

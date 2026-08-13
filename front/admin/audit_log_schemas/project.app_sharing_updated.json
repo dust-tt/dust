@@ -1,0 +1,15 @@
+{
+  "action": "project.app_sharing_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "space"
+    }
+  ],
+  "metadata": {
+    "space_name": "string",
+    "app_sharing_enabled": "string"
+  }
+}

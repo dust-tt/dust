@@ -50,6 +50,7 @@ export const PatchPodMetadataBodySchema = z.object({
   defaultAgentId: z.string().nullable().optional(),
   defaultSkillIds: z.array(z.string()).optional(),
   isAdminControlled: z.boolean().optional(),
+  appSharingEnabled: z.boolean().optional(),
 });
 
 export type PatchPodMetadataBodyType = z.infer<

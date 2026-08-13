@@ -1,4 +1,9 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { validatePodFrameTabs } from "@app/lib/api/projects/frame_tabs";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { hasFeatureFlag } from "@app/lib/auth";
@@ -115,6 +120,18 @@ app.patch(
       }
     }
 
+    if (body.appSharingEnabled !== undefined) {
+      if (!(await hasFeatureFlag(auth, "sandbox_functions"))) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "feature_flag_not_found",
+            message: "Sandbox Functions are not enabled for this workspace.",
+          },
+        });
+      }
+    }
+
     if (body.pinnedFramePath !== undefined) {
       const validation = await validatePinnedFramePath(
         auth,
@@ -221,6 +238,7 @@ app.patch(
     const priorLastTodoAnalysisAt = metadata?.lastTodoAnalysisAt ?? null;
     const priorTodoGenerationEnabled = metadata?.todoGenerationEnabled ?? false;
     const priorIsAdminControlled = metadata?.isAdminControlled ?? false;
+    const priorAppSharingEnabled = metadata?.appSharingEnabled ?? false;
 
     if (
       body.isAdminControlled !== undefined &&
@@ -276,6 +294,7 @@ app.patch(
         tabsOrder: resolvedFrameTabs?.tabsOrder ?? [],
         defaultAgentId: body.defaultAgentId ?? null,
         isAdminControlled: body.isAdminControlled ?? false,
+        appSharingEnabled: body.appSharingEnabled ?? false,
       });
       if (resolvedDefaultSkills) {
         await metadata.setDefaultSkills(resolvedDefaultSkills);
@@ -337,6 +356,9 @@ app.patch(
       if (body.isAdminControlled !== undefined) {
         await metadata.updateIsAdminControlled(body.isAdminControlled);
       }
+      if (body.appSharingEnabled !== undefined) {
+        await metadata.updateAppSharingEnabled(body.appSharingEnabled);
+      }
       if (resolvedDefaultSkills) {
         await metadata.setDefaultSkills(resolvedDefaultSkills);
       }
@@ -352,6 +374,25 @@ app.patch(
           spaceId: space.sId,
         });
       }
+    }
+
+    if (
+      body.appSharingEnabled !== undefined &&
+      body.appSharingEnabled !== priorAppSharingEnabled
+    ) {
+      void emitAuditLogEvent({
+        auth,
+        action: "project.app_sharing_updated",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("space", space),
+        ],
+        context: getAuditLogContext(auth),
+        metadata: {
+          space_name: space.name,
+          app_sharing_enabled: String(body.appSharingEnabled),
+        },
+      });
     }
 
     if (resolvedDefaultSkills) {
