@@ -62,7 +62,7 @@ export const CONSUMPTION_DIMENSION_CONFIG: Record<
   skill: {
     label: "Skills",
     breakdownLabel: "skill",
-    hasAvatar: false,
+    hasAvatar: true,
     avgLabel: INVOCATION_AVG_LABEL,
   },
   source: {
