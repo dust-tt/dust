@@ -123,39 +123,30 @@ export function AnalyticsConsumptionPage() {
                 />
               </SafeSuspense>
             </m.div>
-            <div className="flex flex-col gap-4">
-              <h3 className="text-base font-semibold text-foreground">
-                Attribution
-              </h3>
-              <ConsumptionAttributionTable
-                workspaceId={owner.sId}
-                period={period}
-                filter={scopeFilter}
-                onAddFilter={(selectedRow) => {
-                  setFilter((current) =>
-                    addUsageFilterFromAttributionRow(
-                      current,
-                      dimension,
-                      selectedRow
-                    )
-                  );
-                }}
-                dimension={dimension}
-                onDimensionChange={handleDimensionChange}
-                onViewAll={(nextDimension, selectedRow) => {
-                  setFilter((current) =>
-                    setUsageFilterFromAttributionRow(
-                      current,
-                      dimension,
-                      selectedRow
-                    )
-                  );
-                  handleDimensionChange(nextDimension);
-                }}
-              />
-            </div>
           </div>
         </LazyMotion>
+        <ConsumptionAttributionTable
+          workspaceId={owner.sId}
+          period={period}
+          filter={scopeFilter}
+          onAddFilter={(selectedRow) => {
+            setFilter((current) =>
+              addUsageFilterFromAttributionRow(current, dimension, selectedRow)
+            );
+          }}
+          dimension={dimension}
+          onDimensionChange={handleDimensionChange}
+          onViewAll={(nextDimension, selectedRow) => {
+            setFilter((current) =>
+              setUsageFilterFromAttributionRow(
+                current,
+                dimension,
+                selectedRow
+              )
+            );
+            handleDimensionChange(nextDimension);
+          }}
+        />
       </div>
     </Page.Vertical>
   );
