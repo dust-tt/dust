@@ -253,27 +253,33 @@ async function fetchLatestWorkspaceAgentModels(
   if (workspaceAgentIds.length === 0) {
     return [];
   }
-  // Use window function for optimal performance - single query, single pass
+
+  // Agent sIds are globally unique (every agent starts at version 0, and
+  // (sId, version) is unique). Resolve the latest model id through that index
+  // first, then enforce workspace isolation while loading the model row. This
+  // avoids sorting every historical version of heavily edited agents.
   const query = `
-    SELECT *
+    SELECT agent_configuration.*
     FROM (
-      SELECT *,
-              ROW_NUMBER() OVER (
-                PARTITION BY "sId"
-                ORDER BY version DESC
-              ) as rn
+      SELECT DISTINCT unnest($agentIds::text[]) AS "sId"
+    ) requested_agent
+    JOIN LATERAL (
+      SELECT id
       FROM agent_configurations
-      WHERE "workspaceId" = :workspaceId
-        AND "sId" IN (:agentIds)
-    ) ranked_agents
-    WHERE rn = 1
-    ORDER BY version DESC
+      WHERE "sId" = requested_agent."sId"
+      ORDER BY version DESC
+      LIMIT 1
+    ) latest_agent ON true
+    JOIN agent_configurations AS agent_configuration
+      ON agent_configuration.id = latest_agent.id
+      AND agent_configuration."workspaceId" = $workspaceId
+    ORDER BY agent_configuration.version DESC
   `;
 
   return (
     (await AgentConfigurationModel.sequelize?.query(query, {
       type: QueryTypes.SELECT,
-      replacements: {
+      bind: {
         workspaceId: auth.getNonNullableWorkspace().id,
         agentIds: workspaceAgentIds,
       },
