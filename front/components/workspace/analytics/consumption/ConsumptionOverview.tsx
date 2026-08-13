@@ -37,7 +37,7 @@ interface SummaryCardProps {
 
 function SummaryCard({ label, value, hint }: SummaryCardProps) {
   return (
-    <div className="flex flex-1 flex-col justify-center gap-1 rounded-xl border border-border p-4">
+    <div className="flex flex-1 flex-col justify-center gap-1 rounded-xl border border-border bg-panel-background p-4">
       <span className="text-xs font-semibold text-muted-foreground">
         {label}
       </span>
@@ -65,7 +65,7 @@ function ConsumptionSummary({
   return (
     <div className="flex flex-col gap-4">
       {creditUsage && (
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-border p-2">
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-panel-background p-2">
           <div className="flex items-center gap-2">
             <Chip
               size="mini"

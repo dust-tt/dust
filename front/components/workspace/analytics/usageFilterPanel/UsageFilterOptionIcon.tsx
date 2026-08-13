@@ -39,7 +39,6 @@ export function UsageFilterOptionIcon({ option }: UsageFilterOptionIconProps) {
           name={option.name}
           visual={option.image ?? undefined}
           size="xxs"
-          isRounded
         />
       );
     case "member":
@@ -48,7 +47,7 @@ export function UsageFilterOptionIcon({ option }: UsageFilterOptionIconProps) {
           name={option.name}
           visual={option.image ?? undefined}
           size="xxs"
-          isRounded={option.kind === "member"}
+          isRounded
         />
       );
     case "source": {

@@ -10,10 +10,25 @@ import {
   Button,
   Checkbox,
   Label,
+  LoadingBlock,
   NavigationListLabel,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
+
+function UsageFilterOptionListSkeleton() {
+  return (
+    <div aria-hidden="true" className="flex flex-col gap-0.5">
+      {["w-24", "w-32", "w-20", "w-36", "w-28", "w-24"].map((width, index) => (
+        <div key={index} className="flex items-center gap-2 py-1 pl-1 pr-2">
+          <LoadingBlock className="h-4 w-4 shrink-0 rounded" />
+          <LoadingBlock className="h-4 w-4 shrink-0 rounded" />
+          <LoadingBlock className={`h-3 ${width}`} />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 interface UsageFilterOptionCheckboxListProps {
   category: UsageFilterCategory;
@@ -76,13 +91,11 @@ export function UsageFilterOptionCheckboxList({
       />
       <div
         ref={setScrollContainer}
-        aria-busy={isUpdating}
+        aria-busy={isLoading || isUpdating}
         className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto"
       >
         {isLoading && options.length === 0 ? (
-          <div className="flex h-24 items-center justify-center">
-            <Spinner size="xs" />
-          </div>
+          <UsageFilterOptionListSkeleton />
         ) : displayedOptions.length > 0 ? (
           <>
             {displayedOptions.map((option) => {
