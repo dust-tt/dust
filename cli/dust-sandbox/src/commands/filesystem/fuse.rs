@@ -20,7 +20,7 @@ use fuser::{
 };
 use tracing::{debug, info, warn};
 
-use super::store::{is_writable, FileStore, Node, NodeKind, ROOT_ID};
+use super::store::{is_writable, FileStore, Node, NodeKind, FUSE_ROOT_INODE};
 
 const METADATA_CACHE_TTL: Duration = Duration::from_secs(1);
 const BLOCK_SIZE: u32 = 4096;
@@ -111,8 +111,8 @@ struct OpenHandle {
 struct DustFuse {
     store: Arc<FileStore>,
     handles: Arc<Mutex<HashMap<u64, Arc<Mutex<OpenHandle>>>>>,
-    writable_nodes: Arc<Mutex<HashSet<u64>>>,
-    staged_sizes: Arc<Mutex<HashMap<u64, u64>>>,
+    writable_nodes: Arc<Mutex<HashSet<INodeNo>>>,
+    staged_sizes: Arc<Mutex<HashMap<INodeNo, u64>>>,
     namespace: Arc<RwLock<()>>,
     next_handle: Arc<AtomicU64>,
     remote_in_flight: Arc<AtomicUsize>,
@@ -203,52 +203,52 @@ impl DustFuse {
         self.namespace.write().map_err(|_| errno(libc::EIO))
     }
 
-    fn staged_sizes(&self) -> io::Result<MutexGuard<'_, HashMap<u64, u64>>> {
+    fn staged_sizes(&self) -> io::Result<MutexGuard<'_, HashMap<INodeNo, u64>>> {
         self.staged_sizes.lock().map_err(|_| errno(libc::EIO))
     }
 
     fn apply_staged_size(&self, node: &mut Node) -> io::Result<()> {
-        if let Some(size) = self.staged_sizes()?.get(&node.id) {
+        if let Some(size) = self.staged_sizes()?.get(&node.inode) {
             node.size = *size;
         }
         Ok(())
     }
 
-    fn node(&self, node_id: u64) -> io::Result<Node> {
-        let mut node = self.store.node(node_id)?;
+    fn node(&self, inode: INodeNo) -> io::Result<Node> {
+        let mut node = self.store.node(inode)?;
         self.apply_staged_size(&mut node)?;
         Ok(node)
     }
 
-    fn lookup_node(&self, parent_id: u64, name: &str) -> io::Result<Node> {
-        let mut node = self.store.lookup(parent_id, name)?;
+    fn lookup_node(&self, parent_inode: INodeNo, name: &str) -> io::Result<Node> {
+        let mut node = self.store.lookup(parent_inode, name)?;
         self.apply_staged_size(&mut node)?;
         Ok(node)
     }
 
-    fn children(&self, node_id: u64) -> io::Result<Vec<Node>> {
-        let mut children = self.store.children(node_id)?;
+    fn children(&self, inode: INodeNo) -> io::Result<Vec<Node>> {
+        let mut children = self.store.children(inode)?;
         for child in &mut children {
             self.apply_staged_size(child)?;
         }
         Ok(children)
     }
 
-    fn read_directory(&self, inode: u64, offset: u64, mut reply: ReplyDirectory) {
+    fn read_directory(&self, inode: INodeNo, offset: u64, mut reply: ReplyDirectory) {
         let result = (|| {
             let directory = self.node(inode)?;
             if directory.kind != NodeKind::Directory {
                 return Err(errno(libc::ENOTDIR));
             }
-            let parent_id = directory.parent_id.unwrap_or(ROOT_ID);
+            let parent_inode = directory.parent_inode.unwrap_or(FUSE_ROOT_INODE);
             let mut entries = vec![
-                (directory.id, NodeKind::Directory, ".".to_owned()),
-                (parent_id, NodeKind::Directory, "..".to_owned()),
+                (directory.inode, NodeKind::Directory, ".".to_owned()),
+                (parent_inode, NodeKind::Directory, "..".to_owned()),
             ];
             entries.extend(
-                self.children(directory.id)?
+                self.children(directory.inode)?
                     .into_iter()
-                    .map(|node| (node.id, node.kind, node.name)),
+                    .map(|node| (node.inode, node.kind, node.name)),
             );
             Ok(entries)
         })();
@@ -266,7 +266,7 @@ impl DustFuse {
                 return;
             }
         };
-        for (index, (node_id, kind, name)) in entries.into_iter().enumerate().skip(offset) {
+        for (index, (inode, kind, name)) in entries.into_iter().enumerate().skip(offset) {
             let next_offset = match u64::try_from(index.saturating_add(1)) {
                 Ok(next_offset) => next_offset,
                 Err(_) => {
@@ -274,7 +274,7 @@ impl DustFuse {
                     return;
                 }
             };
-            if reply.add(INodeNo(node_id), next_offset, file_type(kind), name) {
+            if reply.add(inode, next_offset, file_type(kind), name) {
                 break;
             }
         }
@@ -283,7 +283,7 @@ impl DustFuse {
 
     fn attributes(&self, node: &Node) -> FileAttr {
         FileAttr {
-            ino: INodeNo(node.id),
+            ino: node.inode,
             size: node.size,
             blocks: node.size.div_ceil(u64::from(BLOCK_SIZE)),
             atime: time_from_ms(node.modified_at_ms),
@@ -305,34 +305,34 @@ impl DustFuse {
         }
     }
 
-    fn open_node(&self, node_id: u64, flags: i32) -> io::Result<u64> {
+    fn open_node(&self, inode: INodeNo, flags: i32) -> io::Result<u64> {
         let writable = is_writable(flags);
         if writable
             && !self
                 .writable_nodes
                 .lock()
                 .map_err(|_| errno(libc::EIO))?
-                .insert(node_id)
+                .insert(inode)
         {
             return Err(errno(libc::EBUSY));
         }
 
         let result = (|| {
-            let pinned_node_ids = {
+            let pinned_inodes = {
                 let handles = self.handles()?;
-                let mut pinned_node_ids = HashSet::with_capacity(handles.len());
+                let mut pinned_inodes = HashSet::with_capacity(handles.len());
                 for open in handles.values() {
                     let open = open.lock().map_err(|_| errno(libc::EIO))?;
-                    pinned_node_ids.insert(open.node.id);
+                    pinned_inodes.insert(open.node.inode);
                 }
-                pinned_node_ids
+                pinned_inodes
             };
-            let mut opened = self.store.open_content(node_id, flags, &pinned_node_ids)?;
+            let mut opened = self.store.open_content(inode, flags, &pinned_inodes)?;
             let dirty = writable && flags & libc::O_TRUNC != 0;
             if dirty {
                 opened.file.set_len(0)?;
                 opened.node.size = 0;
-                self.staged_sizes()?.insert(node_id, 0);
+                self.staged_sizes()?.insert(inode, 0);
             }
             let handle = self.next_handle.fetch_add(1, Ordering::Relaxed);
             self.handles()?.insert(
@@ -348,7 +348,12 @@ impl DustFuse {
                     unlinked: false,
                 })),
             );
-            debug!(handle, node_id, writable, "opened filesystem handle");
+            debug!(
+                handle,
+                inode = inode.0,
+                writable,
+                "opened filesystem handle"
+            );
             Ok(handle)
         })();
 
@@ -356,18 +361,18 @@ impl DustFuse {
             self.writable_nodes
                 .lock()
                 .map_err(|_| errno(libc::EIO))?
-                .remove(&node_id);
+                .remove(&inode);
         }
         result
     }
 
-    fn active_node_ids(&self) -> io::Result<HashSet<u64>> {
+    fn active_inodes(&self) -> io::Result<HashSet<INodeNo>> {
         let handles = self.handles()?;
-        let mut node_ids = HashSet::with_capacity(handles.len());
+        let mut inodes = HashSet::with_capacity(handles.len());
         for open in handles.values() {
-            node_ids.insert(open.lock().map_err(|_| errno(libc::EIO))?.node.id);
+            inodes.insert(open.lock().map_err(|_| errno(libc::EIO))?.node.inode);
         }
-        Ok(node_ids)
+        Ok(inodes)
     }
 
     fn handle(&self, handle: u64) -> io::Result<Arc<Mutex<OpenHandle>>> {
@@ -383,7 +388,7 @@ impl DustFuse {
         if open.unlinked {
             open.file.sync_data()?;
             open.dirty = false;
-            self.staged_sizes()?.remove(&open.node.id);
+            self.staged_sizes()?.remove(&open.node.inode);
             return Ok(());
         }
         if !open.dirty {
@@ -397,7 +402,7 @@ impl DustFuse {
             return open.file.sync_data();
         }
         let committed = self.store.commit_content(
-            open.node.id,
+            open.node.inode,
             open.expected_blob_id.as_deref(),
             &open.content_type,
             &open.file,
@@ -407,7 +412,7 @@ impl DustFuse {
         open.node = committed;
         open.dirty = false;
         open.defer_truncate_commit = false;
-        self.staged_sizes()?.remove(&open.node.id);
+        self.staged_sizes()?.remove(&open.node.inode);
         Ok(())
     }
 
@@ -424,15 +429,15 @@ impl DustFuse {
                 self.writable_nodes
                     .lock()
                     .map_err(|_| errno(libc::EIO))?
-                    .remove(&open.node.id);
+                    .remove(&open.node.inode);
             }
         }
         if commit_result.is_ok() {
             // An open file is pinned even when the cache is over capacity.
             // Closing it is the first safe point at which its path may be
             // unlinked; existing file descriptors remain valid on Linux.
-            let pinned_node_ids = self.active_node_ids()?;
-            if let Err(error) = self.store.trim_cache(&pinned_node_ids) {
+            let pinned_inodes = self.active_inodes()?;
+            if let Err(error) = self.store.trim_cache(&pinned_inodes) {
                 commit_result = Err(error);
             }
         }
@@ -463,11 +468,11 @@ impl DustFuse {
         }
     }
 
-    fn truncate_writable_node(&self, inode: u64, size: u64) -> io::Result<Option<Node>> {
+    fn truncate_writable_node(&self, inode: INodeNo, size: u64) -> io::Result<Option<Node>> {
         let handles = self.handles()?;
         for shared in handles.values() {
             let mut open = shared.lock().map_err(|_| errno(libc::EIO))?;
-            if open.node.id != inode || !open.writable {
+            if open.node.inode != inode || !open.writable {
                 continue;
             }
             open.file.set_len(size)?;
@@ -482,7 +487,7 @@ impl DustFuse {
 
     fn set_attributes(
         &self,
-        inode: u64,
+        inode: INodeNo,
         mode: Option<u32>,
         size: Option<u64>,
         handle: Option<FileHandle>,
@@ -496,7 +501,7 @@ impl DustFuse {
             if let Some(handle) = handle {
                 let shared = self.handle(handle.0)?;
                 let mut open = shared.lock().map_err(|_| errno(libc::EIO))?;
-                if open.node.id != inode || !open.writable {
+                if open.node.inode != inode || !open.writable {
                     return Err(errno(libc::EBADF));
                 }
                 open.file.set_len(size)?;
@@ -528,20 +533,20 @@ impl DustFuse {
         }
     }
 
-    fn mark_unlinked(&self, node_id: u64, unlinked: bool) -> io::Result<()> {
+    fn mark_unlinked(&self, inode: INodeNo, unlinked: bool) -> io::Result<()> {
         for open in self.handles()?.values() {
             let mut open = open.lock().map_err(|_| errno(libc::EIO))?;
-            if open.node.id == node_id {
+            if open.node.inode == inode {
                 open.unlinked = unlinked;
             }
         }
         Ok(())
     }
 
-    fn node_for_handle(&self, handle: u64, inode: u64) -> io::Result<Node> {
+    fn node_for_handle(&self, handle: u64, inode: INodeNo) -> io::Result<Node> {
         let shared = self.handle(handle)?;
         let open = shared.lock().map_err(|_| errno(libc::EIO))?;
-        if open.node.id != inode {
+        if open.node.inode != inode {
             return Err(errno(libc::EBADF));
         }
         let mut node = open.node.clone();
@@ -552,7 +557,7 @@ impl DustFuse {
     fn update_open_nodes(&self, node: &Node) -> io::Result<()> {
         for open in self.handles()?.values() {
             let mut open = open.lock().map_err(|_| errno(libc::EIO))?;
-            if open.node.id == node.id && !open.unlinked {
+            if open.node.inode == node.inode && !open.unlinked {
                 open.node = node.clone();
             }
         }
@@ -583,7 +588,7 @@ impl Filesystem for DustFuse {
         };
         let filesystem = self.clone();
         self.spawn_remote("lookup", permit, move || {
-            match filesystem.lookup_node(parent.0, &name) {
+            match filesystem.lookup_node(parent, &name) {
                 Ok(node) => reply.entry(
                     &METADATA_CACHE_TTL,
                     &filesystem.attributes(&node),
@@ -602,7 +607,7 @@ impl Filesystem for DustFuse {
         reply: ReplyAttr,
     ) {
         if let Some(handle) = handle {
-            match self.node_for_handle(handle.0, inode.0) {
+            match self.node_for_handle(handle.0, inode) {
                 Ok(node) => reply.attr(&METADATA_CACHE_TTL, &self.attributes(&node)),
                 Err(error) => reply.error(to_errno(error)),
             }
@@ -613,7 +618,7 @@ impl Filesystem for DustFuse {
             return;
         };
         let filesystem = self.clone();
-        self.spawn_remote("getattr", permit, move || match filesystem.node(inode.0) {
+        self.spawn_remote("getattr", permit, move || match filesystem.node(inode) {
             Ok(node) => reply.attr(&METADATA_CACHE_TTL, &filesystem.attributes(&node)),
             Err(error) => reply.error(to_errno(error)),
         });
@@ -643,7 +648,7 @@ impl Filesystem for DustFuse {
             return;
         }
         if handle.is_some() && mode.is_none() {
-            match self.set_attributes(inode.0, mode, size, handle) {
+            match self.set_attributes(inode, mode, size, handle) {
                 Ok(node) => reply.attr(&METADATA_CACHE_TTL, &self.attributes(&node)),
                 Err(error) => reply.error(to_errno(error)),
             }
@@ -655,7 +660,7 @@ impl Filesystem for DustFuse {
         };
         let filesystem = self.clone();
         self.spawn_remote("setattr", permit, move || {
-            match filesystem.set_attributes(inode.0, mode, size, handle) {
+            match filesystem.set_attributes(inode, mode, size, handle) {
                 Ok(node) => reply.attr(&METADATA_CACHE_TTL, &filesystem.attributes(&node)),
                 Err(error) => reply.error(to_errno(error)),
             }
@@ -695,7 +700,7 @@ impl Filesystem for DustFuse {
                 let _namespace = filesystem.namespace_write()?;
                 filesystem
                     .store
-                    .create_directory(parent.0, &name, permissions)
+                    .create_directory(parent, &name, permissions)
             })();
             match result {
                 Ok(node) => reply.entry(
@@ -724,13 +729,13 @@ impl Filesystem for DustFuse {
         self.spawn_remote("unlink", permit, move || {
             let result = (|| {
                 let _namespace = filesystem.namespace_write()?;
-                let node = filesystem.lookup_node(parent.0, &name)?;
-                filesystem.mark_unlinked(node.id, true)?;
-                if let Err(error) = filesystem.store.remove_file(parent.0, &name) {
-                    filesystem.mark_unlinked(node.id, false)?;
+                let node = filesystem.lookup_node(parent, &name)?;
+                filesystem.mark_unlinked(node.inode, true)?;
+                if let Err(error) = filesystem.store.remove_file(parent, &name) {
+                    filesystem.mark_unlinked(node.inode, false)?;
                     return Err(error);
                 }
-                filesystem.staged_sizes()?.remove(&node.id);
+                filesystem.staged_sizes()?.remove(&node.inode);
                 Ok(())
             })();
             reply_empty(result, reply);
@@ -753,9 +758,9 @@ impl Filesystem for DustFuse {
         self.spawn_remote("rmdir", permit, move || {
             let result = (|| {
                 let _namespace = filesystem.namespace_write()?;
-                let node = filesystem.lookup_node(parent.0, &name)?;
-                filesystem.store.remove_directory(parent.0, &name)?;
-                filesystem.staged_sizes()?.remove(&node.id);
+                let node = filesystem.lookup_node(parent, &name)?;
+                filesystem.store.remove_directory(parent, &name)?;
+                filesystem.staged_sizes()?.remove(&node.inode);
                 Ok(())
             })();
             reply_empty(result, reply);
@@ -801,31 +806,31 @@ impl Filesystem for DustFuse {
                 if parent == new_parent && name == new_name {
                     return Ok(());
                 }
-                let source = filesystem.lookup_node(parent.0, &name)?;
-                let destination_id = match filesystem.lookup_node(new_parent.0, &new_name) {
-                    Ok(destination) => Some(destination.id),
+                let source = filesystem.lookup_node(parent, &name)?;
+                let destination_inode = match filesystem.lookup_node(new_parent, &new_name) {
+                    Ok(destination) => Some(destination.inode),
                     Err(error) if error.raw_os_error() == Some(libc::ENOENT) => None,
                     Err(error) => return Err(error),
                 };
-                if let Some(destination_id) = destination_id {
-                    filesystem.mark_unlinked(destination_id, true)?;
+                if let Some(destination_inode) = destination_inode {
+                    filesystem.mark_unlinked(destination_inode, true)?;
                 }
                 let rename_result: io::Result<()> = (|| {
                     filesystem
                         .store
-                        .rename(parent.0, &name, new_parent.0, &new_name)?;
-                    if let Some(destination_id) = destination_id {
-                        filesystem.store.forget_content(destination_id);
+                        .rename(parent, &name, new_parent, &new_name)?;
+                    if let Some(destination_inode) = destination_inode {
+                        filesystem.store.forget_content(destination_inode);
                     }
                     Ok(())
                 })();
                 if rename_result.is_err() {
-                    if let Some(destination_id) = destination_id {
-                        filesystem.mark_unlinked(destination_id, false)?;
+                    if let Some(destination_inode) = destination_inode {
+                        filesystem.mark_unlinked(destination_inode, false)?;
                     }
                 }
                 rename_result?;
-                debug!(node_id = source.id, "renamed filesystem inode");
+                debug!(inode = source.inode.0, "renamed filesystem inode");
                 Ok(())
             })();
             reply_empty(result, reply);
@@ -844,7 +849,7 @@ impl Filesystem for DustFuse {
                 // write side so the handle is either fully opened before the
                 // name disappears or fails after it disappeared.
                 let _namespace = filesystem.namespace_read()?;
-                filesystem.open_node(inode.0, flags.0)
+                filesystem.open_node(inode, flags.0)
             })();
             match result {
                 Ok(handle) => reply.opened(FileHandle(handle), FopenFlags::empty()),
@@ -895,13 +900,13 @@ impl Filesystem for DustFuse {
         let result = (|| {
             let shared = self.handle(handle.0)?;
             let mut open = shared.lock().map_err(|_| errno(libc::EIO))?;
-            let node_id = open.node.id;
+            let inode = open.node.inode;
             let written = open.file.write_at(data, offset)?;
             let size = open.file.metadata()?.len();
             open.node.size = size;
             open.dirty = true;
             open.defer_truncate_commit = false;
-            self.staged_sizes()?.insert(node_id, size);
+            self.staged_sizes()?.insert(inode, size);
             u32::try_from(written).map_err(|_| errno(libc::EOVERFLOW))
         })();
         match result {
@@ -976,7 +981,7 @@ impl Filesystem for DustFuse {
             return;
         };
         let filesystem = self.clone();
-        self.spawn_remote("opendir", permit, move || match filesystem.node(inode.0) {
+        self.spawn_remote("opendir", permit, move || match filesystem.node(inode) {
             Ok(node) if node.kind == NodeKind::Directory => {
                 reply.opened(FileHandle(0), FopenFlags::empty());
             }
@@ -999,7 +1004,7 @@ impl Filesystem for DustFuse {
         };
         let filesystem = self.clone();
         self.spawn_remote("readdir", permit, move || {
-            filesystem.read_directory(inode.0, offset, reply);
+            filesystem.read_directory(inode, offset, reply);
         });
     }
 
@@ -1027,7 +1032,7 @@ impl Filesystem for DustFuse {
         };
         let filesystem = self.clone();
         self.spawn_remote("access", permit, move || {
-            reply_empty(filesystem.node(inode.0).map(|_| ()), reply);
+            reply_empty(filesystem.node(inode).map(|_| ()), reply);
         });
     }
 
@@ -1063,8 +1068,8 @@ impl Filesystem for DustFuse {
         self.spawn_remote("create", permit, move || {
             let result = (|| {
                 let _namespace = filesystem.namespace_write()?;
-                let node = filesystem.store.create_file(parent.0, &name, permissions)?;
-                let handle = filesystem.open_node(node.id, flags)?;
+                let node = filesystem.store.create_file(parent, &name, permissions)?;
+                let handle = filesystem.open_node(node.inode, flags)?;
                 Ok((node, handle))
             })();
             match result {

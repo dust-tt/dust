@@ -1,6 +1,7 @@
 mod client;
 #[cfg(target_os = "linux")]
 mod fuse;
+mod inode;
 mod mount;
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 mod store;
