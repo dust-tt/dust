@@ -1,6 +1,7 @@
 import {
   convertToOldEvent,
   getPromptCacheKeyForHost,
+  inferenceRegionForEndpointRegion,
   reasoningContentToLegacyMetadata,
   toBaseMessages,
   withMessageCacheBreakpoints,
@@ -39,6 +40,24 @@ const serverToolUseBlock = {
   name: "tool_search_tool_bm25",
   input: { query: "x" },
 };
+
+describe("inferenceRegionForEndpointRegion", () => {
+  it.each([
+    { endpointRegion: "eu" as const, expectedInferenceRegion: "eu" },
+    {
+      endpointRegion: "global" as const,
+      expectedInferenceRegion: "global",
+    },
+    { endpointRegion: "us" as const, expectedInferenceRegion: "global" },
+  ])("maps $endpointRegion endpoints to $expectedInferenceRegion pricing", ({
+    endpointRegion,
+    expectedInferenceRegion,
+  }) => {
+    expect(inferenceRegionForEndpointRegion(endpointRegion)).toBe(
+      expectedInferenceRegion
+    );
+  });
+});
 
 describe("getPromptCacheKeyForHost", () => {
   const metadata = {

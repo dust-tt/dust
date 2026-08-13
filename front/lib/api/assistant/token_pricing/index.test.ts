@@ -1,4 +1,9 @@
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
+import { EU_UPLIFT_MODEL_IDS } from "@app/lib/api/assistant/token_pricing/eu";
+import {
+  GPT_5_5_MODEL_ID,
+  GPT_5_MODEL_ID,
+} from "@app/types/assistant/models/openai";
 import {
   GROK_4_5_MODEL_ID,
   GROK_4_6_MODEL_ID,
@@ -6,6 +11,74 @@ import {
 import { describe, expect, it } from "vitest";
 
 describe("computeTokensCostForUsageInMicroUsd", () => {
+  it.each(
+    EU_UPLIFT_MODEL_IDS
+  )("applies the EU uplift to every token rate for %s", (modelId) => {
+    const usage = {
+      modelId,
+      promptTokens: 4_000_000,
+      completionTokens: 1_000_000,
+      cachedTokens: 1_000_000,
+      cacheCreationTokens: 2_000_000,
+      longCacheCreationTokens: 1_000_000,
+    };
+
+    const globalCostMicroUsd = computeTokensCostForUsageInMicroUsd({
+      ...usage,
+      inferenceRegion: "global",
+    });
+    const euCostMicroUsd = computeTokensCostForUsageInMicroUsd({
+      ...usage,
+      inferenceRegion: "eu",
+    });
+
+    expect(euCostMicroUsd).toBeCloseTo(globalCostMicroUsd * 1.1, 6);
+  });
+
+  it("combines the OpenAI EU uplift with the batch discount", () => {
+    const usage = {
+      modelId: GPT_5_5_MODEL_ID,
+      promptTokens: 1_000_000,
+      completionTokens: 1_000_000,
+      cachedTokens: null,
+      isBatch: true,
+    };
+
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        ...usage,
+        inferenceRegion: "global",
+      })
+    ).toBe(17_500_000);
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        ...usage,
+        inferenceRegion: "eu",
+      })
+    ).toBe(19_250_000);
+  });
+
+  it("does not uplift OpenAI models without regional premium pricing", () => {
+    const usage = {
+      modelId: GPT_5_MODEL_ID,
+      promptTokens: 1_000_000,
+      completionTokens: 1_000_000,
+      cachedTokens: null,
+    };
+
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        ...usage,
+        inferenceRegion: "eu",
+      })
+    ).toBe(
+      computeTokensCostForUsageInMicroUsd({
+        ...usage,
+        inferenceRegion: "global",
+      })
+    );
+  });
+
   it("uses long-context Grok 4.5 pricing at 200k prompt tokens", () => {
     expect(
       computeTokensCostForUsageInMicroUsd({
