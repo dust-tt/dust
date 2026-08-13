@@ -53,7 +53,6 @@ export async function fetchConsumptionTopTools(
 ): Promise<Result<ConsumptionTopTools, ElasticsearchError>> {
   const result = await fetchConsumptionTopGroups(auth, {
     dimension: "tool",
-    unit: "invocation",
     period,
     limit,
     filter,

@@ -56,7 +56,6 @@ export async function fetchConsumptionTopSkills(
 ): Promise<Result<ConsumptionTopSkills, ElasticsearchError>> {
   const result = await fetchConsumptionTopGroups(auth, {
     dimension: "skill",
-    unit: "invocation",
     period,
     limit,
     filter,

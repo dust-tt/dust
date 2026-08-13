@@ -47,6 +47,13 @@ export const ConsumptionTopBodySchema = ConsumptionBodySchema.extend({
 
 export type ConsumptionTopBody = z.infer<typeof ConsumptionTopBodySchema>;
 
+// The attribution table's CSV export: same period/filter as the `top-*`
+// endpoints, but always returns the breakdown for every dimension rather
+// than just whichever tab is currently toggled.
+export const ConsumptionExportBodySchema = ConsumptionBodySchema;
+
+export type ConsumptionExportBody = z.infer<typeof ConsumptionExportBodySchema>;
+
 export function toConsumptionPeriodInput({
   period,
   days,
