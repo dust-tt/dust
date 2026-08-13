@@ -1,8 +1,5 @@
 import { indexAgentMessageConsumptionAnalytics } from "@app/lib/analytics/agent_message_consumption";
-import {
-  computeAndStoreAgentMessageConsumptionAttribution,
-  computeAndStoreAgentMessageConsumptionAttributionForAnalytics,
-} from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
+import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
@@ -46,17 +43,8 @@ export async function storeAgentMessageConsumptionAnalyticsActivity(
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
 
-  // TEMPORARY: activity 2 retries independently, so workflows already stuck here will not rerun
-  // their completed attribution activity. Recompute until that retry backlog has drained.
-  const { actions } =
-    await computeAndStoreAgentMessageConsumptionAttributionForAnalytics(
-      auth,
-      message
-    );
-
   const result = await indexAgentMessageConsumptionAnalytics(auth, {
     agentMessageId: message.agentMessageId,
-    preloadedActions: actions,
   });
 
   if (result.isErr()) {
