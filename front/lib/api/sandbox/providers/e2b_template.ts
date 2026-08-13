@@ -190,9 +190,10 @@ class E2BTemplateBuilder {
 export interface E2BTemplateInfo {
   templateId: string;
   aliases: readonly string[];
-  // Null until a build completes: E2B registers the template (and its alias) as
-  // soon as a build starts, and only attaches an envd version once one of them
-  // succeeds. A template without it can never be started.
+  // Null until a build completes. E2B registers the template and its alias when
+  // a build starts and only attaches an envd version once one finishes, so an
+  // alias carrying no envd version is the symptom of a half-baked build: it
+  // answers an existence check, but no sandbox can boot from it.
   envdVersion: string | null;
 }
 

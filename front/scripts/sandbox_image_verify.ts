@@ -8,9 +8,7 @@ import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 // Deploy gate: every image this revision of the code would start must already
-// resolve to a template E2B can boot. A template whose build never completed
-// still answers the "does the alias exist" check `sandbox_image_check.ts` runs,
-// so the envd version is what separates "built" from "registered".
+// resolve to a template E2B can boot.
 async function verifySandboxImages(): Promise<void> {
   const requiredIds = getRegisteredImages()
     .map((image) => image.imageId)
@@ -33,6 +31,9 @@ async function verifySandboxImages(): Promise<void> {
     }
   }
 
+  // No alias at all means nothing ever tried to build the image; an alias with
+  // no envd version is the symptom of a half-baked build, which the alias
+  // existence check in `sandbox_image_check.ts` reads as already built.
   const missing: string[] = [];
   const unbuilt: string[] = [];
   for (const id of requiredIds) {
