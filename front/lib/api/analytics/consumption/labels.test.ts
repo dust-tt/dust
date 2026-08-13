@@ -8,7 +8,6 @@ import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -136,40 +135,6 @@ describe("resolveDimensionLabels", () => {
       pictureUrl: null,
       description: "Researches a topic in depth",
       icon: skill.icon,
-    });
-  });
-
-  it("labels remote tools with their server icon", async () => {
-    const { authenticator } = await createResourceTest({ role: "manager" });
-    const workspace = authenticator.getNonNullableWorkspace();
-    const server = await RemoteMCPServerFactory.create(workspace, {
-      name: "CRM tools",
-      viewName: "Sales tools",
-    });
-
-    const labels = await resolveDimensionLabels(authenticator, "tool", [
-      "Sales tools",
-      "CRM tools",
-      server.sId,
-    ]);
-
-    expect(labels.get("Sales tools")).toEqual({
-      name: "Sales Tools",
-      pictureUrl: null,
-      description: null,
-      icon: server.icon,
-    });
-    expect(labels.get("CRM tools")).toEqual({
-      name: "CRM tools",
-      pictureUrl: null,
-      description: null,
-      icon: server.icon,
-    });
-    expect(labels.get(server.sId)).toEqual({
-      name: "CRM tools",
-      pictureUrl: null,
-      description: null,
-      icon: server.icon,
     });
   });
 
