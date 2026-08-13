@@ -1947,6 +1947,43 @@ describe("SkillResource", () => {
   });
 
   describe("fetchByIds", () => {
+    it("skips heavy hydration when it is not requested", async () => {
+      const server = await RemoteMCPServerFactory.create(testContext.workspace);
+      const serverView = await MCPServerViewFactory.create(
+        testContext.workspace,
+        server.sId,
+        testContext.globalSpace
+      );
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Lightweight Skill",
+        instructions: "Large instructions",
+        userFacingDescription: "Description needed for the label",
+        mcpServerViews: [serverView],
+      });
+      const fetchByModelIdsSpy = vi.spyOn(
+        MCPServerViewResource,
+        "fetchByModelIds"
+      );
+
+      const [fetchedSkill] = await SkillResource.fetchByIds(
+        testContext.authenticator,
+        [skill.sId],
+        {
+          withInstructions: false,
+          withTools: false,
+          withFileAttachments: false,
+        }
+      );
+
+      expect(fetchedSkill).toMatchObject({
+        name: "Lightweight Skill",
+        userFacingDescription: "Description needed for the label",
+        instructions: "",
+      });
+      expect(fetchedSkill.mcpServerViews).toEqual([]);
+      expect(fetchByModelIdsSpy).not.toHaveBeenCalled();
+    });
+
     it("filters code-defined skills disabled for the current agent loop", async () => {
       const agent = await AgentConfigurationFactory.createTestAgent(
         testContext.authenticator,

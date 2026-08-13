@@ -1025,7 +1025,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentLoopData,
       effectiveSpaceIds,
       onlyActive = false,
-    }: SkillFetchContext & { onlyActive?: boolean } = {}
+      withInstructions = true,
+      withTools = true,
+      withFileAttachments = true,
+    }: SkillFetchContext &
+      Pick<
+        SkillConfigurationFindOptions,
+        "withInstructions" | "withTools" | "withFileAttachments"
+      > & { onlyActive?: boolean } = {}
   ): Promise<SkillResource[]> {
     if (sIds.length === 0) {
       return [];
@@ -1058,6 +1065,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           sId: globalSkillIds,
           status: onlyActive ? ["active"] : ["active", "archived", "suggested"],
         },
+        withInstructions,
+        withTools,
+        withFileAttachments,
       },
       { agentLoopData, effectiveSpaceIds }
     );

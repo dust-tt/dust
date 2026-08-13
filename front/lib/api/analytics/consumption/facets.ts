@@ -19,6 +19,7 @@ import {
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import tracer from "@app/logger/tracer";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
@@ -30,6 +31,7 @@ import type { estypes } from "@elastic/elasticsearch";
 // consumption. Period-scoped buckets supplement it with historical values after
 // users, agents, or skills are deleted.
 const FACET_COMPOSITE_PAGE_SIZE = 1_000;
+const FACET_ES_QUERY_CONCURRENCY = 6;
 
 export type ConsumptionFacet = {
   value: string;
@@ -268,14 +270,22 @@ async function fetchConsumptionFacetsWithoutTracing(
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionFacets, ElasticsearchError>> {
-  const bucketsByDimension = new Map<ConsumptionScopeDimension, FacetBuckets>();
-  for (const dimension of CONSUMPTION_SCOPE_DIMENSIONS) {
-    const result = await fetchDimensionFacetBuckets({
-      auth,
-      period,
-      filter,
+  const bucketResults = await concurrentExecutor(
+    CONSUMPTION_SCOPE_DIMENSIONS,
+    async (dimension) => ({
       dimension,
-    });
+      result: await fetchDimensionFacetBuckets({
+        auth,
+        period,
+        filter,
+        dimension,
+      }),
+    }),
+    { concurrency: FACET_ES_QUERY_CONCURRENCY }
+  );
+
+  const bucketsByDimension = new Map<ConsumptionScopeDimension, FacetBuckets>();
+  for (const { dimension, result } of bucketResults) {
     if (result.isErr()) {
       return result;
     }
