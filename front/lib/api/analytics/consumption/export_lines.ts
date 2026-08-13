@@ -35,7 +35,6 @@ async function fetchAllConsumptionDocuments(
             { consumption_key: "asc" },
           ],
           search_after: searchAfter,
-          source: { excludes: ["tokens"] },
         }
       );
 

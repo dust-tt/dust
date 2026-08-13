@@ -119,20 +119,15 @@ export function AnalyticsConsumptionPage() {
                 />
               </SafeSuspense>
             </m.div>
-            <div className="flex flex-col gap-4">
-              <h3 className="text-base font-semibold text-foreground">
-                Attribution
-              </h3>
-              <ConsumptionAttributionTable
-                workspaceId={owner.sId}
-                period={period}
-                filter={scopeFilter}
-                dimension={dimension}
-                onDimensionChange={handleDimensionChange}
-              />
-            </div>
           </div>
         </LazyMotion>
+        <ConsumptionAttributionTable
+          workspaceId={owner.sId}
+          period={period}
+          filter={scopeFilter}
+          dimension={dimension}
+          onDimensionChange={handleDimensionChange}
+        />
       </div>
     </Page.Vertical>
   );
