@@ -32,13 +32,6 @@ function getWorkspacePolicyPath(auth: Authenticator): string {
   return `w/${auth.getNonNullableWorkspace().sId}/sandbox-egress-policy.json`;
 }
 
-// TODO(2026-08-15 EGRESS_RELAYOUT): drop the legacy path (reads fall back to
-// it, writes dual-write it for front rollback safety) once the backfill has
-// run and legacy objects are deleted.
-function getLegacyWorkspacePolicyPath(auth: Authenticator): string {
-  return `workspaces/${auth.getNonNullableWorkspace().sId}.json`;
-}
-
 function getOwnerPolicyPath(auth: Authenticator, ownerId: string): string {
   return `w/${auth.getNonNullableWorkspace().sId}/sandboxes/${ownerId}.json`;
 }
@@ -77,16 +70,8 @@ export async function readWorkspacePolicy(
   if (current.isErr()) {
     return current;
   }
-  if (current.value !== null) {
-    return new Ok(current.value);
-  }
 
-  const legacy = await fetchPolicyAtPath(getLegacyWorkspacePolicyPath(auth));
-  if (legacy.isErr()) {
-    return legacy;
-  }
-
-  return new Ok(legacy.value ?? EMPTY_EGRESS_POLICY);
+  return new Ok(current.value ?? EMPTY_EGRESS_POLICY);
 }
 
 export async function writeWorkspacePolicy(
@@ -109,25 +94,6 @@ export async function writeWorkspacePolicy(
     return new Err(normalizeError(error));
   }
 
-  // Dual-write the legacy path so a front rollback keeps seeing (and safely
-  // editing) the same policy. Best-effort: the new path is canonical and the
-  // proxy prefers it.
-  try {
-    await getPolicyBucket().uploadRawContentToBucket({
-      content: JSON.stringify(normalizedPolicy.value),
-      contentType: "application/json",
-      filePath: getLegacyWorkspacePolicyPath(auth),
-    });
-  } catch (error) {
-    logger.warn(
-      {
-        error: normalizeError(error),
-        workspaceId: auth.getNonNullableWorkspace().sId,
-      },
-      "Failed to dual-write legacy workspace egress policy path"
-    );
-  }
-
   await invalidateWorkspacePolicyCache(auth);
 
   return new Ok(normalizedPolicy.value);
@@ -137,13 +103,6 @@ export async function deleteWorkspacePolicy(
   auth: Authenticator
 ): Promise<Result<void, Error>> {
   try {
-    // Legacy first: if the new-path delete succeeded but the legacy delete
-    // failed, reads would fall back to the still-present legacy file and the
-    // "deleted" policy would resurrect. Deleting legacy first leaves the
-    // (canonical) new path authoritative in every partial-failure state.
-    await getPolicyBucket().delete(getLegacyWorkspacePolicyPath(auth), {
-      ignoreNotFound: true,
-    });
     await getPolicyBucket().delete(getWorkspacePolicyPath(auth), {
       ignoreNotFound: true,
     });
@@ -268,26 +227,6 @@ export async function addOwnerPolicyDomain(
     await invalidateOwnerPolicyCache(auth, ownerId);
 
     return new Ok({ policy, addedDomain });
-  } catch (error) {
-    return new Err(normalizeError(error));
-  }
-}
-
-// Deletes the legacy per-providerId policy file written before the
-// owner-keyed layout. Still called on sandbox destroy so pre-migration files
-// get cleaned up as their sandboxes die. No proxy cache invalidation: the
-// sandbox (and its token) is gone, so the cached entry just ages out with
-// the TTL.
-// TODO(2026-08-15 EGRESS_RELAYOUT): remove with the legacy layout.
-export async function deleteLegacySandboxPolicy(
-  sandboxProviderId: string
-): Promise<Result<void, Error>> {
-  try {
-    await getPolicyBucket().delete(`sandboxes/${sandboxProviderId}.json`, {
-      ignoreNotFound: true,
-    });
-
-    return new Ok(undefined);
   } catch (error) {
     return new Err(normalizeError(error));
   }

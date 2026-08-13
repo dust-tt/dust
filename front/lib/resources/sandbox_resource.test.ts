@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  mockDeleteLegacySandboxPolicy,
   mockDistribution,
   mockExecuteWithLock,
   mockGetSandboxImage,
@@ -12,7 +11,6 @@ const {
   mockProviderWake,
   mockRevokeAllExecTokensForSandbox,
 } = vi.hoisted(() => ({
-  mockDeleteLegacySandboxPolicy: vi.fn(),
   mockDistribution: vi.fn(),
   mockExecuteWithLock: vi.fn(),
   mockGetSandboxImage: vi.fn(),
@@ -37,10 +35,6 @@ vi.mock("@app/lib/api/sandbox", () => ({
 
 vi.mock("@app/lib/api/sandbox/access_tokens", () => ({
   revokeAllExecTokensForSandbox: mockRevokeAllExecTokensForSandbox,
-}));
-
-vi.mock("@app/lib/api/sandbox/egress_policy", () => ({
-  deleteLegacySandboxPolicy: mockDeleteLegacySandboxPolicy,
 }));
 
 vi.mock("@app/lib/api/sandbox/image", () => ({
@@ -86,7 +80,6 @@ describe("SandboxResource.updateStatus", () => {
       destroy: mockProviderDestroy,
     });
     mockProviderDestroy.mockResolvedValue(new Ok(undefined));
-    mockDeleteLegacySandboxPolicy.mockResolvedValue(new Ok(undefined));
     mockRevokeAllExecTokensForSandbox.mockResolvedValue(undefined);
 
     const testSetup = await createResourceTest({ role: "admin" });
@@ -188,7 +181,6 @@ describe("ConversationSandboxAdapter.withScopeTransition", () => {
       destroy: mockProviderDestroy,
     });
     mockProviderDestroy.mockResolvedValue(new Ok(undefined));
-    mockDeleteLegacySandboxPolicy.mockResolvedValue(new Ok(undefined));
 
     const testSetup = await createResourceTest({ role: "admin" });
     authenticator = testSetup.authenticator;
@@ -380,7 +372,6 @@ describe("ConversationSandboxAdapter.dangerouslyDestroySandboxIfSleeping", () =>
       destroy: mockProviderDestroy,
     });
     mockProviderDestroy.mockResolvedValue(new Ok(undefined));
-    mockDeleteLegacySandboxPolicy.mockResolvedValue(new Ok(undefined));
     mockRevokeAllExecTokensForSandbox.mockResolvedValue(undefined);
 
     const testSetup = await createResourceTest({ role: "admin" });
@@ -421,9 +412,6 @@ describe("ConversationSandboxAdapter.dangerouslyDestroySandboxIfSleeping", () =>
     expect(mockProviderDestroy).toHaveBeenCalledWith(sandbox.providerId, {
       workspaceId: authenticator.getNonNullableWorkspace().sId,
     });
-    expect(mockDeleteLegacySandboxPolicy).toHaveBeenCalledWith(
-      sandbox.providerId
-    );
 
     const reloaded = await ConversationSandboxAdapter.fetchSandbox(
       authenticator,
@@ -507,7 +495,6 @@ describe("ConversationSandboxAdapter.dangerouslyDestroySandboxIfKillRequested", 
       destroy: mockProviderDestroy,
     });
     mockProviderDestroy.mockResolvedValue(new Ok(undefined));
-    mockDeleteLegacySandboxPolicy.mockResolvedValue(new Ok(undefined));
     mockRevokeAllExecTokensForSandbox.mockResolvedValue(undefined);
 
     const testSetup = await createResourceTest({ role: "admin" });
@@ -624,7 +611,6 @@ describe("SandboxResource.dangerouslyDestroyIfKillRequested pre-destroy flush", 
     );
     mockGetSandboxProvider.mockReturnValue({ destroy: mockProviderDestroy });
     mockProviderDestroy.mockResolvedValue(new Ok(undefined));
-    mockDeleteLegacySandboxPolicy.mockResolvedValue(new Ok(undefined));
     mockRevokeAllExecTokensForSandbox.mockResolvedValue(undefined);
 
     const testSetup = await createResourceTest({ role: "admin" });
