@@ -3,6 +3,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
 export const ACTIVATION_WORK_AREA_STATUSES = [
@@ -21,16 +22,29 @@ export type PublicActivationWorkAreaStatus = "suggested" | "dismissed";
 export function publicActivationWorkAreaStatus(
   status: ActivationWorkAreaStatus
 ): PublicActivationWorkAreaStatus {
-  return status === "dismissed" ? "dismissed" : "suggested";
+  switch (status) {
+    case "dismissed":
+      return "dismissed";
+    case "suggested":
+    case "candidate":
+    case "confirmed":
+      return "suggested";
+    default:
+      assertNever(status);
+  }
 }
 
 export function matchingActivationWorkAreaStatuses(
   status: PublicActivationWorkAreaStatus
 ): ActivationWorkAreaStatus[] {
-  if (status === "dismissed") {
-    return ["dismissed"];
+  switch (status) {
+    case "dismissed":
+      return ["dismissed"];
+    case "suggested":
+      return ["suggested", "candidate", "confirmed"];
+    default:
+      assertNever(status);
   }
-  return ["suggested", "candidate", "confirmed"];
 }
 
 export class ActivationWorkAreaModel extends WorkspaceAwareModel<ActivationWorkAreaModel> {
