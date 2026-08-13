@@ -89,11 +89,6 @@ type ConsumptionLineExportRow = {
   toolActionId: string;
   attributedSkillIds: string;
   attributedSkillNames: string;
-  tokensSystem: number;
-  tokensInput: number;
-  tokensOutput: number;
-  tokensReasoning: number;
-  tokensResultFootprint: number;
   creditsSystem: number;
   creditsInput: number;
   creditsOutput: number;
@@ -138,11 +133,6 @@ const CONSUMPTION_LINE_EXPORT_HEADERS: (keyof ConsumptionLineExportRow)[] = [
   "toolActionId",
   "attributedSkillIds",
   "attributedSkillNames",
-  "tokensSystem",
-  "tokensInput",
-  "tokensOutput",
-  "tokensReasoning",
-  "tokensResultFootprint",
   "creditsSystem",
   "creditsInput",
   "creditsOutput",
@@ -194,13 +184,6 @@ async function buildConsumptionLineExportRows(
   return docs.map((doc) => {
     const { agent, model, user, tool } = doc;
     // Older documents indexed before these buckets shipped don't carry them.
-    const tokens = doc.tokens ?? {
-      system: 0,
-      input: null,
-      result_footprint: null,
-      output: 0,
-      reasoning: 0,
-    };
     const gross = doc.gross_credit_micro ?? {
       system: 0,
       input: null,
@@ -253,11 +236,6 @@ async function buildConsumptionLineExportRows(
       attributedSkillNames: (tool?.attributed_skill_ids ?? [])
         .map((id) => skillLabels.get(id)?.name ?? id)
         .join("; "),
-      tokensSystem: tokens.system,
-      tokensInput: tokens.input ?? 0,
-      tokensOutput: tokens.output,
-      tokensReasoning: tokens.reasoning,
-      tokensResultFootprint: tokens.result_footprint ?? 0,
       creditsSystem: roundToCents(microCreditsToCredits(gross.system ?? 0)),
       creditsInput: roundToCents(microCreditsToCredits(gross.input ?? 0)),
       creditsOutput: roundToCents(microCreditsToCredits(gross.output ?? 0)),
