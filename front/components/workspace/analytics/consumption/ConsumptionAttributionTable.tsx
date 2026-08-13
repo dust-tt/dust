@@ -307,11 +307,13 @@ function AttributionRows({
       </div>
     );
   } else {
-    const selectedIds = filter?.[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]];
+    const selectedIdSet = new Set(
+      filter?.[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]] ?? []
+    );
     const data: AttributionRowData[] = rows.map((row) => ({
       ...row,
       isExpanded: expandedRowId === row.id,
-      isFilterSelected: selectedIds?.includes(row.id) ?? false,
+      isFilterSelected: selectedIdSet.has(row.id),
       onClick: () =>
         setExpandedRowId((current) => (current === row.id ? null : row.id)),
       onAddFilter: () => onAddFilter(row),

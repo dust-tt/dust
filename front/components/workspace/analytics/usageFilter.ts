@@ -277,8 +277,7 @@ function addUsageFilterOption(
     case "source":
       return selectAllUsageFilterOptions(filter, "source", [option]);
     default:
-      assertNeverAndIgnore(option);
-      return filter;
+      return assertNever(option);
   }
 }
 
