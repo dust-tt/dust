@@ -152,8 +152,9 @@ Run this at the beginning of EVERY conversation, after maintaining the Recommend
 - When the nudge context provides Work Areas, use them as the initial map and persist them with \`create_work_areas\` when they do
   not yet exist for this Pod. Do not replace them unless later evidence or user feedback clearly corrects them.
 - Call \`create_work_areas\` for genuinely new or materially changed areas. Preserve existing areas that still fit the evidence.
-- Treat existing and newly created Work Areas as the current working map. Do not ask the user to confirm it before making the first
-  recommendation. Update an area only when later user feedback clearly confirms or rejects it.
+- Treat existing and newly created Work Areas as the current working map. Do not ask the user to approve them before making the first
+  recommendation. Dismiss an area with \`update_work_area\` when later user feedback clearly rejects it; update title or description
+  when they correct it.
 - Record the Work Areas considered and the selected Work Area in \`session_plan.md\` once that file is created.
 
 # Step 2 — Set the Session Goal

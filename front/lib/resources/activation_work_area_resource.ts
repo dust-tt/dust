@@ -1,6 +1,13 @@
 import type { Authenticator } from "@app/lib/auth";
-import type { ActivationWorkAreaStatus } from "@app/lib/models/activation/activation_work_area";
-import { ActivationWorkAreaModel } from "@app/lib/models/activation/activation_work_area";
+import type {
+  ActivationWorkAreaStatus,
+  PublicActivationWorkAreaStatus,
+} from "@app/lib/models/activation/activation_work_area";
+import {
+  ActivationWorkAreaModel,
+  matchingActivationWorkAreaStatuses,
+  publicActivationWorkAreaStatus,
+} from "@app/lib/models/activation/activation_work_area";
 import type { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -16,6 +23,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
+import { Op } from "sequelize";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ActivationWorkAreaResource
@@ -63,7 +71,7 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
     const row = await this.model.create({
       workspaceId: workspace.id,
       userId: user.id,
-      status: "candidate",
+      status: "suggested",
       title: blob.title,
       description: blob.description,
       podId: blob.podId ?? null,
@@ -101,7 +109,7 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
       status,
       activationPodModelId,
     }: {
-      status?: ActivationWorkAreaStatus;
+      status?: PublicActivationWorkAreaStatus;
       activationPodModelId?: ModelId;
     }
   ): Promise<ActivationWorkAreaResource[]> {
@@ -113,7 +121,7 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
     };
 
     if (status !== undefined) {
-      where.status = status;
+      where.status = { [Op.in]: matchingActivationWorkAreaStatuses(status) };
     }
     if (activationPodModelId !== undefined) {
       where.podId = activationPodModelId;
@@ -195,7 +203,7 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
       sId: this.sId,
       title: this.title,
       description: this.description,
-      status: this.status,
+      status: publicActivationWorkAreaStatus(this.status),
       createdAt: this.createdAt.getTime(),
     };
   }

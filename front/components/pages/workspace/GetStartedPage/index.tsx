@@ -4,10 +4,7 @@ import { JustAskComposer } from "@app/components/pages/workspace/GetStartedPage/
 import { PreviouslyDoneRow } from "@app/components/pages/workspace/GetStartedPage/PreviouslyDoneRow";
 import { RecentConversations } from "@app/components/pages/workspace/GetStartedPage/RecentConversations";
 import { RecommendationItem } from "@app/components/pages/workspace/GetStartedPage/RecommendationItem";
-import {
-  WORK_AREA_ACTIONS,
-  WorkAreaSection,
-} from "@app/components/pages/workspace/GetStartedPage/WorkAreaSection";
+import { WorkAreaSection } from "@app/components/pages/workspace/GetStartedPage/WorkAreaSection";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePodConversations } from "@app/hooks/conversations";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
@@ -30,16 +27,19 @@ import { useCallback, useEffect, useState } from "react";
 
 const QUICK_PROMPTS = [
   {
-    label: "Scan my connected sources to understand my work.",
-    message: WORK_AREA_ACTIONS[0].message,
+    label: "What skills and agents are my coworkers using?",
+    message:
+      "What skills and agents are my coworkers using? Show me what's catching on in this workspace and whether any of it would help my work.",
   },
   {
-    label: "Ask me questions to learn how I work.",
-    message: WORK_AREA_ACTIONS[1].message,
+    label: "What's coming up that I should prep for?",
+    message:
+      "Look at my calendar and recent work. What's coming up that I should prep for, and how can Dust help?",
   },
   {
-    label: "How does my learning space work?",
-    message: "How does my learning space work?",
+    label: "How are people in my role using Dust?",
+    message:
+      "How are people in the same role as me using Dust? Show me the skills and agents they actually use, and which of those would help my work.",
   },
 ];
 
@@ -242,7 +242,7 @@ export function GetStartedPage() {
                         />
                       ) : (
                         <>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm leading-5 tracking-tight text-muted-foreground">
                             No new ideas yet. Let Dust suggest things to try.
                           </p>
                           <div className="mt-4">

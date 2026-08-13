@@ -5,7 +5,33 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
-export type ActivationWorkAreaStatus = "candidate" | "confirmed" | "dismissed";
+export const ACTIVATION_WORK_AREA_STATUSES = [
+  "suggested",
+  "dismissed",
+  // Legacy values still present on existing rows. Treat as `suggested`.
+  "candidate",
+  "confirmed",
+] as const;
+
+export type ActivationWorkAreaStatus =
+  (typeof ACTIVATION_WORK_AREA_STATUSES)[number];
+
+export type PublicActivationWorkAreaStatus = "suggested" | "dismissed";
+
+export function publicActivationWorkAreaStatus(
+  status: ActivationWorkAreaStatus
+): PublicActivationWorkAreaStatus {
+  return status === "dismissed" ? "dismissed" : "suggested";
+}
+
+export function matchingActivationWorkAreaStatuses(
+  status: PublicActivationWorkAreaStatus
+): ActivationWorkAreaStatus[] {
+  if (status === "dismissed") {
+    return ["dismissed"];
+  }
+  return ["suggested", "candidate", "confirmed"];
+}
 
 export class ActivationWorkAreaModel extends WorkspaceAwareModel<ActivationWorkAreaModel> {
   declare createdAt: CreationOptional<Date>;
