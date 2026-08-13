@@ -54,7 +54,7 @@ import {
   isConsumptionDimension,
 } from "./consumptionDimensions";
 
-const TOP_LIMIT = 25;
+const TOP_LIMIT = 100;
 
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
 
