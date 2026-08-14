@@ -102,11 +102,6 @@ type MCPServerViewCreationResult = {
   affectedAgents?: AffectedAgent[];
 };
 
-type MCPServerDisplayMetadata = {
-  name: string;
-  icon: CustomResourceIconType | InternalAllowedIconType;
-};
-
 export type GetMCPServerViewsResponseBody = {
   success: boolean;
   serverViews: MCPServerViewType[];
@@ -710,12 +705,15 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return this.baseFetch(auth, findOptions, { includeHeavyAttributes });
   }
 
-  static async resolveDisplayMetadataByIds(
-    auth: Authenticator,
-    ids: string[]
-  ): Promise<Map<string, MCPServerDisplayMetadata>> {
+  static async resolveDisplayMetadataByIds(auth: Authenticator, ids: string[]) {
     const uniqueIds = [...new Set(ids)];
-    const metadata = new Map<string, MCPServerDisplayMetadata>();
+    const metadata = new Map<
+      string,
+      {
+        name: string;
+        icon: CustomResourceIconType | InternalAllowedIconType;
+      }
+    >();
 
     for (const id of uniqueIds) {
       if (isInternalMCPServerName(id)) {
