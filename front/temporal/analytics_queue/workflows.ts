@@ -28,11 +28,6 @@ const {
   startToCloseTimeout: "5 minutes",
 });
 
-// scheduleToCloseTimeout bounds the total time across all retries: a persistent
-// Elasticsearch/GCS failure must eventually fail the workflow rather than retry
-// forever, since the workflow ID is stable per (workspace, period, filter) and
-// blocks subsequent identical export requests while running. 3 attempts at up
-// to 30 minutes each, plus backoff, comfortably fits inside the 3-hour ceiling.
 const { runConsumptionExportActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });

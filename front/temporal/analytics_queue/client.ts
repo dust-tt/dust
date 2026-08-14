@@ -207,13 +207,6 @@ async function isConsumptionExportRunning(
   }
 }
 
-// The workflow ID is derived from (workspace, period, filter, salt) (see
-// makeConsumptionExportWorkflowId), so a running export at that ID always matches the
-// period/filter of the incoming request: concurrent requests with different period/filter get
-// their own workflow, and a concurrent request for the exact same one is surfaced as
-// "already_running" instead of starting a duplicate.
-// A previously computed export for the exact same period+filter (and, for an open-ended
-// period, the same calendar day) is surfaced as "cached" instead of recomputing it
 export async function launchConsumptionExportWorkflow(
   auth: Authenticator,
   {
@@ -264,7 +257,7 @@ export async function launchConsumptionExportWorkflow(
     if (e instanceof WorkflowExecutionAlreadyStartedError) {
       // Lost the race to start: another request started this exact export (same
       // workflow ID, since it's derived from period+filter) between our describe()
-      // check and start() above.
+      // check and start().
       return new Ok({ status: "already_running", workflowId, period, filter });
     }
 

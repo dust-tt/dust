@@ -14,10 +14,6 @@ export function buildConsumptionExportGcsPrefix(workspaceId: string): string {
   return `w/${workspaceId}/consumption_exports/`;
 }
 
-// exportId is a content hash identifying the export's GCS object, so a retry within the same
-// triggered export (same args, same hash) overwrites
-// the same object instead of leaving an orphaned duplicate zip, and — for closed periods —
-// a later request for the same period/filter reuses it instead of recrunching.
 export function buildConsumptionExportGcsPath(
   workspaceId: string,
   exportId: string
