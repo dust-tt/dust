@@ -57,16 +57,29 @@ export async function resolveFrameShareCapability(
   if (shareResult.isErr()) {
     return null;
   }
-  const { file, shareScope, workspace } = shareResult.value;
+  const { file, shareScope, shareableFileId, workspace } = shareResult.value;
 
   if (workspace.id !== auth.getNonNullableWorkspace().id) {
     return null;
   }
 
-  // Only workspace-visible scopes carry the capability; downgrading a frame to emails_only
-  // revokes it.
+  // Workspace-visible scopes carry the capability for every member. An invite-only frame
+  // carries it only for members holding an active email grant — the same check that gates
+  // viewing the frame — so revoking a grant revokes invocation with it.
   if (!isWorkspaceVisibleShareScope(shareScope)) {
-    return null;
+    if (shareScope !== "emails_only") {
+      return null;
+    }
+    const email = auth.user()?.email;
+    const grant = email
+      ? await FileResource.getActiveGrantForEmail(workspace, {
+          email,
+          shareableFileId,
+        })
+      : null;
+    if (!grant) {
+      return null;
+    }
   }
 
   if (!file.isInteractiveContent) {

@@ -158,6 +158,27 @@ describe("GET /api/v1/public/frames/[token]", () => {
       const body = await response.json();
       expect(body.framePath).toBe(`pod-${pod.sId}/TaskList/TaskList.tsx`);
     });
+
+    it("returns the scoped path for a granted workspace member on an invite-only frame", async () => {
+      const { pod, file, token } = await createPodAppFrame();
+      await file.setShareScope(auth, "emails_only");
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, {
+        role: "user",
+      });
+      await file.addSharingGrants(auth, { emails: [otherUser.email] });
+      const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+      vi.mocked(resolveOptionalAuth).mockResolvedValue(memberAuth);
+
+      const response = await requestFrame(token);
+
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.framePath).toBe(`pod-${pod.sId}/TaskList/TaskList.tsx`);
+    });
   });
 
   describe("pod identity for a Pod Frame", () => {

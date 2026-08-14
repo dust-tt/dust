@@ -219,9 +219,12 @@ app.get(
       space.canAdministrate(auth)
     );
     // The share token this viewer used is a workspace member's capability to invoke the frame's
-    // app's functions.
+    // app's functions. For invite-only frames, a member only reaches this point with an active
+    // email grant (or as the frame's owner), which is the same rule the invocation gate applies.
     const canInvokeViaShareCapability =
-      isWorkspaceVisibleShareScope(shareScope) && !!auth?.isUser();
+      !!auth?.isUser() &&
+      (isWorkspaceVisibleShareScope(shareScope) ||
+        shareScope === "emails_only");
 
     // Generate access token for viz rendering.
     const accessToken = generateVizAccessToken({

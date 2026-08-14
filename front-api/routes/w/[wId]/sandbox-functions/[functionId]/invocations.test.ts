@@ -157,7 +157,7 @@ async function setupSandboxFunction({
     workspace.sId
   );
 
-  return { workspace, sandboxFunction, adminAuth, callerAuth, space };
+  return { workspace, sandboxFunction, adminAuth, callerAuth, space, user };
 }
 
 // Creates a Pod app frame in `folderName` shared with the given scope, returning its share token —
@@ -169,11 +169,13 @@ async function createSharedAppFrame(
     space,
     folderName,
     scope = "workspace_and_emails",
+    grantEmails,
   }: {
     workspace: { sId: string };
     space: { sId: string };
     folderName: string;
     scope?: FileShareScope;
+    grantEmails?: string[];
   }
 ) {
   const frameFile = await FileFactory.create(adminAuth, null, {
@@ -186,6 +188,9 @@ async function createSharedAppFrame(
     mountFilePath: `w/${workspace.sId}/pods/${space.sId}/files/${folderName}/${folderName}.tsx`,
   });
   await frameFile.setShareScope(adminAuth, scope);
+  if (grantEmails && grantEmails.length > 0) {
+    await frameFile.addSharingGrants(adminAuth, { emails: grantEmails });
+  }
   const shareInfo = await frameFile.getShareInfo();
   if (!shareInfo) {
     throw new Error("Expected the frame share to exist.");
@@ -716,7 +721,31 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
       expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
     });
 
-    it("rejects a token whose frame is no longer workspace-visible", async () => {
+    it("allows a workspace member with an email grant on an invite-only frame", async () => {
+      const { workspace, sandboxFunction, adminAuth, space, user } =
+        await setupSandboxFunction({
+          addCallerToSpace: false,
+          slug: "tasklist__run",
+        });
+      const frameShareToken = await createSharedAppFrame(adminAuth, {
+        workspace,
+        space,
+        folderName: "TaskList",
+        scope: "emails_only",
+        grantEmails: [user.email],
+      });
+
+      const response = await postInvocation({
+        workspaceId: workspace.sId,
+        functionIdOrSlug: sandboxFunction.sId,
+        frameShareToken,
+      });
+
+      expect(response.status).toBe(201);
+      expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
+    });
+
+    it("rejects an invite-only token when the caller has no email grant", async () => {
       const { workspace, sandboxFunction, adminAuth, space } =
         await setupSandboxFunction({
           addCallerToSpace: false,
