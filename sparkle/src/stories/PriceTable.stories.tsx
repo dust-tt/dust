@@ -5,6 +5,7 @@ import { Button, Hoverable, PriceTable } from "../index_with_tw_base";
 
 const meta = {
   title: "Data Display/PriceTable",
+  tags: ["a11y-issues"],
   component: PriceTable,
   parameters: {
     docs: {

@@ -28,7 +28,7 @@ const ICONS = {
 const meta = {
   title: "Data Display/Avatar",
   component: Avatar,
-  tags: ["autodocs"],
+  tags: ["a11y-issues", "autodocs"],
   parameters: {
     docs: {
       description: {

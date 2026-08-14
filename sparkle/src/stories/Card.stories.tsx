@@ -22,7 +22,7 @@ import { Brackets } from "@sparkle/icons/v2-stroke";
 const meta = {
   title: "Data Display/Card",
   component: Card,
-  tags: ["autodocs"],
+  tags: ["a11y-issues", "autodocs"],
   parameters: {
     docs: {
       description: {

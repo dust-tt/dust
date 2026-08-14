@@ -25,6 +25,7 @@ import {
 
 const meta = {
   title: "Product/Conversation/ConversationMessage",
+  tags: ["a11y-issues"],
   parameters: {
     docs: {
       description: {

@@ -9,6 +9,7 @@ import { ArrowUp, ChevronDown } from "@sparkle/icons/v2-stroke";
 
 const meta: Meta<React.ComponentProps<typeof LegacyFlexSplitButton>> = {
   title: "Actions/LegacySplitButton",
+  tags: ["a11y-issues"],
   component: LegacyFlexSplitButton,
   parameters: {
     docs: {
