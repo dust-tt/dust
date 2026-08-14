@@ -79,6 +79,31 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     return rows.map((row) => new this(this.model, row.get()));
   }
 
+  private static async makeNew(
+    parent: FileSystemNodeResource,
+    request: CreateOptions,
+    transaction: Transaction
+  ): Promise<FileSystemNodeResource> {
+    const row = await this.model.create(
+      {
+        workspaceId: parent.workspaceId,
+        parentId: parent.id,
+        rootKind: parent.rootKind,
+        rootId: parent.rootId,
+        name: request.name,
+        kind: request.kind,
+        mode: request.mode,
+        size: 0,
+        contentType: null,
+        blobId: null,
+        contentRevision: 0,
+      },
+      { transaction }
+    );
+
+    return new this(this.model, row.get());
+  }
+
   static async ensureRoots(
     auth: Authenticator,
     scope: FileSystemScope
@@ -156,6 +181,25 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     );
   }
 
+  private async fetchChildByName(
+    auth: Authenticator,
+    scope: FileSystemScope,
+    name: string,
+    transaction?: Transaction
+  ): Promise<FileSystemNodeResource | null> {
+    const [child] = await FileSystemNodeResource.baseFetch(
+      auth,
+      scope,
+      {
+        where: { parentId: this.id, name },
+        limit: 1,
+      },
+      { transaction }
+    );
+
+    return child ?? null;
+  }
+
   async createChild(
     auth: Authenticator,
     scope: FileSystemScope,
@@ -206,14 +250,11 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
       );
     }
 
-    const [existing] = await FileSystemNodeResource.baseFetch(
+    const existing = await this.fetchChildByName(
       auth,
       scope,
-      {
-        where: { parentId: this.id, name: request.name },
-        limit: 1,
-      },
-      { transaction }
+      request.name,
+      transaction
     );
     if (existing) {
       return new Err(
@@ -224,25 +265,8 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
       );
     }
 
-    const row = await FileSystemNodeResource.model.create(
-      {
-        workspaceId: this.workspaceId,
-        parentId: this.id,
-        rootKind: this.rootKind,
-        rootId: this.rootId,
-        name: request.name,
-        kind: request.kind,
-        mode: request.mode,
-        size: 0,
-        contentType: null,
-        blobId: null,
-        contentRevision: 0,
-      },
-      { transaction }
-    );
-
     return new Ok(
-      new FileSystemNodeResource(FileSystemNodeResource.model, row.get())
+      await FileSystemNodeResource.makeNew(this, request, transaction)
     );
   }
 
@@ -260,12 +284,7 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
       );
     }
 
-    const [node] = await FileSystemNodeResource.baseFetch(auth, scope, {
-      where: { parentId: this.id, name },
-      limit: 1,
-    });
-
-    return new Ok(node ?? null);
+    return new Ok(await this.fetchChildByName(auth, scope, name));
   }
 
   async readDir(

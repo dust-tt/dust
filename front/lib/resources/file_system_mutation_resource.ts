@@ -7,7 +7,6 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileSystemNodeResource } from "@app/lib/resources/file_system_node_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { FileSystemMutationModel } from "@app/lib/resources/storage/models/file_system_mutation";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -120,10 +119,6 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
 
     try {
       return await withTransaction(async (transaction) => {
-        // A lost response may cause the daemon to retry the same request. The
-        // lock keeps both attempts from creating a node before either receipt exists.
-        await this.lockRequest(auth, request.requestId, transaction);
-
         const existing = await this.baseFetch(
           auth,
           request.requestId,
@@ -148,6 +143,17 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
               "The parent directory was not found."
             )
           );
+        }
+
+        // Another request can create the receipt while this one waits for the
+        // parent lock. Re-check it before creating a second node.
+        const concurrent = await this.baseFetch(
+          auth,
+          request.requestId,
+          transaction
+        );
+        if (concurrent) {
+          return concurrent.createdNode(auth, scope, transaction);
         }
 
         const created = await parent.createChild(
@@ -195,19 +201,5 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
       }
       throw error;
     }
-  }
-
-  private static async lockRequest(
-    auth: Authenticator,
-    requestId: string,
-    transaction: Transaction
-  ): Promise<void> {
-    const workspaceModelId = auth.getNonNullableWorkspace().id;
-    const key = `file_system_create:${workspaceModelId}:${requestId}`;
-    // biome-ignore lint/plugin/noRawSql: PostgreSQL advisory locks have no Sequelize equivalent.
-    await frontSequelize.query("SELECT pg_advisory_xact_lock(hashtext(:key))", {
-      replacements: { key },
-      transaction,
-    });
   }
 }
