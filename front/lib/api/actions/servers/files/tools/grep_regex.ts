@@ -119,45 +119,49 @@ export async function collectGrepMatches(
     formatMatch: (line: string, lineNumber: number) => string;
     maxMatches: number;
   }
-): Promise<GrepMatches> {
+): Promise<Result<GrepMatches, Error>> {
   const matches: string[] = [];
   let outputBytes = 0;
 
-  for await (const { line, lineNumber } of readBoundedLines(stream)) {
-    if (!regex.test(line)) {
-      continue;
-    }
-
-    const separatorBytes = matches.length > 0 ? 1 : 0;
-    const availableBytes =
-      GREP_RESPONSE_CONTENT_BUDGET_BYTES - outputBytes - separatorBytes;
-    if (availableBytes <= 0) {
-      return { matches, capped: true };
-    }
-
-    const formatted = Buffer.from(formatMatch(line, lineNumber), "utf8");
-    if (formatted.length > availableBytes) {
-      const ellipsisBytes = Buffer.byteLength(ELLIPSIS, "utf8");
-      const head = truncateUtf8(
-        formatted,
-        Math.max(0, availableBytes - ellipsisBytes)
-      );
-      if (head.length > 0) {
-        matches.push(
-          head.toString("utf8") +
-            (head.length < formatted.length ? ELLIPSIS : "")
-        );
+  try {
+    for await (const { line, lineNumber } of readBoundedLines(stream)) {
+      if (!regex.test(line)) {
+        continue;
       }
-      return { matches, capped: true };
-    }
 
-    matches.push(formatted.toString("utf8"));
-    outputBytes += separatorBytes + formatted.length;
+      const separatorBytes = matches.length > 0 ? 1 : 0;
+      const availableBytes =
+        GREP_RESPONSE_CONTENT_BUDGET_BYTES - outputBytes - separatorBytes;
+      if (availableBytes <= 0) {
+        return new Ok({ matches, capped: true });
+      }
 
-    if (matches.length >= maxMatches) {
-      return { matches, capped: true };
+      const formatted = Buffer.from(formatMatch(line, lineNumber), "utf8");
+      if (formatted.length > availableBytes) {
+        const ellipsisBytes = Buffer.byteLength(ELLIPSIS, "utf8");
+        const head = truncateUtf8(
+          formatted,
+          Math.max(0, availableBytes - ellipsisBytes)
+        );
+        if (head.length > 0) {
+          matches.push(
+            head.toString("utf8") +
+              (head.length < formatted.length ? ELLIPSIS : "")
+          );
+        }
+        return new Ok({ matches, capped: true });
+      }
+
+      matches.push(formatted.toString("utf8"));
+      outputBytes += separatorBytes + formatted.length;
+
+      if (matches.length >= maxMatches) {
+        return new Ok({ matches, capped: true });
+      }
     }
+  } catch (err) {
+    return new Err(normalizeError(err));
   }
 
-  return { matches, capped: false };
+  return new Ok({ matches, capped: false });
 }

@@ -54,7 +54,7 @@ describe("grep regex", () => {
       throw regexResult.error;
     }
 
-    const search = collectGrepMatches(
+    const result = await collectGrepMatches(
       Readable.from([Buffer.alloc(GREP_LINE_MAX_BYTES, "a"), Buffer.from("a")]),
       regexResult.value,
       {
@@ -63,7 +63,11 @@ describe("grep regex", () => {
       }
     );
 
-    await expect(search).rejects.toThrow(
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("Expected the oversized line to be rejected.");
+    }
+    expect(result.error.message).toContain(
       `line 1: it exceeds ${GREP_LINE_MAX_BYTES} bytes`
     );
   });
@@ -83,8 +87,11 @@ describe("grep regex", () => {
       }
     );
 
-    const output = result.matches.join("\n");
-    expect(result.capped).toBe(true);
+    if (result.isErr()) {
+      throw result.error;
+    }
+    const output = result.value.matches.join("\n");
+    expect(result.value.capped).toBe(true);
     expect(Buffer.byteLength(output, "utf8")).toBeLessThanOrEqual(
       GREP_RESPONSE_CONTENT_BUDGET_BYTES
     );
