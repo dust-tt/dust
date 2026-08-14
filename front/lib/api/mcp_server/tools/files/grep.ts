@@ -1,4 +1,8 @@
 import { GREP_MATCHES_MAX } from "@app/lib/api/actions/servers/files/metadata";
+import {
+  compileGrepPattern,
+  testGrepLine,
+} from "@app/lib/api/actions/servers/files/tools/grep_regex";
 import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
 import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -66,14 +70,13 @@ export function registerFilesGrepTool(server: McpServer) {
         });
       }
 
-      let regex: RegExp;
-      try {
-        regex = new RegExp(pattern, "m");
-      } catch (err) {
+      const regexResult = compileGrepPattern(pattern);
+      if (regexResult.isErr()) {
         return mcpError(
-          `Invalid regular expression: \`${pattern}\`. Error: ${normalizeError(err).message}`
+          `Unsupported or invalid regular expression: \`${pattern}\`. Error: ${regexResult.error.message}`
         );
       }
+      const regex = regexResult.value;
 
       const readResult = await dustFs.read(path);
       if (readResult.isErr()) {
@@ -96,7 +99,14 @@ export function registerFilesGrepTool(server: McpServer) {
         for await (const line of rl) {
           lineNumber++;
 
-          if (regex.test(line)) {
+          const matchResult = testGrepLine({ regex, line });
+          if (matchResult.isErr()) {
+            return mcpError(
+              `Failed to search file \`${path}\` at line ${lineNumber}: ${matchResult.error.message}`
+            );
+          }
+
+          if (matchResult.value) {
             matches.push(`${lineNumber}: ${line}`);
 
             if (matches.length >= GREP_MATCHES_MAX) {
