@@ -1,4 +1,5 @@
 import { ConsumptionExportPanel } from "@app/components/workspace/analytics/consumption/ConsumptionExportPanel";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -49,7 +50,7 @@ describe("ConsumptionExportPanel", () => {
 
     // Even though the export never appears (a failed/timed-out workflow also leaves
     // exports empty with isGenerating false), the effect must not fire again.
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await setTimeoutAsync(0);
     expect(startConsumptionExport).toHaveBeenCalledTimes(1);
     expect(
       screen.getByText("The export failed to generate.")
@@ -78,7 +79,7 @@ describe("ConsumptionExportPanel", () => {
 
     openPanel();
 
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await setTimeoutAsync(0);
 
     expect(startConsumptionExport).not.toHaveBeenCalled();
     expect(screen.getByText("Could not load exports.")).toBeInTheDocument();

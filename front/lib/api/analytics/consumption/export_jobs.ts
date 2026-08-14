@@ -6,20 +6,22 @@ import {
   describeTemporalWorkflow,
   getTemporalClientForFrontNamespace,
 } from "@app/lib/temporal";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { buildConsumptionExportGcsPrefix } from "@app/temporal/analytics_queue/activities/consumption_export";
 import type { LaunchConsumptionExportOutcome } from "@app/temporal/analytics_queue/client";
 import { launchConsumptionExportWorkflow } from "@app/temporal/analytics_queue/client";
 import { makeConsumptionExportWorkflowId } from "@app/temporal/analytics_queue/helpers";
 import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 const DOWNLOAD_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000;
+
+// exportId.zip, matching the naming built by `buildConsumptionExportGcsPath`.
+const EXPORT_FILE_NAME_REGEX = /^[A-Za-z0-9_-]+\.zip$/;
 
 export type ConsumptionExportListItem = {
   name: string;
   createdAt: string;
   sizeBytes: number;
-  downloadUrl: string;
 };
 
 export async function listConsumptionExports(
@@ -32,25 +34,36 @@ export async function listConsumptionExports(
     prefix: buildConsumptionExportGcsPrefix(workspaceId),
   });
 
-  const items = await concurrentExecutor(
-    files,
-    async (file) => {
-      const downloadUrl = await bucket.getSignedUrl(file.name, {
-        expirationDelayMs: DOWNLOAD_URL_EXPIRATION_DELAY_MS,
-        promptSaveAs: `dust_consumption_lines_export_${workspaceId}.zip`,
-      });
-
-      return {
-        name: file.name.split("/").pop() ?? file.name,
-        createdAt: file.metadata.timeCreated ?? new Date(0).toISOString(),
-        sizeBytes: Number(file.metadata.size ?? 0),
-        downloadUrl,
-      };
-    },
-    { concurrency: 8 }
-  );
+  const items = files.map((file) => ({
+    name: file.name.split("/").pop() ?? file.name,
+    createdAt: file.metadata.timeCreated ?? new Date(0).toISOString(),
+    sizeBytes: Number(file.metadata.size ?? 0),
+  }));
 
   return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+// The download link embedded in the export list would otherwise go stale after
+// DOWNLOAD_URL_EXPIRATION_DELAY_MS if the panel is left open: generate it fresh on each
+// download request instead, scoped to this workspace's own export files.
+export async function getConsumptionExportDownloadUrl(
+  auth: Authenticator,
+  fileName: string
+): Promise<Result<string, Error>> {
+  if (!EXPORT_FILE_NAME_REGEX.test(fileName)) {
+    return new Err(new Error("Invalid export file name."));
+  }
+
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const bucket = getPrivateUploadBucket();
+  const path = `${buildConsumptionExportGcsPrefix(workspaceId)}${fileName}`;
+
+  const downloadUrl = await bucket.getSignedUrl(path, {
+    expirationDelayMs: DOWNLOAD_URL_EXPIRATION_DELAY_MS,
+    promptSaveAs: `dust_consumption_lines_export_${workspaceId}.zip`,
+  });
+
+  return new Ok(downloadUrl);
 }
 
 export async function isConsumptionExportGenerating(

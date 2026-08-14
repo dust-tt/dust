@@ -49,6 +49,13 @@ function postExportRawRequest(wId: string, body: Record<string, unknown>) {
   });
 }
 
+function getDownloadRequest(wId: string, name: string) {
+  return honoApp.request(
+    `/api/w/${wId}/analytics/consumption/export-raw/${name}/download`,
+    { redirect: "manual" }
+  );
+}
+
 describe("GET /api/w/:wId/analytics/consumption/export-raw", () => {
   it("returns an empty list and not-generating when nothing exists", async () => {
     fileStorageMock.setFilesByPrefix(() => []);
@@ -60,7 +67,7 @@ describe("GET /api/w/:wId/analytics/consumption/export-raw", () => {
     expect(await response.json()).toEqual({ exports: [], isGenerating: false });
   });
 
-  it("lists past exports for the workspace, newest first, with a download url", async () => {
+  it("lists past exports for the workspace, newest first", async () => {
     const { workspace } = await setupTest();
     const prefix = `consumption_exports/w/${workspace.sId}/`;
     fileStorageMock.setFilesByPrefix((requestedPrefix) => {
@@ -95,13 +102,11 @@ describe("GET /api/w/:wId/analytics/consumption/export-raw", () => {
         name: "2000.zip",
         createdAt: "2026-08-02T00:00:00.000Z",
         sizeBytes: 200,
-        downloadUrl: "https://signed-url.test",
       },
       {
         name: "1000.zip",
         createdAt: "2026-08-01T00:00:00.000Z",
         sizeBytes: 100,
-        downloadUrl: "https://signed-url.test",
       },
     ]);
   });
@@ -115,6 +120,36 @@ describe("GET /api/w/:wId/analytics/consumption/export-raw", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ exports: [], isGenerating: true });
+  });
+});
+
+describe("GET /api/w/:wId/analytics/consumption/export-raw/:name/download", () => {
+  it("redirects to a freshly signed download url", async () => {
+    const { workspace } = await setupTest();
+
+    const response = await getDownloadRequest(workspace.sId, "2000.zip");
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("https://signed-url.test");
+  });
+
+  it("rejects a file name that escapes the workspace's export prefix", async () => {
+    const { workspace } = await setupTest();
+
+    const response = await getDownloadRequest(
+      workspace.sId,
+      "..%2f..%2fother-workspace%2f2000.zip"
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it("is refused to non-managers", async () => {
+    const { workspace } = await setupTest({ role: "user" });
+
+    const response = await getDownloadRequest(workspace.sId, "2000.zip");
+
+    expect(response.status).toBe(403);
   });
 });
 

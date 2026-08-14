@@ -4,6 +4,7 @@ import {
 } from "@app/hooks/useConsumptionExports";
 import type { ConsumptionExportListItem } from "@app/lib/api/analytics/consumption/export_jobs";
 import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
+import { formatFileSize } from "@app/lib/utils";
 import {
   Button,
   Download01,
@@ -20,20 +21,16 @@ interface ConsumptionExportPanelProps {
   exportBody: ConsumptionExportBody;
 }
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) {
-    return `${bytes} B`;
-  }
-  if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  }
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-}
-
-function ConsumptionExportRow({ item }: { item: ConsumptionExportListItem }) {
+function ConsumptionExportRow({
+  workspaceId,
+  item,
+}: {
+  workspaceId: string;
+  item: ConsumptionExportListItem;
+}) {
   return (
     <a
-      href={item.downloadUrl}
+      href={`/api/w/${workspaceId}/analytics/consumption/export-raw/${item.name}/download`}
       className="flex items-center justify-between gap-4 rounded-md px-2 py-1.5 hover:bg-muted-background"
     >
       <span className="text-sm text-foreground">
@@ -138,7 +135,11 @@ export function ConsumptionExportPanel({
           ) : exports.length > 0 ? (
             <div className="flex max-h-40 flex-col overflow-y-auto">
               {exports.map((item) => (
-                <ConsumptionExportRow key={item.name} item={item} />
+                <ConsumptionExportRow
+                  key={item.name}
+                  workspaceId={workspaceId}
+                  item={item}
+                />
               ))}
             </div>
           ) : hasAutoStartFailed ? (

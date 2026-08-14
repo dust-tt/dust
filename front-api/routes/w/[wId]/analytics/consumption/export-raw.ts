@@ -1,4 +1,5 @@
 import {
+  getConsumptionExportDownloadUrl,
   isConsumptionExportGenerating,
   listConsumptionExports,
   startConsumptionExport,
@@ -12,9 +13,14 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 // Mounted at /api/w/:wId/analytics/consumption/export-raw.
 const app = workspaceApp();
+
+const DownloadParamsSchema = z.object({
+  name: z.string(),
+});
 
 /** @ignoreswagger */
 app.get("/", ensureIsManager(), async (ctx) => {
@@ -53,6 +59,30 @@ app.post(
     }
 
     return ctx.json({ isGenerating: true }, 202);
+  }
+);
+
+/** @ignoreswagger */
+app.get(
+  "/:name/download",
+  ensureIsManager(),
+  validate("param", DownloadParamsSchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { name } = ctx.req.valid("param");
+
+    const result = await getConsumptionExportDownloadUrl(auth, name);
+    if (result.isErr()) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "file_not_found",
+          message: "Export not found.",
+        },
+      });
+    }
+
+    return ctx.redirect(result.value);
   }
 );
 

@@ -1,6 +1,7 @@
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
+import { formatFileSize } from "@app/lib/utils";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeFileDetails } from "@app/poke/swr/frame_details";
 import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
@@ -62,16 +63,6 @@ export function FramePage() {
       </div>
     );
   }
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) {
-      return `${bytes} B`;
-    }
-    if (bytes < 1024 * 1024) {
-      return `${(bytes / 1024).toFixed(1)} KB`;
-    }
-    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-  };
 
   return (
     <div className="mx-auto max-w-6xl">
