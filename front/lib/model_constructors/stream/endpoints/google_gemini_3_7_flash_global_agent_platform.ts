@@ -1,13 +1,13 @@
-import { WithGoogleGeminiThreeDotSixFlashConfig } from "@app/lib/model_constructors/providers/google_ai_studio/models/gemini_3_6_flash";
+import { WithGoogleGeminiThreeDotSevenFlashConfig } from "@app/lib/model_constructors/providers/google_ai_studio/models/gemini_3_7_flash";
 import { GoogleAgentPlatformStream } from "@app/lib/model_constructors/stream/clients/google_agent_platform";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 
-export class GoogleGeminiThreeDotSixFlashGlobalAgentPlatformStream extends WithGoogleGeminiThreeDotSixFlashConfig(
+export class GoogleGeminiThreeDotSevenFlashGlobalAgentPlatformStream extends WithGoogleGeminiThreeDotSevenFlashConfig(
   GoogleAgentPlatformStream
 ) {
   // Global endpoint bills at base rate (non-global adds 10%).
-  // https://ai.google.dev/gemini-api/docs/pricing (2026-07-25): $0.75/M input,
+  // https://ai.google.dev/gemini-api/docs/pricing (2026-08-14): $0.75/M input,
   // $3.75/M output, $0.075/M cached input.
   // Promotional pricing through 2026-12-31; reverts to $1.50/M input, $7.50/M
   // output, $0.15/M cached input on 2027-01-01 — update this then.
@@ -25,4 +25,4 @@ export class GoogleGeminiThreeDotSixFlashGlobalAgentPlatformStream extends WithG
   static readonly id = this.buildId();
 }
 
-GoogleGeminiThreeDotSixFlashGlobalAgentPlatformStream satisfies StreamEndpointConstructor;
+GoogleGeminiThreeDotSevenFlashGlobalAgentPlatformStream satisfies StreamEndpointConstructor;

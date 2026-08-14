@@ -1,13 +1,13 @@
-import { WithGoogleGeminiThreeDotSixFlashConfig } from "@app/lib/model_constructors/providers/google_ai_studio/models/gemini_3_6_flash";
+import { WithGoogleGeminiThreeDotSevenFlashConfig } from "@app/lib/model_constructors/providers/google_ai_studio/models/gemini_3_7_flash";
 import { GoogleAiStudioStream } from "@app/lib/model_constructors/stream/clients/google_ai_studio";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 
-export class GoogleGeminiThreeDotSixFlashGlobalGoogleAiStudioStream extends WithGoogleGeminiThreeDotSixFlashConfig(
+export class GoogleGeminiThreeDotSevenFlashGlobalGoogleAiStudioStream extends WithGoogleGeminiThreeDotSevenFlashConfig(
   GoogleAiStudioStream
 ) {
   //TODO(new-llm): implement progressive token billing
-  // https://ai.google.dev/gemini-api/docs/pricing (2026-07-25): $0.75/M input,
+  // https://ai.google.dev/gemini-api/docs/pricing (2026-08-14): $0.75/M input,
   // $3.75/M output, $0.075/M cached input.
   // Promotional pricing through 2026-12-31; reverts to $1.50/M input, $7.50/M
   // output, $0.15/M cached input on 2027-01-01 — update this then.
@@ -24,4 +24,4 @@ export class GoogleGeminiThreeDotSixFlashGlobalGoogleAiStudioStream extends With
   static readonly id = this.buildId();
 }
 
-GoogleGeminiThreeDotSixFlashGlobalGoogleAiStudioStream satisfies StreamEndpointConstructor;
+GoogleGeminiThreeDotSevenFlashGlobalGoogleAiStudioStream satisfies StreamEndpointConstructor;

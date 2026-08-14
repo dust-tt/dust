@@ -25,6 +25,8 @@ import { GoogleGeminiThreeDotFiveFlashLiteGlobalAgentPlatformStream } from "@app
 import { GoogleGeminiThreeDotFiveFlashLiteGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_5_flash_lite_global_google_ai_studio";
 import { GoogleGeminiThreeDotSixFlashGlobalAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_6_flash_global_agent_platform";
 import { GoogleGeminiThreeDotSixFlashGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_6_flash_global_google_ai_studio";
+import { GoogleGeminiThreeDotSevenFlashGlobalAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_7_flash_global_agent_platform";
+import { GoogleGeminiThreeDotSevenFlashGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_7_flash_global_google_ai_studio";
 import { MistralCodestralEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_codestral_eu_mistral";
 import { MistralMistralLargeEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_large_eu_mistral";
 import { MistralMistralMedium35EuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_medium_3_5_eu_mistral";
@@ -78,6 +80,8 @@ export const STREAM_ENDPOINTS = {
     GoogleGeminiThreeDotFiveFlashGlobalAgentPlatformStream,
   [GoogleGeminiThreeDotSixFlashGlobalAgentPlatformStream.id]:
     GoogleGeminiThreeDotSixFlashGlobalAgentPlatformStream,
+  [GoogleGeminiThreeDotSevenFlashGlobalAgentPlatformStream.id]:
+    GoogleGeminiThreeDotSevenFlashGlobalAgentPlatformStream,
   [GoogleGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream.id]:
     GoogleGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream,
   [GoogleGeminiThreeDotFiveFlashLiteGlobalAgentPlatformStream.id]:
@@ -122,6 +126,8 @@ export const STREAM_ENDPOINTS = {
     GoogleGeminiThreeDotFiveFlashGlobalGoogleAiStudioStream,
   [GoogleGeminiThreeDotSixFlashGlobalGoogleAiStudioStream.id]:
     GoogleGeminiThreeDotSixFlashGlobalGoogleAiStudioStream,
+  [GoogleGeminiThreeDotSevenFlashGlobalGoogleAiStudioStream.id]:
+    GoogleGeminiThreeDotSevenFlashGlobalGoogleAiStudioStream,
   [MistralCodestralEuropeMistralStream.id]: MistralCodestralEuropeMistralStream,
   [MistralMistralLargeEuropeMistralStream.id]:
     MistralMistralLargeEuropeMistralStream,
