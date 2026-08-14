@@ -1,3 +1,4 @@
+import { FRAME_SHARE_TOKEN_HEADER } from "@app/types/api/sandbox_functions";
 import { DUST_FILE_ID_HEADER } from "@app/types/files";
 import { cors } from "@front-api/middlewares/cors";
 import { Hono } from "hono";
@@ -36,5 +37,22 @@ describe("cors middleware", () => {
 
     expect(response.status).toBe(200);
     expect(getExposedHeaders(response)).toContain(DUST_FILE_ID_HEADER);
+  });
+
+  it("allows the frame share token header on preflight requests", async () => {
+    // Shared-frame hosts attach this header to every invocation request; a preflight that
+    // rejects it breaks callFunction for all shared frames.
+    const response = await createApp().request("/", {
+      method: "OPTIONS",
+      headers: {
+        Origin: APP_ORIGIN,
+        "Access-Control-Request-Headers": `content-type,${FRAME_SHARE_TOKEN_HEADER}`,
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(
+      response.headers.get("Access-Control-Allow-Headers")?.toLowerCase()
+    ).toContain(FRAME_SHARE_TOKEN_HEADER);
   });
 });

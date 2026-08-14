@@ -50,6 +50,8 @@ export const ALLOWED_HEADERS = [
   "mcp-session-id",
   "x-commit-hash",
   "x-dust-extension-version",
+  // Frame share token presented as a function invocation capability (FRAME_SHARE_TOKEN_HEADER).
+  "x-dust-frame-share-token",
   "x-build-date",
   "x-hackerone-research",
   "x-request-origin",
