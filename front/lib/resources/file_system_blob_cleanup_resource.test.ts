@@ -51,20 +51,24 @@ describe("FileSystemBlobCleanupResource", () => {
         permissions: { canRead: true, canWrite: true },
       },
     ]);
-    const initialized = await applyFileSystemOperation(authenticator, scope, {
-      operation: "initialize",
-    });
-    if (initialized.isErr() || !initialized.value.roots?.[0]) {
+    const initializedRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      {
+        operation: "initialize",
+      }
+    );
+    if (initializedRes.isErr() || !initializedRes.value.roots?.[0]) {
       throw new Error("Failed to initialize the filesystem root.");
     }
-    const root = initialized.value.roots[0];
+    const root = initializedRes.value.roots[0];
 
     const preparedFiles: Array<{
       node: FileSystemNodeType;
       upload: FileSystemContentUploadType;
     }> = [];
     for (const name of ["abandoned.txt", "committed.txt"]) {
-      const created = await applyFileSystemOperation(authenticator, scope, {
+      const createdRes = await applyFileSystemOperation(authenticator, scope, {
         operation: "create",
         requestId: randomUUID(),
         parentId: root.id,
@@ -72,32 +76,32 @@ describe("FileSystemBlobCleanupResource", () => {
         kind: "file",
         mode: 0o644,
       });
-      if (created.isErr() || !created.value.node) {
+      if (createdRes.isErr() || !createdRes.value.node) {
         throw new Error(`Failed to create ${name}.`);
       }
-      const prepared = await applyFileSystemOperation(authenticator, scope, {
+      const preparedRes = await applyFileSystemOperation(authenticator, scope, {
         operation: "prepareContentUpload",
-        nodeId: created.value.node.id,
+        nodeId: createdRes.value.node.id,
         expectedBlobId: null,
         contentType: "text/plain",
       });
-      if (prepared.isErr() || !prepared.value.upload) {
+      if (preparedRes.isErr() || !preparedRes.value.upload) {
         throw new Error(`Failed to prepare ${name}.`);
       }
       preparedFiles.push({
-        node: created.value.node,
-        upload: prepared.value.upload,
+        node: createdRes.value.node,
+        upload: preparedRes.value.upload,
       });
     }
 
-    const committed = await applyFileSystemOperation(authenticator, scope, {
+    const committedRes = await applyFileSystemOperation(authenticator, scope, {
       operation: "commitContentUpload",
       nodeId: preparedFiles[1].node.id,
       expectedBlobId: null,
       blobId: preparedFiles[1].upload.blobId,
       contentType: preparedFiles[1].upload.contentType,
     });
-    expect(committed.isOk()).toBe(true);
+    expect(committedRes.isOk()).toBe(true);
 
     vi.advanceTimersByTime(25 * 60 * 60 * 1_000);
     expect(

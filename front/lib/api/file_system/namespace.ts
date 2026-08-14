@@ -118,8 +118,10 @@ export async function applyFileSystemOperation(
         );
       }
 
-      const content = await node.getContent(auth, scope);
-      return content.isErr() ? content : new Ok({ content: content.value });
+      const contentRes = await node.getContent(auth, scope);
+      return contentRes.isErr()
+        ? contentRes
+        : new Ok({ content: contentRes.value });
     }
 
     case "prepareContentUpload": {
@@ -134,8 +136,10 @@ export async function applyFileSystemOperation(
         );
       }
 
-      const upload = await node.prepareContentUpload(auth, scope, request);
-      return upload.isErr() ? upload : new Ok({ upload: upload.value });
+      const uploadRes = await node.prepareContentUpload(auth, scope, request);
+      return uploadRes.isErr()
+        ? uploadRes
+        : new Ok({ upload: uploadRes.value });
     }
 
     case "commitContentUpload": {
@@ -150,10 +154,10 @@ export async function applyFileSystemOperation(
         );
       }
 
-      const committed = await node.commitContentUpload(auth, scope, request);
-      return committed.isErr()
-        ? committed
-        : new Ok({ node: committed.value.toJSON() });
+      const committedRes = await node.commitContentUpload(auth, scope, request);
+      return committedRes.isErr()
+        ? committedRes
+        : new Ok({ node: committedRes.value.toJSON() });
     }
 
     default:

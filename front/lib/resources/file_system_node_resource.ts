@@ -405,9 +405,9 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     auth: Authenticator,
     scope: FileSystemScope
   ): Promise<Result<FileSystemContentType, FileSystemOperationError>> {
-    const access = this.checkContentAccess(auth, scope, { write: false });
-    if (access.isErr()) {
-      return access;
+    const accessRes = this.checkContentAccess(auth, scope, { write: false });
+    if (accessRes.isErr()) {
+      return accessRes;
     }
 
     if (this.blobId === null) {
@@ -436,9 +436,9 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     scope: FileSystemScope,
     request: PrepareContentUploadRequest
   ): Promise<Result<FileSystemContentUploadType, FileSystemOperationError>> {
-    const access = this.checkContentAccess(auth, scope, { write: true });
-    if (access.isErr()) {
-      return access;
+    const accessRes = this.checkContentAccess(auth, scope, { write: true });
+    if (accessRes.isErr()) {
+      return accessRes;
     }
     if (
       request.expectedBlobId !== null &&
@@ -498,9 +498,9 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     scope: FileSystemScope,
     request: CommitContentUploadRequest
   ): Promise<Result<FileSystemNodeResource, FileSystemOperationError>> {
-    const access = this.checkContentAccess(auth, scope, { write: true });
-    if (access.isErr()) {
-      return access;
+    const accessRes = this.checkContentAccess(auth, scope, { write: true });
+    if (accessRes.isErr()) {
+      return accessRes;
     }
     if (
       !FileSystemBlobIdSchema.safeParse(request.blobId).success ||
@@ -600,9 +600,9 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     size: number,
     transaction: Transaction
   ): Promise<Result<FileSystemNodeResource, FileSystemOperationError>> {
-    const access = this.checkContentAccess(auth, scope, { write: true });
-    if (access.isErr()) {
-      return access;
+    const accessRes = this.checkContentAccess(auth, scope, { write: true });
+    if (accessRes.isErr()) {
+      return accessRes;
     }
 
     const cleanup = await FileSystemBlobCleanupResource.fetchForBlob(

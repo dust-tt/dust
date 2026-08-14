@@ -85,14 +85,14 @@ async function createEmptyFile(
   scope: FileSystemScope,
   name: string
 ): Promise<FileSystemNodeType> {
-  const initialized = await applyFileSystemOperation(auth, scope, {
+  const initializedRes = await applyFileSystemOperation(auth, scope, {
     operation: "initialize",
   });
-  if (initialized.isErr()) {
-    throw initialized.error;
+  if (initializedRes.isErr()) {
+    throw initializedRes.error;
   }
-  const root = requireNode(initialized.value.roots?.[0]);
-  const created = await applyFileSystemOperation(auth, scope, {
+  const root = requireNode(initializedRes.value.roots?.[0]);
+  const createdRes = await applyFileSystemOperation(auth, scope, {
     operation: "create",
     requestId: randomUUID(),
     parentId: root.id,
@@ -100,11 +100,11 @@ async function createEmptyFile(
     kind: "file",
     mode: 0o644,
   });
-  if (created.isErr()) {
-    throw created.error;
+  if (createdRes.isErr()) {
+    throw createdRes.error;
   }
 
-  return requireNode(created.value.node ?? undefined);
+  return requireNode(createdRes.value.node ?? undefined);
 }
 
 describe("filesystem namespace reads", () => {
@@ -410,27 +410,28 @@ describe("filesystem content", () => {
     const scope = readableScope(`conversation-${randomUUID()}`);
     const file = await createEmptyFile(authenticator, scope, "notes.txt");
 
-    const empty = await applyFileSystemOperation(authenticator, scope, {
-      operation: "getContent",
-      nodeId: file.id,
-    });
-    expect(empty.isOk() && empty.value.content).toEqual({
+    const emptyContentRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      { operation: "getContent", nodeId: file.id }
+    );
+    expect(emptyContentRes.isOk() && emptyContentRes.value.content).toEqual({
       blobId: null,
       downloadUrl: null,
       size: 0,
       contentType: null,
     });
 
-    const prepared = await applyFileSystemOperation(authenticator, scope, {
+    const preparedRes = await applyFileSystemOperation(authenticator, scope, {
       operation: "prepareContentUpload",
       nodeId: file.id,
       expectedBlobId: null,
       contentType: "application/octet-stream",
     });
-    if (prepared.isErr() || !prepared.value.upload) {
+    if (preparedRes.isErr() || !preparedRes.value.upload) {
       throw new Error("Failed to prepare filesystem content.");
     }
-    const upload = prepared.value.upload;
+    const upload = preparedRes.value.upload;
     const objectPath = `w/${workspace.sId}/filesystem/blobs/${file.id}/${upload.blobId}`;
     expect(upload).toEqual({
       blobId: expect.any(String),
@@ -454,34 +455,34 @@ describe("filesystem content", () => {
       blobId: upload.blobId,
       contentType: upload.contentType,
     };
-    const committed = await applyFileSystemOperation(
+    const committedRes = await applyFileSystemOperation(
       authenticator,
       scope,
       commitRequest
     );
-    const retried = await applyFileSystemOperation(
+    const retriedRes = await applyFileSystemOperation(
       authenticator,
       scope,
       commitRequest
     );
 
-    expect(committed.isOk() && committed.value.node).toMatchObject({
+    expect(committedRes.isOk() && committedRes.value.node).toMatchObject({
       id: file.id,
       blobId: upload.blobId,
       size: 14,
       contentType: "text/plain",
       contentRevision: 1,
     });
-    expect(retried.isOk() && retried.value.node).toMatchObject({
+    expect(retriedRes.isOk() && retriedRes.value.node).toMatchObject({
       blobId: upload.blobId,
       contentRevision: 1,
     });
 
-    const content = await applyFileSystemOperation(authenticator, scope, {
+    const contentRes = await applyFileSystemOperation(authenticator, scope, {
       operation: "getContent",
       nodeId: file.id,
     });
-    expect(content.isOk() && content.value.content).toEqual({
+    expect(contentRes.isOk() && contentRes.value.content).toEqual({
       blobId: upload.blobId,
       downloadUrl: `download:${objectPath}`,
       size: 14,
@@ -494,44 +495,56 @@ describe("filesystem content", () => {
     const scope = readableScope(`conversation-${randomUUID()}`);
     const file = await createEmptyFile(authenticator, scope, "race.txt");
 
-    const first = await applyFileSystemOperation(authenticator, scope, {
-      operation: "prepareContentUpload",
-      nodeId: file.id,
-      expectedBlobId: null,
-      contentType: "text/plain",
-    });
-    const second = await applyFileSystemOperation(authenticator, scope, {
-      operation: "prepareContentUpload",
-      nodeId: file.id,
-      expectedBlobId: null,
-      contentType: "text/plain",
-    });
+    const firstPrepareRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      {
+        operation: "prepareContentUpload",
+        nodeId: file.id,
+        expectedBlobId: null,
+        contentType: "text/plain",
+      }
+    );
+    const secondPrepareRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      {
+        operation: "prepareContentUpload",
+        nodeId: file.id,
+        expectedBlobId: null,
+        contentType: "text/plain",
+      }
+    );
     if (
-      first.isErr() ||
-      second.isErr() ||
-      !first.value.upload ||
-      !second.value.upload
+      firstPrepareRes.isErr() ||
+      secondPrepareRes.isErr() ||
+      !firstPrepareRes.value.upload ||
+      !secondPrepareRes.value.upload
     ) {
       throw new Error("Failed to prepare concurrent uploads.");
     }
 
-    const committed = await applyFileSystemOperation(authenticator, scope, {
+    const committedRes = await applyFileSystemOperation(authenticator, scope, {
       operation: "commitContentUpload",
       nodeId: file.id,
       expectedBlobId: null,
-      blobId: first.value.upload.blobId,
-      contentType: first.value.upload.contentType,
+      blobId: firstPrepareRes.value.upload.blobId,
+      contentType: firstPrepareRes.value.upload.contentType,
     });
-    const stale = await applyFileSystemOperation(authenticator, scope, {
-      operation: "commitContentUpload",
-      nodeId: file.id,
-      expectedBlobId: null,
-      blobId: second.value.upload.blobId,
-      contentType: second.value.upload.contentType,
-    });
+    const staleCommitRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      {
+        operation: "commitContentUpload",
+        nodeId: file.id,
+        expectedBlobId: null,
+        blobId: secondPrepareRes.value.upload.blobId,
+        contentType: secondPrepareRes.value.upload.contentType,
+      }
+    );
 
-    expect(committed.isOk()).toBe(true);
-    expect(stale.isErr() && stale.error.code).toBe("stale");
+    expect(committedRes.isOk()).toBe(true);
+    expect(staleCommitRes.isErr() && staleCommitRes.error.code).toBe("stale");
   });
 
   it("requires a file in a writable root", async () => {
@@ -543,17 +556,17 @@ describe("filesystem content", () => {
       writableScope,
       "readonly.txt"
     );
-    const initialized = await applyFileSystemOperation(
+    const initializedRes = await applyFileSystemOperation(
       authenticator,
       writableScope,
       { operation: "initialize" }
     );
-    if (initialized.isErr()) {
-      throw initialized.error;
+    if (initializedRes.isErr()) {
+      throw initializedRes.error;
     }
-    const root = requireNode(initialized.value.roots?.[0]);
+    const root = requireNode(initializedRes.value.roots?.[0]);
 
-    const writeDenied = await applyFileSystemOperation(
+    const writeDeniedRes = await applyFileSystemOperation(
       authenticator,
       readOnlyScope(conversationId),
       {
@@ -563,14 +576,16 @@ describe("filesystem content", () => {
         contentType: "text/plain",
       }
     );
-    const directoryContent = await applyFileSystemOperation(
+    const directoryContentRes = await applyFileSystemOperation(
       authenticator,
       writableScope,
       { operation: "getContent", nodeId: root.id }
     );
 
-    expect(writeDenied.isErr() && writeDenied.error.code).toBe("unauthorized");
-    expect(directoryContent.isErr() && directoryContent.error.code).toBe(
+    expect(writeDeniedRes.isErr() && writeDeniedRes.error.code).toBe(
+      "unauthorized"
+    );
+    expect(directoryContentRes.isErr() && directoryContentRes.error.code).toBe(
       "invalid_operation"
     );
   });
