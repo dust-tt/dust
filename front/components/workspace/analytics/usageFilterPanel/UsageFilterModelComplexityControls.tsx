@@ -1,14 +1,12 @@
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type {
-  UsageFilterModelOption,
-  UsageModelTier,
-} from "@app/components/workspace/analytics/usageFilter";
-import {
-  USAGE_MODEL_TIER_LABEL,
-  USAGE_MODEL_TIERS,
-} from "@app/components/workspace/analytics/usageFilter";
+import type { UsageFilterModelOption } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterAvailabilityStatus } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAvailabilityStatus";
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
+import {
+  getModelsTierDisplayName,
+  MODELS_TIER_NAMES,
+} from "@app/lib/api/assistant/token_pricing/tiers";
 import {
   getModelMakerDisplayName,
   MODEL_MAKER_IDS,
@@ -33,18 +31,18 @@ import {
 import type { ComponentType } from "react";
 import { Fragment, useState } from "react";
 
-const MODEL_TIER_ICON: Record<UsageModelTier, ComponentType> = {
-  fast: BarLow,
-  standard: BarHalf,
-  complex: BarFull,
+const MODEL_TIER_ICON: Record<ModelsTierName, ComponentType> = {
+  cost_efficient: BarLow,
+  balanced: BarHalf,
+  premium: BarFull,
 };
 
 interface UsageFilterModelComplexityControlsProps {
   moreModelsCatalog: UsageFilterModelOption[];
   selectedModelIds: Set<string>;
   onToggleModel: (model: UsageFilterModelOption) => void;
-  activeTier: UsageModelTier;
-  onTierChange: (tier: UsageModelTier) => void;
+  activeTier: ModelsTierName;
+  onTierChange: (tier: ModelsTierName) => void;
 }
 
 function getModelSelectionStatus({
@@ -217,11 +215,15 @@ export function UsageFilterModelComplexityControls({
           </DropdownMenu>
         }
       />
+      <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+        Price tier of all the models actually billed — not only the Basic /
+        Standard / Premium options offered in the model picker.
+      </p>
       <div className="flex items-center gap-1">
-        {USAGE_MODEL_TIERS.map((tier) => (
+        {MODELS_TIER_NAMES.map((tier) => (
           <Button
             key={tier}
-            label={USAGE_MODEL_TIER_LABEL[tier]}
+            label={getModelsTierDisplayName(tier)}
             icon={MODEL_TIER_ICON[tier]}
             size="xs"
             variant={activeTier === tier ? "primary" : "outline"}

@@ -113,8 +113,8 @@ function ModelTiersInfoDialog({ isOpen, onClose }: ModelTiersInfoDialogProps) {
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             Each tier groups <b>model + reasoning-effort</b> options based on
             cost. A member capped at a tier can use that tier and every cheaper
-            one — “Up to Balanced” means Balanced and Cost Efficient. Open a
-            tier to see what's inside.
+            one — “Up to Standard” means Standard and Basic. Open a tier to see
+            what's inside.
           </p>
           <div className="flex flex-col gap-2">
             {tiers.map((tier) => (

@@ -1,15 +1,25 @@
 import {
+  getDefaultTierId,
   getEffortStops,
   getInitialEffort,
   getModelEffortTier,
+  getTierLockReason,
   isPremiumModel,
 } from "@app/components/model_picker/modelPickerUtils";
+import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import {
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_5_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
+import type { ModelStreamIdType } from "@app/types/assistant/models/auto";
+import {
+  AUTO_COMPLEX_MODEL_CONFIG,
+  AUTO_COMPLEX_MODEL_ID,
+  AUTO_FAST_MODEL_ID,
+  AUTO_MODEL_ID,
+} from "@app/types/assistant/models/auto";
 import { GEMINI_2_5_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { O1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { ModelIdType } from "@app/types/assistant/models/types";
@@ -104,6 +114,73 @@ describe("modelPickerUtils premium gating", () => {
         isPremiumModel(CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG, UNGATED)
       ).toBe(false);
       expect(isPremiumModel(O1_MODEL_CONFIG, UNGATED)).toBe(false);
+    });
+  });
+
+  describe("getTierLockReason", () => {
+    const streamModel = (
+      modelId: ModelStreamIdType,
+      isSelectable: boolean
+    ): EnabledModelConfigurationType => ({
+      ...AUTO_COMPLEX_MODEL_CONFIG,
+      modelId,
+      providerId: modelId,
+      isSelectable,
+    });
+
+    it("locks a tier whose stream is above the member's cap", () => {
+      expect(
+        getTierLockReason("complex", {
+          ...UNGATED,
+          streamModels: [streamModel(AUTO_COMPLEX_MODEL_ID, false)],
+        })
+      ).toBe("model_tier");
+      expect(
+        getTierLockReason("fast", {
+          ...UNGATED,
+          streamModels: [streamModel(AUTO_FAST_MODEL_ID, true)],
+        })
+      ).toBeNull();
+    });
+
+    it("locks the Premium tier on a legacy plan whatever the cap", () => {
+      expect(
+        getTierLockReason("complex", {
+          ...GATED,
+          streamModels: [streamModel(AUTO_COMPLEX_MODEL_ID, true)],
+        })
+      ).toBe("premium");
+    });
+
+    it("does not lock a tier whose stream is absent from the payload", () => {
+      expect(
+        getTierLockReason("standard", { ...UNGATED, streamModels: [] })
+      ).toBeNull();
+    });
+  });
+
+  describe("getDefaultTierId", () => {
+    const streamModel = (
+      modelId: ModelStreamIdType,
+      isSelectable: boolean
+    ): EnabledModelConfigurationType => ({
+      ...AUTO_COMPLEX_MODEL_CONFIG,
+      modelId,
+      providerId: modelId,
+      isSelectable,
+    });
+
+    it("falls back to Basic when Standard is above the member's cap", () => {
+      expect(getDefaultTierId([streamModel(AUTO_MODEL_ID, false)])).toBe(
+        "fast"
+      );
+    });
+
+    it("keeps Standard when the member can run it, or while the payload is in flight", () => {
+      expect(getDefaultTierId([streamModel(AUTO_MODEL_ID, true)])).toBe(
+        "standard"
+      );
+      expect(getDefaultTierId([])).toBe("standard");
     });
   });
 

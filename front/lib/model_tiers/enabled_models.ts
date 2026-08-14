@@ -5,9 +5,20 @@ import { getAvailableModelsForWorkspace } from "@app/lib/api/assistant/workspace
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
-import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
+import type {
+  EnabledModelConfigurationType,
+  ModelStreamResolutionsType,
+  ModelStreamResolutionType,
+} from "@app/types/api/assistant/models";
 import type { ModelStreamIdType } from "@app/types/assistant/models/auto";
-import { AUTO_MODEL_ID, MODEL_STREAMS } from "@app/types/assistant/models/auto";
+import {
+  AUTO_COMPLEX_MODEL_ID,
+  AUTO_FAST_MODEL_CONFIG,
+  AUTO_FAST_MODEL_ID,
+  AUTO_MODEL_CONFIG,
+  AUTO_MODEL_ID,
+  MODEL_STREAMS,
+} from "@app/types/assistant/models/auto";
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type {
   ModelConfigurationType,
@@ -98,13 +109,29 @@ export async function getEnabledModelsForAuth(
   return withModelSelectability(auth, { models: availableModels });
 }
 
+export async function getDefaultStreamConfigForAuth(
+  auth: Authenticator
+): Promise<ModelConfigurationType> {
+  const { tiers } = await ModelsTierResource.resolveAllowedTierNames(auth);
+
+  return tiers.includes("balanced")
+    ? AUTO_MODEL_CONFIG
+    : AUTO_FAST_MODEL_CONFIG;
+}
+
 export function getDefaultModelFromEnabledModels(
   models: EnabledModelConfigurationType[]
 ): EnabledModelConfigurationType {
   const selectableModels = models.filter((m) => m.isSelectable);
-  const autoModel = selectableModels.find((m) => m.modelId === AUTO_MODEL_ID);
-  if (autoModel) {
-    return autoModel;
+
+  // Streams are tiered as the tier they are named after, so the Standard stream
+  // is out of reach for a Basic-capped member: fall back to the Basic stream
+  // before giving up on streams entirely.
+  for (const streamId of [AUTO_MODEL_ID, AUTO_FAST_MODEL_ID]) {
+    const streamModel = selectableModels.find((m) => m.modelId === streamId);
+    if (streamModel) {
+      return streamModel;
+    }
   }
 
   return {
@@ -113,31 +140,21 @@ export function getDefaultModelFromEnabledModels(
   };
 }
 
-export async function getAutoModelForAuth(
-  auth: Authenticator
-): Promise<EnabledModelConfigurationType | null> {
-  const availableModels = await getEnabledModelsForAuth(auth);
-  return {
-    ...pickPreferredLargeModel(availableModels.filter((m) => m.isSelectable)),
-  };
-}
-
-// Resolve a stream tier (Fast/Standard/Complex) to a concrete model + reasoning effort.
-// Walks the stream's ordered candidate pool and picks the first one available
-// (selectable) to the workspace that supports the requested effort. Returns null
-// when none of the stream's candidates are available — the caller falls back to
-// the auto model.
-export async function getModelForStream(
-  auth: Authenticator,
-  streamId: ModelStreamIdType
-): Promise<{
+export interface StreamResolutionType {
   model: EnabledModelConfigurationType;
   reasoningEffort: ReasoningEffort;
-} | null> {
-  const availableModels = await getEnabledModelsForAuth(auth);
+  // False = none of candidates were available, we fell back to a large model
+  fromPool: boolean;
+}
 
+// Walks a stream's ordered candidate pool and picks the first one available
+// or a fallback large model
+export function resolveStreamModel(
+  models: EnabledModelConfigurationType[],
+  streamId: ModelStreamIdType
+): StreamResolutionType {
   for (const candidate of MODEL_STREAMS[streamId]) {
-    const model = availableModels.find(
+    const model = models.find(
       (m) =>
         m.isSelectable &&
         m.providerId === candidate.providerId &&
@@ -145,20 +162,56 @@ export async function getModelForStream(
         m.supportedReasoningEfforts[candidate.reasoningEffort]
     );
     if (model) {
-      return { model, reasoningEffort: candidate.reasoningEffort };
+      return {
+        model,
+        reasoningEffort: candidate.reasoningEffort,
+        fromPool: true,
+      };
     }
   }
 
-  return null;
+  const fallback = pickPreferredLargeModel(
+    models.filter((m) => m.isSelectable)
+  );
+  return {
+    model: { ...fallback, isSelectable: true },
+    reasoningEffort: fallback.defaultReasoningEffort,
+    fromPool: false,
+  };
+}
+
+function toStreamResolution(
+  models: EnabledModelConfigurationType[],
+  streamId: ModelStreamIdType
+): ModelStreamResolutionType {
+  const { model, reasoningEffort } = resolveStreamModel(models, streamId);
+  return {
+    providerId: model.providerId,
+    modelId: model.modelId,
+    displayName: model.displayName,
+    reasoningEffort,
+  };
+}
+
+export function getStreamResolutions(
+  models: EnabledModelConfigurationType[]
+): ModelStreamResolutionsType {
+  return {
+    [AUTO_MODEL_ID]: toStreamResolution(models, AUTO_MODEL_ID),
+    [AUTO_FAST_MODEL_ID]: toStreamResolution(models, AUTO_FAST_MODEL_ID),
+    [AUTO_COMPLEX_MODEL_ID]: toStreamResolution(models, AUTO_COMPLEX_MODEL_ID),
+  };
 }
 
 export async function getModelsForAuth(auth: Authenticator): Promise<{
   models: EnabledModelConfigurationType[];
   defaultModel: EnabledModelConfigurationType;
+  streams: ModelStreamResolutionsType;
 }> {
   const models = await getEnabledModelsForAuth(auth);
   return {
     models,
     defaultModel: getDefaultModelFromEnabledModels(models),
+    streams: getStreamResolutions(models),
   };
 }

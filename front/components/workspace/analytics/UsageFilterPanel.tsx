@@ -3,7 +3,6 @@ import type {
   UsageFilterAgentScope,
   UsageFilterCategory,
   UsageFilterGroup,
-  UsageModelTier,
 } from "@app/components/workspace/analytics/usageFilter";
 import {
   toConsumptionScopeFilter,
@@ -23,6 +22,7 @@ import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilt
 import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import { useGroups } from "@app/lib/swr/groups";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -37,7 +37,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-const DEFAULT_MODEL_TIER: UsageModelTier = "standard";
+const DEFAULT_MODEL_TIER: ModelsTierName = "balanced";
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
@@ -68,7 +68,7 @@ export function UsageFilterPanel({
     useState<UsageFilterCategory>("agent");
   const [activeScope, setActiveScope] = useState<UsageFilterAgentScope>("all");
   const [activeTier, setActiveTier] =
-    useState<UsageModelTier>(DEFAULT_MODEL_TIER);
+    useState<ModelsTierName>(DEFAULT_MODEL_TIER);
   const [searchText, setSearchText] = useState("");
   const selectedGroups = useToggleSelectionList<UsageFilterGroup>();
 
