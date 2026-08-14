@@ -142,6 +142,7 @@ export async function fetchConsumptionTopGroups(
     filter,
   });
 
+  // TODO(2026-08-14 aubin): Add pagination beyond the maximum bucket count.
   const requestedBucketCount = offset + limit;
   const rankingAggregations = {
     by_group: {
