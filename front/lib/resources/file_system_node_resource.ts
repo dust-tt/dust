@@ -10,6 +10,7 @@ import type {
 import {
   FILE_SYSTEM_CONTENT_MAX_BYTES,
   FILE_SYSTEM_CONTENT_TYPE_MAX_LENGTH,
+  FILE_SYSTEM_EXECUTABLE_BITS_MASK,
   FILE_SYSTEM_MODE_LIMITS,
   FILE_SYSTEM_NAME_MAX_BYTES,
   FILE_SYSTEM_READ_DIR_PAGE_SIZE_LIMITS,
@@ -64,6 +65,14 @@ type CommitContentUploadOptions = Pick<
 >;
 
 const FileSystemBlobIdSchema = z.string().uuid();
+type SetExecutableBitsRequest = Extract<
+  FileSystemOperation,
+  { operation: "setExecutableBits" }
+>;
+type SetExecutableBitsOptions = Pick<
+  SetExecutableBitsRequest,
+  "executableBits"
+>;
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileSystemNodeResource
@@ -325,6 +334,50 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     }
 
     return new Ok(await this.fetchChildByName(auth, scope, name));
+  }
+
+  async setExecutableBits(
+    auth: Authenticator,
+    scope: FileSystemScope,
+    { executableBits }: SetExecutableBitsOptions
+  ): Promise<Result<FileSystemNodeResource, FileSystemOperationError>> {
+    if (!this.isReadableBy(auth, scope)) {
+      return new Err(
+        new FileSystemOperationError("not_found", "The inode was not found.")
+      );
+    }
+    if (!this.isWritableBy(auth, scope)) {
+      return new Err(
+        new FileSystemOperationError(
+          "unauthorized",
+          "You do not have write access to this inode."
+        )
+      );
+    }
+    if (
+      !Number.isInteger(executableBits) ||
+      executableBits < 0 ||
+      (executableBits & ~FILE_SYSTEM_EXECUTABLE_BITS_MASK) !== 0
+    ) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "Only user, group, and other executable bits can be changed."
+        )
+      );
+    }
+
+    // Keep read, write, and special bits unchanged.
+    const mode =
+      (this.mode & ~FILE_SYSTEM_EXECUTABLE_BITS_MASK) | executableBits;
+    const [updatedCount] = await this.update({ mode });
+    if (updatedCount !== 1) {
+      return new Err(
+        new FileSystemOperationError("not_found", "The inode was not found.")
+      );
+    }
+
+    return new Ok(this);
   }
 
   async readDir(

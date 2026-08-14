@@ -14,6 +14,8 @@ export const FILE_SYSTEM_MODE_LIMITS = {
   max: 0o7777,
 } as const;
 
+export const FILE_SYSTEM_EXECUTABLE_BITS_MASK = 0o111;
+
 export const FILE_SYSTEM_REQUEST_ID_MAX_LENGTH = 255;
 
 export const FILE_SYSTEM_CONTENT_TYPE_MAX_LENGTH = 255;
@@ -86,6 +88,12 @@ export type FileSystemOperation =
       blobId: string;
       expectedSizeBytes: number;
       contentType: string;
+    }
+  | {
+      operation: "setExecutableBits";
+      nodeId: number;
+      /** The exact user, group, and other execute bits to store. */
+      executableBits: number;
     };
 
 export type FileSystemOperationResponse = {
