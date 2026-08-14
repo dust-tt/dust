@@ -99,20 +99,31 @@ describe("runSandboxChildToolWorkflow", () => {
     finalizeErroredSandboxChildToolActivity.mockResolvedValue(undefined);
   });
 
-  it.each([
-    undefined,
-    "no_retry",
-  ] as const)("uses the single-attempt activity for retry policy %s", async (retryPolicy) => {
+  it("defaults missing legacy input to no_retry without recording a patch marker", async () => {
     await runSandboxChildToolWorkflow({
       actionModelId: 123,
       agentLoopArgs,
       authType,
-      retryPolicy,
       step: 1,
     });
 
     expect(runToolActivity).toHaveBeenCalledOnce();
     expect(runRetryableToolActivity).not.toHaveBeenCalled();
+    expect(patched).not.toHaveBeenCalled();
+  });
+
+  it("uses the single-attempt activity for no_retry", async () => {
+    await runSandboxChildToolWorkflow({
+      actionModelId: 123,
+      agentLoopArgs,
+      authType,
+      retryPolicy: "no_retry",
+      step: 1,
+    });
+
+    expect(runToolActivity).toHaveBeenCalledOnce();
+    expect(runRetryableToolActivity).not.toHaveBeenCalled();
+    expect(patched).toHaveBeenCalledWith("sandbox-child-tool-retry-policy");
   });
 
   it("uses the retryable activity only for retry_on_interrupt", async () => {
