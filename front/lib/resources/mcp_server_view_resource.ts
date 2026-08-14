@@ -726,16 +726,14 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       }
     }
 
-    const remoteMCPServerModelIds = uniqueIds
-      .filter((id) => isResourceSId("remote_mcp_server", id))
-      .map((id) => getServerTypeAndIdFromSId(id).id);
-    const names = uniqueIds.filter(
-      (id) =>
-        !isInternalMCPServerName(id) && !isResourceSId("remote_mcp_server", id)
-    );
-    if (remoteMCPServerModelIds.length === 0 && names.length === 0) {
+    const remoteIds = uniqueIds.filter((id) => !isInternalMCPServerName(id));
+    if (remoteIds.length === 0) {
       return metadata;
     }
+
+    const remoteMCPServerModelIds = remoteIds
+      .filter((id) => isResourceSId("remote_mcp_server", id))
+      .map((id) => getServerTypeAndIdFromSId(id).id);
 
     const workspaceModelId = auth.getNonNullableWorkspace().id;
     // Keep this as one joined query: baseFetch would hydrate spaces and servers
@@ -746,14 +744,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         workspaceId: workspaceModelId,
         serverType: "remote",
         [Op.or]: [
-          ...(names.length > 0
-            ? [
-                { name: { [Op.in]: names } },
-                Sequelize.where(Sequelize.col("remoteMCPServer.cachedName"), {
-                  [Op.in]: names,
-                }),
-              ]
-            : []),
+          { name: { [Op.in]: remoteIds } },
+          Sequelize.where(Sequelize.col("remoteMCPServer.cachedName"), {
+            [Op.in]: remoteIds,
+          }),
           ...(remoteMCPServerModelIds.length > 0
             ? [
                 {
