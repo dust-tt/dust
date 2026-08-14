@@ -11,6 +11,11 @@ type ContentLogger = {
 
 type MemorySnapshot = ReturnType<typeof process.memoryUsage>;
 
+export type GoogleDriveContentPhase =
+  | "download_export"
+  | "extraction"
+  | "dust_upsert";
+
 function maxMemorySnapshot(
   currentPeak: MemorySnapshot,
   sample: MemorySnapshot
@@ -22,6 +27,65 @@ function maxMemorySnapshot(
     external: Math.max(currentPeak.external, sample.external),
     arrayBuffers: Math.max(currentPeak.arrayBuffers, sample.arrayBuffers),
   };
+}
+
+function emitMemoryDistributions({
+  metricPrefix,
+  tags,
+  memoryAtStart,
+  peakMemory,
+  memoryAtEnd,
+}: {
+  metricPrefix: string;
+  tags: string[];
+  memoryAtStart: MemorySnapshot;
+  peakMemory: MemorySnapshot;
+  memoryAtEnd: MemorySnapshot;
+}) {
+  const statsDClient = getStatsDClient();
+
+  for (const [memoryType, startBytes, peakBytes, endBytes] of [
+    ["rss", memoryAtStart.rss, peakMemory.rss, memoryAtEnd.rss],
+    [
+      "heap_used",
+      memoryAtStart.heapUsed,
+      peakMemory.heapUsed,
+      memoryAtEnd.heapUsed,
+    ],
+    [
+      "external",
+      memoryAtStart.external,
+      peakMemory.external,
+      memoryAtEnd.external,
+    ],
+    [
+      "array_buffers",
+      memoryAtStart.arrayBuffers,
+      peakMemory.arrayBuffers,
+      memoryAtEnd.arrayBuffers,
+    ],
+  ] as const) {
+    statsDClient.distribution(
+      `${metricPrefix}.memory.${memoryType}.start_bytes`,
+      startBytes,
+      tags
+    );
+    statsDClient.distribution(
+      `${metricPrefix}.memory.${memoryType}.peak_bytes`,
+      peakBytes,
+      tags
+    );
+    statsDClient.distribution(
+      `${metricPrefix}.memory.${memoryType}.end_bytes`,
+      endBytes,
+      tags
+    );
+    statsDClient.distribution(
+      `${metricPrefix}.memory.${memoryType}.peak_growth_bytes`,
+      peakBytes - startBytes,
+      tags
+    );
+  }
 }
 
 function emitContentMemoryTelemetry({
@@ -66,48 +130,13 @@ function emitContentMemoryTelemetry({
       tags
     );
   }
-  for (const [memoryType, startBytes, peakBytes, endBytes] of [
-    ["rss", memoryAtStart.rss, peakMemory.rss, memoryAtEnd.rss],
-    [
-      "heap_used",
-      memoryAtStart.heapUsed,
-      peakMemory.heapUsed,
-      memoryAtEnd.heapUsed,
-    ],
-    [
-      "external",
-      memoryAtStart.external,
-      peakMemory.external,
-      memoryAtEnd.external,
-    ],
-    [
-      "array_buffers",
-      memoryAtStart.arrayBuffers,
-      peakMemory.arrayBuffers,
-      memoryAtEnd.arrayBuffers,
-    ],
-  ] as const) {
-    statsDClient.distribution(
-      `${CONTENT_METRIC_PREFIX}.memory.${memoryType}.start_bytes`,
-      startBytes,
-      tags
-    );
-    statsDClient.distribution(
-      `${CONTENT_METRIC_PREFIX}.memory.${memoryType}.peak_bytes`,
-      peakBytes,
-      tags
-    );
-    statsDClient.distribution(
-      `${CONTENT_METRIC_PREFIX}.memory.${memoryType}.end_bytes`,
-      endBytes,
-      tags
-    );
-    statsDClient.distribution(
-      `${CONTENT_METRIC_PREFIX}.memory.${memoryType}.peak_growth_bytes`,
-      peakBytes - startBytes,
-      tags
-    );
-  }
+  emitMemoryDistributions({
+    metricPrefix: CONTENT_METRIC_PREFIX,
+    tags,
+    memoryAtStart,
+    peakMemory,
+    memoryAtEnd,
+  });
 
   logger.info(
     {
@@ -123,6 +152,135 @@ function emitContentMemoryTelemetry({
     },
     "Google Drive content memory telemetry"
   );
+}
+
+function emitContentPhaseMemoryTelemetry({
+  logger,
+  mimeType,
+  phase,
+  payloadSizeBytes,
+  processingDurationMs,
+  outcome,
+  memoryAtStart,
+  peakMemory,
+  memoryAtEnd,
+}: {
+  logger: ContentLogger;
+  mimeType: string;
+  phase: GoogleDriveContentPhase;
+  payloadSizeBytes: number | null;
+  processingDurationMs: number;
+  outcome: "success" | "error";
+  memoryAtStart: MemorySnapshot;
+  peakMemory: MemorySnapshot;
+  memoryAtEnd: MemorySnapshot;
+}) {
+  const metricPrefix = `${CONTENT_METRIC_PREFIX}.phase`;
+  const tags = [
+    `phase:${phase}`,
+    `mime_type:${mimeType}`,
+    `payload_size_known:${payloadSizeBytes !== null}`,
+    `outcome:${outcome}`,
+  ];
+  const statsDClient = getStatsDClient();
+
+  statsDClient.distribution(
+    `${metricPrefix}.duration_ms`,
+    processingDurationMs,
+    tags
+  );
+  if (payloadSizeBytes !== null) {
+    statsDClient.distribution(
+      `${metricPrefix}.payload_size_bytes`,
+      payloadSizeBytes,
+      tags
+    );
+  }
+  emitMemoryDistributions({
+    metricPrefix,
+    tags,
+    memoryAtStart,
+    peakMemory,
+    memoryAtEnd,
+  });
+
+  logger.info(
+    {
+      mimeType,
+      phase,
+      payloadSizeBytes,
+      processingDurationMs,
+      outcome,
+      memoryAtStart,
+      peakMemory,
+      memoryAtEnd,
+    },
+    "Google Drive content phase memory telemetry"
+  );
+}
+
+export function getGoogleDrivePayloadSizeBytes(data: unknown): number | null {
+  if (data instanceof ArrayBuffer || ArrayBuffer.isView(data)) {
+    return data.byteLength;
+  }
+
+  switch (typeof data) {
+    case "string":
+      return Buffer.byteLength(data, "utf8");
+    case "number":
+    case "boolean":
+    case "bigint":
+      return Buffer.byteLength(data.toString(), "utf8");
+    default:
+      return null;
+  }
+}
+
+export async function runWithGoogleDriveContentPhaseMemoryTelemetry<T>({
+  task,
+  getPayloadSizeBytes,
+  logger,
+  mimeType,
+  phase,
+}: {
+  task: () => Promise<T>;
+  getPayloadSizeBytes: (result: T) => number | null;
+  logger: ContentLogger;
+  mimeType: string;
+  phase: GoogleDriveContentPhase;
+}): Promise<T> {
+  const startedAtMs = Date.now();
+  const memoryAtStart = process.memoryUsage();
+  let peakMemory = memoryAtStart;
+  let outcome: "success" | "error" = "success";
+  let payloadSizeBytes: number | null = null;
+  const memorySampleInterval = setInterval(() => {
+    peakMemory = maxMemorySnapshot(peakMemory, process.memoryUsage());
+  }, CONTENT_MEMORY_SAMPLE_INTERVAL_MS);
+
+  try {
+    const result = await task();
+    payloadSizeBytes = getPayloadSizeBytes(result);
+    return result;
+  } catch (error) {
+    outcome = "error";
+    throw error;
+  } finally {
+    clearInterval(memorySampleInterval);
+    const memoryAtEnd = process.memoryUsage();
+    peakMemory = maxMemorySnapshot(peakMemory, memoryAtEnd);
+    emitContentPhaseMemoryTelemetry({
+      logger,
+      mimeType,
+      phase,
+      payloadSizeBytes,
+      processingDurationMs: Date.now() - startedAtMs,
+      outcome,
+      memoryAtStart,
+      peakMemory,
+      memoryAtEnd,
+    });
+  }
 }
 
 export async function runWithGoogleDriveContentMemoryTelemetry<T>({

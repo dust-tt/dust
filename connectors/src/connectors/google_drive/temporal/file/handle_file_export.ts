@@ -1,5 +1,9 @@
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import {
+  getGoogleDrivePayloadSizeBytes,
+  runWithGoogleDriveContentPhaseMemoryTelemetry,
+} from "@connectors/connectors/google_drive/temporal/file/content_memory_telemetry";
+import {
   getDriveClient,
   getInternalId,
   isFileTooLargeToDownloadError,
@@ -34,23 +38,34 @@ export async function handleFileExport(
   dataSourceConfig: DataSourceConfig,
   connectorId: ModelId,
   startSyncTs: number
-): Promise<CoreAPIDataSourceDocumentSection | null> {
+): Promise<{
+  content: CoreAPIDataSourceDocumentSection | null;
+  payloadSizeBytes: number | null;
+}> {
   const drive = await getDriveClient(oauth2client);
   let res;
   try {
-    res = await drive.files.get(
-      {
-        fileId: file.id,
-        alt: "media",
-      },
-      {
-        responseType: "arraybuffer",
-        // Google-native files report no size in their metadata, so the pre-download guard cannot
-        // catch them. Cap the download itself so a huge file is aborted mid-stream instead of being
-        // fully buffered in memory (a source of OOMs).
-        maxContentLength: MAX_FILE_SIZE_TO_DOWNLOAD,
-      }
-    );
+    res = await runWithGoogleDriveContentPhaseMemoryTelemetry({
+      logger: localLogger,
+      mimeType: file.mimeType,
+      phase: "download_export",
+      getPayloadSizeBytes: (response) =>
+        getGoogleDrivePayloadSizeBytes(response.data),
+      task: () =>
+        drive.files.get(
+          {
+            fileId: file.id,
+            alt: "media",
+          },
+          {
+            responseType: "arraybuffer",
+            // Google-native files report no size in their metadata, so the pre-download guard cannot
+            // catch them. Cap the download itself so a huge file is aborted mid-stream instead of being
+            // fully buffered in memory (a source of OOMs).
+            maxContentLength: MAX_FILE_SIZE_TO_DOWNLOAD,
+          }
+        ),
+    });
   } catch (e) {
     if (e instanceof GaxiosError) {
       if (e.response?.status === 404) {
@@ -60,7 +75,7 @@ export async function handleFileExport(
           },
           "Can't export Gdrive file. 404 error returned. Skipping."
         );
-        return null;
+        return { content: null, payloadSizeBytes: null };
       }
       if (e.response?.status === 403) {
         const skippableReasons = ["cannotDownloadAbusiveFile"];
@@ -79,7 +94,7 @@ export async function handleFileExport(
               { error: parsedBody.error },
               `Can't export Gdrive file. Skippable reason: ${firstSkippableReason} Skipping.`
             );
-            return null;
+            return { content: null, payloadSizeBytes: null };
           }
         } catch (e) {
           localLogger.error({ error: e }, "Error while parsing error response");
@@ -89,7 +104,7 @@ export async function handleFileExport(
 
     if (isFileTooLargeToDownloadError(e)) {
       localLogger.info({}, "File too big to be downloaded. Skipping");
-      return null;
+      return { content: null, payloadSizeBytes: null };
     }
     throw e;
   }
@@ -102,60 +117,69 @@ export async function handleFileExport(
 
   if (!(res.data instanceof ArrayBuffer)) {
     localLogger.error({}, "res.data is not an ArrayBuffer");
-    return null;
+    return { content: null, payloadSizeBytes: null };
   }
-  let result;
-  if (file.mimeType === "text/plain") {
-    result = handleTextFile(res.data, maxDocumentLen);
-  } else if (file.mimeType === "text/csv") {
-    const parentGoogleIds = await getFileParentsMemoized(
-      connectorId,
-      oauth2client,
-      file,
-      startSyncTs
-    );
+  const payload = res.data;
+  const payloadSizeBytes = payload.byteLength;
+  const result = await runWithGoogleDriveContentPhaseMemoryTelemetry({
+    logger: localLogger,
+    mimeType: file.mimeType,
+    phase: "extraction",
+    getPayloadSizeBytes: () => payloadSizeBytes,
+    task: async () => {
+      if (file.mimeType === "text/plain") {
+        return handleTextFile(payload, maxDocumentLen);
+      } else if (file.mimeType === "text/csv") {
+        const parentGoogleIds = await getFileParentsMemoized(
+          connectorId,
+          oauth2client,
+          file,
+          startSyncTs
+        );
 
-    const parents = parentGoogleIds.map((parent) => getInternalId(parent));
+        const parents = parentGoogleIds.map((parent) => getInternalId(parent));
 
-    result = await handleCsvFile({
-      data: res.data,
-      tableId: documentId,
-      fileName: file.name || "",
-      maxDocumentLen,
-      localLogger,
-      dataSourceConfig,
-      provider: "google_drive",
-      connectorId,
-      parents,
-      tags: file.labels,
-    });
-  } else if (file.mimeType === "text/markdown") {
-    const textContent = handleTextFile(res.data, maxDocumentLen);
-    if (textContent.isErr()) {
-      result = textContent;
-    } else {
-      result = new Ok(
-        await renderDocumentTitleAndContent({
+        return handleCsvFile({
+          data: payload,
+          tableId: documentId,
+          fileName: file.name || "",
+          maxDocumentLen,
+          localLogger,
           dataSourceConfig,
-          title: file.name || "",
-          createdAt: new Date(file.createdAtMs),
-          content: await renderMarkdownSection(
+          provider: "google_drive",
+          connectorId,
+          parents,
+          tags: file.labels,
+        });
+      } else if (file.mimeType === "text/markdown") {
+        const textContent = handleTextFile(payload, maxDocumentLen);
+        if (textContent.isErr()) {
+          return textContent;
+        }
+
+        return new Ok(
+          await renderDocumentTitleAndContent({
             dataSourceConfig,
-            textContent.value.content || ""
-          ),
-          ...(file.updatedAtMs
-            ? { updatedAt: new Date(file.updatedAtMs) }
-            : {}),
-        })
-      );
-    }
-  } else {
-    result = await handleTextExtraction(res.data, localLogger, file.mimeType);
-  }
+            title: file.name || "",
+            createdAt: new Date(file.createdAtMs),
+            content: await renderMarkdownSection(
+              dataSourceConfig,
+              textContent.value.content || ""
+            ),
+            ...(file.updatedAtMs
+              ? { updatedAt: new Date(file.updatedAtMs) }
+              : {}),
+          })
+        );
+      } else {
+        return handleTextExtraction(payload, localLogger, file.mimeType);
+      }
+    },
+  });
   if (result.isErr()) {
     localLogger.error({ error: result.error }, "Could not handle file.");
-    return null;
+    return { content: null, payloadSizeBytes };
   }
 
-  return result.value;
+  return { content: result.value, payloadSizeBytes };
 }

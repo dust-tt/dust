@@ -1,3 +1,7 @@
+import {
+  getGoogleDrivePayloadSizeBytes,
+  runWithGoogleDriveContentPhaseMemoryTelemetry,
+} from "@connectors/connectors/google_drive/temporal/file/content_memory_telemetry";
 import { MIME_TYPES_TO_EXPORT } from "@connectors/connectors/google_drive/temporal/mime_types";
 import {
   getDriveClient,
@@ -13,6 +17,7 @@ import { GaxiosError } from "googleapis-common";
 
 export type GoogleDriveExportResult = {
   content: CoreAPIDataSourceDocumentSection | null;
+  payloadSizeBytes: number | null;
   skipReason?: string;
 };
 
@@ -31,18 +36,26 @@ export async function handleGoogleDriveExport(
 
   for (;;) {
     try {
-      const res = await drive.files.export(
-        {
-          fileId: file.id,
-          mimeType: MIME_TYPES_TO_EXPORT[file.mimeType],
-        },
-        {
-          // Google-native docs report no size in their metadata, so the pre-download guard cannot
-          // catch them. Cap the export so a huge document is aborted mid-stream instead of being
-          // fully buffered in memory (a source of OOMs).
-          maxContentLength: MAX_FILE_SIZE_TO_DOWNLOAD,
-        }
-      );
+      const res = await runWithGoogleDriveContentPhaseMemoryTelemetry({
+        logger: localLogger,
+        mimeType: file.mimeType,
+        phase: "download_export",
+        getPayloadSizeBytes: (response) =>
+          getGoogleDrivePayloadSizeBytes(response.data),
+        task: () =>
+          drive.files.export(
+            {
+              fileId: file.id,
+              mimeType: MIME_TYPES_TO_EXPORT[file.mimeType],
+            },
+            {
+              // Google-native docs report no size in their metadata, so the pre-download guard cannot
+              // catch them. Cap the export so a huge document is aborted mid-stream instead of being
+              // fully buffered in memory (a source of OOMs).
+              maxContentLength: MAX_FILE_SIZE_TO_DOWNLOAD,
+            }
+          ),
+      });
       if (res.status !== 200) {
         localLogger.error({}, "Error exporting Google document");
         throw new Error(
@@ -50,44 +63,55 @@ export async function handleGoogleDriveExport(
         );
       }
 
-      if (typeof res.data === "string") {
-        return {
-          content:
-            res.data.trim().length > 0
-              ? {
-                  prefix: null,
-                  content: res.data.trim(),
-                  sections: [],
-                }
-              : null,
-        };
-      } else if (
-        ["object", "number", "boolean", "bigint"].includes(typeof res.data)
-      ) {
-        // In case the contents returned by the file export matches a JS type,
-        // we need to convert it
-        // Example: a Google presentation with just the number
-        // 1 in it, the export will return the number 1 instead of a string
-        return {
-          content:
-            res.data && res.data.toString().trim().length > 0
-              ? {
-                  prefix: null,
-                  content: res.data.toString().trim(),
-                  sections: [],
-                }
-              : null,
-        };
-      } else {
-        localLogger.error(
-          {
-            resDataTypeOf: typeof res.data,
-            type: "export",
-          },
-          "Unexpected GDrive export response type"
-        );
-        return { content: null };
-      }
+      const payloadSizeBytes = getGoogleDrivePayloadSizeBytes(res.data);
+      return await runWithGoogleDriveContentPhaseMemoryTelemetry({
+        logger: localLogger,
+        mimeType: file.mimeType,
+        phase: "extraction",
+        getPayloadSizeBytes: () => payloadSizeBytes,
+        task: async () => {
+          if (typeof res.data === "string") {
+            return {
+              content:
+                res.data.trim().length > 0
+                  ? {
+                      prefix: null,
+                      content: res.data.trim(),
+                      sections: [],
+                    }
+                  : null,
+              payloadSizeBytes,
+            };
+          } else if (
+            ["object", "number", "boolean", "bigint"].includes(typeof res.data)
+          ) {
+            // In case the contents returned by the file export matches a JS type,
+            // we need to convert it
+            // Example: a Google presentation with just the number
+            // 1 in it, the export will return the number 1 instead of a string
+            return {
+              content:
+                res.data && res.data.toString().trim().length > 0
+                  ? {
+                      prefix: null,
+                      content: res.data.toString().trim(),
+                      sections: [],
+                    }
+                  : null,
+              payloadSizeBytes,
+            };
+          } else {
+            localLogger.error(
+              {
+                resDataTypeOf: typeof res.data,
+                type: "export",
+              },
+              "Unexpected GDrive export response type"
+            );
+            return { content: null, payloadSizeBytes };
+          }
+        },
+      });
     } catch (e) {
       if (e instanceof GaxiosError) {
         if (e.response?.status === 404) {
@@ -97,7 +121,7 @@ export async function handleGoogleDriveExport(
             },
             "Can't export Gdrive document. 404 error returned, even though we know the file exists. Skipping."
           );
-          return { content: null };
+          return { content: null, payloadSizeBytes: null };
         }
 
         if (e.response?.status === 403) {
@@ -118,7 +142,7 @@ export async function handleGoogleDriveExport(
               { error: parsedBody.error },
               `Can't export Gdrive document. Skippable reason: ${firstSkippableReason}. Skipping.`
             );
-            return { content: null };
+            return { content: null, payloadSizeBytes: null };
           }
         }
 
@@ -131,7 +155,7 @@ export async function handleGoogleDriveExport(
             { error: e.message },
             "File is too large to be exported. Skipping."
           );
-          return { content: null };
+          return { content: null, payloadSizeBytes: null };
         }
 
         // If Google consistently returns 500 Internal Server Error after many
@@ -149,6 +173,7 @@ export async function handleGoogleDriveExport(
               );
               return {
                 content: null,
+                payloadSizeBytes: null,
                 skipReason: "google_internal_server_error",
               };
             }
@@ -161,7 +186,7 @@ export async function handleGoogleDriveExport(
 
       if (isFileTooLargeToDownloadError(e)) {
         localLogger.info("Google document too large to be exported, skipping.");
-        return { content: null };
+        return { content: null, payloadSizeBytes: null };
       }
 
       localLogger.error({ error: e }, "Error exporting Google document");
