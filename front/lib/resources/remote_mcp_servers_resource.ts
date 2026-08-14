@@ -350,6 +350,17 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     });
   }
 
+  static async fetchByNames(
+    auth: Authenticator,
+    names: string[]
+  ): Promise<RemoteMCPServerResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        cachedName: { [Op.in]: names },
+      },
+    });
+  }
+
   static async fetchById(
     auth: Authenticator,
     id: string,

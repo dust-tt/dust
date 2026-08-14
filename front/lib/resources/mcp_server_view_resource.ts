@@ -54,11 +54,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticSoftDeletable } from "@app/lib/resources/storage/wrappers/workspace_models";
-import {
-  getResourceIdFromSId,
-  isResourceSId,
-  makeSId,
-} from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type {
   InferIncludeType,
   ResourceFindOptions,
@@ -704,8 +700,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return this.baseFetch(auth, findOptions, { includeHeavyAttributes });
   }
 
-  static async resolveDisplayMetadata(auth: Authenticator, keys: string[]) {
-    const uniqueKeys = [...new Set(keys)];
+  static async resolveDisplayMetadataByNames(
+    auth: Authenticator,
+    names: string[]
+  ) {
+    const uniqueNames = [...new Set(names)];
     const metadata = new Map<
       string,
       {
@@ -714,28 +713,29 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       }
     >();
 
-    for (const key of uniqueKeys) {
-      if (isInternalMCPServerName(key)) {
-        metadata.set(key, {
-          name: asDisplayToolName(key),
-          icon: getInternalMCPServerIconByName(key),
+    for (const name of uniqueNames) {
+      if (isInternalMCPServerName(name)) {
+        metadata.set(name, {
+          name: asDisplayToolName(name),
+          icon: getInternalMCPServerIconByName(name),
         });
       }
     }
 
-    const remoteServerIds = uniqueKeys.filter((key) =>
-      isResourceSId("remote_mcp_server", key)
+    const remoteNames = uniqueNames.filter(
+      (name) => !isInternalMCPServerName(name)
     );
-    if (remoteServerIds.length === 0) {
+    if (remoteNames.length === 0) {
       return metadata;
     }
 
-    const remoteServers = await RemoteMCPServerResource.fetchByIds(
+    const remoteServers = await RemoteMCPServerResource.fetchByNames(
       auth,
-      remoteServerIds
+      remoteNames
     );
+
     for (const server of remoteServers) {
-      metadata.set(server.sId, {
+      metadata.set(server.cachedName, {
         name: server.cachedName,
         icon: server.icon,
       });

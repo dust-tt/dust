@@ -165,7 +165,7 @@ describe("resolveDimensionLabels", () => {
     });
   });
 
-  it("labels internal tools by name and remote tools by id", async () => {
+  it("labels internal and remote tools by server name", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -175,7 +175,7 @@ describe("resolveDimensionLabels", () => {
 
     const labels = await resolveDimensionLabels(authenticator, "tool", [
       "image_generation",
-      server.sId,
+      server.cachedName,
     ]);
 
     expect(labels.get("image_generation")).toEqual({
@@ -184,7 +184,7 @@ describe("resolveDimensionLabels", () => {
       description: null,
       icon: getInternalMCPServerIconByName("image_generation"),
     });
-    expect(labels.get(server.sId)).toEqual({
+    expect(labels.get(server.cachedName)).toEqual({
       name: "Customer records",
       pictureUrl: null,
       description: null,
