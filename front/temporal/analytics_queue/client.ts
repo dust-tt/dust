@@ -19,7 +19,6 @@ import {
 } from "@app/temporal/analytics_queue/helpers";
 import { storeAgentMessageConsumptionAttributionV3Signal } from "@app/temporal/analytics_queue/signals";
 import {
-  getConsumptionExportParamsQuery,
   runConsumptionExportWorkflow,
   storeAgentAnalyticsWorkflow,
   storeAgentMessageConsumptionAttributionV3Workflow,
@@ -174,64 +173,45 @@ export async function launchStoreAgentMessageConsumptionAttributionWorkflow({
   }
 }
 
-// A running export's parameters, read back via a workflow query. `null` means an export
-// is (or, in the AlreadyStarted race below, was) running but its parameters could not be
-// recovered (e.g. the workflow hadn't installed its query handler yet).
-export type RunningConsumptionExport = {
-  period: ConsumptionPeriod;
-  filter: ConsumptionScopeFilter;
-} | null;
-
 export type LaunchConsumptionExportOutcome =
   | { status: "started"; workflowId: string }
   | { status: "cached"; gcsPath: string }
   | {
       status: "already_running";
       workflowId: string;
-      running: RunningConsumptionExport;
+      period: ConsumptionPeriod;
+      filter: ConsumptionScopeFilter;
     };
 
-// A period is "open-ended" while its end is still in the future relative to now (e.g. "this
-// cycle", whose endDate is the cycle's future close date) or was only just resolved to now
-// (e.g. "last N days"): its underlying data keeps changing even though the period value
-// itself doesn't. A period whose end has already passed is "closed": its data is settled, so
-// requests for the same period+filter can be reused indefinitely.
+// A period is "open-ended" while its end is still in the future relative to now
 function isOpenEndedPeriod(period: ConsumptionPeriod): boolean {
   return new Date(period.endDate).getTime() > Date.now();
 }
 
-// Open-ended periods are salted by calendar day (UTC), not by exact trigger moment: a user
-// retriggering "this cycle" several times the same day reuses that day's export instead of
-// recrunching Elasticsearch every time (a cheap abuse/DDoS vector otherwise), while the next
-// day still gets a fresh one to pick up newly accrued data.
+// Open-ended periods are salted by calendar day (UTC)
 function currentUtcDayBucket(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-async function describeRunningConsumptionExport(
+async function isConsumptionExportRunning(
   handle: WorkflowHandle
-): Promise<RunningConsumptionExport | undefined> {
+): Promise<boolean> {
   try {
     const execution = await handle.describe();
-    if (execution.status.name !== "RUNNING") {
-      return undefined;
-    }
-
-    try {
-      return await handle.query(getConsumptionExportParamsQuery);
-    } catch {
-      return null;
-    }
+    return execution.status.name === "RUNNING";
   } catch (e) {
     if (e instanceof WorkflowNotFoundError) {
-      return undefined;
+      return false;
     }
     throw e;
   }
 }
 
-// Only one export runs per workspace at a time
-// A concurrent request while one is in flight is surfaced as "already_running"
+// The workflow ID is derived from (workspace, period, filter, salt) (see
+// makeConsumptionExportWorkflowId), so a running export at that ID always matches the
+// period/filter of the incoming request: concurrent requests with different period/filter get
+// their own workflow, and a concurrent request for the exact same one is surfaced as
+// "already_running" instead of starting a duplicate.
 // A previously computed export for the exact same period+filter (and, for an open-ended
 // period, the same calendar day) is surfaced as "cached" instead of recomputing it
 export async function launchConsumptionExportWorkflow(
@@ -261,14 +241,14 @@ export async function launchConsumptionExportWorkflow(
 
   const client = await getTemporalClientForFrontNamespace();
 
-  const workflowId = makeConsumptionExportWorkflowId({ workspaceId });
+  const workflowId = makeConsumptionExportWorkflowId({ workspaceId, exportId });
 
   try {
-    const running = await describeRunningConsumptionExport(
+    const running = await isConsumptionExportRunning(
       client.workflow.getHandle(workflowId)
     );
-    if (running !== undefined) {
-      return new Ok({ status: "already_running", workflowId, running });
+    if (running) {
+      return new Ok({ status: "already_running", workflowId, period, filter });
     }
 
     await client.workflow.start(runConsumptionExportWorkflow, {
@@ -282,17 +262,10 @@ export async function launchConsumptionExportWorkflow(
     return new Ok({ status: "started", workflowId });
   } catch (e) {
     if (e instanceof WorkflowExecutionAlreadyStartedError) {
-      // Lost the race to start: another request started an export between our
-      // describe() check and start() above. Look up what it's running so the
-      // caller can still report accurate parameters instead of a bare success.
-      const running = await describeRunningConsumptionExport(
-        client.workflow.getHandle(workflowId)
-      );
-      return new Ok({
-        status: "already_running",
-        workflowId,
-        running: running ?? null,
-      });
+      // Lost the race to start: another request started this exact export (same
+      // workflow ID, since it's derived from period+filter) between our describe()
+      // check and start() above.
+      return new Ok({ status: "already_running", workflowId, period, filter });
     }
 
     logger.error(

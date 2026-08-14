@@ -7,15 +7,7 @@ import type {
   AgentLoopArgs,
   AgentMessageRef,
 } from "@app/types/assistant/agent_run";
-import { defineQuery, proxyActivities, setHandler } from "@temporalio/workflow";
-
-// Queried by the launcher to recover a running export's parameters instead of relying on the
-// workflow memo, which is persisted to the visibility store and size-limited: a filter can carry
-// arbitrarily many scope ids (agents, users, tools, ...) and would risk exceeding that limit.
-export const getConsumptionExportParamsQuery = defineQuery<{
-  period: ConsumptionPeriod;
-  filter: ConsumptionScopeFilter;
-}>("get_consumption_export_params");
+import { proxyActivities, setHandler } from "@temporalio/workflow";
 
 const { storeAgentAnalyticsActivity, storeAgentMessageFeedbackActivity } =
   proxyActivities<typeof activities>({
@@ -38,9 +30,9 @@ const {
 
 // scheduleToCloseTimeout bounds the total time across all retries: a persistent
 // Elasticsearch/GCS failure must eventually fail the workflow rather than retry
-// forever, since the workflow ID is stable per workspace and blocks subsequent
-// export requests while running. 3 attempts at up to 30 minutes each, plus
-// backoff, comfortably fits inside the 3-hour ceiling.
+// forever, since the workflow ID is stable per (workspace, period, filter) and
+// blocks subsequent identical export requests while running. 3 attempts at up
+// to 30 minutes each, plus backoff, comfortably fits inside the 3-hour ceiling.
 const { runConsumptionExportActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
@@ -107,11 +99,6 @@ export async function runConsumptionExportWorkflow(
     exportId: string;
   }
 ): Promise<void> {
-  setHandler(getConsumptionExportParamsQuery, () => ({ period, filter }));
-
-  // exportId is computed by the launcher (see buildConsumptionExportCacheKey) rather than
-  // here, so it stays fixed across activity retries within this run just like the old
-  // runId-based scheme, but can also be reused across separate runs for closed periods.
   await runConsumptionExportActivity(authType, {
     period,
     filter,

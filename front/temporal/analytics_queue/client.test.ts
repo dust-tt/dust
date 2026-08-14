@@ -122,10 +122,14 @@ describe("launchConsumptionExportWorkflow", () => {
     fileStorageMock.setFileExists(() => false);
   });
 
-  it("starts the workflow when none is running for the workspace", async () => {
+  it("starts the workflow when none is running for this export", async () => {
     const { authenticator } = await createResourceTest({});
     const workflowId = makeConsumptionExportWorkflowId({
       workspaceId: authenticator.getNonNullableWorkspace().sId,
+      exportId: buildConsumptionExportCacheKey({
+        period: periodA,
+        filter: filterA,
+      }),
     });
 
     mockDescribe.mockRejectedValue(
@@ -213,7 +217,14 @@ describe("launchConsumptionExportWorkflow", () => {
     it("does not reuse a previous day's export, so freshly accrued data is captured", async () => {
       const { authenticator } = await createResourceTest({});
       const workspaceId = authenticator.getNonNullableWorkspace().sId;
-      const workflowId = makeConsumptionExportWorkflowId({ workspaceId });
+      const workflowId = makeConsumptionExportWorkflowId({
+        workspaceId,
+        exportId: buildConsumptionExportCacheKey({
+          period: openEndedPeriod,
+          filter: filterA,
+          salt: "2026-08-14",
+        }),
+      });
 
       // Yesterday's export exists in GCS...
       const yesterdaysGcsPath = buildConsumptionExportGcsPath(
@@ -248,47 +259,78 @@ describe("launchConsumptionExportWorkflow", () => {
     });
   });
 
-  it("reports already_running with the running export's own parameters when a second, differently-scoped export is requested concurrently", async () => {
+  it("starts its own workflow when a differently-scoped export is requested while another is running", async () => {
     const { authenticator } = await createResourceTest({});
-    const workflowId = makeConsumptionExportWorkflowId({
-      workspaceId: authenticator.getNonNullableWorkspace().sId,
+    const workspaceId = authenticator.getNonNullableWorkspace().sId;
+    const workflowIdB = makeConsumptionExportWorkflowId({
+      workspaceId,
+      exportId: buildConsumptionExportCacheKey({
+        period: periodB,
+        filter: filterB,
+      }),
     });
 
-    // Export A is already in flight for this workspace.
-    mockDescribe.mockResolvedValue({ status: { name: "RUNNING" } });
-    mockQuery.mockResolvedValue({ period: periodA, filter: filterA });
+    // Export A is already in flight for this workspace, under its own workflow ID.
+    mockDescribe.mockRejectedValue(
+      new WorkflowNotFoundError("not found", workflowIdB, undefined)
+    );
+    mockStart.mockResolvedValue(undefined);
 
-    // Export B, with a different period/filter, is requested while A runs.
+    // Export B, with a different period/filter, gets its own workflow instead of
+    // being blocked by A.
     const result = await launchConsumptionExportWorkflow(authenticator, {
       period: periodB,
       filter: filterB,
     });
 
     expect(result.isOk() && result.value).toEqual({
-      status: "already_running",
-      workflowId,
-      running: { period: periodA, filter: filterA },
+      status: "started",
+      workflowId: workflowIdB,
     });
-    // B's parameters must never be silently dropped by starting nothing and
-    // reporting success as if B had been queued.
-    expect(mockStart).not.toHaveBeenCalled();
+    expect(mockStart).toHaveBeenCalledTimes(1);
   });
 
-  it("reports already_running when the start call itself loses the race to a concurrent launch", async () => {
+  it("reports already_running with the request's own parameters when the exact same export is already in flight", async () => {
     const { authenticator } = await createResourceTest({});
     const workflowId = makeConsumptionExportWorkflowId({
       workspaceId: authenticator.getNonNullableWorkspace().sId,
+      exportId: buildConsumptionExportCacheKey({
+        period: periodA,
+        filter: filterA,
+      }),
     });
 
-    // No export running yet at describe() time...
-    mockDescribe
-      .mockRejectedValueOnce(
-        new WorkflowNotFoundError("not found", workflowId, undefined)
-      )
-      // ...but by the time we look it up again after losing the start race,
-      // export A (started by a concurrent request) is running.
-      .mockResolvedValueOnce({ status: { name: "RUNNING" } });
-    mockQuery.mockResolvedValue({ period: periodA, filter: filterA });
+    mockDescribe.mockResolvedValue({ status: { name: "RUNNING" } });
+
+    const result = await launchConsumptionExportWorkflow(authenticator, {
+      period: periodA,
+      filter: filterA,
+    });
+
+    expect(result.isOk() && result.value).toEqual({
+      status: "already_running",
+      workflowId,
+      period: periodA,
+      filter: filterA,
+    });
+    expect(mockStart).not.toHaveBeenCalled();
+  });
+
+  it("reports already_running when the start call itself loses the race to a concurrent identical launch", async () => {
+    const { authenticator } = await createResourceTest({});
+    const workflowId = makeConsumptionExportWorkflowId({
+      workspaceId: authenticator.getNonNullableWorkspace().sId,
+      exportId: buildConsumptionExportCacheKey({
+        period: periodA,
+        filter: filterA,
+      }),
+    });
+
+    // No export running yet at describe() time, but by the time start() is
+    // called, a concurrent identical request has already won the race.
+    mockDescribe.mockRejectedValue(
+      new WorkflowNotFoundError("not found", workflowId, undefined)
+    );
     mockStart.mockRejectedValue(
       new WorkflowExecutionAlreadyStartedError(
         "already started",
@@ -298,14 +340,15 @@ describe("launchConsumptionExportWorkflow", () => {
     );
 
     const result = await launchConsumptionExportWorkflow(authenticator, {
-      period: periodB,
-      filter: filterB,
+      period: periodA,
+      filter: filterA,
     });
 
     expect(result.isOk() && result.value).toEqual({
       status: "already_running",
       workflowId,
-      running: { period: periodA, filter: filterA },
+      period: periodA,
+      filter: filterA,
     });
   });
 });

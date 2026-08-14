@@ -10,14 +10,12 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import logger from "@app/logger/logger";
 import { createHash } from "crypto";
 
-// Files live under the workspace's own prefix (matching the `w/{wId}/...` layout used elsewhere
-// in this bucket) so relocation and scrubbing can operate on the workspace prefix directly.
 export function buildConsumptionExportGcsPrefix(workspaceId: string): string {
   return `w/${workspaceId}/consumption_exports/`;
 }
 
-// exportId is a content hash (see buildConsumptionExportCacheKey) identifying the export's
-// GCS object, so a retry within the same triggered export (same args, same hash) overwrites
+// exportId is a content hash identifying the export's GCS object, so a retry within the same
+// triggered export (same args, same hash) overwrites
 // the same object instead of leaving an orphaned duplicate zip, and — for closed periods —
 // a later request for the same period/filter reuses it instead of recrunching.
 export function buildConsumptionExportGcsPath(
