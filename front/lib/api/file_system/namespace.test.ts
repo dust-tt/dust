@@ -5,41 +5,15 @@ import type { FileSystemNodeType } from "@app/lib/api/file_system/namespace_type
 import { FILE_SYSTEM_CONTENT_MAX_BYTES } from "@app/lib/api/file_system/namespace_types";
 import type { Authenticator } from "@app/lib/auth";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const {
-  deleteBlob,
-  getBlobMetadata,
-  getSignedDownloadUrl,
-  getSignedUploadUrl,
-} = vi.hoisted(() => ({
-  deleteBlob: vi.fn(async () => undefined),
-  getBlobMetadata: vi.fn(),
-  getSignedDownloadUrl: vi.fn(async (path: string) => `download:${path}`),
-  getSignedUploadUrl: vi.fn(async (path: string) => `upload:${path}`),
-}));
-
-vi.mock("@app/lib/file_storage", async (importOriginal) => {
-  const original =
-    await importOriginal<typeof import("@app/lib/file_storage")>();
-  return {
-    ...original,
-    getPrivateUploadBucket: () => ({
-      delete: deleteBlob,
-      file: (path: string) => ({
-        getMetadata: () => getBlobMetadata(path),
-      }),
-      getSignedUrl: getSignedDownloadUrl,
-      getSignedUploadUrl,
-    }),
-  };
-});
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { beforeEach, describe, expect, it } from "vitest";
 
 beforeEach(() => {
-  vi.clearAllMocks();
-  getBlobMetadata.mockResolvedValue([
-    { size: "14", contentType: "text/plain", contentEncoding: "identity" },
-  ]);
+  fileStorageMock.setFileMetadata(() => ({
+    size: "14",
+    contentType: "text/plain",
+    contentEncoding: "identity",
+  }));
 });
 
 function readableScope(conversationId: string, podId?: string) {
@@ -437,7 +411,7 @@ describe("filesystem content", () => {
     const objectPath = `w/${workspace.sId}/filesystem/blobs/${file.id}/${upload.blobId}`;
     expect(upload).toEqual({
       blobId: expect.any(String),
-      uploadUrl: `upload:${objectPath}`,
+      uploadUrl: "https://signed-upload-url.test",
       contentType: "text/plain",
       expectedSizeBytes: 14,
       headers: {
@@ -447,13 +421,16 @@ describe("filesystem content", () => {
         "x-goog-if-generation-match": "0",
       },
     });
-    expect(getSignedUploadUrl).toHaveBeenCalledWith(objectPath, {
-      contentType: "text/plain",
-      expirationDelayMs: expect.any(Number),
-      extensionHeaders: {
-        "content-encoding": "identity",
-        "content-length": "14",
-        "x-goog-if-generation-match": "0",
+    expect(fileStorageMock.signedUploadUrlCalls).toContainEqual({
+      filePath: objectPath,
+      options: {
+        contentType: "text/plain",
+        expirationDelayMs: expect.any(Number),
+        extensionHeaders: {
+          "content-encoding": "identity",
+          "content-length": "14",
+          "x-goog-if-generation-match": "0",
+        },
       },
     });
 
@@ -470,7 +447,9 @@ describe("filesystem content", () => {
       scope,
       commitRequest
     );
-    getBlobMetadata.mockRejectedValue({ code: 503 });
+    fileStorageMock.setFileMetadata(() => {
+      throw Object.assign(new Error("Storage unavailable"), { code: 503 });
+    });
     const retriedRes = await applyFileSystemOperation(
       authenticator,
       scope,
@@ -488,7 +467,7 @@ describe("filesystem content", () => {
       blobId: upload.blobId,
       contentRevision: 1,
     });
-    expect(getBlobMetadata).toHaveBeenCalledTimes(1);
+    expect(fileStorageMock.metadataCalls).toHaveLength(1);
 
     const contentRes = await applyFileSystemOperation(authenticator, scope, {
       operation: "getContent",
@@ -496,9 +475,13 @@ describe("filesystem content", () => {
     });
     expect(contentRes.isOk() && contentRes.value.content).toEqual({
       blobId: upload.blobId,
-      downloadUrl: `download:${objectPath}`,
+      downloadUrl: "https://signed-url.test",
       size: 14,
       contentType: "text/plain",
+    });
+    expect(fileStorageMock.signedUrlCalls).toContainEqual({
+      filePath: objectPath,
+      options: { expirationDelayMs: expect.any(Number) },
     });
   });
 
@@ -606,13 +589,11 @@ describe("filesystem content", () => {
     if (preparedRes.isErr() || !preparedRes.value.upload) {
       throw new Error("Failed to prepare encoded content.");
     }
-    getBlobMetadata.mockResolvedValueOnce([
-      {
-        size: "14",
-        contentType: "text/plain",
-        contentEncoding: "gzip",
-      },
-    ]);
+    fileStorageMock.setFileMetadata(() => ({
+      size: "14",
+      contentType: "text/plain",
+      contentEncoding: "gzip",
+    }));
 
     const committedRes = await applyFileSystemOperation(authenticator, scope, {
       operation: "commitContentUpload",
@@ -651,18 +632,22 @@ describe("filesystem content", () => {
       contentType: preparedRes.value.upload.contentType,
     };
 
-    getBlobMetadata.mockRejectedValueOnce({ code: 404 });
+    fileStorageMock.setFileMetadata(() => {
+      throw Object.assign(new Error("Object not found"), { code: 404 });
+    });
     const missingRes = await applyFileSystemOperation(
       authenticator,
       scope,
       commitRequest
     );
-    getBlobMetadata.mockRejectedValueOnce({ code: 503 });
+    fileStorageMock.setFileMetadata(() => {
+      throw Object.assign(new Error("Storage unavailable"), { code: 503 });
+    });
 
     expect(missingRes.isErr() && missingRes.error.code).toBe("not_found");
     await expect(
       applyFileSystemOperation(authenticator, scope, commitRequest)
-    ).rejects.toThrow('{"code":503}');
+    ).rejects.toThrow("Storage unavailable");
   });
 
   it("requires a file in a writable root", async () => {

@@ -534,7 +534,7 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     }
 
     const blobId = randomUUID();
-    await FileSystemBlobCleanupResource.registerUpload(auth, this, blobId);
+    await FileSystemBlobCleanupResource.registerUpload(auth, this, { blobId });
     const { uploadUrl, headers } = await prepareFileSystemBlobUpload(
       auth,
       this.id,
@@ -758,13 +758,12 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     const cleanup = await FileSystemBlobCleanupResource.fetchForBlobForUpdate(
       auth,
       this,
-      request.blobId,
-      transaction
+      { blobId: request.blobId, transaction }
     );
     // A lost commit response is safe to retry with the same blob ID.
     if (this.blobId === request.blobId) {
       if (cleanup) {
-        await cleanup.markBlobLive(auth, this, transaction);
+        await cleanup.markBlobLive(auth, this, { transaction });
       }
       return new Ok(this);
     }
@@ -776,7 +775,10 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
         )
       );
     }
-    if (!cleanup || !(await cleanup.markBlobLive(auth, this, transaction))) {
+    if (
+      !cleanup ||
+      !(await cleanup.markBlobLive(auth, this, { transaction }))
+    ) {
       return new Err(
         new FileSystemOperationError(
           "invalid_operation",
@@ -796,12 +798,10 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
       transaction
     );
     if (replacedBlobId !== null) {
-      await FileSystemBlobCleanupResource.retireBlob(
-        auth,
-        this,
-        replacedBlobId,
-        transaction
-      );
+      await FileSystemBlobCleanupResource.retireBlob(auth, this, {
+        blobId: replacedBlobId,
+        transaction,
+      });
     }
 
     return new Ok(this);

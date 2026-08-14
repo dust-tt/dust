@@ -8,30 +8,16 @@ import type {
 import { FileSystemBlobCleanupResource } from "@app/lib/resources/file_system_blob_cleanup_resource";
 import { FileSystemNodeResource } from "@app/lib/resources/file_system_node_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { describe, expect, it, vi } from "vitest";
-
-const { getBlobMetadata } = vi.hoisted(() => ({
-  getBlobMetadata: vi.fn(async (_path: string) => [
-    { size: "7", contentType: "text/plain", contentEncoding: "identity" },
-  ]),
-}));
-
-vi.mock("@app/lib/file_storage", async (importOriginal) => {
-  const original =
-    await importOriginal<typeof import("@app/lib/file_storage")>();
-  return {
-    ...original,
-    getPrivateUploadBucket: () => ({
-      file: (path: string) => ({
-        getMetadata: () => getBlobMetadata(path),
-      }),
-      getSignedUploadUrl: vi.fn(async () => "https://upload.example.com"),
-    }),
-  };
-});
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { describe, expect, it } from "vitest";
 
 describe("FileSystemBlobCleanupResource", () => {
   it("keeps abandoned uploads queued and removes committed uploads", async () => {
+    fileStorageMock.setFileMetadata(() => ({
+      size: "7",
+      contentType: "text/plain",
+      contentEncoding: "identity",
+    }));
     const { authenticator } = await createResourceTest({ role: "admin" });
     const conversationId = `conversation-${randomUUID()}`;
     const scope = new FileSystemScope([
@@ -101,7 +87,7 @@ describe("FileSystemBlobCleanupResource", () => {
       await FileSystemBlobCleanupResource.fetchForBlob(
         authenticator,
         abandonedNode,
-        preparedFiles[0].upload.blobId
+        { blobId: preparedFiles[0].upload.blobId }
       )
     ).not.toBeNull();
 
@@ -118,7 +104,7 @@ describe("FileSystemBlobCleanupResource", () => {
       await FileSystemBlobCleanupResource.fetchForBlob(
         authenticator,
         committedNode,
-        preparedFiles[1].upload.blobId
+        { blobId: preparedFiles[1].upload.blobId }
       )
     ).toBeNull();
   });

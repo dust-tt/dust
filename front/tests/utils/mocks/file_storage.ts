@@ -13,6 +13,18 @@ interface SaveFileCall {
   contentType: string | undefined;
 }
 
+interface SignedUrlCall {
+  filePath: string;
+  options: Record<string, unknown> | undefined;
+}
+
+interface MockFileMetadata {
+  contentType: string;
+  size: string;
+  contentEncoding?: string;
+  contentDisposition?: string;
+}
+
 // Minimal duck-typed stand-in for the GCS `File` objects `getSortedFileVersions` resolves to.
 // Callers (e.g. FileResource.revert()) only ever call `.copy(dest)` and `.delete()` on them.
 export interface MockFileVersion {
@@ -35,13 +47,15 @@ class FileStorageMock {
   private _writeStreamCalls: WriteStreamCall[] = [];
   private _readStreamCalls: string[] = [];
   private _saveFileCalls: SaveFileCall[] = [];
+  private _signedUrlCalls: SignedUrlCall[] = [];
+  private _signedUploadUrlCalls: SignedUrlCall[] = [];
+  private _metadataCalls: string[] = [];
   private _objectStore = new Map<string, string>();
   private _fetchNotFoundPredicate: (filePath: string) => boolean = () => false;
   private _existsPredicate: (filePath: string) => boolean = () => true;
   private _saveShouldFail: (filePath: string) => boolean = () => false;
-  private _metadataForPath: (
-    filePath: string
-  ) => { contentType: string; size: string } | null = () => null;
+  private _metadataForPath: (filePath: string) => MockFileMetadata | null =
+    () => null;
   private _contentForPath: (filePath: string) => string | null = () => null;
   private _sortedFileVersions: (filePath: string) => MockFileVersion[] | null =
     () => null;
@@ -68,6 +82,18 @@ class FileStorageMock {
     return this._saveFileCalls;
   }
 
+  get signedUrlCalls(): readonly SignedUrlCall[] {
+    return this._signedUrlCalls;
+  }
+
+  get signedUploadUrlCalls(): readonly SignedUrlCall[] {
+    return this._signedUploadUrlCalls;
+  }
+
+  get metadataCalls(): readonly string[] {
+    return this._metadataCalls;
+  }
+
   /**
    * Controls what `file(path).exists()` resolves to, keyed by the GCS path.
    * Defaults to always-exists. Reset between tests via `reset()`.
@@ -89,9 +115,7 @@ class FileStorageMock {
    * Return null to fall back to the default (`text/plain`, size 0). Reset between tests
    * via `reset()`.
    */
-  setFileMetadata(
-    fn: (filePath: string) => { contentType: string; size: string } | null
-  ): void {
+  setFileMetadata(fn: (filePath: string) => MockFileMetadata | null): void {
     this._metadataForPath = fn;
   }
 
@@ -183,6 +207,9 @@ class FileStorageMock {
     this._writeStreamCalls.length = 0;
     this._readStreamCalls.length = 0;
     this._saveFileCalls.length = 0;
+    this._signedUrlCalls.length = 0;
+    this._signedUploadUrlCalls.length = 0;
+    this._metadataCalls.length = 0;
     this._objectStore.clear();
     this._fetchNotFoundPredicate = () => false;
     this._existsPredicate = () => true;
@@ -251,14 +278,16 @@ class FileStorageMock {
       exists: vi.fn(() =>
         Promise.resolve([this._existsPredicate(filePath ?? "")])
       ),
-      getMetadata: vi.fn(() =>
-        Promise.resolve([
-          this._metadataForPath(filePath ?? "") ?? {
+      getMetadata: vi.fn(() => {
+        const path = filePath ?? "";
+        this._metadataCalls.push(path);
+        return Promise.resolve([
+          this._metadataForPath(path) ?? {
             contentType: "text/plain",
             size: "0",
           },
-        ])
-      ),
+        ]);
+      }),
       getSignedUrl: vi.fn().mockResolvedValue(["https://signed-url.test"]),
       publicUrl: vi.fn().mockReturnValue("https://public-url.test"),
       save: vi
@@ -290,7 +319,18 @@ class FileStorageMock {
       getFileContentType: vi
         .fn()
         .mockResolvedValue({ isOk: () => false, isErr: () => true }),
-      getSignedUrl: vi.fn().mockResolvedValue("https://signed-url.test"),
+      getSignedUrl: vi.fn(
+        (filePath: string, options?: Record<string, unknown>) => {
+          this._signedUrlCalls.push({ filePath, options });
+          return Promise.resolve("https://signed-url.test");
+        }
+      ),
+      getSignedUploadUrl: vi.fn(
+        (filePath: string, options?: Record<string, unknown>) => {
+          this._signedUploadUrlCalls.push({ filePath, options });
+          return Promise.resolve("https://signed-upload-url.test");
+        }
+      ),
       uploadFileToBucket: vi.fn().mockResolvedValue(undefined),
       uploadBufferToBucket: vi.fn(
         (args: { buffer: Buffer; contentType: string; filePath: string }) => {

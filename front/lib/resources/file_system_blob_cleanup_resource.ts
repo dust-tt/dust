@@ -66,9 +66,11 @@ export class FileSystemBlobCleanupResource extends BaseResource<FileSystemBlobCl
   private static async makeNew(
     auth: Authenticator,
     node: FileSystemNodeResource,
-    blobId: string,
-    notBefore: Date,
-    transaction?: Transaction
+    {
+      blobId,
+      notBefore,
+      transaction,
+    }: { blobId: string; notBefore: Date; transaction?: Transaction }
   ): Promise<FileSystemBlobCleanupResource> {
     if (node.workspaceId !== auth.getNonNullableWorkspace().id) {
       throw new Error("Cannot register a filesystem blob across workspaces.");
@@ -92,37 +94,32 @@ export class FileSystemBlobCleanupResource extends BaseResource<FileSystemBlobCl
   static registerUpload(
     auth: Authenticator,
     node: FileSystemNodeResource,
-    blobId: string
+    { blobId }: { blobId: string }
   ): Promise<FileSystemBlobCleanupResource> {
-    return this.makeNew(
-      auth,
-      node,
+    return this.makeNew(auth, node, {
       blobId,
-      new Date(Date.now() + ABANDONED_UPLOAD_CLEANUP_DELAY_MS)
-    );
+      notBefore: new Date(Date.now() + ABANDONED_UPLOAD_CLEANUP_DELAY_MS),
+    });
   }
 
   static retireBlob(
     auth: Authenticator,
     node: FileSystemNodeResource,
-    blobId: string,
-    transaction: Transaction
+    { blobId, transaction }: { blobId: string; transaction: Transaction }
   ): Promise<FileSystemBlobCleanupResource> {
     // Existing signed reads may still use the replaced blob. Keep it until
     // every URL issued before this commit has expired, plus a small margin.
-    return this.makeNew(
-      auth,
-      node,
+    return this.makeNew(auth, node, {
       blobId,
-      new Date(Date.now() + RETIRED_BLOB_CLEANUP_DELAY_MS),
-      transaction
-    );
+      notBefore: new Date(Date.now() + RETIRED_BLOB_CLEANUP_DELAY_MS),
+      transaction,
+    });
   }
 
   static async fetchForBlob(
     auth: Authenticator,
     node: FileSystemNodeResource,
-    blobId: string
+    { blobId }: { blobId: string }
   ): Promise<FileSystemBlobCleanupResource | null> {
     if (node.workspaceId !== auth.getNonNullableWorkspace().id) {
       return null;
@@ -138,8 +135,7 @@ export class FileSystemBlobCleanupResource extends BaseResource<FileSystemBlobCl
   static async fetchForBlobForUpdate(
     auth: Authenticator,
     node: FileSystemNodeResource,
-    blobId: string,
-    transaction: Transaction
+    { blobId, transaction }: { blobId: string; transaction: Transaction }
   ): Promise<FileSystemBlobCleanupResource | null> {
     if (node.workspaceId !== auth.getNonNullableWorkspace().id) {
       return null;
@@ -156,7 +152,7 @@ export class FileSystemBlobCleanupResource extends BaseResource<FileSystemBlobCl
   async markBlobLive(
     auth: Authenticator,
     node: FileSystemNodeResource,
-    transaction: Transaction
+    { transaction }: { transaction: Transaction }
   ): Promise<boolean> {
     if (
       this.workspaceId !== auth.getNonNullableWorkspace().id ||
@@ -166,11 +162,11 @@ export class FileSystemBlobCleanupResource extends BaseResource<FileSystemBlobCl
       return false;
     }
 
-    return (
-      (await this.model.destroy({
-        where: { workspaceId: this.workspaceId, id: this.id },
-        transaction,
-      })) === 1
-    );
+    const deletedCount = await this.model.destroy({
+      where: { workspaceId: this.workspaceId, id: this.id },
+      transaction,
+    });
+
+    return deletedCount === 1;
   }
 }
