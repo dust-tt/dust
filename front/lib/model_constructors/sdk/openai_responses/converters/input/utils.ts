@@ -20,6 +20,7 @@ import type {
   CacheOption,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
+import { isToolDeferred } from "@app/lib/model_constructors/types/tool_search";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   FunctionTool,
@@ -317,7 +318,7 @@ export function toFunctionTool(
     // the core provider, which sends `strict: false` for function tools.
     strict: false,
     parameters: { type: "object", ...tool.inputSchema },
-    ...(toolSearchEnabled && !tool.eager ? { defer_loading: true } : {}),
+    ...(isToolDeferred(tool, toolSearchEnabled) ? { defer_loading: true } : {}),
   };
 }
 
