@@ -4,6 +4,8 @@ import type {
   FileSystemOperation,
 } from "@app/lib/api/file_system/namespace_types";
 import {
+  FILE_SYSTEM_MODE_LIMITS,
+  FILE_SYSTEM_NAME_MAX_BYTES,
   FILE_SYSTEM_READ_DIR_PAGE_SIZE_LIMITS,
   FileSystemOperationError,
 } from "@app/lib/api/file_system/namespace_types";
@@ -15,11 +17,13 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import type { Attributes } from "sequelize";
+import type { Attributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 type ReadDirRequest = Extract<FileSystemOperation, { operation: "readDir" }>;
 type ReadDirOptions = Pick<ReadDirRequest, "afterName" | "limit">;
+type CreateRequest = Extract<FileSystemOperation, { operation: "create" }>;
+type CreateOptions = Pick<CreateRequest, "kind" | "mode" | "name">;
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileSystemNodeResource
@@ -46,7 +50,11 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
   private static async baseFetch(
     auth: Authenticator,
     scope: FileSystemScope,
-    options: ResourceFindOptions<FileSystemNodeModel> = {}
+    options: ResourceFindOptions<FileSystemNodeModel> = {},
+    {
+      transaction,
+      forUpdate = false,
+    }: { transaction?: Transaction; forUpdate?: boolean } = {}
   ): Promise<FileSystemNodeResource[]> {
     const readableRoots = scope.readableRoots();
     if (readableRoots.length === 0) {
@@ -64,6 +72,8 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
           rootId: root.id,
         })),
       },
+      transaction,
+      ...(transaction && forUpdate ? { lock: transaction.LOCK.UPDATE } : {}),
     });
 
     return rows.map((row) => new this(this.model, row.get()));
@@ -117,12 +127,18 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
   static async fetchById(
     auth: Authenticator,
     scope: FileSystemScope,
-    nodeId: number
+    nodeId: number,
+    options: { transaction?: Transaction; forUpdate?: boolean } = {}
   ): Promise<FileSystemNodeResource | null> {
-    const [node] = await this.baseFetch(auth, scope, {
-      where: { id: nodeId },
-      limit: 1,
-    });
+    const [node] = await this.baseFetch(
+      auth,
+      scope,
+      {
+        where: { id: nodeId },
+        limit: 1,
+      },
+      options
+    );
     return node ?? null;
   }
 
@@ -130,6 +146,103 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     return (
       this.workspaceId === auth.getNonNullableWorkspace().id &&
       scope.canRead(this.rootKind, this.rootId)
+    );
+  }
+
+  private isWritableBy(auth: Authenticator, scope: FileSystemScope): boolean {
+    return (
+      this.workspaceId === auth.getNonNullableWorkspace().id &&
+      scope.canWrite(this.rootKind, this.rootId)
+    );
+  }
+
+  async createChild(
+    auth: Authenticator,
+    scope: FileSystemScope,
+    request: CreateOptions,
+    transaction: Transaction
+  ): Promise<Result<FileSystemNodeResource, FileSystemOperationError>> {
+    if (!this.isReadableBy(auth, scope) || this.kind !== "directory") {
+      return new Err(
+        new FileSystemOperationError(
+          "not_found",
+          "The parent directory was not found."
+        )
+      );
+    }
+    if (!this.isWritableBy(auth, scope)) {
+      return new Err(
+        new FileSystemOperationError(
+          "unauthorized",
+          "You do not have write access to this directory."
+        )
+      );
+    }
+    if (
+      request.name === "." ||
+      request.name === ".." ||
+      request.name.includes("/") ||
+      request.name.includes("\0") ||
+      Buffer.byteLength(request.name, "utf8") === 0 ||
+      Buffer.byteLength(request.name, "utf8") > FILE_SYSTEM_NAME_MAX_BYTES
+    ) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          `A file name must be between 1 and ${FILE_SYSTEM_NAME_MAX_BYTES} bytes and cannot contain a slash or null byte.`
+        )
+      );
+    }
+    if (
+      !Number.isInteger(request.mode) ||
+      request.mode < FILE_SYSTEM_MODE_LIMITS.min ||
+      request.mode > FILE_SYSTEM_MODE_LIMITS.max
+    ) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          `File mode must be between ${FILE_SYSTEM_MODE_LIMITS.min} and ${FILE_SYSTEM_MODE_LIMITS.max}.`
+        )
+      );
+    }
+
+    const [existing] = await FileSystemNodeResource.baseFetch(
+      auth,
+      scope,
+      {
+        where: { parentId: this.id, name: request.name },
+        limit: 1,
+      },
+      { transaction }
+    );
+    if (existing) {
+      return new Err(
+        new FileSystemOperationError(
+          "already_exists",
+          `${request.name} already exists.`
+        )
+      );
+    }
+
+    const row = await FileSystemNodeResource.model.create(
+      {
+        workspaceId: this.workspaceId,
+        parentId: this.id,
+        rootKind: this.rootKind,
+        rootId: this.rootId,
+        name: request.name,
+        kind: request.kind,
+        mode: request.mode,
+        size: 0,
+        contentType: null,
+        blobId: null,
+        contentRevision: 0,
+      },
+      { transaction }
+    );
+
+    return new Ok(
+      new FileSystemNodeResource(FileSystemNodeResource.model, row.get())
     );
   }
 

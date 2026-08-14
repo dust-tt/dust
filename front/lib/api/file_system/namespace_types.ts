@@ -7,6 +7,15 @@ export const FILE_SYSTEM_READ_DIR_PAGE_SIZE_LIMITS = {
   max: 256,
 } as const;
 
+export const FILE_SYSTEM_NAME_MAX_BYTES = 255;
+
+export const FILE_SYSTEM_MODE_LIMITS = {
+  min: 0,
+  max: 0o7777,
+} as const;
+
+export const FILE_SYSTEM_REQUEST_ID_MAX_LENGTH = 255;
+
 /** The stable file or directory identity returned by the namespace. */
 export type FileSystemNodeType = {
   id: number;
@@ -33,6 +42,14 @@ export type FileSystemOperation =
       nodeId: number;
       afterName: string | null;
       limit: number;
+    }
+  | {
+      operation: "create";
+      requestId: string;
+      parentId: number;
+      name: string;
+      kind: FileSystemNodeKind;
+      mode: number;
     };
 
 export type FileSystemOperationResponse = {
@@ -42,7 +59,11 @@ export type FileSystemOperationResponse = {
   nextAfterName?: string | null;
 };
 
-export type FileSystemOperationErrorCode = "invalid_operation" | "not_found";
+export type FileSystemOperationErrorCode =
+  | "already_exists"
+  | "invalid_operation"
+  | "not_found"
+  | "unauthorized";
 
 export class FileSystemOperationError extends Error {
   constructor(

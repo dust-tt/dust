@@ -20,4 +20,11 @@ export class FileSystemScope {
       (root) => root.kind === kind && root.id === id && root.permissions.canRead
     );
   }
+
+  canWrite(kind: FileSystemRootKind, id: string): boolean {
+    return this.roots.some(
+      (root) =>
+        root.kind === kind && root.id === id && root.permissions.canWrite
+    );
+  }
 }
