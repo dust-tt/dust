@@ -8,6 +8,10 @@ import { fileURLToPath } from "url";
 // and syncs the "a11y-issues" tag on story metas: added to files with at
 // least one violating story, removed from files that are now clean. Commit
 // the resulting diff. Usage: `npm run a11y:sync`.
+//
+// GEN8 note: console is used deliberately — this is a standalone Node script
+// where the app logger is not available, matching the sibling build-cjs.mjs
+// and the front/scripts convention.
 
 const TAG = "a11y-issues";
 
