@@ -262,8 +262,10 @@ export async function ensurePodSandboxReady(
       PodSandboxAdapter.ensureSandboxActive(auth, pod, { requireRunning }),
     // Pods are their own scope and cannot move — the config is static.
     deriveConfig: () => ({
+      // Provisioning variant: the boot may be triggered by an invoker authorized
+      // only through app sharing, who cannot read the Pod.
       getFileSystem: () =>
-        DustFileSystem.forPod(auth, pod, {
+        DustFileSystem.forPodSandboxProvisioning(auth, pod, {
           sandboxOnlyMounts: podSandboxOnlyMounts(pod),
         }),
       runtimeOwner: {

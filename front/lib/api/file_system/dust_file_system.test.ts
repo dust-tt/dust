@@ -208,6 +208,58 @@ describe("DustFileSystem.forPod", () => {
 });
 
 // ---------------------------------------------------------------------------
+// forPodSandboxProvisioning
+// ---------------------------------------------------------------------------
+
+describe("DustFileSystem.forPodSandboxProvisioning", () => {
+  it("returns Ok for a same-workspace user who cannot read the pod", async () => {
+    const { workspace, user } = await createResourceTest({ role: "user" });
+    // The user is deliberately not added to the pod.
+    const projectSpace = await SpaceFactory.project(workspace);
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    // The user-facing factory refuses this caller...
+    const guarded = await DustFileSystem.forPod(auth, projectSpace);
+    expect(guarded.isErr()).toBe(true);
+
+    // ...but sandbox provisioning builds the same pod-level mounts regardless of
+    // who triggered the boot (e.g. an invoker authorized through app sharing).
+    const result = await DustFileSystem.forPodSandboxProvisioning(
+      auth,
+      projectSpace
+    );
+    assert(result.isOk());
+    const mounts = result.value.getMounts();
+    expect(mounts).toHaveLength(1);
+    expect(mounts[0].kind).toBe("pod");
+    expect(mounts[0].id).toBe(projectSpace.sId);
+    expect(mounts[0].sandboxMountPoint).toBe(`/files/pod-${projectSpace.sId}`);
+  });
+
+  it("returns Err(unauthorized) for a caller from another workspace", async () => {
+    const { authenticator: otherWorkspaceAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const { workspace: podWorkspace } = await createResourceTest({
+      role: "admin",
+    });
+    const projectSpace = await SpaceFactory.project(podWorkspace);
+
+    const result = await DustFileSystem.forPodSandboxProvisioning(
+      otherWorkspaceAuth,
+      projectSpace
+    );
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("unauthorized");
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // forUser
 // ---------------------------------------------------------------------------
 
