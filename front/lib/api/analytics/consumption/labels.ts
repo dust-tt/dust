@@ -21,7 +21,7 @@ import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
  * - "user": user sIds
  * - "group": group sIds
  * - "model": raw model ids
- * - "tool": MCP server names
+ * - "tool": internal MCP server names or remote MCP server sIds
  * - "skill": skill sIds
  * - "source": origin slugs
  */
@@ -118,8 +118,10 @@ export async function resolveDimensionLabels(
       );
 
     case "tool": {
-      const metadata =
-        await MCPServerViewResource.resolveDisplayMetadataByNames(auth, keys);
+      const metadata = await MCPServerViewResource.resolveDisplayMetadata(
+        auth,
+        keys
+      );
       return new Map(
         keys.map((key) => {
           const tool = metadata.get(key);

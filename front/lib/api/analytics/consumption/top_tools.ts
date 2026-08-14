@@ -21,7 +21,7 @@ import { Ok } from "@app/types/shared/result";
  */
 
 export type ConsumptionTopToolRow = {
-  // The MCP server name, which is also what the `tool` filter takes.
+  // The internal MCP server name or remote MCP server sId used by the `tool` filter.
   serverName: string;
   name: string;
   icon: string | null;

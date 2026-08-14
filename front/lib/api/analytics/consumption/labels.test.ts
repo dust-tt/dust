@@ -1,3 +1,4 @@
+import { getInternalMCPServerIconByName } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   resolveDimensionDisplayNames,
   resolveDimensionLabels,
@@ -5,7 +6,6 @@ import {
 import { getAgentModelDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
 import { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -157,38 +157,27 @@ describe("resolveDimensionLabels", () => {
     });
   });
 
-  it("labels remote tools by server and view name", async () => {
+  it("labels internal tools by name and remote tools by id", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
     const server = await RemoteMCPServerFactory.create(workspace, {
       name: "Customer records",
     });
-    const view = await MCPServerViewResource.getMCPServerViewForSystemSpace(
-      authenticator,
-      server.sId
-    );
-    if (!view) {
-      throw new Error("Expected the remote server system view to exist.");
-    }
-    await view.updateNameAndDescription(
-      authenticator,
-      "customer_records_admin"
-    );
 
     const labels = await resolveDimensionLabels(authenticator, "tool", [
-      server.cachedName,
-      "customer_records_admin",
+      "image_generation",
+      server.sId,
     ]);
 
-    expect(labels.get(server.cachedName)).toEqual({
-      name: "Customer records",
+    expect(labels.get("image_generation")).toEqual({
+      name: "Create Images",
       pictureUrl: null,
       description: null,
-      icon: server.icon,
+      icon: getInternalMCPServerIconByName("image_generation"),
     });
-    expect(labels.get("customer_records_admin")).toEqual({
-      name: "Customer Records Admin",
+    expect(labels.get(server.sId)).toEqual({
+      name: "Customer records",
       pictureUrl: null,
       description: null,
       icon: server.icon,
