@@ -8,7 +8,7 @@ const CONSUMPTION_EXPORTS_PREFIX = "consumption_exports/";
 const RETENTION_DAYS = 15;
 
 export async function cleanupConsumptionExportsActivity(): Promise<void> {
-  const cutoff = Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000;
+  const cutoffMs = Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000;
   const bucket = getPrivateUploadBucket();
 
   const { files } = await bucket.getAllFilesByPrefix({
