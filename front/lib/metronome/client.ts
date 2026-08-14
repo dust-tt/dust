@@ -1297,6 +1297,55 @@ export async function getMetronomeContractPackageAliases({
 // ---------------------------------------------------------------------------
 
 /**
+ * Clear the scheduled end date on the given subscriptions, making them
+ * open-ended again.
+ *
+ * Ending a contract truncates its subscriptions to the contract end; clearing
+ * the contract end date (`reactivateMetronomeContract`) does NOT reopen them —
+ * they stay bounded to the period end that was current when the contract was
+ * cancelled. Once that date passes the subscription is dead: seat adds are
+ * rejected ("Subscription seat add starting at date must be before the
+ * subscription ends") and nothing bills.
+ */
+export async function clearSubscriptionEndDates({
+  metronomeCustomerId,
+  contractId,
+  subscriptionIds,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  subscriptionIds: string[];
+}): Promise<Result<void, Error>> {
+  if (subscriptionIds.length === 0) {
+    return new Ok(undefined);
+  }
+
+  try {
+    await getMetronomeClient().v2.contracts.edit({
+      customer_id: metronomeCustomerId,
+      contract_id: contractId,
+      update_subscriptions: subscriptionIds.map((subscription_id) => ({
+        subscription_id,
+        ending_before: null,
+      })),
+    });
+
+    logger.info(
+      { metronomeCustomerId, contractId, subscriptionIds },
+      "[Metronome] Cleared subscription end dates"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, contractId, subscriptionIds },
+      "[Metronome] Failed to clear subscription end dates"
+    );
+    return new Err(error);
+  }
+}
+
+/**
  * Set the absolute quantity on a QUANTITY_ONLY subscription.
  * Always sets the total — safe against race conditions.
  */
