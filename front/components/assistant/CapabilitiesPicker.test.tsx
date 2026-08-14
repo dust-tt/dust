@@ -94,6 +94,8 @@ vi.mock(import("@app/lib/swr/skill_configurations"), () => ({
     isSkillsLoading: false,
     mutateSkills: vi.fn(async () => undefined),
   }),
+  skillSpaceScopeForConversation: (podId?: string | null) =>
+    podId ? { mode: "pod", podId } : { mode: "excludePodScoped" },
 }));
 
 vi.mock(import("@app/lib/swr/useIsMobile"), () => ({
