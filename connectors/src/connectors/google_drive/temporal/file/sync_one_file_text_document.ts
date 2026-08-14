@@ -1,4 +1,7 @@
-import { runWithGoogleDriveContentPhaseMemoryTelemetry } from "@connectors/connectors/google_drive/temporal/file/content_memory_telemetry";
+import {
+  getGoogleDriveDocumentContentSizeBytes,
+  runWithGoogleDriveContentPhaseMemoryTelemetry,
+} from "@connectors/connectors/google_drive/temporal/file/content_memory_telemetry";
 import { handleFileExport } from "@connectors/connectors/google_drive/temporal/file/handle_file_export";
 import { handleGoogleDriveExport } from "@connectors/connectors/google_drive/temporal/file/handle_google_drive_export";
 import { updateGoogleDriveFiles } from "@connectors/connectors/google_drive/temporal/file/update_google_drive_files";
@@ -32,7 +35,6 @@ export async function syncOneFileTextDocument(
   maxDocumentLen: number
 ) {
   let documentContent: CoreAPIDataSourceDocumentSection | null = null;
-  let payloadSizeBytes: number | null = null;
   let skipReason: string | undefined;
 
   const mimeTypesToDownload = getMimeTypesToDownload({
@@ -45,7 +47,6 @@ export async function syncOneFileTextDocument(
   if (MIME_TYPES_TO_EXPORT[file.mimeType]) {
     const res = await handleGoogleDriveExport(oauth2client, file, localLogger);
     documentContent = res.content;
-    payloadSizeBytes = res.payloadSizeBytes;
     if (res.skipReason) {
       localLogger.info(
         {},
@@ -55,7 +56,7 @@ export async function syncOneFileTextDocument(
     }
   } else if (mimeTypesToDownload.includes(file.mimeType)) {
     try {
-      const res = await handleFileExport(
+      documentContent = await handleFileExport(
         oauth2client,
         documentId,
         file,
@@ -65,8 +66,6 @@ export async function syncOneFileTextDocument(
         connectorId,
         startSyncTs
       );
-      documentContent = res.content;
-      payloadSizeBytes = res.payloadSizeBytes;
     } catch (e) {
       if (e instanceof WithRetriesError) {
         localLogger.warn(
@@ -79,13 +78,16 @@ export async function syncOneFileTextDocument(
   }
 
   if (documentContent) {
+    const upsertPayloadSizeBytes =
+      getGoogleDriveDocumentContentSizeBytes(documentContent);
     let upsertTimestampMs: number | undefined;
     try {
       upsertTimestampMs = await runWithGoogleDriveContentPhaseMemoryTelemetry({
         logger: localLogger,
         mimeType: file.mimeType,
         phase: "dust_upsert",
-        getPayloadSizeBytes: () => payloadSizeBytes,
+        payloadKind: "extracted_document",
+        getPayloadSizeBytes: () => upsertPayloadSizeBytes,
         task: () =>
           upsertGdriveDocument(
             dataSourceConfig,

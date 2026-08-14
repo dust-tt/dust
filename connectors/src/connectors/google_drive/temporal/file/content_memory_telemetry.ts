@@ -1,3 +1,4 @@
+import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { getStatsDClient } from "@connectors/types/shared/statsd";
 
 const CONTENT_MEMORY_SAMPLE_INTERVAL_MS = 1_000;
@@ -15,6 +16,10 @@ export type GoogleDriveContentPhase =
   | "download_export"
   | "extraction"
   | "dust_upsert";
+
+export type GoogleDriveContentPayloadKind =
+  | "google_response"
+  | "extracted_document";
 
 function maxMemorySnapshot(
   currentPeak: MemorySnapshot,
@@ -158,9 +163,12 @@ function emitContentPhaseMemoryTelemetry({
   logger,
   mimeType,
   phase,
+  payloadKind,
   payloadSizeBytes,
   processingDurationMs,
   outcome,
+  activeOperationsAtStart,
+  peakActiveOperations,
   memoryAtStart,
   peakMemory,
   memoryAtEnd,
@@ -168,9 +176,12 @@ function emitContentPhaseMemoryTelemetry({
   logger: ContentLogger;
   mimeType: string;
   phase: GoogleDriveContentPhase;
+  payloadKind: GoogleDriveContentPayloadKind;
   payloadSizeBytes: number | null;
   processingDurationMs: number;
   outcome: "success" | "error";
+  activeOperationsAtStart: number;
+  peakActiveOperations: number;
   memoryAtStart: MemorySnapshot;
   peakMemory: MemorySnapshot;
   memoryAtEnd: MemorySnapshot;
@@ -178,6 +189,7 @@ function emitContentPhaseMemoryTelemetry({
   const metricPrefix = `${CONTENT_METRIC_PREFIX}.phase`;
   const tags = [
     `phase:${phase}`,
+    `payload_kind:${payloadKind}`,
     `mime_type:${mimeType}`,
     `payload_size_known:${payloadSizeBytes !== null}`,
     `outcome:${outcome}`,
@@ -208,9 +220,12 @@ function emitContentPhaseMemoryTelemetry({
     {
       mimeType,
       phase,
+      payloadKind,
       payloadSizeBytes,
       processingDurationMs,
       outcome,
+      activeOperationsAtStart,
+      peakActiveOperations,
       memoryAtStart,
       peakMemory,
       memoryAtEnd,
@@ -236,25 +251,39 @@ export function getGoogleDrivePayloadSizeBytes(data: unknown): number | null {
   }
 }
 
+export function getGoogleDriveDocumentContentSizeBytes(
+  documentContent: CoreAPIDataSourceDocumentSection
+): number {
+  return Buffer.byteLength(JSON.stringify(documentContent), "utf8");
+}
+
 export async function runWithGoogleDriveContentPhaseMemoryTelemetry<T>({
   task,
   getPayloadSizeBytes,
   logger,
   mimeType,
   phase,
+  payloadKind,
 }: {
   task: () => Promise<T>;
   getPayloadSizeBytes: (result: T) => number | null;
   logger: ContentLogger;
   mimeType: string;
   phase: GoogleDriveContentPhase;
+  payloadKind: GoogleDriveContentPayloadKind;
 }): Promise<T> {
   const startedAtMs = Date.now();
+  const activeOperationsAtStart = activeContentOperations;
+  let peakActiveOperations = activeContentOperations;
   const memoryAtStart = process.memoryUsage();
   let peakMemory = memoryAtStart;
   let outcome: "success" | "error" = "success";
   let payloadSizeBytes: number | null = null;
   const memorySampleInterval = setInterval(() => {
+    peakActiveOperations = Math.max(
+      peakActiveOperations,
+      activeContentOperations
+    );
     peakMemory = maxMemorySnapshot(peakMemory, process.memoryUsage());
   }, CONTENT_MEMORY_SAMPLE_INTERVAL_MS);
 
@@ -267,15 +296,22 @@ export async function runWithGoogleDriveContentPhaseMemoryTelemetry<T>({
     throw error;
   } finally {
     clearInterval(memorySampleInterval);
+    peakActiveOperations = Math.max(
+      peakActiveOperations,
+      activeContentOperations
+    );
     const memoryAtEnd = process.memoryUsage();
     peakMemory = maxMemorySnapshot(peakMemory, memoryAtEnd);
     emitContentPhaseMemoryTelemetry({
       logger,
       mimeType,
       phase,
+      payloadKind,
       payloadSizeBytes,
       processingDurationMs: Date.now() - startedAtMs,
       outcome,
+      activeOperationsAtStart,
+      peakActiveOperations,
       memoryAtStart,
       peakMemory,
       memoryAtEnd,

@@ -17,7 +17,6 @@ import { GaxiosError } from "googleapis-common";
 
 export type GoogleDriveExportResult = {
   content: CoreAPIDataSourceDocumentSection | null;
-  payloadSizeBytes: number | null;
   skipReason?: string;
 };
 
@@ -40,6 +39,7 @@ export async function handleGoogleDriveExport(
         logger: localLogger,
         mimeType: file.mimeType,
         phase: "download_export",
+        payloadKind: "google_response",
         getPayloadSizeBytes: (response) =>
           getGoogleDrivePayloadSizeBytes(response.data),
         task: () =>
@@ -68,6 +68,7 @@ export async function handleGoogleDriveExport(
         logger: localLogger,
         mimeType: file.mimeType,
         phase: "extraction",
+        payloadKind: "google_response",
         getPayloadSizeBytes: () => payloadSizeBytes,
         task: async () => {
           if (typeof res.data === "string") {
@@ -80,7 +81,6 @@ export async function handleGoogleDriveExport(
                       sections: [],
                     }
                   : null,
-              payloadSizeBytes,
             };
           } else if (
             ["object", "number", "boolean", "bigint"].includes(typeof res.data)
@@ -98,7 +98,6 @@ export async function handleGoogleDriveExport(
                       sections: [],
                     }
                   : null,
-              payloadSizeBytes,
             };
           } else {
             localLogger.error(
@@ -108,7 +107,7 @@ export async function handleGoogleDriveExport(
               },
               "Unexpected GDrive export response type"
             );
-            return { content: null, payloadSizeBytes };
+            return { content: null };
           }
         },
       });
@@ -121,7 +120,7 @@ export async function handleGoogleDriveExport(
             },
             "Can't export Gdrive document. 404 error returned, even though we know the file exists. Skipping."
           );
-          return { content: null, payloadSizeBytes: null };
+          return { content: null };
         }
 
         if (e.response?.status === 403) {
@@ -142,7 +141,7 @@ export async function handleGoogleDriveExport(
               { error: parsedBody.error },
               `Can't export Gdrive document. Skippable reason: ${firstSkippableReason}. Skipping.`
             );
-            return { content: null, payloadSizeBytes: null };
+            return { content: null };
           }
         }
 
@@ -155,7 +154,7 @@ export async function handleGoogleDriveExport(
             { error: e.message },
             "File is too large to be exported. Skipping."
           );
-          return { content: null, payloadSizeBytes: null };
+          return { content: null };
         }
 
         // If Google consistently returns 500 Internal Server Error after many
@@ -173,7 +172,6 @@ export async function handleGoogleDriveExport(
               );
               return {
                 content: null,
-                payloadSizeBytes: null,
                 skipReason: "google_internal_server_error",
               };
             }
@@ -186,7 +184,7 @@ export async function handleGoogleDriveExport(
 
       if (isFileTooLargeToDownloadError(e)) {
         localLogger.info("Google document too large to be exported, skipping.");
-        return { content: null, payloadSizeBytes: null };
+        return { content: null };
       }
 
       localLogger.error({ error: e }, "Error exporting Google document");
