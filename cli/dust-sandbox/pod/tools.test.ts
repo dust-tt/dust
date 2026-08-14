@@ -32,11 +32,14 @@ function makeFakeDsbx({
   stderr,
   exitCode,
   sleepSeconds,
+  holdPipeSeconds,
 }: {
   stdout?: string;
   stderr?: string;
   exitCode?: number;
   sleepSeconds?: number;
+  /** Leave a background child holding the stdout pipe open after exit. */
+  holdPipeSeconds?: number;
 } = {}): FakeDsbx {
   const dir = mkdtempSync(join(tmpdir(), "fake-dsbx-"));
   const path = join(dir, "dsbx");
@@ -52,6 +55,9 @@ function makeFakeDsbx({
       'if [ -f "$dir/sleep_seconds" ]; then sleep "$(cat "$dir/sleep_seconds")"; fi',
       'if [ -f "$dir/stderr" ]; then cat "$dir/stderr" >&2; fi',
       'if [ -f "$dir/stdout" ]; then cat "$dir/stdout"; fi',
+      // The background sleep inherits the stdout fd, keeping the pipe open
+      // after this script exits.
+      'if [ -f "$dir/hold_pipe_seconds" ]; then sleep "$(cat "$dir/hold_pipe_seconds")" & fi',
       'if [ -f "$dir/exit_code" ]; then exit "$(cat "$dir/exit_code")"; fi',
       "exit 0",
     ].join("\n"),
@@ -69,6 +75,9 @@ function makeFakeDsbx({
   }
   if (sleepSeconds !== undefined) {
     writeFileSync(join(dir, "sleep_seconds"), String(sleepSeconds));
+  }
+  if (holdPipeSeconds !== undefined) {
+    writeFileSync(join(dir, "hold_pipe_seconds"), String(holdPipeSeconds));
   }
   return { dir, path };
 }
@@ -371,6 +380,17 @@ describe("process failures", () => {
     expect(error.code).toBe("timeout");
     expect(error.retryable).toBe(false);
     expect(error.message).toContain("slack.search");
+  });
+
+  test("throws timeout when an exited child's pipe never reaches EOF", async () => {
+    // The child exits promptly but a stray descendant inherited the stdout
+    // fd: the drain must be bounded by the same deadline, not hang forever.
+    const fake = makeFakeDsbx({ stdout: resultJson(), holdPipeSeconds: 30 });
+    const error = await expectToolCallError(
+      callThroughFake(fake, { timeoutMs: 150 })
+    );
+    expect(error.code).toBe("timeout");
+    expect(error.retryable).toBe(false);
   });
 });
 
