@@ -1,5 +1,7 @@
+import logger from "@app/logger/logger";
 import { createOrUpdateConsumptionExportCleanupSchedule } from "@app/temporal/analytics_queue/client";
 import parseArgs from "minimist";
+
 
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
