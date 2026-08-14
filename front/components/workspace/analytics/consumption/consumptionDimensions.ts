@@ -71,6 +71,12 @@ export const CONSUMPTION_DIMENSION_CONFIG: Record<
     hasAvatar: false,
     avgLabel: MESSAGE_AVG_LABEL,
   },
+  api_key: {
+    label: "API keys",
+    breakdownLabel: "API key",
+    hasAvatar: false,
+    avgLabel: MESSAGE_AVG_LABEL,
+  },
 };
 
 export function isConsumptionDimension(

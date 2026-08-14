@@ -56,6 +56,7 @@ export type ConsumptionFacets = {
   facets: {
     agent: ConsumptionAgentFacet[];
     user: ConsumptionFacet[];
+    api_key: ConsumptionFacet[];
     group: ConsumptionFacet[];
     model: ConsumptionModelFacet[];
     tool: ConsumptionFacet[];
@@ -308,6 +309,12 @@ async function fetchConsumptionFacetsWithoutTracing(
     getFacetBuckets(bucketsByDimension, "user"),
     catalog.user
   );
+  const apiKeyFacets = await resolveFacets(
+    auth,
+    "api_key",
+    getFacetBuckets(bucketsByDimension, "api_key"),
+    catalog.api_key
+  );
   const groupFacets = await resolveFacets(
     auth,
     "group",
@@ -344,6 +351,7 @@ async function fetchConsumptionFacetsWithoutTracing(
     facets: {
       agent: agentFacets,
       user: userFacets,
+      api_key: apiKeyFacets,
       group: groupFacets,
       model: modelFacets,
       tool: toolFacets,

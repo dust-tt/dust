@@ -2,6 +2,7 @@ import { listConsumptionFacetCatalogDimension } from "@app/lib/api/analytics/con
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { fetchConsumptionTopAgents } from "@app/lib/api/analytics/consumption/top_agents";
+import { fetchConsumptionTopApiKeys } from "@app/lib/api/analytics/consumption/top_api_keys";
 import { fetchConsumptionTopGroups } from "@app/lib/api/analytics/consumption/top_groups";
 import { fetchConsumptionTopModels } from "@app/lib/api/analytics/consumption/top_models";
 import { fetchConsumptionTopSkills } from "@app/lib/api/analytics/consumption/top_skills";
@@ -360,6 +361,49 @@ describe("consumption top rankings", () => {
       field: "tool.server_name",
     });
     expect(options?.aggregations?.by_group?.aggs?.messages).toBeUndefined();
+  });
+
+  it("ranks API key names on gross credits per distinct message", async () => {
+    const { auth } = await setup();
+    mockLabels({ "Production key": "Production key" });
+    mockAggs({
+      buckets: [
+        {
+          key: "Production key",
+          doc_count: 6,
+          credit_micro: { value: 3_000_000 },
+          messages: { value: 2 },
+        },
+      ],
+      totalMicro: 5_000_000,
+    });
+
+    const result = await fetchConsumptionTopApiKeys(auth, {
+      period: PERIOD,
+      limit: 10,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.apiKeys).toEqual([
+      {
+        apiKeyName: "Production key",
+        name: "Production key",
+        credits: 3,
+        messageCount: 2,
+        avgCreditsPerMessage: 1.5,
+      },
+    ]);
+
+    const [, options] = lastSearchCall();
+    expect(options?.aggregations?.by_group?.terms).toMatchObject({
+      field: "api_key_name",
+    });
+    expect(
+      options?.aggregations?.by_group?.aggs?.messages?.cardinality?.field
+    ).toBe("agent_message_id");
   });
 
   it("credits a skill with the invocations attributed to it", async () => {

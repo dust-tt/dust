@@ -55,6 +55,14 @@ describe("toConsumptionScopeFilter", () => {
             disabled: false,
           },
         ],
+        api_key: [
+          {
+            id: "api-key-1",
+            name: "Production key",
+            kind: "api_key",
+            disabled: false,
+          },
+        ],
       })
     ).toEqual({
       users: ["member-1"],
@@ -62,6 +70,7 @@ describe("toConsumptionScopeFilter", () => {
       tools: ["tool-1"],
       skills: ["skill-1"],
       sources: ["slack"],
+      api_keys: ["api-key-1"],
     });
   });
 
@@ -88,6 +97,7 @@ describe("setUsageFilterFromAttributionRow", () => {
     { dimension: "tool", expectedScopeFilter: { tools: [row.id] } },
     { dimension: "skill", expectedScopeFilter: { skills: [row.id] } },
     { dimension: "source", expectedScopeFilter: { sources: [row.id] } },
+    { dimension: "api_key", expectedScopeFilter: { api_keys: [row.id] } },
   ])("maps a $dimension row to its page-level filter", ({
     dimension,
     expectedScopeFilter,
@@ -100,12 +110,11 @@ describe("setUsageFilterFromAttributionRow", () => {
   it("replaces the selected dimension while preserving other filters", () => {
     const filter = setUsageFilterFromAttributionRow(
       {
-        agent: [
+        api_key: [
           {
-            id: "previous-agent",
-            name: "Previous agent",
-            kind: "agent",
-            image: null,
+            id: "previous-api-key",
+            name: "Previous API key",
+            kind: "api_key",
             disabled: false,
           },
         ],
@@ -119,16 +128,15 @@ describe("setUsageFilterFromAttributionRow", () => {
           },
         ],
       },
-      "agent",
+      "api_key",
       row
     );
 
-    expect(filter.agent).toEqual([
+    expect(filter.api_key).toEqual([
       {
         id: row.id,
         name: row.name,
-        kind: "agent",
-        image: row.pictureUrl,
+        kind: "api_key",
         disabled: false,
       },
     ]);

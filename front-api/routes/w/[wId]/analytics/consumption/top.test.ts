@@ -4,6 +4,10 @@ import {
   type GetConsumptionTopAgentsResponse,
 } from "@app/lib/api/analytics/consumption/top_agents";
 import {
+  fetchConsumptionTopApiKeys,
+  type GetConsumptionTopApiKeysResponse,
+} from "@app/lib/api/analytics/consumption/top_api_keys";
+import {
   fetchConsumptionTopGroups,
   type GetConsumptionTopGroupsResponse,
 } from "@app/lib/api/analytics/consumption/top_groups";
@@ -46,6 +50,13 @@ vi.mock(
   async (orig) => {
     const mod = await orig();
     return { ...mod, fetchConsumptionTopUsers: vi.fn() };
+  }
+);
+vi.mock(
+  import("@app/lib/api/analytics/consumption/top_api_keys"),
+  async (orig) => {
+    const mod = await orig();
+    return { ...mod, fetchConsumptionTopApiKeys: vi.fn() };
   }
 );
 vi.mock(
@@ -119,6 +130,22 @@ const TOP_USERS: GetConsumptionTopUsersResponse = {
       userId: "user1",
       name: "Jane Doe",
       pictureUrl: null,
+      credits: 100,
+      messageCount: 4,
+      avgCreditsPerMessage: 25,
+    },
+  ],
+};
+
+const TOP_API_KEYS: GetConsumptionTopApiKeysResponse = {
+  period: PERIOD,
+  totalCredits: 5000,
+  totalCount: 1,
+  hasMore: false,
+  apiKeys: [
+    {
+      apiKeyName: "Production key",
+      name: "Production key",
       credits: 100,
       messageCount: 4,
       avgCreditsPerMessage: 25,
@@ -210,7 +237,7 @@ const TOP_SKILLS: GetConsumptionTopSkillsResponse = {
 };
 
 // One entry per ranking endpoint. Each owns its own typed mock plumbing so the
-// table stays type-safe across seven different response shapes.
+// table stays type-safe across eight different response shapes.
 const RANKINGS = [
   {
     path: "top-agents",
@@ -227,6 +254,15 @@ const RANKINGS = [
     arrangeOk: () =>
       vi.mocked(fetchConsumptionTopUsers).mockResolvedValue(new Ok(TOP_USERS)),
     lastCall: () => vi.mocked(fetchConsumptionTopUsers).mock.lastCall,
+  },
+  {
+    path: "top-api-keys",
+    body: TOP_API_KEYS,
+    arrangeOk: () =>
+      vi
+        .mocked(fetchConsumptionTopApiKeys)
+        .mockResolvedValue(new Ok(TOP_API_KEYS)),
+    lastCall: () => vi.mocked(fetchConsumptionTopApiKeys).mock.lastCall,
   },
   {
     path: "top-models",

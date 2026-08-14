@@ -85,6 +85,13 @@ describe("fetchConsumptionFacets", () => {
           pictureUrl: null,
         },
       ],
+      api_key: [
+        {
+          value: "Production key",
+          label: "Production key",
+          pictureUrl: null,
+        },
+      ],
       group: [],
       model: [],
       tool: [],
@@ -180,6 +187,15 @@ describe("fetchConsumptionFacets", () => {
         disabled: true,
       },
     ]);
+    expect(result.value.facets.api_key).toEqual([
+      {
+        value: "Production key",
+        label: "Production key",
+        pictureUrl: null,
+        documentCount: 0,
+        disabled: true,
+      },
+    ]);
 
     const [query, options] = vi.mocked(searchConsumptionAnalytics).mock
       .calls[0];
@@ -253,11 +269,12 @@ describe("fetchConsumptionFacets", () => {
           callOptions?.aggregations?.values?.composite?.sources?.[0]?.value
             ?.terms?.field
       );
-    expect(queriedFields).toHaveLength(8);
+    expect(queriedFields).toHaveLength(9);
     expect(new Set(queriedFields)).toEqual(
       new Set([
         "agent.id",
         "user.id",
+        "api_key_name",
         "user.group_ids",
         "model.model_id",
         "tool.server_name",
@@ -275,6 +292,7 @@ describe("fetchConsumptionFacets", () => {
     vi.mocked(listConsumptionFacetCatalog).mockResolvedValue({
       agent: [],
       user: [],
+      api_key: [],
       group: [],
       model: [],
       tool: [],
@@ -304,7 +322,7 @@ describe("fetchConsumptionFacets", () => {
 
     const result = await facetsPromise;
     expect(result.isOk()).toBe(true);
-    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(7);
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(8);
   });
 
   it("returns the Elasticsearch failure before resolving historical labels", async () => {

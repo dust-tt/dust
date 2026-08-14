@@ -9,6 +9,7 @@ export const AGENT_MESSAGE_ID_FIELD = "agent_message_id";
 export const CONSUMPTION_SCOPE_DIMENSIONS = [
   "agent",
   "user",
+  "api_key",
   "group",
   "model",
   "tool",
@@ -25,6 +26,7 @@ export const CONSUMPTION_DIMENSION_FIELDS: Record<
 > = {
   agent: "agent.id",
   user: "user.id",
+  api_key: "api_key_name",
   // Multi-valued: a member can belong to several groups at once.
   group: "user.group_ids",
   model: "model.model_id",
@@ -42,6 +44,7 @@ export const CONSUMPTION_DIMENSION_UNIT: Record<
 > = {
   agent: "message",
   user: "message",
+  api_key: "message",
   group: "message",
   model: "message",
   tool: "invocation",
@@ -52,6 +55,7 @@ export const CONSUMPTION_DIMENSION_UNIT: Record<
 export const CONSUMPTION_SCOPE_FILTER_KEYS = [
   "agents",
   "users",
+  "api_keys",
   "groups",
   "models",
   "tools",
@@ -72,6 +76,7 @@ export const CONSUMPTION_DIMENSION_FILTER_KEYS: Record<
 > = {
   agent: "agents",
   user: "users",
+  api_key: "api_keys",
   group: "groups",
   model: "models",
   tool: "tools",

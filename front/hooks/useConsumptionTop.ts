@@ -6,6 +6,7 @@ import type { ConsumptionTopBody } from "@app/lib/api/analytics/consumption/sche
 import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/api/analytics/consumption/schema";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/consumption/top_agents";
+import type { GetConsumptionTopApiKeysResponse } from "@app/lib/api/analytics/consumption/top_api_keys";
 import type { GetConsumptionTopGroupsResponse } from "@app/lib/api/analytics/consumption/top_groups";
 import type { GetConsumptionTopModelsResponse } from "@app/lib/api/analytics/consumption/top_models";
 import type { GetConsumptionTopSkillsResponse } from "@app/lib/api/analytics/consumption/top_skills";
@@ -24,6 +25,7 @@ const CONSUMPTION_TOP_ENDPOINTS = {
   tool: "top-tools",
   skill: "top-skills",
   source: "top-sources",
+  api_key: "top-api-keys",
 } as const satisfies Record<ConsumptionDimension, string>;
 
 export type ConsumptionTopRow = {
@@ -45,7 +47,8 @@ type ConsumptionTopResponse =
   | GetConsumptionTopModelsResponse
   | GetConsumptionTopToolsResponse
   | GetConsumptionTopSkillsResponse
-  | GetConsumptionTopSourcesResponse;
+  | GetConsumptionTopSourcesResponse
+  | GetConsumptionTopApiKeysResponse;
 
 // Narrowed on the collection each response carries rather than on the requested
 // dimension, so a row shape that drifts from its endpoint is a type error here
@@ -132,6 +135,19 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
   if ("sources" in data) {
     return data.sources.map((row) => ({
       id: row.source,
+      name: row.name,
+      pictureUrl: null,
+      description: null,
+      icon: null,
+      modelId: null,
+      modelDisplayName: null,
+      credits: row.credits,
+      avgCredits: row.avgCreditsPerMessage,
+    }));
+  }
+  if ("apiKeys" in data) {
+    return data.apiKeys.map((row) => ({
+      id: row.apiKeyName,
       name: row.name,
       pictureUrl: null,
       description: null,

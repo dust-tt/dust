@@ -19,6 +19,7 @@ import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
  * The expected mapping is:
  * - "agent": agent sIds
  * - "user": user sIds
+ * - "api_key": raw API key names
  * - "group": group sIds
  * - "model": raw model ids
  * - "tool": internal MCP server names or remote MCP server sIds
@@ -96,6 +97,9 @@ export async function resolveDimensionLabels(
         })
       );
     }
+
+    case "api_key":
+      return labelsFromNames(new Map(keys.map((key) => [key, key])));
 
     case "group": {
       const groups = await GroupResource.listAllWorkspaceGroups(auth, {
