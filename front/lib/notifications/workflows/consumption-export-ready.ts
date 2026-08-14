@@ -43,7 +43,10 @@ export const consumptionExportReadyWorkflow = workflow(
  * Fire-and-forget helper to notify the requesting user that their consumption export is
  * ready to download. Errors are logged but don't block the caller.
  */
-export function notifyConsumptionExportReady(auth: Authenticator): void {
+export function notifyConsumptionExportReady(
+  auth: Authenticator,
+  exportId: string
+): void {
   const user = auth.user();
   if (!user) {
     return;
@@ -53,12 +56,17 @@ export function notifyConsumptionExportReady(auth: Authenticator): void {
 
   const payload: ConsumptionExportReadyPayloadType = { workspaceId };
 
+  // Ties the Novu transaction to the stable exportId so a Temporal retry after the
+  // completion ack is lost re-sends the same transaction instead of a duplicate notification.
+  const transactionId = `consumption-export-ready-${workspaceId}-${userSId}-${exportId}`;
+
   void getNovuClient()
     .then((novuClient) =>
       novuClient.triggerBulk({
         events: [
           {
             workflowId: CONSUMPTION_EXPORT_READY_TRIGGER_ID,
+            transactionId,
             to: {
               subscriberId: userSId,
               email: user.email,
@@ -73,14 +81,14 @@ export function notifyConsumptionExportReady(auth: Authenticator): void {
     .then((r) => {
       if (r.result.some((res) => !!res.error?.length)) {
         logger.error(
-          { workspaceId, userSId },
+          { workspaceId, userSId, transactionId },
           "Failed to trigger consumption export ready notification"
         );
       }
     })
     .catch((err) => {
       logger.error(
-        { err, workspaceId, userSId },
+        { err, workspaceId, userSId, transactionId },
         "Failed to trigger consumption export ready notification"
       );
     });

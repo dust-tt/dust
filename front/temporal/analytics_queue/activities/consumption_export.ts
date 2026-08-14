@@ -103,5 +103,5 @@ export async function runConsumptionExportActivity(
     .file(gcsPath)
     .save(result.value, { contentType: "application/zip", resumable: false });
 
-  notifyConsumptionExportReady(auth);
+  notifyConsumptionExportReady(auth, exportId);
 }
