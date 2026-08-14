@@ -55,11 +55,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticSoftDeletable } from "@app/lib/resources/storage/wrappers/workspace_models";
-import {
-  getResourceIdFromSId,
-  isResourceSId,
-  makeSId,
-} from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type {
   InferIncludeType,
   ResourceFindOptions,
@@ -705,8 +701,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return this.baseFetch(auth, findOptions, { includeHeavyAttributes });
   }
 
-  static async resolveDisplayMetadataByIds(auth: Authenticator, ids: string[]) {
-    const uniqueIds = [...new Set(ids)];
+  static async resolveDisplayMetadataByNames(
+    auth: Authenticator,
+    names: string[]
+  ) {
+    const uniqueNames = [...new Set(names)];
     const metadata = new Map<
       string,
       {
@@ -715,38 +714,19 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       }
     >();
 
-    for (const id of uniqueIds) {
-      if (isInternalMCPServerName(id)) {
-        metadata.set(id, {
-          name: asDisplayToolName(id),
-          icon: getInternalMCPServerIconByName(id),
+    for (const name of uniqueNames) {
+      if (isInternalMCPServerName(name)) {
+        metadata.set(name, {
+          name: asDisplayToolName(name),
+          icon: getInternalMCPServerIconByName(name),
         });
       }
     }
 
-    const remoteIds = uniqueIds.filter((id) => !isInternalMCPServerName(id));
-    if (remoteIds.length === 0) {
-      return metadata;
-    }
-
-    const remoteServers = await RemoteMCPServerResource.fetchByIds(
-      auth,
-      remoteIds
+    const remoteNames = uniqueNames.filter(
+      (name) => !isInternalMCPServerName(name)
     );
-    const remoteServerMap = new Map(
-      remoteServers.map((server) => [server.sId, server])
-    );
-    for (const [id, server] of remoteServerMap) {
-      metadata.set(id, {
-        name: server.cachedName,
-        icon: server.icon,
-      });
-    }
-
-    const names = remoteIds.filter(
-      (id) => !isResourceSId("remote_mcp_server", id)
-    );
-    if (names.length === 0) {
+    if (remoteNames.length === 0) {
       return metadata;
     }
 
@@ -757,9 +737,9 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         where: {
           serverType: "remote",
           [Op.or]: [
-            { name: { [Op.in]: names } },
+            { name: { [Op.in]: remoteNames } },
             Sequelize.where(Sequelize.col("remoteMCPServer.cachedName"), {
-              [Op.in]: names,
+              [Op.in]: remoteNames,
             }),
           ],
         },
@@ -776,20 +756,20 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       { includeMetadata: false }
     );
 
-    const requestedIds = new Set(uniqueIds);
+    const requestedNames = new Set(uniqueNames);
     for (const view of views) {
       const server = view.getRemoteMCPServerResource();
       const serverMetadata = {
         name: server.cachedName,
         icon: server.icon,
       };
-      if (view.name && requestedIds.has(view.name)) {
+      if (view.name && requestedNames.has(view.name)) {
         metadata.set(view.name, {
           name: asDisplayToolName(view.name),
           icon: server.icon,
         });
       }
-      if (requestedIds.has(server.cachedName)) {
+      if (requestedNames.has(server.cachedName)) {
         metadata.set(server.cachedName, serverMetadata);
       }
     }

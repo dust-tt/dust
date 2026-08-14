@@ -157,7 +157,7 @@ describe("resolveDimensionLabels", () => {
     });
   });
 
-  it("labels remote tools by server id, server name, and view name", async () => {
+  it("labels remote tools by server and view name", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -177,17 +177,10 @@ describe("resolveDimensionLabels", () => {
     );
 
     const labels = await resolveDimensionLabels(authenticator, "tool", [
-      server.sId,
       server.cachedName,
       "customer_records_admin",
     ]);
 
-    expect(labels.get(server.sId)).toEqual({
-      name: "Customer records",
-      pictureUrl: null,
-      description: null,
-      icon: server.icon,
-    });
     expect(labels.get(server.cachedName)).toEqual({
       name: "Customer records",
       pictureUrl: null,
