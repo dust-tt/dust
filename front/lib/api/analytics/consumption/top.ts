@@ -118,7 +118,8 @@ function buildConsumptionTopSearchTermsQuery(
   const clauseCount = termsClauses.length + 1;
   if (clauseCount > MAX_ES_QUERY_CLAUSES) {
     throw new Error(
-      `Consumption ranking search requires ${clauseCount} Elasticsearch clauses, the max is ${MAX_ES_QUERY_CLAUSES}.`
+      `Consumption ranking search requires ${clauseCount} Elasticsearch clauses, ` +
+        `the max is ${MAX_ES_QUERY_CLAUSES}.`
     );
   }
 
