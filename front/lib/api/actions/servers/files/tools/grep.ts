@@ -16,7 +16,7 @@ import {
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
 import {
   compileGrepPattern,
-  testGrepLine,
+  validateGrepLine,
 } from "@app/lib/api/actions/servers/files/tools/grep_regex";
 import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
 import { Err, Ok } from "@app/types/shared/result";
@@ -102,17 +102,17 @@ export async function grepHandler(
     for await (const line of rl) {
       lineNumber++;
 
-      const matchResult = testGrepLine({ regex, line });
-      if (matchResult.isErr()) {
+      const lineError = validateGrepLine(line);
+      if (lineError) {
         return new Err(
           new MCPError(
-            `Failed to search file \`${path}\` at line ${lineNumber}: ${matchResult.error.message}`,
+            `Failed to search file \`${path}\` at line ${lineNumber}: ${lineError.message}`,
             { tracked: false }
           )
         );
       }
 
-      if (matchResult.value) {
+      if (regex.test(line)) {
         matches.push(`${lineNumber}: ${line}`);
 
         if (matches.length >= GREP_MATCHES_MAX) {
@@ -125,7 +125,7 @@ export async function grepHandler(
   } catch (err) {
     return new Err(
       new MCPError(
-        `Failed to read file \`${path}\`: ${normalizeError(err).message}`
+        `Failed to search file \`${path}\`: ${normalizeError(err).message}`
       )
     );
   }

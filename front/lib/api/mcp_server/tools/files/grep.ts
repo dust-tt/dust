@@ -1,7 +1,7 @@
 import { GREP_MATCHES_MAX } from "@app/lib/api/actions/servers/files/metadata";
 import {
   compileGrepPattern,
-  testGrepLine,
+  validateGrepLine,
 } from "@app/lib/api/actions/servers/files/tools/grep_regex";
 import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
 import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
@@ -99,14 +99,14 @@ export function registerFilesGrepTool(server: McpServer) {
         for await (const line of rl) {
           lineNumber++;
 
-          const matchResult = testGrepLine({ regex, line });
-          if (matchResult.isErr()) {
+          const lineError = validateGrepLine(line);
+          if (lineError) {
             return mcpError(
-              `Failed to search file \`${path}\` at line ${lineNumber}: ${matchResult.error.message}`
+              `Failed to search file \`${path}\` at line ${lineNumber}: ${lineError.message}`
             );
           }
 
-          if (matchResult.value) {
+          if (regex.test(line)) {
             matches.push(`${lineNumber}: ${line}`);
 
             if (matches.length >= GREP_MATCHES_MAX) {
@@ -118,7 +118,7 @@ export function registerFilesGrepTool(server: McpServer) {
         }
       } catch (err) {
         return mcpError(
-          `Failed to read file \`${path}\`: ${normalizeError(err).message}`
+          `Failed to search file \`${path}\`: ${normalizeError(err).message}`
         );
       }
 
