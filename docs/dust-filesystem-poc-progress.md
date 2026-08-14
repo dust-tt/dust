@@ -17,11 +17,13 @@ This file records what was merged, what was changed, and which checks passed. It
 
 - PoC baseline: `4d779969bf` (`flav/minimal-dust-fuse`).
 - `main` merged from: `a119e2e145`.
+- Merge commit: `95a7d358c5`.
 - Merge method: merge commit, not rebase. The PoC history remains unchanged and the merge can be
   reverted as one commit.
 - Duplicate Front namespace, Resource, model, and migration conflicts were resolved using `main` as
   the source of truth.
-- PoC-only Front and Rust wiring is being checked against the merged interfaces.
+- The PoC-only Front endpoint, mount adapter, token, and Rust client now use the merged request and
+  response types.
 
 ## Verification
 
@@ -33,13 +35,14 @@ This file records what was merged, what was changed, and which checks passed. It
 | Front filesystem endpoint tests | Passed | 4 tests |
 | Front typecheck | Passed | `tsgo --noEmit` |
 | Front API typecheck | Failed outside filesystem | See below |
-| Rust filesystem unit tests | Passed | Included in the full 364-test run |
+| Rust filesystem unit tests | Passed | 18 Linux-targeted tests |
 | Full Rust unit suite | Failed outside filesystem | 359 passed; see below |
 | Rust formatting | Passed | `cargo fmt --check` |
 | Rust clippy | Passed with merged-code exception | See below |
-| Linux FUSE acceptance test | Pending | |
-| Live sandbox end-to-end test | Pending | |
-| Shared Pod mount test | Pending | |
+| Linux release build | Passed | `x86_64-unknown-linux-musl` |
+| Linux FUSE acceptance test | Pending | Needs a Front URL reachable from E2B |
+| Live sandbox end-to-end test | Pending | Needs a Front URL reachable from E2B |
+| Shared Pod mount test | Pending | Needs a Front URL reachable from E2B |
 
 ## Missing cases found
 
@@ -56,8 +59,21 @@ This file records what was merged, what was changed, and which checks passed. It
 - `FileSystemContentResource.writeContent` buffers a `Readable` before upload. The sandbox daemon
   streams files from its staging file and does not use this path, but the app-side adapter should
   stream large inputs before it becomes the main application write path.
+- The live runner is ready, but E2B cannot reach a local Front process directly. Opening a temporary
+  HTTPS tunnel would expose an authenticated local filesystem endpoint, so that step needs explicit
+  approval before the live run.
 
 ## Rust branch split
 
-The split will be finalized after the merged PoC passes its existing tests. Each branch must leave a
-working daemon and keep the external mount interface small.
+The Rust code is split into three stacked branches:
+
+1. `flav/dust-filesystem-rust-client` at `f8adf5efe7` adds the typed Front client, request retries,
+   error mapping, and signed GCS transfers. Five focused tests pass.
+2. `flav/dust-filesystem-rust-store` at `caf0d78392` adds the inode mapping, staged-file store, and
+   bounded caches. Fifteen focused tests pass.
+3. `flav/dust-filesystem-rust-mount` at `8793d1c7ff` adds the Linux FUSE callbacks, mount command,
+   restart supervisor, acceptance scripts, benchmarks, and current design note. Eighteen
+   Linux-targeted tests, Clippy, and the optimized Linux build pass.
+
+The third branch exposes one `filesystem` command from the module. The client, inode mapping, local
+store, FUSE callbacks, and supervisor remain private files behind that command.
