@@ -123,6 +123,15 @@ export function getTierLockReason(
 
   return null;
 }
+export function getDefaultTierId(
+  streamModels: EnabledModelConfigurationType[]
+): ModelTierId {
+  const standard = streamModels.find(
+    (model) => model.modelId === AUTO_MODEL_ID
+  );
+
+  return standard && !standard.isSelectable ? "fast" : "standard";
+}
 
 // Per reasoning-effort blurbs surfaced in the effort slider tooltip.
 const REASONING_EFFORT_INFO: Record<ReasoningEffort, string> = {
@@ -470,14 +479,14 @@ function resolveAgentDefault({
   models,
 }: {
   agentModel: AgentModelConfigurationType | null;
-  models: ModelConfigurationType[];
+  models: EnabledModelConfigurationType[];
 }): Selection {
-  const standardDefault: Selection = {
-    display: { kind: "tier", tierId: "standard" },
+  const tierDefault: Selection = {
+    display: { kind: "tier", tierId: getDefaultTierId(models) },
     toSend: undefined,
   };
   if (!agentModel) {
-    return standardDefault;
+    return tierDefault;
   }
   if (isModelStreamId(agentModel.modelId)) {
     return {
@@ -490,7 +499,7 @@ function resolveAgentDefault({
   }
   const model = findAgentModel(models, agentModel);
   if (!model) {
-    return standardDefault;
+    return tierDefault;
   }
 
   // Keep `toSend` undefined so the agent runs its own configured model/effort
@@ -514,7 +523,7 @@ export function resolveShownSelection({
   agentModel: AgentModelConfigurationType | null;
   lastRequestedModel: ModelSelectionType | null;
   sessionSticky?: ModelSelectionType | null;
-  models: ModelConfigurationType[];
+  models: EnabledModelConfigurationType[];
 }): { shown: Selection; agentDefault: Selection } {
   const agentDefault = resolveAgentDefault({ agentModel, models });
   const shown =

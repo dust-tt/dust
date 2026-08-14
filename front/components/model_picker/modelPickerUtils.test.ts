@@ -1,4 +1,5 @@
 import {
+  getDefaultTierId,
   getEffortStops,
   getInitialEffort,
   getModelEffortTier,
@@ -17,6 +18,7 @@ import {
   AUTO_COMPLEX_MODEL_CONFIG,
   AUTO_COMPLEX_MODEL_ID,
   AUTO_FAST_MODEL_ID,
+  AUTO_MODEL_ID,
 } from "@app/types/assistant/models/auto";
 import { GEMINI_2_5_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { O1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
@@ -154,6 +156,31 @@ describe("modelPickerUtils premium gating", () => {
       expect(
         getTierLockReason("standard", { ...UNGATED, streamModels: [] })
       ).toBeNull();
+    });
+  });
+
+  describe("getDefaultTierId", () => {
+    const streamModel = (
+      modelId: ModelStreamIdType,
+      isSelectable: boolean
+    ): EnabledModelConfigurationType => ({
+      ...AUTO_COMPLEX_MODEL_CONFIG,
+      modelId,
+      providerId: modelId,
+      isSelectable,
+    });
+
+    it("falls back to Basic when Standard is above the member's cap", () => {
+      expect(getDefaultTierId([streamModel(AUTO_MODEL_ID, false)])).toBe(
+        "fast"
+      );
+    });
+
+    it("keeps Standard when the member can run it, or while the payload is in flight", () => {
+      expect(getDefaultTierId([streamModel(AUTO_MODEL_ID, true)])).toBe(
+        "standard"
+      );
+      expect(getDefaultTierId([])).toBe("standard");
     });
   });
 
