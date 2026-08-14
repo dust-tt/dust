@@ -1,4 +1,7 @@
-import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
+import {
+  getMcpServerDisplayName,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
 import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import { SOURCE_ORIGIN_LABELS } from "@app/lib/api/analytics/source_labels";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
@@ -8,6 +11,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import type { MCPServerViewDisplayMetadata } from "@app/lib/resources/mcp_server_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -65,21 +69,20 @@ function traceFacetCatalogLoad<T>(
 }
 
 function toolFacetCatalogEntries(
-  mcpServerViews: MCPServerViewResource[]
+  mcpServerViews: MCPServerViewDisplayMetadata[]
 ): ConsumptionFacetCatalogEntry[] {
   const entries = mcpServerViews.flatMap<ConsumptionFacetCatalogEntry>(
     (view) => {
-      const server = view.getServerDisplayMetadata();
       if (view.serverType === "internal") {
         return [
           {
-            value: server.name,
+            value: view.serverName,
             label: getMcpServerDisplayName({
               sId: view.mcpServerId,
-              name: server.name,
+              name: view.serverName,
             }),
             pictureUrl: null,
-            icon: server.icon,
+            icon: view.icon,
           },
         ];
       }
@@ -92,10 +95,16 @@ function toolFacetCatalogEntries(
       // indexed data and would show a disabled duplicate in the UI.
       return [
         {
-          value: view.name ?? server.name,
-          label: view.getDisplayName(),
+          value: view.viewName ?? view.serverName,
+          label: getMcpServerViewDisplayName({
+            name: view.viewName,
+            server: {
+              sId: view.mcpServerId,
+              name: view.serverName,
+            },
+          }),
           pictureUrl: null,
-          icon: server.icon,
+          icon: view.icon,
         },
       ];
     }
@@ -165,7 +174,7 @@ async function listConsumptionFacetCatalogWithoutTracing(
     "mcp_servers",
     "tool",
     requestedDimension,
-    () => MCPServerViewResource.listByWorkspace(auth)
+    () => MCPServerViewResource.listDisplayMetadataByWorkspace(auth)
   );
   const skills = await traceFacetCatalogLoad(
     "skills",
