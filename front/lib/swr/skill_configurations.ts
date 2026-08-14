@@ -110,6 +110,14 @@ export type SkillsSpaceScopeParam =
   // Only this Pod's own skills, plus skills with no restrictions.
   | { mode: "pod"; podId: string };
 
+export function skillSpaceScopeForConversation(
+  conversationPodSpaceId: string | null | undefined
+): SkillsSpaceScopeParam {
+  return conversationPodSpaceId
+    ? { mode: "pod", podId: conversationPodSpaceId }
+    : { mode: "excludePodScoped" };
+}
+
 export function useSkills({
   owner,
   disabled,

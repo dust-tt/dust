@@ -16,7 +16,10 @@ import {
   useAvailableMCPServers,
   useJITMCPServerViewsFromSpaces,
 } from "@app/lib/swr/mcp_servers";
-import { useSkills } from "@app/lib/swr/skill_configurations";
+import {
+  skillSpaceScopeForConversation,
+  useSkills,
+} from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
@@ -240,9 +243,7 @@ export function CapabilitiesPicker({
   const { skills, isSkillsLoading } = useSkills({
     owner,
     status: "active",
-    spaceScope: conversationPodSpaceId
-      ? { mode: "pod", podId: conversationPodSpaceId }
-      : { mode: "excludePodScoped" },
+    spaceScope: skillSpaceScopeForConversation(conversationPodSpaceId),
     swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
 

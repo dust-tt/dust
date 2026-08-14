@@ -1594,7 +1594,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         );
       }
       case "exclude_pod_scoped":
-
       case "pod": {
         const allRequestedSpaceIds = uniq(
           skills.flatMap((skill) => skill.requestedSpaceIds)

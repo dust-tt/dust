@@ -9,7 +9,10 @@ import {
   useJITMCPServerViewsFromSpaces,
   useMCPServerViewsFromSpaces,
 } from "@app/lib/swr/mcp_servers";
-import { useSkills } from "@app/lib/swr/skill_configurations";
+import {
+  skillSpaceScopeForConversation,
+  useSkills,
+} from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { RefObject } from "react";
@@ -79,9 +82,7 @@ export function useInputBarSlashCommandCapabilities({
   const { skills, isSkillsLoading } = useSkills({
     owner,
     status: "active",
-    spaceScope: conversationPodSpaceId
-      ? { mode: "pod", podId: conversationPodSpaceId }
-      : { mode: "excludePodScoped" },
+    spaceScope: skillSpaceScopeForConversation(conversationPodSpaceId),
     swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
   // The JIT views endpoint only returns views whose tools can be enabled directly in a
