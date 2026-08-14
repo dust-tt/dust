@@ -64,11 +64,11 @@ function ModelPickerBanner({
         />
       </div>
       <div className="relative px-4 py-3">
-        <div className="mb-1 text-sm font-medium text-foreground">
+        <div className="mb-1 text-pretty text-sm font-medium text-foreground">
           Choose your model straight from the input bar
         </div>
         <h4 className="mb-3 text-xs leading-tight text-primary">
-          The global model agents (GPT, Claude, Gemini) are retired! Use the
+          The global model agents (GPT, Claude, Gemini) changed home. Use the
           model picker with any agent instead.
         </h4>
         <div className="flex flex-wrap items-center gap-2">
