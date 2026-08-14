@@ -195,10 +195,10 @@ function VsPrevCell({
   }
 
   return (
-    <DataTable.CellContent
+    <div
       className={cn(
-        "w-full justify-end gap-1 text-right tabular-nums",
-        growth > 100 && "text-highlight-600"
+        "flex w-full items-center justify-end gap-1 text-right text-sm tabular-nums",
+        growth > 100 ? "text-highlight-600" : "text-foreground"
       )}
     >
       <Icon
@@ -206,7 +206,7 @@ function VsPrevCell({
         size="xs"
       />
       <span>{Math.round(Math.abs(growth))}%</span>
-    </DataTable.CellContent>
+    </div>
   );
 }
 
