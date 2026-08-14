@@ -424,6 +424,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: false,
     high: true,
   },
+  "accounts/fireworks/models/inkling": {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
   "grok-3-latest": {
     none: true,
     light: false,

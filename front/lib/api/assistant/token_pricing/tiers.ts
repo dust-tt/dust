@@ -402,6 +402,11 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   "accounts/fireworks/models/glm-5p2": {
     high: "balanced",
   },
+  "accounts/fireworks/models/inkling": {
+    light: "balanced",
+    medium: "balanced",
+    high: "balanced",
+  },
   "grok-3-latest": {
     none: "balanced",
   },
