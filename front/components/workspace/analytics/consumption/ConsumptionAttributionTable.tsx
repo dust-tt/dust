@@ -24,6 +24,8 @@ import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consum
 import { formatCredits } from "@app/lib/client/credits";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import {
+  ArrowNarrowDownRight,
+  ArrowNarrowUpRight,
   Avatar,
   Button,
   ChevronDown,
@@ -192,16 +194,19 @@ function VsPrevCell({
     );
   }
 
-  const sign = growth > 0 ? "+" : "";
-
   return (
-    <DataTable.BasicCellContent
+    <DataTable.CellContent
       className={cn(
-        "justify-end text-right tabular-nums",
+        "w-full justify-end text-right tabular-nums",
         growth > 100 && "text-highlight-600"
       )}
-      label={`${sign}${Math.round(growth)}%`}
-    />
+    >
+      <Icon
+        visual={growth >= 0 ? ArrowNarrowUpRight : ArrowNarrowDownRight}
+        size="xs"
+      />
+      {Math.round(Math.abs(growth))}%
+    </DataTable.CellContent>
   );
 }
 
