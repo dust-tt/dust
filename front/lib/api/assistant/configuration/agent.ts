@@ -409,6 +409,7 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
 
 type AgentLabel = {
   sId: string;
+  authorModelId: ModelId;
   name: string;
   pictureUrl: string | null;
   model: AgentModelConfigurationType;
@@ -431,6 +432,7 @@ export async function getAgentLabelsByIds(
   return agentModels.map((agent) => ({
     sId: agent.sId,
     name: agent.name,
+    authorModelId: agent.authorId,
     pictureUrl: agent.pictureUrl,
     model: getModelForAgentConfiguration(agent),
   }));

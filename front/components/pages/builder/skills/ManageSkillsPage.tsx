@@ -434,8 +434,8 @@ export function ManageSkillsPage() {
       <div className="flex w-full flex-col gap-8 pb-4">
         <Page.Header
           title="Manage Skills"
-          icon={SKILL_ICON}
           description="Reusable packages of instructions and tools that agents can share."
+          noTopPadding
         />
         <Page.Vertical gap="md" align="stretch">
           <div className="flex flex-row gap-2">

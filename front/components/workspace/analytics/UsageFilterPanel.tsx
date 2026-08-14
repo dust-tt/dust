@@ -27,8 +27,8 @@ import { useGroups } from "@app/lib/swr/groups";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  BarChart05,
   Button,
+  FilterFunnel01,
   NavigationListLabel,
   PopoverContent,
   PopoverRoot,
@@ -181,7 +181,7 @@ export function UsageFilterPanel({
     <PopoverRoot open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
-          icon={BarChart05}
+          icon={FilterFunnel01}
           label="Filters"
           size="sm"
           variant="outline"

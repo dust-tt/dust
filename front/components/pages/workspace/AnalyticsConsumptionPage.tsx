@@ -16,7 +16,7 @@ import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
-import { BarChart01, cn, Page, SafeSuspense, safeLazy } from "@dust-tt/sparkle";
+import { cn, Page, SafeSuspense, safeLazy } from "@dust-tt/sparkle";
 import { domMax, LazyMotion, m, useReducedMotion } from "framer-motion";
 
 import { useMemo, useState } from "react";
@@ -55,10 +55,7 @@ export function AnalyticsConsumptionPage() {
   if (!isEnabled) {
     return (
       <Page.Vertical align="stretch" gap="xl">
-        <Page.Header
-          title={<Page.H variant="h3">Analytics</Page.H>}
-          icon={BarChart01}
-        />
+        <Page.Header title={<Page.H variant="h3">Analytics</Page.H>} />
         <div
           className={cn(
             "flex flex-col gap-2 rounded-xl border p-6",
@@ -74,7 +71,7 @@ export function AnalyticsConsumptionPage() {
   }
 
   return (
-    <Page.Vertical align="stretch" gap="xl">
+    <Page.Vertical align="stretch" gap="none">
       <Page.Header
         title={
           <div className="flex w-full flex-row justify-between">
@@ -85,9 +82,8 @@ export function AnalyticsConsumptionPage() {
             />
           </div>
         }
-        icon={BarChart01}
       />
-      <div className="flex flex-col gap-8 pb-8">
+      <div className="flex flex-col gap-8 pb-8 pt-4">
         <ConsumptionOverview
           workspaceId={owner.sId}
           period={period}

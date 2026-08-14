@@ -16,7 +16,7 @@ import type {
 } from "@app/lib/api/analytics/consumption/timeseries";
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import { ButtonsSwitch, ButtonsSwitchList, cn } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -27,9 +27,66 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import type { Props as RechartsLabelProps } from "recharts/types/component/Label";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 import { ConsumptionBurnUpChart } from "./ConsumptionBurnUpChart";
 import type { ConsumptionDimension } from "./consumptionDimensions";
+
+const TODAY_PARTIAL_LABEL = "Today (partial)";
+
+// Renders the reference line's label as a pill with the same fill as the
+// line itself, since the default text-only label has no background.
+interface TodayPartialLabelProps {
+  viewBox?: RechartsLabelProps["viewBox"];
+}
+
+function TodayPartialLabel({ viewBox }: TodayPartialLabelProps) {
+  const textRef = useRef<SVGTextElement>(null);
+  const [textWidth, setTextWidth] = useState(0);
+
+  useLayoutEffect(() => {
+    if (textRef.current) {
+      setTextWidth(textRef.current.getComputedTextLength());
+    }
+  }, []);
+
+  if (!viewBox || !("x" in viewBox)) {
+    return null;
+  }
+
+  const { x = 0, y = 0 } = viewBox;
+  const paddingX = 6;
+  const paddingY = 6;
+  const fontSize = 11;
+  const rectWidth = textWidth + paddingX * 2;
+  const rectHeight = fontSize + paddingY * 2;
+  const rectY = y - rectHeight + 16;
+
+  return (
+    <g>
+      {textWidth > 0 && (
+        <rect
+          x={x - rectWidth / 2}
+          y={rectY}
+          width={rectWidth}
+          height={rectHeight}
+          rx={4}
+          className="fill-gray-700"
+        />
+      )}
+      <text
+        ref={textRef}
+        x={x}
+        y={rectY + rectHeight / 2}
+        textAnchor="middle"
+        dominantBaseline="central"
+        className="fill-background text-xs"
+      >
+        {TODAY_PARTIAL_LABEL}
+      </text>
+    </g>
+  );
+}
 
 // The bucket in progress (if mapped to today) is drawn faded across every series.
 const PARTIAL_BAR_OPACITY = "opacity-40";
@@ -203,12 +260,17 @@ function ConsumptionDailyChart({
       }
       height={CHART_HEIGHT}
       legendItems={legendItems}
+      showHeaderDivider
     >
       <BarChart data={chartData} margin={{ ...CHART_MARGIN, top: 24 }}>
-        <CartesianGrid vertical={false} className="stroke-border" />
+        <CartesianGrid
+          vertical={false}
+          strokeDasharray="4 4"
+          className="stroke-border"
+        />
         <XAxis
           dataKey="timestamp"
-          className="text-xs text-muted-foreground"
+          className="text-xs text-faint"
           tickLine={false}
           axisLine={false}
           tickMargin={8}
@@ -218,7 +280,7 @@ function ConsumptionDailyChart({
           }
         />
         <YAxis
-          className="text-xs text-muted-foreground"
+          className="text-xs text-faint"
           tickLine={false}
           axisLine={false}
           tickMargin={8}
@@ -232,9 +294,9 @@ function ConsumptionDailyChart({
         {partialTimestamp !== undefined && (
           <ReferenceLine
             x={partialTimestamp}
-            stroke="hsl(var(--primary))"
+            stroke="var(--color-primary)"
             strokeDasharray="5 5"
-            label={{ value: "Today (partial)", position: "top", fontSize: 11 }}
+            label={{ position: "top", content: TodayPartialLabel }}
             ifOverflow="extendDomain"
           />
         )}

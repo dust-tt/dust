@@ -14,7 +14,6 @@ import { useAppRouter } from "@app/lib/platform";
 import { useWorkspaceCoupons } from "@app/lib/swr/workspaces";
 import { isCreditPricedPlan } from "@app/types/plan";
 import {
-  CreditCard01,
   Page,
   Tabs,
   TabsContent,
@@ -51,7 +50,6 @@ export function BillingPage() {
     <Page.Vertical gap="xl" align="stretch">
       <Page.Header
         title="Billing"
-        icon={CreditCard01}
         description="Change your subscription and edit your billing information."
       />
       <SubscriptionProvider owner={owner} subscription={subscription}>

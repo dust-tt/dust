@@ -65,6 +65,7 @@ import {
   makeToolInterruptionError,
   shouldRetryToolInterruption,
 } from "@app/lib/actions/tool_interruptions";
+import { applyToolSourceLoadingPolicy } from "@app/lib/actions/tool_loading";
 import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type {
   AgentLoopListToolsContext,
@@ -1291,8 +1292,7 @@ export async function tryListMCPTools(
         }
 
         processedTools.push({
-          ...toolConfig,
-          ...(isFromSkillServer ? { eager: undefined } : {}),
+          ...applyToolSourceLoadingPolicy(toolConfig, { isFromSkillServer }),
           originalName: toolConfig.name,
           mcpServerName: action.name,
           name: toolName,

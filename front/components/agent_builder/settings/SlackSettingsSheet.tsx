@@ -3,6 +3,7 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 import type { DataSourceType } from "@app/types/data_source";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
@@ -25,7 +26,7 @@ import {
 } from "@dust-tt/sparkle";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { useController } from "react-hook-form";
 
 const SLACK_CHANNEL_INTERNAL_ID_PREFIX = "slack-channel-";
@@ -35,7 +36,51 @@ type SlackChannel = {
   slackChannelName: string;
   sourceUrl?: string | null;
   autoRespondWithoutMention?: boolean;
+  autoRespondWithoutMentionSkipThreadReplies?: boolean;
 };
+
+type SheetState = {
+  localSlackChannels: SlackChannel[];
+  autoRespondWithoutMentionEnabled: boolean;
+  skipThreadRepliesEnabled: boolean;
+};
+
+type SheetAction =
+  | { type: "sync"; channels: SlackChannel[] }
+  | { type: "set_channels"; channels: SlackChannel[] }
+  | { type: "toggle_auto_respond" }
+  | { type: "set_skip_thread_replies"; value: boolean };
+
+function sheetReducer(state: SheetState, action: SheetAction): SheetState {
+  switch (action.type) {
+    case "sync":
+      return {
+        localSlackChannels: [...action.channels],
+        autoRespondWithoutMentionEnabled:
+          action.channels[0]?.autoRespondWithoutMention ?? false,
+        skipThreadRepliesEnabled:
+          action.channels[0]?.autoRespondWithoutMentionSkipThreadReplies ??
+          false,
+      };
+    case "set_channels":
+      return { ...state, localSlackChannels: action.channels };
+    case "toggle_auto_respond": {
+      const next = !state.autoRespondWithoutMentionEnabled;
+      return {
+        ...state,
+        autoRespondWithoutMentionEnabled: next,
+        skipThreadRepliesEnabled: next ? state.skipThreadRepliesEnabled : false,
+      };
+    }
+    case "set_skip_thread_replies":
+      return {
+        ...state,
+        skipThreadRepliesEnabled: action.value,
+      };
+    default:
+      return assertNever(action);
+  }
+}
 
 interface SlackChannelsListProps {
   disabled?: boolean;
@@ -203,13 +248,6 @@ export function SlackSettingsSheet({
 }: SlackSettingsSheetProps) {
   const { owner } = useAgentBuilderContext();
   const { hasFeature } = useFeatureFlags();
-  const [localSlackChannels, setLocalSlackChannels] = useState<SlackChannel[]>(
-    []
-  );
-  const [
-    autoRespondWithoutMentionEnabled,
-    setAutoRespondWithoutMentionEnabled,
-  ] = useState(false);
 
   const {
     field: { onChange, value: slackChannels },
@@ -217,51 +255,48 @@ export function SlackSettingsSheet({
     name: "agentSettings.slackChannels",
   });
 
+  const [
+    {
+      localSlackChannels,
+      autoRespondWithoutMentionEnabled,
+      skipThreadRepliesEnabled,
+    },
+    dispatch,
+  ] = useReducer(sheetReducer, slackChannels ?? [], (channels) => ({
+    localSlackChannels: [...channels],
+    autoRespondWithoutMentionEnabled:
+      channels[0]?.autoRespondWithoutMention ?? false,
+    skipThreadRepliesEnabled:
+      channels[0]?.autoRespondWithoutMentionSkipThreadReplies ?? false,
+  }));
+
   useEffect(() => {
-    setLocalSlackChannels([...(slackChannels || [])]);
-    const currentAutoRespondWithoutMention =
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      (slackChannels || [])[0]?.autoRespondWithoutMention || false;
-    setAutoRespondWithoutMentionEnabled(currentAutoRespondWithoutMention);
+    dispatch({ type: "sync", channels: slackChannels ?? [] });
   }, [slackChannels]);
 
-  useEffect(() => {
-    if (isOpen) {
-      setLocalSlackChannels([...(slackChannels || [])]);
-      const currentAutoRespondWithoutMention =
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        (slackChannels || [])[0]?.autoRespondWithoutMention || false;
-      setAutoRespondWithoutMentionEnabled(currentAutoRespondWithoutMention);
-    }
-  }, [isOpen, slackChannels]);
-
   const handleSelectionChange = (channels: SlackChannel[]) => {
-    setLocalSlackChannels(channels);
+    dispatch({ type: "set_channels", channels });
   };
 
   const onSave = () => {
-    const channelsWithAutoRespondWithoutMention = localSlackChannels.map(
-      (channel) => ({
-        ...channel,
-        autoRespondWithoutMention: autoRespondWithoutMentionEnabled,
-      })
-    );
-    onChange(channelsWithAutoRespondWithoutMention);
+    const channelsWithSettings = localSlackChannels.map((channel) => ({
+      ...channel,
+      autoRespondWithoutMention: autoRespondWithoutMentionEnabled,
+      autoRespondWithoutMentionSkipThreadReplies:
+        autoRespondWithoutMentionEnabled ? skipThreadRepliesEnabled : false,
+    }));
+    onChange(channelsWithSettings);
     onOpenChange();
   };
 
   const handleClose = () => {
-    setLocalSlackChannels([...(slackChannels || [])]);
-    const currentAutoRespondWithoutMention =
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      (slackChannels || [])[0]?.autoRespondWithoutMention || false;
-    setAutoRespondWithoutMentionEnabled(currentAutoRespondWithoutMention);
+    dispatch({ type: "sync", channels: slackChannels ?? [] });
     onOpenChange();
   };
 
   const hasUnsavedChanges = useMemo(() => {
     const currentChannelIds = new Set(
-      (slackChannels || []).map((c) => c.slackChannelId)
+      (slackChannels ?? []).map((c) => c.slackChannelId)
     );
     const localChannelIds = new Set(
       localSlackChannels.map((c) => c.slackChannelId)
@@ -275,14 +310,22 @@ export function SlackSettingsSheet({
       (id) => !localChannelIds.has(id as string)
     );
 
-    const currentAutoRespondWithoutMention =
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      (slackChannels || [])[0]?.autoRespondWithoutMention || false;
-    const autoRespondWithoutMentionChanged =
-      autoRespondWithoutMentionEnabled !== currentAutoRespondWithoutMention;
+    const savedAutoRespond =
+      slackChannels?.[0]?.autoRespondWithoutMention ?? false;
+    const savedSkipThreadReplies =
+      slackChannels?.[0]?.autoRespondWithoutMentionSkipThreadReplies ?? false;
 
-    return channelSelectionChanged || autoRespondWithoutMentionChanged;
-  }, [slackChannels, localSlackChannels, autoRespondWithoutMentionEnabled]);
+    return (
+      channelSelectionChanged ||
+      autoRespondWithoutMentionEnabled !== savedAutoRespond ||
+      skipThreadRepliesEnabled !== savedSkipThreadReplies
+    );
+  }, [
+    slackChannels,
+    localSlackChannels,
+    autoRespondWithoutMentionEnabled,
+    skipThreadRepliesEnabled,
+  ]);
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
@@ -345,27 +388,46 @@ export function SlackSettingsSheet({
           }}
         >
           {hasFeature("slack_enhanced_default_agent") && isAdmin(owner) && (
-            <div className="flex flex-col border-t p-4">
-              <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col gap-3 border-t p-4">
+              <div className="flex items-center justify-between gap-4">
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <span className="text-sm font-medium text-foreground">
                     Respond to all messages in channel
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    Agent will automatically respond to all messages and thread
-                    replies in selected channels (not just @mentions)
+                    Agent will automatically respond to messages in selected
+                    channels (not just @mentions)
                   </span>
                 </div>
-                <div className="flex-shrink-0">
-                  <SliderToggle
-                    selected={autoRespondWithoutMentionEnabled}
-                    onClick={() =>
-                      setAutoRespondWithoutMentionEnabled(
-                        !autoRespondWithoutMentionEnabled
-                      )
-                    }
-                  />
+                <SliderToggle
+                  selected={autoRespondWithoutMentionEnabled}
+                  onClick={() => dispatch({ type: "toggle_auto_respond" })}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <div
+                  className={`flex min-w-0 flex-1 flex-col gap-1 ${
+                    autoRespondWithoutMentionEnabled ? "" : "opacity-50"
+                  }`}
+                >
+                  <span className="text-sm text-foreground">
+                    Top-level posts only
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Only respond to new channel messages, not replies within
+                    threads
+                  </span>
                 </div>
+                <Checkbox
+                  checked={skipThreadRepliesEnabled}
+                  disabled={!autoRespondWithoutMentionEnabled}
+                  onCheckedChange={(checked) =>
+                    dispatch({
+                      type: "set_skip_thread_replies",
+                      value: checked === true,
+                    })
+                  }
+                />
               </div>
             </div>
           )}

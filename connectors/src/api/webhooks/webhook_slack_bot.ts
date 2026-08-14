@@ -206,12 +206,32 @@ const _webhookSlackBotAPIHandler = async (
                   );
 
                 if (channel && channel.agentConfigurationId) {
+                  // A thread reply has thread_ts set to the parent message ts, which differs from its own ts.
+                  const isThreadReply =
+                    !!event.thread_ts && event.thread_ts !== event.ts;
+
+                  if (
+                    isThreadReply &&
+                    channel.autoRespondWithoutMentionSkipThreadReplies
+                  ) {
+                    logger.info(
+                      {
+                        slackChannelId: event.channel,
+                        agentConfigurationId: channel.agentConfigurationId,
+                      },
+                      "Skipping thread reply - channel configured for top-level posts only"
+                    );
+                    return res.status(200).send();
+                  }
+
                   logger.info(
                     {
                       slackChannelId: event.channel,
                       agentConfigurationId: channel.agentConfigurationId,
                       autoRespondWithoutMention:
                         channel.autoRespondWithoutMention,
+                      autoRespondWithoutMentionSkipThreadReplies:
+                        channel.autoRespondWithoutMentionSkipThreadReplies,
                     },
                     "Found enhanced default agent for channel - processing message"
                   );

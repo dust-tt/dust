@@ -25,12 +25,12 @@ import { formatCredits } from "@app/lib/client/credits";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import {
   Avatar,
-  BarChart01,
   Button,
   ChevronDown,
   ChevronUp,
   DataTable,
   DustLogoSquare,
+  FilterFunnel01,
   Icon,
   MOTION_DURATIONS,
   MOTION_EASINGS,
@@ -43,7 +43,13 @@ import {
 } from "@dust-tt/sparkle";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import type { Transition, Variants } from "framer-motion";
-import { AnimatePresence, m, useReducedMotion } from "framer-motion";
+import {
+  AnimatePresence,
+  domMax,
+  LazyMotion,
+  m,
+  useReducedMotion,
+} from "framer-motion";
 import type { ReactNode } from "react";
 import { useMemo, useRef, useState } from "react";
 import type { AttributionRowData } from "./ConsumptionAttributionRowsTable";
@@ -57,6 +63,7 @@ import {
 
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
 const ATTRIBUTION_PAGE_SIZE = 25;
+const ATTRIBUTION_MAX_ROW_COUNT = 1_000;
 
 type AttributionTransitionDirection = -1 | 0 | 1;
 
@@ -313,7 +320,7 @@ function buildColumns({
         return (
           <DataTable.CellContent className="w-full justify-end">
             <Button
-              icon={BarChart01}
+              icon={FilterFunnel01}
               variant="ghost-secondary"
               size="xs"
               disabled={isFilterSelected}
@@ -369,7 +376,7 @@ function AttributionRows({
   const shouldReduceMotion = useReducedMotion();
 
   const {
-    rows: allRows,
+    rows,
     totalCredits,
     totalCount,
     isTopLoading,
@@ -381,16 +388,10 @@ function AttributionRows({
     period,
     limit: pagination.pageSize,
     offset: pagination.pageIndex * pagination.pageSize,
+    search,
     filter,
   });
-
-  // Client-side filter over the loaded ranking returned by the endpoint.
-  const rows = useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    return needle
-      ? allRows.filter((row) => row.name.toLowerCase().includes(needle))
-      : allRows;
-  }, [allRows, search]);
+  const cappedRowCount = Math.min(totalCount, ATTRIBUTION_MAX_ROW_COUNT);
 
   const selectedIdSet = useMemo(
     () => new Set(filter?.[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]] ?? []),
@@ -430,7 +431,7 @@ function AttributionRows({
       })),
     [rows, onAddFilter]
   );
-  const isLoading = isTopLoading || isTopValidating;
+  const isLoading = isTopLoading;
 
   let contentKey = "content";
   let content: ReactNode;
@@ -481,14 +482,14 @@ function AttributionRows({
             />
           </div>
         )}
-        {totalCount > pagination.pageSize && (
+        {cappedRowCount > pagination.pageSize && (
           <div className="mt-2 p-1">
             <Pagination
               size="xs"
               showDetails={false}
               pagination={pagination}
               setPagination={setPagination}
-              rowCount={totalCount}
+              rowCount={cappedRowCount}
             />
           </div>
         )}
@@ -507,7 +508,7 @@ function AttributionRows({
           duration: shouldReduceMotion ? 0 : 0.1,
           ease: MOTION_EASINGS.enter,
         }}
-        aria-busy={isLoading}
+        aria-busy={isLoading || isTopValidating}
       >
         {content}
       </m.div>
@@ -617,38 +618,40 @@ export function ConsumptionAttributionTable({
             onChange={setValue}
             className="w-full"
           />
-          <div className="relative overflow-hidden">
-            <AnimatePresence
-              initial={false}
-              mode="popLayout"
-              custom={effectiveTransitionDirection}
-            >
-              <m.div
-                key={dimension}
+          <LazyMotion features={domMax}>
+            <div className="relative overflow-hidden">
+              <AnimatePresence
+                initial={false}
+                mode="popLayout"
                 custom={effectiveTransitionDirection}
-                variants={ATTRIBUTION_BODY_VARIANTS}
-                initial="initial"
-                animate="animate"
-                exit="exit"
               >
-                {/* Reset table state whenever its dataset or local search changes. */}
-                <AttributionRows
-                  key={JSON.stringify({
-                    period,
-                    filter,
-                    search: debouncedValue,
-                  })}
-                  workspaceId={workspaceId}
-                  dimension={dimension}
-                  period={period}
-                  filter={filter}
-                  onAddFilter={onAddFilter}
-                  search={debouncedValue}
-                  onViewAll={onViewAll}
-                />
-              </m.div>
-            </AnimatePresence>
-          </div>
+                <m.div
+                  key={dimension}
+                  custom={effectiveTransitionDirection}
+                  variants={ATTRIBUTION_BODY_VARIANTS}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                >
+                  {/* Reset table state whenever its dataset or local search changes. */}
+                  <AttributionRows
+                    key={JSON.stringify({
+                      period,
+                      filter,
+                      search: debouncedValue,
+                    })}
+                    workspaceId={workspaceId}
+                    dimension={dimension}
+                    period={period}
+                    filter={filter}
+                    onAddFilter={onAddFilter}
+                    search={debouncedValue}
+                    onViewAll={onViewAll}
+                  />
+                </m.div>
+              </AnimatePresence>
+            </div>
+          </LazyMotion>
         </div>
       </div>
     </div>

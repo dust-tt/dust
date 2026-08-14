@@ -1,3 +1,4 @@
+import { listConsumptionFacetCatalogDimension } from "@app/lib/api/analytics/consumption/facet_catalog";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { fetchConsumptionTopAgents } from "@app/lib/api/analytics/consumption/top_agents";
@@ -17,6 +18,14 @@ vi.mock(import("@app/lib/api/elasticsearch"), async (orig) => {
   const mod = await orig();
   return { ...mod, searchConsumptionAnalytics: vi.fn() };
 });
+
+vi.mock(
+  import("@app/lib/api/analytics/consumption/facet_catalog"),
+  async (orig) => {
+    const mod = await orig();
+    return { ...mod, listConsumptionFacetCatalogDimension: vi.fn() };
+  }
+);
 
 vi.mock(import("@app/lib/api/analytics/consumption/labels"), async (orig) => {
   const mod = await orig();
@@ -38,15 +47,20 @@ function mockAggs({
   buckets,
   totalCount = buckets.length,
   totalMicro,
+  filtered = false,
 }: {
   buckets: unknown[];
   totalCount?: number;
   totalMicro: number;
+  filtered?: boolean;
 }) {
+  const ranking = {
+    by_group: { buckets },
+    total_count: { value: totalCount },
+  };
   vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
     esResponse({
-      by_group: { buckets },
-      total_count: { value: totalCount },
+      ...(filtered ? { ranking } : ranking),
       total_credit_micro: { value: totalMicro },
     })
   );
@@ -78,6 +92,7 @@ function lastSearchCall() {
 describe("consumption top rankings", () => {
   afterEach(() => {
     vi.mocked(searchConsumptionAnalytics).mockReset();
+    vi.mocked(listConsumptionFacetCatalogDimension).mockReset();
     vi.mocked(resolveDimensionLabels).mockReset();
   });
 
@@ -161,6 +176,7 @@ describe("consumption top rankings", () => {
       field: "agent.id",
       precision_threshold: 40_000,
     });
+    expect(options?.aggregations?.ranking).toBeUndefined();
   });
 
   it("returns one ranked page with the total number of groups", async () => {
@@ -215,6 +231,79 @@ describe("consumption top rankings", () => {
     expect(lastSearchCall()[1]?.aggregations?.by_group?.terms).toMatchObject({
       size: 3,
     });
+  });
+
+  it.each([
+    ["AGENT 080", { terms: { "agent.id": ["agent80"] } }],
+    ["missing", { match_none: {} }],
+  ])("filters the ranking for search %s", async (search, expectedFilter) => {
+    const { auth } = await setup();
+    vi.mocked(listConsumptionFacetCatalogDimension).mockResolvedValue([
+      { value: "agent80", label: "Pagination Agent 080", pictureUrl: null },
+    ]);
+    mockLabels({});
+    mockAggs({
+      buckets: [],
+      totalCount: 0,
+      totalMicro: 10_000_000,
+      filtered: true,
+    });
+
+    const result = await fetchConsumptionTopAgents(auth, {
+      period: PERIOD,
+      limit: 25,
+      search,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.totalCredits).toBe(10);
+    expect(listConsumptionFacetCatalogDimension).toHaveBeenCalledWith(
+      auth,
+      "agent"
+    );
+    expect(lastSearchCall()[1]?.aggregations?.ranking?.filter).toEqual(
+      expectedFilter
+    );
+  });
+
+  it("splits broad searches into bounded terms clauses", async () => {
+    const { auth } = await setup();
+    vi.mocked(listConsumptionFacetCatalogDimension).mockResolvedValue(
+      Array.from({ length: 65_537 }, (_, index) => ({
+        value: `agent${index}`,
+        label: "Agent",
+        pictureUrl: null,
+      }))
+    );
+    mockLabels({});
+    mockAggs({
+      buckets: [],
+      totalCount: 0,
+      totalMicro: 0,
+      filtered: true,
+    });
+
+    await fetchConsumptionTopAgents(auth, {
+      period: PERIOD,
+      limit: 25,
+      search: "agent",
+    });
+
+    const searchFilter = lastSearchCall()[1]?.aggregations?.ranking?.filter;
+    expect(searchFilter?.bool?.minimum_should_match).toBe(1);
+
+    const termsClauses = searchFilter?.bool?.should;
+    expect(Array.isArray(termsClauses)).toBe(true);
+    if (!Array.isArray(termsClauses)) {
+      return;
+    }
+
+    expect(termsClauses).toHaveLength(2);
+    expect(termsClauses[0]?.terms?.["agent.id"]).toHaveLength(65_536);
+    expect(termsClauses[1]?.terms?.["agent.id"]).toHaveLength(1);
   });
 
   it("counts tool invocations as documents, with no message sub-agg", async () => {

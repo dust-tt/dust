@@ -1,5 +1,6 @@
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
+import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import {
   fireEvent,
   render,
@@ -46,8 +47,8 @@ vi.mock(
 const period = { kind: "days", days: 30 } as const;
 
 describe("ConsumptionAttributionTable", () => {
-  it("shows every page upfront and fetches the selected fixed-size page", async () => {
-    const rows = Array.from({ length: 80 }, (_, index) => ({
+  it("caps the available pages and fetches the selected fixed-size page", async () => {
+    const rows = Array.from({ length: 1_025 }, (_, index) => ({
       id: `agent-${index + 1}`,
       name: `Agent ${index + 1}`,
       pictureUrl: null,
@@ -81,18 +82,54 @@ describe("ConsumptionAttributionTable", () => {
       expect.objectContaining({ limit: 25, offset: 0 })
     );
 
-    expect(screen.getByRole("button", { name: "4" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "4" }));
+    expect(screen.getByRole("button", { name: "40" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "41" })
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "40" }));
 
     await waitFor(() => {
       expect(mockUseConsumptionTop).toHaveBeenCalledWith(
-        expect.objectContaining({ limit: 25, offset: 75 })
+        expect.objectContaining({ limit: 25, offset: 975 })
       );
-      expect(screen.getByText("Agent 80")).toBeInTheDocument();
+      expect(screen.getByText("Agent 1000")).toBeInTheDocument();
     });
   });
 
-  it("resets expanded rows when switching dimensions", () => {
+  it("sends the search to the backend", async () => {
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [],
+      totalCredits: 0,
+      totalCount: 0,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="agent"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("Search…"), {
+      target: { value: "Agent 080" },
+    });
+
+    await waitFor(() => {
+      expect(mockUseConsumptionTop).toHaveBeenCalledWith(
+        expect.objectContaining({ search: "Agent 080", offset: 0, limit: 25 })
+      );
+    });
+  });
+
+  it("resets expanded rows when switching dimensions", async () => {
     mockUseConsumptionTop.mockImplementation(
       ({ dimension }: { dimension: ConsumptionDimension }) => ({
         rows: [
@@ -155,7 +192,115 @@ describe("ConsumptionAttributionTable", () => {
         name: "Expand breakdown for Large model",
       })
     ).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByText("Attribution breakdown")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Attribution breakdown")
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("keeps rows visible while refreshing cached data", () => {
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [
+        {
+          id: "agent-id",
+          name: "Cached agent",
+          pictureUrl: null,
+          description: null,
+          icon: null,
+          modelId: null,
+          modelDisplayName: null,
+          credits: 100,
+          avgCredits: 10,
+        },
+      ],
+      totalCredits: 100,
+      totalCount: 1,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: true,
+    });
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="agent"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("Cached agent")).toBeInTheDocument();
+  });
+
+  it("reveals rows that arrive after the initial loading state", async () => {
+    const emptyRows: ConsumptionTopRow[] = [];
+    let result = {
+      rows: emptyRows,
+      totalCredits: 0,
+      totalCount: 0,
+      hasMore: false,
+      isTopLoading: true,
+      isTopError: undefined,
+      isTopValidating: true,
+    };
+    mockUseConsumptionTop.mockImplementation(() => result);
+
+    const { rerender } = render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="agent"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    result = {
+      rows: [
+        {
+          id: "fresh-agent-id",
+          name: "Fresh agent",
+          pictureUrl: null,
+          description: null,
+          icon: null,
+          modelId: null,
+          modelDisplayName: null,
+          credits: 100,
+          avgCredits: 10,
+        },
+      ],
+      totalCredits: 100,
+      totalCount: 1,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    };
+    rerender(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="agent"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    const row = await screen.findByText("Fresh agent");
+    await waitFor(() => {
+      let animatedAncestor: HTMLElement | null = row;
+      while (animatedAncestor && !animatedAncestor.style.opacity) {
+        animatedAncestor = animatedAncestor.parentElement;
+      }
+
+      expect(animatedAncestor).toHaveStyle({ opacity: "1" });
+    });
   });
 
   it("renders the skill identity and description without a model", () => {

@@ -1,3 +1,4 @@
+import { getEnabledSkillInputTextByActionId } from "@app/lib/api/assistant/agent_message_consumption_attribution/enabled_skill_footprint";
 import type { ToolCallFootprintInput } from "@app/lib/api/assistant/agent_message_consumption_attribution/tool_footprint";
 import {
   measureToolCallFootprints,
@@ -7,6 +8,7 @@ import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import {
   GPT_4_1_MODEL_CONFIG,
   GPT_5_6_SOL_MODEL_ID,
@@ -18,6 +20,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@app/lib/api/provider_credentials", () => ({
   getLlmCredentials: vi.fn(),
 }));
+
+vi.mock(
+  "@app/lib/api/assistant/agent_message_consumption_attribution/enabled_skill_footprint",
+  () => ({
+    getEnabledSkillInputTextByActionId: vi.fn(async () => new Map()),
+  })
+);
 
 vi.mock("@app/lib/tokenization", () => ({
   tokenCountForTexts: vi.fn(),
@@ -151,6 +160,32 @@ describe("measureToolCallFootprints", () => {
     // Count is the character length of each text, keeping the assertions readable.
     vi.mocked(tokenCountForTexts).mockImplementation(
       async (texts) => new Ok(texts.map((text) => text.length))
+    );
+  });
+
+  it("omits deferred enabled-skill definitions for an Anthropic tool-search model", async () => {
+    await measureToolCallFootprints(auth, {
+      modelId: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
+      toolCalls: [footprintInput(makeAction())],
+    });
+
+    expect(getEnabledSkillInputTextByActionId).toHaveBeenCalledWith(
+      auth,
+      expect.any(Array),
+      { toolSearchEnabled: true }
+    );
+  });
+
+  it("includes enabled-skill definitions when tool search is disabled", async () => {
+    await measureToolCallFootprints(auth, {
+      modelId: GPT_4_1_MODEL_CONFIG.modelId,
+      toolCalls: [footprintInput(makeAction())],
+    });
+
+    expect(getEnabledSkillInputTextByActionId).toHaveBeenCalledWith(
+      auth,
+      expect.any(Array),
+      { toolSearchEnabled: false }
     );
   });
 

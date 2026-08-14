@@ -1,3 +1,4 @@
+import type { InferenceRegionType } from "@app/lib/api/assistant/token_pricing";
 import { LLM } from "@app/lib/api/llm/llm";
 import type {
   BatchDeletionOutcome,
@@ -68,6 +69,8 @@ import type {
   NonDeltaResponseEvent,
   PassthroughLab,
 } from "@app/lib/model_constructors/types/output/events";
+import type { Region } from "@app/lib/model_constructors/types/regions";
+import { EUROPE, GLOBAL, US } from "@app/lib/model_constructors/types/regions";
 import { isCacheMissReason } from "@app/lib/model_constructors/utils/cache_miss_reason";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type {
@@ -88,6 +91,20 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
+
+export function inferenceRegionForEndpointRegion(
+  region: Region
+): InferenceRegionType {
+  switch (region) {
+    case EUROPE:
+      return "eu";
+    case GLOBAL:
+    case US:
+      return "global";
+    default:
+      return assertNever(region);
+  }
+}
 
 /**
  * Maps a reasoning effort to the model constructor's effort values.
@@ -819,6 +836,7 @@ export class StreamEndpointTransition extends BaseTransition {
     this.metadata = {
       ...this.metadata,
       inferenceProvider: api,
+      inferenceRegion: inferenceRegionForEndpointRegion(region),
       region,
     };
   }
@@ -969,6 +987,14 @@ export class BatchEndpointTransition extends BaseTransition {
       llmParameters
     );
     this.model = new modelConstructor(llmParameters.credentials);
+
+    const { host: api, region } = this.model.metadata();
+    this.metadata = {
+      ...this.metadata,
+      inferenceProvider: api,
+      inferenceRegion: inferenceRegionForEndpointRegion(region),
+      region,
+    };
   }
 
   // Builds the per-request payload for tracing (the base class captures batch

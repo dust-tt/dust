@@ -1,4 +1,3 @@
-import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import {
@@ -28,7 +27,6 @@ export function CreateConnectionOAuthModal({
   onClose,
   onConfirm,
 }: CreateConnectionOAuthModalProps) {
-  const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
   const [isExtraConfigValid, setIsExtraConfigValid] = useState(true);
@@ -65,7 +63,6 @@ export function CreateConnectionOAuthModal({
             <Page.Vertical gap="lg" align="stretch">
               <Page.Header
                 title={`Connecting ${connectorProviderConfiguration.name}`}
-                icon={connectorUIConfiguration.getLogoComponent(isDark)}
               />
               <Button
                 label="Read our guide"

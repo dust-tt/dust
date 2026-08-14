@@ -23,7 +23,8 @@ app.post(
   validate("json", ConsumptionTopBodySchema),
   async (ctx): HandlerResult<GetConsumptionTopGroupsResponse> => {
     const auth = ctx.get("auth");
-    const { limit, offset, filter, ...periodQuery } = ctx.req.valid("json");
+    const { limit, offset, search, filter, ...periodQuery } =
+      ctx.req.valid("json");
 
     const period = await resolveConsumptionPeriod(
       auth,
@@ -34,6 +35,7 @@ app.post(
       period,
       limit,
       offset,
+      search,
       filter,
     });
     if (result.isErr()) {
