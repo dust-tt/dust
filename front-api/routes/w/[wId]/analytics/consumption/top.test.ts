@@ -388,6 +388,23 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
     );
   });
 
+  it("forwards search to the API key ranking", async () => {
+    vi.mocked(fetchConsumptionTopApiKeys).mockResolvedValue(
+      new Ok(TOP_API_KEYS)
+    );
+    const { workspace } = await setupTest();
+
+    const response = await postRankingRequest(workspace.sId, "top-api-keys", {
+      search: "  Production key  ",
+    });
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetchConsumptionTopApiKeys)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ search: "Production key" })
+    );
+  });
+
   it("normalizes a null limit to the default", async () => {
     vi.mocked(fetchConsumptionTopAgents).mockResolvedValue(new Ok(TOP_AGENTS));
     const { workspace } = await setupTest();

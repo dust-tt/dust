@@ -365,6 +365,13 @@ describe("consumption top rankings", () => {
 
   it("ranks API key names on gross credits per distinct message", async () => {
     const { auth } = await setup();
+    vi.mocked(listConsumptionFacetCatalogDimension).mockResolvedValue([
+      {
+        value: "Production key",
+        label: "Production key",
+        pictureUrl: null,
+      },
+    ]);
     mockLabels({ "Production key": "Production key" });
     mockAggs({
       buckets: [
@@ -376,11 +383,13 @@ describe("consumption top rankings", () => {
         },
       ],
       totalMicro: 5_000_000,
+      filtered: true,
     });
 
     const result = await fetchConsumptionTopApiKeys(auth, {
       period: PERIOD,
       limit: 10,
+      search: "production",
     });
 
     expect(result.isOk()).toBe(true);
@@ -398,11 +407,21 @@ describe("consumption top rankings", () => {
     ]);
 
     const [, options] = lastSearchCall();
-    expect(options?.aggregations?.by_group?.terms).toMatchObject({
-      field: "api_key_name",
+    expect(listConsumptionFacetCatalogDimension).toHaveBeenCalledWith(
+      auth,
+      "api_key"
+    );
+    expect(options?.aggregations?.ranking?.filter).toEqual({
+      terms: { api_key_name: ["Production key"] },
     });
+    expect(options?.aggregations?.ranking?.aggs?.by_group?.terms).toMatchObject(
+      {
+        field: "api_key_name",
+      }
+    );
     expect(
-      options?.aggregations?.by_group?.aggs?.messages?.cardinality?.field
+      options?.aggregations?.ranking?.aggs?.by_group?.aggs?.messages
+        ?.cardinality?.field
     ).toBe("agent_message_id");
   });
 
