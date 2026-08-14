@@ -13,6 +13,7 @@ export const CONSUMPTION_DIMENSIONS: ConsumptionDimension[] = [
   "tool",
   "skill",
   "source",
+  "api_key",
 ];
 
 interface ConsumptionDimensionConfig {
