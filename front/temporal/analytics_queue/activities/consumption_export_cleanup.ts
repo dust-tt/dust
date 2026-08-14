@@ -17,7 +17,9 @@ export async function cleanupConsumptionExportsActivity(): Promise<void> {
 
   const staleFiles = files.filter((file) => {
     const timeCreated = file.metadata.timeCreated;
-    return typeof timeCreated === "string" && Date.parse(timeCreated) < cutoffMs;
+    return (
+      typeof timeCreated === "string" && Date.parse(timeCreated) < cutoffMs
+    );
   });
 
   for (const file of staleFiles) {

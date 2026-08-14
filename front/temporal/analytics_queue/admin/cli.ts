@@ -2,7 +2,6 @@ import logger from "@app/logger/logger";
 import { createOrUpdateConsumptionExportCleanupSchedule } from "@app/temporal/analytics_queue/client";
 import parseArgs from "minimist";
 
-
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
 
@@ -15,7 +14,7 @@ const main = async () => {
       await createOrUpdateConsumptionExportCleanupSchedule();
       return;
     default:
-      console.log(
+      logger.warn(
         "Unknown command, possible values: `start-consumption-export-cleanup`"
       );
       return;
@@ -24,11 +23,10 @@ const main = async () => {
 
 main()
   .then(() => {
-    console.error("\x1b[32m%s\x1b[0m", `Done`);
+    logger.info("Done");
     process.exit(0);
   })
   .catch((err) => {
-    console.error("\x1b[31m%s\x1b[0m", `Error: ${err.message}`);
-    console.log(err);
+    logger.error({ err }, "Error details");
     process.exit(1);
   });
