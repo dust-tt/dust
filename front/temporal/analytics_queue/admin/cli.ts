@@ -6,7 +6,7 @@ const main = async () => {
 
   const [command] = argv._;
 
-  console.log(`Running command: ${command}`);
+  logger.info({ command }, "Running command");
 
   switch (command) {
     case "start-consumption-export-cleanup":
