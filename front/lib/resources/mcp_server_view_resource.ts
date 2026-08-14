@@ -710,29 +710,28 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return this.baseFetch(auth, findOptions, { includeHeavyAttributes });
   }
 
-  static async resolveDisplayMetadataByIdentifiers(
+  static async resolveDisplayMetadataByIds(
     auth: Authenticator,
-    identifiers: string[]
+    ids: string[]
   ): Promise<Map<string, MCPServerDisplayMetadata>> {
-    const uniqueIdentifiers = [...new Set(identifiers)];
+    const uniqueIds = [...new Set(ids)];
     const metadata = new Map<string, MCPServerDisplayMetadata>();
 
-    for (const identifier of uniqueIdentifiers) {
-      if (isInternalMCPServerName(identifier)) {
-        metadata.set(identifier, {
-          name: asDisplayToolName(identifier),
-          icon: getInternalMCPServerIconByName(identifier),
+    for (const id of uniqueIds) {
+      if (isInternalMCPServerName(id)) {
+        metadata.set(id, {
+          name: asDisplayToolName(id),
+          icon: getInternalMCPServerIconByName(id),
         });
       }
     }
 
-    const remoteMCPServerModelIds = uniqueIdentifiers
-      .filter((identifier) => isResourceSId("remote_mcp_server", identifier))
-      .map((identifier) => getServerTypeAndIdFromSId(identifier).id);
-    const names = uniqueIdentifiers.filter(
-      (identifier) =>
-        !isInternalMCPServerName(identifier) &&
-        !isResourceSId("remote_mcp_server", identifier)
+    const remoteMCPServerModelIds = uniqueIds
+      .filter((id) => isResourceSId("remote_mcp_server", id))
+      .map((id) => getServerTypeAndIdFromSId(id).id);
+    const names = uniqueIds.filter(
+      (id) =>
+        !isInternalMCPServerName(id) && !isResourceSId("remote_mcp_server", id)
     );
     if (remoteMCPServerModelIds.length === 0 && names.length === 0) {
       return metadata;
@@ -777,7 +776,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       ],
     });
 
-    const requestedIdentifiers = new Set(uniqueIdentifiers);
+    const requestedIds = new Set(uniqueIds);
     for (const view of views) {
       const server = view.remoteMCPServer;
       const serverId = remoteMCPServerNameToSId({
@@ -788,16 +787,16 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         name: server.cachedName,
         icon: server.icon,
       };
-      if (view.name && requestedIdentifiers.has(view.name)) {
+      if (view.name && requestedIds.has(view.name)) {
         metadata.set(view.name, {
           name: asDisplayToolName(view.name),
           icon: server.icon,
         });
       }
-      if (requestedIdentifiers.has(server.cachedName)) {
+      if (requestedIds.has(server.cachedName)) {
         metadata.set(server.cachedName, serverMetadata);
       }
-      if (requestedIdentifiers.has(serverId)) {
+      if (requestedIds.has(serverId)) {
         metadata.set(serverId, serverMetadata);
       }
     }

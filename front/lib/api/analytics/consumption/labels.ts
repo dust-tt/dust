@@ -118,11 +118,10 @@ export async function resolveDimensionLabels(
       );
 
     case "tool": {
-      const metadata =
-        await MCPServerViewResource.resolveDisplayMetadataByIdentifiers(
-          auth,
-          keys
-        );
+      const metadata = await MCPServerViewResource.resolveDisplayMetadataByIds(
+        auth,
+        keys
+      );
       return new Map(
         keys.map((key) => {
           const tool = metadata.get(key);
