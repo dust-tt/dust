@@ -197,9 +197,10 @@ export interface FrameViewer {
   owner: LightWorkspaceType;
   user: UserType;
   /**
-   * Share token the viewer loaded the frame with, presented as a capability on invocation
-   * requests: it lets a workspace member outside the Pod invoke the frame's app's functions.
-   * Authorization happens server-side on every request.
+   * Share token the viewer loaded the frame with, presented on invocation requests: the server
+   * grants invocation of the frame's app's functions to workspace members who may view the frame
+   * (invite-only frames also require an email grant). Authorization happens server-side on every
+   * request.
    */
   frameShareToken?: string;
 }

@@ -6,9 +6,10 @@ import type { FrameShareCapability } from "@app/types/api/sandbox_functions";
 import { isWorkspaceVisibleShareScope } from "@app/types/files";
 
 /**
- * Possession of a Pod app frame's share token is the capability to invoke that app's published
- * functions: the frame is authored by the pod's members and is unusable without them, so being
- * handed its link is being handed the app. The capability grants function resolution only — it
+ * A workspace member who may view a Pod app frame may invoke that app's published functions:
+ * the frame is authored by the pod's members and is unusable without them, so sharing the frame
+ * is sharing the app. Viewing means holding the share token for workspace-visible scopes, plus an
+ * active email grant for invite-only frames. The capability grants function resolution only — it
  * never widens reads or writes on the pod, and per-function userIdentity policies still apply.
  */
 

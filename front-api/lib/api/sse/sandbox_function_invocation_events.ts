@@ -25,8 +25,9 @@ export async function streamSandboxFunctionInvocationEventsForRoute(
     lastEventId: string | null;
   }
 ) {
-  // A frame host may present its frame's share token as a capability to reach the invocations of
-  // the frame's app's functions; the owner-scoped invocation fetch below still applies.
+  // A frame host may present its frame's share token to reach the invocations of the frame's
+  // app's functions (granted to members who may view the frame); the owner-scoped invocation
+  // fetch below still applies.
   const sandboxFunction = await resolveSandboxFunctionWithCapability(
     auth,
     functionId,
