@@ -20,7 +20,7 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/common";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockSignalWithStart,
@@ -168,34 +168,84 @@ describe("launchConsumptionExportWorkflow", () => {
     expect(mockStart).not.toHaveBeenCalled();
   });
 
-  it("never reuses a previous export for an open-ended period, even if one exists in GCS", async () => {
-    const { authenticator } = await createResourceTest({});
-    const workflowId = makeConsumptionExportWorkflowId({
-      workspaceId: authenticator.getNonNullableWorkspace().sId,
-    });
+  describe("open-ended period (e.g. 'this cycle')", () => {
+    // In the future relative to the mocked "now" below: this cycle's data keeps accruing
+    // while the period value itself stays the same for its whole duration.
     const openEndedPeriod: ConsumptionPeriod = {
       startDate: "2026-08-01T00:00:00.000Z",
-      // In the future relative to the current test-suite date: this cycle's data keeps
-      // accruing, so a same-looking export from earlier today must not be served back.
       endDate: "2027-01-01T00:00:00.000Z",
     };
-    // Would be a cache hit if this were treated as a closed period.
-    fileStorageMock.setFileExists(() => true);
-    mockDescribe.mockRejectedValue(
-      new WorkflowNotFoundError("not found", workflowId, undefined)
-    );
-    mockStart.mockResolvedValue(undefined);
 
-    const result = await launchConsumptionExportWorkflow(authenticator, {
-      period: openEndedPeriod,
-      filter: filterA,
+    afterEach(() => {
+      vi.useRealTimers();
     });
 
-    expect(result.isOk() && result.value).toEqual({
-      status: "started",
-      workflowId,
+    it("reuses the same day's export instead of recrunching on a same-day retrigger", async () => {
+      const { authenticator } = await createResourceTest({});
+      const workspaceId = authenticator.getNonNullableWorkspace().sId;
+
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-08-14T09:00:00.000Z"));
+      const gcsPath = buildConsumptionExportGcsPath(
+        workspaceId,
+        buildConsumptionExportCacheKey({
+          period: openEndedPeriod,
+          filter: filterA,
+          salt: "2026-08-14",
+        })
+      );
+      fileStorageMock.setFileExists((filePath) => filePath === gcsPath);
+
+      // A user retriggers "this cycle" again later the same day.
+      vi.setSystemTime(new Date("2026-08-14T18:00:00.000Z"));
+      const result = await launchConsumptionExportWorkflow(authenticator, {
+        period: openEndedPeriod,
+        filter: filterA,
+      });
+
+      expect(result.isOk() && result.value).toEqual({
+        status: "cached",
+        gcsPath,
+      });
+      expect(mockStart).not.toHaveBeenCalled();
     });
-    expect(mockStart).toHaveBeenCalledTimes(1);
+
+    it("does not reuse a previous day's export, so freshly accrued data is captured", async () => {
+      const { authenticator } = await createResourceTest({});
+      const workspaceId = authenticator.getNonNullableWorkspace().sId;
+      const workflowId = makeConsumptionExportWorkflowId({ workspaceId });
+
+      // Yesterday's export exists in GCS...
+      const yesterdaysGcsPath = buildConsumptionExportGcsPath(
+        workspaceId,
+        buildConsumptionExportCacheKey({
+          period: openEndedPeriod,
+          filter: filterA,
+          salt: "2026-08-13",
+        })
+      );
+      fileStorageMock.setFileExists(
+        (filePath) => filePath === yesterdaysGcsPath
+      );
+      mockDescribe.mockRejectedValue(
+        new WorkflowNotFoundError("not found", workflowId, undefined)
+      );
+      mockStart.mockResolvedValue(undefined);
+
+      // ...but the request comes in today, so it must not be served back.
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-08-14T09:00:00.000Z"));
+      const result = await launchConsumptionExportWorkflow(authenticator, {
+        period: openEndedPeriod,
+        filter: filterA,
+      });
+
+      expect(result.isOk() && result.value).toEqual({
+        status: "started",
+        workflowId,
+      });
+      expect(mockStart).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("reports already_running with the running export's own parameters when a second, differently-scoped export is requested concurrently", async () => {

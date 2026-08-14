@@ -194,11 +194,18 @@ export type LaunchConsumptionExportOutcome =
 // A period is "open-ended" while its end is still in the future relative to now (e.g. "this
 // cycle", whose endDate is the cycle's future close date) or was only just resolved to now
 // (e.g. "last N days"): its underlying data keeps changing even though the period value
-// itself doesn't, so every trigger must produce its own export instead of reusing a
-// previous, now-stale one. A period whose end has already passed is "closed": its data is
-// settled, so requests for the same period+filter can safely reuse a prior export.
+// itself doesn't. A period whose end has already passed is "closed": its data is settled, so
+// requests for the same period+filter can be reused indefinitely.
 function isOpenEndedPeriod(period: ConsumptionPeriod): boolean {
   return new Date(period.endDate).getTime() > Date.now();
+}
+
+// Open-ended periods are salted by calendar day (UTC), not by exact trigger moment: a user
+// retriggering "this cycle" several times the same day reuses that day's export instead of
+// recrunching Elasticsearch every time (a cheap abuse/DDoS vector otherwise), while the next
+// day still gets a fresh one to pick up newly accrued data.
+function currentUtcDayBucket(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 async function describeRunningConsumptionExport(
@@ -225,8 +232,8 @@ async function describeRunningConsumptionExport(
 
 // Only one export runs per workspace at a time
 // A concurrent request while one is in flight is surfaced as "already_running"
-// A closed period (see isOpenEndedPeriod) whose export already exists in GCS for the
-// exact same period+filter is surfaced as "cached" instead of recomputing it
+// A previously computed export for the exact same period+filter (and, for an open-ended
+// period, the same calendar day) is surfaced as "cached" instead of recomputing it
 export async function launchConsumptionExportWorkflow(
   auth: Authenticator,
   {
@@ -240,19 +247,16 @@ export async function launchConsumptionExportWorkflow(
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const authType = auth.toJSON();
 
-  const openEnded = isOpenEndedPeriod(period);
   const exportId = buildConsumptionExportCacheKey({
     period,
     filter,
-    salt: openEnded ? new Date().toISOString() : undefined,
+    salt: isOpenEndedPeriod(period) ? currentUtcDayBucket() : undefined,
   });
   const gcsPath = buildConsumptionExportGcsPath(workspaceId, exportId);
 
-  if (!openEnded) {
-    const [cached] = await getPrivateUploadBucket().file(gcsPath).exists();
-    if (cached) {
-      return new Ok({ status: "cached", gcsPath });
-    }
+  const [cached] = await getPrivateUploadBucket().file(gcsPath).exists();
+  if (cached) {
+    return new Ok({ status: "cached", gcsPath });
   }
 
   const client = await getTemporalClientForFrontNamespace();
