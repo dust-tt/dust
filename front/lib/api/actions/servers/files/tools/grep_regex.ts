@@ -55,7 +55,7 @@ export function isGrepLineTooLongError(
 async function* readBoundedLines(
   stream: Readable
 ): AsyncGenerator<Result<{ line: string; lineNumber: number }, Error>> {
-  let pending: Buffer[] = [];
+  const pending = Buffer.allocUnsafe(GREP_LINE_MAX_BYTES);
   let pendingBytes = 0;
   let lineNumber = 1;
 
@@ -66,31 +66,30 @@ async function* readBoundedLines(
     while (start < chunk.length) {
       const newline = chunk.indexOf(NEWLINE_BYTE, start);
       const end = newline === -1 ? chunk.length : newline;
-      const part = chunk.subarray(start, end);
+      const partLength = end - start;
 
-      if (pendingBytes + part.length > GREP_LINE_MAX_BYTES) {
+      if (pendingBytes + partLength > GREP_LINE_MAX_BYTES) {
         yield new Err(new GrepLineTooLongError(lineNumber));
         return;
       }
-      if (part.length > 0) {
-        pending.push(part);
-        pendingBytes += part.length;
+      if (partLength > 0) {
+        chunk.copy(pending, pendingBytes, start, end);
+        pendingBytes += partLength;
       }
 
       if (newline === -1) {
         break;
       }
 
-      let lineBytes = Buffer.concat(pending, pendingBytes);
-      if (
-        lineBytes.length > 0 &&
-        lineBytes[lineBytes.length - 1] === CARRIAGE_RETURN_BYTE
-      ) {
-        lineBytes = lineBytes.subarray(0, lineBytes.length - 1);
+      let lineEnd = pendingBytes;
+      if (lineEnd > 0 && pending[lineEnd - 1] === CARRIAGE_RETURN_BYTE) {
+        lineEnd--;
       }
-      yield new Ok({ line: lineBytes.toString("utf8"), lineNumber });
+      yield new Ok({
+        line: pending.toString("utf8", 0, lineEnd),
+        lineNumber,
+      });
 
-      pending = [];
       pendingBytes = 0;
       lineNumber++;
       start = newline + 1;
@@ -99,7 +98,7 @@ async function* readBoundedLines(
 
   if (pendingBytes > 0) {
     yield new Ok({
-      line: Buffer.concat(pending, pendingBytes).toString("utf8"),
+      line: pending.toString("utf8", 0, pendingBytes),
       lineNumber,
     });
   }

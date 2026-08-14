@@ -7,7 +7,7 @@ import {
   GREP_PATTERN_MAX_CHARS,
   GREP_RESPONSE_CONTENT_BUDGET_BYTES,
 } from "@app/lib/api/actions/servers/files/tools/grep_regex";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 describe("grep regex", () => {
   it("matches common expressions and inline case-insensitive expressions", () => {
@@ -71,6 +71,43 @@ describe("grep regex", () => {
       `line 1: it exceeds ${GREP_LINE_MAX_BYTES} bytes`
     );
   });
+
+  it("uses one bounded backing buffer for a line received one byte at a time", async () => {
+    const regexResult = compileGrepPattern("^b$");
+    if (regexResult.isErr()) {
+      throw regexResult.error;
+    }
+
+    const oneByteChunk = Buffer.from("a");
+    const newlineChunk = Buffer.from("\n");
+    function* oneByteChunks() {
+      for (let i = 0; i < GREP_LINE_MAX_BYTES; i++) {
+        yield oneByteChunk;
+      }
+      yield newlineChunk;
+    }
+
+    const allocUnsafeSpy = vi.spyOn(Buffer, "allocUnsafe");
+    const concatSpy = vi.spyOn(Buffer, "concat");
+    try {
+      const result = await collectGrepMatches(
+        Readable.from(oneByteChunks()),
+        regexResult.value,
+        {
+          formatMatch: (line, lineNumber) => `${lineNumber}: ${line}`,
+          maxMatches: 50,
+        }
+      );
+
+      expect(result.isOk()).toBe(true);
+      expect(allocUnsafeSpy).toHaveBeenCalledTimes(1);
+      expect(allocUnsafeSpy).toHaveBeenCalledWith(GREP_LINE_MAX_BYTES);
+      expect(concatSpy).not.toHaveBeenCalled();
+    } finally {
+      allocUnsafeSpy.mockRestore();
+      concatSpy.mockRestore();
+    }
+  }, 15_000);
 
   it("caps accumulated matches at the byte budget", async () => {
     const regexResult = compileGrepPattern("é");
