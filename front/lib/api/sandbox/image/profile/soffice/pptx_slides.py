@@ -214,6 +214,22 @@ def op_move(prs, slide_no: int, to: int) -> str:
     return f"Moved slide {slide_no} to position {to}"
 
 
+def _purge_slide_refs(pres_el: etree._Element, rId: str) -> None:
+    """Drop presentation.xml elements still pointing at `rId`.
+
+    A custom show reuses the slide's rId, and drop_rel keeps any rel still
+    referenced - so the slide leaves the order but its part stays as an orphan.
+    """
+    for el in list(pres_el.iter()):
+        if any(
+            name.startswith("{" + R_NS + "}") and value == rId
+            for name, value in el.attrib.items()
+        ):
+            parent = el.getparent()
+            if parent is not None:
+                parent.remove(el)
+
+
 def op_delete(prs, slide_nos: List[int]) -> str:
     n = len(prs.slides)
     for s in slide_nos:
@@ -225,8 +241,15 @@ def op_delete(prs, slide_nos: List[int]) -> str:
     for s in sorted(set(slide_nos), reverse=True):
         sld_id = sld_ids[s - 1]
         rId = sld_id.get(qn("r:id"))
-        prs.part.drop_rel(rId)  # drop only this slide's rel; shared media stays
         sld_id_lst.remove(sld_id)
+        _purge_slide_refs(prs.part._element, rId)
+        prs.part.drop_rel(rId)  # drop only this slide's rel; shared media stays
+        if rId in prs.part.rels:
+            raise ValueError(
+                f"slide {s} is still referenced from presentation.xml after "
+                f"its slide order entry was removed ({rId}); deleting it would "
+                "strand its part in the package"
+            )
     return f"Deleted slide(s) {','.join(map(str, sorted(set(slide_nos))))}"
 
 
