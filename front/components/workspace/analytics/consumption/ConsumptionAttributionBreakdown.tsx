@@ -10,13 +10,14 @@ import { CONSUMPTION_DIMENSION_CONFIG } from "./consumptionDimensions";
 
 const BREAKDOWN_LIMIT = 3;
 
-const BREAKDOWN_DIMENSIONS = ["model", "tool", "user"] as const;
+const BREAKDOWN_DIMENSIONS = ["model", "tool", "user", "api_key"] as const;
 type BreakdownDimension = (typeof BREAKDOWN_DIMENSIONS)[number];
 
 const BREAKDOWN_LABELS: Record<BreakdownDimension, string> = {
   model: "By model",
   tool: "By tools",
   user: "By users",
+  api_key: "By API key",
 };
 
 function BreakdownColumnSkeleton() {
@@ -154,7 +155,7 @@ export function ConsumptionAttributionBreakdown({
     <div
       className={cn(
         "grid gap-20",
-        visibleDimensions.length === 2 ? "grid-cols-2" : "grid-cols-3",
+        visibleDimensions.length === 3 ? "grid-cols-3" : "grid-cols-2",
         "border-b border-separator px-2 pb-6 pt-4"
       )}
     >
