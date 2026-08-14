@@ -43,6 +43,7 @@ const LLM_DOC: AgentMessageConsumptionAnalyticsLlmData = {
   completed_at: "2026-08-01T00:00:00.000Z",
   consumption_key: "run-usage:1",
   context_origin: "api",
+  normalized_origin: "api",
   conversation_id: "conv1",
   credit_micro: 1_000_000,
   execution_time_ms: null,
