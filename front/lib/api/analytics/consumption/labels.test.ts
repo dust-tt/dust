@@ -5,9 +5,11 @@ import {
 import { getAgentModelDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
 import { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -152,6 +154,51 @@ describe("resolveDimensionLabels", () => {
       name: "Engineering",
       pictureUrl: null,
       description: null,
+    });
+  });
+
+  it("labels remote tools by server id, server name, and view name", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Customer records",
+    });
+    const view = await MCPServerViewResource.getMCPServerViewForSystemSpace(
+      authenticator,
+      server.sId
+    );
+    if (!view) {
+      throw new Error("Expected the remote server system view to exist.");
+    }
+    await view.updateNameAndDescription(
+      authenticator,
+      "customer_records_admin"
+    );
+
+    const labels = await resolveDimensionLabels(authenticator, "tool", [
+      server.sId,
+      server.cachedName,
+      "customer_records_admin",
+    ]);
+
+    expect(labels.get(server.sId)).toEqual({
+      name: "Customer records",
+      pictureUrl: null,
+      description: null,
+      icon: server.icon,
+    });
+    expect(labels.get(server.cachedName)).toEqual({
+      name: "Customer records",
+      pictureUrl: null,
+      description: null,
+      icon: server.icon,
+    });
+    expect(labels.get("customer_records_admin")).toEqual({
+      name: "Customer Records Admin",
+      pictureUrl: null,
+      description: null,
+      icon: server.icon,
     });
   });
 });

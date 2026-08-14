@@ -18,9 +18,11 @@ import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getAvailabilityOfInternalMCPServerById,
   getAvailabilityOfInternalMCPServerByName,
+  getInternalMCPServerIconByName,
   getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_MCP_SERVERS,
   isAutoInternalMCPServerName,
+  isInternalMCPServerName,
   isValidInternalMCPServerId,
   matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -38,6 +40,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
+import { RemoteMCPServerModel } from "@app/lib/models/agent/actions/remote_mcp_server";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
@@ -52,7 +55,11 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticSoftDeletable } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import {
+  getResourceIdFromSId,
+  isResourceSId,
+  makeSId,
+} from "@app/lib/resources/string_ids";
 import type {
   InferIncludeType,
   ResourceFindOptions,
@@ -69,6 +76,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import {
   formatUserFullName,
   isWorkspaceAnalyticsEnabled,
@@ -76,7 +84,7 @@ import {
 import assert from "assert";
 import uniq from "lodash/uniq";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import { z } from "zod";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -92,6 +100,11 @@ type AffectedAgent = Pick<
 type MCPServerViewCreationResult = {
   view: MCPServerViewResource;
   affectedAgents?: AffectedAgent[];
+};
+
+type MCPServerDisplayMetadata = {
+  name: string;
+  icon: CustomResourceIconType | InternalAllowedIconType;
 };
 
 export type GetMCPServerViewsResponseBody = {
@@ -697,25 +710,99 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return this.baseFetch(auth, findOptions, { includeHeavyAttributes });
   }
 
-  static async resolveIconsByNames(
+  static async resolveDisplayMetadataByIdentifiers(
     auth: Authenticator,
-    names: string[]
-  ): Promise<Map<string, CustomResourceIconType | InternalAllowedIconType>> {
-    const uniqueNames = [...new Set(names)];
-    if (uniqueNames.length === 0) {
-      return new Map();
+    identifiers: string[]
+  ): Promise<Map<string, MCPServerDisplayMetadata>> {
+    const uniqueIdentifiers = [...new Set(identifiers)];
+    const metadata = new Map<string, MCPServerDisplayMetadata>();
+
+    for (const identifier of uniqueIdentifiers) {
+      if (isInternalMCPServerName(identifier)) {
+        metadata.set(identifier, {
+          name: asDisplayToolName(identifier),
+          icon: getInternalMCPServerIconByName(identifier),
+        });
+      }
     }
 
-    const views = await this.baseFetch(
-      auth,
-      { where: { name: { [Op.in]: uniqueNames } } },
-      { includeMetadata: false }
+    const remoteMCPServerModelIds = uniqueIdentifiers
+      .filter((identifier) => isResourceSId("remote_mcp_server", identifier))
+      .map((identifier) => getServerTypeAndIdFromSId(identifier).id);
+    const names = uniqueIdentifiers.filter(
+      (identifier) =>
+        !isInternalMCPServerName(identifier) &&
+        !isResourceSId("remote_mcp_server", identifier)
     );
-    return new Map(
-      views.flatMap((view) =>
-        view.name ? [[view.name, view.getServerDisplayMetadata().icon]] : []
-      )
-    );
+    if (remoteMCPServerModelIds.length === 0 && names.length === 0) {
+      return metadata;
+    }
+
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    // Keep this as one joined query: baseFetch would hydrate spaces and servers
+    // through additional queries that this display-only lookup does not need.
+    const views = await this.model.findAll({
+      attributes: ["name", "remoteMCPServerId"],
+      where: {
+        workspaceId: workspaceModelId,
+        serverType: "remote",
+        [Op.or]: [
+          ...(names.length > 0
+            ? [
+                { name: { [Op.in]: names } },
+                Sequelize.where(Sequelize.col("remoteMCPServer.cachedName"), {
+                  [Op.in]: names,
+                }),
+              ]
+            : []),
+          ...(remoteMCPServerModelIds.length > 0
+            ? [
+                {
+                  remoteMCPServerId: {
+                    [Op.in]: remoteMCPServerModelIds,
+                  },
+                },
+              ]
+            : []),
+        ],
+      },
+      include: [
+        {
+          model: RemoteMCPServerModel,
+          as: "remoteMCPServer",
+          attributes: ["id", "cachedName", "icon"],
+          required: true,
+          where: { workspaceId: workspaceModelId },
+        },
+      ],
+    });
+
+    const requestedIdentifiers = new Set(uniqueIdentifiers);
+    for (const view of views) {
+      const server = view.remoteMCPServer;
+      const serverId = remoteMCPServerNameToSId({
+        remoteMCPServerId: server.id,
+        workspaceId: workspaceModelId,
+      });
+      const serverMetadata = {
+        name: server.cachedName,
+        icon: server.icon,
+      };
+      if (view.name && requestedIdentifiers.has(view.name)) {
+        metadata.set(view.name, {
+          name: asDisplayToolName(view.name),
+          icon: server.icon,
+        });
+      }
+      if (requestedIdentifiers.has(server.cachedName)) {
+        metadata.set(server.cachedName, serverMetadata);
+      }
+      if (requestedIdentifiers.has(serverId)) {
+        metadata.set(serverId, serverMetadata);
+      }
+    }
+
+    return metadata;
   }
 
   static async listBySpaces(

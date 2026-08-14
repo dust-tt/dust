@@ -428,59 +428,6 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     return nameMap;
   }
 
-  static async resolveDisplayMetadataByIdentifiers(
-    auth: Authenticator,
-    identifiers: string[]
-  ): Promise<
-    Map<
-      string,
-      {
-        name: string;
-        icon: CustomResourceIconType | InternalAllowedIconType;
-      }
-    >
-  > {
-    const uniqueIdentifiers = [...new Set(identifiers)];
-    if (uniqueIdentifiers.length === 0) {
-      return new Map();
-    }
-
-    const remoteSIds = uniqueIdentifiers.filter((identifier) =>
-      isResourceSId("remote_mcp_server", identifier)
-    );
-    const names = uniqueIdentifiers.filter(
-      (identifier) => !isResourceSId("remote_mcp_server", identifier)
-    );
-    const modelIds = remoteSIds.map((sId) => getServerTypeAndIdFromSId(sId).id);
-    const servers = await this.baseFetch(auth, {
-      where: {
-        [Op.or]: [
-          ...(modelIds.length > 0 ? [{ id: { [Op.in]: modelIds } }] : []),
-          ...(names.length > 0 ? [{ cachedName: { [Op.in]: names } }] : []),
-        ],
-      },
-    });
-
-    const requestedIdentifiers = new Set(uniqueIdentifiers);
-    const metadata = new Map<
-      string,
-      {
-        name: string;
-        icon: CustomResourceIconType | InternalAllowedIconType;
-      }
-    >();
-    for (const server of servers) {
-      const value = { name: server.cachedName, icon: server.icon };
-      if (requestedIdentifiers.has(server.sId)) {
-        metadata.set(server.sId, value);
-      }
-      if (requestedIdentifiers.has(server.cachedName)) {
-        metadata.set(server.cachedName, value);
-      }
-    }
-    return metadata;
-  }
-
   static async listByWorkspace(
     auth: Authenticator,
     {
