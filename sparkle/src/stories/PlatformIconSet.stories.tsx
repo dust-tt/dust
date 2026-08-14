@@ -1,7 +1,7 @@
 import React from "react";
 
 import { Icon } from "../index_with_tw_base";
-import * as PlatformIcons from "../logo/platforms";
+import { PLATFORM_LOGOS } from "../logo/platforms";
 
 export default {
   title: "Assets/Platform Logos",
@@ -30,18 +30,13 @@ const itemStyle = {
 
 export const PlatformLogos = () => (
   <div style={gridStyle}>
-    {Object.entries(PlatformIcons).map(([iconName, IconComponent]) => {
-      const CurrentIcon = (
-        "default" in IconComponent ? IconComponent.default : IconComponent
-      ) as React.ComponentType<{ className?: string | undefined }>;
-      return (
-        <div key={iconName}>
-          <Icon visual={CurrentIcon} size="lg" />
-          <div style={itemStyle as React.CSSProperties} className="text-base">
-            {iconName}
-          </div>
+    {Object.entries(PLATFORM_LOGOS).map(([iconName, IconComponent]) => (
+      <div key={iconName}>
+        <Icon visual={IconComponent} size="lg" />
+        <div style={itemStyle as React.CSSProperties} className="text-base">
+          {iconName}
         </div>
-      );
-    })}
+      </div>
+    ))}
   </div>
 );
