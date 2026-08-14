@@ -82,6 +82,14 @@ type CommitContentUploadOptions = Pick<
   CommitContentUploadRequest,
   "blobId" | "contentType" | "expectedBlobId" | "expectedSizeBytes"
 >;
+type SetExecutableBitsRequest = Extract<
+  FileSystemOperation,
+  { operation: "setExecutableBits" }
+>;
+type SetExecutableBitsOptions = Pick<
+  SetExecutableBitsRequest,
+  "executableBits"
+>;
 
 const FileSystemBlobIdSchema = z.string().uuid();
 type SetExecutableBitsRequest = Extract<

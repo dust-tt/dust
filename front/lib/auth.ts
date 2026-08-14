@@ -7,6 +7,7 @@ import type {
 } from "@app/lib/api/sandbox/access_tokens";
 import {
   isSandboxExecTokenPayload,
+  isSandboxFileSystemTokenPayload,
   isSandboxFunctionInvocationTokenPayload,
   SANDBOX_TOKEN_PREFIX,
 } from "@app/lib/api/sandbox/access_tokens";
@@ -659,6 +660,11 @@ export class Authenticator {
         return new Err(groupModelIdsRes.error);
       }
       groupModelIdSets.push(groupModelIdsRes.value);
+    }
+    if (isSandboxFileSystemTokenPayload(claims)) {
+      // This token kind is accepted only by the filesystem route. File access
+      // comes from its signed conversation and Pod roots, not workspace groups.
+      groupModelIdSets.push([]);
     }
     if (groupModelIdSets.length === 0) {
       return new Err({

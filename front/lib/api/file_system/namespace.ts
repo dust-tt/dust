@@ -16,7 +16,11 @@ export type {
   FileSystemOperation,
   FileSystemOperationResponse,
 } from "./namespace_types";
-export { FileSystemOperationError } from "./namespace_types";
+export {
+  FileSystemOperationError,
+  FileSystemOperationResponseSchema,
+  FileSystemOperationSchema,
+} from "./namespace_types";
 
 /** Run one filesystem read after the caller has selected the allowed roots. */
 export async function applyFileSystemOperation(
@@ -201,13 +205,13 @@ export async function applyFileSystemOperation(
         );
       }
 
-      const updatedNode = await node.setExecutableBits(auth, scope, {
+      const updatedNodeRes = await node.setExecutableBits(auth, scope, {
         executableBits: request.executableBits,
       });
 
-      return updatedNode.isErr()
-        ? updatedNode
-        : new Ok({ node: updatedNode.value.toJSON() });
+      return updatedNodeRes.isErr()
+        ? updatedNodeRes
+        : new Ok({ node: updatedNodeRes.value.toJSON() });
     }
 
     default:
