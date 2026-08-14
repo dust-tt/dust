@@ -191,6 +191,17 @@ async function setupSettledMessage({
 }
 
 describe("loadAgentMessageConsumptionAnalyticsInput", () => {
+  it("returns null when the message context no longer exists", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      authenticator,
+      { agentMessageId: "missing-agent-message" }
+    );
+
+    expect(input).toBeNull();
+  });
+
   it("loads the authoritative inputs for billed user usage", async () => {
     const context = await setupSettledMessage();
 
