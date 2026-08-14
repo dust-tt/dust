@@ -734,43 +734,43 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       .map((id) => getServerTypeAndIdFromSId(id).id);
 
     const workspaceModelId = auth.getNonNullableWorkspace().id;
-    // Keep this as one joined query: baseFetch would hydrate spaces and servers
-    // through additional queries that this display-only lookup does not need.
-    const views = await this.model.findAll({
-      attributes: ["name", "remoteMCPServerId"],
-      where: {
-        workspaceId: workspaceModelId,
-        serverType: "remote",
-        [Op.or]: [
-          { name: { [Op.in]: remoteIds } },
-          Sequelize.where(Sequelize.col("remoteMCPServer.cachedName"), {
-            [Op.in]: remoteIds,
-          }),
-          ...(remoteMCPServerModelIds.length > 0
-            ? [
-                {
-                  remoteMCPServerId: {
-                    [Op.in]: remoteMCPServerModelIds,
+    const views = await this.baseFetch(
+      auth,
+      {
+        where: {
+          serverType: "remote",
+          [Op.or]: [
+            { name: { [Op.in]: remoteIds } },
+            Sequelize.where(Sequelize.col("remoteMCPServer.cachedName"), {
+              [Op.in]: remoteIds,
+            }),
+            ...(remoteMCPServerModelIds.length > 0
+              ? [
+                  {
+                    remoteMCPServerId: {
+                      [Op.in]: remoteMCPServerModelIds,
+                    },
                   },
-                },
-              ]
-            : []),
+                ]
+              : []),
+          ],
+        },
+        includes: [
+          {
+            model: RemoteMCPServerModel,
+            as: "remoteMCPServer",
+            attributes: [],
+            required: true,
+            where: { workspaceId: workspaceModelId },
+          },
         ],
       },
-      include: [
-        {
-          model: RemoteMCPServerModel,
-          as: "remoteMCPServer",
-          attributes: ["id", "cachedName", "icon"],
-          required: true,
-          where: { workspaceId: workspaceModelId },
-        },
-      ],
-    });
+      { includeMetadata: false }
+    );
 
     const requestedIds = new Set(uniqueIds);
     for (const view of views) {
-      const server = view.remoteMCPServer;
+      const server = view.getRemoteMCPServerResource();
       const serverId = remoteMCPServerNameToSId({
         remoteMCPServerId: server.id,
         workspaceId: workspaceModelId,
