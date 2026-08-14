@@ -660,6 +660,8 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
         )
       );
     }
+    // Encodings such as gzip can change the bytes clients receive. Identity
+    // means GCS serves the uploaded bytes unchanged.
     if (
       metadata.contentEncoding !== undefined &&
       metadata.contentEncoding.toLowerCase() !== "identity"
