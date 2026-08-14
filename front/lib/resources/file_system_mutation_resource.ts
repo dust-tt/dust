@@ -103,9 +103,9 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
     const workspaceId = auth.getNonNullableWorkspace().id;
     const key = `${FILE_SYSTEM_NAMESPACE_LOCK_PREFIX}:${workspaceId}`;
 
-    // Creates share this lock and remain concurrent. Rename takes it
-    // exclusively because moving a directory across roots rewrites every
-    // descendant's cached root fields and must not miss a concurrent child.
+    // Creates take a shared lock, so different creates can run at the same
+    // time. Rename takes an exclusive lock because a cross-root directory move
+    // must include every child created before the move starts.
     const query =
       mode === "shared"
         ? "SELECT pg_advisory_xact_lock_shared(hashtextextended(:key, 0))"
@@ -202,8 +202,8 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
       );
     }
 
-    // Replay the result that committed with the rename. Fetching the node here
-    // would return a later move, or nothing if a later rename replaced it.
+    // Return the result saved by the first request. Fetching the node again
+    // could return a later move, or nothing if another rename replaced it.
     return new Ok(parsed.data.node);
   }
 
@@ -219,8 +219,8 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
 
     try {
       return await withTransaction(async (transaction) => {
-        // This must be the first lock in every namespace mutation. Rename must
-        // stay disabled until every deployed create path participates.
+        // Take this before locking any file or directory row. Do not enable
+        // rename until every running Front server uses this create code.
         await this.lockNamespace(auth, { mode: "shared", transaction });
         const existing = await this.baseFetch(
           auth,
@@ -317,8 +317,8 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
     }
 
     return withTransaction(async (transaction) => {
-      // Take the exclusive namespace lock before any node row lock. This
-      // also gives the recursive root update a stable tree to work from.
+      // Take this before locking any file or directory row. It blocks creates
+      // until the directory move and its child updates have committed.
       await this.lockNamespace(auth, { mode: "exclusive", transaction });
 
       const existing = await this.baseFetch(
@@ -362,8 +362,8 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
         );
       }
 
-      // The Node Resource owns the complete rename. This transaction also
-      // stores the receipt below, so the two changes commit together.
+      // The move and the saved response use the same transaction: both commit,
+      // or neither does.
       const movedRes = await sourceParent.renameChild(auth, scope, {
         sourceName: request.sourceName,
         destinationParent,

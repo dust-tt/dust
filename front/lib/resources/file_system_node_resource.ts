@@ -493,11 +493,11 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     possibleDescendant: FileSystemNodeResource,
     transaction: Transaction
   ): Promise<boolean> {
-    // Deliberate recursive CTE: the adjacency-list model only stores parentId,
-    // so preventing a directory cycle requires walking toward the root. This
-    // is O(directory depth), not O(subtree size). This is one of the few places
-    // where recursive SQL is allowed; do not reuse it for ordinary reads.
-    // biome-ignore lint/plugin/noRawSql: Recursive tree traversal has no Sequelize equivalent.
+    // Each row only stores its parentId. To stop a directory from being moved
+    // inside itself, this query follows parentId until it reaches a root. Its
+    // work grows with the number of parent directories, not the number of
+    // children. Keep recursive SQL out of normal reads.
+    // biome-ignore lint/plugin/noRawSql: Sequelize cannot follow parentId until the root.
     const rows = await frontSequelize.query<{ found: number }>(
       `
         WITH RECURSIVE ancestors AS (
@@ -536,8 +536,8 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
       return true;
     }
 
-    // Check the tree structure directly. A child with stale cached root fields
-    // must still keep this directory from being replaced and cascade-deleted.
+    // Look for children by parentId, without filtering on rootKind or rootId.
+    // Wrong copied root values must never let us delete a non-empty directory.
     const child = await this.model.findOne({
       attributes: ["id"],
       where: { workspaceId: this.workspaceId, parentId: this.id },
@@ -570,14 +570,13 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     destinationParent: FileSystemNodeResource,
     transaction: Transaction
   ): Promise<void> {
-    // Deliberate recursive CTE: rootKind/rootId are copied onto each node so
-    // ordinary authorization stays a simple indexed lookup. A cross-root move
-    // therefore has to update the whole subtree. This is O(descendants) and
-    // runs under the exclusive namespace lock. If these moves become frequent
-    // or trees become large, change the data model instead of adding more
-    // recursive writes or tuning this query into a wider tree API.
-    // Do not touch updatedAt: moving an ancestor did not modify child contents.
-    // biome-ignore lint/plugin/noRawSql: Recursive tree updates have no Sequelize equivalent.
+    // Every row stores rootKind and rootId so permission checks do not need to
+    // follow parentId. A cross-root move must therefore update every child of
+    // the moved directory. The workspace lock blocks creates and other renames
+    // until this finishes. If large moves become slow, reconsider copying the
+    // root onto every row instead of adding more recursive SQL.
+    // Do not change updatedAt: moving a parent did not change a child's bytes.
+    // biome-ignore lint/plugin/noRawSql: Sequelize cannot update a whole directory tree.
     await frontSequelize.query(
       `
         WITH RECURSIVE subtree AS (
