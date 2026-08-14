@@ -290,7 +290,7 @@ describe("filesystem namespace creation", () => {
     }
     const root = requireNode(initialized.value.roots?.[0]);
 
-    const unauthorized = await applyFileSystemOperation(
+    const writeDenied = await applyFileSystemOperation(
       authenticator,
       readOnlyScope(conversationId),
       {
@@ -331,9 +331,7 @@ describe("filesystem namespace creation", () => {
       mode: 0o644,
     });
 
-    expect(unauthorized.isErr() && unauthorized.error.code).toBe(
-      "unauthorized"
-    );
+    expect(writeDenied.isErr() && writeDenied.error.code).toBe("unauthorized");
     expect(invalidName.isErr() && invalidName.error.code).toBe(
       "invalid_operation"
     );
