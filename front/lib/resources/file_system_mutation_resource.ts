@@ -220,8 +220,7 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
 
     try {
       return await withTransaction(async (transaction) => {
-        // Take this before locking any file or directory row. Do not enable
-        // rename until every running Front server uses this create code.
+        // Take this before locking any file or directory row.
         await this.lockNamespace(auth, { mode: "shared", transaction });
         const existing = await this.baseFetch(
           auth,
