@@ -6,6 +6,7 @@ import {
   ElasticsearchError,
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
+import { notifyConsumptionExportReady } from "@app/lib/notifications/workflows/consumption-export-ready";
 import {
   buildConsumptionExportGcsPrefix,
   runConsumptionExportActivity,
@@ -19,7 +20,7 @@ import type {
 } from "@app/types/assistant/analytics";
 import { Err, Ok } from "@app/types/shared/result";
 import AdmZip from "adm-zip";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Instantiation expression: pins the mock to the concrete TDocument the exporter
 // actually queries with, so mockResolvedValue can be given a fully-typed
@@ -35,6 +36,17 @@ vi.mock(import("@app/lib/api/elasticsearch"), async (orig) => {
 vi.mock(import("@app/lib/api/analytics/consumption/labels"), async (orig) => {
   const mod = await orig();
   return { ...mod, resolveDimensionLabels: vi.fn() };
+});
+vi.mock(
+  import("@app/lib/notifications/workflows/consumption-export-ready"),
+  async (orig) => {
+    const mod = await orig();
+    return { ...mod, notifyConsumptionExportReady: vi.fn() };
+  }
+);
+
+beforeEach(() => {
+  vi.mocked(notifyConsumptionExportReady).mockClear();
 });
 
 const LLM_DOC: AgentMessageConsumptionAnalyticsLlmData = {
@@ -220,6 +232,8 @@ describe("runConsumptionExportActivity", () => {
     );
     expect(csv).toContain("search,server1,Search Tool");
     expect(csv).toContain("skill1,Research");
+
+    expect(notifyConsumptionExportReady).toHaveBeenCalledTimes(1);
   });
 
   it("throws and uploads nothing when the search fails", async () => {
@@ -244,5 +258,6 @@ describe("runConsumptionExportActivity", () => {
       call.filePath.startsWith(prefix)
     );
     expect(saveCalls).toHaveLength(0);
+    expect(notifyConsumptionExportReady).not.toHaveBeenCalled();
   });
 });

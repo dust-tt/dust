@@ -7,6 +7,7 @@ import type {
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { notifyConsumptionExportReady } from "@app/lib/notifications/workflows/consumption-export-ready";
 import logger from "@app/logger/logger";
 import { createHash } from "crypto";
 
@@ -101,4 +102,6 @@ export async function runConsumptionExportActivity(
   await getPrivateUploadBucket()
     .file(gcsPath)
     .save(result.value, { contentType: "application/zip", resumable: false });
+
+  notifyConsumptionExportReady(auth);
 }
