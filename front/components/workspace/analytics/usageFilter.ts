@@ -26,6 +26,10 @@ export const USAGE_FILTER_CATEGORIES = [
 
 export type UsageFilterCategory = (typeof USAGE_FILTER_CATEGORIES)[number];
 
+export const PERSONAL_USAGE_FILTER_CATEGORIES = USAGE_FILTER_CATEGORIES.filter(
+  (category) => category !== "member" && category !== "group"
+);
+
 export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =
   {
     agent: "Agents",

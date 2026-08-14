@@ -6,7 +6,6 @@ import {
   toConsumptionPeriodInput,
 } from "@app/lib/api/analytics/consumption/schema";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
@@ -18,7 +17,7 @@ const app = workspaceApp();
  * /api/w/{wId}/analytics/consumption/facets:
  *   post:
  *     summary: List consumption analytics facets
- *     description: Lists current workspace entities and historical indexed values present in the selected period for each consumption dimension. A facet is disabled when it has no indexed document in that period after applying every active filter except the facet's own dimension.
+ *     description: Lists current workspace entities and historical indexed values present in the selected period for each consumption dimension. A facet is disabled when it has no indexed document in that period after applying every active filter except the facet's own dimension. Callers below the manager role only see facets of their own consumption, and get no member or group facets.
  *     tags:
  *       - Private Analytics
  *     parameters:
@@ -128,8 +127,6 @@ const app = workspaceApp();
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/PrivateConsumptionFacet'
- *       403:
- *         description: Manager role required
  *       400:
  *         description: Invalid request body
  *       500:
@@ -137,7 +134,6 @@ const app = workspaceApp();
  */
 app.post(
   "/",
-  ensureIsManager(),
   validate("json", ConsumptionBodySchema),
   async (ctx): HandlerResult<GetConsumptionFacetsResponse> => {
     const auth = ctx.get("auth");

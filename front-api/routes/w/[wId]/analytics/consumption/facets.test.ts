@@ -65,18 +65,23 @@ describe("POST /api/w/:wId/analytics/consumption/facets", () => {
     );
   });
 
-  it("requires a manager and reports Elasticsearch failures", async () => {
-    const memberRequest = await createPrivateApiMockRequest({ role: "user" });
-    const forbiddenResponse = await honoApp.request(
-      `/api/w/${memberRequest.workspace.sId}/analytics/consumption/facets`,
+  it("serves members, whose facets cover their own consumption", async () => {
+    const { workspace } = await createPrivateApiMockRequest({ role: "user" });
+    vi.mocked(fetchConsumptionFacets).mockResolvedValue(new Ok(RESPONSE));
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/analytics/consumption/facets`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       }
     );
-    expect(forbiddenResponse.status).toBe(403);
 
+    expect(response.status).toBe(200);
+  });
+
+  it("reports Elasticsearch failures", async () => {
     const managerRequest = await createPrivateApiMockRequest({
       role: "manager",
     });

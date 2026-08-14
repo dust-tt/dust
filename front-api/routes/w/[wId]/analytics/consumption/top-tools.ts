@@ -7,7 +7,6 @@ import type { GetConsumptionTopToolsResponse } from "@app/lib/api/analytics/cons
 import { fetchConsumptionTopTools } from "@app/lib/api/analytics/consumption/top_tools";
 import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
@@ -19,7 +18,6 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.post(
   "/",
-  ensureIsManager(),
   validate("json", ConsumptionTopBodySchema),
   async (ctx): HandlerResult<GetConsumptionTopToolsResponse> => {
     const auth = ctx.get("auth");

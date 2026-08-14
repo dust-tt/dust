@@ -125,6 +125,7 @@ function BreakdownColumn({
 interface ConsumptionAttributionBreakdownProps {
   workspaceId: string;
   selectedDimension: ConsumptionDimension;
+  dimensions: ConsumptionDimension[];
   selectedRow: ConsumptionTopRow;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
@@ -137,6 +138,7 @@ interface ConsumptionAttributionBreakdownProps {
 export function ConsumptionAttributionBreakdown({
   workspaceId,
   selectedDimension,
+  dimensions,
   selectedRow,
   period,
   filter,
@@ -147,14 +149,14 @@ export function ConsumptionAttributionBreakdown({
     [CONSUMPTION_DIMENSION_FILTER_KEYS[selectedDimension]]: [selectedRow.id],
   };
   const visibleDimensions = BREAKDOWN_DIMENSIONS.filter(
-    (dimension) => dimension !== selectedDimension
+    (dimension) =>
+      dimension !== selectedDimension && dimensions.includes(dimension)
   );
 
   return (
     <div
       className={cn(
-        "grid gap-20",
-        visibleDimensions.length === 2 ? "grid-cols-2" : "grid-cols-3",
+        "grid grid-flow-col auto-cols-fr gap-20",
         "border-b border-separator px-2 pb-6 pt-4"
       )}
     >

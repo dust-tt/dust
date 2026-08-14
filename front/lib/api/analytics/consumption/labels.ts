@@ -65,22 +65,21 @@ export async function resolveDimensionLabels(
   }
 
   switch (dimension) {
+    // An agent the caller cannot read has no entry: `resolveAnalyticsAgentLabels`
+    // omits it, and callers drop the row rather than show a bare sId.
     case "agent": {
       const labels = await resolveAnalyticsAgentLabels(auth, keys);
       return new Map(
-        keys.map((key) => {
-          const label = labels.get(key);
-          return [
-            key,
-            {
-              name: label?.name ?? key,
-              pictureUrl: label?.pictureUrl ?? null,
-              description: label?.description || null,
-              modelId: label?.modelId,
-              modelDisplayName: label?.modelDisplayName,
-            },
-          ];
-        })
+        [...labels].map(([key, label]) => [
+          key,
+          {
+            name: label.name,
+            pictureUrl: label.pictureUrl,
+            description: label.description || null,
+            modelId: label.modelId,
+            modelDisplayName: label.modelDisplayName,
+          },
+        ])
       );
     }
 

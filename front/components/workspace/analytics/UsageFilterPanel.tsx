@@ -8,7 +8,6 @@ import type {
 import {
   toConsumptionScopeFilter,
   USAGE_FILTER_AGENT_SCOPES,
-  USAGE_FILTER_CATEGORIES,
   USAGE_FILTER_CATEGORY_LABEL,
   usageFilterSelectionCount,
 } from "@app/components/workspace/analytics/usageFilter";
@@ -44,6 +43,7 @@ interface UsageFilterPanelProps {
   period: ConsumptionPeriodSelection;
   filter: UsageFilter;
   onFilterChange: (next: UsageFilter) => void;
+  categories: readonly UsageFilterCategory[];
 }
 
 export function UsageFilterPanel({
@@ -51,6 +51,7 @@ export function UsageFilterPanel({
   period,
   filter,
   onFilterChange,
+  categories,
 }: UsageFilterPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   // Selections are staged while the panel is open and only propagated when
@@ -155,10 +156,8 @@ export function UsageFilterPanel({
   const appliedSelectionCount = usageFilterSelectionCount(filter);
   const categoriesWithSelection = useMemo(
     () =>
-      USAGE_FILTER_CATEGORIES.filter(
-        (category) => (draftFilter[category]?.length ?? 0) > 0
-      ),
-    [draftFilter]
+      categories.filter((category) => (draftFilter[category]?.length ?? 0) > 0),
+    [categories, draftFilter]
   );
 
   const handleOpenChange = (open: boolean) => {
@@ -192,7 +191,7 @@ export function UsageFilterPanel({
       <PopoverContent fullWidth align="end" className="w-auto rounded-2xl p-0">
         <div className="flex h-96 flex-row divide-x divide-border">
           <UsageFilterCategoryNav
-            categories={USAGE_FILTER_CATEGORIES}
+            categories={categories}
             draftFilter={draftFilter}
             activeCategory={activeCategory}
             onCategoryChange={handleCategoryChange}

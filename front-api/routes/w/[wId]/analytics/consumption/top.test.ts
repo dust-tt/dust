@@ -273,6 +273,9 @@ const RANKINGS = [
   },
 ];
 
+// The rankings that rank people could only ever describe the member themselves.
+const MANAGER_ONLY_PATHS = ["top-users", "top-groups"];
+
 async function setupTest({
   role = "admin",
 }: {
@@ -319,12 +322,25 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
     });
   });
 
-  it.each(RANKINGS)("$path is refused to non-managers", async ({ path }) => {
+  it.each(
+    RANKINGS.filter((r) => MANAGER_ONLY_PATHS.includes(r.path))
+  )("$path is refused to members", async ({ path }) => {
     const { workspace } = await setupTest({ role: "user" });
 
     const response = await postRankingRequest(workspace.sId, path);
 
     expect(response.status).toBe(403);
+  });
+
+  it.each(
+    RANKINGS.filter((r) => !MANAGER_ONLY_PATHS.includes(r.path))
+  )("$path is served to members", async ({ path, arrangeOk }) => {
+    arrangeOk();
+    const { workspace } = await setupTest({ role: "user" });
+
+    const response = await postRankingRequest(workspace.sId, path);
+
+    expect(response.status).toBe(200);
   });
 
   it("forwards the page, the period, the search and the filter", async () => {

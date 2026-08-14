@@ -347,6 +347,7 @@ function buildColumns({
 interface AttributionRowsProps {
   workspaceId: string;
   dimension: ConsumptionDimension;
+  dimensions: ConsumptionDimension[];
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
   onAddFilter: (row: ConsumptionTopRow) => void;
@@ -360,6 +361,7 @@ interface AttributionRowsProps {
 function AttributionRows({
   workspaceId,
   dimension,
+  dimensions,
   period,
   filter,
   onAddFilter,
@@ -464,6 +466,7 @@ function AttributionRows({
             columns={columns}
             workspaceId={workspaceId}
             dimension={dimension}
+            dimensions={dimensions}
             period={period}
             filter={filter}
             onViewAll={onViewAll}
@@ -499,6 +502,7 @@ function AttributionRows({
               columns={columns}
               workspaceId={workspaceId}
               dimension={dimension}
+              dimensions={dimensions}
               period={period}
               filter={filter}
               onViewAll={onViewAll}
@@ -537,6 +541,7 @@ interface ConsumptionAttributionTableProps {
   onAddFilter: (row: ConsumptionTopRow) => void;
   // Owned by the page: the selected tab also drives the chart's breakdown.
   dimension: ConsumptionDimension;
+  dimensions: ConsumptionDimension[];
   onDimensionChange: (dimension: ConsumptionDimension) => void;
   onViewAll: (
     dimension: ConsumptionDimension,
@@ -550,6 +555,7 @@ export function ConsumptionAttributionTable({
   filter,
   onAddFilter,
   dimension,
+  dimensions,
   onDimensionChange,
   onViewAll,
 }: ConsumptionAttributionTableProps) {
@@ -607,7 +613,7 @@ export function ConsumptionAttributionTable({
             }}
           >
             <TabsList border>
-              {CONSUMPTION_DIMENSIONS.map((tabDimension) => (
+              {dimensions.map((tabDimension) => (
                 <TabsTrigger
                   key={tabDimension}
                   value={tabDimension}
@@ -656,6 +662,7 @@ export function ConsumptionAttributionTable({
                     })}
                     workspaceId={workspaceId}
                     dimension={dimension}
+                    dimensions={dimensions}
                     period={period}
                     filter={filter}
                     onAddFilter={onAddFilter}

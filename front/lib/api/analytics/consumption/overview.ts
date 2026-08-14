@@ -10,8 +10,10 @@ import {
   COMPLETED_AT_FIELD,
   CONSUMPTION_DIMENSION_FIELDS,
   CREDIT_MICRO_FIELD,
+  isPersonalConsumptionScope,
 } from "@app/lib/api/analytics/consumption/scope";
 import { getAwuPoolSummary } from "@app/lib/api/credits/awu_pool_summary";
+import { getEffectiveSpendCapAwuCreditsForUser } from "@app/lib/api/credits/members_usage";
 import { computeCreditUsageStatus } from "@app/lib/api/credits/usage_status";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
@@ -74,12 +76,18 @@ function lastRecordAtFromAgg(
   return agg.value_as_string ?? new Date(agg.value).toISOString();
 }
 
-async function fetchPoolCapCredits(
+async function fetchCapCredits(
   auth: Authenticator,
   periodInput: ConsumptionPeriodInput
 ): Promise<number | null> {
   if (periodInput.kind !== "cycle") {
     return null;
+  }
+
+  if (isPersonalConsumptionScope(auth)) {
+    return getEffectiveSpendCapAwuCreditsForUser(auth, {
+      user: auth.getNonNullableUser(),
+    });
   }
 
   const poolResult = await getAwuPoolSummary(auth);
@@ -129,10 +137,11 @@ async function topAgentFromAgg(
 
   const agentId = String(bucket.key);
   const labels = await resolveDimensionLabels(auth, "agent", [agentId]);
+  const label = labels.get(agentId);
 
   return {
     agentId,
-    name: labels.get(agentId)?.name ?? agentId,
+    name: label ? label.name : "Unknown Agent",
     credits: microCreditsToCredits(bucket[AGENT_CREDIT_AGG]?.value ?? 0),
   };
 }
@@ -174,7 +183,7 @@ export async function fetchConsumptionOverview(
       size: 0,
     }),
     MembershipResource.countActiveMembersForWorkspace({ workspace }),
-    fetchPoolCapCredits(auth, periodInput),
+    fetchCapCredits(auth, periodInput),
   ]);
 
   if (searchResult.isErr()) {

@@ -106,15 +106,21 @@ const GovernancePage = withSuspense(
 
 export const adminRoutes: RouteObject[] = [
   {
+    // Managers report on the workspace, everyone else on their own consumption.
+    element: <RequireRoleLayout requiredRole="user" />,
+    children: [
+      {
+        path: "analytics/consumption",
+        element: <AnalyticsConsumptionPage />,
+      },
+    ],
+  },
+  {
     // Accessible to admins and managers.
     element: <RequireRoleLayout requiredRole="manager" />,
     children: [
       { path: "members", element: <MembersPage /> },
       { path: "analytics", element: <AnalyticsPage /> },
-      {
-        path: "analytics/consumption",
-        element: <AnalyticsConsumptionPage />,
-      },
       { path: "usage", element: <UsagePage /> },
       { path: "governance", element: <GovernancePage /> },
       // Legacy Workspace Settings page, merged into Settings & Governance.

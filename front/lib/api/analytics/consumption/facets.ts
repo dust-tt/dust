@@ -11,6 +11,8 @@ import {
   CONSUMPTION_DIMENSION_FIELDS,
   CONSUMPTION_DIMENSION_FILTER_KEYS,
   CONSUMPTION_SCOPE_DIMENSIONS,
+  isPersonalConsumptionScope,
+  PERSONAL_CONSUMPTION_SCOPE_DIMENSIONS,
 } from "@app/lib/api/analytics/consumption/scope";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
@@ -233,11 +235,13 @@ async function resolveFacets(
   );
   const entries = [
     ...catalogEntries,
-    ...missingCatalogValues.map((value) => ({
-      value,
-      label: historicalLabels.get(value)?.name ?? value,
-      pictureUrl: historicalLabels.get(value)?.pictureUrl ?? null,
-    })),
+    ...missingCatalogValues.flatMap((value) => {
+      const label = historicalLabels.get(value);
+      if (!label) {
+        return [];
+      }
+      return [{ value, label: label.name, pictureUrl: label.pictureUrl }];
+    }),
   ];
 
   return entries
@@ -270,8 +274,13 @@ async function fetchConsumptionFacetsWithoutTracing(
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionFacets, ElasticsearchError>> {
+  const isPersonalScope = isPersonalConsumptionScope(auth);
+  const dimensions = isPersonalScope
+    ? PERSONAL_CONSUMPTION_SCOPE_DIMENSIONS
+    : CONSUMPTION_SCOPE_DIMENSIONS;
+
   const bucketResults = await concurrentExecutor(
-    CONSUMPTION_SCOPE_DIMENSIONS,
+    dimensions,
     async (dimension) => ({
       dimension,
       result: await fetchDimensionFacetBuckets({
@@ -302,18 +311,22 @@ async function fetchConsumptionFacetsWithoutTracing(
     getFacetBuckets(bucketsByDimension, "agent"),
     catalog.agent
   );
-  const userFacets = await resolveFacets(
-    auth,
-    "user",
-    getFacetBuckets(bucketsByDimension, "user"),
-    catalog.user
-  );
-  const groupFacets = await resolveFacets(
-    auth,
-    "group",
-    getFacetBuckets(bucketsByDimension, "group"),
-    catalog.group
-  );
+  const userFacets = isPersonalScope
+    ? []
+    : await resolveFacets(
+        auth,
+        "user",
+        getFacetBuckets(bucketsByDimension, "user"),
+        catalog.user
+      );
+  const groupFacets = isPersonalScope
+    ? []
+    : await resolveFacets(
+        auth,
+        "group",
+        getFacetBuckets(bucketsByDimension, "group"),
+        catalog.group
+      );
   const modelFacets = await resolveFacets(
     auth,
     "model",
