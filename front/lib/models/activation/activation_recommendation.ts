@@ -17,6 +17,17 @@ export type ActivationRecommendationStatus =
   | "executed"
   | "dismissed";
 
+// Post-execution answer from Step 7. Independent of `status`.
+// "feedback" is the Provide Feedback option — not a usefulness rating.
+export const ACTIVATION_RECOMMENDATION_USEFULNESS = [
+  "useful",
+  "not_useful",
+  "feedback",
+] as const;
+
+export type ActivationRecommendationUsefulness =
+  (typeof ACTIVATION_RECOMMENDATION_USEFULNESS)[number];
+
 export class ActivationRecommendationModel extends WorkspaceAwareModel<ActivationRecommendationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -32,8 +43,8 @@ export class ActivationRecommendationModel extends WorkspaceAwareModel<Activatio
   declare ctaLabel: string | null;
   declare sourceIcon: string | null;
   declare sourceLabel: string | null;
-  // Set after the user answers Useful / Not Useful on an executed recommendation.
-  declare isUseful: boolean | null;
+  // Set after the user answers Useful / Not Useful / Provide Feedback.
+  declare usefulness: ActivationRecommendationUsefulness | null;
 
   // The conversation in which the recommendation was (originally) made
   declare conversationId: ForeignKey<ConversationModel["id"]> | null;
@@ -96,8 +107,8 @@ ActivationRecommendationModel.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
-    isUseful: {
-      type: DataTypes.BOOLEAN,
+    usefulness: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
     conversationId: {
