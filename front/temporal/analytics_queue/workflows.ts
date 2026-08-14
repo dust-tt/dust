@@ -7,12 +7,7 @@ import type {
   AgentLoopArgs,
   AgentMessageRef,
 } from "@app/types/assistant/agent_run";
-import {
-  defineQuery,
-  proxyActivities,
-  setHandler,
-  workflowInfo,
-} from "@temporalio/workflow";
+import { defineQuery, proxyActivities, setHandler } from "@temporalio/workflow";
 
 // Queried by the launcher to recover a running export's parameters instead of relying on the
 // workflow memo, which is persisted to the visibility store and size-limited: a filter can carry
@@ -105,24 +100,21 @@ export async function runConsumptionExportWorkflow(
   {
     period,
     filter,
+    exportId,
   }: {
     period: ConsumptionPeriod;
     filter: ConsumptionScopeFilter;
+    exportId: string;
   }
 ): Promise<void> {
   setHandler(getConsumptionExportParamsQuery, () => ({ period, filter }));
 
-  // runId (not workflowId) so each trigger produces its own GCS object: the
-  // workflow ID is stable per workspace to enforce a single in-flight export,
-  // but runId is unique per execution while still stable across activity
-  // retries within that execution (unlike Date.now() computed inside the
-  // activity), so a retry after a lost completion ack re-uploads to the same
-  // GCS path instead of leaving an orphaned duplicate zip.
-  const { runId } = workflowInfo();
-
+  // exportId is computed by the launcher (see buildConsumptionExportCacheKey) rather than
+  // here, so it stays fixed across activity retries within this run just like the old
+  // runId-based scheme, but can also be reused across separate runs for closed periods.
   await runConsumptionExportActivity(authType, {
     period,
     filter,
-    exportId: runId,
+    exportId,
   });
 }

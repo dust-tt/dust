@@ -1,12 +1,17 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import {
   AgentMessageModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
+import {
+  buildConsumptionExportCacheKey,
+  buildConsumptionExportGcsPath,
+} from "@app/temporal/analytics_queue/activities/consumption_export";
 import { QUEUE_NAME } from "@app/temporal/analytics_queue/config";
 import {
   makeAgentMessageAnalyticsWorkflowId,
@@ -179,11 +184,22 @@ export type RunningConsumptionExport = {
 
 export type LaunchConsumptionExportOutcome =
   | { status: "started"; workflowId: string }
+  | { status: "cached"; gcsPath: string }
   | {
       status: "already_running";
       workflowId: string;
       running: RunningConsumptionExport;
     };
+
+// A period is "open-ended" while its end is still in the future relative to now (e.g. "this
+// cycle", whose endDate is the cycle's future close date) or was only just resolved to now
+// (e.g. "last N days"): its underlying data keeps changing even though the period value
+// itself doesn't, so every trigger must produce its own export instead of reusing a
+// previous, now-stale one. A period whose end has already passed is "closed": its data is
+// settled, so requests for the same period+filter can safely reuse a prior export.
+function isOpenEndedPeriod(period: ConsumptionPeriod): boolean {
+  return new Date(period.endDate).getTime() > Date.now();
+}
 
 async function describeRunningConsumptionExport(
   handle: WorkflowHandle
@@ -209,6 +225,8 @@ async function describeRunningConsumptionExport(
 
 // Only one export runs per workspace at a time
 // A concurrent request while one is in flight is surfaced as "already_running"
+// A closed period (see isOpenEndedPeriod) whose export already exists in GCS for the
+// exact same period+filter is surfaced as "cached" instead of recomputing it
 export async function launchConsumptionExportWorkflow(
   auth: Authenticator,
   {
@@ -221,6 +239,21 @@ export async function launchConsumptionExportWorkflow(
 ): Promise<Result<LaunchConsumptionExportOutcome, Error>> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const authType = auth.toJSON();
+
+  const openEnded = isOpenEndedPeriod(period);
+  const exportId = buildConsumptionExportCacheKey({
+    period,
+    filter,
+    salt: openEnded ? new Date().toISOString() : undefined,
+  });
+  const gcsPath = buildConsumptionExportGcsPath(workspaceId, exportId);
+
+  if (!openEnded) {
+    const [cached] = await getPrivateUploadBucket().file(gcsPath).exists();
+    if (cached) {
+      return new Ok({ status: "cached", gcsPath });
+    }
+  }
 
   const client = await getTemporalClientForFrontNamespace();
 
@@ -235,7 +268,7 @@ export async function launchConsumptionExportWorkflow(
     }
 
     await client.workflow.start(runConsumptionExportWorkflow, {
-      args: [authType, { period, filter }],
+      args: [authType, { period, filter, exportId }],
       taskQueue: QUEUE_NAME,
       workflowId,
       memo: {
