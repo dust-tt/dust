@@ -13,6 +13,10 @@ import {
   isWebbrowseInputType,
   isWebsearchInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
+import {
+  isCanonicalScopedPath,
+  TOOL_OUTPUTS_FOLDER_NAME,
+} from "@app/lib/api/files/mount_path";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
 import { stripFileExtension } from "@app/types/files";
 import {
@@ -38,6 +42,24 @@ function shortenUrl(url: string): string {
 
 function formatStringList(values: string[]): string {
   return truncateQuery(values.join(", "));
+}
+
+function getFilePathDisplayName(filePath: string): string {
+  if (!isCanonicalScopedPath(filePath)) {
+    return truncateQuery(filePath);
+  }
+
+  const pathParts = filePath.split("/");
+  const fileName = pathParts.at(-1);
+  if (!fileName) {
+    return truncateQuery(filePath);
+  }
+
+  const displayName = pathParts.includes(TOOL_OUTPUTS_FOLDER_NAME)
+    ? fileName.replace(/^\d{13}_/, "")
+    : fileName;
+
+  return truncateQuery(displayName);
 }
 
 const INTERNAL_TOOL_DISPLAY_LABELS_BY_SERVER = Object.fromEntries(
@@ -409,7 +431,7 @@ function getDynamicToolDisplayLabels({
 
     case "files":
       if (toolName === "cat" && isString(inputs.path)) {
-        const path = truncateQuery(inputs.path);
+        const path = getFilePathDisplayName(inputs.path);
         return {
           running: `Reading “${path}”`,
           done: `Read “${path}”`,

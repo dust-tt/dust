@@ -176,6 +176,45 @@ describe("getToolDisplayLabels", () => {
     });
   });
 
+  it.each([
+    [
+      "conversation-Fx7LXcp8VP/reports/quarterly-results.csv",
+      "quarterly-results.csv",
+    ],
+    [
+      "conversation-Fx7LXcp8VP/.tool_outputs/1786717219013_github_get_pull_request.txt",
+      "github_get_pull_request.txt",
+    ],
+    [
+      "pod-pod123/.tool_outputs/analyze-sales/1786717219013_query_tables.json",
+      "query_tables.json",
+    ],
+  ])("uses the file name for Dust file system path %s", (path, fileName) => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "files",
+        toolName: "cat",
+        inputs: { path },
+      })
+    ).toEqual({
+      running: `Reading “${fileName}”`,
+      done: `Read “${fileName}”`,
+    });
+  });
+
+  it("keeps non-Dust file system paths unchanged", () => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "files",
+        toolName: "cat",
+        inputs: { path: "/tmp/report.csv" },
+      })
+    ).toEqual({
+      running: "Reading “/tmp/report.csv”",
+      done: "Read “/tmp/report.csv”",
+    });
+  });
+
   it("labels a HubSpot search by object type", () => {
     expect(
       getToolDisplayLabels({
