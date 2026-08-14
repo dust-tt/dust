@@ -40,7 +40,6 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
-import { RemoteMCPServerModel } from "@app/lib/models/agent/actions/remote_mcp_server";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
@@ -80,7 +79,7 @@ import {
 import assert from "assert";
 import uniq from "lodash/uniq";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
-import { Op, Sequelize } from "sequelize";
+import { Op } from "sequelize";
 import { z } from "zod";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -730,47 +729,16 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       return metadata;
     }
 
-    const workspaceModelId = auth.getNonNullableWorkspace().id;
-    const views = await this.baseFetch(
+    const remoteServers = await RemoteMCPServerResource.fetchByNames(
       auth,
-      {
-        where: {
-          serverType: "remote",
-          [Op.or]: [
-            { name: { [Op.in]: remoteNames } },
-            Sequelize.where(Sequelize.col("remoteMCPServer.cachedName"), {
-              [Op.in]: remoteNames,
-            }),
-          ],
-        },
-        includes: [
-          {
-            model: RemoteMCPServerModel,
-            as: "remoteMCPServer",
-            attributes: [],
-            required: true,
-            where: { workspaceId: workspaceModelId },
-          },
-        ],
-      },
-      { includeMetadata: false }
+      remoteNames
     );
 
-    const requestedNames = new Set(uniqueNames);
-    for (const view of views) {
-      const server = view.getRemoteMCPServerResource();
-      if (view.name && requestedNames.has(view.name)) {
-        metadata.set(view.name, {
-          name: asDisplayToolName(view.name),
-          icon: server.icon,
-        });
-      }
-      if (requestedNames.has(server.cachedName)) {
-        metadata.set(server.cachedName, {
-          name: server.cachedName,
-          icon: server.icon,
-        });
-      }
+    for (const server of remoteServers) {
+      metadata.set(server.cachedName, {
+        name: server.cachedName,
+        icon: server.icon,
+      });
     }
 
     return metadata;
