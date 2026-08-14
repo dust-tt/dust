@@ -6,13 +6,16 @@
 //                     conversation belongs to a Pod. Persistent across conversations within
 //                     the same Pod.
 
+import type { FileResource } from "@app/lib/resources/file_resource";
+import type { CanonicalScopedPathScope } from "@app/types/file_system";
 import {
   LEGACY_PREFIX_CONVERSATION,
   LEGACY_PREFIX_PROJECT,
+  parseCanonicalScopedPathScope,
   SCOPED_PREFIX_CONVERSATION,
   SCOPED_PREFIX_POD,
-} from "@app/lib/api/file_system/types";
-import type { FileResource } from "@app/lib/resources/file_resource";
+  TOOL_OUTPUTS_FOLDER_NAME,
+} from "@app/types/file_system";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { extensionsForContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
@@ -38,7 +41,10 @@ export function getConversationFilesBasePath({
   return `${getBaseMountPathForWorkspace({ workspaceId })}conversations/${conversationId}/files/`;
 }
 
-export const TOOL_OUTPUTS_FOLDER_NAME = ".tool_outputs";
+export {
+  parseCanonicalScopedPath,
+  TOOL_OUTPUTS_FOLDER_NAME,
+} from "@app/types/file_system";
 
 export function getConversationToolOutputsBasePath({
   workspaceId,
@@ -261,8 +267,7 @@ type ScopedFilePath = {
  *   resolved from the frame's metadata (useCaseMetadata).
  */
 type ParsedVizScope =
-  | { kind: "canonical-conversation"; id: string }
-  | { kind: "canonical-pod"; id: string }
+  | CanonicalScopedPathScope
   | { kind: "legacy"; prefix: ScopedFilePathPrefix };
 
 /**
@@ -270,45 +275,13 @@ type ParsedVizScope =
  * Returns null for unrecognised prefixes (caller should return a 400).
  */
 export function parseRawVizScope(rawScope: string): ParsedVizScope | null {
-  if (rawScope.startsWith(SCOPED_PREFIX_CONVERSATION)) {
-    const id = rawScope.slice(SCOPED_PREFIX_CONVERSATION.length);
-    return id ? { kind: "canonical-conversation", id } : null;
-  }
-
-  if (rawScope.startsWith(SCOPED_PREFIX_POD)) {
-    const id = rawScope.slice(SCOPED_PREFIX_POD.length);
-    return id ? { kind: "canonical-pod", id } : null;
+  const canonicalScope = parseCanonicalScopedPathScope(rawScope);
+  if (canonicalScope) {
+    return canonicalScope;
   }
 
   const r = scopedFilePathPrefixSchema.safeParse(rawScope);
   return r.success ? { kind: "legacy", prefix: r.data } : null;
-}
-
-type ParsedCanonicalScopedPath = {
-  scope:
-    | { kind: "canonical-conversation"; id: string }
-    | { kind: "canonical-pod"; id: string };
-  relPath: string;
-};
-
-/**
- * Parse a canonical agent-visible scoped path (`conversation-{id}/...`, `pod-{id}/...`)
- * into its scope and path relative to that mount.
- */
-export function parseCanonicalScopedPath(
-  scopedPath: string
-): ParsedCanonicalScopedPath | null {
-  const slashIdx = scopedPath.indexOf("/");
-  const rawScope = slashIdx === -1 ? scopedPath : scopedPath.slice(0, slashIdx);
-  const parsed = parseRawVizScope(rawScope);
-  if (!parsed || parsed.kind === "legacy") {
-    return null;
-  }
-
-  return {
-    scope: parsed,
-    relPath: slashIdx === -1 ? "" : scopedPath.slice(slashIdx + 1),
-  };
 }
 
 /**
@@ -349,19 +322,7 @@ function getScopedPathPrefix(scopedPath: string): string | null {
  */
 export function isCanonicalScopedPath(scopedPath: string): boolean {
   const prefix = getScopedPathPrefix(scopedPath);
-  if (!prefix) {
-    return false;
-  }
-
-  if (prefix.startsWith(SCOPED_PREFIX_CONVERSATION)) {
-    return prefix.length > SCOPED_PREFIX_CONVERSATION.length;
-  }
-
-  if (prefix.startsWith(SCOPED_PREFIX_POD)) {
-    return prefix.length > SCOPED_PREFIX_POD.length;
-  }
-
-  return false;
+  return prefix ? parseCanonicalScopedPathScope(prefix) !== null : false;
 }
 
 /** True for legacy bare-prefix paths (`conversation/...`, `pod/...`, `project/...`). */

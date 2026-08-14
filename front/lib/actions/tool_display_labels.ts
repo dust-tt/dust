@@ -14,7 +14,12 @@ import {
   isWebsearchInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
+import {
+  parseCanonicalScopedPath,
+  TOOL_OUTPUTS_FOLDER_NAME,
+} from "@app/types/file_system";
 import { stripFileExtension } from "@app/types/files";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   isNumber,
   isString,
@@ -25,7 +30,6 @@ import { asDisplayName, slugify } from "@app/types/shared/utils/string_utils";
 type ToolDisplayLabelsByTool = Record<string, ToolDisplayLabels>;
 
 const MAX_QUERY_DISPLAY_LENGTH = 60;
-const SCOPED_FILE_PATH_PATTERN = /^(conversation|pod)-[^/]+\/(.+)$/;
 
 function truncateQuery(query: string): string {
   return query.length > MAX_QUERY_DISPLAY_LENGTH
@@ -42,25 +46,29 @@ function formatStringList(values: string[]): string {
 }
 
 function getFilePathReadTarget(filePath: string): string {
-  const scopedPathMatch = filePath.match(SCOPED_FILE_PATH_PATTERN);
-  const scope = scopedPathMatch?.[1];
-  const relativePath = scopedPathMatch?.[2];
-  if (!scope || !relativePath) {
+  const scopedPath = parseCanonicalScopedPath(filePath);
+  if (!scopedPath || !scopedPath.relPath) {
     return `“${truncateQuery(filePath)}”`;
   }
 
-  if (!relativePath.startsWith(".tool_outputs/")) {
-    return `“${truncateQuery(relativePath)}”`;
+  if (!scopedPath.relPath.startsWith(`${TOOL_OUTPUTS_FOLDER_NAME}/`)) {
+    return `“${truncateQuery(scopedPath.relPath)}”`;
   }
 
-  const fileName = relativePath.split("/").at(-1) ?? relativePath;
+  const fileName = scopedPath.relPath.split("/").at(-1) ?? scopedPath.relPath;
 
   // Tool output filenames use a 13-digit timestamp prefix for ordering and uniqueness.
   // Hide this storage detail from the user-facing label.
   const displayName = fileName.replace(/^\d{13}_/, "");
-  const scopeLabel = scope === "pod" ? "Pod" : "conversation";
 
-  return `“${truncateQuery(displayName)}” from ${scopeLabel}`;
+  switch (scopedPath.scope.kind) {
+    case "canonical-conversation":
+      return `“${truncateQuery(displayName)}” from conversation`;
+    case "canonical-pod":
+      return `“${truncateQuery(displayName)}” from Pod`;
+    default:
+      return assertNever(scopedPath.scope);
+  }
 }
 
 const INTERNAL_TOOL_DISPLAY_LABELS_BY_SERVER = Object.fromEntries(

@@ -11,14 +11,16 @@
 
 export type FileSystemMountKind = "conversation" | "pod" | "user";
 
-/** Canonical scoped-path prefixes (include the trailing dash). */
-export const SCOPED_PREFIX_CONVERSATION = "conversation-" as const;
-export const SCOPED_PREFIX_POD = "pod-" as const;
-export const SCOPED_PREFIX_USER = "user-" as const;
-
-/** Legacy agent-visible path prefixes (no trailing dash/slash). */
-export const LEGACY_PREFIX_CONVERSATION = "conversation" as const;
-export const LEGACY_PREFIX_PROJECT = "project" as const;
+export {
+  conversationScopedPath,
+  LEGACY_PREFIX_CONVERSATION,
+  LEGACY_PREFIX_PROJECT,
+  podScopedPath,
+  SCOPED_PREFIX_CONVERSATION,
+  SCOPED_PREFIX_POD,
+  SCOPED_PREFIX_USER,
+  userScopedPath,
+} from "@app/types/file_system";
 
 export type FileSystemMount = {
   kind: FileSystemMountKind;
@@ -101,23 +103,4 @@ export function isDustFileSystemError(
     err instanceof DustFileSystemError &&
     (code === undefined || err.code === code)
   );
-}
-
-// Do not import types in the generic file system.
-export function conversationScopedPath({
-  conversationId,
-  rel,
-}: {
-  conversationId: string;
-  rel: string;
-}): string {
-  return `${SCOPED_PREFIX_CONVERSATION}${conversationId}/${rel}`;
-}
-
-export function podScopedPath(spaceId: string, rel: string): string {
-  return `${SCOPED_PREFIX_POD}${spaceId}/${rel}`;
-}
-
-export function userScopedPath(userId: string, rel: string): string {
-  return `${SCOPED_PREFIX_USER}${userId}/${rel}`;
 }
