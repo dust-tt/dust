@@ -26,6 +26,7 @@ import {
 
 const meta = {
   title: "Data Display/Tree",
+  tags: ["a11y-issues"],
   component: Tree,
   parameters: {
     docs: {

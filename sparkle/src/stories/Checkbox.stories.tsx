@@ -22,6 +22,7 @@ type ExtendedCheckboxProps = CheckboxProps & {
 
 const meta = {
   title: "Forms & Inputs/Checkbox",
+  tags: ["a11y-issues"],
   component: Checkbox as React.ComponentType<ExtendedCheckboxProps>,
   parameters: {
     layout: "centered",

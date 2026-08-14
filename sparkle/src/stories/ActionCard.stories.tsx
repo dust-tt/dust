@@ -7,6 +7,7 @@ import { BookOpen01, SearchMd, Terminal } from "@sparkle/icons/v2-stroke";
 
 const meta: Meta<typeof ActionCard> = {
   title: "Product/Agent/ActionCard",
+  tags: ["a11y-issues"],
   component: ActionCard,
   parameters: {
     docs: {

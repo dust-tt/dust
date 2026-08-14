@@ -4,6 +4,7 @@ import { Settings01, IconButton } from "../index_with_tw_base";
 
 const meta = {
   title: "Actions/IconButton",
+  tags: ["a11y-issues"],
   component: IconButton,
   parameters: {
     docs: {

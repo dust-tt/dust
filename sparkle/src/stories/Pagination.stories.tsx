@@ -26,7 +26,7 @@ const meta: Meta<typeof Pagination> = {
       />
     );
   },
-  tags: ["ai-generated", "needs-work"],
+  tags: ["a11y-issues", "ai-generated", "needs-work"],
   parameters: {
     docs: {
       description: {
