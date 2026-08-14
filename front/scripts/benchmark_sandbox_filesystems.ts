@@ -22,11 +22,11 @@ import { FileSystemNodeModel } from "@app/lib/resources/storage/models/file_syst
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { Result } from "@app/types/shared/result";
-import { Op } from "sequelize";
 import { z } from "zod";
 
 const BENCHMARK_DIRECTORY_PREFIX = "dust-fs-benchmark";
 const BENCHMARK_RUNNER_PATH = "/run/dust-filesystem-benchmark.ts";
+const SHARED_RUNNER_PATH = "/run/dust-filesystem-shared-benchmark.ts";
 const DATABASE_BINARY_PATH = "/opt/bin/dsbx-filesystem-benchmark";
 const DATABASE_RUNTIME_DIRECTORY = "/run/dust-filesystem-benchmark";
 const DATABASE_TOKEN_PATH = `${DATABASE_RUNTIME_DIRECTORY}/token`;
@@ -42,6 +42,16 @@ const BenchmarkResultSchema = z
   .passthrough();
 
 type BenchmarkResult = z.infer<typeof BenchmarkResultSchema>;
+
+const SharedCommandResultSchema = z.object({
+  ok: z.boolean(),
+  completedAtMs: z.number().optional(),
+  detectedAtMs: z.number().optional(),
+  attempts: z.number().optional(),
+  code: z.string().optional(),
+});
+
+type SharedCommandResult = z.infer<typeof SharedCommandResultSchema>;
 
 function mount(kind: "conversation" | "pod", id: string): FileSystemMount {
   const scopedPrefix = `${kind}-${id}`;
@@ -202,6 +212,26 @@ async function benchmarkOverwriteRevision(
   return node.contentRevision;
 }
 
+async function databaseNodeAtPath(
+  workspaceId: number,
+  rootKind: "conversation" | "pod",
+  rootId: string,
+  segments: string[]
+): Promise<FileSystemNodeModel | null> {
+  let node = await FileSystemNodeModel.findOne({
+    where: { workspaceId, rootKind, rootId, parentId: null },
+  });
+  for (const name of segments) {
+    if (!node) {
+      return null;
+    }
+    node = await FileSystemNodeModel.findOne({
+      where: { workspaceId, parentId: node.id, name },
+    });
+  }
+  return node;
+}
+
 async function createSandbox(
   auth: Authenticator,
   image: SandboxImage
@@ -350,6 +380,339 @@ async function runBenchmark(
   return BenchmarkResultSchema.parse(JSON.parse(output));
 }
 
+async function uploadSharedRunner(
+  auth: Authenticator,
+  sandbox: SandboxResource,
+  runner: Buffer
+): Promise<void> {
+  expectOk(
+    await sandbox.writeFile(auth, SHARED_RUNNER_PATH, arrayBuffer(runner)),
+    "Upload shared-namespace benchmark workload"
+  );
+}
+
+async function runSharedCommand(
+  auth: Authenticator,
+  sandbox: SandboxResource,
+  args: string[]
+): Promise<SharedCommandResult> {
+  const execution = expectOk(
+    await sandbox.execRoot(
+      auth,
+      rootCommand.exec("/opt/bin/bun", [SHARED_RUNNER_PATH, ...args]),
+      { timeoutMs: 30_000 }
+    ),
+    `Run shared-namespace command: ${args.join(" ")}`
+  );
+  if (execution.exitCode !== 0) {
+    throw new Error(
+      `Shared-namespace command failed: ${execution.stderr || execution.stdout}`
+    );
+  }
+  const output = execution.stdout
+    .trim()
+    .split("\n")
+    .findLast((line) => line.startsWith("{"));
+  if (!output) {
+    throw new Error("Shared-namespace command returned no JSON result.");
+  }
+  return SharedCommandResultSchema.parse(JSON.parse(output));
+}
+
+async function delay(milliseconds: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function visibilityLag(
+  writer: SharedCommandResult,
+  reader: SharedCommandResult
+): number {
+  if (writer.completedAtMs === undefined || reader.detectedAtMs === undefined) {
+    throw new Error("The shared-namespace result is missing a timestamp.");
+  }
+  return reader.detectedAtMs - writer.completedAtMs;
+}
+
+async function runSharedNamespaceBenchmark({
+  auth,
+  writerSandbox,
+  readerSandbox,
+  backend,
+  runner,
+  podId,
+  podPrefix,
+  benchmarkDirectory,
+}: {
+  auth: Authenticator;
+  writerSandbox: SandboxResource;
+  readerSandbox: SandboxResource;
+  backend: DatabaseFileSystemBackend;
+  runner: Buffer;
+  podId: string;
+  podPrefix: string;
+  benchmarkDirectory: string;
+}) {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+  const sharedDirectory = `${benchmarkDirectory}/shared`;
+  const scopedRoot = `${podPrefix}/${sharedDirectory}`;
+  const sandboxRoot = `${MOUNT_POINT}/pod/${sharedDirectory}`;
+  expectOk(
+    await backend.mkdir(scopedRoot),
+    "Create shared benchmark directory"
+  );
+  for (const [name, content] of [
+    ["visibility.txt", "initial"],
+    ["rename-source.txt", "rename-content"],
+    ["delete.txt", "delete-content"],
+    ["race.txt", "race-base"],
+  ]) {
+    expectOk(
+      await backend.write(`${scopedRoot}/${name}`, content, "text/plain"),
+      `Create shared benchmark fixture ${name}`
+    );
+  }
+
+  await Promise.all([
+    uploadSharedRunner(auth, writerSandbox, runner),
+    uploadSharedRunner(auth, readerSandbox, runner),
+  ]);
+
+  const pathSegments = (name: string) => [benchmarkDirectory, "shared", name];
+  const revisionOf = async (name: string) => {
+    const node = await databaseNodeAtPath(
+      workspaceId,
+      "pod",
+      podId,
+      pathSegments(name)
+    );
+    if (!node || node.kind !== "file") {
+      throw new Error(`Could not resolve shared benchmark file ${name}.`);
+    }
+    return { id: node.id, revision: node.contentRevision };
+  };
+
+  await runSharedCommand(auth, readerSandbox, [
+    "--operation",
+    "warm",
+    "--path",
+    `${sandboxRoot}/visibility.txt`,
+  ]);
+
+  const overwriteSamples = [];
+  for (let sample = 0; sample < 5; sample += 1) {
+    const content = `shared-overwrite-${sample}`;
+    const before = await revisionOf("visibility.txt");
+    const reader = runSharedCommand(auth, readerSandbox, [
+      "--operation",
+      "poll-content",
+      "--path",
+      `${sandboxRoot}/visibility.txt`,
+      "--content",
+      content,
+    ]);
+    await delay(100);
+    const writer = await runSharedCommand(auth, writerSandbox, [
+      "--operation",
+      "overwrite",
+      "--path",
+      `${sandboxRoot}/visibility.txt`,
+      "--content",
+      content,
+    ]);
+    const observed = await reader;
+    const after = await revisionOf("visibility.txt");
+    if (after.revision !== before.revision + 1) {
+      throw new Error(
+        `Shared overwrite advanced revision by ${after.revision - before.revision}; expected 1.`
+      );
+    }
+    overwriteSamples.push({
+      lagMs: visibilityLag(writer, observed),
+      attempts: observed.attempts,
+      revisionBefore: before.revision,
+      revisionAfter: after.revision,
+    });
+  }
+
+  const createdName = "created-from-writer.txt";
+  const createdPath = `${sandboxRoot}/${createdName}`;
+  const createReader = runSharedCommand(auth, readerSandbox, [
+    "--operation",
+    "poll-content",
+    "--path",
+    createdPath,
+    "--content",
+    "created-content",
+  ]);
+  await delay(100);
+  const createWriter = await runSharedCommand(auth, writerSandbox, [
+    "--operation",
+    "create",
+    "--path",
+    createdPath,
+    "--content",
+    "created-content",
+  ]);
+  const createObserved = await createReader;
+  const created = await revisionOf(createdName);
+  if (created.revision !== 1) {
+    throw new Error(
+      `A newly created non-empty file has revision ${created.revision}; expected 1.`
+    );
+  }
+
+  await runSharedCommand(auth, readerSandbox, [
+    "--operation",
+    "warm",
+    "--path",
+    `${sandboxRoot}/rename-source.txt`,
+  ]);
+  const renamedBefore = await revisionOf("rename-source.txt");
+  const renameReader = runSharedCommand(auth, readerSandbox, [
+    "--operation",
+    "poll-content",
+    "--path",
+    `${sandboxRoot}/rename-destination.txt`,
+    "--content",
+    "rename-content",
+  ]);
+  await delay(100);
+  const renameWriter = await runSharedCommand(auth, writerSandbox, [
+    "--operation",
+    "rename",
+    "--path",
+    `${sandboxRoot}/rename-source.txt`,
+    "--destination",
+    `${sandboxRoot}/rename-destination.txt`,
+  ]);
+  const renameObserved = await renameReader;
+  const renamedAfter = await revisionOf("rename-destination.txt");
+  if (
+    renamedAfter.id !== renamedBefore.id ||
+    renamedAfter.revision !== renamedBefore.revision
+  ) {
+    throw new Error(
+      "Rename did not preserve node identity and content revision."
+    );
+  }
+
+  await runSharedCommand(auth, readerSandbox, [
+    "--operation",
+    "warm",
+    "--path",
+    `${sandboxRoot}/delete.txt`,
+  ]);
+  const deleteReader = runSharedCommand(auth, readerSandbox, [
+    "--operation",
+    "poll-exists",
+    "--path",
+    `${sandboxRoot}/delete.txt`,
+    "--expected",
+    "false",
+  ]);
+  await delay(100);
+  const deleteWriter = await runSharedCommand(auth, writerSandbox, [
+    "--operation",
+    "unlink",
+    "--path",
+    `${sandboxRoot}/delete.txt`,
+  ]);
+  const deleteObserved = await deleteReader;
+  const deleted = await databaseNodeAtPath(
+    workspaceId,
+    "pod",
+    podId,
+    pathSegments("delete.txt")
+  );
+  if (deleted) {
+    throw new Error("Deleted file is still present in PostgreSQL.");
+  }
+
+  await Promise.all(
+    [writerSandbox, readerSandbox].map((sandbox) =>
+      runSharedCommand(auth, sandbox, [
+        "--operation",
+        "warm",
+        "--path",
+        `${sandboxRoot}/race.txt`,
+      ])
+    )
+  );
+  const raceBefore = await revisionOf("race.txt");
+  const raceStartAtMs = Date.now() + 2_000;
+  const raceResults = await Promise.all(
+    [
+      [writerSandbox, "race-writer-a"],
+      [readerSandbox, "race-writer-b"],
+    ].map(([sandbox, content]) =>
+      runSharedCommand(auth, sandbox as SandboxResource, [
+        "--operation",
+        "race",
+        "--path",
+        `${sandboxRoot}/race.txt`,
+        "--content",
+        content as string,
+        "--start-at-ms",
+        String(raceStartAtMs),
+      ])
+    )
+  );
+  const winners = raceResults.filter((result) => result.ok);
+  const losers = raceResults.filter((result) => !result.ok);
+  if (winners.length !== 1 || losers.length !== 1) {
+    throw new Error(
+      `Concurrent write race returned ${winners.length} winners and ${losers.length} losers.`
+    );
+  }
+  const raceAfter = await revisionOf("race.txt");
+  if (raceAfter.revision !== raceBefore.revision + 1) {
+    throw new Error(
+      `Concurrent write race advanced revision by ${raceAfter.revision - raceBefore.revision}; expected 1.`
+    );
+  }
+  const winningContent = raceResults[0].ok ? "race-writer-a" : "race-writer-b";
+  const convergence = await Promise.all(
+    [writerSandbox, readerSandbox].map((sandbox) =>
+      runSharedCommand(auth, sandbox, [
+        "--operation",
+        "poll-content",
+        "--path",
+        `${sandboxRoot}/race.txt`,
+        "--content",
+        winningContent,
+      ])
+    )
+  );
+
+  return {
+    overwriteSamples,
+    createWithContent: {
+      lagMs: visibilityLag(createWriter, createObserved),
+      attempts: createObserved.attempts,
+      revision: created.revision,
+    },
+    rename: {
+      lagMs: visibilityLag(renameWriter, renameObserved),
+      attempts: renameObserved.attempts,
+      inodeBefore: renamedBefore.id,
+      inodeAfter: renamedAfter.id,
+      revisionBefore: renamedBefore.revision,
+      revisionAfter: renamedAfter.revision,
+    },
+    delete: {
+      lagMs: visibilityLag(deleteWriter, deleteObserved),
+      attempts: deleteObserved.attempts,
+    },
+    concurrentWrite: {
+      revisionBefore: raceBefore.revision,
+      revisionAfter: raceAfter.revision,
+      results: raceResults,
+      winningContent,
+      convergence,
+    },
+  };
+}
+
 async function destroySandbox(
   auth: Authenticator,
   sandbox: SandboxResource,
@@ -407,6 +770,12 @@ makeScript(
       default: "cli/dust-sandbox/tests/filesystem_benchmark.ts",
       description: "Benchmark workload uploaded to both sandboxes",
     },
+    sharedRunnerPath: {
+      type: "string",
+      default:
+        "cli/dust-sandbox/tests/filesystem_shared_namespace_benchmark.ts",
+      description: "Two-sandbox shared-namespace workload",
+    },
     apiUrl: {
       type: "string",
       demandOption: true,
@@ -426,6 +795,7 @@ makeScript(
       podId,
       dsbxPath,
       runnerPath,
+      sharedRunnerPath,
       apiUrl,
       output,
       execute,
@@ -463,15 +833,17 @@ makeScript(
           apiUrl,
           output,
         },
-        "Would create two fresh production-image sandboxes and run the filesystem comparison"
+        "Would create three fresh production-image sandboxes and run the filesystem comparison"
       );
       return;
     }
 
     const binary = await readFile(dsbxPath);
     const runner = await readFile(runnerPath);
+    const sharedRunner = await readFile(sharedRunnerPath);
     let gcsSandbox: SandboxResource | null = null;
     let databaseSandbox: SandboxResource | null = null;
+    let databasePeerSandbox: SandboxResource | null = null;
     try {
       logger.info({}, "Preparing identical filesystem benchmark fixtures");
       await prepareFixtures(
@@ -489,6 +861,7 @@ makeScript(
 
       gcsSandbox = await createSandbox(auth, image);
       databaseSandbox = await createSandbox(auth, image);
+      databasePeerSandbox = await createSandbox(auth, image);
       expectOk(
         await gcsBackend
           .createSandboxAdapter(mounts)
@@ -498,6 +871,13 @@ makeScript(
       await startDatabaseMount(
         auth,
         databaseSandbox,
+        mounts,
+        binary,
+        configuredApiUrl
+      );
+      await startDatabaseMount(
+        auth,
+        databasePeerSandbox,
         mounts,
         binary,
         configuredApiUrl
@@ -533,6 +913,16 @@ makeScript(
           `A truncating overwrite created ${revisionAfter - revisionBefore} revisions; expected 1.`
         );
       }
+      const sharedNamespace = await runSharedNamespaceBenchmark({
+        auth,
+        writerSandbox: databaseSandbox,
+        readerSandbox: databasePeerSandbox,
+        backend: databaseBackend,
+        runner: sharedRunner,
+        podId,
+        podPrefix,
+        benchmarkDirectory,
+      });
       const result = {
         measuredAt: new Date().toISOString(),
         image: image.imageId ? formatSandboxImageId(image.imageId) : null,
@@ -544,6 +934,7 @@ makeScript(
           concurrentFiles: 8,
         },
         atomicTruncate: { revisionBefore, revisionAfter },
+        sharedNamespace,
         results: [gcsResult, databaseResult],
       };
       await writeFile(output, `${JSON.stringify(result, null, 2)}\n`, {
@@ -559,6 +950,9 @@ makeScript(
       }
       if (databaseSandbox) {
         await destroySandbox(auth, databaseSandbox, logger);
+      }
+      if (databasePeerSandbox) {
+        await destroySandbox(auth, databasePeerSandbox, logger);
       }
       for (const backend of [gcsBackend, databaseBackend]) {
         for (const prefix of [conversationPrefix, podPrefix]) {
@@ -576,12 +970,9 @@ makeScript(
           }
         }
       }
-      await FileSystemNodeModel.destroy({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          rootId: { [Op.in]: mounts.map((entry) => entry.id) },
-        },
-      });
+      // The benchmark uses real conversation and Pod roots. Fixture deletion above is
+      // deliberately path-scoped; deleting every row under either root would also remove
+      // files that belong to the user.
     }
   }
 );
