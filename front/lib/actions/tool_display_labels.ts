@@ -25,8 +25,7 @@ import { asDisplayName, slugify } from "@app/types/shared/utils/string_utils";
 type ToolDisplayLabelsByTool = Record<string, ToolDisplayLabels>;
 
 const MAX_QUERY_DISPLAY_LENGTH = 60;
-const TOOL_OUTPUT_PATH_PATTERN =
-  /^(conversation|pod)-[^/]+\/\.tool_outputs\/(?:[^/]+\/)*([^/]+)$/;
+const SCOPED_FILE_PATH_PATTERN = /^(conversation|pod)-[^/]+\/(.+)$/;
 
 function truncateQuery(query: string): string {
   return query.length > MAX_QUERY_DISPLAY_LENGTH
@@ -43,12 +42,18 @@ function formatStringList(values: string[]): string {
 }
 
 function getFilePathReadTarget(filePath: string): string {
-  const toolOutputMatch = filePath.match(TOOL_OUTPUT_PATH_PATTERN);
-  const scope = toolOutputMatch?.[1];
-  const fileName = toolOutputMatch?.[2];
-  if (!scope || !fileName) {
+  const scopedPathMatch = filePath.match(SCOPED_FILE_PATH_PATTERN);
+  const scope = scopedPathMatch?.[1];
+  const relativePath = scopedPathMatch?.[2];
+  if (!scope || !relativePath) {
     return `“${truncateQuery(filePath)}”`;
   }
+
+  if (!relativePath.startsWith(".tool_outputs/")) {
+    return `“${truncateQuery(relativePath)}”`;
+  }
+
+  const fileName = relativePath.split("/").at(-1) ?? relativePath;
 
   // Tool output filenames use a 13-digit timestamp prefix for ordering and uniqueness.
   // Hide this storage detail from the user-facing label.
