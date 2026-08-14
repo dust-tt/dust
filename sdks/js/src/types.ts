@@ -789,7 +789,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "servicenow_tool"
   | "shopify_tool"
   | "show_debug_tools"
-  | "slack_enhanced_default_agent"
   | "slack_message_splitting"
   | "run_tools_from_prompt"
   | "usage_data_api"

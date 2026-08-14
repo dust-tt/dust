@@ -163,11 +163,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to noop model in the agent builder",
     stage: "dust_only",
   },
-  slack_enhanced_default_agent: {
-    description:
-      "Enhanced default agent feature for Slack channels - auto-respond to all messages in channel",
-    stage: "on_demand",
-  },
   slack_message_splitting: {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",

@@ -1,6 +1,5 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useSlackUserPrivateChannels } from "@app/lib/swr/assistants";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 import type { DataSourceType } from "@app/types/data_source";
@@ -292,7 +291,6 @@ export function SlackSettingsSheet({
   slackDataSource,
 }: SlackSettingsSheetProps) {
   const { owner } = useAgentBuilderContext();
-  const { hasFeature } = useFeatureFlags();
 
   const {
     field: { onChange, value: slackChannels },
@@ -434,7 +432,7 @@ export function SlackSettingsSheet({
             disabled: !hasUnsavedChanges,
           }}
         >
-          {hasFeature("slack_enhanced_default_agent") && isAdmin(owner) && (
+          {isAdmin(owner) && (
             <div className="flex flex-col gap-3 border-t p-4">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
