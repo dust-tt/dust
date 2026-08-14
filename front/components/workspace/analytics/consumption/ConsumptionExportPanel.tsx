@@ -63,13 +63,13 @@ export function ConsumptionExportPanel({
     workspaceId,
   });
 
-  // Reset the auto-start guard each time the panel closes, so reopening it gives the
-  // automatic flow one fresh attempt.
-  useEffect(() => {
-    if (!isOpen) {
+  // Give the automatic flow one fresh attempt each time the panel is reopened.
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) {
       setHasAttemptedAutoStart(false);
     }
-  }, [isOpen]);
+  };
 
   // Opening the panel with no past export and nothing already generating starts one
   // automatically, so the user doesn't have to find a separate "generate" action. This
@@ -108,7 +108,7 @@ export function ConsumptionExportPanel({
     exports.length === 0;
 
   return (
-    <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
+    <PopoverRoot open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           icon={Download01}
@@ -121,6 +121,9 @@ export function ConsumptionExportPanel({
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium text-foreground">
             Raw data exports
+          </span>
+          <span className="text-xs text-muted-foreground">
+            Exports are kept for a maximum of 15 days.
           </span>
           {isConsumptionExportsLoading ? (
             <div className="flex justify-center py-4">
@@ -164,13 +167,10 @@ export function ConsumptionExportPanel({
             icon={Plus}
             label="New export"
             variant="outline"
-            size="xs"
+            size="sm"
             disabled={isGenerating || isStarting}
             onClick={() => void startConsumptionExport(exportBody)}
           />
-          <span className="text-xs text-muted-foreground">
-            Exports are kept for a maximum of 15 days.
-          </span>
         </div>
       </PopoverContent>
     </PopoverRoot>
