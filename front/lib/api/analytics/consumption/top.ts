@@ -136,7 +136,10 @@ async function resolveConsumptionTopSearchFilter(
   {
     dimension,
     search,
-  }: { dimension: ConsumptionScopeDimension; search?: string }
+  }: {
+    dimension: ConsumptionScopeDimension;
+    search?: string;
+  }
 ): Promise<estypes.QueryDslQueryContainer | null> {
   const normalizedSearch = search?.trim().toLowerCase();
   if (!normalizedSearch) {
