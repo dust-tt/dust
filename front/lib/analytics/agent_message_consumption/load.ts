@@ -180,9 +180,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
       { agentMessageId }
     );
   if (!context) {
-    throw new Error(
-      "Agent message, conversation, or triggering user message not found"
-    );
+    return null;
   }
 
   const { agentMessage, conversation, triggeringUserMessage } = context;
