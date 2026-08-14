@@ -314,8 +314,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       includeDeletedSpace?: boolean;
       capability?: FrameShareCapability;
       // Reserved for execution-side resolution (fetchByIdForExecution and the tool workflow),
-      // which
-      // verified an invocation row for the function first.
+      // which verified an invocation row for the function first.
       dangerouslyBypassSpacePermissionFilter?: boolean;
     } = {}
   ): Promise<SandboxFunctionResource[]> {
