@@ -198,7 +198,7 @@ function VsPrevCell({
     <div
       className={cn(
         "flex w-full items-center justify-end gap-1 text-right text-sm tabular-nums",
-        growth > 100 ? "text-highlight-600" : "text-foreground"
+        growth > 100 ? "text-highlight-600" : "text-muted-foreground"
       )}
     >
       <Icon
