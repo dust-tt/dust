@@ -225,7 +225,12 @@ class FileStorageMock {
       copy: vi.fn().mockResolvedValue(undefined),
       createReadStream: vi.fn(() => {
         this._readStreamCalls.push(filePath ?? "unknown");
-        const content = this._contentForPath(filePath ?? "");
+        const content =
+          this._contentForPath(filePath ?? "") ??
+          // Serve read-after-write like fetchFileContent does, so a stream read of content a
+          // test previously uploaded does not hang on the never-ending default stream.
+          this._objectStore.get(filePath ?? "") ??
+          null;
         if (content !== null) {
           return Readable.from([Buffer.from(content, "utf8")]);
         }
