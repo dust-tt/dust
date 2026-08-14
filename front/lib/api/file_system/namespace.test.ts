@@ -2,8 +2,44 @@ import { randomUUID } from "node:crypto";
 import { applyFileSystemOperation } from "@app/lib/api/file_system/namespace";
 import { FileSystemScope } from "@app/lib/api/file_system/namespace_scope";
 import type { FileSystemNodeType } from "@app/lib/api/file_system/namespace_types";
+import type { Authenticator } from "@app/lib/auth";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const {
+  deleteBlob,
+  getBlobMetadata,
+  getSignedDownloadUrl,
+  getSignedUploadUrl,
+} = vi.hoisted(() => ({
+  deleteBlob: vi.fn(async () => undefined),
+  getBlobMetadata: vi.fn(),
+  getSignedDownloadUrl: vi.fn(async (path: string) => `download:${path}`),
+  getSignedUploadUrl: vi.fn(async (path: string) => `upload:${path}`),
+}));
+
+vi.mock("@app/lib/file_storage", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("@app/lib/file_storage")>();
+  return {
+    ...original,
+    getPrivateUploadBucket: () => ({
+      delete: deleteBlob,
+      file: (path: string) => ({
+        getMetadata: () => getBlobMetadata(path),
+      }),
+      getSignedUrl: getSignedDownloadUrl,
+      getSignedUploadUrl,
+    }),
+  };
+});
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  getBlobMetadata.mockResolvedValue([
+    { size: "14", contentType: "text/plain" },
+  ]);
+});
 
 function readableScope(conversationId: string, podId?: string) {
   return new FileSystemScope([
@@ -42,6 +78,33 @@ function requireNode(node: FileSystemNodeType | undefined): FileSystemNodeType {
     throw new Error("Missing filesystem node.");
   }
   return node;
+}
+
+async function createEmptyFile(
+  auth: Authenticator,
+  scope: FileSystemScope,
+  name: string
+): Promise<FileSystemNodeType> {
+  const initialized = await applyFileSystemOperation(auth, scope, {
+    operation: "initialize",
+  });
+  if (initialized.isErr()) {
+    throw initialized.error;
+  }
+  const root = requireNode(initialized.value.roots?.[0]);
+  const created = await applyFileSystemOperation(auth, scope, {
+    operation: "create",
+    requestId: randomUUID(),
+    parentId: root.id,
+    name,
+    kind: "file",
+    mode: 0o644,
+  });
+  if (created.isErr()) {
+    throw created.error;
+  }
+
+  return requireNode(created.value.node ?? undefined);
 }
 
 describe("filesystem namespace reads", () => {
@@ -336,5 +399,179 @@ describe("filesystem namespace creation", () => {
       "invalid_operation"
     );
     expect(fileAsParent.isErr() && fileAsParent.error.code).toBe("not_found");
+  });
+});
+
+describe("filesystem content", () => {
+  it("commits one immutable blob and returns it for reads", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const scope = readableScope(`conversation-${randomUUID()}`);
+    const file = await createEmptyFile(authenticator, scope, "notes.txt");
+
+    const empty = await applyFileSystemOperation(authenticator, scope, {
+      operation: "getContent",
+      nodeId: file.id,
+    });
+    expect(empty.isOk() && empty.value.content).toEqual({
+      blobId: null,
+      downloadUrl: null,
+      size: 0,
+      contentType: null,
+    });
+
+    const prepared = await applyFileSystemOperation(authenticator, scope, {
+      operation: "prepareContentUpload",
+      nodeId: file.id,
+      expectedBlobId: null,
+      contentType: "application/octet-stream",
+    });
+    if (prepared.isErr() || !prepared.value.upload) {
+      throw new Error("Failed to prepare filesystem content.");
+    }
+    const upload = prepared.value.upload;
+    const objectPath = `w/${workspace.sId}/filesystem/blobs/${file.id}/${upload.blobId}`;
+    expect(upload).toEqual({
+      blobId: expect.any(String),
+      uploadUrl: `upload:${objectPath}`,
+      contentType: "text/plain",
+      headers: {
+        "content-type": "text/plain",
+        "x-goog-if-generation-match": "0",
+      },
+    });
+    expect(getSignedUploadUrl).toHaveBeenCalledWith(objectPath, {
+      contentType: "text/plain",
+      expirationDelayMs: expect.any(Number),
+      extensionHeaders: { "x-goog-if-generation-match": "0" },
+    });
+
+    const commitRequest = {
+      operation: "commitContentUpload" as const,
+      nodeId: file.id,
+      expectedBlobId: null,
+      blobId: upload.blobId,
+      contentType: upload.contentType,
+    };
+    const committed = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      commitRequest
+    );
+    const retried = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      commitRequest
+    );
+
+    expect(committed.isOk() && committed.value.node).toMatchObject({
+      id: file.id,
+      blobId: upload.blobId,
+      size: 14,
+      contentType: "text/plain",
+      contentRevision: 1,
+    });
+    expect(retried.isOk() && retried.value.node).toMatchObject({
+      blobId: upload.blobId,
+      contentRevision: 1,
+    });
+
+    const content = await applyFileSystemOperation(authenticator, scope, {
+      operation: "getContent",
+      nodeId: file.id,
+    });
+    expect(content.isOk() && content.value.content).toEqual({
+      blobId: upload.blobId,
+      downloadUrl: `download:${objectPath}`,
+      size: 14,
+      contentType: "text/plain",
+    });
+  });
+
+  it("rejects an upload when another content version commits first", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const scope = readableScope(`conversation-${randomUUID()}`);
+    const file = await createEmptyFile(authenticator, scope, "race.txt");
+
+    const first = await applyFileSystemOperation(authenticator, scope, {
+      operation: "prepareContentUpload",
+      nodeId: file.id,
+      expectedBlobId: null,
+      contentType: "text/plain",
+    });
+    const second = await applyFileSystemOperation(authenticator, scope, {
+      operation: "prepareContentUpload",
+      nodeId: file.id,
+      expectedBlobId: null,
+      contentType: "text/plain",
+    });
+    if (
+      first.isErr() ||
+      second.isErr() ||
+      !first.value.upload ||
+      !second.value.upload
+    ) {
+      throw new Error("Failed to prepare concurrent uploads.");
+    }
+
+    const committed = await applyFileSystemOperation(authenticator, scope, {
+      operation: "commitContentUpload",
+      nodeId: file.id,
+      expectedBlobId: null,
+      blobId: first.value.upload.blobId,
+      contentType: first.value.upload.contentType,
+    });
+    const stale = await applyFileSystemOperation(authenticator, scope, {
+      operation: "commitContentUpload",
+      nodeId: file.id,
+      expectedBlobId: null,
+      blobId: second.value.upload.blobId,
+      contentType: second.value.upload.contentType,
+    });
+
+    expect(committed.isOk()).toBe(true);
+    expect(stale.isErr() && stale.error.code).toBe("stale");
+  });
+
+  it("requires a file in a writable root", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const conversationId = `conversation-${randomUUID()}`;
+    const writableScope = readableScope(conversationId);
+    const file = await createEmptyFile(
+      authenticator,
+      writableScope,
+      "readonly.txt"
+    );
+    const initialized = await applyFileSystemOperation(
+      authenticator,
+      writableScope,
+      { operation: "initialize" }
+    );
+    if (initialized.isErr()) {
+      throw initialized.error;
+    }
+    const root = requireNode(initialized.value.roots?.[0]);
+
+    const writeDenied = await applyFileSystemOperation(
+      authenticator,
+      readOnlyScope(conversationId),
+      {
+        operation: "prepareContentUpload",
+        nodeId: file.id,
+        expectedBlobId: null,
+        contentType: "text/plain",
+      }
+    );
+    const directoryContent = await applyFileSystemOperation(
+      authenticator,
+      writableScope,
+      { operation: "getContent", nodeId: root.id }
+    );
+
+    expect(writeDenied.isErr() && writeDenied.error.code).toBe("unauthorized");
+    expect(directoryContent.isErr() && directoryContent.error.code).toBe(
+      "invalid_operation"
+    );
   });
 });

@@ -16,6 +16,8 @@ export const FILE_SYSTEM_MODE_LIMITS = {
 
 export const FILE_SYSTEM_REQUEST_ID_MAX_LENGTH = 255;
 
+export const FILE_SYSTEM_CONTENT_TYPE_MAX_LENGTH = 255;
+
 /** The stable file or directory identity returned by the namespace. */
 export type FileSystemNodeType = {
   id: number;
@@ -31,6 +33,20 @@ export type FileSystemNodeType = {
   contentRevision: number;
   createdAtMs: number;
   modifiedAtMs: number;
+};
+
+export type FileSystemContentType = {
+  blobId: string | null;
+  downloadUrl: string | null;
+  size: number;
+  contentType: string | null;
+};
+
+export type FileSystemContentUploadType = {
+  blobId: string;
+  uploadUrl: string;
+  contentType: string;
+  headers: Record<string, string>;
 };
 
 export type FileSystemOperation =
@@ -50,6 +66,20 @@ export type FileSystemOperation =
       name: string;
       kind: FileSystemNodeKind;
       mode: number;
+    }
+  | { operation: "getContent"; nodeId: number }
+  | {
+      operation: "prepareContentUpload";
+      nodeId: number;
+      expectedBlobId: string | null;
+      contentType: string;
+    }
+  | {
+      operation: "commitContentUpload";
+      nodeId: number;
+      expectedBlobId: string | null;
+      blobId: string;
+      contentType: string;
     };
 
 export type FileSystemOperationResponse = {
@@ -57,12 +87,15 @@ export type FileSystemOperationResponse = {
   node?: FileSystemNodeType | null;
   nodes?: FileSystemNodeType[];
   nextAfterName?: string | null;
+  content?: FileSystemContentType;
+  upload?: FileSystemContentUploadType;
 };
 
 export type FileSystemOperationErrorCode =
   | "already_exists"
   | "invalid_operation"
   | "not_found"
+  | "stale"
   | "unauthorized";
 
 export class FileSystemOperationError extends Error {

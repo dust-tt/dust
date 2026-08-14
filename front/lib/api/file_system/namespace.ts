@@ -106,6 +106,56 @@ export async function applyFileSystemOperation(
       return node.isErr() ? node : new Ok({ node: node.value.toJSON() });
     }
 
+    case "getContent": {
+      const node = await FileSystemNodeResource.fetchById(
+        auth,
+        scope,
+        request.nodeId
+      );
+      if (!node) {
+        return new Err(
+          new FileSystemOperationError("not_found", "The file was not found.")
+        );
+      }
+
+      const content = await node.getContent(auth, scope);
+      return content.isErr() ? content : new Ok({ content: content.value });
+    }
+
+    case "prepareContentUpload": {
+      const node = await FileSystemNodeResource.fetchById(
+        auth,
+        scope,
+        request.nodeId
+      );
+      if (!node) {
+        return new Err(
+          new FileSystemOperationError("not_found", "The file was not found.")
+        );
+      }
+
+      const upload = await node.prepareContentUpload(auth, scope, request);
+      return upload.isErr() ? upload : new Ok({ upload: upload.value });
+    }
+
+    case "commitContentUpload": {
+      const node = await FileSystemNodeResource.fetchById(
+        auth,
+        scope,
+        request.nodeId
+      );
+      if (!node) {
+        return new Err(
+          new FileSystemOperationError("not_found", "The file was not found.")
+        );
+      }
+
+      const committed = await node.commitContentUpload(auth, scope, request);
+      return committed.isErr()
+        ? committed
+        : new Ok({ node: committed.value.toJSON() });
+    }
+
     default:
       return assertNever(request);
   }

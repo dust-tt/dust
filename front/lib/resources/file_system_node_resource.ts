@@ -1,29 +1,57 @@
+import { randomUUID } from "node:crypto";
 import type { FileSystemScope } from "@app/lib/api/file_system/namespace_scope";
 import type {
+  FileSystemContentType,
+  FileSystemContentUploadType,
   FileSystemNodeType,
   FileSystemOperation,
 } from "@app/lib/api/file_system/namespace_types";
 import {
+  FILE_SYSTEM_CONTENT_TYPE_MAX_LENGTH,
   FILE_SYSTEM_MODE_LIMITS,
   FILE_SYSTEM_NAME_MAX_BYTES,
   FILE_SYSTEM_READ_DIR_PAGE_SIZE_LIMITS,
   FileSystemOperationError,
 } from "@app/lib/api/file_system/namespace_types";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  getFileSystemBlobDownloadUrl,
+  getFileSystemBlobMetadata,
+  prepareFileSystemBlobUpload,
+} from "@app/lib/file_storage/file_system_blobs";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { FileSystemBlobCleanupResource } from "@app/lib/resources/file_system_blob_cleanup_resource";
 import { FileSystemNodeModel } from "@app/lib/resources/storage/models/file_system_node";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { withTransaction } from "@app/lib/utils/sql_utils";
+import logger from "@app/logger/logger";
+import {
+  contentTypeFromFileName,
+  resolveFileContentType,
+} from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
+import { z } from "zod";
 
 type ReadDirRequest = Extract<FileSystemOperation, { operation: "readDir" }>;
 type ReadDirOptions = Pick<ReadDirRequest, "afterName" | "limit">;
 type CreateRequest = Extract<FileSystemOperation, { operation: "create" }>;
 type CreateOptions = Pick<CreateRequest, "kind" | "mode" | "name">;
+type PrepareContentUploadRequest = Extract<
+  FileSystemOperation,
+  { operation: "prepareContentUpload" }
+>;
+type CommitContentUploadRequest = Extract<
+  FileSystemOperation,
+  { operation: "commitContentUpload" }
+>;
+
+const FileSystemBlobIdSchema = z.string().uuid();
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileSystemNodeResource
@@ -334,6 +362,299 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
       nextAfterName:
         nodes.length > options.limit ? (page.at(-1)?.name ?? null) : null,
     });
+  }
+
+  private checkContentAccess(
+    auth: Authenticator,
+    scope: FileSystemScope,
+    { write }: { write: boolean }
+  ): Result<undefined, FileSystemOperationError> {
+    if (!this.isReadableBy(auth, scope)) {
+      return new Err(
+        new FileSystemOperationError("not_found", "The file was not found.")
+      );
+    }
+    if (this.kind !== "file") {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "A directory has no file content."
+        )
+      );
+    }
+    if (write && !this.isWritableBy(auth, scope)) {
+      return new Err(
+        new FileSystemOperationError(
+          "unauthorized",
+          "You do not have write access to this file."
+        )
+      );
+    }
+
+    return new Ok(undefined);
+  }
+
+  private static isValidContentType(contentType: string): boolean {
+    return (
+      contentType.length > 0 &&
+      contentType.length <= FILE_SYSTEM_CONTENT_TYPE_MAX_LENGTH
+    );
+  }
+
+  async getContent(
+    auth: Authenticator,
+    scope: FileSystemScope
+  ): Promise<Result<FileSystemContentType, FileSystemOperationError>> {
+    const access = this.checkContentAccess(auth, scope, { write: false });
+    if (access.isErr()) {
+      return access;
+    }
+
+    if (this.blobId === null) {
+      return new Ok({
+        blobId: null,
+        downloadUrl: null,
+        size: Number(this.size),
+        contentType: this.contentType,
+      });
+    }
+
+    return new Ok({
+      blobId: this.blobId,
+      downloadUrl: await getFileSystemBlobDownloadUrl(
+        auth,
+        this.id,
+        this.blobId
+      ),
+      size: Number(this.size),
+      contentType: this.contentType,
+    });
+  }
+
+  async prepareContentUpload(
+    auth: Authenticator,
+    scope: FileSystemScope,
+    request: PrepareContentUploadRequest
+  ): Promise<Result<FileSystemContentUploadType, FileSystemOperationError>> {
+    const access = this.checkContentAccess(auth, scope, { write: true });
+    if (access.isErr()) {
+      return access;
+    }
+    if (
+      request.expectedBlobId !== null &&
+      !FileSystemBlobIdSchema.safeParse(request.expectedBlobId).success
+    ) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "The expected blob ID is invalid."
+        )
+      );
+    }
+    if (this.blobId !== request.expectedBlobId) {
+      return new Err(
+        new FileSystemOperationError(
+          "stale",
+          "The file changed after it was opened."
+        )
+      );
+    }
+
+    const requestedContentType = request.contentType.trim();
+    if (!FileSystemNodeResource.isValidContentType(requestedContentType)) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          `Content type must be between 1 and ${FILE_SYSTEM_CONTENT_TYPE_MAX_LENGTH} characters.`
+        )
+      );
+    }
+    const contentType =
+      contentTypeFromFileName(this.name) ??
+      resolveFileContentType(requestedContentType, this.name);
+    if (!FileSystemNodeResource.isValidContentType(contentType)) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          `Resolved content type must be between 1 and ${FILE_SYSTEM_CONTENT_TYPE_MAX_LENGTH} characters.`
+        )
+      );
+    }
+
+    const blobId = randomUUID();
+    await FileSystemBlobCleanupResource.registerUpload(auth, this, blobId);
+    const { uploadUrl, headers } = await prepareFileSystemBlobUpload(
+      auth,
+      this.id,
+      blobId,
+      contentType
+    );
+
+    return new Ok({ blobId, uploadUrl, contentType, headers });
+  }
+
+  async commitContentUpload(
+    auth: Authenticator,
+    scope: FileSystemScope,
+    request: CommitContentUploadRequest
+  ): Promise<Result<FileSystemNodeResource, FileSystemOperationError>> {
+    const access = this.checkContentAccess(auth, scope, { write: true });
+    if (access.isErr()) {
+      return access;
+    }
+    if (
+      !FileSystemBlobIdSchema.safeParse(request.blobId).success ||
+      (request.expectedBlobId !== null &&
+        !FileSystemBlobIdSchema.safeParse(request.expectedBlobId).success)
+    ) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "The content request contains an invalid blob ID."
+        )
+      );
+    }
+    if (!FileSystemNodeResource.isValidContentType(request.contentType)) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          `Content type must be between 1 and ${FILE_SYSTEM_CONTENT_TYPE_MAX_LENGTH} characters.`
+        )
+      );
+    }
+    if (
+      this.blobId !== request.blobId &&
+      this.blobId !== request.expectedBlobId
+    ) {
+      return new Err(
+        new FileSystemOperationError(
+          "stale",
+          "The file changed while content was uploading."
+        )
+      );
+    }
+
+    let metadata: { size: number; contentType: string | undefined };
+    try {
+      metadata = await getFileSystemBlobMetadata(auth, this.id, request.blobId);
+    } catch (error) {
+      logger.warn(
+        {
+          err: normalizeError(error),
+          nodeId: this.id,
+          blobId: request.blobId,
+        },
+        "Dust filesystem could not verify an uploaded blob"
+      );
+      return new Err(
+        new FileSystemOperationError(
+          "not_found",
+          "The uploaded object was not found."
+        )
+      );
+    }
+    if (!Number.isSafeInteger(metadata.size) || metadata.size < 0) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "The uploaded object has an invalid size."
+        )
+      );
+    }
+    if (metadata.contentType !== request.contentType) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "The uploaded object's content type does not match the request."
+        )
+      );
+    }
+
+    return withTransaction(async (transaction) => {
+      const current = await FileSystemNodeResource.fetchById(
+        auth,
+        scope,
+        this.id,
+        { transaction, forUpdate: true }
+      );
+      if (!current) {
+        return new Err(
+          new FileSystemOperationError("not_found", "The file was not found.")
+        );
+      }
+
+      return current.attachUploadedBlob(
+        auth,
+        scope,
+        request,
+        metadata.size,
+        transaction
+      );
+    });
+  }
+
+  private async attachUploadedBlob(
+    auth: Authenticator,
+    scope: FileSystemScope,
+    request: CommitContentUploadRequest,
+    size: number,
+    transaction: Transaction
+  ): Promise<Result<FileSystemNodeResource, FileSystemOperationError>> {
+    const access = this.checkContentAccess(auth, scope, { write: true });
+    if (access.isErr()) {
+      return access;
+    }
+
+    const cleanup = await FileSystemBlobCleanupResource.fetchForBlob(
+      auth,
+      this,
+      request.blobId,
+      transaction
+    );
+    // A lost commit response is safe to retry with the same blob ID.
+    if (this.blobId === request.blobId) {
+      if (cleanup) {
+        await cleanup.markBlobLive(auth, this, transaction);
+      }
+      return new Ok(this);
+    }
+    if (this.blobId !== request.expectedBlobId) {
+      return new Err(
+        new FileSystemOperationError(
+          "stale",
+          "The file changed while content was uploading."
+        )
+      );
+    }
+    if (!cleanup || !(await cleanup.markBlobLive(auth, this, transaction))) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "The uploaded blob was not prepared for this file."
+        )
+      );
+    }
+
+    const replacedBlobId = this.blobId;
+    await this.update(
+      {
+        blobId: request.blobId,
+        size,
+        contentType: request.contentType,
+        contentRevision: this.contentRevision + 1,
+      },
+      transaction
+    );
+    if (replacedBlobId !== null) {
+      await FileSystemBlobCleanupResource.retireBlob(
+        auth,
+        this,
+        replacedBlobId,
+        transaction
+      );
+    }
+
+    return new Ok(this);
   }
 
   // Node rendering.
