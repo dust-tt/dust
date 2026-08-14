@@ -32,6 +32,10 @@ tokio-rustls = "0.26"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 x509-parser = "0.16"
+uuid = { version = "1", features = ["v4"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+fuser = { version = "0.18", default-features = false }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["test-util"] }
