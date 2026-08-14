@@ -8,7 +8,7 @@ export const SANDBOX_TOOL_NAME = "sandbox" as const;
 // `wrapCommandWithCapture`), which kills the command and returns the captured
 // output when it overruns.
 export const SANDBOX_DEFAULT_COMMAND_TIMEOUT_MS = 60000;
-const SANDBOX_MAX_COMMAND_TIMEOUT_MS = 120000;
+const SANDBOX_MAX_COMMAND_TIMEOUT_MS = 180000;
 
 // Extra time we add on top of a command's in-container timeout to set the
 // timeout we give the sandbox provider. The in-container `timeout`
