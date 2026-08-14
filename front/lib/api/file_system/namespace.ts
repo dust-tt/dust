@@ -106,6 +106,69 @@ export async function applyFileSystemOperation(
       return node.isErr() ? node : new Ok({ node: node.value.toJSON() });
     }
 
+    case "getContent": {
+      const node = await FileSystemNodeResource.fetchById(
+        auth,
+        scope,
+        request.nodeId
+      );
+      if (!node) {
+        return new Err(
+          new FileSystemOperationError("not_found", "The file was not found.")
+        );
+      }
+
+      const contentRes = await node.getContent(auth, scope);
+      return contentRes.isErr()
+        ? contentRes
+        : new Ok({ content: contentRes.value });
+    }
+
+    case "prepareContentUpload": {
+      const node = await FileSystemNodeResource.fetchById(
+        auth,
+        scope,
+        request.nodeId
+      );
+      if (!node) {
+        return new Err(
+          new FileSystemOperationError("not_found", "The file was not found.")
+        );
+      }
+
+      const uploadRes = await node.prepareContentUpload(auth, scope, {
+        expectedBlobId: request.expectedBlobId,
+        expectedSizeBytes: request.expectedSizeBytes,
+        contentType: request.contentType,
+      });
+      return uploadRes.isErr()
+        ? uploadRes
+        : new Ok({ upload: uploadRes.value });
+    }
+
+    case "commitContentUpload": {
+      const node = await FileSystemNodeResource.fetchById(
+        auth,
+        scope,
+        request.nodeId
+      );
+      if (!node) {
+        return new Err(
+          new FileSystemOperationError("not_found", "The file was not found.")
+        );
+      }
+
+      const committedRes = await node.commitContentUpload(auth, scope, {
+        expectedBlobId: request.expectedBlobId,
+        blobId: request.blobId,
+        expectedSizeBytes: request.expectedSizeBytes,
+        contentType: request.contentType,
+      });
+      return committedRes.isErr()
+        ? committedRes
+        : new Ok({ node: committedRes.value.toJSON() });
+    }
+
     default:
       return assertNever(request);
   }
