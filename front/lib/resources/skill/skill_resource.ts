@@ -2203,6 +2203,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         skillId: this.sId,
         permission,
         workspaceId: this.workspaceId,
+        // Null for non-user callers (internal auth); API keys skip shadow-compare entirely.
+        userId: auth.user()?.sId ?? null,
       }
     );
   }
