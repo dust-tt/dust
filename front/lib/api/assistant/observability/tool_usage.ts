@@ -235,10 +235,10 @@ export async function resolveServerDisplayNames(
   const remoteServerIds = unique.filter((id) =>
     isResourceSId("remote_mcp_server", id)
   );
-  const remoteServers =
-    remoteServerIds.length > 0
-      ? await RemoteMCPServerResource.fetchByIds(auth, remoteServerIds)
-      : [];
+  const remoteServers = await RemoteMCPServerResource.fetchByIds(
+    auth,
+    remoteServerIds
+  );
   const remoteServerMap = new Map(
     remoteServers.map((server) => [server.sId, server])
   );
