@@ -7,6 +7,7 @@ import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -34,6 +35,7 @@ export type ConsumptionFacetCatalog = Record<
 
 type ConsumptionFacetCatalogSource =
   | "members"
+  | "api_keys"
   | "groups"
   | "agents"
   | "models"
@@ -122,6 +124,13 @@ async function listConsumptionFacetCatalogWithoutTracing(
       return result.members;
     }
   );
+  const apiKeys = await traceFacetCatalogLoad(
+    "api_keys",
+    "api_key",
+    requestedDimension,
+    () =>
+      KeyResource.listNonSystemKeysByWorkspace(auth.getNonNullableWorkspace())
+  );
   const groups = await traceFacetCatalogLoad(
     "groups",
     "group",
@@ -182,6 +191,13 @@ async function listConsumptionFacetCatalogWithoutTracing(
       value: member.sId,
       label: member.fullName,
       pictureUrl: member.image,
+    })),
+    // API key names are not unique and are also the indexed grouping key.
+    // Keep one selectable entry per name so the catalog matches ES buckets.
+    api_key: [...new Set(apiKeys.map((apiKey) => apiKey.name))].map((name) => ({
+      value: name,
+      label: name,
+      pictureUrl: null,
     })),
     group: groups.map((group) => ({
       value: group.sId,

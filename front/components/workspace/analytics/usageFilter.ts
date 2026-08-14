@@ -19,6 +19,7 @@ export const USAGE_FILTER_CATEGORIES = [
   "tool",
   "skill",
   "source",
+  "api_key",
 ] as const;
 
 export type UsageFilterCategory = (typeof USAGE_FILTER_CATEGORIES)[number];
@@ -32,6 +33,7 @@ export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =
     tool: "Tools",
     skill: "Skills",
     source: "Sources",
+    api_key: "API keys",
   };
 
 export const USAGE_FILTER_CATEGORY_SINGULAR_LABEL: Record<
@@ -45,6 +47,7 @@ export const USAGE_FILTER_CATEGORY_SINGULAR_LABEL: Record<
   tool: "Tool",
   skill: "Skill",
   source: "Source",
+  api_key: "API key",
 };
 
 export const USAGE_FILTER_AGENT_SCOPES = [
@@ -107,6 +110,10 @@ export interface UsageFilterSkillOption extends UsageFilterOptionBase {
   icon: string | null;
 }
 
+export interface UsageFilterApiKeyOption extends UsageFilterOptionBase {
+  kind: "api_key";
+}
+
 export type UsageFilterOption =
   | UsageFilterAgentOption
   | UsageFilterMemberOption
@@ -114,7 +121,8 @@ export type UsageFilterOption =
   | UsageFilterSourceOption
   | UsageFilterModelOption
   | UsageFilterToolOption
-  | UsageFilterSkillOption;
+  | UsageFilterSkillOption
+  | UsageFilterApiKeyOption;
 
 export interface UsageFilterGroup {
   id: string;
@@ -239,6 +247,8 @@ function usageFilterOptionFromAttributionRow(
         kind: "source",
         connectorProvider: isConnectorProvider(row.id) ? row.id : undefined,
       };
+    case "api_key":
+      return { ...baseOption, kind: "api_key" };
     default:
       return assertNever(dimension);
   }
@@ -263,6 +273,8 @@ function addUsageFilterOption(
       return selectAllUsageFilterOptions(filter, "skill", [option]);
     case "source":
       return selectAllUsageFilterOptions(filter, "source", [option]);
+    case "api_key":
+      return selectAllUsageFilterOptions(filter, "api_key", [option]);
     default:
       return assertNever(option);
   }

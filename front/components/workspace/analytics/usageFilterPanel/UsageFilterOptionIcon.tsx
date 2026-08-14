@@ -70,6 +70,7 @@ export function UsageFilterOptionIcon({ option }: UsageFilterOptionIconProps) {
     case "skill":
       return <Icon visual={getSkillIcon(option.icon)} size="sm" />;
     case "group":
+    case "api_key":
       return null;
     default:
       assertNeverAndIgnore(option);

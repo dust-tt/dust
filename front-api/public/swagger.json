@@ -6191,6 +6191,12 @@
                           "type": "string"
                         }
                       },
+                      "api_keys": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
                       "groups": {
                         "type": "array",
                         "items": {
@@ -6267,6 +6273,7 @@
                       "required": [
                         "agent",
                         "user",
+                        "api_key",
                         "group",
                         "model",
                         "tool",
@@ -6281,6 +6288,12 @@
                           }
                         },
                         "user": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PrivateConsumptionFacet"
+                          }
+                        },
+                        "api_key": {
                           "type": "array",
                           "items": {
                             "$ref": "#/components/schemas/PrivateConsumptionFacet"

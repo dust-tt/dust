@@ -1,5 +1,6 @@
 import type {
   UsageFilterAgentOption,
+  UsageFilterApiKeyOption,
   UsageFilterCategory,
   UsageFilterGroupOption,
   UsageFilterMemberOption,
@@ -31,6 +32,7 @@ const EMPTY_FACET_OPTIONS: ConsumptionFacetOptions = {
   tool: [],
   skill: [],
   source: [],
+  api_key: [],
 };
 
 function baseOption(facet: {
@@ -86,6 +88,10 @@ function toFacetOptions(
       connectorProvider: isConnectorProvider(facet.value)
         ? facet.value
         : undefined,
+    })),
+    api_key: data.facets.api_key.map<UsageFilterApiKeyOption>((facet) => ({
+      ...baseOption(facet),
+      kind: "api_key",
     })),
   };
 }

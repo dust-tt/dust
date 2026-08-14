@@ -43,6 +43,14 @@ describe("resolveDimensionDisplayNames", () => {
     expect(names.get("web")).toBe("Conversation");
   });
 
+  it("keeps API key names as indexed", async () => {
+    const names = await resolveDimensionDisplayNames(auth, "api_key", [
+      "Production key",
+    ]);
+
+    expect(names.get("Production key")).toBe("Production key");
+  });
+
   it("names tools from their server names", async () => {
     const names = await resolveDimensionDisplayNames(auth, "tool", [
       "image_generation",
