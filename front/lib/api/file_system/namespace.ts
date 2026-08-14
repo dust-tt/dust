@@ -5,6 +5,7 @@ import type {
 } from "@app/lib/api/file_system/namespace_types";
 import { FileSystemOperationError } from "@app/lib/api/file_system/namespace_types";
 import type { Authenticator } from "@app/lib/auth";
+import { FileSystemMutationResource } from "@app/lib/resources/file_system_mutation_resource";
 import { FileSystemNodeResource } from "@app/lib/resources/file_system_node_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -93,6 +94,16 @@ export async function applyFileSystemOperation(
             nodes: result.value.nodes.map((node) => node.toJSON()),
             nextAfterName: result.value.nextAfterName,
           });
+    }
+
+    case "create": {
+      const node = await FileSystemMutationResource.createNode(
+        auth,
+        scope,
+        request
+      );
+
+      return node.isErr() ? node : new Ok({ node: node.value.toJSON() });
     }
 
     default:
