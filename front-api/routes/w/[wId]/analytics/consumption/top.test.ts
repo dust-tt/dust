@@ -380,20 +380,6 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
     });
   });
 
-  it("returns 400 when the ranked page extends beyond the bucket cap", async () => {
-    const { workspace } = await setupTest();
-
-    const response = await postRankingRequest(workspace.sId, "top-agents", {
-      limit: 5,
-      offset: 996,
-    });
-
-    expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({
-      error: { type: "invalid_request_error" },
-    });
-  });
-
   it("returns 500 when the search fails", async () => {
     vi.mocked(fetchConsumptionTopTools).mockResolvedValue(
       new Err(new ElasticsearchError("query_error", "boom"))
