@@ -94,54 +94,42 @@ function countFromBucket(
   }
 }
 
-/**
- * Top `limit` keys of `dimension` by gross credits over the period, with the
- * count each one's average is denominated in.
- */
-export async function fetchConsumptionTopGroups(
+async function resolveConsumptionTopSearchFilter(
   auth: Authenticator,
-  {
-    dimension,
-    period,
-    limit,
-    offset = 0,
-    search,
-    filter,
-  }: {
-    dimension: ConsumptionScopeDimension;
-    period: ConsumptionPeriod;
-    limit: number;
-    offset?: number;
-    search?: string;
-    filter?: ConsumptionScopeFilter;
-  }
-): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
-  const unit = CONSUMPTION_DIMENSION_UNIT[dimension];
-  const dimensionField = CONSUMPTION_DIMENSION_FIELDS[dimension];
+  dimension: ConsumptionScopeDimension,
+  search?: string
+): Promise<estypes.QueryDslQueryContainer | null> {
   const normalizedSearch = search?.trim().toLowerCase();
-
-  let matchingValues: string[] | undefined;
-  if (normalizedSearch) {
-    const catalog = await listConsumptionFacetCatalog(auth);
-    matchingValues = catalog[dimension]
-      .filter((entry) => entry.label.toLowerCase().includes(normalizedSearch))
-      .map((entry) => entry.value);
+  if (!normalizedSearch) {
+    return null;
   }
 
-  let searchFilter: estypes.QueryDslQueryContainer | null = null;
-  if (matchingValues?.length) {
-    searchFilter = { terms: { [dimensionField]: matchingValues } };
-  } else if (matchingValues) {
-    searchFilter = { match_none: {} };
+  const catalog = await listConsumptionFacetCatalog(auth);
+  const matchingValues = catalog[dimension]
+    .filter((entry) => entry.label.toLowerCase().includes(normalizedSearch))
+    .map((entry) => entry.value);
+
+  if (matchingValues.length === 0) {
+    return { match_none: {} };
   }
 
-  const query = buildConsumptionScopeQuery({
-    auth,
-    startDate: period.startDate,
-    endDate: period.endDate,
-    filter,
-  });
+  const dimensionField = CONSUMPTION_DIMENSION_FIELDS[dimension];
+  return { terms: { [dimensionField]: matchingValues } };
+}
 
+function buildConsumptionTopAggregations({
+  dimensionField,
+  unit,
+  limit,
+  offset,
+  searchFilter,
+}: {
+  dimensionField: string;
+  unit: ConsumptionTopUnit;
+  limit: number;
+  offset: number;
+  searchFilter: estypes.QueryDslQueryContainer | null;
+}): Record<string, estypes.AggregationsAggregationContainer> {
   // TODO(2026-08-14 aubin): Add pagination beyond the maximum bucket count.
   const requestedBucketCount = offset + limit;
   const rankingAggregations = {
@@ -169,10 +157,56 @@ export async function fetchConsumptionTopGroups(
         },
       }
     : rankingAggregations;
-  const aggregations = {
+
+  return {
     ...rankingRootAggregations,
     total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
   };
+}
+
+/**
+ * Top `limit` keys of `dimension` by gross credits over the period, with the
+ * count each one's average is denominated in.
+ */
+export async function fetchConsumptionTopGroups(
+  auth: Authenticator,
+  {
+    dimension,
+    period,
+    limit,
+    offset = 0,
+    search,
+    filter,
+  }: {
+    dimension: ConsumptionScopeDimension;
+    period: ConsumptionPeriod;
+    limit: number;
+    offset?: number;
+    search?: string;
+    filter?: ConsumptionScopeFilter;
+  }
+): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
+  const unit = CONSUMPTION_DIMENSION_UNIT[dimension];
+  const dimensionField = CONSUMPTION_DIMENSION_FIELDS[dimension];
+  const searchFilter = await resolveConsumptionTopSearchFilter(
+    auth,
+    dimension,
+    search
+  );
+
+  const query = buildConsumptionScopeQuery({
+    auth,
+    startDate: period.startDate,
+    endDate: period.endDate,
+    filter,
+  });
+  const aggregations = buildConsumptionTopAggregations({
+    dimensionField,
+    unit,
+    limit,
+    offset,
+    searchFilter,
+  });
 
   const result = await searchConsumptionAnalytics<never, TopAggs>(query, {
     aggregations,
