@@ -7,9 +7,9 @@ import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/
 import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer/MarkdownFilePreview";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { parseCanonicalScopedPath } from "@app/lib/api/files/mount_path";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import { writeFileContentByPath } from "@app/lib/swr/files";
+import { parseCanonicalScopedPath } from "@app/types/file_system";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,

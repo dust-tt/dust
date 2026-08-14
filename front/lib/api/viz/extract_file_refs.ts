@@ -1,7 +1,5 @@
-// Ported from viz/app/lib/parseFileRefs.ts — keep classification in sync with
-// `isAgentScopedPath` in front/lib/api/files/mount_path.ts until deduped into a shared package.
-import { isAgentScopedPath } from "@app/lib/api/files/mount_path";
 import logger from "@app/logger/logger";
+import { isAgentScopedPath } from "@app/types/file_system";
 import ts from "typescript";
 
 export type FileRef =

@@ -14,6 +14,7 @@ export type FileSystemMountKind = "conversation" | "pod" | "user";
 export {
   conversationScopedPath,
   LEGACY_PREFIX_CONVERSATION,
+  LEGACY_PREFIX_POD,
   LEGACY_PREFIX_PROJECT,
   podScopedPath,
   SCOPED_PREFIX_CONVERSATION,

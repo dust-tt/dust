@@ -15,7 +15,6 @@ import {
   getConversationFilesBasePath,
   getPodFilesBasePath,
   getPodSandboxFunctionsBasePath,
-  isLegacyScopedPath,
   makeProcessedMountFileName,
   resolveCanonicalScopedPath,
 } from "@app/lib/api/files/mount_path";
@@ -65,6 +64,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import { CoreAPI } from "@app/types/core/core_api";
+import { isLegacyScopedPath } from "@app/types/file_system";
 import type {
   AuthorizedFileAccessAllowlist,
   AuthorizedFileRef,

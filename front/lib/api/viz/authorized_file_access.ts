@@ -1,5 +1,4 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { legacyScopedPathsMatch } from "@app/lib/api/files/mount_path";
 import {
   isAllowlistShareScopeStale,
   isAllowlistStale,
@@ -11,6 +10,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { streamToBuffer } from "@app/lib/utils/streams";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import { legacyScopedPathsMatch } from "@app/types/file_system";
 import type {
   AuthorizedFileAccessAllowlist,
   AuthorizedFileAccessShareError,

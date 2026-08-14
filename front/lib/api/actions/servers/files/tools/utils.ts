@@ -14,13 +14,13 @@ import { getGCSPathFromScopedPath } from "@app/lib/api/files/gcs_mount/files";
 import {
   getConversationFilesBasePath,
   getPodFilesBasePath,
-  parseScopedFilePath,
 } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
+import { parseScopedFilePath } from "@app/types/file_system";
 import {
   frameContentType,
   frameSlideshowContentType,

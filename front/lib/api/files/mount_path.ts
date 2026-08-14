@@ -7,11 +7,18 @@
 //                     the same Pod.
 
 import type { FileResource } from "@app/lib/resources/file_resource";
-import type { CanonicalScopedPathScope } from "@app/types/file_system";
+import type {
+  ParsedScopedPathScope,
+  ScopedFilePathPrefix,
+} from "@app/types/file_system";
 import {
+  isCanonicalScopedPath,
+  isLegacyScopedPath,
   LEGACY_PREFIX_CONVERSATION,
+  LEGACY_PREFIX_POD,
   LEGACY_PREFIX_PROJECT,
-  parseCanonicalScopedPathScope,
+  parseScopedFilePath,
+  parseScopedPathScope,
   SCOPED_PREFIX_CONVERSATION,
   SCOPED_PREFIX_POD,
   TOOL_OUTPUTS_FOLDER_NAME,
@@ -21,7 +28,6 @@ import { extensionsForContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import path from "path";
-import { z } from "zod";
 
 export function getBaseMountPathForWorkspace({
   workspaceId,
@@ -42,7 +48,12 @@ export function getConversationFilesBasePath({
 }
 
 export {
+  isAgentScopedPath,
+  isCanonicalScopedPath,
+  isLegacyScopedPath,
+  legacyScopedPathsMatch,
   parseCanonicalScopedPath,
+  parseScopedFilePath,
   TOOL_OUTPUTS_FOLDER_NAME,
 } from "@app/types/file_system";
 
@@ -250,56 +261,14 @@ export function parseProcessedFilename(
   return { isProcessed: true, sourceBaseName: fileName.slice(0, idx) };
 }
 
-const scopedFilePathPrefixSchema = z.enum(["conversation", "pod"]);
-type ScopedFilePathPrefix = z.infer<typeof scopedFilePathPrefixSchema>;
-
-type ScopedFilePath = {
-  prefix: ScopedFilePathPrefix;
-  rel: string;
-};
-
-/**
- * Typed parse result for the first URL segment of a viz scoped path.
- *
- * - "canonical-conversation" / "canonical-pod": ID is embedded in the prefix
- *   (e.g. "conversation-abc123" or "pod-xyz456"). The id field is guaranteed non-empty.
- * - "legacy": bare keyword ("conversation" or "pod"); the resource ID must be
- *   resolved from the frame's metadata (useCaseMetadata).
- */
-type ParsedVizScope =
-  | CanonicalScopedPathScope
-  | { kind: "legacy"; prefix: ScopedFilePathPrefix };
-
 /**
  * Parse the first URL segment of a viz scoped path into a typed result.
  * Returns null for unrecognised prefixes (caller should return a 400).
  */
-export function parseRawVizScope(rawScope: string): ParsedVizScope | null {
-  const canonicalScope = parseCanonicalScopedPathScope(rawScope);
-  if (canonicalScope) {
-    return canonicalScope;
-  }
-
-  const r = scopedFilePathPrefixSchema.safeParse(rawScope);
-  return r.success ? { kind: "legacy", prefix: r.data } : null;
-}
-
-/**
- * Parse a scoped file path like "conversation/chart.png" or "pod/report.pdf".
- * Returns null if the path is missing a valid scope prefix.
- */
-export function parseScopedFilePath(filePath: string): ScopedFilePath | null {
-  const slashIdx = filePath.indexOf("/");
-  if (slashIdx <= 0) {
-    return null;
-  }
-  const prefixResult = scopedFilePathPrefixSchema.safeParse(
-    filePath.slice(0, slashIdx)
-  );
-  if (!prefixResult.success) {
-    return null;
-  }
-  return { prefix: prefixResult.data, rel: filePath.slice(slashIdx + 1) };
+export function parseRawVizScope(
+  rawScope: string
+): ParsedScopedPathScope | null {
+  return parseScopedPathScope(rawScope);
 }
 
 /** Conversation/pod context used to resolve legacy scoped paths for a frame. */
@@ -307,42 +276,6 @@ export type FrameScopedPathContext = {
   conversationId: string | null;
   spaceId: string | null;
 };
-
-function getScopedPathPrefix(scopedPath: string): string | null {
-  const slashIdx = scopedPath.indexOf("/");
-  if (slashIdx <= 0) {
-    return null;
-  }
-  return scopedPath.slice(0, slashIdx);
-}
-
-/**
- * True for canonical agent-visible paths (`conversation-{id}/...`, `pod-{id}/...`).
- * The id segment after the prefix must be non-empty.
- */
-export function isCanonicalScopedPath(scopedPath: string): boolean {
-  const prefix = getScopedPathPrefix(scopedPath);
-  return prefix ? parseCanonicalScopedPathScope(prefix) !== null : false;
-}
-
-/** True for legacy bare-prefix paths (`conversation/...`, `pod/...`, `project/...`). */
-export function isLegacyScopedPath(scopedPath: string): boolean {
-  const prefix = getScopedPathPrefix(scopedPath);
-  if (!prefix) {
-    return false;
-  }
-
-  return (
-    prefix === LEGACY_PREFIX_CONVERSATION ||
-    prefix === "pod" ||
-    prefix === LEGACY_PREFIX_PROJECT
-  );
-}
-
-/** True for any agent-visible scoped path (canonical or legacy). */
-export function isAgentScopedPath(scopedPath: string): boolean {
-  return isCanonicalScopedPath(scopedPath) || isLegacyScopedPath(scopedPath);
-}
 
 /**
  * Resolve a legacy scoped path to its canonical form under the frame context.
@@ -375,7 +308,7 @@ export function resolveCanonicalScopedPath(
       }
       return `${SCOPED_PREFIX_CONVERSATION}${frameContext.conversationId}/${rel}`;
     }
-    case "pod":
+    case LEGACY_PREFIX_POD:
     case LEGACY_PREFIX_PROJECT: {
       if (!frameContext.spaceId) {
         return null;
@@ -385,27 +318,6 @@ export function resolveCanonicalScopedPath(
     default:
       return null;
   }
-}
-
-/** Match a requested legacy scoped path against a stored legacy alias. */
-export function legacyScopedPathsMatch(
-  storedLegacyPath: string | undefined,
-  requestedRef: string
-): boolean {
-  if (!storedLegacyPath) {
-    return false;
-  }
-
-  if (storedLegacyPath === requestedRef) {
-    return true;
-  }
-
-  // Older frame code may request `project/...` while the stored alias uses `pod/...`.
-  return (
-    requestedRef.startsWith(`${LEGACY_PREFIX_PROJECT}/`) &&
-    storedLegacyPath ===
-      `pod/${requestedRef.slice(`${LEGACY_PREFIX_PROJECT}/`.length)}`
-  );
 }
 
 export class ResolveScopedMountFilePathError extends Error {
