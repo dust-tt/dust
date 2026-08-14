@@ -1,3 +1,4 @@
+import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -271,7 +272,17 @@ export async function launchSandboxChildToolWorkflow(
 
   try {
     await client.workflow.start(runSandboxChildToolWorkflow, {
-      args: [{ authType, agentLoopArgs, actionModelId: action.id, step }],
+      args: [
+        {
+          authType,
+          agentLoopArgs,
+          actionModelId: action.id,
+          retryPolicy: getRetryPolicyFromToolConfiguration(
+            action.toolConfiguration
+          ),
+          step,
+        },
+      ],
       taskQueue: await getTaskQueueForRun(auth, {
         userMessageOrigin: agentLoopArgs.userMessageOrigin,
         conversationId: agentLoopArgs.conversationId,

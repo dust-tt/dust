@@ -3,6 +3,7 @@ import {
   RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
   RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
+import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as compactionActivities from "@app/temporal/agent_loop/activities/compaction";
 import type * as creditCheckActivities from "@app/temporal/agent_loop/activities/credit_check";
@@ -569,18 +570,28 @@ export async function runSandboxChildToolWorkflow({
   authType,
   agentLoopArgs,
   actionModelId,
+  retryPolicy = "no_retry",
   step,
 }: {
   authType: AuthenticatorType;
   agentLoopArgs: AgentLoopArgsWithTiming;
   actionModelId: number;
+  // Optional so workflows started before this argument was added replay with the previous
+  // single-attempt behavior.
+  retryPolicy?: MCPToolRetryPolicyType;
   step: number;
 }) {
-  const { deferredEvents } = await runToolActivity(authType, {
+  const activityArgs = {
     actionId: actionModelId,
     runAgentArgs: agentLoopArgs,
     step,
-  });
+  };
+  const shouldRetryOnInterrupt =
+    retryPolicy === "retry_on_interrupt" &&
+    patched("sandbox-child-tool-retry-policy");
+  const { deferredEvents } = shouldRetryOnInterrupt
+    ? await runRetryableToolActivity(authType, activityArgs)
+    : await runToolActivity(authType, activityArgs);
 
   if (deferredEvents.length > 0) {
     await publishDeferredEventsActivity(deferredEvents);
