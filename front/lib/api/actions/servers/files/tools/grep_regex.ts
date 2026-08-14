@@ -37,6 +37,8 @@ export function compileGrepPattern(pattern: string): Result<RE2, Error> {
 }
 
 export class GrepLineTooLongError extends Error {
+  readonly code = "grep_line_too_long";
+
   constructor(lineNumber: number) {
     super(
       `Cannot search line ${lineNumber}: it exceeds ${GREP_LINE_MAX_BYTES} bytes.`
@@ -44,9 +46,15 @@ export class GrepLineTooLongError extends Error {
   }
 }
 
+export function isGrepLineTooLongError(
+  error: Error
+): error is GrepLineTooLongError {
+  return "code" in error && error.code === "grep_line_too_long";
+}
+
 async function* readBoundedLines(
   stream: Readable
-): AsyncGenerator<{ line: string; lineNumber: number }> {
+): AsyncGenerator<Result<{ line: string; lineNumber: number }, Error>> {
   let pending: Buffer[] = [];
   let pendingBytes = 0;
   let lineNumber = 1;
@@ -61,7 +69,8 @@ async function* readBoundedLines(
       const part = chunk.subarray(start, end);
 
       if (pendingBytes + part.length > GREP_LINE_MAX_BYTES) {
-        throw new GrepLineTooLongError(lineNumber);
+        yield new Err(new GrepLineTooLongError(lineNumber));
+        return;
       }
       if (part.length > 0) {
         pending.push(part);
@@ -79,7 +88,7 @@ async function* readBoundedLines(
       ) {
         lineBytes = lineBytes.subarray(0, lineBytes.length - 1);
       }
-      yield { line: lineBytes.toString("utf8"), lineNumber };
+      yield new Ok({ line: lineBytes.toString("utf8"), lineNumber });
 
       pending = [];
       pendingBytes = 0;
@@ -89,10 +98,10 @@ async function* readBoundedLines(
   }
 
   if (pendingBytes > 0) {
-    yield {
+    yield new Ok({
       line: Buffer.concat(pending, pendingBytes).toString("utf8"),
       lineNumber,
-    };
+    });
   }
 }
 
@@ -124,8 +133,19 @@ export async function collectGrepMatches(
   let outputBytes = 0;
 
   try {
-    for await (const { line, lineNumber } of readBoundedLines(stream)) {
-      if (!regex.test(line)) {
+    for await (const lineResult of readBoundedLines(stream)) {
+      if (lineResult.isErr()) {
+        return new Err(lineResult.error);
+      }
+      const { line, lineNumber } = lineResult.value;
+
+      let isMatch: boolean;
+      try {
+        isMatch = regex.test(line);
+      } catch (err) {
+        return new Err(normalizeError(err));
+      }
+      if (!isMatch) {
         continue;
       }
 
@@ -160,6 +180,7 @@ export async function collectGrepMatches(
       }
     }
   } catch (err) {
+    // Readable stream failures surface while advancing the async iterator.
     return new Err(normalizeError(err));
   }
 
