@@ -11,6 +11,8 @@ import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
   DEFAULT_NOTIFICATION_CONDITION,
   DEFAULT_NOTIFICATION_DELAY,
+  FOR_YOU_NOTIFICATION_METADATA_KEY,
+  isForYouNotificationsEnabled,
   isNotificationCondition,
   isNotificationPreferencesDelay,
   makeNotificationPreferencesUserMetadata,
@@ -59,6 +61,7 @@ const NotificationPreferencesFormSchema = z.object({
   inApp: z.boolean(),
   slack: z.boolean(),
   email: z.boolean(),
+  forYou: z.boolean(),
 });
 
 type NotificationPreferencesFormValues = z.infer<
@@ -68,9 +71,11 @@ type NotificationPreferencesFormValues = z.infer<
 export function useNotificationPreferencesForm({
   owner,
   disabled,
+  displayForYouOption,
 }: {
   owner: LightWorkspaceType;
   disabled: boolean;
+  displayForYouOption: boolean;
 }) {
   const sendNotification = useSendNotification();
   const { hasFeature } = useFeatureFlags();
@@ -95,6 +100,13 @@ export function useNotificationPreferencesForm({
     metadata: notifyConditionMetadata,
     mutateMetadata: mutateNotifyCondition,
   } = useUserMetadata(CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition);
+  const {
+    metadata: forYouMetadata,
+    mutateMetadata: mutateForYou,
+    isMetadataLoading: isForYouLoading,
+  } = useUserMetadata(FOR_YOU_NOTIFICATION_METADATA_KEY, {
+    disabled: disabled || !displayForYouOption,
+  });
 
   const form = useForm<NotificationPreferencesFormValues>({
     resolver: zodResolver(NotificationPreferencesFormSchema),
@@ -104,6 +116,7 @@ export function useNotificationPreferencesForm({
       inApp: false,
       slack: false,
       email: false,
+      forYou: true,
     },
   });
 
@@ -123,11 +136,13 @@ export function useNotificationPreferencesForm({
       inApp: Boolean(conversationPreferences.channels.in_app),
       slack: Boolean(conversationPreferences.channels.chat),
       email: Boolean(conversationPreferences.channels.email),
+      forYou: isForYouNotificationsEnabled(forYouMetadata?.value),
     });
   }, [
     conversationPreferences,
     conversationEmailMetadata,
     notifyConditionMetadata,
+    forYouMetadata,
     form,
   ]);
 
@@ -160,6 +175,13 @@ export function useNotificationPreferencesForm({
           });
           await mutateNotifyCondition();
         }
+        if (displayForYouOption && dirtyFields.forYou) {
+          await setUserMetadataFromClient({
+            key: FOR_YOU_NOTIFICATION_METADATA_KEY,
+            value: String(data.forYou),
+          });
+          await mutateForYou();
+        }
         form.reset(data);
         succeeded = true;
       } catch (error) {
@@ -177,7 +199,10 @@ export function useNotificationPreferencesForm({
     control: form.control,
     displaySlackOption,
     isDirty: form.formState.isDirty,
-    isLoading: status === "loading" || isSlackSetupLoading,
+    isLoading:
+      status === "loading" ||
+      isSlackSetupLoading ||
+      (displayForYouOption && isForYouLoading),
     save,
     status,
     workflowEnabled: Boolean(conversationPreferences?.enabled),
@@ -287,7 +312,7 @@ export function NotificationPreferences({
 
       <SettingsList.Row
         title="Email frequency"
-        description="We'll never email you more often than this"
+        description="How often to send email notification summaries"
         action={
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -311,6 +336,32 @@ export function NotificationPreferences({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+        }
+      />
+    </SettingsList>
+  );
+}
+
+export function ForYouNotificationPreferences({
+  control,
+}: {
+  control: Control<NotificationPreferencesFormValues>;
+}) {
+  const { field: forYouField } = useController({
+    name: "forYou",
+    control,
+  });
+
+  return (
+    <SettingsList>
+      <SettingsList.Row
+        title="For you"
+        description="Email when Dust has a new recommendation for you"
+        action={
+          <SliderToggle
+            selected={forYouField.value}
+            onClick={() => forYouField.onChange(!forYouField.value)}
+          />
         }
       />
     </SettingsList>

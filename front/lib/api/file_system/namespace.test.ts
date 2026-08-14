@@ -376,7 +376,6 @@ describe("filesystem namespace creation", () => {
     expect(fileAsParent.isErr() && fileAsParent.error.code).toBe("not_found");
   });
 });
-
 describe("filesystem content", () => {
   it("commits one immutable blob and returns it for reads", async () => {
     const { authenticator, workspace } = await createResourceTest({
