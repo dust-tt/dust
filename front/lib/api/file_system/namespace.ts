@@ -106,6 +106,16 @@ export async function applyFileSystemOperation(
       return node.isErr() ? node : new Ok({ node: node.value.toJSON() });
     }
 
+    case "remove": {
+      const removedRes = await FileSystemMutationResource.removeNode(
+        auth,
+        scope,
+        request
+      );
+
+      return removedRes.isErr() ? removedRes : new Ok({});
+    }
+
     case "rename": {
       const nodeRes = await FileSystemMutationResource.renameNode(
         auth,

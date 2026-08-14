@@ -23,10 +23,18 @@ import { UniqueConstraintError } from "sequelize";
 import { z } from "zod";
 
 type CreateRequest = Extract<FileSystemOperation, { operation: "create" }>;
+type RemoveRequest = Extract<FileSystemOperation, { operation: "remove" }>;
 type RenameRequest = Extract<FileSystemOperation, { operation: "rename" }>;
 
 const CreateMutationResponseSchema = z.object({
   nodeId: z.number().int().positive(),
+});
+const RemoveMutationResponseSchema = z.object({
+  parentId: z.number().int().positive(),
+  name: z.string(),
+  nodeKind: FileSystemNodeSchema.shape.kind,
+  rootKind: FileSystemNodeSchema.shape.rootKind,
+  rootId: FileSystemNodeSchema.shape.rootId,
 });
 const RenameMutationResponseSchema = z.object({
   node: FileSystemNodeSchema,
@@ -103,10 +111,9 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
     const workspaceId = auth.getNonNullableWorkspace().id;
     const key = `${FILE_SYSTEM_NAMESPACE_LOCK_PREFIX}:${workspaceId}`;
 
-    // Creates take a shared lock, so different creates can run at the same
-    // time. Rename takes an exclusive lock and waits for current creates. Without
-    // it, a child created during a cross-root move could keep the old rootKind
-    // and rootId.
+    // Creates and removes take a shared lock, so they can run at the same time.
+    // Rename takes an exclusive lock and waits for them. Without it, a child
+    // created during a cross-root move could keep the old rootKind and rootId.
     const query =
       mode === "shared"
         ? "SELECT pg_advisory_xact_lock_shared(hashtextextended(:key, 0))"
@@ -206,6 +213,60 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
     // Return the result saved by the first request. Fetching the node again
     // could return a later move, or nothing if another rename replaced it.
     return new Ok(parsed.data.node);
+  }
+
+  private async removedNode(
+    scope: FileSystemScope,
+    request: RemoveRequest
+  ): Promise<Result<undefined, FileSystemOperationError>> {
+    if (this.kind !== "remove") {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "That request ID belongs to a different filesystem operation."
+        )
+      );
+    }
+
+    const parsed = RemoveMutationResponseSchema.safeParse(this.response);
+    if (!parsed.success) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "The saved filesystem response is invalid."
+        )
+      );
+    }
+    if (
+      parsed.data.parentId !== request.parentId ||
+      parsed.data.name !== request.name ||
+      parsed.data.nodeKind !== request.kind
+    ) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "That request ID belongs to a different removal."
+        )
+      );
+    }
+    if (!scope.canRead(parsed.data.rootKind, parsed.data.rootId)) {
+      return new Err(
+        new FileSystemOperationError(
+          "not_found",
+          "The parent directory was not found."
+        )
+      );
+    }
+    if (!scope.canWrite(parsed.data.rootKind, parsed.data.rootId)) {
+      return new Err(
+        new FileSystemOperationError(
+          "unauthorized",
+          "You do not have write access to the parent directory."
+        )
+      );
+    }
+
+    return new Ok(undefined);
   }
 
   static async createNode(
@@ -394,5 +455,99 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
 
       return new Ok(node);
     });
+  }
+
+  static async removeNode(
+    auth: Authenticator,
+    scope: FileSystemScope,
+    request: RemoveRequest
+  ): Promise<Result<undefined, FileSystemOperationError>> {
+    const requestIdRes = this.validateRequestId(request.requestId);
+    if (requestIdRes.isErr()) {
+      return requestIdRes;
+    }
+
+    try {
+      return await withTransaction(async (transaction) => {
+        // Take this before locking any file or directory row.
+        await this.lockNamespace(auth, { mode: "shared", transaction });
+        const existing = await this.baseFetch(
+          auth,
+          request.requestId,
+          transaction
+        );
+        if (existing) {
+          return existing.removedNode(scope, request);
+        }
+
+        const parent = await FileSystemNodeResource.fetchById(
+          auth,
+          scope,
+          request.parentId,
+          { transaction, forUpdate: true }
+        );
+        if (!parent) {
+          return new Err(
+            new FileSystemOperationError(
+              "not_found",
+              "The parent directory was not found."
+            )
+          );
+        }
+
+        // A matching request can finish while this one waits for the parent.
+        const concurrent = await this.baseFetch(
+          auth,
+          request.requestId,
+          transaction
+        );
+        if (concurrent) {
+          return concurrent.removedNode(scope, request);
+        }
+
+        const removedRes = await parent.removeChild(auth, scope, {
+          name: request.name,
+          kind: request.kind,
+          transaction,
+        });
+        if (removedRes.isErr()) {
+          return removedRes;
+        }
+
+        await this.model.create(
+          {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            completedAt: new Date(),
+            requestId: request.requestId,
+            kind: "remove",
+            response: {
+              parentId: request.parentId,
+              name: request.name,
+              nodeKind: request.kind,
+              rootKind: parent.rootKind,
+              rootId: parent.rootId,
+            },
+          },
+          { transaction }
+        );
+
+        return new Ok(undefined);
+      });
+    } catch (error) {
+      if (error instanceof UniqueConstraintError) {
+        return withTransaction(async (transaction) => {
+          const existing = await this.baseFetch(
+            auth,
+            request.requestId,
+            transaction
+          );
+          if (existing) {
+            return existing.removedNode(scope, request);
+          }
+          throw error;
+        });
+      }
+      throw error;
+    }
   }
 }
