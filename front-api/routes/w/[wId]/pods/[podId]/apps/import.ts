@@ -1,11 +1,18 @@
 import { importPodApp } from "@app/lib/api/projects/app_archive";
 import type { ImportPodAppResponseBody } from "@app/types/api/pod_app_archive";
+import { MAX_POD_APP_ARCHIVE_SIZE_BYTES } from "@app/types/api/pod_app_archive";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { bodyLimit } from "@front-api/middlewares/body_limit";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { withSpace } from "@front-api/middlewares/with_space";
+
+// Multipart framing (boundary markers, per-part headers, the optional `name` field) adds a small
+// amount of overhead on top of the archive's own bytes; this covers it without materially raising
+// the effective cap.
+const MULTIPART_FRAMING_OVERHEAD_BYTES = 64 * 1024;
 
 // Mounted at /api/w/:wId/pods/:podId/apps/import.
 const app = workspaceApp();
@@ -13,6 +20,7 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.post(
   "/",
+  bodyLimit(MAX_POD_APP_ARCHIVE_SIZE_BYTES + MULTIPART_FRAMING_OVERHEAD_BYTES),
   withSpace({ requireCanWrite: true, routeParam: "podId" }),
   async (ctx): HandlerResult<ImportPodAppResponseBody> => {
     const auth = ctx.get("auth");
@@ -22,6 +30,14 @@ app.post(
     try {
       body = await ctx.req.parseBody();
     } catch (err) {
+      // Without a Content-Length header, `bodyLimit(...)` enforces the cap by erroring the
+      // request stream mid-read rather than rejecting upfront; that surfaces here as a thrown
+      // error while reading the body. Let it propagate so the middleware's own `c.error` check
+      // (right after `next()`) turns it into its 413 response instead of this route reporting a
+      // generic 400 parse failure.
+      if (err instanceof Error && err.name === "BodyLimitError") {
+        throw err;
+      }
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -67,7 +83,9 @@ app.post(
             },
           });
         case "sandbox_unavailable":
-          // Publishing and reconciling need a live sandbox; the import is safe to retry.
+          // Publishing and reconciling need a live sandbox. Whatever was already written (folder,
+          // Frames) stays visible in the Apps tab; retrying needs the partial app deleted first,
+          // since the folder name is now taken.
           return apiError(ctx, {
             status_code: 503,
             api_error: {

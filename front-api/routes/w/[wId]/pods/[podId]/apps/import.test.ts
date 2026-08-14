@@ -4,11 +4,13 @@
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { buildSandboxFunctionOnSandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
 import { reconcileDatabaseFromPodPath } from "@app/lib/api/sandbox_functions/dsbx_db";
+import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import {
   PublishFrameError,
   publishFrame,
 } from "@app/lib/api/viz/publish_frame";
 import type { Authenticator } from "@app/lib/auth";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -17,7 +19,13 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { PodAppManifest } from "@app/types/api/pod_app_archive";
+import { MAX_POD_APP_ARCHIVE_SIZE_BYTES } from "@app/types/api/pod_app_archive";
 import { frameContentType, sandboxFunctionContentType } from "@app/types/files";
+import type { PodFrameTab } from "@app/types/pod_frame_tab";
+import {
+  DEFAULT_POD_FRAME_TAB_ICON,
+  MAX_POD_FRAME_TABS,
+} from "@app/types/pod_frame_tab";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import AdmZip from "adm-zip";
@@ -184,6 +192,18 @@ function taskListFiles(): Record<string, string> {
     "TaskList.tsx": "export default function App() { return null; }",
     "functions/add-task.ts": "export async function main() {}",
     "databases/tasks.db.ts": "export const tasks = {};",
+  };
+}
+
+/** `taskListManifest()` with its Frame recorded as pinned at export time. */
+function taskListManifestWithPinnedTab(): PodAppManifest {
+  const manifest = taskListManifest();
+  return {
+    ...manifest,
+    frames: manifest.frames.map((frame) => ({
+      ...frame,
+      pinnedTab: { title: "Tasks", icon: DEFAULT_POD_FRAME_TAB_ICON },
+    })),
   };
 }
 
@@ -408,5 +428,98 @@ describe("POST /api/w/:wId/pods/:podId/apps/import", () => {
     expect(body.app.prefix).toBe("tasklist");
     expect(body.app.publishedFunctionSlugs).toEqual(["tasklist__add-task"]);
     expect(body.app.reconciledDatabaseNames).toEqual(["tasks"]);
+  });
+
+  it("rejects an oversized upload before it reaches the import logic", async () => {
+    const { workspace, pod } = await setupPod();
+
+    // Comfortably past MAX_POD_APP_ARCHIVE_SIZE_BYTES + the route's multipart framing allowance,
+    // so the body-limit middleware rejects it regardless of exactly how much overhead multipart
+    // framing adds.
+    const oversized = Buffer.alloc(MAX_POD_APP_ARCHIVE_SIZE_BYTES + 200 * 1024);
+
+    const res = await importApp(workspace.sId, pod.sId, oversized);
+
+    expect(res.status).toBe(413);
+    const body = await res.json();
+    expect(body.error.type).toBe("content_too_large");
+  });
+
+  it("returns 503 when the sandbox is unavailable", async () => {
+    const { workspace, pod } = await setupPod();
+    mockSandboxLeaves();
+    vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
+      new Err(
+        new SandboxFunctionError("sandbox_unavailable", "Sandbox is not ready.")
+      )
+    );
+
+    const res = await importApp(
+      workspace.sId,
+      pod.sId,
+      buildArchive(taskListManifest(), taskListFiles())
+    );
+
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.error.type).toBe("service_unavailable");
+  });
+
+  it("pins a Frame's tab when the manifest recorded one", async () => {
+    const { workspace, pod, auth } = await setupPod();
+    mockSandboxLeaves();
+    await ProjectMetadataResource.makeNew(auth, pod, { description: null });
+
+    const res = await importApp(
+      workspace.sId,
+      pod.sId,
+      buildArchive(taskListManifestWithPinnedTab(), taskListFiles())
+    );
+
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    const expectedPath = `pod-${pod.sId}/TaskList/TaskList.tsx`;
+    expect(body.app.pinnedTabPaths).toEqual([expectedPath]);
+    expect(body.app.warnings).toEqual([]);
+
+    const metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
+    expect(metadata?.frameTabs).toEqual([
+      { path: expectedPath, title: "Tasks", icon: DEFAULT_POD_FRAME_TAB_ICON },
+    ]);
+    expect(metadata?.tabsOrder).toContain(expectedPath);
+  });
+
+  it("warns instead of pinning when the Pod is already at the frame-tab cap", async () => {
+    const { workspace, pod, auth } = await setupPod();
+    mockSandboxLeaves();
+    const existingTabs: PodFrameTab[] = Array.from(
+      { length: MAX_POD_FRAME_TABS },
+      (_, i) => ({
+        path: `existing-${i}`,
+        title: `Existing ${i}`,
+        icon: DEFAULT_POD_FRAME_TAB_ICON,
+      })
+    );
+    await ProjectMetadataResource.makeNew(auth, pod, {
+      description: null,
+      frameTabs: existingTabs,
+      tabsOrder: existingTabs.map((tab) => tab.path),
+    });
+
+    const res = await importApp(
+      workspace.sId,
+      pod.sId,
+      buildArchive(taskListManifestWithPinnedTab(), taskListFiles())
+    );
+
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.app.pinnedTabPaths).toEqual([]);
+    expect(body.app.warnings).toEqual([
+      `Frame TaskList.tsx: not pinned as a tab (the Pod already has ${MAX_POD_FRAME_TABS}).`,
+    ]);
+
+    const metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
+    expect(metadata?.frameTabs).toEqual(existingTabs);
   });
 });

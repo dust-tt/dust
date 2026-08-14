@@ -356,8 +356,12 @@ function parsePodAppArchive(
  * Mirrors `clonePodApp`'s pipeline and ordering with the archive as the source. Failures after the
  * files are written are reported per item (`warnings`/`skipped`) rather than aborting: a partially
  * published app is visible in the Apps tab and fixable, whereas aborting would hide work already
- * done. The exceptions are sandbox unavailability (nothing later can succeed; the whole import is
- * retryable) and file writes themselves.
+ * done. The exceptions are sandbox unavailability (nothing later can succeed) and file writes
+ * themselves. Aborting on `sandbox_unavailable` leaves the partial app (folder, any Frames already
+ * created) visible in the Apps tab, same as any other partial failure; because the folder already
+ * exists, retrying the same import hits `name_taken` rather than resuming. Recovering means either
+ * deleting the partial app first and re-importing, or finishing it in place (publish the remaining
+ * functions/databases by hand).
  *
  * The archive carries no source identity, so importing into the origin pod, another pod or another
  * workspace is the same operation. A Frame hard-coding `<podId>/<slug>` function references keeps
