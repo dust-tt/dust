@@ -17,7 +17,7 @@ import {
 import {
   collectGrepMatches,
   compileGrepPattern,
-  GrepLineTooLongError,
+  isGrepLineTooLongError,
 } from "@app/lib/api/actions/servers/files/tools/grep_regex";
 import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
 import { Err, Ok } from "@app/types/shared/result";
@@ -95,7 +95,7 @@ export async function grepHandler(
     return new Err(
       new MCPError(
         `Failed to search file \`${path}\`: ${grepResult.error.message}`,
-        { tracked: !(grepResult.error instanceof GrepLineTooLongError) }
+        { tracked: !isGrepLineTooLongError(grepResult.error) }
       )
     );
   }
