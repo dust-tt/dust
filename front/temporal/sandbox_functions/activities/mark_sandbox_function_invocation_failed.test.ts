@@ -133,7 +133,10 @@ describe("markSandboxFunctionInvocationFailedActivity", () => {
     expect(publishSandboxFunctionInvocationEvent).not.toHaveBeenCalled();
   });
 
-  it("does not update an invocation from an inaccessible pod", async () => {
+  it("updates an invocation for a workspace member without pod access", async () => {
+    // Pipeline resolution: the serialized auth may belong to an invoker whose original grant
+    // (e.g. a frame share token) cannot be reconstructed; the invocation row is the proof of
+    // authorization, so pod access is deliberately not re-checked here.
     const { authenticator, workspace, sandboxFunction, invocation } =
       await setup();
     const user = await UserFactory.basic();
@@ -147,12 +150,32 @@ describe("markSandboxFunctionInvocationFailedActivity", () => {
       return;
     }
 
+    await markSandboxFunctionInvocationFailedActivity(userAuth.toJSON(), {
+      errorMessage: "Late workflow failure.",
+      sandboxFunctionId: sandboxFunction.sId,
+      invocationId: invocation.sId,
+    });
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      authenticator,
+      { sandboxFunction, invocationId: invocation.sId }
+    );
+    expect(refetched?.status).toBe("errored");
+  });
+
+  it("does not update an invocation from another workspace", async () => {
+    const { authenticator, sandboxFunction, invocation } = await setup();
+    const otherCtx = await createResourceTest({ role: "admin" });
+
     await expect(
-      markSandboxFunctionInvocationFailedActivity(userAuth.toJSON(), {
-        errorMessage: "Late workflow failure.",
-        sandboxFunctionId: sandboxFunction.sId,
-        invocationId: invocation.sId,
-      })
+      markSandboxFunctionInvocationFailedActivity(
+        otherCtx.authenticator.toJSON(),
+        {
+          errorMessage: "Late workflow failure.",
+          sandboxFunctionId: sandboxFunction.sId,
+          invocationId: invocation.sId,
+        }
+      )
     ).rejects.toThrow(`Pod function not found: ${sandboxFunction.sId}`);
 
     const refetched = await SandboxFunctionInvocationResource.fetchById(

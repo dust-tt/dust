@@ -172,9 +172,12 @@ export async function createSandboxFunctionMCPAction(
     return toolConfigurationRes;
   }
 
-  const sandboxFunction = await SandboxFunctionResource.fetchById(
+  // Pipeline resolution: a sandbox-token auth cannot carry the invoker's original grant (e.g. a
+  // frame share token); the validated claims name the invocation, which is the proof.
+  const sandboxFunction = await SandboxFunctionResource.fetchByIdForPipeline(
     auth,
-    sandboxFunctionId
+    sandboxFunctionId,
+    { invocationId }
   );
   if (!sandboxFunction) {
     return new Err(

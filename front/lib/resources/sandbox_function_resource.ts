@@ -308,10 +308,14 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     {
       includeDeletedSpace,
       capability,
+      dangerouslyBypassSpacePermissionFilter = false,
       ...options
     }: ResourceFindOptions<SandboxFunctionModel> & {
       includeDeletedSpace?: boolean;
       capability?: FrameShareCapability;
+      // Reserved for pipeline resolution (fetchByIdForPipeline and the tool workflow), which
+      // verified an invocation row for the function first.
+      dangerouslyBypassSpacePermissionFilter?: boolean;
     } = {}
   ): Promise<SandboxFunctionResource[]> {
     const { where, ...rest } = options;
@@ -363,6 +367,10 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     );
     const filesById = new Map(files.map((file) => [file.id, file]));
 
+    const spacesById = dangerouslyBypassSpacePermissionFilter
+      ? new Map(spaces.map((space) => [space.id, space]))
+      : null;
+
     return sandboxFunctions.flatMap((sandboxFunction) => {
       const blob = sandboxFunction.get();
       let space = accessibleSpacesById.get(blob.spaceId);
@@ -374,6 +382,9 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         appPrefixFromSlug(blob.slug) === capability.appPrefix
       ) {
         space = capabilitySpace;
+      }
+      if (!space && spacesById) {
+        space = spacesById.get(blob.spaceId);
       }
       const file = filesById.get(blob.fileId);
       if (!space || !file) {
@@ -406,6 +417,49 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     return sandboxFunction ?? null;
   }
 
+  /**
+   * Resolve a function for the invocation pipeline: temporal activities and sandbox-token
+   * callbacks re-enter resolution under an auth that cannot carry the caller's original grant (a
+   * serialized session snapshot, a sandbox token), so caller-facing space permissions do not
+   * apply there. The invocation row is the proof of authorization — creating it passed the
+   * caller-facing gates, and the userIdentity policy re-runs at execution — so resolution here is
+   * workspace-scoped only. Only for paths executing that specific invocation.
+   */
+  static async fetchByIdForPipeline(
+    auth: Authenticator,
+    sandboxFunctionId: string,
+    { invocationId }: { invocationId: string }
+  ): Promise<SandboxFunctionResource | null> {
+    if (
+      !isResourceSId("sandbox_function", sandboxFunctionId) ||
+      !isResourceSId("sandbox_function_invocation", invocationId)
+    ) {
+      return null;
+    }
+    const sandboxFunctionModelId = getResourceIdFromSId(sandboxFunctionId);
+    const invocationModelId = getResourceIdFromSId(invocationId);
+    if (sandboxFunctionModelId === null || invocationModelId === null) {
+      return null;
+    }
+
+    const invocation = await SandboxFunctionInvocationModel.findOne({
+      where: {
+        id: invocationModelId,
+        sandboxFunctionId: sandboxFunctionModelId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    if (!invocation) {
+      return null;
+    }
+
+    const [sandboxFunction] = await this.baseFetch(auth, {
+      where: { id: sandboxFunctionModelId },
+      dangerouslyBypassSpacePermissionFilter: true,
+    });
+    return sandboxFunction ?? null;
+  }
+
   // Lives here rather than on SandboxFunctionMCPActionResource: that resource can only type-import
   // the invocation resource (the invocation resource value-imports it for cascade deletion), so it
   // cannot construct an invocation. Takes the action rather than its FK id so callers don't thread
@@ -424,13 +478,13 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       return null;
     }
 
-    const sandboxFunction = await this.fetchById(
-      auth,
-      this.modelIdToSId({
-        id: invocation.sandboxFunctionId,
-        workspaceId: invocation.workspaceId,
-      })
-    );
+    // The invocation row above is the pipeline's proof of authorization: the tool workflow must
+    // resolve the function even when the invoker's original grant (e.g. a frame share token)
+    // cannot be reconstructed from the serialized auth.
+    const [sandboxFunction] = await this.baseFetch(auth, {
+      where: { id: invocation.sandboxFunctionId },
+      dangerouslyBypassSpacePermissionFilter: true,
+    });
     if (!sandboxFunction) {
       return null;
     }

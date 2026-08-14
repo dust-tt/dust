@@ -22,9 +22,12 @@ export async function selfHealSandboxFunctionExecutionMode(
     invocationId: string;
   }
 ): Promise<void> {
-  const sandboxFunction = await SandboxFunctionResource.fetchById(
+  // Pipeline resolution: a sandbox-token auth cannot carry the invoker's original grant (e.g. a
+  // frame share token); the refused tool call's invocation is the proof.
+  const sandboxFunction = await SandboxFunctionResource.fetchByIdForPipeline(
     auth,
-    sandboxFunctionId
+    sandboxFunctionId,
+    { invocationId }
   );
   if (!sandboxFunction) {
     logger.error(

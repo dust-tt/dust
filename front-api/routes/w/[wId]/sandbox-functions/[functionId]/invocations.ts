@@ -205,7 +205,13 @@ app.post(
 
     const sandboxFunction = await SandboxFunctionResource.fetchByIdOrSlug(
       auth,
-      functionIdOrSlug
+      functionIdOrSlug,
+      {
+        capability: await capabilityFromHeader(
+          auth,
+          ctx.req.header(FRAME_SHARE_TOKEN_HEADER)
+        ),
+      }
     );
     if (!sandboxFunction) {
       return apiError(ctx, {
@@ -272,7 +278,13 @@ app.post(
 
     const sandboxFunction = await SandboxFunctionResource.fetchByIdOrSlug(
       auth,
-      functionIdOrSlug
+      functionIdOrSlug,
+      {
+        capability: await capabilityFromHeader(
+          auth,
+          ctx.req.header(FRAME_SHARE_TOKEN_HEADER)
+        ),
+      }
     );
     if (!sandboxFunction) {
       return apiError(ctx, {

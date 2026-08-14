@@ -16,9 +16,12 @@ export async function markSandboxFunctionInvocationFailedActivity(
   }
 ): Promise<void> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
-  const sandboxFunction = await SandboxFunctionResource.fetchById(
+  // Pipeline resolution: the serialized auth cannot carry the invoker's original grant (e.g. a
+  // frame share token); the invocation row is the proof of authorization.
+  const sandboxFunction = await SandboxFunctionResource.fetchByIdForPipeline(
     auth,
-    sandboxFunctionId
+    sandboxFunctionId,
+    { invocationId }
   );
   if (!sandboxFunction) {
     throw new Error(`Pod function not found: ${sandboxFunctionId}`);
