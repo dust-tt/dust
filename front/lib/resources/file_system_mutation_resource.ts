@@ -104,8 +104,9 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
     const key = `${FILE_SYSTEM_NAMESPACE_LOCK_PREFIX}:${workspaceId}`;
 
     // Creates take a shared lock, so different creates can run at the same
-    // time. Rename takes an exclusive lock because a cross-root directory move
-    // must include every child created before the move starts.
+    // time. Rename takes an exclusive lock and waits for current creates. Without
+    // it, a child created during a cross-root move could keep the old rootKind
+    // and rootId.
     const query =
       mode === "shared"
         ? "SELECT pg_advisory_xact_lock_shared(hashtextextended(:key, 0))"
