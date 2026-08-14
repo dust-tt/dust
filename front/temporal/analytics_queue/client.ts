@@ -15,6 +15,7 @@ import {
 } from "@app/temporal/analytics_queue/helpers";
 import { storeAgentMessageConsumptionAttributionV3Signal } from "@app/temporal/analytics_queue/signals";
 import {
+  cleanupConsumptionExportsWorkflow,
   runConsumptionExportWorkflow,
   storeAgentAnalyticsWorkflow,
   storeAgentMessageConsumptionAttributionV3Workflow,
@@ -30,6 +31,8 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkflowHandle } from "@temporalio/client";
 import {
+  ScheduleNotFoundError,
+  ScheduleOverlapPolicy,
   WorkflowExecutionAlreadyStartedError,
   WorkflowNotFoundError,
 } from "@temporalio/client";
@@ -336,5 +339,66 @@ export async function launchAgentMessageFeedbackWorkflow(
     }
 
     return new Err(normalizeError(e));
+  }
+}
+
+const CONSUMPTION_EXPORT_CLEANUP_SCHEDULE_ID =
+  "consumption-export-cleanup-schedule";
+
+// Get-or-create, matching the idiom in `triggers_garbage_collect/client.ts`: update the
+// schedule if it already exists, create it otherwise. Run once per environment (see
+// `front/lib/triggers/admin/cli.ts` for the equivalent bootstrap entry point).
+export async function createOrUpdateConsumptionExportCleanupSchedule(): Promise<
+  Result<void, Error>
+> {
+  const client = await getTemporalClientForFrontNamespace();
+  const scheduleId = CONSUMPTION_EXPORT_CLEANUP_SCHEDULE_ID;
+  const scheduleOptions = {
+    action: {
+      type: "startWorkflow" as const,
+      workflowType: cleanupConsumptionExportsWorkflow,
+      args: [],
+      taskQueue: QUEUE_NAME,
+    },
+    scheduleId,
+    policies: {
+      overlap: ScheduleOverlapPolicy.SKIP,
+    },
+    spec: {
+      // Once a day at 03:00 UTC.
+      cronExpressions: ["0 3 * * *"] as string[],
+      timezone: "UTC",
+    },
+  } as const;
+
+  const existingSchedule = client.schedule.getHandle(scheduleId);
+  try {
+    await existingSchedule.update((previous) => ({
+      ...scheduleOptions,
+      state: previous.state,
+    }));
+
+    logger.info("Updated existing consumption export cleanup schedule.");
+    return new Ok(undefined);
+  } catch (err) {
+    if (!(err instanceof ScheduleNotFoundError)) {
+      logger.error(
+        { err },
+        "Failed to update existing consumption export cleanup schedule."
+      );
+      return new Err(normalizeError(err));
+    }
+  }
+
+  try {
+    await client.schedule.create(scheduleOptions);
+    logger.info("Created new consumption export cleanup schedule.");
+    return new Ok(undefined);
+  } catch (error) {
+    logger.error(
+      { error },
+      "Failed to create new consumption export cleanup schedule."
+    );
+    return new Err(normalizeError(error));
   }
 }

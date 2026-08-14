@@ -47,6 +47,12 @@ const { runConsumptionExportActivity } = proxyActivities<typeof activities>({
   },
 });
 
+const { cleanupConsumptionExportsActivity } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "10 minutes",
+});
+
 export async function storeAgentAnalyticsWorkflow(
   authType: AuthenticatorType,
   {
@@ -120,4 +126,8 @@ export async function runConsumptionExportWorkflow(
     filter,
     exportId: runId,
   });
+}
+
+export async function cleanupConsumptionExportsWorkflow(): Promise<void> {
+  await cleanupConsumptionExportsActivity();
 }
