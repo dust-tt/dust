@@ -8,15 +8,15 @@ import {
   requireAgentLoopConversation,
   scopedPathsFromArgs,
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
-import type { FileSystemMount } from "@app/lib/api/file_system/types";
-import {
-  SCOPED_PREFIX_CONVERSATION,
-  SCOPED_PREFIX_POD,
-} from "@app/lib/api/file_system/types";
 import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
 import { parseProcessedFilename } from "@app/lib/api/files/mount_path";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
+import type { FileSystemMount } from "@app/types/file_system";
+import {
+  SCOPED_PREFIX_CONVERSATION,
+  SCOPED_PREFIX_POD,
+} from "@app/types/file_system";
 import {
   isInteractiveContentType,
   stripMimeParameters,

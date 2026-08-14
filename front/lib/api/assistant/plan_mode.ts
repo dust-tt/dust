@@ -1,11 +1,11 @@
 import { PLAN_FILE_NAME } from "@app/lib/api/actions/servers/plan_mode/metadata";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { SCOPED_PREFIX_CONVERSATION } from "@app/lib/api/file_system/types";
 import { writeToConversationFolder } from "@app/lib/api/files/action_output_fs";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { SCOPED_PREFIX_CONVERSATION } from "@app/types/file_system";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 

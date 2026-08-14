@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import {
   POD_SANDBOX_DATABASES_DIR,
   podDatabaseExecEnvVars,
@@ -29,6 +28,7 @@ import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
+import { SCOPED_PREFIX_POD } from "@app/types/file_system";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
