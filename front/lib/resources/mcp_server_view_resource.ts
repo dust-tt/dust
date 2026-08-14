@@ -40,6 +40,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
+import { RemoteMCPServerModel } from "@app/lib/models/agent/actions/remote_mcp_server";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
@@ -54,11 +55,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticSoftDeletable } from "@app/lib/resources/storage/wrappers/workspace_models";
-import {
-  getResourceIdFromSId,
-  isResourceSId,
-  makeSId,
-} from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type {
   InferIncludeType,
   ResourceFindOptions,
@@ -83,7 +80,7 @@ import {
 import assert from "assert";
 import uniq from "lodash/uniq";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import { z } from "zod";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -704,8 +701,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return this.baseFetch(auth, findOptions, { includeHeavyAttributes });
   }
 
-  static async resolveDisplayMetadata(auth: Authenticator, keys: string[]) {
-    const uniqueKeys = [...new Set(keys)];
+  static async resolveDisplayMetadataByNames(
+    auth: Authenticator,
+    names: string[]
+  ) {
+    const uniqueNames = [...new Set(names)];
     const metadata = new Map<
       string,
       {
@@ -714,31 +714,63 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       }
     >();
 
-    for (const key of uniqueKeys) {
-      if (isInternalMCPServerName(key)) {
-        metadata.set(key, {
-          name: asDisplayToolName(key),
-          icon: getInternalMCPServerIconByName(key),
+    for (const name of uniqueNames) {
+      if (isInternalMCPServerName(name)) {
+        metadata.set(name, {
+          name: asDisplayToolName(name),
+          icon: getInternalMCPServerIconByName(name),
         });
       }
     }
 
-    const remoteServerIds = uniqueKeys.filter((key) =>
-      isResourceSId("remote_mcp_server", key)
+    const remoteNames = uniqueNames.filter(
+      (name) => !isInternalMCPServerName(name)
     );
-    if (remoteServerIds.length === 0) {
+    if (remoteNames.length === 0) {
       return metadata;
     }
 
-    const remoteServers = await RemoteMCPServerResource.fetchByIds(
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    const views = await this.baseFetch(
       auth,
-      remoteServerIds
+      {
+        where: {
+          serverType: "remote",
+          [Op.or]: [
+            { name: { [Op.in]: remoteNames } },
+            Sequelize.where(Sequelize.col("remoteMCPServer.cachedName"), {
+              [Op.in]: remoteNames,
+            }),
+          ],
+        },
+        includes: [
+          {
+            model: RemoteMCPServerModel,
+            as: "remoteMCPServer",
+            attributes: [],
+            required: true,
+            where: { workspaceId: workspaceModelId },
+          },
+        ],
+      },
+      { includeMetadata: false }
     );
-    for (const server of remoteServers) {
-      metadata.set(server.sId, {
-        name: server.cachedName,
-        icon: server.icon,
-      });
+
+    const requestedNames = new Set(uniqueNames);
+    for (const view of views) {
+      const server = view.getRemoteMCPServerResource();
+      if (view.name && requestedNames.has(view.name)) {
+        metadata.set(view.name, {
+          name: asDisplayToolName(view.name),
+          icon: server.icon,
+        });
+      }
+      if (requestedNames.has(server.cachedName)) {
+        metadata.set(server.cachedName, {
+          name: server.cachedName,
+          icon: server.icon,
+        });
+      }
     }
 
     return metadata;
