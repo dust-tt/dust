@@ -109,6 +109,29 @@ def _find_covering_shape(
     return None
 
 
+def _effective_typeface(shape: BaseShape, layout_chain) -> Optional[str]:
+    """The face this shape's text renders in: an explicit run typeface if set,
+    else the placeholder's resolved layout default."""
+    if shape.has_text_frame:
+        for paragraph in shape.text_frame.paragraphs:
+            for run in paragraph.runs:
+                name = getattr(getattr(run, "font", None), "name", None)
+                if name:
+                    return name
+    ph = placeholder_type(shape)
+    if ph and layout_chain is not None:
+        layout_xml, master_xml, theme_xml, clr_map, theme_colors = layout_chain
+        pf = getattr(shape, "placeholder_format", None)
+        idx = pf.idx if pf else None
+        defaults = resolve_placeholder_defaults(
+            layout_xml, master_xml, theme_xml, clr_map, theme_colors, idx, ph
+        )
+        face = defaults.get("typeface")
+        if face:
+            return str(face)
+    return None
+
+
 def _effective_font_size_pt(shape: BaseShape, layout_chain) -> Optional[float]:
     """The size text in this shape renders at: an explicit run size if set,
     else the placeholder's resolved layout default."""
@@ -141,7 +164,7 @@ def _fit_tokens(shape: BaseShape, layout_chain) -> List[str]:
     size_pt = _effective_font_size_pt(shape, layout_chain)
     if size_pt is None:
         return []
-    est = _fit_estimate(shape, size_pt)
+    est = _fit_estimate(shape, size_pt, _effective_typeface(shape, layout_chain))
     if est is None:
         return []
     size_label = (
@@ -149,7 +172,8 @@ def _fit_tokens(shape: BaseShape, layout_chain) -> List[str]:
     )
     if est.capacity is None:
         return [f"~{est.chars_per_line}ch/line@{size_label}pt"]
-    tokens = [f"holds~{est.capacity}ch@{size_label}pt"]
+    about = "" if est.measured else "~"
+    tokens = [f"holds{about}{est.capacity}ch@{size_label}pt"]
     if not _grows_to_fit(shape):
         if used > est.capacity * OVERSET_TOLERANCE:
             tokens.append(
