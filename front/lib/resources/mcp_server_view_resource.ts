@@ -18,9 +18,11 @@ import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getAvailabilityOfInternalMCPServerById,
   getAvailabilityOfInternalMCPServerByName,
+  getInternalMCPServerIconByName,
   getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_MCP_SERVERS,
   isAutoInternalMCPServerName,
+  isInternalMCPServerName,
   isValidInternalMCPServerId,
   matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -52,7 +54,11 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticSoftDeletable } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import {
+  getResourceIdFromSId,
+  isResourceSId,
+  makeSId,
+} from "@app/lib/resources/string_ids";
 import type {
   InferIncludeType,
   ResourceFindOptions,
@@ -69,6 +75,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import {
   formatUserFullName,
   isWorkspaceAnalyticsEnabled,
@@ -697,25 +704,44 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return this.baseFetch(auth, findOptions, { includeHeavyAttributes });
   }
 
-  static async resolveIconsByNames(
-    auth: Authenticator,
-    names: string[]
-  ): Promise<Map<string, CustomResourceIconType | InternalAllowedIconType>> {
-    const uniqueNames = [...new Set(names)];
-    if (uniqueNames.length === 0) {
-      return new Map();
+  static async resolveDisplayMetadata(auth: Authenticator, keys: string[]) {
+    const uniqueKeys = [...new Set(keys)];
+    const metadata = new Map<
+      string,
+      {
+        name: string;
+        icon: CustomResourceIconType | InternalAllowedIconType;
+      }
+    >();
+
+    for (const key of uniqueKeys) {
+      if (isInternalMCPServerName(key)) {
+        metadata.set(key, {
+          name: asDisplayToolName(key),
+          icon: getInternalMCPServerIconByName(key),
+        });
+      }
     }
 
-    const views = await this.baseFetch(
+    const remoteServerIds = uniqueKeys.filter((key) =>
+      isResourceSId("remote_mcp_server", key)
+    );
+    if (remoteServerIds.length === 0) {
+      return metadata;
+    }
+
+    const remoteServers = await RemoteMCPServerResource.fetchByIds(
       auth,
-      { where: { name: { [Op.in]: uniqueNames } } },
-      { includeMetadata: false }
+      remoteServerIds
     );
-    return new Map(
-      views.flatMap((view) =>
-        view.name ? [[view.name, view.getServerDisplayMetadata().icon]] : []
-      )
-    );
+    for (const server of remoteServers) {
+      metadata.set(server.sId, {
+        name: server.cachedName,
+        icon: server.icon,
+      });
+    }
+
+    return metadata;
   }
 
   static async listBySpaces(

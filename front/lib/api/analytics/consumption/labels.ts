@@ -1,7 +1,3 @@
-import {
-  getInternalMCPServerIconByName,
-  isInternalMCPServerName,
-} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
 import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
@@ -10,7 +6,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
@@ -26,7 +21,7 @@ import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
  * - "user": user sIds
  * - "group": group sIds
  * - "model": raw model ids
- * - "tool": MCP server names
+ * - "tool": internal MCP server names or remote MCP server sIds
  * - "skill": skill sIds
  * - "source": origin slugs
  */
@@ -123,23 +118,21 @@ export async function resolveDimensionLabels(
       );
 
     case "tool": {
-      const [remoteMetadata, viewIcons] = await Promise.all([
-        RemoteMCPServerResource.resolveDisplayMetadataByIdentifiers(auth, keys),
-        MCPServerViewResource.resolveIconsByNames(auth, keys),
-      ]);
+      // Internal servers are keyed by name, while remote servers are keyed by sId.
+      const metadata = await MCPServerViewResource.resolveDisplayMetadata(
+        auth,
+        keys
+      );
       return new Map(
         keys.map((key) => {
-          const remote = remoteMetadata.get(key);
-          const icon = isInternalMCPServerName(key)
-            ? getInternalMCPServerIconByName(key)
-            : (viewIcons.get(key) ?? remote?.icon ?? null);
+          const tool = metadata.get(key);
           return [
             key,
             {
-              name: remote?.name ?? asDisplayToolName(key),
+              name: tool?.name ?? asDisplayToolName(key),
               pictureUrl: null,
               description: null,
-              icon,
+              icon: tool?.icon ?? null,
             },
           ];
         })

@@ -1,3 +1,4 @@
+import { getInternalMCPServerIconByName } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   resolveDimensionDisplayNames,
   resolveDimensionLabels,
@@ -8,6 +9,7 @@ import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -152,6 +154,33 @@ describe("resolveDimensionLabels", () => {
       name: "Engineering",
       pictureUrl: null,
       description: null,
+    });
+  });
+
+  it("labels internal tools by name and remote tools by id", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Customer records",
+    });
+
+    const labels = await resolveDimensionLabels(authenticator, "tool", [
+      "image_generation",
+      server.sId,
+    ]);
+
+    expect(labels.get("image_generation")).toEqual({
+      name: "Create Images",
+      pictureUrl: null,
+      description: null,
+      icon: getInternalMCPServerIconByName("image_generation"),
+    });
+    expect(labels.get(server.sId)).toEqual({
+      name: "Customer records",
+      pictureUrl: null,
+      description: null,
+      icon: server.icon,
     });
   });
 });
