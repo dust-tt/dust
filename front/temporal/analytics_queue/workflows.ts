@@ -1,3 +1,5 @@
+import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as activities from "@app/temporal/analytics_queue/activities";
 import { storeAgentMessageConsumptionAttributionV3Signal } from "@app/temporal/analytics_queue/signals";
@@ -24,6 +26,12 @@ const {
   storeAgentMessageConsumptionAttributionForMessageActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
+});
+
+// A raw consumption export can page through a large number of Elasticsearch documents, so it
+// gets a much longer ceiling than the other analytics activities on this queue.
+const { runConsumptionExportActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "30 minutes",
 });
 
 export async function storeAgentAnalyticsWorkflow(
@@ -74,4 +82,17 @@ export async function storeAgentMessageConsumptionAttributionV3Workflow(
       message,
     });
   }
+}
+
+export async function runConsumptionExportWorkflow(
+  authType: AuthenticatorType,
+  {
+    period,
+    filter,
+  }: {
+    period: ConsumptionPeriod;
+    filter: ConsumptionScopeFilter;
+  }
+): Promise<void> {
+  await runConsumptionExportActivity(authType, { period, filter });
 }

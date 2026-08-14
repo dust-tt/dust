@@ -1,3 +1,5 @@
+import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import {
   AgentMessageModel,
@@ -6,9 +8,13 @@ import {
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/analytics_queue/config";
-import { makeAgentMessageAnalyticsWorkflowId } from "@app/temporal/analytics_queue/helpers";
+import {
+  makeAgentMessageAnalyticsWorkflowId,
+  makeConsumptionExportWorkflowId,
+} from "@app/temporal/analytics_queue/helpers";
 import { storeAgentMessageConsumptionAttributionV3Signal } from "@app/temporal/analytics_queue/signals";
 import {
+  runConsumptionExportWorkflow,
   storeAgentAnalyticsWorkflow,
   storeAgentMessageConsumptionAttributionV3Workflow,
   storeAgentMessageFeedbackWorkflow,
@@ -152,6 +158,54 @@ export async function launchStoreAgentMessageConsumptionAttributionWorkflow({
         error: e,
       },
       "Failed starting agent message consumption attribution workflow"
+    );
+
+    return new Err(normalizeError(e));
+  }
+}
+
+// Deterministic workflow ID (one per workspace) means a duplicate call while a previous
+// export is still running fails with `WorkflowExecutionAlreadyStartedError`, which is treated
+// as success here: it just means an export is already being generated.
+export async function launchConsumptionExportWorkflow(
+  auth: Authenticator,
+  {
+    period,
+    filter,
+  }: {
+    period: ConsumptionPeriod;
+    filter: ConsumptionScopeFilter;
+  }
+): Promise<Result<undefined, Error>> {
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const authType = auth.toJSON();
+
+  const client = await getTemporalClientForFrontNamespace();
+
+  const workflowId = makeConsumptionExportWorkflowId({ workspaceId });
+
+  try {
+    await client.workflow.start(runConsumptionExportWorkflow, {
+      args: [authType, { period, filter }],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      memo: {
+        workspaceId,
+      },
+    });
+    return new Ok(undefined);
+  } catch (e) {
+    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+      return new Ok(undefined);
+    }
+
+    logger.error(
+      {
+        workflowId,
+        workspaceId,
+        error: e,
+      },
+      "Failed starting consumption export workflow"
     );
 
     return new Err(normalizeError(e));
