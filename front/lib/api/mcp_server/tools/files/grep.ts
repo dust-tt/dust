@@ -1,13 +1,13 @@
 import { GREP_MATCHES_MAX } from "@app/lib/api/actions/servers/files/metadata";
+import type { GrepMatches } from "@app/lib/api/actions/servers/files/tools/grep_regex";
 import {
+  collectGrepMatches,
   compileGrepPattern,
-  validateGrepLine,
 } from "@app/lib/api/actions/servers/files/tools/grep_regex";
 import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
 import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import * as readline from "readline";
 import { z } from "zod";
 import { mcpError, mcpJsonResponse } from "../response";
 import { getDustFileSystemForScope, validatePathMatchesScope } from "./context";
@@ -86,41 +86,19 @@ export function registerFilesGrepTool(server: McpServer) {
         return mcpError(`File not found: \`${path}\`.`);
       }
 
-      const matches: string[] = [];
-      let lineNumber = 0;
-      let capped = false;
-
-      const rl = readline.createInterface({
-        input: readResult.value,
-        crlfDelay: Infinity,
-      });
-
+      let grepResult: GrepMatches;
       try {
-        for await (const line of rl) {
-          lineNumber++;
-
-          const lineError = validateGrepLine(line);
-          if (lineError) {
-            return mcpError(
-              `Failed to search file \`${path}\` at line ${lineNumber}: ${lineError.message}`
-            );
-          }
-
-          if (regex.test(line)) {
-            matches.push(`${lineNumber}: ${line}`);
-
-            if (matches.length >= GREP_MATCHES_MAX) {
-              capped = true;
-              rl.close();
-              break;
-            }
-          }
-        }
+        grepResult = await collectGrepMatches(readResult.value, regex, {
+          formatMatch: (line, lineNumber) => `${lineNumber}: ${line}`,
+          maxMatches: GREP_MATCHES_MAX,
+        });
       } catch (err) {
         return mcpError(
           `Failed to search file \`${path}\`: ${normalizeError(err).message}`
         );
       }
+
+      const { matches, capped } = grepResult;
 
       if (matches.length === 0) {
         return mcpJsonResponse({
