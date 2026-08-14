@@ -1,13 +1,13 @@
 import type { FileSystemScope } from "@app/lib/api/file_system/namespace_scope";
 import type {
   FileSystemOperation,
-  FileSystemOperationError,
   FileSystemOperationResponse,
 } from "@app/lib/api/file_system/namespace_types";
+import { FileSystemOperationError } from "@app/lib/api/file_system/namespace_types";
 import type { Authenticator } from "@app/lib/auth";
 import { FileSystemNodeResource } from "@app/lib/resources/file_system_node_resource";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type {
@@ -31,12 +31,21 @@ export async function applyFileSystemOperation(
     }
 
     case "lookup": {
-      const node = await FileSystemNodeResource.lookup(
+      const parent = await FileSystemNodeResource.fetchById(
         auth,
         scope,
-        request.parentId,
-        request.name
+        request.parentId
       );
+      if (!parent) {
+        return new Err(
+          new FileSystemOperationError(
+            "not_found",
+            "The parent directory was not found."
+          )
+        );
+      }
+
+      const node = await parent.lookupChild(auth, scope, request.name);
 
       return node.isErr()
         ? node
@@ -44,17 +53,39 @@ export async function applyFileSystemOperation(
     }
 
     case "getAttr": {
-      const node = await FileSystemNodeResource.getAttr(
+      const node = await FileSystemNodeResource.fetchById(
         auth,
         scope,
         request.nodeId
       );
+      if (!node) {
+        return new Err(
+          new FileSystemOperationError("not_found", "The inode was not found.")
+        );
+      }
 
-      return node.isErr() ? node : new Ok({ node: node.value.toJSON() });
+      return new Ok({ node: node.toJSON() });
     }
 
     case "readDir": {
-      const result = await FileSystemNodeResource.readDir(auth, scope, request);
+      const directory = await FileSystemNodeResource.fetchById(
+        auth,
+        scope,
+        request.nodeId
+      );
+      if (!directory) {
+        return new Err(
+          new FileSystemOperationError(
+            "not_found",
+            "The directory was not found."
+          )
+        );
+      }
+
+      const result = await directory.readDir(auth, scope, {
+        afterName: request.afterName,
+        limit: request.limit,
+      });
 
       return result.isErr()
         ? result

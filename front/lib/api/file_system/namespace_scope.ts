@@ -14,4 +14,10 @@ export class FileSystemScope {
   readableRoots(): readonly FileSystemAllowedRoot[] {
     return this.roots.filter((root) => root.permissions.canRead);
   }
+
+  canRead(kind: FileSystemRootKind, id: string): boolean {
+    return this.roots.some(
+      (root) => root.kind === kind && root.id === id && root.permissions.canRead
+    );
+  }
 }

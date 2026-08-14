@@ -2,6 +2,11 @@ import type { FileSystemRootKind } from "@app/lib/api/file_system/namespace_scop
 
 export type FileSystemNodeKind = "directory" | "file";
 
+export const FILE_SYSTEM_READ_DIR_PAGE_SIZE_LIMITS = {
+  min: 1,
+  max: 256,
+} as const;
+
 /** The stable file or directory identity returned by the namespace. */
 export type FileSystemNode = {
   id: number;

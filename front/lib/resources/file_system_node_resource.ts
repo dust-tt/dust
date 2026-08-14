@@ -3,18 +3,23 @@ import type {
   FileSystemNode,
   FileSystemOperation,
 } from "@app/lib/api/file_system/namespace_types";
-import { FileSystemOperationError } from "@app/lib/api/file_system/namespace_types";
+import {
+  FILE_SYSTEM_READ_DIR_PAGE_SIZE_LIMITS,
+  FileSystemOperationError,
+} from "@app/lib/api/file_system/namespace_types";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileSystemNodeModel } from "@app/lib/resources/storage/models/file_system_node";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import type { Attributes, WhereOptions } from "sequelize";
+import type { Attributes } from "sequelize";
 import { Op } from "sequelize";
 
 type ReadDirRequest = Extract<FileSystemOperation, { operation: "readDir" }>;
+type ReadDirOptions = Pick<ReadDirRequest, "afterName" | "limit">;
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileSystemNodeResource
@@ -32,46 +37,36 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     super(model, blob);
   }
 
-  toJSON(): FileSystemNode {
-    return {
-      id: this.id,
-      parentId: this.parentId,
-      rootKind: this.rootKind,
-      rootId: this.rootId,
-      name: this.name,
-      kind: this.kind,
-      mode: this.mode,
-      size: Number(this.size),
-      contentType: this.contentType,
-      blobId: this.blobId,
-      contentRevision: this.contentRevision,
-      createdAtMs: this.createdAt.getTime(),
-      modifiedAtMs: this.updatedAt.getTime(),
-    };
-  }
-
   override delete(): Promise<Result<undefined, Error>> {
     // Removing a node also updates the mutation journal and blob cleanup queue.
     // It must go through the filesystem mutation operation added later.
     throw new Error("Filesystem nodes cannot be deleted directly.");
   }
 
-  private static allowedWhere(
+  private static async baseFetch(
     auth: Authenticator,
-    scope: FileSystemScope
-  ): WhereOptions<FileSystemNodeModel> | null {
+    scope: FileSystemScope,
+    options: ResourceFindOptions<FileSystemNodeModel> = {}
+  ): Promise<FileSystemNodeResource[]> {
     const readableRoots = scope.readableRoots();
     if (readableRoots.length === 0) {
-      return null;
+      return [];
     }
 
-    return {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      [Op.or]: readableRoots.map((root) => ({
-        rootKind: root.kind,
-        rootId: root.id,
-      })),
-    };
+    const { where, ...otherOptions } = options;
+    const rows = await this.model.findAll({
+      ...otherOptions,
+      where: {
+        ...where,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        [Op.or]: readableRoots.map((root) => ({
+          rootKind: root.kind,
+          rootId: root.id,
+        })),
+      },
+    });
+
+    return rows.map((row) => new this(this.model, row.get()));
   }
 
   static async ensureRoots(
@@ -101,53 +96,49 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
       { ignoreDuplicates: true }
     );
 
-    const rows = await this.model.findAll({
-      where: {
-        workspaceId,
-        parentId: null,
-        [Op.or]: readableRoots.map((root) => ({
-          rootKind: root.kind,
-          rootId: root.id,
-        })),
-      },
+    const roots = await this.baseFetch(auth, scope, {
+      where: { parentId: null },
     });
-    const rowsByRoot = new Map(
-      rows.map((row) => [`${row.rootKind}:${row.rootId}`, row])
+    const rootsByKey = new Map(
+      roots.map((root) => [`${root.rootKind}:${root.rootId}`, root])
     );
 
-    return readableRoots.map((root) => {
-      const row = rowsByRoot.get(`${root.kind}:${root.id}`);
-      if (!row) {
-        throw new Error(`Filesystem root ${root.kind}:${root.id} is missing.`);
+    return readableRoots.map((allowedRoot) => {
+      const root = rootsByKey.get(`${allowedRoot.kind}:${allowedRoot.id}`);
+      if (!root) {
+        throw new Error(
+          `Filesystem root ${allowedRoot.kind}:${allowedRoot.id} is missing.`
+        );
       }
-      return new this(this.model, row.get());
+      return root;
     });
   }
 
-  private static async fetch(
+  static async fetchById(
     auth: Authenticator,
     scope: FileSystemScope,
     nodeId: number
   ): Promise<FileSystemNodeResource | null> {
-    const allowedWhere = this.allowedWhere(auth, scope);
-    if (!allowedWhere) {
-      return null;
-    }
-
-    const row = await this.model.findOne({
-      where: { ...allowedWhere, id: nodeId },
+    const [node] = await this.baseFetch(auth, scope, {
+      where: { id: nodeId },
+      limit: 1,
     });
-    return row ? new this(this.model, row.get()) : null;
+    return node ?? null;
   }
 
-  static async lookup(
+  private isReadableBy(auth: Authenticator, scope: FileSystemScope): boolean {
+    return (
+      this.workspaceId === auth.getNonNullableWorkspace().id &&
+      scope.canRead(this.rootKind, this.rootId)
+    );
+  }
+
+  async lookupChild(
     auth: Authenticator,
     scope: FileSystemScope,
-    parentId: number,
     name: string
   ): Promise<Result<FileSystemNodeResource | null, FileSystemOperationError>> {
-    const parent = await this.fetch(auth, scope, parentId);
-    if (!parent || parent.kind !== "directory") {
+    if (!this.isReadableBy(auth, scope) || this.kind !== "directory") {
       return new Err(
         new FileSystemOperationError(
           "not_found",
@@ -156,33 +147,18 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
       );
     }
 
-    const allowedWhere = this.allowedWhere(auth, scope);
-    if (!allowedWhere) {
-      return new Ok(null);
-    }
-    const node = await this.model.findOne({
-      where: { ...allowedWhere, parentId: parent.id, name },
+    const [node] = await FileSystemNodeResource.baseFetch(auth, scope, {
+      where: { parentId: this.id, name },
+      limit: 1,
     });
-    return new Ok(node ? new this(this.model, node.get()) : null);
+
+    return new Ok(node ?? null);
   }
 
-  static async getAttr(
+  async readDir(
     auth: Authenticator,
     scope: FileSystemScope,
-    nodeId: number
-  ): Promise<Result<FileSystemNodeResource, FileSystemOperationError>> {
-    const node = await this.fetch(auth, scope, nodeId);
-    return node
-      ? new Ok(node)
-      : new Err(
-          new FileSystemOperationError("not_found", "The inode was not found.")
-        );
-  }
-
-  static async readDir(
-    auth: Authenticator,
-    scope: FileSystemScope,
-    request: ReadDirRequest
+    options: ReadDirOptions
   ): Promise<
     Result<
       { nodes: FileSystemNodeResource[]; nextAfterName: string | null },
@@ -190,20 +166,19 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     >
   > {
     if (
-      !Number.isInteger(request.limit) ||
-      request.limit < 1 ||
-      request.limit > 256
+      !Number.isInteger(options.limit) ||
+      options.limit < FILE_SYSTEM_READ_DIR_PAGE_SIZE_LIMITS.min ||
+      options.limit > FILE_SYSTEM_READ_DIR_PAGE_SIZE_LIMITS.max
     ) {
       return new Err(
         new FileSystemOperationError(
           "invalid_operation",
-          "Directory page size must be between 1 and 256."
+          `Directory page size must be between ${FILE_SYSTEM_READ_DIR_PAGE_SIZE_LIMITS.min} and ${FILE_SYSTEM_READ_DIR_PAGE_SIZE_LIMITS.max}.`
         )
       );
     }
 
-    const directory = await this.fetch(auth, scope, request.nodeId);
-    if (!directory || directory.kind !== "directory") {
+    if (!this.isReadableBy(auth, scope) || this.kind !== "directory") {
       return new Err(
         new FileSystemOperationError(
           "not_found",
@@ -212,25 +187,40 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
       );
     }
 
-    const allowedWhere = this.allowedWhere(auth, scope);
-    if (!allowedWhere) {
-      return new Ok({ nodes: [], nextAfterName: null });
-    }
-    const rows = await this.model.findAll({
+    const nodes = await FileSystemNodeResource.baseFetch(auth, scope, {
       where: {
-        ...allowedWhere,
-        parentId: directory.id,
-        ...(request.afterName ? { name: { [Op.gt]: request.afterName } } : {}),
+        parentId: this.id,
+        ...(options.afterName ? { name: { [Op.gt]: options.afterName } } : {}),
       },
       order: [["name", "ASC"]],
-      limit: request.limit + 1,
+      limit: options.limit + 1,
     });
-    const page = rows.slice(0, request.limit);
+    const page = nodes.slice(0, options.limit);
 
     return new Ok({
-      nodes: page.map((row) => new this(this.model, row.get())),
+      nodes: page,
       nextAfterName:
-        rows.length > request.limit ? (page.at(-1)?.name ?? null) : null,
+        nodes.length > options.limit ? (page.at(-1)?.name ?? null) : null,
     });
+  }
+
+  // Node rendering.
+
+  toJSON(): FileSystemNode {
+    return {
+      id: this.id,
+      parentId: this.parentId,
+      rootKind: this.rootKind,
+      rootId: this.rootId,
+      name: this.name,
+      kind: this.kind,
+      mode: this.mode,
+      size: Number(this.size),
+      contentType: this.contentType,
+      blobId: this.blobId,
+      contentRevision: this.contentRevision,
+      createdAtMs: this.createdAt.getTime(),
+      modifiedAtMs: this.updatedAt.getTime(),
+    };
   }
 }
