@@ -283,7 +283,7 @@ export function ManageAgentsPage() {
         onClose={() => setDetailedAgentId(null)}
       />
       <div className="flex w-full flex-col gap-8 pb-4">
-        <Page.Header title="Manage Agents" />
+        <Page.Header title="Manage Agents" noTopPadding />
         <Page.Vertical gap="md" align="stretch">
           <div className="flex flex-row gap-2">
             <SearchInput

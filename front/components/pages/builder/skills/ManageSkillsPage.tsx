@@ -435,6 +435,7 @@ export function ManageSkillsPage() {
         <Page.Header
           title="Manage Skills"
           description="Reusable packages of instructions and tools that agents can share."
+          noTopPadding
         />
         <Page.Vertical gap="md" align="stretch">
           <div className="flex flex-row gap-2">

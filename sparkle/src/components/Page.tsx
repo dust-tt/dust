@@ -32,11 +32,15 @@ export function Page({ children, variant = "normal" }: PageProps) {
 interface PageHeaderProps {
   title: React.ReactNode;
   description?: React.ReactNode;
+  noTopPadding?: boolean;
 }
 
-Page.Header = function ({ title, description }: PageHeaderProps) {
+Page.Header = function ({ title, description, noTopPadding }: PageHeaderProps) {
   return (
-    <Page.Vertical gap="xs" className="pt-4 sm:pt-6 md:pt-8">
+    <Page.Vertical
+      gap="xs"
+      className={noTopPadding ? undefined : "pt-4 sm:pt-6 md:pt-8"}
+    >
       {typeof title === "string" ? (
         <Page.H variant="h3">{title}</Page.H>
       ) : (
