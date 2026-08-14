@@ -5,6 +5,7 @@ import {
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
 import {
+  useDismissWorkspaceEgressRequest,
   useUpdateWorkspaceEgressPolicy,
   useUpdateWorkspaceSandboxAgentEgressRequests,
   useWorkspaceEgressPolicy,
@@ -35,6 +36,7 @@ export function NetworkSection() {
 
   const {
     policy,
+    requestedDomains,
     isWorkspaceEgressPolicyLoading,
     isWorkspaceEgressPolicyError,
   } = useWorkspaceEgressPolicy({
@@ -43,6 +45,8 @@ export function NetworkSection() {
   });
   const { updateWorkspaceEgressPolicy, isUpdatingWorkspaceEgressPolicy } =
     useUpdateWorkspaceEgressPolicy({ owner });
+  const { dismissWorkspaceEgressRequest, isDismissingRequest } =
+    useDismissWorkspaceEgressRequest({ owner });
   const {
     allowAgentEgressRequests,
     updateWorkspaceSandboxAgentEgressRequests,
@@ -96,6 +100,8 @@ export function NetworkSection() {
       );
     }
 
+    const allowedDomainSet = new Set(policy.allowedDomains);
+
     return (
       <Page.Vertical align="stretch" gap="lg">
         <div className="flex items-center justify-between gap-4 border-y border-border py-4">
@@ -126,10 +132,19 @@ export function NetworkSection() {
 
         <EgressDomainListEditor
           allowedDomains={policy.allowedDomains}
+          pendingRequests={requestedDomains.filter(
+            (request) => !allowedDomainSet.has(request.domain)
+          )}
+          onApproveRequest={(domain) =>
+            updateWorkspaceEgressPolicy({
+              allowedDomains: [...new Set([...policy.allowedDomains, domain])],
+            })
+          }
+          onRejectRequest={(domain) => dismissWorkspaceEgressRequest(domain)}
           onSave={(allowedDomains) =>
             updateWorkspaceEgressPolicy({ allowedDomains })
           }
-          isUpdating={isUpdatingWorkspaceEgressPolicy}
+          isUpdating={isUpdatingWorkspaceEgressPolicy || isDismissingRequest}
           emptyMessage="No workspace-specific domains are currently allowed."
         />
       </Page.Vertical>
