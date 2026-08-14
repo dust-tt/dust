@@ -71,9 +71,10 @@ The Rust code is split into three stacked branches:
    error mapping, and signed GCS transfers. Five focused tests pass.
 2. `flav/dust-filesystem-rust-store` at `caf0d78392` adds the inode mapping, staged-file store, and
    bounded caches. Fifteen focused tests pass.
-3. `flav/dust-filesystem-rust-mount` at `8793d1c7ff` adds the Linux FUSE callbacks, mount command,
-   restart supervisor, acceptance scripts, benchmarks, and current design note. Eighteen
-   Linux-targeted tests, Clippy, and the optimized Linux build pass.
+3. `flav/dust-filesystem-rust-mount` at `7197f35200` adds the Linux FUSE callbacks, mount command,
+   restart supervisor, acceptance scripts, benchmarks, and current design note. Mount state and
+   syscall callbacks are in separate files. Eighteen Linux-targeted tests, Clippy, and the optimized
+   Linux build pass.
 
 The third branch exposes one `filesystem` command from the module. The client, inode mapping, local
 store, FUSE callbacks, and supervisor remain private files behind that command.
