@@ -3,7 +3,11 @@ import type {
   PokePodFunctionDetails,
 } from "@app/lib/api/poke/projects";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
-import { sandboxFunctionNameFromSlug } from "@app/lib/api/sandbox_functions/slug";
+import type { FrameShareCapability } from "@app/lib/api/sandbox_functions/frame_share_capability";
+import {
+  appPrefixFromSlug,
+  sandboxFunctionNameFromSlug,
+} from "@app/lib/api/sandbox_functions/slug";
 import { authorizeSandboxFunctionInvocation } from "@app/lib/api/sandbox_functions/workspace_user";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
@@ -303,9 +307,11 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     auth: Authenticator,
     {
       includeDeletedSpace,
+      capability,
       ...options
     }: ResourceFindOptions<SandboxFunctionModel> & {
       includeDeletedSpace?: boolean;
+      capability?: FrameShareCapability;
     } = {}
   ): Promise<SandboxFunctionResource[]> {
     const { where, ...rest } = options;
@@ -336,6 +342,15 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         .map((space) => [space.id, space])
     );
 
+    // A validated frame share capability extends resolution to the functions of its own app in
+    // its own pod, without granting read on the space. Per-function userIdentity policies still
+    // apply at invocation time.
+    const capabilitySpace = capability
+      ? (spaces.find(
+          (space) => space.isProject() && space.sId === capability.podId
+        ) ?? null)
+      : null;
+
     const files = await FileResource.fetchByModelIdsWithAuth(
       auth,
       Array.from(
@@ -349,19 +364,30 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     const filesById = new Map(files.map((file) => [file.id, file]));
 
     return sandboxFunctions.flatMap((sandboxFunction) => {
-      const space = accessibleSpacesById.get(sandboxFunction.get().spaceId);
-      const file = filesById.get(sandboxFunction.get().fileId);
+      const blob = sandboxFunction.get();
+      let space = accessibleSpacesById.get(blob.spaceId);
+      if (
+        !space &&
+        capability &&
+        capabilitySpace &&
+        capabilitySpace.id === blob.spaceId &&
+        appPrefixFromSlug(blob.slug) === capability.appPrefix
+      ) {
+        space = capabilitySpace;
+      }
+      const file = filesById.get(blob.fileId);
       if (!space || !file) {
         return [];
       }
 
-      return [new this(this.model, sandboxFunction.get(), space, file)];
+      return [new this(this.model, blob, space, file)];
     });
   }
 
   static async fetchById(
     auth: Authenticator,
-    sandboxFunctionId: string
+    sandboxFunctionId: string,
+    { capability }: { capability?: FrameShareCapability } = {}
   ): Promise<SandboxFunctionResource | null> {
     if (!isResourceSId("sandbox_function", sandboxFunctionId)) {
       return null;
@@ -374,6 +400,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
     const [sandboxFunction] = await this.baseFetch(auth, {
       where: { id: sandboxFunctionModelId },
+      capability,
     });
 
     return sandboxFunction ?? null;
@@ -432,7 +459,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   static async fetchBySpaceAndSlug(
     auth: Authenticator,
     space: SpaceResource,
-    slug: string
+    slug: string,
+    { capability }: { capability?: FrameShareCapability } = {}
   ): Promise<SandboxFunctionResource | null> {
     if (!space.isProject()) {
       return null;
@@ -440,6 +468,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
     const [sandboxFunction] = await this.baseFetch(auth, {
       where: { spaceId: space.id, slug },
+      capability,
     });
 
     return sandboxFunction ?? null;
@@ -447,9 +476,12 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
   static async fetchByIdOrSlug(
     auth: Authenticator,
-    functionIdOrSlug: string
+    functionIdOrSlug: string,
+    { capability }: { capability?: FrameShareCapability } = {}
   ): Promise<SandboxFunctionResource | null> {
-    const sandboxFunction = await this.fetchById(auth, functionIdOrSlug);
+    const sandboxFunction = await this.fetchById(auth, functionIdOrSlug, {
+      capability,
+    });
     if (sandboxFunction) {
       return sandboxFunction;
     }
@@ -467,7 +499,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       return null;
     }
 
-    return this.fetchBySpaceAndSlug(auth, space, slug);
+    return this.fetchBySpaceAndSlug(auth, space, slug, { capability });
   }
 
   static async deleteAllForSpace(
