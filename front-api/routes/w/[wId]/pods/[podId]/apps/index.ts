@@ -20,8 +20,12 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 
+import importRoute from "./import";
+
 // Mounted under /api/w/:wId/pods/:podId/apps.
 const app = workspaceApp();
+
+app.route("/import", importRoute);
 
 /** @ignoreswagger */
 app.get(
