@@ -92,14 +92,6 @@ export function ConsumptionExportPanel({
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-3">
         <div className="flex flex-col gap-2">
-          <Button
-            icon={Plus}
-            label="New export"
-            variant="outline"
-            size="xs"
-            disabled={isGenerating || isStarting}
-            onClick={() => void startConsumptionExport(exportBody)}
-          />
           <span className="text-sm font-medium text-foreground">
             Raw data exports
           </span>
@@ -108,7 +100,7 @@ export function ConsumptionExportPanel({
               <Spinner size="sm" />
             </div>
           ) : exports.length > 0 ? (
-            <div className="flex flex-col">
+            <div className="flex max-h-40 flex-col overflow-y-auto">
               {exports.map((item) => (
                 <ConsumptionExportRow key={item.name} item={item} />
               ))}
@@ -129,6 +121,14 @@ export function ConsumptionExportPanel({
               </span>
             </div>
           )}
+          <Button
+            icon={Plus}
+            label="New export"
+            variant="outline"
+            size="xs"
+            disabled={isGenerating || isStarting}
+            onClick={() => void startConsumptionExport(exportBody)}
+          />
           <span className="text-xs text-muted-foreground">
             Exports are kept for a maximum of 15 days.
           </span>
