@@ -13,7 +13,9 @@ import type {
 import type { ModelStreamIdType } from "@app/types/assistant/models/auto";
 import {
   AUTO_COMPLEX_MODEL_ID,
+  AUTO_FAST_MODEL_CONFIG,
   AUTO_FAST_MODEL_ID,
+  AUTO_MODEL_CONFIG,
   AUTO_MODEL_ID,
   MODEL_STREAMS,
 } from "@app/types/assistant/models/auto";
@@ -105,6 +107,16 @@ export async function getEnabledModelsForAuth(
 ): Promise<EnabledModelConfigurationType[]> {
   const availableModels = await getAvailableModelsForWorkspace(auth);
   return withModelSelectability(auth, { models: availableModels });
+}
+
+export async function getDefaultStreamConfigForAuth(
+  auth: Authenticator
+): Promise<ModelConfigurationType> {
+  const { tiers } = await ModelsTierResource.resolveAllowedTierNames(auth);
+
+  return tiers.includes("balanced")
+    ? AUTO_MODEL_CONFIG
+    : AUTO_FAST_MODEL_CONFIG;
 }
 
 export function getDefaultModelFromEnabledModels(

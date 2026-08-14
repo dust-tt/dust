@@ -481,6 +481,7 @@ export async function runModel(
         reasoningEffort: modelInfo.reasoningEffort,
         featureFlags,
         agentScope: agentConfiguration.scope,
+        modelResolutionMethod: agentMessage.modelResolutionMethod,
       }
     );
     if (accessError) {
