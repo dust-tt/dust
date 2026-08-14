@@ -13,13 +13,8 @@ import {
   isWebbrowseInputType,
   isWebsearchInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
-import {
-  parseCanonicalScopedPath,
-  TOOL_OUTPUTS_FOLDER_NAME,
-} from "@app/lib/api/files/mount_path";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
 import { stripFileExtension } from "@app/types/files";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   isNumber,
   isString,
@@ -30,6 +25,8 @@ import { asDisplayName, slugify } from "@app/types/shared/utils/string_utils";
 type ToolDisplayLabelsByTool = Record<string, ToolDisplayLabels>;
 
 const MAX_QUERY_DISPLAY_LENGTH = 60;
+const TOOL_OUTPUT_PATH_PATTERN =
+  /^(conversation|pod)-[^/]+\/\.tool_outputs\/(?:[^/]+\/)*([^/]+)$/;
 
 function truncateQuery(query: string): string {
   return query.length > MAX_QUERY_DISPLAY_LENGTH
@@ -46,31 +43,19 @@ function formatStringList(values: string[]): string {
 }
 
 function getFilePathReadTarget(filePath: string): string {
-  const parsedPath = parseCanonicalScopedPath(filePath);
-  if (!parsedPath) {
-    return `“${truncateQuery(filePath)}”`;
-  }
-
-  const pathParts = parsedPath.relPath.split("/");
-  const fileName = pathParts.at(-1);
-  if (!fileName) {
+  const toolOutputMatch = filePath.match(TOOL_OUTPUT_PATH_PATTERN);
+  const scope = toolOutputMatch?.[1];
+  const fileName = toolOutputMatch?.[2];
+  if (!scope || !fileName) {
     return `“${truncateQuery(filePath)}”`;
   }
 
   // Tool output filenames use a 13-digit timestamp prefix for ordering and uniqueness.
   // Hide this storage detail from the user-facing label.
-  const displayName = pathParts.includes(TOOL_OUTPUTS_FOLDER_NAME)
-    ? fileName.replace(/^\d{13}_/, "")
-    : fileName;
+  const displayName = fileName.replace(/^\d{13}_/, "");
+  const scopeLabel = scope === "pod" ? "Pod" : "conversation";
 
-  switch (parsedPath.scope.kind) {
-    case "canonical-conversation":
-      return `“${truncateQuery(displayName)}” from conversation`;
-    case "canonical-pod":
-      return `“${truncateQuery(displayName)}” from Pod`;
-    default:
-      return assertNever(parsedPath.scope);
-  }
+  return `“${truncateQuery(displayName)}” from ${scopeLabel}`;
 }
 
 const INTERNAL_TOOL_DISPLAY_LABELS_BY_SERVER = Object.fromEntries(
