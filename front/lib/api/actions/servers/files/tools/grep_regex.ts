@@ -37,19 +37,11 @@ export function compileGrepPattern(pattern: string): Result<RE2, Error> {
 }
 
 export class GrepLineTooLongError extends Error {
-  readonly code = "grep_line_too_long";
-
   constructor(lineNumber: number) {
     super(
       `Cannot search line ${lineNumber}: it exceeds ${GREP_LINE_MAX_BYTES} bytes.`
     );
   }
-}
-
-export function isGrepLineTooLongError(
-  error: Error
-): error is GrepLineTooLongError {
-  return "code" in error && error.code === "grep_line_too_long";
 }
 
 async function* readBoundedLines(
