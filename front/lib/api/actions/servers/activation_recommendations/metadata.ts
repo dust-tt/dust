@@ -114,11 +114,12 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
             "this user right now. Shown without context that it is a 'source' field, " +
             "so it must make sense alone. Always pass with sourceIcon. Invent the line " +
             "from the actual evidence; prefer what the evidence means for them over " +
-            "attribution to a Dust artifact. Style examples (adapt to the real " +
-            "evidence, do not reuse verbatim): 'From your #design Slack channel', " +
-            "'Matches your recent work', 'Because your teammates are using the \"Release notes\" skill', " +
-            "'Build on your pilot work'. Never use only a bare product/source name " +
-            "or only the recommended Skill/agent/Frame name."
+            "attribution to a Dust artifact. When the source is an existing workspace " +
+            "Skill or agent, say that it already exists and name it. Style examples " +
+            "(adapt to the real evidence, do not reuse verbatim): 'From your #design Slack channel', " +
+            "'Matches your recent work', 'From the existing \"Release notes\" skill', " +
+            "'Based on your existing \"PR triage\" agent', 'Build on your pilot work'. " +
+            "Never use only a bare product/source name."
         ),
     },
     stake: "never_ask",
