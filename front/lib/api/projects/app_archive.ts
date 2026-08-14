@@ -1,7 +1,13 @@
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import { getFileContent } from "@app/lib/api/files/utils";
-import { listPodApps } from "@app/lib/api/projects/apps";
+import {
+  APP_DATABASES_SUBFOLDER,
+  APP_FUNCTIONS_SUBFOLDER,
+  listPodApps,
+  POD_DATABASE_SCHEMA_FILE_SUFFIX,
+  stripExtension,
+} from "@app/lib/api/projects/apps";
 import { createPodFrameFile } from "@app/lib/api/projects/pod_frame_file";
 import { reconcileDatabaseFromPodPath } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { publishSandboxFunction } from "@app/lib/api/sandbox_functions/publish_sandbox_function";
@@ -479,11 +485,12 @@ export async function importPodApp(
     importedFileCount += 1;
   }
 
+  const declaredRelPaths = new Set([
+    ...manifest.files.map((f) => f.path),
+    ...manifest.frames.map((f) => f.fileName),
+  ]);
   for (const relPath of fileBuffers.keys()) {
-    const declared =
-      manifest.files.some((f) => f.path === relPath) ||
-      manifest.frames.some((f) => f.fileName === relPath);
-    if (!declared) {
+    if (!declaredRelPaths.has(relPath)) {
       skipped.push(`file ${relPath}`);
     }
   }
@@ -518,13 +525,13 @@ export async function importPodApp(
   const functionSourceByName = new Map<string, string>();
   for (const relPath of writtenRelPaths) {
     const segments = relPath.split("/");
-    if (segments.length !== 2 || segments[0] !== "functions") {
+    if (segments.length !== 2 || segments[0] !== APP_FUNCTIONS_SUBFOLDER) {
       continue;
     }
-    const dotIndex = segments[1].lastIndexOf(".");
-    const baseName =
-      dotIndex <= 0 ? segments[1] : segments[1].slice(0, dotIndex);
-    functionSourceByName.set(baseName, `${destFolderPath}/${relPath}`);
+    functionSourceByName.set(
+      stripExtension(segments[1]),
+      `${destFolderPath}/${relPath}`
+    );
   }
 
   const publishedFunctionSlugs: string[] = [];
@@ -560,7 +567,7 @@ export async function importPodApp(
   // 4. Databases, reconciled empty from the copied schema files. Data never travels.
   const reconciledDatabaseNames: string[] = [];
   for (const database of manifest.databases) {
-    const schemaRelPath = `databases/${database.name}.db.ts`;
+    const schemaRelPath = `${APP_DATABASES_SUBFOLDER}/${database.name}${POD_DATABASE_SCHEMA_FILE_SUFFIX}`;
     if (!writtenRelPaths.has(schemaRelPath)) {
       skipped.push(`database ${database.name}`);
       continue;
@@ -596,6 +603,9 @@ export async function importPodApp(
   const frameByFileName = new Map(
     manifest.frames.map((frame) => [frame.fileName, frame])
   );
+  // Fetched once: updateFrameTabs mutates this same instance, so successive pins in the loop see
+  // each other's appended tabs without refetching.
+  const metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
   for (const created of createdFrames) {
     const frame = frameByFileName.get(created.fileName);
     if (!frame || !frame.wasPublished) {
@@ -618,7 +628,6 @@ export async function importPodApp(
 
     if (frame.pinnedTab) {
       const framePath = `${destFolderPath}/${created.fileName}`;
-      const metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
       const currentTabs = metadata?.frameTabs ?? [];
       if (!metadata || currentTabs.length >= MAX_POD_FRAME_TABS) {
         warnings.push(

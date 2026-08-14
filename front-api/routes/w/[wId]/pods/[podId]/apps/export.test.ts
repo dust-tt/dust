@@ -183,9 +183,10 @@ describe("GET /api/w/:wId/pods/:podId/apps/:prefix/export", () => {
       JSON.parse(manifestEntry!.getData().toString("utf-8"))
     );
     expect(parsed.success).toBe(true);
-    const manifest: PodAppManifest = parsed.success
-      ? parsed.data
-      : (undefined as never);
+    if (!parsed.success) {
+      throw new Error("manifest failed schema validation");
+    }
+    const manifest: PodAppManifest = parsed.data;
     expect(manifest.name).toBe("TaskList");
     expect(manifest.functions).toEqual([
       {

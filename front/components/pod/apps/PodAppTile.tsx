@@ -20,7 +20,7 @@ interface PodAppTileProps {
   defaultIcon: CustomResourceIconType;
   onOpenFrame: (frame: PodAppFrame) => void;
   /** Download this app as a portable archive. Available to every viewer with read access. */
-  onDownload?: () => Promise<void>;
+  onDownload: () => Promise<void>;
   /** Absent when the viewer cannot edit (no write access). */
   onClone?: () => void;
   /** Absent when the viewer cannot edit (no write access). */
@@ -63,9 +63,6 @@ export function PodAppTile({
 
   const [isDownloading, setIsDownloading] = useState(false);
   const handleDownload = useCallback(async () => {
-    if (!onDownload) {
-      return;
-    }
     setIsDownloading(true);
     await onDownload();
     setIsDownloading(false);
@@ -76,35 +73,31 @@ export function PodAppTile({
       size="sm"
       onClick={openableFrame ? () => onOpenFrame(openableFrame) : undefined}
       action={
-        (onDownload || onClone || onDelete) && (
-          <div className="flex gap-1">
-            {onDownload && (
-              <CardActionButton
-                size="icon"
-                icon={Download01}
-                tooltip="Download this app as a portable archive"
-                onClick={() => void handleDownload()}
-                isLoading={isDownloading}
-              />
-            )}
-            {onClone && (
-              <CardActionButton
-                size="icon"
-                icon={GitBranch01}
-                tooltip="Clone this app into a new folder, with empty databases"
-                onClick={onClone}
-              />
-            )}
-            {onDelete && (
-              <CardActionButton
-                size="icon"
-                icon={Trash01}
-                tooltip="Delete this app and everything it owns"
-                onClick={onDelete}
-              />
-            )}
-          </div>
-        )
+        <div className="flex gap-1">
+          <CardActionButton
+            size="icon"
+            icon={Download01}
+            tooltip="Download this app as a portable archive"
+            onClick={() => void handleDownload()}
+            isLoading={isDownloading}
+          />
+          {onClone && (
+            <CardActionButton
+              size="icon"
+              icon={GitBranch01}
+              tooltip="Clone this app into a new folder, with empty databases"
+              onClick={onClone}
+            />
+          )}
+          {onDelete && (
+            <CardActionButton
+              size="icon"
+              icon={Trash01}
+              tooltip="Delete this app and everything it owns"
+              onClick={onDelete}
+            />
+          )}
+        </div>
       }
     >
       <div className="flex min-w-0 grow items-center gap-3">
