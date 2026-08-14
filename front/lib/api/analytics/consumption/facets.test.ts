@@ -325,6 +325,7 @@ describe("fetchConsumptionFacets", () => {
     expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(8);
   });
 
+
   it("returns the Elasticsearch failure before resolving historical labels", async () => {
     const { authenticator } = await createResourceTest({ role: "manager" });
     const error = new ElasticsearchError("query_error", "query failed");
