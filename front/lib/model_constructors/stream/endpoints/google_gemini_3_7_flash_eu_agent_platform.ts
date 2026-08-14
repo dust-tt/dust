@@ -9,14 +9,16 @@ export class GoogleGeminiThreeDotSevenFlashEuropeAgentPlatformStream extends Wit
   GoogleAgentPlatformStream
 ) {
   // Agent platform bills 10% more in multi-region.
-  // https://ai.google.dev/gemini-api/docs/pricing (2026-08-14): base $1.50/M
-  // input, $7.50/M output, $0.15/M cached input; +10% for the EU endpoint.
+  // https://ai.google.dev/gemini-api/docs/pricing (2026-08-14): base $0.75/M input,
+  // $3.75/M output, $0.075/M cached input; +10% for the EU endpoint.
+  // Promotional pricing through 2026-12-31; reverts to $1.65/M input, $8.25/M
+  // output, $0.165/M cached input on 2027-01-01 — update this then.
   static readonly tokenPricing = {
     // Gemini uses implicit caching; cache creation is not charged.
     cacheCreated: 0,
-    cacheHit: 0.165,
-    standardInput: 1.65,
-    standardOutput: 8.25,
+    cacheHit: 0.0825,
+    standardInput: 0.825,
+    standardOutput: 4.125,
   };
 
   static readonly region = EUROPE;
