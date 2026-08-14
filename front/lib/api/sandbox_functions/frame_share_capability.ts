@@ -1,6 +1,9 @@
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { podFunctionScopeFromFramePath } from "@app/types/api/pod_function_reference";
+import type { FrameShareCapability } from "@app/types/api/sandbox_functions";
+import { isWorkspaceVisibleShareScope } from "@app/types/files";
 
 /**
  * Possession of a Pod app frame's share token is the capability to invoke that app's published
@@ -8,17 +11,38 @@ import { podFunctionScopeFromFramePath } from "@app/types/api/pod_function_refer
  * handed its link is being handed the app. The capability grants function resolution only — it
  * never widens reads or writes on the pod, and per-function userIdentity policies still apply.
  */
-export type FrameShareCapability = {
-  /** sId of the pod the shared frame lives in. */
-  podId: string;
-  /** Normalized prefix of the frame's app folder — the namespace of the slugs it authorizes. */
-  appPrefix: string;
-};
+
+/**
+ * Resolve a function the way invocation-facing routes need it: by the caller's own access first,
+ * and only when that misses, by the frame share token they presented. Members thus never pay the
+ * token lookup, and an invalid token behaves exactly like an absent one.
+ */
+export async function resolveSandboxFunctionWithCapability(
+  auth: Authenticator,
+  functionIdOrSlug: string,
+  frameShareToken: string | undefined
+): Promise<SandboxFunctionResource | null> {
+  const sandboxFunction = await SandboxFunctionResource.fetchByIdOrSlug(
+    auth,
+    functionIdOrSlug
+  );
+  if (sandboxFunction || !frameShareToken) {
+    return sandboxFunction;
+  }
+
+  const capability = await resolveFrameShareCapability(auth, frameShareToken);
+  if (!capability) {
+    return null;
+  }
+
+  return SandboxFunctionResource.fetchByIdOrSlug(auth, functionIdOrSlug, {
+    capability,
+  });
+}
 
 /**
  * Validate a frame share token presented alongside a function invocation and derive the
- * capability it carries. Returns null on any mismatch — an invalid token behaves exactly like an
- * absent one, so callers fall through to the regular not-found path.
+ * capability it carries. Returns null on any mismatch.
  */
 export async function resolveFrameShareCapability(
   auth: Authenticator,
@@ -40,8 +64,8 @@ export async function resolveFrameShareCapability(
   }
 
   // Only workspace-visible scopes carry the capability; downgrading a frame to emails_only
-  // revokes it. "workspace" is the legacy spelling of workspace_and_emails.
-  if (shareScope !== "workspace_and_emails" && shareScope !== "workspace") {
+  // revokes it.
+  if (!isWorkspaceVisibleShareScope(shareScope)) {
     return null;
   }
 

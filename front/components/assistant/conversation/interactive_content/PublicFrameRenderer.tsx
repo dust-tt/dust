@@ -161,7 +161,6 @@ export function PublicFrameRenderer({
             scopedUserIdentity={publicUserIdentity}
             viewer={viewer}
             framePath={framePath}
-            frameShareToken={shareToken}
             isInDrawer
           />
         </div>

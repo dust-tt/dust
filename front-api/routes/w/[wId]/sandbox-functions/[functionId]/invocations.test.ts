@@ -764,12 +764,12 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
       expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
     });
 
-    it("still applies the pod-editor-required policy with a valid token", async () => {
+    it("still applies the pod-member-required policy with a valid token", async () => {
       const { workspace, sandboxFunction, adminAuth, space } =
         await setupSandboxFunction({
           addCallerToSpace: false,
           slug: "tasklist__run",
-          userIdentity: "pod_editor_required",
+          userIdentity: "pod_member_required",
         });
       const frameShareToken = await createSharedAppFrame(adminAuth, {
         workspace,

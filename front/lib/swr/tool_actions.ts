@@ -5,7 +5,7 @@ import type {
   ResolveAuthenticationOutcome,
 } from "@app/lib/api/assistant/conversation/resolve_authentication";
 import { useFetcher } from "@app/lib/swr/swr";
-import { FRAME_SHARE_TOKEN_HEADER } from "@app/types/api/sandbox_functions";
+import { frameShareTokenHeader } from "@app/types/api/sandbox_functions";
 import { isAPIErrorResponse } from "@app/types/error";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -153,9 +153,7 @@ export function useResolveAuthentication({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(frameShareToken
-              ? { [FRAME_SHARE_TOKEN_HEADER]: frameShareToken }
-              : {}),
+            ...frameShareTokenHeader(frameShareToken),
           },
           body: JSON.stringify(request.body),
         });
@@ -211,9 +209,7 @@ export function useValidateAction({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(frameShareToken
-              ? { [FRAME_SHARE_TOKEN_HEADER]: frameShareToken }
-              : {}),
+            ...frameShareTokenHeader(frameShareToken),
           },
           body: JSON.stringify(request.body),
         });

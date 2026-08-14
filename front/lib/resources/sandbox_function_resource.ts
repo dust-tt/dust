@@ -3,7 +3,6 @@ import type {
   PokePodFunctionDetails,
 } from "@app/lib/api/poke/projects";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
-import type { FrameShareCapability } from "@app/lib/api/sandbox_functions/frame_share_capability";
 import {
   appPrefixFromSlug,
   sandboxFunctionNameFromSlug,
@@ -31,6 +30,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { PodAppFunction } from "@app/types/api/pod_apps";
 import type {
+  FrameShareCapability,
   PostSandboxFunctionInvocationRequestBody,
   SandboxFunctionExecutionMode,
   SandboxFunctionInvocationOrigin,
@@ -373,19 +373,15 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
     return sandboxFunctions.flatMap((sandboxFunction) => {
       const blob = sandboxFunction.get();
-      let space = accessibleSpacesById.get(blob.spaceId);
-      if (
-        !space &&
-        capability &&
-        capabilitySpace &&
-        capabilitySpace.id === blob.spaceId &&
-        appPrefixFromSlug(blob.slug) === capability.appPrefix
-      ) {
-        space = capabilitySpace;
-      }
-      if (!space && spacesById) {
-        space = spacesById.get(blob.spaceId);
-      }
+      // Three prioritized gates: the caller's own access, then the app the capability grants,
+      // then the pipeline bypass (spacesById is only built for it).
+      const space =
+        accessibleSpacesById.get(blob.spaceId) ??
+        (capabilitySpace?.id === blob.spaceId &&
+        appPrefixFromSlug(blob.slug) === capability?.appPrefix
+          ? capabilitySpace
+          : undefined) ??
+        spacesById?.get(blob.spaceId);
       const file = filesById.get(blob.fileId);
       if (!space || !file) {
         return [];

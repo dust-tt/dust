@@ -81,6 +81,14 @@ export const fileShareScopeSchema = z.enum([
 export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
 
 /**
+ * Whether a share scope makes the file visible to every workspace member holding its link.
+ * "workspace" is the legacy spelling of "workspace_and_emails".
+ */
+export function isWorkspaceVisibleShareScope(scope: FileShareScope): boolean {
+  return scope === "workspace_and_emails" || scope === "workspace";
+}
+
+/**
  * Allowlist of files a shared Frame may load via useFile().
  * AuthorizedFileAccessModel stores one row per authorized file ref for the
  * current frame version (replaced on recompute).

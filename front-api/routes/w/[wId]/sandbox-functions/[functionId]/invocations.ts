@@ -1,12 +1,9 @@
 import { MCP_VALIDATION_OUTPUTS } from "@app/lib/actions/constants";
 import { awaitSandboxFunctionInvocationOutcome } from "@app/lib/api/sandbox_functions/await_invocation";
 import { isSandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
-import type { FrameShareCapability } from "@app/lib/api/sandbox_functions/frame_share_capability";
-import { resolveFrameShareCapability } from "@app/lib/api/sandbox_functions/frame_share_capability";
+import { resolveSandboxFunctionWithCapability } from "@app/lib/api/sandbox_functions/frame_share_capability";
 import { resolveSandboxFunctionActionAuthentication } from "@app/lib/api/sandbox_functions/resolve_authentication";
 import { validateSandboxFunctionAction } from "@app/lib/api/sandbox_functions/validate_action";
-import type { Authenticator } from "@app/lib/auth";
-import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   PostSandboxFunctionInvocationResponseBody,
@@ -22,20 +19,6 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   functionIdOrSlug: z.string().min(1),
 });
-
-// A frame host may present its frame's share token as a capability to invoke the frame's app's
-// functions. Absent or invalid tokens resolve to undefined, falling through to the regular gates.
-async function capabilityFromHeader(
-  auth: Authenticator,
-  frameShareToken: string | undefined
-): Promise<FrameShareCapability | undefined> {
-  if (!frameShareToken) {
-    return undefined;
-  }
-  return (
-    (await resolveFrameShareCapability(auth, frameShareToken)) ?? undefined
-  );
-}
 
 // Shared by the two action-resolution routes (validate-action, resolve-authentication).
 const ActionResolutionParamsSchema = z.object({
@@ -125,15 +108,10 @@ app.post(
     const body: PostSandboxFunctionInvocationRequestBody =
       ctx.req.valid("json");
 
-    const sandboxFunction = await SandboxFunctionResource.fetchByIdOrSlug(
+    const sandboxFunction = await resolveSandboxFunctionWithCapability(
       auth,
       functionIdOrSlug,
-      {
-        capability: await capabilityFromHeader(
-          auth,
-          ctx.req.header(FRAME_SHARE_TOKEN_HEADER)
-        ),
-      }
+      ctx.req.header(FRAME_SHARE_TOKEN_HEADER)
     );
     if (!sandboxFunction) {
       return apiError(ctx, {
@@ -201,15 +179,10 @@ app.post(
     const { functionIdOrSlug, invocationId, actionId } = ctx.req.valid("param");
     const { approved } = ctx.req.valid("json");
 
-    const sandboxFunction = await SandboxFunctionResource.fetchByIdOrSlug(
+    const sandboxFunction = await resolveSandboxFunctionWithCapability(
       auth,
       functionIdOrSlug,
-      {
-        capability: await capabilityFromHeader(
-          auth,
-          ctx.req.header(FRAME_SHARE_TOKEN_HEADER)
-        ),
-      }
+      ctx.req.header(FRAME_SHARE_TOKEN_HEADER)
     );
     if (!sandboxFunction) {
       return apiError(ctx, {
@@ -274,15 +247,10 @@ app.post(
     const { functionIdOrSlug, invocationId, actionId } = ctx.req.valid("param");
     const { outcome } = ctx.req.valid("json");
 
-    const sandboxFunction = await SandboxFunctionResource.fetchByIdOrSlug(
+    const sandboxFunction = await resolveSandboxFunctionWithCapability(
       auth,
       functionIdOrSlug,
-      {
-        capability: await capabilityFromHeader(
-          auth,
-          ctx.req.header(FRAME_SHARE_TOKEN_HEADER)
-        ),
-      }
+      ctx.req.header(FRAME_SHARE_TOKEN_HEADER)
     );
     if (!sandboxFunction) {
       return apiError(ctx, {

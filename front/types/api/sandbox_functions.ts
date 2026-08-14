@@ -76,6 +76,23 @@ export const DEFAULT_SANDBOX_FUNCTION_STAKE: SandboxFunctionStake = "low";
  */
 export const FRAME_SHARE_TOKEN_HEADER = "x-dust-frame-share-token";
 
+/** Request-header fragment carrying the frame share token, empty when there is none. */
+export function frameShareTokenHeader(token?: string): Record<string, string> {
+  return token ? { [FRAME_SHARE_TOKEN_HEADER]: token } : {};
+}
+
+/**
+ * What a validated frame share token authorizes: invoking the published functions of its own app
+ * folder in its own pod. Derived server-side by `resolveFrameShareCapability`; grants function
+ * resolution only, never reads or writes on the pod.
+ */
+export type FrameShareCapability = {
+  /** sId of the pod the shared frame lives in. */
+  podId: string;
+  /** Normalized prefix of the frame's app folder — the namespace of the slugs it authorizes. */
+  appPrefix: string;
+};
+
 export const SANDBOX_FUNCTION_INVOCATION_ORIGINS = [
   "interactive_session",
   "delegated",
