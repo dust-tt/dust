@@ -57,6 +57,8 @@ function getFilePathReadTarget(filePath: string): string {
     return `“${truncateQuery(filePath)}”`;
   }
 
+  // Tool output filenames use a 13-digit timestamp prefix for ordering and uniqueness.
+  // Hide this storage detail from the user-facing label.
   const displayName = pathParts.includes(TOOL_OUTPUTS_FOLDER_NAME)
     ? fileName.replace(/^\d{13}_/, "")
     : fileName;
