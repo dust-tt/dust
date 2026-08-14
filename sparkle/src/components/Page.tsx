@@ -1,9 +1,8 @@
 import { Separator } from "@sparkle/components/Separator";
 import { cn } from "@sparkle/lib/utils";
-import React, { type ComponentType } from "react";
+import React from "react";
 
 import { Button, type ButtonProps } from "./Button";
-import { Icon } from "./Icon";
 
 interface PageProps {
   children: React.ReactNode;
@@ -33,13 +32,11 @@ export function Page({ children, variant = "normal" }: PageProps) {
 interface PageHeaderProps {
   title: React.ReactNode;
   description?: React.ReactNode;
-  icon?: ComponentType<{ className?: string }>;
 }
 
-Page.Header = function ({ title, description, icon }: PageHeaderProps) {
+Page.Header = function ({ title, description }: PageHeaderProps) {
   return (
-    <Page.Vertical gap="xs">
-      <Icon visual={icon} className="text-primary-400" size="lg" />
+    <Page.Vertical gap="xs" className="pt-4 sm:pt-6 md:pt-8">
       {typeof title === "string" ? (
         <Page.H variant="h3">{title}</Page.H>
       ) : (
@@ -192,6 +189,7 @@ interface PageDivProps {
   sizing?: "shrink" | "grow";
   align?: "stretch" | "left" | "center" | "right";
   gap?: "xs" | "sm" | "md" | "lg" | "xl" | "none";
+  className?: string;
 }
 Page.Horizontal = function ({
   children,
@@ -222,6 +220,7 @@ Page.Vertical = function ({
   sizing,
   align = "left",
   gap = "md",
+  className,
 }: PageDivProps) {
   return (
     <div
@@ -232,7 +231,8 @@ Page.Vertical = function ({
         gapSizes[gap],
         align === "left" ? "items-start" : "",
         align === "center" ? "items-center" : "",
-        align === "right" ? "items-end" : ""
+        align === "right" ? "items-end" : "",
+        className
       )}
     >
       {children}

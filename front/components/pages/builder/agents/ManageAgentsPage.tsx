@@ -31,7 +31,6 @@ import { isAdmin } from "@app/types/user";
 import {
   Button,
   Chip,
-  ContactsRobot,
   EmptyCTA,
   ListSelect,
   Page,
@@ -284,7 +283,7 @@ export function ManageAgentsPage() {
         onClose={() => setDetailedAgentId(null)}
       />
       <div className="flex w-full flex-col gap-8 pb-4">
-        <Page.Header title="Manage Agents" icon={ContactsRobot} />
+        <Page.Header title="Manage Agents" />
         <Page.Vertical gap="md" align="stretch">
           <div className="flex flex-row gap-2">
             <SearchInput

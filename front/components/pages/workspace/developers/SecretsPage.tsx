@@ -6,7 +6,6 @@ import { useDustAppSecrets } from "@app/lib/swr/apps";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import {
   BookOpen01,
-  Brackets,
   Button,
   Clipboard,
   Dialog,
@@ -195,7 +194,6 @@ export function SecretsPage() {
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="Developer Secrets"
-          icon={Brackets}
           description="Secrets usable in Dust apps or MCP servers to safely store sensitive data."
         />{" "}
         <Page.Vertical align="stretch" gap="md">

@@ -479,10 +479,8 @@ function PhoneInputStep({
               </div>
             ) : (
               <>
-                <Page.Header
-                  title="Phone number"
-                  icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
-                />
+                <DustLogoSquare className="-ml-11 h-10 w-32" />
+                <Page.Header title="Phone number" />
                 <p className="-mt-4 text-muted-foreground">
                   To start your free trial, we need to verify your account with
                   an SMS code. <br />
@@ -635,10 +633,8 @@ function CaptchaStep({
       <div className="flex h-full flex-col justify-center">
         <Page.Horizontal>
           <Page.Vertical sizing="grow" gap="lg">
-            <Page.Header
-              title="Verify you're human"
-              icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
-            />
+            <DustLogoSquare className="-ml-11 h-10 w-32" />
+            <Page.Header title="Verify you're human" />
             <p className="-mt-4 text-muted-foreground">
               A quick check before we send your verification code.
             </p>

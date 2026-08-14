@@ -1,7 +1,7 @@
 import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspaceVerifiedDomains } from "@app/lib/swr/workspaces";
-import { Fingerprint04, Page, Spinner } from "@dust-tt/sparkle";
+import { Page, Spinner } from "@dust-tt/sparkle";
 
 export function WorkspaceIdentityProvisioningPage() {
   const owner = useWorkspace();
@@ -24,7 +24,6 @@ export function WorkspaceIdentityProvisioningPage() {
       <Page.Vertical gap="lg" align="stretch">
         <Page.Header
           title="IT & Security"
-          icon={Fingerprint04}
           description="Verify your domain, manage team members and their permissions."
         />
         <WorkspaceAccessPanel
