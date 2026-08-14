@@ -11,4 +11,5 @@ xlsx_inspect() { /opt/venv/bin/python3 "$SCRIPT_DIR/soffice/xlsx_inspect.py" "$@
 pptx_inspect() { /opt/venv/bin/python3 "$SCRIPT_DIR/soffice/pptx_inspect.py" "$@"; }
 docx_inspect() { /opt/venv/bin/python3 "$SCRIPT_DIR/soffice/docx_inspect.py" "$@"; }
 pptx_slides()  { /opt/venv/bin/python3 "$SCRIPT_DIR/soffice/pptx_slides.py" "$@"; }
-export -f read_file write_file grep_files glob list_dir xlsx_inspect pptx_inspect docx_inspect pptx_slides
+pptx_fonts()   { /opt/venv/bin/python3 "$SCRIPT_DIR/soffice/pptx_fonts.py" "$@"; }
+export -f read_file write_file grep_files glob list_dir xlsx_inspect pptx_inspect docx_inspect pptx_slides pptx_fonts
