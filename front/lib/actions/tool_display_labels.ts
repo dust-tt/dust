@@ -14,11 +14,12 @@ import {
   isWebsearchInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
 import {
-  isCanonicalScopedPath,
+  parseCanonicalScopedPath,
   TOOL_OUTPUTS_FOLDER_NAME,
 } from "@app/lib/api/files/mount_path";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
 import { stripFileExtension } from "@app/types/files";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   isNumber,
   isString,
@@ -44,22 +45,30 @@ function formatStringList(values: string[]): string {
   return truncateQuery(values.join(", "));
 }
 
-function getFilePathDisplayName(filePath: string): string {
-  if (!isCanonicalScopedPath(filePath)) {
-    return truncateQuery(filePath);
+function getFilePathReadTarget(filePath: string): string {
+  const parsedPath = parseCanonicalScopedPath(filePath);
+  if (!parsedPath) {
+    return `“${truncateQuery(filePath)}”`;
   }
 
-  const pathParts = filePath.split("/");
+  const pathParts = parsedPath.relPath.split("/");
   const fileName = pathParts.at(-1);
   if (!fileName) {
-    return truncateQuery(filePath);
+    return `“${truncateQuery(filePath)}”`;
   }
 
   const displayName = pathParts.includes(TOOL_OUTPUTS_FOLDER_NAME)
     ? fileName.replace(/^\d{13}_/, "")
     : fileName;
 
-  return truncateQuery(displayName);
+  switch (parsedPath.scope.kind) {
+    case "canonical-conversation":
+      return `conversation file “${truncateQuery(displayName)}”`;
+    case "canonical-pod":
+      return `Pod file “${truncateQuery(displayName)}”`;
+    default:
+      return assertNever(parsedPath.scope);
+  }
 }
 
 const INTERNAL_TOOL_DISPLAY_LABELS_BY_SERVER = Object.fromEntries(
@@ -431,10 +440,10 @@ function getDynamicToolDisplayLabels({
 
     case "files":
       if (toolName === "cat" && isString(inputs.path)) {
-        const path = getFilePathDisplayName(inputs.path);
+        const target = getFilePathReadTarget(inputs.path);
         return {
-          running: `Reading “${path}”`,
-          done: `Read “${path}”`,
+          running: `Reading ${target}`,
+          done: `Read ${target}`,
         };
       }
       if (

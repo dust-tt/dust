@@ -179,17 +179,17 @@ describe("getToolDisplayLabels", () => {
   it.each([
     [
       "conversation-Fx7LXcp8VP/reports/quarterly-results.csv",
-      "quarterly-results.csv",
+      "conversation file “quarterly-results.csv”",
     ],
     [
       "conversation-Fx7LXcp8VP/.tool_outputs/1786717219013_github_get_pull_request.txt",
-      "github_get_pull_request.txt",
+      "conversation file “github_get_pull_request.txt”",
     ],
     [
       "pod-pod123/.tool_outputs/analyze-sales/1786717219013_query_tables.json",
-      "query_tables.json",
+      "Pod file “query_tables.json”",
     ],
-  ])("uses the file name for Dust file system path %s", (path, fileName) => {
+  ])("labels Dust file system path %s as %s", (path, target) => {
     expect(
       getToolDisplayLabels({
         internalMCPServerName: "files",
@@ -197,8 +197,8 @@ describe("getToolDisplayLabels", () => {
         inputs: { path },
       })
     ).toEqual({
-      running: `Reading “${fileName}”`,
-      done: `Read “${fileName}”`,
+      running: `Reading ${target}`,
+      done: `Read ${target}`,
     });
   });
 
