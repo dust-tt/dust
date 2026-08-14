@@ -63,6 +63,7 @@ import {
 
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
 const ATTRIBUTION_PAGE_SIZE = 25;
+const ATTRIBUTION_MAX_ROW_COUNT = 1_000;
 
 type AttributionTransitionDirection = -1 | 0 | 1;
 
@@ -390,6 +391,7 @@ function AttributionRows({
     search,
     filter,
   });
+  const cappedRowCount = Math.min(totalCount, ATTRIBUTION_MAX_ROW_COUNT);
 
   const selectedIdSet = useMemo(
     () => new Set(filter?.[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]] ?? []),
@@ -480,14 +482,14 @@ function AttributionRows({
             />
           </div>
         )}
-        {totalCount > pagination.pageSize && (
+        {cappedRowCount > pagination.pageSize && (
           <div className="mt-2 p-1">
             <Pagination
               size="xs"
               showDetails={false}
               pagination={pagination}
               setPagination={setPagination}
-              rowCount={totalCount}
+              rowCount={cappedRowCount}
             />
           </div>
         )}

@@ -40,6 +40,7 @@ import type {
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
 import { ANTHROPIC_LAB } from "@app/lib/model_constructors/types/labs";
+import { isToolDeferred } from "@app/lib/model_constructors/types/tool_search";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -421,7 +422,7 @@ export function toolSpecToAnthropicAITool(
     // Defer non-eager tools behind tool search when it is enabled. Eager tools
     // (and every tool when tool search is off) stay in the cached prefix. Only
     // set when true so non-deferred tools serialize identically (stable bytes).
-    ...(toolSearchEnabled && !tool.eager ? { defer_loading: true } : {}),
+    ...(isToolDeferred(tool, toolSearchEnabled) ? { defer_loading: true } : {}),
   };
 }
 

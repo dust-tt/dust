@@ -3,6 +3,7 @@ import { renderToolResultForModelAsText } from "@app/lib/api/assistant/conversat
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
+import { isToolSearchEnabledForModel } from "@app/lib/model_constructors/types/tool_search";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import {
@@ -119,7 +120,10 @@ export async function measureToolCallFootprints(
   const enabledSkillInputTextByActionId =
     await getEnabledSkillInputTextByActionId(
       auth,
-      toolCalls.map(({ action }) => action)
+      toolCalls.map(({ action }) => action),
+      {
+        toolSearchEnabled: isToolSearchEnabledForModel(model),
+      }
     );
 
   // Tokenize the calls and inputs as two homogeneous lists so each count maps back to its call by
