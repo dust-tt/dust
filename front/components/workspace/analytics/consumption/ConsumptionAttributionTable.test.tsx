@@ -1,5 +1,6 @@
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
+import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import {
   fireEvent,
   render,
@@ -92,7 +93,7 @@ describe("ConsumptionAttributionTable", () => {
     });
   });
 
-  it("resets expanded rows when switching dimensions", () => {
+  it("resets expanded rows when switching dimensions", async () => {
     mockUseConsumptionTop.mockImplementation(
       ({ dimension }: { dimension: ConsumptionDimension }) => ({
         rows: [
@@ -155,7 +156,115 @@ describe("ConsumptionAttributionTable", () => {
         name: "Expand breakdown for Large model",
       })
     ).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByText("Attribution breakdown")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Attribution breakdown")
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("keeps rows visible while refreshing cached data", () => {
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [
+        {
+          id: "agent-id",
+          name: "Cached agent",
+          pictureUrl: null,
+          description: null,
+          icon: null,
+          modelId: null,
+          modelDisplayName: null,
+          credits: 100,
+          avgCredits: 10,
+        },
+      ],
+      totalCredits: 100,
+      totalCount: 1,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: true,
+    });
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="agent"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("Cached agent")).toBeInTheDocument();
+  });
+
+  it("reveals rows that arrive after the initial loading state", async () => {
+    const emptyRows: ConsumptionTopRow[] = [];
+    let result = {
+      rows: emptyRows,
+      totalCredits: 0,
+      totalCount: 0,
+      hasMore: false,
+      isTopLoading: true,
+      isTopError: undefined,
+      isTopValidating: true,
+    };
+    mockUseConsumptionTop.mockImplementation(() => result);
+
+    const { rerender } = render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="agent"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    result = {
+      rows: [
+        {
+          id: "fresh-agent-id",
+          name: "Fresh agent",
+          pictureUrl: null,
+          description: null,
+          icon: null,
+          modelId: null,
+          modelDisplayName: null,
+          credits: 100,
+          avgCredits: 10,
+        },
+      ],
+      totalCredits: 100,
+      totalCount: 1,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    };
+    rerender(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="agent"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    const row = await screen.findByText("Fresh agent");
+    await waitFor(() => {
+      let animatedAncestor: HTMLElement | null = row;
+      while (animatedAncestor && !animatedAncestor.style.opacity) {
+        animatedAncestor = animatedAncestor.parentElement;
+      }
+
+      expect(animatedAncestor).toHaveStyle({ opacity: "1" });
+    });
   });
 
   it("renders the skill identity and description without a model", () => {
