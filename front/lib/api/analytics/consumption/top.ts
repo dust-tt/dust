@@ -96,8 +96,10 @@ function countFromBucket(
 
 async function resolveConsumptionTopSearchFilter(
   auth: Authenticator,
-  dimension: ConsumptionScopeDimension,
-  search?: string
+  {
+    dimension,
+    search,
+  }: { dimension: ConsumptionScopeDimension; search?: string }
 ): Promise<estypes.QueryDslQueryContainer | null> {
   const normalizedSearch = search?.trim().toLowerCase();
   if (!normalizedSearch) {
@@ -119,18 +121,19 @@ async function resolveConsumptionTopSearchFilter(
 }
 
 function buildConsumptionTopAggregations({
-  dimensionField,
-  unit,
+  dimension,
   limit,
   offset,
   searchFilter,
 }: {
-  dimensionField: string;
-  unit: ConsumptionTopUnit;
+  dimension: ConsumptionScopeDimension;
   limit: number;
   offset: number;
   searchFilter: estypes.QueryDslQueryContainer | null;
 }): Record<string, estypes.AggregationsAggregationContainer> {
+  const unit = CONSUMPTION_DIMENSION_UNIT[dimension];
+  const dimensionField = CONSUMPTION_DIMENSION_FIELDS[dimension];
+
   // TODO(2026-08-14 aubin): Add pagination beyond the maximum bucket count.
   const requestedBucketCount = offset + limit;
   const rankingAggregations = {
@@ -187,13 +190,10 @@ export async function fetchConsumptionTopGroups(
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
-  const unit = CONSUMPTION_DIMENSION_UNIT[dimension];
-  const dimensionField = CONSUMPTION_DIMENSION_FIELDS[dimension];
-  const searchFilter = await resolveConsumptionTopSearchFilter(
-    auth,
+  const searchFilter = await resolveConsumptionTopSearchFilter(auth, {
     dimension,
-    search
-  );
+    search,
+  });
 
   const query = buildConsumptionScopeQuery({
     auth,
@@ -201,9 +201,9 @@ export async function fetchConsumptionTopGroups(
     endDate: period.endDate,
     filter,
   });
+
   const aggregations = buildConsumptionTopAggregations({
-    dimensionField,
-    unit,
+    dimension,
     limit,
     offset,
     searchFilter,
@@ -226,7 +226,7 @@ export async function fetchConsumptionTopGroups(
   ).map((bucket) => ({
     key: String(bucket.key),
     credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
-    count: countFromBucket(bucket, unit),
+    count: countFromBucket(bucket, CONSUMPTION_DIMENSION_UNIT[dimension]),
   }));
   const totalCount = Math.round(ranking?.[TOTAL_COUNT_AGG]?.value ?? 0);
 
