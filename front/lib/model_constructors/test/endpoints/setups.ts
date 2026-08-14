@@ -63,6 +63,7 @@ import { OpenAIGptFiveMiniEuropeOpenAIResponsesStream } from "@app/lib/model_con
 import { OpenAIGptFiveMiniGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_mini_global_openai_responses";
 import { OpenAIGptFiveNanoEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_nano_eu_openai_responses";
 import { OpenAIGptFiveNanoGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_nano_global_openai_responses";
+import { ThinkingMachinesInklingGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/thinking_machines_inkling_global_fireworks";
 import { XaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_five_global_xai";
 import { XaiGrokFourDotSixGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_six_global_xai";
 import { ZAiGlmFiveDotTwoGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_two_global_fireworks";
@@ -126,6 +127,7 @@ import { OpenAIGptFiveMiniEuropeOpenAIResponsesStreamSetup } from "@app/lib/mode
 import { OpenAIGptFiveMiniGlobalOpenAIResponsesStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_gpt_five_mini_global_openai_responses.test";
 import { OpenAIGptFiveNanoEuropeOpenAIResponsesStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_gpt_five_nano_eu_openai_responses.test";
 import { OpenAIGptFiveNanoGlobalOpenAIResponsesStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_gpt_five_nano_global_openai_responses.test";
+import { ThinkingMachinesInklingGlobalFireworksStreamSetup } from "@app/lib/model_constructors/test/endpoints/thinking_machines_inkling_global_fireworks.test";
 import { XaiGrokFourDotFiveGlobalXaiStreamSetup } from "@app/lib/model_constructors/test/endpoints/xai_grok_four_dot_five_global_xai.test";
 import { XaiGrokFourDotSixGlobalXaiStreamSetup } from "@app/lib/model_constructors/test/endpoints/xai_grok_four_dot_six_global_xai.test";
 import { ZAiGlmFiveDotTwoGlobalFireworksStreamSetup } from "@app/lib/model_constructors/test/endpoints/z_ai_glm_five_dot_two_global_fireworks.test";
@@ -184,6 +186,8 @@ export const STREAM_ENDPOINT_SETUPS = {
     MoonshotAiKimiK2Dot6GlobalFireworksStreamSetup,
   [MoonshotAiKimiK3GlobalFireworksStream.id]:
     MoonshotAiKimiK3GlobalFireworksStreamSetup,
+  [ThinkingMachinesInklingGlobalFireworksStream.id]:
+    ThinkingMachinesInklingGlobalFireworksStreamSetup,
   [GoogleGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioStream.id]:
     GoogleGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioStreamSetup,
   [GoogleGeminiThreeDotFiveFlashLiteGlobalGoogleAiStudioStream.id]:

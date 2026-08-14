@@ -86,6 +86,8 @@ export const getModelMakerLogo = (
       return MoonshotLogo;
     case "minimax":
       return MinimaxLogo;
+    case "thinking_machines":
+      return FireworksLogo;
     default:
       return getModelProviderLogo(makerId, isDark);
   }

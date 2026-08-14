@@ -423,6 +423,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 4.4,
     cache_read_input_tokens: 0.26,
   },
+  // Verified 2026-08-14: https://fireworks.ai/models/fireworks/inkling
+  "accounts/fireworks/models/inkling": {
+    input: 1.0,
+    output: 4.05,
+    cache_read_input_tokens: 0.17,
+  },
   "grok-3-latest": {
     input: 2.0,
     output: 10.0,

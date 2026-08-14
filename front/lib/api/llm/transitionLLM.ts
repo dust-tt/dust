@@ -966,6 +966,7 @@ const LAB_TO_PROVIDER_ID: Record<Lab, ModelProviderIdType> = {
   noop: "noop",
   // Should never happen
   moonshot_ai: "fireworks",
+  thinking_machines: "fireworks",
   z_ai: "fireworks",
 };
 
