@@ -708,7 +708,6 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     return this.baseFetch(auth, findOptions, { includeHeavyAttributes });
   }
 
-  /** Lists names and icons without hydrating spaces, credentials, or tools. */
   static async listDisplayMetadataByWorkspace(
     auth: Authenticator
   ): Promise<MCPServerViewDisplayMetadata[]> {
