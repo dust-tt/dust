@@ -9,7 +9,6 @@ import type {
   UsageFilterSourceOption,
   UsageFilterToolOption,
 } from "@app/components/workspace/analytics/usageFilter";
-import { usageModelTierFromModelsTierName } from "@app/components/workspace/analytics/usageFilter";
 import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { normalizedConsumptionFilter } from "@app/lib/analytics/consumption_period";
@@ -69,7 +68,7 @@ function toFacetOptions(
       ...baseOption(facet),
       kind: "model",
       lab: facet.maker,
-      tier: usageModelTierFromModelsTierName(facet.tier),
+      tier: facet.tier ?? undefined,
     })),
     tool: data.facets.tool.map<UsageFilterToolOption>((facet) => ({
       ...baseOption(facet),

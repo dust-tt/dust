@@ -10,11 +10,15 @@ import {
   buildTierSelection,
   getEffortStops,
   getModelWithReasoningEffortLabel,
+  getTierLockReason,
+  getTierResolvedModelLabel,
   isPremiumModel,
-  isTierLocked,
   MODEL_TIERS,
 } from "@app/components/model_picker/modelPickerUtils";
-import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
+import type {
+  EnabledModelConfigurationType,
+  ModelStreamResolutionsType,
+} from "@app/types/api/assistant/models";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
@@ -61,13 +65,17 @@ function matchesQuery(item: SlashCommand, normalizedQuery: string): boolean {
 
 function buildTierSlashCommandItems({
   lockPremiumEfforts,
+  streamModels,
+  streams,
 }: {
   lockPremiumEfforts: boolean;
+  streamModels: EnabledModelConfigurationType[];
+  streams: ModelStreamResolutionsType | null;
 }): SelectModelSlashCommand[] {
   const items: SelectModelSlashCommand[] = [];
 
   for (const tier of MODEL_TIERS) {
-    if (isTierLocked(tier.id, { lockPremiumEfforts })) {
+    if (getTierLockReason(tier.id, { lockPremiumEfforts, streamModels })) {
       continue;
     }
 
@@ -79,7 +87,7 @@ function buildTierSlashCommandItems({
     items.push({
       action: SELECT_MODEL_SLASH_COMMAND_ACTION,
       data: { selection },
-      description: tier.description,
+      description: getTierResolvedModelLabel(tier.id, streams),
       icon: TIER_ICON[tier.id],
       id: `tier-${tier.id}`,
       label: tier.name,
@@ -94,19 +102,26 @@ export function buildPickModelSlashCommandItems({
   lockPremiumEfforts,
   models,
   query,
+  streams,
 }: {
   getModelIcon: (model: EnabledModelConfigurationType) => ComponentType;
   lockPremiumEfforts: boolean;
   models: EnabledModelConfigurationType[];
   query: string;
+  streams: ModelStreamResolutionsType | null;
 }): SelectModelSlashCommand[] {
   const normalizedQuery = query.trim().toLowerCase();
   const selectableModels = models.filter(
     (model) => !isModelStreamId(model.modelId) && model.isSelectable
   );
+  const streamModels = models.filter((model) => isModelStreamId(model.modelId));
 
   const items: SelectModelSlashCommand[] = [
-    ...buildTierSlashCommandItems({ lockPremiumEfforts }),
+    ...buildTierSlashCommandItems({
+      lockPremiumEfforts,
+      streamModels,
+      streams,
+    }),
   ];
 
   for (const model of selectableModels) {

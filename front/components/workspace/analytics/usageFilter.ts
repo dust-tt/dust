@@ -9,10 +9,7 @@ import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ConnectorProvider } from "@app/types/data_source";
 import { isConnectorProvider } from "@app/types/data_source";
-import {
-  assertNever,
-  assertNeverAndIgnore,
-} from "@app/types/shared/utils/assert_never";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const USAGE_FILTER_CATEGORIES = [
   "agent",
@@ -64,16 +61,6 @@ export const USAGE_FILTER_SCOPE_LABEL: Record<UsageFilterAgentScope, string> = {
   all: "All",
 };
 
-export const USAGE_MODEL_TIERS = ["fast", "standard", "complex"] as const;
-
-export type UsageModelTier = (typeof USAGE_MODEL_TIERS)[number];
-
-export const USAGE_MODEL_TIER_LABEL: Record<UsageModelTier, string> = {
-  fast: "Fast",
-  standard: "Standard",
-  complex: "Complex",
-};
-
 interface UsageFilterOptionBase {
   id: string;
   name: string;
@@ -105,9 +92,9 @@ export interface UsageFilterModelOption extends UsageFilterOptionBase {
   kind: "model";
   lab?: ModelMakerIdType;
   // Undefined for a model outside the static tier table — it doesn't match
-  // any Fast/Standard/Complex quick filter, so it's absent from the main
+  // any Basic/Standard/Premium quick filter, so it's absent from the main
   // checklist but still reachable through the "More models" browse dropdown.
-  tier: UsageModelTier | undefined;
+  tier: ModelsTierName | undefined;
 }
 
 export interface UsageFilterToolOption extends UsageFilterOptionBase {
@@ -328,28 +315,4 @@ export function toConsumptionScopeFilter(
   }
 
   return scopeFilter;
-}
-
-// Maps the backend's reasoning-effort-aware pricing tier onto the filter
-// panel's simpler Fast/Standard/Complex bucket. Null propagates (a model
-// outside the static tier table, or a raw catalog entry with no config match)
-// as "no bucket", so it's excluded from every quick-filter tier rather than
-// landing in one arbitrarily.
-export function usageModelTierFromModelsTierName(
-  tier: ModelsTierName | null | undefined
-): UsageModelTier | undefined {
-  if (tier === null || tier === undefined) {
-    return undefined;
-  }
-  switch (tier) {
-    case "cost_efficient":
-      return "fast";
-    case "balanced":
-      return "standard";
-    case "premium":
-      return "complex";
-    default:
-      assertNeverAndIgnore(tier);
-      return undefined;
-  }
 }

@@ -73,13 +73,13 @@ describe("token_pricing/tiers", () => {
     ).toBe("premium");
   });
 
-  it("classifies Grok 4.6 medium and high reasoning as premium", () => {
+  it("classifies Grok 4.6 high reasoning as premium", () => {
     expect(ModelsTierResource.getTierForModel(GROK_4_6_MODEL_ID, "light")).toBe(
       "balanced"
     );
     expect(
       ModelsTierResource.getTierForModel(GROK_4_6_MODEL_ID, "medium")
-    ).toBe("premium");
+    ).toBe("balanced");
     expect(ModelsTierResource.getTierForModel(GROK_4_6_MODEL_ID, "high")).toBe(
       "premium"
     );

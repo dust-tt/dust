@@ -1,6 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
 import {
-  getModelForStream,
+  getDefaultModelFromEnabledModels,
+  getEnabledModelsForAuth,
+  resolveStreamModel,
   withModelSelectability,
 } from "@app/lib/model_tiers/enabled_models";
 import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
@@ -13,7 +15,13 @@ import {
   CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
-import { MODEL_STREAMS } from "@app/types/assistant/models/auto";
+import type { ModelStreamIdType } from "@app/types/assistant/models/auto";
+import {
+  AUTO_COMPLEX_MODEL_CONFIG,
+  AUTO_FAST_MODEL_CONFIG,
+  AUTO_MODEL_CONFIG,
+  MODEL_STREAMS,
+} from "@app/types/assistant/models/auto";
 import { GPT_5_6_LUNA_MODEL_ID } from "@app/types/assistant/models/openai";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -142,6 +150,45 @@ describe("withModelSelectability", () => {
     });
   });
 
+  it("gates each stream on the tier it is named after", async () => {
+    await FeatureFlagFactory.basic(adminAuth, "models_picker");
+    const auth = await userAuthForTierCap("balanced");
+
+    const models = await withModelSelectability(auth, {
+      models: [
+        AUTO_FAST_MODEL_CONFIG,
+        AUTO_MODEL_CONFIG,
+        AUTO_COMPLEX_MODEL_CONFIG,
+      ],
+    });
+
+    // Under a balanced cap the Basic and Standard streams stay selectable, but
+    // the Premium stream is out of reach.
+    expect(models.map((m) => [m.modelId, m.isSelectable])).toEqual([
+      [AUTO_FAST_MODEL_CONFIG.modelId, true],
+      [AUTO_MODEL_CONFIG.modelId, true],
+      [AUTO_COMPLEX_MODEL_CONFIG.modelId, false],
+    ]);
+  });
+
+  it("defaults a Basic-capped member to the Basic stream", async () => {
+    await FeatureFlagFactory.basic(adminAuth, "models_picker");
+    const auth = await userAuthForTierCap("cost_efficient");
+
+    const models = await withModelSelectability(auth, {
+      models: [
+        CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+        AUTO_FAST_MODEL_CONFIG,
+        AUTO_MODEL_CONFIG,
+        AUTO_COMPLEX_MODEL_CONFIG,
+      ],
+    });
+
+    expect(getDefaultModelFromEnabledModels(models).modelId).toBe(
+      AUTO_FAST_MODEL_CONFIG.modelId
+    );
+  });
+
   it("keeps custom (non-tiered) models selectable when models_picker is enabled and the user is tier-capped", async () => {
     await FeatureFlagFactory.basic(adminAuth, "models_picker");
     const auth = await userAuthForTierCap("cost_efficient");
@@ -156,7 +203,7 @@ describe("withModelSelectability", () => {
   });
 });
 
-describe("getModelForStream", () => {
+describe("resolveStreamModel", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
   let adminAuth: Authenticator;
 
@@ -177,58 +224,78 @@ describe("getModelForStream", () => {
     return Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId);
   }
 
+  async function resolveStreamForAuth(
+    auth: Authenticator,
+    streamId: ModelStreamIdType
+  ) {
+    const models = await getEnabledModelsForAuth(auth);
+    return resolveStreamModel(models, streamId);
+  }
+
   it("routes the Auto stream to its first available candidate + effort", async () => {
-    const resolved = await getModelForStream(adminAuth, "auto");
+    const resolved = await resolveStreamForAuth(adminAuth, "auto");
 
-    expect(resolved).not.toBeNull();
+    expect(resolved.fromPool).toBe(true);
     // In a full workspace every candidate is available, so the first one wins.
-    expect(resolved?.model.modelId).toBe(GPT_5_6_LUNA_MODEL_ID);
-    expect(resolved?.reasoningEffort).toBe("high");
+    expect(resolved.model.modelId).toBe(GPT_5_6_LUNA_MODEL_ID);
+    expect(resolved.reasoningEffort).toBe("high");
   });
 
-  it("routes the Fast stream to its first available candidate + effort", async () => {
-    const resolved = await getModelForStream(adminAuth, "auto_fast");
+  it("routes the Basic stream to its first available candidate + effort", async () => {
+    const resolved = await resolveStreamForAuth(adminAuth, "auto_fast");
 
-    expect(resolved).not.toBeNull();
+    expect(resolved.fromPool).toBe(true);
     // In a full workspace every candidate is available, so the first one wins.
-    expect(resolved?.model.modelId).toBe(GPT_5_6_LUNA_MODEL_ID);
-    expect(resolved?.reasoningEffort).toBe("light");
+    expect(resolved.model.modelId).toBe(GPT_5_6_LUNA_MODEL_ID);
+    expect(resolved.reasoningEffort).toBe("light");
   });
 
-  it("routes the Complex stream to its first available candidate + effort", async () => {
-    const resolved = await getModelForStream(adminAuth, "auto_complex");
+  it("routes the Premium stream to its first available candidate + effort", async () => {
+    const resolved = await resolveStreamForAuth(adminAuth, "auto_complex");
 
-    expect(resolved).not.toBeNull();
-    expect(resolved?.model.modelId).toBe(
+    expect(resolved.fromPool).toBe(true);
+    expect(resolved.model.modelId).toBe(
       CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG.modelId
     );
-    expect(resolved?.reasoningEffort).toBe("high");
+    expect(resolved.reasoningEffort).toBe("high");
   });
 
-  it("keeps a cost-effective candidate in the Complex stream for cost_efficient-capped users", async () => {
+  it("keeps a Basic-tier candidate in the Premium stream for cost_efficient-capped users", async () => {
     const auth = await userAuthForTierCap("cost_efficient");
 
     // Every premium/balanced candidate is unavailable under a cost_efficient
-    // cap, so the stream must still resolve to its cost-effective floor rather
-    // than returning null and dropping out of the Complex stream entirely.
-    const resolved = await getModelForStream(auth, "auto_complex");
+    // cap, so the stream must still resolve to its Basic-tier floor rather
+    // than falling out of the Premium stream entirely.
+    const resolved = await resolveStreamForAuth(auth, "auto_complex");
 
-    expect(resolved).not.toBeNull();
-    expect(resolved?.model.modelId).toBe(
+    expect(resolved.fromPool).toBe(true);
+    expect(resolved.model.modelId).toBe(
       CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG.modelId
     );
-    expect(resolved?.reasoningEffort).toBe("high");
+    expect(resolved.reasoningEffort).toBe("high");
   });
 
   it("only ever resolves to a candidate declared in the stream", async () => {
     for (const streamId of ["auto", "auto_fast", "auto_complex"] as const) {
-      const resolved = await getModelForStream(adminAuth, streamId);
+      const resolved = await resolveStreamForAuth(adminAuth, streamId);
       const candidate = MODEL_STREAMS[streamId].find(
         (c) =>
-          c.modelId === resolved?.model.modelId &&
-          c.reasoningEffort === resolved?.reasoningEffort
+          c.modelId === resolved.model.modelId &&
+          c.reasoningEffort === resolved.reasoningEffort
       );
       expect(candidate).toBeDefined();
     }
+  });
+
+  it("falls back to a preferred large model when no candidate is available", async () => {
+    const models = await getEnabledModelsForAuth(adminAuth);
+    const resolved = resolveStreamModel(
+      // Nothing is selectable, so no stream candidate can match.
+      models.map((m) => ({ ...m, isSelectable: false })),
+      "auto_complex"
+    );
+
+    expect(resolved.fromPool).toBe(false);
+    expect(resolved.model.isSelectable).toBe(true);
   });
 });
