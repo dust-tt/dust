@@ -320,6 +320,13 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 7.5,
     cache_read_input_tokens: 0.15,
   },
+  // https://ai.google.dev/gemini-api/docs/pricing (2026-08-14): same standard
+  // rates as 3.6 Flash.
+  "gemini-3.7-flash": {
+    input: 1.5,
+    output: 7.5,
+    cache_read_input_tokens: 0.15,
+  },
   "gemini-2.5-flash": {
     input: 0.15,
     output: 0.6,

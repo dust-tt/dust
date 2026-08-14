@@ -336,6 +336,11 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     medium: "balanced",
     high: "premium",
   },
+  "gemini-3.7-flash": {
+    light: "balanced",
+    medium: "balanced",
+    high: "premium",
+  },
   "deepseek-chat": {
     none: "cost_efficient",
   },

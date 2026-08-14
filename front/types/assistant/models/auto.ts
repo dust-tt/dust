@@ -6,7 +6,7 @@ import {
 import {
   GEMINI_3_1_FLASH_LITE_MODEL_ID,
   GEMINI_3_1_PRO_MODEL_ID,
-  GEMINI_3_6_FLASH_MODEL_ID,
+  GEMINI_3_7_FLASH_MODEL_ID,
 } from "./google_ai_studio";
 import {
   MISTRAL_LARGE_MODEL_ID,
@@ -124,7 +124,7 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       },
       {
         providerId: "google_ai_studio",
-        modelId: GEMINI_3_6_FLASH_MODEL_ID,
+        modelId: GEMINI_3_7_FLASH_MODEL_ID,
         reasoningEffort: "light",
       },
       {
