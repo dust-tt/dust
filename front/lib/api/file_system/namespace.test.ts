@@ -4,6 +4,8 @@ import { FileSystemScope } from "@app/lib/api/file_system/namespace_scope";
 import type { FileSystemNodeType } from "@app/lib/api/file_system/namespace_types";
 import { FILE_SYSTEM_CONTENT_MAX_BYTES } from "@app/lib/api/file_system/namespace_types";
 import type { Authenticator } from "@app/lib/auth";
+import { FileSystemBlobCleanupResource } from "@app/lib/resources/file_system_blob_cleanup_resource";
+import { FileSystemNodeResource } from "@app/lib/resources/file_system_node_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -74,6 +76,34 @@ async function createEmptyFile(
     name,
     kind: "file",
     mode: 0o644,
+  });
+  if (createdRes.isErr()) {
+    throw createdRes.error;
+  }
+
+  return requireNode(createdRes.value.node ?? undefined);
+}
+
+async function createNode(
+  auth: Authenticator,
+  scope: FileSystemScope,
+  {
+    parentId,
+    name,
+    kind,
+  }: {
+    parentId: number;
+    name: string;
+    kind: "directory" | "file";
+  }
+): Promise<FileSystemNodeType> {
+  const createdRes = await applyFileSystemOperation(auth, scope, {
+    operation: "create",
+    requestId: randomUUID(),
+    parentId,
+    name,
+    kind,
+    mode: kind === "directory" ? 0o755 : 0o644,
   });
   if (createdRes.isErr()) {
     throw createdRes.error;
@@ -376,6 +406,535 @@ describe("filesystem namespace creation", () => {
     expect(fileAsParent.isErr() && fileAsParent.error.code).toBe("not_found");
   });
 });
+
+describe("filesystem namespace rename", () => {
+  it("renames a file without changing its identity and replays the same request", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const scope = readableScope(`conversation-${randomUUID()}`);
+    const initializedRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      { operation: "initialize" }
+    );
+    if (initializedRes.isErr()) {
+      throw initializedRes.error;
+    }
+    const root = requireNode(initializedRes.value.roots?.[0]);
+    const source = await createNode(authenticator, scope, {
+      parentId: root.id,
+      name: "before.txt",
+      kind: "file",
+    });
+    const request = {
+      operation: "rename" as const,
+      requestId: randomUUID(),
+      sourceParentId: root.id,
+      sourceName: source.name,
+      destinationParentId: root.id,
+      destinationName: "after.txt",
+    };
+
+    const renamedRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      request
+    );
+    const retriedRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      request
+    );
+    const oldPathRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "lookup",
+      parentId: root.id,
+      name: source.name,
+    });
+    const newPathRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "lookup",
+      parentId: root.id,
+      name: request.destinationName,
+    });
+    const noOpRes = await applyFileSystemOperation(authenticator, scope, {
+      ...request,
+      requestId: randomUUID(),
+      sourceName: request.destinationName,
+    });
+    const reusedRequestIdRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      { ...request, destinationName: "somewhere-else.txt" }
+    );
+    const replacement = await createNode(authenticator, scope, {
+      parentId: root.id,
+      name: "replacement.txt",
+      kind: "file",
+    });
+    const replacementRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      {
+        operation: "rename",
+        requestId: randomUUID(),
+        sourceParentId: root.id,
+        sourceName: replacement.name,
+        destinationParentId: root.id,
+        destinationName: request.destinationName,
+      }
+    );
+    const replayedAfterReplacementRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      request
+    );
+    const replacedSourceRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      { operation: "getAttr", nodeId: source.id }
+    );
+
+    expect(renamedRes.isOk() && renamedRes.value.node).toMatchObject({
+      id: source.id,
+      parentId: root.id,
+      name: request.destinationName,
+    });
+    expect(retriedRes.isOk() && retriedRes.value.node).toMatchObject({
+      id: source.id,
+      name: request.destinationName,
+    });
+    expect(oldPathRes.isOk() && oldPathRes.value.node).toBeNull();
+    expect(newPathRes.isOk() && newPathRes.value.node?.id).toBe(source.id);
+    expect(noOpRes.isOk() && noOpRes.value.node?.id).toBe(source.id);
+    expect(reusedRequestIdRes.isErr() && reusedRequestIdRes.error.code).toBe(
+      "invalid_operation"
+    );
+    expect(replacementRes.isOk() && replacementRes.value.node?.id).toBe(
+      replacement.id
+    );
+    expect(replacedSourceRes.isErr() && replacedSourceRes.error.code).toBe(
+      "not_found"
+    );
+    expect(
+      replayedAfterReplacementRes.isOk() &&
+        replayedAfterReplacementRes.value.node
+    ).toEqual(renamedRes.isOk() ? renamedRes.value.node : undefined);
+  });
+
+  it("moves a directory tree between conversation and Pod roots", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const conversationId = `conversation-${randomUUID()}`;
+    const podId = `pod-${randomUUID()}`;
+    const scope = readableScope(conversationId, podId);
+    const initializedRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      { operation: "initialize" }
+    );
+    if (initializedRes.isErr()) {
+      throw initializedRes.error;
+    }
+    const conversationRoot = requireNode(initializedRes.value.roots?.[0]);
+    const podRoot = requireNode(initializedRes.value.roots?.[1]);
+    const directory = await createNode(authenticator, scope, {
+      parentId: conversationRoot.id,
+      name: "project",
+      kind: "directory",
+    });
+    const nestedDirectory = await createNode(authenticator, scope, {
+      parentId: directory.id,
+      name: "src",
+      kind: "directory",
+    });
+    const file = await createNode(authenticator, scope, {
+      parentId: nestedDirectory.id,
+      name: "index.ts",
+      kind: "file",
+    });
+
+    const movedRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "rename",
+      requestId: randomUUID(),
+      sourceParentId: conversationRoot.id,
+      sourceName: directory.name,
+      destinationParentId: podRoot.id,
+      destinationName: directory.name,
+    });
+    const movedDirectoryRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      { operation: "getAttr", nodeId: directory.id }
+    );
+    const movedNestedDirectoryRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      { operation: "getAttr", nodeId: nestedDirectory.id }
+    );
+    const movedFileRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "getAttr",
+      nodeId: file.id,
+    });
+    const oldScopeRes = await applyFileSystemOperation(
+      authenticator,
+      readableScope(conversationId),
+      { operation: "getAttr", nodeId: file.id }
+    );
+
+    expect(movedRes.isOk() && movedRes.value.node).toMatchObject({
+      id: directory.id,
+      parentId: podRoot.id,
+      rootKind: "pod",
+      rootId: podId,
+    });
+    for (const nodeRes of [
+      movedDirectoryRes,
+      movedNestedDirectoryRes,
+      movedFileRes,
+    ]) {
+      expect(nodeRes.isOk() && nodeRes.value.node).toMatchObject({
+        rootKind: "pod",
+        rootId: podId,
+      });
+    }
+    expect(
+      movedNestedDirectoryRes.isOk() && movedNestedDirectoryRes.value.node
+    ).toMatchObject({ id: nestedDirectory.id });
+    expect(movedFileRes.isOk() && movedFileRes.value.node).toMatchObject({
+      id: file.id,
+      blobId: file.blobId,
+      contentRevision: file.contentRevision,
+    });
+    expect(oldScopeRes.isErr() && oldScopeRes.error.code).toBe("not_found");
+  });
+
+  it("atomically replaces a file and retires the replaced content", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const scope = readableScope(`conversation-${randomUUID()}`);
+    const initializedRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      { operation: "initialize" }
+    );
+    if (initializedRes.isErr()) {
+      throw initializedRes.error;
+    }
+    const root = requireNode(initializedRes.value.roots?.[0]);
+    const source = await createNode(authenticator, scope, {
+      parentId: root.id,
+      name: "temporary.txt",
+      kind: "file",
+    });
+    const destination = await createNode(authenticator, scope, {
+      parentId: root.id,
+      name: "document.txt",
+      kind: "file",
+    });
+    const preparedRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "prepareContentUpload",
+      nodeId: destination.id,
+      expectedBlobId: null,
+      expectedSizeBytes: 14,
+      contentType: "text/plain",
+    });
+    if (preparedRes.isErr() || !preparedRes.value.upload) {
+      throw new Error("Failed to prepare destination content.");
+    }
+    const committedRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "commitContentUpload",
+      nodeId: destination.id,
+      expectedBlobId: null,
+      blobId: preparedRes.value.upload.blobId,
+      expectedSizeBytes: preparedRes.value.upload.expectedSizeBytes,
+      contentType: preparedRes.value.upload.contentType,
+    });
+    if (committedRes.isErr() || !committedRes.value.node?.blobId) {
+      throw new Error("Failed to commit destination content.");
+    }
+    const destinationResource = await FileSystemNodeResource.fetchById(
+      authenticator,
+      scope,
+      destination.id
+    );
+    if (!destinationResource) {
+      throw new Error("Missing destination resource.");
+    }
+    const replacedBlobId = committedRes.value.node.blobId;
+
+    const renamedRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "rename",
+      requestId: randomUUID(),
+      sourceParentId: root.id,
+      sourceName: source.name,
+      destinationParentId: root.id,
+      destinationName: destination.name,
+    });
+    const replacedNodeRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      { operation: "getAttr", nodeId: destination.id }
+    );
+    const cleanup = await FileSystemBlobCleanupResource.fetchForBlob(
+      authenticator,
+      destinationResource,
+      { blobId: replacedBlobId }
+    );
+
+    expect(renamedRes.isOk() && renamedRes.value.node).toMatchObject({
+      id: source.id,
+      name: destination.name,
+      blobId: source.blobId,
+    });
+    expect(replacedNodeRes.isErr() && replacedNodeRes.error.code).toBe(
+      "not_found"
+    );
+    expect(cleanup).toMatchObject({
+      nodeId: destination.id,
+      blobId: replacedBlobId,
+    });
+  });
+
+  it("replaces an empty directory with the source directory", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const scope = readableScope(`conversation-${randomUUID()}`);
+    const initializedRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      { operation: "initialize" }
+    );
+    if (initializedRes.isErr()) {
+      throw initializedRes.error;
+    }
+    const root = requireNode(initializedRes.value.roots?.[0]);
+    const source = await createNode(authenticator, scope, {
+      parentId: root.id,
+      name: "source",
+      kind: "directory",
+    });
+    const destination = await createNode(authenticator, scope, {
+      parentId: root.id,
+      name: "destination",
+      kind: "directory",
+    });
+
+    const renamedRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "rename",
+      requestId: randomUUID(),
+      sourceParentId: root.id,
+      sourceName: source.name,
+      destinationParentId: root.id,
+      destinationName: destination.name,
+    });
+    const replacedNodeRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      { operation: "getAttr", nodeId: destination.id }
+    );
+
+    expect(renamedRes.isOk() && renamedRes.value.node).toMatchObject({
+      id: source.id,
+      name: destination.name,
+    });
+    expect(replacedNodeRes.isErr() && replacedNodeRes.error.code).toBe(
+      "not_found"
+    );
+  });
+
+  it("rejects directory cycles and incompatible replacements", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const scope = readableScope(`conversation-${randomUUID()}`);
+    const initializedRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      { operation: "initialize" }
+    );
+    if (initializedRes.isErr()) {
+      throw initializedRes.error;
+    }
+    const root = requireNode(initializedRes.value.roots?.[0]);
+    const directory = await createNode(authenticator, scope, {
+      parentId: root.id,
+      name: "directory",
+      kind: "directory",
+    });
+    const childDirectory = await createNode(authenticator, scope, {
+      parentId: directory.id,
+      name: "child",
+      kind: "directory",
+    });
+    await createNode(authenticator, scope, {
+      parentId: childDirectory.id,
+      name: "nested.txt",
+      kind: "file",
+    });
+    const file = await createNode(authenticator, scope, {
+      parentId: root.id,
+      name: "file.txt",
+      kind: "file",
+    });
+    const nonEmptyDestination = await createNode(authenticator, scope, {
+      parentId: root.id,
+      name: "destination",
+      kind: "directory",
+    });
+    await createNode(authenticator, scope, {
+      parentId: nonEmptyDestination.id,
+      name: "existing.txt",
+      kind: "file",
+    });
+
+    const cycleRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "rename",
+      requestId: randomUUID(),
+      sourceParentId: root.id,
+      sourceName: directory.name,
+      destinationParentId: childDirectory.id,
+      destinationName: directory.name,
+    });
+    const fileOverDirectoryRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      {
+        operation: "rename",
+        requestId: randomUUID(),
+        sourceParentId: root.id,
+        sourceName: file.name,
+        destinationParentId: root.id,
+        destinationName: nonEmptyDestination.name,
+      }
+    );
+    const directoryOverFileRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      {
+        operation: "rename",
+        requestId: randomUUID(),
+        sourceParentId: root.id,
+        sourceName: directory.name,
+        destinationParentId: root.id,
+        destinationName: file.name,
+      }
+    );
+    const nonEmptyDirectoryRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      {
+        operation: "rename",
+        requestId: randomUUID(),
+        sourceParentId: directory.id,
+        sourceName: childDirectory.name,
+        destinationParentId: root.id,
+        destinationName: nonEmptyDestination.name,
+      }
+    );
+    const directoryLookupRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      { operation: "lookup", parentId: root.id, name: directory.name }
+    );
+    const fileLookupRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "lookup",
+      parentId: root.id,
+      name: file.name,
+    });
+    const destinationLookupRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      {
+        operation: "lookup",
+        parentId: root.id,
+        name: nonEmptyDestination.name,
+      }
+    );
+
+    expect(cycleRes.isErr() && cycleRes.error.code).toBe("invalid_operation");
+    expect(
+      fileOverDirectoryRes.isErr() && fileOverDirectoryRes.error.code
+    ).toBe("is_directory");
+    expect(
+      directoryOverFileRes.isErr() && directoryOverFileRes.error.code
+    ).toBe("not_directory");
+    expect(
+      nonEmptyDirectoryRes.isErr() && nonEmptyDirectoryRes.error.code
+    ).toBe("not_empty");
+    expect(directoryLookupRes.isOk() && directoryLookupRes.value.node?.id).toBe(
+      directory.id
+    );
+    expect(fileLookupRes.isOk() && fileLookupRes.value.node?.id).toBe(file.id);
+    expect(
+      destinationLookupRes.isOk() && destinationLookupRes.value.node?.id
+    ).toBe(nonEmptyDestination.id);
+  });
+
+  it("requires write access to the destination root", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const conversationId = `conversation-${randomUUID()}`;
+    const podId = `pod-${randomUUID()}`;
+    const writableScope = readableScope(conversationId, podId);
+    const initializedRes = await applyFileSystemOperation(
+      authenticator,
+      writableScope,
+      { operation: "initialize" }
+    );
+    if (initializedRes.isErr()) {
+      throw initializedRes.error;
+    }
+    const conversationRoot = requireNode(initializedRes.value.roots?.[0]);
+    const podRoot = requireNode(initializedRes.value.roots?.[1]);
+    const source = await createNode(authenticator, writableScope, {
+      parentId: conversationRoot.id,
+      name: "private.txt",
+      kind: "file",
+    });
+    const destinationReadOnlyScope = new FileSystemScope([
+      {
+        kind: "conversation",
+        id: conversationId,
+        name: `conversation-${conversationId}`,
+        permissions: { canRead: true, canWrite: true },
+      },
+      {
+        kind: "pod",
+        id: podId,
+        name: `pod-${podId}`,
+        permissions: { canRead: true, canWrite: false },
+      },
+    ]);
+
+    const deniedRes = await applyFileSystemOperation(
+      authenticator,
+      destinationReadOnlyScope,
+      {
+        operation: "rename",
+        requestId: randomUUID(),
+        sourceParentId: conversationRoot.id,
+        sourceName: source.name,
+        destinationParentId: podRoot.id,
+        destinationName: source.name,
+      }
+    );
+    const sourceLookupRes = await applyFileSystemOperation(
+      authenticator,
+      writableScope,
+      {
+        operation: "lookup",
+        parentId: conversationRoot.id,
+        name: source.name,
+      }
+    );
+    const destinationLookupRes = await applyFileSystemOperation(
+      authenticator,
+      writableScope,
+      { operation: "lookup", parentId: podRoot.id, name: source.name }
+    );
+
+    expect(deniedRes.isErr() && deniedRes.error.code).toBe("unauthorized");
+    expect(sourceLookupRes.isOk() && sourceLookupRes.value.node?.id).toBe(
+      source.id
+    );
+    expect(
+      destinationLookupRes.isOk() && destinationLookupRes.value.node
+    ).toBeNull();
+  });
+});
+
 describe("filesystem content", () => {
   it("commits one immutable blob and returns it for reads", async () => {
     const { authenticator, workspace } = await createResourceTest({

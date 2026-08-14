@@ -25,6 +25,7 @@ import {
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileSystemBlobCleanupResource } from "@app/lib/resources/file_system_blob_cleanup_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { FileSystemNodeModel } from "@app/lib/resources/storage/models/file_system_node";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -40,13 +41,27 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, Transaction } from "sequelize";
-import { Op } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 import { z } from "zod";
 
 type ReadDirRequest = Extract<FileSystemOperation, { operation: "readDir" }>;
 type ReadDirOptions = Pick<ReadDirRequest, "afterName" | "limit">;
 type CreateRequest = Extract<FileSystemOperation, { operation: "create" }>;
 type CreateOptions = Pick<CreateRequest, "kind" | "mode" | "name">;
+type RenameRequest = Extract<FileSystemOperation, { operation: "rename" }>;
+type RenameChildOptions = Pick<
+  RenameRequest,
+  "destinationName" | "sourceName"
+> & {
+  destinationParent: FileSystemNodeResource;
+  transaction: Transaction;
+};
+type MoveOptions = Pick<
+  RenameChildOptions,
+  "destinationName" | "transaction"
+> & {
+  destinationParent: FileSystemNodeResource;
+};
 type PrepareContentUploadRequest = Extract<
   FileSystemOperation,
   { operation: "prepareContentUpload" }
@@ -216,6 +231,29 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     return node ?? null;
   }
 
+  private static validateName(
+    name: string
+  ): Result<undefined, FileSystemOperationError> {
+    const nameLengthBytes = Buffer.byteLength(name, "utf8");
+    if (
+      name === "." ||
+      name === ".." ||
+      name.includes("/") ||
+      name.includes("\0") ||
+      nameLengthBytes === 0 ||
+      nameLengthBytes > FILE_SYSTEM_NAME_MAX_BYTES
+    ) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          `A file name must be between 1 and ${FILE_SYSTEM_NAME_MAX_BYTES} bytes and cannot contain a slash or null byte.`
+        )
+      );
+    }
+
+    return new Ok(undefined);
+  }
+
   private isReadableBy(auth: Authenticator, scope: FileSystemScope): boolean {
     return (
       this.workspaceId === auth.getNonNullableWorkspace().id &&
@@ -234,7 +272,10 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     auth: Authenticator,
     scope: FileSystemScope,
     name: string,
-    transaction?: Transaction
+    {
+      transaction,
+      forUpdate = false,
+    }: { transaction?: Transaction; forUpdate?: boolean } = {}
   ): Promise<FileSystemNodeResource | null> {
     const [child] = await FileSystemNodeResource.baseFetch(
       auth,
@@ -243,10 +284,53 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
         where: { parentId: this.id, name },
         limit: 1,
       },
-      { transaction }
+      { transaction, forUpdate }
     );
 
     return child ?? null;
+  }
+
+  private checkWritableDirectory(
+    auth: Authenticator,
+    scope: FileSystemScope,
+    { description }: { description: string }
+  ): Result<undefined, FileSystemOperationError> {
+    if (!this.isReadableBy(auth, scope) || this.kind !== "directory") {
+      return new Err(
+        new FileSystemOperationError(
+          "not_found",
+          `The ${description} directory was not found.`
+        )
+      );
+    }
+    if (!this.isWritableBy(auth, scope)) {
+      return new Err(
+        new FileSystemOperationError(
+          "unauthorized",
+          `You do not have write access to the ${description} directory.`
+        )
+      );
+    }
+
+    return new Ok(undefined);
+  }
+
+  private async fetchChildForUpdate(
+    auth: Authenticator,
+    scope: FileSystemScope,
+    { name, transaction }: { name: string; transaction: Transaction }
+  ): Promise<Result<FileSystemNodeResource | null, FileSystemOperationError>> {
+    const nameRes = FileSystemNodeResource.validateName(name);
+    if (nameRes.isErr()) {
+      return nameRes;
+    }
+
+    return new Ok(
+      await this.fetchChildByName(auth, scope, name, {
+        transaction,
+        forUpdate: true,
+      })
+    );
   }
 
   async createChild(
@@ -255,36 +339,15 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     request: CreateOptions,
     transaction: Transaction
   ): Promise<Result<FileSystemNodeResource, FileSystemOperationError>> {
-    if (!this.isReadableBy(auth, scope) || this.kind !== "directory") {
-      return new Err(
-        new FileSystemOperationError(
-          "not_found",
-          "The parent directory was not found."
-        )
-      );
+    const accessRes = this.checkWritableDirectory(auth, scope, {
+      description: "parent",
+    });
+    if (accessRes.isErr()) {
+      return accessRes;
     }
-    if (!this.isWritableBy(auth, scope)) {
-      return new Err(
-        new FileSystemOperationError(
-          "unauthorized",
-          "You do not have write access to this directory."
-        )
-      );
-    }
-    if (
-      request.name === "." ||
-      request.name === ".." ||
-      request.name.includes("/") ||
-      request.name.includes("\0") ||
-      Buffer.byteLength(request.name, "utf8") === 0 ||
-      Buffer.byteLength(request.name, "utf8") > FILE_SYSTEM_NAME_MAX_BYTES
-    ) {
-      return new Err(
-        new FileSystemOperationError(
-          "invalid_operation",
-          `A file name must be between 1 and ${FILE_SYSTEM_NAME_MAX_BYTES} bytes and cannot contain a slash or null byte.`
-        )
-      );
+    const nameRes = FileSystemNodeResource.validateName(request.name);
+    if (nameRes.isErr()) {
+      return nameRes;
     }
     if (
       !Number.isInteger(request.mode) ||
@@ -299,12 +362,9 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
       );
     }
 
-    const existing = await this.fetchChildByName(
-      auth,
-      scope,
-      request.name,
-      transaction
-    );
+    const existing = await this.fetchChildByName(auth, scope, request.name, {
+      transaction,
+    });
     if (existing) {
       return new Err(
         new FileSystemOperationError(
@@ -427,6 +487,257 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
       nextAfterName:
         nodes.length > options.limit ? (page.at(-1)?.name ?? null) : null,
     });
+  }
+
+  private async isAncestorOf(
+    possibleDescendant: FileSystemNodeResource,
+    transaction: Transaction
+  ): Promise<boolean> {
+    // Deliberate recursive CTE: the adjacency-list model only stores parentId,
+    // so preventing a directory cycle requires walking toward the root. This
+    // is O(directory depth), not O(subtree size). This is one of the few places
+    // where recursive SQL is allowed; do not reuse it for ordinary reads.
+    // biome-ignore lint/plugin/noRawSql: Recursive tree traversal has no Sequelize equivalent.
+    const rows = await frontSequelize.query<{ found: number }>(
+      `
+        WITH RECURSIVE ancestors AS (
+          SELECT "id", "parentId"
+          FROM "file_system_nodes"
+          WHERE "workspaceId" = :workspaceId AND "id" = :nodeId
+
+          UNION
+
+          SELECT parent."id", parent."parentId"
+          FROM "file_system_nodes" parent
+          JOIN ancestors child ON parent."id" = child."parentId"
+          WHERE parent."workspaceId" = :workspaceId
+        )
+        SELECT 1 AS "found"
+        FROM ancestors
+        WHERE "id" = :ancestorId
+        LIMIT 1
+      `,
+      {
+        type: QueryTypes.SELECT,
+        transaction,
+        replacements: {
+          workspaceId: this.workspaceId,
+          nodeId: possibleDescendant.id,
+          ancestorId: this.id,
+        },
+      }
+    );
+
+    return rows.length > 0;
+  }
+
+  private async isEmptyDirectory(transaction: Transaction): Promise<boolean> {
+    if (this.kind !== "directory") {
+      return true;
+    }
+
+    // Check the tree structure directly. A child with stale cached root fields
+    // must still keep this directory from being replaced and cascade-deleted.
+    const child = await this.model.findOne({
+      attributes: ["id"],
+      where: { workspaceId: this.workspaceId, parentId: this.id },
+      transaction,
+    });
+    return child === null;
+  }
+
+  private async destroyReplacedNode(
+    auth: Authenticator,
+    transaction: Transaction
+  ): Promise<void> {
+    if (this.blobId !== null) {
+      await FileSystemBlobCleanupResource.retireBlob(auth, this, {
+        blobId: this.blobId,
+        transaction,
+      });
+    }
+
+    const deletedCount = await this.model.destroy({
+      where: { workspaceId: this.workspaceId, id: this.id },
+      transaction,
+    });
+    if (deletedCount !== 1) {
+      throw new Error(`Failed to replace filesystem node ${this.id}.`);
+    }
+  }
+
+  private async moveDescendantsToRoot(
+    destinationParent: FileSystemNodeResource,
+    transaction: Transaction
+  ): Promise<void> {
+    // Deliberate recursive CTE: rootKind/rootId are copied onto each node so
+    // ordinary authorization stays a simple indexed lookup. A cross-root move
+    // therefore has to update the whole subtree. This is O(descendants) and
+    // runs under the exclusive namespace lock. If these moves become frequent
+    // or trees become large, change the data model instead of adding more
+    // recursive writes or tuning this query into a wider tree API.
+    // Do not touch updatedAt: moving an ancestor did not modify child contents.
+    // biome-ignore lint/plugin/noRawSql: Recursive tree updates have no Sequelize equivalent.
+    await frontSequelize.query(
+      `
+        WITH RECURSIVE subtree AS (
+          SELECT "id"
+          FROM "file_system_nodes"
+          WHERE "workspaceId" = :workspaceId AND "id" = :sourceNodeId
+
+          UNION
+
+          SELECT child."id"
+          FROM "file_system_nodes" child
+          JOIN subtree parent ON child."parentId" = parent."id"
+          WHERE child."workspaceId" = :workspaceId
+        )
+        UPDATE "file_system_nodes"
+        SET "rootKind" = :rootKind, "rootId" = :rootId
+        WHERE "workspaceId" = :workspaceId
+          AND "id" IN (SELECT "id" FROM subtree)
+          AND "id" <> :sourceNodeId
+      `,
+      {
+        transaction,
+        replacements: {
+          workspaceId: this.workspaceId,
+          sourceNodeId: this.id,
+          rootKind: destinationParent.rootKind,
+          rootId: destinationParent.rootId,
+        },
+      }
+    );
+  }
+
+  private async moveTo(
+    auth: Authenticator,
+    scope: FileSystemScope,
+    options: MoveOptions
+  ): Promise<Result<FileSystemNodeResource, FileSystemOperationError>> {
+    const nameRes = FileSystemNodeResource.validateName(
+      options.destinationName
+    );
+    if (nameRes.isErr()) {
+      return nameRes;
+    }
+
+    if (
+      this.parentId === options.destinationParent.id &&
+      this.name === options.destinationName
+    ) {
+      return new Ok(this);
+    }
+
+    if (
+      this.kind === "directory" &&
+      (await this.isAncestorOf(options.destinationParent, options.transaction))
+    ) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "A directory cannot be moved inside itself."
+        )
+      );
+    }
+
+    const destination = await options.destinationParent.fetchChildByName(
+      auth,
+      scope,
+      options.destinationName,
+      { transaction: options.transaction, forUpdate: true }
+    );
+    if (destination?.kind === "directory" && this.kind === "file") {
+      return new Err(
+        new FileSystemOperationError(
+          "is_directory",
+          "A file cannot replace a directory."
+        )
+      );
+    }
+    if (destination?.kind === "file" && this.kind === "directory") {
+      return new Err(
+        new FileSystemOperationError(
+          "not_directory",
+          "A directory cannot replace a file."
+        )
+      );
+    }
+    if (
+      destination &&
+      !(await destination.isEmptyDirectory(options.transaction))
+    ) {
+      return new Err(
+        new FileSystemOperationError(
+          "not_empty",
+          "The destination directory is not empty."
+        )
+      );
+    }
+
+    if (destination) {
+      await destination.destroyReplacedNode(auth, options.transaction);
+    }
+
+    const changesRoot =
+      this.rootKind !== options.destinationParent.rootKind ||
+      this.rootId !== options.destinationParent.rootId;
+    if (this.kind === "directory" && changesRoot) {
+      await this.moveDescendantsToRoot(
+        options.destinationParent,
+        options.transaction
+      );
+    }
+
+    await this.update(
+      {
+        parentId: options.destinationParent.id,
+        name: options.destinationName,
+        rootKind: options.destinationParent.rootKind,
+        rootId: options.destinationParent.rootId,
+      },
+      options.transaction
+    );
+
+    return new Ok(this);
+  }
+
+  async renameChild(
+    auth: Authenticator,
+    scope: FileSystemScope,
+    options: RenameChildOptions
+  ): Promise<Result<FileSystemNodeResource, FileSystemOperationError>> {
+    const sourceAccessRes = this.checkWritableDirectory(auth, scope, {
+      description: "source",
+    });
+    if (sourceAccessRes.isErr()) {
+      return sourceAccessRes;
+    }
+    const destinationAccessRes =
+      options.destinationParent.checkWritableDirectory(auth, scope, {
+        description: "destination",
+      });
+    if (destinationAccessRes.isErr()) {
+      return destinationAccessRes;
+    }
+
+    const sourceRes = await this.fetchChildForUpdate(auth, scope, {
+      name: options.sourceName,
+      transaction: options.transaction,
+    });
+    if (sourceRes.isErr()) {
+      return sourceRes;
+    }
+    if (!sourceRes.value) {
+      return new Err(
+        new FileSystemOperationError(
+          "not_found",
+          `${options.sourceName} was not found.`
+        )
+      );
+    }
+
+    return sourceRes.value.moveTo(auth, scope, options);
   }
 
   private checkContentAccess(

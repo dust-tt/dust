@@ -1,6 +1,16 @@
 import type { FileSystemRootKind } from "@app/lib/api/file_system/namespace_scope";
+import { z } from "zod";
 
 export type FileSystemNodeKind = "directory" | "file";
+
+const FileSystemRootKinds = [
+  "conversation",
+  "pod",
+] as const satisfies readonly FileSystemRootKind[];
+const FileSystemNodeKinds = [
+  "directory",
+  "file",
+] as const satisfies readonly FileSystemNodeKind[];
 
 export const FILE_SYSTEM_READ_DIR_PAGE_SIZE_LIMITS = {
   min: 1,
@@ -24,21 +34,27 @@ export const FILE_SYSTEM_CONTENT_TYPE_MAX_LENGTH = 255;
 export const FILE_SYSTEM_CONTENT_MAX_BYTES = 350 * 1024 * 1024;
 
 /** The stable file or directory identity returned by the namespace. */
-export type FileSystemNodeType = {
-  id: number;
-  parentId: number | null;
-  rootKind: FileSystemRootKind;
-  rootId: string;
-  name: string;
-  kind: FileSystemNodeKind;
-  mode: number;
-  size: number;
-  contentType: string | null;
-  blobId: string | null;
-  contentRevision: number;
-  createdAtMs: number;
-  modifiedAtMs: number;
-};
+export const FileSystemNodeSchema = z.object({
+  id: z.number().int().positive(),
+  parentId: z.number().int().positive().nullable(),
+  rootKind: z.enum(FileSystemRootKinds),
+  rootId: z.string().min(1),
+  name: z.string(),
+  kind: z.enum(FileSystemNodeKinds),
+  mode: z
+    .number()
+    .int()
+    .min(FILE_SYSTEM_MODE_LIMITS.min)
+    .max(FILE_SYSTEM_MODE_LIMITS.max),
+  size: z.number().int().nonnegative(),
+  contentType: z.string().nullable(),
+  blobId: z.string().uuid().nullable(),
+  contentRevision: z.number().int().nonnegative(),
+  createdAtMs: z.number(),
+  modifiedAtMs: z.number(),
+});
+
+export type FileSystemNodeType = z.infer<typeof FileSystemNodeSchema>;
 
 export type FileSystemContentType = {
   blobId: string | null;
@@ -72,6 +88,14 @@ export type FileSystemOperation =
       name: string;
       kind: FileSystemNodeKind;
       mode: number;
+    }
+  | {
+      operation: "rename";
+      requestId: string;
+      sourceParentId: number;
+      sourceName: string;
+      destinationParentId: number;
+      destinationName: string;
     }
   | { operation: "getContent"; nodeId: number }
   | {
@@ -108,6 +132,9 @@ export type FileSystemOperationResponse = {
 export type FileSystemOperationErrorCode =
   | "already_exists"
   | "invalid_operation"
+  | "is_directory"
+  | "not_directory"
+  | "not_empty"
   | "not_found"
   | "stale"
   | "unauthorized";
