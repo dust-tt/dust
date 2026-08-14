@@ -28,6 +28,7 @@ import {
   Button,
   ChevronDown,
   ChevronUp,
+  cn,
   DataTable,
   DustLogoSquare,
   FilterFunnel01,
@@ -159,6 +160,51 @@ function AttributionTooltipCard({
   );
 }
 
+// Growth is undefined (not just zero) with no prior credits to grow from, so
+// callers must distinguish that case from an actual percentage.
+function growthPercent(
+  credits: number,
+  previousCredits: number | null
+): number | null {
+  return previousCredits && previousCredits > 0
+    ? ((credits - previousCredits) / previousCredits) * 100
+    : null;
+}
+
+function VsPrevCell({
+  credits,
+  previousCredits,
+}: {
+  credits: number;
+  previousCredits: number | null;
+}) {
+  const growth = growthPercent(credits, previousCredits);
+
+  if (growth === null) {
+    return (
+      <DataTable.CellContent className="w-full justify-end text-right">
+        <Tooltip
+          label="Not enough data to compute"
+          tooltipTriggerAsChild
+          trigger={<span className="text-sm text-muted-foreground">N.A</span>}
+        />
+      </DataTable.CellContent>
+    );
+  }
+
+  const sign = growth > 0 ? "+" : "";
+
+  return (
+    <DataTable.BasicCellContent
+      className={cn(
+        "justify-end text-right tabular-nums",
+        growth > 100 && "text-highlight-600"
+      )}
+      label={`${sign}${Math.round(growth)}%`}
+    />
+  );
+}
+
 function buildColumns({
   dimension,
   hasAvatar,
@@ -281,6 +327,17 @@ function buildColumns({
         <DataTable.BasicCellContent
           className="justify-end text-right tabular-nums"
           label={formatCredits(info.row.original.avgCredits)}
+        />
+      ),
+    },
+    {
+      id: "vsPrev",
+      header: "vs prev",
+      meta: { sizeRatio: 18, headerAlign: "right" },
+      cell: (info) => (
+        <VsPrevCell
+          credits={info.row.original.credits}
+          previousCredits={info.row.original.previousCredits}
         />
       ),
     },

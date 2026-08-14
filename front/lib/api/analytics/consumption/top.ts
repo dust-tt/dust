@@ -1,6 +1,7 @@
 import { listConsumptionFacetCatalogDimension } from "@app/lib/api/analytics/consumption/facet_catalog";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import { previousConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type {
   ConsumptionScopeDimension,
   ConsumptionScopeFilter,
@@ -31,6 +32,10 @@ type ConsumptionTopGroup = {
   credits: number;
   // Distinct messages, or tool invocations, per the ranking's unit.
   count: number;
+  // This key's credits over the equivalent window immediately preceding the
+  // period, for period-over-period growth. Null when the key had no
+  // consumption at all in that prior window.
+  previousCredits: number | null;
 };
 
 export type ConsumptionTopGroups = {
@@ -207,6 +212,73 @@ function buildConsumptionTopAggregations({
   };
 }
 
+type PreviousCreditsAggs = {
+  by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
+};
+
+// Sums credits per key over `previousPeriod`, scoped to exactly the keys
+// passed in (the current page's ranking) rather than re-ranking that window,
+// since we only need those keys' prior credits to compute their growth.
+async function fetchConsumptionPreviousCredits(
+  auth: Authenticator,
+  {
+    dimension,
+    previousPeriod,
+    filter,
+    keys,
+  }: {
+    dimension: ConsumptionScopeDimension;
+    previousPeriod: ConsumptionPeriod;
+    filter?: ConsumptionScopeFilter;
+    keys: string[];
+  }
+): Promise<Result<Map<string, number>, ElasticsearchError>> {
+  if (keys.length === 0) {
+    return new Ok(new Map());
+  }
+
+  const query = buildConsumptionScopeQuery({
+    auth,
+    startDate: previousPeriod.startDate,
+    endDate: previousPeriod.endDate,
+    filter,
+  });
+
+  const result = await searchConsumptionAnalytics<never, PreviousCreditsAggs>(
+    query,
+    {
+      aggregations: {
+        by_group: {
+          terms: {
+            field: CONSUMPTION_DIMENSION_FIELDS[dimension],
+            include: keys,
+            size: keys.length,
+          },
+          aggs: { [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } } },
+        },
+      },
+      size: 0,
+    }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const buckets = bucketsToArray<GroupBucket>(
+    result.value.aggregations?.by_group?.buckets
+  );
+
+  return new Ok(
+    new Map(
+      buckets.map((bucket) => [
+        String(bucket.key),
+        microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
+      ])
+    )
+  );
+}
+
 /**
  * Top `limit` keys of `dimension` by gross credits over the period, with the
  * count each one's average is denominated in.
@@ -268,9 +340,24 @@ export async function fetchConsumptionTopGroups(
     count: countFromBucket(bucket, CONSUMPTION_DIMENSION_UNIT[dimension]),
   }));
   const totalCount = Math.round(ranking?.[TOTAL_COUNT_AGG]?.value ?? 0);
+  const pagedGroups = rankedGroups.slice(offset, offset + limit);
+
+  const previousCreditsResult = await fetchConsumptionPreviousCredits(auth, {
+    dimension,
+    previousPeriod: previousConsumptionPeriod(period),
+    filter,
+    keys: pagedGroups.map((group) => group.key),
+  });
+  if (previousCreditsResult.isErr()) {
+    return previousCreditsResult;
+  }
+  const previousCreditsByKey = previousCreditsResult.value;
 
   return new Ok({
-    groups: rankedGroups.slice(offset, offset + limit),
+    groups: pagedGroups.map((group) => ({
+      ...group,
+      previousCredits: previousCreditsByKey.get(group.key) ?? null,
+    })),
     hasMore: totalCount > offset + limit,
     totalCount,
     totalCredits: microCreditsToCredits(
@@ -299,6 +386,7 @@ export type ResolvedConsumptionGroup = {
   credits: number;
   count: number;
   avgCredits: number;
+  previousCredits: number | null;
 };
 
 export async function resolveConsumptionGroupLabels(
@@ -323,5 +411,6 @@ export async function resolveConsumptionGroupLabels(
     credits: group.credits,
     count: group.count,
     avgCredits: avgCreditsPerUnit(group.credits, group.count),
+    previousCredits: group.previousCredits,
   }));
 }

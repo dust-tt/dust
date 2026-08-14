@@ -24,6 +24,7 @@ export type ConsumptionTopUserRow = {
   name: string;
   pictureUrl: string | null;
   credits: number;
+  previousCredits: number | null;
   messageCount: number;
   avgCreditsPerMessage: number;
 };
@@ -80,6 +81,7 @@ export async function fetchConsumptionTopUsers(
       name: row.name,
       pictureUrl: row.pictureUrl,
       credits: row.credits,
+      previousCredits: row.previousCredits,
       messageCount: row.count,
       avgCreditsPerMessage: row.avgCredits,
     })),

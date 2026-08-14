@@ -26,6 +26,7 @@ export type ConsumptionTopToolRow = {
   name: string;
   icon: string | null;
   credits: number;
+  previousCredits: number | null;
   invocationCount: number;
   avgCreditsPerInvocation: number;
 };
@@ -82,6 +83,7 @@ export async function fetchConsumptionTopTools(
       name: row.name,
       icon: row.icon ?? null,
       credits: row.credits,
+      previousCredits: row.previousCredits,
       invocationCount: row.count,
       avgCreditsPerInvocation: row.avgCredits,
     })),

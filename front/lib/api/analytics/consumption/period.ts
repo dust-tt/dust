@@ -68,6 +68,27 @@ async function resolveCycleBounds(
   };
 }
 
+// The window of the same length immediately preceding `period`, used to
+// compute period-over-period growth. Works for any period kind: for a
+// billing cycle this lands on the previous cycle only when cycles are all
+// the same length, which does not always hold, but it is the best
+// approximation without querying Metronome for the prior cycle's bounds.
+export function previousConsumptionPeriod(
+  period: ConsumptionPeriod
+): ConsumptionPeriod {
+  const durationMs =
+    moment.utc(period.endDate).valueOf() -
+    moment.utc(period.startDate).valueOf();
+
+  return {
+    startDate: moment
+      .utc(period.startDate)
+      .subtract(durationMs, "milliseconds")
+      .toISOString(),
+    endDate: period.startDate,
+  };
+}
+
 export async function resolveConsumptionPeriod(
   auth: Authenticator,
   input: ConsumptionPeriodInput

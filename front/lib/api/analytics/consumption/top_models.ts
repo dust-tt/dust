@@ -20,6 +20,7 @@ export type ConsumptionTopModelRow = {
   modelId: string;
   name: string;
   credits: number;
+  previousCredits: number | null;
   messageCount: number;
   avgCreditsPerMessage: number;
 };
@@ -75,6 +76,7 @@ export async function fetchConsumptionTopModels(
       modelId: row.key,
       name: row.name,
       credits: row.credits,
+      previousCredits: row.previousCredits,
       messageCount: row.count,
       avgCreditsPerMessage: row.avgCredits,
     })),

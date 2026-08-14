@@ -340,6 +340,7 @@ describe("ConsumptionAttributionTable", () => {
           modelDisplayName: null,
           credits: 100,
           avgCredits: 10,
+          previousCredits: null,
         },
       ],
       totalCredits: 100,
@@ -402,7 +403,12 @@ describe("ConsumptionAttributionTable", () => {
       />
     );
 
-    const tooltip = screen.getByRole("tooltip");
+    const tooltip = screen
+      .getAllByRole("tooltip")
+      .find((candidate) => within(candidate).queryByText("Research"));
+    if (!tooltip) {
+      throw new Error("Expected a tooltip with the skill's identity card");
+    }
     expect(within(tooltip).getByText("Research")).toBeInTheDocument();
     expect(
       within(tooltip).getByText("Researches a topic in depth.")

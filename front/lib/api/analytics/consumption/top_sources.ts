@@ -21,6 +21,7 @@ export type ConsumptionTopSourceRow = {
   source: string;
   name: string;
   credits: number;
+  previousCredits: number | null;
   messageCount: number;
   avgCreditsPerMessage: number;
 };
@@ -76,6 +77,7 @@ export async function fetchConsumptionTopSources(
       source: row.key,
       name: row.name,
       credits: row.credits,
+      previousCredits: row.previousCredits,
       messageCount: row.count,
       avgCreditsPerMessage: row.avgCredits,
     })),
