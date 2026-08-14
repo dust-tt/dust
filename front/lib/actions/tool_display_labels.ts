@@ -51,15 +51,14 @@ function getFilePathReadTarget(filePath: string): string {
     return `“${truncateQuery(filePath)}”`;
   }
 
-  if (!scopedPath.relPath.startsWith(`${TOOL_OUTPUTS_FOLDER_NAME}/`)) {
-    return `“${truncateQuery(scopedPath.relPath)}”`;
+  let displayName = scopedPath.relPath;
+  if (scopedPath.relPath.startsWith(`${TOOL_OUTPUTS_FOLDER_NAME}/`)) {
+    const fileName = scopedPath.relPath.split("/").at(-1) ?? scopedPath.relPath;
+
+    // Tool output filenames use a 13-digit timestamp prefix for ordering and uniqueness.
+    // Hide this storage detail from the user-facing label.
+    displayName = fileName.replace(/^\d{13}_/, "");
   }
-
-  const fileName = scopedPath.relPath.split("/").at(-1) ?? scopedPath.relPath;
-
-  // Tool output filenames use a 13-digit timestamp prefix for ordering and uniqueness.
-  // Hide this storage detail from the user-facing label.
-  const displayName = fileName.replace(/^\d{13}_/, "");
 
   switch (scopedPath.scope.kind) {
     case "canonical-conversation":

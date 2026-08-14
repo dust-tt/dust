@@ -179,7 +179,7 @@ describe("getToolDisplayLabels", () => {
   it.each([
     [
       "conversation-Fx7LXcp8VP/reports/quarterly-results.csv",
-      "“reports/quarterly-results.csv”",
+      "“reports/quarterly-results.csv” from conversation",
     ],
     [
       "conversation-Fx7LXcp8VP/.tool_outputs/1786717219013_github_get_pull_request.txt",
