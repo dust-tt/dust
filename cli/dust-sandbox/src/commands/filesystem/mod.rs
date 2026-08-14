@@ -2,3 +2,5 @@
 #![allow(dead_code)]
 
 mod client;
+mod inode;
+mod store;
