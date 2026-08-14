@@ -37,7 +37,7 @@ enum Commands {
     /// Mount the Dust filesystem
     Filesystem {
         #[command(subcommand)]
-        command: commands::filesystem::FilesystemCommand,
+        command: commands::FilesystemCommand,
     },
     /// Interact with MCP servers and tools
     Tools {
@@ -125,7 +125,7 @@ async fn run() -> anyhow::Result<()> {
             commands::db::DbCommand::List => commands::cmd_db_list()?,
             commands::db::DbCommand::Query { name } => commands::cmd_db_query(&name).await?,
         },
-        Commands::Filesystem { command } => commands::filesystem::run(command)?,
+        Commands::Filesystem { command } => commands::run_filesystem(command)?,
         Commands::Tools {
             json,
             args_json,

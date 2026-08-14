@@ -184,7 +184,8 @@ unmanaged or dead process.
 
 ### Rust daemon
 
-- `src/commands/filesystem/fuse.rs`: Linux FUSE calls and open handles.
+- `src/commands/filesystem/fuse.rs`: mount state and open handles.
+- `src/commands/filesystem/fuse/operations.rs`: Linux FUSE calls.
 - `src/commands/filesystem/store.rs`: local staged files and node/blob cache.
 - `src/commands/filesystem/client.rs`: scoped Front calls and signed GCS
   transfers.
