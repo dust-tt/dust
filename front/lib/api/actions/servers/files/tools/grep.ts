@@ -14,14 +14,13 @@ import {
   requireAgentLoopConversation,
   scopedPathsFromArgs,
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
-import type { GrepMatches } from "@app/lib/api/actions/servers/files/tools/grep_regex";
 import {
   collectGrepMatches,
   compileGrepPattern,
+  GrepLineTooLongError,
 } from "@app/lib/api/actions/servers/files/tools/grep_regex";
 import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export async function grepHandler(
   { path, pattern }: { path: string; pattern: string },
@@ -70,7 +69,7 @@ export async function grepHandler(
   if (regexResult.isErr()) {
     return new Err(
       new MCPError(
-        `Unsupported or invalid regular expression: \`${pattern}\`. Error: ${regexResult.error.message}`,
+        `Unsupported or invalid regular expression. Error: ${regexResult.error.message}`,
         { tracked: false }
       )
     );
@@ -88,34 +87,33 @@ export async function grepHandler(
     );
   }
 
-  let grepResult: GrepMatches;
-  try {
-    grepResult = await collectGrepMatches(readResult.value, regex, {
-      formatMatch: (line, lineNumber) => `${lineNumber}: ${line}`,
-      maxMatches: GREP_MATCHES_MAX,
-    });
-  } catch (err) {
+  const grepResult = await collectGrepMatches(readResult.value, regex, {
+    formatMatch: (line, lineNumber) => `${lineNumber}: ${line}`,
+    maxMatches: GREP_MATCHES_MAX,
+  });
+  if (grepResult.isErr()) {
     return new Err(
       new MCPError(
-        `Failed to search file \`${path}\`: ${normalizeError(err).message}`
+        `Failed to search file \`${path}\`: ${grepResult.error.message}`,
+        { tracked: !(grepResult.error instanceof GrepLineTooLongError) }
       )
     );
   }
 
-  const { matches, capped } = grepResult;
+  const { matches, capped } = grepResult.value;
 
   if (matches.length === 0) {
     return new Ok([
       {
         type: "text",
-        text: `No lines matched \`${pattern}\` in \`${path}\`.`,
+        text: `No lines matched the pattern in \`${path}\`.`,
       },
     ]);
   }
 
   let text = matches.join("\n");
   if (capped) {
-    text += `\n\n[Showing first ${GREP_MATCHES_MAX} matches. Refine your pattern or use \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` with a line offset to read a specific section.]`;
+    text += `\n\n[Showing ${matches.length} matching line${matches.length === 1 ? "" : "s"} within the output limit. Refine your pattern or use \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` with a line offset to read a specific section.]`;
   } else {
     text += `\n\n[${matches.length} match${matches.length === 1 ? "" : "es"} found]`;
   }

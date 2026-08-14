@@ -44,7 +44,6 @@ import { isImageContent, isTextContent } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 
@@ -217,36 +216,35 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
       if (regexResult.isErr()) {
         return new Err(
           new MCPError(
-            `Unsupported or invalid regular expression: \`${grep}\`. Error: ${regexResult.error.message}`,
+            `Unsupported or invalid regular expression. Error: ${regexResult.error.message}`,
             { tracked: false }
           )
         );
       }
 
-      try {
-        const result = await collectGrepMatches(
-          Readable.from([text]),
-          regexResult.value,
-          {
-            formatMatch: (line) => line,
-            maxMatches: Number.MAX_SAFE_INTEGER,
-          }
-        );
-        text = result.matches.join("\n");
-        if (result.capped) {
-          text += "\n\n[Results truncated to the grep output limit.]";
+      const grepResult = await collectGrepMatches(
+        Readable.from([text]),
+        regexResult.value,
+        {
+          formatMatch: (line) => line,
+          maxMatches: Number.MAX_SAFE_INTEGER,
         }
-      } catch (e) {
+      );
+      if (grepResult.isErr()) {
         return new Err(
           new MCPError(
-            `Failed to search file ${title}: ${normalizeError(e).message}`,
+            `Failed to search file ${title}: ${grepResult.error.message}`,
             { tracked: false }
           )
         );
       }
+      text = grepResult.value.matches.join("\n");
+      if (grepResult.value.capped) {
+        text += "\n\n[Results truncated to the grep output limit.]";
+      }
       if (text.length === 0) {
         return new Err(
-          new MCPError(`No lines matched the grep pattern: ${grep}.`, {
+          new MCPError(`No lines matched the grep pattern.`, {
             tracked: false,
           })
         );
