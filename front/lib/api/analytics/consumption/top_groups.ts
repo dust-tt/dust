@@ -41,11 +41,13 @@ export async function fetchConsumptionTopGroups(
     period,
     limit,
     offset = 0,
+    search,
     filter,
   }: {
     period: ConsumptionPeriod;
     limit: number;
     offset?: number;
+    search?: string;
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
@@ -54,6 +56,7 @@ export async function fetchConsumptionTopGroups(
     period,
     limit,
     offset,
+    search,
     filter,
   });
   if (result.isErr()) {

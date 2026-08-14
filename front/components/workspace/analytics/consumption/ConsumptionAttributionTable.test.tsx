@@ -47,8 +47,8 @@ vi.mock(
 const period = { kind: "days", days: 30 } as const;
 
 describe("ConsumptionAttributionTable", () => {
-  it("shows every page upfront and fetches the selected fixed-size page", async () => {
-    const rows = Array.from({ length: 80 }, (_, index) => ({
+  it("caps the available pages and fetches the selected fixed-size page", async () => {
+    const rows = Array.from({ length: 1_025 }, (_, index) => ({
       id: `agent-${index + 1}`,
       name: `Agent ${index + 1}`,
       pictureUrl: null,
@@ -82,14 +82,50 @@ describe("ConsumptionAttributionTable", () => {
       expect.objectContaining({ limit: 25, offset: 0 })
     );
 
-    expect(screen.getByRole("button", { name: "4" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "4" }));
+    expect(screen.getByRole("button", { name: "40" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "41" })
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "40" }));
 
     await waitFor(() => {
       expect(mockUseConsumptionTop).toHaveBeenCalledWith(
-        expect.objectContaining({ limit: 25, offset: 75 })
+        expect.objectContaining({ limit: 25, offset: 975 })
       );
-      expect(screen.getByText("Agent 80")).toBeInTheDocument();
+      expect(screen.getByText("Agent 1000")).toBeInTheDocument();
+    });
+  });
+
+  it("sends the search to the backend", async () => {
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [],
+      totalCredits: 0,
+      totalCount: 0,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="agent"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("Search…"), {
+      target: { value: "Agent 080" },
+    });
+
+    await waitFor(() => {
+      expect(mockUseConsumptionTop).toHaveBeenCalledWith(
+        expect.objectContaining({ search: "Agent 080", offset: 0, limit: 25 })
+      );
     });
   });
 

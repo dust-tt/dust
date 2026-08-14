@@ -47,8 +47,14 @@ type ConsumptionFacetCatalogSource =
 
 function traceFacetCatalogLoad<T>(
   source: ConsumptionFacetCatalogSource,
+  dimension: ConsumptionScopeDimension,
+  requestedDimension: ConsumptionScopeDimension | null,
   fn: () => Promise<T[]>
 ): Promise<T[]> {
+  if (requestedDimension !== null && requestedDimension !== dimension) {
+    return Promise.resolve([]);
+  }
+
   return tracer.trace(
     "analytics.consumption.facets.catalog.load",
     { resource: source },
@@ -97,43 +103,69 @@ function toolFacetCatalogEntries(
 
 /** Lists current workspace entities that can be selected as consumption filters. */
 async function listConsumptionFacetCatalogWithoutTracing(
-  auth: Authenticator
+  auth: Authenticator,
+  requestedDimension: ConsumptionScopeDimension | null = null
 ): Promise<ConsumptionFacetCatalog> {
   // TODO(2026-08-11 OBSERVABILITY): This eagerly loads several complete
   // workspace catalogs and is known to perform poorly on large workspaces.
   // Move most facet metadata into Elasticsearch so this endpoint can query ES
   // instead of loading several unbounded database-backed catalogs.
-  const members = await traceFacetCatalogLoad("members", async () => {
-    const result = await getMembers(auth, { activeOnly: true });
-    return result.members;
-  });
-  const groups = await traceFacetCatalogLoad("groups", () =>
-    GroupResource.listAllWorkspaceGroups(auth, {
-      groupKinds: [...MANAGEABLE_GROUP_KINDS],
-    })
+  const members = await traceFacetCatalogLoad(
+    "members",
+    "user",
+    requestedDimension,
+    async () => {
+      const result = await getMembers(auth, { activeOnly: true });
+      return result.members;
+    }
   );
-  const agents = await traceFacetCatalogLoad("agents", () =>
-    getAgentConfigurationsForView({
-      auth,
-      agentsGetView: "analytics",
-      variant: "extra_light",
-      omitInstructions: true,
-    })
+  const groups = await traceFacetCatalogLoad(
+    "groups",
+    "group",
+    requestedDimension,
+    () =>
+      GroupResource.listAllWorkspaceGroups(auth, {
+        groupKinds: [...MANAGEABLE_GROUP_KINDS],
+      })
   );
-  const models = await traceFacetCatalogLoad("models", async () => {
-    const result = await getModelsForAuth(auth);
-    return result.models;
-  });
-  const mcpServers = await traceFacetCatalogLoad("mcp_servers", () =>
-    listMCPServersWithViews(auth)
+  const agents = await traceFacetCatalogLoad(
+    "agents",
+    "agent",
+    requestedDimension,
+    () =>
+      getAgentConfigurationsForView({
+        auth,
+        agentsGetView: "analytics",
+        variant: "extra_light",
+        omitInstructions: true,
+      })
   );
-  const skills = await traceFacetCatalogLoad("skills", () =>
-    SkillResource.listByWorkspace(auth, {
-      status: "active",
-      withInstructions: false,
-      withTools: false,
-      withFileAttachments: false,
-    })
+  const models = await traceFacetCatalogLoad(
+    "models",
+    "model",
+    requestedDimension,
+    async () => {
+      const result = await getModelsForAuth(auth);
+      return result.models;
+    }
+  );
+  const mcpServers = await traceFacetCatalogLoad(
+    "mcp_servers",
+    "tool",
+    requestedDimension,
+    () => listMCPServersWithViews(auth)
+  );
+  const skills = await traceFacetCatalogLoad(
+    "skills",
+    "skill",
+    requestedDimension,
+    () =>
+      SkillResource.listByWorkspace(auth, {
+        status: "active",
+        withInstructions: false,
+        withTools: false,
+        withFileAttachments: false,
+      })
   );
 
   return {
@@ -179,6 +211,17 @@ async function listConsumptionFacetCatalogWithoutTracing(
       pictureUrl: null,
     })),
   };
+}
+
+export async function listConsumptionFacetCatalogDimension(
+  auth: Authenticator,
+  dimension: ConsumptionScopeDimension
+): Promise<ConsumptionFacetCatalogEntry[]> {
+  const catalog = await listConsumptionFacetCatalogWithoutTracing(
+    auth,
+    dimension
+  );
+  return catalog[dimension];
 }
 
 export async function listConsumptionFacetCatalog(

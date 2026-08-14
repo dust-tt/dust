@@ -1,3 +1,4 @@
+import { listConsumptionFacetCatalogDimension } from "@app/lib/api/analytics/consumption/facet_catalog";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type {
@@ -23,6 +24,7 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
+import chunk from "lodash/chunk";
 
 type ConsumptionTopGroup = {
   key: string;
@@ -48,6 +50,8 @@ const CREDIT_AGG = "credit_micro";
 const MESSAGES_AGG = "messages";
 const TOTAL_COUNT_AGG = "total_count";
 const CARDINALITY_PRECISION_THRESHOLD = 40_000;
+const MAX_ES_QUERY_CLAUSES = 1_024;
+const MAX_ES_TERMS_QUERY_VALUES = 65_536;
 
 type GroupBucket = {
   key: string;
@@ -65,9 +69,13 @@ function subAggs(unit: ConsumptionTopUnit) {
   };
 }
 
-type TopAggs = {
+type RankingAggs = {
   by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
   [TOTAL_COUNT_AGG]?: estypes.AggregationsCardinalityAggregate;
+};
+
+type TopAggs = RankingAggs & {
+  ranking?: estypes.AggregationsSingleBucketAggregateBase & RankingAggs;
   total_credit_micro?: estypes.AggregationsSumAggregate;
 };
 
@@ -89,6 +97,116 @@ function countFromBucket(
   }
 }
 
+function buildConsumptionTopSearchTermsQuery(
+  dimensionField: string,
+  matchingValues: string[]
+): estypes.QueryDslQueryContainer {
+  const termsClauses = chunk(matchingValues, MAX_ES_TERMS_QUERY_VALUES).map(
+    (values) => ({ terms: { [dimensionField]: values } })
+  );
+  const [firstClause, ...remainingClauses] = termsClauses;
+
+  if (!firstClause) {
+    return { match_none: {} };
+  }
+
+  if (remainingClauses.length === 0) {
+    return firstClause;
+  }
+
+  // Count the bool query itself and each terms clause, as search_store.rs does.
+  const clauseCount = termsClauses.length + 1;
+  if (clauseCount > MAX_ES_QUERY_CLAUSES) {
+    throw new Error(
+      `Consumption ranking search requires ${clauseCount} Elasticsearch clauses, ` +
+        `the max is ${MAX_ES_QUERY_CLAUSES}.`
+    );
+  }
+
+  return {
+    bool: {
+      should: [firstClause, ...remainingClauses],
+      minimum_should_match: 1,
+    },
+  };
+}
+
+async function resolveConsumptionTopSearchFilter(
+  auth: Authenticator,
+  {
+    dimension,
+    search,
+  }: {
+    dimension: ConsumptionScopeDimension;
+    search?: string;
+  }
+): Promise<estypes.QueryDslQueryContainer | null> {
+  const normalizedSearch = search?.trim().toLowerCase();
+  if (!normalizedSearch) {
+    return null;
+  }
+
+  // TODO(2026-08-14 aubin): Store searchable dimension names in consumption
+  // analytics documents so Elasticsearch can perform this search directly.
+  const catalog = await listConsumptionFacetCatalogDimension(auth, dimension);
+  const matchingValues = catalog
+    .filter((entry) => entry.label.toLowerCase().includes(normalizedSearch))
+    .map((entry) => entry.value);
+
+  return buildConsumptionTopSearchTermsQuery(
+    CONSUMPTION_DIMENSION_FIELDS[dimension],
+    matchingValues
+  );
+}
+
+function buildConsumptionTopAggregations({
+  dimension,
+  limit,
+  offset,
+  searchFilter,
+}: {
+  dimension: ConsumptionScopeDimension;
+  limit: number;
+  offset: number;
+  searchFilter: estypes.QueryDslQueryContainer | null;
+}): Record<string, estypes.AggregationsAggregationContainer> {
+  const unit = CONSUMPTION_DIMENSION_UNIT[dimension];
+  const dimensionField = CONSUMPTION_DIMENSION_FIELDS[dimension];
+
+  // TODO(2026-08-14 aubin): Add pagination beyond the maximum bucket count.
+  const requestedBucketCount = offset + limit;
+  const rankingAggregations = {
+    by_group: {
+      terms: {
+        field: dimensionField,
+        size: requestedBucketCount,
+        order: { [CREDIT_AGG]: "desc" },
+      },
+      aggs: subAggs(unit),
+    },
+    [TOTAL_COUNT_AGG]: {
+      cardinality: {
+        field: dimensionField,
+        precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+      },
+    },
+  } satisfies Record<string, estypes.AggregationsAggregationContainer>;
+
+  const rankingRootAggregations = searchFilter
+    ? {
+        ranking: {
+          filter: searchFilter,
+          aggs: rankingAggregations,
+        },
+      }
+    : rankingAggregations;
+
+  return {
+    ...rankingRootAggregations,
+    total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
+  };
+}
+
 /**
  * Top `limit` keys of `dimension` by gross credits over the period, with the
  * count each one's average is denominated in.
@@ -100,43 +218,38 @@ export async function fetchConsumptionTopGroups(
     period,
     limit,
     offset = 0,
+    search,
     filter,
   }: {
     dimension: ConsumptionScopeDimension;
     period: ConsumptionPeriod;
     limit: number;
     offset?: number;
+    search?: string;
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
-  const unit = CONSUMPTION_DIMENSION_UNIT[dimension];
+  const searchFilter = await resolveConsumptionTopSearchFilter(auth, {
+    dimension,
+    search,
+  });
+
   const query = buildConsumptionScopeQuery({
     auth,
     startDate: period.startDate,
     endDate: period.endDate,
     filter,
   });
-  const requestedBucketCount = offset + limit;
-  const dimensionField = CONSUMPTION_DIMENSION_FIELDS[dimension];
+
+  const aggregations = buildConsumptionTopAggregations({
+    dimension,
+    limit,
+    offset,
+    searchFilter,
+  });
 
   const result = await searchConsumptionAnalytics<never, TopAggs>(query, {
-    aggregations: {
-      by_group: {
-        terms: {
-          field: dimensionField,
-          size: requestedBucketCount,
-          order: { [CREDIT_AGG]: "desc" },
-        },
-        aggs: subAggs(unit),
-      },
-      [TOTAL_COUNT_AGG]: {
-        cardinality: {
-          field: dimensionField,
-          precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
-        },
-      },
-      total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
-    },
+    aggregations,
     size: 0,
   });
 
@@ -144,16 +257,17 @@ export async function fetchConsumptionTopGroups(
     return result;
   }
 
+  const ranking = searchFilter
+    ? result.value.aggregations?.ranking
+    : result.value.aggregations;
   const rankedGroups = bucketsToArray<GroupBucket>(
-    result.value.aggregations?.by_group?.buckets
+    ranking?.by_group?.buckets
   ).map((bucket) => ({
     key: String(bucket.key),
     credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
-    count: countFromBucket(bucket, unit),
+    count: countFromBucket(bucket, CONSUMPTION_DIMENSION_UNIT[dimension]),
   }));
-  const totalCount = Math.round(
-    result.value.aggregations?.[TOTAL_COUNT_AGG]?.value ?? 0
-  );
+  const totalCount = Math.round(ranking?.[TOTAL_COUNT_AGG]?.value ?? 0);
 
   return new Ok({
     groups: rankedGroups.slice(offset, offset + limit),

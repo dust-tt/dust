@@ -152,6 +152,7 @@ export function useConsumptionTop({
   period,
   limit,
   offset = 0,
+  search,
   filter,
   disabled,
 }: {
@@ -160,6 +161,7 @@ export function useConsumptionTop({
   period: ConsumptionPeriodSelection;
   limit: number;
   offset?: number;
+  search?: string;
   filter?: ConsumptionScopeFilter;
   disabled?: boolean;
 }) {
@@ -171,6 +173,7 @@ export function useConsumptionTop({
     filter: normalizedConsumptionFilter(filter),
     limit,
     offset,
+    search: search?.trim(),
   };
 
   const { data, error, isValidating } = useConsumptionQuery<
