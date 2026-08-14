@@ -7,24 +7,26 @@
 //                     the same Pod.
 
 import type { FileResource } from "@app/lib/resources/file_resource";
-import type {
-  ParsedScopedPathScope,
-  ScopedFilePathPrefix,
-} from "@app/types/file_system";
 import {
-  isCanonicalScopedPath,
-  isLegacyScopedPath,
   LEGACY_PREFIX_CONVERSATION,
-  LEGACY_PREFIX_POD,
   LEGACY_PREFIX_PROJECT,
-  parseScopedFilePath,
-  parseScopedPathScope,
   SCOPED_PREFIX_CONVERSATION,
   SCOPED_PREFIX_POD,
-  TOOL_OUTPUTS_FOLDER_NAME,
 } from "@app/types/file_system";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { extensionsForContentType } from "@app/types/files";
+import type {
+  ParsedScopedPathScope,
+  ScopedFilePathPrefix,
+} from "@app/types/scoped_file_path";
+import {
+  isCanonicalScopedPath,
+  isLegacyScopedPath,
+  LEGACY_PREFIX_POD,
+  parseScopedFilePath,
+  parseScopedPathScope,
+  TOOL_OUTPUTS_FOLDER_NAME,
+} from "@app/types/scoped_file_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import path from "path";
@@ -55,7 +57,7 @@ export {
   parseCanonicalScopedPath,
   parseScopedFilePath,
   TOOL_OUTPUTS_FOLDER_NAME,
-} from "@app/types/file_system";
+} from "@app/types/scoped_file_path";
 
 export function getConversationToolOutputsBasePath({
   workspaceId,

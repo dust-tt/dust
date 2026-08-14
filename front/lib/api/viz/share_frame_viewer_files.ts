@@ -1,3 +1,4 @@
+import { parseCanonicalScopedPath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ShareFileResponseBody } from "@app/lib/resources/file_resource";
@@ -5,7 +6,6 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AuthorizedFileAccessModel } from "@app/lib/resources/storage/models/files";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
-import { parseCanonicalScopedPath } from "@app/types/file_system";
 import type { AuthorizedFileRef } from "@app/types/files";
 import {
   contentTypeFromFileName,

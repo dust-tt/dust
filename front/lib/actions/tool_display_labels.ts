@@ -14,11 +14,11 @@ import {
   isWebsearchInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
+import { stripFileExtension } from "@app/types/files";
 import {
   parseCanonicalScopedPath,
   TOOL_OUTPUTS_FOLDER_NAME,
-} from "@app/types/file_system";
-import { stripFileExtension } from "@app/types/files";
+} from "@app/types/scoped_file_path";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   isNumber,

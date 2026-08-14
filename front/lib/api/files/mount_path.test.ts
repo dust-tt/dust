@@ -6,10 +6,16 @@ import {
   getPodFilesBasePath,
   getPodSandboxFunctionsBasePath,
   getPodStateBasePath,
+  isAgentScopedPath,
+  isCanonicalScopedPath,
+  isLegacyScopedPath,
+  legacyScopedPathsMatch,
   makeProcessedMountFileName,
   normalizeAndValidateMountRelativeFilePath,
   normalizeMountParentRelativePath,
+  parseCanonicalScopedPath,
   parseProcessedFilename,
+  parseScopedFilePath,
   ResolveScopedMountFilePathError,
   resolveCanonicalScopedPath,
   resolveMountFilePath,
@@ -21,14 +27,6 @@ import {
 } from "@app/lib/api/files/mount_path";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import {
-  isAgentScopedPath,
-  isCanonicalScopedPath,
-  isLegacyScopedPath,
-  legacyScopedPathsMatch,
-  parseCanonicalScopedPath,
-  parseScopedFilePath,
-} from "@app/types/file_system";
 import { describe, expect, it } from "vitest";
 
 describe("mount_path helpers", () => {

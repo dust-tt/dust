@@ -1,4 +1,4 @@
-import { legacyScopedPathsMatch } from "@app/types/file_system";
+import { legacyScopedPathsMatch } from "@app/lib/api/files/mount_path";
 import type {
   AuthorizedFileAccessAllowlist,
   FileShareScope,
