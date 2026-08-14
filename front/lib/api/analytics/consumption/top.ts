@@ -1,4 +1,4 @@
-import { listConsumptionFacetCatalog } from "@app/lib/api/analytics/consumption/facet_catalog";
+import { listConsumptionFacetCatalogDimension } from "@app/lib/api/analytics/consumption/facet_catalog";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type {
@@ -146,8 +146,10 @@ async function resolveConsumptionTopSearchFilter(
     return null;
   }
 
-  const catalog = await listConsumptionFacetCatalog(auth);
-  const matchingValues = catalog[dimension]
+  // TODO(2026-08-14 aubin): Store searchable dimension names in consumption
+  // analytics documents so Elasticsearch can perform this search directly.
+  const catalog = await listConsumptionFacetCatalogDimension(auth, dimension);
+  const matchingValues = catalog
     .filter((entry) => entry.label.toLowerCase().includes(normalizedSearch))
     .map((entry) => entry.value);
 

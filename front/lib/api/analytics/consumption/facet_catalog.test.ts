@@ -1,4 +1,7 @@
-import { listConsumptionFacetCatalog } from "@app/lib/api/analytics/consumption/facet_catalog";
+import {
+  listConsumptionFacetCatalog,
+  listConsumptionFacetCatalogDimension,
+} from "@app/lib/api/analytics/consumption/facet_catalog";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -15,9 +18,12 @@ describe("listConsumptionFacetCatalog", () => {
       role: "manager",
     });
 
-    const catalog = await listConsumptionFacetCatalog(authenticator);
+    const users = await listConsumptionFacetCatalogDimension(
+      authenticator,
+      "user"
+    );
 
-    expect(catalog.user).toContainEqual({
+    expect(users).toContainEqual({
       value: user.sId,
       label: user.fullName(),
       pictureUrl: user.imageUrl,

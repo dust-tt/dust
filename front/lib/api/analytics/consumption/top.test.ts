@@ -1,4 +1,4 @@
-import { listConsumptionFacetCatalog } from "@app/lib/api/analytics/consumption/facet_catalog";
+import { listConsumptionFacetCatalogDimension } from "@app/lib/api/analytics/consumption/facet_catalog";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { fetchConsumptionTopAgents } from "@app/lib/api/analytics/consumption/top_agents";
@@ -23,7 +23,7 @@ vi.mock(
   import("@app/lib/api/analytics/consumption/facet_catalog"),
   async (orig) => {
     const mod = await orig();
-    return { ...mod, listConsumptionFacetCatalog: vi.fn() };
+    return { ...mod, listConsumptionFacetCatalogDimension: vi.fn() };
   }
 );
 
@@ -92,7 +92,7 @@ function lastSearchCall() {
 describe("consumption top rankings", () => {
   afterEach(() => {
     vi.mocked(searchConsumptionAnalytics).mockReset();
-    vi.mocked(listConsumptionFacetCatalog).mockReset();
+    vi.mocked(listConsumptionFacetCatalogDimension).mockReset();
     vi.mocked(resolveDimensionLabels).mockReset();
   });
 
@@ -238,17 +238,9 @@ describe("consumption top rankings", () => {
     ["missing", { match_none: {} }],
   ])("filters the ranking for search %s", async (search, expectedFilter) => {
     const { auth } = await setup();
-    vi.mocked(listConsumptionFacetCatalog).mockResolvedValue({
-      agent: [
-        { value: "agent80", label: "Pagination Agent 080", pictureUrl: null },
-      ],
-      user: [],
-      group: [],
-      model: [],
-      tool: [],
-      skill: [],
-      source: [],
-    });
+    vi.mocked(listConsumptionFacetCatalogDimension).mockResolvedValue([
+      { value: "agent80", label: "Pagination Agent 080", pictureUrl: null },
+    ]);
     mockLabels({});
     mockAggs({
       buckets: [],
@@ -268,7 +260,10 @@ describe("consumption top rankings", () => {
       return;
     }
     expect(result.value.totalCredits).toBe(10);
-    expect(listConsumptionFacetCatalog).toHaveBeenCalledWith(auth);
+    expect(listConsumptionFacetCatalogDimension).toHaveBeenCalledWith(
+      auth,
+      "agent"
+    );
     expect(lastSearchCall()[1]?.aggregations?.ranking?.filter).toEqual(
       expectedFilter
     );
@@ -276,19 +271,13 @@ describe("consumption top rankings", () => {
 
   it("splits broad searches into bounded terms clauses", async () => {
     const { auth } = await setup();
-    vi.mocked(listConsumptionFacetCatalog).mockResolvedValue({
-      agent: Array.from({ length: 65_537 }, (_, index) => ({
+    vi.mocked(listConsumptionFacetCatalogDimension).mockResolvedValue(
+      Array.from({ length: 65_537 }, (_, index) => ({
         value: `agent${index}`,
         label: "Agent",
         pictureUrl: null,
-      })),
-      user: [],
-      group: [],
-      model: [],
-      tool: [],
-      skill: [],
-      source: [],
-    });
+      }))
+    );
     mockLabels({});
     mockAggs({
       buckets: [],
