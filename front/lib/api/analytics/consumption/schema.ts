@@ -48,13 +48,7 @@ export const ConsumptionTopBodySchema = ConsumptionBodySchema.extend({
     .transform((limit) => limit ?? DEFAULT_CONSUMPTION_TOP_LIMIT),
   offset: z.number().int().nonnegative().default(0),
   search: z.string().trim().max(200).optional(),
-}).refine(
-  ({ limit, offset }) => offset + limit <= MAX_CONSUMPTION_TOP_BUCKETS,
-  {
-    message: `A ranked page cannot extend beyond ${MAX_CONSUMPTION_TOP_BUCKETS} items.`,
-    path: ["offset"],
-  }
-);
+});
 
 export type ConsumptionTopBody = z.infer<typeof ConsumptionTopBodySchema>;
 
