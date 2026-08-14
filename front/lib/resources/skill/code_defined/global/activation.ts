@@ -47,7 +47,7 @@ Every conversation runs the same loop. Each step below has its own section with 
 4. Prepare the current rung — run every safe automatic read before anything user-visible.
 5. Present the current rung — exactly one action card, recorded via \`create_recommendation\`.
 6. Execute on accept — run the prepared work; deliver the result as a Frame opened in the side panel.
-7. Collect feedback — then offer Skill or Trigger creation only when it is the next rung.
+7. Collect feedback — get user feedback on the recommendation and update the recommendation record.
 8. Complete and advance — recap the rung, update durable state, move to the next rung or close.
 
 Steps 4–8 repeat for each rung until the Goal is satisfied or invalidated.
@@ -65,10 +65,9 @@ A session succeeds when the user gets one timely, evidence-backed domain win (ar
 - The first user-visible response always includes an action card. Before it, never call \`ask_user_question\` or a blocking tool
   (a tool that requires approval, authentication, or user input). If information is missing, use the best evidence-backed Work Area
   to present the best valid low-risk recommendation; do not ask a question first.
-- Never assume the user will find a Frame in the file system. Whenever a Frame is created or expected to be opened, render it inline in
-  the current conversation and direct the user to it there.
 - Every agent message ends with an action card, question, or clear next action.
-- Do not assume the user created everything that exists in this Pod. Some of the artifacts will be created by Dust or other team members.
+- The user may not know what a Pod is. Do not assume they created everything in it — some artifacts are from Dust or teammates. If
+  you must mention a Pod, explain it.
 - Never assume the user has any memory or context about previous sessions. If there is continued context, give a full reminder and assume you need to start from scratch.
 
 # Core Principles
@@ -165,7 +164,6 @@ A Session Goal is one concrete outcome to achieve in this conversation.
 The opening message may end with a \`<dust_activation>\` block carrying a session goal and a featured skill or agent. Use only the fields that are present and non-null: shape the session goal into the Session Goal format below, and when a resource is named, center the goal on adopting it.
 This block is frequently absent. If so, generate one from the most relevant Work Area, informed by the Recommendation Playbook when it exists and the Recommendation sources order below.
 
-Before generating or presenting, call \`list_recommendations\` and skip recently dismissed or duplicate recommendations.
 Create or update the \`Goal\` in \`session_plan.md\`. Record the selected Work Area, why it is the best fit now, and how the Goal
 advances it. Do not present anything yet: finish Steps 3 and 4 first.
 
@@ -209,6 +207,12 @@ the smallest viable action that produces an artifact now. Record the source and 
 
 When two candidates are equally timely, prefer the one that minimizes tool calls and user gates.
 
+## Considering Past Recommendations
+Call \`list_recommendations\` to find past recommendations and user feedback based on status.
+- \'dismissed\' recommendations indicate the user did not find them valuable, so avoid suggesting similar work again.
+- \'completed\' recommendations indicate the user found them valuable, so use this as inspiration BUT avoid suggesting the same thing again. A user has already gained this value, so this will be viewed as redundant.
+- \'suggested\' recommendations indicate the user has not responded. Avoid suggesting the same thing again as users will still have the option to make that decision on the past suggestion and it will be redundant.
+
 # Step 3 — Build the Plan
 
 ## Session Plan Document
@@ -228,11 +232,26 @@ The Plan also feeds the recommendation record at creation (Step 5): the source r
 Make the first rung a first useful win: the smallest self-contained action that produces a real artifact and proves progress toward
 the Goal. It is the start of an incremental Plan, not the final destination. Keep it short and bounded.
 
-Add subsequent rungs only when they make the proven result more valuable: improve its quality or scope, save the proven workflow as a
-Skill, then schedule it as a Trigger when a repeatable cadence is known. Never order a rung before its prerequisite.
+Add subsequent rungs only when they make the proven result more valuable. Never order a rung before its prerequisite.
+Typical rungs are: produce a useful artifact; improve or extend that proven result; save and/or schedule the proven workflow. Omit
+rungs that do not add meaningful value or lack a prerequisite.
 
-Typical rungs are: produce a useful artifact; improve or extend that proven result; save the proven workflow as a Skill; schedule it
-as a Trigger. Omit rungs that do not add meaningful value or lack a prerequisite.
+## Sampling
+A good way to make the recommendation useful is to generate one sample example for an action rather than doing it at scale.
+For example, if you are running an account summary for an AE, you will generally only want to run it on one account rather than doing it for all accounts.
+You should research to find an example you know to be relevant to the user and their work. If you cannot prove an example is relevant, avoid taking a random guess.
+This should happen with minimal user effort.
+
+## Skill and Trigger rungs
+You should bias towards including a Skill and/or Trigger rung in the plan whenever it meets the criteria below.
+
+Include a Skill rung only when ALL of these hold:
+- The user's workspace role is "admin" or "builder".
+- No similar skill already exists (NEVER plan a duplicate). Check existing skills before including the rung.
+
+Include a Trigger rung when it could be useful to create a recurring task for the user.
+Each should be its own rung. Skill rung should always be before the Trigger rung.
+For the trigger, \'ask_user_question\', include multiple cadence options — the right time or frequency is subjective.
 
 # Step 4 — Prepare the current rung
 
@@ -292,7 +311,7 @@ Ensure that the title is around 6 words long.
 :::
 \`\`\`
 
-This is a container directive: the opening \`:::action_card{...}\` line holds the attributes, the optional lines that follow are collapsible content (the inline education), and a closing \`:::\` line ends it. The collapsible content is rendered as real markdown. Omit the collapsible lines if no education content is needed.
+This is a container directive: the opening \`:::action_card{...}\` line holds the attributes, the optional lines that follow are collapsible content (the inline education), and a new line that contains only \`:::\` ends it. The collapsible content is rendered as real markdown. Omit the collapsible lines if no education content is needed.
 - \`title\`: names the concrete action type so the user knows what kind of thing this is (2-4 words). The user may see this component with no context, so you need to be clear, i.e. "Recommendation for you", "Make it automatic".
 - \`icon\`: icon matching the Dust concept behind the recommendation: \`ActionListCheckIcon\` (skill), \`ActionCalendarCheckIcon\` (trigger/schedule), \`ActionDashboardIcon\` (Frame/dashboard), \`ActionCloudArrowLeftRightIcon\` (connection), \`ActionRobotIcon\` (agent), \`ActionMailIcon\` (briefing/digest), \`ActionSparklesIcon\` (generic). Defaults to \`ActionRobotIcon\`.
 - \`subtitle\`: the recommendation itself (6-10 words). Name BOTH the concrete outcome from the user's real work AND the Dust feature that delivers it, in plain language — never meta/internal/advanced framing that hides the value or the feature. Good: "Share a frame of the latest US forecast review", "Build an agent that pings you on each new PR". Bad: "Build activation review brief" (hides both value and feature), "Automate meeting prep" (vague). This should match the \`title\` passed to \`create_recommendation\`.
@@ -341,24 +360,17 @@ Call \`run_agent\` with its agentId, the task query, and executionMode \`run-age
 
 # Step 7 — Collect feedback
 
-After the current rung completes, collect feedback. Offer Skill creation or Trigger scheduling only when it is the next eligible rung
-in the Plan; otherwise, go to Step 8.
+After the current rung completes, collect feedback.
 
 First, call \`ask_user_question\` with Useful, Not Useful, and Provide Feedback. This is feedback on an already executed
 recommendation, not an action-card accept/dismiss decision.
 
-After every \`ask_user_question\` resume, re-read \`session_plan.md\` and update the current rung's status, feedback, and result before
-continuing. The answer does not start a new plan; it resumes the current agent message and its documented path.
+After every \`ask_user_question\` resume, re-read \`session_plan.md\` and update the current rung's status, feedback, and result before continuing.
 
-When the next eligible rung is Skill or Trigger creation, skip the offer when ANY of these hold:
-- A similar skill already exists (NEVER offer a duplicate).
-- The user's workspace role is not "admin" or "builder".
-- The workflow is not genuinely recurring, is a near-variant of something that exists, or is so trivial that rerunning by hand costs
-nothing.
-
-If offering, call a single \`ask_user_question\`:
-- Include an option to build the trigger and/or skill (combined). You SHOULD include multiple cadence options for triggers since it is
-subjective at what time or frequency the user will want it to run.
+When the next planned rung is the Skill or Trigger offer:
+- Skip it if they marked the completed rung Not Useful, or if a new fact invalidates the Plan (a similar skill now exists). Mark the
+rung skipped.
+- Otherwise present the single \`ask_user_question\` already recorded on that rung.
 - On resume, create what they chose (or skip if declined), then continue to Step 8 in this same resumed run.
 
 # Step 8 — Complete and advance
@@ -473,7 +485,7 @@ export const activationSkill = {
     { name: "pod_manager" },
     { name: "conversation_side_panel" },
   ],
-  version: 7,
+  version: 8,
   icon: "ActionRocketIcon",
   isRestricted: undefined,
 } as const satisfies GlobalSkillDefinition;
