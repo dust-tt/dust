@@ -10,6 +10,7 @@ import {
 } from "@app/lib/api/analytics/consumption/schema";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
+import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
 // Mounted at /api/w/:wId/analytics/consumption/export-raw.
@@ -39,7 +40,17 @@ app.post(
 
     const period = await resolveConsumptionPeriod(auth, periodInput);
 
-    await startConsumptionExport(auth, { period, filter });
+    const result = await startConsumptionExport(auth, { period, filter });
+
+    if (result.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: `Failed to start consumption export: ${result.error.message}`,
+        },
+      });
+    }
 
     return ctx.json({ isGenerating: true }, 202);
   }

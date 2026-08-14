@@ -52,33 +52,60 @@ export function ConsumptionExportPanel({
   exportBody,
 }: ConsumptionExportPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { exports, isGenerating, isConsumptionExportsLoading } =
-    useConsumptionExports({ workspaceId, disabled: !isOpen });
+  const [hasAttemptedAutoStart, setHasAttemptedAutoStart] = useState(false);
+  const {
+    exports,
+    isGenerating,
+    isConsumptionExportsLoading,
+    isConsumptionExportsError,
+  } = useConsumptionExports({ workspaceId, disabled: !isOpen });
   const { isStarting, startConsumptionExport } = useStartConsumptionExport({
     workspaceId,
   });
 
+  // Reset the auto-start guard each time the panel closes, so reopening it gives the
+  // automatic flow one fresh attempt.
+  useEffect(() => {
+    if (!isOpen) {
+      setHasAttemptedAutoStart(false);
+    }
+  }, [isOpen]);
+
   // Opening the panel with no past export and nothing already generating starts one
-  // automatically, so the user doesn't have to find a separate "generate" action.
+  // automatically, so the user doesn't have to find a separate "generate" action. This
+  // only fires once per time the panel is opened: a workflow that failed or timed out
+  // also leaves exports empty with isGenerating false, so without this guard the effect
+  // would relaunch an expensive export indefinitely instead of surfacing the failure.
   useEffect(() => {
     if (
       isOpen &&
       !isConsumptionExportsLoading &&
+      !isConsumptionExportsError &&
       !isGenerating &&
       !isStarting &&
+      !hasAttemptedAutoStart &&
       exports.length === 0
     ) {
+      setHasAttemptedAutoStart(true);
       void startConsumptionExport(exportBody);
     }
   }, [
     isOpen,
     isConsumptionExportsLoading,
+    isConsumptionExportsError,
     isGenerating,
     isStarting,
+    hasAttemptedAutoStart,
     exports.length,
     exportBody,
     startConsumptionExport,
   ]);
+
+  const hasAutoStartFailed =
+    hasAttemptedAutoStart &&
+    !isGenerating &&
+    !isStarting &&
+    exports.length === 0;
 
   return (
     <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
@@ -99,11 +126,23 @@ export function ConsumptionExportPanel({
             <div className="flex justify-center py-4">
               <Spinner size="sm" />
             </div>
+          ) : isConsumptionExportsError ? (
+            <div className="flex items-center justify-center py-4">
+              <span className="text-sm text-muted-foreground">
+                Could not load exports.
+              </span>
+            </div>
           ) : exports.length > 0 ? (
             <div className="flex max-h-40 flex-col overflow-y-auto">
               {exports.map((item) => (
                 <ConsumptionExportRow key={item.name} item={item} />
               ))}
+            </div>
+          ) : hasAutoStartFailed ? (
+            <div className="flex items-center justify-center py-4">
+              <span className="text-sm text-muted-foreground">
+                The export failed to generate.
+              </span>
             </div>
           ) : (
             <div className="flex items-center gap-2 py-4">

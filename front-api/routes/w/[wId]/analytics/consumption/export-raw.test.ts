@@ -147,4 +147,15 @@ describe("POST /api/w/:wId/analytics/consumption/export-raw", () => {
 
     expect(response.status).toBe(400);
   });
+
+  it("returns a 5xx and does not report isGenerating when the workflow fails to launch", async () => {
+    startWorkflowMock.mockRejectedValue(new Error("temporal unavailable"));
+    const { workspace } = await setupTest({ role: "admin" });
+
+    const response = await postExportRawRequest(workspace.sId, {});
+
+    expect(response.status).toBeGreaterThanOrEqual(500);
+    const body = await response.json();
+    expect(body).not.toEqual({ isGenerating: true });
+  });
 });
