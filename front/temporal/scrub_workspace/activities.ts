@@ -144,6 +144,7 @@ export async function scrubWorkspaceData({
   await deleteSandboxEnvVars(auth);
   await deleteDatasources(auth);
   await deleteSpaces(auth);
+  await rebuildRemainingSpacePermissions(auth);
   await cleanupCustomerio(auth);
   await disableWorkOSSSOAndSCIM(renderLightWorkspaceType({ workspace }), {
     disableSSO: true,
@@ -310,6 +311,21 @@ async function deleteSpaces(auth: Authenticator) {
 
   for (const space of filteredSpaces) {
     await softDeleteSpaceAndLaunchScrubWorkflow(auth, space);
+  }
+}
+
+// The scrub wipes every grant of the workspace up-front (`deleteGroupPermissions`) so the spaces it
+// removes can be torn down, which also leaves the spaces it keeps without any. Re-derive the grants
+// of whatever is still live once the deletions are done — the system and global spaces, plus the
+// conversations space, which the scrub does not delete.
+async function rebuildRemainingSpacePermissions(auth: Authenticator) {
+  const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
+    includeConversationsSpace: true,
+    includeProjectSpaces: true,
+  });
+
+  for (const space of spaces) {
+    await space.writeGroupPermissions(auth);
   }
 }
 
