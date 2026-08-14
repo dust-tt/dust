@@ -1,5 +1,6 @@
 import { upsertAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/store";
 import { listConsumptionFacetCatalog } from "@app/lib/api/analytics/consumption/facet_catalog";
+import { normalizeOrigin } from "@app/lib/api/analytics/source_labels";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import {
   CONSUMPTION_ANALYTICS_ALIAS_NAME,
@@ -289,6 +290,7 @@ type SeedConsumptionBaseFields = Pick<
   | "execution_time_ms"
   | "message_version"
   | "model"
+  | "normalized_origin"
   | "run_usage_id"
   | "space_id"
   | "status"
@@ -327,6 +329,7 @@ function makeBaseFields(
       reasoning_effort: message.model.defaultReasoningEffort,
       resolution_method: "agent",
     },
+    normalized_origin: normalizeOrigin(message.origin),
     run_usage_id: consumptionKey,
     space_id: null,
     status: "succeeded",

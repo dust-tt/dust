@@ -33,7 +33,7 @@ export const CONSUMPTION_DIMENSION_FIELDS: Record<
   tool: "tool.server_name",
   // Multi-valued: one tool call can be attributed to several skills at once.
   skill: "tool.attributed_skill_ids",
-  source: "context_origin",
+  source: "normalized_origin",
 };
 
 export type ConsumptionTopUnit = "message" | "invocation";

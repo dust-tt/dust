@@ -17,7 +17,7 @@ import { Ok } from "@app/types/shared/result";
  */
 
 export type ConsumptionTopSourceRow = {
-  // The raw context origin, which is also what the `source` filter takes.
+  // The canonical context origin, which is also what the `source` filter takes.
   source: string;
   name: string;
   credits: number;
