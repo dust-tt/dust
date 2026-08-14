@@ -110,9 +110,11 @@ export function ImportPodAppDialog({
                 title={`${report.name} imported with issues`}
               >
                 <ul className="list-disc pl-4">
-                  {[...report.warnings, ...report.skipped].map((issue) => (
-                    <li key={issue}>{issue}</li>
-                  ))}
+                  {[...report.warnings, ...report.skipped].map(
+                    (issue, index) => (
+                      <li key={`${index}-${issue}`}>{issue}</li>
+                    )
+                  )}
                 </ul>
               </ContentMessage>
             </DialogContainer>
