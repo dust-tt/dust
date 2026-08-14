@@ -2,10 +2,7 @@ import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
-import {
-  getNovuClient,
-  getUserNotificationDelay,
-} from "@app/lib/notifications";
+import { getNovuClient } from "@app/lib/notifications";
 import { hasUnreadSucceededAgentReply } from "@app/lib/notifications/conversation_fetch";
 import { renderEmail } from "@app/lib/notifications/email-templates/activation-new-conversation";
 import {
@@ -13,13 +10,10 @@ import {
   getConversationDetails,
 } from "@app/lib/notifications/helpers";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { FOR_YOU_EMAIL_UTM } from "@app/lib/tracking/campaigns";
 import { getGetStartedRoute } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import {
-  ACTIVATION_NEW_CONVERSATION_TRIGGER_ID,
-  NOTIFICATION_DELAY_OPTIONS,
-  NOTIFICATION_PREFERENCES_DELAYS,
-} from "@app/types/notification_preferences";
+import { ACTIVATION_NEW_CONVERSATION_TRIGGER_ID } from "@app/types/notification_preferences";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -49,10 +43,6 @@ const activationNewConversationDetailsSchema = z.object({
 type activationNewConversationDetailsType = z.infer<
   typeof activationNewConversationDetailsSchema
 >;
-
-const userNotificationDelaySchema = z.object({
-  delay: z.enum(NOTIFICATION_DELAY_OPTIONS),
-});
 
 export const shouldSkipActivationNewConversation = async ({
   subscriberId,
@@ -131,29 +121,16 @@ export const activationNewConversationWorkflow = workflow(
       }
     );
 
-    // Respect all the user's email notification preferences.
-    const { delay } = await step.custom(
-      "get-user-notification-delay",
-      async () => {
-        const userNotificationDelay = await getUserNotificationDelay({
-          subscriberId: subscriber.subscriberId,
-          workspaceId: payload.workspaceId,
-          channel: "email",
-        });
-        return { delay: userNotificationDelay };
-      },
-      {
-        outputSchema: userNotificationDelaySchema,
-      }
-    );
-
-    await step.delay("apply-user-delay", async () => {
-      return { type: "regular", ...NOTIFICATION_PREFERENCES_DELAYS[delay] };
-    });
-
     await step.email(
       "send-email",
       async () => {
+        const forYouUrl = `${config.getAppUrl()}${getGetStartedRoute(payload.workspaceId)}?${new URLSearchParams(
+          {
+            ...FOR_YOU_EMAIL_UTM,
+            utm_content: payload.conversationId,
+          }
+        ).toString()}`;
+
         const body = await renderEmail({
           name: subscriber.firstName ?? "You",
           workspace: {
@@ -164,7 +141,7 @@ export const activationNewConversationWorkflow = workflow(
           goal: details.goal,
           action: {
             label: details.subject,
-            url: config.getAppUrl() + getGetStartedRoute(payload.workspaceId),
+            url: forYouUrl,
           },
         });
 
