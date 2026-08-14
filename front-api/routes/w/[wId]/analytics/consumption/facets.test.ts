@@ -28,7 +28,8 @@ const RESPONSE: GetConsumptionFacetsResponse = {
       },
     ],
     user: [],
-    team: [],
+    api_key: [],
+    group: [],
     model: [],
     tool: [],
     skill: [],
@@ -46,7 +47,11 @@ describe("POST /api/w/:wId/analytics/consumption/facets", () => {
       role: "manager",
     });
     vi.mocked(fetchConsumptionFacets).mockResolvedValue(new Ok(RESPONSE));
-    const filter = { users: ["user_1"], sources: ["slack"] };
+    const filter = {
+      users: ["user_1"],
+      api_keys: ["Production key"],
+      sources: ["slack"],
+    };
 
     const response = await honoApp.request(
       `/api/w/${workspace.sId}/analytics/consumption/facets`,

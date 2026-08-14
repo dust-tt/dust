@@ -392,7 +392,7 @@ function MCPRunAgentActionDetailsDisplay({
                 <>
                   <div className="flex items-center justify-between py-2">
                     <span className="font-medium text-foreground">
-                      @{childAgent.name}'s Answer
+                      {childAgent.name}'s Answer
                     </span>
                     {conversationUrl && (
                       <Button

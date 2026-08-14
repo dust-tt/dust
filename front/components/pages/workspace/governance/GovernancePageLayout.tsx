@@ -1,4 +1,4 @@
-import { Page, Toggle01Left } from "@dust-tt/sparkle";
+import { Page } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
 interface GovernancePageLayoutProps {
@@ -11,7 +11,6 @@ export function GovernancePageLayout({ children }: GovernancePageLayoutProps) {
       <Page.Header
         title="Settings & Governance"
         description="Manage what members can do in your workspace"
-        icon={Toggle01Left}
       />
       {children}
     </div>

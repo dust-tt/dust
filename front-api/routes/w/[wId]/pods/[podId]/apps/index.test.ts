@@ -135,7 +135,7 @@ describe("GET /api/w/:wId/pods/:podId/apps", () => {
     expect(app.fileCount).toBe(2);
   });
 
-  it("attributes a database created before app namespacing via its schema file", async () => {
+  it("does not list a database created before app namespacing", async () => {
     const { workspace, pod } = await setupPod();
 
     fileStorageMock.setFilesByPrefix(() => [
@@ -146,8 +146,13 @@ describe("GET /api/w/:wId/pods/:podId/apps", () => {
         "ProductManager/databases/products.db.ts"
       ),
     ]);
-    // Bare filename, so the name alone cannot say which app owns it.
-    fileStorageMock.setSubdirectoryNames(() => ["products.db"]);
+    // A bare filename says nothing about which app owns it, and the schema file that declares it is
+    // not evidence either — a clone inherits that declaration while opening its own prefixed file.
+    // Rather than infer ownership, such a database is left out.
+    fileStorageMock.setSubdirectoryNames(() => [
+      "products.db",
+      "productmanager__stock.db",
+    ]);
 
     const res = await honoApp.request(
       `/api/w/${workspace.sId}/pods/${pod.sId}/apps`
@@ -157,12 +162,13 @@ describe("GET /api/w/:wId/pods/:podId/apps", () => {
     const body = await res.json();
     expect(body.apps).toHaveLength(1);
     expect(body.apps[0].prefix).toBe("productmanager");
+    // Only the namespaced one; the bare `products` appears nowhere at all.
     expect(body.apps[0].databases).toEqual([
-      { name: "products", onDiskName: "products" },
+      { name: "stock", onDiskName: "productmanager__stock" },
     ]);
   });
 
-  it("leaves an unprefixed database no app declares in the unfiled app", async () => {
+  it("lists nothing for a Pod holding only unprefixed databases", async () => {
     const { workspace, pod } = await setupPod();
 
     fileStorageMock.setSubdirectoryNames(() => ["orphaned.db"]);
@@ -173,11 +179,7 @@ describe("GET /api/w/:wId/pods/:podId/apps", () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.apps).toHaveLength(1);
-    expect(body.apps[0].prefix).toBe("");
-    expect(body.apps[0].databases).toEqual([
-      { name: "orphaned", onDiskName: "orphaned" },
-    ]);
+    expect(body.apps).toEqual([]);
   });
 
   it("ignores a pod-root folder that is not app-shaped", async () => {
@@ -197,9 +199,11 @@ describe("GET /api/w/:wId/pods/:podId/apps", () => {
     expect(body.apps).toEqual([]);
   });
 
-  it("collects artifacts published from the Pod root into the unfiled app", async () => {
+  it("does not list a function published outside an app folder", async () => {
     const { workspace, pod, auth } = await setupPod();
 
+    // A prefix-less slug belongs to no app. It stays published and callable; there is just no app for
+    // it to be listed under, so no synthetic one is invented to hold it.
     await publishFunction(auth, pod, {
       slug: "orphan",
       fileName: "orphan.ts",
@@ -211,12 +215,7 @@ describe("GET /api/w/:wId/pods/:podId/apps", () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.apps).toHaveLength(1);
-    expect(body.apps[0].prefix).toBe("");
-    expect(body.apps[0].name).toBeNull();
-    expect(
-      body.apps[0].functions.map((fn: { slug: string }) => fn.slug)
-    ).toEqual(["orphan"]);
+    expect(body.apps).toEqual([]);
   });
 
   it("reports folders that normalize onto the same app prefix as one colliding app", async () => {

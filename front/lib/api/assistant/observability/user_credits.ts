@@ -1,7 +1,4 @@
-import {
-  resolveAnalyticsAgentLabels,
-  UNKNOWN_AGENT_LABEL,
-} from "@app/lib/api/assistant/observability/agent_labels";
+import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
 import { getUserDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
 import {
   buildCreditsScopeQuery,
@@ -138,18 +135,25 @@ export async function fetchUserCreditBreakdown(
     const userId = String(bucket.key);
     const user = usersById.get(userId);
 
+    // Agents that no longer resolve to a configuration are dropped: they cannot
+    // be named or linked to.
     const topAgents: UserCreditAgent[] = bucketsToArray<AgentBucket>(
       bucket.top_agents?.buckets
-    ).map((agentBucket) => {
+    ).flatMap((agentBucket) => {
       const agentId = String(agentBucket.key);
-      const label = agentLabels.get(agentId) ?? UNKNOWN_AGENT_LABEL;
-      return {
-        agentId,
-        name: label.name,
-        pictureUrl: label.pictureUrl,
-        modelDisplayName: label.modelDisplayName,
-        description: label.description,
-      };
+      const label = agentLabels.get(agentId);
+      if (!label) {
+        return [];
+      }
+      return [
+        {
+          agentId,
+          name: label.name,
+          pictureUrl: label.pictureUrl,
+          modelDisplayName: label.modelDisplayName,
+          description: label.description,
+        },
+      ];
     });
 
     return {

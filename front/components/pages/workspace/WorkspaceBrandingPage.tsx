@@ -1,6 +1,6 @@
 import { BrandingSection } from "@app/components/workspace/settings/BrandingSection";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
-import { cn, Page, Palette } from "@dust-tt/sparkle";
+import { cn, Page } from "@dust-tt/sparkle";
 
 export function WorkspaceBrandingPage() {
   const owner = useWorkspace();
@@ -9,7 +9,7 @@ export function WorkspaceBrandingPage() {
 
   return (
     <Page.Vertical align="stretch" gap="xl">
-      <Page.Header title="Branding" icon={Palette} />
+      <Page.Header title="Branding" />
       {isWhitelabelFramesAllowed ? (
         <BrandingSection owner={owner} />
       ) : (

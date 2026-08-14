@@ -9,7 +9,8 @@ export const AGENT_MESSAGE_ID_FIELD = "agent_message_id";
 export const CONSUMPTION_SCOPE_DIMENSIONS = [
   "agent",
   "user",
-  "team",
+  "api_key",
+  "group",
   "model",
   "tool",
   "skill",
@@ -25,19 +26,37 @@ export const CONSUMPTION_DIMENSION_FIELDS: Record<
 > = {
   agent: "agent.id",
   user: "user.id",
-  // Multi-valued: a member can belong to several teams at once.
-  team: "user.group_ids",
+  api_key: "api_key_name",
+  // Multi-valued: a member can belong to several groups at once.
+  group: "user.group_ids",
   model: "model.model_id",
   tool: "tool.server_name",
   // Multi-valued: one tool call can be attributed to several skills at once.
   skill: "tool.attributed_skill_ids",
-  source: "context_origin",
+  source: "normalized_origin",
+};
+
+export type ConsumptionTopUnit = "message" | "invocation";
+
+export const CONSUMPTION_DIMENSION_UNIT: Record<
+  ConsumptionScopeDimension,
+  ConsumptionTopUnit
+> = {
+  agent: "message",
+  user: "message",
+  api_key: "message",
+  group: "message",
+  model: "message",
+  tool: "invocation",
+  skill: "invocation",
+  source: "message",
 };
 
 export const CONSUMPTION_SCOPE_FILTER_KEYS = [
   "agents",
   "users",
-  "teams",
+  "api_keys",
+  "groups",
   "models",
   "tools",
   "skills",
@@ -57,7 +76,8 @@ export const CONSUMPTION_DIMENSION_FILTER_KEYS: Record<
 > = {
   agent: "agents",
   user: "users",
-  team: "teams",
+  api_key: "api_keys",
+  group: "groups",
   model: "models",
   tool: "tools",
   skill: "skills",

@@ -1496,6 +1496,7 @@
  *       oneOf:
  *         - $ref: '#/components/schemas/PrivateUserMessageNewEvent'
  *         - $ref: '#/components/schemas/PrivateAgentMessageNewEvent'
+ *         - $ref: '#/components/schemas/PrivateAgentMessageConsumptionUpdatedEvent'
  *         - $ref: '#/components/schemas/PrivateAgentMessageDoneEvent'
  *         - $ref: '#/components/schemas/PrivateCompactionMessageNewEvent'
  *         - $ref: '#/components/schemas/PrivateCompactionMessageDoneEvent'
@@ -1548,6 +1549,22 @@
  *         status:
  *           type: string
  *           enum: [success, error]
+ *     PrivateAgentMessageConsumptionUpdatedEvent:
+ *       type: object
+ *       required: [type, created, conversationId, messageId, costCredits]
+ *       properties:
+ *         type:
+ *           type: string
+ *           enum: [agent_message_consumption_updated]
+ *         created:
+ *           type: integer
+ *         conversationId:
+ *           type: string
+ *         messageId:
+ *           type: string
+ *         costCredits:
+ *           type: number
+ *           nullable: true
  *     PrivateCompactionMessageNewEvent:
  *       type: object
  *       required: [type, created, messageId, message]

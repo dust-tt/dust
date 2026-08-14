@@ -35,7 +35,7 @@ describe("workspace_analytics tools", () => {
     "get_credit_usage",
     "get_credit_timeseries",
     "get_usage_timeseries",
-  ])("%s refuses non-admin callers", async (toolName) => {
+  ])("%s refuses callers below manager", async (toolName) => {
     const workspace = await WorkspaceFactory.basic();
     await GroupFactory.defaults(workspace);
     const user = await UserFactory.basic();
@@ -45,7 +45,7 @@ describe("workspace_analytics tools", () => {
       user.sId,
       workspace.sId
     );
-    expect(auth.isAdmin()).toBe(false);
+    expect(auth.isManager()).toBe(false);
 
     const tool = getToolByName(toolName);
     const result = await tool.handler({}, createTestExtra(auth));

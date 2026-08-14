@@ -87,16 +87,24 @@ function makeAuthBlockedAction(
 
 function Consumer() {
   const {
+    getBlockedActionItems,
     getFirstBlockedActionForMessage,
     refreshBlockedActions,
     removeCompletedAction,
   } = useBlockedActionsContext();
 
   const firstAction = getFirstBlockedActionForMessage("msg_1");
+  const firstActionItem = getBlockedActionItems("user_1")[0];
 
   return (
     <div>
       <span data-testid="first-action">{firstAction?.actionId ?? "none"}</span>
+      <span data-testid="outer-message-id">
+        {firstActionItem?.messageId ?? "none"}
+      </span>
+      <span data-testid="blocked-message-id">
+        {firstActionItem?.blockedAction.messageId ?? "none"}
+      </span>
       <button
         type="button"
         onClick={() => {
@@ -168,5 +176,31 @@ describe("BlockedActionsProvider", () => {
     await user.click(screen.getByRole("button", { name: "refresh" }));
 
     expect(mutateBlockedActionsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves the outer message id for a nested blocked action", () => {
+    const childAction = {
+      ...makeAuthBlockedAction("action_child"),
+      conversationId: "conv_child",
+      messageId: "msg_child",
+    };
+    const parentAction: AgentLoopBlockedToolExecution = {
+      ...makeAuthBlockedAction("action_parent"),
+      messageId: "msg_parent",
+      status: "blocked_child_action_input_required",
+      authorizationInfo: null,
+      resumeState: null,
+      childBlockedActionsList: [childAction],
+    };
+    blockedActionsMock = [parentAction];
+
+    renderProvider();
+
+    expect(screen.getByTestId("outer-message-id")).toHaveTextContent(
+      "msg_parent"
+    );
+    expect(screen.getByTestId("blocked-message-id")).toHaveTextContent(
+      "msg_child"
+    );
   });
 });

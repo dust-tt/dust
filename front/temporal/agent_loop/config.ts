@@ -21,10 +21,6 @@ export type AgentLoopQueue =
   | "programmatic"
   | "batch";
 
-// The legacy queue, not a routing target: everything lands here while routing is off, keeping
-// the historical name so in-flight workflows and the existing worker deployment are
-// unaffected. Slated for removal once routing is fully rolled out.
-export const QUEUE_NAME = `agent-loop-queue-v${QUEUE_VERSION}`;
 export const SCHEDULES_QUEUE_NAME = `agent-loop-schedules-queue-v${QUEUE_VERSION}`;
 export const INTERACTIVE_QUEUE_NAME = `agent-loop-interactive-queue-v${QUEUE_VERSION}`;
 export const PROGRAMMATIC_QUEUE_NAME = `agent-loop-programmatic-queue-v${QUEUE_VERSION}`;

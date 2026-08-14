@@ -19,6 +19,8 @@ import {
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import tracer from "@app/logger/tracer";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
@@ -29,6 +31,7 @@ import type { estypes } from "@elastic/elasticsearch";
 // consumption. Period-scoped buckets supplement it with historical values after
 // users, agents, or skills are deleted.
 const FACET_COMPOSITE_PAGE_SIZE = 1_000;
+const FACET_ES_QUERY_CONCURRENCY = 6;
 
 export type ConsumptionFacet = {
   value: string;
@@ -53,7 +56,8 @@ export type ConsumptionFacets = {
   facets: {
     agent: ConsumptionAgentFacet[];
     user: ConsumptionFacet[];
-    team: ConsumptionFacet[];
+    api_key: ConsumptionFacet[];
+    group: ConsumptionFacet[];
     model: ConsumptionModelFacet[];
     tool: ConsumptionFacet[];
     skill: ConsumptionFacet[];
@@ -99,17 +103,41 @@ function filterWithoutDimension(
   return { ...filter, [filterKey]: undefined };
 }
 
-async function fetchDimensionFacetBuckets({
-  auth,
-  period,
-  filter,
-  dimension,
-}: {
+type FetchDimensionFacetBucketsArgs = {
   auth: Authenticator;
   period: ConsumptionPeriod;
   filter: ConsumptionScopeFilter;
   dimension: ConsumptionScopeDimension;
-}): Promise<Result<FacetBuckets, ElasticsearchError>> {
+};
+
+async function fetchDimensionFacetBuckets(
+  args: FetchDimensionFacetBucketsArgs
+): Promise<Result<FacetBuckets, ElasticsearchError>> {
+  const { dimension } = args;
+  return tracer.trace(
+    "analytics.consumption.facets.fetch_buckets",
+    { resource: dimension },
+    async (span) => {
+      span?.setTag("facet.dimension", dimension);
+      const result = await fetchDimensionFacetBucketsWithoutTracing(args);
+      if (result.isErr()) {
+        span?.setTag("error", result.error);
+      } else {
+        span?.setTag("facet.bucket_count", result.value.contextual.size);
+      }
+      return result;
+    }
+  );
+}
+
+async function fetchDimensionFacetBucketsWithoutTracing({
+  auth,
+  period,
+  filter,
+  dimension,
+}: FetchDimensionFacetBucketsArgs): Promise<
+  Result<FacetBuckets, ElasticsearchError>
+> {
   const contextual = new Map<string, number>();
   let afterKey: { value: string } | undefined;
 
@@ -192,10 +220,17 @@ async function resolveFacets(
   const missingCatalogValues = historicalValues.filter(
     (value) => !catalogByValue.has(value)
   );
-  const historicalLabels = await resolveDimensionLabels(
-    auth,
-    dimension,
-    missingCatalogValues
+  const historicalLabels = await tracer.trace(
+    "analytics.consumption.facets.resolve_labels",
+    { resource: dimension },
+    async (span) => {
+      span?.setTag("facet.dimension", dimension);
+      span?.setTag(
+        "facet.missing_catalog_value_count",
+        missingCatalogValues.length
+      );
+      return resolveDimensionLabels(auth, dimension, missingCatalogValues);
+    }
   );
   const entries = [
     ...catalogEntries,
@@ -226,7 +261,7 @@ async function resolveFacets(
  * filters except its own dimension, so choosing one value never hides its
  * siblings.
  */
-export async function fetchConsumptionFacets(
+async function fetchConsumptionFacetsWithoutTracing(
   auth: Authenticator,
   {
     period,
@@ -236,14 +271,22 @@ export async function fetchConsumptionFacets(
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionFacets, ElasticsearchError>> {
-  const bucketsByDimension = new Map<ConsumptionScopeDimension, FacetBuckets>();
-  for (const dimension of CONSUMPTION_SCOPE_DIMENSIONS) {
-    const result = await fetchDimensionFacetBuckets({
-      auth,
-      period,
-      filter,
+  const bucketResults = await concurrentExecutor(
+    CONSUMPTION_SCOPE_DIMENSIONS,
+    async (dimension) => ({
       dimension,
-    });
+      result: await fetchDimensionFacetBuckets({
+        auth,
+        period,
+        filter,
+        dimension,
+      }),
+    }),
+    { concurrency: FACET_ES_QUERY_CONCURRENCY }
+  );
+
+  const bucketsByDimension = new Map<ConsumptionScopeDimension, FacetBuckets>();
+  for (const { dimension, result } of bucketResults) {
     if (result.isErr()) {
       return result;
     }
@@ -266,11 +309,17 @@ export async function fetchConsumptionFacets(
     getFacetBuckets(bucketsByDimension, "user"),
     catalog.user
   );
-  const teamFacets = await resolveFacets(
+  const apiKeyFacets = await resolveFacets(
     auth,
-    "team",
-    getFacetBuckets(bucketsByDimension, "team"),
-    catalog.team
+    "api_key",
+    getFacetBuckets(bucketsByDimension, "api_key"),
+    catalog.api_key
+  );
+  const groupFacets = await resolveFacets(
+    auth,
+    "group",
+    getFacetBuckets(bucketsByDimension, "group"),
+    catalog.group
   );
   const modelFacets = await resolveFacets(
     auth,
@@ -302,11 +351,32 @@ export async function fetchConsumptionFacets(
     facets: {
       agent: agentFacets,
       user: userFacets,
-      team: teamFacets,
+      api_key: apiKeyFacets,
+      group: groupFacets,
       model: modelFacets,
       tool: toolFacets,
       skill: skillFacets,
       source: sourceFacets,
     },
+  });
+}
+
+export async function fetchConsumptionFacets(
+  auth: Authenticator,
+  input: {
+    period: ConsumptionPeriod;
+    filter?: ConsumptionScopeFilter;
+  }
+): Promise<Result<ConsumptionFacets, ElasticsearchError>> {
+  return tracer.trace("analytics.consumption.facets", async (span) => {
+    // This endpoint has too little traffic to reliably survive service-level
+    // head sampling, but its traces are needed to diagnose slow facet loads.
+    span?.setTag("manual.keep", true);
+    span?.setTag("workspace.id", auth.getNonNullableWorkspace().sId);
+    const result = await fetchConsumptionFacetsWithoutTracing(auth, input);
+    if (result.isErr()) {
+      span?.setTag("error", result.error);
+    }
+    return result;
   });
 }

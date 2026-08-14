@@ -4,28 +4,14 @@ import {
   BATCH_QUEUE_NAME,
   INTERACTIVE_QUEUE_NAME,
   PROGRAMMATIC_QUEUE_NAME,
-  QUEUE_NAME,
   SCHEDULES_QUEUE_NAME,
 } from "@app/temporal/agent_loop/config";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { faker } from "@faker-js/faker";
 import { describe, expect, it } from "vitest";
-
-async function setupAuth({
-  withRoutingFlag,
-}: {
-  withRoutingFlag: boolean;
-}): Promise<Authenticator> {
-  const { authenticator } = await createResourceTest({ role: "admin" });
-  if (withRoutingFlag) {
-    await FeatureFlagFactory.basic(authenticator, "agent_loop_qos_routing");
-  }
-  return authenticator;
-}
 
 async function createTriggeredConversation(
   auth: Authenticator,
@@ -60,32 +46,8 @@ async function createTriggeredConversation(
 }
 
 describe("getTaskQueueForRun", () => {
-  it("routes everything to the default queue without the feature flag", async () => {
-    const auth = await setupAuth({ withRoutingFlag: false });
-    const conversationId = await createTriggeredConversation(auth, "webhook");
-
-    expect(
-      await getTaskQueueForRun(auth, {
-        userMessageOrigin: "web",
-        conversationId,
-      })
-    ).toBe(QUEUE_NAME);
-    expect(
-      await getTaskQueueForRun(auth, {
-        userMessageOrigin: "triggered",
-        conversationId,
-      })
-    ).toBe(QUEUE_NAME);
-    expect(
-      await getTaskQueueForRun(auth, {
-        userMessageOrigin: "api",
-        conversationId,
-      })
-    ).toBe(QUEUE_NAME);
-  });
-
-  it("routes human surfaces when the feature flag is enabled", async () => {
-    const auth = await setupAuth({ withRoutingFlag: true });
+  it("routes human surfaces to the interactive queue", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
     const conversationId = await createTriggeredConversation(auth, null);
 
     expect(
@@ -108,8 +70,8 @@ describe("getTaskQueueForRun", () => {
     ).toBe(INTERACTIVE_QUEUE_NAME);
   });
 
-  it("routes machine surfaces when the feature flag is enabled", async () => {
-    const auth = await setupAuth({ withRoutingFlag: true });
+  it("routes machine surfaces to their queues", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
     const conversationId = await createTriggeredConversation(auth, null);
 
     expect(
@@ -145,7 +107,7 @@ describe("getTaskQueueForRun", () => {
   });
 
   it("routes triggered runs by the conversation's trigger kind", async () => {
-    const auth = await setupAuth({ withRoutingFlag: true });
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
 
     const scheduleConversationId = await createTriggeredConversation(
       auth,
@@ -171,7 +133,7 @@ describe("getTaskQueueForRun", () => {
   });
 
   it("routes triggered runs without a resolvable trigger to schedules", async () => {
-    const auth = await setupAuth({ withRoutingFlag: true });
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
     const conversationId = await createTriggeredConversation(auth, null);
 
     expect(

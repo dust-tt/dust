@@ -460,6 +460,7 @@ export function FrameRenderer({
               conversationId={conversation?.sId ?? null}
               isEditable={true}
               spaceId={frameSpaceId ?? undefined}
+              framePath={framePath}
               isInDrawer={true}
               onEditText={handleEditText}
               ref={iframeRef}

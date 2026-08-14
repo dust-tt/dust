@@ -8,11 +8,12 @@ export const DEFAULT_CONSUMPTION_DIMENSION: ConsumptionDimension = "agent";
 export const CONSUMPTION_DIMENSIONS: ConsumptionDimension[] = [
   "agent",
   "user",
-  "team",
+  "group",
   "model",
   "tool",
   "skill",
   "source",
+  "api_key",
 ];
 
 interface ConsumptionDimensionConfig {
@@ -41,33 +42,39 @@ export const CONSUMPTION_DIMENSION_CONFIG: Record<
     hasAvatar: true,
     avgLabel: MESSAGE_AVG_LABEL,
   },
-  team: {
-    label: "Teams",
-    breakdownLabel: "team",
+  group: {
+    label: "Groups",
+    breakdownLabel: "group",
     hasAvatar: false,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   model: {
     label: "Models",
     breakdownLabel: "model",
-    hasAvatar: false,
+    hasAvatar: true,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   tool: {
     label: "Tools",
     breakdownLabel: "tool",
-    hasAvatar: false,
+    hasAvatar: true,
     avgLabel: INVOCATION_AVG_LABEL,
   },
   skill: {
     label: "Skills",
     breakdownLabel: "skill",
-    hasAvatar: false,
+    hasAvatar: true,
     avgLabel: INVOCATION_AVG_LABEL,
   },
   source: {
     label: "Sources",
     breakdownLabel: "source",
+    hasAvatar: false,
+    avgLabel: MESSAGE_AVG_LABEL,
+  },
+  api_key: {
+    label: "API keys",
+    breakdownLabel: "API key",
     hasAvatar: false,
     avgLabel: MESSAGE_AVG_LABEL,
   },

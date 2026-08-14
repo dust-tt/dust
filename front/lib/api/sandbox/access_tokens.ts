@@ -22,6 +22,31 @@ function isDefined<T>(value: T | undefined): value is T {
   return value !== undefined;
 }
 
+const SandboxFileSystemRootSchema = z
+  .object({
+    kind: z.enum(["conversation", "pod"]),
+    id: z.string().min(1),
+    permissions: z.object({
+      canRead: z.boolean(),
+      canWrite: z.boolean(),
+    }),
+  })
+  .refine(
+    (root) => !root.permissions.canWrite || root.permissions.canRead,
+    "A writable filesystem root must also be readable."
+  );
+
+const SandboxFileSystemRootsSchema = z
+  .array(SandboxFileSystemRootSchema)
+  .min(1)
+  .max(2)
+  .refine(
+    (roots) => new Set(roots.map((root) => root.kind)).size === roots.length,
+    "A filesystem token cannot contain the same root kind twice."
+  );
+
+export type SandboxFileSystemRoot = z.infer<typeof SandboxFileSystemRootSchema>;
+
 const SandboxTokenPayloadSchema = z
   .object({
     wId: z.string(),
@@ -36,10 +61,8 @@ const SandboxTokenPayloadSchema = z
     spaceId: z.string().optional(),
     sandboxFunctionId: z.string().optional(),
     invocationId: z.string().optional(),
-    // A filesystem token is long-lived for the lifetime of one sandbox. It
-    // names only the roots mounted in that sandbox; the filesystem endpoint
-    // does not accept roots from the request body.
     filesystem: z.literal(true).optional(),
+    fileSystemRoots: SandboxFileSystemRootsSchema.optional(),
     // Set for a fast Pod function, published on the promise that it does not call tools. A tool
     // call can wait on the user for as long as they take, which a fast invocation has no way to
     // survive, so the token it runs under cannot make one.
@@ -57,10 +80,12 @@ const SandboxTokenPayloadSchema = z
     const hasInvocation = invocationClaims.every(isDefined);
     const hasFileSystem =
       payload.filesystem === true &&
-      (payload.cId !== undefined || payload.spaceId !== undefined) &&
+      payload.fileSystemRoots !== undefined &&
+      payload.cId === undefined &&
       !actionClaims.some(isDefined) &&
-      payload.sandboxFunctionId === undefined &&
-      payload.invocationId === undefined;
+      !invocationClaims.some(isDefined) &&
+      payload.aV === undefined &&
+      payload.noTools === undefined;
 
     if (actionClaims.some(isDefined) && !hasAction) {
       ctx.addIssue({
@@ -68,13 +93,16 @@ const SandboxTokenPayloadSchema = z
         message: "Incomplete sandbox action token claims.",
       });
     }
-    if (invocationClaims.some(isDefined) && !hasInvocation && !hasFileSystem) {
+    if (invocationClaims.some(isDefined) && !hasInvocation) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Incomplete sandbox function invocation token claims.",
       });
     }
-    if (payload.filesystem === true && !hasFileSystem) {
+    if (
+      (payload.filesystem === true || payload.fileSystemRoots !== undefined) &&
+      !hasFileSystem
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Invalid sandbox filesystem token claims.",
@@ -110,7 +138,8 @@ export type SandboxFunctionInvocationTokenPayload = SandboxTokenPayload & {
 
 export type SandboxFileSystemTokenPayload = SandboxTokenPayload & {
   filesystem: true;
-} & ({ cId: string; spaceId?: string } | { cId?: string; spaceId: string });
+  fileSystemRoots: SandboxFileSystemRoot[];
+};
 
 export function isSandboxExecTokenPayload(
   payload: SandboxTokenPayload
@@ -200,12 +229,16 @@ export function isSandboxFileSystemTokenPayload(
 ): payload is SandboxFileSystemTokenPayload {
   return (
     payload.filesystem === true &&
-    (payload.cId !== undefined || payload.spaceId !== undefined) &&
+    payload.fileSystemRoots !== undefined &&
+    payload.cId === undefined &&
     payload.aId === undefined &&
+    payload.aV === undefined &&
     payload.mId === undefined &&
     payload.actionId === undefined &&
+    payload.spaceId === undefined &&
     payload.sandboxFunctionId === undefined &&
-    payload.invocationId === undefined
+    payload.invocationId === undefined &&
+    payload.noTools === undefined
   );
 }
 
@@ -364,35 +397,24 @@ export async function generateSandboxFileSystemToken(
   auth: Authenticator,
   {
     sandbox,
-    conversationId,
-    spaceId,
+    roots,
     expiryMs = EXEC_TOKEN_REDIS_TTL_SECONDS * 1000,
   }: {
     sandbox: SandboxResource;
-    conversationId?: string;
-    spaceId?: string;
+    roots: SandboxFileSystemRoot[];
     expiryMs?: number;
   }
 ): Promise<string> {
-  const common = {
+  const fileSystemRoots = SandboxFileSystemRootsSchema.parse(roots);
+
+  const payload: SandboxFileSystemTokenPayload = {
     wId: auth.getNonNullableWorkspace().sId,
     uId: auth.user()?.sId,
     sbId: sandbox.sId,
-    execId: `filesystem-${sandbox.sId}`,
-    filesystem: true as const,
+    execId: "filesystem",
+    filesystem: true,
+    fileSystemRoots,
   };
-  let payload: SandboxFileSystemTokenPayload;
-  if (conversationId) {
-    payload = {
-      ...common,
-      cId: conversationId,
-      ...(spaceId ? { spaceId } : {}),
-    };
-  } else if (spaceId) {
-    payload = { ...common, spaceId };
-  } else {
-    throw new Error("A filesystem token requires a conversation or Pod root.");
-  }
 
   await registerExecToken(payload);
 

@@ -2,24 +2,12 @@ import {
   parseCanonicalScopedPath,
   resolveCanonicalScopedPath,
 } from "@app/lib/api/files/mount_path";
+import { normalizeAppPrefix } from "@app/types/api/pod_function_reference";
 import { SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX } from "@app/types/api/sandbox_functions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const SANDBOX_FUNCTION_SLUG_SEPARATOR = "__";
-
-/**
- * Normalize an app folder name into one slug segment: lowercase, every run of characters outside
- * `[a-z0-9]` collapsed to a hyphen, no leading or trailing hyphen. Deliberately no camel-case
- * splitting, so `TaskList` becomes `tasklist` rather than `task-list`: a predictable rule beats a
- * prettier heuristic that has to decide what to do with `MyAPIApp`.
- */
-export function normalizeAppPrefix(folderName: string): string {
-  return folderName
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 
 /**
  * Derive the app prefix a pod path belongs to: the normalized first path segment under the pod

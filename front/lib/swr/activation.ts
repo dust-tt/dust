@@ -5,7 +5,7 @@ import type {
 } from "@app/lib/api/activation/recommendations";
 import type { GetActivationWorkAreasResponseBody } from "@app/lib/api/activation/work_areas";
 import { clientFetch } from "@app/lib/egress/client";
-import type { ActivationWorkAreaStatus } from "@app/lib/models/activation/activation_work_area";
+import type { PublicActivationWorkAreaStatus } from "@app/lib/models/activation/activation_work_area";
 import {
   emptyArray,
   getErrorFromResponse,
@@ -134,7 +134,7 @@ export function useActivationWorkAreas({
 }: {
   workspaceId: string;
   podId?: string;
-  status?: ActivationWorkAreaStatus;
+  status?: PublicActivationWorkAreaStatus;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -177,7 +177,7 @@ export function useUpdateActivationWorkArea({
     async (
       workAreaId: string,
       body: {
-        status?: "confirmed" | "dismissed";
+        status?: PublicActivationWorkAreaStatus;
         title?: string;
         description?: string;
       }

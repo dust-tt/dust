@@ -1,3 +1,4 @@
+import { getEnabledSkillInputTextByActionId } from "@app/lib/api/assistant/agent_message_consumption_attribution/enabled_skill_footprint";
 import type { ToolCallFootprintInput } from "@app/lib/api/assistant/agent_message_consumption_attribution/tool_footprint";
 import {
   measureToolCallFootprints,
@@ -7,13 +8,25 @@ import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import { GPT_5_MODEL_ID } from "@app/types/assistant/models/openai";
+import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import {
+  GPT_4_1_MODEL_CONFIG,
+  GPT_5_6_SOL_MODEL_ID,
+  GPT_5_MODEL_ID,
+} from "@app/types/assistant/models/openai";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/provider_credentials", () => ({
   getLlmCredentials: vi.fn(),
 }));
+
+vi.mock(
+  "@app/lib/api/assistant/agent_message_consumption_attribution/enabled_skill_footprint",
+  () => ({
+    getEnabledSkillInputTextByActionId: vi.fn(async () => new Map()),
+  })
+);
 
 vi.mock("@app/lib/tokenization", () => ({
   tokenCountForTexts: vi.fn(),
@@ -150,6 +163,32 @@ describe("measureToolCallFootprints", () => {
     );
   });
 
+  it("omits deferred enabled-skill definitions for an Anthropic tool-search model", async () => {
+    await measureToolCallFootprints(auth, {
+      modelId: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
+      toolCalls: [footprintInput(makeAction())],
+    });
+
+    expect(getEnabledSkillInputTextByActionId).toHaveBeenCalledWith(
+      auth,
+      expect.any(Array),
+      { toolSearchEnabled: true }
+    );
+  });
+
+  it("includes enabled-skill definitions when tool search is disabled", async () => {
+    await measureToolCallFootprints(auth, {
+      modelId: GPT_4_1_MODEL_CONFIG.modelId,
+      toolCalls: [footprintInput(makeAction())],
+    });
+
+    expect(getEnabledSkillInputTextByActionId).toHaveBeenCalledWith(
+      auth,
+      expect.any(Array),
+      { toolSearchEnabled: false }
+    );
+  });
+
   it("returns an empty result without tokenizing when there are no actions", async () => {
     const res = await measureToolCallFootprints(auth, {
       modelId: GPT_5_MODEL_ID,
@@ -169,6 +208,41 @@ describe("measureToolCallFootprints", () => {
 
     expect(res.isErr()).toBe(true);
     expect(tokenCountForTexts).not.toHaveBeenCalled();
+  });
+
+  it("tokenizes historical runs whose model is no longer served", async () => {
+    const res = await measureToolCallFootprints(auth, {
+      modelId: GPT_4_1_MODEL_CONFIG.modelId,
+      toolCalls: [footprintInput(makeAction())],
+    });
+
+    expect(res.isOk()).toBe(true);
+    expect(tokenCountForTexts).toHaveBeenCalledWith(
+      expect.any(Array),
+      {
+        ...GPT_4_1_MODEL_CONFIG,
+        tokenCountAdjustment: 1,
+      },
+      expect.anything()
+    );
+  });
+
+  it("tokenizes GPT-5 footprints without safety padding using o200k", async () => {
+    const res = await measureToolCallFootprints(auth, {
+      modelId: GPT_5_6_SOL_MODEL_ID,
+      toolCalls: [footprintInput(makeAction())],
+    });
+
+    expect(res.isOk()).toBe(true);
+    expect(tokenCountForTexts).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({
+        modelId: GPT_5_6_SOL_MODEL_ID,
+        tokenCountAdjustment: 1,
+        tokenizer: { type: "tiktoken", base: "o200k_base" },
+      }),
+      expect.anything()
+    );
   });
 
   it("measures the call and result footprint of each action, aligned by position", async () => {

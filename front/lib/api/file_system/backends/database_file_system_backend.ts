@@ -3,7 +3,6 @@ import type { Readable } from "node:stream";
 
 import type { FileSystemBackend } from "@app/lib/api/file_system/backends/file_system_backend";
 import { FileSystemScope } from "@app/lib/api/file_system/namespace_scope";
-import type { FileSystemNode } from "@app/lib/api/file_system/namespace_types";
 import { FileSystemOperationError } from "@app/lib/api/file_system/namespace_types";
 import { DatabaseSandboxMountAdapter } from "@app/lib/api/file_system/sandbox/database_sandbox_mount_adapter";
 import type { SandboxMountAdapter } from "@app/lib/api/file_system/sandbox/sandbox_mount_adapter";
@@ -14,7 +13,7 @@ import type {
 import { DustFileSystemError } from "@app/lib/api/file_system/types";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
-import { FILE_SYSTEM_CONTENT_URL_EXPIRATION_MS } from "@app/lib/resources/file_system_blob_cleanup_resource";
+import { FILE_SYSTEM_CONTENT_URL_EXPIRATION_MS } from "@app/lib/file_storage/file_system_blobs";
 import { FileSystemContentResource } from "@app/lib/resources/file_system_content_resource";
 import { FileSystemMutationResource } from "@app/lib/resources/file_system_mutation_resource";
 import { FileSystemNodeResource } from "@app/lib/resources/file_system_node_resource";
@@ -33,7 +32,7 @@ type ParsedPath = {
 };
 
 type ResolvedPath = ParsedPath & {
-  node: FileSystemNode;
+  node: FileSystemNodeResource;
 };
 
 const DIRECTORY_CONTENT_TYPE = "application/x-directory";
@@ -43,7 +42,7 @@ const DIRECTORY_PAGE_SIZE = 256;
 /** PostgreSQL owns names and inodes; GCS stores only immutable file bytes. */
 export class DatabaseFileSystemBackend implements FileSystemBackend {
   private readonly scope: FileSystemScope;
-  private rootsPromise: Promise<FileSystemNode[]> | null = null;
+  private rootsPromise: Promise<FileSystemNodeResource[]> | null = null;
 
   constructor(
     private readonly auth: Authenticator,
@@ -82,7 +81,7 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
     };
   }
 
-  private async roots(): Promise<FileSystemNode[]> {
+  private async roots(): Promise<FileSystemNodeResource[]> {
     this.rootsPromise ??= FileSystemNodeResource.ensureRoots(
       this.auth,
       this.scope
@@ -90,7 +89,9 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
     return this.rootsPromise;
   }
 
-  private async rootFor(mount: FileSystemMount): Promise<FileSystemNode> {
+  private async rootFor(
+    mount: FileSystemMount
+  ): Promise<FileSystemNodeResource> {
     const root = (await this.roots()).find(
       (candidate) =>
         candidate.rootKind === mount.kind && candidate.rootId === mount.id
@@ -114,12 +115,7 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
       if (node.kind !== "directory") {
         return null;
       }
-      const child = await FileSystemNodeResource.lookup(
-        this.auth,
-        this.scope,
-        node.id,
-        segment
-      );
+      const child = await node.lookupChild(this.auth, this.scope, segment);
       if (child.isErr()) {
         throw child.error;
       }
@@ -133,9 +129,9 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
 
   private async resolveParent(scopedPath: string): Promise<{
     parsed: ParsedPath;
-    parent: FileSystemNode;
+    parent: FileSystemNodeResource;
     name: string;
-    existing: FileSystemNode | null;
+    existing: FileSystemNodeResource | null;
   }> {
     const parsed = this.parse(scopedPath);
     if (!parsed || parsed.segments.length === 0) {
@@ -159,12 +155,7 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
         "The parent directory was not found."
       );
     }
-    const existing = await FileSystemNodeResource.lookup(
-      this.auth,
-      this.scope,
-      parent.node.id,
-      name
-    );
+    const existing = await parent.node.lookupChild(this.auth, this.scope, name);
     if (existing.isErr()) {
       throw existing.error;
     }
@@ -183,7 +174,8 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
           return new DustFileSystemError("not_found", error.message);
         case "unauthorized":
           return new DustFileSystemError("unauthorized", error.message);
-        case "busy":
+        case "is_directory":
+        case "not_directory":
         case "invalid_operation":
         case "not_empty":
         case "stale":
@@ -193,14 +185,17 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
     return new DustFileSystemError("internal", normalizeError(error).message);
   }
 
-  private entry(node: FileSystemNode, scopedPath: string): FileSystemEntry {
+  private entry(
+    node: FileSystemNodeResource,
+    scopedPath: string
+  ): FileSystemEntry {
     if (node.kind === "directory") {
       return {
         isDirectory: true,
         fileName: node.name,
         path: scopedPath,
         sizeBytes: 0,
-        lastModifiedMs: node.modifiedAtMs,
+        lastModifiedMs: node.updatedAt.getTime(),
       };
     }
     return {
@@ -211,18 +206,19 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
       contentType: stripMimeParameters(
         node.contentType ?? DEFAULT_CONTENT_TYPE
       ),
-      lastModifiedMs: node.modifiedAtMs,
-      fileId: node.fileResourceId,
+      lastModifiedMs: node.updatedAt.getTime(),
+      fileId: null,
       thumbnailUrl: null,
     };
   }
 
-  private async children(nodeId: number): Promise<FileSystemNode[]> {
-    const children: FileSystemNode[] = [];
+  private async children(
+    node: FileSystemNodeResource
+  ): Promise<FileSystemNodeResource[]> {
+    const children: FileSystemNodeResource[] = [];
     let afterName: string | null = null;
     do {
-      const page = await FileSystemNodeResource.readDir(this.auth, this.scope, {
-        nodeId,
+      const page = await node.readDir(this.auth, this.scope, {
         afterName,
         limit: DIRECTORY_PAGE_SIZE,
       });
@@ -248,7 +244,7 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
         return new Ok([]);
       }
       const entries: FileSystemEntry[] = [];
-      const pending: Array<{ node: FileSystemNode; path: string }> = [
+      const pending: Array<{ node: FileSystemNodeResource; path: string }> = [
         { node: resolved.node, path: scopedPath.replace(/\/$/, "") },
       ];
       while (
@@ -259,7 +255,7 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
         if (!current) {
           break;
         }
-        for (const child of await this.children(current.node.id)) {
+        for (const child of await this.children(current.node)) {
           const childPath = `${current.path}/${child.name}`;
           const hidden =
             child.name.startsWith(".") &&
@@ -350,11 +346,12 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
       const destination = await this.resolveParent(scopedPath);
       let node = destination.existing;
       if (!node) {
-        const created = await FileSystemNodeResource.create(
+        const created = await FileSystemMutationResource.createNode(
           this.auth,
           this.scope,
           {
             operation: "create",
+            requestId: randomUUID(),
             parentId: destination.parent.id,
             name: destination.name,
             kind: "file",
@@ -404,11 +401,12 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
           )
         );
       }
-      const created = await FileSystemNodeResource.create(
+      const created = await FileSystemMutationResource.createNode(
         this.auth,
         this.scope,
         {
           operation: "create",
+          requestId: randomUUID(),
           parentId: destination.parent.id,
           name: destination.name,
           kind: "directory",
@@ -430,14 +428,14 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
 
   private async removeNode(
     parentId: number,
-    node: FileSystemNode
+    node: FileSystemNodeResource
   ): Promise<void> {
     if (node.kind === "directory") {
-      for (const child of await this.children(node.id)) {
+      for (const child of await this.children(node)) {
         await this.removeNode(node.id, child);
       }
     }
-    const removed = await FileSystemMutationResource.apply(
+    const removed = await FileSystemMutationResource.removeNode(
       this.auth,
       this.scope,
       {
@@ -445,6 +443,7 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
         requestId: randomUUID(),
         parentId,
         name: node.name,
+        kind: node.kind,
       }
     );
     if (removed.isErr()) {
@@ -476,17 +475,22 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
   }
 
   private async copyNode(
-    source: FileSystemNode,
-    destinationParent: FileSystemNode,
+    source: FileSystemNodeResource,
+    destinationParent: FileSystemNodeResource,
     destinationName: string
   ): Promise<void> {
-    const created = await FileSystemNodeResource.create(this.auth, this.scope, {
-      operation: "create",
-      parentId: destinationParent.id,
-      name: destinationName,
-      kind: source.kind,
-      mode: source.mode,
-    });
+    const created = await FileSystemMutationResource.createNode(
+      this.auth,
+      this.scope,
+      {
+        operation: "create",
+        requestId: randomUUID(),
+        parentId: destinationParent.id,
+        name: destinationName,
+        kind: source.kind,
+        mode: source.mode,
+      }
+    );
     if (created.isErr()) {
       throw created.error;
     }
@@ -514,7 +518,7 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
       }
       return;
     }
-    for (const child of await this.children(source.id)) {
+    for (const child of await this.children(source)) {
       await this.copyNode(child, created.value, child.name);
     }
   }
@@ -572,16 +576,16 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
           )
         );
       }
-      const moved = await FileSystemMutationResource.apply(
+      const moved = await FileSystemMutationResource.renameNode(
         this.auth,
         this.scope,
         {
           operation: "rename",
           requestId: randomUUID(),
-          parentId: source.parent.id,
-          name: source.name,
-          newParentId: destination.parent.id,
-          newName: destination.name,
+          sourceParentId: source.parent.id,
+          sourceName: source.name,
+          destinationParentId: destination.parent.id,
+          destinationName: destination.name,
         }
       );
       if (moved.isErr()) {

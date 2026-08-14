@@ -16,6 +16,7 @@ DEV_WORKSPACE_SID=MyWorkspace npx tsx scripts/seed/<folder>/seed.ts --execute
 
 ## Folders
 
+- `analytics/` - Creates members, teams, skills and agents, then fills the consumption index behind the "Analytics (new)" page
 - `basics/` - Creates a custom agent with skills and sample conversations
 - `byok/` - Setup workspace to test Bring your own key
 - `governance/` - Creates users and skills for testing admin governance

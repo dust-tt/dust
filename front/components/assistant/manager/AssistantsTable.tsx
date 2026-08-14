@@ -171,7 +171,7 @@ const getTableColumns = ({
             </div>
             <div className="flex min-w-0 grow flex-col">
               <div className="heading-sm overflow-hidden truncate text-foreground">
-                {`@${info.getValue()}`}
+                {info.getValue()}
               </div>
               <div className="overflow-hidden truncate text-sm text-muted-foreground">
                 {info.row.original.description}
@@ -181,7 +181,7 @@ const getTableColumns = ({
         </DataTable.CellContent>
       ),
       meta: {
-        className: "w-32 @lg:w-full",
+        className: "w-48 @lg:w-full",
       },
     },
     {
@@ -235,7 +235,7 @@ const getTableColumns = ({
         </DataTable.CellContent>
       ),
       meta: {
-        className: "hidden @sm:w-32 @sm:table-cell",
+        className: "hidden @lg:w-32 @lg:table-cell",
       },
     },
     {
@@ -267,7 +267,7 @@ const getTableColumns = ({
         );
       },
       meta: {
-        className: "hidden @sm:w-24 @sm:table-cell",
+        className: "hidden @lg:w-24 @lg:table-cell",
       },
     },
     {
@@ -301,7 +301,7 @@ const getTableColumns = ({
       ),
       isFilterable: true,
       meta: {
-        className: "w-24 xl:w-40",
+        className: "hidden @lg:table-cell @lg:w-24 @xl:w-40",
         tooltip: "Tags",
       },
     },
@@ -351,7 +351,7 @@ const getTableColumns = ({
         }
       },
       meta: {
-        className: "hidden @sm:w-20 @sm:table-cell",
+        className: "hidden @lg:w-20 @lg:table-cell",
         tooltip: "Active users in the last 30 days",
       },
     },
@@ -396,7 +396,7 @@ const getTableColumns = ({
         );
       },
       meta: {
-        className: "w-14",
+        className: "hidden @md:table-cell @md:w-14",
       },
     },
   ];

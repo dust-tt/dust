@@ -23,49 +23,43 @@ const ConsumptionPeriodSchema = z.object({
     .default(DEFAULT_CONSUMPTION_PERIOD_DAYS),
 });
 
-export const ConsumptionQuerySchema = ConsumptionPeriodSchema.extend({
-  // JSON-encoded, mirroring the existing analytics filter query param: the
-  // filter is a map of dimension to selected ids and does not flatten well
-  // into repeated query params.
-  filter: z
-    .string()
-    .optional()
-    .transform((value) => {
-      if (!value) {
-        return undefined;
-      }
-      try {
-        return JSON.parse(value);
-      } catch {
-        return value; // Return the original so validation fails below.
-      }
-    })
-    .pipe(ConsumptionFilterSchema.optional()),
-});
-
-export type ConsumptionQuery = z.infer<typeof ConsumptionQuerySchema>;
-
-export const ConsumptionFacetsBodySchema = ConsumptionPeriodSchema.extend({
+// Every consumption endpoint takes at least this body: the period and the
+// filter (a map of dimension to selected ids). All of them are POST so the
+// filter can travel in the JSON body instead of a URL, which would cap the
+// number of selectable filter values.
+export const ConsumptionBodySchema = ConsumptionPeriodSchema.extend({
   filter: ConsumptionFilterSchema.optional(),
 });
 
-export type ConsumptionFacetsBody = z.infer<typeof ConsumptionFacetsBodySchema>;
+export type ConsumptionBody = z.infer<typeof ConsumptionBodySchema>;
 
-// Every `top-*` endpoint takes the same query: the period and the filters of any
-// consumption endpoint, plus how many rows to rank.
-export const ConsumptionTopQuerySchema = ConsumptionQuerySchema.extend({
-  limit: z.coerce
+// Every `top-*` endpoint takes the same body as any other consumption
+// endpoint, plus how many rows to rank.
+export const ConsumptionTopBodySchema = ConsumptionBodySchema.extend({
+  limit: z
     .number()
     .int()
     .positive()
     .max(100)
+    .nullable()
     .optional()
-    .default(DEFAULT_CONSUMPTION_TOP_LIMIT),
+    .default(DEFAULT_CONSUMPTION_TOP_LIMIT)
+    .transform((limit) => limit ?? DEFAULT_CONSUMPTION_TOP_LIMIT),
+  offset: z.number().int().nonnegative().default(0),
+  search: z.string().trim().optional(),
 });
+
+export type ConsumptionTopBody = z.infer<typeof ConsumptionTopBodySchema>;
+
+// The attribution table's CSV export: same period/filter as the `top-*`
+// endpoints, but always returns the breakdown for every dimension.
+export const ConsumptionExportBodySchema = ConsumptionBodySchema;
+
+export type ConsumptionExportBody = z.infer<typeof ConsumptionExportBodySchema>;
 
 export function toConsumptionPeriodInput({
   period,
   days,
-}: Pick<ConsumptionQuery, "period" | "days">): ConsumptionPeriodInput {
+}: Pick<ConsumptionBody, "period" | "days">): ConsumptionPeriodInput {
   return period === "cycle" ? { kind: "cycle" } : { kind: "days", days };
 }

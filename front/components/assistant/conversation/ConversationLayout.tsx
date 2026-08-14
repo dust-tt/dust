@@ -181,8 +181,9 @@ function ConversationInnerLayout({
       ) : (
         <div className="flex h-full w-full flex-col">
           <ResizablePanelGroup
+            animateLayoutChanges
             direction="horizontal"
-            className="flex h-full w-full flex-1"
+            className="flex h-full w-full flex-1 @container"
           >
             <ResizablePanel defaultSize={100}>
               <div className="flex h-panel flex-col">{conversationMain}</div>

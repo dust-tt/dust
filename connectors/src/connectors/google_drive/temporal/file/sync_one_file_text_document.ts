@@ -1,3 +1,7 @@
+import {
+  getGoogleDriveDocumentContentSizeBytes,
+  runWithGoogleDriveContentPhaseMemoryTelemetry,
+} from "@connectors/connectors/google_drive/temporal/file/content_memory_telemetry";
 import { handleFileExport } from "@connectors/connectors/google_drive/temporal/file/handle_file_export";
 import { handleGoogleDriveExport } from "@connectors/connectors/google_drive/temporal/file/handle_google_drive_export";
 import { updateGoogleDriveFiles } from "@connectors/connectors/google_drive/temporal/file/update_google_drive_files";
@@ -74,20 +78,30 @@ export async function syncOneFileTextDocument(
   }
 
   if (documentContent) {
+    const upsertPayloadSizeBytes =
+      getGoogleDriveDocumentContentSizeBytes(documentContent);
     let upsertTimestampMs: number | undefined;
     try {
-      upsertTimestampMs = await upsertGdriveDocument(
-        dataSourceConfig,
-        file,
-        documentContent,
-        documentId,
-        maxDocumentLen,
-        localLogger,
-        oauth2client,
-        connectorId,
-        startSyncTs,
-        isBatchSync
-      );
+      upsertTimestampMs = await runWithGoogleDriveContentPhaseMemoryTelemetry({
+        logger: localLogger,
+        mimeType: file.mimeType,
+        phase: "dust_upsert",
+        payloadKind: "extracted_document",
+        getPayloadSizeBytes: () => upsertPayloadSizeBytes,
+        task: () =>
+          upsertGdriveDocument(
+            dataSourceConfig,
+            file,
+            documentContent,
+            documentId,
+            maxDocumentLen,
+            localLogger,
+            oauth2client,
+            connectorId,
+            startSyncTs,
+            isBatchSync
+          ),
+      });
     } catch (error) {
       if (error instanceof DataSourceQuotaExceededError) {
         localLogger.warn(

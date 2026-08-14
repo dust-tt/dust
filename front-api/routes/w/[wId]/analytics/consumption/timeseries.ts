@@ -1,6 +1,6 @@
 import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import {
-  ConsumptionQuerySchema,
+  ConsumptionBodySchema,
   toConsumptionPeriodInput,
 } from "@app/lib/api/analytics/consumption/schema";
 import {
@@ -22,7 +22,7 @@ import { z } from "zod";
 
 export type { GetConsumptionTimeseriesResponse };
 
-const QuerySchema = ConsumptionQuerySchema.extend({
+const BodySchema = ConsumptionBodySchema.extend({
   granularity: z.enum(["day", "week", "month"]).optional().default("day"),
   mode: z.enum(["daily", "cumulative"]).optional().default("daily"),
   metric: z
@@ -32,7 +32,7 @@ const QuerySchema = ConsumptionQuerySchema.extend({
   // Absent means a single total series. Every dimension the query can be
   // filtered on can also be broken down by.
   breakdownBy: z.enum(CONSUMPTION_SCOPE_DIMENSIONS).optional(),
-  breakdownCount: z.coerce
+  breakdownCount: z
     .number()
     .int()
     .positive()
@@ -45,10 +45,10 @@ const QuerySchema = ConsumptionQuerySchema.extend({
 const app = workspaceApp();
 
 /** @ignoreswagger */
-app.get(
+app.post(
   "/",
   ensureIsManager(),
-  validate("query", QuerySchema),
+  validate("json", BodySchema),
   async (ctx): HandlerResult<GetConsumptionTimeseriesResponse> => {
     const auth = ctx.get("auth");
     const {
@@ -59,7 +59,7 @@ app.get(
       breakdownCount,
       filter,
       ...periodQuery
-    } = ctx.req.valid("query");
+    } = ctx.req.valid("json");
 
     const period = await resolveConsumptionPeriod(
       auth,

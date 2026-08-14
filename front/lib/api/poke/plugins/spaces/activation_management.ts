@@ -1,13 +1,10 @@
+import { evaluateActivation } from "@app/lib/api/activation/evaluator";
 import type {
   ActivationNudgeContext,
   ActivationNudgePushedResourceType,
 } from "@app/lib/api/activation/nudge";
 import { postActivationNudge } from "@app/lib/api/activation/nudge";
 import { listActivationPodsByUser } from "@app/lib/api/activation/pods";
-import {
-  createActivationTrigger,
-  getOrCreateActivationWebhookSourceView,
-} from "@app/lib/api/activation/trigger";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { createPlugin } from "@app/lib/api/poke/types";
@@ -23,7 +20,6 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { activationSkill } from "@app/lib/resources/skill/code_defined/global/activation";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { startActivationWorkspaceSchedule } from "@app/temporal/activation_scheduler/client";
@@ -31,6 +27,7 @@ import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { createHash } from "crypto";
 
 const LEARNING_SPACE_NAME_SUFFIX = "'s Learning Space";
 
@@ -81,6 +78,56 @@ function learningSpaceNameForCreator(
 
   const label = hasNameCollision ? creator.email : creatorFullName;
   return `${label}${LEARNING_SPACE_NAME_SUFFIX}`;
+}
+
+function cohortBucket(workspaceSId: string, userSId: string): number {
+  const digest = createHash("sha256")
+    .update(`${workspaceSId}:${userSId}`)
+    .digest();
+  return digest.readUInt32BE(0) % 100;
+}
+
+// Selects the sIds of active workspace members who don't yet own a Pod, keeping
+// a deterministic percentage of each activation-status group (activated / not-activated).
+async function selectCohortUserSIds(
+  auth: Authenticator,
+  {
+    pctActivated,
+    pctNotActivated,
+  }: { pctActivated: number; pctNotActivated: number }
+): Promise<Result<string[], Error>> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace,
+  });
+  const members = await UserResource.fetchByModelIds(
+    memberships.map((membership) => membership.userId)
+  );
+
+  const podsByUser = await listActivationPodsByUser(auth);
+  const cohort = members.filter((member) => !podsByUser.has(member.id));
+  if (cohort.length === 0) {
+    return new Ok([]);
+  }
+
+  const activationResult = await evaluateActivation(auth, {
+    userIds: cohort.map((member) => member.sId),
+  });
+  if (activationResult.isErr()) {
+    return new Err(activationResult.error);
+  }
+  const byUser = activationResult.value;
+
+  const selected = cohort.filter((member) => {
+    const pct =
+      byUser.get(member.sId)?.activated === true
+        ? pctActivated
+        : pctNotActivated;
+    return cohortBucket(workspace.sId, member.sId) < pct;
+  });
+
+  return new Ok(selected.map((member) => member.sId));
 }
 
 // Resolves the encoded picker value to the pushed skill/agent, reading its
@@ -140,28 +187,22 @@ async function pinActivationSkill(
 }
 
 // Provisions a fresh Learning Space owned by `creator`: creates the restricted
-// project, pins the Activation skill, creates the user-owned activation trigger,
-// and records the canonical ActivationPod row.
+// project, pins the Activation skill, and records the canonical ActivationPod
+// row.
 async function provisionTrainingPod(
   auth: Authenticator,
-  adminAuth: Authenticator,
   {
     creator,
     otherUsers,
-    podNameOverride,
   }: {
     creator: UserResource;
     otherUsers: UserResource[];
-    podNameOverride: string | null;
   }
 ): Promise<
   Result<{ pod: SpaceResource; activationPod: ActivationPodResource }, Error>
 > {
   const workspace = auth.getNonNullableWorkspace();
-  const podName =
-    podNameOverride && podNameOverride.length > 0
-      ? podNameOverride
-      : learningSpaceNameForCreator(creator, otherUsers);
+  const podName = learningSpaceNameForCreator(creator, otherUsers);
 
   const creatorAuth = await Authenticator.fromUserIdAndWorkspaceId(
     creator.sId,
@@ -181,52 +222,12 @@ async function provisionTrainingPod(
 
   await pinActivationSkill(auth, pod);
 
-  const podViewResult = await getOrCreateActivationWebhookSourceView(
-    adminAuth,
-    pod
-  );
-  if (podViewResult.isErr()) {
-    return new Err(
-      new Error(
-        `Failed to get or create Activation Pod webhook view: ${podViewResult.error.message}`
-      )
-    );
-  }
-
-  const podMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
-    creator.sId,
-    workspace.sId
-  );
-  const triggerResult = await createActivationTrigger(podMemberAuth, {
-    pod,
-    creator,
-    podView: podViewResult.value,
-  });
-  if (triggerResult.isErr()) {
-    return new Err(
-      new Error(
-        `Failed to create Activation Pod trigger: ${triggerResult.error.message}`
-      )
-    );
-  }
-
-  const trigger = await TriggerResource.fetchById(
-    adminAuth,
-    triggerResult.value.triggerId
-  );
-  if (!trigger) {
-    return new Err(
-      new Error("Activation trigger not found after provisioning.")
-    );
-  }
-
   // Record the canonical ActivationPod row now that the pod's owner is known.
   // `isEligibleForNudge` and the activation scheduler rely on this row to find
   // the pod, so it must exist for the pod to ever be nudged.
   const activationPod = await ActivationPodResource.makeNew(auth, {
     pod,
     user: creator,
-    trigger,
   });
 
   // Ensure the workspace has a running Activation schedule now that it has a
@@ -266,10 +267,26 @@ export const activationManagementPlugin = createPlugin({
       "Each user who already has one is reused, then " +
       "everyone selected is nudged with the Session Goal. Use Work Areas to seed the user's " +
       "Work Areas for the first conversation. Check 'Force " +
-      "recreate' to delete and rebuild an existing Pod from scratch.",
+      "recreate' to delete and rebuild an existing Pod from scratch. " +
+      "Use 'Who to target' to pick specific users, a group, or a deterministic " +
+      "percentage cohort of active members who don't have a Pod yet.",
     resourceTypes: ["workspaces"],
     warning: "Large groups can take several minutes.",
     args: {
+      targetingMode: {
+        type: "enum",
+        label: "Who to target",
+        description:
+          "How to pick who gets a Pod: specific users, a whole group, or a " +
+          "deterministic percentage cohort of active members who don't have a " +
+          "Pod yet (split by activation status).",
+        values: [
+          { label: "Specific users", value: "users", checked: true },
+          { label: "A group", value: "group" },
+          { label: "Cohort of new users (by %)", value: "cohort" },
+        ],
+        multiple: false,
+      },
       targetUserIds: {
         type: "enum",
         label: "Users",
@@ -280,57 +297,95 @@ export const activationManagementPlugin = createPlugin({
         values: [],
         multiple: true,
         serverSideSearch: true,
+        dependsOn: { field: "targetingMode", value: "users" },
       },
       groupId: {
         type: "enum",
-        label: "Or a whole group",
+        label: "Group",
         description:
-          "Alternatively, provision/nudge every active member of the selected " +
-          "group, in addition to any users chosen above.",
+          "Provision/nudge every active member of the selected group.",
         async: true,
         values: [],
+        multiple: false,
+        dependsOn: { field: "targetingMode", value: "group" },
+      },
+      pctActivated: {
+        type: "number",
+        label: "% of already-activated users (no Pod)",
+        description:
+          "Percentage (0–100) of already-activated members without a Pod to " +
+          "provision. Coverage is cumulative and idempotent: a given " +
+          "percentage always targets the same slice, raising it across runs " +
+          "adds the next slice, and re-running it provisions no one new.",
+        variant: "spinner",
+        default: 0,
+        dependsOn: { field: "targetingMode", value: "cohort" },
+      },
+      pctNotActivated: {
+        type: "number",
+        label: "% of not-yet-activated users (no Pod)",
+        description:
+          "Percentage (0–100) of not-yet-activated members without a Pod to " +
+          "provision. Same cumulative, idempotent selection as above.",
+        variant: "spinner",
+        default: 0,
+        dependsOn: { field: "targetingMode", value: "cohort" },
+      },
+      guidance: {
+        type: "enum",
+        label: "Guidance",
+        description:
+          "Whether to hand the nudge curated context. Leave on the default to " +
+          "let the agent research the user and pick the next step on its own, " +
+          "or choose 'Provide curated guidance' to steer it with a session " +
+          "goal, a skill/agent to push, work areas, and a playbook.",
+        values: [
+          {
+            label: "No curated information (agent decides)",
+            value: "none",
+            checked: true,
+          },
+          { label: "Provide curated guidance", value: "curated" },
+        ],
         multiple: false,
       },
       sessionGoal: {
         type: "text",
-        label: "[Optional] Session Goal",
+        label: "Session Goal",
         description:
           "The one concrete outcome this nudge should drive in the user's " +
           "next session. Write it as a specific task tied to their real work, " +
           'e.g. "Help with GTM use cases" or "Set up a Monday digest of open support tickets". It is injected into the ' +
           "conversation as the focus for this run only. Leave blank to let the agent pick the next step " +
           "from the Pod's history and Work Areas.",
+        dependsOn: { field: "guidance", value: "curated" },
       },
       pushedResource: {
         type: "enum",
-        label: "[Optional] Skill or agent to drive adoption of",
+        label: "Skill or agent to drive adoption of",
         description:
           "A single workspace skill or agent the nudge recommends " +
           "during this session.",
         async: true,
         values: [],
         multiple: false,
+        dependsOn: { field: "guidance", value: "curated" },
       },
       workAreas: {
         type: "text",
-        label: "[Optional] Work Areas",
+        label: "Work Areas",
         description:
           "Background about the user that Dust keeps in mind across every nudge — " +
           "job title, team, responsibilities, current projects. " +
           "If not provided, the agent will automatically research the user.",
+        dependsOn: { field: "guidance", value: "curated" },
       },
       activationPlaybook: {
         type: "text",
-        label: "[Optional] Activation playbook",
+        label: "Activation playbook",
         description:
           "Step-by-step playbook or onboarding instructions for activating this user on Dust",
-      },
-      podName: {
-        type: "string",
-        label: "[Optional] Pod name",
-        description:
-          "Only applied when provisioning a single new Pod. " +
-          `Defaults to "<user>${LEARNING_SPACE_NAME_SUFFIX}".`,
+        dependsOn: { field: "guidance", value: "curated" },
       },
       forceRecreate: {
         type: "boolean",
@@ -391,27 +446,57 @@ export const activationManagementPlugin = createPlugin({
     auth,
     _resource,
     {
+      targetingMode,
       targetUserIds,
       groupId,
+      guidance,
       sessionGoal,
       pushedResource,
       workAreas,
       activationPlaybook,
-      podName,
+      pctActivated,
+      pctNotActivated,
       forceRecreate,
     }
   ) => {
     const workspace = auth.getNonNullableWorkspace();
 
-    // Resolve the target user set: explicitly selected users plus every active
-    // member of the selected group, deduped by sId.
-    const selectedUserIds = (targetUserIds ?? [])
-      .map((id) => id.trim())
-      .filter((id) => id.length > 0);
+    const mode = targetingMode?.[0] ?? "users";
 
-    const groupSId = groupId?.[0]?.trim();
-    let groupMemberIds: string[] = [];
-    if (groupSId) {
+    // Resolve the target user set from the selected targeting mode. Every mode
+    // produces a list of sIds that flow through the same provision+nudge path.
+    let targetUserSIds: string[];
+    if (mode === "cohort") {
+      const pctActivatedValue = pctActivated ?? 0;
+      const pctNotActivatedValue = pctNotActivated ?? 0;
+      for (const pct of [pctActivatedValue, pctNotActivatedValue]) {
+        if (pct < 0 || pct > 100) {
+          return new Err(
+            new Error("Cohort percentages must be between 0 and 100.")
+          );
+        }
+      }
+      const cohortResult = await selectCohortUserSIds(auth, {
+        pctActivated: pctActivatedValue,
+        pctNotActivated: pctNotActivatedValue,
+      });
+      if (cohortResult.isErr()) {
+        return cohortResult;
+      }
+      targetUserSIds = cohortResult.value;
+      if (targetUserSIds.length === 0) {
+        return new Ok({
+          display: "markdown",
+          value:
+            "No active members without a Pod matched the given percentages — " +
+            "nothing to provision.",
+        });
+      }
+    } else if (mode === "group") {
+      const groupSId = groupId?.[0]?.trim();
+      if (!groupSId) {
+        return new Err(new Error("Select a group."));
+      }
       const groupResult = await GroupResource.fetchById(auth, groupSId);
       if (groupResult.isErr()) {
         return new Err(
@@ -419,16 +504,18 @@ export const activationManagementPlugin = createPlugin({
         );
       }
       const members = await groupResult.value.getActiveMembers(auth);
-      groupMemberIds = members.map((member) => member.sId);
-    }
-
-    const targetUserSIds = [
-      ...new Set([...selectedUserIds, ...groupMemberIds]),
-    ];
-    if (targetUserSIds.length === 0) {
-      return new Err(
-        new Error("Select at least one user, or a group with active members.")
-      );
+      targetUserSIds = [...new Set(members.map((member) => member.sId))];
+      if (targetUserSIds.length === 0) {
+        return new Err(new Error("The selected group has no active members."));
+      }
+    } else {
+      const selectedUserIds = (targetUserIds ?? [])
+        .map((id) => id.trim())
+        .filter((id) => id.length > 0);
+      targetUserSIds = [...new Set(selectedUserIds)];
+      if (targetUserSIds.length === 0) {
+        return new Err(new Error("Select at least one user."));
+      }
     }
 
     const users = await UserResource.fetchByIds(targetUserSIds);
@@ -456,24 +543,36 @@ export const activationManagementPlugin = createPlugin({
       );
     }
 
-    const resolvedPushedResource = await resolvePushedResource(
-      auth,
-      pushedResource?.[0]
-    );
+    // The curated fields only apply when the operator opts into providing
+    // guidance; otherwise the nudge runs with no injected context and the agent
+    // researches the user on its own.
+    const useGuidance = guidance?.[0] === "curated";
+
+    const resolvedPushedResource = useGuidance
+      ? await resolvePushedResource(auth, pushedResource?.[0])
+      : new Ok(null);
     if (resolvedPushedResource.isErr()) {
       return resolvedPushedResource;
     }
     const pushed = resolvedPushedResource.value;
 
-    const context: ActivationNudgeContext = {
-      sessionGoal: sessionGoal?.trim() ? sessionGoal.trim() : null,
-      pushedResourceType: pushed?.type ?? null,
-      pushedResourceName: pushed?.name ?? null,
-      workAreas: workAreas?.trim() ? workAreas.trim() : null,
-      activationPlaybook: activationPlaybook?.trim()
-        ? activationPlaybook.trim()
-        : null,
-    };
+    const context: ActivationNudgeContext = useGuidance
+      ? {
+          sessionGoal: sessionGoal?.trim() ? sessionGoal.trim() : null,
+          pushedResourceType: pushed?.type ?? null,
+          pushedResourceName: pushed?.name ?? null,
+          workAreas: workAreas?.trim() ? workAreas.trim() : null,
+          activationPlaybook: activationPlaybook?.trim()
+            ? activationPlaybook.trim()
+            : null,
+        }
+      : {
+          sessionGoal: null,
+          pushedResourceType: null,
+          pushedResourceName: null,
+          workAreas: null,
+          activationPlaybook: null,
+        };
 
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId,
@@ -485,17 +584,6 @@ export const activationManagementPlugin = createPlugin({
 
     const podLink = (space: SpaceResource) =>
       `/poke/${workspace.sId}/spaces/${space.sId}`;
-    const trimmedPodName = podName?.trim() ?? "";
-    // A pod is (re)provisioned for a user when they have none, or when Force
-    // recreate is set and they have one to tear down. A custom pod name only
-    // makes sense when exactly one pod is being (re)provisioned.
-    const usersToProvision = users.filter(
-      (u) => !existingPodsByUser.has(u.id) || forceRecreate
-    );
-    const podNameOverride =
-      trimmedPodName.length > 0 && usersToProvision.length === 1
-        ? trimmedPodName
-        : null;
 
     const outcomes: TargetOutcome[] = [];
     // Sequential to avoid straining the connection pool: provisioning a pod is
@@ -551,10 +639,9 @@ export const activationManagementPlugin = createPlugin({
       }
 
       const otherUsers = users.filter((u) => u.sId !== user.sId);
-      const provisionResult = await provisionTrainingPod(auth, adminAuth, {
+      const provisionResult = await provisionTrainingPod(auth, {
         creator: user,
         otherUsers,
-        podNameOverride,
       });
       if (provisionResult.isErr()) {
         outcomes.push({

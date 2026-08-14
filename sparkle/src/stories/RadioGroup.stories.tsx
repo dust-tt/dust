@@ -15,6 +15,7 @@ import {
 
 const meta = {
   title: "Forms & Inputs/RadioGroup",
+  tags: ["a11y-issues"],
   parameters: {
     docs: {
       description: {

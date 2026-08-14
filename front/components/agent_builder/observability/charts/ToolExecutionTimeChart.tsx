@@ -1,5 +1,4 @@
 import {
-  CHART_HEIGHT,
   MAX_TOOLS_DISPLAYED,
   TOOL_EXECUTION_TIME_LEGEND,
   TOOL_EXECUTION_TIME_PALETTE,
@@ -11,6 +10,7 @@ import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { legendFromConstant } from "@app/components/charts/ChartLegend";
 import { RoundedBarShape } from "@app/components/charts/ChartShapes";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
 import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import type { ToolLatencyView } from "@app/lib/api/assistant/observability/tool_latency";
 import {
@@ -259,10 +259,7 @@ export function ToolExecutionTimeChart({
         </div>
       }
     >
-      <BarChart
-        data={displayData}
-        margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
-      >
+      <BarChart data={displayData} margin={CHART_MARGIN}>
         <CartesianGrid vertical={false} className="stroke-border" />
         <XAxis
           dataKey="label"

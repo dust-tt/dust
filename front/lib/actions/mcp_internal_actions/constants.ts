@@ -1197,7 +1197,7 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     id: 1035,
     // Available to all workspaces unless the admin opts out, and hidden from the
     // builder tool-picker; the skill wires it by name. Data access is enforced
-    // per-tool via auth.isAdmin().
+    // per-tool via auth.isManager().
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isRestricted: ({ isWorkspaceAnalyticsEnabled }) =>
@@ -1235,8 +1235,7 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     id: 1039,
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) =>
-      !featureFlags.includes("activation_skill"),
+    isRestricted: undefined,
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
@@ -1247,8 +1246,7 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     id: 1040,
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) =>
-      !featureFlags.includes("activation_skill"),
+    isRestricted: undefined,
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
@@ -1590,7 +1588,11 @@ export function resolveInternalMCPServerToolStakeLevel(
 export function getInternalMCPServerToolDisplayLabels(
   name: InternalMCPServerNameType
 ): Record<string, ToolDisplayLabels> | null {
-  const server = INTERNAL_MCP_SERVERS[name];
+  const server: InternalMCPServerEntry | undefined = INTERNAL_MCP_SERVERS[name];
+  if (!server) {
+    return null;
+  }
+
   const displayLabelsByTool: Record<string, ToolDisplayLabels> = {};
   let hasDisplayLabels = false;
 

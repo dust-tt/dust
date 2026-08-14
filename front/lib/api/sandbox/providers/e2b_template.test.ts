@@ -5,7 +5,13 @@ import type { TemplateBuilder } from "e2b";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { DockerRegistryFactory } from "./e2b_template";
-import { buildSandboxImage } from "./e2b_template";
+import {
+  buildSandboxImage,
+  deleteE2BTemplate,
+  deleteUnbuiltE2BTemplate,
+  findE2BTemplate,
+  listE2BTemplates,
+} from "./e2b_template";
 
 function createTestImage(): SandboxImage {
   return SandboxImage.fromDocker("test-image:v1")
@@ -67,12 +73,23 @@ function createMockDockerRegistryFactory(): DockerRegistryFactory {
 const mockDockerRegistryFactory = vi.fn(createMockDockerRegistryFactory());
 
 const mockBuild = vi.fn();
+const mockApiGet = vi.fn();
+const mockApiDelete = vi.fn();
 
 vi.mock("e2b", () => ({
   Template: Object.assign(() => mockE2BTemplateFactory, {
     build: (...args: unknown[]) => mockBuild(...args),
   }),
   defaultBuildLogger: vi.fn(() => vi.fn()),
+  ConnectionConfig: class {
+    constructor(readonly opts: unknown) {}
+  },
+  ApiClient: class {
+    api = {
+      GET: (...args: unknown[]) => mockApiGet(...args),
+      DELETE: (...args: unknown[]) => mockApiDelete(...args),
+    };
+  },
 }));
 
 describe("formatSandboxImageId()", () => {
@@ -99,6 +116,197 @@ describe("formatSandboxImageId()", () => {
   test("handles alphanumeric and hyphens without modification", () => {
     const id: SandboxImageId = { imageName: "dust-base", tag: "edge" };
     expect(formatSandboxImageId(id)).toBe("dust-base_edge");
+  });
+});
+
+describe("listE2BTemplates()", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("reports a template whose build never completed as having no envd version", async () => {
+    mockApiGet.mockResolvedValueOnce({
+      data: [
+        {
+          templateID: "tmpl-built",
+          aliases: ["dust-base_v0-1-1"],
+          envdVersion: "0.2.4",
+        },
+        {
+          templateID: "tmpl-failed",
+          aliases: ["dust-base_v0-1-2"],
+          envdVersion: "",
+        },
+      ],
+    });
+
+    const result = await listE2BTemplates();
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual([
+        {
+          templateId: "tmpl-built",
+          aliases: ["dust-base_v0-1-1"],
+          envdVersion: "0.2.4",
+        },
+        {
+          templateId: "tmpl-failed",
+          aliases: ["dust-base_v0-1-2"],
+          envdVersion: null,
+        },
+      ]);
+    }
+  });
+
+  test("returns Err when the E2B API errors", async () => {
+    mockApiGet.mockResolvedValueOnce({ error: { message: "unauthorized" } });
+
+    const result = await listE2BTemplates();
+
+    expect(result.isErr()).toBe(true);
+  });
+});
+
+describe("findE2BTemplate()", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("matches the template carrying the image alias", async () => {
+    mockApiGet.mockResolvedValueOnce({
+      data: [
+        { templateID: "tmpl-other", aliases: ["other_v1"], envdVersion: "1.0" },
+        {
+          templateID: "tmpl-wanted",
+          aliases: ["dust-base_v0-1-1"],
+          envdVersion: "1.0",
+        },
+      ],
+    });
+
+    const result = await findE2BTemplate({
+      imageName: "dust-base",
+      tag: "v0.1.1",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value?.templateId).toBe("tmpl-wanted");
+    }
+  });
+
+  test("returns null when no template carries the alias", async () => {
+    mockApiGet.mockResolvedValueOnce({
+      data: [
+        { templateID: "tmpl-other", aliases: ["other_v1"], envdVersion: "1.0" },
+      ],
+    });
+
+    const result = await findE2BTemplate({
+      imageName: "dust-base",
+      tag: "v0.1.1",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBeNull();
+    }
+  });
+});
+
+describe("deleteE2BTemplate()", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("deletes by template id", async () => {
+    mockApiDelete.mockResolvedValueOnce({ data: undefined });
+
+    const result = await deleteE2BTemplate("tmpl-failed");
+
+    expect(result.isOk()).toBe(true);
+    expect(mockApiDelete).toHaveBeenCalledWith("/templates/{templateID}", {
+      params: { path: { templateID: "tmpl-failed" } },
+    });
+  });
+
+  test("returns Err when the E2B API errors", async () => {
+    mockApiDelete.mockResolvedValueOnce({ error: { message: "not found" } });
+
+    const result = await deleteE2BTemplate("tmpl-failed");
+
+    expect(result.isErr()).toBe(true);
+  });
+});
+
+describe("deleteUnbuiltE2BTemplate()", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("deletes a template whose build never completed", async () => {
+    mockApiGet.mockResolvedValueOnce({
+      data: [
+        {
+          templateID: "tmpl-failed",
+          aliases: ["dust-base_v0-1-1"],
+          envdVersion: "",
+        },
+      ],
+    });
+    mockApiDelete.mockResolvedValueOnce({ data: undefined });
+
+    const result = await deleteUnbuiltE2BTemplate({
+      imageName: "dust-base",
+      tag: "v0.1.1",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe(true);
+    }
+    expect(mockApiDelete).toHaveBeenCalledWith("/templates/{templateID}", {
+      params: { path: { templateID: "tmpl-failed" } },
+    });
+  });
+
+  test("leaves a bootable template in place", async () => {
+    mockApiGet.mockResolvedValueOnce({
+      data: [
+        {
+          templateID: "tmpl-built",
+          aliases: ["dust-base_v0-1-1"],
+          envdVersion: "0.2.4",
+        },
+      ],
+    });
+
+    const result = await deleteUnbuiltE2BTemplate({
+      imageName: "dust-base",
+      tag: "v0.1.1",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe(false);
+    }
+    expect(mockApiDelete).not.toHaveBeenCalled();
+  });
+
+  test("does nothing when no template carries the alias", async () => {
+    mockApiGet.mockResolvedValueOnce({ data: [] });
+
+    const result = await deleteUnbuiltE2BTemplate({
+      imageName: "dust-base",
+      tag: "v0.1.1",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe(false);
+    }
+    expect(mockApiDelete).not.toHaveBeenCalled();
   });
 });
 

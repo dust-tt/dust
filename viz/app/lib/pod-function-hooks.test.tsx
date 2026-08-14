@@ -159,16 +159,36 @@ describe("usePodFunction", () => {
     expect(callFunction).not.toHaveBeenCalled();
   });
 
-  it("rejects an unqualified function slug", () => {
-    const callFunction = vi.fn();
+  it("forwards a bare function name for the host to resolve", async () => {
+    // A Frame inside an app folder names its own functions bare; the host qualifies it against that
+    // folder. viz only decides the reference is well formed and passes it on.
+    const callFunction = vi.fn().mockResolvedValue({ comments: [] });
     const { result } = renderHook(
       () => usePodFunction("list-comments", { threadId: "thread-1" }),
       { wrapper: makeWrapper(makeDataAPI(callFunction)) }
     );
 
+    await waitFor(() => {
+      expect(result.current.data).toEqual({ comments: [] });
+    });
+    expect(result.current.error).toBeUndefined();
+    expect(callFunction).toHaveBeenCalledWith("list-comments", {
+      threadId: "thread-1",
+    });
+  });
+
+  it("rejects a reference that is neither form", () => {
+    const callFunction = vi.fn();
+    const { result } = renderHook(
+      // Prefixed but pod-less: not shorthand, since dropping the prefix is what the bare form is for.
+      () => usePodFunction("comments__list", { threadId: "thread-1" }),
+      { wrapper: makeWrapper(makeDataAPI(callFunction)) }
+    );
+
     expect(result.current.error).toEqual(
       new Error(
-        "Pod Function hooks require a fully qualified <podId>/<slug> reference."
+        "Pod Function hooks require a <podId>/<slug> reference, or a bare function name " +
+          "from a Frame that lives in an app folder."
       )
     );
     expect(result.current.isLoading).toBe(false);

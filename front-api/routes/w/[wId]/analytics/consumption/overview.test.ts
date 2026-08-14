@@ -22,6 +22,16 @@ const OVERVIEW: GetConsumptionOverviewResponse = {
   },
   members: { active: 121, total: 130 },
   lastRecordAt: "2026-07-12T23:58:00.000Z",
+  totalCredits: 7248,
+  topAgent: { agentId: "agent1", name: "dust", credits: 2246 },
+  creditUsage: {
+    capCredits: 20000,
+    status: {
+      usedPercentage: 36,
+      resetAt: "2026-08-01T00:00:00.000Z",
+      target: "on_target",
+    },
+  },
 };
 
 async function setupTest({
@@ -32,18 +42,19 @@ async function setupTest({
   return createPrivateApiMockRequest({ role });
 }
 
-function getOverviewRequest(wId: string, query: Record<string, string> = {}) {
-  const qs = new URLSearchParams(query).toString();
-  return honoApp.request(
-    `/api/w/${wId}/analytics/consumption/overview${qs ? `?${qs}` : ""}`
-  );
+function postOverviewRequest(wId: string, body: Record<string, unknown> = {}) {
+  return honoApp.request(`/api/w/${wId}/analytics/consumption/overview`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
 
-describe("GET /api/w/:wId/analytics/consumption/overview", () => {
+describe("POST /api/w/:wId/analytics/consumption/overview", () => {
   it("returns 403 for non-manager users", async () => {
     const { workspace } = await setupTest({ role: "user" });
 
-    const response = await getOverviewRequest(workspace.sId);
+    const response = await postOverviewRequest(workspace.sId);
 
     expect(response.status).toBe(403);
     expect(vi.mocked(fetchConsumptionOverview)).not.toHaveBeenCalled();
@@ -53,7 +64,7 @@ describe("GET /api/w/:wId/analytics/consumption/overview", () => {
     vi.mocked(fetchConsumptionOverview).mockResolvedValue(new Ok(OVERVIEW));
     const { workspace } = await setupTest({ role: "admin" });
 
-    const response = await getOverviewRequest(workspace.sId);
+    const response = await postOverviewRequest(workspace.sId);
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(OVERVIEW);
@@ -70,10 +81,10 @@ describe("GET /api/w/:wId/analytics/consumption/overview", () => {
     vi.mocked(fetchConsumptionOverview).mockResolvedValue(new Ok(OVERVIEW));
     const { workspace } = await setupTest();
 
-    const response = await getOverviewRequest(workspace.sId, {
+    const response = await postOverviewRequest(workspace.sId, {
       period: "days",
-      days: "7",
-      filter: JSON.stringify({ agents: ["a1"], users: ["u1", "u2"] }),
+      days: 7,
+      filter: { agents: ["a1"], users: ["u1", "u2"] },
     });
 
     expect(response.status).toBe(200);
@@ -89,8 +100,8 @@ describe("GET /api/w/:wId/analytics/consumption/overview", () => {
   it("returns 400 on an unknown filter dimension", async () => {
     const { workspace } = await setupTest();
 
-    const response = await getOverviewRequest(workspace.sId, {
-      filter: JSON.stringify({ nope: ["x"] }),
+    const response = await postOverviewRequest(workspace.sId, {
+      filter: { nope: ["x"] },
     });
 
     expect(response.status).toBe(400);
@@ -106,7 +117,7 @@ describe("GET /api/w/:wId/analytics/consumption/overview", () => {
     );
     const { workspace } = await setupTest();
 
-    const response = await getOverviewRequest(workspace.sId);
+    const response = await postOverviewRequest(workspace.sId);
 
     expect(response.status).toBe(500);
     expect(await response.json()).toMatchObject({

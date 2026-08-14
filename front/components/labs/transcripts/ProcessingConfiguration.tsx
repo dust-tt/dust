@@ -108,7 +108,7 @@ export function ProcessingConfiguration({
             {assistantSelected && (
               <div className="mt-2">
                 <Page.P>
-                  <strong>@{assistantSelected.name}</strong>
+                  <strong>{assistantSelected.name}</strong>
                 </Page.P>
               </div>
             )}

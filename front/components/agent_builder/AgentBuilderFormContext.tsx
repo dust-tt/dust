@@ -35,6 +35,7 @@ const agentSettingsSchema = z.object({
       slackChannelId: z.string(),
       slackChannelName: z.string(),
       autoRespondWithoutMention: z.boolean().optional(),
+      autoRespondWithoutMentionSkipThreadReplies: z.boolean().optional(),
     })
   ),
   tags: z.array(tagSchema),

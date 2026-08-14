@@ -71,6 +71,7 @@ export function PublicFrameRenderer({
     error,
     accessToken,
     isAuthenticatedMember,
+    framePath,
   } = usePublicFrame({
     shareToken,
   });
@@ -149,6 +150,7 @@ export function PublicFrameRenderer({
             canInvokeFunctions={publicUserIdentity !== undefined}
             scopedUserIdentity={publicUserIdentity}
             viewer={viewer}
+            framePath={framePath}
             isInDrawer
           />
         </div>

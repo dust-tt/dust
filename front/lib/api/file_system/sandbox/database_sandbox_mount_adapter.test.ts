@@ -85,8 +85,18 @@ describe("DatabaseSandboxMountAdapter", () => {
     expect(result.isOk()).toBe(true);
     expect(generateToken).toHaveBeenCalledWith(auth, {
       sandbox,
-      conversationId: "conv1",
-      spaceId: "pod1",
+      roots: [
+        {
+          kind: "conversation",
+          id: "conv1",
+          permissions: { canRead: true, canWrite: true },
+        },
+        {
+          kind: "pod",
+          id: "pod1",
+          permissions: { canRead: true, canWrite: true },
+        },
+      ],
     });
     expect(execRoot).toHaveBeenCalledTimes(2);
     expect(execRoot.mock.calls[0][2]).toMatchObject({

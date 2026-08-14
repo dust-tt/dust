@@ -7,6 +7,7 @@ export type GetSlackChannelsLinkedWithAgentResponseBody = {
     slackChannelName: string;
     agentConfigurationId: string;
     autoRespondWithoutMention: boolean;
+    autoRespondWithoutMentionSkipThreadReplies: boolean;
   }[];
   slackDataSource?: DataSourceType;
 };

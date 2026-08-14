@@ -1,15 +1,14 @@
 import type {
   UsageFilter,
+  UsageFilterAgentScope,
   UsageFilterCategory,
   UsageFilterGroup,
-  UsageModelTier,
 } from "@app/components/workspace/analytics/usageFilter";
 import {
-  MAX_USAGE_FILTER_SELECTIONS,
   toConsumptionScopeFilter,
+  USAGE_FILTER_AGENT_SCOPES,
   USAGE_FILTER_CATEGORIES,
   USAGE_FILTER_CATEGORY_LABEL,
-  USAGE_MODEL_TIERS,
   usageFilterSelectionCount,
 } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
@@ -23,14 +22,13 @@ import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilt
 import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import { useGroups } from "@app/lib/swr/groups";
-import type { AgentConfigurationScope } from "@app/types/assistant/agent";
-import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  BarChart05,
   Button,
+  FilterFunnel01,
   NavigationListLabel,
   PopoverContent,
   PopoverRoot,
@@ -39,7 +37,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-const FILTER_PICKER_PAGE_SIZE = 100;
+const DEFAULT_MODEL_TIER: ModelsTierName = "balanced";
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
@@ -68,16 +66,10 @@ export function UsageFilterPanel({
   } = useUsageFilter(filter);
   const [activeCategory, setActiveCategory] =
     useState<UsageFilterCategory>("agent");
-  const [activeScope, setActiveScope] = useState<AgentConfigurationScope>(
-    AGENT_CONFIGURATION_SCOPES[0]
-  );
-  const [activeTier, setActiveTier] = useState<UsageModelTier>(
-    USAGE_MODEL_TIERS[0]
-  );
+  const [activeScope, setActiveScope] = useState<UsageFilterAgentScope>("all");
+  const [activeTier, setActiveTier] =
+    useState<ModelsTierName>(DEFAULT_MODEL_TIER);
   const [searchText, setSearchText] = useState("");
-  const [visibleOptionCount, setVisibleOptionCount] = useState(
-    FILTER_PICKER_PAGE_SIZE
-  );
   const selectedGroups = useToggleSelectionList<UsageFilterGroup>();
 
   const draftScopeFilter = useMemo(
@@ -123,10 +115,12 @@ export function UsageFilterPanel({
         : null;
 
     return activeOptions.filter((option) => {
-      if (option.kind === "agent") {
-        if (option.scope === undefined || option.scope !== activeScope) {
-          return false;
-        }
+      if (
+        option.kind === "agent" &&
+        activeScope !== "all" &&
+        option.scope !== activeScope
+      ) {
+        return false;
       }
       if (option.kind === "model" && option.tier !== activeTier) {
         return false;
@@ -145,7 +139,7 @@ export function UsageFilterPanel({
     selectedGroups.items,
   ]);
 
-  const displayedOptions = filteredOptions.slice(0, visibleOptionCount);
+  const optionListKey = `${isOpen}|${activeCategory}|${searchText}|${activeScope}|${activeTier}`;
   const selectedIdsForActiveCategory = useMemo(
     () =>
       new Set((draftFilter[activeCategory] ?? []).map((option) => option.id)),
@@ -154,19 +148,9 @@ export function UsageFilterPanel({
   const enabledFilteredOptions = filteredOptions.filter(
     (option) => !option.disabled
   );
-  const draftSelectionCount = usageFilterSelectionCount(draftFilter);
-  const remainingSelectionCapacity = Math.max(
-    0,
-    MAX_USAGE_FILTER_SELECTIONS - draftSelectionCount
-  );
   const unselectedEnabledOptions = enabledFilteredOptions.filter(
     (option) => !selectedIdsForActiveCategory.has(option.id)
   );
-  const bulkSelectableOptions = unselectedEnabledOptions.slice(
-    0,
-    remainingSelectionCapacity
-  );
-  const hasMoreOptions = visibleOptionCount < filteredOptions.length;
 
   const appliedSelectionCount = usageFilterSelectionCount(filter);
   const categoriesWithSelection = useMemo(
@@ -177,37 +161,19 @@ export function UsageFilterPanel({
     [draftFilter]
   );
 
-  const resetFilterPicker = () => {
-    setVisibleOptionCount(FILTER_PICKER_PAGE_SIZE);
-  };
-
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (open) {
       setDraftFilter(filter);
       setSearchText("");
       selectedGroups.setItems([]);
-      resetFilterPicker();
     }
   };
 
   const handleCategoryChange = (category: UsageFilterCategory) => {
     setActiveCategory(category);
     setSearchText("");
-    resetFilterPicker();
   };
-
-  const handleSearchTextChange = (text: string) => {
-    setSearchText(text);
-    resetFilterPicker();
-  };
-
-  const withPaginationReset =
-    <T,>(setter: (value: T) => void) =>
-    (value: T) => {
-      setter(value);
-      resetFilterPicker();
-    };
 
   const activeCategorySelectionCount = draftFilter[activeCategory]?.length ?? 0;
 
@@ -215,7 +181,7 @@ export function UsageFilterPanel({
     <PopoverRoot open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
-          icon={BarChart05}
+          icon={FilterFunnel01}
           label="Filters"
           size="sm"
           variant="outline"
@@ -251,7 +217,7 @@ export function UsageFilterPanel({
             <SearchInput
               name="usage-filter-search"
               value={searchText}
-              onChange={handleSearchTextChange}
+              onChange={setSearchText}
               placeholder={`Search ${USAGE_FILTER_CATEGORY_LABEL[activeCategory].toLowerCase()}`}
             />
             {activeCategory === "member" && (
@@ -268,14 +234,14 @@ export function UsageFilterPanel({
                 selectedModelIds={selectedIdsForActiveCategory}
                 onToggleModel={(model) => toggleOption("model", model)}
                 activeTier={activeTier}
-                onTierChange={withPaginationReset(setActiveTier)}
-                isSelectionLimitReached={remainingSelectionCapacity === 0}
+                onTierChange={setActiveTier}
               />
             )}
             {activeCategory === "agent" && (
               <UsageFilterAgentScopeControls
+                scopes={USAGE_FILTER_AGENT_SCOPES}
                 activeScope={activeScope}
-                onScopeChange={withPaginationReset(setActiveScope)}
+                onScopeChange={setActiveScope}
               />
             )}
             {isFacetsError ? (
@@ -284,34 +250,21 @@ export function UsageFilterPanel({
               </div>
             ) : (
               <UsageFilterOptionCheckboxList
+                key={optionListKey}
                 category={activeCategory}
                 categoryLabel={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
-                options={displayedOptions}
+                options={filteredOptions}
                 selectedIds={selectedIdsForActiveCategory}
                 onToggleOption={(option) =>
                   toggleOption(activeCategory, option)
                 }
                 onSelectAll={() =>
-                  selectAllFiltered(activeCategory, bulkSelectableOptions)
+                  selectAllFiltered(activeCategory, unselectedEnabledOptions)
                 }
-                selectAllLabel={
-                  remainingSelectionCapacity === 0
-                    ? "Limit reached"
-                    : unselectedEnabledOptions.length >
-                        remainingSelectionCapacity
-                      ? `Select next ${remainingSelectionCapacity}`
-                      : "Select all"
-                }
-                hasSelectableOptions={bulkSelectableOptions.length > 0}
-                isSelectionLimitReached={remainingSelectionCapacity === 0}
-                hasMore={hasMoreOptions}
+                selectAllLabel="Select all"
+                hasSelectableOptions={unselectedEnabledOptions.length > 0}
                 isLoading={isFacetsLoading}
                 isUpdating={isFacetsValidating}
-                onLoadMore={() =>
-                  setVisibleOptionCount(
-                    (current) => current + FILTER_PICKER_PAGE_SIZE
-                  )
-                }
               />
             )}
           </div>

@@ -29,6 +29,7 @@ import { Folder } from "@sparkle/icons/v2-stroke";
 
 const meta = {
   title: "Data Display/DataTable",
+  tags: ["a11y-issues"],
   component: DataTable,
   parameters: {
     docs: {

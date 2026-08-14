@@ -265,8 +265,16 @@ async function startDatabaseMount(
   );
   const token = await generateSandboxFileSystemToken(auth, {
     sandbox,
-    conversationId: mounts.find((entry) => entry.kind === "conversation")?.id,
-    spaceId: mounts.find((entry) => entry.kind === "pod")?.id,
+    roots: mounts
+      .filter(
+        (mount): mount is FileSystemMount & { kind: "conversation" | "pod" } =>
+          mount.kind === "conversation" || mount.kind === "pod"
+      )
+      .map((mount) => ({
+        kind: mount.kind,
+        id: mount.id,
+        permissions: mount.permissions,
+      })),
   });
   const prepare = expectOk(
     await sandbox.execRoot(

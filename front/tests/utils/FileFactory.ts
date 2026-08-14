@@ -22,6 +22,7 @@ export class FileFactory {
       useCase,
       useCaseMetadata = null,
       snippet = null,
+      mountFilePath = null,
     }: {
       contentType: AllSupportedFileContentType;
       fileName: string;
@@ -30,6 +31,9 @@ export class FileFactory {
       useCase: FileUseCase;
       useCaseMetadata?: FileUseCaseMetadata | null;
       snippet?: string | null;
+      // GCS mount path. Production assigns it while copying the file into its mount; set it here for
+      // tests that need the file to have a scoped path (`toScopedPath`).
+      mountFilePath?: string | null;
     }
   ) {
     const workspace = await auth.getNonNullableWorkspace();
@@ -43,6 +47,7 @@ export class FileFactory {
       useCase,
       useCaseMetadata,
       snippet,
+      mountFilePath,
     });
 
     if (status === "ready") {

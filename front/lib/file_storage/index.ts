@@ -299,14 +299,21 @@ export class FileStorage {
     {
       contentType,
       expirationDelayMs,
-    }: { contentType: string; expirationDelayMs: number }
+      extensionHeaders,
+    }: {
+      contentType: string;
+      expirationDelayMs: number;
+      extensionHeaders?: Record<string, string>;
+    }
   ): Promise<string> {
     const [signedUrl] = await this.file(filename).getSignedUrl({
       version: "v4",
       action: "write",
       expires: Date.now() + expirationDelayMs,
       contentType,
+      extensionHeaders,
     });
+
     return signedUrl;
   }
 

@@ -11,9 +11,9 @@ import {
   getModelEffortTier,
   getModelTier,
   getModelWithReasoningEffortLabel,
+  getTierLockReason,
   isPremiumModel,
   isSameSelection,
-  isTierLocked,
   resolveShownSelection,
 } from "@app/components/model_picker/modelPickerUtils";
 import { getModelMakerLogo } from "@app/components/providers/types";
@@ -112,7 +112,7 @@ export function ModelPicker({
 
   const [userOverride, setUserOverride] = useState<Selection | null>(null);
 
-  const { models } = useModels({
+  const { models, streams } = useModels({
     owner,
     disabled: !hasModelsPicker,
   });
@@ -158,6 +158,13 @@ export function ModelPicker({
       models.filter(
         (model) => !isModelStreamId(model.modelId) && model.isSelectable
       ),
+    [models]
+  );
+
+  // Meta-models backing the tier rows: their `isSelectable` tells whether the
+  // member's model-tier cap allows the stream at all.
+  const streamModels = useMemo(
+    () => models.filter((model) => isModelStreamId(model.modelId)),
     [models]
   );
 
@@ -208,7 +215,7 @@ export function ModelPicker({
     Date.now() - lastModelInteractionAtMsRef.current < 300;
 
   const onSelectTier = (tierId: ModelTierId) => {
-    if (isTierLocked(tierId, { lockPremiumEfforts })) {
+    if (getTierLockReason(tierId, { lockPremiumEfforts, streamModels })) {
       return;
     }
     commit({
@@ -292,7 +299,7 @@ export function ModelPicker({
           size={buttonSize}
           icon={buttonIcon}
           label={showLabel ? label : undefined}
-          tooltip={showLabel ? undefined : label}
+          tooltip={showLabel ? undefined : `Model picker: ${label}`}
           disabled={disabled}
         />
       </DropdownMenuTrigger>
@@ -305,6 +312,8 @@ export function ModelPicker({
         lockPremiumEfforts={lockPremiumEfforts}
         makerGroups={makerGroups}
         allModels={allModels}
+        streamModels={streamModels}
+        streams={streams}
         search={search}
         onSearchChange={setSearch}
         moreModelsExpanded={moreModelsExpanded}

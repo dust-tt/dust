@@ -1,30 +1,16 @@
 import { FileSystemScope } from "@app/lib/api/file_system/namespace_scope";
 import type { SandboxFileSystemTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 
-/** Build the complete mount scope from signed claims, never from request data. */
+/** Build the mounted roots from signed token claims, never from request data. */
 export function fileSystemScopeFromSandboxClaims(
   claims: SandboxFileSystemTokenPayload
 ): FileSystemScope {
-  return new FileSystemScope([
-    ...(claims.cId
-      ? [
-          {
-            kind: "conversation" as const,
-            id: claims.cId,
-            name: `conversation-${claims.cId}`,
-            permissions: { canRead: true, canWrite: true },
-          },
-        ]
-      : []),
-    ...(claims.spaceId
-      ? [
-          {
-            kind: "pod" as const,
-            id: claims.spaceId,
-            name: `pod-${claims.spaceId}`,
-            permissions: { canRead: true, canWrite: true },
-          },
-        ]
-      : []),
-  ]);
+  return new FileSystemScope(
+    claims.fileSystemRoots.map((root) => ({
+      kind: root.kind,
+      id: root.id,
+      name: `${root.kind}-${root.id}`,
+      permissions: root.permissions,
+    }))
+  );
 }

@@ -2,8 +2,8 @@ import { PREFERRED_LARGE_MODEL_CONFIGS } from "@app/lib/api/assistant/model_pref
 import { selectEnabledModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import {
-  getAutoModelForAuth,
-  getModelForStream,
+  getEnabledModelsForAuth,
+  resolveStreamModel,
 } from "@app/lib/model_tiers/enabled_models";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
@@ -84,7 +84,7 @@ export async function resolveModel(
           }
         );
 
-  // Effort chosen by a stream tier (Fast/Standard/Complex) for its resolved
+  // Effort chosen by a stream tier (Basic/Standard/Premium) for its resolved
   // model. When set, it takes precedence over any effort carried by the
   // (sentinel) selection.
   let streamEffort: ReasoningEffort | undefined;
@@ -93,23 +93,18 @@ export async function resolveModel(
   // ordered candidate pool and pick the first one available to the workspace.
   if (enabled && isModelStreamId(enabled.modelId)) {
     const streamId = enabled.modelId;
-    const resolved = await getModelForStream(auth, streamId);
-    if (resolved) {
-      enabled = resolved.model;
-      streamEffort = resolved.reasoningEffort;
-    } else {
-      // None of the stream's candidates are available: fall back to a preferred
-      // large model supported by the workspace.
-      // FIXME(review): getAutoModelForAuth re-runs getEnabledModelsForAuth even
-      // though getModelForStream just fetched the same list — consider threading
-      // the already-fetched available models through to avoid the double query.
-      enabled = await getAutoModelForAuth(auth);
+    const models = await getEnabledModelsForAuth(auth);
+    const resolution = resolveStreamModel(models, streamId);
+    enabled = resolution.model;
+
+    if (resolution.fromPool) {
+      streamEffort = resolution.reasoningEffort;
+      modelResolutionMethod = streamId;
     }
-    // FIXME(review): on the fallback branch above the model did NOT come from the
-    // stream, yet we still record modelResolutionMethod as the streamId. This
-    // mislabels analytics/telemetry (a plain fallback pick attributed to e.g.
-    // "auto_complex").
-    modelResolutionMethod = streamId;
+    // Otherwise none of the stream's candidates were available and `enabled`
+    // comes from the generic preferred-large-model fallback, not from the
+    // stream: keep the original "user"/"agent" attribution so analytics don't
+    // credit the pick to e.g. "auto_complex", and honor the requested effort.
   }
 
   // Should never happen as we should at least fallback to our selection of PREFERRED_LARGE_MODEL_CONFIGS.

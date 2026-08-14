@@ -1,6 +1,8 @@
+import { randomUUID } from "node:crypto";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { FileSystemScope } from "@app/lib/api/file_system/namespace_scope";
 import { Authenticator } from "@app/lib/auth";
+import { FileSystemMutationResource } from "@app/lib/resources/file_system_mutation_resource";
 import { FileSystemNodeResource } from "@app/lib/resources/file_system_node_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -66,8 +68,9 @@ describe("DatabaseFileSystemBackend", () => {
   it("preserves the inode while moving a file from a conversation to its Pod", async () => {
     const { auth, conversation, dustFileSystem, pod, scope, conversationRoot } =
       await databaseFileSystem();
-    const created = await FileSystemNodeResource.create(auth, scope, {
+    const created = await FileSystemMutationResource.createNode(auth, scope, {
       operation: "create",
+      requestId: randomUUID(),
       parentId: conversationRoot.id,
       name: "report.txt",
       kind: "file",
@@ -85,12 +88,12 @@ describe("DatabaseFileSystemBackend", () => {
         value: { sourceDeletionFailed: false },
       })
     );
-    const node = await FileSystemNodeResource.getAttr(
+    const node = await FileSystemNodeResource.fetchById(
       auth,
       scope,
       created.value.id
     );
-    expect(node.isOk() && node.value).toMatchObject({
+    expect(node).toMatchObject({
       id: created.value.id,
       rootKind: "pod",
       rootId: pod.sId,

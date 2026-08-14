@@ -741,6 +741,7 @@ describe("SandboxFunctionInvocationResource", () => {
       // Published outside an app folder, so its databases are unprefixed.
       DUST_POD_DATABASE_PREFIX: "",
       DUST_SANDBOX_TOKEN: "sbt-function-token",
+      DUST_FUNCTION_WARM_ENABLED: "0",
     });
     expect(
       JSON.parse(opts?.envVars?.DUST_POD_USER_IDENTITY ?? "")
@@ -1248,6 +1249,7 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
     // the workflow's.
     const [, , execOptions] = execSpy.mock.calls[0]!;
     expect(execOptions?.timeoutMs).toBe(10 * 1000);
+    expect(execOptions?.envVars?.DUST_FUNCTION_WARM_ENABLED).toBe("1");
     // A fast function runs under a token that cannot call tools.
     expect(generateSandboxFunctionInvocationToken).toHaveBeenCalledWith(
       expect.anything(),
@@ -1285,7 +1287,8 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
   });
 
   it("runs a durable function under a token that can call tools", async () => {
-    const { authenticator, sandboxFunction } = await setupInlineTest("durable");
+    const { authenticator, sandboxFunction, execSpy } =
+      await setupInlineTest("durable");
 
     const result =
       await SandboxFunctionInvocationResource.createAndStartExecution(
@@ -1302,6 +1305,8 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
       expect.anything(),
       expect.objectContaining({ noTools: false })
     );
+    const [, , execOptions] = execSpy.mock.calls[0]!;
+    expect(execOptions?.envVars?.DUST_FUNCTION_WARM_ENABLED).toBe("0");
   });
 
   it("starts the workflow for a durable function", async () => {

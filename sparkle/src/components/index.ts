@@ -115,6 +115,8 @@ export {
   DialogTrigger,
 } from "./Dialog";
 export { DiffBlock, type DiffChange } from "./DiffBlock";
+export type { DiscoveryGlintProps } from "./DiscoveryGlint";
+export { DiscoveryGlint } from "./DiscoveryGlint";
 export type {
   DropdownMenuFilterOption,
   DropdownMenuItemProps,

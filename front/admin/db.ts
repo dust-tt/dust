@@ -1,4 +1,3 @@
-import { ActivationNudgeModel } from "@app/lib/models/activation/activation_nudge";
 import { ActivationPodModel } from "@app/lib/models/activation/activation_pod";
 import { ActivationRecommendationModel } from "@app/lib/models/activation/activation_recommendation";
 import { ActivationWorkAreaModel } from "@app/lib/models/activation/activation_work_area";
@@ -295,7 +294,6 @@ export function loadAllModels() {
     WorkspacePlanLimitOverrideModel,
     ActivationPodModel,
     ActivationRecommendationModel,
-    ActivationNudgeModel,
     ActivationWorkAreaModel,
   ];
 }

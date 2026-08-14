@@ -12,7 +12,6 @@ import {
   ResizablePanelGroup,
 } from "../index_with_tw_base";
 import { Robot } from "@sparkle/icons/v2-stroke";
-import { MessageCircle01 } from "@sparkle/icons/v2-stroke";
 
 const meta = {
   title: "Navigation/Bar",
@@ -96,7 +95,7 @@ export const BasicBarHeaderValidate = () => {
         }
       />
       <div className="mt-16 h-full w-full overflow-y-auto">
-        <Page.Header title="Page Title" icon={MessageCircle01} />
+        <Page.Header title="Page Title" />
         <div className="flex flex-col gap-y-96">
           <img
             src="/static/landing/mainVisual/MainVisual1.png"
@@ -124,7 +123,7 @@ export const BasicBarFooterValidate = () => {
   return (
     <div className="flex h-full w-full flex-col">
       <div className="flex-1 overflow-y-auto p-4">
-        <Page.Header title="Page Title" icon={MessageCircle01} />
+        <Page.Header title="Page Title" />
         <div className="flex flex-col gap-y-96">
           <img
             src="/static/landing/mainVisual/MainVisual1.png"
@@ -183,7 +182,7 @@ export const HeaderAndFooterCombined = () => {
         }
       />
       <div className="flex-1 overflow-y-auto p-4">
-        <Page.Header title="Page Content" icon={MessageCircle01} />
+        <Page.Header title="Page Content" />
         <div className="flex flex-col gap-y-96">
           <img
             src="/static/landing/mainVisual/MainVisual1.png"
@@ -254,7 +253,7 @@ export const DefaultVariantInPanel = () => {
               }
             />
             <div className="flex-1 overflow-y-auto p-4">
-              <Page.Header title="Left Panel Content" icon={MessageCircle01} />
+              <Page.Header title="Left Panel Content" />
               <p className="text-sm text-gray-600">
                 This demonstrates the "default" variant of Bar that is contained
                 within its parent container, perfect for panels and sidebars.
@@ -308,7 +307,7 @@ export const DefaultVariantInPanel = () => {
               }
             />
             <div className="flex-1 overflow-y-auto p-4">
-              <Page.Header title="Right Panel Content" icon={MessageCircle01} />
+              <Page.Header title="Right Panel Content" />
               <p className="text-sm text-gray-600">
                 Notice how each Bar is scoped to its own panel width, unlike the
                 "full" variant which would span the entire viewport width. You

@@ -71,14 +71,7 @@ describe("getToolsUsage", () => {
       mcpServerViews: [firstView],
     });
 
-    const legacyUsage = await getToolsUsage(testContext.authenticator);
-
-    expect(legacyUsage[server.sId]?.count).toBe(2);
-    expect(legacyUsage[server.sId]).not.toHaveProperty("skills");
-
-    const adminUsage = await getToolsUsage(testContext.authenticator, {
-      withSkills: true,
-    });
+    const adminUsage = await getToolsUsage(testContext.authenticator);
 
     expect(adminUsage[server.sId]?.count).toBe(4);
     expect(adminUsage[server.sId]?.agents.map((agent) => agent.sId)).toEqual([
@@ -99,7 +92,7 @@ describe("getToolsUsage", () => {
       testContext.workspace.sId
     );
 
-    const memberUsage = await getToolsUsage(auth, { withSkills: true });
+    const memberUsage = await getToolsUsage(auth);
 
     expect(memberUsage[server.sId]?.count).toBe(2);
     expect(memberUsage[server.sId]?.agents.map((agent) => agent.sId)).toEqual([

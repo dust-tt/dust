@@ -13,16 +13,24 @@ import type { UserType, WorkspaceType } from "@app/types/user";
 import { Button, Chip, Spinner, Tooltip } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 
-export const WORK_AREA_ACTIONS = [
+const WORK_AREA_ACTIONS = [
   {
     label: "Scan my sources",
     message:
-      "Before generating a recommendation, re-evaluate my work by scanning my connected sources and personal usage. Allow me to confirm the work areas.",
+      "This conversation is to update my work areas, then generate a new idea.\n\n" +
+      "1. Re-evaluate my work by scanning my connected sources and personal usage.\n" +
+      "2. Present the updated work areas and let me correct them if they're off.\n" +
+      "3. Once the work areas are settled, continue the regular flow: set a session goal from the updated work areas and generate a new recommendation (create_recommendation) so it appears on my Get Started page.\n\n" +
+      "Do not generate a recommendation until the work areas are settled.",
   },
   {
     label: "Ask me questions",
     message:
-      "Before generating a recommendation, learn more about my work by asking me questions, interview style. Allow me to confirm the work areas.",
+      "This conversation is to update my work areas, then generate a new idea.\n\n" +
+      "1. Learn more about my work by asking me questions, interview style. Do this before generating a recommendation.\n" +
+      "2. Update my work areas based on what I tell you, and let me correct them if they're off.\n" +
+      "3. Once the work areas are settled, continue the regular flow: set a session goal from the updated work areas and generate a new recommendation (create_recommendation) so it appears on my Get Started page.\n\n" +
+      "Do not generate a recommendation until the work areas are settled.",
   },
 ] as const;
 
@@ -69,14 +77,13 @@ export function WorkAreaSection({
     workspaceId: owner.sId,
   });
 
-  const confirmed = workAreas.filter((r) => r.status === "confirmed");
-  const candidates = workAreas.filter((r) => r.status === "candidate");
-  const hasContent = confirmed.length > 0 || candidates.length > 0;
+  const visibleWorkAreas = workAreas.filter((r) => r.status !== "dismissed");
+  const hasContent = visibleWorkAreas.length > 0;
 
-  const handleUpdate = useCallback(
-    async (sId: string, status: "confirmed" | "dismissed") => {
+  const handleDismiss = useCallback(
+    async (sId: string) => {
       setUpdatingId(sId);
-      await updateWorkArea(sId, { status });
+      await updateWorkArea(sId, { status: "dismissed" });
       void mutateWorkAreas();
       setUpdatingId(null);
     },
@@ -119,12 +126,12 @@ export function WorkAreaSection({
   );
 
   return (
-    <div className="mt-12 rounded-2xl border border-border bg-background px-6 pb-8 pt-6 shadow-sm">
+    <div className="mt-12 rounded-2xl border border-border bg-background px-6 pb-4 pt-6 shadow-sm">
       <h2 className="text-xl font-semibold leading-7 tracking-tight text-foreground">
         Your work
       </h2>
       <p className="mt-1 text-sm leading-5 tracking-tight text-muted-foreground">
-        What Dust thinks you're responsible for.
+        What you care about at work. Ideas below are based on this.
       </p>
 
       <div className="mt-6 border-t border-border">
@@ -132,82 +139,64 @@ export function WorkAreaSection({
           <div className="flex items-center justify-center py-10">
             <Spinner size="md" />
           </div>
-        ) : !hasContent ? (
+        ) : (
           <div className="py-4">
-            {runningConversation ? (
+            {runningConversation && !hasContent && (
               <ActivationRunningBanner
                 owner={owner}
                 runningConversation={runningConversation}
                 message="An agent is actively learning about your work."
               />
+            )}
+            {hasContent ? (
+              <div className="flex flex-wrap gap-2">
+                {visibleWorkAreas.map((workArea) => (
+                  <WorkAreaChip
+                    key={workArea.sId}
+                    workArea={workArea}
+                    isUpdating={updatingId === workArea.sId}
+                    onDismiss={() => void handleDismiss(workArea.sId)}
+                  />
+                ))}
+              </div>
             ) : (
-              <>
+              !runningConversation && (
                 <p className="text-sm leading-5 tracking-tight text-muted-foreground">
-                  No work areas yet. Help Dust learn what you own so it can
-                  suggest relevant ideas.
+                  We don't know what you care about yet.
                 </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {WORK_AREA_ACTIONS.map((action) => (
-                    <Button
-                      key={action.label}
-                      variant="outline"
-                      size="sm"
-                      isRounded
-                      label={action.label}
-                      disabled={isCreating}
-                      onClick={() => void startConversation(action.message)}
-                    />
-                  ))}
-                </div>
-              </>
+              )
             )}
+            <p className="mt-4 text-sm leading-5 tracking-tight text-muted-foreground">
+              Select an option below to give us feedback. We'll update this and
+              suggest a new idea.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {WORK_AREA_ACTIONS.map((action) => (
+                <Button
+                  key={action.label}
+                  variant="outline"
+                  size="sm"
+                  isRounded
+                  label={action.label}
+                  disabled={isCreating}
+                  onClick={() => void startConversation(action.message)}
+                />
+              ))}
+            </div>
           </div>
-        ) : (
-          <>
-            {confirmed.length > 0 && (
-              <div className="flex flex-wrap gap-2 py-4">
-                {confirmed.map((r) => (
-                  <ConfirmedWorkAreaChip
-                    key={r.sId}
-                    workArea={r}
-                    isUpdating={updatingId === r.sId}
-                    onDismiss={() => void handleUpdate(r.sId, "dismissed")}
-                  />
-                ))}
-              </div>
-            )}
-
-            {candidates.length > 0 && (
-              <div className="divide-y divide-border border-t border-border">
-                {candidates.map((r) => (
-                  <CandidateWorkAreaRow
-                    key={r.sId}
-                    workArea={r}
-                    isUpdating={updatingId === r.sId}
-                    onConfirm={() => void handleUpdate(r.sId, "confirmed")}
-                    onDismiss={() => void handleUpdate(r.sId, "dismissed")}
-                  />
-                ))}
-              </div>
-            )}
-          </>
         )}
       </div>
     </div>
   );
 }
 
-interface ConfirmedWorkAreaChipProps {
+interface WorkAreaChipProps {
   workArea: ActivationWorkAreaForUserType;
   isUpdating: boolean;
   onDismiss: () => void;
 }
 
-function ConfirmedWorkAreaChip({
-  workArea,
-  isUpdating,
-  onDismiss,
-}: ConfirmedWorkAreaChipProps) {
+function WorkAreaChip({ workArea, isUpdating, onDismiss }: WorkAreaChipProps) {
   return (
     <Tooltip
       label={workArea.description}
@@ -221,49 +210,5 @@ function ConfirmedWorkAreaChip({
         />
       }
     />
-  );
-}
-
-interface CandidateWorkAreaRowProps {
-  workArea: ActivationWorkAreaForUserType;
-  isUpdating: boolean;
-  onConfirm: () => void;
-  onDismiss: () => void;
-}
-
-function CandidateWorkAreaRow({
-  workArea,
-  isUpdating,
-  onConfirm,
-  onDismiss,
-}: CandidateWorkAreaRowProps) {
-  return (
-    <div className="py-4">
-      <h3 className="text-base font-semibold leading-6 tracking-tight text-foreground">
-        {workArea.title}
-      </h3>
-      <p className="mt-1 text-sm leading-5 tracking-tight text-muted-foreground">
-        {workArea.description}
-      </p>
-      <div className="mt-4 flex items-center gap-2">
-        <Button
-          variant="highlight"
-          size="sm"
-          isRounded
-          label="Confirm"
-          disabled={isUpdating}
-          onClick={onConfirm}
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          isRounded
-          label="Not Relevant"
-          disabled={isUpdating}
-          onClick={onDismiss}
-        />
-        {isUpdating && <Spinner size="xs" />}
-      </div>
-    </div>
   );
 }

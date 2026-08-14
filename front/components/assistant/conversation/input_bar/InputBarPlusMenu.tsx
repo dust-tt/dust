@@ -9,7 +9,7 @@ import {
   INPUT_BAR_PILL_SURFACE_CLASSNAME,
 } from "@app/components/assistant/conversation/input_bar/inputBarPillStyles";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import type { MCPServerViewLightType } from "@app/lib/api/mcp";
+import type { MCPServerType, MCPServerViewLightType } from "@app/lib/api/mcp";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type {
   ConversationWithoutContentType,
@@ -50,6 +50,7 @@ interface InputBarPlusMenuProps {
   selectedMCPServerViews: MCPServerViewLightType[];
   onMCPServerViewSelect: (serverView: MCPServerViewLightType) => void;
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
+  onSetupServer: (server: MCPServerType) => void;
   fileUploaderService: FileUploaderService;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
@@ -76,6 +77,7 @@ export function InputBarPlusMenu({
   selectedMCPServerViews,
   onMCPServerViewSelect,
   onSkillSelect,
+  onSetupServer,
   fileUploaderService,
   onNodeSelect,
   onNodeUnselect,
@@ -130,6 +132,7 @@ export function InputBarPlusMenu({
       selectedMCPServerViews={selectedMCPServerViews}
       onSelect={onMCPServerViewSelect}
       onSkillSelect={onSkillSelect}
+      onSetupServer={onSetupServer}
       onOpenChange={onCapabilitiesPickerOpenChange}
       buttonSize={buttonSize}
       disabled={disabled}

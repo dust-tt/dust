@@ -89,6 +89,16 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
             "interaction or on a poll `fast`, and isolate `dsbx tools` calls in their own " +
             "`durable` functions."
         ),
+      domains: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Exact domains or wildcards (e.g. `api.stripe.com`, `*.stripe.com`) the function " +
+            "makes outbound HTTPS requests to at runtime. Declare every domain the function " +
+            "needs — each becomes a request a workspace admin reviews before the Pod can reach " +
+            "it; it never grants access on its own. A domain the Pod (or workspace) already " +
+            "allows is skipped."
+        ),
     },
     stake: "low",
     displayLabels: {

@@ -4,7 +4,7 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { workspaceAdminGuard } from "@app/lib/actions/mcp_internal_actions/utils";
+import { workspaceManagerGuard } from "@app/lib/actions/mcp_internal_actions/utils";
 import { WORKSPACE_ANALYTICS_TOOLS_METADATA } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
 import type { ResolvedTimeWindow } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
 import {
@@ -126,7 +126,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceAdminGuard(auth);
+    const denied = workspaceManagerGuard(auth);
     if (denied) {
       return new Err(denied);
     }
@@ -195,7 +195,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceAdminGuard(auth);
+    const denied = workspaceManagerGuard(auth);
     if (denied) {
       return new Err(denied);
     }
@@ -264,7 +264,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceAdminGuard(auth);
+    const denied = workspaceManagerGuard(auth);
     if (denied) {
       return new Err(denied);
     }
@@ -333,7 +333,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceAdminGuard(auth);
+    const denied = workspaceManagerGuard(auth);
     if (denied) {
       return new Err(denied);
     }
@@ -391,7 +391,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
   },
 
   get_agent_details: async ({ agentId }, { auth }) => {
-    const denied = workspaceAdminGuard(auth);
+    const denied = workspaceManagerGuard(auth);
     if (denied) {
       return new Err(denied);
     }
@@ -462,7 +462,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceAdminGuard(auth);
+    const denied = workspaceManagerGuard(auth);
     if (denied) {
       return new Err(denied);
     }
@@ -529,7 +529,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceAdminGuard(auth);
+    const denied = workspaceManagerGuard(auth);
     if (denied) {
       return new Err(denied);
     }
@@ -603,7 +603,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceAdminGuard(auth);
+    const denied = workspaceManagerGuard(auth);
     if (denied) {
       return new Err(denied);
     }
@@ -673,7 +673,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceAdminGuard(auth);
+    const denied = workspaceManagerGuard(auth);
     if (denied) {
       return new Err(denied);
     }
@@ -756,7 +756,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceAdminGuard(auth);
+    const denied = workspaceManagerGuard(auth);
     if (denied) {
       return new Err(denied);
     }
@@ -892,7 +892,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     },
     { auth }
   ) => {
-    const denied = workspaceAdminGuard(auth);
+    const denied = workspaceManagerGuard(auth);
     if (denied) {
       return new Err(denied);
     }

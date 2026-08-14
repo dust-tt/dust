@@ -4,10 +4,7 @@ import { JustAskComposer } from "@app/components/pages/workspace/GetStartedPage/
 import { PreviouslyDoneRow } from "@app/components/pages/workspace/GetStartedPage/PreviouslyDoneRow";
 import { RecentConversations } from "@app/components/pages/workspace/GetStartedPage/RecentConversations";
 import { RecommendationItem } from "@app/components/pages/workspace/GetStartedPage/RecommendationItem";
-import {
-  WORK_AREA_ACTIONS,
-  WorkAreaSection,
-} from "@app/components/pages/workspace/GetStartedPage/WorkAreaSection";
+import { WorkAreaSection } from "@app/components/pages/workspace/GetStartedPage/WorkAreaSection";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePodConversations } from "@app/hooks/conversations";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
@@ -23,23 +20,32 @@ import {
   useActivationRecommendations,
 } from "@app/lib/swr/activation";
 import { usePodMetadata } from "@app/lib/swr/pods";
+import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@app/lib/tracking";
+import { FOR_YOU_EMAIL_UTM } from "@app/lib/tracking/campaigns";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { resolveDefaultAgentId } from "@app/types/user";
 import { Button, Spinner } from "@dust-tt/sparkle";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 
 const QUICK_PROMPTS = [
   {
-    label: "Scan my connected sources to understand my work.",
-    message: WORK_AREA_ACTIONS[0].message,
+    label: "What skills and agents are my coworkers using?",
+    message:
+      "What skills and agents are my coworkers using? Show me what's catching on in this workspace and whether any of it would help my work.",
   },
   {
-    label: "Ask me questions to learn how I work.",
-    message: WORK_AREA_ACTIONS[1].message,
+    label: "What's coming up that I should prep for?",
+    message:
+      "Look at my calendar and recent work. What's coming up that I should prep for, and how can Dust help?",
   },
   {
-    label: "How does my learning space work?",
-    message: "How does my learning space work?",
+    label: "How are people in my role using Dust?",
+    message:
+      "How are people in the same role as me using Dust? Show me the skills and agents they actually use, and which of those would help my work.",
   },
 ];
 
@@ -136,6 +142,43 @@ export function GetStartedPage() {
 
   const firstName = user?.firstName ?? user?.fullName?.split(" ")[0] ?? "there";
 
+  // useLayoutEffect runs before paint; RootLayout only strips UTMs in a
+  // useEffect (after paint), so the campaign params are still on the URL here.
+  useLayoutEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("utm_campaign") !== FOR_YOU_EMAIL_UTM.utm_campaign) {
+      return;
+    }
+    const conversationId = params.get("utm_content");
+    trackEvent({
+      area: TRACKING_AREAS.WORKSPACE,
+      object: "for_you_email",
+      action: TRACKING_ACTIONS.CLICK,
+      extra: conversationId ? { conversation_id: conversationId } : undefined,
+    });
+  }, []);
+
+  // The whole surface is scoped to the user's activation Pod, so without one
+  // there is nothing to show. Redirect to the workspace home once the Pod
+  // check resolves rather than rendering an empty page.
+  useEffect(() => {
+    if (!isActivationPodLoading && activationPodId === null) {
+      void router.replace(getConversationRoute(owner.sId));
+    }
+  }, [isActivationPodLoading, activationPodId, owner.sId, router]);
+
+  // Hold on a spinner while the Pod check is in flight or while the redirect
+  // above is taking effect, so the page never flashes for a Pod-less user.
+  if (isActivationPodLoading || activationPodId === null) {
+    return (
+      <AssistantLayout owner={owner} user={user}>
+        <div className="flex min-h-full w-full items-center justify-center">
+          <Spinner size="md" />
+        </div>
+      </AssistantLayout>
+    );
+  }
+
   return (
     <AssistantLayout owner={owner} user={user}>
       <div className="relative min-h-full w-full overflow-x-hidden bg-background">
@@ -168,7 +211,7 @@ export function GetStartedPage() {
               : "/static/activation/for-you-orb-small.svg"
           }
         />
-        <div className="relative ml-[9%] w-[53%] pb-16 pt-[15vh]">
+        <div className="relative mx-auto w-full max-w-2xl px-4 pb-16 pt-[15vh] sm:px-8 lg:mx-0 lg:ml-[9%] lg:w-[53%] lg:max-w-none lg:px-0">
           <div className="flex flex-col gap-1">
             <h1 className="text-5xl font-medium leading-[52px] tracking-[-0.06em] text-foreground">
               Welcome back, {firstName}.
@@ -196,7 +239,7 @@ export function GetStartedPage() {
             disabled={isActivationPodLoading}
           />
 
-          <div className="mt-12 rounded-2xl border border-border bg-background px-6 pb-8 pt-6 shadow-sm">
+          <div className="mt-12 rounded-2xl border border-border bg-background px-6 pb-4 pt-6 shadow-sm">
             <h2 className="text-xl font-semibold leading-7 tracking-tight text-foreground">
               Ideas for right now
             </h2>
@@ -221,7 +264,7 @@ export function GetStartedPage() {
                         />
                       ) : (
                         <>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm leading-5 tracking-tight text-muted-foreground">
                             No new ideas yet. Let Dust suggest things to try.
                           </p>
                           <div className="mt-4">

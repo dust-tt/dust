@@ -1,4 +1,4 @@
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -13,6 +13,13 @@ import type { WorkspaceType } from "@app/types/user";
 import { faker } from "@faker-js/faker";
 
 export class SpaceFactory {
+  // The factories take a `WorkspaceType`, not an `Authenticator`, but `SpaceResource.makeNew` needs
+  // one to write the space's `group_permissions`. Building an internal admin here keeps every
+  // factory-created space consistent with what production creates, without threading an auth
+  // through ~150 test files.
+  private static async internalAuth(workspace: WorkspaceType) {
+    return Authenticator.internalAdminForWorkspace(workspace.sId);
+  }
   static async defaults(auth: Authenticator) {
     const { globalGroup, systemGroup } = await GroupFactory.defaults(
       auth.getNonNullableWorkspace()
@@ -34,6 +41,7 @@ export class SpaceFactory {
 
   static async global(workspace: WorkspaceType, globalGroup?: GroupResource) {
     return SpaceResource.makeNew(
+      await this.internalAuth(workspace),
       {
         name: "space " + faker.string.alphanumeric(8),
         kind: "global",
@@ -45,6 +53,7 @@ export class SpaceFactory {
 
   static async system(workspace: WorkspaceType, systemGroup?: GroupResource) {
     return SpaceResource.makeNew(
+      await this.internalAuth(workspace),
       {
         name: "space " + faker.string.alphanumeric(8),
         kind: "system",
@@ -63,6 +72,7 @@ export class SpaceFactory {
     });
 
     return SpaceResource.makeNew(
+      await this.internalAuth(workspace),
       {
         name,
         kind: "regular",
@@ -74,6 +84,7 @@ export class SpaceFactory {
 
   static async conversations(workspace: WorkspaceType) {
     return SpaceResource.makeNew(
+      await this.internalAuth(workspace),
       {
         name: "space " + faker.string.alphanumeric(8),
         kind: "conversations",
@@ -105,6 +116,7 @@ export class SpaceFactory {
     );
 
     return SpaceResource.makeNew(
+      await this.internalAuth(workspace),
       {
         name,
         kind: "project",

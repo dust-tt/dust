@@ -1,4 +1,5 @@
 import type { SandboxFunctionExecutionMode } from "@app/types/api/sandbox_functions";
+import { z } from "zod";
 
 /**
  * A Pod app is a folder at the pod root that owns a Frame, published functions and databases. It has
@@ -42,13 +43,12 @@ export type PodAppDatabase = {
 
 export type PodApp = {
   /**
-   * The normalized app prefix, which is this app's identifier — apps have no sId. Empty string for
-   * the synthetic "unfiled" app collecting artifacts published from the pod root.
+   * The normalized app prefix, which is this app's identifier — apps have no sId.
    */
   prefix: string;
-  /** The folder name as authored (`TaskList`), or null for the unfiled app. */
-  name: string | null;
-  /** Canonical scoped path of the app folder, or null for the unfiled app. */
+  /** The folder name as authored (`TaskList`), falling back to the prefix if the folder is gone. */
+  name: string;
+  /** Canonical scoped path of the app folder, or null when only published artifacts remain. */
   folderPath: string | null;
   frames: PodAppFrame[];
   functions: PodAppFunction[];
@@ -63,4 +63,52 @@ export type PodApp = {
 
 export type GetPodAppsResponseBody = {
   apps: PodApp[];
+};
+
+/**
+ * An app's prefix is its identifier — apps have no sId, since the folder is the app. Constrained to
+ * what `normalizeAppPrefix` can produce, so a path segment can never smuggle anything else in.
+ */
+export const DeletePodAppParamsSchema = z.object({
+  prefix: z
+    .string()
+    .min(1)
+    .max(128)
+    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/),
+});
+
+/** Max app folder name length, matching what a prefix can be derived from comfortably. */
+export const MAX_POD_APP_NAME_LENGTH = 128;
+
+export const ClonePodAppRequestBodySchema = z.object({
+  name: z.string().min(1).max(MAX_POD_APP_NAME_LENGTH),
+});
+
+/** What a clone created, as the business layer reports it and the endpoint returns it. */
+export type PodAppCloneSummary = {
+  prefix: string;
+  name: string;
+  copiedFileCount: number;
+  clonedFrameNames: string[];
+  publishedFunctionSlugs: string[];
+  reconciledDatabaseNames: string[];
+  /** Functions or databases the copy had no source for, so they were not recreated. */
+  skipped: string[];
+};
+
+export type ClonePodAppResponseBody = {
+  app: PodAppCloneSummary;
+};
+
+/** What a delete removed, as the business layer reports it and the endpoint returns it. */
+export type PodAppDeleteSummary = {
+  prefix: string;
+  name: string;
+  deletedFunctionSlugs: string[];
+  deletedDatabaseNames: string[];
+  deletedFolderNames: string[];
+};
+
+export type DeletePodAppResponseBody = {
+  app: PodAppDeleteSummary;
 };

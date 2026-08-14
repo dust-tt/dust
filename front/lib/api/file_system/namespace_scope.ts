@@ -1,4 +1,4 @@
-import type { FileSystemRootKind } from "@app/lib/resources/storage/models/file_system_node";
+export type FileSystemRootKind = "conversation" | "pod";
 
 export type FileSystemAllowedRoot = {
   kind: FileSystemRootKind;
@@ -7,12 +7,18 @@ export type FileSystemAllowedRoot = {
   permissions: { canRead: boolean; canWrite: boolean };
 };
 
-/** The roots already authorized for one request. Callers cannot add roots. */
+/** Roots selected by the caller after checking access to them. */
 export class FileSystemScope {
   constructor(readonly roots: readonly FileSystemAllowedRoot[]) {}
 
-  contains(kind: FileSystemRootKind, id: string): boolean {
-    return this.roots.some((root) => root.kind === kind && root.id === id);
+  readableRoots(): readonly FileSystemAllowedRoot[] {
+    return this.roots.filter((root) => root.permissions.canRead);
+  }
+
+  canRead(kind: FileSystemRootKind, id: string): boolean {
+    return this.roots.some(
+      (root) => root.kind === kind && root.id === id && root.permissions.canRead
+    );
   }
 
   canWrite(kind: FileSystemRootKind, id: string): boolean {

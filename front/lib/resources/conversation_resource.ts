@@ -17,7 +17,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
-  createResourcePermissionsFromSpacesWithMap,
+  createAccessControlListFromSpacesWithMap,
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -1152,10 +1152,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
 
     const spaceBasedAccessible = validConversations.filter((c) =>
-      auth.canRead(
-        createResourcePermissionsFromSpacesWithMap(
+      auth.hasPermissionForAcls(
+        "read",
+        createAccessControlListFromSpacesWithMap(
           spaceIdToGroupsMap,
-          c.requestedSpaceIds
+          c.requestedSpaceIds,
+          auth.getNonNullableWorkspace().id
         )
       )
     );
@@ -1270,10 +1272,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
 
-    return auth.canRead(
-      createResourcePermissionsFromSpacesWithMap(
+    return auth.hasPermissionForAcls(
+      "read",
+      createAccessControlListFromSpacesWithMap(
         spaceIdToGroupsMap,
-        conversation.requestedSpaceIds
+        conversation.requestedSpaceIds,
+        auth.getNonNullableWorkspace().id
       )
     );
   }

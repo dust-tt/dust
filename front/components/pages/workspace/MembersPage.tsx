@@ -19,7 +19,6 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  Users01,
 } from "@dust-tt/sparkle";
 
 export function MembersPage() {
@@ -76,7 +75,6 @@ export function MembersPage() {
       <div className="flex flex-col gap-6">
         <Page.Header
           title="People"
-          icon={Users01}
           description="Manage team members and their roles."
         />
         <Tabs value={activeTab} onValueChange={(value) => tab.setParam(value)}>

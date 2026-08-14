@@ -9,7 +9,7 @@ import { WorkspaceAnalyticsTimeRangeSelector } from "@app/components/workspace/a
 import { WorkspaceUserCreditsTable } from "@app/components/workspace/analytics/WorkspaceUserCreditsTable";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
-import { BarChart01, Page, SafeSuspense, safeLazy } from "@dust-tt/sparkle";
+import { Page, SafeSuspense, safeLazy } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 // Dynamic imports for chart components to exclude recharts from server bundle.
@@ -89,7 +89,6 @@ export function AnalyticsPage() {
             </div>
           </div>
         }
-        icon={BarChart01}
         description="Track how your team uses Dust"
       />
       <WorkspaceAnalyticsOverviewCards

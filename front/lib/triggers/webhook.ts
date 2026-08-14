@@ -45,6 +45,7 @@ export interface GetWebhookRequestsResponseBody {
     id: number;
     timestamp: number;
     status: WebhookRequestTriggerStatus;
+    errorMessage: string | null;
     payload?: {
       headers?: Record<string, string | string[]>;
       body?: unknown;
@@ -258,6 +259,18 @@ async function validateEventSubscription({
   return new Ok({ skipReason: null, receivedEventValue });
 }
 
+type WorkspaceBlock = {
+  status: Extract<
+    WebhookRequestTriggerStatus,
+    "rate_limited" | "credits_exhausted"
+  >;
+  message: string;
+};
+
+type WorkspaceBlockCheckResult =
+  | { blocked: false; block?: undefined }
+  | { blocked: true; block: WorkspaceBlock };
+
 async function checkWorkspaceRateLimit({
   auth,
   trigger,
@@ -270,8 +283,8 @@ async function checkWorkspaceRateLimit({
   workspaceId: string;
   webhookRequestId: number;
   provider: WebhookProvider | null;
-}): Promise<RateLimitCheckResult> {
-  let errorMessage: string | null = null;
+}): Promise<WorkspaceBlockCheckResult> {
+  let block: WorkspaceBlock | null = null;
 
   const plan = auth.subscription()?.plan;
   const owner = auth.getNonNullableWorkspace();
@@ -281,20 +294,26 @@ async function checkWorkspaceRateLimit({
   // spinning up the trigger workflow only to fail in `checkMessagesLimit`.
   if (plan && isCreditPricedPlan(plan)) {
     if (owner.metronomeCustomerId && (await isApiBlocked(owner.sId))) {
-      errorMessage =
-        "Your workspace has run out of credits. Please purchase more credits to continue.";
+      block = {
+        status: "credits_exhausted",
+        message:
+          "Your workspace has run out of credits. Please purchase more credits to continue.",
+      };
     }
 
     // Programmatic monthly cap gate: if the programmatic cap is reached, reject
     // early for programmatic triggers.
     if (
-      !errorMessage &&
+      !block &&
       owner.metronomeCustomerId &&
       trigger.executionMode === "programmatic" &&
       (await isProgrammaticApiBlocked(owner.sId))
     ) {
-      errorMessage =
-        "Your workspace has reached its programmatic monthly spending cap. An admin can raise the cap in the workspace's usage settings.";
+      block = {
+        status: "credits_exhausted",
+        message:
+          "Your workspace has reached its programmatic monthly spending cap. An admin can raise the cap in the workspace's usage settings.",
+      };
     }
   }
 
@@ -303,12 +322,12 @@ async function checkWorkspaceRateLimit({
    * - for fair use execution mode, check global rate limits
    * - for programmatic usage mode, check public API limits
    */
-  if (!errorMessage) {
+  if (!block) {
     if (!trigger.executionMode || trigger.executionMode === "fair_use") {
       const { rateLimited, message } =
         await checkWebhookRequestForRateLimit(auth);
       if (rateLimited) {
-        errorMessage = message;
+        block = { status: "rate_limited", message };
       }
     } else {
       // Programmatic execution mode: legacy programmatic-credit gate applies
@@ -317,16 +336,20 @@ async function checkWorkspaceRateLimit({
       if (!plan || !isCreditPricedPlan(plan)) {
         const limitsResult = await checkProgrammaticUsageLimits(auth);
         if (limitsResult.isErr()) {
-          errorMessage = limitsResult.error.message;
+          block = {
+            status: "rate_limited",
+            message: limitsResult.error.message,
+          };
         }
       }
     }
   }
 
-  if (errorMessage !== null) {
+  if (block !== null) {
     getStatsDClient().increment("webhook_workspace_rate_limit.hit.count", 1, [
       `provider:${provider}`,
       `workspace_id:${workspaceId}`,
+      `block_status:${block.status}`,
     ]);
     logger.error(
       {
@@ -334,13 +357,14 @@ async function checkWorkspaceRateLimit({
         webhookRequestId,
         triggerId: trigger.sId,
         provider,
+        blockStatus: block.status,
       },
-      errorMessage
+      block.message
     );
-    return { rateLimited: true, message: errorMessage };
+    return { blocked: true, block };
   }
 
-  return { rateLimited: false };
+  return { blocked: false };
 }
 
 async function checkTriggerRateLimit({
@@ -478,21 +502,22 @@ async function filterTriggers(
     }
 
     // Check 3: Workspace-level rate limit.
-    const workspaceRateLimitResult = await checkWorkspaceRateLimit({
+    const workspaceBlockResult = await checkWorkspaceRateLimit({
       auth,
       trigger,
       workspaceId,
       webhookRequestId: webhookRequest.id,
       provider,
     });
-    if (workspaceRateLimitResult.rateLimited) {
+    if (workspaceBlockResult.blocked) {
+      const { status, message } = workspaceBlockResult.block;
       await webhookRequest.markRelatedTrigger({
         trigger,
-        status: "rate_limited",
-        errorMessage: workspaceRateLimitResult.message,
+        status,
+        errorMessage: message,
       });
       // If it's a workspace-level rate limit, return an error immediately.
-      return new Err(new Error(workspaceRateLimitResult.message));
+      return new Err(new Error(message));
     }
 
     // Check 4: Trigger-specific rate limit.
@@ -785,6 +810,7 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
     id: number;
     timestamp: number;
     status: WebhookRequestTriggerStatus;
+    errorMessage: string | null;
     payload?: {
       headers?: Record<string, string | string[]>;
       body?: unknown;
@@ -846,6 +872,7 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
         id: wrt.webhookRequest.id,
         timestamp: wrt.webhookRequest.createdAt.getTime(),
         status: wrt.status,
+        errorMessage: wrt.errorMessage,
         payload,
       };
     })

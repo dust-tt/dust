@@ -192,6 +192,86 @@ describe("GET /api/w/:wId/assistant/agent_configurations", () => {
     expect(data.error.type).toBe("invalid_request_error");
   });
 
+  it("returns other users' hidden agents for an admin with the analytics view", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+    const { agentOwner } = await setupAgentOwner(workspace, "user");
+    await setupTestAgents(workspace, agentOwner);
+
+    const response = await listAgents(workspace, { view: "analytics" });
+
+    expect(response.status).toBe(200);
+    const data: { agentConfigurations: LightAgentConfigurationType[] } =
+      await response.json();
+    expect(
+      data.agentConfigurations
+        .filter((a) => a.scope !== "global")
+        .map((a) => a.scope)
+        .sort()
+    ).toEqual(["hidden", "visible"]);
+  });
+
+  it("returns agents from spaces the admin cannot read with the analytics view", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+    const { agentOwner, agentOwnerAuth } = await setupAgentOwner(
+      workspace,
+      "user"
+    );
+
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const addMembersResult = await restrictedSpace.addMembers(adminAuth, {
+      userIds: [agentOwner.sId],
+    });
+    expect(addMembersResult.isOk()).toBe(true);
+    await agentOwnerAuth.refresh();
+
+    const restrictedAgent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      {
+        name: "Test Agent / Restricted space",
+        scope: "hidden",
+        requestedSpaceIds: [restrictedSpace.id],
+      }
+    );
+
+    const response = await listAgents(workspace, { view: "analytics" });
+
+    expect(response.status).toBe(200);
+    const data: { agentConfigurations: LightAgentConfigurationType[] } =
+      await response.json();
+    expect(data.agentConfigurations.map((a) => a.sId)).toContain(
+      restrictedAgent.sId
+    );
+  });
+
+  it("narrows the analytics view to non-private agents below the manager role", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+    const { agentOwner } = await setupAgentOwner(workspace, "user");
+    await setupTestAgents(workspace, agentOwner);
+
+    const response = await listAgents(workspace, { view: "analytics" });
+
+    expect(response.status).toBe(200);
+    const data: { agentConfigurations: LightAgentConfigurationType[] } =
+      await response.json();
+    expect(
+      data.agentConfigurations
+        .filter((a) => a.scope !== "global")
+        .map((a) => a.scope)
+    ).toEqual(["visible"]);
+  });
+
   it("returns 404 for admin_internal view without super user", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "GET",

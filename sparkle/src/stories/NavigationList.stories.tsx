@@ -29,6 +29,7 @@ import type { NavigationListItemStatus } from "../components/NavigationList";
 
 const meta = {
   title: "Navigation/NavigationList",
+  tags: ["a11y-issues"],
   parameters: {
     docs: {
       description: {

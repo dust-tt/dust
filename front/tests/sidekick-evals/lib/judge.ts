@@ -65,7 +65,15 @@ User message:
    - Do they meaningfully improve upon existing instructions (not just reword)?
    - Are they appropriate for the agent's stated purpose?
    - **CRITICAL**: Poor quality suggested instructions = score 0-1, regardless of other factors
-6. **Scope Appropriateness**:
+6. **Clarifying questions**: The sidekick asks questions through the \`ask_user_question\` tool. When
+   a turn ends on a question, that question and its options ARE the response — judge them as the
+   sidekick's answer, and never mark the turn down for being short or for lacking other content.
+   The sidekick is instructed to ask only pinpointed questions, so ONE well-targeted question is
+   correct; do not require it to ask about every topic listed in the criteria.
+   Where the run continued past the question, the sidekick received an automatic non-committal
+   answer ("do whatever is the most intuitive for you"): do NOT penalize it for proceeding
+   afterwards, and do NOT expect it to wait for further input.
+7. **Scope Appropriateness**:
    - Did it avoid over-engineering (e.g., complete rewrites when a small edit was requested)?
    - Did it ask clarifying questions when the request was genuinely ambiguous?
 

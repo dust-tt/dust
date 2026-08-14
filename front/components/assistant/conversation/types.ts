@@ -43,6 +43,8 @@ export type AgentStateClassification =
   | "writing"
   | "done";
 
+export type UiView = "standard" | "compact";
+
 export type ActionProgressState = Map<
   ModelId,
   {
@@ -121,6 +123,9 @@ export type VirtuosoMessageListContext = {
   ) => Promise<Result<undefined, DustError>>;
   draftKey: string;
   conversation?: ConversationWithoutContentType;
+  // Whether the conversation should render its compact UI variant (currently:
+  // conversations that live in the user's activation pod).
+  uiView: UiView;
   agentBuilderContext?: {
     draftAgent?: LightAgentConfigurationType;
     isSubmitting: boolean;

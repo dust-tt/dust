@@ -17,6 +17,7 @@ export type PokeGetTriggerExecutionStats = {
     failed: number;
     notMatched: number;
     rateLimited: number;
+    creditsExhausted: number;
   }>;
 };
 

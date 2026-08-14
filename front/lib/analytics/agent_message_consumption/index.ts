@@ -3,21 +3,29 @@ import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/ag
 import { upsertAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/store";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import assert from "assert";
 
 /**
  * Loads, projects, and indexes the complete consumption analytics snapshot for one agent message.
- * Callers only identify the message. This module owns the ordering and completeness requirements
- * of the indexed snapshot.
+ * The attribution activity may reuse its already-loaded action snapshot; this module still owns
+ * the ordering, projection, and completeness requirements of the indexed snapshot.
  */
 export async function indexAgentMessageConsumptionAnalytics(
   auth: Authenticator,
-  { agentMessageId }: { agentMessageId: string }
+  {
+    agentMessageId,
+    preloadedActions,
+  }: {
+    agentMessageId: string;
+    preloadedActions?: AgentMCPActionResource[];
+  }
 ): Promise<Result<void, ElasticsearchError>> {
   const input = await loadAgentMessageConsumptionAnalyticsInput(auth, {
     agentMessageId,
+    preloadedActions,
   });
   if (!input) {
     return new Ok(undefined);

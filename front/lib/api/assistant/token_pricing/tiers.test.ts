@@ -20,6 +20,7 @@ import {
 } from "@app/types/assistant/models/openai";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
+import { GROK_4_6_MODEL_ID } from "@app/types/assistant/models/xai";
 import { describe, expect, it } from "vitest";
 
 describe("token_pricing/tiers", () => {
@@ -70,6 +71,18 @@ describe("token_pricing/tiers", () => {
     expect(
       ModelsTierResource.getTierForModel(CLAUDE_FABLE_5_MODEL_ID, "high")
     ).toBe("premium");
+  });
+
+  it("classifies Grok 4.6 high reasoning as premium", () => {
+    expect(ModelsTierResource.getTierForModel(GROK_4_6_MODEL_ID, "light")).toBe(
+      "balanced"
+    );
+    expect(
+      ModelsTierResource.getTierForModel(GROK_4_6_MODEL_ID, "medium")
+    ).toBe("balanced");
+    expect(ModelsTierResource.getTierForModel(GROK_4_6_MODEL_ID, "high")).toBe(
+      "premium"
+    );
   });
 
   it("classifies generated custom models as premium", () => {

@@ -1,9 +1,12 @@
 import type { UsageType } from "@app/lib/metronome/types";
+import type { Region } from "@app/lib/model_constructors/types/regions";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+
+export type RunUsageState = "pending" | "reported" | "unavailable";
 
 export class RunModel extends WorkspaceAwareModel<RunModel> {
   declare createdAt: CreationOptional<Date>;
@@ -74,8 +77,15 @@ RunModel.belongsTo(AppModel, {
 export class RunUsageModel extends WorkspaceAwareModel<RunUsageModel> {
   declare runId: ForeignKey<RunModel["id"]>;
 
-  declare providerId: string; //ModelProviderIdType;
-  declare modelId: string; //ModelIdType;
+  // Historical identifiers: values remain valid after a provider or model is removed from the
+  // active application unions.
+  declare providerId: string;
+  // Serving host used for the inference (for example "agent-platform"), as distinct from
+  // providerId, which identifies the model/pricing provider.
+  declare inferenceProvider: string | null;
+  // Physical endpoint region used for the inference and provider billing.
+  declare region: Region | null;
+  declare modelId: string;
 
   declare promptTokens: number;
   declare completionTokens: number;
@@ -86,6 +96,7 @@ export class RunUsageModel extends WorkspaceAwareModel<RunUsageModel> {
 
   declare costMicroUsd: number;
   declare isBatch: boolean;
+
   // Billing usage type (free / user / programmatic). Internal/utility LLM
   // operations are tagged free at creation (they are never billed); agent
   // conversation runs are tagged by the usage queue from the triggering
@@ -93,6 +104,9 @@ export class RunUsageModel extends WorkspaceAwareModel<RunUsageModel> {
   // briefly null between creation and the usage queue, and legacy/app runs are
   // never tagged.
   declare usageType: UsageType | null;
+  // Pending and unavailable rows represent provider attempts for which usage has not been
+  // reported. Null is accepted during the rolling deployment.
+  declare usageState: RunUsageState | null;
 }
 
 RunUsageModel.init(
@@ -100,6 +114,16 @@ RunUsageModel.init(
     providerId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    inferenceProvider: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    region: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
     },
     modelId: {
       type: DataTypes.STRING,
@@ -142,6 +166,11 @@ RunUsageModel.init(
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
+    },
+    usageState: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: "reported",
     },
   },
   {

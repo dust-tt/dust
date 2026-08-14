@@ -39,7 +39,7 @@ import { usePodsSectionCollapsed } from "@app/hooks/usePodsSectionCollapsed";
 import { useSearchPods } from "@app/hooks/useSearchPods";
 import { useStarredPodsSectionCollapsed } from "@app/hooks/useStarredPodsSectionCollapsed";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
@@ -436,13 +436,10 @@ export function AgentSidebarMenu({
 
   const { providersHealth } = useAuth();
   const noHealthyProviders = !hasHealthyProviders(providersHealth);
-  const { hasFeature } = useFeatureFlags();
-  const hasActivationSkill = hasFeature("activation_skill");
   const { activationPodId } = useActivationPod({
     workspaceId: owner.sId,
-    disabled: !hasActivationSkill,
   });
-  const showGetStarted = hasActivationSkill && activationPodId !== null;
+  const showGetStarted = activationPodId !== null;
   const { recommendations: activationRecsForBadge } =
     useActivationRecommendations({
       workspaceId: owner.sId,
@@ -469,6 +466,12 @@ export function AgentSidebarMenu({
   } = usePodConversationsSummary({
     workspaceId: owner.sId,
   });
+
+  // Hide the Learning Space pod from the UI. Users can only see "For you"
+  const visibleSummary = useMemo(
+    () => summary.filter(({ space }) => space.sId !== activationPodId),
+    [summary, activationPodId]
+  );
 
   useEffect(() => {
     const handleConversationsUpdated = () => {
@@ -612,12 +615,12 @@ export function AgentSidebarMenu({
 
   const availablePods = useMemo(
     () =>
-      summary
+      visibleSummary
         .map(({ space }) => space)
         .filter((space) =>
           space.name.toLowerCase().includes(podSearchText.toLowerCase().trim())
         ),
-    [summary, podSearchText]
+    [visibleSummary, podSearchText]
   );
 
   const moveSelectionToPod = useCallback(
@@ -725,7 +728,9 @@ export function AgentSidebarMenu({
   const sidebarTitleFilter = titleFilter;
 
   const starredSection = useMemo(() => {
-    const starredSummary = summary.filter(({ space }) => space.isStarred);
+    const starredSummary = visibleSummary.filter(
+      ({ space }) => space.isStarred
+    );
     const starredCountInSummary = starredSummary.length;
 
     if (starredCountInSummary === 0) {
@@ -765,7 +770,7 @@ export function AgentSidebarMenu({
       </NavigationList>
     );
   }, [
-    summary,
+    visibleSummary,
     owner,
     sidebarTitleFilter,
     moveConversationToPod,
@@ -775,7 +780,9 @@ export function AgentSidebarMenu({
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const podsSection = useMemo(() => {
-    const nonStarredSummary = summary.filter((pod) => !pod.space.isStarred);
+    const nonStarredSummary = visibleSummary.filter(
+      (pod) => !pod.space.isStarred
+    );
 
     const VISIBLE_PODS = 4;
     const hiddenSummary = nonStarredSummary.slice(VISIBLE_PODS);
@@ -841,7 +848,7 @@ export function AgentSidebarMenu({
     );
   }, [
     owner,
-    summary,
+    visibleSummary,
     setIsCreatePodModalOpen,
     isPodsSectionCollapsed,
     setPodsSectionCollapsed,

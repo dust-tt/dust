@@ -28,11 +28,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Opt into Anthropic prompt-cache diagnostics to report cache-miss reasons on agent-loop steps",
     stage: "dust_only",
   },
-  agent_loop_qos_routing: {
-    description:
-      "Route agent loop workflows to per-surface QoS task queues (schedules/interactive/programmatic/batch) instead of the single default queue. Requires the per-queue worker deployments to be running.",
-    stage: "rolling_out",
-  },
   use_vertex_for_supported_models: {
     description:
       "Route LLM calls through Vertex AI when supported instead of the direct provider's API",
@@ -167,11 +162,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   noop_model_feature: {
     description: "Access to noop model in the agent builder",
     stage: "dust_only",
-  },
-  slack_enhanced_default_agent: {
-    description:
-      "Enhanced default agent feature for Slack channels - auto-respond to all messages in channel",
-    stage: "on_demand",
   },
   slack_message_splitting: {
     description:
@@ -312,12 +302,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Model picker in the conversation input bar: keep Auto (the agent's configured model) or pick a specific model and reasoning effort.",
     stage: "dust_only",
   },
-  activation_skill: {
-    description: "Enable the Activation skill for agentic user activation pods",
-    stage: "dust_only",
-  },
-  activation_scheduler: {
-    description: "Enable the per-workspace Activation scheduler workflow",
+  activation_force_nudge: {
+    description:
+      "Bypass the activated-user check in the activation orchestrator so already-activated users are still nudged",
     stage: "dust_only",
   },
   admin_controlled_pods: {

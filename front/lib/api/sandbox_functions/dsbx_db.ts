@@ -3,10 +3,12 @@ import path from "node:path";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import {
+  POD_SANDBOX_DATABASES_DIR,
   podDatabaseExecEnvVars,
   TOOL_OUTPUTS_FOLDER_NAME,
 } from "@app/lib/api/files/mount_path";
 import { getRedisStreamClient } from "@app/lib/api/redis";
+import { isValidPodDatabaseName } from "@app/lib/api/sandbox/db";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import {
@@ -327,6 +329,93 @@ export async function reconcileDatabaseFromPodPath(
   } finally {
     await distributedUnlock(client, lockName, lockValue);
   }
+}
+
+/** Absolute path so the command never resolves `rm` through a workload-influenced PATH. */
+const RM_BIN_PATH = "/bin/rm";
+
+/**
+ * SQLite sidecars that belong to a database file and must go with it. `@dust/pod` runs with
+ * `wal_autocheckpoint=0`, so recent rows can live entirely in `-wal`: leaving it behind would let a
+ * later reconcile of the same name recover data this delete was meant to destroy.
+ */
+const POD_DATABASE_SIDECAR_SUFFIXES = ["-wal", "-shm"];
+
+// `rm` prints nothing on success, so the command appends the envelope itself. Under `set -euo
+// pipefail` a failed `rm` never reaches the echo, leaving no envelope for parseDbEnvelope to find —
+// which is what turns the failure into an error rather than a silent success.
+const deleteEnvelopeSchema = z.union([
+  z.object({ ok: z.literal(true) }),
+  dbErrorEnvelopeSchema,
+]);
+
+/**
+ * Remove a live pod database and its SQLite sidecars from the databases directory.
+ *
+ * Deliberately NOT a dsbx subcommand: dsbx is the agent-facing CLI, and a destructive database
+ * primitive there would be discoverable from inside the sandbox. Front builds the command instead, so
+ * this adds no surface a workload can reach. It grants no new capability either — the databases dir is
+ * group-writable by `agent` (mode 2770), so workload code can already unlink its own database files.
+ *
+ * Idempotent: `rm -f` succeeds when the files are already gone, so a caller working from a replica
+ * listing never has to check what is live first.
+ *
+ * Only the LIVE files go. The litestream replica is the durable copy, so a caller deleting a database
+ * for good must also restart the daemon (`restartLitestreamDaemon`, which is what makes it let go of
+ * the removed files) and wipe the replica prefix (`deletePodDatabaseReplica`), or the next cold-start
+ * restore brings the database back. Returns the sandbox so that restart needs no second lookup.
+ */
+export async function deleteDatabaseOnSandbox(
+  auth: Authenticator,
+  { space, database }: { space: SpaceResource; database: string }
+): Promise<Result<{ sandbox: SandboxResource }, SandboxFunctionError>> {
+  // The name contract (`^[a-z][a-z0-9_]{0,63}$`) admits no separator or dot, so a validated name
+  // cannot escape the databases directory. The same guard runs on the replica path.
+  if (!isValidPodDatabaseName(database)) {
+    return new Err(
+      new SandboxFunctionError(
+        "internal",
+        `Invalid pod database name: '${database}'.`
+      )
+    );
+  }
+
+  const dbPath = `${POD_SANDBOX_DATABASES_DIR}/${database}.db`;
+  // `rm` unlinks a symlink itself rather than following it, so a link planted in the
+  // workload-writable databases dir cannot make this reach a foreign file.
+  const paths = [
+    dbPath,
+    ...POD_DATABASE_SIDECAR_SUFFIXES.map((suffix) => `${dbPath}${suffix}`),
+  ].map((path) => shellEscape(path));
+
+  const result = await execDbCommand(auth, space, {
+    // `--` stops the paths from being read as flags.
+    command: [
+      "set -euo pipefail",
+      `${RM_BIN_PATH} -f -- ${paths.join(" ")}`,
+      `echo '{"ok":true}'`,
+    ].join("\n"),
+    schema: deleteEnvelopeSchema,
+    what: `remove pod database ${database}`,
+  });
+  if (result.isErr()) {
+    return result;
+  }
+  const { envelope, sandbox } = result.value;
+
+  if ("ok" in envelope && envelope.ok) {
+    logger.info(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        podId: space.sId,
+        database,
+      },
+      "Pod database deleted: removed live files"
+    );
+    return new Ok({ sandbox });
+  }
+
+  return new Err(dbErrorToSandboxFunctionError(database, envelope, "internal"));
 }
 
 // Success mirrors the `dsbx db list` envelope in cli/dust-sandbox/src/commands/db/list.rs.

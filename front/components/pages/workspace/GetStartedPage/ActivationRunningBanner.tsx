@@ -27,7 +27,6 @@ export function ActivationRunningBanner({
         <Button
           variant="outline"
           size="sm"
-          isRounded
           label="Go to conversation"
           iconRight={ArrowRight}
           onClick={() =>

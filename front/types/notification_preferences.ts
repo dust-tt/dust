@@ -132,6 +132,19 @@ export const MANUAL_ACTION_REQUIRED_TAG = "manual-action-required" as const;
 export const ACTIVATION_NEW_CONVERSATION_TRIGGER_ID =
   "activation-new-conversation" as const;
 
+/**
+ * User metadata key for the dedicated For You (activation) email opt-out.
+ * Missing key means enabled.
+ */
+export const FOR_YOU_NOTIFICATION_METADATA_KEY =
+  "allow_for_you_notifications" as const;
+
+export function isForYouNotificationsEnabled(
+  value: string | null | undefined
+): boolean {
+  return value !== "false";
+}
+
 export const SOUND_NOTIFICATION_OPTIONS = [
   "Pluck",
   "Wood",

@@ -59,7 +59,7 @@ const app = workspaceApp();
  *         description: Filter agents by view
  *         schema:
  *           type: string
- *           enum: [all, list, favorites, published, admin_internal, global, workspace]
+ *           enum: [all, analytics, list, favorites, published, admin_internal, global, workspace]
  *       - in: query
  *         name: limit
  *         required: false

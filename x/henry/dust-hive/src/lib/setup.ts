@@ -9,16 +9,12 @@
 // NOTE: cargo target is symlinked to share Rust compilation cache.
 
 import { mkdirSync, readdirSync, readlinkSync, symlinkSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
+import { cp, mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 import { ALL_BINARIES, buildBinaries } from "./cache";
 import { directoryExists } from "./fs";
 import { logger } from "./logger";
-
-// User config directories to copy from main repo to worktree
-// These are personal/local files that aren't tracked in git
-const USER_CONFIG_DIRS = [".claude"];
 
 // Configuration for how to install each dependency type
 export interface DependencyConfig {
@@ -130,6 +126,22 @@ async function findAgentsFiles(srcDir: string): Promise<string[]> {
     .filter((line) => line.length > 0);
 }
 
+export async function copyClaudeConfig(srcDir: string, destDir: string): Promise<void> {
+  const srcPath = join(srcDir, ".claude");
+  if (!(await directoryExists(srcPath))) {
+    return;
+  }
+
+  const destPath = join(destDir, ".claude");
+  const worktreesPath = join(srcPath, "worktrees");
+  await mkdir(destPath, { recursive: true });
+  await cp(srcPath, destPath, {
+    recursive: true,
+    force: true,
+    filter: (source) => source !== worktreesPath,
+  });
+}
+
 // Copy user config files (AGENTS.local.md, AGENTS.override.md files, .claude/) from main repo to worktree
 async function copyUserConfigFiles(srcDir: string, destDir: string): Promise<void> {
   // Find and copy all AGENTS.local.md and AGENTS.override.md files, preserving directory structure
@@ -142,19 +154,8 @@ async function copyUserConfigFiles(srcDir: string, destDir: string): Promise<voi
     logger.success(`Copied ${relativePath}`);
   }
 
-  // Copy directories recursively, merging with existing content
-  // Note: We use "cp -r srcPath/. destPath/" to copy CONTENTS rather than the directory itself.
-  // This is critical when destPath already exists (e.g., when git creates .claude/ with tracked skills).
-  // Without the "/." pattern, cp -r creates a nested srcPath inside destPath.
-  for (const dir of USER_CONFIG_DIRS) {
-    const srcPath = `${srcDir}/${dir}`;
-    const destPath = `${destDir}/${dir}`;
-    if (await directoryExists(srcPath)) {
-      await mkdir(destPath, { recursive: true });
-      await Bun.spawn(["cp", "-r", `${srcPath}/.`, destPath]).exited;
-      logger.success(`Copied ${dir}/`);
-    }
-  }
+  await copyClaudeConfig(srcDir, destDir);
+  logger.success("Copied .claude/");
 }
 
 // Run npm install in a directory

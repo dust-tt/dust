@@ -1,14 +1,13 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import {
-  avgCreditsPerUnit,
   fetchConsumptionTopGroups,
+  resolveConsumptionGroupLabels,
 } from "@app/lib/api/analytics/consumption/top";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
-import { resolveDimensionLabels } from "./labels";
 
 /**
  * Members ranked by the credits they consumed over the period, averaged per
@@ -32,6 +31,8 @@ export type ConsumptionTopUserRow = {
 export type ConsumptionTopUsers = {
   period: ConsumptionPeriod;
   totalCredits: number;
+  hasMore: boolean;
+  totalCount: number;
   // Highest credits first.
   users: ConsumptionTopUserRow[];
 };
@@ -43,41 +44,44 @@ export async function fetchConsumptionTopUsers(
   {
     period,
     limit,
+    offset = 0,
+    search,
     filter,
   }: {
     period: ConsumptionPeriod;
     limit: number;
+    offset?: number;
+    search?: string;
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionTopUsers, ElasticsearchError>> {
   const result = await fetchConsumptionTopGroups(auth, {
     dimension: "user",
-    unit: "message",
     period,
     limit,
+    offset,
+    search,
     filter,
   });
   if (result.isErr()) {
     return result;
   }
-  const { groups, totalCredits } = result.value;
+  const { groups, hasMore, totalCount, totalCredits } = result.value;
 
-  const labels = await resolveDimensionLabels(
-    auth,
-    "user",
-    groups.map((group) => group.key)
-  );
+  const rows = await resolveConsumptionGroupLabels(auth, "user", groups);
 
   return new Ok({
     period,
     totalCredits,
-    users: groups.map((group) => ({
-      userId: group.key,
-      name: labels.get(group.key)?.name ?? group.key,
-      pictureUrl: labels.get(group.key)?.pictureUrl ?? null,
-      credits: group.credits,
-      messageCount: group.count,
-      avgCreditsPerMessage: avgCreditsPerUnit(group.credits, group.count),
+    hasMore,
+    totalCount,
+    users: rows.map((row) => ({
+      userId: row.key,
+      name: row.name,
+      pictureUrl: row.pictureUrl,
+      credits: row.credits,
+      messageCount: row.count,
+      avgCreditsPerMessage: row.avgCredits,
     })),
   });
 }

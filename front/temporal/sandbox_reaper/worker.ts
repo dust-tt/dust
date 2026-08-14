@@ -6,10 +6,7 @@ import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import * as reaperActivities from "@app/temporal/sandbox_reaper/activities";
-import {
-  launchFileSystemCleanupSchedule,
-  launchSandboxReaperSchedule,
-} from "@app/temporal/sandbox_reaper/client";
+import { launchSandboxReaperSchedule } from "@app/temporal/sandbox_reaper/client";
 import * as killRequesterActivities from "@app/temporal/sandbox_reaper/kill_requester/activities";
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
@@ -43,7 +40,6 @@ export async function runSandboxReaperWorker() {
 
   // Start the schedule.
   await launchSandboxReaperSchedule();
-  await launchFileSystemCleanupSchedule();
 
   await worker.run();
 }

@@ -1064,7 +1064,7 @@ export async function resyncSpendLimitCountersFromEsUsage(
 
 export type GetMemberUsageResponseBody = {
   member: MemberUsageType | null;
-  // Optional for backward compatibility with clients deployed before pace
+  // Optional for backward compatibility with clients deployed before target
   // information was added to this endpoint.
   creditUsageStatus?: CreditUsageStatus | null;
 };

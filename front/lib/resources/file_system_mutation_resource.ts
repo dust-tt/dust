@@ -1,64 +1,136 @@
 import type { FileSystemScope } from "@app/lib/api/file_system/namespace_scope";
 import type {
+  FileSystemNodeType,
   FileSystemOperation,
-  FileSystemOperationResponse,
 } from "@app/lib/api/file_system/namespace_types";
 import {
+  FILE_SYSTEM_REQUEST_ID_MAX_LENGTH,
+  FileSystemNodeSchema,
   FileSystemOperationError,
-  FileSystemOperationResponseSchema,
 } from "@app/lib/api/file_system/namespace_types";
 import type { Authenticator } from "@app/lib/auth";
-import { FileSystemBlobCleanupResource } from "@app/lib/resources/file_system_blob_cleanup_resource";
+import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileSystemNodeResource } from "@app/lib/resources/file_system_node_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import type { FileSystemMutationKind } from "@app/lib/resources/storage/models/file_system_mutation";
 import { FileSystemMutationModel } from "@app/lib/resources/storage/models/file_system_mutation";
-import type { FileSystemNodeModel } from "@app/lib/resources/storage/models/file_system_node";
-import { FileSystemNodeModel as FileSystemNode } from "@app/lib/resources/storage/models/file_system_node";
+import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { md5 } from "@app/types/shared/utils/encryption";
-import type { Transaction } from "sequelize";
-import { Op, QueryTypes, UniqueConstraintError } from "sequelize";
+import type { Attributes, Transaction } from "sequelize";
+import { UniqueConstraintError } from "sequelize";
+import { z } from "zod";
 
-type CreateRequest = Extract<FileSystemOperation, { operation: "create" }> & {
-  requestId: string;
-};
-type MutationRequest =
-  | CreateRequest
-  | Extract<FileSystemOperation, { operation: "remove" | "rename" }>;
+type CreateRequest = Extract<FileSystemOperation, { operation: "create" }>;
+type RemoveRequest = Extract<FileSystemOperation, { operation: "remove" }>;
+type RenameRequest = Extract<FileSystemOperation, { operation: "rename" }>;
 
-const CLEANUP_BATCH_SIZE = 50;
-const CLEANUP_WORKSPACE_SCAN_SIZE = 128;
-const COMPLETED_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+const CreateMutationResponseSchema = z.object({
+  nodeId: z.number().int().positive(),
+});
+const RemoveMutationResponseSchema = z.object({
+  parentId: z.number().int().positive(),
+  name: z.string(),
+  nodeKind: FileSystemNodeSchema.shape.kind,
+  rootKind: FileSystemNodeSchema.shape.rootKind,
+  rootId: FileSystemNodeSchema.shape.rootId,
+});
+const RenameMutationResponseSchema = z.object({
+  node: FileSystemNodeSchema,
+  sourceParentId: z.number().int().positive(),
+  sourceName: z.string(),
+  destinationParentId: z.number().int().positive(),
+  destinationName: z.string(),
+});
 
-/** Applies one namespace change and records its response in the same transaction. */
-export class FileSystemMutationResource {
-  private static model: ModelStaticWorkspaceAware<FileSystemMutationModel> =
+const FILE_SYSTEM_NAMESPACE_LOCK_PREFIX = "file_system_namespace";
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface FileSystemMutationResource
+  extends ReadonlyAttributesType<FileSystemMutationModel> {}
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export class FileSystemMutationResource extends BaseResource<FileSystemMutationModel> {
+  static model: ModelStaticWorkspaceAware<FileSystemMutationModel> =
     FileSystemMutationModel;
 
-  private static async findByRequest(
+  constructor(
+    model: ModelStaticWorkspaceAware<FileSystemMutationModel>,
+    blob: Attributes<FileSystemMutationModel>
+  ) {
+    super(model, blob);
+  }
+
+  override delete(): Promise<Result<undefined, Error>> {
+    // Receipts are removed by a retention job, never by request handling.
+    throw new Error("Filesystem mutation receipts cannot be deleted directly.");
+  }
+
+  private static async baseFetch(
     auth: Authenticator,
     requestId: string,
     transaction?: Transaction
-  ): Promise<FileSystemMutationModel | null> {
-    return FileSystemMutationModel.findOne({
+  ): Promise<FileSystemMutationResource | null> {
+    const row = await this.model.findOne({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         requestId,
       },
       transaction,
-      ...(transaction ? { lock: transaction.LOCK.UPDATE } : {}),
+    });
+
+    return row ? new this(this.model, row.get()) : null;
+  }
+
+  private static validateRequestId(
+    requestId: string
+  ): Result<undefined, FileSystemOperationError> {
+    if (
+      requestId.length === 0 ||
+      requestId.length > FILE_SYSTEM_REQUEST_ID_MAX_LENGTH
+    ) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          `Request ID must be between 1 and ${FILE_SYSTEM_REQUEST_ID_MAX_LENGTH} characters.`
+        )
+      );
+    }
+
+    return new Ok(undefined);
+  }
+
+  private static async lockNamespace(
+    auth: Authenticator,
+    {
+      mode,
+      transaction,
+    }: { mode: "exclusive" | "shared"; transaction: Transaction }
+  ): Promise<void> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const key = `${FILE_SYSTEM_NAMESPACE_LOCK_PREFIX}:${workspaceId}`;
+
+    // Creates and removes take a shared lock, so they can run at the same time.
+    // Rename takes an exclusive lock and waits for them. Without it, a child
+    // created during a cross-root move could keep the old rootKind and rootId.
+    const query =
+      mode === "shared"
+        ? "SELECT pg_advisory_xact_lock_shared(hashtextextended(:key, 0))"
+        : "SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))";
+    // biome-ignore lint/plugin/noRawSql: PostgreSQL advisory locks have no Sequelize equivalent.
+    await frontSequelize.query(query, {
+      replacements: { key },
+      transaction,
     });
   }
 
-  private static completedResponse(
-    mutation: FileSystemMutationModel,
-    expectedKind: FileSystemMutationKind
-  ): Result<FileSystemOperationResponse, FileSystemOperationError> {
-    if (mutation.kind !== expectedKind) {
+  private async createdNode(
+    auth: Authenticator,
+    scope: FileSystemScope,
+    transaction?: Transaction
+  ): Promise<Result<FileSystemNodeResource, FileSystemOperationError>> {
+    if (this.kind !== "create") {
       return new Err(
         new FileSystemOperationError(
           "invalid_operation",
@@ -66,472 +138,416 @@ export class FileSystemMutationResource {
         )
       );
     }
-    const response = FileSystemOperationResponseSchema.safeParse(
-      mutation.response
+
+    const parsed = CreateMutationResponseSchema.safeParse(this.response);
+    if (!parsed.success) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "The saved filesystem response is invalid."
+        )
+      );
+    }
+
+    const node = await FileSystemNodeResource.fetchById(
+      auth,
+      scope,
+      parsed.data.nodeId,
+      { transaction }
     );
-    return response.success
-      ? new Ok(response.data)
+    return node
+      ? new Ok(node)
       : new Err(
           new FileSystemOperationError(
-            "invalid_operation",
-            "The saved filesystem response is invalid."
+            "not_found",
+            "The node created by this request is no longer available."
           )
         );
   }
 
-  static async apply(
+  private async renamedNode(
+    scope: FileSystemScope,
+    request: RenameRequest
+  ): Promise<Result<FileSystemNodeType, FileSystemOperationError>> {
+    if (this.kind !== "rename") {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "That request ID belongs to a different filesystem operation."
+        )
+      );
+    }
+
+    const parsed = RenameMutationResponseSchema.safeParse(this.response);
+    if (!parsed.success) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "The saved filesystem response is invalid."
+        )
+      );
+    }
+    if (
+      parsed.data.sourceParentId !== request.sourceParentId ||
+      parsed.data.sourceName !== request.sourceName ||
+      parsed.data.destinationParentId !== request.destinationParentId ||
+      parsed.data.destinationName !== request.destinationName
+    ) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "That request ID belongs to a different rename."
+        )
+      );
+    }
+
+    if (!scope.canRead(parsed.data.node.rootKind, parsed.data.node.rootId)) {
+      return new Err(
+        new FileSystemOperationError(
+          "not_found",
+          "The node renamed by this request is no longer available."
+        )
+      );
+    }
+
+    // Return the result saved by the first request. Fetching the node again
+    // could return a later move, or nothing if another rename replaced it.
+    return new Ok(parsed.data.node);
+  }
+
+  private async removedNode(
+    scope: FileSystemScope,
+    request: RemoveRequest
+  ): Promise<Result<undefined, FileSystemOperationError>> {
+    if (this.kind !== "remove") {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "That request ID belongs to a different filesystem operation."
+        )
+      );
+    }
+
+    const parsed = RemoveMutationResponseSchema.safeParse(this.response);
+    if (!parsed.success) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "The saved filesystem response is invalid."
+        )
+      );
+    }
+    if (
+      parsed.data.parentId !== request.parentId ||
+      parsed.data.name !== request.name ||
+      parsed.data.nodeKind !== request.kind
+    ) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "That request ID belongs to a different removal."
+        )
+      );
+    }
+    if (!scope.canRead(parsed.data.rootKind, parsed.data.rootId)) {
+      return new Err(
+        new FileSystemOperationError(
+          "not_found",
+          "The parent directory was not found."
+        )
+      );
+    }
+    if (!scope.canWrite(parsed.data.rootKind, parsed.data.rootId)) {
+      return new Err(
+        new FileSystemOperationError(
+          "unauthorized",
+          "You do not have write access to the parent directory."
+        )
+      );
+    }
+
+    return new Ok(undefined);
+  }
+
+  static async createNode(
     auth: Authenticator,
     scope: FileSystemScope,
-    request: MutationRequest
-  ): Promise<Result<FileSystemOperationResponse, FileSystemOperationError>> {
-    const existing = await this.findByRequest(auth, request.requestId);
-    if (existing) {
-      return this.completedResponse(existing, request.operation);
+    request: CreateRequest
+  ): Promise<Result<FileSystemNodeResource, FileSystemOperationError>> {
+    const requestIdRes = this.validateRequestId(request.requestId);
+    if (requestIdRes.isErr()) {
+      return requestIdRes;
     }
 
     try {
       return await withTransaction(async (transaction) => {
-        // A move can change every child's root. Serializing namespace writes
-        // per workspace keeps concurrent creates and moves from leaving a
-        // child with the old root after its parent crossed to another root.
-        await this.lockNamespace(auth, transaction);
-        const concurrent = await this.findByRequest(
+        // Take this before locking any file or directory row.
+        await this.lockNamespace(auth, { mode: "shared", transaction });
+        const existing = await this.baseFetch(
+          auth,
+          request.requestId,
+          transaction
+        );
+        if (existing) {
+          return existing.createdNode(auth, scope, transaction);
+        }
+
+        // Locking the parent serializes two different requests for the same
+        // name. It also gives createChild the current root after a parent move.
+        const parent = await FileSystemNodeResource.fetchById(
+          auth,
+          scope,
+          request.parentId,
+          { transaction, forUpdate: true }
+        );
+        if (!parent) {
+          return new Err(
+            new FileSystemOperationError(
+              "not_found",
+              "The parent directory was not found."
+            )
+          );
+        }
+
+        // Another request can create the receipt while this one waits for the
+        // parent lock. Re-check it before creating a second node.
+        const concurrent = await this.baseFetch(
           auth,
           request.requestId,
           transaction
         );
         if (concurrent) {
-          return this.completedResponse(concurrent, request.operation);
+          return concurrent.createdNode(auth, scope, transaction);
         }
 
-        const result = await this.applyInTransaction(
+        const created = await parent.createChild(
           auth,
           scope,
           request,
           transaction
         );
-        if (result.isErr()) {
-          return result;
+        if (created.isErr()) {
+          return created;
         }
-        await FileSystemMutationModel.create(
+
+        await this.model.create(
           {
             workspaceId: auth.getNonNullableWorkspace().id,
             completedAt: new Date(),
             requestId: request.requestId,
-            kind: request.operation,
-            response: result.value,
+            kind: "create",
+            response: { nodeId: created.value.id },
           },
           { transaction }
         );
-        return result;
+
+        return created;
       });
     } catch (error) {
-      if (!(error instanceof UniqueConstraintError)) {
-        throw error;
-      }
-      // A concurrent retry can win either the request-ID constraint or the
-      // parent/name constraint. Prefer its saved response when available.
-      const completed = await this.findByRequest(auth, request.requestId);
-      return completed
-        ? this.completedResponse(completed, request.operation)
-        : new Err(
-            new FileSystemOperationError(
-              "already_exists",
-              "A file or directory already exists at that path."
-            )
+      if (error instanceof UniqueConstraintError) {
+        // The unique index is the final guard for both request IDs and names.
+        // Re-check the receipt so a retry racing an older server still succeeds.
+        return withTransaction(async (transaction) => {
+          const existing = await this.baseFetch(
+            auth,
+            request.requestId,
+            transaction
           );
+          return existing
+            ? existing.createdNode(auth, scope, transaction)
+            : new Err(
+                new FileSystemOperationError(
+                  "already_exists",
+                  `${request.name} already exists.`
+                )
+              );
+        });
+      }
+      throw error;
     }
   }
 
-  private static async lockNamespace(
-    auth: Authenticator,
-    transaction: Transaction
-  ): Promise<void> {
-    const workspaceModelId = auth.getNonNullableWorkspace().id;
-    // Twelve hex digits stay inside JavaScript's exact integer range while
-    // providing a stable PostgreSQL advisory-lock key for this workspace.
-    const lockKey = Number.parseInt(
-      md5(`file_system_namespace_${workspaceModelId}`).slice(0, 12),
-      16
-    );
-    // biome-ignore lint/plugin/noRawSql: PostgreSQL advisory locks have no Sequelize equivalent.
-    await frontSequelize.query("SELECT pg_advisory_xact_lock(:lockKey)", {
-      transaction,
-      replacements: { lockKey },
-    });
-  }
-
-  private static async applyInTransaction(
+  static async renameNode(
     auth: Authenticator,
     scope: FileSystemScope,
-    request: MutationRequest,
-    transaction: Transaction
-  ): Promise<Result<FileSystemOperationResponse, FileSystemOperationError>> {
-    switch (request.operation) {
-      case "create": {
-        const created = await FileSystemNodeResource.createInTransaction(
-          auth,
-          scope,
-          request,
-          transaction
-        );
-        return created.isErr() ? created : new Ok({ node: created.value });
-      }
-      case "remove":
-        return this.remove(auth, scope, request, transaction);
-      case "rename":
-        return this.rename(auth, scope, request, transaction);
+    request: RenameRequest
+  ): Promise<Result<FileSystemNodeType, FileSystemOperationError>> {
+    const requestIdRes = this.validateRequestId(request.requestId);
+    if (requestIdRes.isErr()) {
+      return requestIdRes;
     }
-  }
 
-  private static async writableParent(
-    auth: Authenticator,
-    scope: FileSystemScope,
-    parentId: number,
-    description: string,
-    transaction: Transaction
-  ): Promise<Result<FileSystemNodeModel, FileSystemOperationError>> {
-    const parent = await FileSystemNodeResource.fetch(
-      auth,
-      scope,
-      parentId,
-      transaction
-    );
-    if (!parent || parent.kind !== "directory") {
-      return new Err(
-        new FileSystemOperationError(
-          "not_found",
-          `The ${description} directory was not found.`
-        )
-      );
-    }
-    if (!scope.canWrite(parent.rootKind, parent.rootId)) {
-      return new Err(
-        new FileSystemOperationError(
-          "unauthorized",
-          `You do not have write access to the ${description} directory.`
-        )
-      );
-    }
-    return new Ok(parent);
-  }
+    return withTransaction(async (transaction) => {
+      // Take this before locking any file or directory row. It blocks creates
+      // until the directory move and its child updates have committed.
+      await this.lockNamespace(auth, { mode: "exclusive", transaction });
 
-  private static async child(
-    workspaceModelId: number,
-    parentId: number,
-    name: string,
-    transaction: Transaction
-  ): Promise<FileSystemNodeModel | null> {
-    return FileSystemNode.findOne({
-      where: { workspaceId: workspaceModelId, parentId, name },
-      transaction,
-      lock: transaction.LOCK.UPDATE,
-    });
-  }
-
-  private static async isInSubtree(
-    workspaceModelId: number,
-    sourceNodeId: number,
-    possibleDescendantNodeId: number,
-    transaction: Transaction
-  ): Promise<boolean> {
-    // biome-ignore lint/plugin/noRawSql: recursive tree traversal has no Sequelize equivalent.
-    const rows = await frontSequelize.query<{ found: number }>(
-      `
-        WITH RECURSIVE subtree AS (
-          SELECT "id"
-          FROM "file_system_nodes"
-          WHERE "workspaceId" = :workspaceModelId AND "id" = :sourceNodeId
-
-          UNION ALL
-
-          SELECT child."id"
-          FROM "file_system_nodes" child
-          JOIN subtree parent ON child."parentId" = parent."id"
-          WHERE child."workspaceId" = :workspaceModelId
-        )
-        SELECT 1 AS "found"
-        FROM subtree
-        WHERE "id" = :possibleDescendantNodeId
-        LIMIT 1
-      `,
-      {
-        type: QueryTypes.SELECT,
-        transaction,
-        replacements: {
-          workspaceModelId,
-          sourceNodeId,
-          possibleDescendantNodeId,
-        },
-      }
-    );
-    return rows.length > 0;
-  }
-
-  private static async moveSubtreeToRoot(
-    workspaceModelId: number,
-    sourceNodeId: number,
-    rootKind: FileSystemNodeModel["rootKind"],
-    rootId: string,
-    transaction: Transaction
-  ): Promise<void> {
-    // Names and bytes do not change here. Only the cached root scope on each
-    // inode changes so authorization remains correct after a cross-root move.
-    // biome-ignore lint/plugin/noRawSql: recursive tree update has no Sequelize equivalent.
-    await frontSequelize.query(
-      `
-        WITH RECURSIVE subtree AS (
-          SELECT "id"
-          FROM "file_system_nodes"
-          WHERE "workspaceId" = :workspaceModelId AND "id" = :sourceNodeId
-
-          UNION ALL
-
-          SELECT child."id"
-          FROM "file_system_nodes" child
-          JOIN subtree parent ON child."parentId" = parent."id"
-          WHERE child."workspaceId" = :workspaceModelId
-        )
-        UPDATE "file_system_nodes"
-        SET
-          "rootKind" = :rootKind,
-          "rootId" = :rootId,
-          "updatedAt" = NOW()
-        WHERE "workspaceId" = :workspaceModelId
-          AND "id" IN (SELECT "id" FROM subtree)
-      `,
-      {
-        transaction,
-        replacements: { workspaceModelId, sourceNodeId, rootKind, rootId },
-      }
-    );
-  }
-
-  private static async remove(
-    auth: Authenticator,
-    scope: FileSystemScope,
-    request: Extract<MutationRequest, { operation: "remove" }>,
-    transaction: Transaction
-  ): Promise<Result<FileSystemOperationResponse, FileSystemOperationError>> {
-    const parent = await this.writableParent(
-      auth,
-      scope,
-      request.parentId,
-      "source",
-      transaction
-    );
-    if (parent.isErr()) {
-      return parent;
-    }
-    const source = await this.child(
-      parent.value.workspaceId,
-      parent.value.id,
-      request.name,
-      transaction
-    );
-    if (!source) {
-      return new Err(
-        new FileSystemOperationError(
-          "not_found",
-          `${request.name} was not found.`
-        )
-      );
-    }
-    if (
-      !(await FileSystemNodeResource.isEmptyDirectory(
+      const existing = await this.baseFetch(
         auth,
-        source,
-        transaction
-      ))
-    ) {
-      return new Err(
-        new FileSystemOperationError("not_empty", "The directory is not empty.")
-      );
-    }
-    if (source.blobId !== null) {
-      await FileSystemBlobCleanupResource.retireBlob(
-        source.workspaceId,
-        source.id,
-        source.blobId,
+        request.requestId,
         transaction
       );
-    }
-    const response: FileSystemOperationResponse = {
-      removedNodeId: source.id,
-      removedFileResourceId: null,
-    };
-    await source.destroy({ transaction });
-    return new Ok(response);
-  }
+      if (existing) {
+        return existing.renamedNode(scope, request);
+      }
 
-  private static async rename(
-    auth: Authenticator,
-    scope: FileSystemScope,
-    request: Extract<MutationRequest, { operation: "rename" }>,
-    transaction: Transaction
-  ): Promise<Result<FileSystemOperationResponse, FileSystemOperationError>> {
-    // Lock both directories in ID order so opposite cross-root moves cannot deadlock.
-    const parentIds = [
-      ...new Set([request.parentId, request.newParentId]),
-    ].sort((left, right) => left - right);
-    const parents = new Map<number, FileSystemNodeModel>();
-    for (const parentId of parentIds) {
-      const parent = await this.writableParent(
+      const sourceParent = await FileSystemNodeResource.fetchById(
         auth,
         scope,
-        parentId,
-        parentId === request.parentId ? "source" : "destination",
-        transaction
+        request.sourceParentId,
+        { transaction, forUpdate: true }
       );
-      if (parent.isErr()) {
-        return parent;
+      if (!sourceParent) {
+        return new Err(
+          new FileSystemOperationError(
+            "not_found",
+            "The source directory was not found."
+          )
+        );
       }
-      parents.set(parentId, parent.value);
-    }
-    const sourceParent = parents.get(request.parentId);
-    const destinationParent = parents.get(request.newParentId);
-    if (!sourceParent || !destinationParent) {
-      return new Err(
-        new FileSystemOperationError(
-          "not_found",
-          "A rename directory was not found."
-        )
+      const destinationParent =
+        request.destinationParentId === sourceParent.id
+          ? sourceParent
+          : await FileSystemNodeResource.fetchById(
+              auth,
+              scope,
+              request.destinationParentId,
+              { transaction, forUpdate: true }
+            );
+      if (!destinationParent) {
+        return new Err(
+          new FileSystemOperationError(
+            "not_found",
+            "The destination directory was not found."
+          )
+        );
+      }
+
+      // The move and the saved response use the same transaction: both commit,
+      // or neither does.
+      const movedRes = await sourceParent.renameChild(auth, scope, {
+        sourceName: request.sourceName,
+        destinationParent,
+        destinationName: request.destinationName,
+        transaction,
+      });
+      if (movedRes.isErr()) {
+        return movedRes;
+      }
+      const node = movedRes.value.toJSON();
+
+      await this.model.create(
+        {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          completedAt: new Date(),
+          requestId: request.requestId,
+          kind: "rename",
+          response: {
+            node,
+            sourceParentId: request.sourceParentId,
+            sourceName: request.sourceName,
+            destinationParentId: request.destinationParentId,
+            destinationName: request.destinationName,
+          },
+        },
+        { transaction }
       );
-    }
-    const source = await this.child(
-      sourceParent.workspaceId,
-      sourceParent.id,
-      request.name,
-      transaction
-    );
-    if (!source) {
-      return new Err(
-        new FileSystemOperationError(
-          "not_found",
-          `${request.name} was not found.`
-        )
-      );
-    }
-    if (
-      source.parentId === destinationParent.id &&
-      source.name === request.newName
-    ) {
-      return new Ok({ node: FileSystemNodeResource.render(auth, source) });
-    }
-    if (
-      source.kind === "directory" &&
-      (await this.isInSubtree(
-        source.workspaceId,
-        source.id,
-        destinationParent.id,
-        transaction
-      ))
-    ) {
-      return new Err(
-        new FileSystemOperationError(
-          "invalid_operation",
-          "A directory cannot be moved inside itself."
-        )
-      );
-    }
-    const destination = await this.child(
-      destinationParent.workspaceId,
-      destinationParent.id,
-      request.newName,
-      transaction
-    );
-    if (destination && destination.kind !== source.kind) {
-      return new Err(
-        new FileSystemOperationError(
-          "invalid_operation",
-          "A file and directory cannot replace each other."
-        )
-      );
-    }
-    if (
-      destination &&
-      !(await FileSystemNodeResource.isEmptyDirectory(
-        auth,
-        destination,
-        transaction
-      ))
-    ) {
-      return new Err(
-        new FileSystemOperationError(
-          "not_empty",
-          "The destination directory is not empty."
-        )
-      );
-    }
-    if (destination?.blobId) {
-      await FileSystemBlobCleanupResource.retireBlob(
-        destination.workspaceId,
-        destination.id,
-        destination.blobId,
-        transaction
-      );
-    }
-    if (destination) {
-      await destination.destroy({ transaction });
-    }
-    if (
-      source.rootKind !== destinationParent.rootKind ||
-      source.rootId !== destinationParent.rootId
-    ) {
-      await this.moveSubtreeToRoot(
-        source.workspaceId,
-        source.id,
-        destinationParent.rootKind,
-        destinationParent.rootId,
-        transaction
-      );
-    }
-    await source.update(
-      {
-        parentId: destinationParent.id,
-        name: request.newName,
-        rootKind: destinationParent.rootKind,
-        rootId: destinationParent.rootId,
-      },
-      { transaction }
-    );
-    return new Ok({
-      node: FileSystemNodeResource.render(auth, source),
-      ...(destination ? { removedNodeId: destination.id } : {}),
+
+      return new Ok(node);
     });
   }
 
-  static async cleanupCompleted(auth: Authenticator): Promise<void> {
-    await FileSystemMutationModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        completedAt: {
-          [Op.lt]: new Date(Date.now() - COMPLETED_RETENTION_MS),
-        },
-      },
-      limit: CLEANUP_BATCH_SIZE,
-    });
-  }
+  static async removeNode(
+    auth: Authenticator,
+    scope: FileSystemScope,
+    request: RemoveRequest
+  ): Promise<Result<undefined, FileSystemOperationError>> {
+    const requestIdRes = this.validateRequestId(request.requestId);
+    if (requestIdRes.isErr()) {
+      return requestIdRes;
+    }
 
-  static async dangerouslyListWorkspaceModelIdsWithExpiredReceipts(): Promise<
-    number[]
-  > {
-    const rows = await this.model.findAll({
-      attributes: ["workspaceId"],
-      where: {
-        completedAt: {
-          [Op.lt]: new Date(Date.now() - COMPLETED_RETENTION_MS),
-        },
-      },
-      group: ["workspaceId"],
-      order: [["workspaceId", "ASC"]],
-      limit: CLEANUP_WORKSPACE_SCAN_SIZE,
-      raw: true,
-      // WORKSPACE_ISOLATION_BYPASS: only discovers workspace IDs. The
-      // scheduled activity re-scopes before deleting receipts.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
-      dangerouslyBypassWorkspaceIsolationSecurity: true,
-    });
-    return rows.map((row) => row.workspaceId);
+    try {
+      return await withTransaction(async (transaction) => {
+        // Take this before locking any file or directory row.
+        await this.lockNamespace(auth, { mode: "shared", transaction });
+        const existing = await this.baseFetch(
+          auth,
+          request.requestId,
+          transaction
+        );
+        if (existing) {
+          return existing.removedNode(scope, request);
+        }
+
+        const parent = await FileSystemNodeResource.fetchById(
+          auth,
+          scope,
+          request.parentId,
+          { transaction, forUpdate: true }
+        );
+        if (!parent) {
+          return new Err(
+            new FileSystemOperationError(
+              "not_found",
+              "The parent directory was not found."
+            )
+          );
+        }
+
+        // A matching request can finish while this one waits for the parent.
+        const concurrent = await this.baseFetch(
+          auth,
+          request.requestId,
+          transaction
+        );
+        if (concurrent) {
+          return concurrent.removedNode(scope, request);
+        }
+
+        const removedRes = await parent.removeChild(auth, scope, {
+          name: request.name,
+          kind: request.kind,
+          transaction,
+        });
+        if (removedRes.isErr()) {
+          return removedRes;
+        }
+
+        await this.model.create(
+          {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            completedAt: new Date(),
+            requestId: request.requestId,
+            kind: "remove",
+            response: {
+              parentId: request.parentId,
+              name: request.name,
+              nodeKind: request.kind,
+              rootKind: parent.rootKind,
+              rootId: parent.rootId,
+            },
+          },
+          { transaction }
+        );
+
+        return new Ok(undefined);
+      });
+    } catch (error) {
+      if (error instanceof UniqueConstraintError) {
+        return withTransaction(async (transaction) => {
+          const existing = await this.baseFetch(
+            auth,
+            request.requestId,
+            transaction
+          );
+          if (existing) {
+            return existing.removedNode(scope, request);
+          }
+          throw error;
+        });
+      }
+      throw error;
+    }
   }
 }

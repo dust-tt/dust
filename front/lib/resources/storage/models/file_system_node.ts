@@ -1,6 +1,5 @@
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes, Op } from "@app/lib/resources/storage/data_types";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
@@ -80,9 +79,5 @@ FileSystemNodeModel.init(
 FileSystemNodeModel.belongsTo(FileSystemNodeModel, {
   as: "parent",
   foreignKey: { name: "parentId", allowNull: true },
-  onDelete: "CASCADE",
-});
-FileSystemNodeModel.belongsTo(WorkspaceModel, {
-  foreignKey: { name: "workspaceId", allowNull: false },
   onDelete: "CASCADE",
 });

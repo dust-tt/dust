@@ -1,56 +1,36 @@
-import { randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
+
 import type { FileSystemScope } from "@app/lib/api/file_system/namespace_scope";
-import { FileSystemOperationError } from "@app/lib/api/file_system/namespace_types";
+import {
+  FILE_SYSTEM_CONTENT_MAX_BYTES,
+  FileSystemOperationError,
+} from "@app/lib/api/file_system/namespace_types";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import {
-  FILE_SYSTEM_CONTENT_URL_EXPIRATION_MS,
-  FileSystemBlobCleanupResource,
-} from "@app/lib/resources/file_system_blob_cleanup_resource";
-import { FileSystemNodeModel } from "@app/lib/resources/storage/models/file_system_node";
-import { withTransaction } from "@app/lib/utils/sql_utils";
-import logger from "@app/logger/logger";
-import {
-  contentTypeFromFileName,
-  resolveFileContentType,
-} from "@app/types/files";
+import { FileSystemNodeResource } from "@app/lib/resources/file_system_node_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
-import type { Transaction, WhereOptions } from "sequelize";
-import { Op } from "sequelize";
 
-type AllowedRoot = FileSystemScope["roots"][number];
-
-/** Connects one inode to one immutable, path-free GCS object. */
+/**
+ * Reads and writes inode content for Front callers. Namespace and content
+ * revisions remain owned by FileSystemNodeResource.
+ */
 export class FileSystemContentResource {
-  private static allowedWhere(
+  private static objectPath(
     auth: Authenticator,
-    roots: readonly AllowedRoot[]
-  ): WhereOptions<FileSystemNodeModel> {
-    return {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      [Op.or]: roots.map((root) => ({
-        rootKind: root.kind,
-        rootId: root.id,
-      })),
-    };
+    nodeId: number,
+    blobId: string
+  ): string {
+    return `w/${auth.getNonNullableWorkspace().sId}/filesystem/blobs/${nodeId}/${blobId}`;
   }
 
   private static async fetchFile(
     auth: Authenticator,
     scope: FileSystemScope,
-    nodeId: number,
-    transaction?: Transaction
-  ): Promise<Result<FileSystemNodeModel, FileSystemOperationError>> {
-    const node = await FileSystemNodeModel.findOne({
-      where: { ...this.allowedWhere(auth, scope.roots), id: nodeId },
-      transaction,
-      ...(transaction ? { lock: transaction.LOCK.UPDATE } : {}),
-    });
+    nodeId: number
+  ): Promise<Result<FileSystemNodeResource, FileSystemOperationError>> {
+    const node = await FileSystemNodeResource.fetchById(auth, scope, nodeId);
     if (!node) {
       return new Err(
         new FileSystemOperationError("not_found", "The file was not found.")
@@ -67,45 +47,32 @@ export class FileSystemContentResource {
     return new Ok(node);
   }
 
-  static objectPath(
-    auth: Authenticator,
-    nodeId: number,
-    blobId: string
-  ): string {
-    return FileSystemBlobCleanupResource.objectPath(auth, nodeId, blobId);
-  }
+  private static async readBytes(
+    content: Buffer | string | Readable
+  ): Promise<Result<Buffer, FileSystemOperationError>> {
+    if (isString(content)) {
+      return new Ok(Buffer.from(content));
+    }
+    if (Buffer.isBuffer(content)) {
+      return new Ok(content);
+    }
 
-  static async getDownload(
-    auth: Authenticator,
-    scope: FileSystemScope,
-    nodeId: number
-  ) {
-    const node = await this.fetchFile(auth, scope, nodeId);
-    if (node.isErr()) {
-      return node;
+    const chunks: Buffer[] = [];
+    let size = 0;
+    for await (const chunk of content) {
+      const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      size += bytes.length;
+      if (size > FILE_SYSTEM_CONTENT_MAX_BYTES) {
+        return new Err(
+          new FileSystemOperationError(
+            "invalid_operation",
+            `Content cannot exceed ${FILE_SYSTEM_CONTENT_MAX_BYTES} bytes.`
+          )
+        );
+      }
+      chunks.push(bytes);
     }
-    if (node.value.blobId === null) {
-      return new Ok({
-        content: {
-          blobId: null,
-          downloadUrl: null,
-          size: node.value.size,
-          contentType: node.value.contentType,
-        },
-      });
-    }
-    const downloadUrl = await getPrivateUploadBucket().getSignedUrl(
-      this.objectPath(auth, node.value.id, node.value.blobId),
-      { expirationDelayMs: FILE_SYSTEM_CONTENT_URL_EXPIRATION_MS }
-    );
-    return new Ok({
-      content: {
-        blobId: node.value.blobId,
-        downloadUrl,
-        size: node.value.size,
-        contentType: node.value.contentType,
-      },
-    });
+    return new Ok(Buffer.concat(chunks, size));
   }
 
   /** Read an inode directly from its immutable GCS blob. */
@@ -114,25 +81,22 @@ export class FileSystemContentResource {
     scope: FileSystemScope,
     nodeId: number
   ): Promise<Result<Readable, FileSystemOperationError>> {
-    const node = await this.fetchFile(auth, scope, nodeId);
-    if (node.isErr()) {
-      return node;
+    const nodeRes = await this.fetchFile(auth, scope, nodeId);
+    if (nodeRes.isErr()) {
+      return nodeRes;
     }
-    if (node.value.blobId === null) {
+    const node = nodeRes.value;
+    if (node.blobId === null) {
       return new Ok(Readable.from([]));
     }
     return new Ok(
       getPrivateUploadBucket()
-        .file(this.objectPath(auth, node.value.id, node.value.blobId))
+        .file(this.objectPath(auth, node.id, node.blobId))
         .createReadStream()
     );
   }
 
-  /**
-   * Write application-owned content without sending bytes through the sandbox API.
-   * The object is registered before upload and attached with the same CAS used by
-   * the FUSE daemon, so a failed or stale write remains safe to clean up.
-   */
+  /** Write application-owned bytes through the same content CAS as FUSE. */
   static async writeContent(
     auth: Authenticator,
     scope: FileSystemScope,
@@ -143,33 +107,40 @@ export class FileSystemContentResource {
       contentType: string;
     }
   ): Promise<Result<number, FileSystemOperationError>> {
-    const prepared = await this.prepareUpload(auth, scope, request);
-    if (prepared.isErr()) {
-      return prepared;
+    const nodeRes = await this.fetchFile(auth, scope, request.nodeId);
+    if (nodeRes.isErr()) {
+      return nodeRes;
     }
-
-    const { blobId, contentType } = prepared.value.upload;
-    const file = getPrivateUploadBucket().file(
-      this.objectPath(auth, request.nodeId, blobId)
-    );
-    if (isString(request.content) || Buffer.isBuffer(request.content)) {
-      const content = isString(request.content)
-        ? Buffer.from(request.content)
-        : request.content;
-      await file.save(content, { contentType });
-    } else {
-      await pipeline(
-        request.content,
-        file.createWriteStream({ contentType, resumable: false })
-      );
+    const bytesRes = await this.readBytes(request.content);
+    if (bytesRes.isErr()) {
+      return bytesRes;
     }
-
-    return this.commitUpload(auth, scope, {
-      nodeId: request.nodeId,
+    const bytes = bytesRes.value;
+    const preparedRes = await nodeRes.value.prepareContentUpload(auth, scope, {
       expectedBlobId: request.expectedBlobId,
-      blobId,
-      contentType,
+      expectedSizeBytes: bytes.length,
+      contentType: request.contentType,
     });
+    if (preparedRes.isErr()) {
+      return preparedRes;
+    }
+    const upload = preparedRes.value;
+
+    await getPrivateUploadBucket()
+      .file(this.objectPath(auth, request.nodeId, upload.blobId))
+      .save(bytes, {
+        contentType: upload.contentType,
+        metadata: { contentEncoding: "identity" },
+        preconditionOpts: { ifGenerationMatch: 0 },
+      });
+
+    const committedRes = await nodeRes.value.commitContentUpload(auth, scope, {
+      expectedBlobId: request.expectedBlobId,
+      blobId: upload.blobId,
+      expectedSizeBytes: bytes.length,
+      contentType: upload.contentType,
+    });
+    return committedRes.isErr() ? committedRes : new Ok(committedRes.value.id);
   }
 
   static async getDownloadUrl(
@@ -178,11 +149,12 @@ export class FileSystemContentResource {
     nodeId: number,
     expirationDelayMs: number
   ): Promise<Result<string, FileSystemOperationError>> {
-    const node = await this.fetchFile(auth, scope, nodeId);
-    if (node.isErr()) {
-      return node;
+    const nodeRes = await this.fetchFile(auth, scope, nodeId);
+    if (nodeRes.isErr()) {
+      return nodeRes;
     }
-    if (node.value.blobId === null) {
+    const node = nodeRes.value;
+    if (node.blobId === null) {
       return new Err(
         new FileSystemOperationError(
           "not_found",
@@ -192,175 +164,9 @@ export class FileSystemContentResource {
     }
     return new Ok(
       await getPrivateUploadBucket().getSignedUrl(
-        this.objectPath(auth, node.value.id, node.value.blobId),
+        this.objectPath(auth, node.id, node.blobId),
         { expirationDelayMs }
       )
     );
-  }
-
-  static async prepareUpload(
-    auth: Authenticator,
-    scope: FileSystemScope,
-    request: {
-      nodeId: number;
-      expectedBlobId: string | null;
-      contentType: string;
-    }
-  ) {
-    const node = await this.fetchFile(auth, scope, request.nodeId);
-    if (node.isErr()) {
-      return node;
-    }
-    if (!scope.canWrite(node.value.rootKind, node.value.rootId)) {
-      return new Err(
-        new FileSystemOperationError(
-          "unauthorized",
-          "You do not have write access to this file."
-        )
-      );
-    }
-    if (node.value.blobId !== request.expectedBlobId) {
-      return new Err(
-        new FileSystemOperationError(
-          "stale",
-          "The file changed after it was opened."
-        )
-      );
-    }
-
-    const contentType =
-      contentTypeFromFileName(node.value.name) ??
-      resolveFileContentType(request.contentType, node.value.name);
-    const blobId = randomUUID();
-    await FileSystemBlobCleanupResource.registerUpload(auth, {
-      nodeId: node.value.id,
-      blobId,
-    });
-    const uploadUrl = await getPrivateUploadBucket().getSignedUploadUrl(
-      this.objectPath(auth, node.value.id, blobId),
-      { contentType, expirationDelayMs: FILE_SYSTEM_CONTENT_URL_EXPIRATION_MS }
-    );
-    return new Ok({ upload: { blobId, uploadUrl, contentType } });
-  }
-
-  static async commitUpload(
-    auth: Authenticator,
-    scope: FileSystemScope,
-    request: {
-      nodeId: number;
-      expectedBlobId: string | null;
-      blobId: string;
-      contentType: string;
-    }
-  ): Promise<Result<number, FileSystemOperationError>> {
-    let size: number;
-    try {
-      const [metadata] = await getPrivateUploadBucket()
-        .file(this.objectPath(auth, request.nodeId, request.blobId))
-        .getMetadata();
-      size = Number(metadata.size);
-      if (!Number.isSafeInteger(size) || size < 0) {
-        return new Err(
-          new FileSystemOperationError(
-            "invalid_operation",
-            "The uploaded object has an invalid size."
-          )
-        );
-      }
-      if (metadata.contentType !== request.contentType) {
-        return new Err(
-          new FileSystemOperationError(
-            "invalid_operation",
-            "The uploaded object's content type does not match the request."
-          )
-        );
-      }
-    } catch (error) {
-      logger.warn(
-        {
-          error: normalizeError(error),
-          nodeId: request.nodeId,
-          blobId: request.blobId,
-        },
-        "Dust filesystem could not verify an uploaded blob"
-      );
-      return new Err(
-        new FileSystemOperationError(
-          "not_found",
-          "The uploaded object was not found."
-        )
-      );
-    }
-
-    return withTransaction(async (transaction) => {
-      const node = await this.fetchFile(
-        auth,
-        scope,
-        request.nodeId,
-        transaction
-      );
-      if (node.isErr()) {
-        return node;
-      }
-      if (!scope.canWrite(node.value.rootKind, node.value.rootId)) {
-        return new Err(
-          new FileSystemOperationError(
-            "unauthorized",
-            "You do not have write access to this file."
-          )
-        );
-      }
-      // Lost commit responses are safe to retry with the same blob ID.
-      if (node.value.blobId === request.blobId) {
-        await FileSystemBlobCleanupResource.markBlobLive(
-          node.value.workspaceId,
-          node.value.id,
-          request.blobId,
-          transaction
-        );
-        return new Ok(node.value.id);
-      }
-      if (node.value.blobId !== request.expectedBlobId) {
-        return new Err(
-          new FileSystemOperationError(
-            "stale",
-            "The file changed while content was uploading."
-          )
-        );
-      }
-      const registered = await FileSystemBlobCleanupResource.markBlobLive(
-        node.value.workspaceId,
-        node.value.id,
-        request.blobId,
-        transaction
-      );
-      if (!registered) {
-        return new Err(
-          new FileSystemOperationError(
-            "invalid_operation",
-            "The uploaded blob was not prepared for this file."
-          )
-        );
-      }
-      const oldBlobId = node.value.blobId;
-      await node.value.update(
-        {
-          blobId: request.blobId,
-          size,
-          contentType: request.contentType,
-          contentRevision: node.value.contentRevision + 1,
-        },
-        { transaction }
-      );
-      if (oldBlobId !== null) {
-        await FileSystemBlobCleanupResource.retireBlob(
-          node.value.workspaceId,
-          node.value.id,
-          oldBlobId,
-          transaction
-        );
-      }
-      return new Ok(node.value.id);
-    });
   }
 }

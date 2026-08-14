@@ -1,5 +1,4 @@
 import {
-  CHART_HEIGHT,
   COST_PALETTE,
   OTHER_LABEL,
   USER_MESSAGE_ORIGIN_LABELS,
@@ -12,6 +11,7 @@ import {
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
 import type {
   AvailableGroup,
   GetWorkspaceProgrammaticCostResponse,
@@ -730,10 +730,7 @@ export function BaseProgrammaticCostChart({
       legendItems={legendItems}
       isAllowFullScreen
     >
-      <ChartComponent
-        data={chartData}
-        margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
-      >
+      <ChartComponent data={chartData} margin={CHART_MARGIN}>
         <CartesianGrid vertical={false} className="stroke-border" />
         <XAxis
           dataKey="timestamp"

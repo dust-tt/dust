@@ -258,7 +258,7 @@ impl FileStore {
         if node.kind != NodeKind::File {
             return Err(errno(libc::EISDIR));
         }
-        self.remove(parent_inode, name, node.inode)
+        self.remove(parent_inode, name, node.inode, RemoteNodeKind::File)
     }
 
     pub fn remove_directory(&self, parent_inode: INodeNo, name: &str) -> io::Result<()> {
@@ -266,10 +266,16 @@ impl FileStore {
         if node.kind != NodeKind::Directory {
             return Err(errno(libc::ENOTDIR));
         }
-        self.remove(parent_inode, name, node.inode)
+        self.remove(parent_inode, name, node.inode, RemoteNodeKind::Directory)
     }
 
-    fn remove(&self, parent_inode: INodeNo, name: &str, inode: INodeNo) -> io::Result<()> {
+    fn remove(
+        &self,
+        parent_inode: INodeNo,
+        name: &str,
+        inode: INodeNo,
+        kind: RemoteNodeKind,
+    ) -> io::Result<()> {
         if parent_inode == FUSE_ROOT_INODE {
             return Err(errno(libc::EPERM));
         }
@@ -277,6 +283,7 @@ impl FileStore {
             &Uuid::new_v4().to_string(),
             node_id_for_inode(parent_inode)?,
             name,
+            kind,
         )?;
         self.invalidate_node(inode)?;
         self.invalidate_directory(parent_inode)?;
@@ -319,7 +326,10 @@ impl FileStore {
         if inode == FUSE_ROOT_INODE {
             return Err(errno(libc::EPERM));
         }
-        let node = Node::from_remote(self.client.set_mode(node_id_for_inode(inode)?, mode)?)?;
+        let node = Node::from_remote(
+            self.client
+                .set_executable_bits(node_id_for_inode(inode)?, mode & 0o111)?,
+        )?;
         self.cache_node(node.clone())?;
         Ok(node)
     }
@@ -420,13 +430,13 @@ impl FileStore {
         let size = file.metadata()?.len();
         let upload = self
             .client
-            .prepare_upload(node_id, expected_blob_id, content_type)?;
+            .prepare_upload(node_id, expected_blob_id, size, content_type)?;
         let mut upload_file = file.try_clone()?;
         upload_file.seek(SeekFrom::Start(0))?;
         self.client.upload(&upload, upload_file, size)?;
         let remote = self
             .client
-            .commit_upload(node_id, expected_blob_id, &upload)?;
+            .commit_upload(node_id, expected_blob_id, &upload, size)?;
         let node = Node::from_remote(remote)?;
         self.update_cached_content(inode, &node, size)?;
         self.cache_node(node.clone())?;

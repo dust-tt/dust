@@ -241,30 +241,34 @@ describe("sandbox access tokens", () => {
     expect(payload.invocationId).toBe("test-invocation-id");
   });
 
-  it("round-trip: filesystem token carries only its conversation and Pod roots", async () => {
+  it("round-trips a filesystem token with its exact roots", async () => {
     const { auth, conversation, sandbox } = await setupTest();
     const pod = await SpaceFactory.project(auth.getNonNullableWorkspace());
+    const roots = [
+      {
+        kind: "conversation" as const,
+        id: conversation.sId,
+        permissions: { canRead: true, canWrite: true },
+      },
+      {
+        kind: "pod" as const,
+        id: pod.sId,
+        permissions: { canRead: true, canWrite: false },
+      },
+    ];
 
     const token = await generateSandboxFileSystemToken(auth, {
       sandbox,
-      conversationId: conversation.sId,
-      spaceId: pod.sId,
+      roots,
     });
     const payload = await verifySandboxExecToken(token);
 
-    expect(payload).not.toBeNull();
+    expect(payload && isSandboxFileSystemTokenPayload(payload)).toBe(true);
     if (!payload || !isSandboxFileSystemTokenPayload(payload)) {
       return;
     }
-    expect(payload).toMatchObject({
-      wId: auth.getNonNullableWorkspace().sId,
-      sbId: sandbox.sId,
-      cId: conversation.sId,
-      spaceId: pod.sId,
-      filesystem: true,
-    });
-    expect(isSandboxExecTokenPayload(payload)).toBe(false);
-    expect(isSandboxFunctionInvocationTokenPayload(payload)).toBe(false);
+    expect(payload.fileSystemRoots).toEqual(roots);
+    expect(payload.execId).toBe("filesystem");
   });
 
   it("tampered token is rejected", async () => {

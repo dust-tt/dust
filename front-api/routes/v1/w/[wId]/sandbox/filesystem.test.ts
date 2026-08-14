@@ -1,19 +1,12 @@
 import { randomUUID } from "node:crypto";
+import { FileSystemOperationResponseSchema } from "@app/lib/api/file_system/namespace";
 import { generateSandboxFileSystemToken } from "@app/lib/api/sandbox/access_tokens";
 import { createSandboxTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
-import { z } from "zod";
 
-const NodeSchema = z.object({
-  id: z.number(),
-  rootKind: z.enum(["conversation", "pod"]),
-  rootId: z.string(),
-  name: z.string(),
-});
-
-async function requestFileSystem(
+function requestFileSystem(
   workspaceId: string,
   token: string,
   operation: object
@@ -29,7 +22,7 @@ async function requestFileSystem(
 }
 
 describe("POST /api/v1/w/[wId]/sandbox/filesystem", () => {
-  it("moves one inode from its conversation root to its Pod root", async () => {
+  it("uses only the roots and permissions signed into the token", async () => {
     const context = await createSandboxTokenTestContext();
     const pod = await SpaceFactory.project(
       context.workspace,
@@ -37,8 +30,18 @@ describe("POST /api/v1/w/[wId]/sandbox/filesystem", () => {
     );
     const token = await generateSandboxFileSystemToken(context.auth, {
       sandbox: context.sandbox,
-      conversationId: context.conversation.sId,
-      spaceId: pod.sId,
+      roots: [
+        {
+          kind: "conversation",
+          id: context.conversation.sId,
+          permissions: { canRead: true, canWrite: true },
+        },
+        {
+          kind: "pod",
+          id: pod.sId,
+          permissions: { canRead: true, canWrite: false },
+        },
+      ],
     });
 
     const initializeResponse = await requestFileSystem(
@@ -47,13 +50,13 @@ describe("POST /api/v1/w/[wId]/sandbox/filesystem", () => {
       { operation: "initialize" }
     );
     expect(initializeResponse.status).toBe(200);
-    const initialized = z
-      .object({ roots: z.array(NodeSchema) })
-      .parse(await initializeResponse.json());
-    const conversationRoot = initialized.roots.find(
+    const initialized = FileSystemOperationResponseSchema.parse(
+      await initializeResponse.json()
+    );
+    const conversationRoot = initialized.roots?.find(
       (root) => root.rootKind === "conversation"
     );
-    const podRoot = initialized.roots.find((root) => root.rootKind === "pod");
+    const podRoot = initialized.roots?.find((root) => root.rootKind === "pod");
     if (!conversationRoot || !podRoot) {
       throw new Error("Expected conversation and Pod filesystem roots.");
     }
@@ -63,47 +66,104 @@ describe("POST /api/v1/w/[wId]/sandbox/filesystem", () => {
       token,
       {
         operation: "create",
+        requestId: randomUUID(),
         parentId: conversationRoot.id,
-        name: "frame.tsx",
+        name: "script.sh",
         kind: "file",
         mode: 0o644,
       }
     );
     expect(createResponse.status).toBe(200);
-    const created = z
-      .object({ node: NodeSchema })
-      .parse(await createResponse.json());
+    const created = FileSystemOperationResponseSchema.parse(
+      await createResponse.json()
+    );
+    if (!created.node) {
+      throw new Error("Expected the created file.");
+    }
 
-    const renameResponse = await requestFileSystem(
+    const executableResponse = await requestFileSystem(
       context.workspace.sId,
       token,
       {
-        operation: "rename",
-        requestId: randomUUID(),
-        parentId: conversationRoot.id,
-        name: "frame.tsx",
-        newParentId: podRoot.id,
-        newName: "frame.tsx",
+        operation: "setExecutableBits",
+        nodeId: created.node.id,
+        executableBits: 0o111,
       }
     );
-    expect(renameResponse.status).toBe(200);
-    const renamed = z
-      .object({ node: NodeSchema })
-      .parse(await renameResponse.json());
-    expect(renamed.node).toMatchObject({
-      id: created.node.id,
-      rootKind: "pod",
-      rootId: pod.sId,
-      name: "frame.tsx",
+    expect(executableResponse.status).toBe(200);
+    expect(
+      FileSystemOperationResponseSchema.parse(await executableResponse.json())
+        .node?.mode
+    ).toBe(0o755);
+
+    const podWriteResponse = await requestFileSystem(
+      context.workspace.sId,
+      token,
+      {
+        operation: "create",
+        requestId: randomUUID(),
+        parentId: podRoot.id,
+        name: "blocked.txt",
+        kind: "file",
+        mode: 0o644,
+      }
+    );
+    expect(podWriteResponse.status).toBe(403);
+    expect(podWriteResponse.headers.get("x-dust-filesystem-error")).toBe(
+      "unauthorized"
+    );
+  });
+
+  it("rejects malformed filesystem operations before running them", async () => {
+    const context = await createSandboxTokenTestContext();
+    const token = await generateSandboxFileSystemToken(context.auth, {
+      sandbox: context.sandbox,
+      roots: [
+        {
+          kind: "conversation",
+          id: context.conversation.sId,
+          permissions: { canRead: true, canWrite: true },
+        },
+      ],
     });
+
+    const response = await requestFileSystem(context.workspace.sId, token, {
+      operation: "setExecutableBits",
+      nodeId: 1,
+      executableBits: 0o200,
+    });
+
+    expect(response.status).toBe(400);
   });
 
   it("rejects regular sandbox action tokens", async () => {
     const context = await createSandboxTokenTestContext();
+
     const response = await requestFileSystem(
       context.workspace.sId,
       context.token,
       { operation: "initialize" }
+    );
+
+    expect(response.status).toBe(403);
+  });
+
+  it("does not let filesystem tokens call sandbox action endpoints", async () => {
+    const context = await createSandboxTokenTestContext();
+    const token = await generateSandboxFileSystemToken(context.auth, {
+      sandbox: context.sandbox,
+      roots: [
+        {
+          kind: "conversation",
+          id: context.conversation.sId,
+          permissions: { canRead: true, canWrite: true },
+        },
+      ],
+    });
+
+    const response = await honoApp.request(
+      `/api/v1/w/${context.workspace.sId}/sandbox/actions`,
+      { headers: { authorization: `Bearer ${token}` } }
     );
 
     expect(response.status).toBe(403);

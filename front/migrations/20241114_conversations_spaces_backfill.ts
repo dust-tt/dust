@@ -1,5 +1,6 @@
 import _ from "lodash";
 
+import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -26,7 +27,9 @@ async function backfillWorkspacesGroup(execute: boolean) {
               if (!workspaceGroup) {
                 throw new Error("Workspace group not found");
               }
+              const auth = await Authenticator.internalAdminForWorkspace(w.sId);
               await SpaceResource.makeNew(
+                auth,
                 {
                   name: "Conversations",
                   kind: "conversations",

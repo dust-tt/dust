@@ -26,7 +26,11 @@ import type {
   FileSystemEntry,
   GetSpaceFilesResponseBody,
 } from "@app/types/api/file_system/types";
-import type { GetPodAppsResponseBody, PodApp } from "@app/types/api/pod_apps";
+import type {
+  ClonePodAppResponseBody,
+  GetPodAppsResponseBody,
+  PodApp,
+} from "@app/types/api/pod_apps";
 import type {
   GetPodMetadataResponseBody,
   PatchPodMetadataResponseBody,
@@ -138,6 +142,109 @@ export function usePodApps({
     isPodAppsLoading: !disabled && !error && !data,
     isPodAppsError: !!error,
     mutatePodApps: mutate,
+  };
+}
+
+export function useClonePodApp({
+  owner,
+  podId,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutatePodApps } = usePodApps({ owner, podId, disabled: true });
+
+  return async (
+    app: PodApp,
+    name: string
+  ): Promise<Result<ClonePodAppResponseBody["app"], Error>> => {
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/pods/${podId}/apps/${encodeURIComponent(app.prefix)}/clone`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: `Failed to clone ${app.name ?? app.prefix}`,
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      const { app: cloned }: ClonePodAppResponseBody = await res.json();
+      sendNotification({
+        type: "success",
+        title: `${cloned.name} created`,
+        description: `${cloned.publishedFunctionSlugs.length} function(s) published, ${cloned.reconciledDatabaseNames.length} database(s) created empty.`,
+      });
+      await mutatePodApps();
+
+      return new Ok(cloned);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: `Failed to clone ${app.name ?? app.prefix}`,
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
+export function useDeletePodApp({
+  owner,
+  podId,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutatePodApps } = usePodApps({ owner, podId, disabled: true });
+
+  return async (app: PodApp): Promise<Result<void, Error>> => {
+    const appName = app.name ?? app.prefix;
+
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/pods/${podId}/apps/${encodeURIComponent(app.prefix)}`,
+        { method: "DELETE" }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: `Failed to delete ${appName}`,
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      sendNotification({
+        type: "success",
+        title: `${appName} deleted`,
+      });
+      await mutatePodApps();
+
+      return new Ok(undefined);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: `Failed to delete ${appName}`,
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
   };
 }
 
@@ -1386,6 +1493,7 @@ export function usePodEgressPolicy({
 
   return {
     policy: data?.policy ?? EMPTY_EGRESS_POLICY,
+    requestedDomains: data?.requestedDomains ?? emptyArray(),
     isPodEgressPolicyLoading: disabled ? false : isLoading,
     isPodEgressPolicyError: !!error,
     mutatePodEgressPolicy: mutate,
@@ -1429,7 +1537,16 @@ export function useUpdatePodEgressPolicy({
       }
 
       const data: PutPodEgressPolicyResponseBody = await response.json();
-      await mutatePodEgressPolicy({ policy: data.policy }, false);
+      // Keep requestedDomains, or the other pending rows vanish until refetch.
+      await mutatePodEgressPolicy(
+        {
+          policy: data.policy,
+          requestedDomains: (data.policy.requestedDomains ?? []).map(
+            ({ domain: d, requestedAtMs }) => ({ domain: d, requestedAtMs })
+          ),
+        },
+        false
+      );
       sendNotification({
         type: "success",
         title: "Pod network policy updated",
@@ -1450,4 +1567,67 @@ export function useUpdatePodEgressPolicy({
   };
 
   return { updatePodEgressPolicy, isUpdatingPodEgressPolicy };
+}
+
+export function useDismissPodEgressRequest({
+  owner,
+  podId,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const [isDismissingRequest, setIsDismissing] = useState(false);
+  const { mutatePodEgressPolicy } = usePodEgressPolicy({
+    owner,
+    podId,
+    disabled: true,
+  });
+
+  const dismissPodEgressRequest = async (domain: string): Promise<boolean> => {
+    setIsDismissing(true);
+    try {
+      const response = await clientFetch(
+        `${podEgressPolicyUrl(owner.sId, podId)}/requests/dismiss`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ domain }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await getErrorFromResponse(response);
+        sendNotification({
+          type: "error",
+          title: "Failed to reject domain request",
+          description: error.message,
+        });
+        return false;
+      }
+
+      const data: PutPodEgressPolicyResponseBody = await response.json();
+      await mutatePodEgressPolicy(
+        {
+          policy: data.policy,
+          requestedDomains: (data.policy.requestedDomains ?? []).map(
+            ({ domain: d, requestedAtMs }) => ({ domain: d, requestedAtMs })
+          ),
+        },
+        false
+      );
+      return true;
+    } catch {
+      sendNotification({
+        type: "error",
+        title: "Failed to reject domain request",
+        description: "An unexpected error occurred. Please try again.",
+      });
+      return false;
+    } finally {
+      setIsDismissing(false);
+    }
+  };
+
+  return { dismissPodEgressRequest, isDismissingRequest };
 }

@@ -88,7 +88,7 @@ export function CreditCostPopover({
   const [isOpen, setIsOpen] = useState(false);
   // Avoid reopening the trigger tooltip when switching to the credits drawer.
   const preventTriggerFocusOnCloseRef = useRef(false);
-  const { openPanel } = useConversationSidePanelContext();
+  const { currentPanel, openPanel } = useConversationSidePanelContext();
   const { consumption, isConsumptionLoading, mutateConsumption } =
     useAgentMessageConsumption({
       conversationId,
@@ -226,19 +226,21 @@ export function CreditCostPopover({
           )}
         </section>
 
-        <div className="-mx-3 -mb-2 border-t border-border px-3 py-1">
-          <Button
-            variant="highlight-ghost"
-            size="sm"
-            label="Conversation credits"
-            className="w-full"
-            onClick={() => {
-              preventTriggerFocusOnCloseRef.current = true;
-              setIsOpen(false);
-              openPanel({ type: "credits" });
-            }}
-          />
-        </div>
+        {currentPanel !== "credits" && (
+          <div className="-mx-3 -mb-2 border-t border-border px-3 py-1">
+            <Button
+              variant="highlight-ghost"
+              size="sm"
+              label="Conversation credits"
+              className="w-full"
+              onClick={() => {
+                preventTriggerFocusOnCloseRef.current = true;
+                setIsOpen(false);
+                openPanel({ type: "credits" });
+              }}
+            />
+          </div>
+        )}
       </PopoverContent>
     </PopoverRoot>
   );

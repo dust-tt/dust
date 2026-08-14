@@ -8,6 +8,7 @@ import {
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
@@ -16,9 +17,11 @@ import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_reso
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { serializeSkillTag } from "@app/lib/skills/format";
+import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
@@ -29,6 +32,8 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { ModelId } from "@app/types/shared/model_id";
+import assert from "assert";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("SkillResource", () => {
@@ -61,6 +66,70 @@ describe("SkillResource", () => {
 
       expect(skill.canWrite(auth)).toBe(true);
       expect(skill.canAdministrate(auth)).toBe(true);
+    });
+  });
+
+  describe("group_permissions dual-write", () => {
+    // The grants held on a skill by its editor group, straight from the table.
+    async function fetchSkillGrants(
+      editorGroupModelId: ModelId,
+      skillModelId: ModelId
+    ) {
+      return GroupPermissionResource.listForGroups(
+        testContext.authenticator.getNonNullableWorkspace(),
+        {
+          groupModelIds: [editorGroupModelId],
+          resourceType: "skill",
+          resourceId: skillModelId,
+        }
+      );
+    }
+
+    it("writes an editor grant for the editor group when a skill is created", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With Grants",
+      });
+      const editorGroupModelId = skill.editorGroup?.id;
+      assert(editorGroupModelId, "skill should have an editor group");
+
+      const grants = await fetchSkillGrants(editorGroupModelId, skill.id);
+
+      expect(grants).toHaveLength(1);
+      expect(grants[0].grantType).toBe("editor");
+      expect(grants[0].resourceId).toBe(skill.id);
+    });
+
+    it("clears the grants when the skill is deleted", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill To Delete With Grants",
+      });
+      const editorGroupModelId = skill.editorGroup?.id;
+      assert(editorGroupModelId, "skill should have an editor group");
+      expect(await fetchSkillGrants(editorGroupModelId, skill.id)).toHaveLength(
+        1
+      );
+
+      const result = await skill.delete(testContext.authenticator);
+      expect(result.isOk()).toBe(true);
+
+      expect(await fetchSkillGrants(editorGroupModelId, skill.id)).toHaveLength(
+        0
+      );
+    });
+
+    it("is idempotent: reconciling twice leaves a single grant", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill Reconciled Twice",
+      });
+      const editorGroupModelId = skill.editorGroup?.id;
+      assert(editorGroupModelId, "skill should have an editor group");
+
+      await skill.reconcileGroupPermissions(testContext.authenticator);
+      await skill.reconcileGroupPermissions(testContext.authenticator);
+
+      expect(await fetchSkillGrants(editorGroupModelId, skill.id)).toHaveLength(
+        1
+      );
     });
   });
 
@@ -1630,10 +1699,10 @@ describe("SkillResource", () => {
       });
       expect(groupSkillBefore).not.toBeNull();
 
-      const editorGroupId = groupSkillBefore!.groupId;
+      const editorGroupModelId = groupSkillBefore!.groupId;
       const [editorGroupBefore] = await GroupResource.fetchByModelIds(
         testContext.authenticator,
-        [editorGroupId]
+        [editorGroupModelId]
       );
       expect(editorGroupBefore).not.toBeNull();
       expect(editorGroupBefore!.kind).toBe("skill_editors");
@@ -1661,7 +1730,7 @@ describe("SkillResource", () => {
       // Verify the editor group is deleted.
       const editorGroupsAfter = await GroupResource.fetchByModelIds(
         testContext.authenticator,
-        [editorGroupId]
+        [editorGroupModelId]
       );
       expect(editorGroupsAfter).toHaveLength(0);
     });
@@ -1878,6 +1947,43 @@ describe("SkillResource", () => {
   });
 
   describe("fetchByIds", () => {
+    it("skips heavy hydration when it is not requested", async () => {
+      const server = await RemoteMCPServerFactory.create(testContext.workspace);
+      const serverView = await MCPServerViewFactory.create(
+        testContext.workspace,
+        server.sId,
+        testContext.globalSpace
+      );
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Lightweight Skill",
+        instructions: "Large instructions",
+        userFacingDescription: "Description needed for the label",
+        mcpServerViews: [serverView],
+      });
+      const fetchByModelIdsSpy = vi.spyOn(
+        MCPServerViewResource,
+        "fetchByModelIds"
+      );
+
+      const [fetchedSkill] = await SkillResource.fetchByIds(
+        testContext.authenticator,
+        [skill.sId],
+        {
+          withInstructions: false,
+          withTools: false,
+          withFileAttachments: false,
+        }
+      );
+
+      expect(fetchedSkill).toMatchObject({
+        name: "Lightweight Skill",
+        userFacingDescription: "Description needed for the label",
+        instructions: "",
+      });
+      expect(fetchedSkill.mcpServerViews).toEqual([]);
+      expect(fetchByModelIdsSpy).not.toHaveBeenCalled();
+    });
+
     it("filters code-defined skills disabled for the current agent loop", async () => {
       const agent = await AgentConfigurationFactory.createTestAgent(
         testContext.authenticator,
@@ -2283,15 +2389,15 @@ describe("SkillResource", () => {
       const groupSkills = await GroupSkillModel.findAll({
         where: { workspaceId: testContext.workspace.id },
       });
-      const editorGroupIds = groupSkills.map((gs) => gs.groupId);
-      expect(editorGroupIds.length).toBeGreaterThanOrEqual(2);
+      const editorGroupModelIds = groupSkills.map((gs) => gs.groupId);
+      expect(editorGroupModelIds.length).toBeGreaterThanOrEqual(2);
 
       // Verify editor groups exist.
       const editorGroupsBefore = await GroupResource.fetchByModelIds(
         testContext.authenticator,
-        editorGroupIds
+        editorGroupModelIds
       );
-      expect(editorGroupsBefore.length).toBe(editorGroupIds.length);
+      expect(editorGroupsBefore.length).toBe(editorGroupModelIds.length);
       expect(editorGroupsBefore.every((g) => g.kind === "skill_editors")).toBe(
         true
       );
@@ -2320,7 +2426,7 @@ describe("SkillResource", () => {
       // Verify editor groups are deleted.
       const editorGroupsAfter = await GroupResource.fetchByModelIds(
         testContext.authenticator,
-        editorGroupIds
+        editorGroupModelIds
       );
       expect(editorGroupsAfter).toHaveLength(0);
     });
@@ -2689,6 +2795,113 @@ describe("SkillResource", () => {
         []
       );
       expect(editedByMap.size).toBe(0);
+    });
+  });
+
+  describe("group_permissions shadow-compare", () => {
+    // A skill's editor group grants [read, write, admin]; a "user" role grants only read, so write
+    // and admin flow purely through the group — isolating the group-vs-table check.
+    //
+    // Returns a `buildEditorAuth` thunk rather than a ready authenticator: an Authenticator
+    // snapshots its grants at construction, so callers must build it AFTER any grant mutation.
+    async function setupSkillWithEditor(name: string): Promise<{
+      skill: SkillResource;
+      buildEditorAuth: () => Promise<Authenticator>;
+    }> {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name,
+      });
+
+      const editor = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, editor, {
+        role: "user",
+      });
+      const upsert = await skill.upsertEditors(testContext.authenticator, [
+        editor,
+      ]);
+      expect(upsert.isOk()).toBe(true);
+
+      return {
+        skill,
+        buildEditorAuth: () =>
+          Authenticator.fromUserIdAndWorkspaceId(
+            editor.sId,
+            testContext.workspace.sId
+          ),
+      };
+    }
+
+    // Simulates a skill created before the dual-write shipped: the association exists but the
+    // table holds no grant for it.
+    async function clearSkillGrants(skill: SkillResource): Promise<void> {
+      await GroupPermissionResource.deleteAllForResource(
+        testContext.authenticator,
+        { resourceType: "skill", resourceId: skill.id }
+      );
+    }
+
+    it("logs a mismatch when the table diverges from the editor-group rules", async () => {
+      const { skill, buildEditorAuth } = await setupSkillWithEditor(
+        "Shadow Mismatch Skill"
+      );
+      await clearSkillGrants(skill);
+      await FeatureFlagFactory.basic(
+        testContext.authenticator,
+        "group_permissions_shadow"
+      );
+
+      const editorAuth = await buildEditorAuth();
+      const warn = vi.spyOn(logger, "warn");
+
+      // Served result is unchanged: the editor group still grants write via code.
+      expect(skill.canWrite(editorAuth)).toBe(true);
+
+      await vi.waitFor(() =>
+        expect(warn).toHaveBeenCalledWith(
+          expect.objectContaining({
+            resource: "skill",
+            skillId: skill.sId,
+            permission: "write",
+          }),
+          "group_permissions_shadow_mismatch"
+        )
+      );
+    });
+
+    it("keeps the governance role rules in sync with the editor-group ACL", async () => {
+      // `governanceAcls` restates the role rules so it can stand alone at the flip; they must stay
+      // identical to what the skill_editors group declares while both paths coexist.
+      const { skill, buildEditorAuth } = await setupSkillWithEditor(
+        "Shadow Role Rules Skill"
+      );
+      const editorAuth = await buildEditorAuth();
+
+      const byRole = (grants: { role: string }[]) =>
+        [...grants].sort((a, b) => a.role.localeCompare(b.role));
+
+      expect(byRole(skill.governanceAcls(editorAuth)[0].roles)).toEqual(
+        byRole(skill.editorGroup!.getAccessControlLists(editorAuth)[0].roles)
+      );
+    });
+
+    it("never logs a mismatch while the flag is off", async () => {
+      const { skill, buildEditorAuth } = await setupSkillWithEditor(
+        "Shadow Flag Off Skill"
+      );
+      await clearSkillGrants(skill);
+
+      const editorAuth = await buildEditorAuth();
+      const warn = vi.spyOn(logger, "warn");
+
+      expect(skill.canWrite(editorAuth)).toBe(true);
+
+      // Flush the fire-and-forget; with the flag off it short-circuits before comparing.
+      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(warn).not.toHaveBeenCalledWith(
+        expect.anything(),
+        "group_permissions_shadow_mismatch"
+      );
     });
   });
 });

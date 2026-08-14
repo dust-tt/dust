@@ -1,8 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
-import { FileSystemBlobCleanupResource } from "@app/lib/resources/file_system_blob_cleanup_resource";
-import { FileSystemMutationResource } from "@app/lib/resources/file_system_mutation_resource";
 import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import type { SandboxTimestampCursor } from "@app/lib/resources/sandbox_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -23,34 +21,6 @@ import {
 } from "./config";
 
 const REAPER_CONCURRENCY = 16;
-const FILE_SYSTEM_CLEANUP_CONCURRENCY = 4;
-
-export async function cleanupFileSystemActivity(): Promise<void> {
-  const blobWorkspaceModelIds =
-    await FileSystemBlobCleanupResource.dangerouslyListWorkspaceModelIdsWithDueCleanup();
-  const receiptWorkspaceModelIds =
-    await FileSystemMutationResource.dangerouslyListWorkspaceModelIdsWithExpiredReceipts();
-  const workspaceModelIds = [
-    ...new Set([...blobWorkspaceModelIds, ...receiptWorkspaceModelIds]),
-  ];
-  if (workspaceModelIds.length === 0) {
-    return;
-  }
-  const workspaces = await WorkspaceResource.fetchByModelIds(workspaceModelIds);
-  await concurrentExecutor(
-    workspaces,
-    async (workspace) => {
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-      await FileSystemBlobCleanupResource.repairPending(auth);
-      await FileSystemMutationResource.cleanupCompleted(auth);
-    },
-    { concurrency: FILE_SYSTEM_CLEANUP_CONCURRENCY }
-  );
-  logger.info(
-    { workspaceCount: workspaces.length },
-    "Cleaned pending Dust filesystem blobs and mutation receipts."
-  );
-}
 
 export type ReaperPhase =
   | "kill_requested"

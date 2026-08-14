@@ -15,6 +15,7 @@ import {
   MistralLogo,
   MoonshotLogo,
   OpenaiLogo,
+  ThinkingMachinesLogo,
   ZaiLogo,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
@@ -86,6 +87,8 @@ export const getModelMakerLogo = (
       return MoonshotLogo;
     case "minimax":
       return MinimaxLogo;
+    case "thinking_machines":
+      return ThinkingMachinesLogo;
     default:
       return getModelProviderLogo(makerId, isDark);
   }

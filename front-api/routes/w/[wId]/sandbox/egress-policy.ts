@@ -4,6 +4,7 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import {
+  dismissRequestedWorkspacePolicyDomain,
   readWorkspacePolicy,
   writeWorkspacePolicy,
 } from "@app/lib/api/sandbox/egress_policy";
@@ -14,9 +15,15 @@ import type {
 import { parseEgressPolicy } from "@app/types/sandbox/egress_policy";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 // Mounted at /api/w/:wId/sandbox/egress-policy.
 const app = workspaceApp();
+
+const DismissRequestBodySchema = z.object({
+  domain: z.string().min(1),
+});
 
 /** @ignoreswagger */
 app.get(
@@ -35,7 +42,13 @@ app.get(
       });
     }
 
-    return ctx.json({ policy: result.value });
+    // Requests live in the same policy file (the proxy ignores the section).
+    return ctx.json({
+      policy: result.value,
+      requestedDomains: (result.value.requestedDomains ?? []).map(
+        ({ domain, requestedAtMs }) => ({ domain, requestedAtMs })
+      ),
+    });
   }
 );
 
@@ -87,6 +100,41 @@ app.put(
         allowed_domains: result.value.allowedDomains.join(","),
       },
     });
+
+    return ctx.json({ policy: result.value });
+  }
+);
+
+/** @ignoreswagger */
+app.post(
+  "/requests/dismiss",
+  async (ctx): HandlerResult<PutWorkspaceEgressPolicyResponseBody> => {
+    const auth = ctx.get("auth");
+
+    const body = await ctx.req.json().catch(() => null);
+    const parsedBody = DismissRequestBodySchema.safeParse(body);
+    if (!parsedBody.success) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: fromError(parsedBody.error).toString(),
+        },
+      });
+    }
+
+    const result = await dismissRequestedWorkspacePolicyDomain(auth, {
+      domain: parsedBody.data.domain,
+    });
+    if (result.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: `Failed to dismiss sandbox egress domain request: ${result.error.message}`,
+        },
+      });
+    }
 
     return ctx.json({ policy: result.value });
   }

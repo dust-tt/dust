@@ -1,14 +1,15 @@
+import type { UsageFilterAgentScope } from "@app/components/workspace/analytics/usageFilter";
 import { USAGE_FILTER_SCOPE_LABEL } from "@app/components/workspace/analytics/usageFilter";
-import type { AgentConfigurationScope } from "@app/types/assistant/agent";
-import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import { Button, NavigationListLabel } from "@dust-tt/sparkle";
 
 interface UsageFilterAgentScopeControlsProps {
-  activeScope: AgentConfigurationScope;
-  onScopeChange: (scope: AgentConfigurationScope) => void;
+  scopes: readonly UsageFilterAgentScope[];
+  activeScope: UsageFilterAgentScope;
+  onScopeChange: (scope: UsageFilterAgentScope) => void;
 }
 
 export function UsageFilterAgentScopeControls({
+  scopes,
   activeScope,
   onScopeChange,
 }: UsageFilterAgentScopeControlsProps) {
@@ -16,10 +17,10 @@ export function UsageFilterAgentScopeControls({
     <>
       <NavigationListLabel
         label="Scopes"
-        className="bg-transparent font-medium"
+        className="bg-transparent font-medium pt-2 pb-0"
       />
       <div className="flex items-center gap-1">
-        {AGENT_CONFIGURATION_SCOPES.map((scope) => (
+        {scopes.map((scope) => (
           <Button
             key={scope}
             label={USAGE_FILTER_SCOPE_LABEL[scope]}

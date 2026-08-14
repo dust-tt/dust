@@ -2,11 +2,12 @@ import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { emptyWorkspacePermissions } from "@app/types/group_permissions";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const CAPABILITY = { grantType: "create", resourceType: "agent" } as const;
 const RESOURCE_TYPE = "agent";
@@ -179,5 +180,136 @@ describe("Authenticator.getWorkspacePermissions", () => {
       ...emptyWorkspacePermissions(),
       agent: ["publish"],
     });
+  });
+});
+
+describe("Authenticator.fromJSON", () => {
+  it("resolves the grants of a payload serialized before permissions existed", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    await GroupFactory.defaults(workspace);
+
+    const admin = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, admin, { role: "admin" });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      admin.sId,
+      workspace.sId
+    );
+
+    const group = await GroupFactory.regularManual(workspace, "A");
+    await GroupPermissionResource.setGroups(
+      adminAuth,
+      { grantType: "publish", resourceType: "agent" },
+      [group]
+    );
+
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+    await GroupFactory.withMembers(adminAuth, group, [user]);
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    // In-flight Temporal workflows carry payloads serialized before the permissions field existed.
+    const { permissions, ...legacyAuthType } = auth.toJSON();
+    expect(permissions).toBeDefined();
+
+    const restored = await Authenticator.fromJSON(legacyAuthType);
+
+    expect(await restored.getWorkspacePermissions()).toEqual(
+      await auth.getWorkspacePermissions()
+    );
+    expect(await restored.hasWorkspacePermission("publish", "agent")).toBe(
+      true
+    );
+  });
+});
+
+describe("Authenticator.fromKey permission resolution", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("uses a workspace grant scan for unscoped system keys", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const { systemGroup } = await GroupFactory.defaults(workspace);
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const includedGroup = await GroupFactory.regularManual(
+      workspace,
+      "included"
+    );
+    const excludedGroup = await GroupResource.makeNew({
+      name: "excluded",
+      kind: "agent_editors",
+      workspaceId: workspace.id,
+    });
+    await GroupPermissionResource.grant(adminAuth, {
+      group: includedGroup,
+      grantType: "editor",
+      resourceType: "agent",
+      resourceId: 42,
+    });
+    await GroupPermissionResource.grant(adminAuth, {
+      group: excludedGroup,
+      grantType: "editor",
+      resourceType: "agent",
+      resourceId: 42,
+    });
+
+    const workspaceScanSpy = vi.spyOn(
+      GroupPermissionResource,
+      "listForGroupsFromWorkspaceScan"
+    );
+    const key = await KeyFactory.system(systemGroup);
+    const { workspaceAuth } = await Authenticator.fromKey(key, workspace.sId);
+
+    expect(workspaceScanSpy).toHaveBeenCalledTimes(1);
+    expect(
+      workspaceAuth.getGroupPermissions("agent", 42).map((grant) => grant.id)
+    ).toEqual([includedGroup.id]);
+  });
+
+  it("keeps explicitly scoped system keys on the group-id lookup", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const { systemGroup } = await GroupFactory.defaults(workspace);
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const includedGroup = await GroupFactory.regularManual(
+      workspace,
+      "included"
+    );
+    const excludedGroup = await GroupFactory.regularManual(
+      workspace,
+      "excluded"
+    );
+    await GroupPermissionResource.grant(adminAuth, {
+      group: includedGroup,
+      grantType: "editor",
+      resourceType: "agent",
+      resourceId: 42,
+    });
+    await GroupPermissionResource.grant(adminAuth, {
+      group: excludedGroup,
+      grantType: "editor",
+      resourceType: "agent",
+      resourceId: 42,
+    });
+
+    const workspaceScanSpy = vi.spyOn(
+      GroupPermissionResource,
+      "listForGroupsFromWorkspaceScan"
+    );
+    const key = await KeyFactory.system(systemGroup);
+    const { workspaceAuth } = await Authenticator.fromKey(key, workspace.sId, [
+      includedGroup.sId,
+    ]);
+
+    expect(workspaceScanSpy).not.toHaveBeenCalled();
+    expect(
+      workspaceAuth.getGroupPermissions("agent", 42).map((grant) => grant.id)
+    ).toEqual([includedGroup.id]);
   });
 });

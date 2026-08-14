@@ -4,18 +4,10 @@ import type {
   ReapSandboxPhaseActivityResult,
 } from "@app/temporal/sandbox_reaper/activities";
 import { BATCH_SIZE } from "@app/temporal/sandbox_reaper/config";
-import {
-  fileSystemCleanupWorkflow,
-  sandboxReaperWorkflow,
-} from "@app/temporal/sandbox_reaper/workflows";
+import { sandboxReaperWorkflow } from "@app/temporal/sandbox_reaper/workflows";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const {
-  mockCleanupFileSystemActivity,
-  mockLogWarn,
-  mockReapSandboxPhaseActivity,
-} = vi.hoisted(() => ({
-  mockCleanupFileSystemActivity: vi.fn(),
+const { mockLogWarn, mockReapSandboxPhaseActivity } = vi.hoisted(() => ({
   mockLogWarn: vi.fn(),
   mockReapSandboxPhaseActivity: vi.fn(),
 }));
@@ -23,20 +15,9 @@ const {
 vi.mock("@temporalio/workflow", () => ({
   log: { warn: mockLogWarn },
   proxyActivities: () => ({
-    cleanupFileSystemActivity: mockCleanupFileSystemActivity,
     reapSandboxPhaseActivity: mockReapSandboxPhaseActivity,
   }),
 }));
-
-describe("fileSystemCleanupWorkflow", () => {
-  it("runs the independent blob cleanup activity", async () => {
-    mockCleanupFileSystemActivity.mockResolvedValue(undefined);
-
-    await fileSystemCleanupWorkflow();
-
-    expect(mockCleanupFileSystemActivity).toHaveBeenCalledOnce();
-  });
-});
 
 function makeResult(
   nextCursor: ReaperCursor | null

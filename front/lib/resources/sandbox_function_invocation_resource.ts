@@ -84,6 +84,7 @@ const DSBX_BIN_PATH = "/opt/bin/dsbx";
 const SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS = 16_384;
 const GCS_CONCURRENCY = 4;
 const SANDBOX_FUNCTION_INVOCATION_DATA_VERSION = 2;
+const FUNCTION_WARM_ENABLED_ENV = "DUST_FUNCTION_WARM_ENABLED";
 const POD_USER_IDENTITY_ENV = "DUST_POD_USER_IDENTITY";
 
 // "admin" reads every invocation of the function without resolving a workspace user: poke
@@ -698,6 +699,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
             databasePrefix: podDatabasePrefixFromSlug(sandboxFunction.slug),
           }),
           DUST_SANDBOX_TOKEN: token,
+          // Durable functions may still spawn tool clients that inherit the function process's
+          // native environment. Keep them cold until all tool calls read the invocation context;
+          // fast functions cannot call tools and are safe to serve from a resident worker.
+          [FUNCTION_WARM_ENABLED_ENV]: noTools ? "1" : "0",
           // Set this for every invocation so userless calls cannot inherit a sandbox-level value.
           [POD_USER_IDENTITY_ENV]: userIdentity
             ? JSON.stringify(userIdentity)

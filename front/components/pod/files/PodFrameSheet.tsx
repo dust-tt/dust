@@ -161,6 +161,7 @@ export function PodFrameSheet({
                 key={`viz-${fileId}`}
                 conversationId={null}
                 spaceId={fileMetadata?.useCaseMetadata.spaceId}
+                framePath={framePath}
                 isInDrawer={true}
                 isPodEditor={isEditor}
                 ref={iframeRef}

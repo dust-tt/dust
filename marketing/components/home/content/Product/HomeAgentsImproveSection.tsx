@@ -30,17 +30,17 @@ interface FeatureCard {
 const CARDS: FeatureCard[] = [
   {
     number: "01",
-    title: "Knows your company",
+    title: "Agents with company context",
     subtitle:
-      "Connects to all your tools and data, your stack becomes the agent's memory.",
+      "Connect Dust to 70+ connectors, including Slack, Notion, Google Drive, GitHub, Salesforce, and Zendesk. Give agents the context they need to get work done.",
     accent: "text-blue-500",
     hoverVideoSrc: "/static/landing/home/features/knows-your-company.mp4",
   },
   {
     number: "02",
-    title: "Multiplayer AI",
+    title: "Multiplayer AI for cross-functional work",
     subtitle:
-      "Built for collaboration across departments, teams, and agents. Dust is a team sport.",
+      "Bring people and agents into the same workflow. Dust helps teams coordinate complex work across departments using shared context, reusable skills, connected tools, and human review.",
     accent: "text-rose-500",
     hoverVideoSrc: "/static/landing/home/features/team-sport.mp4",
   },
@@ -48,15 +48,15 @@ const CARDS: FeatureCard[] = [
     number: "03",
     title: "Model flexibility",
     subtitle:
-      "Switch seamlessly between frontier models from OpenAI, Anthropic, Google, and Mistral.",
+      "Build agents with 20+ frontier and open-source models from OpenAI, Anthropic, Google, Mistral, and more. Choose the model that fits each workflow.",
     accent: "text-golden-500",
     hoverVideoSrc: "/static/landing/home/features/best-model.mp4",
   },
   {
     number: "04",
-    title: "Productivity that compounds",
+    title: "AI-native governance",
     subtitle:
-      "Value grows with every teammate that joins. Skills, knowledge, and expertise flow.",
+      "Control how AI is used across your company. Set permissions for data, tools, systems, and agents, then use audit logs and analytics to monitor activity, adoption, usage, costs, and ROI.",
     accent: "text-green-700",
     hoverVideoSrc: "/static/landing/home/features/compounds.mp4",
   },
@@ -212,7 +212,7 @@ export function HomeAgentsImproveSection() {
           </HomeReveal>
           <HomeReveal delay={80}>
             <H2 className="max-w-[820px] text-balance text-center font-semibold leading-[1.08] tracking-[-0.03em] text-foreground text-center!">
-              Agents that get smarter the more you use them
+              One system for your company&apos;s AI work
             </H2>
           </HomeReveal>
           <HomeReveal delay={160}>
@@ -220,10 +220,10 @@ export function HomeAgentsImproveSection() {
               size="sm"
               className="max-w-[680px] text-center text-muted-foreground"
             >
-              Dust agents don&apos;t just search your data, they learn how you
-              work. Best practices consolidate into shared skills, improvements
-              spread automatically, and your fiftieth workflow is easier to
-              build than your fifth.
+              Dust brings your systems, models, and teams together so agents can
+              coordinate complex work across your company. Teams get the
+              flexibility to build and adapt agents, with the security and
+              control enterprise AI requires.
             </P>
           </HomeReveal>
         </div>

@@ -91,9 +91,9 @@ enum Operation<'a> {
         kind: NodeKind,
         mode: u16,
     },
-    SetAttributes {
+    SetExecutableBits {
         node_id: u64,
-        mode: u16,
+        executable_bits: u16,
     },
     GetContent {
         node_id: u64,
@@ -101,25 +101,28 @@ enum Operation<'a> {
     PrepareContentUpload {
         node_id: u64,
         expected_blob_id: Option<&'a str>,
+        expected_size_bytes: u64,
         content_type: &'a str,
     },
     CommitContentUpload {
         node_id: u64,
         expected_blob_id: Option<&'a str>,
         blob_id: &'a str,
+        expected_size_bytes: u64,
         content_type: &'a str,
     },
     Remove {
         request_id: &'a str,
         parent_id: u64,
         name: &'a str,
+        kind: NodeKind,
     },
     Rename {
         request_id: &'a str,
-        parent_id: u64,
-        name: &'a str,
-        new_parent_id: u64,
-        new_name: &'a str,
+        source_parent_id: u64,
+        source_name: &'a str,
+        destination_parent_id: u64,
+        destination_name: &'a str,
     },
 }
 
@@ -284,17 +287,31 @@ impl FileSystemClient {
         .ok_or_else(invalid_response)
     }
 
-    pub fn set_mode(&self, node_id: u64, mode: u16) -> io::Result<RemoteNode> {
-        self.operation(&Operation::SetAttributes { node_id, mode })?
-            .node
-            .ok_or_else(invalid_response)
+    pub fn set_executable_bits(
+        &self,
+        node_id: u64,
+        executable_bits: u16,
+    ) -> io::Result<RemoteNode> {
+        self.operation(&Operation::SetExecutableBits {
+            node_id,
+            executable_bits,
+        })?
+        .node
+        .ok_or_else(invalid_response)
     }
 
-    pub fn remove(&self, request_id: &str, parent_id: u64, name: &str) -> io::Result<()> {
+    pub fn remove(
+        &self,
+        request_id: &str,
+        parent_id: u64,
+        name: &str,
+        kind: NodeKind,
+    ) -> io::Result<()> {
         self.operation(&Operation::Remove {
             request_id,
             parent_id,
             name,
+            kind,
         })?;
         Ok(())
     }
@@ -302,17 +319,17 @@ impl FileSystemClient {
     pub fn rename(
         &self,
         request_id: &str,
-        parent_id: u64,
-        name: &str,
-        new_parent_id: u64,
-        new_name: &str,
+        source_parent_id: u64,
+        source_name: &str,
+        destination_parent_id: u64,
+        destination_name: &str,
     ) -> io::Result<RemoteNode> {
         self.operation(&Operation::Rename {
             request_id,
-            parent_id,
-            name,
-            new_parent_id,
-            new_name,
+            source_parent_id,
+            source_name,
+            destination_parent_id,
+            destination_name,
         })?
         .node
         .ok_or_else(invalid_response)
@@ -369,11 +386,13 @@ impl FileSystemClient {
         &self,
         node_id: u64,
         expected_blob_id: Option<&str>,
+        expected_size_bytes: u64,
         content_type: &str,
     ) -> io::Result<ContentUpload> {
         self.operation(&Operation::PrepareContentUpload {
             node_id,
             expected_blob_id,
+            expected_size_bytes,
             content_type,
         })?
         .upload
@@ -437,11 +456,13 @@ impl FileSystemClient {
         node_id: u64,
         expected_blob_id: Option<&str>,
         upload: &ContentUpload,
+        expected_size_bytes: u64,
     ) -> io::Result<RemoteNode> {
         self.operation(&Operation::CommitContentUpload {
             node_id,
             expected_blob_id,
             blob_id: &upload.blob_id,
+            expected_size_bytes,
             content_type: &upload.content_type,
         })?
         .node
@@ -496,8 +517,9 @@ fn read_token_file(path: &std::path::Path) -> io::Result<String> {
 fn filesystem_error(code: Option<&str>) -> io::Error {
     match code {
         Some("already_exists") => errno(libc::EEXIST),
-        Some("busy") => errno(libc::EBUSY),
         Some("invalid_operation") => errno(libc::EINVAL),
+        Some("is_directory") => errno(libc::EISDIR),
+        Some("not_directory") => errno(libc::ENOTDIR),
         Some("not_empty") => errno(libc::ENOTEMPTY),
         Some("not_found") => errno(libc::ENOENT),
         Some("stale") => errno(libc::ESTALE),
@@ -613,20 +635,20 @@ mod tests {
     fn serializes_front_field_names() {
         let value = serde_json::to_value(Operation::Rename {
             request_id: "request",
-            parent_id: 10,
-            name: "old",
-            new_parent_id: 20,
-            new_name: "new",
+            source_parent_id: 10,
+            source_name: "old",
+            destination_parent_id: 20,
+            destination_name: "new",
         });
         assert_eq!(
             value.ok(),
             Some(serde_json::json!({
                 "operation": "rename",
                 "requestId": "request",
-                "parentId": 10,
-                "name": "old",
-                "newParentId": 20,
-                "newName": "new"
+                "sourceParentId": 10,
+                "sourceName": "old",
+                "destinationParentId": 20,
+                "destinationName": "new"
             }))
         );
 
@@ -646,6 +668,53 @@ mod tests {
                 "name": "new.txt",
                 "kind": "file",
                 "mode": 0o644
+            }))
+        );
+
+        let value = serde_json::to_value(Operation::Remove {
+            request_id: "request",
+            parent_id: 10,
+            name: "old.txt",
+            kind: NodeKind::File,
+        });
+        assert_eq!(
+            value.ok(),
+            Some(serde_json::json!({
+                "operation": "remove",
+                "requestId": "request",
+                "parentId": 10,
+                "name": "old.txt",
+                "kind": "file"
+            }))
+        );
+
+        let value = serde_json::to_value(Operation::PrepareContentUpload {
+            node_id: 42,
+            expected_blob_id: None,
+            expected_size_bytes: 12,
+            content_type: "text/plain",
+        });
+        assert_eq!(
+            value.ok(),
+            Some(serde_json::json!({
+                "operation": "prepareContentUpload",
+                "nodeId": 42,
+                "expectedBlobId": null,
+                "expectedSizeBytes": 12,
+                "contentType": "text/plain"
+            }))
+        );
+
+        let value = serde_json::to_value(Operation::SetExecutableBits {
+            node_id: 42,
+            executable_bits: 0o111,
+        });
+        assert_eq!(
+            value.ok(),
+            Some(serde_json::json!({
+                "operation": "setExecutableBits",
+                "nodeId": 42,
+                "executableBits": 0o111
             }))
         );
     }

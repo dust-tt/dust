@@ -37,6 +37,7 @@ import {
 import { BROWSER_TIMEZONE } from "@app/lib/swr/workspaces";
 import type { GetAgentUsageResponseBody } from "@app/types/api/assistant/agent_usage";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/types/api/assistant/builder/slack/channels_linked_with_agent";
+import type { GetSlackUserPrivateChannelsResponseBody } from "@app/types/api/assistant/builder/slack/user_private_channels";
 import type { GetAgentConfigurationsResponseBody } from "@app/types/api/assistant/configuration";
 import { BatchUpdateAgentModelResponseBodySchema } from "@app/types/api/assistant/configuration";
 import type { GetSimilarAgentsResponseBody } from "@app/types/api/assistant/configuration/existing_agent_checker";
@@ -550,6 +551,34 @@ export function useSlackChannelsLinkedWithAgent({
     isSlackChannelsLoading: !error && !data,
     isSlackChannelsError: error,
     mutateSlackChannels: mutate,
+  };
+}
+
+export function useSlackUserPrivateChannels({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const userPrivateChannelsFetcher: Fetcher<GetSlackUserPrivateChannelsResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/assistant/builder/slack/user_private_channels`,
+    userPrivateChannelsFetcher,
+    {
+      disabled: !!disabled,
+    }
+  );
+
+  return {
+    status: data?.status ?? null,
+    privateChannels: data?.channels ?? emptyArray(),
+    isPrivateChannelsLoading: !disabled && !error && !data,
+    isPrivateChannelsError: error,
+    mutatePrivateChannels: mutate,
   };
 }
 

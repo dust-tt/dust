@@ -13,7 +13,7 @@ const ICONS = {
 const meta = {
   title: "Data Display/Chip",
   component: Chip,
-  tags: ["autodocs"],
+  tags: ["a11y-issues", "autodocs"],
   parameters: {
     layout: "padded",
     docs: {

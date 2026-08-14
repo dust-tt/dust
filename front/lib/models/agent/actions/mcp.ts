@@ -9,6 +9,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import {
   DANGEROUSLY_UNBOUNDED_TEXT,
   DataTypes,
+  Op,
 } from "@app/lib/resources/storage/data_types";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -437,6 +438,12 @@ AgentMCPActionOutputItemModel.init(
         fields: ["workspaceId", "agentMCPActionId", "contentGcsPath"],
         concurrently: true,
         name: "agent_mcp_action_output_items_ws_action_gcs_path",
+      },
+      {
+        fields: ["workspaceId", "agentMCPActionId", "fileId", "id"],
+        where: { fileId: { [Op.ne]: null } },
+        concurrently: true,
+        name: "agent_mcp_action_output_items_ws_action_file_id",
       },
     ],
   }

@@ -1,188 +1,172 @@
 import type { Authenticator } from "@app/lib/auth";
-import {
-  DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS,
-  getPrivateUploadBucket,
-} from "@app/lib/file_storage";
+import { FILE_SYSTEM_CONTENT_URL_EXPIRATION_MS } from "@app/lib/file_storage/file_system_blobs";
+import { BaseResource } from "@app/lib/resources/base_resource";
+import type { FileSystemNodeResource } from "@app/lib/resources/file_system_node_resource";
 import { FileSystemBlobCleanupModel } from "@app/lib/resources/storage/models/file_system_blob_cleanup";
-import { FileSystemNodeModel } from "@app/lib/resources/storage/models/file_system_node";
+import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
-import type { ModelId } from "@app/types/shared/model_id";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { Transaction } from "sequelize";
-import { Op } from "sequelize";
+import type { ResourceFindOptions } from "@app/lib/resources/types";
+import type { Result } from "@app/types/shared/result";
+import type { Attributes, Transaction } from "sequelize";
 
-const CLEANUP_BATCH_SIZE = 50;
-const CLEANUP_DELETE_CONCURRENCY = 10;
-const CLEANUP_WORKSPACE_SCAN_SIZE = 128;
-export const FILE_SYSTEM_CONTENT_URL_EXPIRATION_MS =
-  2 * DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS;
 const ABANDONED_UPLOAD_CLEANUP_DELAY_MS = 24 * 60 * 60 * 1000;
 const RETIRED_BLOB_CLEANUP_DELAY_MS =
   FILE_SYSTEM_CONTENT_URL_EXPIRATION_MS + 5 * 60 * 1000;
 
-/** Durable garbage collection for immutable filesystem blobs. */
-export class FileSystemBlobCleanupResource {
-  private static model: ModelStaticWorkspaceAware<FileSystemBlobCleanupModel> =
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface FileSystemBlobCleanupResource
+  extends ReadonlyAttributesType<FileSystemBlobCleanupModel> {}
+
+/**
+ * One durable request to delete an abandoned or replaced content blob.
+ * A separate worker will claim these rows and delete the GCS objects.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export class FileSystemBlobCleanupResource extends BaseResource<FileSystemBlobCleanupModel> {
+  static model: ModelStaticWorkspaceAware<FileSystemBlobCleanupModel> =
     FileSystemBlobCleanupModel;
 
-  static objectPathForWorkspace(
-    workspaceId: string,
-    nodeId: number,
-    blobId: string
-  ): string {
-    return `w/${workspaceId}/filesystem/blobs/${nodeId}/${blobId}`;
+  constructor(
+    model: ModelStaticWorkspaceAware<FileSystemBlobCleanupModel>,
+    blob: Attributes<FileSystemBlobCleanupModel>
+  ) {
+    super(model, blob);
   }
 
-  static objectPath(
-    auth: Authenticator,
-    nodeId: number,
-    blobId: string
-  ): string {
-    return this.objectPathForWorkspace(
-      auth.getNonNullableWorkspace().sId,
-      nodeId,
-      blobId
+  override delete(): Promise<Result<undefined, Error>> {
+    // Queue entries are removed only after a blob becomes live or GCS confirms
+    // its deletion. Direct deletion could leak an object permanently.
+    throw new Error(
+      "Filesystem blob cleanup entries cannot be deleted directly."
     );
   }
 
-  static async registerUpload(
+  private static async baseFetch(
     auth: Authenticator,
-    { nodeId, blobId }: { nodeId: number; blobId: string }
-  ): Promise<void> {
-    await this.model.create({
-      workspaceId: auth.getNonNullableWorkspace().id,
-      nodeId,
-      blobId,
-      notBefore: new Date(Date.now() + ABANDONED_UPLOAD_CLEANUP_DELAY_MS),
-      attempts: 0,
-      lastError: null,
+    options: ResourceFindOptions<FileSystemBlobCleanupModel> = {},
+    {
+      transaction,
+      forUpdate = false,
+    }: { transaction?: Transaction; forUpdate?: boolean } = {}
+  ): Promise<FileSystemBlobCleanupResource[]> {
+    const { where, ...otherOptions } = options;
+    const rows = await this.model.findAll({
+      ...otherOptions,
+      where: {
+        ...where,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      transaction,
+      ...(transaction && forUpdate ? { lock: transaction.LOCK.UPDATE } : {}),
     });
+
+    return rows.map((row) => new this(this.model, row.get()));
   }
 
-  static async markBlobLive(
-    workspaceId: ModelId,
-    nodeId: number,
-    blobId: string,
-    transaction: Transaction
-  ): Promise<boolean> {
-    return (
-      (await this.model.destroy({
-        where: { workspaceId, nodeId, blobId },
-        transaction,
-      })) === 1
-    );
-  }
+  private static async makeNew(
+    auth: Authenticator,
+    node: FileSystemNodeResource,
+    {
+      blobId,
+      notBefore,
+      transaction,
+    }: { blobId: string; notBefore: Date; transaction?: Transaction }
+  ): Promise<FileSystemBlobCleanupResource> {
+    if (node.workspaceId !== auth.getNonNullableWorkspace().id) {
+      throw new Error("Cannot register a filesystem blob across workspaces.");
+    }
 
-  static async retireBlob(
-    workspaceId: ModelId,
-    nodeId: number,
-    blobId: string,
-    transaction?: Transaction
-  ): Promise<void> {
-    await this.model.upsert(
+    const [row] = await this.model.upsert(
       {
-        workspaceId,
-        nodeId,
+        workspaceId: node.workspaceId,
+        nodeId: node.id,
         blobId,
-        notBefore: new Date(Date.now() + RETIRED_BLOB_CLEANUP_DELAY_MS),
+        notBefore,
         attempts: 0,
         lastError: null,
       },
-      transaction ? { transaction } : undefined
+      { transaction, returning: true }
     );
+
+    return new this(this.model, row.get());
   }
 
-  /** Cross-workspace discovery only; every returned workspace is re-scoped. */
-  static async dangerouslyListWorkspaceModelIdsWithDueCleanup(): Promise<
-    ModelId[]
-  > {
-    const rows = await this.model.findAll({
-      attributes: ["workspaceId"],
-      where: { notBefore: { [Op.lte]: new Date() } },
-      // Group before limiting so one workspace with a large backlog cannot
-      // hide every other workspace from the scheduled sweep.
-      group: ["workspaceId"],
-      order: [["workspaceId", "ASC"]],
-      limit: CLEANUP_WORKSPACE_SCAN_SIZE,
-      raw: true,
-      // WORKSPACE_ISOLATION_BYPASS: only discovers workspace IDs. The caller
-      // builds a scoped authenticator before reading nodes or deleting blobs.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
-      dangerouslyBypassWorkspaceIsolationSecurity: true,
+  static registerUpload(
+    auth: Authenticator,
+    node: FileSystemNodeResource,
+    { blobId }: { blobId: string }
+  ): Promise<FileSystemBlobCleanupResource> {
+    return this.makeNew(auth, node, {
+      blobId,
+      notBefore: new Date(Date.now() + ABANDONED_UPLOAD_CLEANUP_DELAY_MS),
     });
-    return [...new Set(rows.map((row) => row.workspaceId))];
   }
 
-  /** Delete a bounded batch; failed deletes stay queued for the next sweep. */
-  static async repairPending(auth: Authenticator): Promise<void> {
-    const workspaceId = auth.getNonNullableWorkspace().id;
-    const pending = await this.model.findAll({
-      where: { workspaceId, notBefore: { [Op.lte]: new Date() } },
-      order: [
-        ["notBefore", "ASC"],
-        ["id", "ASC"],
-      ],
-      limit: CLEANUP_BATCH_SIZE,
+  static retireBlob(
+    auth: Authenticator,
+    node: FileSystemNodeResource,
+    { blobId, transaction }: { blobId: string; transaction: Transaction }
+  ): Promise<FileSystemBlobCleanupResource> {
+    // Existing signed reads may still use the replaced blob. Keep it until
+    // every URL issued before this commit has expired, plus a small margin.
+    return this.makeNew(auth, node, {
+      blobId,
+      notBefore: new Date(Date.now() + RETIRED_BLOB_CLEANUP_DELAY_MS),
+      transaction,
     });
-    if (pending.length === 0) {
-      return;
+  }
+
+  static async fetchForBlob(
+    auth: Authenticator,
+    node: FileSystemNodeResource,
+    { blobId }: { blobId: string }
+  ): Promise<FileSystemBlobCleanupResource | null> {
+    if (node.workspaceId !== auth.getNonNullableWorkspace().id) {
+      return null;
     }
 
-    const liveNodes = await FileSystemNodeModel.findAll({
-      attributes: ["id", "blobId"],
-      where: {
-        workspaceId,
-        id: { [Op.in]: [...new Set(pending.map((row) => row.nodeId))] },
-      },
+    const [cleanup] = await this.baseFetch(auth, {
+      where: { nodeId: node.id, blobId },
+      limit: 1,
     });
-    const liveBlobByNode = new Map(
-      liveNodes.map((node) => [node.id, node.blobId])
-    );
-    const results = await concurrentExecutor(
-      pending,
-      async (cleanup) => {
-        if (liveBlobByNode.get(cleanup.nodeId) === cleanup.blobId) {
-          return { id: cleanup.id, completed: true };
-        }
-        try {
-          await getPrivateUploadBucket().delete(
-            this.objectPath(auth, cleanup.nodeId, cleanup.blobId),
-            { ignoreNotFound: true }
-          );
-          return { id: cleanup.id, completed: true };
-        } catch (error) {
-          logger.warn(
-            {
-              error: normalizeError(error),
-              cleanupId: cleanup.id,
-              nodeId: cleanup.nodeId,
-              blobId: cleanup.blobId,
-            },
-            "Dust filesystem blob cleanup failed"
-          );
-          return { id: cleanup.id, completed: false };
-        }
-      },
-      { concurrency: CLEANUP_DELETE_CONCURRENCY }
-    );
-    const completedIds = results.filter((r) => r.completed).map((r) => r.id);
-    const failedIds = results.filter((r) => !r.completed).map((r) => r.id);
-    if (completedIds.length > 0) {
-      await this.model.destroy({
-        where: { workspaceId, id: { [Op.in]: completedIds } },
-      });
+    return cleanup ?? null;
+  }
+
+  static async fetchForBlobForUpdate(
+    auth: Authenticator,
+    node: FileSystemNodeResource,
+    { blobId, transaction }: { blobId: string; transaction: Transaction }
+  ): Promise<FileSystemBlobCleanupResource | null> {
+    if (node.workspaceId !== auth.getNonNullableWorkspace().id) {
+      return null;
     }
-    if (failedIds.length > 0) {
-      await this.model.increment("attempts", {
-        by: 1,
-        where: { workspaceId, id: { [Op.in]: failedIds } },
-      });
-      await this.model.update(
-        { lastError: "GCS delete failed; see the filesystem cleanup log." },
-        { where: { workspaceId, id: { [Op.in]: failedIds } } }
-      );
+
+    const [cleanup] = await this.baseFetch(
+      auth,
+      { where: { nodeId: node.id, blobId }, limit: 1 },
+      { transaction, forUpdate: true }
+    );
+    return cleanup ?? null;
+  }
+
+  async markBlobLive(
+    auth: Authenticator,
+    node: FileSystemNodeResource,
+    { transaction }: { transaction: Transaction }
+  ): Promise<boolean> {
+    if (
+      this.workspaceId !== auth.getNonNullableWorkspace().id ||
+      this.workspaceId !== node.workspaceId ||
+      this.nodeId !== node.id
+    ) {
+      return false;
     }
+
+    const deletedCount = await this.model.destroy({
+      where: { workspaceId: this.workspaceId, id: this.id },
+      transaction,
+    });
+
+    return deletedCount === 1;
   }
 }

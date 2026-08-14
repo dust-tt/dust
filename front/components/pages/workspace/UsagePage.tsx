@@ -109,7 +109,6 @@ import {
   DropdownMenuTrigger,
   Icon,
   Page,
-  PieChart01,
   SearchInput,
   Spinner,
   Tabs,
@@ -986,7 +985,7 @@ export function UsagePage() {
 
       <div className="flex flex-col items-stretch gap-10 pb-20">
         <div className="flex items-center justify-between">
-          <Page.Header title="Usage" icon={PieChart01} />
+          <Page.Header title="Usage" />
           {!isReadOnly && usageSettings.topUpEnabled && isWorkspaceAdmin && (
             <Button
               label="Top up"

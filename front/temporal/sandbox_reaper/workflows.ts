@@ -13,11 +13,6 @@ const { reapSandboxPhaseActivity } = proxyActivities<typeof activities>({
   },
 });
 
-const { cleanupFileSystemActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "10 minutes",
-  retry: { maximumAttempts: 3 },
-});
-
 // These phases free E2B concurrency and must preempt maintenance work.
 const CAPACITY_PHASES = ["kill_requested", "running"] satisfies ReaperPhase[];
 
@@ -110,11 +105,6 @@ export async function sandboxReaperWorkflow(): Promise<void> {
       logPhaseBatchLimit(phase, cursor, MAX_BATCHES_PER_PHASE);
     }
   }
-}
-
-/** Runs independently of sandbox mounts; every delete is safe to retry. */
-export async function fileSystemCleanupWorkflow(): Promise<void> {
-  await cleanupFileSystemActivity();
 }
 
 export { sandboxKillRequesterWorkflow } from "./kill_requester/workflows";

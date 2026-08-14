@@ -6,6 +6,7 @@ import type {
   FileSystemMount,
   SandboxOnlyMount,
 } from "@app/lib/api/file_system/types";
+import type { SandboxFileSystemRoot } from "@app/lib/api/sandbox/access_tokens";
 import { generateSandboxFileSystemToken } from "@app/lib/api/sandbox/access_tokens";
 import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import { traceSandboxStartupPhase } from "@app/lib/api/sandbox/instrumentation";
@@ -26,21 +27,24 @@ const SYSTEMD_UNIT = "dust-filesystem.service";
 const MOUNT_POINT = "/files";
 const MOUNT_TIMEOUT_MS = 30_000;
 
+function isTokenRootMount(
+  mount: FileSystemMount
+): mount is FileSystemMount & { kind: SandboxFileSystemRoot["kind"] } {
+  return mount.kind === "conversation" || mount.kind === "pod";
+}
+
 export class DatabaseSandboxMountAdapter implements SandboxMountAdapter {
   constructor(
     private readonly mounts: ReadonlyArray<FileSystemMount>,
     private readonly sandboxOnlyMounts: ReadonlyArray<SandboxOnlyMount>
   ) {}
 
-  private tokenRoots(): { conversationId?: string; spaceId?: string } {
-    const conversation = this.mounts.find(
-      (mount) => mount.kind === "conversation"
-    );
-    const pod = this.mounts.find((mount) => mount.kind === "pod");
-    return {
-      ...(conversation ? { conversationId: conversation.id } : {}),
-      ...(pod ? { spaceId: pod.id } : {}),
-    };
+  private tokenRoots(): SandboxFileSystemRoot[] {
+    return this.mounts.filter(isTokenRootMount).map((mount) => ({
+      kind: mount.kind,
+      id: mount.id,
+      permissions: mount.permissions,
+    }));
   }
 
   private async writeToken(
@@ -49,7 +53,7 @@ export class DatabaseSandboxMountAdapter implements SandboxMountAdapter {
   ): Promise<Result<void, Error>> {
     const token = await generateSandboxFileSystemToken(auth, {
       sandbox,
-      ...this.tokenRoots(),
+      roots: this.tokenRoots(),
     });
     const temporaryPath = `${FILE_SYSTEM_DIRECTORY}/.token-${randomBytes(8).toString("hex")}`;
     const result = await sandbox.execRoot(
