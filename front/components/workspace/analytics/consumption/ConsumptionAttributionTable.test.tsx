@@ -96,6 +96,74 @@ describe("ConsumptionAttributionTable", () => {
     });
   });
 
+  it("shows a destination-sized skeleton while changing pages", async () => {
+    const rows = Array.from({ length: 30 }, (_, index) => ({
+      id: `agent-${index + 1}`,
+      name: `Agent ${index + 1}`,
+      pictureUrl: null,
+      description: null,
+      icon: null,
+      modelId: null,
+      modelDisplayName: null,
+      credits: 100 - index,
+      avgCredits: 10,
+    }));
+    let secondPageLoaded = false;
+    mockUseConsumptionTop.mockImplementation(
+      ({ limit, offset }: { limit: number; offset: number }) => ({
+        rows:
+          offset === 0 || secondPageLoaded
+            ? rows.slice(offset, offset + limit)
+            : rows.slice(0, limit),
+        totalCredits: 2_565,
+        totalCount: rows.length,
+        hasMore: offset + limit < rows.length,
+        isTopLoading: offset > 0 && !secondPageLoaded,
+        isTopError: undefined,
+        isTopValidating: offset > 0 && !secondPageLoaded,
+      })
+    );
+
+    const { container, rerender } = render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="agent"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "2" }));
+
+    const loadingContent =
+      container.querySelector<HTMLElement>('[aria-busy="true"]');
+    if (!loadingContent) {
+      throw new Error("Expected paginated attribution rows to be loading");
+    }
+    expect(
+      loadingContent.querySelectorAll('tbody tr[aria-hidden="true"]')
+    ).toHaveLength(5);
+    expect(
+      within(loadingContent).getByRole("button", { name: "2" })
+    ).toBeInTheDocument();
+
+    secondPageLoaded = true;
+    rerender(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="agent"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByText("Agent 30")).toBeInTheDocument();
+  });
+
   it("sends the search to the backend", async () => {
     mockUseConsumptionTop.mockReturnValue({
       rows: [],
