@@ -14,13 +14,17 @@ export interface WorkspaceUserIdentity {
   // Whether the caller is an editor of the Pod this function belongs to (workspace admins
   // included). Gate refresh-style mutations on it; viewers only read.
   readonly isPodEditor: boolean;
+  // Whether the caller belongs to one of the Pod's groups (member or editor). Workspace admins
+  // outside them are not members.
+  readonly isPodMember: boolean;
 }
 
 const workspaceUserIdentityEnvelopeSchema = z.object({
   workspaceId: z.string(),
-  // Optional so envelopes written before the field existed still parse; absent means false,
+  // Optional so envelopes written before the fields existed still parse; absent means false,
   // the restrictive reading.
   isPodEditor: z.boolean().optional(),
+  isPodMember: z.boolean().optional(),
   user: z.object({
     sId: z.string(),
     firstName: z.string(),
@@ -77,5 +81,6 @@ export function currentUser(): WorkspaceUserIdentity | null {
     fullName: value.user.fullName,
     image: value.user.image,
     isPodEditor: value.isPodEditor ?? false,
+    isPodMember: value.isPodMember ?? false,
   });
 }

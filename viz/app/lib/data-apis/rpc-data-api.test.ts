@@ -65,6 +65,45 @@ describe("sandbox function data APIs", () => {
     });
   });
 
+  it("defaults pod membership to false for hosts that omit it", async () => {
+    const sendMessage = vi.fn().mockResolvedValue({
+      isAuthenticated: true,
+      isWorkspaceMember: true,
+      user: {
+        sId: "usr_123",
+        firstName: "Ada",
+        lastName: "Lovelace",
+        fullName: "Ada Lovelace",
+        image: null,
+      },
+    });
+    const api = new RPCDataAPI(sendMessage);
+
+    await expect(api.getUserIdentity()).resolves.toMatchObject({
+      isPodMember: false,
+    });
+  });
+
+  it("keeps pod membership from hosts that provide it", async () => {
+    const sendMessage = vi.fn().mockResolvedValue({
+      isAuthenticated: true,
+      isWorkspaceMember: true,
+      isPodMember: true,
+      user: {
+        sId: "usr_123",
+        firstName: "Ada",
+        lastName: "Lovelace",
+        fullName: "Ada Lovelace",
+        image: null,
+      },
+    });
+    const api = new RPCDataAPI(sendMessage);
+
+    await expect(api.getUserIdentity()).resolves.toMatchObject({
+      isPodMember: true,
+    });
+  });
+
   it("returns no identity from the public cache", async () => {
     const api = new CacheDataAPI();
 
@@ -72,6 +111,7 @@ describe("sandbox function data APIs", () => {
       isAuthenticated: false,
       isWorkspaceMember: false,
       isPodEditor: false,
+      isPodMember: false,
       user: null,
     });
   });

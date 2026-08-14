@@ -162,6 +162,7 @@ export function useUserIdentity(): UseUserIdentityResult {
       isAuthenticated: false,
       isWorkspaceMember: false,
       isPodEditor: false,
+      isPodMember: false,
       isLoading: !result.error,
       user: null,
     };
