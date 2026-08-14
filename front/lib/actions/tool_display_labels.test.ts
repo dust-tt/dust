@@ -179,15 +179,15 @@ describe("getToolDisplayLabels", () => {
   it.each([
     [
       "conversation-Fx7LXcp8VP/reports/quarterly-results.csv",
-      "“quarterly-results.csv” (conversation file)",
+      "“quarterly-results.csv” from conversation",
     ],
     [
       "conversation-Fx7LXcp8VP/.tool_outputs/1786717219013_github_get_pull_request.txt",
-      "“github_get_pull_request.txt” (conversation file)",
+      "“github_get_pull_request.txt” from conversation",
     ],
     [
       "pod-pod123/.tool_outputs/analyze-sales/1786717219013_query_tables.json",
-      "“query_tables.json” (Pod file)",
+      "“query_tables.json” from Pod",
     ],
   ])("labels Dust file system path %s as %s", (path, target) => {
     expect(

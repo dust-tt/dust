@@ -63,9 +63,9 @@ function getFilePathReadTarget(filePath: string): string {
 
   switch (parsedPath.scope.kind) {
     case "canonical-conversation":
-      return `“${truncateQuery(displayName)}” (conversation file)`;
+      return `“${truncateQuery(displayName)}” from conversation`;
     case "canonical-pod":
-      return `“${truncateQuery(displayName)}” (Pod file)`;
+      return `“${truncateQuery(displayName)}” from Pod`;
     default:
       return assertNever(parsedPath.scope);
   }
