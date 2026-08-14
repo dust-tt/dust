@@ -3,7 +3,7 @@ import {
   compileGrepPattern,
   GREP_LINE_MAX_CHARS,
   GREP_PATTERN_MAX_CHARS,
-  testGrepLine,
+  validateGrepLine,
 } from "@app/lib/api/actions/servers/files/tools/grep_regex";
 import { describe, expect, it } from "vitest";
 
@@ -15,15 +15,8 @@ describe("grep regex", () => {
       throw regexResult.error;
     }
 
-    const matchResult = testGrepLine({
-      regex: regexResult.value,
-      line: "DUST-42",
-    });
-    expect(matchResult.isOk()).toBe(true);
-    if (matchResult.isErr()) {
-      throw matchResult.error;
-    }
-    expect(matchResult.value).toBe(true);
+    expect(validateGrepLine("DUST-42")).toBeNull();
+    expect(regexResult.value.test("DUST-42")).toBe(true);
   });
 
   it("rejects unsupported and oversized patterns", () => {
@@ -47,13 +40,10 @@ describe("grep regex", () => {
     }
 
     const startedAtMs = performance.now();
-    const matchResult = testGrepLine({
-      regex: regexResult.value,
-      line: `${"a".repeat(100_000)}!`,
-    });
+    const matched = regexResult.value.test(`${"a".repeat(100_000)}!`);
     const durationMs = performance.now() - startedAtMs;
 
-    expect(matchResult.isOk()).toBe(true);
+    expect(matched).toBe(false);
     expect(durationMs).toBeLessThan(1_000);
   });
 
@@ -63,15 +53,7 @@ describe("grep regex", () => {
       throw regexResult.error;
     }
 
-    const matchResult = testGrepLine({
-      regex: regexResult.value,
-      line: "a".repeat(GREP_LINE_MAX_CHARS + 1),
-    });
-
-    expect(matchResult.isErr()).toBe(true);
-    if (matchResult.isOk()) {
-      throw new Error("Expected the oversized line to be rejected.");
-    }
-    expect(matchResult.error.message).toContain("longer than");
+    const lineError = validateGrepLine("a".repeat(GREP_LINE_MAX_CHARS + 1));
+    expect(lineError?.message).toContain("longer than");
   });
 });

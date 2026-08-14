@@ -27,26 +27,12 @@ export function compileGrepPattern(pattern: string): Result<RE2, Error> {
   }
 }
 
-export function testGrepLine({
-  regex,
-  line,
-}: {
-  regex: RE2;
-  line: string;
-}): Result<boolean, Error> {
+export function validateGrepLine(line: string): Error | null {
   if (line.length > GREP_LINE_MAX_CHARS) {
-    return new Err(
-      new Error(
-        `Cannot search a line longer than ${GREP_LINE_MAX_CHARS} characters.`
-      )
+    return new Error(
+      `Cannot search a line longer than ${GREP_LINE_MAX_CHARS} characters.`
     );
   }
 
-  try {
-    return new Ok(regex.test(line));
-  } catch (err) {
-    return new Err(
-      new Error(`Pattern evaluation failed: ${normalizeError(err).message}`)
-    );
-  }
+  return null;
 }
