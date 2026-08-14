@@ -8,15 +8,19 @@ import {
   Card,
   CardActionButton,
   Chip,
+  Download01,
   GitBranch01,
   Trash01,
 } from "@dust-tt/sparkle";
+import { useCallback, useState } from "react";
 
 interface PodAppTileProps {
   app: PodApp;
   iconByFramePath: Map<string, CustomResourceIconType>;
   defaultIcon: CustomResourceIconType;
   onOpenFrame: (frame: PodAppFrame) => void;
+  /** Download this app as a portable archive. Available to every viewer with read access. */
+  onDownload?: () => Promise<void>;
   /** Absent when the viewer cannot edit (no write access). */
   onClone?: () => void;
   /** Absent when the viewer cannot edit (no write access). */
@@ -47,6 +51,7 @@ export function PodAppTile({
   iconByFramePath,
   defaultIcon,
   onOpenFrame,
+  onDownload,
   onClone,
   onDelete,
 }: PodAppTileProps) {
@@ -56,13 +61,32 @@ export function PodAppTile({
   const openableFrame = frame?.fileId ? frame : null;
   const isDraft = app.functions.length === 0 && app.databases.length === 0;
 
+  const [isDownloading, setIsDownloading] = useState(false);
+  const handleDownload = useCallback(async () => {
+    if (!onDownload) {
+      return;
+    }
+    setIsDownloading(true);
+    await onDownload();
+    setIsDownloading(false);
+  }, [onDownload]);
+
   return (
     <Card
       size="sm"
       onClick={openableFrame ? () => onOpenFrame(openableFrame) : undefined}
       action={
-        (onClone || onDelete) && (
+        (onDownload || onClone || onDelete) && (
           <div className="flex gap-1">
+            {onDownload && (
+              <CardActionButton
+                size="icon"
+                icon={Download01}
+                tooltip="Download this app as a portable archive"
+                onClick={() => void handleDownload()}
+                isLoading={isDownloading}
+              />
+            )}
             {onClone && (
               <CardActionButton
                 size="icon"

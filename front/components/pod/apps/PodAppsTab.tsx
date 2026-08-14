@@ -1,13 +1,15 @@
 import { ClonePodAppDialog } from "@app/components/pod/apps/ClonePodAppDialog";
 import { DeletePodAppDialog } from "@app/components/pod/apps/DeletePodAppDialog";
+import { ImportPodAppDialog } from "@app/components/pod/apps/ImportPodAppDialog";
 import { PodAppTile } from "@app/components/pod/apps/PodAppTile";
 import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
 import type { CustomResourceIconType } from "@app/components/resources/resources_icon_names";
-import { usePodApps } from "@app/lib/swr/pods";
+import { useDownloadPodApp, usePodApps } from "@app/lib/swr/pods";
 import type { PodApp, PodAppFrame } from "@app/types/api/pod_apps";
 import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
+  Button,
   CardGrid,
   ContentMessage,
   ScrollArea,
@@ -33,12 +35,14 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
   });
 
   const canEdit = pod.isEditor && !pod.archivedAt;
+  const downloadPodApp = useDownloadPodApp({ owner, podId: pod.sId });
 
   const [framePreview, setFramePreview] = useState<PodAppFrame | null>(null);
   const [appPendingDeletion, setAppPendingDeletion] = useState<PodApp | null>(
     null
   );
   const [appPendingClone, setAppPendingClone] = useState<PodApp | null>(null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
 
   const iconByFramePath = useMemo(
     () =>
@@ -46,6 +50,27 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
         (pod.frameTabs ?? []).map((tab) => [tab.path, tab.icon])
       ),
     [pod.frameTabs]
+  );
+
+  const importButton = canEdit && (
+    <div className="flex justify-end">
+      <Button
+        label="Import app"
+        variant="outline"
+        size="sm"
+        onClick={() => setIsImportOpen(true)}
+      />
+    </div>
+  );
+
+  const importDialog = isImportOpen && (
+    <ImportPodAppDialog
+      owner={owner}
+      podId={pod.sId}
+      existingPrefixes={apps.map((candidate) => candidate.prefix)}
+      isOpen
+      onClose={() => setIsImportOpen(false)}
+    />
   );
 
   if (isPodAppsLoading) {
@@ -69,12 +94,16 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
 
   if (apps.length === 0) {
     return (
-      <div className="flex h-full w-full items-center justify-center px-6 py-8">
-        <p className="max-w-md text-center copy-sm text-muted-foreground dark:text-muted-foreground-night">
-          No app in this Pod yet. Ask an agent in this Pod to build one — a
-          Frame with the functions and databases behind it — and it will show up
-          here.
-        </p>
+      <div className="flex h-full w-full flex-col gap-4 px-6 py-8">
+        {importButton}
+        <div className="flex flex-1 items-center justify-center">
+          <p className="max-w-md text-center copy-sm text-muted-foreground dark:text-muted-foreground-night">
+            No app in this Pod yet. Ask an agent in this Pod to build one — a
+            Frame with the functions and databases behind it — and it will show
+            up here.
+          </p>
+        </div>
+        {importDialog}
       </div>
     );
   }
@@ -87,6 +116,7 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
     <div className="h-full min-h-0 w-full flex-1 overflow-hidden">
       <ScrollArea className="h-full">
         <div className="flex flex-col gap-4 px-6 py-5">
+          {importButton}
           {collidingApps.map((app) => (
             <ContentMessage
               key={app.prefix}
@@ -108,6 +138,7 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
                 iconByFramePath={iconByFramePath}
                 defaultIcon={DEFAULT_POD_APP_ICON}
                 onOpenFrame={setFramePreview}
+                onDownload={() => downloadPodApp(app)}
                 onClone={canEdit ? () => setAppPendingClone(app) : undefined}
                 onDelete={
                   canEdit ? () => setAppPendingDeletion(app) : undefined
@@ -140,6 +171,8 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
           onClose={() => setAppPendingDeletion(null)}
         />
       )}
+
+      {importDialog}
 
       <PodFrameSheet
         owner={owner}
