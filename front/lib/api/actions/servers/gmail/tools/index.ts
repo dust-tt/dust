@@ -44,6 +44,96 @@ import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { unescape } from "html-escaper";
 
+export type GmailMessageForMonitoring = {
+  id: string;
+  threadId: string | undefined;
+  labelIds: string[] | undefined;
+  from: string | undefined;
+  to: string | undefined;
+  cc: string | undefined;
+  subject: string | undefined;
+  date: string | undefined;
+  body: string;
+};
+
+export async function getGmailMessages({
+  accessToken,
+  q,
+  maxResults = 10,
+  includeAttachments = false,
+}: {
+  accessToken: string;
+  q?: string;
+  maxResults?: number;
+  includeAttachments?: boolean;
+}): Promise<Result<GmailMessageForMonitoring[], MCPError>> {
+  const params = new URLSearchParams();
+  if (q) {
+    params.append("q", q);
+  }
+  params.append(
+    "maxResults",
+    Math.min(
+      maxResults,
+      includeAttachments
+        ? MESSAGES_WITH_ATTACHMENTS_MAX_RESULTS
+        : MESSAGES_MAX_RESULTS
+    ).toString()
+  );
+
+  const response = await fetchFromGmail(
+    `/gmail/v1/users/me/messages?${params.toString()}`,
+    accessToken,
+    { method: "GET" }
+  );
+  if (!response.ok) {
+    const errorText = await getErrorText(response);
+    return new Err(
+      new MCPError(
+        `Failed to get messages: ${response.status} ${response.statusText} - ${errorText}`
+      )
+    );
+  }
+
+  const result = await response.json();
+  const messageDetails = await concurrentExecutor(
+    result.messages ?? [],
+    async (message: { id: string }) => {
+      const messageResponse = await fetchFromGmail(
+        `/gmail/v1/users/me/messages/${message.id}?format=full`,
+        accessToken,
+        { method: "GET" }
+      );
+      if (!messageResponse.ok) {
+        return null;
+      }
+      const messageData = await messageResponse.json();
+      if (!isGmailMessage(messageData)) {
+        return null;
+      }
+      const headers = messageData.payload?.headers ?? [];
+      return {
+        id: messageData.id,
+        threadId: messageData.threadId,
+        labelIds: messageData.labelIds,
+        from: getHeaderValue(headers, "From"),
+        to: getHeaderValue(headers, "To"),
+        cc: getHeaderValue(headers, "Cc"),
+        subject: getHeaderValue(headers, "Subject"),
+        date: getHeaderValue(headers, "Date"),
+        body: decodeMessageBody(messageData.payload)?.body ?? "",
+      };
+    },
+    { concurrency: 10 }
+  );
+
+  return new Ok(
+    messageDetails.filter(
+      (message): message is GmailMessageForMonitoring => message !== null
+    )
+  );
+}
+
 // Validates email addresses to prevent header injection attacks.
 function validateEmailAddresses(
   to: string[],

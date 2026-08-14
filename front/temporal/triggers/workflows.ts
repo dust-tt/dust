@@ -3,12 +3,13 @@ import { proxyActivities } from "@temporalio/workflow";
 
 import type * as activities from "./activities";
 
-const { runTriggeredAgentsActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "2 minutes",
-  retry: {
-    nonRetryableErrorTypes: ["TriggerNonRetryableError"],
-  },
-});
+const { monitorGmailMessagesActivity, runTriggeredAgentsActivity } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "2 minutes",
+    retry: {
+      nonRetryableErrorTypes: ["TriggerNonRetryableError"],
+    },
+  });
 
 const { expireWakeUpActivity, runWakeUpActivity } = proxyActivities<
   typeof activities
@@ -39,6 +40,18 @@ export async function agentTriggerWorkflow({
     triggerId,
     webhookRequestId,
   });
+}
+
+export async function gmailMessagesMonitorWorkflow({
+  userId,
+  workspaceId,
+  triggerId,
+}: {
+  userId: string;
+  workspaceId: string;
+  triggerId: string;
+}) {
+  await monitorGmailMessagesActivity({ userId, workspaceId, triggerId });
 }
 
 function isRunWakeUpActivityFailure(error: unknown): error is ActivityFailure {

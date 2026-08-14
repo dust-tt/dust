@@ -1,4 +1,5 @@
 import type {
+  AgentBuilderGmailMonitorTriggerType,
   AgentBuilderScheduleTriggerType,
   AgentBuilderTriggerType,
   AgentBuilderWebhookTriggerType,
@@ -14,11 +15,14 @@ import {
   formValuesToWebhookTriggerData,
   getWebhookFormDefaultValues,
 } from "@app/components/agent_builder/triggers/webhook/webhookEditionFormSchema";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
   useCreateTrigger,
   useUpdateTrigger,
 } from "@app/lib/swr/agent_triggers";
+import { getMonitorableMCPTools } from "@app/lib/triggers/monitorable_mcp_servers";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -26,7 +30,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
-type PageId = "trigger-selection" | "schedule-edition" | "webhook-edition";
+type PageId =
+  | "trigger-selection"
+  | "schedule-edition"
+  | "mcp-monitor-edition"
+  | "webhook-edition";
 
 interface UseTriggerSheetStateParams {
   owner: LightWorkspaceType;
@@ -40,7 +48,8 @@ function getPageTitle(
   currentPageId: PageId,
   editTrigger: AgentBuilderTriggerType | null,
   isEditor: boolean,
-  webhookSourceView: WebhookSourceViewType | null
+  webhookSourceView: WebhookSourceViewType | null,
+  mcpServerView: MCPServerViewType | null
 ): string {
   switch (currentPageId) {
     case "trigger-selection":
@@ -50,6 +59,10 @@ function getPageTitle(
         return "Create Schedule";
       }
       return isEditor ? "Edit Schedule" : "View Schedule";
+    case "mcp-monitor-edition":
+      return mcpServerView
+        ? `Create ${getMcpServerViewDisplayName(mcpServerView)} monitor`
+        : "Create MCP tool monitor";
     case "webhook-edition":
       if (!editTrigger) {
         return webhookSourceView
@@ -75,6 +88,8 @@ export function useTriggerSheetState({
     useState<PageId>("trigger-selection");
   const [selectedWebhookSourceView, setSelectedWebhookSourceView] =
     useState<WebhookSourceViewType | null>(null);
+  const [selectedMCPServerView, setSelectedMCPServerView] =
+    useState<MCPServerViewType | null>(null);
 
   const editTrigger = mode.type === "edit" ? mode.trigger : null;
   const editWebhookSourceView =
@@ -146,9 +161,34 @@ export function useTriggerSheetState({
     [form]
   );
 
+  const handleMCPMonitorSelect = useCallback(
+    (mcpServerView: MCPServerViewType) => {
+      const tools = getMonitorableMCPTools(mcpServerView);
+      setSelectedMCPServerView(mcpServerView);
+      form.reset({
+        type: "mcp-monitor",
+        mcpMonitor: {
+          name: `Monitor ${getMcpServerViewDisplayName(mcpServerView)}`,
+          mcpServerViewId: mcpServerView.sId,
+          toolName: tools[0]?.name ?? "",
+          inputJson: "{}",
+          intervalMinutes: 2,
+          customPrompt: null,
+          status: "enabled",
+          editor: user?.id ?? null,
+          naturalLanguageDescription: null,
+          spaceId: null,
+        },
+      });
+      setCurrentPageId("mcp-monitor-edition");
+    },
+    [form, user]
+  );
+
   const handleCancel = useCallback(() => {
     setCurrentPageId("trigger-selection");
     setSelectedWebhookSourceView(null);
+    setSelectedMCPServerView(null);
   }, []);
 
   const handleFormSubmit = useCallback(
@@ -222,6 +262,48 @@ export function useTriggerSheetState({
           }
           break;
         }
+        case "mcp-monitor": {
+          let input: Record<string, unknown>;
+          try {
+            input = JSON.parse(values.mcpMonitor.inputJson) as Record<
+              string,
+              unknown
+            >;
+          } catch {
+            form.setError("mcpMonitor.inputJson", {
+              type: "manual",
+              message: "Enter a JSON object.",
+            });
+            return;
+          }
+          const triggerData: AgentBuilderGmailMonitorTriggerType = {
+            name: values.mcpMonitor.name,
+            kind: "monitor",
+            status: values.mcpMonitor.status,
+            customPrompt: values.mcpMonitor.customPrompt,
+            naturalLanguageDescription:
+              values.mcpMonitor.naturalLanguageDescription,
+            editor: values.mcpMonitor.editor,
+            spaceId: values.mcpMonitor.spaceId,
+            configuration: {
+              type: "mcp_tool",
+              mcpServerViewId: values.mcpMonitor.mcpServerViewId,
+              toolName: values.mcpMonitor.toolName,
+              input,
+              intervalMinutes: values.mcpMonitor.intervalMinutes,
+            },
+          };
+          success = await createTrigger({
+            name: triggerData.name,
+            kind: "monitor",
+            customPrompt: triggerData.customPrompt ?? "",
+            naturalLanguageDescription: triggerData.naturalLanguageDescription,
+            configuration: triggerData.configuration,
+            status: triggerData.status,
+            spaceId: triggerData.spaceId,
+          });
+          break;
+        }
       }
 
       if (success) {
@@ -255,25 +337,29 @@ export function useTriggerSheetState({
     }
     setCurrentPageId("trigger-selection");
     setSelectedWebhookSourceView(null);
+    setSelectedMCPServerView(null);
   }, [defaultValues, form, mode]);
 
   const pageTitle = getPageTitle(
     currentPageId,
     editTrigger,
     isEditor,
-    webhookSourceView
+    webhookSourceView,
+    selectedMCPServerView
   );
 
   return {
     form,
     currentPageId,
     webhookSourceView,
+    selectedMCPServerView,
     editTrigger,
     isEditor,
     isOnSelectionPage,
     pageTitle,
     handleScheduleSelect,
     handleWebhookSelect,
+    handleMCPMonitorSelect,
     handleCancel,
     handleFormSubmit,
   };

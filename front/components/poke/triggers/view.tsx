@@ -107,6 +107,23 @@ export function ViewTriggerTable({
                     </>
                   )}
                 </>
+              ) : trigger.kind === "monitor" ? (
+                <>
+                  <PokeTableRow>
+                    <PokeTableHead>Gmail query</PokeTableHead>
+                    <PokeTableCell>
+                      {trigger.configuration.type === "gmail_messages"
+                        ? (trigger.configuration.q ?? "All messages")
+                        : trigger.configuration.toolName}
+                    </PokeTableCell>
+                  </PokeTableRow>
+                  <PokeTableRow>
+                    <PokeTableHead>Interval</PokeTableHead>
+                    <PokeTableCell>
+                      Every {trigger.configuration.intervalMinutes} minutes
+                    </PokeTableCell>
+                  </PokeTableRow>
+                </>
               ) : (
                 <>
                   <PokeTableRow>

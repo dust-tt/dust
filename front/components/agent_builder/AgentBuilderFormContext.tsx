@@ -99,9 +99,49 @@ const scheduleTriggerSchema = z.object({
   spaceId: z.string().nullable().optional(),
 });
 
+const gmailMonitorTriggerSchema = z.object({
+  sId: z.string().optional(),
+  status: triggerStatusSchema.default("enabled"),
+  name: z.string(),
+  kind: z.literal("monitor"),
+  customPrompt: z.string().nullable(),
+  naturalLanguageDescription: z.string().nullable(),
+  configuration: z.union([
+    z.object({
+      type: z.literal("gmail_messages"),
+      q: z.string().nullable(),
+      maxResults: z.number().int().min(1).max(50),
+      intervalMinutes: z.union([
+        z.literal(2),
+        z.literal(15),
+        z.literal(60),
+        z.literal(360),
+        z.literal(1440),
+      ]),
+    }),
+    z.object({
+      type: z.literal("mcp_tool"),
+      mcpServerViewId: z.string(),
+      toolName: z.string(),
+      input: z.record(z.string(), z.unknown()),
+      intervalMinutes: z.union([
+        z.literal(2),
+        z.literal(15),
+        z.literal(60),
+        z.literal(360),
+        z.literal(1440),
+      ]),
+    }),
+  ]),
+  editor: z.number().nullable(),
+  editorName: z.string().optional(),
+  spaceId: z.string().nullable().optional(),
+});
+
 const triggerSchema = z.discriminatedUnion("kind", [
   webhookTriggerSchema,
   scheduleTriggerSchema,
+  gmailMonitorTriggerSchema,
 ]);
 
 const skillsSchema = z.object({
@@ -122,6 +162,9 @@ export type AgentBuilderWebhookTriggerType = z.infer<
 >;
 export type AgentBuilderScheduleTriggerType = z.infer<
   typeof scheduleTriggerSchema
+>;
+export type AgentBuilderGmailMonitorTriggerType = z.infer<
+  typeof gmailMonitorTriggerSchema
 >;
 
 export const agentBuilderFormSchema = z.object({

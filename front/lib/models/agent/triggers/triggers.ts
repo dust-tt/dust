@@ -40,6 +40,8 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
   declare webhookSourceViewId: ForeignKey<WebhookSourcesViewModel["id"]> | null;
   declare executionPerDayLimitOverride: number | null;
   declare executionMode: TriggerExecutionMode | null;
+  declare monitorBaseline: unknown | null;
+  declare monitorLastCheckedAt: Date | null;
 
   /**
    * We use the sId, because it's static between an agent versions,
@@ -113,6 +115,16 @@ TriggerModel.init(
     executionMode: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    monitorBaseline: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+    },
+    monitorLastCheckedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
     },
     spaceId: {
       type: DataTypes.BIGINT,

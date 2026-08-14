@@ -12,6 +12,8 @@ export function getTriggerDescription(trigger: TriggerType): string {
       return trigger.configuration.event
         ? `Triggered by ${trigger.configuration.event} events.`
         : "Triggered by webhook events.";
+    case "monitor":
+      return `Checks Gmail every ${trigger.configuration.intervalMinutes} minutes.`;
     default:
       assertNeverAndIgnore(trigger);
       return "";

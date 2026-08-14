@@ -7,7 +7,7 @@ import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/types/triggers/webhooks_client_side";
-import { ActionCard, Clock } from "@dust-tt/sparkle";
+import { ActionCard, Bell01, Clock } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 function getTriggerIconComponent(trigger: AgentBuilderTriggerType) {
@@ -22,6 +22,8 @@ function getTriggerIconComponent(trigger: AgentBuilderTriggerType) {
             : null
         )
       );
+    case "monitor":
+      return Bell01;
     default:
       assertNever(trigger);
   }
@@ -72,6 +74,8 @@ export function TriggerCard({
           webhookTrigger: trigger,
           webhookSourceView,
         });
+      case "monitor":
+        return `Checks Gmail every ${trigger.configuration.intervalMinutes} minutes.`;
     }
   }, [trigger, webhookSourceView]);
 

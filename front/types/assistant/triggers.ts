@@ -56,13 +56,49 @@ const WebhookConfigSchema = z.object({
   filter: z.string().optional(),
 });
 
+export const GMAIL_MONITOR_INTERVAL_MINUTES = [2, 15, 60, 360, 1440] as const;
+
+const GmailMonitorConfigSchema = z.object({
+  type: z.literal("gmail_messages"),
+  q: z.string().nullable(),
+  maxResults: z.number().int().min(1).max(50),
+  intervalMinutes: z.union([
+    z.literal(2),
+    z.literal(15),
+    z.literal(60),
+    z.literal(360),
+    z.literal(1440),
+  ]),
+});
+
+const MCPToolMonitorConfigSchema = z.object({
+  type: z.literal("mcp_tool"),
+  mcpServerViewId: z.string(),
+  toolName: z.string(),
+  input: z.record(z.string(), z.unknown()),
+  intervalMinutes: z.union([
+    z.literal(2),
+    z.literal(15),
+    z.literal(60),
+    z.literal(360),
+    z.literal(1440),
+  ]),
+});
+
 export type WebhookConfig = {
   includePayload: boolean;
   event?: string;
   filter?: string;
 };
 
-export type TriggerConfigurationType = ScheduleConfig | WebhookConfig;
+export type GmailMonitorConfig = z.infer<typeof GmailMonitorConfigSchema>;
+export type MCPToolMonitorConfig = z.infer<typeof MCPToolMonitorConfigSchema>;
+export type MonitorConfig = GmailMonitorConfig | MCPToolMonitorConfig;
+
+export type TriggerConfigurationType =
+  | ScheduleConfig
+  | WebhookConfig
+  | MonitorConfig;
 
 export const DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT = 42;
 
@@ -120,6 +156,19 @@ export const TriggerSchema = z.discriminatedUnion("kind", [
     status: TriggerStatusSchema.optional(),
     spaceId: z.string().nullable().optional(),
   }),
+  z.object({
+    name: z.string(),
+    kind: z.literal("monitor"),
+    customPrompt: z.string(),
+    naturalLanguageDescription: z.string().nullable(),
+    configuration: z.union([
+      GmailMonitorConfigSchema,
+      MCPToolMonitorConfigSchema,
+    ]),
+    editor: z.number().optional(),
+    status: TriggerStatusSchema.optional(),
+    spaceId: z.string().nullable().optional(),
+  }),
 ]);
 
 const TriggerBaseSchema = z.object({
@@ -148,6 +197,13 @@ export const FullTriggerSchema = z.discriminatedUnion("kind", [
     webhookSourceViewId: z.string().nullable(),
     executionMode: z.enum(["fair_use", "programmatic"]).nullable(),
   }),
+  TriggerBaseSchema.extend({
+    kind: z.literal("monitor"),
+    configuration: z.union([
+      GmailMonitorConfigSchema,
+      MCPToolMonitorConfigSchema,
+    ]),
+  }),
 ]);
 
 export type TriggerType = z.infer<typeof FullTriggerSchema>;
@@ -155,7 +211,7 @@ export type TriggerType = z.infer<typeof FullTriggerSchema>;
 export type TriggerKind = TriggerType["kind"];
 
 export function isValidTriggerKind(kind: string): kind is TriggerKind {
-  return ["schedule", "webhook"].includes(kind);
+  return ["schedule", "webhook", "monitor"].includes(kind);
 }
 
 export type WebhookTriggerType = TriggerType & {
@@ -170,6 +226,16 @@ export type ScheduleTriggerType = TriggerType & {
   configuration: ScheduleConfig;
 };
 
+export type GmailMonitorTriggerType = TriggerType & {
+  kind: "monitor";
+  configuration: GmailMonitorConfig;
+};
+
+export type MCPToolMonitorTriggerType = TriggerType & {
+  kind: "monitor";
+  configuration: MCPToolMonitorConfig;
+};
+
 export function isWebhookTrigger(
   trigger: TriggerType
 ): trigger is WebhookTriggerType {
@@ -180,4 +246,18 @@ export function isScheduleTrigger(
   trigger: TriggerType
 ): trigger is ScheduleTriggerType {
   return trigger.kind === "schedule";
+}
+
+export function isGmailMonitorTrigger(
+  trigger: TriggerType
+): trigger is GmailMonitorTriggerType {
+  return trigger.kind === "monitor";
+}
+
+export function isMCPToolMonitorTrigger(
+  trigger: TriggerType
+): trigger is MCPToolMonitorTriggerType {
+  return (
+    trigger.kind === "monitor" && trigger.configuration.type === "mcp_tool"
+  );
 }

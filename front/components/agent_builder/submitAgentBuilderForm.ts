@@ -237,6 +237,16 @@ function serializeTrigger(
         kind: trigger.kind,
         spaceId: trigger.spaceId ?? null,
       };
+    case "monitor":
+      return {
+        name: trigger.name,
+        status: trigger.status,
+        customPrompt: trigger.customPrompt ?? "",
+        naturalLanguageDescription: trigger.naturalLanguageDescription,
+        configuration: trigger.configuration,
+        kind: trigger.kind,
+        spaceId: trigger.spaceId ?? null,
+      };
     default:
       assertNever(trigger);
   }
