@@ -113,8 +113,9 @@ async function resolveConsumptionTopSearchFilter(
     return { match_none: {} };
   }
 
-  const dimensionField = CONSUMPTION_DIMENSION_FIELDS[dimension];
-  return { terms: { [dimensionField]: matchingValues } };
+  return {
+    terms: { [CONSUMPTION_DIMENSION_FIELDS[dimension]]: matchingValues },
+  };
 }
 
 function buildConsumptionTopAggregations({
