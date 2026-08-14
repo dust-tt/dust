@@ -578,7 +578,7 @@ export async function runSandboxChildToolWorkflow({
   authType,
   agentLoopArgs,
   actionModelId,
-  retryPolicy = "no_retry",
+  retryPolicy,
   step,
 }: {
   authType: AuthenticatorType;
@@ -594,9 +594,11 @@ export async function runSandboxChildToolWorkflow({
     runAgentArgs: agentLoopArgs,
     step,
   };
-  const useRetryPolicy = patched("sandbox-child-tool-retry-policy");
+  const effectiveRetryPolicy = retryPolicy ?? "no_retry";
+  const useRetryPolicy =
+    retryPolicy !== undefined && patched("sandbox-child-tool-retry-policy");
   let shouldRetryOnInterrupt: boolean;
-  switch (retryPolicy) {
+  switch (effectiveRetryPolicy) {
     case "retry_on_interrupt":
       shouldRetryOnInterrupt = useRetryPolicy;
       break;
@@ -604,7 +606,7 @@ export async function runSandboxChildToolWorkflow({
       shouldRetryOnInterrupt = false;
       break;
     default:
-      assertNever(retryPolicy);
+      assertNever(effectiveRetryPolicy);
   }
   let toolResult: ToolExecutionResult;
   try {
