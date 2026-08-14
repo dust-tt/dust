@@ -6,7 +6,9 @@ import {
   describeTemporalWorkflow,
   getTemporalClientForFrontNamespace,
 } from "@app/lib/temporal";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { buildConsumptionExportGcsPrefix } from "@app/temporal/analytics_queue/activities/consumption_export";
+import type { LaunchConsumptionExportOutcome } from "@app/temporal/analytics_queue/client";
 import { launchConsumptionExportWorkflow } from "@app/temporal/analytics_queue/client";
 import { makeConsumptionExportWorkflowId } from "@app/temporal/analytics_queue/helpers";
 import type { Result } from "@app/types/shared/result";
@@ -27,14 +29,15 @@ export async function listConsumptionExports(
   const bucket = getPrivateUploadBucket();
 
   const { files } = await bucket.getAllFilesByPrefix({
-    prefix: buildConsumptionExportGcsPrefix(workspaceSId),
+    prefix: buildConsumptionExportGcsPrefix(workspaceId),
   });
 
-  const items = await Promise.all(
-    files.map(async (file) => {
+  const items = await concurrentExecutor(
+    files,
+    async (file) => {
       const downloadUrl = await bucket.getSignedUrl(file.name, {
         expirationDelayMs: DOWNLOAD_URL_EXPIRATION_DELAY_MS,
-        promptSaveAs: `dust_consumption_lines_export_${workspaceSId}.zip`,
+        promptSaveAs: `dust_consumption_lines_export_${workspaceId}.zip`,
       });
 
       return {
@@ -43,7 +46,8 @@ export async function listConsumptionExports(
         sizeBytes: Number(file.metadata.size ?? 0),
         downloadUrl,
       };
-    })
+    },
+    { concurrency: 8 }
   );
 
   return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -71,7 +75,7 @@ export async function startConsumptionExport(
     period: ConsumptionPeriod;
     filter?: ConsumptionScopeFilter;
   }
-): Promise<Result<undefined, Error>> {
+): Promise<Result<LaunchConsumptionExportOutcome, Error>> {
   return launchConsumptionExportWorkflow(auth, {
     period,
     filter: filter ?? {},

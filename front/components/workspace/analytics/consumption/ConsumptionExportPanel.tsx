@@ -7,6 +7,7 @@ import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/s
 import {
   Button,
   Download01,
+  Plus,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -38,8 +39,9 @@ function ConsumptionExportRow({ item }: { item: ConsumptionExportListItem }) {
       <span className="text-sm text-foreground">
         {new Date(item.createdAt).toLocaleString()}
       </span>
-      <span className="text-xs text-muted-foreground">
+      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
         {formatFileSize(item.sizeBytes)}
+        <Download01 className="h-3.5 w-3.5" />
       </span>
     </a>
   );
@@ -90,6 +92,14 @@ export function ConsumptionExportPanel({
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-3">
         <div className="flex flex-col gap-2">
+          <Button
+            icon={Plus}
+            label="New export"
+            variant="outline"
+            size="xs"
+            disabled={isGenerating || isStarting}
+            onClick={() => void startConsumptionExport(exportBody)}
+          />
           <span className="text-sm font-medium text-foreground">
             Raw data exports
           </span>
@@ -111,6 +121,17 @@ export function ConsumptionExportPanel({
               </span>
             </div>
           )}
+          {isGenerating && exports.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Spinner size="xs" />
+              <span className="text-xs text-muted-foreground">
+                Generating a new export…
+              </span>
+            </div>
+          )}
+          <span className="text-xs text-muted-foreground">
+            Exports are kept for a maximum of 15 days.
+          </span>
         </div>
       </PopoverContent>
     </PopoverRoot>
