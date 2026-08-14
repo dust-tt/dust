@@ -1,11 +1,21 @@
-import { formatSandboxFunctionsList } from "@app/lib/api/actions/servers/sandbox_functions/tools/list";
+import { makePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/pod_configuration_uri";
+import {
+  formatSandboxFunctionsList,
+  listHandler,
+} from "@app/lib/api/actions/servers/sandbox_functions/tools/list";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import {
+  makeExtra,
+  setupPlainConversation,
+} from "@app/tests/utils/conversation_test_factories";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { sandboxFunctionContentType } from "@app/types/files";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { describe, expect, it } from "vitest";
 
@@ -94,5 +104,43 @@ describe("formatSandboxFunctionsList", () => {
 
     expect(out).toContain("greet");
     expect(out).toContain("translate-text");
+  });
+});
+
+describe("listHandler with a caller-supplied dustPod", () => {
+  it("fails outside a pod conversation when no dustPod is provided", async () => {
+    const { auth, conversation } = await setupPlainConversation();
+
+    const result = await listHandler({}, makeExtra(auth, conversation));
+
+    assert(result.isErr());
+    expect(result.error.message).toContain("not in a Pod");
+  });
+
+  it("resolves the pod from dustPod outside a pod conversation", async () => {
+    const { auth, conversation } = await setupPlainConversation();
+    const workspace = auth.getNonNullableWorkspace();
+    const user = auth.getNonNullableUser();
+    const pod = await SpaceFactory.project(workspace, user.id);
+    await auth.refresh();
+    await makeFunction(auth, pod, {
+      slug: "greet",
+      description: "Greet a user by name.",
+    });
+
+    const result = await listHandler(
+      {
+        dustPod: {
+          uri: makePodConfigurationURI(workspace.sId, pod.sId),
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
+        },
+      },
+      makeExtra(auth, conversation)
+    );
+
+    assert(result.isOk());
+    const content = result.value[0];
+    assert(content?.type === "text");
+    expect(content.text).toContain("- greet: Greet a user by name.");
   });
 });

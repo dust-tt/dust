@@ -1,3 +1,4 @@
+import type { DustPodConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   ToolHandlerExtra,
   ToolHandlerResult,
@@ -28,12 +29,17 @@ export function formatQueryResult(result: QueryDatabaseResult): string {
 }
 
 export async function dbQueryHandler(
-  { database, sql }: { database: string; sql: string },
+  {
+    database,
+    sql,
+    dustPod,
+  }: { database: string; sql: string; dustPod?: DustPodConfigurationType },
   { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
   // Write gate: db_query runs DML, not just reads.
   const podResult = await getWritablePodContext(auth, {
     toolContext: { runContext },
+    dustPod,
   });
   if (podResult.isErr()) {
     return new Err(podResult.error);

@@ -1,4 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { DustPodConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   ToolHandlerExtra,
   ToolHandlerResult,
@@ -16,16 +17,19 @@ export async function publishHandler(
     executionMode,
     path,
     slug,
+    dustPod,
   }: {
     description: string;
     executionMode: SandboxFunctionExecutionMode;
     path: string;
     slug: string;
+    dustPod?: DustPodConfigurationType;
   },
   { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
   const podResult = await getWritablePodContext(auth, {
     toolContext: { runContext },
+    dustPod,
   });
   if (podResult.isErr()) {
     return new Err(podResult.error);

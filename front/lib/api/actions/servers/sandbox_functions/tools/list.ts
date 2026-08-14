@@ -1,3 +1,4 @@
+import type { DustPodConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   ToolHandlerExtra,
   ToolHandlerResult,
@@ -22,10 +23,13 @@ export function formatSandboxFunctionsList(
 }
 
 export async function listHandler(
-  _params: Record<string, never>,
+  { dustPod }: { dustPod?: DustPodConfigurationType },
   { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const podResult = await getPod(auth, { toolContext: { runContext } });
+  const podResult = await getPod(auth, {
+    toolContext: { runContext },
+    dustPod,
+  });
   if (podResult.isErr()) {
     return new Err(podResult.error);
   }
