@@ -432,6 +432,24 @@ function AttributionRows({
     [rows, onAddFilter]
   );
   const isLoading = isTopLoading;
+  const skeletonRowCount =
+    cappedRowCount > 0
+      ? Math.min(
+          pagination.pageSize,
+          cappedRowCount - pagination.pageIndex * pagination.pageSize
+        )
+      : undefined;
+  const paginationControls = cappedRowCount > pagination.pageSize && (
+    <div className="mt-2 p-1">
+      <Pagination
+        size="xs"
+        showDetails={false}
+        pagination={pagination}
+        setPagination={setPagination}
+        rowCount={cappedRowCount}
+      />
+    </div>
+  );
 
   let contentKey = "content";
   let content: ReactNode;
@@ -439,19 +457,25 @@ function AttributionRows({
   if (isLoading) {
     contentKey = "loading";
     content = (
-      <ConsumptionAttributionRowsTable
-        data={data}
-        columns={columns}
-        workspaceId={workspaceId}
-        dimension={dimension}
-        period={period}
-        filter={filter}
-        onViewAll={onViewAll}
-        expandedRowId={expandedRowId}
-        isLoading
-        hasAvatar={hasAvatar}
-        isAvatarRounded={dimension === "user"}
-      />
+      <div>
+        <div className="overflow-x-auto">
+          <ConsumptionAttributionRowsTable
+            data={data}
+            columns={columns}
+            workspaceId={workspaceId}
+            dimension={dimension}
+            period={period}
+            filter={filter}
+            onViewAll={onViewAll}
+            expandedRowId={expandedRowId}
+            isLoading
+            skeletonRowCount={skeletonRowCount}
+            hasAvatar={hasAvatar}
+            isAvatarRounded={dimension === "user"}
+          />
+        </div>
+        {paginationControls}
+      </div>
     );
   } else if (isTopError) {
     content = (
@@ -482,17 +506,7 @@ function AttributionRows({
             />
           </div>
         )}
-        {cappedRowCount > pagination.pageSize && (
-          <div className="mt-2 p-1">
-            <Pagination
-              size="xs"
-              showDetails={false}
-              pagination={pagination}
-              setPagination={setPagination}
-              rowCount={cappedRowCount}
-            />
-          </div>
-        )}
+        {paginationControls}
       </div>
     );
   }

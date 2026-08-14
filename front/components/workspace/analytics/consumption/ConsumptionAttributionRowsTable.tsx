@@ -107,6 +107,7 @@ interface ConsumptionAttributionRowsTableProps {
   ) => void;
   expandedRowId: string | null;
   isLoading?: boolean;
+  skeletonRowCount?: number;
   hasAvatar?: boolean;
   isAvatarRounded?: boolean;
 }
@@ -121,6 +122,7 @@ export function ConsumptionAttributionRowsTable({
   onViewAll,
   expandedRowId,
   isLoading = false,
+  skeletonRowCount = ATTRIBUTION_SKELETON_ROW_COUNT,
   hasAvatar = false,
   isAvatarRounded = false,
 }: ConsumptionAttributionRowsTableProps) {
@@ -179,27 +181,24 @@ export function ConsumptionAttributionRowsTable({
       </DataTable.Header>
       <DataTable.Body>
         {isLoading
-          ? Array.from(
-              { length: ATTRIBUTION_SKELETON_ROW_COUNT },
-              (_, rowIndex) => (
-                <DataTable.Row
-                  key={rowIndex}
-                  widthClassName="w-full"
-                  aria-hidden="true"
-                >
-                  {table.getAllLeafColumns().map((column) => (
-                    <DataTable.Cell column={column} key={column.id}>
-                      <AttributionSkeletonCell
-                        columnId={column.id}
-                        rowIndex={rowIndex}
-                        hasAvatar={hasAvatar}
-                        isAvatarRounded={isAvatarRounded}
-                      />
-                    </DataTable.Cell>
-                  ))}
-                </DataTable.Row>
-              )
-            )
+          ? Array.from({ length: skeletonRowCount }, (_, rowIndex) => (
+              <DataTable.Row
+                key={rowIndex}
+                widthClassName="w-full"
+                aria-hidden="true"
+              >
+                {table.getAllLeafColumns().map((column) => (
+                  <DataTable.Cell column={column} key={column.id}>
+                    <AttributionSkeletonCell
+                      columnId={column.id}
+                      rowIndex={rowIndex}
+                      hasAvatar={hasAvatar}
+                      isAvatarRounded={isAvatarRounded}
+                    />
+                  </DataTable.Cell>
+                ))}
+              </DataTable.Row>
+            ))
           : table.getRowModel().rows.map((row) => (
               <Fragment key={row.id}>
                 <DataTable.Row

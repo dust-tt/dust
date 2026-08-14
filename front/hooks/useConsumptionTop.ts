@@ -176,7 +176,7 @@ export function useConsumptionTop({
     search: search?.trim(),
   };
 
-  const { data, error, isValidating } = useConsumptionQuery<
+  const { data, error, isLoading, isValidating } = useConsumptionQuery<
     ConsumptionTopBody,
     ConsumptionTopResponse
   >({ url, body, disabled });
@@ -193,7 +193,7 @@ export function useConsumptionTop({
     totalCredits: data?.totalCredits ?? 0,
     totalCount: data?.totalCount ?? 0,
     hasMore: data?.hasMore ?? false,
-    isTopLoading: !error && !data && !disabled,
+    isTopLoading: !error && isLoading,
     isTopError: error,
     isTopValidating: isValidating,
   };

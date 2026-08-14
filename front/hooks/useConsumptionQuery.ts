@@ -106,7 +106,7 @@ export function useConsumptionQuery<TBody extends object, TResponse>({
     };
   }, []);
 
-  const { data, error, isValidating } = useSWRWithDefaults(
+  const { data, error, isLoading, isValidating } = useSWRWithDefaults(
     cacheKey,
     fetchData,
     {
@@ -118,5 +118,10 @@ export function useConsumptionQuery<TBody extends object, TResponse>({
     }
   );
 
-  return { data, error, isValidating: isValidating || isDebouncing };
+  return {
+    data,
+    error,
+    isLoading: !disabled && (isLoading || isDebouncing),
+    isValidating: isValidating || isDebouncing,
+  };
 }
