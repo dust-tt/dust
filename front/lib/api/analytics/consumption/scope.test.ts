@@ -59,23 +59,8 @@ describe("buildConsumptionScopeQuery", () => {
       { term: { "model.model_id": "gpt-5.6-luna" } },
       { term: { "tool.server_name": "web_search_&_browse" } },
       { term: { "tool.attributed_skill_ids": "s1" } },
-      { term: { context_origin: "web" } },
+      { term: { context_origin_source: "web" } },
     ]);
-  });
-
-  it("expands a source to every origin it covers", async () => {
-    const { authenticator } = await createResourceTest({
-      role: "admin",
-    });
-    const query = buildConsumptionScopeQuery({
-      auth: authenticator,
-      ...WINDOW,
-      filter: { sources: ["cli", "web"] },
-    });
-
-    expect(query.bool?.filter).toContainEqual({
-      terms: { context_origin: ["cli", "cli_programmatic", "web"] },
-    });
   });
 
   it("ignores empty selections", async () => {

@@ -14,10 +14,6 @@ import {
   metricValue,
 } from "@app/lib/api/analytics/consumption/scope";
 import { fetchTopDimensions } from "@app/lib/api/analytics/consumption/top_dimensions";
-import {
-  canonicalSourceForOrigin,
-  originsForSource,
-} from "@app/lib/api/analytics/source_labels";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
   bucketsToArray,
@@ -91,7 +87,7 @@ type ConsumptionMetricBucket = {
 };
 
 type ConsumptionBreakdown = {
-  dimension: ConsumptionScopeDimension;
+  field: string;
   groupKeys: string[];
 };
 
@@ -173,8 +169,10 @@ async function fetchTimeseriesBreakdown(
     breakdownCount: number;
   }
 ): Promise<Result<ConsumptionTimeseries, ElasticsearchError>> {
+  const field = CONSUMPTION_DIMENSION_FIELDS[breakdownBy];
+
   const rankingResult = await fetchTopDimensions(query, {
-    dimension: breakdownBy,
+    field,
     limit: breakdownCount,
     metric: scope.metric,
   });
@@ -191,7 +189,7 @@ async function fetchTimeseriesBreakdown(
     period: scope.period,
     granularity: scope.granularity,
     metric: scope.metric,
-    breakdown: { dimension: breakdownBy, groupKeys: topDimensionKeys },
+    breakdown: { field, groupKeys: topDimensionKeys },
   });
   if (bucketsResult.isErr()) {
     return bucketsResult;
@@ -241,12 +239,6 @@ async function fetchMetricTimeseries(
     breakdown: ConsumptionBreakdown | null;
   }
 ): Promise<Result<ConsumptionMetricBucket[], ElasticsearchError>> {
-  const includedValues = breakdown
-    ? breakdown.dimension === "source"
-      ? breakdown.groupKeys.flatMap(originsForSource)
-      : breakdown.groupKeys
-    : [];
-
   const result = await searchConsumptionAnalytics<never, TimeseriesAggs>(
     query,
     {
@@ -270,9 +262,9 @@ async function fetchMetricTimeseries(
               ? {
                   by_group: {
                     terms: {
-                      field: CONSUMPTION_DIMENSION_FIELDS[breakdown.dimension],
-                      include: includedValues,
-                      size: includedValues.length,
+                      field: breakdown.field,
+                      include: breakdown.groupKeys,
+                      size: breakdown.groupKeys.length,
                     },
                     aggs: metricSubAgg(metric),
                   },
@@ -297,38 +289,16 @@ async function fetchMetricTimeseries(
     buckets.map((bucket) => ({
       timestamp: bucket.key,
       total: metricValue(metric, bucket.metric),
-      valueByGroupKey: groupValues(breakdown, metric, bucket),
+      valueByGroupKey: new Map(
+        bucketsToArray<ConsumptionGroupBucket>(bucket.by_group?.buckets).map(
+          (groupBucket) => [
+            String(groupBucket.key),
+            metricValue(metric, groupBucket.metric),
+          ]
+        )
+      ),
     }))
   );
-}
-
-// A date bucket's values, keyed the way the ranking is: the indexed values that
-// fold into one group add up into that group's series.
-function groupValues(
-  breakdown: ConsumptionBreakdown | null,
-  metric: ConsumptionMetric,
-  bucket: DateBucket
-): Map<string, number> {
-  const values = new Map<string, number>();
-  if (!breakdown) {
-    return values;
-  }
-
-  for (const groupBucket of bucketsToArray<ConsumptionGroupBucket>(
-    bucket.by_group?.buckets
-  )) {
-    const rawKey = String(groupBucket.key);
-    const key =
-      breakdown.dimension === "source"
-        ? canonicalSourceForOrigin(rawKey)
-        : rawKey;
-    values.set(
-      key,
-      (values.get(key) ?? 0) + metricValue(metric, groupBucket.metric)
-    );
-  }
-
-  return values;
 }
 
 /**

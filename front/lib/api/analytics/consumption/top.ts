@@ -13,10 +13,6 @@ import {
   CONSUMPTION_DIMENSION_UNIT,
   CREDIT_MICRO_FIELD,
 } from "@app/lib/api/analytics/consumption/scope";
-import {
-  canonicalSourceForOrigin,
-  PROGRAMMATIC_SOURCE_ORIGIN_COUNT,
-} from "@app/lib/api/analytics/source_labels";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
   bucketsToArray,
@@ -178,11 +174,7 @@ function buildConsumptionTopAggregations({
   const dimensionField = CONSUMPTION_DIMENSION_FIELDS[dimension];
 
   // TODO(2026-08-14 aubin): Add pagination beyond the maximum bucket count.
-  // A folded programmatic source frees one ranking slot.
-  const requestedBucketCount =
-    offset +
-    limit +
-    (dimension === "source" ? PROGRAMMATIC_SOURCE_ORIGIN_COUNT : 0);
+  const requestedBucketCount = offset + limit;
   const rankingAggregations = {
     by_group: {
       terms: {
@@ -213,26 +205,6 @@ function buildConsumptionTopAggregations({
     ...rankingRootAggregations,
     total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
   };
-}
-
-// Re-ranks, since merging two programmatic-source buckets moves the parent up.
-function foldSourceGroups(
-  groups: ConsumptionTopGroup[]
-): ConsumptionTopGroup[] {
-  const groupByKey = new Map<string, ConsumptionTopGroup>();
-  for (const group of groups) {
-    const key = canonicalSourceForOrigin(group.key);
-    const folded = groupByKey.get(key);
-    groupByKey.set(key, {
-      key,
-      credits: (folded?.credits ?? 0) + group.credits,
-      count: (folded?.count ?? 0) + group.count,
-    });
-  }
-
-  return [...groupByKey.values()].sort(
-    (left, right) => right.credits - left.credits
-  );
 }
 
 /**
@@ -288,7 +260,7 @@ export async function fetchConsumptionTopGroups(
   const ranking = searchFilter
     ? result.value.aggregations?.ranking
     : result.value.aggregations;
-  const rawGroups = bucketsToArray<GroupBucket>(
+  const rankedGroups = bucketsToArray<GroupBucket>(
     ranking?.by_group?.buckets
   ).map((bucket) => ({
     key: String(bucket.key),
@@ -296,8 +268,6 @@ export async function fetchConsumptionTopGroups(
     count: countFromBucket(bucket, CONSUMPTION_DIMENSION_UNIT[dimension]),
   }));
   const totalCount = Math.round(ranking?.[TOTAL_COUNT_AGG]?.value ?? 0);
-  const rankedGroups =
-    dimension === "source" ? foldSourceGroups(rawGroups) : rawGroups
 
   return new Ok({
     groups: rankedGroups.slice(offset, offset + limit),

@@ -45,28 +45,16 @@ export function sourceLabelForOrigin(origin: string): string | undefined {
     : undefined;
 }
 
-const SOURCE_BY_PROGRAMMATIC_ORIGIN: Record<string, AnalyticsVisibleOrigin> = {
+// Analytics reports on the surface, not on how the message was sent, so these
+// origins count as their regular counterpart.
+export const SOURCE_BY_PROGRAMMATIC_ORIGIN: Record<
+  string,
+  AnalyticsVisibleOrigin
+> = {
   cli_programmatic: "cli",
   triggered_programmatic: "triggered",
   slack_workflow: "slack",
 };
-
-export const PROGRAMMATIC_SOURCE_ORIGIN_COUNT = Object.keys(
-  SOURCE_BY_PROGRAMMATIC_ORIGIN
-).length;
-
-export function canonicalSourceForOrigin(origin: string): string {
-  return SOURCE_BY_PROGRAMMATIC_ORIGIN[origin] ?? origin;
-}
-
-export function originsForSource(source: string): string[] {
-  return [
-    source,
-    ...Object.keys(SOURCE_BY_PROGRAMMATIC_ORIGIN).filter(
-      (origin) => SOURCE_BY_PROGRAMMATIC_ORIGIN[origin] === source
-    ),
-  ];
-}
 
 export const SOURCE_LABELS: Record<string, string> = Object.fromEntries(
   Object.entries(SOURCE_ORIGIN_LABELS).filter(
