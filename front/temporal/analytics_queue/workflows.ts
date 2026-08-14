@@ -28,8 +28,6 @@ const {
   startToCloseTimeout: "5 minutes",
 });
 
-// A raw consumption export can page through a large number of Elasticsearch documents, so it
-// gets a much longer ceiling than the other analytics activities on this queue.
 const { runConsumptionExportActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
 });

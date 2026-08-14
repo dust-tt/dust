@@ -41,9 +41,6 @@ export async function runConsumptionExportActivity(
     throw result.error;
   }
 
-  // Generated inside the activity (not the workflow, which must stay deterministic). Safe as
-  // a plain timestamp because the deterministic per-workspace workflow ID guarantees at most
-  // one export activity runs per workspace at a time.
   const gcsPath = buildConsumptionExportGcsPath(workspaceSId, Date.now());
 
   await getPrivateUploadBucket()

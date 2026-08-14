@@ -164,9 +164,8 @@ export async function launchStoreAgentMessageConsumptionAttributionWorkflow({
   }
 }
 
-// Deterministic workflow ID (one per workspace) means a duplicate call while a previous
-// export is still running fails with `WorkflowExecutionAlreadyStartedError`, which is treated
-// as success here: it just means an export is already being generated.
+// Workflow ID is unique per worksapce meaning a duplicate call while a previous
+// export is still running fails
 export async function launchConsumptionExportWorkflow(
   auth: Authenticator,
   {
