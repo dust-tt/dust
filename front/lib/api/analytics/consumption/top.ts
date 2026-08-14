@@ -119,6 +119,7 @@ export async function fetchConsumptionTopGroups(
   const unit = CONSUMPTION_DIMENSION_UNIT[dimension];
   const dimensionField = CONSUMPTION_DIMENSION_FIELDS[dimension];
   const normalizedSearch = search?.trim().toLowerCase();
+
   let matchingValues: string[] | undefined;
   if (normalizedSearch) {
     const catalog = await listConsumptionFacetCatalog(auth);
@@ -126,17 +127,20 @@ export async function fetchConsumptionTopGroups(
       .filter((entry) => entry.label.toLowerCase().includes(normalizedSearch))
       .map((entry) => entry.value);
   }
+
   const rankingFilter: estypes.QueryDslQueryContainer | null = matchingValues
     ? matchingValues.length > 0
       ? { terms: { [dimensionField]: matchingValues } }
       : { match_none: {} }
     : null;
+
   const query = buildConsumptionScopeQuery({
     auth,
     startDate: period.startDate,
     endDate: period.endDate,
     filter,
   });
+
   const requestedBucketCount = offset + limit;
   const rankingAggregations = {
     by_group: {

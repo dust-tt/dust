@@ -173,7 +173,7 @@ export function useConsumptionTop({
     filter: normalizedConsumptionFilter(filter),
     limit,
     offset,
-    search: search?.trim() || undefined,
+    search: search?.trim(),
   };
 
   const { data, error, isValidating } = useConsumptionQuery<
