@@ -6,13 +6,13 @@ import type {
   FileSystemNodeType,
 } from "@app/lib/api/file_system/namespace_types";
 import { FileSystemBlobCleanupResource } from "@app/lib/resources/file_system_blob_cleanup_resource";
+import { FileSystemNodeResource } from "@app/lib/resources/file_system_node_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-const { deleteBlob, getBlobMetadata } = vi.hoisted(() => ({
-  deleteBlob: vi.fn(async () => undefined),
+const { getBlobMetadata } = vi.hoisted(() => ({
   getBlobMetadata: vi.fn(async (_path: string) => [
-    { size: "7", contentType: "text/plain" },
+    { size: "7", contentType: "text/plain", contentEncoding: "identity" },
   ]),
 }));
 
@@ -22,7 +22,6 @@ vi.mock("@app/lib/file_storage", async (importOriginal) => {
   return {
     ...original,
     getPrivateUploadBucket: () => ({
-      delete: deleteBlob,
       file: (path: string) => ({
         getMetadata: () => getBlobMetadata(path),
       }),
@@ -31,17 +30,9 @@ vi.mock("@app/lib/file_storage", async (importOriginal) => {
   };
 });
 
-afterEach(() => {
-  vi.useRealTimers();
-  vi.clearAllMocks();
-});
-
 describe("FileSystemBlobCleanupResource", () => {
-  it("deletes an abandoned upload but keeps a committed blob", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
-    });
+  it("keeps abandoned uploads queued and removes committed uploads", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
     const conversationId = `conversation-${randomUUID()}`;
     const scope = new FileSystemScope([
       {
@@ -54,14 +45,11 @@ describe("FileSystemBlobCleanupResource", () => {
     const initializedRes = await applyFileSystemOperation(
       authenticator,
       scope,
-      {
-        operation: "initialize",
-      }
+      { operation: "initialize" }
     );
     if (initializedRes.isErr() || !initializedRes.value.roots?.[0]) {
       throw new Error("Failed to initialize the filesystem root.");
     }
-    const root = initializedRes.value.roots[0];
 
     const preparedFiles: Array<{
       node: FileSystemNodeType;
@@ -71,7 +59,7 @@ describe("FileSystemBlobCleanupResource", () => {
       const createdRes = await applyFileSystemOperation(authenticator, scope, {
         operation: "create",
         requestId: randomUUID(),
-        parentId: root.id,
+        parentId: initializedRes.value.roots[0].id,
         name,
         kind: "file",
         mode: 0o644,
@@ -83,6 +71,7 @@ describe("FileSystemBlobCleanupResource", () => {
         operation: "prepareContentUpload",
         nodeId: createdRes.value.node.id,
         expectedBlobId: null,
+        expectedSizeBytes: 7,
         contentType: "text/plain",
       });
       if (preparedRes.isErr() || !preparedRes.value.upload) {
@@ -94,29 +83,43 @@ describe("FileSystemBlobCleanupResource", () => {
       });
     }
 
+    const abandonedNode = await FileSystemNodeResource.fetchById(
+      authenticator,
+      scope,
+      preparedFiles[0].node.id
+    );
+    const committedNode = await FileSystemNodeResource.fetchById(
+      authenticator,
+      scope,
+      preparedFiles[1].node.id
+    );
+    if (!abandonedNode || !committedNode) {
+      throw new Error("Failed to fetch prepared filesystem files.");
+    }
+
+    expect(
+      await FileSystemBlobCleanupResource.fetchForBlob(
+        authenticator,
+        abandonedNode,
+        preparedFiles[0].upload.blobId
+      )
+    ).not.toBeNull();
+
     const committedRes = await applyFileSystemOperation(authenticator, scope, {
       operation: "commitContentUpload",
-      nodeId: preparedFiles[1].node.id,
+      nodeId: committedNode.id,
       expectedBlobId: null,
       blobId: preparedFiles[1].upload.blobId,
+      expectedSizeBytes: preparedFiles[1].upload.expectedSizeBytes,
       contentType: preparedFiles[1].upload.contentType,
     });
     expect(committedRes.isOk()).toBe(true);
-
-    vi.advanceTimersByTime(25 * 60 * 60 * 1_000);
     expect(
-      await FileSystemBlobCleanupResource.dangerouslyListWorkspaceModelIdsWithDueCleanup()
-    ).toContain(workspace.id);
-
-    await FileSystemBlobCleanupResource.repairPending(authenticator);
-
-    expect(deleteBlob).toHaveBeenCalledTimes(1);
-    expect(deleteBlob).toHaveBeenCalledWith(
-      `w/${workspace.sId}/filesystem/blobs/${preparedFiles[0].node.id}/${preparedFiles[0].upload.blobId}`,
-      { ignoreNotFound: true }
-    );
-    expect(
-      await FileSystemBlobCleanupResource.dangerouslyListWorkspaceModelIdsWithDueCleanup()
-    ).not.toContain(workspace.id);
+      await FileSystemBlobCleanupResource.fetchForBlob(
+        authenticator,
+        committedNode,
+        preparedFiles[1].upload.blobId
+      )
+    ).toBeNull();
   });
 });

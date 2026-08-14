@@ -136,7 +136,11 @@ export async function applyFileSystemOperation(
         );
       }
 
-      const uploadRes = await node.prepareContentUpload(auth, scope, request);
+      const uploadRes = await node.prepareContentUpload(auth, scope, {
+        expectedBlobId: request.expectedBlobId,
+        expectedSizeBytes: request.expectedSizeBytes,
+        contentType: request.contentType,
+      });
       return uploadRes.isErr()
         ? uploadRes
         : new Ok({ upload: uploadRes.value });
@@ -154,7 +158,12 @@ export async function applyFileSystemOperation(
         );
       }
 
-      const committedRes = await node.commitContentUpload(auth, scope, request);
+      const committedRes = await node.commitContentUpload(auth, scope, {
+        expectedBlobId: request.expectedBlobId,
+        blobId: request.blobId,
+        expectedSizeBytes: request.expectedSizeBytes,
+        contentType: request.contentType,
+      });
       return committedRes.isErr()
         ? committedRes
         : new Ok({ node: committedRes.value.toJSON() });

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { MIMEType } from "node:util";
 import type { FileSystemScope } from "@app/lib/api/file_system/namespace_scope";
 import type {
   FileSystemContentType,
@@ -7,6 +8,7 @@ import type {
   FileSystemOperation,
 } from "@app/lib/api/file_system/namespace_types";
 import {
+  FILE_SYSTEM_CONTENT_MAX_BYTES,
   FILE_SYSTEM_CONTENT_TYPE_MAX_LENGTH,
   FILE_SYSTEM_MODE_LIMITS,
   FILE_SYSTEM_NAME_MAX_BYTES,
@@ -19,6 +21,7 @@ import {
   getFileSystemBlobMetadata,
   prepareFileSystemBlobUpload,
 } from "@app/lib/file_storage/file_system_blobs";
+import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileSystemBlobCleanupResource } from "@app/lib/resources/file_system_blob_cleanup_resource";
 import { FileSystemNodeModel } from "@app/lib/resources/storage/models/file_system_node";
@@ -29,6 +32,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import {
   contentTypeFromFileName,
+  normalizeMimeType,
   resolveFileContentType,
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
@@ -46,9 +50,17 @@ type PrepareContentUploadRequest = Extract<
   FileSystemOperation,
   { operation: "prepareContentUpload" }
 >;
+type PrepareContentUploadOptions = Pick<
+  PrepareContentUploadRequest,
+  "contentType" | "expectedBlobId" | "expectedSizeBytes"
+>;
 type CommitContentUploadRequest = Extract<
   FileSystemOperation,
   { operation: "commitContentUpload" }
+>;
+type CommitContentUploadOptions = Pick<
+  CommitContentUploadRequest,
+  "blobId" | "contentType" | "expectedBlobId" | "expectedSizeBytes"
 >;
 
 const FileSystemBlobIdSchema = z.string().uuid();
@@ -395,9 +407,25 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
   }
 
   private static isValidContentType(contentType: string): boolean {
+    if (
+      contentType.length === 0 ||
+      contentType.length > FILE_SYSTEM_CONTENT_TYPE_MAX_LENGTH
+    ) {
+      return false;
+    }
+
+    try {
+      return new MIMEType(contentType).essence === contentType;
+    } catch {
+      return false;
+    }
+  }
+
+  private static isValidContentSize(sizeBytes: number): boolean {
     return (
-      contentType.length > 0 &&
-      contentType.length <= FILE_SYSTEM_CONTENT_TYPE_MAX_LENGTH
+      Number.isSafeInteger(sizeBytes) &&
+      sizeBytes >= 0 &&
+      sizeBytes <= FILE_SYSTEM_CONTENT_MAX_BYTES
     );
   }
 
@@ -434,7 +462,7 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
   async prepareContentUpload(
     auth: Authenticator,
     scope: FileSystemScope,
-    request: PrepareContentUploadRequest
+    request: PrepareContentUploadOptions
   ): Promise<Result<FileSystemContentUploadType, FileSystemOperationError>> {
     const accessRes = this.checkContentAccess(auth, scope, { write: true });
     if (accessRes.isErr()) {
@@ -459,9 +487,20 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
         )
       );
     }
+    if (!FileSystemNodeResource.isValidContentSize(request.expectedSizeBytes)) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          `Content size must be between 0 and ${FILE_SYSTEM_CONTENT_MAX_BYTES} bytes.`
+        )
+      );
+    }
 
     const requestedContentType = request.contentType.trim();
-    if (!FileSystemNodeResource.isValidContentType(requestedContentType)) {
+    if (
+      requestedContentType.length === 0 ||
+      requestedContentType.length > FILE_SYSTEM_CONTENT_TYPE_MAX_LENGTH
+    ) {
       return new Err(
         new FileSystemOperationError(
           "invalid_operation",
@@ -469,9 +508,22 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
         )
       );
     }
-    const contentType =
+    let normalizedRequestedContentType: string;
+    try {
+      normalizedRequestedContentType = new MIMEType(requestedContentType)
+        .essence;
+    } catch {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "Content type must be a valid MIME type."
+        )
+      );
+    }
+    const contentType = normalizeMimeType(
       contentTypeFromFileName(this.name) ??
-      resolveFileContentType(requestedContentType, this.name);
+        resolveFileContentType(normalizedRequestedContentType, this.name)
+    );
     if (!FileSystemNodeResource.isValidContentType(contentType)) {
       return new Err(
         new FileSystemOperationError(
@@ -487,16 +539,23 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
       auth,
       this.id,
       blobId,
-      contentType
+      contentType,
+      request.expectedSizeBytes
     );
 
-    return new Ok({ blobId, uploadUrl, contentType, headers });
+    return new Ok({
+      blobId,
+      uploadUrl,
+      contentType,
+      expectedSizeBytes: request.expectedSizeBytes,
+      headers,
+    });
   }
 
   async commitContentUpload(
     auth: Authenticator,
     scope: FileSystemScope,
-    request: CommitContentUploadRequest
+    request: CommitContentUploadOptions
   ): Promise<Result<FileSystemNodeResource, FileSystemOperationError>> {
     const accessRes = this.checkContentAccess(auth, scope, { write: true });
     if (accessRes.isErr()) {
@@ -522,6 +581,14 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
         )
       );
     }
+    if (!FileSystemNodeResource.isValidContentSize(request.expectedSizeBytes)) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          `Content size must be between 0 and ${FILE_SYSTEM_CONTENT_MAX_BYTES} bytes.`
+        )
+      );
+    }
     if (
       this.blobId !== request.blobId &&
       this.blobId !== request.expectedBlobId
@@ -534,7 +601,20 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
       );
     }
 
-    let metadata: { size: number; contentType: string | undefined };
+    // A successful commit whose response was lost must not depend on GCS
+    // being available when the same commit is retried.
+    if (this.blobId === request.blobId) {
+      return withTransaction((transaction) =>
+        this.confirmCommittedBlob(auth, scope, request, transaction)
+      );
+    }
+
+    let metadata: {
+      size: number;
+      contentType: string | undefined;
+      contentEncoding: string | undefined;
+      contentDisposition: string | undefined;
+    };
     try {
       metadata = await getFileSystemBlobMetadata(auth, this.id, request.blobId);
     } catch (error) {
@@ -546,12 +626,15 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
         },
         "Dust filesystem could not verify an uploaded blob"
       );
-      return new Err(
-        new FileSystemOperationError(
-          "not_found",
-          "The uploaded object was not found."
-        )
-      );
+      if (isGCSNotFoundError(error)) {
+        return new Err(
+          new FileSystemOperationError(
+            "not_found",
+            "The uploaded object was not found."
+          )
+        );
+      }
+      throw normalizeError(error);
     }
     if (!Number.isSafeInteger(metadata.size) || metadata.size < 0) {
       return new Err(
@@ -561,11 +644,38 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
         )
       );
     }
+    if (metadata.size !== request.expectedSizeBytes) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "The uploaded object's size does not match the request."
+        )
+      );
+    }
     if (metadata.contentType !== request.contentType) {
       return new Err(
         new FileSystemOperationError(
           "invalid_operation",
           "The uploaded object's content type does not match the request."
+        )
+      );
+    }
+    if (
+      metadata.contentEncoding !== undefined &&
+      metadata.contentEncoding.toLowerCase() !== "identity"
+    ) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "The uploaded object must use identity content encoding."
+        )
+      );
+    }
+    if (metadata.contentDisposition !== undefined) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "The uploaded object cannot set content disposition."
         )
       );
     }
@@ -593,10 +703,50 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     });
   }
 
+  private async confirmCommittedBlob(
+    auth: Authenticator,
+    scope: FileSystemScope,
+    request: CommitContentUploadOptions,
+    transaction: Transaction
+  ): Promise<Result<FileSystemNodeResource, FileSystemOperationError>> {
+    const current = await FileSystemNodeResource.fetchById(
+      auth,
+      scope,
+      this.id,
+      { transaction, forUpdate: true }
+    );
+    if (!current) {
+      return new Err(
+        new FileSystemOperationError("not_found", "The file was not found.")
+      );
+    }
+    if (current.blobId !== request.blobId) {
+      return new Err(
+        new FileSystemOperationError(
+          "stale",
+          "The file changed while the commit response was in flight."
+        )
+      );
+    }
+    if (
+      Number(current.size) !== request.expectedSizeBytes ||
+      current.contentType !== request.contentType
+    ) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "The committed content does not match the retry request."
+        )
+      );
+    }
+
+    return new Ok(current);
+  }
+
   private async attachUploadedBlob(
     auth: Authenticator,
     scope: FileSystemScope,
-    request: CommitContentUploadRequest,
+    request: CommitContentUploadOptions,
     size: number,
     transaction: Transaction
   ): Promise<Result<FileSystemNodeResource, FileSystemOperationError>> {
@@ -605,7 +755,7 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
       return accessRes;
     }
 
-    const cleanup = await FileSystemBlobCleanupResource.fetchForBlob(
+    const cleanup = await FileSystemBlobCleanupResource.fetchForBlobForUpdate(
       auth,
       this,
       request.blobId,

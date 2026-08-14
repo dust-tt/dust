@@ -18,6 +18,9 @@ export const FILE_SYSTEM_REQUEST_ID_MAX_LENGTH = 255;
 
 export const FILE_SYSTEM_CONTENT_TYPE_MAX_LENGTH = 255;
 
+// Matches the largest raw file upload currently accepted by Dust.
+export const FILE_SYSTEM_CONTENT_MAX_BYTES = 350 * 1024 * 1024;
+
 /** The stable file or directory identity returned by the namespace. */
 export type FileSystemNodeType = {
   id: number;
@@ -46,6 +49,7 @@ export type FileSystemContentUploadType = {
   blobId: string;
   uploadUrl: string;
   contentType: string;
+  expectedSizeBytes: number;
   headers: Record<string, string>;
 };
 
@@ -72,6 +76,7 @@ export type FileSystemOperation =
       operation: "prepareContentUpload";
       nodeId: number;
       expectedBlobId: string | null;
+      expectedSizeBytes: number;
       contentType: string;
     }
   | {
@@ -79,6 +84,7 @@ export type FileSystemOperation =
       nodeId: number;
       expectedBlobId: string | null;
       blobId: string;
+      expectedSizeBytes: number;
       contentType: string;
     };
 

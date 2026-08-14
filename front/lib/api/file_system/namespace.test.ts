@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { applyFileSystemOperation } from "@app/lib/api/file_system/namespace";
 import { FileSystemScope } from "@app/lib/api/file_system/namespace_scope";
 import type { FileSystemNodeType } from "@app/lib/api/file_system/namespace_types";
+import { FILE_SYSTEM_CONTENT_MAX_BYTES } from "@app/lib/api/file_system/namespace_types";
 import type { Authenticator } from "@app/lib/auth";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -37,7 +38,7 @@ vi.mock("@app/lib/file_storage", async (importOriginal) => {
 beforeEach(() => {
   vi.clearAllMocks();
   getBlobMetadata.mockResolvedValue([
-    { size: "14", contentType: "text/plain" },
+    { size: "14", contentType: "text/plain", contentEncoding: "identity" },
   ]);
 });
 
@@ -426,6 +427,7 @@ describe("filesystem content", () => {
       operation: "prepareContentUpload",
       nodeId: file.id,
       expectedBlobId: null,
+      expectedSizeBytes: 14,
       contentType: "application/octet-stream",
     });
     if (preparedRes.isErr() || !preparedRes.value.upload) {
@@ -437,7 +439,10 @@ describe("filesystem content", () => {
       blobId: expect.any(String),
       uploadUrl: `upload:${objectPath}`,
       contentType: "text/plain",
+      expectedSizeBytes: 14,
       headers: {
+        "content-encoding": "identity",
+        "content-length": "14",
         "content-type": "text/plain",
         "x-goog-if-generation-match": "0",
       },
@@ -445,7 +450,11 @@ describe("filesystem content", () => {
     expect(getSignedUploadUrl).toHaveBeenCalledWith(objectPath, {
       contentType: "text/plain",
       expirationDelayMs: expect.any(Number),
-      extensionHeaders: { "x-goog-if-generation-match": "0" },
+      extensionHeaders: {
+        "content-encoding": "identity",
+        "content-length": "14",
+        "x-goog-if-generation-match": "0",
+      },
     });
 
     const commitRequest = {
@@ -453,6 +462,7 @@ describe("filesystem content", () => {
       nodeId: file.id,
       expectedBlobId: null,
       blobId: upload.blobId,
+      expectedSizeBytes: upload.expectedSizeBytes,
       contentType: upload.contentType,
     };
     const committedRes = await applyFileSystemOperation(
@@ -460,6 +470,7 @@ describe("filesystem content", () => {
       scope,
       commitRequest
     );
+    getBlobMetadata.mockRejectedValue({ code: 503 });
     const retriedRes = await applyFileSystemOperation(
       authenticator,
       scope,
@@ -477,6 +488,7 @@ describe("filesystem content", () => {
       blobId: upload.blobId,
       contentRevision: 1,
     });
+    expect(getBlobMetadata).toHaveBeenCalledTimes(1);
 
     const contentRes = await applyFileSystemOperation(authenticator, scope, {
       operation: "getContent",
@@ -502,6 +514,7 @@ describe("filesystem content", () => {
         operation: "prepareContentUpload",
         nodeId: file.id,
         expectedBlobId: null,
+        expectedSizeBytes: 14,
         contentType: "text/plain",
       }
     );
@@ -512,6 +525,7 @@ describe("filesystem content", () => {
         operation: "prepareContentUpload",
         nodeId: file.id,
         expectedBlobId: null,
+        expectedSizeBytes: 14,
         contentType: "text/plain",
       }
     );
@@ -529,6 +543,7 @@ describe("filesystem content", () => {
       nodeId: file.id,
       expectedBlobId: null,
       blobId: firstPrepareRes.value.upload.blobId,
+      expectedSizeBytes: firstPrepareRes.value.upload.expectedSizeBytes,
       contentType: firstPrepareRes.value.upload.contentType,
     });
     const staleCommitRes = await applyFileSystemOperation(
@@ -539,12 +554,115 @@ describe("filesystem content", () => {
         nodeId: file.id,
         expectedBlobId: null,
         blobId: secondPrepareRes.value.upload.blobId,
+        expectedSizeBytes: secondPrepareRes.value.upload.expectedSizeBytes,
         contentType: secondPrepareRes.value.upload.contentType,
       }
     );
 
     expect(committedRes.isOk()).toBe(true);
     expect(staleCommitRes.isErr() && staleCommitRes.error.code).toBe("stale");
+  });
+
+  it("normalizes MIME types and rejects files above the size limit", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const scope = readableScope(`conversation-${randomUUID()}`);
+    const file = await createEmptyFile(authenticator, scope, "content.unknown");
+
+    const normalizedRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "prepareContentUpload",
+      nodeId: file.id,
+      expectedBlobId: null,
+      expectedSizeBytes: 0,
+      contentType: "TEXT/HTML; charset=utf-8",
+    });
+    const oversizedRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "prepareContentUpload",
+      nodeId: file.id,
+      expectedBlobId: null,
+      expectedSizeBytes: FILE_SYSTEM_CONTENT_MAX_BYTES + 1,
+      contentType: "text/plain",
+    });
+
+    expect(normalizedRes.isOk() && normalizedRes.value.upload).toMatchObject({
+      contentType: "text/html",
+      expectedSizeBytes: 0,
+    });
+    expect(oversizedRes.isErr() && oversizedRes.error.code).toBe(
+      "invalid_operation"
+    );
+  });
+
+  it("rejects storage metadata that would change the served bytes", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const scope = readableScope(`conversation-${randomUUID()}`);
+    const file = await createEmptyFile(authenticator, scope, "encoded.txt");
+    const preparedRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "prepareContentUpload",
+      nodeId: file.id,
+      expectedBlobId: null,
+      expectedSizeBytes: 14,
+      contentType: "text/plain",
+    });
+    if (preparedRes.isErr() || !preparedRes.value.upload) {
+      throw new Error("Failed to prepare encoded content.");
+    }
+    getBlobMetadata.mockResolvedValueOnce([
+      {
+        size: "14",
+        contentType: "text/plain",
+        contentEncoding: "gzip",
+      },
+    ]);
+
+    const committedRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "commitContentUpload",
+      nodeId: file.id,
+      expectedBlobId: null,
+      blobId: preparedRes.value.upload.blobId,
+      expectedSizeBytes: preparedRes.value.upload.expectedSizeBytes,
+      contentType: preparedRes.value.upload.contentType,
+    });
+
+    expect(committedRes.isErr() && committedRes.error.code).toBe(
+      "invalid_operation"
+    );
+  });
+
+  it("maps missing uploads but lets storage outages remain retryable", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const scope = readableScope(`conversation-${randomUUID()}`);
+    const file = await createEmptyFile(authenticator, scope, "retry.txt");
+    const preparedRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "prepareContentUpload",
+      nodeId: file.id,
+      expectedBlobId: null,
+      expectedSizeBytes: 14,
+      contentType: "text/plain",
+    });
+    if (preparedRes.isErr() || !preparedRes.value.upload) {
+      throw new Error("Failed to prepare retryable content.");
+    }
+    const commitRequest = {
+      operation: "commitContentUpload" as const,
+      nodeId: file.id,
+      expectedBlobId: null,
+      blobId: preparedRes.value.upload.blobId,
+      expectedSizeBytes: preparedRes.value.upload.expectedSizeBytes,
+      contentType: preparedRes.value.upload.contentType,
+    };
+
+    getBlobMetadata.mockRejectedValueOnce({ code: 404 });
+    const missingRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      commitRequest
+    );
+    getBlobMetadata.mockRejectedValueOnce({ code: 503 });
+
+    expect(missingRes.isErr() && missingRes.error.code).toBe("not_found");
+    await expect(
+      applyFileSystemOperation(authenticator, scope, commitRequest)
+    ).rejects.toThrow('{"code":503}');
   });
 
   it("requires a file in a writable root", async () => {
@@ -573,6 +691,7 @@ describe("filesystem content", () => {
         operation: "prepareContentUpload",
         nodeId: file.id,
         expectedBlobId: null,
+        expectedSizeBytes: 14,
         contentType: "text/plain",
       }
     );

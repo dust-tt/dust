@@ -6,6 +6,9 @@ import {
 
 const GCS_CREATE_ONLY_HEADER = "x-goog-if-generation-match";
 const GCS_CREATE_ONLY_VALUE = "0";
+const CONTENT_ENCODING_HEADER = "content-encoding";
+const CONTENT_LENGTH_HEADER = "content-length";
+const IDENTITY_CONTENT_ENCODING = "identity";
 
 export const FILE_SYSTEM_CONTENT_URL_EXPIRATION_MS =
   2 * DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS;
@@ -32,16 +35,20 @@ export async function getFileSystemBlobDownloadUrl(
 
 /**
  * Sign a create-only upload. The generation header prevents a delayed or
- * repeated PUT from changing bytes after this blob has been committed.
+ * repeated PUT from changing bytes after this blob has been committed. The
+ * signed content length also makes GCS reject a different byte count.
  */
 export async function prepareFileSystemBlobUpload(
   auth: Authenticator,
   nodeId: number,
   blobId: string,
-  contentType: string
+  contentType: string,
+  expectedSizeBytes: number
 ): Promise<{ uploadUrl: string; headers: Record<string, string> }> {
   const headers = {
     "content-type": contentType,
+    [CONTENT_ENCODING_HEADER]: IDENTITY_CONTENT_ENCODING,
+    [CONTENT_LENGTH_HEADER]: String(expectedSizeBytes),
     [GCS_CREATE_ONLY_HEADER]: GCS_CREATE_ONLY_VALUE,
   };
   const uploadUrl = await getPrivateUploadBucket().getSignedUploadUrl(
@@ -50,6 +57,8 @@ export async function prepareFileSystemBlobUpload(
       contentType,
       expirationDelayMs: FILE_SYSTEM_CONTENT_URL_EXPIRATION_MS,
       extensionHeaders: {
+        [CONTENT_ENCODING_HEADER]: IDENTITY_CONTENT_ENCODING,
+        [CONTENT_LENGTH_HEADER]: String(expectedSizeBytes),
         [GCS_CREATE_ONLY_HEADER]: GCS_CREATE_ONLY_VALUE,
       },
     }
@@ -63,7 +72,12 @@ export async function getFileSystemBlobMetadata(
   auth: Authenticator,
   nodeId: number,
   blobId: string
-): Promise<{ size: number; contentType: string | undefined }> {
+): Promise<{
+  size: number;
+  contentType: string | undefined;
+  contentEncoding: string | undefined;
+  contentDisposition: string | undefined;
+}> {
   const [metadata] = await getPrivateUploadBucket()
     .file(objectPath(auth, nodeId, blobId))
     .getMetadata();
@@ -71,15 +85,7 @@ export async function getFileSystemBlobMetadata(
   return {
     size: Number(metadata.size),
     contentType: metadata.contentType,
+    contentEncoding: metadata.contentEncoding,
+    contentDisposition: metadata.contentDisposition,
   };
-}
-
-export async function deleteFileSystemBlob(
-  auth: Authenticator,
-  nodeId: number,
-  blobId: string
-): Promise<void> {
-  await getPrivateUploadBucket().delete(objectPath(auth, nodeId, blobId), {
-    ignoreNotFound: true,
-  });
 }
