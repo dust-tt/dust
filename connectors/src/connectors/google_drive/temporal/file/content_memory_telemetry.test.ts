@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  getGoogleDriveDocumentContentSizeBytes,
   getGoogleDrivePayloadSizeBytes,
   runWithGoogleDriveContentMemoryTelemetry,
   runWithGoogleDriveContentPhaseMemoryTelemetry,
@@ -158,11 +159,13 @@ describe("runWithGoogleDriveContentPhaseMemoryTelemetry", () => {
       logger,
       mimeType: "application/vnd.google-apps.document",
       phase: "download_export",
+      payloadKind: "google_response",
     });
 
     expect(result.byteLength).toBe(7);
     const tags = [
       "phase:download_export",
+      "payload_kind:google_response",
       "mime_type:application/vnd.google-apps.document",
       "payload_size_known:true",
       "outcome:success",
@@ -181,8 +184,11 @@ describe("runWithGoogleDriveContentPhaseMemoryTelemetry", () => {
       expect.objectContaining({
         mimeType: "application/vnd.google-apps.document",
         phase: "download_export",
+        payloadKind: "google_response",
         payloadSizeBytes: 7,
         outcome: "success",
+        activeOperationsAtStart: 0,
+        peakActiveOperations: 0,
         memoryAtStart,
         peakMemory: memoryAtEnd,
         memoryAtEnd,
@@ -197,6 +203,21 @@ describe("getGoogleDrivePayloadSizeBytes", () => {
     expect(getGoogleDrivePayloadSizeBytes(new ArrayBuffer(42))).toBe(42);
     expect(getGoogleDrivePayloadSizeBytes("hé")).toBe(3);
     expect(getGoogleDrivePayloadSizeBytes(123)).toBe(3);
+  });
+
+  it("measures extracted document content separately from source bytes", () => {
+    const documentContent = {
+      prefix: null,
+      content: "hé",
+      sections: [],
+    };
+
+    expect(getGoogleDriveDocumentContentSizeBytes(documentContent)).toBe(
+      Buffer.byteLength(JSON.stringify(documentContent), "utf8")
+    );
+    expect(getGoogleDriveDocumentContentSizeBytes(documentContent)).not.toBe(
+      getGoogleDrivePayloadSizeBytes(documentContent.content)
+    );
   });
 
   it("returns null when the response representation is unknown", () => {

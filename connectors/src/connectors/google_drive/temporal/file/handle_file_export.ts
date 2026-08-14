@@ -38,10 +38,7 @@ export async function handleFileExport(
   dataSourceConfig: DataSourceConfig,
   connectorId: ModelId,
   startSyncTs: number
-): Promise<{
-  content: CoreAPIDataSourceDocumentSection | null;
-  payloadSizeBytes: number | null;
-}> {
+): Promise<CoreAPIDataSourceDocumentSection | null> {
   const drive = await getDriveClient(oauth2client);
   let res;
   try {
@@ -49,6 +46,7 @@ export async function handleFileExport(
       logger: localLogger,
       mimeType: file.mimeType,
       phase: "download_export",
+      payloadKind: "google_response",
       getPayloadSizeBytes: (response) =>
         getGoogleDrivePayloadSizeBytes(response.data),
       task: () =>
@@ -75,7 +73,7 @@ export async function handleFileExport(
           },
           "Can't export Gdrive file. 404 error returned. Skipping."
         );
-        return { content: null, payloadSizeBytes: null };
+        return null;
       }
       if (e.response?.status === 403) {
         const skippableReasons = ["cannotDownloadAbusiveFile"];
@@ -94,7 +92,7 @@ export async function handleFileExport(
               { error: parsedBody.error },
               `Can't export Gdrive file. Skippable reason: ${firstSkippableReason} Skipping.`
             );
-            return { content: null, payloadSizeBytes: null };
+            return null;
           }
         } catch (e) {
           localLogger.error({ error: e }, "Error while parsing error response");
@@ -104,7 +102,7 @@ export async function handleFileExport(
 
     if (isFileTooLargeToDownloadError(e)) {
       localLogger.info({}, "File too big to be downloaded. Skipping");
-      return { content: null, payloadSizeBytes: null };
+      return null;
     }
     throw e;
   }
@@ -117,7 +115,7 @@ export async function handleFileExport(
 
   if (!(res.data instanceof ArrayBuffer)) {
     localLogger.error({}, "res.data is not an ArrayBuffer");
-    return { content: null, payloadSizeBytes: null };
+    return null;
   }
   const payload = res.data;
   const payloadSizeBytes = payload.byteLength;
@@ -125,6 +123,7 @@ export async function handleFileExport(
     logger: localLogger,
     mimeType: file.mimeType,
     phase: "extraction",
+    payloadKind: "google_response",
     getPayloadSizeBytes: () => payloadSizeBytes,
     task: async () => {
       if (file.mimeType === "text/plain") {
@@ -178,8 +177,8 @@ export async function handleFileExport(
   });
   if (result.isErr()) {
     localLogger.error({ error: result.error }, "Could not handle file.");
-    return { content: null, payloadSizeBytes };
+    return null;
   }
 
-  return { content: result.value, payloadSizeBytes };
+  return result.value;
 }
