@@ -128,11 +128,12 @@ export async function fetchConsumptionTopGroups(
       .map((entry) => entry.value);
   }
 
-  const rankingFilter: estypes.QueryDslQueryContainer | null = matchingValues
-    ? matchingValues.length > 0
-      ? { terms: { [dimensionField]: matchingValues } }
-      : { match_none: {} }
-    : null;
+  let searchFilter: estypes.QueryDslQueryContainer | null = null;
+  if (matchingValues?.length) {
+    searchFilter = { terms: { [dimensionField]: matchingValues } };
+  } else if (matchingValues) {
+    searchFilter = { match_none: {} };
+  }
 
   const query = buildConsumptionScopeQuery({
     auth,
@@ -159,13 +160,21 @@ export async function fetchConsumptionTopGroups(
     },
   } satisfies Record<string, estypes.AggregationsAggregationContainer>;
 
+  const rankingRootAggregations = searchFilter
+    ? {
+        ranking: {
+          filter: searchFilter,
+          aggs: rankingAggregations,
+        },
+      }
+    : rankingAggregations;
+  const aggregations = {
+    ...rankingRootAggregations,
+    total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
+  };
+
   const result = await searchConsumptionAnalytics<never, TopAggs>(query, {
-    aggregations: {
-      ...(rankingFilter
-        ? { ranking: { filter: rankingFilter, aggs: rankingAggregations } }
-        : rankingAggregations),
-      total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
-    },
+    aggregations,
     size: 0,
   });
 
@@ -173,7 +182,7 @@ export async function fetchConsumptionTopGroups(
     return result;
   }
 
-  const ranking = rankingFilter
+  const ranking = searchFilter
     ? result.value.aggregations?.ranking
     : result.value.aggregations;
   const rankedGroups = bucketsToArray<GroupBucket>(
