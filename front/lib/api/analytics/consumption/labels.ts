@@ -118,6 +118,7 @@ export async function resolveDimensionLabels(
       );
 
     case "tool": {
+      // Internal servers are keyed by name, while remote servers are keyed by sId.
       const metadata = await MCPServerViewResource.resolveDisplayMetadata(
         auth,
         keys
