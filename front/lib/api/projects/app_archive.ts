@@ -25,6 +25,7 @@ import {
   POD_APP_ARCHIVE_MANIFEST_FILE,
   PodAppManifestSchema,
 } from "@app/types/api/pod_app_archive";
+import { MAX_POD_APP_NAME_LENGTH } from "@app/types/api/pod_apps";
 import { normalizeAppPrefix } from "@app/types/api/pod_function_reference";
 import { isInteractiveContentType } from "@app/types/files";
 import {
@@ -41,6 +42,7 @@ export type PodAppExportErrorCode =
   | "not_a_pod"
   | "not_found"
   | "colliding_folders"
+  | "too_large"
   | "internal";
 
 export class PodAppExportError extends Error {
@@ -113,6 +115,23 @@ export async function exportPodApp(
   const fileEntries: FileSystemFileEntry[] = listResult.value.flatMap(
     (entry) => (entry.isDirectory ? [] : [entry])
   );
+
+  // Fail before reading any bytes: an archive this large would only be rejected by
+  // `parsePodAppArchive`'s own uncompressed-size guard on import, and buffering it all into a
+  // zip here first wastes the memory for nothing.
+  const totalSizeBytes = fileEntries.reduce(
+    (total, entry) => total + entry.sizeBytes,
+    0
+  );
+  if (totalSizeBytes > MAX_POD_APP_ARCHIVE_UNCOMPRESSED_BYTES) {
+    return new Err(
+      new PodAppExportError(
+        "too_large",
+        `'${prefix}' is too large to export: its files total ${totalSizeBytes} bytes, ` +
+          `over the ${MAX_POD_APP_ARCHIVE_UNCOMPRESSED_BYTES}-byte limit.`
+      )
+    );
+  }
 
   const zip = new AdmZip();
   const manifestFiles: PodAppManifest["files"] = [];
@@ -385,6 +404,14 @@ export async function importPodApp(
   const { manifest, fileBuffers } = parseResult.value;
 
   const folderName = (name ?? manifest.name).trim();
+  if (folderName.length > MAX_POD_APP_NAME_LENGTH) {
+    return new Err(
+      new PodAppImportError(
+        "invalid_name",
+        `'${folderName}' is longer than ${MAX_POD_APP_NAME_LENGTH} characters.`
+      )
+    );
+  }
   const prefix = normalizeAppPrefix(folderName);
   if (!prefix) {
     return new Err(

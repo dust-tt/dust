@@ -73,6 +73,7 @@ app.get(
           });
         case "not_a_pod":
         case "colliding_folders":
+        case "too_large":
           return apiError(ctx, {
             status_code: 400,
             api_error: {

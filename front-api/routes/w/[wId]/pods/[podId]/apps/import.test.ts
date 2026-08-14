@@ -20,6 +20,7 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { PodAppManifest } from "@app/types/api/pod_app_archive";
 import { MAX_POD_APP_ARCHIVE_SIZE_BYTES } from "@app/types/api/pod_app_archive";
+import { MAX_POD_APP_NAME_LENGTH } from "@app/types/api/pod_apps";
 import { frameContentType, sandboxFunctionContentType } from "@app/types/files";
 import type { PodFrameTab } from "@app/types/pod_frame_tab";
 import {
@@ -286,6 +287,20 @@ describe("POST /api/w/:wId/pods/:podId/apps/import", () => {
     const body = await res.json();
     expect(body.app.prefix).toBe("my-tasks");
     expect(body.app.publishedFunctionSlugs).toEqual(["my-tasks__add-task"]);
+  });
+
+  it("rejects a name override longer than MAX_POD_APP_NAME_LENGTH", async () => {
+    const { workspace, pod } = await setupPod();
+    mockSandboxLeaves();
+
+    const res = await importApp(
+      workspace.sId,
+      pod.sId,
+      buildArchive(taskListManifest(), taskListFiles()),
+      "a".repeat(MAX_POD_APP_NAME_LENGTH + 1)
+    );
+
+    expect(res.status).toBe(400);
   });
 
   it("rejects a name colliding with an existing app's prefix", async () => {

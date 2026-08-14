@@ -2,6 +2,7 @@
 // This directive makes them available in the test environment.
 
 import type { Authenticator } from "@app/lib/auth";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -9,8 +10,12 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { PodAppManifest } from "@app/types/api/pod_app_archive";
-import { PodAppManifestSchema } from "@app/types/api/pod_app_archive";
-import { sandboxFunctionContentType } from "@app/types/files";
+import {
+  MAX_POD_APP_ARCHIVE_UNCOMPRESSED_BYTES,
+  PodAppManifestSchema,
+} from "@app/types/api/pod_app_archive";
+import { frameContentType, sandboxFunctionContentType } from "@app/types/files";
+import { DEFAULT_POD_FRAME_TAB_ICON } from "@app/types/pod_frame_tab";
 import { honoApp } from "@front-api/app";
 import AdmZip from "adm-zip";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -72,7 +77,43 @@ function taskListFiles(workspaceId: string, podId: string) {
     gcsObject(workspaceId, podId, "TaskList/"),
     gcsObject(workspaceId, podId, "TaskList/functions/add-task.ts"),
     gcsObject(workspaceId, podId, "TaskList/databases/tasks.db.ts"),
+    gcsObject(workspaceId, podId, "TaskList/TaskList.tsx", frameContentType),
   ];
+}
+
+/**
+ * Creates the Frame's FileResource, published (a bundle root is set) and pinned as a nav tab, so
+ * `exportPodApp`'s Frame branch (fetch by id, read "original" content, capture wasPublished +
+ * pinnedTab) has something real to export.
+ */
+async function publishAndPinFrame(
+  auth: Authenticator,
+  pod: SpaceResource,
+  { workspaceId, fileName }: { workspaceId: string; fileName: string }
+) {
+  const framePath = `pod-${pod.sId}/TaskList/${fileName}`;
+
+  await FileFactory.create(auth, null, {
+    contentType: frameContentType,
+    fileName,
+    fileSize: 100,
+    status: "ready",
+    useCase: "project_context",
+    useCaseMetadata: {
+      spaceId: pod.sId,
+      // Any truthy value marks the Frame published, per `FileResource.isPublishedFrame()`.
+      frameBundleRootPath: `pod-${pod.sId}/TaskList`,
+    },
+    mountFilePath: `w/${workspaceId}/pods/${pod.sId}/files/TaskList/${fileName}`,
+  });
+
+  await ProjectMetadataResource.makeNew(auth, pod, {
+    description: null,
+    frameTabs: [
+      { path: framePath, title: "Tasks", icon: DEFAULT_POD_FRAME_TAB_ICON },
+    ],
+    tabsOrder: [framePath],
+  });
 }
 
 async function exportApp(workspaceId: string, podId: string, prefix: string) {
@@ -88,7 +129,7 @@ describe("GET /api/w/:wId/pods/:podId/apps/:prefix/export", () => {
     fileStorageMock.reset();
   });
 
-  it("streams a zip holding the app's files and a valid manifest", async () => {
+  it("streams a zip holding the app's files, a published pinned Frame, and a valid manifest", async () => {
     const { workspace, pod, auth } = await setupPod();
     fileStorageMock.setFilesByPrefix(() =>
       taskListFiles(workspace.sId, pod.sId)
@@ -100,13 +141,20 @@ describe("GET /api/w/:wId/pods/:podId/apps/:prefix/export", () => {
       if (filePath.endsWith("databases/tasks.db.ts")) {
         return "export const tasks = {};";
       }
-      return null;
+      // The Frame's "original" content is read from its FileResource's fileId-keyed storage path
+      // (`files/w/<wId>/<fileId>/original`), not its mount path, so it can't be matched by name
+      // like the two files above; it's the only other content read in this test.
+      return "export default function App() { return null; }";
     });
     await publishFunction(auth, pod, {
       slug: "tasklist__add-task",
       fileName: "add-task.ts",
     });
     fileStorageMock.setSubdirectoryNames(() => ["tasklist__tasks.db"]);
+    await publishAndPinFrame(auth, pod, {
+      workspaceId: workspace.sId,
+      fileName: "TaskList.tsx",
+    });
 
     const res = await exportApp(workspace.sId, pod.sId, "tasklist");
 
@@ -123,6 +171,7 @@ describe("GET /api/w/:wId/pods/:podId/apps/:prefix/export", () => {
       .map((entry) => entry.entryName)
       .sort();
     expect(entryNames).toEqual([
+      "files/TaskList.tsx",
       "files/databases/tasks.db.ts",
       "files/functions/add-task.ts",
       "manifest.json",
@@ -146,7 +195,15 @@ describe("GET /api/w/:wId/pods/:podId/apps/:prefix/export", () => {
       },
     ]);
     expect(manifest.databases).toEqual([{ name: "tasks" }]);
-    expect(manifest.frames).toEqual([]);
+    expect(manifest.frames).toEqual([
+      {
+        fileName: "TaskList.tsx",
+        contentType: frameContentType,
+        wasPublished: true,
+        pinnedTab: { title: "Tasks", icon: DEFAULT_POD_FRAME_TAB_ICON },
+      },
+    ]);
+    // The Frame is read through its FileResource, not as a plain file: no entry for it here.
     expect(manifest.files.map((f) => f.path).sort()).toEqual([
       "databases/tasks.db.ts",
       "functions/add-task.ts",
@@ -155,6 +212,9 @@ describe("GET /api/w/:wId/pods/:podId/apps/:prefix/export", () => {
     expect(
       zip.getEntry("files/functions/add-task.ts")!.getData().toString("utf-8")
     ).toBe("export async function main() {}");
+    expect(
+      zip.getEntry("files/TaskList.tsx")!.getData().toString("utf-8")
+    ).toBe("export default function App() { return null; }");
   });
 
   it("returns 404 for an app the Pod does not have", async () => {
@@ -177,5 +237,28 @@ describe("GET /api/w/:wId/pods/:podId/apps/:prefix/export", () => {
     const res = await exportApp(workspace.sId, pod.sId, "task-list");
 
     expect(res.status).toBe(400);
+  });
+
+  it("refuses to export an app whose files exceed the uncompressed-size limit", async () => {
+    const { workspace, pod } = await setupPod();
+    // A single oversized entry is enough: the guard sums listed sizes before reading any bytes,
+    // so this never has to actually buffer a huge zip.
+    fileStorageMock.setFilesByPrefix(() => [
+      gcsObject(workspace.sId, pod.sId, "TaskList/"),
+      {
+        name: `w/${workspace.sId}/pods/${pod.sId}/files/TaskList/functions/huge.ts`,
+        metadata: {
+          contentType: "text/plain",
+          size: String(MAX_POD_APP_ARCHIVE_UNCOMPRESSED_BYTES + 1),
+          updated: new Date().toISOString(),
+        },
+      },
+    ]);
+
+    const res = await exportApp(workspace.sId, pod.sId, "tasklist");
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error.message).toMatch(/too large/i);
   });
 });
