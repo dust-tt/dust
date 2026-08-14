@@ -12,9 +12,10 @@ export function buildConsumptionExportGcsPrefix(workspaceId: string): string {
   return `consumption_exports/w/${workspaceId}/`;
 }
 
-// exportId is the workflow ID (stable across activity retries, unlike a
-// timestamp computed here), so a retry after a lost completion ack overwrites
-// the same object instead of leaving an orphaned duplicate zip.
+// exportId is the workflow run ID (stable across activity retries within a
+// run, unlike a timestamp computed here, but unique per triggered export), so
+// a retry after a lost completion ack overwrites the same object instead of
+// leaving an orphaned duplicate zip.
 function buildConsumptionExportGcsPath(
   workspaceId: string,
   exportId: string
