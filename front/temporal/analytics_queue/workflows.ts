@@ -107,14 +107,17 @@ export async function runConsumptionExportWorkflow(
     filter: ConsumptionScopeFilter;
   }
 ): Promise<void> {
-  // Stable across activity retries (unlike Date.now() computed inside the
+  // runId (not workflowId) so each trigger produces its own GCS object: the
+  // workflow ID is stable per workspace to enforce a single in-flight export,
+  // but runId is unique per execution while still stable across activity
+  // retries within that execution (unlike Date.now() computed inside the
   // activity), so a retry after a lost completion ack re-uploads to the same
   // GCS path instead of leaving an orphaned duplicate zip.
-  const { workflowId } = workflowInfo();
+  const { runId } = workflowInfo();
 
   await runConsumptionExportActivity(authType, {
     period,
     filter,
-    exportId: workflowId,
+    exportId: runId,
   });
 }
