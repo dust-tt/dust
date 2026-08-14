@@ -1,6 +1,5 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
-import { CONSUMPTION_SCOPE_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import {
   AgentMessageModel,
@@ -15,6 +14,7 @@ import {
 } from "@app/temporal/analytics_queue/helpers";
 import { storeAgentMessageConsumptionAttributionV3Signal } from "@app/temporal/analytics_queue/signals";
 import {
+  getConsumptionExportParamsQuery,
   runConsumptionExportWorkflow,
   storeAgentAnalyticsWorkflow,
   storeAgentMessageConsumptionAttributionV3Workflow,
@@ -33,7 +33,6 @@ import {
   WorkflowExecutionAlreadyStartedError,
   WorkflowNotFoundError,
 } from "@temporalio/client";
-import { z } from "zod";
 
 // Resolves the agent configuration id backing an agent message (referenced by its
 // message sId). Used to decide whether the feedback workflow needs to wait for
@@ -170,14 +169,9 @@ export async function launchStoreAgentMessageConsumptionAttributionWorkflow({
   }
 }
 
-const ConsumptionExportMemoSchema = z.object({
-  period: z.object({ startDate: z.string(), endDate: z.string() }),
-  filter: z.record(z.enum(CONSUMPTION_SCOPE_FILTER_KEYS), z.string().array()),
-});
-
-// A running export's parameters, read back from its memo. `null` means an export
-// is (or, in the AlreadyStarted race below, was) running but its parameters could
-// not be recovered.
+// A running export's parameters, read back via a workflow query. `null` means an export
+// is (or, in the AlreadyStarted race below, was) running but its parameters could not be
+// recovered (e.g. the workflow hadn't installed its query handler yet).
 export type RunningConsumptionExport = {
   period: ConsumptionPeriod;
   filter: ConsumptionScopeFilter;
@@ -200,8 +194,11 @@ async function describeRunningConsumptionExport(
       return undefined;
     }
 
-    const memo = ConsumptionExportMemoSchema.safeParse(execution.memo);
-    return memo.success ? memo.data : null;
+    try {
+      return await handle.query(getConsumptionExportParamsQuery);
+    } catch {
+      return null;
+    }
   } catch (e) {
     if (e instanceof WorkflowNotFoundError) {
       return undefined;
@@ -243,8 +240,6 @@ export async function launchConsumptionExportWorkflow(
       workflowId,
       memo: {
         workspaceId,
-        period,
-        filter,
       },
     });
     return new Ok({ status: "started", workflowId });

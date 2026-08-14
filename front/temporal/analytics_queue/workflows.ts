@@ -8,10 +8,19 @@ import type {
   AgentMessageRef,
 } from "@app/types/assistant/agent_run";
 import {
+  defineQuery,
   proxyActivities,
   setHandler,
   workflowInfo,
 } from "@temporalio/workflow";
+
+// Queried by the launcher to recover a running export's parameters instead of relying on the
+// workflow memo, which is persisted to the visibility store and size-limited: a filter can carry
+// arbitrarily many scope ids (agents, users, tools, ...) and would risk exceeding that limit.
+export const getConsumptionExportParamsQuery = defineQuery<{
+  period: ConsumptionPeriod;
+  filter: ConsumptionScopeFilter;
+}>("get_consumption_export_params");
 
 const { storeAgentAnalyticsActivity, storeAgentMessageFeedbackActivity } =
   proxyActivities<typeof activities>({
@@ -38,13 +47,7 @@ const {
 // export requests while running. 3 attempts at up to 30 minutes each, plus
 // backoff, comfortably fits inside the 3-hour ceiling.
 const { runConsumptionExportActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "30 minutes",
-  scheduleToCloseTimeout: "3 hours",
-  retry: {
-    maximumAttempts: 3,
-    initialInterval: "2 minutes",
-    backoffCoefficient: 2,
-  },
+  startToCloseTimeout: "5 minutes",
 });
 
 export async function storeAgentAnalyticsWorkflow(
@@ -107,6 +110,8 @@ export async function runConsumptionExportWorkflow(
     filter: ConsumptionScopeFilter;
   }
 ): Promise<void> {
+  setHandler(getConsumptionExportParamsQuery, () => ({ period, filter }));
+
   // runId (not workflowId) so each trigger produces its own GCS object: the
   // workflow ID is stable per workspace to enforce a single in-flight export,
   // but runId is unique per execution while still stable across activity

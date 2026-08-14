@@ -6,10 +6,10 @@ import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import logger from "@app/logger/logger";
 
-// Files are namespaced by workspace under a single top-level prefix so the cleanup job can
-// scan every workspace's exports in one bucket listing.
+// Files live under the workspace's own prefix (matching the `w/{wId}/...` layout used elsewhere
+// in this bucket) so relocation and scrubbing can operate on the workspace prefix directly.
 export function buildConsumptionExportGcsPrefix(workspaceId: string): string {
-  return `consumption_exports/w/${workspaceId}/`;
+  return `w/${workspaceId}/consumption_exports/`;
 }
 
 // exportId is the workflow run ID (stable across activity retries within a
