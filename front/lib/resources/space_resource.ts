@@ -1963,13 +1963,21 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }
 
     if (this.isProject()) {
-      return groups.map((group) => ({
-        id: group.groupId,
-        permissions:
-          group.groupSpaceKind === "project_editor"
-            ? ["admin", "read", "write"]
-            : ["read", "write"],
-      }));
+      return groups.map((group) => {
+        switch (group.groupSpaceKind) {
+          case "project_editor":
+            return {
+              id: group.groupId,
+              permissions: ["admin", "read", "write"],
+            };
+          case "member":
+            return { id: group.groupId, permissions: ["read", "write"] };
+          case "project_viewer":
+            return { id: group.groupId, permissions: ["read"] };
+          default:
+            assertNever(group.groupSpaceKind);
+        }
+      });
     }
 
     // Restricted regular space.
