@@ -10,8 +10,7 @@ export interface FunctionSchema {
     | "optional"
     | "workspace_user_required"
     | "interactive_workspace_user_required"
-    | "pod_member_required"
-    | "pod_editor_required";
+    | "pod_member_required";
   input_schema: Record<string, unknown> | null;
   output_schema: Record<string, unknown> | null;
 }
@@ -25,15 +24,13 @@ function parseUserIdentityPolicy(
   if (
     value === "workspace_user_required" ||
     value === "interactive_workspace_user_required" ||
-    value === "pod_member_required" ||
-    value === "pod_editor_required"
+    value === "pod_member_required"
   ) {
     return value;
   }
   throw new Error(
     "`schema.userIdentity` must be `optional`, `workspace_user_required`, " +
-      "`interactive_workspace_user_required`, `pod_member_required`, or " +
-      "`pod_editor_required`"
+      "`interactive_workspace_user_required`, or `pod_member_required`"
   );
 }
 
