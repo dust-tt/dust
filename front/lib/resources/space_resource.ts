@@ -2107,6 +2107,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         spaceId: this.sId,
         permission,
         workspaceId: this.workspaceId,
+        // Null for non-user callers (API keys, internal auth).
+        userId: auth.user()?.sId ?? null,
       }
     );
   }
