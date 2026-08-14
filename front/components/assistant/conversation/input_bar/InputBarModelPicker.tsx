@@ -24,7 +24,7 @@ export function InputBarModelPicker({
   onSelectionChange,
   commitApiRef,
 }: InputBarModelPickerProps) {
-  const { stickyModelOverride, setStickyModelOverride } =
+  const { stickyModelOverride, setStickyModelOverride, openModelPickerRef } =
     useContext(InputBarContext);
 
   return (
@@ -44,6 +44,7 @@ export function InputBarModelPicker({
         stickyModelOverride={stickyModelOverride}
         setStickyModelOverride={setStickyModelOverride}
         commitApiRef={commitApiRef}
+        openApiRef={openModelPickerRef}
       />
     </ModelPickerHighlight>
   );

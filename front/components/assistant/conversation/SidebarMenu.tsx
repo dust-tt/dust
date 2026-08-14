@@ -1237,12 +1237,7 @@ export function AgentSidebarMenu({
               )}
             </div>
 
-            {!hideInAppBanner && (
-              <StackedInAppBanners
-                owner={owner}
-                onCreatePod={() => setIsCreatePodModalOpen(true)}
-              />
-            )}
+            {!hideInAppBanner && <StackedInAppBanners owner={owner} />}
           </div>
         </div>
       </div>

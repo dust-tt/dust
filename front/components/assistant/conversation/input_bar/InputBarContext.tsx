@@ -10,8 +10,8 @@ import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import { ModelSelectionSchema } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
-import type { ReactNode } from "react";
-import { createContext, useCallback, useMemo, useState } from "react";
+import type { MutableRefObject, ReactNode } from "react";
+import { createContext, useCallback, useMemo, useRef, useState } from "react";
 
 const STICKY_MODEL_OVERRIDE_STORAGE_KEY = "inputBarModelOverride_v1";
 
@@ -95,6 +95,9 @@ export const InputBarContext = createContext<{
   setIsLoadingGoTemplate: (loading: boolean) => void;
   stickyModelOverride: ModelSelectionType | undefined;
   setStickyModelOverride: (selection: ModelSelectionType | undefined) => void;
+  // Imperative handle published by the input bar's model picker so components
+  // outside the input bar (e.g. the sidebar banner) can open its menu.
+  openModelPickerRef: MutableRefObject<(() => void) | null>;
   fileUploaderService: FileUploaderService;
   captureActions?: CaptureActions;
   // Fired right before submit; the extension uses it to snapshot browser tab state.
@@ -115,6 +118,7 @@ export const InputBarContext = createContext<{
   setIsLoadingGoTemplate: () => {},
   stickyModelOverride: undefined,
   setStickyModelOverride: () => {},
+  openModelPickerRef: { current: null },
   fileUploaderService: {
     fileBlobs: [],
     handleFileChange: async () => undefined,
@@ -142,6 +146,9 @@ export function InputBarContextProvider({
   onBeforeSubmit,
 }: InputBarContextProviderProps) {
   const [shouldFocusInput, setShouldFocusInput] = useState<boolean>(false);
+
+  // Set by the input bar's model picker while it is mounted; null otherwise.
+  const openModelPickerRef = useRef<(() => void) | null>(null);
 
   // Useful when a component needs to set the selected agent for the input bar but do not have direct access to the input bar.
   const [selectedAgent, setSelectedAgent] = useState<RichAgentMention | null>(
@@ -258,6 +265,7 @@ export function InputBarContextProvider({
       setIsLoadingGoTemplate,
       stickyModelOverride,
       setStickyModelOverride,
+      openModelPickerRef,
       captureActions,
       fileUploaderService,
       onBeforeSubmit,

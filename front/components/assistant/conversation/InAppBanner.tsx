@@ -1,35 +1,42 @@
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { Button, Plus, XClose } from "@dust-tt/sparkle";
+import { Button, XClose } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
+import { useContext, useState } from "react";
 
-const POD_IMAGE_PATH = "/static/Pod_Banner.png";
-const POD_BANNER_LOCAL_STORAGE_KEY = "pod-banner-dismissed";
-const POD_DOCS_URL = "https://docs.dust.tt/docs/pods-overview";
+const MODEL_PICKER_IMAGE_PATH = "/static/Model_Picker_Banner.png";
+const MODEL_PICKER_BANNER_LOCAL_STORAGE_KEY = "model-picker-banner-dismissed";
+const MODEL_PICKER_DOCS_URL =
+  "https://docs.dust.tt/docs/user-documentation/agents/model-selection";
 
-interface PodBannerProps {
-  showPodBanner: boolean;
-  onShowPodBanner: (open: boolean) => void;
-  onCreatePod: () => void;
+interface ModelPickerBannerProps {
+  showModelPickerBanner: boolean;
+  onShowModelPickerBanner: (open: boolean) => void;
 }
 
-function PodBanner({
-  showPodBanner,
-  onShowPodBanner,
-  onCreatePod,
-}: PodBannerProps) {
+function ModelPickerBanner({
+  showModelPickerBanner,
+  onShowModelPickerBanner,
+}: ModelPickerBannerProps) {
+  const { openModelPickerRef } = useContext(InputBarContext);
+
   const onDismiss = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    localStorage.setItem(POD_BANNER_LOCAL_STORAGE_KEY, "true");
-    onShowPodBanner(false);
+    localStorage.setItem(MODEL_PICKER_BANNER_LOCAL_STORAGE_KEY, "true");
+    onShowModelPickerBanner(false);
+  };
+
+  const onOpenModelPicker = () => {
+    openModelPickerRef.current?.();
   };
 
   const onLearnMore = () => {
-    window.open(POD_DOCS_URL, "_blank", "noopener,noreferrer");
+    window.open(MODEL_PICKER_DOCS_URL, "_blank", "noopener,noreferrer");
   };
 
-  if (!showPodBanner) {
+  if (!showModelPickerBanner) {
     return null;
   }
 
@@ -42,8 +49,8 @@ function PodBanner({
     >
       <div className="relative overflow-hidden rounded-t-2xl">
         <img
-          src={POD_IMAGE_PATH}
-          alt="Pods"
+          src={MODEL_PICKER_IMAGE_PATH}
+          alt="Model picker"
           width={300}
           height={98}
           className="h-[98px] w-[300px] border-b border-border-dark object-cover"
@@ -58,22 +65,21 @@ function PodBanner({
       </div>
       <div className="relative px-4 py-3">
         <div className="mb-1 text-sm font-medium text-foreground">
-          Introducing Pods: bring everyone into the room
+          Choose your model straight from the input bar
         </div>
         <h4 className="mb-3 text-xs leading-tight text-primary">
-          Pods bring your team of humans and agents into one place with the
-          context, tools and goals to move faster on complex work
+          The global model agents (GPT, Claude, Gemini) are retired! Use the
+          model picker with any agent instead.
         </h4>
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="highlight"
             size="xs"
-            icon={Plus}
-            label="Create a Pod"
+            label="Pick a model"
             onClick={withTracking(
-              TRACKING_AREAS.PODS,
-              "create_pod_banner",
-              onCreatePod
+              TRACKING_AREAS.CONVERSATION,
+              "open_model_picker_banner",
+              onOpenModelPicker
             )}
           />
           <Button
@@ -81,8 +87,8 @@ function PodBanner({
             size="xs"
             label="Learn more"
             onClick={withTracking(
-              TRACKING_AREAS.PODS,
-              "learn_more_pod_banner",
+              TRACKING_AREAS.CONVERSATION,
+              "learn_more_model_picker_banner",
               onLearnMore
             )}
           />
@@ -94,24 +100,24 @@ function PodBanner({
 
 interface StackedInAppBannersProps {
   owner: { sId: string };
-  onCreatePod: () => void;
 }
 
 export function StackedInAppBanners({
   owner: _owner,
-  onCreatePod,
 }: StackedInAppBannersProps) {
-  const [showPodBanner, setShowPodBanner] = useState(
-    () => localStorage.getItem(POD_BANNER_LOCAL_STORAGE_KEY) !== "true"
+  const { hasFeature } = useFeatureFlags();
+  const [showModelPickerBanner, setShowModelPickerBanner] = useState(
+    () => localStorage.getItem(MODEL_PICKER_BANNER_LOCAL_STORAGE_KEY) !== "true"
   );
 
   return (
     <AnimatePresence>
-      <PodBanner
-        key="pod-banner"
-        showPodBanner={showPodBanner}
-        onShowPodBanner={setShowPodBanner}
-        onCreatePod={onCreatePod}
+      <ModelPickerBanner
+        key="model-picker-banner"
+        showModelPickerBanner={
+          showModelPickerBanner && hasFeature("models_picker")
+        }
+        onShowModelPickerBanner={setShowModelPickerBanner}
       />
     </AnimatePresence>
   );
