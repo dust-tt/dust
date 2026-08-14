@@ -2,6 +2,7 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { Authenticator } from "@app/lib/auth";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
@@ -10,6 +11,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -516,6 +518,49 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
     const { workspace, sandboxFunction } = await setupSandboxFunction({
       userIdentity: "pod_editor_required",
     });
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({
+      error: {
+        type: "user_authentication_required",
+      },
+    });
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+  });
+
+  it("allows a pod member to invoke a pod-member-required function", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction({
+      userIdentity: "pod_member_required",
+    });
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(201);
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
+  });
+
+  it("denies a workspace member outside an open pod on a pod-member-required function", async () => {
+    const { workspace, sandboxFunction, space, adminAuth } =
+      await setupSandboxFunction({
+        userIdentity: "pod_member_required",
+        addCallerToSpace: false,
+      });
+    // Open the pod so the caller clears the read gate and the policy itself denies (a restricted
+    // pod would 404 at fetch before the policy runs).
+    const globalGroupResult =
+      await GroupResource.fetchWorkspaceGlobalGroup(adminAuth);
+    expect(globalGroupResult.isOk()).toBe(true);
+    if (globalGroupResult.isOk()) {
+      await GroupSpaceFactory.associate(space, globalGroupResult.value);
+    }
 
     const response = await postInvocation({
       workspaceId: workspace.sId,

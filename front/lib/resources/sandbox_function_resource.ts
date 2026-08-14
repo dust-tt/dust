@@ -77,10 +77,13 @@ function userIdentityPolicyStrength(
       return 1;
     case "interactive_workspace_user_required":
       return 2;
-    case "pod_editor_required":
-      // Strictest audience: editors only. Ranking it above the session-bound policy means a
-      // publish moving to it always commits the policy before exposing the new bundle.
+    case "pod_member_required":
+      // Pod-scoped audiences rank above the workspace-wide, session-bound policy: a publish
+      // moving to one always commits the policy before exposing the new bundle.
       return 3;
+    case "pod_editor_required":
+      // Strictest audience: editors only.
+      return 4;
     default:
       return assertNever(policy);
   }

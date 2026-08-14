@@ -67,6 +67,21 @@ export async function authorizeSandboxFunctionInvocation(
               "This Pod Function requires a logged-in workspace member in a live Dust session.",
           };
     }
+    case "pod_member_required": {
+      // Membership means belonging to any of the pod's groups (member or editor — a user is never
+      // in both), plus workspace admins via their role, so the audience stays a strict superset of
+      // `pod_editor_required`'s. `canRead` would not do: open pods grant read to the whole
+      // workspace, so it cannot separate members from bystanders.
+      const authorized =
+        user !== null && (space.isMember(auth) || space.canAdministrate(auth));
+      return authorized
+        ? { authorized: true, user }
+        : {
+            authorized: false,
+            errorMessage:
+              "This Pod Function requires a member of its Pod (or a workspace admin).",
+          };
+    }
     case "pod_editor_required": {
       // Editorship matches the `isEditor` the pod UI serializes: members of the pod's editor
       // group, plus workspace admins via their role (`canWrite` would not do: the pod member

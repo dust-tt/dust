@@ -123,3 +123,82 @@ describe("authorizeSandboxFunctionInvocation with pod_editor_required", () => {
     expect(authorization.authorized).toBe(false);
   });
 });
+
+async function authorizePodMemberRequired(
+  auth: Authenticator,
+  space: SpaceResource
+) {
+  return authorizeSandboxFunctionInvocation(auth, {
+    userIdentity: "pod_member_required",
+    origin: "interactive_session",
+    space,
+  });
+}
+
+describe("authorizeSandboxFunctionInvocation with pod_member_required", () => {
+  it("authorizes a member of the pod member group", async () => {
+    const { workspace, adminAuth, space } = await setup();
+    const member = await makeWorkspaceMember(workspace);
+    await addToSpaceGroup(adminAuth, space, "regular_auto", member);
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      member.sId,
+      workspace.sId
+    );
+
+    const authorization = await authorizePodMemberRequired(memberAuth, space);
+
+    expect(authorization.authorized).toBe(true);
+    if (authorization.authorized) {
+      expect(authorization.user?.sId).toBe(member.sId);
+    }
+  });
+
+  it("authorizes a member of the pod editor group", async () => {
+    const { workspace, adminAuth, space } = await setup();
+    const editor = await makeWorkspaceMember(workspace);
+    await addToSpaceGroup(adminAuth, space, "space_editors", editor);
+    const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      editor.sId,
+      workspace.sId
+    );
+
+    const authorization = await authorizePodMemberRequired(editorAuth, space);
+
+    expect(authorization.authorized).toBe(true);
+  });
+
+  it("denies a workspace member outside the pod", async () => {
+    const { workspace, space } = await setup();
+    const outsider = await makeWorkspaceMember(workspace);
+    const outsiderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      outsider.sId,
+      workspace.sId
+    );
+
+    const authorization = await authorizePodMemberRequired(outsiderAuth, space);
+
+    expect(authorization.authorized).toBe(false);
+    if (!authorization.authorized) {
+      expect(authorization.errorMessage).toContain("member");
+    }
+  });
+
+  it("authorizes a workspace admin through their role", async () => {
+    const { adminAuth, space } = await setup();
+
+    const authorization = await authorizePodMemberRequired(adminAuth, space);
+
+    expect(authorization.authorized).toBe(true);
+  });
+
+  it("denies a userless caller", async () => {
+    const { workspace, space } = await setup();
+    const userlessAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const authorization = await authorizePodMemberRequired(userlessAuth, space);
+
+    expect(authorization.authorized).toBe(false);
+  });
+});
