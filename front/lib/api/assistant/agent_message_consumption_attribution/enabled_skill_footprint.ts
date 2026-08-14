@@ -1,10 +1,12 @@
 import { MAX_TOOL_DESCRIPTION_LENGTH } from "@app/lib/actions/mcp";
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import { applyToolSourceLoadingPolicy } from "@app/lib/actions/tool_loading";
 import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { getEnableSkillIdFromOutputBlock } from "@app/lib/api/actions/servers/skill_management/rendering";
 import { renderEnabledSkillUserMessageFromInstructions } from "@app/lib/api/assistant/skills_rendering";
 import type { Authenticator } from "@app/lib/auth";
+import { isToolDeferred } from "@app/lib/model_constructors/types/tool_search";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -58,28 +60,41 @@ function enabledSkillToolDefinitions(
       }
 
       const inputSchema = tool.inputSchema ?? EMPTY_INPUT_SCHEMA;
-      definitions.push({
-        name: prefixedName.value,
-        description: tool.description.slice(0, MAX_TOOL_DESCRIPTION_LENGTH),
-        inputSchema:
-          configuration.view.internalMCPServerId === null
-            ? inputSchema
-            : hideInternalConfiguration(inputSchema),
-      });
+      definitions.push(
+        applyToolSourceLoadingPolicy(
+          {
+            name: prefixedName.value,
+            description: tool.description.slice(0, MAX_TOOL_DESCRIPTION_LENGTH),
+            inputSchema:
+              configuration.view.internalMCPServerId === null
+                ? inputSchema
+                : hideInternalConfiguration(inputSchema),
+            eager: tool.eager,
+          },
+          // Best-effort attribution treats definitions attached to the enabled skill as
+          // skill-originated; unlike the live loop, it does not reconstruct cross-source deduping.
+          { isFromSkillServer: true }
+        )
+      );
     }
   }
 
   return definitions.sort((left, right) => left.name.localeCompare(right.name));
 }
 
-function enabledSkillInputText(skill: SkillResource): string {
+function enabledSkillInputText(
+  skill: SkillResource,
+  { toolSearchEnabled }: { toolSearchEnabled: boolean }
+): string {
   const instructionsMessage = renderEnabledSkillUserMessageFromInstructions({
     skill,
   });
   const instructionsText = instructionsMessage.content.flatMap((content) =>
     content.type === "text" ? [content.text] : []
   );
-  const toolDefinitions = enabledSkillToolDefinitions(skill);
+  const toolDefinitions = enabledSkillToolDefinitions(skill).filter(
+    (tool) => !isToolDeferred(tool, toolSearchEnabled)
+  );
 
   return [
     ...instructionsText,
@@ -99,12 +114,13 @@ function enabledSkillInputText(skill: SkillResource): string {
 
 /**
  * Resolves the additional model input caused by successful enable-skill actions. A normal action
- * has no entry. An enable-skill action contributes the instructions rendered as a user message and
- * the definitions of the tools exposed by the skill.
+ * has no entry. An enable-skill action contributes the instructions rendered as a user message and,
+ * when the provider loads them eagerly, the definitions of the tools exposed by the skill.
  */
 export async function getEnabledSkillInputTextByActionId(
   auth: Authenticator,
-  actions: AgentMCPActionWithOutputType[]
+  actions: AgentMCPActionWithOutputType[],
+  { toolSearchEnabled }: { toolSearchEnabled: boolean }
 ): Promise<ReadonlyMap<string, string>> {
   const enabledSkillIdsByAction = actions.map((action) => ({
     action,
@@ -119,7 +135,10 @@ export async function getEnabledSkillInputTextByActionId(
 
   const skills = await SkillResource.fetchByIds(auth, skillIds);
   const inputTextBySkillId = new Map(
-    skills.map((skill) => [skill.sId, enabledSkillInputText(skill)])
+    skills.map((skill) => [
+      skill.sId,
+      enabledSkillInputText(skill, { toolSearchEnabled }),
+    ])
   );
 
   return new Map(
