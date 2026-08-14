@@ -693,3 +693,105 @@ describe("filesystem content", () => {
     );
   });
 });
+
+describe("filesystem executable bits", () => {
+  it("changes executable bits without changing the other mode bits", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const scope = readableScope(`conversation-${randomUUID()}`);
+    const initialized = await applyFileSystemOperation(authenticator, scope, {
+      operation: "initialize",
+    });
+    if (initialized.isErr()) {
+      throw initialized.error;
+    }
+    const root = requireNode(initialized.value.roots?.[0]);
+    const created = await applyFileSystemOperation(authenticator, scope, {
+      operation: "create",
+      requestId: randomUUID(),
+      parentId: root.id,
+      name: "script.sh",
+      kind: "file",
+      mode: 0o644,
+    });
+    if (created.isErr()) {
+      throw created.error;
+    }
+    const file = requireNode(created.value.node ?? undefined);
+
+    const madeExecutable = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      {
+        operation: "setExecutableBits",
+        nodeId: file.id,
+        executableBits: 0o111,
+      }
+    );
+    const retry = await applyFileSystemOperation(authenticator, scope, {
+      operation: "setExecutableBits",
+      nodeId: file.id,
+      executableBits: 0o111,
+    });
+    const cleared = await applyFileSystemOperation(authenticator, scope, {
+      operation: "setExecutableBits",
+      nodeId: file.id,
+      executableBits: 0,
+    });
+
+    expect(madeExecutable.isOk() && madeExecutable.value.node?.mode).toBe(
+      0o755
+    );
+    expect(retry.isOk() && retry.value.node?.mode).toBe(0o755);
+    expect(cleared.isOk() && cleared.value.node?.mode).toBe(0o644);
+  });
+
+  it("rejects non-executable mode changes and requires write access", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const conversationId = `conversation-${randomUUID()}`;
+    const scope = readableScope(conversationId);
+    const initialized = await applyFileSystemOperation(authenticator, scope, {
+      operation: "initialize",
+    });
+    if (initialized.isErr()) {
+      throw initialized.error;
+    }
+    const root = requireNode(initialized.value.roots?.[0]);
+    const created = await applyFileSystemOperation(authenticator, scope, {
+      operation: "create",
+      requestId: randomUUID(),
+      parentId: root.id,
+      name: "script.sh",
+      kind: "file",
+      mode: 0o644,
+    });
+    if (created.isErr()) {
+      throw created.error;
+    }
+    const file = requireNode(created.value.node ?? undefined);
+
+    const readBitChange = await applyFileSystemOperation(authenticator, scope, {
+      operation: "setExecutableBits",
+      nodeId: file.id,
+      executableBits: 0o400,
+    });
+    const writeDenied = await applyFileSystemOperation(
+      authenticator,
+      readOnlyScope(conversationId),
+      {
+        operation: "setExecutableBits",
+        nodeId: file.id,
+        executableBits: 0o100,
+      }
+    );
+    const attributes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "getAttr",
+      nodeId: file.id,
+    });
+
+    expect(readBitChange.isErr() && readBitChange.error.code).toBe(
+      "invalid_operation"
+    );
+    expect(writeDenied.isErr() && writeDenied.error.code).toBe("unauthorized");
+    expect(attributes.isOk() && attributes.value.node?.mode).toBe(0o644);
+  });
+});

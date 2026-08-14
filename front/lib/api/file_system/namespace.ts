@@ -169,6 +169,27 @@ export async function applyFileSystemOperation(
         : new Ok({ node: committedRes.value.toJSON() });
     }
 
+    case "setExecutableBits": {
+      const node = await FileSystemNodeResource.fetchById(
+        auth,
+        scope,
+        request.nodeId
+      );
+      if (!node) {
+        return new Err(
+          new FileSystemOperationError("not_found", "The inode was not found.")
+        );
+      }
+
+      const updatedNode = await node.setExecutableBits(auth, scope, {
+        executableBits: request.executableBits,
+      });
+
+      return updatedNode.isErr()
+        ? updatedNode
+        : new Ok({ node: updatedNode.value.toJSON() });
+    }
+
     default:
       return assertNever(request);
   }
