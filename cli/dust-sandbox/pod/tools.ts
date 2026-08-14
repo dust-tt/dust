@@ -18,8 +18,10 @@
 // process.env.
 //
 // Tool outputs above front's offload threshold are resolved by dsbx itself
-// under `--json`: blocks arrive with their full archived content already
-// substituted, never the truncated snippet.
+// under `--json` when the image's dsbx carries that behavior (dsbx > 0.1.49):
+// blocks arrive with their full archived content already substituted. With an
+// older dsbx, offloaded blocks keep their snippet and descriptor, and
+// resolveToolTextContent (./tool_output.ts) still applies.
 
 import { z } from "zod";
 
@@ -36,10 +38,14 @@ export const DSBX_PATH_ENV = "DUST_DSBX_PATH";
 
 const DEFAULT_DSBX_PATH = "/opt/bin/dsbx";
 
-// Default wait cap, matching dsbx's own 10-minute poll ceiling
-// (src/api/client.rs). dsbx enforces its cap internally; this local deadline
-// only fires if the child process itself wedges.
-const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000;
+// Default wait cap: dsbx's own 10-minute poll ceiling (src/api/client.rs)
+// plus a grace margin. dsbx's clock starts after its list+POST round-trips,
+// so the margin lets it hit its ceiling first and report the failure through
+// its typed envelope; the local deadline only fires when the child process
+// itself wedges.
+const DSBX_POLL_CEILING_MS = 10 * 60 * 1000;
+const DEFAULT_TIMEOUT_GRACE_MS = 30 * 1000;
+const DEFAULT_TIMEOUT_MS = DSBX_POLL_CEILING_MS + DEFAULT_TIMEOUT_GRACE_MS;
 
 const STDERR_TAIL_MAX_CHARS = 2000;
 
@@ -174,9 +180,9 @@ export class ToolCallResult {
 export interface ToolCallOptions {
   /**
    * Cap on the total time spent waiting for the tool result. Defaults to
-   * dsbx's own 10-minute ceiling; values above it never fire because dsbx
-   * gives up first. The invocation's own execution deadline is typically
-   * tighter.
+   * dsbx's own 10-minute ceiling plus a small grace margin, so dsbx's typed
+   * timeout reporting wins over the local kill. The invocation's own
+   * execution deadline is typically tighter.
    */
   timeoutMs?: number;
 }
@@ -276,7 +282,12 @@ function spawnDsbx({ dsbxPath, argv, env, stdinBody }: DsbxSpawnParams) {
   }
 }
 
-/** Spawn dsbx and wait for it to exit, killing it past `timeoutMs`. */
+/**
+ * Spawn dsbx and wait for it to exit and its pipes to drain, both under the
+ * same `timeoutMs` deadline: a child that wedges is killed, and a pipe still
+ * held open after exit (an fd inherited by a stray descendant) cannot hang
+ * the call either.
+ */
 async function runDsbx({
   timeoutMs,
   ...spawnParams
@@ -291,20 +302,31 @@ async function runDsbx({
   const stderrPromise = new Response(proc.stderr).text().catch(() => "");
 
   let timedOut = false;
-  const timer = setTimeout(() => {
-    timedOut = true;
-    proc.kill("SIGKILL");
-  }, timeoutMs);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<"deadline">((resolve) => {
+    timer = setTimeout(() => {
+      timedOut = true;
+      // No-op when the child already exited and only a pipe is still open.
+      proc.kill("SIGKILL");
+      resolve("deadline");
+    }, timeoutMs);
+  });
 
   try {
     const exitCode = await proc.exited;
-    if (timedOut) {
-      // The pipes can be held open past the kill by processes the child
-      // spawned; the output is discarded anyway, so don't wait for EOF.
-      return { exitCode, stdout: "", stderr: "", timedOut };
+    if (!timedOut) {
+      const drained = await Promise.race([
+        Promise.all([stdoutPromise, stderrPromise]),
+        deadline,
+      ]);
+      if (drained !== "deadline") {
+        const [stdout, stderr] = drained;
+        return { exitCode, stdout, stderr, timedOut: false };
+      }
     }
-    const [stdout, stderr] = await Promise.all([stdoutPromise, stderrPromise]);
-    return { exitCode, stdout, stderr, timedOut };
+    // Timed out before exit or before EOF; whatever output exists is
+    // incomplete and discarded.
+    return { exitCode, stdout: "", stderr: "", timedOut: true };
   } finally {
     clearTimeout(timer);
   }
