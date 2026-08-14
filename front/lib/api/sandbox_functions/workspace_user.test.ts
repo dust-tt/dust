@@ -183,12 +183,14 @@ describe("authorizeSandboxFunctionInvocation with pod_member_required", () => {
     }
   });
 
-  it("authorizes a workspace admin through their role", async () => {
+  it("denies a workspace admin outside the pod", async () => {
+    // Admins hold `admin` on pods but not `write`, so they cannot publish pod functions and are
+    // not treated as members either.
     const { adminAuth, space } = await setup();
 
     const authorization = await authorizePodMemberRequired(adminAuth, space);
 
-    expect(authorization.authorized).toBe(true);
+    expect(authorization.authorized).toBe(false);
   });
 
   it("denies a userless caller", async () => {

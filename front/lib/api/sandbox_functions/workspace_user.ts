@@ -69,17 +69,17 @@ export async function authorizeSandboxFunctionInvocation(
     }
     case "pod_member_required": {
       // Membership means belonging to any of the pod's groups (member or editor — a user is never
-      // in both), plus workspace admins via their role, so the audience stays a strict superset of
-      // `pod_editor_required`'s. `canRead` would not do: open pods grant read to the whole
-      // workspace, so it cannot separate members from bystanders.
-      const authorized =
-        user !== null && (space.isMember(auth) || space.canAdministrate(auth));
+      // in both): the people who hold write on the pod and can publish its functions. Workspace
+      // admins outside those groups cannot write to the pod, so unlike `pod_editor_required` (which
+      // keys on `canAdministrate`, a capability admins do hold) they are deliberately not
+      // authorized. `canRead` would not do either: open pods grant read to the whole workspace, so
+      // it cannot separate members from bystanders.
+      const authorized = user !== null && space.isMember(auth);
       return authorized
         ? { authorized: true, user }
         : {
             authorized: false,
-            errorMessage:
-              "This Pod Function requires a member of its Pod (or a workspace admin).",
+            errorMessage: "This Pod Function requires a member of its Pod.",
           };
     }
     case "pod_editor_required": {
