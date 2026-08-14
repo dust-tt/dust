@@ -1,5 +1,4 @@
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
@@ -30,8 +29,6 @@ async function setupTest({
   const { workspace, auth, user, ...rest } = await createPrivateApiMockRequest({
     role,
   });
-
-  await FeatureFlagFactory.basic(auth, "sandbox_functions");
 
   const pod = await SpaceFactory.project(workspace, user.id);
 

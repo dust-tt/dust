@@ -18,12 +18,16 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
+import bulk from "./bulk";
+
 // Mounted at /api/w/:wId/sandbox/egress-policy.
 const app = workspaceApp();
 
 const DismissRequestBodySchema = z.object({
   domain: z.string().min(1),
 });
+
+app.route("/bulk", bulk);
 
 /** @ignoreswagger */
 app.get(

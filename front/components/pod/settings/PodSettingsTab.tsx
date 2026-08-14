@@ -11,12 +11,13 @@ import { SuggestedTasksGenerationTile } from "@app/components/pod/settings/Sugge
 import { SandboxEnvVarsSection } from "@app/components/sandbox/SandboxEnvVarsSection";
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useArchivePod } from "@app/hooks/useArchivePod";
+import { useComputerAdminAccess } from "@app/hooks/useComputerAdminAccess";
 import {
   getPodAgentsMdScopedPath,
   POD_AGENTS_MD_FILENAME,
   POD_AGENTS_MD_MAX_CHARACTER_COUNT,
 } from "@app/lib/api/projects/constants";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
@@ -98,15 +99,14 @@ export function PodSettingsTab({
 
   const confirm = useContext(ConfirmContext);
   const { hasFeature } = useFeatureFlags();
-  const { isAdmin } = useAuth();
   const hasWorkspaceDefaultAgentFeature = hasFeature("workspace_default_agent");
   const hasAdminControlledPodsFeature = hasFeature("admin_controlled_pods");
   // The pod sandbox admin sections (network allowlist, env vars) are
-  // workspace-admin only (matching the API) and part of the Sandbox
-  // Functions surface.
-  // Mirrors the API gate (workspace-admin + sandbox_functions FF; pod
-  // membership deliberately not consulted) — change both together.
-  const isPodSandboxAdminEnabled = isAdmin && hasFeature("sandbox_functions");
+  // workspace-admin only, gated by the workspace-level Computer flag; pod
+  // membership is deliberately not consulted. The hook mirrors the API gate
+  // on /spaces/:spaceId/sandbox — change both together.
+  const { canAdministrateComputer: isPodSandboxAdminEnabled } =
+    useComputerAdminAccess();
 
   const { podMetadata, isPodMetadataLoading } = usePodMetadata({
     workspaceId: owner.sId,

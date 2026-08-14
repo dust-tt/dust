@@ -3,7 +3,10 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
+import {
+  enrichProjectsWithMetadata,
+  listNonArchivedProjectSpacesAsAdmin,
+} from "@app/lib/api/projects/list";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
@@ -170,6 +173,27 @@ app.get(
         spaces = systemSpace ? [systemSpace] : [];
       } else {
         spaces = await SpaceResource.listWorkspaceSpaces(auth);
+        // Projects are opt-in for the admin listing. Membership is not
+        // consulted — this returns every Pod in the workspace, including
+        // private ones — so the helper enforces the caller's actual role,
+        // not just the role query param. Archived Pods are excluded
+        // server-side: admin surfaces must only offer live Pods.
+        if (kinds?.includes("project")) {
+          const projectSpaces = await listNonArchivedProjectSpacesAsAdmin(auth);
+          if (projectSpaces.isErr()) {
+            return apiError(ctx, {
+              status_code: 403,
+              api_error: {
+                type: "workspace_auth_error",
+                message: projectSpaces.error.message,
+              },
+            });
+          }
+          spaces = [...spaces, ...projectSpaces.value];
+        }
+        if (kinds) {
+          spaces = spaces.filter((s) => kinds.includes(s.kind));
+        }
       }
     } else {
       spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth, {

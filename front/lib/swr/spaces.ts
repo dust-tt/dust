@@ -38,6 +38,7 @@ import type { SearchWarningCode } from "@app/types/core/core_api";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { PodType, SpaceKind, SpaceType } from "@app/types/space";
+import { isProjectType } from "@app/types/space";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 import { useMemo } from "react";
 import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
@@ -192,6 +193,45 @@ export function useSpacesAsAdmin({
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
     mutate,
+  };
+}
+
+// Every non-archived Pod in the workspace, membership not consulted (the
+// server enforces the admin role and excludes archived Pods). Backs the
+// central Computer admin page's Pod picker and bulk targeting.
+export function usePodsAsAdmin({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const spacesFetcher: Fetcher<GetSpacesResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces?role=admin&kind=project`,
+    spacesFetcher,
+    { disabled }
+  );
+
+  const pods = useMemo(
+    () =>
+      data?.spaces
+        .filter(isProjectType)
+        // Defensive only — the server already excludes archived Pods.
+        .filter((pod) => pod.archivedAt === null)
+        .toSorted((a, b) =>
+          a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+        ) ?? emptyArray<PodType>(),
+    [data?.spaces]
+  );
+
+  return {
+    pods,
+    isPodsLoading: !error && !data && !disabled,
+    isPodsError: !!error,
+    mutatePods: mutate,
   };
 }
 

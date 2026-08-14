@@ -8,11 +8,14 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type {
+  GetPodEgressPoliciesBulkResponseBody,
   GetWorkspaceEgressPolicyResponseBody,
   PutWorkspaceEgressPolicyResponseBody,
 } from "@app/types/api/sandbox/egress_policy";
 import type {
+  GetSandboxEnvVarsBulkResponseBody,
   GetSandboxEnvVarsResponseBody,
+  PostSandboxEnvVarsBulkResponseBody,
   PostSandboxEnvVarsResponseBody,
 } from "@app/types/api/sandbox/env_vars";
 import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
@@ -44,6 +47,24 @@ type SandboxEnvVarWritePayload = {
   kind?: SandboxEnvVarKind;
   allowedDomains?: string[] | null;
 };
+
+// Pod selection for the central admin page's multi-pod reads. Mirrors the
+// server-side SandboxAdminPodSelection: "all-pods" is resolved server-side
+// so the full Pod id list never travels in the query string.
+export type SandboxPodSelection =
+  | { kind: "all-pods" }
+  | { kind: "pods"; podIds: string[] };
+
+// Sorted so the same selection always produces the same SWR key.
+function podSelectionQuery(selection: SandboxPodSelection): string {
+  return selection.kind === "all-pods"
+    ? "scope=all-pods"
+    : `podIds=${[...selection.podIds].sort().map(encodeURIComponent).join(",")}`;
+}
+
+function sandboxEnvVarsBulkUrl(workspaceId: string) {
+  return `/api/w/${workspaceId}/sandbox/env-vars/bulk`;
+}
 
 export function useWorkspaceEgressPolicy({
   owner,
@@ -91,6 +112,158 @@ export function useSandboxEnvVars({
     isSandboxEnvVarsLoading: disabled ? false : isLoading,
     isSandboxEnvVarsError: !!error,
     mutateSandboxEnvVars: mutate,
+  };
+}
+
+// Read-only multi-pod env var view for the central admin page. Values are
+// never returned by the API; rows carry their pod via `spaceId`.
+export function useBulkPodSandboxEnvVars({
+  owner,
+  selection,
+  disabled = false,
+}: {
+  owner: LightWorkspaceType;
+  selection: SandboxPodSelection | null;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const envVarsFetcher: Fetcher<GetSandboxEnvVarsBulkResponseBody> = fetcher;
+  const url = selection
+    ? `${sandboxEnvVarsBulkUrl(owner.sId)}?${podSelectionQuery(selection)}`
+    : null;
+  const { data, error, mutate, isLoading } = useSWRWithDefaults(
+    url,
+    envVarsFetcher,
+    { disabled }
+  );
+
+  return {
+    podEnvVars: data?.envVars ?? emptyArray(),
+    isPodEnvVarsLoading: disabled || !selection ? false : isLoading,
+    isPodEnvVarsError: !!error,
+    mutatePodEnvVars: mutate,
+  };
+}
+
+// Read-only multi-pod egress policy view for the central admin page.
+export function useBulkPodEgressPolicies({
+  owner,
+  selection,
+  disabled = false,
+}: {
+  owner: LightWorkspaceType;
+  selection: SandboxPodSelection | null;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const policiesFetcher: Fetcher<GetPodEgressPoliciesBulkResponseBody> =
+    fetcher;
+  const url = selection
+    ? `/api/w/${owner.sId}/sandbox/egress-policy/bulk?${podSelectionQuery(selection)}`
+    : null;
+  const { data, error, mutate, isLoading } = useSWRWithDefaults(
+    url,
+    policiesFetcher,
+    { disabled }
+  );
+
+  return {
+    podPolicies: data?.policies ?? emptyArray(),
+    isPodPoliciesLoading: disabled || !selection ? false : isLoading,
+    isPodPoliciesError: !!error,
+    mutatePodPolicies: mutate,
+  };
+}
+
+// Saves one env var to several pods in a single request (one independently
+// scoped row per pod). Pods are passed with their names so partial failures
+// can be reported readably.
+export function useBulkUpsertSandboxEnvVar({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+  const [isUpserting, setIsUpserting] = useState(false);
+
+  const bulkUpsertSandboxEnvVar = async ({
+    allowedDomains,
+    kind,
+    name,
+    pods,
+    value,
+  }: SandboxEnvVarWritePayload & {
+    pods: { sId: string; name: string }[];
+  }): Promise<boolean> => {
+    setIsUpserting(true);
+    try {
+      const response = await clientFetch(sandboxEnvVarsBulkUrl(owner.sId), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          allowedDomains,
+          kind,
+          name,
+          value,
+          podIds: pods.map((pod) => pod.sId),
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await getErrorFromResponse(response);
+        sendNotification({
+          type: "error",
+          title: "Failed to save environment variable",
+          description: error.message,
+        });
+        return false;
+      }
+
+      const data: PostSandboxEnvVarsBulkResponseBody = await response.json();
+      const podNamesById = new Map(pods.map((pod) => [pod.sId, pod.name]));
+      const failures = data.results.filter((result) => !result.success);
+      if (failures.length > 0) {
+        const savedCount = data.results.length - failures.length;
+        sendNotification({
+          type: "error",
+          title: "Environment variable partially saved",
+          description: `${name} was saved to ${savedCount} of ${data.results.length} Pods. Failed: ${failures
+            .map(
+              (failure) =>
+                `${podNamesById.get(failure.podId) ?? failure.podId}: ${
+                  failure.errorMessage ?? "unknown error"
+                }`
+            )
+            .join(" — ")}`,
+        });
+        return false;
+      }
+
+      sendNotification({
+        type: "success",
+        title: "Environment variable saved",
+        description: `${name} has been saved for future Computers in ${
+          data.results.length === 1 ? "1 Pod" : `${data.results.length} Pods`
+        }.`,
+      });
+      return true;
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to save environment variable",
+        description: normalizeError(error).message,
+      });
+      return false;
+    } finally {
+      setIsUpserting(false);
+    }
+  };
+
+  return {
+    bulkUpsertSandboxEnvVar,
+    isBulkUpsertingSandboxEnvVar: isUpserting,
   };
 }
 

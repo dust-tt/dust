@@ -15,6 +15,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import envVarId from "./[id]";
+import bulk from "./bulk";
 
 const PostWorkspaceSandboxEnvVarBodySchema = z.object({
   name: z.string(),
@@ -102,6 +103,8 @@ app.post(
   }
 );
 
+// Before "/:id" so "bulk" is never captured as an id.
+app.route("/bulk", bulk);
 app.route("/:id", envVarId);
 
 export default app;

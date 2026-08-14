@@ -17,3 +17,7 @@ export type GetPodEgressPolicyResponseBody = {
 export type PutPodEgressPolicyResponseBody = {
   policy: EgressPolicy;
 };
+
+export type GetPodEgressPoliciesBulkResponseBody = {
+  policies: { podId: string; policy: EgressPolicy }[];
+};

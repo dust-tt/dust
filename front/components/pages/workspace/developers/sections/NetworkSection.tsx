@@ -1,16 +1,12 @@
 import { EgressDomainListEditor } from "@app/components/sandbox/EgressDomainListEditor";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useComputerAdminAccess } from "@app/hooks/useComputerAdminAccess";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   useDismissWorkspaceEgressRequest,
   useUpdateWorkspaceEgressPolicy,
   useUpdateWorkspaceSandboxAgentEgressRequests,
   useWorkspaceEgressPolicy,
 } from "@app/lib/swr/sandbox";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import {
   ContentMessage,
   Dialog,
@@ -28,9 +24,8 @@ import { useState } from "react";
 
 export function NetworkSection() {
   const owner = useWorkspace();
-  const { isAdmin } = useAuth();
-  const { featureFlags } = useFeatureFlags();
-  const hasSandboxAdmin = isComputerFeatureEnabled(featureFlags);
+  const { isAdmin, isComputerEnabled, canAdministrateComputer } =
+    useComputerAdminAccess();
   const [isEnableAgentRequestsDialogOpen, setIsEnableAgentRequestsDialogOpen] =
     useState(false);
 
@@ -41,7 +36,7 @@ export function NetworkSection() {
     isWorkspaceEgressPolicyError,
   } = useWorkspaceEgressPolicy({
     owner,
-    disabled: !hasSandboxAdmin || !isAdmin,
+    disabled: !canAdministrateComputer,
   });
   const { updateWorkspaceEgressPolicy, isUpdatingWorkspaceEgressPolicy } =
     useUpdateWorkspaceEgressPolicy({ owner });
@@ -77,7 +72,7 @@ export function NetworkSection() {
         </ContentMessage>
       );
     }
-    if (!hasSandboxAdmin) {
+    if (!isComputerEnabled) {
       return (
         <ContentMessage variant="info" icon={InfoCircle} size="lg">
           Computer administration is not enabled for this workspace.

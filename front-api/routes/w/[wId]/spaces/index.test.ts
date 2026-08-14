@@ -90,6 +90,55 @@ describe("GET /api/w/:wId/spaces", () => {
   });
 });
 
+describe("GET /api/w/:wId/spaces?role=admin&kind=project", () => {
+  it("returns every non-archived pod to admins regardless of membership", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    // Pods created by another user; the admin is a member of none of them.
+    const pod = await SpaceFactory.project(workspace);
+    await ProjectMetadataResource.makeNew(auth, pod, { description: null });
+    const archivedPod = await SpaceFactory.project(workspace);
+    const archivedMetadata = await ProjectMetadataResource.makeNew(
+      auth,
+      archivedPod,
+      { description: null }
+    );
+    await archivedMetadata.archive();
+    // No metadata row: treated as invalid and excluded.
+    await SpaceFactory.project(workspace);
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/spaces?role=admin&kind=project`
+    );
+
+    expect(response.status).toBe(200);
+    const data = (await response.json()) as GetSpacesResponseBody;
+    expect(data.spaces.map((space) => space.sId)).toEqual([pod.sId]);
+    expect(data.spaces[0]).toMatchObject({
+      kind: "project",
+      isMember: false,
+    });
+  });
+
+  it("rejects non-admins asking for the project listing", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const pod = await SpaceFactory.project(workspace, user.id);
+    await ProjectMetadataResource.makeNew(auth, pod, { description: null });
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/spaces?role=admin&kind=project`
+    );
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      error: { type: "workspace_auth_error" },
+    });
+  });
+});
+
 describe("POST /api/w/:wId/spaces", () => {
   it("blocks creating an open project when open projects are disabled", async () => {
     const { workspace } = await createPrivateApiMockRequest({

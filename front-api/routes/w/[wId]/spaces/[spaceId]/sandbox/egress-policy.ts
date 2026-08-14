@@ -20,7 +20,7 @@ import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
 // Mounted at /api/w/:wId/spaces/:spaceId/sandbox/egress-policy. The parent
-// sandbox sub-app applies the workspace-admin and `sandbox_functions` gates;
+// sandbox sub-app applies the workspace-admin and Computer feature gates;
 // each handler additionally validates that the space is a Pod (project
 // space).
 //

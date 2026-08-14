@@ -13,8 +13,9 @@ interface PodNetworkSectionProps {
 }
 
 // Pod-level sandbox egress allowlist. Merged on top of the workspace-level
-// allowlist for the Pod's Shared Computer. Workspace-admin only (matching the
-// API), gated behind the `sandbox_functions` feature at the call site.
+// allowlist for the Pod's Shared Computer. Workspace-admin only (matching
+// the API), gated behind the workspace-level Computer flag at the call site
+// (useComputerAdminAccess).
 export function PodNetworkSection({ owner, podId }: PodNetworkSectionProps) {
   const {
     policy,
