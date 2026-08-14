@@ -37,6 +37,7 @@ import type {
 } from "@app/types/assistant/agent_run";
 import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
 import type { SupportedModel } from "@app/types/assistant/models/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 import type {
   ChildWorkflowHandle,
@@ -586,9 +587,17 @@ export async function runSandboxChildToolWorkflow({
     runAgentArgs: agentLoopArgs,
     step,
   };
-  const shouldRetryOnInterrupt =
-    retryPolicy === "retry_on_interrupt" &&
-    patched("sandbox-child-tool-retry-policy");
+  let shouldRetryOnInterrupt: boolean;
+  switch (retryPolicy) {
+    case "retry_on_interrupt":
+      shouldRetryOnInterrupt = patched("sandbox-child-tool-retry-policy");
+      break;
+    case "no_retry":
+      shouldRetryOnInterrupt = false;
+      break;
+    default:
+      assertNever(retryPolicy);
+  }
   const { deferredEvents } = shouldRetryOnInterrupt
     ? await runRetryableToolActivity(authType, activityArgs)
     : await runToolActivity(authType, activityArgs);
