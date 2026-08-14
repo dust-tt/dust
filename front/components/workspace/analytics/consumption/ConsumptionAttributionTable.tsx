@@ -43,7 +43,13 @@ import {
 } from "@dust-tt/sparkle";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import type { Transition, Variants } from "framer-motion";
-import { AnimatePresence, m, useReducedMotion } from "framer-motion";
+import {
+  AnimatePresence,
+  domMax,
+  LazyMotion,
+  m,
+  useReducedMotion,
+} from "framer-motion";
 import type { ReactNode } from "react";
 import { useMemo, useRef, useState } from "react";
 import type { AttributionRowData } from "./ConsumptionAttributionRowsTable";
@@ -430,7 +436,7 @@ function AttributionRows({
       })),
     [rows, onAddFilter]
   );
-  const isLoading = isTopLoading || isTopValidating;
+  const isLoading = isTopLoading;
 
   let contentKey = "content";
   let content: ReactNode;
@@ -507,7 +513,7 @@ function AttributionRows({
           duration: shouldReduceMotion ? 0 : 0.1,
           ease: MOTION_EASINGS.enter,
         }}
-        aria-busy={isLoading}
+        aria-busy={isLoading || isTopValidating}
       >
         {content}
       </m.div>
@@ -617,38 +623,40 @@ export function ConsumptionAttributionTable({
             onChange={setValue}
             className="w-full"
           />
-          <div className="relative overflow-hidden">
-            <AnimatePresence
-              initial={false}
-              mode="popLayout"
-              custom={effectiveTransitionDirection}
-            >
-              <m.div
-                key={dimension}
+          <LazyMotion features={domMax}>
+            <div className="relative overflow-hidden">
+              <AnimatePresence
+                initial={false}
+                mode="popLayout"
                 custom={effectiveTransitionDirection}
-                variants={ATTRIBUTION_BODY_VARIANTS}
-                initial="initial"
-                animate="animate"
-                exit="exit"
               >
-                {/* Reset table state whenever its dataset or local search changes. */}
-                <AttributionRows
-                  key={JSON.stringify({
-                    period,
-                    filter,
-                    search: debouncedValue,
-                  })}
-                  workspaceId={workspaceId}
-                  dimension={dimension}
-                  period={period}
-                  filter={filter}
-                  onAddFilter={onAddFilter}
-                  search={debouncedValue}
-                  onViewAll={onViewAll}
-                />
-              </m.div>
-            </AnimatePresence>
-          </div>
+                <m.div
+                  key={dimension}
+                  custom={effectiveTransitionDirection}
+                  variants={ATTRIBUTION_BODY_VARIANTS}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                >
+                  {/* Reset table state whenever its dataset or local search changes. */}
+                  <AttributionRows
+                    key={JSON.stringify({
+                      period,
+                      filter,
+                      search: debouncedValue,
+                    })}
+                    workspaceId={workspaceId}
+                    dimension={dimension}
+                    period={period}
+                    filter={filter}
+                    onAddFilter={onAddFilter}
+                    search={debouncedValue}
+                    onViewAll={onViewAll}
+                  />
+                </m.div>
+              </AnimatePresence>
+            </div>
+          </LazyMotion>
         </div>
       </div>
     </div>
