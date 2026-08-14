@@ -1,12 +1,17 @@
 import type { FileSystemScope } from "@app/lib/api/file_system/namespace_scope";
-import type { FileSystemOperation } from "@app/lib/api/file_system/namespace_types";
+import type {
+  FileSystemNodeType,
+  FileSystemOperation,
+} from "@app/lib/api/file_system/namespace_types";
 import {
   FILE_SYSTEM_REQUEST_ID_MAX_LENGTH,
+  FileSystemNodeSchema,
   FileSystemOperationError,
 } from "@app/lib/api/file_system/namespace_types";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileSystemNodeResource } from "@app/lib/resources/file_system_node_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { FileSystemMutationModel } from "@app/lib/resources/storage/models/file_system_mutation";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -18,10 +23,20 @@ import { UniqueConstraintError } from "sequelize";
 import { z } from "zod";
 
 type CreateRequest = Extract<FileSystemOperation, { operation: "create" }>;
+type RenameRequest = Extract<FileSystemOperation, { operation: "rename" }>;
 
 const CreateMutationResponseSchema = z.object({
   nodeId: z.number().int().positive(),
 });
+const RenameMutationResponseSchema = z.object({
+  node: FileSystemNodeSchema,
+  sourceParentId: z.number().int().positive(),
+  sourceName: z.string(),
+  destinationParentId: z.number().int().positive(),
+  destinationName: z.string(),
+});
+
+const FILE_SYSTEM_NAMESPACE_LOCK_PREFIX = "file_system_namespace";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileSystemMutationResource
@@ -58,6 +73,49 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
     });
 
     return row ? new this(this.model, row.get()) : null;
+  }
+
+  private static validateRequestId(
+    requestId: string
+  ): Result<undefined, FileSystemOperationError> {
+    if (
+      requestId.length === 0 ||
+      requestId.length > FILE_SYSTEM_REQUEST_ID_MAX_LENGTH
+    ) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          `Request ID must be between 1 and ${FILE_SYSTEM_REQUEST_ID_MAX_LENGTH} characters.`
+        )
+      );
+    }
+
+    return new Ok(undefined);
+  }
+
+  private static async lockNamespace(
+    auth: Authenticator,
+    {
+      mode,
+      transaction,
+    }: { mode: "exclusive" | "shared"; transaction: Transaction }
+  ): Promise<void> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const key = `${FILE_SYSTEM_NAMESPACE_LOCK_PREFIX}:${workspaceId}`;
+
+    // Creates take a shared lock, so different creates can run at the same
+    // time. Rename takes an exclusive lock and waits for current creates. Without
+    // it, a child created during a cross-root move could keep the old rootKind
+    // and rootId.
+    const query =
+      mode === "shared"
+        ? "SELECT pg_advisory_xact_lock_shared(hashtextextended(:key, 0))"
+        : "SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))";
+    // biome-ignore lint/plugin/noRawSql: PostgreSQL advisory locks have no Sequelize equivalent.
+    await frontSequelize.query(query, {
+      replacements: { key },
+      transaction,
+    });
   }
 
   private async createdNode(
@@ -100,25 +158,70 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
         );
   }
 
+  private async renamedNode(
+    scope: FileSystemScope,
+    request: RenameRequest
+  ): Promise<Result<FileSystemNodeType, FileSystemOperationError>> {
+    if (this.kind !== "rename") {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "That request ID belongs to a different filesystem operation."
+        )
+      );
+    }
+
+    const parsed = RenameMutationResponseSchema.safeParse(this.response);
+    if (!parsed.success) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "The saved filesystem response is invalid."
+        )
+      );
+    }
+    if (
+      parsed.data.sourceParentId !== request.sourceParentId ||
+      parsed.data.sourceName !== request.sourceName ||
+      parsed.data.destinationParentId !== request.destinationParentId ||
+      parsed.data.destinationName !== request.destinationName
+    ) {
+      return new Err(
+        new FileSystemOperationError(
+          "invalid_operation",
+          "That request ID belongs to a different rename."
+        )
+      );
+    }
+
+    if (!scope.canRead(parsed.data.node.rootKind, parsed.data.node.rootId)) {
+      return new Err(
+        new FileSystemOperationError(
+          "not_found",
+          "The node renamed by this request is no longer available."
+        )
+      );
+    }
+
+    // Return the result saved by the first request. Fetching the node again
+    // could return a later move, or nothing if another rename replaced it.
+    return new Ok(parsed.data.node);
+  }
+
   static async createNode(
     auth: Authenticator,
     scope: FileSystemScope,
     request: CreateRequest
   ): Promise<Result<FileSystemNodeResource, FileSystemOperationError>> {
-    if (
-      request.requestId.length === 0 ||
-      request.requestId.length > FILE_SYSTEM_REQUEST_ID_MAX_LENGTH
-    ) {
-      return new Err(
-        new FileSystemOperationError(
-          "invalid_operation",
-          `Request ID must be between 1 and ${FILE_SYSTEM_REQUEST_ID_MAX_LENGTH} characters.`
-        )
-      );
+    const requestIdRes = this.validateRequestId(request.requestId);
+    if (requestIdRes.isErr()) {
+      return requestIdRes;
     }
 
     try {
       return await withTransaction(async (transaction) => {
+        // Take this before locking any file or directory row.
+        await this.lockNamespace(auth, { mode: "shared", transaction });
         const existing = await this.baseFetch(
           auth,
           request.requestId,
@@ -201,5 +304,95 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
       }
       throw error;
     }
+  }
+
+  static async renameNode(
+    auth: Authenticator,
+    scope: FileSystemScope,
+    request: RenameRequest
+  ): Promise<Result<FileSystemNodeType, FileSystemOperationError>> {
+    const requestIdRes = this.validateRequestId(request.requestId);
+    if (requestIdRes.isErr()) {
+      return requestIdRes;
+    }
+
+    return withTransaction(async (transaction) => {
+      // Take this before locking any file or directory row. It blocks creates
+      // until the directory move and its child updates have committed.
+      await this.lockNamespace(auth, { mode: "exclusive", transaction });
+
+      const existing = await this.baseFetch(
+        auth,
+        request.requestId,
+        transaction
+      );
+      if (existing) {
+        return existing.renamedNode(scope, request);
+      }
+
+      const sourceParent = await FileSystemNodeResource.fetchById(
+        auth,
+        scope,
+        request.sourceParentId,
+        { transaction, forUpdate: true }
+      );
+      if (!sourceParent) {
+        return new Err(
+          new FileSystemOperationError(
+            "not_found",
+            "The source directory was not found."
+          )
+        );
+      }
+      const destinationParent =
+        request.destinationParentId === sourceParent.id
+          ? sourceParent
+          : await FileSystemNodeResource.fetchById(
+              auth,
+              scope,
+              request.destinationParentId,
+              { transaction, forUpdate: true }
+            );
+      if (!destinationParent) {
+        return new Err(
+          new FileSystemOperationError(
+            "not_found",
+            "The destination directory was not found."
+          )
+        );
+      }
+
+      // The move and the saved response use the same transaction: both commit,
+      // or neither does.
+      const movedRes = await sourceParent.renameChild(auth, scope, {
+        sourceName: request.sourceName,
+        destinationParent,
+        destinationName: request.destinationName,
+        transaction,
+      });
+      if (movedRes.isErr()) {
+        return movedRes;
+      }
+      const node = movedRes.value.toJSON();
+
+      await this.model.create(
+        {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          completedAt: new Date(),
+          requestId: request.requestId,
+          kind: "rename",
+          response: {
+            node,
+            sourceParentId: request.sourceParentId,
+            sourceName: request.sourceName,
+            destinationParentId: request.destinationParentId,
+            destinationName: request.destinationName,
+          },
+        },
+        { transaction }
+      );
+
+      return new Ok(node);
+    });
   }
 }
