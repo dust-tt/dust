@@ -26,7 +26,7 @@ addons.setConfig({
     {
       tags: "a11y-issues",
       badge: {
-        text: "🔴 a11y",
+        text: "a11y",
         style: { backgroundColor: "#FEE2E2", color: "#B91C1C" },
         tooltip: "Has known accessibility violations",
       },
