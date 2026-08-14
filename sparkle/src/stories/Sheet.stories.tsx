@@ -111,10 +111,7 @@ export function ContentDemo() {
         </SheetTrigger>
         <SheetContent size="xl">
           <SheetHeader>
-            <Page.Header
-              icon={Rocket02}
-              title={<>Quick Guide for new members</>}
-            />
+            <Page.Header title={<>Quick Guide for new members</>} />
           </SheetHeader>
           <SheetContainer>
             <QIG />
