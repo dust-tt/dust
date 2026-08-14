@@ -7,7 +7,11 @@ import type {
   AgentLoopArgs,
   AgentMessageRef,
 } from "@app/types/assistant/agent_run";
-import { proxyActivities, setHandler } from "@temporalio/workflow";
+import {
+  proxyActivities,
+  setHandler,
+  workflowInfo,
+} from "@temporalio/workflow";
 
 const { storeAgentAnalyticsActivity, storeAgentMessageFeedbackActivity } =
   proxyActivities<typeof activities>({
@@ -28,8 +32,19 @@ const {
   startToCloseTimeout: "5 minutes",
 });
 
+// scheduleToCloseTimeout bounds the total time across all retries: a persistent
+// Elasticsearch/GCS failure must eventually fail the workflow rather than retry
+// forever, since the workflow ID is stable per workspace and blocks subsequent
+// export requests while running. 3 attempts at up to 30 minutes each, plus
+// backoff, comfortably fits inside the 3-hour ceiling.
 const { runConsumptionExportActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
+  scheduleToCloseTimeout: "3 hours",
+  retry: {
+    maximumAttempts: 3,
+    initialInterval: "2 minutes",
+    backoffCoefficient: 2,
+  },
 });
 
 export async function storeAgentAnalyticsWorkflow(
@@ -92,5 +107,14 @@ export async function runConsumptionExportWorkflow(
     filter: ConsumptionScopeFilter;
   }
 ): Promise<void> {
-  await runConsumptionExportActivity(authType, { period, filter });
+  // Stable across activity retries (unlike Date.now() computed inside the
+  // activity), so a retry after a lost completion ack re-uploads to the same
+  // GCS path instead of leaving an orphaned duplicate zip.
+  const { workflowId } = workflowInfo();
+
+  await runConsumptionExportActivity(authType, {
+    period,
+    filter,
+    exportId: workflowId,
+  });
 }
