@@ -963,9 +963,11 @@ def print_compare(file_path: str, source_path: str) -> str:
                 f"{src_fid.total})"
             )
 
-        # Density: the template's max words/slide is a hard ceiling.
-        if out_fid.word_counts and src_fid.word_counts:
-            ceiling = max(src_fid.word_counts)
+        # Density: the template's max words/slide is a hard ceiling. A ceiling of
+        # zero means the template ships layouts with no copy on them, so it sets
+        # no budget and every filled slide would "exceed" it.
+        ceiling = max(src_fid.word_counts) if src_fid.word_counts else 0
+        if out_fid.word_counts and ceiling:
             out_max = max(out_fid.word_counts)
             over = [
                 (i + 1, w)
@@ -983,6 +985,11 @@ def print_compare(file_path: str, source_path: str) -> str:
                     f"    [!] {len(over)} slide(s) over template ceiling of "
                     f"{ceiling} words: {listing}"
                 )
+        elif out_fid.word_counts:
+            lines.append(
+                f"  density: max {max(out_fid.word_counts)} words/slide "
+                "(template sets no ceiling - its slides carry no copy)"
+            )
 
         # Per-slide structural issues, rolled up (informational - some may be
         # inherited from the template; the per-slide view judges each).
