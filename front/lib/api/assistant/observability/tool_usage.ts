@@ -231,9 +231,9 @@ export async function resolveServerDisplayNames(
   serverNames: string[]
 ): Promise<Map<string, string>> {
   const unique = [...new Set(serverNames)];
-  const remoteServerMap = await RemoteMCPServerResource.fetchBySIdsAsMap(
-    auth,
-    unique
+  const remoteServers = await RemoteMCPServerResource.fetchByIds(auth, unique);
+  const remoteServerMap = new Map(
+    remoteServers.map((server) => [server.sId, server])
   );
 
   const displayMap = new Map<string, string>();

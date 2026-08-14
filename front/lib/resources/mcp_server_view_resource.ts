@@ -729,9 +729,12 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       return metadata;
     }
 
-    const remoteServerMap = await RemoteMCPServerResource.fetchBySIdsAsMap(
+    const remoteServers = await RemoteMCPServerResource.fetchByIds(
       auth,
       remoteIds
+    );
+    const remoteServerMap = new Map(
+      remoteServers.map((server) => [server.sId, server])
     );
     for (const [id, server] of remoteServerMap) {
       metadata.set(id, {

@@ -452,9 +452,12 @@ async function collectToolUsageFromMessage(
       )
     ),
   ];
-  const remoteServerMap = await RemoteMCPServerResource.fetchBySIdsAsMap(
+  const remoteServers = await RemoteMCPServerResource.fetchByIds(
     auth,
     mcpServerIds
+  );
+  const remoteServerMap = new Map(
+    remoteServers.map((server) => [server.sId, server])
   );
 
   return billingLines.map(({ action, billedCredits }) => {

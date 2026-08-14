@@ -18,10 +18,7 @@ import { destroyMCPServerViewDependencies } from "@app/lib/resources/mcp_server_
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import {
-  getResourceIdFromSId,
-  isResourceSId,
-} from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { mcpToolsRequireConfiguration } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
@@ -402,20 +399,6 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       },
       transaction
     );
-  }
-
-  static async fetchBySIdsAsMap(
-    auth: Authenticator,
-    sIds: string[]
-  ): Promise<Map<string, RemoteMCPServerResource>> {
-    const remoteSIds = sIds.filter((sId) =>
-      isResourceSId("remote_mcp_server", sId)
-    );
-    if (remoteSIds.length === 0) {
-      return new Map();
-    }
-    const servers = await this.fetchByIds(auth, remoteSIds);
-    return new Map(servers.map((server) => [server.sId, server]));
   }
 
   static async listByWorkspace(
