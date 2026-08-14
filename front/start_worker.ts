@@ -1,7 +1,3 @@
-import {
-  createWorkerHealthServer,
-  WORKER_HEALTH_PORT,
-} from "@app/lib/api/worker_health";
 import logger from "@app/logger/logger";
 import type { WorkerName } from "@app/temporal/worker_registry";
 import {
@@ -9,7 +5,6 @@ import {
   ALL_WORKERS_BUT_RELOCATION,
   workerFunctions,
 } from "@app/temporal/worker_registry";
-import { isDevelopment } from "@app/types/shared/env";
 import { setupGlobalErrorHandler } from "@app/types/shared/utils/global_error_handler";
 import type { Logger, LogLevel } from "@temporalio/common/lib/logger";
 import { Runtime } from "@temporalio/worker/lib/runtime";
@@ -49,10 +44,6 @@ Runtime.install({
     },
   },
 });
-
-if (!isDevelopment()) {
-  createWorkerHealthServer().listen(WORKER_HEALTH_PORT, "0.0.0.0");
-}
 
 async function runWorkers(workers: WorkerName[]) {
   for (const worker of workers) {

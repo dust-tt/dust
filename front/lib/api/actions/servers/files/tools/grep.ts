@@ -14,14 +14,14 @@ import {
   requireAgentLoopConversation,
   scopedPathsFromArgs,
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
+import type { GrepMatches } from "@app/lib/api/actions/servers/files/tools/grep_regex";
 import {
+  collectGrepMatches,
   compileGrepPattern,
-  validateGrepLine,
 } from "@app/lib/api/actions/servers/files/tools/grep_regex";
 import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import * as readline from "readline";
 
 export async function grepHandler(
   { path, pattern }: { path: string; pattern: string },
@@ -88,40 +88,12 @@ export async function grepHandler(
     );
   }
 
-  const matches: string[] = [];
-  let lineNumber = 0;
-  let capped = false;
-
-  // readResult.value is a Readable stream readline will stop early once we hit GREP_MATCHES_MAX.
-  const rl = readline.createInterface({
-    input: readResult.value,
-    crlfDelay: Infinity,
-  });
-
+  let grepResult: GrepMatches;
   try {
-    for await (const line of rl) {
-      lineNumber++;
-
-      const lineError = validateGrepLine(line);
-      if (lineError) {
-        return new Err(
-          new MCPError(
-            `Failed to search file \`${path}\` at line ${lineNumber}: ${lineError.message}`,
-            { tracked: false }
-          )
-        );
-      }
-
-      if (regex.test(line)) {
-        matches.push(`${lineNumber}: ${line}`);
-
-        if (matches.length >= GREP_MATCHES_MAX) {
-          capped = true;
-          rl.close();
-          break;
-        }
-      }
-    }
+    grepResult = await collectGrepMatches(readResult.value, regex, {
+      formatMatch: (line, lineNumber) => `${lineNumber}: ${line}`,
+      maxMatches: GREP_MATCHES_MAX,
+    });
   } catch (err) {
     return new Err(
       new MCPError(
@@ -129,6 +101,8 @@ export async function grepHandler(
       )
     );
   }
+
+  const { matches, capped } = grepResult;
 
   if (matches.length === 0) {
     return new Ok([

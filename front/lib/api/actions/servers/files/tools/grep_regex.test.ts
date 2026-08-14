@@ -1,9 +1,11 @@
 import { performance } from "node:perf_hooks";
+import { Readable } from "node:stream";
 import {
+  collectGrepMatches,
   compileGrepPattern,
-  GREP_LINE_MAX_CHARS,
+  GREP_LINE_MAX_BYTES,
   GREP_PATTERN_MAX_CHARS,
-  validateGrepLine,
+  GREP_RESPONSE_CONTENT_BUDGET_BYTES,
 } from "@app/lib/api/actions/servers/files/tools/grep_regex";
 import { describe, expect, it } from "vitest";
 
@@ -15,7 +17,6 @@ describe("grep regex", () => {
       throw regexResult.error;
     }
 
-    expect(validateGrepLine("DUST-42")).toBeNull();
     expect(regexResult.value.test("DUST-42")).toBe(true);
   });
 
@@ -47,13 +48,46 @@ describe("grep regex", () => {
     expect(durationMs).toBeLessThan(1_000);
   });
 
-  it("rejects lines above the strict matching bound", () => {
+  it("rejects an oversized line before receiving a newline", async () => {
     const regexResult = compileGrepPattern("dust");
     if (regexResult.isErr()) {
       throw regexResult.error;
     }
 
-    const lineError = validateGrepLine("a".repeat(GREP_LINE_MAX_CHARS + 1));
-    expect(lineError?.message).toContain("longer than");
+    const search = collectGrepMatches(
+      Readable.from([Buffer.alloc(GREP_LINE_MAX_BYTES, "a"), Buffer.from("a")]),
+      regexResult.value,
+      {
+        formatMatch: (line, lineNumber) => `${lineNumber}: ${line}`,
+        maxMatches: 50,
+      }
+    );
+
+    await expect(search).rejects.toThrow(
+      `line 1: it exceeds ${GREP_LINE_MAX_BYTES} bytes`
+    );
+  });
+
+  it("caps accumulated matches at the byte budget", async () => {
+    const regexResult = compileGrepPattern("é");
+    if (regexResult.isErr()) {
+      throw regexResult.error;
+    }
+
+    const result = await collectGrepMatches(
+      Readable.from([`${"é".repeat(GREP_RESPONSE_CONTENT_BUDGET_BYTES)}\n`]),
+      regexResult.value,
+      {
+        formatMatch: (line, lineNumber) => `${lineNumber}: ${line}`,
+        maxMatches: 50,
+      }
+    );
+
+    const output = result.matches.join("\n");
+    expect(result.capped).toBe(true);
+    expect(Buffer.byteLength(output, "utf8")).toBeLessThanOrEqual(
+      GREP_RESPONSE_CONTENT_BUDGET_BYTES
+    );
+    expect(output).not.toContain("�");
   });
 });
