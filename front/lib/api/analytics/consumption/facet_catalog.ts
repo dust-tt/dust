@@ -1,18 +1,13 @@
-import {
-  getMcpServerDisplayName,
-  getMcpServerViewDisplayName,
-  isRemoteMCPServerType,
-} from "@app/lib/actions/mcp_helper";
+import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import { SOURCE_ORIGIN_LABELS } from "@app/lib/api/analytics/source_labels";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
-import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
-import { listMCPServersWithViews } from "@app/lib/api/mcp/servers";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import tracer from "@app/logger/tracer";
@@ -68,33 +63,41 @@ function traceFacetCatalogLoad<T>(
 }
 
 function toolFacetCatalogEntries(
-  mcpServers: MCPServerTypeWithViews[]
+  mcpServerViews: MCPServerViewResource[]
 ): ConsumptionFacetCatalogEntry[] {
-  const entries = mcpServers.flatMap<ConsumptionFacetCatalogEntry>((server) => {
-    if (!isRemoteMCPServerType(server)) {
+  const entries = mcpServerViews.flatMap<ConsumptionFacetCatalogEntry>(
+    (view) => {
+      const server = view.getServerDisplayMetadata();
+      if (view.serverType === "internal") {
+        return [
+          {
+            value: server.name,
+            label: getMcpServerDisplayName({
+              sId: view.mcpServerId,
+              name: server.name,
+            }),
+            pictureUrl: null,
+            icon: server.icon,
+          },
+        ];
+      }
+
+      // Remote tool documents store a name in `tool.server_name`. They do not
+      // store the remote server ID. The name comes from the action name override,
+      // then the view name, then the server name. This list covers view and server
+      // names. Elasticsearch adds action name overrides and old names found in
+      // the selected period. Using the server ID here would never match the
+      // indexed data and would show a disabled duplicate in the UI.
       return [
         {
-          value: server.name,
-          label: getMcpServerDisplayName(server),
+          value: view.name ?? server.name,
+          label: view.getDisplayName(),
           pictureUrl: null,
           icon: server.icon,
         },
       ];
     }
-
-    // Remote tool documents store a name in `tool.server_name`. They do not
-    // store the remote server ID. The name comes from the action name override,
-    // then the view name, then the server name. This list covers view and server
-    // names. Elasticsearch adds action name overrides and old names found in
-    // the selected period. Using the server ID here would never match the
-    // indexed data and would show a disabled duplicate in the UI.
-    return server.views.map((view) => ({
-      value: view.name ?? server.name,
-      label: getMcpServerViewDisplayName(view),
-      pictureUrl: null,
-      icon: view.server.icon,
-    }));
-  });
+  );
 
   // The same remote server can have several views with the same name. Keep one
   // filter option for that name.
@@ -149,11 +152,11 @@ async function listConsumptionFacetCatalogWithoutTracing(
       return result.models;
     }
   );
-  const mcpServers = await traceFacetCatalogLoad(
+  const mcpServerViews = await traceFacetCatalogLoad(
     "mcp_servers",
     "tool",
     requestedDimension,
-    () => listMCPServersWithViews(auth)
+    () => MCPServerViewResource.listByWorkspace(auth)
   );
   const skills = await traceFacetCatalogLoad(
     "skills",
@@ -198,7 +201,7 @@ async function listConsumptionFacetCatalogWithoutTracing(
             model.defaultReasoningEffort
           ) ?? undefined,
       })),
-    tool: toolFacetCatalogEntries(mcpServers),
+    tool: toolFacetCatalogEntries(mcpServerViews),
     skill: skills.map((skill) => ({
       value: skill.sId,
       label: skill.name,
