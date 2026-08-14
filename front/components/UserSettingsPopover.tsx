@@ -1,6 +1,7 @@
 import { UsageUpgradeButton } from "@app/components/credits/UsageUpgradeButton";
 import { MarkdownEditor } from "@app/components/editor/MarkdownEditor";
 import {
+  ForYouNotificationPreferences,
   NotificationPreferences,
   useNotificationPreferencesForm,
 } from "@app/components/me/NotificationPreferences";
@@ -750,12 +751,22 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
                 <NotificationPreferences
                   control={notif.control}
                   displaySlackOption={notif.displaySlackOption}
-                  displayForYouOption={displayForYouOption}
                   workflowEnabled={notif.workflowEnabled}
                 />
               )}
             </div>
           )}
+          {showNotificationPreferences &&
+            displayForYouOption &&
+            notif.status !== "error" && (
+              <div className="flex flex-col gap-4">
+                <Page.SectionHeader
+                  title="For you"
+                  description="Recommendation emails from your learning space"
+                />
+                <ForYouNotificationPreferences control={notif.control} />
+              </div>
+            )}
         </>
       )}
     </SectionContent>

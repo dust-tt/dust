@@ -142,6 +142,8 @@ export function GetStartedPage() {
 
   const firstName = user?.firstName ?? user?.fullName?.split(" ")[0] ?? "there";
 
+  // useLayoutEffect runs before paint; RootLayout only strips UTMs in a
+  // useEffect (after paint), so the campaign params are still on the URL here.
   useLayoutEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("utm_campaign") !== FOR_YOU_EMAIL_UTM.utm_campaign) {
