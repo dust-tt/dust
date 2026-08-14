@@ -7,7 +7,6 @@ import { z } from "zod";
 export const DEFAULT_CONSUMPTION_PERIOD_DAYS = 30;
 
 export const DEFAULT_CONSUMPTION_TOP_LIMIT = 10;
-export const MAX_CONSUMPTION_TOP_BUCKETS = 1_000;
 
 const ConsumptionFilterSchema = z.record(
   z.enum(CONSUMPTION_SCOPE_FILTER_KEYS),
