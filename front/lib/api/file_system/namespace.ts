@@ -26,8 +26,10 @@ export async function applyFileSystemOperation(
   switch (request.operation) {
     case "initialize": {
       const roots = await FileSystemNodeResource.ensureRoots(auth, scope);
-      return new Ok({ roots });
+
+      return new Ok({ roots: roots.map((root) => root.toJSON()) });
     }
+
     case "lookup": {
       const node = await FileSystemNodeResource.lookup(
         auth,
@@ -35,20 +37,33 @@ export async function applyFileSystemOperation(
         request.parentId,
         request.name
       );
-      return node.isErr() ? node : new Ok({ node: node.value });
+
+      return node.isErr()
+        ? node
+        : new Ok({ node: node.value?.toJSON() ?? null });
     }
+
     case "getAttr": {
       const node = await FileSystemNodeResource.getAttr(
         auth,
         scope,
         request.nodeId
       );
-      return node.isErr() ? node : new Ok({ node: node.value });
+
+      return node.isErr() ? node : new Ok({ node: node.value.toJSON() });
     }
+
     case "readDir": {
       const result = await FileSystemNodeResource.readDir(auth, scope, request);
-      return result.isErr() ? result : new Ok(result.value);
+
+      return result.isErr()
+        ? result
+        : new Ok({
+            nodes: result.value.nodes.map((node) => node.toJSON()),
+            nextAfterName: result.value.nextAfterName,
+          });
     }
+
     default:
       return assertNever(request);
   }
