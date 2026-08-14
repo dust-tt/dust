@@ -16,9 +16,9 @@ export async function markSandboxFunctionInvocationFailedActivity(
   }
 ): Promise<void> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
-  // Pipeline resolution: the serialized auth cannot carry the invoker's original grant (e.g. a
+  // Execution-side resolution: the serialized auth cannot carry the invoker's original grant (e.g. a
   // frame share token); the invocation row is the proof of authorization.
-  const sandboxFunction = await SandboxFunctionResource.fetchByIdForPipeline(
+  const sandboxFunction = await SandboxFunctionResource.fetchByIdForExecution(
     auth,
     sandboxFunctionId,
     { invocationId }

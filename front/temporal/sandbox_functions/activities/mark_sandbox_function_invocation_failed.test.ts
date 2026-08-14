@@ -134,7 +134,7 @@ describe("markSandboxFunctionInvocationFailedActivity", () => {
   });
 
   it("updates an invocation for a workspace member without pod access", async () => {
-    // Pipeline resolution: the serialized auth may belong to an invoker whose original grant
+    // Execution-side resolution: the serialized auth may belong to an invoker whose original grant
     // (e.g. a frame share token) cannot be reconstructed; the invocation row is the proof of
     // authorization, so pod access is deliberately not re-checked here.
     const { authenticator, workspace, sandboxFunction, invocation } =
