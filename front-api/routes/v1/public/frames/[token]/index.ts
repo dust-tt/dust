@@ -247,9 +247,17 @@ app.get(
       isPodMember,
       isPodEditor,
       // Lets a shared Frame in an app folder resolve bare function references, exactly as it does
-      // when opened from the Pod. Withheld from viewers who cannot read the Pod, who cannot invoke
-      // its functions either.
-      framePath: canRead && auth ? file.toScopedPath(auth) : null,
+      // when opened from the Pod. For workspace-visible scopes the share token itself is a
+      // workspace member's capability to invoke the frame's app's functions, so members get the
+      // path even without pod read. External viewers cannot invoke and never receive it.
+      framePath:
+        auth &&
+        (canRead ||
+          ((shareScope === "workspace_and_emails" ||
+            shareScope === "workspace") &&
+            auth.isUser()))
+          ? file.toScopedPath(auth)
+          : null,
     });
   }
 );
