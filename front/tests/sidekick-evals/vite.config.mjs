@@ -13,6 +13,9 @@ export default defineConfig(() => {
   // Extended config specific to sidekick evaluation tests
   const testConfig = defineConfig({
     test: {
+      // The evals only talk to the LLM APIs: no DOM needed, and the provider SDKs
+      // refuse to run in a browser-like environment.
+      environment: "node",
       env: {
         // Skip tests by default, unless explicitly enabled
         RUN_SIDEKICK_EVAL: process.env.RUN_SIDEKICK_EVAL ?? "false",
@@ -20,6 +23,8 @@ export default defineConfig(() => {
         FILTER_SCENARIO: process.env.FILTER_SCENARIO ?? "",
         JUDGE_RUNS: process.env.JUDGE_RUNS ?? "3",
         PASS_THRESHOLD: process.env.PASS_THRESHOLD ?? "2",
+        SIDEKICK_MODEL_ID: process.env.SIDEKICK_MODEL_ID ?? "",
+        SIDEKICK_REASONING_EFFORT: process.env.SIDEKICK_REASONING_EFFORT ?? "",
         // Map API keys from non-VITE env vars to VITE prefixed ones for browser compatibility
         DUST_MANAGED_ANTHROPIC_API_KEY:
           process.env.DUST_MANAGED_ANTHROPIC_API_KEY ?? "",
@@ -27,6 +32,7 @@ export default defineConfig(() => {
           process.env.DUST_MANAGED_OPENAI_API_KEY ?? "",
       },
       testTimeout: 300000,
+      maxConcurrency: parseInt(process.env.EVAL_MAX_CONCURRENCY ?? "5", 10),
     },
   });
 

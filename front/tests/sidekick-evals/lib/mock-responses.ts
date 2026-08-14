@@ -1,3 +1,4 @@
+import { formatUserQuestionAnswer } from "@app/lib/actions/user_question";
 import { ONE_DAY_MS, ONE_HOUR_MS } from "@app/tests/sidekick-evals/lib/config";
 import type { MockAgentState } from "@app/tests/sidekick-evals/lib/types";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
@@ -28,6 +29,18 @@ export function getMockToolResponse(
   toolArguments?: Record<string, unknown>
 ): string {
   const mockResponses: Record<string, () => object | string> = {
+    // There is no user to answer during an eval, so every question gets the same
+    // free-text answer. It hands the decision back to the sidekick instead of
+    // steering it, and lets the run continue so the work after the clarifying
+    // question is what gets judged.
+    ask_user_question: () =>
+      formatUserQuestionAnswer(
+        typeof toolArguments?.question === "string"
+          ? toolArguments.question
+          : "",
+        ["Other: do whatever is the most intuitive for you"]
+      ),
+
     get_agent_info: () => agentState,
 
     get_agent_config: () => ({
@@ -287,7 +300,11 @@ export function getMockToolResponse(
 
   const responseFactory = mockResponses[toolName];
   if (!responseFactory) {
-    throw new Error(`Unknown tool: ${toolName}`);
+    // Models sometimes call a tool that is not in the specs. Returning the error
+    // to the model instead of throwing lets it recover, so the scenario is
+    // scored on its final answer rather than dropping out of the run entirely.
+    // The bogus call stays visible to the judge in the tool call list.
+    return `Error: no tool named "${toolName}" is available. Use one of the tools provided in the specifications.`;
   }
 
   const result = responseFactory();
