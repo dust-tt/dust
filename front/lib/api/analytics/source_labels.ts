@@ -45,8 +45,8 @@ export function sourceLabelForOrigin(origin: string): string | undefined {
     : undefined;
 }
 
-// Analytics reports on the surface, not on how the message was sent, so these
-// origins count as their regular counterpart.
+// Analytics reports on the surface a message came from, not on how it was sent,
+// so these origins count as their regular counterpart.
 export const SOURCE_BY_PROGRAMMATIC_ORIGIN: Record<
   string,
   AnalyticsVisibleOrigin
@@ -55,6 +55,14 @@ export const SOURCE_BY_PROGRAMMATIC_ORIGIN: Record<
   triggered_programmatic: "triggered",
   slack_workflow: "slack",
 };
+
+export function normalizeOrigin(
+  origin: UserMessageOrigin | null
+): UserMessageOrigin | null {
+  return origin === null
+    ? null
+    : (SOURCE_BY_PROGRAMMATIC_ORIGIN[origin] ?? origin);
+}
 
 export const SOURCE_LABELS: Record<string, string> = Object.fromEntries(
   Object.entries(SOURCE_ORIGIN_LABELS).filter(

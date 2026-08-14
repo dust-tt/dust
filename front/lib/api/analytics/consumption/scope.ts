@@ -1,4 +1,3 @@
-import { CONTEXT_ORIGIN_SOURCE_FIELD } from "@app/lib/api/analytics/consumption/runtime_fields";
 import type { Authenticator } from "@app/lib/auth";
 import { MICRO_CREDITS_PER_CREDIT } from "@app/lib/credits/units";
 import type { estypes } from "@elastic/elasticsearch";
@@ -34,7 +33,7 @@ export const CONSUMPTION_DIMENSION_FIELDS: Record<
   tool: "tool.server_name",
   // Multi-valued: one tool call can be attributed to several skills at once.
   skill: "tool.attributed_skill_ids",
-  source: CONTEXT_ORIGIN_SOURCE_FIELD,
+  source: "normalized_origin",
 };
 
 export type ConsumptionTopUnit = "message" | "invocation";

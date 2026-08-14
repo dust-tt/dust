@@ -238,6 +238,9 @@ interface AgentMessageConsumptionAnalyticsBaseData
   // Idempotency key.
   consumption_key: string;
   context_origin: UserMessageOrigin | null;
+  // `context_origin` with its programmatic variants folded into the surface they
+  // belong to. This is the source analytics groups and filters on.
+  normalized_origin: UserMessageOrigin | null;
   conversation_id: string;
   // Normalized cost attributed to this consumption unit. Tool documents include the model output
   // used to emit the call, the result footprint, and the direct tool charge. LLM documents carry

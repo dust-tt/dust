@@ -229,7 +229,7 @@ describe("fetchConsumptionFacets", () => {
       term: { "user.id": "user_1" },
     });
     expect(agentContext?.filter?.bool?.filter).toContainEqual({
-      term: { context_origin_source: "slack" },
+      term: { normalized_origin: "slack" },
     });
     expect(agentContext?.filter?.bool?.filter).not.toContainEqual({
       term: { "agent.id": "agent_enabled" },
@@ -279,7 +279,7 @@ describe("fetchConsumptionFacets", () => {
         "model.model_id",
         "tool.server_name",
         "tool.attributed_skill_ids",
-        "context_origin_source",
+        "normalized_origin",
       ])
     );
     expect(queriedFields.filter((field) => field === "agent.id")).toHaveLength(

@@ -1,4 +1,3 @@
-import { CONSUMPTION_RUNTIME_MAPPINGS } from "@app/lib/api/analytics/consumption/runtime_fields";
 import config from "@app/lib/api/config";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -279,7 +278,6 @@ export async function searchConsumptionAnalytics<
 > {
   return esSearch<TDocument, TAggregations>({
     index: CONSUMPTION_ANALYTICS_ALIAS_NAME,
-    runtime_mappings: CONSUMPTION_RUNTIME_MAPPINGS,
     query,
     aggs: options?.aggregations,
     size: options?.size,

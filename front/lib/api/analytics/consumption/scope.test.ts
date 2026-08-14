@@ -59,7 +59,7 @@ describe("buildConsumptionScopeQuery", () => {
       { term: { "model.model_id": "gpt-5.6-luna" } },
       { term: { "tool.server_name": "web_search_&_browse" } },
       { term: { "tool.attributed_skill_ids": "s1" } },
-      { term: { context_origin_source: "web" } },
+      { term: { normalized_origin: "web" } },
     ]);
   });
 

@@ -583,7 +583,7 @@ describe("consumption top rankings", () => {
       avgCreditsPerMessage: 1,
     });
     expect(lastSearchCall()[1]?.aggregations?.by_group?.terms).toMatchObject({
-      field: "context_origin_source",
+      field: "normalized_origin",
     });
   });
 
@@ -600,7 +600,7 @@ describe("consumption top rankings", () => {
 
     const [query] = lastSearchCall();
     expect(query.bool?.filter).toContainEqual({
-      term: { context_origin_source: "slack" },
+      term: { normalized_origin: "slack" },
     });
     expect(query.bool?.filter).toContainEqual({
       terms: { "user.id": ["u1", "u2"] },
