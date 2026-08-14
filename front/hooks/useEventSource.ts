@@ -48,7 +48,11 @@ const stableEventSourceManager = {
    * @param uniqueId A unique identifier for this EventSource instance
    * @returns The newly created EventSource instance
    */
-  async create(url: string, uniqueId: string) {
+  async create(
+    url: string,
+    uniqueId: string,
+    headers?: Record<string, string>
+  ) {
     const urlWithCommitHash = new URL(url, document.baseURI);
     urlWithCommitHash.searchParams.append("commitHash", COMMIT_HASH);
 
@@ -60,6 +64,7 @@ const stableEventSourceManager = {
 
     const newSource = await clientEventSource(pathWithQueryAndHash, {
       heartbeatTimeout: HEARTBEAT_TIMEOUT_MS,
+      ...(headers ? { headers } : {}),
     });
     this.sources.set(uniqueId, newSource);
 
@@ -91,13 +96,19 @@ const stableEventSourceManager = {
 interface UseEventSourceOptions {
   isReadyToConsumeStream?: boolean;
   onTerminalError?: (error: Error) => void;
+  /** Extra request headers (e.g. a frame share token presented as a capability). */
+  headers?: Record<string, string>;
 }
 
 export function useEventSource(
   buildURL: (lastEvent: string | null) => string | null,
   onEventCallback: (event: string) => void,
   uniqueId: string,
-  { isReadyToConsumeStream = true, onTerminalError }: UseEventSourceOptions = {}
+  {
+    isReadyToConsumeStream = true,
+    onTerminalError,
+    headers,
+  }: UseEventSourceOptions = {}
 ) {
   const [isError, setIsError] = useState<Error | null>(null);
   const lastEvent = useRef<string | null>(null);
@@ -128,7 +139,7 @@ export function useEventSource(
       let source = sourceManager.get(uniqueId);
       // If the source is closed or doesn't exist, create a new one.
       if (!source || source.readyState === EventSourcePolyfill.CLOSED) {
-        source = await sourceManager.create(url, uniqueId);
+        source = await sourceManager.create(url, uniqueId, headers);
       }
 
       // If the effect was cleaned up while we were awaiting, discard the connection.

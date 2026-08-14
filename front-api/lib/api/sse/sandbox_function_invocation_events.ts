@@ -1,11 +1,9 @@
 import { getSandboxFunctionInvocationEvents } from "@app/lib/api/sandbox_functions/events";
-import {
-  FRAME_SHARE_TOKEN_HEADER,
-  resolveFrameShareCapability,
-} from "@app/lib/api/sandbox_functions/frame_share_capability";
+import { resolveFrameShareCapability } from "@app/lib/api/sandbox_functions/frame_share_capability";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import { FRAME_SHARE_TOKEN_HEADER } from "@app/types/api/sandbox_functions";
 import { streamEvents } from "@front-api/lib/api/sse/stream_events";
 import type { Context } from "hono";
 import { z } from "zod";

@@ -2,10 +2,7 @@ import { MCP_VALIDATION_OUTPUTS } from "@app/lib/actions/constants";
 import { awaitSandboxFunctionInvocationOutcome } from "@app/lib/api/sandbox_functions/await_invocation";
 import { isSandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import type { FrameShareCapability } from "@app/lib/api/sandbox_functions/frame_share_capability";
-import {
-  FRAME_SHARE_TOKEN_HEADER,
-  resolveFrameShareCapability,
-} from "@app/lib/api/sandbox_functions/frame_share_capability";
+import { resolveFrameShareCapability } from "@app/lib/api/sandbox_functions/frame_share_capability";
 import { resolveSandboxFunctionActionAuthentication } from "@app/lib/api/sandbox_functions/resolve_authentication";
 import { validateSandboxFunctionAction } from "@app/lib/api/sandbox_functions/validate_action";
 import type { Authenticator } from "@app/lib/auth";
@@ -14,6 +11,7 @@ import type {
   PostSandboxFunctionInvocationRequestBody,
   PostSandboxFunctionInvocationResponseBody,
 } from "@app/types/api/sandbox_functions";
+import { FRAME_SHARE_TOKEN_HEADER } from "@app/types/api/sandbox_functions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { redirectToSse } from "@front-api/lib/api/sse/redirect";
 import { workspaceApp } from "@front-api/middlewares/ctx";

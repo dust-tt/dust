@@ -22,6 +22,7 @@ import type {
   SandboxFunctionInvocationEvent,
   SandboxFunctionInvocationOutcome,
 } from "@app/types/api/sandbox_functions";
+import { FRAME_SHARE_TOKEN_HEADER } from "@app/types/api/sandbox_functions";
 import type {
   CallFunctionRequest,
   CommandResultMap,
@@ -195,12 +196,15 @@ const getExtensionFromBlob = (blob: Blob): string => {
 export interface FrameViewer {
   owner: LightWorkspaceType;
   user: UserType;
+  /** Share token the viewer loaded the frame with, presented as an invocation capability. */
+  frameShareToken?: string;
 }
 
 interface SandboxFunctionInvocationProps {
   workspaceId: string;
   functionId: string;
   invocationId: string;
+  frameShareToken?: string;
   onBlocked: (eventId: string, event: SandboxFunctionBlockingEvent) => void;
   onSettle: (
     invocationId: string,
@@ -227,6 +231,7 @@ function SandboxFunctionInvocation({
   workspaceId,
   functionId,
   invocationId,
+  frameShareToken,
   onBlocked,
   onSettle,
 }: SandboxFunctionInvocationProps) {
@@ -297,7 +302,12 @@ function SandboxFunctionInvocation({
     buildEventSourceURL,
     onEventCallback,
     `sandbox-function-invocation-${invocationId}`,
-    { onTerminalError }
+    {
+      onTerminalError,
+      ...(frameShareToken
+        ? { headers: { [FRAME_SHARE_TOKEN_HEADER]: frameShareToken } }
+        : {}),
+    }
   );
 
   return null;
@@ -656,6 +666,12 @@ export interface VisualizationActionIframeProps {
    * bare name; without it, relative references are refused.
    */
   framePath?: string | null;
+  /**
+   * Share token of the Frame being rendered, when the host loaded it through a share link.
+   * Presented as a capability on invocation requests: it lets a workspace member outside the Pod
+   * invoke the frame's app's functions. Authorization happens server-side on every request.
+   */
+  frameShareToken?: string;
   isEditable?: boolean;
   isInDrawer?: boolean;
   onEditText?: EditTextFn;
@@ -886,6 +902,9 @@ export const VisualizationActionIframe = forwardRef<
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              ...(props.frameShareToken
+                ? { [FRAME_SHARE_TOKEN_HEADER]: props.frameShareToken }
+                : {}),
             },
             body: JSON.stringify(body),
           }
@@ -914,7 +933,7 @@ export const VisualizationActionIframe = forwardRef<
         });
       }
     },
-    [runtimeAccess.canInvokeFunctions, workspaceId]
+    [runtimeAccess.canInvokeFunctions, workspaceId, props.frameShareToken]
   );
 
   useVisualizationDataHandler({
@@ -996,6 +1015,7 @@ export const VisualizationActionIframe = forwardRef<
           workspaceId={workspaceId}
           functionId={invocation.functionId}
           invocationId={invocation.invocationId}
+          frameShareToken={props.frameShareToken}
           onBlocked={enqueueBlockedAction}
           onSettle={settleSandboxFunctionInvocation}
         />

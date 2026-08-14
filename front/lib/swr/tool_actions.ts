@@ -5,6 +5,7 @@ import type {
   ResolveAuthenticationOutcome,
 } from "@app/lib/api/assistant/conversation/resolve_authentication";
 import { useFetcher } from "@app/lib/swr/swr";
+import { FRAME_SHARE_TOKEN_HEADER } from "@app/types/api/sandbox_functions";
 import { isAPIErrorResponse } from "@app/types/error";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -127,10 +128,13 @@ function getValidateActionRequest(
 
 interface UseResolveAuthenticationParams {
   owner: LightWorkspaceType;
+  /** Share token of the frame hosting the action, presented as an invocation capability. */
+  frameShareToken?: string;
 }
 
 export function useResolveAuthentication({
   owner,
+  frameShareToken,
 }: UseResolveAuthenticationParams) {
   const sendNotification = useSendNotification();
   const { fetcher } = useFetcher();
@@ -149,6 +153,9 @@ export function useResolveAuthentication({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            ...(frameShareToken
+              ? { [FRAME_SHARE_TOKEN_HEADER]: frameShareToken }
+              : {}),
           },
           body: JSON.stringify(request.body),
         });
@@ -170,7 +177,7 @@ export function useResolveAuthentication({
         setIsResolving(false);
       }
     },
-    [owner.sId, sendNotification, fetcher]
+    [owner.sId, sendNotification, fetcher, frameShareToken]
   );
 
   return { resolveAuthentication, isResolving };
@@ -179,9 +186,15 @@ export function useResolveAuthentication({
 interface UseValidateActionParams {
   owner: LightWorkspaceType;
   onError: (errorMessage: string) => void;
+  /** Share token of the frame hosting the action, presented as an invocation capability. */
+  frameShareToken?: string;
 }
 
-export function useValidateAction({ owner, onError }: UseValidateActionParams) {
+export function useValidateAction({
+  owner,
+  onError,
+  frameShareToken,
+}: UseValidateActionParams) {
   const { fetcher } = useFetcher();
   const [isValidating, setIsValidating] = useState(false);
 
@@ -198,6 +211,9 @@ export function useValidateAction({ owner, onError }: UseValidateActionParams) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            ...(frameShareToken
+              ? { [FRAME_SHARE_TOKEN_HEADER]: frameShareToken }
+              : {}),
           },
           body: JSON.stringify(request.body),
         });
@@ -213,7 +229,7 @@ export function useValidateAction({ owner, onError }: UseValidateActionParams) {
         setIsValidating(false);
       }
     },
-    [owner.sId, onError, fetcher]
+    [owner.sId, onError, fetcher, frameShareToken]
   );
 
   return { validateAction, isValidating };

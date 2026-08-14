@@ -69,6 +69,13 @@ export type SandboxFunctionStake = (typeof SANDBOX_FUNCTION_STAKES)[number];
 // default.
 export const DEFAULT_SANDBOX_FUNCTION_STAKE: SandboxFunctionStake = "low";
 
+/**
+ * Header a frame host attaches to invocation requests to present the frame's share token as a
+ * capability to invoke the frame's app's functions. Lives here (not with the server-side
+ * resolver) because the client attaches it too.
+ */
+export const FRAME_SHARE_TOKEN_HEADER = "x-dust-frame-share-token";
+
 export const SANDBOX_FUNCTION_INVOCATION_ORIGINS = [
   "interactive_session",
   "delegated",

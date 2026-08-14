@@ -2,9 +2,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { podFunctionScopeFromFramePath } from "@app/types/api/pod_function_reference";
 
-/** Header a frame host attaches to invocation requests to present the frame's share token. */
-export const FRAME_SHARE_TOKEN_HEADER = "x-dust-frame-share-token";
-
 /**
  * Possession of a Pod app frame's share token is the capability to invoke that app's published
  * functions: the frame is authored by the pod's members and is unusable without them, so being

@@ -22,6 +22,7 @@ export function SandboxFunctionToolApprovalCard({
   const { validateAction, isValidating } = useValidateAction({
     owner: viewer.owner,
     onError: setErrorMessage,
+    frameShareToken: viewer.frameShareToken,
   });
 
   const handleValidation = async (
