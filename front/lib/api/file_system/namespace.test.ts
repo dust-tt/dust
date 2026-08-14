@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { applyFileSystemOperation } from "@app/lib/api/file_system/namespace";
 import { FileSystemScope } from "@app/lib/api/file_system/namespace_scope";
-import type { FileSystemNode } from "@app/lib/api/file_system/namespace_types";
+import type { FileSystemNodeType } from "@app/lib/api/file_system/namespace_types";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
 
@@ -26,7 +26,7 @@ function readableScope(conversationId: string, podId?: string) {
   ]);
 }
 
-function requireNode(node: FileSystemNode | undefined): FileSystemNode {
+function requireNode(node: FileSystemNodeType | undefined): FileSystemNodeType {
   if (!node) {
     throw new Error("Missing filesystem node.");
   }

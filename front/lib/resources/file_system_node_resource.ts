@@ -1,6 +1,6 @@
 import type { FileSystemScope } from "@app/lib/api/file_system/namespace_scope";
 import type {
-  FileSystemNode,
+  FileSystemNodeType,
   FileSystemOperation,
 } from "@app/lib/api/file_system/namespace_types";
 import {
@@ -206,7 +206,7 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
 
   // Node rendering.
 
-  toJSON(): FileSystemNode {
+  toJSON(): FileSystemNodeType {
     return {
       id: this.id,
       parentId: this.parentId,

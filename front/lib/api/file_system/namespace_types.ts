@@ -8,7 +8,7 @@ export const FILE_SYSTEM_READ_DIR_PAGE_SIZE_LIMITS = {
 } as const;
 
 /** The stable file or directory identity returned by the namespace. */
-export type FileSystemNode = {
+export type FileSystemNodeType = {
   id: number;
   parentId: number | null;
   rootKind: FileSystemRootKind;
@@ -36,9 +36,9 @@ export type FileSystemOperation =
     };
 
 export type FileSystemOperationResponse = {
-  roots?: FileSystemNode[];
-  node?: FileSystemNode | null;
-  nodes?: FileSystemNode[];
+  roots?: FileSystemNodeType[];
+  node?: FileSystemNodeType | null;
+  nodes?: FileSystemNodeType[];
   nextAfterName?: string | null;
 };
 
