@@ -9,6 +9,7 @@ import type * as compactionActivities from "@app/temporal/agent_loop/activities/
 import type * as creditCheckActivities from "@app/temporal/agent_loop/activities/credit_check";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
+import type * as finalizeSandboxChildToolActivities from "@app/temporal/agent_loop/activities/finalize_sandbox_child_tool";
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
@@ -170,6 +171,12 @@ const {
   finalizeInterruptedAgentLoopActivity,
   finalizeErroredAgentLoopActivity,
 } = proxyActivities<typeof finalizeActivities>({
+  startToCloseTimeout: "1 minute",
+});
+
+const { finalizeErroredSandboxChildToolActivity } = proxyActivities<
+  typeof finalizeSandboxChildToolActivities
+>({
   startToCloseTimeout: "1 minute",
 });
 
@@ -587,10 +594,11 @@ export async function runSandboxChildToolWorkflow({
     runAgentArgs: agentLoopArgs,
     step,
   };
+  const useRetryPolicy = patched("sandbox-child-tool-retry-policy");
   let shouldRetryOnInterrupt: boolean;
   switch (retryPolicy) {
     case "retry_on_interrupt":
-      shouldRetryOnInterrupt = patched("sandbox-child-tool-retry-policy");
+      shouldRetryOnInterrupt = useRetryPolicy;
       break;
     case "no_retry":
       shouldRetryOnInterrupt = false;
@@ -598,9 +606,23 @@ export async function runSandboxChildToolWorkflow({
     default:
       assertNever(retryPolicy);
   }
-  const { deferredEvents } = shouldRetryOnInterrupt
-    ? await runRetryableToolActivity(authType, activityArgs)
-    : await runToolActivity(authType, activityArgs);
+  let toolResult: ToolExecutionResult;
+  try {
+    toolResult = shouldRetryOnInterrupt
+      ? await runRetryableToolActivity(authType, activityArgs)
+      : await runToolActivity(authType, activityArgs);
+  } catch (error) {
+    if (useRetryPolicy) {
+      await CancellationScope.nonCancellable(() =>
+        finalizeErroredSandboxChildToolActivity(authType, {
+          actionModelId,
+        })
+      );
+    }
+    throw error;
+  }
+
+  const { deferredEvents } = toolResult;
 
   if (deferredEvents.length > 0) {
     await publishDeferredEventsActivity(deferredEvents);
