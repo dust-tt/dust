@@ -21,6 +21,7 @@ import {
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { microCreditsToCredits } from "@app/lib/credits/units";
+import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -348,10 +349,23 @@ export async function fetchConsumptionTopGroups(
     filter,
     keys: pagedGroups.map((group) => group.key),
   });
+  // The prior-period lookup only feeds the vs-prev display column: a failure
+  // there should not take down the current-period ranking, which already
+  // succeeded. Fall back to unknown growth for every group instead.
   if (previousCreditsResult.isErr()) {
-    return previousCreditsResult;
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        dimension,
+        err: previousCreditsResult.error,
+      },
+      "[ConsumptionAnalytics] Failed to fetch previous-period credits, " +
+        "falling back to null vs-prev values."
+    );
   }
-  const previousCreditsByKey = previousCreditsResult.value;
+  const previousCreditsByKey = previousCreditsResult.isOk()
+    ? previousCreditsResult.value
+    : new Map<string, number>();
 
   return new Ok({
     groups: pagedGroups.map((group) => ({
