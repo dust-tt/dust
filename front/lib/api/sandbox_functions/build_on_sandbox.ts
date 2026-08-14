@@ -11,6 +11,7 @@ import {
 } from "@app/lib/api/sandbox_functions/staging_integrity";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import logger from "@app/logger/logger";
 import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
 import { SANDBOX_FUNCTION_USER_IDENTITY_POLICIES } from "@app/types/api/sandbox_functions";
 import type { Result } from "@app/types/shared/result";
@@ -116,6 +117,9 @@ export async function buildSandboxFunctionOnSandbox(
     timeoutMs: BUILD_EXEC_TIMEOUT_MS,
     user: "agent-proxied",
   });
+  logger.error(
+    `============ Sandbox function build failed on pod ${space.sId} for source ${srcSandboxPath}: ${command}`
+  );
   if (execResult.isErr()) {
     return new Err(
       new SandboxFunctionError("internal", execResult.error.message)
