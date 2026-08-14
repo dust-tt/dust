@@ -23,7 +23,7 @@ export type ConsumptionExportListItem = {
 export async function listConsumptionExports(
   auth: Authenticator
 ): Promise<ConsumptionExportListItem[]> {
-  const workspaceSId = auth.getNonNullableWorkspace().sId;
+  const workspaceId = auth.getNonNullableWorkspace().sId;
   const bucket = getPrivateUploadBucket();
 
   const { files } = await bucket.getAllFilesByPrefix({
