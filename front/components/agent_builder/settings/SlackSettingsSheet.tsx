@@ -392,8 +392,9 @@ export function SlackSettingsSheet({
               Set this agent as the default agent on one or several of your
               Slack channels. It will answer by default when the{" "}
               <span className="font-bold">@Dust</span> Slack bot is mentioned in
-              these channels. To see private channels, activate the Slack tool
-              and connect your personal Slack account.
+              these channels. Private channels you belong to appear here after
+              you add the Slack tool, connect your personal Slack account, and
+              invite <span className="font-bold">@Dust</span> to the channel.
             </div>
             {!isAdmin(owner) && (
               <ContentMessage
