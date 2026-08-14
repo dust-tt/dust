@@ -729,9 +729,23 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       return metadata;
     }
 
-    const remoteMCPServerModelIds = remoteIds
-      .filter((id) => isResourceSId("remote_mcp_server", id))
-      .map((id) => getServerTypeAndIdFromSId(id).id);
+    const remoteServerMap = await RemoteMCPServerResource.fetchBySIdsAsMap(
+      auth,
+      remoteIds
+    );
+    for (const [id, server] of remoteServerMap) {
+      metadata.set(id, {
+        name: server.cachedName,
+        icon: server.icon,
+      });
+    }
+
+    const names = remoteIds.filter(
+      (id) => !isResourceSId("remote_mcp_server", id)
+    );
+    if (names.length === 0) {
+      return metadata;
+    }
 
     const workspaceModelId = auth.getNonNullableWorkspace().id;
     const views = await this.baseFetch(
@@ -740,19 +754,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         where: {
           serverType: "remote",
           [Op.or]: [
-            { name: { [Op.in]: remoteIds } },
+            { name: { [Op.in]: names } },
             Sequelize.where(Sequelize.col("remoteMCPServer.cachedName"), {
-              [Op.in]: remoteIds,
+              [Op.in]: names,
             }),
-            ...(remoteMCPServerModelIds.length > 0
-              ? [
-                  {
-                    remoteMCPServerId: {
-                      [Op.in]: remoteMCPServerModelIds,
-                    },
-                  },
-                ]
-              : []),
           ],
         },
         includes: [
@@ -771,10 +776,6 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     const requestedIds = new Set(uniqueIds);
     for (const view of views) {
       const server = view.getRemoteMCPServerResource();
-      const serverId = remoteMCPServerNameToSId({
-        remoteMCPServerId: server.id,
-        workspaceId: workspaceModelId,
-      });
       const serverMetadata = {
         name: server.cachedName,
         icon: server.icon,
@@ -787,9 +788,6 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       }
       if (requestedIds.has(server.cachedName)) {
         metadata.set(server.cachedName, serverMetadata);
-      }
-      if (requestedIds.has(serverId)) {
-        metadata.set(serverId, serverMetadata);
       }
     }
 

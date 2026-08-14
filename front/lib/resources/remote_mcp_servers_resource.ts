@@ -4,10 +4,7 @@ import type {
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icons";
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
-import {
-  getServerTypeAndIdFromSId,
-  remoteMCPServerNameToSId,
-} from "@app/lib/actions/mcp_helper";
+import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { MCPToolType, RemoteMCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { toGlobalResponse, untrustedFetch } from "@app/lib/egress/server";
@@ -407,25 +404,18 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     );
   }
 
-  static async resolveNamesBySIds(
+  static async fetchBySIdsAsMap(
     auth: Authenticator,
     sIds: string[]
-  ): Promise<Map<string, string>> {
+  ): Promise<Map<string, RemoteMCPServerResource>> {
     const remoteSIds = sIds.filter((sId) =>
       isResourceSId("remote_mcp_server", sId)
     );
     if (remoteSIds.length === 0) {
       return new Map();
     }
-    const modelIds = remoteSIds.map((sId) => getServerTypeAndIdFromSId(sId).id);
-    const servers = await this.fetchByModelIds(auth, modelIds);
-    const nameMap = new Map<string, string>();
-    for (const server of servers) {
-      if (server.cachedName) {
-        nameMap.set(server.sId, server.cachedName);
-      }
-    }
-    return nameMap;
+    const servers = await this.fetchByIds(auth, remoteSIds);
+    return new Map(servers.map((server) => [server.sId, server]));
   }
 
   static async listByWorkspace(

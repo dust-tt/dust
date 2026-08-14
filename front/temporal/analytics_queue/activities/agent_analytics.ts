@@ -452,7 +452,7 @@ async function collectToolUsageFromMessage(
       )
     ),
   ];
-  const remoteServerNameMap = await RemoteMCPServerResource.resolveNamesBySIds(
+  const remoteServerMap = await RemoteMCPServerResource.fetchBySIdsAsMap(
     auth,
     mcpServerIds
   );
@@ -462,7 +462,7 @@ async function collectToolUsageFromMessage(
     const { internalMCPServerName, mcpServerId } = actionResource.metadata;
     const serverName =
       internalMCPServerName ??
-      (mcpServerId && remoteServerNameMap.get(mcpServerId)) ??
+      (mcpServerId && remoteServerMap.get(mcpServerId)?.cachedName) ??
       mcpServerId ??
       "unknown";
 

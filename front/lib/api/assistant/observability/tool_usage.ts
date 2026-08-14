@@ -231,14 +231,17 @@ export async function resolveServerDisplayNames(
   serverNames: string[]
 ): Promise<Map<string, string>> {
   const unique = [...new Set(serverNames)];
-  const remoteNameMap = await RemoteMCPServerResource.resolveNamesBySIds(
+  const remoteServerMap = await RemoteMCPServerResource.fetchBySIdsAsMap(
     auth,
     unique
   );
 
   const displayMap = new Map<string, string>();
   for (const name of unique) {
-    displayMap.set(name, remoteNameMap.get(name) ?? asDisplayToolName(name));
+    displayMap.set(
+      name,
+      remoteServerMap.get(name)?.cachedName ?? asDisplayToolName(name)
+    );
   }
   return displayMap;
 }
