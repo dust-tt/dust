@@ -240,34 +240,12 @@ def _load_font(size: int):
     return None
 
 
-def _add_readback_band(img, code: str):
-    """Stamp a proof-of-readback band across the top of the diagnostic render.
-
-    The code lives ONLY in the pixels (it is never printed in the tool's text
-    output), so quoting it back is the one thing that proves the render was
-    actually opened with files__cat. The band is added ABOVE the slide rather
-    than drawn over it, so the stamp never hides content QA has to judge."""
-    from PIL import Image, ImageDraw
-
-    w, h = img.size
-    band = max(40, h // 18)
-    out = Image.new("RGB", (w, h + band), (17, 17, 17))
-    out.paste(img, (0, band))
-    draw = ImageDraw.Draw(out)
-    fsize = max(18, int(band * 0.55))
-    font = _load_font(fsize)
-    text = f"READBACK CODE: {code}   (quote this to prove you opened this render)"
-    draw.text((12, max(0, (band - fsize) // 2)), text, fill=(255, 214, 10), font=font)
-    return out
-
-
 def _annotate_boxes(
     image_path: Path,
     slide: Slide,
     slide_w_emu: int,
     slide_h_emu: int,
     effective_boxes: Optional[Dict[int, BoxEmu]] = None,
-    readback_code: Optional[str] = None,
 ):
     """Overlay each top-level shape's bounding box on the slide image and
     compute pixel metrics. Box positions are read from the file (exact even
@@ -281,10 +259,6 @@ def _annotate_boxes(
     box, so an overflowing text box visibly wraps its text and a spill onto a
     neighbour is caught (a containment that appears only after a box grows is
     spillover, not a designed fg/bg overlay, so it is surfaced not suppressed).
-
-    `readback_code`, when given, is stamped into a band above the slide (only in
-    the pixels, never in the tool's text) so quoting it proves the render was
-    opened - the proof-of-readback for the QA gate.
 
     Returns (out_path, findings) where findings has keys: "overlaps" (a list of
     _overlap_finding dicts - which shape spilled onto which, the kind, axis,
@@ -431,10 +405,7 @@ def _annotate_boxes(
 
     out_path = image_path.with_name(image_path.stem + "-boxes.png")
     try:
-        flat = Image.alpha_composite(base, overlay).convert("RGB")
-        if readback_code:
-            flat = _add_readback_band(flat, readback_code)
-        flat.save(out_path)
+        Image.alpha_composite(base, overlay).convert("RGB").save(out_path)
     except (OSError, ValueError):
         return None
     return out_path, findings

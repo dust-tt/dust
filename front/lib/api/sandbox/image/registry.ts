@@ -833,22 +833,9 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   .registerTool({
     name: "pptx_inspect",
     description:
-      "Inspect and QA .pptx structure (slides, layouts, shapes, text, charts, tables, embedded media) throughout the edit loop. Overview by default, plus modes --slide, --layouts, --text, --media, --render, --qa (post-edit boxed-render + text-readback visual gate) and --compare FILE (template-fidelity [QA: PASS/FAIL] gate). Run with --help for the full per-mode flag reference; the pptx skill covers when and how to use each.",
-    usage:
-      "pptx_inspect <file> [--qa N[,N,...]] [--slide N[,N,...]] [--layouts] [--text] [--media] [--render] [--render-dir DIR] [--compare FILE] [--max-shapes N] [--offset N] (see --help)",
-    returns:
-      "A per-mode text report: deck overview, or per-slide shapes with [!] blockers / [i] advisories, or layouts / text / media listings. --qa and --render publish JPEGs and print their files__cat scoped paths; --compare ends in a [QA: PASS/FAIL] verdict. See --help for field-level detail.",
-    runtime: "system",
-    isDustTool: true,
-  })
-  // --- pptx_slides: safe slide-level structural edits ---
-  .registerTool({
-    name: "pptx_slides",
-    description:
-      "Duplicate, move, or delete .pptx slides without corrupting the package - shares image parts, deep-clones charts, rewrites relationship ids. --duplicate and --delete take a slide pattern (a single slide, a comma list, or ranges, e.g. 2,5,7-9), so do every duplicate or delete in one call rather than one slide at a time. Edit copies afterward with python-pptx",
-    usage:
-      "pptx_slides <file> (--duplicate N[,N,...] [--count K] [--after M] | --move N --to M | --delete N[,N,...])",
-    returns: "A one-line summary of the change and the deck's new slide count",
+      "Inspect and QA .pptx decks: slides, layouts, shapes, text, media",
+    usage: "pptx_inspect <file> [mode]; see --help",
+    returns: "Text report; --qa/--render publish JPEGs and print paths",
     runtime: "system",
     isDustTool: true,
   })

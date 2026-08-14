@@ -4,10 +4,10 @@ import {
   grantTypesForVerb,
   ROLE_REGISTRY,
 } from "@app/lib/resources/group_permission_registry";
+import type { GrantVerb } from "@app/types/group_permissions";
 import {
   GRANT_TYPES,
   GRANT_VERBS,
-  type GrantVerb,
   WHOLE_TYPE_RESOURCE_ID,
 } from "@app/types/group_permissions";
 import { describe, expect, it } from "vitest";

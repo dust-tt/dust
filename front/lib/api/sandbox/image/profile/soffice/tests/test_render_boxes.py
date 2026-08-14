@@ -126,17 +126,6 @@ def test_contrast_text_picks_legible_color():
     assert R._contrast_text((150, 210, 0)) == (0, 0, 0, 255)  # light -> black
 
 
-def test_readback_band_adds_header_without_covering_slide():
-    # The proof-of-readback stamp lives in a band ABOVE the slide, never over it:
-    # width is unchanged, height grows by the band, and the slide pixels survive
-    # shifted down. (The code text itself is only in the band, i.e. the pixels.)
-    slide = Image.new("RGB", (1000, 562), (200, 200, 200))
-    out = R._add_readback_band(slide, "7F3A")
-    band = max(40, 562 // 18)
-    assert out.mode == "RGB"
-    assert out.size == (1000, 562 + band)  # header added, width untouched
-    assert out.getpixel((0, 0)) != (200, 200, 200)  # dark band sits on top
-    assert out.getpixel((500, band + 5)) == (200, 200, 200)  # slide preserved below
 
 
 def test_load_font_returns_a_font():
