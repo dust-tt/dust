@@ -24,6 +24,7 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
+import chunk from "lodash/chunk";
 
 type ConsumptionTopGroup = {
   key: string;
@@ -49,6 +50,8 @@ const CREDIT_AGG = "credit_micro";
 const MESSAGES_AGG = "messages";
 const TOTAL_COUNT_AGG = "total_count";
 const CARDINALITY_PRECISION_THRESHOLD = 40_000;
+const MAX_ES_QUERY_CLAUSES = 1_024;
+const MAX_ES_TERMS_QUERY_VALUES = 65_536;
 
 type GroupBucket = {
   key: string;
@@ -94,6 +97,39 @@ function countFromBucket(
   }
 }
 
+function buildConsumptionTopSearchTermsQuery(
+  dimensionField: string,
+  matchingValues: string[]
+): estypes.QueryDslQueryContainer {
+  const termsClauses = chunk(matchingValues, MAX_ES_TERMS_QUERY_VALUES).map(
+    (values) => ({ terms: { [dimensionField]: values } })
+  );
+  const [firstClause, ...remainingClauses] = termsClauses;
+
+  if (!firstClause) {
+    return { match_none: {} };
+  }
+
+  if (remainingClauses.length === 0) {
+    return firstClause;
+  }
+
+  // Count the bool query itself and each terms clause, as search_store.rs does.
+  const clauseCount = termsClauses.length + 1;
+  if (clauseCount > MAX_ES_QUERY_CLAUSES) {
+    throw new Error(
+      `Consumption ranking search requires ${clauseCount} Elasticsearch clauses, the max is ${MAX_ES_QUERY_CLAUSES}.`
+    );
+  }
+
+  return {
+    bool: {
+      should: [firstClause, ...remainingClauses],
+      minimum_should_match: 1,
+    },
+  };
+}
+
 async function resolveConsumptionTopSearchFilter(
   auth: Authenticator,
   {
@@ -111,13 +147,10 @@ async function resolveConsumptionTopSearchFilter(
     .filter((entry) => entry.label.toLowerCase().includes(normalizedSearch))
     .map((entry) => entry.value);
 
-  if (matchingValues.length === 0) {
-    return { match_none: {} };
-  }
-
-  return {
-    terms: { [CONSUMPTION_DIMENSION_FIELDS[dimension]]: matchingValues },
-  };
+  return buildConsumptionTopSearchTermsQuery(
+    CONSUMPTION_DIMENSION_FIELDS[dimension],
+    matchingValues
+  );
 }
 
 function buildConsumptionTopAggregations({

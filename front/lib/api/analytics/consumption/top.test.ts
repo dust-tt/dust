@@ -274,6 +274,49 @@ describe("consumption top rankings", () => {
     );
   });
 
+  it("splits broad searches into bounded terms clauses", async () => {
+    const { auth } = await setup();
+    vi.mocked(listConsumptionFacetCatalog).mockResolvedValue({
+      agent: Array.from({ length: 65_537 }, (_, index) => ({
+        value: `agent${index}`,
+        label: "Agent",
+        pictureUrl: null,
+      })),
+      user: [],
+      group: [],
+      model: [],
+      tool: [],
+      skill: [],
+      source: [],
+    });
+    mockLabels({});
+    mockAggs({
+      buckets: [],
+      totalCount: 0,
+      totalMicro: 0,
+      filtered: true,
+    });
+
+    await fetchConsumptionTopAgents(auth, {
+      period: PERIOD,
+      limit: 25,
+      search: "agent",
+    });
+
+    const searchFilter = lastSearchCall()[1]?.aggregations?.ranking?.filter;
+    expect(searchFilter?.bool?.minimum_should_match).toBe(1);
+
+    const termsClauses = searchFilter?.bool?.should;
+    expect(Array.isArray(termsClauses)).toBe(true);
+    if (!Array.isArray(termsClauses)) {
+      return;
+    }
+
+    expect(termsClauses).toHaveLength(2);
+    expect(termsClauses[0]?.terms?.["agent.id"]).toHaveLength(65_536);
+    expect(termsClauses[1]?.terms?.["agent.id"]).toHaveLength(1);
+  });
+
   it("counts tool invocations as documents, with no message sub-agg", async () => {
     const { auth } = await setup();
     vi.mocked(resolveDimensionLabels).mockResolvedValue(
