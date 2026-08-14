@@ -14,6 +14,10 @@ import {
   requireAgentLoopConversation,
   scopedPathsFromArgs,
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
+import {
+  compileGrepPattern,
+  testGrepLine,
+} from "@app/lib/api/actions/servers/files/tools/grep_regex";
 import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -62,17 +66,16 @@ export async function grepHandler(
     ]);
   }
 
-  let regex: RegExp;
-  try {
-    regex = new RegExp(pattern, "m");
-  } catch (err) {
+  const regexResult = compileGrepPattern(pattern);
+  if (regexResult.isErr()) {
     return new Err(
       new MCPError(
-        `Invalid regular expression: \`${pattern}\`. Error: ${normalizeError(err).message}`,
+        `Unsupported or invalid regular expression: \`${pattern}\`. Error: ${regexResult.error.message}`,
         { tracked: false }
       )
     );
   }
+  const regex = regexResult.value;
 
   const readResult = await dustFs.read(path);
   if (readResult.isErr()) {
@@ -99,7 +102,17 @@ export async function grepHandler(
     for await (const line of rl) {
       lineNumber++;
 
-      if (regex.test(line)) {
+      const matchResult = testGrepLine({ regex, line });
+      if (matchResult.isErr()) {
+        return new Err(
+          new MCPError(
+            `Failed to search file \`${path}\` at line ${lineNumber}: ${matchResult.error.message}`,
+            { tracked: false }
+          )
+        );
+      }
+
+      if (matchResult.value) {
         matches.push(`${lineNumber}: ${line}`);
 
         if (matches.length >= GREP_MATCHES_MAX) {
