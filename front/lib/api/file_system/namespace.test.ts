@@ -935,6 +935,279 @@ describe("filesystem namespace rename", () => {
   });
 });
 
+describe("filesystem namespace removal", () => {
+  it("removes a file, retires its blob, and replays the request", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const scope = readableScope(`conversation-${randomUUID()}`);
+    const initializedRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      { operation: "initialize" }
+    );
+    if (initializedRes.isErr()) {
+      throw initializedRes.error;
+    }
+    const root = requireNode(initializedRes.value.roots?.[0]);
+    const file = await createNode(authenticator, scope, {
+      parentId: root.id,
+      name: "remove-me.txt",
+      kind: "file",
+    });
+    const preparedRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "prepareContentUpload",
+      nodeId: file.id,
+      expectedBlobId: null,
+      expectedSizeBytes: 14,
+      contentType: "text/plain",
+    });
+    if (preparedRes.isErr() || !preparedRes.value.upload) {
+      throw new Error("Failed to prepare file content.");
+    }
+    const committedRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "commitContentUpload",
+      nodeId: file.id,
+      expectedBlobId: null,
+      blobId: preparedRes.value.upload.blobId,
+      expectedSizeBytes: preparedRes.value.upload.expectedSizeBytes,
+      contentType: preparedRes.value.upload.contentType,
+    });
+    if (committedRes.isErr() || !committedRes.value.node?.blobId) {
+      throw new Error("Failed to commit file content.");
+    }
+    const fileResource = await FileSystemNodeResource.fetchById(
+      authenticator,
+      scope,
+      file.id
+    );
+    if (!fileResource) {
+      throw new Error("Missing file resource.");
+    }
+    const blobId = committedRes.value.node.blobId;
+    const request = {
+      operation: "remove" as const,
+      requestId: randomUUID(),
+      parentId: root.id,
+      name: file.name,
+      kind: "file" as const,
+    };
+
+    const removedRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      request
+    );
+    const retriedRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      request
+    );
+    const reusedRequestIdRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      { ...request, name: "another-file.txt" }
+    );
+    const lookupRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "lookup",
+      parentId: root.id,
+      name: file.name,
+    });
+    const getAttrRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "getAttr",
+      nodeId: file.id,
+    });
+    const cleanup = await FileSystemBlobCleanupResource.fetchForBlob(
+      authenticator,
+      fileResource,
+      { blobId }
+    );
+
+    expect(removedRes.isOk() && removedRes.value).toEqual({});
+    expect(retriedRes.isOk() && retriedRes.value).toEqual({});
+    expect(reusedRequestIdRes.isErr() && reusedRequestIdRes.error.code).toBe(
+      "invalid_operation"
+    );
+    expect(lookupRes.isOk() && lookupRes.value.node).toBeNull();
+    expect(getAttrRes.isErr() && getAttrRes.error.code).toBe("not_found");
+    expect(cleanup).toMatchObject({ nodeId: file.id, blobId });
+  });
+
+  it("removes an empty directory and rejects the wrong kind", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const scope = readableScope(`conversation-${randomUUID()}`);
+    const initializedRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      { operation: "initialize" }
+    );
+    if (initializedRes.isErr()) {
+      throw initializedRes.error;
+    }
+    const root = requireNode(initializedRes.value.roots?.[0]);
+    const emptyDirectory = await createNode(authenticator, scope, {
+      parentId: root.id,
+      name: "empty",
+      kind: "directory",
+    });
+    const directory = await createNode(authenticator, scope, {
+      parentId: root.id,
+      name: "directory",
+      kind: "directory",
+    });
+    const file = await createNode(authenticator, scope, {
+      parentId: root.id,
+      name: "file.txt",
+      kind: "file",
+    });
+
+    const removedDirectoryRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      {
+        operation: "remove",
+        requestId: randomUUID(),
+        parentId: root.id,
+        name: emptyDirectory.name,
+        kind: "directory",
+      }
+    );
+    const directoryAsFileRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      {
+        operation: "remove",
+        requestId: randomUUID(),
+        parentId: root.id,
+        name: directory.name,
+        kind: "file",
+      }
+    );
+    const fileAsDirectoryRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      {
+        operation: "remove",
+        requestId: randomUUID(),
+        parentId: root.id,
+        name: file.name,
+        kind: "directory",
+      }
+    );
+    const removedDirectoryAttrRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      { operation: "getAttr", nodeId: emptyDirectory.id }
+    );
+    const directoryAttrRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      { operation: "getAttr", nodeId: directory.id }
+    );
+    const fileAttrRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "getAttr",
+      nodeId: file.id,
+    });
+
+    expect(removedDirectoryRes.isOk()).toBe(true);
+    expect(
+      removedDirectoryAttrRes.isErr() && removedDirectoryAttrRes.error.code
+    ).toBe("not_found");
+    expect(directoryAsFileRes.isErr() && directoryAsFileRes.error.code).toBe(
+      "is_directory"
+    );
+    expect(fileAsDirectoryRes.isErr() && fileAsDirectoryRes.error.code).toBe(
+      "not_directory"
+    );
+    expect(directoryAttrRes.isOk() && directoryAttrRes.value.node?.id).toBe(
+      directory.id
+    );
+    expect(fileAttrRes.isOk() && fileAttrRes.value.node?.id).toBe(file.id);
+  });
+
+  it("rejects non-empty directories, missing names, and read-only roots", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const conversationId = `conversation-${randomUUID()}`;
+    const scope = readableScope(conversationId);
+    const initializedRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      { operation: "initialize" }
+    );
+    if (initializedRes.isErr()) {
+      throw initializedRes.error;
+    }
+    const root = requireNode(initializedRes.value.roots?.[0]);
+    const directory = await createNode(authenticator, scope, {
+      parentId: root.id,
+      name: "non-empty",
+      kind: "directory",
+    });
+    const child = await createNode(authenticator, scope, {
+      parentId: directory.id,
+      name: "child.txt",
+      kind: "file",
+    });
+    const file = await createNode(authenticator, scope, {
+      parentId: root.id,
+      name: "read-only.txt",
+      kind: "file",
+    });
+
+    const nonEmptyRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "remove",
+      requestId: randomUUID(),
+      parentId: root.id,
+      name: directory.name,
+      kind: "directory",
+    });
+    const missingRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "remove",
+      requestId: randomUUID(),
+      parentId: root.id,
+      name: "missing.txt",
+      kind: "file",
+    });
+    const invalidNameRes = await applyFileSystemOperation(
+      authenticator,
+      scope,
+      {
+        operation: "remove",
+        requestId: randomUUID(),
+        parentId: root.id,
+        name: "..",
+        kind: "directory",
+      }
+    );
+    const readOnlyRes = await applyFileSystemOperation(
+      authenticator,
+      readOnlyScope(conversationId),
+      {
+        operation: "remove",
+        requestId: randomUUID(),
+        parentId: root.id,
+        name: file.name,
+        kind: "file",
+      }
+    );
+    const childAttrRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "getAttr",
+      nodeId: child.id,
+    });
+    const fileAttrRes = await applyFileSystemOperation(authenticator, scope, {
+      operation: "getAttr",
+      nodeId: file.id,
+    });
+
+    expect(nonEmptyRes.isErr() && nonEmptyRes.error.code).toBe("not_empty");
+    expect(missingRes.isErr() && missingRes.error.code).toBe("not_found");
+    expect(invalidNameRes.isErr() && invalidNameRes.error.code).toBe(
+      "invalid_operation"
+    );
+    expect(readOnlyRes.isErr() && readOnlyRes.error.code).toBe("unauthorized");
+    expect(childAttrRes.isOk() && childAttrRes.value.node?.id).toBe(child.id);
+    expect(fileAttrRes.isOk() && fileAttrRes.value.node?.id).toBe(file.id);
+  });
+});
+
 describe("filesystem content", () => {
   it("commits one immutable blob and returns it for reads", async () => {
     const { authenticator, workspace } = await createResourceTest({

@@ -90,6 +90,13 @@ export type FileSystemOperation =
       mode: number;
     }
   | {
+      operation: "remove";
+      requestId: string;
+      parentId: number;
+      name: string;
+      kind: FileSystemNodeKind;
+    }
+  | {
       operation: "rename";
       requestId: string;
       sourceParentId: number;

@@ -48,6 +48,10 @@ type ReadDirRequest = Extract<FileSystemOperation, { operation: "readDir" }>;
 type ReadDirOptions = Pick<ReadDirRequest, "afterName" | "limit">;
 type CreateRequest = Extract<FileSystemOperation, { operation: "create" }>;
 type CreateOptions = Pick<CreateRequest, "kind" | "mode" | "name">;
+type RemoveRequest = Extract<FileSystemOperation, { operation: "remove" }>;
+type RemoveChildOptions = Pick<RemoveRequest, "kind" | "name"> & {
+  transaction: Transaction;
+};
 type RenameRequest = Extract<FileSystemOperation, { operation: "rename" }>;
 type RenameChildOptions = Pick<
   RenameRequest,
@@ -106,8 +110,8 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
   }
 
   override delete(): Promise<Result<undefined, Error>> {
-    // Removing a node also updates the mutation journal and blob cleanup queue.
-    // It must go through the filesystem mutation operation added later.
+    // Removing a node must also save the successful request and queue its blob
+    // for deletion, so it must go through the filesystem remove operation.
     throw new Error("Filesystem nodes cannot be deleted directly.");
   }
 
@@ -546,7 +550,7 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     return child === null;
   }
 
-  private async destroyReplacedNode(
+  private async destroyAndRetireBlob(
     auth: Authenticator,
     transaction: Transaction
   ): Promise<void> {
@@ -562,8 +566,63 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
       transaction,
     });
     if (deletedCount !== 1) {
-      throw new Error(`Failed to replace filesystem node ${this.id}.`);
+      throw new Error(`Failed to remove filesystem node ${this.id}.`);
     }
+  }
+
+  async removeChild(
+    auth: Authenticator,
+    scope: FileSystemScope,
+    options: RemoveChildOptions
+  ): Promise<Result<undefined, FileSystemOperationError>> {
+    const accessRes = this.checkWritableDirectory(auth, scope, {
+      description: "parent",
+    });
+    if (accessRes.isErr()) {
+      return accessRes;
+    }
+
+    const childRes = await this.fetchChildForUpdate(auth, scope, {
+      name: options.name,
+      transaction: options.transaction,
+    });
+    if (childRes.isErr()) {
+      return childRes;
+    }
+    const child = childRes.value;
+    if (!child) {
+      return new Err(
+        new FileSystemOperationError(
+          "not_found",
+          `${options.name} was not found.`
+        )
+      );
+    }
+
+    if (options.kind === "file" && child.kind === "directory") {
+      return new Err(
+        new FileSystemOperationError(
+          "is_directory",
+          "A directory cannot be removed as a file."
+        )
+      );
+    }
+    if (options.kind === "directory" && child.kind === "file") {
+      return new Err(
+        new FileSystemOperationError(
+          "not_directory",
+          "A file cannot be removed as a directory."
+        )
+      );
+    }
+    if (!(await child.isEmptyDirectory(options.transaction))) {
+      return new Err(
+        new FileSystemOperationError("not_empty", "The directory is not empty.")
+      );
+    }
+
+    await child.destroyAndRetireBlob(auth, options.transaction);
+    return new Ok(undefined);
   }
 
   private async moveDescendantsToRoot(
@@ -675,7 +734,7 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     }
 
     if (destination) {
-      await destination.destroyReplacedNode(auth, options.transaction);
+      await destination.destroyAndRetireBlob(auth, options.transaction);
     }
 
     const changesRoot =
