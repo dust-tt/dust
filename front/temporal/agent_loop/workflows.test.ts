@@ -5,11 +5,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   patched,
+  finalizeErroredSandboxChildToolActivity,
   runToolActivity,
   runRetryableToolActivity,
   publishDeferredEventsActivity,
 } = vi.hoisted(() => ({
   patched: vi.fn(),
+  finalizeErroredSandboxChildToolActivity: vi.fn(),
   runToolActivity: vi.fn(),
   runRetryableToolActivity: vi.fn(),
   publishDeferredEventsActivity: vi.fn(),
@@ -22,7 +24,11 @@ vi.mock("@temporalio/workflow", () => {
     ActivityCancellationType: {
       WAIT_CANCELLATION_COMPLETED: "WAIT_CANCELLATION_COMPLETED",
     },
-    CancellationScope: class {},
+    CancellationScope: class {
+      static nonCancellable<T>(fn: () => Promise<T>) {
+        return fn();
+      }
+    },
     defineSignal: (name: string) => name,
     patched,
     proxyActivities: (options: {
@@ -36,6 +42,7 @@ vi.mock("@temporalio/workflow", () => {
       finalizeCancelledAgentLoopActivity: unusedActivity,
       finalizeCreditStoppedAgentLoopActivity: unusedActivity,
       finalizeErroredAgentLoopActivity: unusedActivity,
+      finalizeErroredSandboxChildToolActivity,
       finalizeGracefullyStoppedAgentLoopActivity: unusedActivity,
       finalizeInterruptedAgentLoopActivity: unusedActivity,
       finalizeSuccessfulAgentLoopActivity: unusedActivity,
@@ -89,6 +96,7 @@ describe("runSandboxChildToolWorkflow", () => {
     patched.mockReturnValue(true);
     runToolActivity.mockResolvedValue({ deferredEvents: [] });
     runRetryableToolActivity.mockResolvedValue({ deferredEvents: [] });
+    finalizeErroredSandboxChildToolActivity.mockResolvedValue(undefined);
   });
 
   it.each([
@@ -135,9 +143,37 @@ describe("runSandboxChildToolWorkflow", () => {
     expect(runRetryableToolActivity).not.toHaveBeenCalled();
   });
 
-  it("propagates terminal activity failures", async () => {
+  it.each([
+    "no_retry",
+    "retry_on_interrupt",
+  ] as const)("finalizes and propagates terminal activity failures for %s", async (retryPolicy) => {
     const error = new Error("activity attempts exhausted");
-    runRetryableToolActivity.mockRejectedValue(error);
+    const runActivity =
+      retryPolicy === "retry_on_interrupt"
+        ? runRetryableToolActivity
+        : runToolActivity;
+    runActivity.mockRejectedValue(error);
+
+    await expect(
+      runSandboxChildToolWorkflow({
+        actionModelId: 123,
+        agentLoopArgs,
+        authType,
+        retryPolicy,
+        step: 1,
+      })
+    ).rejects.toBe(error);
+
+    expect(finalizeErroredSandboxChildToolActivity).toHaveBeenCalledWith(
+      authType,
+      { actionModelId: 123 }
+    );
+  });
+
+  it("does not change failure bookkeeping when replaying without the patch marker", async () => {
+    const error = new Error("activity failed");
+    patched.mockReturnValue(false);
+    runToolActivity.mockRejectedValue(error);
 
     await expect(
       runSandboxChildToolWorkflow({
@@ -148,5 +184,7 @@ describe("runSandboxChildToolWorkflow", () => {
         step: 1,
       })
     ).rejects.toBe(error);
+
+    expect(finalizeErroredSandboxChildToolActivity).not.toHaveBeenCalled();
   });
 });
