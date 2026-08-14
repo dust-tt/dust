@@ -345,9 +345,7 @@ export async function launchAgentMessageFeedbackWorkflow(
 const CONSUMPTION_EXPORT_CLEANUP_SCHEDULE_ID =
   "consumption-export-cleanup-schedule";
 
-// Get-or-create, matching the idiom in `triggers_garbage_collect/client.ts`: update the
-// schedule if it already exists, create it otherwise. Run once per environment (see
-// `front/lib/triggers/admin/cli.ts` for the equivalent bootstrap entry point).
+// Get-or-create
 export async function createOrUpdateConsumptionExportCleanupSchedule(): Promise<
   Result<void, Error>
 > {
