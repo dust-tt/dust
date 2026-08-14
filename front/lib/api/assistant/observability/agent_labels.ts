@@ -4,6 +4,8 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentModelDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
 import type { Authenticator } from "@app/lib/auth";
+import { UserResource } from "@app/lib/resources/user_resource";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 export type AnalyticsAgentLabel = {
   name: string;
@@ -14,6 +16,12 @@ export type AnalyticsAgentLabel = {
 };
 
 const PRIVATE_AGENT_DESCRIPTION = "Private agent: description unavailable";
+
+function privateAgentDescription(authorEmail: string | null | undefined) {
+  return authorEmail
+    ? `Private agent owned by ${authorEmail}`
+    : PRIVATE_AGENT_DESCRIPTION;
+}
 
 // Agent ids that no longer resolve to a configuration are absent from the
 // returned map; callers drop them instead of surfacing a placeholder row.
@@ -40,10 +48,29 @@ export async function resolveAnalyticsAgentLabels(
     fallbackLabels.map((label) => [label.sId, label])
   );
 
+  const authorModelIds = auth.isManager()
+    ? removeNulls([
+        ...agents
+          .filter((agent) => !agent.canRead)
+          .map((agent) => agent.versionAuthorId),
+        ...fallbackLabels.map((label) => label.authorModelId),
+      ])
+    : [];
+  const authors =
+    authorModelIds.length > 0
+      ? await UserResource.fetchByModelIds(authorModelIds)
+      : [];
+  const authorEmailByModelId = new Map(
+    authors.map((author) => [author.id, author.email])
+  );
+
   const labels = new Map<string, AnalyticsAgentLabel>();
   for (const agentId of agentIds) {
     const agent = agentsById.get(agentId);
     if (agent) {
+      const authorEmail = agent.versionAuthorId
+        ? authorEmailByModelId.get(agent.versionAuthorId)
+        : null;
       labels.set(agentId, {
         name: agent.name,
         pictureUrl: agent.pictureUrl,
@@ -51,7 +78,7 @@ export async function resolveAnalyticsAgentLabels(
         modelDisplayName: getAgentModelDisplayName(agent.model),
         description: agent.canRead
           ? agent.description
-          : PRIVATE_AGENT_DESCRIPTION,
+          : privateAgentDescription(authorEmail),
       });
       continue;
     }
@@ -63,7 +90,9 @@ export async function resolveAnalyticsAgentLabels(
         pictureUrl: fallback.pictureUrl,
         modelId: fallback.model.modelId,
         modelDisplayName: getAgentModelDisplayName(fallback.model),
-        description: PRIVATE_AGENT_DESCRIPTION,
+        description: privateAgentDescription(
+          authorEmailByModelId.get(fallback.authorModelId)
+        ),
       });
     }
   }
