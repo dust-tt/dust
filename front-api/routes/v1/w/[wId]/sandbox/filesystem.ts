@@ -1,5 +1,6 @@
 import {
   applyFileSystemOperation,
+  type FileSystemOperationResponse,
   FileSystemOperationSchema,
 } from "@app/lib/api/file_system/namespace";
 import type { FileSystemOperationErrorCode } from "@app/lib/api/file_system/namespace_types";
@@ -7,7 +8,7 @@ import { fileSystemScopeFromSandboxClaims } from "@app/lib/api/file_system/sandb
 import { isSandboxFileSystemTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import { sandboxApp } from "@front-api/middlewares/ctx";
 import { sandboxAuth } from "@front-api/middlewares/sandbox_auth";
-import { apiError } from "@front-api/middlewares/utils";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
 const app = sandboxApp();
@@ -37,37 +38,41 @@ function statusForFileSystemError(
  * @ignoreswagger
  * Internal syscall endpoint used only by the Dust filesystem daemon.
  */
-app.post("/", validate("json", FileSystemOperationSchema), async (ctx) => {
-  const claims = ctx.get("sandboxClaims");
-  if (!isSandboxFileSystemTokenPayload(claims)) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "invalid_request_error",
-        message: "This sandbox token cannot access the filesystem.",
-      },
-    });
-  }
+app.post(
+  "/",
+  validate("json", FileSystemOperationSchema),
+  async (ctx): HandlerResult<FileSystemOperationResponse> => {
+    const claims = ctx.get("sandboxClaims");
+    if (!isSandboxFileSystemTokenPayload(claims)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: "This sandbox token cannot access the filesystem.",
+        },
+      });
+    }
 
-  const operationRes = await applyFileSystemOperation(
-    ctx.get("auth"),
-    fileSystemScopeFromSandboxClaims(claims),
-    ctx.req.valid("json")
-  );
-  if (operationRes.isErr()) {
-    // The daemon uses this code for errno. The body remains the normal Dust
-    // error shape so logs and manual requests stay readable.
-    ctx.header("x-dust-filesystem-error", operationRes.error.code);
-    return apiError(ctx, {
-      status_code: statusForFileSystemError(operationRes.error.code),
-      api_error: {
-        type: "invalid_request_error",
-        message: operationRes.error.message,
-      },
-    });
-  }
+    const operationRes = await applyFileSystemOperation(
+      ctx.get("auth"),
+      fileSystemScopeFromSandboxClaims(claims),
+      ctx.req.valid("json")
+    );
+    if (operationRes.isErr()) {
+      // The daemon uses this code for errno. The body remains the normal Dust
+      // error shape so logs and manual requests stay readable.
+      ctx.header("x-dust-filesystem-error", operationRes.error.code);
+      return apiError(ctx, {
+        status_code: statusForFileSystemError(operationRes.error.code),
+        api_error: {
+          type: "invalid_request_error",
+          message: operationRes.error.message,
+        },
+      });
+    }
 
-  return ctx.json(operationRes.value, 200);
-});
+    return ctx.json(operationRes.value, 200);
+  }
+);
 
 export default app;
