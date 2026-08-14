@@ -13,12 +13,20 @@ import {
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import type {
+  AgentMessageConsumptionAnalyticsData,
   AgentMessageConsumptionAnalyticsLlmData,
   AgentMessageConsumptionAnalyticsToolData,
 } from "@app/types/assistant/analytics";
 import { Err, Ok } from "@app/types/shared/result";
 import AdmZip from "adm-zip";
 import { describe, expect, it, vi } from "vitest";
+
+// Instantiation expression: pins the mock to the concrete TDocument the exporter
+// actually queries with, so mockResolvedValue can be given a fully-typed
+// SearchResponse below without an `as` cast.
+const mockedSearchConsumptionAnalytics = vi.mocked(
+  searchConsumptionAnalytics<AgentMessageConsumptionAnalyticsData>
+);
 
 vi.mock(import("@app/lib/api/elasticsearch"), async (orig) => {
   const mod = await orig();
@@ -115,11 +123,20 @@ const TOOL_DOC: AgentMessageConsumptionAnalyticsToolData = {
   execution_time_ms: 250,
 };
 
-function mockDocs(docs: unknown[]) {
-  vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+function mockDocs(docs: AgentMessageConsumptionAnalyticsData[]) {
+  mockedSearchConsumptionAnalytics.mockResolvedValue(
     new Ok({
-      hits: { hits: docs.map((doc) => ({ _source: doc, sort: [] })) },
-    }) as unknown as Awaited<ReturnType<typeof searchConsumptionAnalytics>>
+      took: 0,
+      timed_out: false,
+      _shards: { failed: 0, successful: 1, total: 1 },
+      hits: {
+        hits: docs.map((doc) => ({
+          _index: "consumption_analytics",
+          _source: doc,
+          sort: [],
+        })),
+      },
+    })
   );
 }
 
@@ -164,6 +181,7 @@ describe("runConsumptionExportActivity", () => {
         endDate: "2026-08-02T00:00:00.000Z",
       },
       filter: {},
+      exportId: "consumption-export-test-run",
     });
 
     const prefix = buildConsumptionExportGcsPrefix(workspace.sId);
@@ -171,6 +189,9 @@ describe("runConsumptionExportActivity", () => {
       call.filePath.startsWith(prefix)
     );
     expect(saveCalls).toHaveLength(1);
+    expect(saveCalls[0].filePath).toBe(
+      `${prefix}consumption-export-test-run.zip`
+    );
     expect(saveCalls[0].contentType).toBe("application/zip");
 
     // Read back the exact buffer passed to `.save()` rather than round-tripping through the
@@ -201,7 +222,7 @@ describe("runConsumptionExportActivity", () => {
   });
 
   it("throws and uploads nothing when the search fails", async () => {
-    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+    mockedSearchConsumptionAnalytics.mockResolvedValue(
       new Err(new ElasticsearchError("query_error", "boom"))
     );
     const { authenticator, workspace } = await setup();
@@ -213,6 +234,7 @@ describe("runConsumptionExportActivity", () => {
           endDate: "2026-08-02T00:00:00.000Z",
         },
         filter: {},
+        exportId: "consumption-export-test-run",
       })
     ).rejects.toThrow();
 

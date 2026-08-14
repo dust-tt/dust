@@ -1,5 +1,6 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import { CONSUMPTION_SCOPE_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import {
   AgentMessageModel,
@@ -27,7 +28,12 @@ import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
+import type { WorkflowHandle } from "@temporalio/client";
+import {
+  WorkflowExecutionAlreadyStartedError,
+  WorkflowNotFoundError,
+} from "@temporalio/client";
+import { z } from "zod";
 
 // Resolves the agent configuration id backing an agent message (referenced by its
 // message sId). Used to decide whether the feedback workflow needs to wait for
@@ -164,8 +170,48 @@ export async function launchStoreAgentMessageConsumptionAttributionWorkflow({
   }
 }
 
-// Workflow ID is unique per worksapce meaning a duplicate call while a previous
-// export is still running fails
+const ConsumptionExportMemoSchema = z.object({
+  period: z.object({ startDate: z.string(), endDate: z.string() }),
+  filter: z.record(z.enum(CONSUMPTION_SCOPE_FILTER_KEYS), z.string().array()),
+});
+
+// A running export's parameters, read back from its memo. `null` means an export
+// is (or, in the AlreadyStarted race below, was) running but its parameters could
+// not be recovered.
+export type RunningConsumptionExport = {
+  period: ConsumptionPeriod;
+  filter: ConsumptionScopeFilter;
+} | null;
+
+export type LaunchConsumptionExportOutcome =
+  | { status: "started"; workflowId: string }
+  | {
+      status: "already_running";
+      workflowId: string;
+      running: RunningConsumptionExport;
+    };
+
+async function describeRunningConsumptionExport(
+  handle: WorkflowHandle
+): Promise<RunningConsumptionExport | undefined> {
+  try {
+    const execution = await handle.describe();
+    if (execution.status.name !== "RUNNING") {
+      return undefined;
+    }
+
+    const memo = ConsumptionExportMemoSchema.safeParse(execution.memo);
+    return memo.success ? memo.data : null;
+  } catch (e) {
+    if (e instanceof WorkflowNotFoundError) {
+      return undefined;
+    }
+    throw e;
+  }
+}
+
+// Only one export runs per workspace at a time
+// A concurrent request while one is in flight is surfaced as "already_running"
 export async function launchConsumptionExportWorkflow(
   auth: Authenticator,
   {
@@ -175,7 +221,7 @@ export async function launchConsumptionExportWorkflow(
     period: ConsumptionPeriod;
     filter: ConsumptionScopeFilter;
   }
-): Promise<Result<undefined, Error>> {
+): Promise<Result<LaunchConsumptionExportOutcome, Error>> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const authType = auth.toJSON();
 
@@ -184,18 +230,37 @@ export async function launchConsumptionExportWorkflow(
   const workflowId = makeConsumptionExportWorkflowId({ workspaceId });
 
   try {
+    const running = await describeRunningConsumptionExport(
+      client.workflow.getHandle(workflowId)
+    );
+    if (running !== undefined) {
+      return new Ok({ status: "already_running", workflowId, running });
+    }
+
     await client.workflow.start(runConsumptionExportWorkflow, {
       args: [authType, { period, filter }],
       taskQueue: QUEUE_NAME,
       workflowId,
       memo: {
         workspaceId,
+        period,
+        filter,
       },
     });
-    return new Ok(undefined);
+    return new Ok({ status: "started", workflowId });
   } catch (e) {
     if (e instanceof WorkflowExecutionAlreadyStartedError) {
-      return new Ok(undefined);
+      // Lost the race to start: another request started an export between our
+      // describe() check and start() above. Look up what it's running so the
+      // caller can still report accurate parameters instead of a bare success.
+      const running = await describeRunningConsumptionExport(
+        client.workflow.getHandle(workflowId)
+      );
+      return new Ok({
+        status: "already_running",
+        workflowId,
+        running: running ?? null,
+      });
     }
 
     logger.error(
