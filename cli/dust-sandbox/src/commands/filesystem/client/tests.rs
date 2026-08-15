@@ -208,6 +208,142 @@ fn retries_create_with_the_same_request_id() {
 }
 
 #[test]
+fn retries_a_completed_operation_when_its_response_body_is_cut_off() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("listen");
+    let address = listener.local_addr().expect("local address");
+    let server = std::thread::spawn(move || {
+        let body = serde_json::json!({
+            "node": {
+                "id": 42,
+                "parentId": 10,
+                "name": "new.txt",
+                "kind": "file",
+                "mode": 0o644,
+                "size": 0,
+                "contentType": null,
+                "blobId": null,
+                "createdAtMs": 1,
+                "modifiedAtMs": 1
+            }
+        })
+        .to_string();
+        let mut requests = Vec::new();
+        for attempt in 0..2 {
+            let (mut stream, _) = listener.accept().expect("accept request");
+            requests.push(read_request(&mut stream));
+            write!(
+                stream,
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            )
+            .expect("write response headers");
+            if attempt == 0 {
+                stream
+                    .write_all(&body.as_bytes()[..body.len() / 2])
+                    .expect("write partial response");
+            } else {
+                stream
+                    .write_all(body.as_bytes())
+                    .expect("write complete response");
+            }
+        }
+        requests
+    });
+
+    let directory = tempdir().expect("temporary directory");
+    let token_file = directory.path().join("token");
+    fs::write(&token_file, "token").expect("write token");
+    fs::set_permissions(&token_file, fs::Permissions::from_mode(0o600)).expect("restrict token");
+    let client = FileSystemClient::new(
+        &format!("http://{address}"),
+        "w_test",
+        "token".to_owned(),
+        token_file,
+    )
+    .expect("client");
+    let request_id = "5f19e8a3-b8b2-4eb3-aa55-8944735922f1";
+    let node = client
+        .create(request_id, 10, "new.txt", NodeKind::File, 0o644)
+        .expect("retried create response");
+    assert_eq!(node.id, 42);
+
+    let requests = server.join().expect("server thread");
+    assert_eq!(requests.len(), 2);
+    assert!(requests.iter().all(|request| request.contains(request_id)));
+}
+
+#[test]
+fn rejects_a_directory_page_without_an_end_cursor() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("listen");
+    let address = listener.local_addr().expect("local address");
+    let server = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept request");
+        read_request(&mut stream);
+        let body = r#"{"nodes":[]}"#;
+        write!(
+            stream,
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            body.len(),
+            body
+        )
+        .expect("write response");
+    });
+
+    let directory = tempdir().expect("temporary directory");
+    let token_file = directory.path().join("token");
+    fs::write(&token_file, "token").expect("write token");
+    fs::set_permissions(&token_file, fs::Permissions::from_mode(0o600)).expect("restrict token");
+    let client = FileSystemClient::new(
+        &format!("http://{address}"),
+        "w_test",
+        "token".to_owned(),
+        token_file,
+    )
+    .expect("client");
+    let error = client.children(42).expect_err("reject missing cursor");
+    assert_eq!(error.raw_os_error(), Some(libc::EIO));
+    server.join().expect("server thread");
+}
+
+#[test]
+fn retries_an_interrupted_content_download_from_the_start() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("listen");
+    let address = listener.local_addr().expect("local address");
+    let server = std::thread::spawn(move || {
+        for attempt in 0..2 {
+            let (mut stream, _) = listener.accept().expect("accept request");
+            read_request(&mut stream);
+            stream
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 7\r\nConnection: close\r\n\r\n")
+                .expect("write response headers");
+            stream
+                .write_all(if attempt == 0 { b"con" } else { b"content" })
+                .expect("write response body");
+        }
+    });
+
+    let directory = tempdir().expect("temporary directory");
+    let token_file = directory.path().join("token");
+    fs::write(&token_file, "token").expect("write token");
+    fs::set_permissions(&token_file, fs::Permissions::from_mode(0o600)).expect("restrict token");
+    let client = FileSystemClient::new(
+        "http://127.0.0.1:1",
+        "w_test",
+        "token".to_owned(),
+        token_file,
+    )
+    .expect("client");
+    let content_path = directory.path().join("content");
+    let mut destination = fs::File::create(&content_path).expect("create content file");
+    client
+        .download(&format!("http://{address}/content"), &mut destination)
+        .expect("retried download");
+    drop(destination);
+    assert_eq!(fs::read(content_path).expect("read content"), b"content");
+    server.join().expect("server thread");
+}
+
+#[test]
 fn upload_sends_every_header_signed_by_front() {
     let listener = TcpListener::bind("127.0.0.1:0").expect("listen");
     let address = listener.local_addr().expect("local address");
@@ -260,6 +396,107 @@ fn upload_sends_every_header_signed_by_front() {
     assert!(request.contains("content-encoding: identity"));
     assert!(request.contains("x-goog-if-generation-match: 0"));
     assert!(request.ends_with("content"));
+}
+
+#[test]
+fn accepts_create_only_412_after_an_ambiguous_upload_attempt() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("listen");
+    let address = listener.local_addr().expect("local address");
+    let server = std::thread::spawn(move || {
+        for attempt in 0..2 {
+            let (mut stream, _) = listener.accept().expect("accept request");
+            read_request(&mut stream);
+            if attempt == 1 {
+                stream
+                    .write_all(
+                        b"HTTP/1.1 412 Precondition Failed\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                    )
+                    .expect("write precondition response");
+            }
+        }
+    });
+
+    let directory = tempdir().expect("temporary directory");
+    let token_file = directory.path().join("token");
+    fs::write(&token_file, "token").expect("write token");
+    fs::set_permissions(&token_file, fs::Permissions::from_mode(0o600)).expect("restrict token");
+    let client = FileSystemClient::new(
+        "http://127.0.0.1:1",
+        "w_test",
+        "token".to_owned(),
+        token_file,
+    )
+    .expect("client");
+    let content_path = directory.path().join("content");
+    fs::write(&content_path, "content").expect("write content");
+    let upload = ContentUpload {
+        blob_id: "blob".to_owned(),
+        upload_url: format!("http://{address}/upload"),
+        content_type: "text/plain".to_owned(),
+        expected_size_bytes: 7,
+        headers: [
+            ("content-length".to_owned(), "7".to_owned()),
+            ("x-goog-if-generation-match".to_owned(), "0".to_owned()),
+        ]
+        .into(),
+    };
+    client
+        .upload(
+            &upload,
+            fs::File::open(content_path).expect("open content"),
+            7,
+        )
+        .expect("continue after ambiguous upload");
+    server.join().expect("server thread");
+}
+
+#[test]
+fn rejects_create_only_412_without_an_earlier_upload_attempt() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("listen");
+    let address = listener.local_addr().expect("local address");
+    let server = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept request");
+        read_request(&mut stream);
+        stream
+            .write_all(
+                b"HTTP/1.1 412 Precondition Failed\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+            )
+            .expect("write precondition response");
+    });
+
+    let directory = tempdir().expect("temporary directory");
+    let token_file = directory.path().join("token");
+    fs::write(&token_file, "token").expect("write token");
+    fs::set_permissions(&token_file, fs::Permissions::from_mode(0o600)).expect("restrict token");
+    let client = FileSystemClient::new(
+        "http://127.0.0.1:1",
+        "w_test",
+        "token".to_owned(),
+        token_file,
+    )
+    .expect("client");
+    let content_path = directory.path().join("content");
+    fs::write(&content_path, "content").expect("write content");
+    let upload = ContentUpload {
+        blob_id: "blob".to_owned(),
+        upload_url: format!("http://{address}/upload"),
+        content_type: "text/plain".to_owned(),
+        expected_size_bytes: 7,
+        headers: [
+            ("content-length".to_owned(), "7".to_owned()),
+            ("x-goog-if-generation-match".to_owned(), "0".to_owned()),
+        ]
+        .into(),
+    };
+    let error = client
+        .upload(
+            &upload,
+            fs::File::open(content_path).expect("open content"),
+            7,
+        )
+        .expect_err("reject unexplained precondition failure");
+    assert_eq!(error.raw_os_error(), Some(libc::EIO));
+    server.join().expect("server thread");
 }
 
 #[test]

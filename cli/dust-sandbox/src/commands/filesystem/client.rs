@@ -1,15 +1,18 @@
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
-use std::io::{self, Read, Seek, SeekFrom};
+use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::PathBuf;
 use std::sync::Mutex;
 
 use reqwest::blocking::{Body, Client};
-use serde::{Deserialize, Serialize};
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Deserializer, Serialize};
 use tracing::warn;
 
 const FILESYSTEM_ERROR_HEADER: &str = "x-dust-filesystem-error";
+const GCS_CREATE_ONLY_HEADER: &str = "x-goog-if-generation-match";
+const GCS_CREATE_ONLY_VALUE: &str = "0";
 const MAX_HTTP_ATTEMPTS: usize = 3;
 const HTTP_BACKOFF_MS: [u64; MAX_HTTP_ATTEMPTS - 1] = [50, 200];
 const CONTENT_TRANSFER_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10 * 60);
@@ -57,13 +60,45 @@ pub struct ContentUpload {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct OperationResponse {
-    roots: Option<Vec<RemoteNode>>,
+struct InitializeResponse {
+    roots: Vec<RemoteNode>,
+}
+
+#[derive(Debug, Deserialize)]
+struct NodeResponse {
+    #[serde(deserialize_with = "deserialize_required_option")]
     node: Option<RemoteNode>,
-    nodes: Option<Vec<RemoteNode>>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ReadDirResponse {
+    nodes: Vec<RemoteNode>,
+    // Front must send null to mark the last page. A missing field is an
+    // invalid response, not an empty cursor.
+    #[serde(deserialize_with = "deserialize_required_option")]
     next_after_name: Option<String>,
-    content: Option<ContentDownload>,
-    upload: Option<ContentUpload>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ContentResponse {
+    content: ContentDownload,
+}
+
+#[derive(Debug, Deserialize)]
+struct UploadResponse {
+    upload: ContentUpload,
+}
+
+#[derive(Debug, Deserialize)]
+struct EmptyResponse {}
+
+fn deserialize_required_option<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    Option::<T>::deserialize(deserializer)
 }
 
 #[derive(Serialize)]
@@ -72,6 +107,8 @@ struct OperationResponse {
     rename_all = "camelCase",
     rename_all_fields = "camelCase"
 )]
+// Operations are serialized immediately, so they borrow their string arguments
+// instead of allocating new Strings for every filesystem request.
 enum Operation<'a> {
     Initialize,
     Lookup {
@@ -158,10 +195,10 @@ impl FileSystemClient {
         })
     }
 
-    fn operation(&self, operation: &Operation<'_>) -> io::Result<OperationResponse> {
+    fn operation<T: DeserializeOwned>(&self, operation: &Operation<'_>) -> io::Result<T> {
         let mut token_reloaded = false;
         let mut attempt = 0;
-        let response = loop {
+        loop {
             match self.send_operation(operation) {
                 Ok(response)
                     if response.status() == reqwest::StatusCode::UNAUTHORIZED
@@ -184,7 +221,65 @@ impl FileSystemClient {
                     sleep_before_retry(attempt);
                     attempt += 1;
                 }
-                Ok(response) => break response,
+                Ok(response) if !response.status().is_success() => {
+                    let status = response.status();
+                    let code = response
+                        .headers()
+                        .get(FILESYSTEM_ERROR_HEADER)
+                        .and_then(|value| value.to_str().ok())
+                        .map(str::to_owned);
+                    warn!(
+                        %status,
+                        filesystem_error = code.as_deref(),
+                        "filesystem metadata request failed"
+                    );
+                    return Err(filesystem_error(code.as_deref()));
+                }
+                Ok(response) => {
+                    // An early connection close can yield a short body without
+                    // a read error, so check its declared length before parsing.
+                    let expected_length = declared_content_length(&response);
+                    match response.bytes() {
+                        Ok(body)
+                            if expected_length
+                                .is_some_and(|length| length != body.len() as u64)
+                                && attempt + 1 < MAX_HTTP_ATTEMPTS =>
+                        {
+                            warn!(
+                                attempt = attempt + 1,
+                                "retrying incomplete filesystem metadata response"
+                            );
+                            sleep_before_retry(attempt);
+                            attempt += 1;
+                        }
+                        Ok(body)
+                            if expected_length
+                                .is_some_and(|length| length != body.len() as u64) =>
+                        {
+                            return Err(io::Error::new(
+                                io::ErrorKind::UnexpectedEof,
+                                "filesystem metadata response was incomplete",
+                            ));
+                        }
+                        Ok(body) => {
+                            return serde_json::from_slice(&body).map_err(|error| {
+                                warn!(%error, "filesystem metadata response was invalid");
+                                invalid_response()
+                            });
+                        }
+                        Err(error) if attempt + 1 < MAX_HTTP_ATTEMPTS => {
+                            warn!(
+                                attempt = attempt + 1,
+                                body = error.is_body(),
+                                decode = error.is_decode(),
+                                "retrying interrupted filesystem metadata response"
+                            );
+                            sleep_before_retry(attempt);
+                            attempt += 1;
+                        }
+                        Err(error) => return Err(network_error(error)),
+                    }
+                }
                 Err(error) if is_retryable_io_error(&error) && attempt + 1 < MAX_HTTP_ATTEMPTS => {
                     warn!(
                         attempt = attempt + 1,
@@ -196,22 +291,7 @@ impl FileSystemClient {
                 }
                 Err(error) => return Err(error),
             }
-        };
-        if !response.status().is_success() {
-            let status = response.status();
-            let code = response
-                .headers()
-                .get(FILESYSTEM_ERROR_HEADER)
-                .and_then(|value| value.to_str().ok())
-                .map(str::to_owned);
-            warn!(
-                %status,
-                filesystem_error = code.as_deref(),
-                "filesystem metadata request failed"
-            );
-            return Err(filesystem_error(code.as_deref()));
         }
-        response.json().map_err(network_error)
     }
 
     fn send_operation(&self, operation: &Operation<'_>) -> io::Result<reqwest::blocking::Response> {
@@ -236,19 +316,19 @@ impl FileSystemClient {
     }
 
     pub fn initialize(&self) -> io::Result<Vec<RemoteNode>> {
-        self.operation(&Operation::Initialize)?
-            .roots
-            .ok_or_else(invalid_response)
+        Ok(self
+            .operation::<InitializeResponse>(&Operation::Initialize)?
+            .roots)
     }
 
     pub fn lookup(&self, parent_id: u64, name: &str) -> io::Result<RemoteNode> {
-        self.operation(&Operation::Lookup { parent_id, name })?
+        self.operation::<NodeResponse>(&Operation::Lookup { parent_id, name })?
             .node
             .ok_or_else(|| errno(libc::ENOENT))
     }
 
     pub fn node(&self, node_id: u64) -> io::Result<RemoteNode> {
-        self.operation(&Operation::GetAttr { node_id })?
+        self.operation::<NodeResponse>(&Operation::GetAttr { node_id })?
             .node
             .ok_or_else(|| errno(libc::ENOENT))
     }
@@ -257,12 +337,12 @@ impl FileSystemClient {
         let mut nodes = Vec::new();
         let mut after_name: Option<String> = None;
         loop {
-            let response = self.operation(&Operation::ReadDir {
+            let response = self.operation::<ReadDirResponse>(&Operation::ReadDir {
                 node_id,
                 after_name: after_name.as_deref(),
                 limit: 256,
             })?;
-            nodes.extend(response.nodes.ok_or_else(invalid_response)?);
+            nodes.extend(response.nodes);
             match response.next_after_name {
                 Some(next) => after_name = Some(next),
                 None => return Ok(nodes),
@@ -278,7 +358,7 @@ impl FileSystemClient {
         kind: NodeKind,
         mode: u16,
     ) -> io::Result<RemoteNode> {
-        self.operation(&Operation::Create {
+        self.operation::<NodeResponse>(&Operation::Create {
             request_id,
             parent_id,
             name,
@@ -294,7 +374,7 @@ impl FileSystemClient {
         node_id: u64,
         executable_bits: u16,
     ) -> io::Result<RemoteNode> {
-        self.operation(&Operation::SetExecutableBits {
+        self.operation::<NodeResponse>(&Operation::SetExecutableBits {
             node_id,
             executable_bits,
         })?
@@ -309,7 +389,7 @@ impl FileSystemClient {
         name: &str,
         kind: NodeKind,
     ) -> io::Result<()> {
-        self.operation(&Operation::Remove {
+        self.operation::<EmptyResponse>(&Operation::Remove {
             request_id,
             parent_id,
             name,
@@ -326,7 +406,7 @@ impl FileSystemClient {
         destination_parent_id: u64,
         destination_name: &str,
     ) -> io::Result<RemoteNode> {
-        self.operation(&Operation::Rename {
+        self.operation::<NodeResponse>(&Operation::Rename {
             request_id,
             source_parent_id,
             source_name,
@@ -338,9 +418,9 @@ impl FileSystemClient {
     }
 
     pub fn content(&self, node_id: u64) -> io::Result<ContentDownload> {
-        self.operation(&Operation::GetContent { node_id })?
-            .content
-            .ok_or_else(invalid_response)
+        Ok(self
+            .operation::<ContentResponse>(&Operation::GetContent { node_id })?
+            .content)
     }
 
     pub fn download(&self, url: &str, destination: &mut File) -> io::Result<()> {
@@ -355,8 +435,49 @@ impl FileSystemClient {
                 .map_err(network_error)
             {
                 Ok(mut response) if response.status().is_success() => {
-                    io::copy(&mut response, destination)?;
-                    return Ok(());
+                    let expected_length = declared_content_length(&response);
+                    let mut received = 0_u64;
+                    let mut buffer = [0_u8; 64 * 1024];
+                    // Read and write separately: retry remote read failures,
+                    // but return local staging-file errors immediately.
+                    loop {
+                        match response.read(&mut buffer) {
+                            Ok(0)
+                                if expected_length.is_some_and(|length| length != received)
+                                    && attempt + 1 < MAX_HTTP_ATTEMPTS =>
+                            {
+                                warn!(
+                                    attempt = attempt + 1,
+                                    expected_length,
+                                    received,
+                                    "retrying incomplete filesystem content download"
+                                );
+                                sleep_before_retry(attempt);
+                                break;
+                            }
+                            Ok(0) if expected_length.is_some_and(|length| length != received) => {
+                                return Err(io::Error::new(
+                                    io::ErrorKind::UnexpectedEof,
+                                    "filesystem content download was incomplete",
+                                ));
+                            }
+                            Ok(0) => return Ok(()),
+                            Ok(read) => {
+                                destination.write_all(&buffer[..read])?;
+                                received += read as u64;
+                            }
+                            Err(error) if attempt + 1 < MAX_HTTP_ATTEMPTS => {
+                                warn!(
+                                    attempt = attempt + 1,
+                                    error_kind = ?error.kind(),
+                                    "retrying interrupted filesystem content download"
+                                );
+                                sleep_before_retry(attempt);
+                                break;
+                            }
+                            Err(error) => return Err(error),
+                        }
+                    }
                 }
                 Ok(response)
                     if is_retryable_status(response.status())
@@ -391,14 +512,14 @@ impl FileSystemClient {
         expected_size_bytes: u64,
         content_type: &str,
     ) -> io::Result<ContentUpload> {
-        self.operation(&Operation::PrepareContentUpload {
-            node_id,
-            expected_blob_id,
-            expected_size_bytes,
-            content_type,
-        })?
-        .upload
-        .ok_or_else(invalid_response)
+        Ok(self
+            .operation::<UploadResponse>(&Operation::PrepareContentUpload {
+                node_id,
+                expected_blob_id,
+                expected_size_bytes,
+                content_type,
+            })?
+            .upload)
     }
 
     pub fn upload(&self, upload: &ContentUpload, file: File, size: u64) -> io::Result<()> {
@@ -421,6 +542,16 @@ impl FileSystemClient {
             let response = request.send().map_err(network_error);
             match response {
                 Ok(response) if response.status().is_success() => return Ok(()),
+                Ok(response)
+                    if response.status() == reqwest::StatusCode::PRECONDITION_FAILED
+                        && attempt > 0
+                        && has_create_only_precondition(upload) =>
+                {
+                    // Front gives every upload a new blob ID and verifies the
+                    // object before committing it. A lost successful PUT can
+                    // therefore continue here when its retry finds the object.
+                    return Ok(());
+                }
                 Ok(response)
                     if is_retryable_status(response.status())
                         && attempt + 1 < MAX_HTTP_ATTEMPTS =>
@@ -465,7 +596,7 @@ impl FileSystemClient {
         upload: &ContentUpload,
         expected_size_bytes: u64,
     ) -> io::Result<RemoteNode> {
-        self.operation(&Operation::CommitContentUpload {
+        self.operation::<NodeResponse>(&Operation::CommitContentUpload {
             node_id,
             expected_blob_id,
             blob_id: &upload.blob_id,
@@ -481,6 +612,20 @@ fn is_retryable_status(status: reqwest::StatusCode) -> bool {
     status == reqwest::StatusCode::REQUEST_TIMEOUT
         || status == reqwest::StatusCode::TOO_MANY_REQUESTS
         || status.is_server_error()
+}
+
+fn declared_content_length(response: &reqwest::blocking::Response) -> Option<u64> {
+    response
+        .headers()
+        .get(reqwest::header::CONTENT_LENGTH)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.parse().ok())
+}
+
+fn has_create_only_precondition(upload: &ContentUpload) -> bool {
+    upload.headers.iter().any(|(name, value)| {
+        name.eq_ignore_ascii_case(GCS_CREATE_ONLY_HEADER) && value == GCS_CREATE_ONLY_VALUE
+    })
 }
 
 fn is_retryable_io_error(error: &io::Error) -> bool {
@@ -538,6 +683,7 @@ fn filesystem_error(code: Option<&str>) -> io::Error {
 fn network_error(error: reqwest::Error) -> io::Error {
     // reqwest's Display includes the full URL. Filesystem content URLs are
     // signed credentials, so return only a stable category to callers/logs.
+    // Its error checks can overlap, so keep the most specific ones first.
     let (kind, message) = if error.is_timeout() {
         (io::ErrorKind::TimedOut, "filesystem HTTP request timed out")
     } else if error.is_connect() {
@@ -545,17 +691,12 @@ fn network_error(error: reqwest::Error) -> io::Error {
             io::ErrorKind::ConnectionRefused,
             "filesystem HTTP connection failed",
         )
-    } else if error.is_decode() {
-        (
-            io::ErrorKind::InvalidData,
-            "filesystem HTTP response was invalid",
-        )
     } else if error.is_body() {
         (
             io::ErrorKind::UnexpectedEof,
             "filesystem HTTP body transfer failed",
         )
-    } else if error.is_request() && !error.is_builder() {
+    } else if error.is_request() {
         (
             io::ErrorKind::ConnectionAborted,
             "filesystem HTTP request was interrupted",
