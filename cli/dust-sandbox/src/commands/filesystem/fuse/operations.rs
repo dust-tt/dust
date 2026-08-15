@@ -254,9 +254,6 @@ impl Filesystem for DustFuse {
                     filesystem
                         .store
                         .rename(parent, &name, new_parent, &new_name)?;
-                    if let Some(destination_inode) = destination_inode {
-                        filesystem.store.forget_content(destination_inode);
-                    }
                     Ok(())
                 })();
                 if rename_result.is_err() {

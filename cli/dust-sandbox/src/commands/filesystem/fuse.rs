@@ -1,8 +1,9 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::ffi::CString;
 use std::ffi::OsStr;
-use std::fs::{self, File};
+use std::fs;
 use std::io::{self, Read};
+use std::ops::{Deref, DerefMut};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::FileExt;
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
@@ -20,7 +21,7 @@ use fuser::{
 };
 use tracing::{debug, info, warn};
 
-use super::store::{is_writable, FileStore, Node, NodeKind, FUSE_ROOT_INODE};
+use super::store::{is_writable, FileStore, Node, NodeKind, OpenedContent, FUSE_ROOT_INODE};
 
 mod operations;
 
@@ -99,21 +100,30 @@ fn read_token(token_file: &Path) -> anyhow::Result<String> {
 }
 
 struct OpenHandle {
-    node: Node,
-    file: File,
-    expected_blob_id: Option<String>,
-    content_type: String,
+    content: OpenedContent,
     dirty: bool,
     defer_truncate_commit: bool,
-    writable: bool,
     unlinked: bool,
+}
+
+impl Deref for OpenHandle {
+    type Target = OpenedContent;
+
+    fn deref(&self) -> &Self::Target {
+        &self.content
+    }
+}
+
+impl DerefMut for OpenHandle {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.content
+    }
 }
 
 #[derive(Clone)]
 struct DustFuse {
     store: Arc<FileStore>,
     handles: Arc<Mutex<HashMap<u64, Arc<Mutex<OpenHandle>>>>>,
-    writable_nodes: Arc<Mutex<HashSet<INodeNo>>>,
     staged_sizes: Arc<Mutex<HashMap<INodeNo, u64>>>,
     namespace: Arc<RwLock<()>>,
     next_handle: Arc<AtomicU64>,
@@ -149,7 +159,6 @@ impl DustFuse {
         Self {
             store: Arc::new(store),
             handles: Arc::new(Mutex::new(HashMap::new())),
-            writable_nodes: Arc::new(Mutex::new(HashSet::new())),
             staged_sizes: Arc::new(Mutex::new(HashMap::new())),
             namespace: Arc::new(RwLock::new(())),
             next_handle: Arc::new(AtomicU64::new(1)),
@@ -309,27 +318,8 @@ impl DustFuse {
 
     fn open_node(&self, inode: INodeNo, flags: i32) -> io::Result<u64> {
         let writable = is_writable(flags);
-        if writable
-            && !self
-                .writable_nodes
-                .lock()
-                .map_err(|_| errno(libc::EIO))?
-                .insert(inode)
-        {
-            return Err(errno(libc::EBUSY));
-        }
-
-        let result = (|| {
-            let pinned_inodes = {
-                let handles = self.handles()?;
-                let mut pinned_inodes = HashSet::with_capacity(handles.len());
-                for open in handles.values() {
-                    let open = open.lock().map_err(|_| errno(libc::EIO))?;
-                    pinned_inodes.insert(open.node.inode);
-                }
-                pinned_inodes
-            };
-            let mut opened = self.store.open_content(inode, flags, &pinned_inodes)?;
+        let mut opened = self.store.open_content(inode, flags)?;
+        (|| {
             let dirty = writable && flags & libc::O_TRUNC != 0;
             if dirty {
                 opened.file.set_len(0)?;
@@ -340,13 +330,9 @@ impl DustFuse {
             self.handles()?.insert(
                 handle,
                 Arc::new(Mutex::new(OpenHandle {
-                    node: opened.node,
-                    file: opened.file,
-                    expected_blob_id: opened.expected_blob_id,
-                    content_type: opened.content_type,
+                    content: opened,
                     dirty,
                     defer_truncate_commit: dirty,
-                    writable,
                     unlinked: false,
                 })),
             );
@@ -357,24 +343,7 @@ impl DustFuse {
                 "opened filesystem handle"
             );
             Ok(handle)
-        })();
-
-        if result.is_err() && writable {
-            self.writable_nodes
-                .lock()
-                .map_err(|_| errno(libc::EIO))?
-                .remove(&inode);
-        }
-        result
-    }
-
-    fn active_inodes(&self) -> io::Result<HashSet<INodeNo>> {
-        let handles = self.handles()?;
-        let mut inodes = HashSet::with_capacity(handles.len());
-        for open in handles.values() {
-            inodes.insert(open.lock().map_err(|_| errno(libc::EIO))?.node.inode);
-        }
-        Ok(inodes)
+        })()
     }
 
     fn handle(&self, handle: u64) -> io::Result<Arc<Mutex<OpenHandle>>> {
@@ -403,15 +372,7 @@ impl DustFuse {
         if open.defer_truncate_commit && !commit_deferred_truncate {
             return open.file.sync_data();
         }
-        let committed = self.store.commit_content(
-            open.node.inode,
-            open.expected_blob_id.as_deref(),
-            &open.content_type,
-            &open.file,
-        )?;
-        open.expected_blob_id = committed.blob_id().map(str::to_owned);
-        open.content_type = committed.content_type().to_owned();
-        open.node = committed;
+        self.store.commit_content(&mut open.content)?;
         open.dirty = false;
         open.defer_truncate_commit = false;
         self.staged_sizes()?.remove(&open.node.inode);
@@ -423,26 +384,9 @@ impl DustFuse {
         // Linux ignores errors returned by RELEASE. Written data and fsync had
         // the opportunity to report a failure. An O_TRUNC-only handle reaches
         // this final commit intentionally, so log any error before dropping it.
-        let mut commit_result = self.commit_handle(handle, true);
-        let removed = self.handles()?.remove(&handle);
-        if let Some(open) = removed {
-            let open = open.lock().map_err(|_| errno(libc::EIO))?;
-            if open.writable {
-                self.writable_nodes
-                    .lock()
-                    .map_err(|_| errno(libc::EIO))?
-                    .remove(&open.node.inode);
-            }
-        }
-        if commit_result.is_ok() {
-            // An open file is pinned even when the cache is over capacity.
-            // Closing it is the first safe point at which its path may be
-            // unlinked; existing file descriptors remain valid on Linux.
-            let pinned_inodes = self.active_inodes()?;
-            if let Err(error) = self.store.trim_cache(&pinned_inodes) {
-                commit_result = Err(error);
-            }
-        }
+        let commit_result = self.commit_handle(handle, true);
+        // Dropping the handle releases its store-owned pin and writer slot.
+        self.handles()?.remove(&handle);
         debug!(
             handle,
             remaining_handles = self.handles()?.len(),
@@ -474,7 +418,7 @@ impl DustFuse {
         let handles = self.handles()?;
         for shared in handles.values() {
             let mut open = shared.lock().map_err(|_| errno(libc::EIO))?;
-            if open.node.inode != inode || !open.writable {
+            if open.node.inode != inode || !open.is_writable() {
                 continue;
             }
             open.file.set_len(size)?;
@@ -503,7 +447,7 @@ impl DustFuse {
             if let Some(handle) = handle {
                 let shared = self.handle(handle.0)?;
                 let mut open = shared.lock().map_err(|_| errno(libc::EIO))?;
-                if open.node.inode != inode || !open.writable {
+                if open.node.inode != inode || !open.is_writable() {
                     return Err(errno(libc::EBADF));
                 }
                 open.file.set_len(size)?;
