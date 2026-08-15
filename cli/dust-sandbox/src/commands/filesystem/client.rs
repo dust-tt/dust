@@ -1,11 +1,11 @@
 use std::collections::HashMap;
-use std::fs::{File, OpenOptions};
-use std::io::{self, Read, Seek, SeekFrom, Write};
+use std::fs::OpenOptions;
+use std::io::{self, Read};
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use reqwest::blocking::{Body, Client};
+use reqwest::blocking::Client;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 use tracing::warn;
@@ -314,299 +314,10 @@ impl FileSystemClient {
         *current = token;
         Ok(())
     }
-
-    pub fn initialize(&self) -> io::Result<Vec<RemoteNode>> {
-        Ok(self
-            .operation::<InitializeResponse>(&Operation::Initialize)?
-            .roots)
-    }
-
-    pub fn lookup(&self, parent_id: u64, name: &str) -> io::Result<RemoteNode> {
-        self.operation::<NodeResponse>(&Operation::Lookup { parent_id, name })?
-            .node
-            .ok_or_else(|| errno(libc::ENOENT))
-    }
-
-    pub fn node(&self, node_id: u64) -> io::Result<RemoteNode> {
-        self.operation::<NodeResponse>(&Operation::GetAttr { node_id })?
-            .node
-            .ok_or_else(|| errno(libc::ENOENT))
-    }
-
-    pub fn children(&self, node_id: u64) -> io::Result<Vec<RemoteNode>> {
-        let mut nodes = Vec::new();
-        let mut after_name: Option<String> = None;
-        loop {
-            let response = self.operation::<ReadDirResponse>(&Operation::ReadDir {
-                node_id,
-                after_name: after_name.as_deref(),
-                limit: 256,
-            })?;
-            nodes.extend(response.nodes);
-            match response.next_after_name {
-                Some(next) => after_name = Some(next),
-                None => return Ok(nodes),
-            }
-        }
-    }
-
-    pub fn create(
-        &self,
-        request_id: &str,
-        parent_id: u64,
-        name: &str,
-        kind: NodeKind,
-        mode: u16,
-    ) -> io::Result<RemoteNode> {
-        self.operation::<NodeResponse>(&Operation::Create {
-            request_id,
-            parent_id,
-            name,
-            kind,
-            mode,
-        })?
-        .node
-        .ok_or_else(invalid_response)
-    }
-
-    pub fn set_executable_bits(
-        &self,
-        node_id: u64,
-        executable_bits: u16,
-    ) -> io::Result<RemoteNode> {
-        self.operation::<NodeResponse>(&Operation::SetExecutableBits {
-            node_id,
-            executable_bits,
-        })?
-        .node
-        .ok_or_else(invalid_response)
-    }
-
-    pub fn remove(
-        &self,
-        request_id: &str,
-        parent_id: u64,
-        name: &str,
-        kind: NodeKind,
-    ) -> io::Result<()> {
-        self.operation::<EmptyResponse>(&Operation::Remove {
-            request_id,
-            parent_id,
-            name,
-            kind,
-        })?;
-        Ok(())
-    }
-
-    pub fn rename(
-        &self,
-        request_id: &str,
-        source_parent_id: u64,
-        source_name: &str,
-        destination_parent_id: u64,
-        destination_name: &str,
-    ) -> io::Result<RemoteNode> {
-        self.operation::<NodeResponse>(&Operation::Rename {
-            request_id,
-            source_parent_id,
-            source_name,
-            destination_parent_id,
-            destination_name,
-        })?
-        .node
-        .ok_or_else(invalid_response)
-    }
-
-    pub fn content(&self, node_id: u64) -> io::Result<ContentDownload> {
-        Ok(self
-            .operation::<ContentResponse>(&Operation::GetContent { node_id })?
-            .content)
-    }
-
-    pub fn download(&self, url: &str, destination: &mut File) -> io::Result<()> {
-        for attempt in 0..MAX_HTTP_ATTEMPTS {
-            destination.set_len(0)?;
-            destination.seek(SeekFrom::Start(0))?;
-            match self
-                .http
-                .get(url)
-                .timeout(CONTENT_TRANSFER_TIMEOUT)
-                .send()
-                .map_err(network_error)
-            {
-                Ok(mut response) if response.status().is_success() => {
-                    let expected_length = declared_content_length(&response);
-                    let mut received = 0_u64;
-                    let mut buffer = [0_u8; 64 * 1024];
-                    // Read and write separately: retry remote read failures,
-                    // but return local staging-file errors immediately.
-                    loop {
-                        match response.read(&mut buffer) {
-                            Ok(0)
-                                if expected_length.is_some_and(|length| length != received)
-                                    && attempt + 1 < MAX_HTTP_ATTEMPTS =>
-                            {
-                                warn!(
-                                    attempt = attempt + 1,
-                                    expected_length,
-                                    received,
-                                    "retrying incomplete filesystem content download"
-                                );
-                                sleep_before_retry(attempt);
-                                break;
-                            }
-                            Ok(0) if expected_length.is_some_and(|length| length != received) => {
-                                return Err(io::Error::new(
-                                    io::ErrorKind::UnexpectedEof,
-                                    "filesystem content download was incomplete",
-                                ));
-                            }
-                            Ok(0) => return Ok(()),
-                            Ok(read) => {
-                                destination.write_all(&buffer[..read])?;
-                                received += read as u64;
-                            }
-                            Err(error) if attempt + 1 < MAX_HTTP_ATTEMPTS => {
-                                warn!(
-                                    attempt = attempt + 1,
-                                    error_kind = ?error.kind(),
-                                    "retrying interrupted filesystem content download"
-                                );
-                                sleep_before_retry(attempt);
-                                break;
-                            }
-                            Err(error) => return Err(error),
-                        }
-                    }
-                }
-                Ok(response)
-                    if is_retryable_status(response.status())
-                        && attempt + 1 < MAX_HTTP_ATTEMPTS =>
-                {
-                    warn!(
-                        attempt = attempt + 1,
-                        status = %response.status(),
-                        "retrying filesystem content download"
-                    );
-                    sleep_before_retry(attempt);
-                }
-                Ok(_) => return Err(errno(libc::EIO)),
-                Err(error) if is_retryable_io_error(&error) && attempt + 1 < MAX_HTTP_ATTEMPTS => {
-                    warn!(
-                        attempt = attempt + 1,
-                        error_kind = ?error.kind(),
-                        "retrying filesystem content download transport"
-                    );
-                    sleep_before_retry(attempt);
-                }
-                Err(error) => return Err(error),
-            }
-        }
-        Err(errno(libc::EIO))
-    }
-
-    pub fn prepare_upload(
-        &self,
-        node_id: u64,
-        expected_blob_id: Option<&str>,
-        expected_size_bytes: u64,
-        content_type: &str,
-    ) -> io::Result<ContentUpload> {
-        Ok(self
-            .operation::<UploadResponse>(&Operation::PrepareContentUpload {
-                node_id,
-                expected_blob_id,
-                expected_size_bytes,
-                content_type,
-            })?
-            .upload)
-    }
-
-    pub fn upload(&self, upload: &ContentUpload, file: File, size: u64) -> io::Result<()> {
-        if upload.expected_size_bytes != size {
-            return Err(invalid_response());
-        }
-        for attempt in 0..MAX_HTTP_ATTEMPTS {
-            let mut attempt_file = file.try_clone()?;
-            attempt_file.seek(SeekFrom::Start(0))?;
-            let mut request = self
-                .http
-                .put(&upload.upload_url)
-                .timeout(CONTENT_TRANSFER_TIMEOUT)
-                .body(Body::new(attempt_file));
-            // Front signs these headers with the upload URL. GCS rejects the
-            // PUT if even one signed header is missing or has another value.
-            for (name, value) in &upload.headers {
-                request = request.header(name, value);
-            }
-            let response = request.send().map_err(network_error);
-            match response {
-                Ok(response) if response.status().is_success() => return Ok(()),
-                Ok(response)
-                    if response.status() == reqwest::StatusCode::PRECONDITION_FAILED
-                        && attempt > 0
-                        && has_create_only_precondition(upload) =>
-                {
-                    // Front gives every upload a new blob ID and verifies the
-                    // object before committing it. A lost successful PUT can
-                    // therefore continue here when its retry finds the object.
-                    return Ok(());
-                }
-                Ok(response)
-                    if is_retryable_status(response.status())
-                        && attempt + 1 < MAX_HTTP_ATTEMPTS =>
-                {
-                    warn!(
-                        attempt = attempt + 1,
-                        status = %response.status(),
-                        "retrying filesystem content upload"
-                    );
-                    sleep_before_retry(attempt);
-                }
-                Ok(response) => {
-                    let status = response.status();
-                    let mut detail = Vec::with_capacity(MAX_ERROR_DETAIL_BYTES as usize);
-                    // Error bodies are diagnostic only. Bound the read itself,
-                    // rather than truncating after buffering a potentially huge body.
-                    let _ = response
-                        .take(MAX_ERROR_DETAIL_BYTES)
-                        .read_to_end(&mut detail);
-                    let detail = String::from_utf8_lossy(&detail);
-                    warn!(%status, %detail, "filesystem content upload failed");
-                    return Err(errno(libc::EIO));
-                }
-                Err(error) if is_retryable_io_error(&error) && attempt + 1 < MAX_HTTP_ATTEMPTS => {
-                    warn!(
-                        attempt = attempt + 1,
-                        error_kind = ?error.kind(),
-                        "retrying filesystem content upload transport"
-                    );
-                    sleep_before_retry(attempt);
-                }
-                Err(error) => return Err(error),
-            }
-        }
-        Err(errno(libc::EIO))
-    }
-
-    pub fn commit_upload(
-        &self,
-        node_id: u64,
-        expected_blob_id: Option<&str>,
-        upload: &ContentUpload,
-        expected_size_bytes: u64,
-    ) -> io::Result<RemoteNode> {
-        self.operation::<NodeResponse>(&Operation::CommitContentUpload {
-            node_id,
-            expected_blob_id,
-            blob_id: &upload.blob_id,
-            expected_size_bytes,
-            content_type: &upload.content_type,
-        })?
-        .node
-        .ok_or_else(invalid_response)
-    }
 }
+
+mod content;
+mod namespace;
 
 fn is_retryable_status(status: reqwest::StatusCode) -> bool {
     status == reqwest::StatusCode::REQUEST_TIMEOUT
@@ -725,4 +436,170 @@ fn errno(code: i32) -> io::Error {
 }
 
 #[cfg(test)]
-mod tests;
+mod test_support {
+    use std::io::Read;
+    use std::net::TcpStream;
+
+    pub(super) fn read_request(stream: &mut TcpStream) -> String {
+        let mut request = Vec::new();
+        let mut expected_len = None;
+        loop {
+            let mut buffer = [0_u8; 4096];
+            let read = stream.read(&mut buffer).expect("read request");
+            assert!(read > 0, "client closed before request completed");
+            request.extend_from_slice(&buffer[..read]);
+            if expected_len.is_none() {
+                if let Some(header_end) = request.windows(4).position(|part| part == b"\r\n\r\n") {
+                    let headers = String::from_utf8_lossy(&request[..header_end]);
+                    let content_len = headers
+                        .lines()
+                        .find_map(|line| {
+                            let (name, value) = line.split_once(':')?;
+                            name.eq_ignore_ascii_case("content-length")
+                                .then(|| value.trim().parse::<usize>().ok())
+                                .flatten()
+                        })
+                        .unwrap_or(0);
+                    expected_len = Some(header_end + 4 + content_len);
+                }
+            }
+            if expected_len.is_some_and(|length| request.len() >= length) {
+                return String::from_utf8(request).expect("UTF-8 request");
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use std::os::unix::fs::{symlink, PermissionsExt};
+
+    use tempfile::tempdir;
+
+    use super::{filesystem_error, network_error, read_token_file, NodeKind, Operation};
+
+    #[test]
+    fn maps_front_errors_to_posix_errors() {
+        assert_eq!(
+            filesystem_error(Some("not_empty")).raw_os_error(),
+            Some(libc::ENOTEMPTY)
+        );
+        assert_eq!(
+            filesystem_error(Some("stale")).raw_os_error(),
+            Some(libc::ESTALE)
+        );
+        assert_eq!(filesystem_error(None).raw_os_error(), Some(libc::EIO));
+    }
+
+    #[test]
+    fn serializes_front_field_names() {
+        let value = serde_json::to_value(Operation::Rename {
+            request_id: "request",
+            source_parent_id: 10,
+            source_name: "old",
+            destination_parent_id: 20,
+            destination_name: "new",
+        });
+        assert_eq!(
+            value.ok(),
+            Some(serde_json::json!({
+                "operation": "rename",
+                "requestId": "request",
+                "sourceParentId": 10,
+                "sourceName": "old",
+                "destinationParentId": 20,
+                "destinationName": "new"
+            }))
+        );
+
+        let value = serde_json::to_value(Operation::Create {
+            request_id: "5f19e8a3-b8b2-4eb3-aa55-8944735922f1",
+            parent_id: 10,
+            name: "new.txt",
+            kind: NodeKind::File,
+            mode: 0o644,
+        });
+        assert_eq!(
+            value.ok(),
+            Some(serde_json::json!({
+                "operation": "create",
+                "requestId": "5f19e8a3-b8b2-4eb3-aa55-8944735922f1",
+                "parentId": 10,
+                "name": "new.txt",
+                "kind": "file",
+                "mode": 0o644
+            }))
+        );
+
+        let value = serde_json::to_value(Operation::Remove {
+            request_id: "request",
+            parent_id: 10,
+            name: "old.txt",
+            kind: NodeKind::File,
+        });
+        assert_eq!(
+            value.ok(),
+            Some(serde_json::json!({
+                "operation": "remove",
+                "requestId": "request",
+                "parentId": 10,
+                "name": "old.txt",
+                "kind": "file"
+            }))
+        );
+
+        let value = serde_json::to_value(Operation::PrepareContentUpload {
+            node_id: 42,
+            expected_blob_id: None,
+            expected_size_bytes: 12,
+            content_type: "text/plain",
+        });
+        assert_eq!(
+            value.ok(),
+            Some(serde_json::json!({
+                "operation": "prepareContentUpload",
+                "nodeId": 42,
+                "expectedBlobId": null,
+                "expectedSizeBytes": 12,
+                "contentType": "text/plain"
+            }))
+        );
+
+        let value = serde_json::to_value(Operation::SetExecutableBits {
+            node_id: 42,
+            executable_bits: 0o111,
+        });
+        assert_eq!(
+            value.ok(),
+            Some(serde_json::json!({
+                "operation": "setExecutableBits",
+                "nodeId": 42,
+                "executableBits": 0o111
+            }))
+        );
+    }
+
+    #[test]
+    fn token_reload_never_follows_a_symbolic_link() {
+        let directory = tempdir().expect("temporary directory");
+        let target = directory.path().join("target");
+        let link = directory.path().join("token");
+        fs::write(&target, "secret").expect("write target");
+        fs::set_permissions(&target, fs::Permissions::from_mode(0o600)).expect("restrict target");
+        symlink(&target, &link).expect("create link");
+
+        let error = read_token_file(&link).expect_err("reject link");
+        assert_eq!(error.raw_os_error(), Some(libc::ELOOP));
+    }
+
+    #[test]
+    fn network_errors_do_not_expose_request_urls() {
+        let request_error = reqwest::blocking::Client::new()
+            .get("http://[invalid/signed-secret")
+            .send()
+            .expect_err("invalid URL");
+        let error = network_error(request_error);
+        assert!(!error.to_string().contains("signed-secret"));
+    }
+}
