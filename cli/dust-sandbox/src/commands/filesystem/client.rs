@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Seek, SeekFrom};
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
@@ -5,7 +6,6 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use reqwest::blocking::{Body, Client};
-use reqwest::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 
@@ -51,6 +51,8 @@ pub struct ContentUpload {
     pub blob_id: String,
     pub upload_url: String,
     pub content_type: String,
+    pub expected_size_bytes: u64,
+    pub headers: HashMap<String, String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -400,18 +402,23 @@ impl FileSystemClient {
     }
 
     pub fn upload(&self, upload: &ContentUpload, file: File, size: u64) -> io::Result<()> {
+        if upload.expected_size_bytes != size {
+            return Err(invalid_response());
+        }
         for attempt in 0..MAX_HTTP_ATTEMPTS {
             let mut attempt_file = file.try_clone()?;
             attempt_file.seek(SeekFrom::Start(0))?;
-            let response = self
+            let mut request = self
                 .http
                 .put(&upload.upload_url)
-                .header(CONTENT_TYPE, &upload.content_type)
-                .header(CONTENT_LENGTH, size)
                 .timeout(CONTENT_TRANSFER_TIMEOUT)
-                .body(Body::new(attempt_file))
-                .send()
-                .map_err(network_error);
+                .body(Body::new(attempt_file));
+            // Front signs these headers with the upload URL. GCS rejects the
+            // PUT if even one signed header is missing or has another value.
+            for (name, value) in &upload.headers {
+                request = request.header(name, value);
+            }
+            let response = request.send().map_err(network_error);
             match response {
                 Ok(response) if response.status().is_success() => return Ok(()),
                 Ok(response)

@@ -6,7 +6,8 @@ use std::os::unix::fs::{symlink, PermissionsExt};
 use tempfile::tempdir;
 
 use super::{
-    filesystem_error, network_error, read_token_file, FileSystemClient, NodeKind, Operation,
+    filesystem_error, network_error, read_token_file, ContentUpload, FileSystemClient, NodeKind,
+    Operation,
 };
 
 fn read_request(stream: &mut TcpStream) -> String {
@@ -204,6 +205,61 @@ fn retries_create_with_the_same_request_id() {
     for request in requests {
         assert!(request.contains(request_id));
     }
+}
+
+#[test]
+fn upload_sends_every_header_signed_by_front() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("listen");
+    let address = listener.local_addr().expect("local address");
+    let server = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept request");
+        let request = read_request(&mut stream);
+        stream
+            .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+            .expect("write response");
+        request
+    });
+
+    let directory = tempdir().expect("temporary directory");
+    let token_file = directory.path().join("token");
+    fs::write(&token_file, "token").expect("write token");
+    fs::set_permissions(&token_file, fs::Permissions::from_mode(0o600)).expect("restrict token");
+    let client = FileSystemClient::new(
+        "http://127.0.0.1:1",
+        "w_test",
+        "token".to_owned(),
+        token_file,
+    )
+    .expect("client");
+    let content_path = directory.path().join("content");
+    fs::write(&content_path, "content").expect("write content");
+    let upload = ContentUpload {
+        blob_id: "blob".to_owned(),
+        upload_url: format!("http://{address}/upload"),
+        content_type: "text/plain".to_owned(),
+        expected_size_bytes: 7,
+        headers: [
+            ("content-type".to_owned(), "text/plain".to_owned()),
+            ("content-length".to_owned(), "7".to_owned()),
+            ("content-encoding".to_owned(), "identity".to_owned()),
+            ("x-goog-if-generation-match".to_owned(), "0".to_owned()),
+        ]
+        .into(),
+    };
+    client
+        .upload(
+            &upload,
+            fs::File::open(content_path).expect("open content"),
+            7,
+        )
+        .expect("upload content");
+
+    let request = server.join().expect("server thread").to_ascii_lowercase();
+    assert!(request.contains("content-type: text/plain"));
+    assert!(request.contains("content-length: 7"));
+    assert!(request.contains("content-encoding: identity"));
+    assert!(request.contains("x-goog-if-generation-match: 0"));
+    assert!(request.ends_with("content"));
 }
 
 #[test]
