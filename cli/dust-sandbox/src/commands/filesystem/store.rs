@@ -532,9 +532,9 @@ mod tests {
     }
 
     #[test]
-    fn public_open_keeps_content_alive_until_the_handle_closes() {
+    fn public_open_keeps_zero_capacity_cache_content_alive_until_close() {
         let directory = tempdir().expect("temporary directory");
-        let store = store(directory.path(), 3);
+        let store = store(directory.path(), 0);
         let first = file(3, 3);
         stage(&store, &first, b"one");
         let first_open = store
