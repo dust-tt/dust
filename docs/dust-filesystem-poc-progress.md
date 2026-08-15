@@ -92,12 +92,13 @@ The full timing table is in `cli/dust-sandbox/docs/database-filesystem.md`.
 
 The Rust code is split into three stacked branches:
 
-1. `flav/dust-filesystem-rust-client` at `c7f02fc291` adds the typed Front client, request retries,
-   error mapping, and signed GCS transfers. Eleven focused tests pass.
-2. `flav/dust-filesystem-rust-store` at `04b21c8a8f` adds the inode mapping, staged-file store, and
+1. `flav/dust-filesystem-rust-client` at `a9e814f872` adds the typed Front client, request retries,
+   error mapping, and signed GCS transfers. Transport, namespace, and content code live in separate
+   files with their tests beside them. Eleven focused tests pass.
+2. `flav/dust-filesystem-rust-store` at `8ea4c7de98` adds the inode mapping, staged-file store, and
    bounded caches. The store owns open-file pins, writer slots, commit state, and eviction. Twenty-six
    focused tests pass.
-3. `flav/dust-filesystem-rust-mount` at `d945baf032` adds the Linux FUSE callbacks, mount command,
+3. `flav/dust-filesystem-rust-mount` at `c61cb92306` adds the Linux FUSE callbacks, mount command,
    restart supervisor, acceptance scripts, benchmarks, and current design note. Mount state and
    syscall callbacks are in separate files. Twenty-nine Linux-targeted tests, Clippy, and the optimized
    Linux build pass.
