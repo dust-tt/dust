@@ -1,25 +1,23 @@
-use std::collections::{HashMap, HashSet};
-use std::fs::{self, File, OpenOptions};
 use std::io::{self, Seek, SeekFrom};
-use std::num::NonZeroUsize;
-use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
-use std::time::{Duration, Instant};
 
-use lru::LruCache;
 use tempfile::NamedTempFile;
+use tracing::warn;
 use uuid::Uuid;
 
 use super::client::{FileSystemClient, NodeKind as RemoteNodeKind, RemoteNode};
 use super::inode::{inode_for_node_id, node_id_for_inode, INodeNo};
 
+mod content_cache;
+mod metadata_cache;
+
+pub use content_cache::OpenedContent;
+use content_cache::{prepare_staging_directory, CachedContent, ContentCache};
+use metadata_cache::MetadataCache;
+
 pub const FUSE_ROOT_INODE: INodeNo = INodeNo::ROOT;
 const DEFAULT_CONTENT_TYPE: &str = "application/octet-stream";
-const METADATA_CACHE_TTL: Duration = Duration::from_secs(1);
-const NODE_CACHE_CAPACITY: usize = 4096;
-const DIRECTORY_CACHE_CAPACITY: usize = 256;
-const DIRECTORY_ENTRY_CACHE_CAPACITY: usize = 8192;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NodeKind {
@@ -51,72 +49,14 @@ impl Node {
     }
 }
 
-pub struct OpenedContent {
-    pub node: Node,
-    pub file: File,
-    pub expected_blob_id: Option<String>,
-    pub content_type: String,
-}
-
-#[derive(Clone, Debug)]
-struct CachedContent {
-    blob_id: Option<String>,
-    path: PathBuf,
-    size_bytes: u64,
-    last_access: u64,
-}
-
-struct ContentCache {
-    entries: HashMap<INodeNo, CachedContent>,
-    capacity_bytes: u64,
-    cached_bytes: u64,
-    access_sequence: u64,
-}
-
-#[derive(Clone)]
-struct CachedNode {
-    node: Node,
-    validated_at: Instant,
-}
-
-#[derive(Clone)]
-struct CachedDirectory {
-    children: Vec<Node>,
-    validated_at: Instant,
-}
-
-struct MetadataCache {
-    nodes: LruCache<INodeNo, CachedNode>,
-    directories: LruCache<INodeNo, CachedDirectory>,
-    directory_entries: usize,
-}
-
-impl MetadataCache {
-    fn new() -> io::Result<Self> {
-        let node_capacity =
-            NonZeroUsize::new(NODE_CACHE_CAPACITY).ok_or_else(|| errno(libc::EINVAL))?;
-        let directory_capacity =
-            NonZeroUsize::new(DIRECTORY_CACHE_CAPACITY).ok_or_else(|| errno(libc::EINVAL))?;
-        Ok(Self {
-            nodes: LruCache::new(node_capacity),
-            directories: LruCache::new(directory_capacity),
-            directory_entries: 0,
-        })
-    }
-}
-
 pub struct FileStore {
     client: FileSystemClient,
     staging_dir: PathBuf,
     roots: Vec<Node>,
-    cache: Mutex<ContentCache>,
+    content: ContentCache,
     // Match the one-second FUSE attribute TTL so repeated opens and readdir
     // stay local without extending the period in which another writer is hidden.
     metadata: Mutex<MetadataCache>,
-    // A fixed number of stripes prevents two downloads of the same inode from
-    // replacing each other's cache file without growing one lock per file.
-    // Different files can still download and upload in parallel.
-    content_locks: [Mutex<()>; 64],
 }
 
 impl FileStore {
@@ -132,6 +72,8 @@ impl FileStore {
         token_file: PathBuf,
         cache_capacity_bytes: u64,
     ) -> io::Result<Self> {
+        // The sandbox mounts this below a root-owned runtime directory. The
+        // checks here protect the final directory and rely on that trusted parent.
         prepare_staging_directory(staging_dir)?;
         let client = FileSystemClient::new(api_url, workspace_id, token, token_file)?;
         let roots = client
@@ -143,14 +85,8 @@ impl FileStore {
             client,
             staging_dir: staging_dir.to_path_buf(),
             roots,
-            cache: Mutex::new(ContentCache {
-                entries: HashMap::new(),
-                capacity_bytes: cache_capacity_bytes,
-                cached_bytes: 0,
-                access_sequence: 0,
-            }),
+            content: ContentCache::new(cache_capacity_bytes),
             metadata: Mutex::new(MetadataCache::new()?),
-            content_locks: std::array::from_fn(|_| Mutex::new(())),
         })
     }
 
@@ -287,13 +223,15 @@ impl FileStore {
         )?;
         self.invalidate_node(inode)?;
         self.invalidate_directory(parent_inode)?;
-        self.forget_content(inode);
+        self.forget_content_after_namespace_change(inode);
         Ok(())
     }
 
-    pub fn forget_content(&self, inode: INodeNo) {
-        if let Ok(mut cache) = self.cache() {
-            let _ = Self::remove_cached_content(&mut cache, inode);
+    fn forget_content_after_namespace_change(&self, inode: INodeNo) {
+        if let Err(error) = self.content.forget(inode) {
+            // The namespace mutation already committed. Keep its successful
+            // result and report the local cache cleanup separately.
+            warn!(inode = inode.0, %error, "failed to remove staged filesystem content");
         }
     }
 
@@ -309,6 +247,11 @@ impl FileStore {
         if parent_inode == FUSE_ROOT_INODE || new_parent_inode == FUSE_ROOT_INODE {
             return Err(errno(libc::EPERM));
         }
+        let replaced_inode = match self.lookup(new_parent_inode, new_name) {
+            Ok(destination) => Some(destination.inode),
+            Err(error) if error.raw_os_error() == Some(libc::ENOENT) => None,
+            Err(error) => return Err(error),
+        };
         let node = Node::from_remote(self.client.rename(
             &Uuid::new_v4().to_string(),
             node_id_for_inode(parent_inode)?,
@@ -319,6 +262,11 @@ impl FileStore {
         self.invalidate_directory(parent_inode)?;
         self.invalidate_directory(new_parent_inode)?;
         self.cache_node(node.clone())?;
+        if let Some(replaced_inode) = replaced_inode {
+            if replaced_inode != node.inode {
+                self.forget_content_after_namespace_change(replaced_inode);
+            }
+        }
         Ok(node)
     }
 
@@ -334,195 +282,84 @@ impl FileStore {
         Ok(node)
     }
 
-    pub fn open_content(
-        &self,
-        inode: INodeNo,
-        flags: i32,
-        pinned_inodes: &HashSet<INodeNo>,
-    ) -> io::Result<OpenedContent> {
-        let _content = self.content_lock(inode)?;
-        let mut node = self.node(inode)?;
-        if node.kind != NodeKind::File {
-            return Err(errno(libc::EISDIR));
-        }
-        let node_id = node_id_for_inode(node.inode)?;
-        let cache_current = {
-            let cache = self.cache()?;
-            cache
-                .entries
-                .get(&inode)
-                .map(|cached| cached.blob_id == node.blob_id && cached.path.exists())
-                .unwrap_or(false)
-        };
-        if !cache_current {
-            let mut temporary = NamedTempFile::new_in(&self.staging_dir)?;
-            let mut opened_node = node.clone();
-            if node.blob_id.is_some() {
-                let content = self.client.content(node_id)?;
-                if let Some(url) = content.download_url.as_deref() {
-                    self.client.download(url, temporary.as_file_mut())?;
-                }
-                opened_node.blob_id = content.blob_id;
-                if content.content_type.is_some() {
-                    opened_node.content_type = content.content_type;
-                }
+    pub fn open_content(&self, inode: INodeNo, flags: i32) -> io::Result<OpenedContent> {
+        let writable = is_writable(flags);
+        let reservation = self.content.reserve_open(inode, writable)?;
+        (|| {
+            let _content = self.content.lock(inode)?;
+            let mut node = self.node(inode)?;
+            if node.kind != NodeKind::File {
+                return Err(errno(libc::EISDIR));
             }
-            temporary.as_file_mut().sync_data()?;
-            let size_bytes = temporary.as_file().metadata()?.len();
-            opened_node.size = size_bytes;
-            let path = self.content_path(inode);
-            temporary.persist(&path).map_err(|error| error.error)?;
-            self.insert_cached_content(
-                inode,
-                CachedContent {
-                    blob_id: opened_node.blob_id.clone(),
-                    path,
-                    size_bytes,
-                    last_access: 0,
-                },
-            )?;
-            self.cache_node(opened_node.clone())?;
-            node = opened_node;
-        } else {
-            self.touch_cached_content(inode)?;
-        }
+            let node_id = node_id_for_inode(node.inode)?;
+            let cache_current = { self.content.is_current(inode, node.blob_id())? };
+            if !cache_current {
+                let mut temporary = NamedTempFile::new_in(&self.staging_dir)?;
+                let mut opened_node = node.clone();
+                if node.blob_id.is_some() {
+                    let content = self.client.content(node_id)?;
+                    if let Some(url) = content.download_url.as_deref() {
+                        self.client.download(url, temporary.as_file_mut())?;
+                    }
+                    opened_node.blob_id = content.blob_id;
+                    if content.content_type.is_some() {
+                        opened_node.content_type = content.content_type;
+                    }
+                }
+                temporary.as_file_mut().sync_data()?;
+                let size_bytes = temporary.as_file().metadata()?.len();
+                opened_node.size = size_bytes;
+                let path = self.content_path(inode);
+                temporary.persist(&path).map_err(|error| error.error)?;
+                self.content.insert(
+                    inode,
+                    CachedContent::new(opened_node.blob_id.clone(), path, size_bytes),
+                )?;
+                self.cache_node(opened_node.clone())?;
+                node = opened_node;
+            }
 
-        let mut protected_inodes = pinned_inodes.clone();
-        protected_inodes.insert(inode);
-        self.trim_cache(&protected_inodes)?;
-
-        let path = self
-            .cache()?
-            .entries
-            .get(&inode)
-            .map(|cached| cached.path.clone())
-            .ok_or_else(|| errno(libc::EIO))?;
-        let file = open_staged_file(&path, flags)?;
-        Ok(OpenedContent {
-            expected_blob_id: node.blob_id.clone(),
-            content_type: node.content_type().to_owned(),
-            node,
-            file,
-        })
+            reservation.open(flags, node)
+        })()
     }
 
     pub fn set_size(&self, inode: INodeNo, size: u64) -> io::Result<Node> {
-        let opened = self.open_content(inode, libc::O_RDWR, &HashSet::new())?;
+        let mut opened = self.open_content(inode, libc::O_RDWR)?;
         opened.file.set_len(size)?;
         opened.file.sync_data()?;
-        self.commit_content(
-            inode,
-            opened.expected_blob_id.as_deref(),
-            &opened.content_type,
-            &opened.file,
-        )
+        self.commit_content(&mut opened)
     }
 
-    pub fn commit_content(
-        &self,
-        inode: INodeNo,
-        expected_blob_id: Option<&str>,
-        content_type: &str,
-        file: &File,
-    ) -> io::Result<Node> {
+    pub fn commit_content(&self, opened: &mut OpenedContent) -> io::Result<Node> {
+        if !opened.is_writable() {
+            return Err(errno(libc::EBADF));
+        }
+        let inode = opened.node.inode;
         let node_id = node_id_for_inode(inode)?;
-        file.sync_data()?;
-        let size = file.metadata()?.len();
-        let upload = self
-            .client
-            .prepare_upload(node_id, expected_blob_id, size, content_type)?;
-        let mut upload_file = file.try_clone()?;
+        opened.file.sync_data()?;
+        let size = opened.file.metadata()?.len();
+        let upload = self.client.prepare_upload(
+            node_id,
+            opened.expected_blob_id.as_deref(),
+            size,
+            &opened.content_type,
+        )?;
+        let mut upload_file = opened.file.try_clone()?;
         upload_file.seek(SeekFrom::Start(0))?;
         self.client.upload(&upload, upload_file, size)?;
-        let remote = self
-            .client
-            .commit_upload(node_id, expected_blob_id, &upload, size)?;
+        let remote = self.client.commit_upload(
+            node_id,
+            opened.expected_blob_id.as_deref(),
+            &upload,
+            size,
+        )?;
         let node = Node::from_remote(remote)?;
-        self.update_cached_content(inode, &node, size)?;
+        self.content.update(inode, &node, size)?;
         self.cache_node(node.clone())?;
+        opened.expected_blob_id = node.blob_id.clone();
+        opened.content_type = node.content_type().to_owned();
+        opened.node = node.clone();
         Ok(node)
-    }
-
-    pub fn trim_cache(&self, pinned_inodes: &HashSet<INodeNo>) -> io::Result<()> {
-        let mut cache = self.cache()?;
-        while cache.cached_bytes > cache.capacity_bytes {
-            let candidate = cache
-                .entries
-                .iter()
-                .filter(|(inode, _)| !pinned_inodes.contains(inode))
-                .min_by_key(|(_, cached)| cached.last_access)
-                .map(|(inode, _)| *inode);
-            let Some(inode) = candidate else {
-                // Open files are allowed to exceed the cache cap temporarily.
-                break;
-            };
-            Self::remove_cached_content(&mut cache, inode)?;
-        }
-        Ok(())
-    }
-
-    fn insert_cached_content(&self, inode: INodeNo, mut cached: CachedContent) -> io::Result<()> {
-        let mut cache = self.cache()?;
-        cache.access_sequence = cache.access_sequence.saturating_add(1);
-        cached.last_access = cache.access_sequence;
-        let size_bytes = cached.size_bytes;
-        if let Some(previous) = cache.entries.insert(inode, cached) {
-            cache.cached_bytes = cache.cached_bytes.saturating_sub(previous.size_bytes);
-        }
-        cache.cached_bytes = cache.cached_bytes.saturating_add(size_bytes);
-        Ok(())
-    }
-
-    fn touch_cached_content(&self, inode: INodeNo) -> io::Result<()> {
-        let mut cache = self.cache()?;
-        cache.access_sequence = cache.access_sequence.saturating_add(1);
-        let access_sequence = cache.access_sequence;
-        if let Some(cached) = cache.entries.get_mut(&inode) {
-            cached.last_access = access_sequence;
-        }
-        Ok(())
-    }
-
-    fn update_cached_content(
-        &self,
-        inode: INodeNo,
-        node: &Node,
-        size_bytes: u64,
-    ) -> io::Result<()> {
-        let mut cache = self.cache()?;
-        cache.access_sequence = cache.access_sequence.saturating_add(1);
-        let access_sequence = cache.access_sequence;
-        let previous_size = cache.entries.get(&inode).map(|cached| cached.size_bytes);
-        if let Some(previous_size) = previous_size {
-            cache.cached_bytes = cache.cached_bytes.saturating_sub(previous_size);
-            cache.cached_bytes = cache.cached_bytes.saturating_add(size_bytes);
-        }
-        if let Some(cached) = cache.entries.get_mut(&inode) {
-            cached.blob_id = node.blob_id.clone();
-            cached.size_bytes = size_bytes;
-            cached.last_access = access_sequence;
-        }
-        Ok(())
-    }
-
-    fn remove_cached_content(cache: &mut ContentCache, inode: INodeNo) -> io::Result<()> {
-        let Some(cached) = cache.entries.get(&inode) else {
-            return Ok(());
-        };
-        match fs::remove_file(&cached.path) {
-            Ok(()) => {}
-            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
-            Err(error) => return Err(error),
-        }
-        let removed = cache.entries.remove(&inode);
-        if let Some(removed) = removed {
-            cache.cached_bytes = cache.cached_bytes.saturating_sub(removed.size_bytes);
-        }
-        Ok(())
-    }
-
-    fn cache(&self) -> io::Result<MutexGuard<'_, ContentCache>> {
-        self.cache.lock().map_err(|_| errno(libc::EIO))
     }
 
     fn metadata(&self) -> io::Result<MutexGuard<'_, MetadataCache>> {
@@ -530,167 +367,33 @@ impl FileStore {
     }
 
     fn cached_node(&self, inode: INodeNo) -> io::Result<Option<Node>> {
-        let mut metadata = self.metadata()?;
-        match metadata.nodes.get(&inode).cloned() {
-            Some(cached) if cached.validated_at.elapsed() <= METADATA_CACHE_TTL => {
-                Ok(Some(cached.node))
-            }
-            Some(_) => {
-                metadata.nodes.pop(&inode);
-                Ok(None)
-            }
-            None => Ok(None),
-        }
+        Ok(self.metadata()?.node(inode))
     }
 
     fn cache_node(&self, node: Node) -> io::Result<()> {
-        let mut metadata = self.metadata()?;
-        metadata.nodes.put(
-            node.inode,
-            CachedNode {
-                node,
-                validated_at: Instant::now(),
-            },
-        );
+        self.metadata()?.put_node(node);
         Ok(())
     }
 
     fn cached_children(&self, parent_inode: INodeNo) -> io::Result<Option<Vec<Node>>> {
-        let mut metadata = self.metadata()?;
-        match metadata.directories.get(&parent_inode).cloned() {
-            Some(cached) if cached.validated_at.elapsed() <= METADATA_CACHE_TTL => {
-                Ok(Some(cached.children))
-            }
-            Some(_) => {
-                if let Some(expired) = metadata.directories.pop(&parent_inode) {
-                    metadata.directory_entries = metadata
-                        .directory_entries
-                        .saturating_sub(expired.children.len());
-                }
-                Ok(None)
-            }
-            None => Ok(None),
-        }
+        self.metadata()?.children(parent_inode)
     }
 
     fn cache_children(&self, parent_inode: INodeNo, children: Vec<Node>) -> io::Result<()> {
-        let mut metadata = self.metadata()?;
-        for child in &children {
-            metadata.nodes.put(
-                child.inode,
-                CachedNode {
-                    node: child.clone(),
-                    validated_at: Instant::now(),
-                },
-            );
-        }
-        let child_count = children.len();
-        if let Some((_, previous)) = metadata.directories.push(
-            parent_inode,
-            CachedDirectory {
-                children,
-                validated_at: Instant::now(),
-            },
-        ) {
-            metadata.directory_entries = metadata
-                .directory_entries
-                .saturating_sub(previous.children.len());
-        }
-        metadata.directory_entries = metadata.directory_entries.saturating_add(child_count);
-        while metadata.directory_entries > DIRECTORY_ENTRY_CACHE_CAPACITY {
-            if let Some((_, removed)) = metadata.directories.pop_lru() {
-                metadata.directory_entries = metadata
-                    .directory_entries
-                    .saturating_sub(removed.children.len());
-            } else {
-                break;
-            }
-        }
-        Ok(())
+        self.metadata()?.put_children(parent_inode, children)
     }
 
     fn invalidate_node(&self, inode: INodeNo) -> io::Result<()> {
-        let mut metadata = self.metadata()?;
-        metadata.nodes.pop(&inode);
-        if let Some(removed) = metadata.directories.pop(&inode) {
-            metadata.directory_entries = metadata
-                .directory_entries
-                .saturating_sub(removed.children.len());
-        }
-        Ok(())
+        self.metadata()?.invalidate_node(inode)
     }
 
     fn invalidate_directory(&self, inode: INodeNo) -> io::Result<()> {
-        let mut metadata = self.metadata()?;
-        if let Some(removed) = metadata.directories.pop(&inode) {
-            metadata.directory_entries = metadata
-                .directory_entries
-                .saturating_sub(removed.children.len());
-        }
-        Ok(())
-    }
-
-    fn content_lock(&self, inode: INodeNo) -> io::Result<MutexGuard<'_, ()>> {
-        self.content_locks[inode.0 as usize % self.content_locks.len()]
-            .lock()
-            .map_err(|_| errno(libc::EIO))
+        self.metadata()?.invalidate_directory(inode)
     }
 
     fn content_path(&self, inode: INodeNo) -> PathBuf {
         self.staging_dir.join(format!("inode-{}", inode.0))
     }
-}
-
-fn prepare_staging_directory(path: &Path) -> io::Result<()> {
-    let created = match fs::symlink_metadata(path) {
-        Ok(_) => false,
-        Err(error) if error.kind() == io::ErrorKind::NotFound => {
-            fs::create_dir_all(path)?;
-            fs::set_permissions(path, fs::Permissions::from_mode(0o700))?;
-            true
-        }
-        Err(error) => return Err(error),
-    };
-    let metadata = fs::symlink_metadata(path)?;
-    if !metadata.file_type().is_dir() {
-        return Err(errno(libc::ENOTDIR));
-    }
-    if metadata.uid() != unsafe { libc::geteuid() }
-        || (!created && metadata.permissions().mode() & 0o077 != 0)
-    {
-        return Err(errno(libc::EACCES));
-    }
-
-    // The database and GCS are authoritative after a daemon crash. Removing
-    // old local files avoids accumulating abandoned cache entries and prevents
-    // un-fsynced bytes from being mistaken for committed content on restart.
-    for entry in fs::read_dir(path)? {
-        let entry = entry?;
-        let entry_type = fs::symlink_metadata(entry.path())?.file_type();
-        if entry_type.is_file() || entry_type.is_symlink() {
-            fs::remove_file(entry.path())?;
-        } else {
-            return Err(errno(libc::EIO));
-        }
-    }
-    Ok(())
-}
-
-fn open_staged_file(path: &Path, flags: i32) -> io::Result<File> {
-    let writable = is_writable(flags);
-    let mut options = OpenOptions::new();
-    options
-        .read(true)
-        .write(writable)
-        .append(flags & libc::O_APPEND != 0)
-        // Cached content lives outside the FUSE tree. Never let an unexpected
-        // local link turn a filesystem open into access to another host path.
-        .custom_flags(
-            flags & !(libc::O_ACCMODE | libc::O_CREAT | libc::O_EXCL)
-                | libc::O_NOFOLLOW
-                | libc::O_CLOEXEC,
-        );
-    options.open(path)
 }
 
 impl Node {
@@ -747,4 +450,129 @@ fn errno(code: i32) -> io::Error {
 }
 
 #[cfg(test)]
-mod tests;
+mod tests {
+    use std::fs;
+    use std::sync::Mutex;
+
+    use tempfile::tempdir;
+
+    use super::super::client::{NodeKind as RemoteNodeKind, RemoteNode};
+    use super::super::inode::{inode_for_node_id, node_id_for_inode};
+    use super::{
+        CachedContent, ContentCache, FileStore, FileSystemClient, MetadataCache, Node, NodeKind,
+        FUSE_ROOT_INODE,
+    };
+
+    fn file(inode: u64, size: u64) -> Node {
+        Node {
+            inode: super::INodeNo(inode),
+            parent_inode: Some(super::INodeNo(2)),
+            name: format!("inode-{inode}"),
+            kind: NodeKind::File,
+            mode: 0o644,
+            size,
+            created_at_ms: 0,
+            modified_at_ms: 0,
+            blob_id: Some(format!("blob-{inode}")),
+            content_type: None,
+        }
+    }
+
+    fn store(staging_dir: &std::path::Path, capacity: u64) -> FileStore {
+        FileStore {
+            client: FileSystemClient::new(
+                "http://127.0.0.1:1",
+                "1",
+                "test-token".to_owned(),
+                staging_dir.join("token"),
+            )
+            .expect("filesystem client"),
+            staging_dir: staging_dir.to_path_buf(),
+            roots: Vec::new(),
+            content: ContentCache::new(capacity),
+            metadata: Mutex::new(MetadataCache::new().expect("metadata cache")),
+        }
+    }
+
+    fn stage(store: &FileStore, node: &Node, bytes: &[u8]) {
+        let path = store.content_path(node.inode);
+        fs::write(&path, bytes).expect("write staged content");
+        store
+            .content
+            .insert(
+                node.inode,
+                CachedContent::new(node.blob_id.clone(), path, bytes.len() as u64),
+            )
+            .expect("cache staged content");
+        store.cache_node(node.clone()).expect("cache node");
+    }
+
+    #[test]
+    fn database_ids_and_parent_ids_are_encoded_as_inodes() {
+        let node = Node::from_remote(RemoteNode {
+            id: 1,
+            parent_id: Some(1),
+            name: "file.txt".to_owned(),
+            kind: RemoteNodeKind::File,
+            mode: 0o644,
+            size: 0,
+            content_type: None,
+            blob_id: None,
+            created_at_ms: 0,
+            modified_at_ms: 0,
+        })
+        .expect("database node");
+        assert_eq!(node.inode, inode_for_node_id(1).expect("node inode"));
+        assert_eq!(
+            node.parent_inode,
+            Some(inode_for_node_id(1).expect("parent inode"))
+        );
+        assert_eq!(node_id_for_inode(node.inode).ok(), Some(1));
+        assert_ne!(node.inode, FUSE_ROOT_INODE);
+    }
+
+    #[test]
+    fn public_open_keeps_content_alive_until_the_handle_closes() {
+        let directory = tempdir().expect("temporary directory");
+        let store = store(directory.path(), 3);
+        let first = file(3, 3);
+        stage(&store, &first, b"one");
+        let first_open = store
+            .open_content(first.inode, libc::O_RDONLY)
+            .expect("open first file");
+
+        let second = file(4, 3);
+        stage(&store, &second, b"two");
+        let second_open = store
+            .open_content(second.inode, libc::O_RDONLY)
+            .expect("open second file");
+
+        assert!(store.content_path(first.inode).exists());
+        assert!(store.content_path(second.inode).exists());
+        drop(second_open);
+        assert!(store.content_path(first.inode).exists());
+        assert!(!store.content_path(second.inode).exists());
+        drop(first_open);
+    }
+
+    #[test]
+    fn public_open_allows_one_writer_per_inode() {
+        let directory = tempdir().expect("temporary directory");
+        let store = store(directory.path(), 1024);
+        let node = file(3, 3);
+        stage(&store, &node, b"one");
+        let first = store
+            .open_content(node.inode, libc::O_RDWR)
+            .expect("open first writer");
+
+        let Err(error) = store.open_content(node.inode, libc::O_RDWR) else {
+            panic!("accepted a second writer");
+        };
+        assert_eq!(error.raw_os_error(), Some(libc::EBUSY));
+
+        drop(first);
+        store
+            .open_content(node.inode, libc::O_RDWR)
+            .expect("open writer after close");
+    }
+}
