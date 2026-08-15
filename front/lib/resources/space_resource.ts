@@ -167,6 +167,25 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return metadata?.isAdminControlled ?? false;
   }
 
+  async fetchUseDatabaseFileSystem(
+    transaction?: Transaction
+  ): Promise<boolean> {
+    if (!this.isProject()) {
+      return false;
+    }
+
+    const metadata = await ProjectMetadataModel.findOne({
+      attributes: ["useDatabaseFileSystem"],
+      where: {
+        spaceId: this.id,
+        workspaceId: this.workspaceId,
+      },
+      transaction,
+    });
+
+    return metadata?.useDatabaseFileSystem ?? false;
+  }
+
   static async makeNew(
     auth: Authenticator,
     blob: CreationAttributes<SpaceModel>,

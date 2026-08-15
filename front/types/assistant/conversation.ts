@@ -528,6 +528,8 @@ export type ConversationMetadata = Record<string, unknown> & {
   urlAccessMode?: ConversationUrlAccessMode;
   projectTaskId?: string;
   useFileSystem?: boolean;
+  /** New roots only: PostgreSQL inode tree + Dust FUSE instead of gcsfuse. */
+  useDatabaseFileSystem?: boolean;
 };
 
 function isConversationUrlAccessMode(

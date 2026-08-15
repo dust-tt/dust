@@ -56,85 +56,139 @@ export const FileSystemNodeSchema = z.object({
 
 export type FileSystemNodeType = z.infer<typeof FileSystemNodeSchema>;
 
-export type FileSystemContentType = {
-  blobId: string | null;
-  downloadUrl: string | null;
-  size: number;
-  contentType: string | null;
-};
+export const FileSystemContentSchema = z.object({
+  blobId: z.string().uuid().nullable(),
+  downloadUrl: z.string().nullable(),
+  size: z.number().int().nonnegative(),
+  contentType: z.string().nullable(),
+});
 
-export type FileSystemContentUploadType = {
-  blobId: string;
-  uploadUrl: string;
-  contentType: string;
-  expectedSizeBytes: number;
-  headers: Record<string, string>;
-};
+export type FileSystemContentType = z.infer<typeof FileSystemContentSchema>;
 
-export type FileSystemOperation =
-  | { operation: "initialize" }
-  | { operation: "lookup"; parentId: number; name: string }
-  | { operation: "getAttr"; nodeId: number }
-  | {
-      operation: "readDir";
-      nodeId: number;
-      afterName: string | null;
-      limit: number;
-    }
-  | {
-      operation: "create";
-      requestId: string;
-      parentId: number;
-      name: string;
-      kind: FileSystemNodeKind;
-      mode: number;
-    }
-  | {
-      operation: "remove";
-      requestId: string;
-      parentId: number;
-      name: string;
-      kind: FileSystemNodeKind;
-    }
-  | {
-      operation: "rename";
-      requestId: string;
-      sourceParentId: number;
-      sourceName: string;
-      destinationParentId: number;
-      destinationName: string;
-    }
-  | { operation: "getContent"; nodeId: number }
-  | {
-      operation: "prepareContentUpload";
-      nodeId: number;
-      expectedBlobId: string | null;
-      expectedSizeBytes: number;
-      contentType: string;
-    }
-  | {
-      operation: "commitContentUpload";
-      nodeId: number;
-      expectedBlobId: string | null;
-      blobId: string;
-      expectedSizeBytes: number;
-      contentType: string;
-    }
-  | {
-      operation: "setExecutableBits";
-      nodeId: number;
-      /** The exact user, group, and other execute bits to store. */
-      executableBits: number;
-    };
+export const FileSystemContentUploadSchema = z.object({
+  blobId: z.string().uuid(),
+  uploadUrl: z.string(),
+  contentType: z.string(),
+  expectedSizeBytes: z.number().int().nonnegative(),
+  headers: z.record(z.string(), z.string()),
+});
 
-export type FileSystemOperationResponse = {
-  roots?: FileSystemNodeType[];
-  node?: FileSystemNodeType | null;
-  nodes?: FileSystemNodeType[];
-  nextAfterName?: string | null;
-  content?: FileSystemContentType;
-  upload?: FileSystemContentUploadType;
-};
+export type FileSystemContentUploadType = z.infer<
+  typeof FileSystemContentUploadSchema
+>;
+
+const FileSystemNodeIdSchema = z.number().int().positive();
+const FileSystemNameSchema = z.string().min(1).max(FILE_SYSTEM_NAME_MAX_BYTES);
+const FileSystemRequestIdSchema = z
+  .string()
+  .min(1)
+  .max(FILE_SYSTEM_REQUEST_ID_MAX_LENGTH);
+const FileSystemModeSchema = z
+  .number()
+  .int()
+  .min(FILE_SYSTEM_MODE_LIMITS.min)
+  .max(FILE_SYSTEM_MODE_LIMITS.max);
+const FileSystemContentTypeSchema = z
+  .string()
+  .min(1)
+  .max(FILE_SYSTEM_CONTENT_TYPE_MAX_LENGTH);
+const FileSystemContentSizeSchema = z
+  .number()
+  .int()
+  .min(0)
+  .max(FILE_SYSTEM_CONTENT_MAX_BYTES);
+
+export const FileSystemOperationSchema = z.discriminatedUnion("operation", [
+  z.object({ operation: z.literal("initialize") }),
+  z.object({
+    operation: z.literal("lookup"),
+    parentId: FileSystemNodeIdSchema,
+    name: FileSystemNameSchema,
+  }),
+  z.object({
+    operation: z.literal("getAttr"),
+    nodeId: FileSystemNodeIdSchema,
+  }),
+  z.object({
+    operation: z.literal("readDir"),
+    nodeId: FileSystemNodeIdSchema,
+    afterName: z.string().max(FILE_SYSTEM_NAME_MAX_BYTES).nullable(),
+    limit: z
+      .number()
+      .int()
+      .min(FILE_SYSTEM_READ_DIR_PAGE_SIZE_LIMITS.min)
+      .max(FILE_SYSTEM_READ_DIR_PAGE_SIZE_LIMITS.max),
+  }),
+  z.object({
+    operation: z.literal("create"),
+    requestId: FileSystemRequestIdSchema,
+    parentId: FileSystemNodeIdSchema,
+    name: FileSystemNameSchema,
+    kind: z.enum(FileSystemNodeKinds),
+    mode: FileSystemModeSchema,
+  }),
+  z.object({
+    operation: z.literal("remove"),
+    requestId: FileSystemRequestIdSchema,
+    parentId: FileSystemNodeIdSchema,
+    name: FileSystemNameSchema,
+    kind: z.enum(FileSystemNodeKinds),
+  }),
+  z.object({
+    operation: z.literal("rename"),
+    requestId: FileSystemRequestIdSchema,
+    sourceParentId: FileSystemNodeIdSchema,
+    sourceName: FileSystemNameSchema,
+    destinationParentId: FileSystemNodeIdSchema,
+    destinationName: FileSystemNameSchema,
+  }),
+  z.object({
+    operation: z.literal("getContent"),
+    nodeId: FileSystemNodeIdSchema,
+  }),
+  z.object({
+    operation: z.literal("prepareContentUpload"),
+    nodeId: FileSystemNodeIdSchema,
+    expectedBlobId: z.string().uuid().nullable(),
+    expectedSizeBytes: FileSystemContentSizeSchema,
+    contentType: FileSystemContentTypeSchema,
+  }),
+  z.object({
+    operation: z.literal("commitContentUpload"),
+    nodeId: FileSystemNodeIdSchema,
+    expectedBlobId: z.string().uuid().nullable(),
+    blobId: z.string().uuid(),
+    expectedSizeBytes: FileSystemContentSizeSchema,
+    contentType: FileSystemContentTypeSchema,
+  }),
+  z.object({
+    operation: z.literal("setExecutableBits"),
+    nodeId: FileSystemNodeIdSchema,
+    // Only these three bits may be sent. Read and write bits stay unchanged.
+    executableBits: z
+      .number()
+      .int()
+      .refine(
+        (bits) => bits >= 0 && (bits & ~FILE_SYSTEM_EXECUTABLE_BITS_MASK) === 0,
+        "Only user, group, and other executable bits can be changed."
+      ),
+  }),
+]);
+
+export type FileSystemOperation = z.infer<typeof FileSystemOperationSchema>;
+
+export const FileSystemOperationResponseSchema = z.object({
+  roots: z.array(FileSystemNodeSchema).optional(),
+  node: FileSystemNodeSchema.nullable().optional(),
+  nodes: z.array(FileSystemNodeSchema).optional(),
+  nextAfterName: z.string().nullable().optional(),
+  content: FileSystemContentSchema.optional(),
+  upload: FileSystemContentUploadSchema.optional(),
+});
+
+export type FileSystemOperationResponse = z.infer<
+  typeof FileSystemOperationResponseSchema
+>;
 
 export type FileSystemOperationErrorCode =
   | "already_exists"

@@ -49,6 +49,7 @@ type SandboxStartupPhase =
   | "gcs.mint_token"
   | "gcs.token_server"
   | "gcs.gcsfuse_mount"
+  | "filesystem.database_mount"
   // Pod state bring-up (cold start only, after gcs_mount): restore replicated
   // SQLite databases, then start the daemon (its static directory-watcher
   // config is baked in the image).

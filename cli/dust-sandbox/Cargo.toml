@@ -20,7 +20,7 @@ lru = "0.16"
 httparse = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls-native-roots"] }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls-native-roots"] }
 # Already in the tree through rustls/rcgen; used directly for bundle hashing.
 ring = "0.17"
 rustix = { version = "1", features = ["process"] }
@@ -32,6 +32,10 @@ tokio-rustls = "0.26"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 x509-parser = "0.16"
+uuid = { version = "1", features = ["v4"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+fuser = { version = "0.18", default-features = false }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["test-util"] }

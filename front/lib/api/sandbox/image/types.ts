@@ -139,6 +139,9 @@ export const PROXY_ONLY_NETWORK_POLICY: NetworkPolicy = {
   allowlist: [
     // GCS — gcsfuse mounts run as root
     "storage.googleapis.com",
+    // Dust filesystem daemon — root carries only a sandbox/root-scoped JWT.
+    "dust.tt",
+    "*.dust.tt",
     // Datadog EU — sandbox telemetry runs as root
     "http-intake.logs.datadoghq.eu",
     "api.datadoghq.eu",
@@ -178,7 +181,7 @@ export interface ToolManifest {
  * The Docker image must actually have the corresponding tooling installed. The capability tag tells
  * orchestration it is safe to attempt the feature.
  */
-export type SandboxCapability = "gcsfuse";
+export type SandboxCapability = "dust_filesystem" | "gcsfuse";
 
 // ---------------------------------------------------------------------------
 // Base Image

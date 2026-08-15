@@ -603,6 +603,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     if (metadata.useFileSystem === undefined) {
       metadata.useFileSystem = true;
     }
+    if (metadata.useDatabaseFileSystem === undefined) {
+      metadata.useDatabaseFileSystem =
+        space?.isProject() === true
+          ? await space.fetchUseDatabaseFileSystem(transaction)
+          : true;
+    }
 
     const conversation = await this.model.create(
       {

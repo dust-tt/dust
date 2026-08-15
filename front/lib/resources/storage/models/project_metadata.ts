@@ -22,6 +22,8 @@ export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataMod
    * (Space DataSourceViews) to this Pod. Opt-in; gated by `admin_controlled_pods`.
    */
   declare isAdminControlled: CreationOptional<boolean>;
+  /** New roots only: PostgreSQL inode tree + Dust FUSE instead of gcsfuse. */
+  declare useDatabaseFileSystem: CreationOptional<boolean>;
   declare spaceId: ForeignKey<SpaceModel["id"]>;
 
   declare description: string | null;
@@ -69,6 +71,11 @@ ProjectMetadataModel.init(
       defaultValue: false,
     },
     isAdminControlled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    useDatabaseFileSystem: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
