@@ -35,7 +35,7 @@ This file records what was merged, what was changed, and which checks passed. It
 | Front filesystem endpoint tests | Passed | 4 tests |
 | Front typecheck | Passed | `tsgo --noEmit` |
 | Front API typecheck | Failed outside filesystem | See below |
-| Rust filesystem unit tests | Passed | 24 Linux-targeted tests |
+| Rust filesystem unit tests | Passed | 29 Linux-targeted tests |
 | Full Rust unit suite | Failed outside filesystem | 359 passed; see below |
 | Rust formatting | Passed | `cargo fmt --check` |
 | Rust clippy | Passed with merged-code exception | See below |
@@ -67,20 +67,22 @@ This file records what was merged, what was changed, and which checks passed. It
 
 ## Final live run
 
-The combined result is `/private/tmp/dust-filesystem-benchmark-20260815-final.json`. It used three
+The latest combined result is `/private/tmp/dust-filesystem-benchmark-store-hardening.json`. It used three
 fresh `dust-base_0-8-83` sandboxes and Linux binary SHA-256
-`b7c76eda0587535d9309d334ca19389fe85e1fb3a127628648d54e59be9d0a09`.
+`3891773d689283bb5b1476e9aaf9fa849c6d043e36095a13333138244eb4a335`.
 
 - The shell acceptance cases passed before timing began.
 - A truncating overwrite advanced revision 1 to 2, not by two revisions.
-- Five conversation-to-Pod moves preserved inode identity. Their p50 was 162 ms; the five gcsfuse
-  copy/delete moves had a 4,277 ms p50.
-- Dust FUSE write plus `fsync` p50 was 890 ms for 4 KiB, 1,463 ms for 1 MiB, and 1,613 ms for 8 MiB.
+- Five conversation-to-Pod moves preserved inode identity. Their p50 was 229 ms; the five gcsfuse
+  copy/delete moves had a 4,209 ms p50.
+- Dust FUSE write plus `fsync` p50 was 875 ms for 4 KiB, 1,336 ms for 1 MiB, and 1,839 ms for 8 MiB.
   Each was faster than the same run through gcsfuse.
 - Two Dust sandboxes mounted the same Pod. Five overwrites each increased revision by one and became
-  visible on the other mount after 289–1,182 ms. Rename kept the same inode and revision.
+  visible on the other mount after 155–1,090 ms. Rename kept the same inode and revision.
 - Two writers raced from revision 1. One committed revision 2; the other received `ESTALE`. Both
   mounts then read the winner.
+- The same acceptance workload passed with a zero-byte content cache. This covers the case where a
+  newly opened file must stay usable even though every closed cache entry is evicted immediately.
 - The runner destroyed every sandbox and removed its path-scoped fixtures. The temporary Front API
   and HTTPS tunnel were stopped after the run.
 
@@ -92,11 +94,12 @@ The Rust code is split into three stacked branches:
 
 1. `flav/dust-filesystem-rust-client` at `c7f02fc291` adds the typed Front client, request retries,
    error mapping, and signed GCS transfers. Eleven focused tests pass.
-2. `flav/dust-filesystem-rust-store` at `c2e0a7029f` adds the inode mapping, staged-file store, and
-   bounded caches. Twenty-one focused tests pass.
-3. `flav/dust-filesystem-rust-mount` at `37411cd548` adds the Linux FUSE callbacks, mount command,
+2. `flav/dust-filesystem-rust-store` at `04b21c8a8f` adds the inode mapping, staged-file store, and
+   bounded caches. The store owns open-file pins, writer slots, commit state, and eviction. Twenty-six
+   focused tests pass.
+3. `flav/dust-filesystem-rust-mount` at `d945baf032` adds the Linux FUSE callbacks, mount command,
    restart supervisor, acceptance scripts, benchmarks, and current design note. Mount state and
-   syscall callbacks are in separate files. Twenty-four Linux-targeted tests, Clippy, and the optimized
+   syscall callbacks are in separate files. Twenty-nine Linux-targeted tests, Clippy, and the optimized
    Linux build pass.
 
 The third branch exposes one `filesystem` command from the module. The client, inode mapping, local

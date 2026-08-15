@@ -258,7 +258,8 @@ async function startDatabaseMount(
   sandbox: SandboxResource,
   mounts: readonly FileSystemMount[],
   binary: Buffer,
-  apiUrl: string
+  apiUrl: string,
+  cacheCapacityMiB: number
 ): Promise<void> {
   expectOk(
     await sandbox.writeFile(auth, DATABASE_BINARY_PATH, arrayBuffer(binary)),
@@ -328,7 +329,7 @@ async function startDatabaseMount(
           `--api-url ${shellEscape(apiUrl)} ` +
           `--workspace-id ${shellEscape(workspaceId)} ` +
           `--token-file ${DATABASE_TOKEN_PATH} ` +
-          `--cache-capacity-mib 512; ` +
+          `--cache-capacity-mib ${cacheCapacityMiB}; ` +
           `i=0; while [ $i -lt 300 ]; do ` +
           `if /usr/bin/mountpoint -q ${MOUNT_POINT} && /usr/bin/stat -f ${MOUNT_POINT} >/dev/null 2>&1; then exit 0; fi; ` +
           `i=$((i+1)); /usr/bin/sleep 0.1; done; ` +
@@ -830,6 +831,12 @@ makeScript(
       default: false,
       description: "Run only the shell acceptance workload in one sandbox",
     },
+    cacheCapacityMiB: {
+      type: "number",
+      default: 512,
+      description:
+        "Local content cache size. Use zero with --acceptanceOnly to test eviction while files are open.",
+    },
   },
   async (
     {
@@ -844,10 +851,14 @@ makeScript(
       apiUrl,
       output,
       acceptanceOnly,
+      cacheCapacityMiB,
       execute,
     },
     logger
   ) => {
+    if (!Number.isSafeInteger(cacheCapacityMiB) || cacheCapacityMiB < 0) {
+      throw new Error("cacheCapacityMiB must be a non-negative integer.");
+    }
     const configuredApiUrl = config.getDustAPIConfig().url;
     if (configuredApiUrl !== apiUrl) {
       throw new Error(
@@ -899,7 +910,8 @@ makeScript(
           databaseSandbox,
           mounts,
           binary,
-          configuredApiUrl
+          configuredApiUrl,
+          cacheCapacityMiB
         );
         const acceptance = await runAcceptance(
           auth,
@@ -946,14 +958,16 @@ makeScript(
         databaseSandbox,
         mounts,
         binary,
-        configuredApiUrl
+        configuredApiUrl,
+        cacheCapacityMiB
       );
       await startDatabaseMount(
         auth,
         databasePeerSandbox,
         mounts,
         binary,
-        configuredApiUrl
+        configuredApiUrl,
+        cacheCapacityMiB
       );
 
       const acceptance = await runAcceptance(
