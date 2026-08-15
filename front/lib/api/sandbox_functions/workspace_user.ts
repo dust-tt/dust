@@ -86,6 +86,9 @@ export async function authorizeSandboxFunctionInvocation(
       // does not know: one from a newer revision in a mixed-version deploy, or a retired policy
       // (e.g. `pod_editor_required`) that predates its removal. Deny rather than throw so both
       // fail closed; a retired policy is repaired by republishing with a supported one.
+      // `assertNeverAndIgnore` (not `assertNever`) is deliberate although this is server code:
+      // the value is cross-revision data, not internal control flow, and throwing would turn
+      // these invocations into 500s instead of this clean denial.
       assertNeverAndIgnore(policy);
       return {
         authorized: false,

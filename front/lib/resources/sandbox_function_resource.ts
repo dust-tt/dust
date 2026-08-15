@@ -86,6 +86,9 @@ function userIdentityPolicyStrength(
       // in a mixed-version deploy, or a retired policy (e.g. `pod_editor_required`). Rank it
       // strictest so the republish never loosens it early and simply overwrites it with the
       // upload; invoking it is denied regardless (see authorizeSandboxFunctionInvocation).
+      // `assertNeverAndIgnore` (not `assertNever`) is deliberate although this is server code:
+      // republish is the only path that rewrites a stored policy, so throwing here would make a
+      // function carrying a retired policy permanently unrepairable.
       assertNeverAndIgnore(policy);
       return Number.POSITIVE_INFINITY;
   }
