@@ -27,6 +27,7 @@ import { z } from "zod";
 const BENCHMARK_DIRECTORY_PREFIX = "dust-fs-benchmark";
 const BENCHMARK_RUNNER_PATH = "/run/dust-filesystem-benchmark.ts";
 const SHARED_RUNNER_PATH = "/run/dust-filesystem-shared-benchmark.ts";
+const ACCEPTANCE_RUNNER_PATH = "/run/dust-filesystem-acceptance.sh";
 const DATABASE_BINARY_PATH = "/opt/bin/dsbx-filesystem-benchmark";
 const DATABASE_RUNTIME_DIRECTORY = "/run/dust-filesystem-benchmark";
 const DATABASE_TOKEN_PATH = `${DATABASE_RUNTIME_DIRECTORY}/token`;
@@ -397,6 +398,31 @@ async function uploadSharedRunner(
     await sandbox.writeFile(auth, SHARED_RUNNER_PATH, arrayBuffer(runner)),
     "Upload shared-namespace benchmark workload"
   );
+}
+
+async function runAcceptance(
+  auth: Authenticator,
+  sandbox: SandboxResource,
+  runner: Buffer
+): Promise<string> {
+  expectOk(
+    await sandbox.writeFile(auth, ACCEPTANCE_RUNNER_PATH, arrayBuffer(runner)),
+    "Upload FUSE acceptance workload"
+  );
+  const execution = expectOk(
+    await sandbox.execRoot(
+      auth,
+      rootCommand.exec("/usr/bin/bash", ["-x", ACCEPTANCE_RUNNER_PATH]),
+      { timeoutMs: COMMAND_TIMEOUT_MS }
+    ),
+    "Run FUSE acceptance workload"
+  );
+  if (execution.exitCode !== 0) {
+    throw new Error(
+      `FUSE acceptance workload failed: ${execution.stderr || execution.stdout}`
+    );
+  }
+  return execution.stdout.trim();
 }
 
 async function runSharedCommand(
@@ -784,6 +810,11 @@ makeScript(
         "cli/dust-sandbox/tests/filesystem_shared_namespace_benchmark.ts",
       description: "Two-sandbox shared-namespace workload",
     },
+    acceptancePath: {
+      type: "string",
+      default: "cli/dust-sandbox/tests/filesystem_fuse_acceptance.sh",
+      description: "Shell acceptance workload run on the Dust mount",
+    },
     apiUrl: {
       type: "string",
       demandOption: true,
@@ -793,6 +824,11 @@ makeScript(
       type: "string",
       default: "/private/tmp/dust-filesystem-benchmark.json",
       description: "Local JSON result path",
+    },
+    acceptanceOnly: {
+      type: "boolean",
+      default: false,
+      description: "Run only the shell acceptance workload in one sandbox",
     },
   },
   async (
@@ -804,8 +840,10 @@ makeScript(
       dsbxPath,
       runnerPath,
       sharedRunnerPath,
+      acceptancePath,
       apiUrl,
       output,
+      acceptanceOnly,
       execute,
     },
     logger
@@ -849,10 +887,37 @@ makeScript(
     const binary = await readFile(dsbxPath);
     const runner = await readFile(runnerPath);
     const sharedRunner = await readFile(sharedRunnerPath);
+    const acceptanceRunner = await readFile(acceptancePath);
     let gcsSandbox: SandboxResource | null = null;
     let databaseSandbox: SandboxResource | null = null;
     let databasePeerSandbox: SandboxResource | null = null;
     try {
+      if (acceptanceOnly) {
+        databaseSandbox = await createSandbox(auth, image);
+        await startDatabaseMount(
+          auth,
+          databaseSandbox,
+          mounts,
+          binary,
+          configuredApiUrl
+        );
+        const acceptance = await runAcceptance(
+          auth,
+          databaseSandbox,
+          acceptanceRunner
+        );
+        await writeFile(
+          output,
+          `${JSON.stringify({ acceptance }, null, 2)}\n`,
+          { mode: 0o600 }
+        );
+        logger.info(
+          { output, acceptance },
+          "FUSE acceptance workload completed"
+        );
+        return;
+      }
+
       logger.info({}, "Preparing identical filesystem benchmark fixtures");
       await prepareFixtures(
         gcsBackend,
@@ -889,6 +954,12 @@ makeScript(
         mounts,
         binary,
         configuredApiUrl
+      );
+
+      const acceptance = await runAcceptance(
+        auth,
+        databaseSandbox,
+        acceptanceRunner
       );
 
       const gcsResult = await runBenchmark(
@@ -942,6 +1013,7 @@ makeScript(
           concurrentFiles: 8,
         },
         atomicTruncate: { revisionBefore, revisionAfter },
+        acceptance,
         sharedNamespace,
         results: [gcsResult, databaseResult],
       };

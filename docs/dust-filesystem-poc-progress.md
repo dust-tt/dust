@@ -35,14 +35,14 @@ This file records what was merged, what was changed, and which checks passed. It
 | Front filesystem endpoint tests | Passed | 4 tests |
 | Front typecheck | Passed | `tsgo --noEmit` |
 | Front API typecheck | Failed outside filesystem | See below |
-| Rust filesystem unit tests | Passed | 18 Linux-targeted tests |
+| Rust filesystem unit tests | Passed | 19 Linux-targeted tests |
 | Full Rust unit suite | Failed outside filesystem | 359 passed; see below |
 | Rust formatting | Passed | `cargo fmt --check` |
 | Rust clippy | Passed with merged-code exception | See below |
 | Linux release build | Passed | `x86_64-unknown-linux-musl` |
-| Linux FUSE acceptance test | Pending | Needs a Front URL reachable from E2B |
-| Live sandbox end-to-end test | Pending | Needs a Front URL reachable from E2B |
-| Shared Pod mount test | Pending | Needs a Front URL reachable from E2B |
+| Linux FUSE acceptance test | Passed | Fresh `dust-base_0-8-83` sandbox |
+| Live sandbox end-to-end test | Passed | gcsfuse and Dust FUSE comparison |
+| Shared Pod mount test | Passed | Two Dust sandboxes, revisions and CAS checked |
 
 ## Missing cases found
 
@@ -59,21 +59,44 @@ This file records what was merged, what was changed, and which checks passed. It
 - `FileSystemContentResource.writeContent` buffers a `Readable` before upload. The sandbox daemon
   streams files from its staging file and does not use this path, but the app-side adapter should
   stream large inputs before it becomes the main application write path.
-- The live runner is ready, but E2B cannot reach a local Front process directly. Opening a temporary
-  HTTPS tunnel would expose an authenticated local filesystem endpoint, so that step needs explicit
-  approval before the live run.
+- The first live write failed because the Rust client ignored two headers that Front had signed into
+  the GCS upload URL. GCS rejected the PUT. The client now sends every returned header and has a
+  loopback test that checks them; the next complete live run passed.
+- The shell acceptance script still expected arbitrary `chmod 600`, while the reviewed API stores
+  only executable bits. The test now checks `chmod +x` and `chmod -x` and passes in a fresh sandbox.
+
+## Final live run
+
+The combined result is `/private/tmp/dust-filesystem-benchmark-20260815-final.json`. It used three
+fresh `dust-base_0-8-83` sandboxes and Linux binary SHA-256
+`b7c76eda0587535d9309d334ca19389fe85e1fb3a127628648d54e59be9d0a09`.
+
+- The shell acceptance cases passed before timing began.
+- A truncating overwrite advanced revision 1 to 2, not by two revisions.
+- Five conversation-to-Pod moves preserved inode identity. Their p50 was 162 ms; the five gcsfuse
+  copy/delete moves had a 4,277 ms p50.
+- Dust FUSE write plus `fsync` p50 was 890 ms for 4 KiB, 1,463 ms for 1 MiB, and 1,613 ms for 8 MiB.
+  Each was faster than the same run through gcsfuse.
+- Two Dust sandboxes mounted the same Pod. Five overwrites each increased revision by one and became
+  visible on the other mount after 289–1,182 ms. Rename kept the same inode and revision.
+- Two writers raced from revision 1. One committed revision 2; the other received `ESTALE`. Both
+  mounts then read the winner.
+- The runner destroyed every sandbox and removed its path-scoped fixtures. The temporary Front API
+  and HTTPS tunnel were stopped after the run.
+
+The full timing table is in `cli/dust-sandbox/docs/database-filesystem.md`.
 
 ## Rust branch split
 
 The Rust code is split into three stacked branches:
 
-1. `flav/dust-filesystem-rust-client` at `f8adf5efe7` adds the typed Front client, request retries,
-   error mapping, and signed GCS transfers. Five focused tests pass.
-2. `flav/dust-filesystem-rust-store` at `caf0d78392` adds the inode mapping, staged-file store, and
-   bounded caches. Fifteen focused tests pass.
-3. `flav/dust-filesystem-rust-mount` at `7197f35200` adds the Linux FUSE callbacks, mount command,
+1. `flav/dust-filesystem-rust-client` at `f161f97174` adds the typed Front client, request retries,
+   error mapping, and signed GCS transfers. Six focused tests pass.
+2. `flav/dust-filesystem-rust-store` at `3088962364` adds the inode mapping, staged-file store, and
+   bounded caches. Sixteen focused tests pass.
+3. `flav/dust-filesystem-rust-mount` at `94cb4cf398` adds the Linux FUSE callbacks, mount command,
    restart supervisor, acceptance scripts, benchmarks, and current design note. Mount state and
-   syscall callbacks are in separate files. Eighteen Linux-targeted tests, Clippy, and the optimized
+   syscall callbacks are in separate files. Nineteen Linux-targeted tests, Clippy, and the optimized
    Linux build pass.
 
 The third branch exposes one `filesystem` command from the module. The client, inode mapping, local
