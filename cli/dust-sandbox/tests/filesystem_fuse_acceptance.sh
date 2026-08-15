@@ -107,8 +107,12 @@ test "$(stat -c %i "$POD_DIR/project")" = "$DIRECTORY_INODE"
 test "$(stat -c %i "$POD_DIR/project/nested/child.txt")" = "$CHILD_INODE"
 test "$(cat "$POD_DIR/project/nested/child.txt")" = child
 
-chmod 600 "$POD_DIR/project/nested/child.txt"
-test "$(stat -c %a "$POD_DIR/project/nested/child.txt")" = 600
+# Dust stores executable bits for sandbox tools. Read/write bits stay at the
+# normal file defaults because per-user Unix permissions are not an auth rule.
+chmod +x "$POD_DIR/project/nested/child.txt"
+test "$(stat -c %a "$POD_DIR/project/nested/child.txt")" = 755
+chmod -x "$POD_DIR/project/nested/child.txt"
+test "$(stat -c %a "$POD_DIR/project/nested/child.txt")" = 644
 truncate -s 2 "$POD_DIR/project/nested/child.txt"
 test "$(stat -c %s "$POD_DIR/project/nested/child.txt")" = 2
 test "$(stat -f -c %s "$MOUNTPOINT")" -gt 0
