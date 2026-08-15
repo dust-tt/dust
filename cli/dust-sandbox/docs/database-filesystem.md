@@ -184,7 +184,8 @@ unmanaged or dead process.
 
 ### Rust daemon
 
-- `src/commands/filesystem/fuse.rs`: Linux FUSE calls and open handles.
+- `src/commands/filesystem/fuse.rs`: mount state and open handles.
+- `src/commands/filesystem/fuse/operations.rs`: Linux FUSE calls.
 - `src/commands/filesystem/store.rs`: local staged files and node/blob cache.
 - `src/commands/filesystem/client.rs`: scoped Front calls and signed GCS
   transfers.
@@ -204,8 +205,10 @@ unmanaged or dead process.
 - `front-api/routes/v1/w/[wId]/sandbox/filesystem.ts`: internal daemon endpoint.
 - `front/lib/api/file_system/sandbox/database_sandbox_mount_adapter.ts`: token,
   daemon start, and `/files` mount.
-- `front/temporal/sandbox_reaper/`: independent 10-minute cleanup schedule for
-  abandoned/retired blobs and old mutation receipts.
+
+Draining abandoned blob rows and old mutation receipts is a follow-up. The
+tables keep enough information to add that worker without changing the daemon
+protocol.
 
 ## Rollout switches
 
@@ -229,10 +232,10 @@ the same mode.
 
 ## Qualification completed so far
 
-- Linux-targeted Rust filesystem tests: 14 passing, including token/cache
+- Linux-targeted Rust filesystem tests: 18 passing, including token/cache
   symlink safety and remote-operation admission limits.
-- Front filesystem/cleanup/Temporal/adapter tests: 12 passing; Front API route
-  tests: 2 passing.
+- Front filesystem and mount-adapter tests: 36 passing; Front API route tests:
+  4 passing.
 - Linux release cross-build passes.
 - Live FUSE acceptance covers normal writes, editor rename-over, open
   rename/unlink, populated conversation-to-Pod directory moves, permissions,
