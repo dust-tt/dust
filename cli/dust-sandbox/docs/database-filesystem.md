@@ -232,7 +232,7 @@ the same mode.
 
 ## Qualification completed so far
 
-- Linux-targeted Rust filesystem tests: 18 passing, including token/cache
+- Linux-targeted Rust filesystem tests: 19 passing, including token/cache
   symlink safety and remote-operation admission limits.
 - Front filesystem and mount-adapter tests: 36 passing; Front API route tests:
   4 passing.
@@ -274,45 +274,63 @@ the same mode.
 
 ## Production-image benchmark
 
-Measured on 2026-08-13 using two fresh `dust-base_0-8-80` sandboxes, identical
+Measured on 2026-08-15 using three fresh `dust-base_0-8-83` sandboxes, identical
 fixtures, and the same Bun workload. The optimized Linux binary SHA-256 was
-`5d6c2261d59e347f2484493f0a567ee3c0e702cbb6d01458e84114b27d5bde32`.
+`b7c76eda0587535d9309d334ca19389fe85e1fb3a127628648d54e59be9d0a09`.
 Values are p50 wall time; lower is better.
 
 | Operation | Two gcsfuse mounts | Dust FUSE | Dust/gcsfuse |
 | --- | ---: | ---: | ---: |
-| Cold read 4 KiB | 560.9 ms | 313.1 ms | 0.56x |
-| Cold read 1 MiB | 1,042.1 ms | 712.0 ms | 0.68x |
-| Cold read 8 MiB | 1,321.9 ms | 1,098.6 ms | 0.83x |
-| Warm read 4 KiB | 0.64 ms | 0.36 ms | 0.56x |
-| Warm read 1 MiB | 1.24 ms | 1.76 ms | 1.42x |
-| Warm read 8 MiB | 3.49 ms | 11.33 ms | 3.25x |
-| `stat` | 0.27 ms | 0.01 ms | 0.03x |
-| `readdir` with 20 entries | 0.31 ms | 0.38 ms | 1.26x |
-| Write + `fsync`, 4 KiB | 903.5 ms | 913.1 ms | 1.01x |
-| Write + `fsync`, 1 MiB | 1,392.6 ms | 1,533.0 ms | 1.10x |
-| Write + `fsync`, 8 MiB | 1,711.4 ms | 1,800.9 ms | 1.05x |
-| Create | 575.5 ms | 79.0 ms | 0.14x |
-| Rename | 493.5 ms | 190.0 ms | 0.39x |
-| Unlink | 377.5 ms | 170.1 ms | 0.45x |
-| Conversation-to-Pod move | 1,020.5 ms | 202.9 ms | 0.20x |
+| Cold read 4 KiB | 2,048.2 ms | 395.5 ms | 0.19x |
+| Cold read 1 MiB | 1,383.6 ms | 751.2 ms | 0.54x |
+| Cold read 8 MiB | 1,524.5 ms | 1,088.8 ms | 0.71x |
+| Warm read 4 KiB | 1,784.3 ms | 0.35 ms | <0.01x |
+| Warm read 1 MiB | 851.7 ms | 2.06 ms | <0.01x |
+| Warm read 8 MiB | 859.1 ms | 8.83 ms | 0.01x |
+| `stat` | 535.9 ms | 0.01 ms | <0.01x |
+| `readdir` with 20 entries | 325.6 ms | 0.24 ms | <0.01x |
+| Write + `fsync`, 4 KiB | 1,025.9 ms | 1,014.6 ms | 0.99x |
+| Write + `fsync`, 1 MiB | 1,635.8 ms | 1,527.1 ms | 0.93x |
+| Write + `fsync`, 8 MiB | 1,952.9 ms | 1,841.9 ms | 0.94x |
+| Create | 761.6 ms | 95.8 ms | 0.13x |
+| Rename | 1,114.7 ms | 223.0 ms | 0.20x |
+| Unlink | 680.2 ms | 180.0 ms | 0.26x |
+| Conversation-to-Pod move | 4,235.8 ms | 220.5 ms | 0.05x |
 
 The cross-root gcsfuse cases were five copy/delete fallbacks; all five Dust
 moves were native inode-preserving renames. Eight concurrent 1 MiB writes plus
-`fsync` took 5.87 s on gcsfuse and 5.50 s on Dust. Peak filesystem-process RSS
-was 243.1 MiB for two gcsfuse processes and 11.5 MiB for one Dust process.
+`fsync` took 11.45 s on gcsfuse and 8.07 s on Dust. Reading and checking those
+eight files took 5.24 s on gcsfuse and 0.24 s on Dust. Peak filesystem-process
+RSS was 211.5 MiB for two gcsfuse processes and 12.3 MiB for one Dust process.
 
-This passes the Milestone 1 performance gate: durable writes remain within
-1–10%, namespace changes are faster, and the remaining warm 8 MiB difference
-is about 8 ms absolute. This is a small-sample filesystem comparison, not a
-Front/PostgreSQL capacity test; rollout still needs a canary with API and
-database latency/error monitoring.
+This passes the Milestone 1 performance gate: durable writes were no slower,
+namespace changes were faster, and cached reads stayed local. This is a
+small-sample filesystem comparison, not a Front/PostgreSQL capacity test;
+rollout still needs a canary with API and database latency/error monitoring.
+
+## Two-sandbox shared Pod
+
+Two Dust sandboxes mounted the same Pod during the same run. Five overwrites
+each advanced the content revision by exactly one. The other sandbox observed
+them after 278–1,226 ms, with a 295 ms median. A new non-empty file appeared
+after 757 ms with revision 1. A rename appeared after 15 ms and kept inode 880
+and revision 1. A deletion appeared after 583 ms.
+
+Both sandboxes then opened revision 1 and wrote different bytes at the same
+time. One commit succeeded, the other returned `ESTALE`, and the database
+advanced only to revision 2. Both mounts read the winning bytes on their next
+poll, 287 ms and 467 ms after the winning commit. These delays include the
+one-second metadata cache window and the benchmark's polling interval.
+
+An overwrite using `O_TRUNC` advanced a separate file from revision 1 to 2,
+confirming that truncate plus write still commits one version.
 
 The reproducible orchestrator is
-`front/scripts/benchmark_sandbox_filesystems.ts`. It creates two fresh
+`front/scripts/benchmark_sandbox_filesystems.ts`. It creates three fresh
 sandboxes from the same registered image, prepares byte-identical fixtures
-outside the timed phases, injects the local Linux `dsbx` only into the database
-filesystem sandbox, runs the shared workload, records JSON, and removes the
-sandboxes and uniquely named fixture directories. Its E2B run requires a
-temporary HTTPS URL that reaches the local Front API and existing conversation
-and Pod IDs so the scoped token exercises normal authentication.
+outside the timed phases, injects the local Linux `dsbx` into the two database
+filesystem sandboxes, runs the performance and shared-Pod workloads, records
+JSON, and removes the sandboxes and uniquely named fixture directories. Its E2B
+run requires a temporary HTTPS URL that reaches the local Front API and
+existing conversation and Pod IDs so the scoped token exercises normal
+authentication.
