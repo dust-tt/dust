@@ -145,7 +145,7 @@ impl FileSystemClient {
         let http = Client::builder()
             .connect_timeout(std::time::Duration::from_secs(5))
             .build()
-            .map_err(|error| io::Error::new(io::ErrorKind::Other, error))?;
+            .map_err(io::Error::other)?;
         Ok(Self {
             http,
             endpoint: format!(
