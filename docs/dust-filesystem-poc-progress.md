@@ -35,7 +35,7 @@ This file records what was merged, what was changed, and which checks passed. It
 | Front filesystem endpoint tests | Passed | 4 tests |
 | Front typecheck | Passed | `tsgo --noEmit` |
 | Front API typecheck | Failed outside filesystem | See below |
-| Rust filesystem unit tests | Passed | 19 Linux-targeted tests |
+| Rust filesystem unit tests | Passed | 24 Linux-targeted tests |
 | Full Rust unit suite | Failed outside filesystem | 359 passed; see below |
 | Rust formatting | Passed | `cargo fmt --check` |
 | Rust clippy | Passed with merged-code exception | See below |
@@ -90,13 +90,13 @@ The full timing table is in `cli/dust-sandbox/docs/database-filesystem.md`.
 
 The Rust code is split into three stacked branches:
 
-1. `flav/dust-filesystem-rust-client` at `df99dc6276` adds the typed Front client, request retries,
-   error mapping, and signed GCS transfers. Six focused tests pass.
-2. `flav/dust-filesystem-rust-store` at `9abf00df68` adds the inode mapping, staged-file store, and
-   bounded caches. Sixteen focused tests pass.
-3. `flav/dust-filesystem-rust-mount` at `9eb4ac2b96` adds the Linux FUSE callbacks, mount command,
+1. `flav/dust-filesystem-rust-client` at `c7f02fc291` adds the typed Front client, request retries,
+   error mapping, and signed GCS transfers. Eleven focused tests pass.
+2. `flav/dust-filesystem-rust-store` at `c2e0a7029f` adds the inode mapping, staged-file store, and
+   bounded caches. Twenty-one focused tests pass.
+3. `flav/dust-filesystem-rust-mount` at `37411cd548` adds the Linux FUSE callbacks, mount command,
    restart supervisor, acceptance scripts, benchmarks, and current design note. Mount state and
-   syscall callbacks are in separate files. Nineteen Linux-targeted tests, Clippy, and the optimized
+   syscall callbacks are in separate files. Twenty-four Linux-targeted tests, Clippy, and the optimized
    Linux build pass.
 
 The third branch exposes one `filesystem` command from the module. The client, inode mapping, local
