@@ -151,6 +151,7 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
         frameTabs={pod.frameTabs ?? []}
         tabsOrder={pod.tabsOrder ?? []}
         isEditor={pod.isEditor}
+        isMember={pod.isMember}
         isArchived={!!pod.archivedAt}
         isOpen={framePreview !== null}
         onClose={() => setFramePreview(null)}

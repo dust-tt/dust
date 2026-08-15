@@ -747,8 +747,9 @@ describe("SandboxFunctionInvocationResource", () => {
       JSON.parse(opts?.envVars?.DUST_POD_USER_IDENTITY ?? "")
     ).toMatchObject({
       workspaceId: authenticator.getNonNullableWorkspace().sId,
-      // The executor is a workspace admin, an editor of every pod.
+      // The executor is a workspace admin: an editor of every pod, a member of none.
       isPodEditor: true,
+      isPodMember: false,
       user: {
         sId: authenticator.getNonNullableUser().sId,
         fullName: authenticator.getNonNullableUser().fullName(),

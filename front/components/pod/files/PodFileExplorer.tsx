@@ -760,6 +760,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         frameTabs={pod.frameTabs ?? []}
         tabsOrder={pod.tabsOrder ?? []}
         isEditor={isEditor}
+        isMember={pod.isMember}
         isArchived={isArchived}
         isOpen={framePreview !== null}
         onClose={() => setFramePreview(null)}

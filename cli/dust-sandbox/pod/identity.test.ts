@@ -28,7 +28,11 @@ describe("currentUser", () => {
     process.env[POD_WORKSPACE_ID_ENV] = "w_current";
     process.env[POD_USER_IDENTITY_ENV] = JSON.stringify(identity);
 
-    expect(currentUser()).toEqual({ ...identity.user, isPodEditor: false });
+    expect(currentUser()).toEqual({
+      ...identity.user,
+      isPodEditor: false,
+      isPodMember: false,
+    });
   });
 
   test("reads the pod editor bit from the envelope", () => {
@@ -38,7 +42,11 @@ describe("currentUser", () => {
       isPodEditor: true,
     });
 
-    expect(currentUser()).toEqual({ ...identity.user, isPodEditor: true });
+    expect(currentUser()).toEqual({
+      ...identity.user,
+      isPodEditor: true,
+      isPodMember: false,
+    });
   });
 
   test("defaults the pod editor bit to false when the envelope omits it", () => {
@@ -46,6 +54,27 @@ describe("currentUser", () => {
     process.env[POD_USER_IDENTITY_ENV] = JSON.stringify(identity);
 
     expect(currentUser()?.isPodEditor).toBe(false);
+  });
+
+  test("reads the pod member bit from the envelope", () => {
+    process.env[POD_WORKSPACE_ID_ENV] = "w_current";
+    process.env[POD_USER_IDENTITY_ENV] = JSON.stringify({
+      ...identity,
+      isPodMember: true,
+    });
+
+    expect(currentUser()).toEqual({
+      ...identity.user,
+      isPodEditor: false,
+      isPodMember: true,
+    });
+  });
+
+  test("defaults the pod member bit to false when the envelope omits it", () => {
+    process.env[POD_WORKSPACE_ID_ENV] = "w_current";
+    process.env[POD_USER_IDENTITY_ENV] = JSON.stringify(identity);
+
+    expect(currentUser()?.isPodMember).toBe(false);
   });
 
   test("returns null for a userless invocation", () => {
@@ -87,7 +116,11 @@ describe("currentUser inside an invocation context", () => {
       contextEnv(JSON.stringify(identity)),
       () => currentUser()
     );
-    expect(user).toEqual({ ...identity.user, isPodEditor: false });
+    expect(user).toEqual({
+      ...identity.user,
+      isPodEditor: false,
+      isPodMember: false,
+    });
   });
 
   test("a userless context returns null even when process.env has an identity", () => {

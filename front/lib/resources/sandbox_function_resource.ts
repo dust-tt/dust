@@ -40,7 +40,7 @@ import { sandboxFunctionContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import { createHash } from "crypto";
@@ -77,12 +77,20 @@ function userIdentityPolicyStrength(
       return 1;
     case "interactive_workspace_user_required":
       return 2;
-    case "pod_editor_required":
-      // Strictest audience: editors only. Ranking it above the session-bound policy means a
-      // publish moving to it always commits the policy before exposing the new bundle.
+    case "pod_member_required":
+      // The pod-scoped audience ranks above the workspace-wide, session-bound policy: a publish
+      // moving to it always commits the policy before exposing the new bundle.
       return 3;
     default:
-      return assertNever(policy);
+      // The stored policy can be a value this revision does not know: one from a newer revision
+      // in a mixed-version deploy, or a retired policy (e.g. `pod_editor_required`). Rank it
+      // strictest so the republish never loosens it early and simply overwrites it with the
+      // upload; invoking it is denied regardless (see authorizeSandboxFunctionInvocation).
+      // `assertNeverAndIgnore` (not `assertNever`) is deliberate although this is server code:
+      // republish is the only path that rewrites a stored policy, so throwing here would make a
+      // function carrying a retired policy permanently unrepairable.
+      assertNeverAndIgnore(policy);
+      return Number.POSITIVE_INFINITY;
   }
 }
 
