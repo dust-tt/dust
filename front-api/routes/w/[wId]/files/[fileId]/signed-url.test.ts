@@ -8,7 +8,9 @@ const { mockGetSignedUrl } = vi.hoisted(() => ({
   mockGetSignedUrl: vi.fn().mockResolvedValue("https://signed-url.test"),
 }));
 
-vi.mock("@app/lib/file_storage", () => {
+vi.mock("@app/lib/file_storage", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("@app/lib/file_storage")>();
   const createMockFileStorage = () => ({
     file: vi.fn(() => ({
       copy: vi.fn().mockResolvedValue(undefined),
@@ -20,6 +22,7 @@ vi.mock("@app/lib/file_storage", () => {
   });
 
   return {
+    ...original,
     FileStorage: vi.fn().mockImplementation(createMockFileStorage),
     getPrivateUploadBucket: vi.fn(createMockFileStorage),
     getPublicUploadBucket: vi.fn(createMockFileStorage),
