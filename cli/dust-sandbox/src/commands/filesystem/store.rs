@@ -9,7 +9,9 @@ use uuid::Uuid;
 use super::client::{FileSystemClient, NodeKind as RemoteNodeKind, RemoteNode};
 use super::inode::{inode_for_node_id, node_id_for_inode, INodeNo};
 
+// Keeps downloaded file bytes on local disk while open handles are using them.
 mod content_cache;
+// Keeps recent nodes and directory listings in memory for one second.
 mod metadata_cache;
 
 pub use content_cache::OpenedContent;
