@@ -38,6 +38,8 @@ export function usePublicFrame({ shareToken }: { shareToken: string | null }) {
     accessToken: data?.accessToken ?? null,
     isFrameLoading: !error && !data,
     isAuthenticatedMember: data?.isAuthenticatedMember ?? false,
+    isPodMember: data?.isPodMember ?? false,
+    isPodEditor: data?.isPodEditor ?? false,
     error,
     mutateFrame: mutate,
   };
