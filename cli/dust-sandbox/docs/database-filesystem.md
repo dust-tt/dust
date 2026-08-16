@@ -287,35 +287,37 @@ the same mode.
 
 ## Production-image benchmark
 
-Measured on 2026-08-15 using three fresh `dust-base_0-8-83` sandboxes, identical
+Measured on 2026-08-16 using three fresh `dust-base_0-8-83` sandboxes, identical
 fixtures, and the same Bun workload. The optimized Linux binary SHA-256 was
-`b7c76eda0587535d9309d334ca19389fe85e1fb3a127628648d54e59be9d0a09`.
+`98a82d2677d9055e06a2255a9f1c0163f4d5940d80aaa837f6d6a9a69ea6b8b5`.
 The shell acceptance suite passed before timing began. Values are p50 wall
 time; lower is better.
 
 | Operation | Two gcsfuse mounts | Dust FUSE | Dust/gcsfuse |
 | --- | ---: | ---: | ---: |
-| Cold read 4 KiB | 1,807.5 ms | 357.7 ms | 0.20x |
-| Cold read 1 MiB | 2,591.6 ms | 772.1 ms | 0.30x |
-| Cold read 8 MiB | 2,383.5 ms | 1,004.7 ms | 0.42x |
-| Warm read 4 KiB | 1,868.7 ms | 0.32 ms | <0.01x |
-| Warm read 1 MiB | 1,921.5 ms | 1.33 ms | <0.01x |
-| Warm read 8 MiB | 1,181.4 ms | 8.53 ms | <0.01x |
-| `stat` | 555.1 ms | 0.01 ms | <0.01x |
-| `readdir` with 20 entries | 333.0 ms | 0.25 ms | <0.01x |
-| Write + `fsync`, 4 KiB | 1,683.8 ms | 890.4 ms | 0.53x |
-| Write + `fsync`, 1 MiB | 1,635.9 ms | 1,462.7 ms | 0.89x |
-| Write + `fsync`, 8 MiB | 1,976.5 ms | 1,613.0 ms | 0.82x |
-| Create | 751.0 ms | 76.8 ms | 0.10x |
-| Rename | 1,123.7 ms | 185.9 ms | 0.17x |
-| Unlink | 684.6 ms | 146.8 ms | 0.21x |
-| Conversation-to-Pod move | 4,276.6 ms | 162.0 ms | 0.04x |
+| Cold read 4 KiB | 2,056.4 ms | 349.9 ms | 0.17x |
+| Cold read 1 MiB | 2,587.7 ms | 739.9 ms | 0.29x |
+| Cold read 8 MiB | 2,388.9 ms | 1,166.8 ms | 0.49x |
+| Warm read 4 KiB | 1,795.0 ms | 0.33 ms | <0.01x |
+| Warm read 1 MiB | 1,069.1 ms | 14.8 ms | 0.01x |
+| Warm read 8 MiB | 1,333.0 ms | 108.2 ms | 0.08x |
+| `stat` | 1,023.9 ms | 0.01 ms | <0.01x |
+| `readdir` with 20 entries | 615.6 ms | 0.28 ms | <0.01x |
+| Write + `fsync`, 4 KiB | 2,195.1 ms | 662.3 ms | 0.30x |
+| Write + `fsync`, 1 MiB | 1,905.4 ms | 1,452.5 ms | 0.76x |
+| Write + `fsync`, 8 MiB | 2,189.1 ms | 1,783.0 ms | 0.81x |
+| Create | 1,246.8 ms | 80.7 ms | 0.06x |
+| Rename | 1,631.3 ms | 244.4 ms | 0.15x |
+| Unlink | 711.7 ms | 151.0 ms | 0.21x |
+| Conversation-to-Pod move | 4,240.3 ms | 222.9 ms | 0.05x |
 
 The cross-root gcsfuse cases were five copy/delete fallbacks; all five Dust
 moves were native inode-preserving renames. Eight concurrent 1 MiB writes plus
-`fsync` took 8.66 s on gcsfuse and 6.31 s on Dust. Reading and checking those
-eight files took 7.25 s on gcsfuse and 0.25 s on Dust. Peak filesystem-process
-RSS was 191.8 MiB for two gcsfuse processes and 12.2 MiB for one Dust process.
+`fsync` took 9.34 s on gcsfuse and 5.15 s on Dust. Reading and checking those
+eight files took 6.47 s on gcsfuse and 0.25 s on Dust. Peak filesystem-process
+RSS was 212.4 MiB for two gcsfuse processes and 11.5 MiB for one Dust process.
+The Dust mount also stored and enforced the executable bit. gcsfuse accepted
+`chmod` but did not keep the change, so the same script remained non-executable.
 
 This passes the Milestone 1 performance gate: durable writes were no slower,
 namespace changes were faster, and cached reads stayed local. This is a
@@ -326,14 +328,14 @@ rollout still needs a canary with API and database latency/error monitoring.
 
 Two Dust sandboxes mounted the same Pod during the same run. Five overwrites
 each advanced the content revision by exactly one. The other sandbox observed
-them after 289–1,182 ms, with a 337 ms median. A new non-empty file appeared
-after 820 ms with revision 1. A rename appeared after 9 ms and kept the same
-inode and revision. A deletion appeared after 611 ms.
+them after 269–936 ms, with a 418 ms median. A new non-empty file appeared
+after 783 ms with revision 1. A rename appeared after 36 ms and kept the same
+inode and revision. A deletion appeared after 557 ms.
 
 Both sandboxes then opened revision 1 and wrote different bytes at the same
 time. One commit succeeded, the other returned `ESTALE`, and the database
 advanced only to revision 2. Both mounts read the winning bytes on their next
-poll, 273 ms and 432 ms after the winning commit. These delays include the
+poll, 417 ms and 525 ms after the winning commit. These delays include the
 two cache windows (daemon and Linux, one second each) and the benchmark's
 polling interval.
 

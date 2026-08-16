@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::fs::File;
 use std::io;
 use std::os::unix::fs::FileExt;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -36,8 +37,8 @@ impl OpenFile {
         &self.content.node
     }
 
-    pub fn read_at(&self, bytes: &mut [u8], offset: u64) -> io::Result<usize> {
-        self.content.file.read_at(bytes, offset)
+    fn duplicate_file(&self) -> io::Result<File> {
+        self.content.file.try_clone()
     }
 
     pub fn record_write(&mut self, offset: u64, bytes: &[u8]) -> io::Result<(usize, u64)> {
@@ -109,6 +110,7 @@ pub(super) struct DirectoryEntry {
 struct HandleState {
     next: u64,
     files: HashMap<u64, Arc<Mutex<OpenFile>>>,
+    local_files: HashMap<u64, Arc<File>>,
     file_inodes: HashMap<u64, INodeNo>,
     files_by_inode: HashMap<INodeNo, HashSet<u64>>,
     directories: HashMap<u64, Arc<[DirectoryEntry]>>,
@@ -150,6 +152,7 @@ impl HandleTable {
             state: Mutex::new(HandleState {
                 next: 1,
                 files: HashMap::new(),
+                local_files: HashMap::new(),
                 file_inodes: HashMap::new(),
                 files_by_inode: HashMap::new(),
                 directories: HashMap::new(),
@@ -160,12 +163,17 @@ impl HandleTable {
 
     pub fn insert_file(&self, open: OpenFile) -> io::Result<u64> {
         let inode = open.inode();
+        // READ uses this descriptor without taking the state mutex. Large
+        // reads may arrive in parallel, and a remote commit may hold that
+        // mutex while it uploads bytes.
+        let local_file = Arc::new(open.duplicate_file()?);
         let mut state = self.state()?;
         if state.files.len() >= MAX_OPEN_FILE_HANDLES {
             return Err(errno(libc::EMFILE));
         }
         let handle = Self::allocate(&mut state)?;
         state.files.insert(handle, Arc::new(Mutex::new(open)));
+        state.local_files.insert(handle, local_file);
         state.file_inodes.insert(handle, inode);
         state
             .files_by_inode
@@ -178,6 +186,14 @@ impl HandleTable {
     pub fn file(&self, handle: u64) -> io::Result<Arc<Mutex<OpenFile>>> {
         self.state()?
             .files
+            .get(&handle)
+            .cloned()
+            .ok_or_else(|| errno(libc::EBADF))
+    }
+
+    pub fn local_file(&self, handle: u64) -> io::Result<Arc<File>> {
+        self.state()?
+            .local_files
             .get(&handle)
             .cloned()
             .ok_or_else(|| errno(libc::EBADF))
@@ -197,6 +213,7 @@ impl HandleTable {
     pub fn remove_file(&self, handle: u64) -> io::Result<Option<Arc<Mutex<OpenFile>>>> {
         let mut state = self.state()?;
         let removed = state.files.remove(&handle);
+        state.local_files.remove(&handle);
         if let Some(inode) = state.file_inodes.remove(&handle) {
             if let Some(handles) = state.files_by_inode.get_mut(&inode) {
                 handles.remove(&handle);

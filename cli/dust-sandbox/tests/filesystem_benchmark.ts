@@ -42,6 +42,10 @@ function progress(phase: string): void {
   process.stderr.write(`[filesystem-benchmark] ${phase}\n`);
 }
 
+function isAccessDenied(error: unknown): boolean {
+  return error instanceof Error && "code" in error && error.code === "EACCES";
+}
+
 async function milliseconds<T>(operation: () => Promise<T>): Promise<{
   elapsedMs: number;
   value: T;
@@ -313,6 +317,7 @@ async function main() {
 
   progress("executable bit");
   const executablePath = `${benchmarkRoot}/write/executable-bit.sh`;
+  let executableBitVerified = false;
   const executableBit = await milliseconds(async () => {
     await writeFile(
       executablePath,
@@ -323,18 +328,23 @@ async function main() {
       await execFile(executablePath);
       throw new Error("A file without an executable bit was executed");
     } catch (error) {
-      if (
-        !(error instanceof Error) ||
-        !("code" in error) ||
-        error.code !== "EACCES"
-      ) {
+      if (!isAccessDenied(error)) {
         throw error;
       }
     }
     await chmod(executablePath, 0o777);
-    const result = await execFile(executablePath);
-    if (result.stdout !== "dust-executable-ok\n") {
-      throw new Error("Executable file returned unexpected output");
+    try {
+      const result = await execFile(executablePath);
+      if (result.stdout !== "dust-executable-ok\n") {
+        throw new Error("Executable file returned unexpected output");
+      }
+      executableBitVerified = true;
+    } catch (error) {
+      // gcsfuse does not store chmod changes. Keep that result in the
+      // comparison, but require executable bits to work on the Dust mount.
+      if (label === "dust-database-fuse" || !isAccessDenied(error)) {
+        throw error;
+      }
     }
     await unlink(executablePath);
   });
@@ -376,7 +386,7 @@ async function main() {
         readVerifyMs: concurrentRead.elapsedMs,
       },
       executableBit: {
-        verified: true,
+        verified: executableBitVerified,
         elapsedMs: executableBit.elapsedMs,
       },
       filesystemProcesses: {

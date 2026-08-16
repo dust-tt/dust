@@ -1,3 +1,4 @@
+use std::os::unix::fs::FileExt;
 use std::time::SystemTime;
 
 use super::*;
@@ -342,10 +343,9 @@ impl Filesystem for DustFuse {
         reply: ReplyData,
     ) {
         let result = (|| {
-            let shared = self.handles.file(handle.0)?;
-            let open = try_open_file(&shared)?;
+            let local_file = self.handles.local_file(handle.0)?;
             let mut bytes = vec![0; usize::try_from(size).map_err(|_| errno(libc::EOVERFLOW))?];
-            let read = open.read_at(&mut bytes, offset)?;
+            let read = local_file.read_at(&mut bytes, offset)?;
             bytes.truncate(read);
             Ok(bytes)
         })();
