@@ -145,8 +145,18 @@ async function main(): Promise<void> {
       } catch {
         // The failed flush may already have closed the kernel handle.
       }
+      // A failed final commit must discard this sandbox's staged bytes. Reading
+      // the path again should fetch the winner accepted by Front, not the loser.
+      const visibleContent = await readText(path);
+      const code = errorCode(error);
+      if (
+        code === "ESTALE" &&
+        (visibleContent === null || visibleContent === argument("content"))
+      ) {
+        throw new Error("A losing writer kept serving its unpublished bytes");
+      }
       process.stdout.write(
-        `${JSON.stringify({ ok: false, code: errorCode(error), completedAtMs: Date.now() })}\n`
+        `${JSON.stringify({ ok: false, code, visibleContent, completedAtMs: Date.now() })}\n`
       );
     }
     return;

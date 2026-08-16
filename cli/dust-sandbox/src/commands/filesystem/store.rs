@@ -56,8 +56,8 @@ pub struct FileStore {
     staging_dir: PathBuf,
     roots: Vec<Node>,
     content: ContentCache,
-    // Match the one-second FUSE attribute TTL so repeated opens and readdir
-    // stay local without extending the period in which another writer is hidden.
+    // This daemon cache and Linux's entry cache each last one second. Together,
+    // a change from another sandbox can take almost two seconds to become visible.
     metadata: Mutex<MetadataCache>,
 }
 
@@ -70,14 +70,13 @@ impl FileStore {
         staging_dir: &Path,
         api_url: &str,
         workspace_id: &str,
-        token: String,
         token_file: PathBuf,
         cache_capacity_bytes: u64,
     ) -> io::Result<Self> {
         // The sandbox mounts this below a root-owned runtime directory. The
         // checks here protect the final directory and rely on that trusted parent.
         prepare_staging_directory(staging_dir)?;
-        let client = FileSystemClient::new(api_url, workspace_id, token, token_file)?;
+        let client = FileSystemClient::from_token_file(api_url, workspace_id, token_file)?;
         let roots = client
             .initialize()?
             .into_iter()
@@ -327,9 +326,19 @@ impl FileStore {
 
     pub fn set_size(&self, inode: INodeNo, size: u64) -> io::Result<Node> {
         let mut opened = self.open_content(inode, libc::O_RDWR)?;
-        opened.file.set_len(size)?;
-        opened.file.sync_data()?;
-        self.commit_content(&mut opened)
+        let result = (|| {
+            opened.file.set_len(size)?;
+            opened.file.sync_data()?;
+            self.commit_content(&mut opened)
+        })();
+        if result.is_err() {
+            // The cached path was already resized. Do not leave those bytes
+            // associated with the previous committed blob after a failed CAS.
+            if let Err(error) = self.discard_content(inode) {
+                warn!(inode = inode.0, %error, "failed to discard rejected truncate");
+            }
+        }
+        result
     }
 
     pub fn commit_content(&self, opened: &mut OpenedContent) -> io::Result<Node> {
@@ -362,6 +371,13 @@ impl FileStore {
         opened.content_type = node.content_type().to_owned();
         opened.node = node.clone();
         Ok(node)
+    }
+
+    pub fn discard_content(&self, inode: INodeNo) -> io::Result<()> {
+        // A failed final commit must invalidate both caches. The local pathname
+        // may contain bytes that Front never accepted for the inode's old blob.
+        self.invalidate_node(inode)?;
+        self.content.discard(inode)
     }
 
     fn metadata(&self) -> io::Result<MutexGuard<'_, MetadataCache>> {
@@ -576,5 +592,23 @@ mod tests {
         store
             .open_content(node.inode, libc::O_RDWR)
             .expect("open writer after close");
+    }
+
+    #[test]
+    fn failed_handleless_truncate_discards_unpublished_cache_bytes() {
+        let directory = tempdir().expect("temporary directory");
+        let store = store(directory.path(), 1024);
+        let node = file(3, 3);
+        stage(&store, &node, b"one");
+
+        store
+            .set_size(node.inode, 1)
+            .expect_err("Front is deliberately unavailable");
+
+        assert!(!store.content_path(node.inode).exists());
+        assert!(store
+            .cached_node(node.inode)
+            .expect("metadata cache")
+            .is_none());
     }
 }

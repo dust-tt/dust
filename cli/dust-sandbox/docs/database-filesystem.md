@@ -158,20 +158,29 @@ replacing an open node removes its name but lets the existing local handle live
 until close. Later writes to that unlinked handle are not uploaded into a
 deleted node.
 
-Front-backed work runs outside fuser's four request threads. At most 32 remote
-operations run at once; excess requests receive `EAGAIN`. This keeps reads and
-writes on already-open local files responsive during a Front outage. `fsync`
-still waits for Front and GCS because success means the new blob is committed.
+Front-backed work runs outside fuser's four request threads. Reads, content
+transfers, and name changes have separate queues, so a slow upload or rename
+does not take every metadata slot. Each queue has a fixed waiting limit; new
+requests receive `EAGAIN` when that limit is reached instead of consuming
+memory without a bound. Final `release` work has its own queue because Linux
+does not retry it. Reads and writes on already-open local files do not enter a
+remote queue. `fsync` still waits for Front and GCS because success means the
+new blob is committed.
 
 Cache bookkeeping never stays locked across a Front or GCS request. Opens take
-the shared side of a namespace lock, so different files can download in
-parallel. Create, rename, and delete take the exclusive side to keep their
-ordering with open handles exact. A fixed set of per-inode cache-lock stripes
-prevents duplicate downloads without allocating a permanent lock per file.
+an inode lock while they download. Delete and rename-over take the same lock for
+the node they remove, so an open either finishes before the name disappears or
+starts after it disappeared. Unrelated files still open in parallel. Create,
+rename, and delete also use a short process-local lock for name changes. A fixed
+set of per-inode cache-lock stripes prevents duplicate downloads without
+allocating a permanent lock per file.
 
 On daemon start, the private staging directory is checked for safe ownership
-and permissions, then old cache files are removed. PostgreSQL and GCS—not local
-staging—are the recovery source after a crash.
+and permissions. A marker proves that Dust owns the directory, and startup only
+removes names used by this cache. An unexpected file fails startup without being
+deleted. PostgreSQL and GCS—not local staging—are the recovery source after a
+crash. A failed final upload also discards its staged file before another open
+can mistake those bytes for committed content.
 
 The sandbox starts the Rust supervisor as a transient systemd service. systemd
 restarts the supervisor if it exits; the supervisor restarts the FUSE child if
@@ -185,6 +194,10 @@ unmanaged or dead process.
 ### Rust daemon
 
 - `src/commands/filesystem/fuse.rs`: mount state and open handles.
+- `src/commands/filesystem/fuse/handles.rs`: file handles and directory snapshots.
+- `src/commands/filesystem/fuse/linux.rs`: Linux flags, attributes, and error replies.
+- `src/commands/filesystem/fuse/remote.rs`: separate queues for reads, content,
+  name changes, local syncs, and final close.
 - `src/commands/filesystem/fuse/operations.rs`: Linux FUSE calls.
 - `src/commands/filesystem/store.rs`: local staged files and node/blob cache.
 - `src/commands/filesystem/client.rs`: scoped Front calls and signed GCS
@@ -226,14 +239,15 @@ the same mode.
 - User-created symlinks, hard links, special files, extended attributes, and
   advisory locks are not supported.
 - Only one writable open handle is allowed per node.
-- Mode bits are stored and reported for tool compatibility, but per-node
-  uid/gid ownership is not modeled. The signed token's root permissions—not
-  Unix mode bits—are the sandbox security boundary.
+- Linux sees files as `0666` plus the stored executable bits and directories as
+  `0777`, matching the current gcsfuse mount. Other `chmod` changes are rejected.
+  The signed token's roots—not Unix uid/gid bits—remain the sandbox authorization
+  boundary.
 
 ## Qualification completed so far
 
-- Linux-targeted Rust filesystem tests: 19 passing, including token/cache
-  symlink safety and remote-operation admission limits.
+- Linux-targeted Rust filesystem tests cover token/cache symlink safety, staging
+  ownership, failed-write cache discard, directory snapshots, and remote queues.
 - Front filesystem and mount-adapter tests: 36 passing; Front API route tests:
   4 passing.
 - Linux release cross-build passes.
@@ -244,14 +258,13 @@ the same mode.
   responsive. A local dirty write completed, and its `fsync` committed after
   Front resumed.
 - Forty concurrent metadata calls were also held while a cached file remained
-  readable. Linux admitted only a few calls to Front at once in that run, so
-  the daemon's 32-operation rejection path is covered by a unit test rather
-  than claimed as a live saturation result.
+  readable. Queue tests cover waiting and rejection at the fixed limit; live
+  saturation is rerun before merge.
 - A daemon/container restart preserved a committed 1 MiB file's bytes and inode
   ID.
 - Killing the live mount child made the supervisor detach the disconnected
   mount, start a new child, and recover the same committed inode and bytes.
-- The sandbox mount adapter starts the supervisor under systemd with
+- The PoC sandbox mount adapter starts the supervisor under systemd with
   `Restart=always`; startup diagnostics come from that unit's status and
   journal instead of an unmonitored `nohup` process.
 - With a forced 2 MiB cache, four 1 MiB writes left two cache files while an
@@ -321,12 +334,13 @@ Both sandboxes then opened revision 1 and wrote different bytes at the same
 time. One commit succeeded, the other returned `ESTALE`, and the database
 advanced only to revision 2. Both mounts read the winning bytes on their next
 poll, 273 ms and 432 ms after the winning commit. These delays include the
-one-second metadata cache window and the benchmark's polling interval.
+two cache windows (daemon and Linux, one second each) and the benchmark's
+polling interval.
 
 An overwrite using `O_TRUNC` advanced a separate file from revision 1 to 2,
 confirming that truncate plus write still commits one version.
 
-The reproducible orchestrator is
+The PoC branch's reproducible orchestrator is
 `front/scripts/benchmark_sandbox_filesystems.ts`. It creates three fresh
 sandboxes from the same registered image, prepares byte-identical fixtures
 outside the timed phases, injects the local Linux `dsbx` into the two database

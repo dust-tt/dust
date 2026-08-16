@@ -1,6 +1,12 @@
 mod client;
 #[cfg(target_os = "linux")]
 mod fuse;
+// The queue does not use Linux APIs. Compile its inline tests on developer
+// machines too, even though the full FUSE mount is Linux-only.
+#[cfg(all(test, not(target_os = "linux")))]
+#[allow(dead_code)]
+#[path = "fuse/remote.rs"]
+mod fuse_remote_tests;
 mod inode;
 mod mount;
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]

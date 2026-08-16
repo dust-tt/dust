@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use super::*;
 
 impl Filesystem for DustFuse {
@@ -9,6 +11,29 @@ impl Filesystem for DustFuse {
             .map_err(|_| errno(libc::ENOTSUP))
     }
 
+    fn access(&self, _request: &Request, inode: INodeNo, mask: AccessFlags, reply: ReplyEmpty) {
+        let filesystem = self.clone();
+        self.spawn_remote("access", RemoteWork::Metadata, move |rejected| {
+            if rejected {
+                reply.error(Errno::EAGAIN);
+                return;
+            }
+            let result = filesystem.node(inode).and_then(|node| {
+                // The scoped token controls reads and writes. The only Unix
+                // mode rule Dust stores is whether a file may be executed.
+                if node.kind == NodeKind::File
+                    && mask.contains(AccessFlags::X_OK)
+                    && node.mode & 0o111 == 0
+                {
+                    Err(errno(libc::EACCES))
+                } else {
+                    Ok(())
+                }
+            });
+            reply_empty(result, reply);
+        });
+    }
+
     fn lookup(&self, _request: &Request, parent: INodeNo, name: &OsStr, reply: ReplyEntry) {
         let name = match utf8_name(name) {
             Ok(name) => name.to_owned(),
@@ -17,15 +42,15 @@ impl Filesystem for DustFuse {
                 return;
             }
         };
-        let Some(permit) = self.remote_permit("lookup") else {
-            reply.error(Errno::EAGAIN);
-            return;
-        };
         let filesystem = self.clone();
-        self.spawn_remote("lookup", permit, move || {
+        self.spawn_remote("lookup", RemoteWork::Metadata, move |rejected| {
+            if rejected {
+                reply.error(Errno::EAGAIN);
+                return;
+            }
             match filesystem.lookup_node(parent, &name) {
                 Ok(node) => reply.entry(
-                    &METADATA_CACHE_TTL,
+                    &KERNEL_ENTRY_TTL,
                     &filesystem.attributes(&node),
                     Generation(0),
                 ),
@@ -43,19 +68,21 @@ impl Filesystem for DustFuse {
     ) {
         if let Some(handle) = handle {
             match self.node_for_handle(handle.0, inode) {
-                Ok(node) => reply.attr(&METADATA_CACHE_TTL, &self.attributes(&node)),
+                Ok(node) => reply.attr(&KERNEL_ENTRY_TTL, &self.attributes(&node)),
                 Err(error) => reply.error(to_errno(error)),
             }
             return;
         }
-        let Some(permit) = self.remote_permit("getattr") else {
-            reply.error(Errno::EAGAIN);
-            return;
-        };
         let filesystem = self.clone();
-        self.spawn_remote("getattr", permit, move || match filesystem.node(inode) {
-            Ok(node) => reply.attr(&METADATA_CACHE_TTL, &filesystem.attributes(&node)),
-            Err(error) => reply.error(to_errno(error)),
+        self.spawn_remote("getattr", RemoteWork::Metadata, move |rejected| {
+            if rejected {
+                reply.error(Errno::EAGAIN);
+                return;
+            }
+            match filesystem.node(inode) {
+                Ok(node) => reply.attr(&KERNEL_ENTRY_TTL, &filesystem.attributes(&node)),
+                Err(error) => reply.error(to_errno(error)),
+            }
         });
     }
 
@@ -68,8 +95,8 @@ impl Filesystem for DustFuse {
         uid: Option<u32>,
         gid: Option<u32>,
         size: Option<u64>,
-        _atime: Option<TimeOrNow>,
-        _mtime: Option<TimeOrNow>,
+        atime: Option<TimeOrNow>,
+        mtime: Option<TimeOrNow>,
         _ctime: Option<SystemTime>,
         handle: Option<FileHandle>,
         _creation_time: Option<SystemTime>,
@@ -82,21 +109,32 @@ impl Filesystem for DustFuse {
             reply.error(Errno::EPERM);
             return;
         }
+        if atime.is_some() || mtime.is_some() {
+            // This filesystem currently stores content time and executable bits.
+            // Do not report success for `touch` until Front stores explicit times.
+            reply.error(Errno::ENOTSUP);
+            return;
+        }
         if handle.is_some() && mode.is_none() {
             match self.set_attributes(inode, mode, size, handle) {
-                Ok(node) => reply.attr(&METADATA_CACHE_TTL, &self.attributes(&node)),
+                Ok(node) => reply.attr(&KERNEL_ENTRY_TTL, &self.attributes(&node)),
                 Err(error) => reply.error(to_errno(error)),
             }
             return;
         }
-        let Some(permit) = self.remote_permit("setattr") else {
-            reply.error(Errno::EAGAIN);
-            return;
-        };
         let filesystem = self.clone();
-        self.spawn_remote("setattr", permit, move || {
+        let work = if size.is_some() {
+            RemoteWork::Content
+        } else {
+            RemoteWork::Metadata
+        };
+        self.spawn_remote("setattr", work, move |rejected| {
+            if rejected {
+                reply.error(Errno::EAGAIN);
+                return;
+            }
             match filesystem.set_attributes(inode, mode, size, handle) {
-                Ok(node) => reply.attr(&METADATA_CACHE_TTL, &filesystem.attributes(&node)),
+                Ok(node) => reply.attr(&KERNEL_ENTRY_TTL, &filesystem.attributes(&node)),
                 Err(error) => reply.error(to_errno(error)),
             }
         });
@@ -125,12 +163,12 @@ impl Filesystem for DustFuse {
                 return;
             }
         };
-        let Some(permit) = self.remote_permit("mkdir") else {
-            reply.error(Errno::EAGAIN);
-            return;
-        };
         let filesystem = self.clone();
-        self.spawn_remote("mkdir", permit, move || {
+        self.spawn_remote("mkdir", RemoteWork::Mutation, move |rejected| {
+            if rejected {
+                reply.error(Errno::EAGAIN);
+                return;
+            }
             let result = (|| {
                 let _namespace = filesystem.namespace_write()?;
                 filesystem
@@ -139,7 +177,7 @@ impl Filesystem for DustFuse {
             })();
             match result {
                 Ok(node) => reply.entry(
-                    &METADATA_CACHE_TTL,
+                    &KERNEL_ENTRY_TTL,
                     &filesystem.attributes(&node),
                     Generation(0),
                 ),
@@ -156,21 +194,22 @@ impl Filesystem for DustFuse {
                 return;
             }
         };
-        let Some(permit) = self.remote_permit("unlink") else {
-            reply.error(Errno::EAGAIN);
-            return;
-        };
         let filesystem = self.clone();
-        self.spawn_remote("unlink", permit, move || {
+        self.spawn_remote("unlink", RemoteWork::Mutation, move |rejected| {
+            if rejected {
+                reply.error(Errno::EAGAIN);
+                return;
+            }
             let result = (|| {
                 let _namespace = filesystem.namespace_write()?;
                 let node = filesystem.lookup_node(parent, &name)?;
+                let _inode = filesystem.inode_locks.lock(node.inode)?;
                 filesystem.mark_unlinked(node.inode, true)?;
                 if let Err(error) = filesystem.store.remove_file(parent, &name) {
                     filesystem.mark_unlinked(node.inode, false)?;
                     return Err(error);
                 }
-                filesystem.staged_sizes()?.remove(&node.inode);
+                filesystem.clear_staged_attributes(node.inode)?;
                 Ok(())
             })();
             reply_empty(result, reply);
@@ -185,17 +224,17 @@ impl Filesystem for DustFuse {
                 return;
             }
         };
-        let Some(permit) = self.remote_permit("rmdir") else {
-            reply.error(Errno::EAGAIN);
-            return;
-        };
         let filesystem = self.clone();
-        self.spawn_remote("rmdir", permit, move || {
+        self.spawn_remote("rmdir", RemoteWork::Mutation, move |rejected| {
+            if rejected {
+                reply.error(Errno::EAGAIN);
+                return;
+            }
             let result = (|| {
                 let _namespace = filesystem.namespace_write()?;
                 let node = filesystem.lookup_node(parent, &name)?;
                 filesystem.store.remove_directory(parent, &name)?;
-                filesystem.staged_sizes()?.remove(&node.inode);
+                filesystem.clear_staged_attributes(node.inode)?;
                 Ok(())
             })();
             reply_empty(result, reply);
@@ -230,12 +269,12 @@ impl Filesystem for DustFuse {
                 return;
             }
         };
-        let Some(permit) = self.remote_permit("rename") else {
-            reply.error(Errno::EAGAIN);
-            return;
-        };
         let filesystem = self.clone();
-        self.spawn_remote("rename", permit, move || {
+        self.spawn_remote("rename", RemoteWork::Mutation, move |rejected| {
+            if rejected {
+                reply.error(Errno::EAGAIN);
+                return;
+            }
             let result = (|| {
                 let _namespace = filesystem.namespace_write()?;
                 if parent == new_parent && name == new_name {
@@ -247,6 +286,9 @@ impl Filesystem for DustFuse {
                     Err(error) if error.raw_os_error() == Some(libc::ENOENT) => None,
                     Err(error) => return Err(error),
                 };
+                let _destination = destination_inode
+                    .map(|inode| filesystem.inode_locks.lock(inode))
+                    .transpose()?;
                 if let Some(destination_inode) = destination_inode {
                     filesystem.mark_unlinked(destination_inode, true)?;
                 }
@@ -262,6 +304,9 @@ impl Filesystem for DustFuse {
                     }
                 }
                 rename_result?;
+                if let Some(destination_inode) = destination_inode {
+                    filesystem.clear_staged_attributes(destination_inode)?;
+                }
                 debug!(inode = source.inode.0, "renamed filesystem inode");
                 Ok(())
             })();
@@ -270,19 +315,13 @@ impl Filesystem for DustFuse {
     }
 
     fn open(&self, _request: &Request, inode: INodeNo, flags: OpenFlags, reply: ReplyOpen) {
-        let Some(permit) = self.remote_permit("open") else {
-            reply.error(Errno::EAGAIN);
-            return;
-        };
         let filesystem = self.clone();
-        self.spawn_remote("open", permit, move || {
-            let result = (|| {
-                // Opens may run together, but a rename or unlink takes the
-                // write side so the handle is either fully opened before the
-                // name disappears or fails after it disappeared.
-                let _namespace = filesystem.namespace_read()?;
-                filesystem.open_node(inode, flags.0)
-            })();
+        self.spawn_remote("open", RemoteWork::Content, move |rejected| {
+            if rejected {
+                reply.error(Errno::EAGAIN);
+                return;
+            }
+            let result = filesystem.open_node(inode, flags.0);
             match result {
                 Ok(handle) => reply.opened(FileHandle(handle), FopenFlags::empty()),
                 Err(error) => reply.error(to_errno(error)),
@@ -303,10 +342,10 @@ impl Filesystem for DustFuse {
         reply: ReplyData,
     ) {
         let result = (|| {
-            let shared = self.handle(handle.0)?;
-            let open = shared.lock().map_err(|_| errno(libc::EIO))?;
+            let shared = self.handles.file(handle.0)?;
+            let open = try_open_file(&shared)?;
             let mut bytes = vec![0; usize::try_from(size).map_err(|_| errno(libc::EOVERFLOW))?];
-            let read = open.file.read_at(&mut bytes, offset)?;
+            let read = open.read_at(&mut bytes, offset)?;
             bytes.truncate(read);
             Ok(bytes)
         })();
@@ -330,15 +369,11 @@ impl Filesystem for DustFuse {
         reply: ReplyWrite,
     ) {
         let result = (|| {
-            let shared = self.handle(handle.0)?;
-            let mut open = shared.lock().map_err(|_| errno(libc::EIO))?;
-            let inode = open.node.inode;
-            let written = open.file.write_at(data, offset)?;
-            let size = open.file.metadata()?.len();
-            open.node.size = size;
-            open.dirty = true;
-            open.defer_truncate_commit = false;
-            self.staged_sizes()?.insert(inode, size);
+            let shared = self.handles.file(handle.0)?;
+            let mut open = try_open_file(&shared)?;
+            let inode = open.inode();
+            let (written, size) = open.record_write(offset, data)?;
+            self.stage_attributes(inode, size)?;
             u32::try_from(written).map_err(|_| errno(libc::EOVERFLOW))
         })();
         match result {
@@ -355,12 +390,12 @@ impl Filesystem for DustFuse {
         _lock_owner: LockOwner,
         reply: ReplyEmpty,
     ) {
-        let Some(permit) = self.remote_permit("flush") else {
-            reply.error(Errno::EAGAIN);
-            return;
-        };
         let filesystem = self.clone();
-        self.spawn_remote("flush", permit, move || {
+        self.spawn_remote("flush", RemoteWork::Content, move |rejected| {
+            if rejected {
+                reply.error(Errno::EAGAIN);
+                return;
+            }
             debug!(handle = handle.0, "flushing filesystem handle");
             reply_empty(filesystem.commit_handle(handle.0, false), reply);
         });
@@ -376,15 +411,12 @@ impl Filesystem for DustFuse {
         _flush: bool,
         reply: ReplyEmpty,
     ) {
-        let Some(permit) = self.remote_permit("release") else {
-            // RELEASE errors are ignored by Linux. Falling back here is rare,
-            // but dropping a dirty handle would silently lose the only record
-            // that its staged content still needs upload.
-            reply_empty(self.release_handle(handle.0), reply);
-            return;
-        };
         let filesystem = self.clone();
-        self.spawn_remote("release", permit, move || {
+        self.spawn_remote("release", RemoteWork::Release, move |rejected| {
+            if rejected {
+                reply.error(Errno::EIO);
+                return;
+            }
             reply_empty(filesystem.release_handle(handle.0), reply);
         });
     }
@@ -397,28 +429,27 @@ impl Filesystem for DustFuse {
         data_only: bool,
         reply: ReplyEmpty,
     ) {
-        let Some(permit) = self.remote_permit("fsync") else {
-            reply.error(Errno::EAGAIN);
-            return;
-        };
         let filesystem = self.clone();
-        self.spawn_remote("fsync", permit, move || {
+        self.spawn_remote("fsync", RemoteWork::Content, move |rejected| {
+            if rejected {
+                reply.error(Errno::EAGAIN);
+                return;
+            }
             reply_empty(filesystem.sync_handle(handle.0, data_only), reply);
         });
     }
 
     fn opendir(&self, _request: &Request, inode: INodeNo, _flags: OpenFlags, reply: ReplyOpen) {
-        let Some(permit) = self.remote_permit("opendir") else {
-            reply.error(Errno::EAGAIN);
-            return;
-        };
         let filesystem = self.clone();
-        self.spawn_remote("opendir", permit, move || match filesystem.node(inode) {
-            Ok(node) if node.kind == NodeKind::Directory => {
-                reply.opened(FileHandle(0), FopenFlags::empty());
+        self.spawn_remote("opendir", RemoteWork::Metadata, move |rejected| {
+            if rejected {
+                reply.error(Errno::EAGAIN);
+                return;
             }
-            Ok(_) => reply.error(Errno::ENOTDIR),
-            Err(error) => reply.error(to_errno(error)),
+            match filesystem.open_directory(inode) {
+                Ok(handle) => reply.opened(FileHandle(handle), FopenFlags::empty()),
+                Err(error) => reply.error(to_errno(error)),
+            }
         });
     }
 
@@ -426,22 +457,27 @@ impl Filesystem for DustFuse {
         &self,
         _request: &Request,
         inode: INodeNo,
-        _handle: FileHandle,
+        handle: FileHandle,
         offset: u64,
         reply: ReplyDirectory,
     ) {
-        let Some(permit) = self.remote_permit("readdir") else {
-            reply.error(Errno::EAGAIN);
-            return;
-        };
-        let filesystem = self.clone();
-        self.spawn_remote("readdir", permit, move || {
-            filesystem.read_directory(inode, offset, reply);
-        });
+        let _ = inode;
+        self.read_directory(handle.0, offset, reply);
+    }
+
+    fn releasedir(
+        &self,
+        _request: &Request,
+        _inode: INodeNo,
+        handle: FileHandle,
+        _flags: OpenFlags,
+        reply: ReplyEmpty,
+    ) {
+        reply_empty(self.handles.remove_directory(handle.0), reply);
     }
 
     fn statfs(&self, _request: &Request, _inode: INodeNo, reply: ReplyStatfs) {
-        let result = (|| local_statfs(self.store.staging_dir()))();
+        let result = local_statfs(self.store.staging_dir());
         match result {
             Ok(stats) => reply.statfs(
                 stats.blocks,
@@ -457,17 +493,6 @@ impl Filesystem for DustFuse {
         }
     }
 
-    fn access(&self, _request: &Request, inode: INodeNo, _mask: AccessFlags, reply: ReplyEmpty) {
-        let Some(permit) = self.remote_permit("access") else {
-            reply.error(Errno::EAGAIN);
-            return;
-        };
-        let filesystem = self.clone();
-        self.spawn_remote("access", permit, move || {
-            reply_empty(filesystem.node(inode).map(|_| ()), reply);
-        });
-    }
-
     fn create(
         &self,
         _request: &Request,
@@ -478,6 +503,10 @@ impl Filesystem for DustFuse {
         flags: i32,
         reply: ReplyCreate,
     ) {
+        if let Err(error) = validate_open_request(flags) {
+            reply.error(to_errno(error));
+            return;
+        }
         let name = match utf8_name(name) {
             Ok(name) => name.to_owned(),
             Err(error) => {
@@ -492,21 +521,30 @@ impl Filesystem for DustFuse {
                 return;
             }
         };
-        let Some(permit) = self.remote_permit("create") else {
-            reply.error(Errno::EAGAIN);
-            return;
-        };
         let filesystem = self.clone();
-        self.spawn_remote("create", permit, move || {
+        self.spawn_remote("create", RemoteWork::Mutation, move |rejected| {
+            if rejected {
+                reply.error(Errno::EAGAIN);
+                return;
+            }
             let result = (|| {
                 let _namespace = filesystem.namespace_write()?;
                 let node = filesystem.store.create_file(parent, &name, permissions)?;
-                let handle = filesystem.open_node(node.inode, flags)?;
+                let handle = match filesystem.open_node(node.inode, flags) {
+                    Ok(handle) => handle,
+                    Err(error) => {
+                        // A path-based cleanup could delete a different node if
+                        // another sandbox moved this node and reused the name.
+                        // Keep the empty node until Front supports delete-by-id.
+                        warn!(inode = node.inode.0, %error, "created file but local open failed");
+                        return Err(error);
+                    }
+                };
                 Ok((node, handle))
             })();
             match result {
                 Ok((node, handle)) => reply.created(
-                    &METADATA_CACHE_TTL,
+                    &KERNEL_ENTRY_TTL,
                     &filesystem.attributes(&node),
                     Generation(0),
                     FileHandle(handle),

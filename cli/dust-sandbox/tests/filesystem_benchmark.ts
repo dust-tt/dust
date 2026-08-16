@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import {
+  chmod,
   copyFile,
   open,
   readdir,
@@ -8,9 +9,14 @@ import {
   rename,
   stat,
   unlink,
+  writeFile,
 } from "node:fs/promises";
 import { constants } from "node:fs";
+import { execFile as execFileCallback } from "node:child_process";
 import { performance } from "node:perf_hooks";
+import { promisify } from "node:util";
+
+const execFile = promisify(execFileCallback);
 
 type ProcessSample = {
   cpuTicks: number;
@@ -45,13 +51,19 @@ async function milliseconds<T>(operation: () => Promise<T>): Promise<{
   return { elapsedMs: performance.now() - started, value };
 }
 
-async function readAll(path: string): Promise<number> {
-  const handle = await open(path, constants.O_RDONLY);
-  try {
-    return (await handle.readFile()).byteLength;
-  } finally {
-    await handle.close();
+async function readAndVerify(
+  path: string,
+  expectedSize: number,
+  expectedByte: number
+): Promise<number> {
+  const bytes = await readFile(path);
+  if (
+    bytes.byteLength !== expectedSize ||
+    bytes.some((byte) => byte !== expectedByte)
+  ) {
+    throw new Error(`Read returned unexpected bytes for ${path}`);
   }
+  return bytes.byteLength;
 }
 
 async function overwriteAndSync(
@@ -149,7 +161,11 @@ async function main() {
     coldReads[String(size)] = [];
     for (let sample = 0; sample < 3; sample += 1) {
       const result = await milliseconds(() =>
-        readAll(`${benchmarkRoot}/read/cold-${size}-${sample}.bin`)
+        readAndVerify(
+          `${benchmarkRoot}/read/cold-${size}-${sample}.bin`,
+          size,
+          0x5a
+        )
       );
       if (result.value !== size) {
         throw new Error(
@@ -160,10 +176,12 @@ async function main() {
     }
 
     const warmPath = `${benchmarkRoot}/read/warm-${size}.bin`;
-    await readAll(warmPath);
+    await readAndVerify(warmPath, size, 0x5a);
     warmReads[String(size)] = [];
     for (let sample = 0; sample < 5; sample += 1) {
-      const result = await milliseconds(() => readAll(warmPath));
+      const result = await milliseconds(() =>
+        readAndVerify(warmPath, size, 0x5a)
+      );
       warmReads[String(size)].push(result.elapsedMs);
     }
   }
@@ -279,7 +297,11 @@ async function main() {
   const concurrentRead = await milliseconds(() =>
     Promise.all(
       Array.from({ length: 8 }, (_, index) =>
-        readAll(`${benchmarkRoot}/concurrent/target-${index}.bin`)
+        readAndVerify(
+          `${benchmarkRoot}/concurrent/target-${index}.bin`,
+          concurrentPayload.byteLength,
+          0xa5
+        )
       )
     )
   );
@@ -288,6 +310,34 @@ async function main() {
   ) {
     throw new Error("Concurrent read returned the wrong file size");
   }
+
+  progress("executable bit");
+  const executablePath = `${benchmarkRoot}/write/executable-bit.sh`;
+  const executableBit = await milliseconds(async () => {
+    await writeFile(
+      executablePath,
+      "#!/bin/sh\nprintf 'dust-executable-ok\\n'\n"
+    );
+    await chmod(executablePath, 0o666);
+    try {
+      await execFile(executablePath);
+      throw new Error("A file without an executable bit was executed");
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        !("code" in error) ||
+        error.code !== "EACCES"
+      ) {
+        throw error;
+      }
+    }
+    await chmod(executablePath, 0o777);
+    const result = await execFile(executablePath);
+    if (result.stdout !== "dust-executable-ok\n") {
+      throw new Error("Executable file returned unexpected output");
+    }
+    await unlink(executablePath);
+  });
 
   sampling = false;
   clearInterval(sampler);
@@ -324,6 +374,10 @@ async function main() {
       concurrentEightByOneMiB: {
         writeFsyncMs: concurrent.elapsedMs,
         readVerifyMs: concurrentRead.elapsedMs,
+      },
+      executableBit: {
+        verified: true,
+        elapsedMs: executableBit.elapsedMs,
       },
       filesystemProcesses: {
         count: finalProcesses.processes,

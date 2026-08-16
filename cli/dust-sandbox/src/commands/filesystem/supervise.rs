@@ -1,10 +1,11 @@
 use std::ffi::CString;
-use std::fs::{File, OpenOptions};
+use std::fs::{self, File, OpenOptions};
 use std::io;
 use std::os::fd::AsRawFd;
 use std::os::unix::ffi::OsStrExt;
-use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::os::unix::process::CommandExt;
+use std::path::Path;
 use std::process::Command;
 use std::time::{Duration, Instant};
 
@@ -81,11 +82,27 @@ pub fn run(args: MountArgs) -> anyhow::Result<()> {
 }
 
 fn acquire_supervisor_lock(args: &MountArgs) -> io::Result<File> {
-    let runtime_directory = args
-        .staging_dir
+    let mountpoint_parent = args
+        .mountpoint
         .parent()
         .ok_or_else(|| io::Error::from_raw_os_error(libc::EINVAL))?;
-    let lock_path = runtime_directory.join("supervisor.lock");
+    let mountpoint_name = args
+        .mountpoint
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| io::Error::from_raw_os_error(libc::EINVAL))?;
+    let parent_metadata = fs::symlink_metadata(mountpoint_parent)?;
+    if !parent_metadata.file_type().is_dir()
+        || parent_metadata.uid() != unsafe { libc::geteuid() }
+        || parent_metadata.permissions().mode() & 0o022 != 0
+    {
+        return Err(io::Error::from_raw_os_error(libc::EACCES));
+    }
+    // The lock follows the visible mountpoint, not the cache directory. Two
+    // supervisors cannot detach each other's mount by choosing different caches.
+    let lock_path = mountpoint_parent.join(format!(
+        ".{mountpoint_name}.dust-filesystem-supervisor.lock"
+    ));
     let lock = OpenOptions::new()
         .read(true)
         .write(true)
@@ -93,7 +110,11 @@ fn acquire_supervisor_lock(args: &MountArgs) -> io::Result<File> {
         .mode(0o600)
         .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
         .open(lock_path)?;
-    if lock.metadata()?.permissions().mode() & 0o077 != 0 {
+    let metadata = lock.metadata()?;
+    if !metadata.file_type().is_file()
+        || metadata.uid() != unsafe { libc::geteuid() }
+        || metadata.permissions().mode() & 0o077 != 0
+    {
         return Err(io::Error::from_raw_os_error(libc::EACCES));
     }
     // SAFETY: flock only reads the valid descriptor owned by `lock`.
@@ -104,6 +125,12 @@ fn acquire_supervisor_lock(args: &MountArgs) -> io::Result<File> {
 }
 
 fn detach_mount(mountpoint: &std::path::Path) -> io::Result<()> {
+    let Some((filesystem_type, source)) = mounted_filesystem(mountpoint)? else {
+        return Ok(());
+    };
+    if !filesystem_type.starts_with("fuse") || source != "dust-files" {
+        return Err(io::Error::from_raw_os_error(libc::EBUSY));
+    }
     let path = CString::new(mountpoint.as_os_str().as_bytes())
         .map_err(|_| io::Error::from_raw_os_error(libc::EINVAL))?;
     // SAFETY: path is NUL-terminated and remains alive for the syscall.
@@ -114,5 +141,84 @@ fn detach_mount(mountpoint: &std::path::Path) -> io::Result<()> {
     match error.raw_os_error() {
         Some(libc::EINVAL) | Some(libc::ENOENT) => Ok(()),
         _ => Err(error),
+    }
+}
+
+fn mounted_filesystem(mountpoint: &Path) -> io::Result<Option<(String, String)>> {
+    let mountinfo = fs::read_to_string("/proc/self/mountinfo")?;
+    Ok(parse_mountinfo(&mountinfo, mountpoint))
+}
+
+fn parse_mountinfo(mountinfo: &str, mountpoint: &Path) -> Option<(String, String)> {
+    for line in mountinfo.lines() {
+        let Some((before_separator, after_separator)) = line.split_once(" - ") else {
+            continue;
+        };
+        let Some(encoded_mountpoint) = before_separator.split_whitespace().nth(4) else {
+            continue;
+        };
+        let Some(decoded_mountpoint) = decode_mountinfo_path(encoded_mountpoint) else {
+            continue;
+        };
+        if decoded_mountpoint != mountpoint.as_os_str().as_bytes() {
+            continue;
+        }
+        let mut fields = after_separator.split_whitespace();
+        let filesystem_type = fields.next()?.to_owned();
+        let source = fields.next()?.to_owned();
+        return Some((filesystem_type, source));
+    }
+    None
+}
+
+fn decode_mountinfo_path(value: &str) -> Option<Vec<u8>> {
+    let bytes = value.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] != b'\\' {
+            decoded.push(bytes[index]);
+            index += 1;
+            continue;
+        }
+        let octal = bytes.get(index + 1..index + 4)?;
+        if !octal.iter().all(|byte| matches!(byte, b'0'..=b'7')) {
+            return None;
+        }
+        let value = (octal[0] - b'0') * 64 + (octal[1] - b'0') * 8 + (octal[2] - b'0');
+        decoded.push(value);
+        index += 4;
+    }
+    Some(decoded)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use super::parse_mountinfo;
+
+    #[test]
+    fn mountinfo_identifies_only_the_exact_mountpoint() {
+        let mountinfo = concat!(
+            "31 20 0:28 / /files-old rw - fuse.dust-files dust-files rw\n",
+            "32 20 0:29 / /files rw - fuse.dust-files dust-files rw\n"
+        );
+
+        assert_eq!(
+            parse_mountinfo(mountinfo, Path::new("/files")),
+            Some(("fuse.dust-files".to_owned(), "dust-files".to_owned()))
+        );
+        assert_eq!(parse_mountinfo(mountinfo, Path::new("/missing")), None);
+    }
+
+    #[test]
+    fn mountinfo_decodes_escaped_mountpoint_bytes() {
+        let mountinfo = "32 20 0:29 / /run/dust\\040files rw - fuse.dust-files dust-files rw\n";
+
+        assert_eq!(
+            parse_mountinfo(mountinfo, Path::new("/run/dust files")),
+            Some(("fuse.dust-files".to_owned(), "dust-files".to_owned()))
+        );
     }
 }
