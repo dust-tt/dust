@@ -1,3 +1,11 @@
+//! Keeps downloaded file contents in a private directory on the sandbox disk.
+//!
+//! An open handle keeps its local file in place, and only one writable handle
+//! can exist for an inode at a time. When the cache is full, it removes the
+//! least recently used files that are no longer open. After a daemon restart,
+//! files left in this directory are removed because Front and GCS hold the
+//! saved version.
+
 use std::collections::HashSet;
 use std::fs::{self, File, OpenOptions};
 use std::io;

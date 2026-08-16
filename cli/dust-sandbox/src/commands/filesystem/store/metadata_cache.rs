@@ -1,3 +1,9 @@
+//! Keeps recently read file details and directory listings in memory.
+//!
+//! Entries expire after one second, so a later read asks Front for fresh data.
+//! File creates, removals, and renames also clear the affected entries. Fixed
+//! limits on files, directories, and listed children keep memory use bounded.
+
 use std::io;
 use std::num::NonZeroUsize;
 use std::time::{Duration, Instant};
