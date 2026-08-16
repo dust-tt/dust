@@ -47,10 +47,10 @@ import { Err, Ok } from "@app/types/shared/result";
 const POD_DATABASE_FILE_SUFFIX = ".db";
 
 /** The app subfolder holding one drizzle schema file per database. */
-const APP_DATABASES_SUBFOLDER = "databases";
+export const APP_DATABASES_SUBFOLDER = "databases";
 
 /** The app subfolder holding one source file per published function. */
-const APP_FUNCTIONS_SUBFOLDER = "functions";
+export const APP_FUNCTIONS_SUBFOLDER = "functions";
 
 /** Subfolders whose presence marks a pod-root folder as app-shaped. */
 const APP_SHAPED_SUBFOLDERS = [
@@ -59,7 +59,7 @@ const APP_SHAPED_SUBFOLDERS = [
 ];
 
 /** Suffix of a database's schema file, e.g. `chat.db.ts` declares the `chat` database. */
-const POD_DATABASE_SCHEMA_FILE_SUFFIX = ".db.ts";
+export const POD_DATABASE_SCHEMA_FILE_SUFFIX = ".db.ts";
 
 /**
  * A folder's accumulated file-system facts, before published functions and databases are joined in.
@@ -73,7 +73,7 @@ type AppFolder = {
 };
 
 /** Drop the last extension from a file name, e.g. `add-task.ts` -> `add-task`. */
-function stripExtension(fileName: string): string {
+export function stripExtension(fileName: string): string {
   const dotIndex = fileName.lastIndexOf(".");
 
   return dotIndex <= 0 ? fileName : fileName.slice(0, dotIndex);

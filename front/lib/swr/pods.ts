@@ -26,6 +26,7 @@ import type {
   FileSystemEntry,
   GetSpaceFilesResponseBody,
 } from "@app/types/api/file_system/types";
+import type { ImportPodAppResponseBody } from "@app/types/api/pod_app_archive";
 import type {
   ClonePodAppResponseBody,
   GetPodAppsResponseBody,
@@ -193,6 +194,121 @@ export function useClonePodApp({
       sendNotification({
         type: "error",
         title: `Failed to clone ${app.name ?? app.prefix}`,
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
+export function getPodAppExportUrl(
+  owner: LightWorkspaceType,
+  podId: string,
+  prefix: string
+): string {
+  return `/api/w/${owner.sId}/pods/${podId}/apps/${encodeURIComponent(prefix)}/export`;
+}
+
+export function useDownloadPodApp({
+  owner,
+  podId,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  return async (app: PodApp): Promise<void> => {
+    const appName = app.name ?? app.prefix;
+
+    try {
+      const res = await clientFetch(
+        getPodAppExportUrl(owner, podId, app.prefix)
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: `Failed to download ${appName}`,
+          description: errorData.message,
+        });
+        return;
+      }
+
+      // Fetch-then-blob (rather than a bare <a href> to the endpoint) so the download carries
+      // the same auth context as every other API call, matching `useFileDownload`.
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = blobUrl;
+      anchor.download = `${app.prefix}.podapp.zip`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: `Failed to download ${appName}`,
+        description: errorMessage,
+      });
+    }
+  };
+}
+
+export function useImportPodApp({
+  owner,
+  podId,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutatePodApps } = usePodApps({ owner, podId, disabled: true });
+
+  return async (
+    file: File,
+    name?: string
+  ): Promise<Result<ImportPodAppResponseBody["app"], Error>> => {
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      if (name !== undefined && name.trim().length > 0) {
+        body.append("name", name.trim());
+      }
+
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/pods/${podId}/apps/import`,
+        { method: "POST", body }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to import app",
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      const { app }: ImportPodAppResponseBody = await res.json();
+      const hasIssues = app.warnings.length > 0 || app.skipped.length > 0;
+      sendNotification({
+        type: hasIssues ? "info" : "success",
+        title: `${app.name} imported`,
+        description: `${app.publishedFunctionSlugs.length} function(s) published, ${app.reconciledDatabaseNames.length} database(s) created empty${hasIssues ? `, ${app.warnings.length + app.skipped.length} issue(s) to review` : ""}.`,
+      });
+      await mutatePodApps();
+
+      return new Ok(app);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to import app",
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));
