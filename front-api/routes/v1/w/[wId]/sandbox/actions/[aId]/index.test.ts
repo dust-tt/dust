@@ -9,30 +9,35 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // In-memory GCS mock: writes persist content that reads can return.
 const gcsStore = new Map<string, Buffer>();
 
-vi.mock("@app/lib/file_storage", () => ({
-  getPrivateUploadBucket: vi.fn(() => ({
-    file: vi.fn((path: string) => ({
-      save: vi.fn(async (data: Buffer) => {
-        gcsStore.set(path, data);
+vi.mock("@app/lib/file_storage", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("@app/lib/file_storage")>();
+  return {
+    ...original,
+    getPrivateUploadBucket: vi.fn(() => ({
+      file: vi.fn((path: string) => ({
+        save: vi.fn(async (data: Buffer) => {
+          gcsStore.set(path, data);
+        }),
+        download: vi.fn(async () => {
+          const buf = gcsStore.get(path);
+          if (!buf) {
+            throw new Error(`GCS file not found: ${path}`);
+          }
+          return [buf];
+        }),
+      })),
+      delete: vi.fn(async (path: string) => {
+        gcsStore.delete(path);
       }),
-      download: vi.fn(async () => {
-        const buf = gcsStore.get(path);
-        if (!buf) {
-          throw new Error(`GCS file not found: ${path}`);
+      uploadBufferToBucket: vi.fn(
+        async ({ buffer, filePath }: { buffer: Buffer; filePath: string }) => {
+          gcsStore.set(filePath, buffer);
         }
-        return [buf];
-      }),
+      ),
     })),
-    delete: vi.fn(async (path: string) => {
-      gcsStore.delete(path);
-    }),
-    uploadBufferToBucket: vi.fn(
-      async ({ buffer, filePath }: { buffer: Buffer; filePath: string }) => {
-        gcsStore.set(filePath, buffer);
-      }
-    ),
-  })),
-}));
+  };
+});
 
 function getSandboxAction(
   workspace: { sId: string },
