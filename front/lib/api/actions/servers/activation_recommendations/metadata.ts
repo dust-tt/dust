@@ -114,11 +114,12 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
             "this user right now. Shown without context that it is a 'source' field, " +
             "so it must make sense alone. Always pass with sourceIcon. Invent the line " +
             "from the actual evidence; prefer what the evidence means for them over " +
-            "attribution to a Dust artifact. Style examples (adapt to the real " +
-            "evidence, do not reuse verbatim): 'From your #design Slack channel', " +
-            "'Matches your recent work', 'Because your teammates are using the \"Release notes\" skill', " +
-            "'Build on your pilot work'. Never use only a bare product/source name " +
-            "or only the recommended Skill/agent/Frame name."
+            "attribution to a Dust artifact. When the source is an existing workspace " +
+            "Skill or agent, say that it already exists and name it. Style examples " +
+            "(adapt to the real evidence, do not reuse verbatim): 'From your #design Slack channel', " +
+            "'Matches your recent work', 'From the existing \"Release notes\" skill', " +
+            "'Based on your existing \"PR triage\" agent', 'Build on your pilot work'. " +
+            "Never use only a bare product/source name."
         ),
     },
     stake: "never_ask",
@@ -190,7 +191,7 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
           "The current Pod ID from the activation context. Always pass it to scope results to this Pod."
         ),
       status: z
-        .enum(["candidate", "confirmed", "dismissed"])
+        .enum(["suggested", "dismissed"])
         .optional()
         .describe("Only return work areas with this status. Omit for all."),
     },
@@ -206,7 +207,7 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
     name: "create_work_areas",
     description:
       "Create one or more work areas for the current Activation Pod. Each is created " +
-      "with status 'candidate'. Returns the created work areas with their ids.",
+      "with status 'suggested'. Returns the created work areas with their ids.",
     schema: {
       workAreas: z
         .array(
@@ -241,9 +242,11 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
     schema: {
       workAreaId: z.string().describe("The id of the work area to update."),
       status: z
-        .enum(["confirmed", "dismissed"])
+        .enum(["dismissed", "suggested"])
         .optional()
-        .describe("New status for the work area."),
+        .describe(
+          "New status for the work area. `dismissed` hides it. `suggested` marks it live. Omit to leave status unchanged."
+        ),
       title: z.string().max(255).optional().describe("New title."),
       description: z.string().max(512).optional().describe("New description."),
     },

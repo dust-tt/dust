@@ -33,7 +33,8 @@ import {
 } from "@app/types/assistant/models/openai";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-const GLOBAL_AGENT_AUDIENCES = ["everyone", "admins"] as const;
+// Audiences are role-hierarchical: `managers` means managers and admins.
+const GLOBAL_AGENT_AUDIENCES = ["everyone", "managers", "admins"] as const;
 type GlobalAgentAudience = (typeof GLOBAL_AGENT_AUDIENCES)[number];
 
 type AgentMetadata = {
@@ -51,6 +52,8 @@ export function canRoleSeeAudience(
   switch (audience) {
     case "everyone":
       return true;
+    case "managers":
+      return auth.isManager();
     case "admins":
       return auth.isAdmin();
     default:
@@ -813,10 +816,10 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.ANALYST,
         name: "analyst",
         description:
-          "Admin-only agent that answers questions about how your workspace " +
-          "is being used.",
+          "Agent for admins and managers that answers questions about how " +
+          "your workspace is being used.",
         pictureUrl: DUST_AVATAR_URL,
-        audience: "admins",
+        audience: "managers",
       };
     default:
       assertNever(sId);

@@ -42,6 +42,7 @@ export async function storeAgentMessageConsumptionAnalyticsActivity(
   { message }: { message: AgentMessageRef }
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
+
   const result = await indexAgentMessageConsumptionAnalytics(auth, {
     agentMessageId: message.agentMessageId,
   });

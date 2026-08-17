@@ -18,9 +18,11 @@ import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getAvailabilityOfInternalMCPServerById,
   getAvailabilityOfInternalMCPServerByName,
+  getInternalMCPServerIconByName,
   getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_MCP_SERVERS,
   isAutoInternalMCPServerName,
+  isInternalMCPServerName,
   isValidInternalMCPServerId,
   matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -69,6 +71,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import {
   formatUserFullName,
   isWorkspaceAnalyticsEnabled,
@@ -92,6 +95,14 @@ type AffectedAgent = Pick<
 type MCPServerViewCreationResult = {
   view: MCPServerViewResource;
   affectedAgents?: AffectedAgent[];
+};
+
+export type MCPServerViewDisplayMetadata = {
+  serverType: "internal" | "remote";
+  viewName: string | null;
+  mcpServerId: string;
+  serverName: string;
+  icon: CustomResourceIconType | InternalAllowedIconType;
 };
 
 export type GetMCPServerViewsResponseBody = {
@@ -695,6 +706,115 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   ): Promise<MCPServerViewResource[]> {
     const { includeHeavyAttributes, ...findOptions } = options ?? {};
     return this.baseFetch(auth, findOptions, { includeHeavyAttributes });
+  }
+
+  static async listDisplayMetadataByWorkspace(
+    auth: Authenticator
+  ): Promise<MCPServerViewDisplayMetadata[]> {
+    const views = await this.baseFetchWithAuthorization(auth, {
+      attributes: [
+        "id",
+        "workspaceId",
+        "vaultId",
+        "serverType",
+        "name",
+        "internalMCPServerId",
+        "remoteMCPServerId",
+      ],
+      where: { workspaceId: auth.getNonNullableWorkspace().id },
+    });
+
+    const remoteServerModelIds = [
+      ...new Set(removeNulls(views.map((view) => view.remoteMCPServerId))),
+    ];
+    const remoteServers = await RemoteMCPServerResource.fetchByModelIds(
+      auth,
+      remoteServerModelIds
+    );
+    const remoteServersById = new Map(
+      remoteServers.map((server) => [server.id, server])
+    );
+
+    return removeNulls(
+      views.map((view): MCPServerViewDisplayMetadata | null => {
+        if (view.serverType === "remote" && view.remoteMCPServerId) {
+          const server = remoteServersById.get(view.remoteMCPServerId);
+          return server
+            ? {
+                serverType: view.serverType,
+                viewName: view.name,
+                mcpServerId: server.sId,
+                serverName: server.cachedName,
+                icon: server.icon,
+              }
+            : null;
+        }
+
+        if (view.serverType === "internal" && view.internalMCPServerId) {
+          const server = getInternalMCPServerNameAndWorkspaceId(
+            view.internalMCPServerId
+          );
+          if (server.isErr()) {
+            return null;
+          }
+          const { serverInfo } =
+            INTERNAL_MCP_SERVERS[server.value.name].metadata;
+          return {
+            serverType: view.serverType,
+            viewName: view.name,
+            mcpServerId: view.internalMCPServerId,
+            serverName: serverInfo.name,
+            icon: serverInfo.icon,
+          };
+        }
+
+        return null;
+      })
+    );
+  }
+
+  static async resolveDisplayMetadataByNames(
+    auth: Authenticator,
+    names: string[]
+  ) {
+    const uniqueNames = [...new Set(names)];
+    const metadata = new Map<
+      string,
+      {
+        name: string;
+        icon: CustomResourceIconType | InternalAllowedIconType;
+      }
+    >();
+
+    for (const name of uniqueNames) {
+      if (isInternalMCPServerName(name)) {
+        metadata.set(name, {
+          name: asDisplayToolName(name),
+          icon: getInternalMCPServerIconByName(name),
+        });
+      }
+    }
+
+    const remoteNames = uniqueNames.filter(
+      (name) => !isInternalMCPServerName(name)
+    );
+    if (remoteNames.length === 0) {
+      return metadata;
+    }
+
+    const remoteServers = await RemoteMCPServerResource.fetchByNames(
+      auth,
+      remoteNames
+    );
+
+    for (const server of remoteServers) {
+      metadata.set(server.cachedName, {
+        name: server.cachedName,
+        icon: server.icon,
+      });
+    }
+
+    return metadata;
   }
 
   static async listBySpaces(

@@ -33,7 +33,7 @@ export function Landing({ news }: HomeProps) {
     <>
       <PageMetadata
         title="Dust - Multiplayer AI for human-agent collaboration"
-        description="Dust is where people and agents collaborate as co-contributors, so that work doesn't just get done – it gets rewired."
+        description="Dust connects your company knowledge, tools, and teams so you can create, share, and run agents across real workflows. Use different models for different tasks, with people in control."
         pathname={router.asPath}
       />
       <IntroSection news={news} />

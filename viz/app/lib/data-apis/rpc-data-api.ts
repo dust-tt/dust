@@ -45,10 +45,15 @@ export class RPCDataAPI implements VisualizationDataAPI {
         isAuthenticated: false as const,
         isWorkspaceMember: false as const,
         isPodEditor: false as const,
+        isPodMember: false as const,
         user: null,
       };
     }
-    return { ...identity, isPodEditor: identity.isPodEditor === true };
+    return {
+      ...identity,
+      isPodEditor: identity.isPodEditor === true,
+      isPodMember: identity.isPodMember === true,
+    };
   }
 
   async fetchFile(fileId: string): Promise<File | null> {

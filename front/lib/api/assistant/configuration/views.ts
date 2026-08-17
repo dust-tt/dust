@@ -171,12 +171,12 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
         where: baseWhereConditions,
       });
 
-    // Analytics reports on every agent, so admins get the private ones too.
-    // Everyone else sees what `all` returns.
+    // Analytics reports on every agent, so managers and admins get the private
+    // ones too. Everyone else sees what `all` returns.
     case "analytics":
       return AgentConfigurationModel.findAll({
         ...baseAgentsSequelizeQuery,
-        where: auth.isAdmin()
+        where: auth.isManager()
           ? baseWhereConditions
           : baseConditionsAndScopesIn(["workspace", "published", "visible"]),
       });
@@ -333,11 +333,11 @@ async function fetchWorkspaceAgentConfigurationsForView(
     }
   );
 
-  // Analytics counts credits for agents built on spaces an admin cannot read,
-  // so the admin analytics view has to list them as well.
+  // Analytics counts credits for agents built on spaces a manager cannot read,
+  // so the manager analytics view has to list them as well.
   const skipPermissionFiltering =
     dangerouslySkipPermissionFiltering ||
-    (agentsGetView === "analytics" && auth.isAdmin());
+    (agentsGetView === "analytics" && auth.isManager());
 
   const allowedAgentModels = skipPermissionFiltering
     ? agentModels

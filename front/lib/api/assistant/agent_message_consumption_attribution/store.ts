@@ -22,8 +22,14 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import type { UserMessageOrigin } from "@app/types/assistant/conversation";
-import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
+import type {
+  AgentMessageStatus,
+  UserMessageOrigin,
+} from "@app/types/assistant/conversation";
+import {
+  AGENT_MESSAGE_STATUSES_TO_TRACK,
+  isTerminalAgentMessageStatus,
+} from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
@@ -32,11 +38,13 @@ function selectRunUsagesNeedingEvidence({
   actionsByDustRunId,
   currentItems,
   dustRunIdByRunModelId,
+  runUsageModelIdsWithUnconsumedToolResults,
   usages,
 }: {
   actionsByDustRunId: ReadonlyMap<string, AgentMCPActionResource[]>;
   currentItems: AgentMessageConsumptionItemResource[];
   dustRunIdByRunModelId: ReadonlyMap<ModelId, string>;
+  runUsageModelIdsWithUnconsumedToolResults: ReadonlySet<ModelId>;
   usages: RunUsageWithRunKeyType[];
 }): RunUsageWithRunKeyType[] {
   const modelItemTypesByRunUsageModelId = new Map<ModelId, Set<string>>();
@@ -89,7 +97,10 @@ function selectRunUsagesNeedingEvidence({
       const item = toolItemByActionModelId.get(action.id);
       return (
         !item ||
-        (item.completedAt === null && isToolExecutionStatusFinal(action.status))
+        (item.completedAt === null &&
+          isToolExecutionStatusFinal(action.status)) ||
+        (runUsageModelIdsWithUnconsumedToolResults.has(usage.runUsageModelId) &&
+          (item.inputTokensCount ?? 0) > 0)
       );
     });
 
@@ -97,15 +108,64 @@ function selectRunUsagesNeedingEvidence({
   });
 }
 
+/**
+ * A tool result emitted by the last reported model run of a terminal message was never sent back
+ * to the model. Run IDs on the message are de-duplicated in SQL without an ordering guarantee, so
+ * use the durable Run chronology instead.
+ */
+function runUsageModelIdsWithUnconsumedToolResults({
+  runs,
+  status,
+  usages,
+}: {
+  runs: RunResource[];
+  status: AgentMessageStatus;
+  usages: RunUsageWithRunKeyType[];
+}): ReadonlySet<ModelId> {
+  if (!isTerminalAgentMessageStatus(status)) {
+    return new Set();
+  }
+
+  const runModelIdsWithReportedUsage = new Set(
+    usages.map((usage) => usage.runModelId)
+  );
+  let lastRun: RunResource | null = null;
+  for (const run of runs) {
+    if (!runModelIdsWithReportedUsage.has(run.id)) {
+      continue;
+    }
+    if (
+      lastRun === null ||
+      run.createdAt.getTime() > lastRun.createdAt.getTime() ||
+      (run.createdAt.getTime() === lastRun.createdAt.getTime() &&
+        run.id > lastRun.id)
+    ) {
+      lastRun = run;
+    }
+  }
+
+  if (lastRun === null) {
+    return new Set();
+  }
+
+  return new Set(
+    usages
+      .filter((usage) => usage.runModelId === lastRun.id)
+      .map((usage) => usage.runUsageModelId)
+  );
+}
+
 async function buildRunUsageConsumptionEvidence(
   auth: Authenticator,
   {
     enrichedActionByModelId,
+    includeToolResultFootprints,
     runActions,
     triggeringUserMessageOrigin,
     usage,
   }: {
     enrichedActionByModelId: ReadonlyMap<ModelId, AgentMCPActionWithOutputType>;
+    includeToolResultFootprints: boolean;
     runActions: AgentMCPActionResource[];
     triggeringUserMessageOrigin: UserMessageOrigin | null;
     usage: RunUsageWithRunKeyType;
@@ -237,7 +297,9 @@ async function buildRunUsageConsumptionEvidence(
     const toolAttribution = buildToolAttribution({
       usage,
       toolCall,
-      inputTokensCount: footprint.inputTokensCount,
+      inputTokensCount: includeToolResultFootprints
+        ? footprint.inputTokensCount
+        : 0,
       directCreditAmountMicro,
     });
     records.push({
@@ -319,9 +381,10 @@ async function persistMessageConsumptionAttribution(
     usages: RunUsageWithRunKeyType[];
   }
 ): Promise<boolean> {
-  // Store the immutable evidence first, then materialize the newest complete allocation against the
-  // authoritative bill in the same transaction. An incomplete version keeps its evidence with null
-  // reconciliation and can be completed by a later finalize.
+  // Store the evidence first, remove any terminal result footprint that never reached another model
+  // run, then materialize the newest complete allocation against the authoritative bill in the same
+  // transaction. An incomplete version keeps its evidence with null reconciliation and can be
+  // completed by a later finalize.
   return withTransaction(async (transaction) => {
     await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
       conversation,
@@ -385,15 +448,22 @@ async function persistMessageConsumptionAttribution(
  * charge it, so its tool row is written pending: only the output the model already spent emitting the
  * call, carved out of the assistant bucket like any other tool call. When a later finalize sees the
  * action final, that pending row is completed in place with the result footprint and direct charge,
- * rather than replaced (the row cannot be re-inserted past its idempotency key).
+ * rather than replaced (the row cannot be re-inserted past its idempotency key). If the message
+ * becomes terminal without another reported model run, that footprint is removed in place: the
+ * result was produced, but never consumed.
  */
-export async function computeAndStoreAgentMessageConsumptionAttribution(
+export interface AgentMessageConsumptionAttributionComputation {
+  actions?: AgentMCPActionResource[];
+  consumptionUpdate?: { costCredits: number | null };
+}
+
+async function computeAndStoreAgentMessageConsumptionAttributionComputation(
   auth: Authenticator,
   {
     agentMessageId,
     conversationId,
   }: { agentMessageId: string; conversationId: string }
-): Promise<{ costCredits: number | null } | undefined> {
+): Promise<AgentMessageConsumptionAttributionComputation> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
 
   const creditContext =
@@ -405,7 +475,7 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
       { workspaceId, agentMessageId },
       "[ConsumptionAttribution] Agent message not found."
     );
-    return;
+    return {};
   }
 
   const {
@@ -419,29 +489,35 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
   // Attribution only explains what was billed, so it mirrors the billing status gate: an untracked
   // status has no charge to compose.
   if (!AGENT_MESSAGE_STATUSES_TO_TRACK.includes(status)) {
-    return;
+    return {};
   }
 
   const dustRunIds = [...new Set(runIds ?? [])];
   if (dustRunIds.length === 0) {
-    return;
+    return {};
   }
 
   const conversation = await ConversationResource.fetchById(
     auth,
-    conversationId
+    conversationId,
+    {
+      dangerouslySkipPermissionFiltering: true,
+      includeDeleted: true,
+    }
   );
   if (!conversation) {
     logger.warn(
       { workspaceId, agentMessageId, conversationId },
       "[ConsumptionAttribution] Conversation not found."
     );
-    return;
+    return {};
   }
 
   // Every usage is reached through this message's own runIds, so each one belongs to this message.
   const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
   const usages = await RunResource.listRunUsagesForRuns(auth, { runs });
+  const unconsumedToolResultRunUsageModelIds =
+    runUsageModelIdsWithUnconsumedToolResults({ runs, status, usages });
 
   // Group the message's tool calls by the run that emitted them. Each action carries its emitting
   // step content, whose dustRunId identifies that run and is the same identifier the run usages are
@@ -479,6 +555,8 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
     actionsByDustRunId,
     currentItems,
     dustRunIdByRunModelId,
+    runUsageModelIdsWithUnconsumedToolResults:
+      unconsumedToolResultRunUsageModelIds,
     usages,
   });
   const dustRunIdsToProcess = new Set(
@@ -513,6 +591,9 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
     const runActions = (dustRunId && actionsByDustRunId.get(dustRunId)) || [];
     const usageEvidence = await buildRunUsageConsumptionEvidence(auth, {
       enrichedActionByModelId,
+      includeToolResultFootprints: !unconsumedToolResultRunUsageModelIds.has(
+        usage.runUsageModelId
+      ),
       runActions,
       triggeringUserMessageOrigin,
       usage,
@@ -536,5 +617,37 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
     }
   );
 
-  return hasCompleteAllocation ? { costCredits: billedCredits } : undefined;
+  return {
+    actions,
+    consumptionUpdate: hasCompleteAllocation
+      ? { costCredits: billedCredits }
+      : undefined,
+  };
+}
+
+export async function computeAndStoreAgentMessageConsumptionAttribution(
+  auth: Authenticator,
+  message: { agentMessageId: string; conversationId: string }
+): Promise<{ costCredits: number | null } | undefined> {
+  const { consumptionUpdate } =
+    await computeAndStoreAgentMessageConsumptionAttributionComputation(
+      auth,
+      message
+    );
+
+  return consumptionUpdate;
+}
+
+/**
+ * Returns the action snapshot loaded for attribution so the immediately following analytics index
+ * can reuse it instead of querying the same rows again.
+ */
+export async function computeAndStoreAgentMessageConsumptionAttributionForAnalytics(
+  auth: Authenticator,
+  message: { agentMessageId: string; conversationId: string }
+): Promise<AgentMessageConsumptionAttributionComputation> {
+  return computeAndStoreAgentMessageConsumptionAttributionComputation(
+    auth,
+    message
+  );
 }

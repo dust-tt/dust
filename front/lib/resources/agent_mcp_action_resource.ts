@@ -24,6 +24,9 @@ import {
   isUserQuestionResumeState,
 } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import { AGENT_DELEGATION_SERVER_NAME } from "@app/lib/api/actions/servers/agent_delegation/metadata";
+import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/metadata";
+import { isRunAgentResumeState } from "@app/lib/api/actions/servers/run_agent/types";
 import { getCitationsFromToolOutput } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
@@ -453,11 +456,28 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
       const mcpServerId = mcpServerView?.mcpServerId;
       const mcpServerDisplayName = mcpServerView?.getDisplayName();
+      const icon =
+        mcpServerView?.getServerDisplayMetadata().icon ??
+        action.toolConfiguration.icon;
+      const internalMCPServerName = action.toolConfiguration.toolServerId
+        ? getInternalMCPServerNameFromSId(action.toolConfiguration.toolServerId)
+        : null;
 
       const parentUserMessage =
         parentUserMessageById[agentMessage.message.parentId!];
 
       assert(parentUserMessage.userMessage, "Parent user message not found.");
+
+      const displayLabels =
+        getToolDisplayLabels({
+          internalMCPServerName,
+          mcpServerName: action.toolConfiguration.mcpServerName,
+          toolName: action.toolConfiguration.originalName,
+          inputs: {
+            ...action.augmentedInputs,
+            ...(action.userEditedInputs ?? {}),
+          },
+        }) ?? action.toolConfiguration.displayLabels;
 
       const baseActionParams: Omit<
         AgentLoopBlockedToolExecution,
@@ -479,18 +499,15 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         metadata: {
           toolName: action.toolConfiguration.originalName,
           mcpServerName: action.toolConfiguration.mcpServerName,
-          agentName: "agent",
-          icon: action.toolConfiguration.icon,
+          displayLabel: displayLabels?.done,
+          agentName: agentConfiguration.name,
+          icon,
         },
         argumentsRequiringApproval:
           action.toolConfiguration.argumentsRequiringApproval,
         approvalArgsLabel: await getApprovalArgsLabel({
           auth,
-          internalMCPServerName: action.toolConfiguration.toolServerId
-            ? getInternalMCPServerNameFromSId(
-                action.toolConfiguration.toolServerId
-              )
-            : null,
+          internalMCPServerName,
           toolName: action.toolConfiguration.originalName,
           agentName: agentConfiguration.name,
           inputs: action.augmentedInputs,
@@ -1477,6 +1494,20 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       executionDurationMs: this.executionDurationMs,
       displayLabels,
     };
+  }
+
+  getRunAgentChildConversationId(): string | null {
+    if (
+      this.metadata.internalMCPServerName !== RUN_AGENT_SERVER_NAME &&
+      this.metadata.internalMCPServerName !== AGENT_DELEGATION_SERVER_NAME
+    ) {
+      return null;
+    }
+
+    const { resumeState } = this.stepContext;
+    return isRunAgentResumeState(resumeState)
+      ? resumeState.conversationId
+      : null;
   }
 
   /**

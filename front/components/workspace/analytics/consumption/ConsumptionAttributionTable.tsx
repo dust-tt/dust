@@ -1,25 +1,63 @@
+import { getModelLogoByModelId } from "@app/components/providers/types";
+import {
+  getAvatarFromIcon,
+  isCustomResourceIconType,
+  isInternalAllowedIcon,
+} from "@app/components/resources/resources_icons";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { ConsumptionExportPanel } from "@app/components/workspace/analytics/consumption/ConsumptionExportPanel";
 import {
   AvatarNameCell,
   CostShareCell,
+  EntityTooltipCard,
 } from "@app/components/workspace/analytics/creditsTableCells";
+import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useDebounce } from "@app/hooks/useDebounce";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/constants";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
-import { formatCredits } from "@app/lib/client/credits";
 import {
+  DEFAULT_CONSUMPTION_PERIOD_DAYS,
+  normalizedConsumptionFilter,
+} from "@app/lib/analytics/consumption_period";
+import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
+import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
+import { formatCredits } from "@app/lib/client/credits";
+import { getSkillAvatarIcon } from "@app/lib/skill";
+import {
+  ArrowNarrowDownRight,
+  ArrowNarrowUpRight,
+  Avatar,
   Button,
   ChevronDown,
   ChevronUp,
+  cn,
   DataTable,
+  DustLogoSquare,
+  FilterFunnel01,
+  Icon,
+  MOTION_DURATIONS,
+  MOTION_EASINGS,
+  Pagination,
   SearchInput,
-  Spinner,
   Tabs,
   TabsList,
   TabsTrigger,
+  Tooltip,
+  XCircle,
 } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import type { ColumnDef, PaginationState } from "@tanstack/react-table";
+import type { Transition, Variants } from "framer-motion";
+import {
+  AnimatePresence,
+  domMax,
+  LazyMotion,
+  m,
+  useReducedMotion,
+} from "framer-motion";
+import type { ReactNode } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { AttributionRowData } from "./ConsumptionAttributionRowsTable";
 import { ConsumptionAttributionRowsTable } from "./ConsumptionAttributionRowsTable";
 import type { ConsumptionDimension } from "./consumptionDimensions";
@@ -29,20 +67,150 @@ import {
   isConsumptionDimension,
 } from "./consumptionDimensions";
 
-const TOP_LIMIT = 25;
-
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
+const ATTRIBUTION_PAGE_SIZE = 25;
+const ATTRIBUTION_MAX_ROW_COUNT = 1_000;
+
+type AttributionTransitionDirection = -1 | 0 | 1;
+
+interface AttributionTransition {
+  target: ConsumptionDimension | null;
+  direction: AttributionTransitionDirection;
+}
+
+const ATTRIBUTION_BODY_TRANSITION = {
+  duration: MOTION_DURATIONS.exit,
+  ease: MOTION_EASINGS.enter,
+} satisfies Transition;
+
+const ATTRIBUTION_BODY_VARIANTS: Variants = {
+  initial: (direction: number) => ({
+    opacity: direction === 0 ? 1 : 0,
+    x: direction * 4,
+  }),
+  animate: {
+    opacity: 1,
+    x: 0,
+    transition: ATTRIBUTION_BODY_TRANSITION,
+  },
+  exit: (direction: number) => ({
+    opacity: direction === 0 ? 1 : 0,
+    pointerEvents: "none",
+    transition: direction === 0 ? { duration: 0 } : ATTRIBUTION_BODY_TRANSITION,
+    x: direction * -4,
+  }),
+};
+
+function getAttributionTransitionDirection(
+  currentDimension: ConsumptionDimension,
+  nextDimension: ConsumptionDimension
+): AttributionTransitionDirection {
+  const currentIndex = CONSUMPTION_DIMENSIONS.indexOf(currentDimension);
+  const nextIndex = CONSUMPTION_DIMENSIONS.indexOf(nextDimension);
+
+  if (currentIndex === nextIndex) {
+    return 0;
+  }
+
+  return nextIndex > currentIndex ? 1 : -1;
+}
+
+function AttributionTooltipCard({
+  row,
+  dimension,
+}: {
+  row: ConsumptionTopRow;
+  dimension: "agent" | "skill";
+}) {
+  const SkillAvatar = getSkillAvatarIcon(row.icon);
+
+  return (
+    <EntityTooltipCard
+      avatar={
+        dimension === "agent" ? (
+          <Avatar
+            name={row.name}
+            visual={row.pictureUrl ?? undefined}
+            size="xs"
+          />
+        ) : (
+          <SkillAvatar name={row.name} size="xs" />
+        )
+      }
+      name={row.name}
+      description={row.description}
+      modelId={dimension === "agent" ? row.modelId : null}
+      modelDisplayName={dimension === "agent" ? row.modelDisplayName : null}
+    />
+  );
+}
+
+// Growth is undefined (not just zero) with no prior credits to grow from, so
+// callers must distinguish that case from an actual percentage.
+function growthPercent(
+  currentCredits: number,
+  previousCredits: number | null
+): number | null {
+  return previousCredits && previousCredits > 0
+    ? ((currentCredits - previousCredits) / previousCredits) * 100
+    : null;
+}
+
+function VsPrevCell({
+  credits,
+  previousCredits,
+}: {
+  credits: number;
+  previousCredits: number | null;
+}) {
+  const growth = growthPercent(credits, previousCredits);
+
+  if (growth === null) {
+    return (
+      <DataTable.CellContent className="w-full justify-end text-right">
+        <Tooltip
+          label="Not enough data to compute"
+          tooltipTriggerAsChild
+          trigger={<span className="text-sm text-muted-foreground">N.A</span>}
+        />
+      </DataTable.CellContent>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex w-full items-center justify-end gap-1 text-right text-sm tabular-nums",
+        growth > 100 ? "text-highlight-600" : "text-muted-foreground"
+      )}
+    >
+      <Icon
+        visual={growth >= 0 ? ArrowNarrowUpRight : ArrowNarrowDownRight}
+        size="xs"
+      />
+      <span>{Math.round(Math.abs(growth))}%</span>
+    </div>
+  );
+}
 
 function buildColumns({
+  dimension,
   hasAvatar,
   isAvatarRounded,
   avgLabel,
   totalCredits,
+  isDark,
+  expandedRowId,
+  selectedIdSet,
 }: {
+  dimension: ConsumptionDimension;
   hasAvatar: boolean;
   isAvatarRounded: boolean;
   avgLabel: string;
   totalCredits: number;
+  isDark: boolean;
+  expandedRowId: string | null;
+  selectedIdSet: Set<string>;
 }): ColumnDef<AttributionRowData>[] {
   return [
     {
@@ -51,17 +219,62 @@ function buildColumns({
       header: "Name",
       meta: { sizeRatio: 32, headerAlign: "left" },
       cell: (info) => {
-        const { name, pictureUrl } = info.row.original;
-        return (
-          <DataTable.CellContent className="w-full justify-start text-left">
-            {hasAvatar ? (
+        const row = info.row.original;
+        const { name, pictureUrl, description, icon } = row;
+        const SkillAvatar = getSkillAvatarIcon(icon);
+        const toolIcon =
+          icon &&
+          (isCustomResourceIconType(icon) || isInternalAllowedIcon(icon))
+            ? icon
+            : DEFAULT_MCP_SERVER_ICON;
+        const content =
+          dimension === "skill" ? (
+            <div className="flex min-w-0 items-center gap-2">
+              <SkillAvatar name={name} size="xs" />
+              <span className="truncate text-sm">{name}</span>
+            </div>
+          ) : dimension === "tool" ? (
+            <div className="flex min-w-0 items-center gap-2">
+              {getAvatarFromIcon(toolIcon, "xs")}
+              <span className="truncate text-sm">{name}</span>
+            </div>
+          ) : dimension === "model" ? (
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="flex size-7 shrink-0 items-center justify-center">
+                <Icon
+                  visual={
+                    getModelLogoByModelId(row.id, isDark) ?? DustLogoSquare
+                  }
+                  size="sm"
+                />
+              </span>
+              <span className="truncate text-sm">{name}</span>
+            </div>
+          ) : hasAvatar ? (
+            <div className="min-w-0">
               <AvatarNameCell
                 name={name}
                 imageUrl={pictureUrl}
                 isRounded={isAvatarRounded}
               />
+            </div>
+          ) : (
+            <span className="truncate text-sm">{name}</span>
+          );
+
+        return (
+          <DataTable.CellContent className="w-full justify-start text-left">
+            {description && (dimension === "agent" || dimension === "skill") ? (
+              <Tooltip
+                label={
+                  <AttributionTooltipCard row={row} dimension={dimension} />
+                }
+                className="p-3"
+                tooltipTriggerAsChild
+                trigger={content}
+              />
             ) : (
-              <span className="truncate text-sm">{name}</span>
+              content
             )}
           </DataTable.CellContent>
         );
@@ -106,23 +319,70 @@ function buildColumns({
       ),
     },
     {
+      id: "vsPrev",
+      header: "vs prev",
+      meta: { sizeRatio: 18, headerAlign: "right" },
+      cell: (info) => (
+        <VsPrevCell
+          credits={info.row.original.credits}
+          previousCredits={info.row.original.previousCredits}
+        />
+      ),
+    },
+    {
       id: "details",
       header: "",
       enableSorting: false,
       meta: { className: "w-12", headerAlign: "right" },
       cell: (info) => {
         const row = info.row.original;
+        const isExpanded = expandedRowId === row.id;
         return (
           <DataTable.CellContent className="w-full justify-end">
             <Button
-              icon={row.isExpanded ? ChevronUp : ChevronDown}
+              icon={isExpanded ? ChevronUp : ChevronDown}
               variant="ghost-secondary"
               size="xs"
-              aria-label={`${row.isExpanded ? "Collapse" : "Expand"} breakdown for ${row.name}`}
-              aria-expanded={row.isExpanded}
+              aria-label={`${isExpanded ? "Collapse" : "Expand"} breakdown for ${row.name}`}
+              aria-expanded={isExpanded}
               onClick={(event) => {
                 event.stopPropagation();
                 row.onClick();
+              }}
+            />
+          </DataTable.CellContent>
+        );
+      },
+    },
+    {
+      id: "filter",
+      header: "",
+      enableSorting: false,
+      meta: { className: "w-12", headerAlign: "right" },
+      cell: (info) => {
+        const row = info.row.original;
+        const isFilterSelected = selectedIdSet.has(row.id);
+        return (
+          <DataTable.CellContent className="w-full justify-end">
+            <Button
+              icon={isFilterSelected ? XCircle : FilterFunnel01}
+              variant="ghost-secondary"
+              size="xs"
+              tooltip={
+                isFilterSelected ? "Remove from filters" : "Add to filters"
+              }
+              aria-label={
+                isFilterSelected
+                  ? `Remove ${row.name} from filters`
+                  : `Add ${row.name} to filters`
+              }
+              onClick={(event) => {
+                event.stopPropagation();
+                if (isFilterSelected) {
+                  row.onRemoveFilter();
+                } else {
+                  row.onAddFilter();
+                }
               }}
             />
           </DataTable.CellContent>
@@ -137,7 +397,13 @@ interface AttributionRowsProps {
   dimension: ConsumptionDimension;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
+  onAddFilter: (row: ConsumptionTopRow) => void;
+  onRemoveFilter: (row: ConsumptionTopRow) => void;
   search: string;
+  onViewAll: (
+    dimension: ConsumptionDimension,
+    selectedRow: ConsumptionTopRow
+  ) => void;
 }
 
 function AttributionRows({
@@ -145,86 +411,173 @@ function AttributionRows({
   dimension,
   period,
   filter,
+  onAddFilter,
+  onRemoveFilter,
   search,
+  onViewAll,
 }: AttributionRowsProps) {
   const { hasAvatar, avgLabel } = CONSUMPTION_DIMENSION_CONFIG[dimension];
+  const { isDark } = useTheme();
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: ATTRIBUTION_PAGE_SIZE,
+  });
+  const shouldReduceMotion = useReducedMotion();
 
   const {
-    rows: allRows,
+    rows,
     totalCredits,
+    totalCount,
     isTopLoading,
     isTopError,
+    isTopValidating,
   } = useConsumptionTop({
     workspaceId,
     dimension,
     period,
-    limit: TOP_LIMIT,
+    limit: pagination.pageSize,
+    offset: pagination.pageIndex * pagination.pageSize,
+    search,
     filter,
   });
+  const cappedRowCount = Math.min(totalCount, ATTRIBUTION_MAX_ROW_COUNT);
 
-  // Client-side filter over the loaded ranking. A row outside the top
-  // TOP_LIMIT will not appear — the endpoint has no server-side search yet.
-  const rows = useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    return needle
-      ? allRows.filter((row) => row.name.toLowerCase().includes(needle))
-      : allRows;
-  }, [allRows, search]);
+  const selectedIdSet = useMemo(
+    () => new Set(filter?.[CONSUMPTION_DIMENSION_FILTER_KEYS[dimension]] ?? []),
+    [dimension, filter]
+  );
 
   const columns = useMemo(
     () =>
       buildColumns({
+        dimension,
         hasAvatar,
         isAvatarRounded: dimension === "user",
         avgLabel,
         totalCredits,
+        isDark,
+        expandedRowId,
+        selectedIdSet,
       }),
-    [hasAvatar, dimension, avgLabel, totalCredits]
+    [
+      hasAvatar,
+      dimension,
+      avgLabel,
+      totalCredits,
+      isDark,
+      expandedRowId,
+      selectedIdSet,
+    ]
   );
 
-  if (isTopLoading) {
-    return (
-      <div className="flex h-48 items-center justify-center">
-        <Spinner size="lg" />
+  const data = useMemo<AttributionRowData[]>(
+    () =>
+      rows.map((row) => ({
+        ...row,
+        onClick: () =>
+          setExpandedRowId((current) => (current === row.id ? null : row.id)),
+        onAddFilter: () => onAddFilter(row),
+        onRemoveFilter: () => onRemoveFilter(row),
+      })),
+    [rows, onAddFilter, onRemoveFilter]
+  );
+  const isLoading = isTopLoading;
+  const skeletonRowCount =
+    cappedRowCount > 0
+      ? Math.min(
+          pagination.pageSize,
+          cappedRowCount - pagination.pageIndex * pagination.pageSize
+        )
+      : undefined;
+  const paginationControls = cappedRowCount > pagination.pageSize && (
+    <div className="mt-2 p-1">
+      <Pagination
+        size="xs"
+        showDetails={false}
+        pagination={pagination}
+        setPagination={setPagination}
+        rowCount={cappedRowCount}
+      />
+    </div>
+  );
+
+  let contentKey = "content";
+  let content: ReactNode;
+
+  if (isLoading) {
+    contentKey = "loading";
+    content = (
+      <div>
+        <div className="overflow-x-auto">
+          <ConsumptionAttributionRowsTable
+            data={data}
+            columns={columns}
+            workspaceId={workspaceId}
+            dimension={dimension}
+            period={period}
+            filter={filter}
+            onViewAll={onViewAll}
+            expandedRowId={expandedRowId}
+            isLoading
+            skeletonRowCount={skeletonRowCount}
+            hasAvatar={hasAvatar}
+            isAvatarRounded={dimension === "user"}
+          />
+        </div>
+        {paginationControls}
       </div>
     );
-  }
-  if (isTopError) {
-    return (
+  } else if (isTopError) {
+    content = (
       <div className="text-sm text-muted-foreground">
         Failed to load attribution.
       </div>
     );
-  }
-  if (rows.length === 0) {
-    return (
-      <div className="text-sm text-muted-foreground">
-        {search.trim()
-          ? `No match for "${search.trim()}".`
-          : "No consumption over this period."}
+  } else {
+    content = (
+      <div>
+        {rows.length === 0 ? (
+          <div className="text-sm text-muted-foreground">
+            {search.trim()
+              ? `No match for "${search.trim()}".`
+              : "No consumption over this period."}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <ConsumptionAttributionRowsTable
+              data={data}
+              columns={columns}
+              workspaceId={workspaceId}
+              dimension={dimension}
+              period={period}
+              filter={filter}
+              onViewAll={onViewAll}
+              expandedRowId={expandedRowId}
+            />
+          </div>
+        )}
+        {paginationControls}
       </div>
     );
   }
 
-  const data: AttributionRowData[] = rows.map((row) => ({
-    ...row,
-    isExpanded: expandedRowId === row.id,
-    onClick: () =>
-      setExpandedRowId((current) => (current === row.id ? null : row.id)),
-  }));
-
   return (
-    <div className="overflow-x-auto">
-      <ConsumptionAttributionRowsTable
-        data={data}
-        columns={columns}
-        workspaceId={workspaceId}
-        dimension={dimension}
-        period={period}
-        filter={filter}
-      />
-    </div>
+    <AnimatePresence initial={false} mode="popLayout">
+      <m.div
+        key={contentKey}
+        initial={shouldReduceMotion ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={shouldReduceMotion ? undefined : { opacity: 0 }}
+        transition={{
+          duration: shouldReduceMotion ? 0 : 0.1,
+          ease: MOTION_EASINGS.enter,
+        }}
+        aria-busy={isLoading || isTopValidating}
+      >
+        {content}
+      </m.div>
+    </AnimatePresence>
   );
 }
 
@@ -232,57 +585,137 @@ interface ConsumptionAttributionTableProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
+  onAddFilter: (row: ConsumptionTopRow) => void;
+  onRemoveFilter: (row: ConsumptionTopRow) => void;
   // Owned by the page: the selected tab also drives the chart's breakdown.
   dimension: ConsumptionDimension;
   onDimensionChange: (dimension: ConsumptionDimension) => void;
+  onViewAll: (
+    dimension: ConsumptionDimension,
+    selectedRow: ConsumptionTopRow
+  ) => void;
 }
 
 export function ConsumptionAttributionTable({
   workspaceId,
   period,
   filter,
+  onAddFilter,
+  onRemoveFilter,
   dimension,
   onDimensionChange,
+  onViewAll,
 }: ConsumptionAttributionTableProps) {
   const { inputValue, debouncedValue, setValue } = useDebounce("", {
     delay: SEARCH_DEBOUNCE_DELAY_MS,
   });
+  const pendingPointerDimension = useRef<ConsumptionDimension | null>(null);
+  const [transition, setTransition] = useState<AttributionTransition>({
+    target: null,
+    direction: 0,
+  });
+  const shouldReduceMotion = useReducedMotion();
+  const effectiveTransitionDirection =
+    shouldReduceMotion || transition.target !== dimension
+      ? 0
+      : transition.direction;
+
+  const exportBody: ConsumptionExportBody = {
+    period: period.kind,
+    days:
+      period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
+    filter: normalizedConsumptionFilter(filter),
+  };
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <Tabs
-        value={dimension}
-        onValueChange={(value) => {
-          if (isConsumptionDimension(value)) {
-            onDimensionChange(value);
-          }
-        }}
-      >
-        <TabsList border>
-          {CONSUMPTION_DIMENSIONS.map((tabDimension) => (
-            <TabsTrigger
-              key={tabDimension}
-              value={tabDimension}
-              label={CONSUMPTION_DIMENSION_CONFIG[tabDimension].label}
-            />
-          ))}
-        </TabsList>
-      </Tabs>
-      <SearchInput
-        name="consumption-attribution-search"
-        placeholder="Search…"
-        value={inputValue}
-        onChange={setValue}
-        className="mt-3 w-full"
-      />
-      <div className="pt-3">
-        <AttributionRows
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-4">
+        <h3 className="text-base font-semibold text-foreground">Attribution</h3>
+        <ConsumptionExportPanel
           workspaceId={workspaceId}
-          dimension={dimension}
-          period={period}
-          filter={filter}
-          search={debouncedValue}
+          exportBody={exportBody}
         />
+      </div>
+      <div className="rounded-lg border border-border bg-panel-background p-4">
+        <div className="flex flex-col gap-3">
+          <Tabs
+            value={dimension}
+            onValueChange={(value) => {
+              if (isConsumptionDimension(value)) {
+                setTransition({
+                  target: value,
+                  direction:
+                    pendingPointerDimension.current === value
+                      ? getAttributionTransitionDirection(dimension, value)
+                      : 0,
+                });
+                pendingPointerDimension.current = null;
+                onDimensionChange(value);
+              }
+            }}
+          >
+            <TabsList border>
+              {CONSUMPTION_DIMENSIONS.map((tabDimension) => (
+                <TabsTrigger
+                  key={tabDimension}
+                  value={tabDimension}
+                  label={CONSUMPTION_DIMENSION_CONFIG[tabDimension].label}
+                  onPointerDown={() => {
+                    pendingPointerDimension.current = tabDimension;
+                  }}
+                  onPointerCancel={() => {
+                    pendingPointerDimension.current = null;
+                  }}
+                  onKeyDown={() => {
+                    pendingPointerDimension.current = null;
+                  }}
+                />
+              ))}
+            </TabsList>
+          </Tabs>
+          <SearchInput
+            name="consumption-attribution-search"
+            placeholder="Search…"
+            value={inputValue}
+            onChange={setValue}
+            className="w-full"
+          />
+          <LazyMotion features={domMax}>
+            <div className="relative overflow-hidden">
+              <AnimatePresence
+                initial={false}
+                mode="popLayout"
+                custom={effectiveTransitionDirection}
+              >
+                <m.div
+                  key={dimension}
+                  custom={effectiveTransitionDirection}
+                  variants={ATTRIBUTION_BODY_VARIANTS}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                >
+                  {/* Reset table state whenever its dataset or local search changes. */}
+                  <AttributionRows
+                    key={JSON.stringify({
+                      period,
+                      filter,
+                      search: debouncedValue,
+                    })}
+                    workspaceId={workspaceId}
+                    dimension={dimension}
+                    period={period}
+                    filter={filter}
+                    onAddFilter={onAddFilter}
+                    onRemoveFilter={onRemoveFilter}
+                    search={debouncedValue}
+                    onViewAll={onViewAll}
+                  />
+                </m.div>
+              </AnimatePresence>
+            </div>
+          </LazyMotion>
+        </div>
       </div>
     </div>
   );

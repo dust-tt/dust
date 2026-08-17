@@ -1,5 +1,13 @@
+import { getModelLogoByModelId } from "@app/components/providers/types";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
-import { Avatar, cn, Tooltip } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  DustLogoSquare,
+  Icon,
+  ProgressBar,
+  Tooltip,
+} from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
 function EmptyCell() {
@@ -30,22 +38,50 @@ export function AvatarNameCell({
   );
 }
 
-interface CostShareBarProps {
-  percentage: number;
-  className?: string;
+interface EntityTooltipCardProps {
+  avatar: ReactNode;
+  name: string;
+  description: string | null;
+  modelId?: string | null;
+  modelDisplayName?: string | null;
 }
 
-export function CostShareBar({ percentage, className }: CostShareBarProps) {
+export function EntityTooltipCard({
+  avatar,
+  name,
+  description,
+  modelId,
+  modelDisplayName,
+}: EntityTooltipCardProps) {
+  const { isDark } = useTheme();
+  const ModelLogo = modelId
+    ? getModelLogoByModelId(modelId, isDark)
+    : undefined;
+
   return (
-    <progress
-      aria-hidden="true"
-      className={cn(
-        "block h-1.5 overflow-hidden rounded-full bg-muted accent-primary",
-        className
+    <div className="flex w-64 flex-col gap-3 py-1 text-left">
+      <div className="flex min-w-0 items-center gap-2">
+        {avatar}
+        <span className="truncate text-base font-semibold text-primary-50">
+          {name}
+        </span>
+      </div>
+      <span className="text-sm leading-5 text-primary-200">{description}</span>
+      {modelDisplayName && (
+        <div className="flex items-center gap-2">
+          <span className="flex size-5 shrink-0 items-center justify-center rounded-sm bg-primary-50">
+            <Icon
+              visual={ModelLogo ?? DustLogoSquare}
+              size="xs"
+              className="text-primary-950"
+            />
+          </span>
+          <span className="text-sm font-medium text-primary-50">
+            {modelDisplayName}
+          </span>
+        </div>
       )}
-      max={100}
-      value={percentage}
-    />
+    </div>
   );
 }
 
@@ -54,7 +90,7 @@ export function CostShareCell({ share }: { share: number }) {
 
   return (
     <div className="flex items-center gap-2">
-      <CostShareBar className="w-24" percentage={percentage} />
+      <ProgressBar className="w-24" percentage={percentage} />
       <span className="w-8 text-right text-xs text-muted-foreground tabular-nums">
         {percentage}%
       </span>

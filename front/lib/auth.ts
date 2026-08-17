@@ -7,6 +7,7 @@ import type {
 } from "@app/lib/api/sandbox/access_tokens";
 import {
   isSandboxExecTokenPayload,
+  isSandboxFileSystemTokenPayload,
   isSandboxFunctionInvocationTokenPayload,
   SANDBOX_TOKEN_PREFIX,
 } from "@app/lib/api/sandbox/access_tokens";
@@ -71,6 +72,7 @@ import {
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { decodeUtf8HeaderValue } from "@app/types/shared/utils/http_headers";
 import type {
@@ -659,6 +661,11 @@ export class Authenticator {
       }
       groupModelIdSets.push(groupModelIdsRes.value);
     }
+    if (isSandboxFileSystemTokenPayload(claims)) {
+      // This token kind is accepted only by the filesystem route. File access
+      // comes from its signed conversation and Pod roots, not workspace groups.
+      groupModelIdSets.push([]);
+    }
     if (groupModelIdSets.length === 0) {
       return new Err({
         status_code: 401,
@@ -956,6 +963,11 @@ export class Authenticator {
       ? allGroups.map((g) => g.id)
       : [];
     const keyGroupModelIds = allGroups.map((g) => g.id);
+    // Unscoped system keys represent nearly every group in their workspace. Resolve their grants
+    // from the workspace grant set so large workspaces do not send thousands of group ids to
+    // Postgres on every request. Explicitly scoped system keys keep the group-id query.
+    const scanWorkspacePermissions =
+      key.isSystem && requestedGroupIds === undefined;
 
     let permissions: GroupPermissions;
     let keyPermissions: GroupPermissions;
@@ -965,6 +977,7 @@ export class Authenticator {
       permissions = await this.resolvePermissions({
         workspace,
         groupModelIds: workspaceGroupModelIds,
+        scanWorkspacePermissions,
       });
       keyPermissions = permissions;
     } else {
@@ -972,10 +985,12 @@ export class Authenticator {
         this.resolvePermissions({
           workspace,
           groupModelIds: workspaceGroupModelIds,
+          scanWorkspacePermissions,
         }),
         this.resolvePermissions({
           workspace: keyWorkspace,
           groupModelIds: keyGroupModelIds,
+          scanWorkspacePermissions,
         }),
       ]);
     }
@@ -1280,18 +1295,25 @@ export class Authenticator {
   static async resolvePermissions({
     workspace,
     groupModelIds,
+    scanWorkspacePermissions = false,
   }: {
     workspace?: WorkspaceResource | null;
     groupModelIds: ModelId[];
+    scanWorkspacePermissions?: boolean;
   }): Promise<GroupPermissions> {
     if (!workspace) {
       return GroupPermissions.empty();
     }
 
-    const grants = await GroupPermissionResource.listForGroups(
-      renderLightWorkspaceType({ workspace }),
-      { groupModelIds }
-    );
+    const lightWorkspace = renderLightWorkspaceType({ workspace });
+    const grants = scanWorkspacePermissions
+      ? await GroupPermissionResource.listForGroupsFromWorkspaceScan(
+          lightWorkspace,
+          groupModelIds
+        )
+      : await GroupPermissionResource.listForGroups(lightWorkspace, {
+          groupModelIds,
+        });
 
     return GroupPermissions.fromGrants(grants);
   }
@@ -1476,6 +1498,65 @@ export class Authenticator {
     resourceId: number
   ): GroupGrant[] {
     return this._permissions.forResource(resourceType, resourceId);
+  }
+
+  /**
+   * Shadow-compare (#9479) for the group_permissions rollout: while the `group_permissions_shadow`
+   * flag is on for the workspace, compare two composed decisions for the same check — the served
+   * `legacyAcls` and the `candidateAcls` (the same roles routed through the group_permissions
+   * table) — and log mismatches so a Datadog monitor can confirm parity before the flip (#9480).
+   * The caller builds both shapes. Fire-and-forget: never changes the served result and swallows its
+   * own failures. (Inlined rather than reusing `lib/api/permissions/shadow` to avoid an auth <->
+   * shadow import cycle.)
+   */
+  shadowComparePermission(
+    verb: GrantVerb,
+    legacyAcls: AccessControlList[],
+    candidateAcls: AccessControlList[],
+    context: Record<string, string | number | boolean | null>
+  ): void {
+    void this.runShadowComparePermission(
+      verb,
+      legacyAcls,
+      candidateAcls,
+      context
+    );
+  }
+
+  private async runShadowComparePermission(
+    verb: GrantVerb,
+    legacyAcls: AccessControlList[],
+    candidateAcls: AccessControlList[],
+    context: Record<string, string | number | boolean | null>
+  ): Promise<void> {
+    try {
+      const flags = await getFeatureFlags(this);
+      if (!flags.includes("group_permissions_shadow")) {
+        return;
+      }
+
+      const legacyResult = this.hasPermissionForAcls(verb, legacyAcls);
+      const candidateResult = this.hasPermissionForAcls(verb, candidateAcls);
+
+      // The literal message is the Datadog monitor key — keep it stable.
+      if (legacyResult !== candidateResult) {
+        logger.warn(
+          {
+            ...context,
+            legacyResult,
+            candidateResult,
+            legacyAcls,
+            candidateAcls,
+          },
+          "group_permissions_shadow_mismatch"
+        );
+      }
+    } catch (err) {
+      logger.error(
+        { ...context, err: normalizeError(err) },
+        "group_permissions_shadow_error"
+      );
+    }
   }
 
   /**

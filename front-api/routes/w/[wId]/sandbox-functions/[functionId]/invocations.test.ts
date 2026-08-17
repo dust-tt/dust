@@ -2,6 +2,7 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { Authenticator } from "@app/lib/auth";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
@@ -10,6 +11,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -97,12 +99,10 @@ afterEach(() => {
 
 async function setupSandboxFunction({
   addCallerToSpace = true,
-  addCallerToEditors = false,
   withSandboxFunctionsFeatureFlag = true,
   userIdentity = "optional",
 }: {
   addCallerToSpace?: boolean;
-  addCallerToEditors?: boolean;
   withSandboxFunctionsFeatureFlag?: boolean;
   userIdentity?: SandboxFunctionUserIdentityPolicy;
 } = {}) {
@@ -147,20 +147,6 @@ async function setupSandboxFunction({
       user: user.toJSON(),
     });
     expect(addMemberResult.isOk()).toBe(true);
-  }
-  if (addCallerToEditors) {
-    const [editorGroup] = await space.fetchGroupResources(adminAuth, {
-      groupReferences: space.groups.filter(
-        (group) => group.groupKind === "space_editors"
-      ),
-    });
-    if (!editorGroup) {
-      throw new Error("Expected the project editor group to exist.");
-    }
-    const addEditorResult = await editorGroup.dangerouslyAddMember(adminAuth, {
-      user: user.toJSON(),
-    });
-    expect(addEditorResult.isOk()).toBe(true);
   }
   const callerAuth = await Authenticator.fromUserIdAndWorkspaceId(
     user.sId,
@@ -495,12 +481,9 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
     expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
   });
 
-  it("allows a pod editor to invoke a pod-editor-required function", async () => {
-    // Editors are not in the member group ("a user cannot be both a member and an editor").
+  it("allows a pod member to invoke a pod-member-required function", async () => {
     const { workspace, sandboxFunction } = await setupSandboxFunction({
-      userIdentity: "pod_editor_required",
-      addCallerToSpace: false,
-      addCallerToEditors: true,
+      userIdentity: "pod_member_required",
     });
 
     const response = await postInvocation({
@@ -512,10 +495,20 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
     expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
   });
 
-  it("denies a pod member who is not an editor on a pod-editor-required function", async () => {
-    const { workspace, sandboxFunction } = await setupSandboxFunction({
-      userIdentity: "pod_editor_required",
-    });
+  it("denies a workspace member outside an open pod on a pod-member-required function", async () => {
+    const { workspace, sandboxFunction, space, adminAuth } =
+      await setupSandboxFunction({
+        userIdentity: "pod_member_required",
+        addCallerToSpace: false,
+      });
+    // Open the pod so the caller clears the read gate and the policy itself denies (a restricted
+    // pod would 404 at fetch before the policy runs).
+    const globalGroupResult =
+      await GroupResource.fetchWorkspaceGlobalGroup(adminAuth);
+    expect(globalGroupResult.isOk()).toBe(true);
+    if (globalGroupResult.isOk()) {
+      await GroupSpaceFactory.associate(space, globalGroupResult.value);
+    }
 
     const response = await postInvocation({
       workspaceId: workspace.sId,

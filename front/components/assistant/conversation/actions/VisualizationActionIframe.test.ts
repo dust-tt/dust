@@ -25,6 +25,7 @@ describe("getFrameRuntimeAccess", () => {
         isAuthenticated: true,
         isWorkspaceMember: true,
         isPodEditor: false,
+        isPodMember: false,
         user,
       },
     });
@@ -42,6 +43,25 @@ describe("getFrameRuntimeAccess", () => {
         isAuthenticated: true,
         isWorkspaceMember: true,
         isPodEditor: true,
+        isPodMember: false,
+        user,
+      },
+    });
+  });
+
+  it("forwards pod membership from the scoped identity", () => {
+    expect(
+      getFrameRuntimeAccess("w_current", true, {
+        ...scopedUserIdentity,
+        isPodMember: true,
+      })
+    ).toEqual({
+      canInvokeFunctions: true,
+      userIdentity: {
+        isAuthenticated: true,
+        isWorkspaceMember: true,
+        isPodEditor: false,
+        isPodMember: true,
         user,
       },
     });
@@ -59,6 +79,7 @@ describe("getFrameRuntimeAccess", () => {
         isAuthenticated: false,
         isWorkspaceMember: false,
         isPodEditor: false,
+        isPodMember: false,
         user: null,
       },
     });
@@ -73,6 +94,7 @@ describe("getFrameRuntimeAccess", () => {
         isAuthenticated: true,
         isWorkspaceMember: true,
         isPodEditor: false,
+        isPodMember: false,
         user,
       },
     });

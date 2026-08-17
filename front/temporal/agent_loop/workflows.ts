@@ -3,11 +3,13 @@ import {
   RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
   RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
+import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as compactionActivities from "@app/temporal/agent_loop/activities/compaction";
 import type * as creditCheckActivities from "@app/temporal/agent_loop/activities/credit_check";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
+import type * as finalizeSandboxChildToolActivities from "@app/temporal/agent_loop/activities/finalize_sandbox_child_tool";
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
@@ -16,6 +18,8 @@ import {
   RUN_MODEL_MAX_RETRIES,
   TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
 } from "@app/temporal/agent_loop/config";
+import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
+import { waitForAllPromises } from "@app/temporal/agent_loop/lib/wait_for_all_promises";
 import {
   isRunModelLLMUnresponsiveError,
   isTerminalRunModelTimeout,
@@ -34,13 +38,16 @@ import type {
 } from "@app/types/assistant/agent_run";
 import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
 import type { SupportedModel } from "@app/types/assistant/models/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 import type {
   ChildWorkflowHandle,
   WorkflowInterceptorsFactory,
 } from "@temporalio/workflow";
 import {
+  ActivityCancellationType,
   CancellationScope,
+  patched,
   proxyActivities,
   proxySinks,
   setHandler,
@@ -96,6 +103,26 @@ const { runToolActivity: runRetryableToolActivity } = proxyActivities<
   },
 });
 
+const { runToolActivity: runToolActivityWithExplicitCancellation } =
+  proxyActivities<typeof runToolActivities>({
+    startToCloseTimeout: toolActivityStartToCloseTimeoutMs,
+    heartbeatTimeout: TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
+    cancellationType: ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
+    retry: {
+      maximumAttempts: 1,
+    },
+  });
+
+const { runToolActivity: runRetryableToolActivityWithExplicitCancellation } =
+  proxyActivities<typeof runToolActivities>({
+    startToCloseTimeout: toolActivityStartToCloseTimeoutMs,
+    heartbeatTimeout: TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
+    cancellationType: ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
+    retry: {
+      maximumAttempts: RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
+    },
+  });
+
 const { publishDeferredEventsActivity } = proxyActivities<
   typeof publishDeferredEventsActivities
 >({
@@ -144,6 +171,12 @@ const {
   finalizeInterruptedAgentLoopActivity,
   finalizeErroredAgentLoopActivity,
 } = proxyActivities<typeof finalizeActivities>({
+  startToCloseTimeout: "1 minute",
+});
+
+const { finalizeErroredSandboxChildToolActivity } = proxyActivities<
+  typeof finalizeSandboxChildToolActivities
+>({
   startToCloseTimeout: "1 minute",
 });
 
@@ -478,23 +511,43 @@ async function executeStepIteration({
   }
 
   // Execute tools and collect any deferred events.
-  const toolResults = await Promise.all(
-    actionBlobs.map(({ actionId, retryPolicy }) =>
+  let toolResults: ToolExecutionResult[];
+  if (patched("wait-for-all-tool-activities-before-finalization")) {
+    const toolActivityPromises = actionBlobs.map(({ actionId, retryPolicy }) =>
       retryPolicy === "no_retry"
-        ? runToolActivity(authType, {
+        ? runToolActivityWithExplicitCancellation(authType, {
             actionId,
             runAgentArgs: agentLoopArgs,
             step: currentStep,
             runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
           })
-        : runRetryableToolActivity(authType, {
+        : runRetryableToolActivityWithExplicitCancellation(authType, {
             actionId,
             runAgentArgs: agentLoopArgs,
             step: currentStep,
             runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
           })
-    )
-  );
+    );
+    toolResults = await waitForAllPromises(toolActivityPromises);
+  } else {
+    toolResults = await Promise.all(
+      actionBlobs.map(({ actionId, retryPolicy }) =>
+        retryPolicy === "no_retry"
+          ? runToolActivity(authType, {
+              actionId,
+              runAgentArgs: agentLoopArgs,
+              step: currentStep,
+              runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
+            })
+          : runRetryableToolActivity(authType, {
+              actionId,
+              runAgentArgs: agentLoopArgs,
+              step: currentStep,
+              runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
+            })
+      )
+    );
+  }
 
   // Collect all deferred events from tool executions.
   const allDeferredEvents = toolResults.flatMap(
@@ -525,18 +578,48 @@ export async function runSandboxChildToolWorkflow({
   authType,
   agentLoopArgs,
   actionModelId,
+  retryPolicy,
   step,
 }: {
   authType: AuthenticatorType;
   agentLoopArgs: AgentLoopArgsWithTiming;
   actionModelId: number;
+  // Optional so workflows started before this argument was added replay with the previous
+  // single-attempt behavior.
+  retryPolicy?: MCPToolRetryPolicyType;
   step: number;
 }) {
-  const { deferredEvents } = await runToolActivity(authType, {
+  const activityArgs = {
     actionId: actionModelId,
     runAgentArgs: agentLoopArgs,
     step,
-  });
+  };
+  let toolResult: ToolExecutionResult;
+  if (retryPolicy !== undefined && patched("sandbox-child-tool-retry-policy")) {
+    try {
+      switch (retryPolicy) {
+        case "retry_on_interrupt":
+          toolResult = await runRetryableToolActivity(authType, activityArgs);
+          break;
+        case "no_retry":
+          toolResult = await runToolActivity(authType, activityArgs);
+          break;
+        default:
+          assertNever(retryPolicy);
+      }
+    } catch (error) {
+      await CancellationScope.nonCancellable(() =>
+        finalizeErroredSandboxChildToolActivity(authType, {
+          actionModelId,
+        })
+      );
+      throw error;
+    }
+  } else {
+    toolResult = await runToolActivity(authType, activityArgs);
+  }
+
+  const { deferredEvents } = toolResult;
 
   if (deferredEvents.length > 0) {
     await publishDeferredEventsActivity(deferredEvents);

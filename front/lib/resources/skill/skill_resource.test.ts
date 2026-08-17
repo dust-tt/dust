@@ -1,4 +1,5 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
@@ -16,6 +17,7 @@ import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/glob
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { serializeSkillTag } from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -33,6 +35,10 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/permissions/legacy_acls", () => ({
+  isLegacyAclsEnabled: vi.fn(() => false),
+}));
 
 describe("SkillResource", () => {
   let testContext: Awaited<ReturnType<typeof createResourceTest>>;
@@ -1945,6 +1951,43 @@ describe("SkillResource", () => {
   });
 
   describe("fetchByIds", () => {
+    it("skips heavy hydration when it is not requested", async () => {
+      const server = await RemoteMCPServerFactory.create(testContext.workspace);
+      const serverView = await MCPServerViewFactory.create(
+        testContext.workspace,
+        server.sId,
+        testContext.globalSpace
+      );
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Lightweight Skill",
+        instructions: "Large instructions",
+        userFacingDescription: "Description needed for the label",
+        mcpServerViews: [serverView],
+      });
+      const fetchByModelIdsSpy = vi.spyOn(
+        MCPServerViewResource,
+        "fetchByModelIds"
+      );
+
+      const [fetchedSkill] = await SkillResource.fetchByIds(
+        testContext.authenticator,
+        [skill.sId],
+        {
+          withInstructions: false,
+          withTools: false,
+          withFileAttachments: false,
+        }
+      );
+
+      expect(fetchedSkill).toMatchObject({
+        name: "Lightweight Skill",
+        userFacingDescription: "Description needed for the label",
+        instructions: "",
+      });
+      expect(fetchedSkill.mcpServerViews).toEqual([]);
+      expect(fetchByModelIdsSpy).not.toHaveBeenCalled();
+    });
+
     it("filters code-defined skills disabled for the current agent loop", async () => {
       const agent = await AgentConfigurationFactory.createTestAgent(
         testContext.authenticator,
@@ -2756,6 +2799,114 @@ describe("SkillResource", () => {
         []
       );
       expect(editedByMap.size).toBe(0);
+    });
+  });
+
+  describe("group_permissions as the source of truth", () => {
+    // A skill's editor group grants [read, write, admin] through its group_permissions row; a
+    // "user" role grants only read, so write and admin flow purely through the grant.
+    //
+    // Returns a `buildEditorAuth` thunk rather than a ready authenticator: an Authenticator
+    // snapshots its grants at construction, so callers must build it AFTER any grant mutation.
+    async function setupSkillWithEditor(name: string): Promise<{
+      skill: SkillResource;
+      editor: UserResource;
+      buildEditorAuth: () => Promise<Authenticator>;
+    }> {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name,
+      });
+
+      const editor = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, editor, {
+        role: "user",
+      });
+      const upsert = await skill.upsertEditors(testContext.authenticator, [
+        editor,
+      ]);
+      expect(upsert.isOk()).toBe(true);
+
+      return {
+        skill,
+        editor,
+        buildEditorAuth: () =>
+          Authenticator.fromUserIdAndWorkspaceId(
+            editor.sId,
+            testContext.workspace.sId
+          ),
+      };
+    }
+
+    it("grants write and admin to an editor through the table", async () => {
+      const { skill, buildEditorAuth } =
+        await setupSkillWithEditor("Governed Skill");
+      const editorAuth = await buildEditorAuth();
+
+      expect(skill.canWrite(editorAuth)).toBe(true);
+      expect(skill.canAdministrate(editorAuth)).toBe(true);
+    });
+
+    it("denies an editor whose grant is missing, despite group membership", async () => {
+      // The decision now comes from group_permissions alone: dropping the row revokes access even
+      // though the user is still a member of the editor group.
+      const { skill, editor, buildEditorAuth } =
+        await setupSkillWithEditor("Ungranted Skill");
+      await GroupPermissionResource.deleteAllForResource(
+        testContext.authenticator,
+        { resourceType: "skill", resourceId: skill.id }
+      );
+
+      const editorAuth = await buildEditorAuth();
+
+      // Membership is untouched — only the grant is gone.
+      const members = await skill.editorGroup!.getActiveMembers(editorAuth);
+      expect(members.map((m) => m.sId)).toContain(editor.sId);
+      expect(skill.canWrite(editorAuth)).toBe(false);
+      expect(skill.canAdministrate(editorAuth)).toBe(false);
+    });
+
+    it("falls back to the editor group when the use_legacy_acls kill switch is on", async () => {
+      const { skill, buildEditorAuth } = await setupSkillWithEditor(
+        "Legacy Switch Skill"
+      );
+      await GroupPermissionResource.deleteAllForResource(
+        testContext.authenticator,
+        { resourceType: "skill", resourceId: skill.id }
+      );
+      const editorAuth = await buildEditorAuth();
+
+      // No grant row: the table-backed path denies.
+      expect(skill.canWrite(editorAuth)).toBe(false);
+
+      // The kill-switch restores the pre-migration decision, taken from group membership.
+      vi.mocked(isLegacyAclsEnabled).mockReturnValue(true);
+      expect(skill.canWrite(editorAuth)).toBe(true);
+      expect(skill.canAdministrate(editorAuth)).toBe(true);
+    });
+
+    it("keeps a non-editor out, and lets a workspace admin administrate but not write", async () => {
+      const { skill } = await setupSkillWithEditor("Role Rules Skill");
+
+      const authFor = async (role: "user" | "admin") => {
+        const user = await UserFactory.basic();
+        await MembershipFactory.associate(testContext.workspace, user, {
+          role,
+        });
+        return Authenticator.fromUserIdAndWorkspaceId(
+          user.sId,
+          testContext.workspace.sId
+        );
+      };
+
+      const otherAuth = await authFor("user");
+      expect(skill.canWrite(otherAuth)).toBe(false);
+      expect(skill.canAdministrate(otherAuth)).toBe(false);
+
+      // An admin who is not an editor: the role rules grant admin (manage the editor list) but
+      // never write — editing the skill itself stays with its editors.
+      const adminAuth = await authFor("admin");
+      expect(skill.canAdministrate(adminAuth)).toBe(true);
+      expect(skill.canWrite(adminAuth)).toBe(false);
     });
   });
 });

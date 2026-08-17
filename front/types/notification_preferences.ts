@@ -109,6 +109,9 @@ export const PROVIDER_CREDENTIALS_HEALTH_UPDATED_TAG =
 export const USER_AWU_CAP_REACHED_TRIGGER_ID = "user-awu-cap-reached" as const;
 export const USER_AWU_CAP_REACHED_TAG = "user-awu-cap-reached" as const;
 
+export const CONSUMPTION_EXPORT_READY_TRIGGER_ID =
+  "consumption-export-ready" as const;
+
 export const BALANCE_THRESHOLD_REACHED_TRIGGER_ID =
   "balance-threshold-reached" as const;
 export const BALANCE_THRESHOLD_REACHED_TAG =
@@ -131,6 +134,19 @@ export const MANUAL_ACTION_REQUIRED_TAG = "manual-action-required" as const;
 
 export const ACTIVATION_NEW_CONVERSATION_TRIGGER_ID =
   "activation-new-conversation" as const;
+
+/**
+ * User metadata key for the dedicated For You (activation) email opt-out.
+ * Missing key means enabled.
+ */
+export const FOR_YOU_NOTIFICATION_METADATA_KEY =
+  "allow_for_you_notifications" as const;
+
+export function isForYouNotificationsEnabled(
+  value: string | null | undefined
+): boolean {
+  return value !== "false";
+}
 
 export const SOUND_NOTIFICATION_OPTIONS = [
   "Pluck",

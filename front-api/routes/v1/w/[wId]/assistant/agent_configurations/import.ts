@@ -79,15 +79,11 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
  *                       enum: [standard, protected]
  *               editors:
  *                 type: array
+ *                 description: Emails of the workspace members to set as editors of the agent.
  *                 items:
- *                   type: object
- *                   properties:
- *                     user_id:
- *                       type: string
- *                     email:
- *                       type: string
- *                     full_name:
- *                       type: string
+ *                   type: string
+ *                   format: email
+ *                 example: ["alice@example.com"]
  *               toolset:
  *                 type: array
  *                 items:

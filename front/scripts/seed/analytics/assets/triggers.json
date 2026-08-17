@@ -1,0 +1,115 @@
+[
+  {
+    "name": "Morning pipeline sweep",
+    "kind": "schedule",
+    "agentName": "PipelineWatch",
+    "customPrompt": "Review the pipeline and list the deals that slipped since yesterday.",
+    "status": "disabled",
+    "configuration": {
+      "cron": "0 7 * * 1-5",
+      "timezone": "Europe/Paris"
+    }
+  },
+  {
+    "name": "Hourly support triage",
+    "kind": "schedule",
+    "agentName": "SupportTriager",
+    "customPrompt": "Triage the tickets opened in the last hour and flag the ones breaching SLA.",
+    "status": "disabled",
+    "configuration": {
+      "cron": "0 * * * *",
+      "timezone": "UTC"
+    }
+  },
+  {
+    "name": "Release notes draft",
+    "kind": "schedule",
+    "agentName": "ReleaseScribe",
+    "customPrompt": "Draft the release notes for everything merged since the last release.",
+    "status": "disabled",
+    "configuration": {
+      "cron": "0 17 * * 4",
+      "timezone": "Europe/Paris"
+    }
+  },
+  {
+    "name": "Daily meeting recap",
+    "kind": "schedule",
+    "agentName": "MeetingRecap",
+    "customPrompt": "Summarize today's meetings and list the action items per owner.",
+    "status": "disabled",
+    "configuration": {
+      "cron": "0 18 * * 1-5",
+      "timezone": "Europe/Paris"
+    }
+  },
+  {
+    "name": "Weekly revenue digest",
+    "kind": "schedule",
+    "agentName": "DataAnalyst",
+    "customPrompt": "Compare this week's revenue to the previous one and explain the gap.",
+    "status": "disabled",
+    "configuration": {
+      "cron": "0 9 * * 1",
+      "timezone": "Europe/Paris"
+    }
+  },
+  {
+    "name": "Onboarding nudge",
+    "kind": "schedule",
+    "agentName": "OnboardingBuddy",
+    "customPrompt": "Check who joined last week and send them their next onboarding step.",
+    "status": "disabled",
+    "configuration": {
+      "cron": "0 10 * * 2",
+      "timezone": "Europe/Paris"
+    }
+  },
+  {
+    "name": "Contract renewal watch",
+    "kind": "schedule",
+    "agentName": "ContractReader",
+    "customPrompt": "List the contracts renewing in the next 30 days and their notice periods.",
+    "status": "disabled",
+    "configuration": {
+      "cron": "0 8 1 * *",
+      "timezone": "Europe/Paris"
+    }
+  },
+  {
+    "name": "Incident postmortem starter",
+    "kind": "webhook",
+    "agentName": "IncidentBuddy",
+    "webhookSourceName": "Analytics Linear",
+    "customPrompt": "An incident issue was updated. Draft the postmortem skeleton.",
+    "status": "disabled",
+    "configuration": {
+      "includePayload": true,
+      "event": "Issue"
+    }
+  },
+  {
+    "name": "PR summary",
+    "kind": "webhook",
+    "agentName": "ReleaseScribe",
+    "webhookSourceName": "Analytics GitHub",
+    "customPrompt": "A pull request was opened. Summarize what it changes for the release notes.",
+    "status": "disabled",
+    "configuration": {
+      "includePayload": true,
+      "event": "pull_request"
+    }
+  },
+  {
+    "name": "Doc freshness check",
+    "kind": "webhook",
+    "agentName": "DocFinder",
+    "webhookSourceName": "Analytics GitHub",
+    "customPrompt": "Code changed. Flag the docs pages that now describe stale behaviour.",
+    "status": "disabled",
+    "configuration": {
+      "includePayload": true,
+      "event": "push"
+    }
+  }
+]

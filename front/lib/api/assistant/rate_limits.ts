@@ -1,6 +1,6 @@
+import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import type { Authenticator } from "@app/lib/auth";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   expireRateLimiterKey,
@@ -21,8 +21,10 @@ export const MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR_WINDOW_SECONDS = 60 * 60;
 
 // Sidekick messages are free (unbilled) usage, so they bypass the credit/plan
 // caps. Cap them per actor to bound how much free usage a single user can
-// generate through the builder assistant.
+// generate through the builder assistant. Enterprise (and Dust internal)
+// accounts get a higher allowance.
 export const SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY = 100;
+export const SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_ENTERPRISE = 200;
 export const SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_WINDOW_SECONDS =
   24 * 60 * 60;
 
@@ -182,9 +184,7 @@ export async function getMessageUsageCount(auth: Authenticator): Promise<{
     return { count: 0, limit: -1 };
   }
 
-  const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
-    workspace.sId
-  );
+  const activeSeats = await countActiveSeatsForWorkspace(workspace.sId);
   const effectiveLimit = computeEffectiveMessageLimit({
     planCode: plan.code,
     maxMessages,

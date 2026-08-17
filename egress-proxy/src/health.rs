@@ -78,16 +78,16 @@ async fn invalidate_policy(
     }
 
     // Derive the cache keys from claims:
-    // - wId alone evicts the workspace policy (both layouts during the
-    //   migration window);
-    // - wId + ownerId evicts the owner policy (the cache key needs both);
-    // - sbId alone evicts the legacy per-sandbox policy.
+    // - wId alone evicts the workspace policy;
+    // - wId + ownerId evicts the owner policy (the cache key needs both).
+    // sbId-only tokens are still accepted — older front builds mint them —
+    // and evict "s:" keys nothing writes, so they no-op.
     let cache_keys = match (
         validated.w_id.as_deref(),
         validated.owner_id.as_deref(),
         validated.sb_id.as_deref(),
     ) {
-        (Some(w_id), None, None) => vec![format!("w2:{w_id}"), format!("w:{w_id}")],
+        (Some(w_id), None, None) => vec![format!("w2:{w_id}")],
         (Some(w_id), Some(owner_id), None) => vec![format!("o:{w_id}:{owner_id}")],
         (None, None, Some(sb_id)) => vec![format!("s:{sb_id}")],
         _ => {

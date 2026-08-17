@@ -235,8 +235,8 @@ The search_all parameter should only be set to true if the user explicitly reque
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Searching Slack user",
-      done: "Search Slack user",
+      running: "Searching Slack users",
+      done: "Search Slack users",
     },
     toolCostCategory: "advanced",
     freeUsage: false,

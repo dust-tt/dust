@@ -31,6 +31,7 @@ export function MCPToolValidationRequired({
 
   const {
     getBlockedActions,
+    getApprovalProgress,
     removeCompletedAction,
     isActionPulsing,
     stopPulsingAction,
@@ -50,6 +51,13 @@ export function MCPToolValidationRequired({
   );
 
   const isPulsing = isActionPulsing(blockedAction.actionId);
+
+  const approvalProgress = user
+    ? getApprovalProgress({
+        actionId: blockedAction.actionId,
+        userId: user.sId,
+      })
+    : undefined;
 
   const handleValidationStart = () => {
     // Stop pulsing immediately when the user takes an action.
@@ -135,6 +143,7 @@ export function MCPToolValidationRequired({
   return (
     <ToolValidationCard
       validationRequest={blockedAction}
+      approvalProgress={approvalProgress}
       triggeringUser={triggeringUser}
       currentUser={user}
       owner={owner}

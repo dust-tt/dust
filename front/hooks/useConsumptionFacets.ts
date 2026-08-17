@@ -1,5 +1,6 @@
 import type {
   UsageFilterAgentOption,
+  UsageFilterApiKeyOption,
   UsageFilterCategory,
   UsageFilterGroupOption,
   UsageFilterMemberOption,
@@ -9,13 +10,14 @@ import type {
   UsageFilterSourceOption,
   UsageFilterToolOption,
 } from "@app/components/workspace/analytics/usageFilter";
-import { usageModelTierFromModelsTierName } from "@app/components/workspace/analytics/usageFilter";
 import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import { normalizedConsumptionFilter } from "@app/lib/analytics/consumption_period";
+import {
+  DEFAULT_CONSUMPTION_PERIOD_DAYS,
+  normalizedConsumptionFilter,
+} from "@app/lib/analytics/consumption_period";
 import type { GetConsumptionFacetsResponse } from "@app/lib/api/analytics/consumption/facets";
 import type { ConsumptionBody } from "@app/lib/api/analytics/consumption/schema";
-import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/api/analytics/consumption/schema";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { isConnectorProvider } from "@app/types/data_source";
 import { useMemo } from "react";
@@ -32,18 +34,17 @@ const EMPTY_FACET_OPTIONS: ConsumptionFacetOptions = {
   tool: [],
   skill: [],
   source: [],
+  api_key: [],
 };
 
 function baseOption(facet: {
   value: string;
   label: string;
-  documentCount: number;
   disabled: boolean;
 }) {
   return {
     id: facet.value,
     name: facet.label,
-    documentCount: facet.documentCount,
     disabled: facet.disabled,
   };
 }
@@ -71,7 +72,7 @@ function toFacetOptions(
       ...baseOption(facet),
       kind: "model",
       lab: facet.maker,
-      tier: usageModelTierFromModelsTierName(facet.tier),
+      tier: facet.tier ?? undefined,
     })),
     tool: data.facets.tool.map<UsageFilterToolOption>((facet) => ({
       ...baseOption(facet),
@@ -89,6 +90,10 @@ function toFacetOptions(
       connectorProvider: isConnectorProvider(facet.value)
         ? facet.value
         : undefined,
+    })),
+    api_key: data.facets.api_key.map<UsageFilterApiKeyOption>((facet) => ({
+      ...baseOption(facet),
+      kind: "api_key",
     })),
   };
 }

@@ -11,9 +11,9 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 
 const HEADLINE_LINE_1 = "Multiplayer AI for";
-const HEADLINE_LINE_2 = "human-agent collaboration.";
+const HEADLINE_LINE_2 = "human-agent collaboration";
 const LEAD_COPY =
-  "Dust is where people and agents collaborate as co-contributors, so that work doesn't just get done – it gets rewired.";
+  "Dust connects your company knowledge, tools, and teams so you can create, share, and run agents across real workflows. Use different models for different tasks, with people in control.";
 
 const OFFICE_FIRST_NAMES = [
   "Aisha",

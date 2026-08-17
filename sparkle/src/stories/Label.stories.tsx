@@ -6,6 +6,7 @@ import { Checkbox, Label } from "../index_with_tw_base";
 
 const meta = {
   title: "Forms & Inputs/Label",
+  tags: ["a11y-issues"],
   component: Label,
   parameters: {
     docs: {

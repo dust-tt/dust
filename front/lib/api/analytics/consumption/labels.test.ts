@@ -1,12 +1,16 @@
+import { getInternalMCPServerIconByName } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   resolveDimensionDisplayNames,
   resolveDimensionLabels,
 } from "@app/lib/api/analytics/consumption/labels";
+import { getAgentModelDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
 import { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -39,6 +43,14 @@ describe("resolveDimensionDisplayNames", () => {
     expect(names.get("web")).toBe("Conversation");
   });
 
+  it("keeps API key names as indexed", async () => {
+    const names = await resolveDimensionDisplayNames(auth, "api_key", [
+      "Production key",
+    ]);
+
+    expect(names.get("Production key")).toBe("Production key");
+  });
+
   it("names tools from their server names", async () => {
     const names = await resolveDimensionDisplayNames(auth, "tool", [
       "image_generation",
@@ -65,10 +77,14 @@ describe("resolveDimensionDisplayNames", () => {
     const skills = await resolveDimensionDisplayNames(auth, "skill", [
       "deleted_skill",
     ]);
+    const agents = await resolveDimensionDisplayNames(auth, "agent", [
+      "deleted_agent",
+    ]);
 
     expect(names.get("deleted_model")).toBe("deleted_model");
     expect(origins.get("deleted_origin")).toBe("deleted_origin");
     expect(skills.get("deleted_skill")).toBe("deleted_skill");
+    expect(agents.get("deleted_agent")).toBe("deleted_agent");
   });
 
   it("returns nothing for an empty breakdown", async () => {
@@ -89,14 +105,15 @@ describe("resolveDimensionLabels", () => {
     expect(labels.get(user.sId)).toEqual({
       name: user.fullName(),
       pictureUrl: user.imageUrl ?? null,
+      description: null,
     });
   });
 
-  it("labels agents with their name and picture", async () => {
+  it("labels agents with their name, picture and description", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
-      { name: "Analytics agent" }
+      { name: "Analytics agent", description: "Answers analytics questions" }
     );
 
     const labels = await resolveDimensionLabels(authenticator, "agent", [
@@ -106,6 +123,28 @@ describe("resolveDimensionLabels", () => {
     expect(labels.get(agent.sId)).toEqual({
       name: "Analytics agent",
       pictureUrl: agent.pictureUrl,
+      description: "Answers analytics questions",
+      modelId: agent.model.modelId,
+      modelDisplayName: getAgentModelDisplayName(agent.model),
+    });
+  });
+
+  it("labels skills with their name and user-facing description", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const skill = await SkillFactory.create(authenticator, {
+      name: "Research",
+      userFacingDescription: "Researches a topic in depth",
+    });
+
+    const labels = await resolveDimensionLabels(authenticator, "skill", [
+      skill.sId,
+    ]);
+
+    expect(labels.get(skill.sId)).toEqual({
+      name: "Research",
+      pictureUrl: null,
+      description: "Researches a topic in depth",
+      icon: skill.icon,
     });
   });
 
@@ -122,6 +161,34 @@ describe("resolveDimensionLabels", () => {
     expect(labels.get(group.sId)).toEqual({
       name: "Engineering",
       pictureUrl: null,
+      description: null,
+    });
+  });
+
+  it("labels internal and remote tools by server name", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Customer records",
+    });
+
+    const labels = await resolveDimensionLabels(authenticator, "tool", [
+      "image_generation",
+      server.cachedName,
+    ]);
+
+    expect(labels.get("image_generation")).toEqual({
+      name: "Create Images",
+      pictureUrl: null,
+      description: null,
+      icon: getInternalMCPServerIconByName("image_generation"),
+    });
+    expect(labels.get(server.cachedName)).toEqual({
+      name: "Customer records",
+      pictureUrl: null,
+      description: null,
+      icon: server.icon,
     });
   });
 });

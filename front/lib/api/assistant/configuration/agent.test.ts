@@ -4,6 +4,7 @@ import {
   createAgentConfiguration,
   createPendingAgentConfiguration,
   getAgentConfiguration,
+  getAgentConfigurations,
   restoreAgentConfiguration,
   updateAgentConfigurationsScope,
 } from "@app/lib/api/assistant/configuration/agent";
@@ -31,6 +32,48 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WakeUpFactory } from "@app/tests/utils/WakeUpFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
+
+describe("getAgentConfigurations", () => {
+  it("returns only the latest version of each requested agent", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const firstAgent =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const secondAgent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Second agent" }
+    );
+
+    await AgentConfigurationFactory.updateTestAgent(
+      authenticator,
+      firstAgent.sId
+    );
+    const latestFirstAgent = await AgentConfigurationFactory.updateTestAgent(
+      authenticator,
+      firstAgent.sId
+    );
+    const latestSecondAgent = await AgentConfigurationFactory.updateTestAgent(
+      authenticator,
+      secondAgent.sId,
+      { name: "Second agent" }
+    );
+
+    const agents = await getAgentConfigurations(authenticator, {
+      agentIds: [
+        firstAgent.sId,
+        secondAgent.sId,
+        firstAgent.sId,
+        generateRandomModelSId(),
+      ],
+      variant: "light",
+      dangerouslySkipPermissionFiltering: true,
+    });
+
+    expect(agents.map(({ sId, version }) => ({ sId, version }))).toEqual([
+      { sId: latestFirstAgent.sId, version: latestFirstAgent.version },
+      { sId: latestSecondAgent.sId, version: latestSecondAgent.version },
+    ]);
+  });
+});
 
 describe("createAgentConfiguration with pending agent", () => {
   it("converts pending agent to active when agentConfigurationId points to a pending agent", async () => {

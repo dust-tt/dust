@@ -41,27 +41,39 @@ _dust_hive_path_is_at_or_inside() {
   [[ "$candidate" == "$parent" || "$candidate" == "$parent"/* ]]
 }
 
+_dust_hive_env_worktree_path() {
+  local env_name="${1:?usage: _dust_hive_env_worktree_path <env>}"
+  local metadata="$HOME/.dust-hive/envs/$env_name/metadata.json"
+  local repo_root worktree_path
+
+  [[ -f "$metadata" ]] || return
+
+  worktree_path="$(_dust_hive_json_string "$metadata" "worktreePath")"
+  if [[ -z "$worktree_path" ]]; then
+    repo_root="$(_dust_hive_json_string "$metadata" "repoRoot")"
+    [[ -n "$repo_root" ]] || return
+    worktree_path="$repo_root/.hives/$env_name"
+    if [[ ! -d "$worktree_path" && -d "$HOME/dust-hive/$env_name" ]]; then
+      worktree_path="$HOME/dust-hive/$env_name"
+    fi
+  fi
+
+  echo "$worktree_path"
+}
+
 _dust_hive_current_env_from_metadata() {
   local cwd="$PWD"
-  local env_dir env_name metadata repo_root worktree_path
+  local env_dir env_name worktree_path
   local best_env="" best_len=0 path_len
 
   [[ -d "$HOME/.dust-hive/envs" ]] || return
 
   while IFS= read -r env_dir; do
     env_name="${env_dir##*/}"
-    metadata="$env_dir/metadata.json"
-    [[ -f "$metadata" ]] || continue
+    [[ -f "$env_dir/metadata.json" ]] || continue
 
-    worktree_path="$(_dust_hive_json_string "$metadata" "worktreePath")"
-    if [[ -z "$worktree_path" ]]; then
-      repo_root="$(_dust_hive_json_string "$metadata" "repoRoot")"
-      [[ -n "$repo_root" ]] || continue
-      worktree_path="$repo_root/.hives/$env_name"
-      if [[ ! -d "$worktree_path" && -d "$HOME/dust-hive/$env_name" ]]; then
-        worktree_path="$HOME/dust-hive/$env_name"
-      fi
-    fi
+    worktree_path="$(_dust_hive_env_worktree_path "$env_name")"
+    [[ -n "$worktree_path" ]] || continue
 
     if _dust_hive_path_is_at_or_inside "$worktree_path" "$cwd"; then
       path_len=${#worktree_path}
@@ -123,8 +135,8 @@ _dust_hive_envs() {
   _dust_hive_filter_selected_envs "${result[@]}"
 }
 
-_dust_hive_env_already_selected() {
-  local candidate="${1:?usage: _dust_hive_env_already_selected <name>}"
+_dust_hive_word_already_used() {
+  local candidate="${1:?usage: _dust_hive_word_already_used <name>}"
   local start=1
   local comp_cword="${COMP_CWORD:-0}"
   local i word
@@ -146,7 +158,7 @@ _dust_hive_filter_selected_envs() {
   local env
 
   for env in "$@"; do
-    _dust_hive_env_already_selected "$env" || printf '%s\n' "$env"
+    _dust_hive_word_already_used "$env" || printf '%s\n' "$env"
   done
 }
 
@@ -273,6 +285,59 @@ _dust_hive_startable_envs() {
 
 _dust_hive_stoppable_envs() {
   _dust_hive_envs_by_states cold warm
+}
+
+_dust_hive_first_positional() {
+  local comp_cword="${COMP_CWORD:-0}"
+  local start=1
+  local i word
+
+  if [[ -n "${cmd_index:-}" ]] && (( cmd_index > 0 )); then
+    start=$(( cmd_index + 1 ))
+  fi
+
+  for (( i=start; i<comp_cword; i++ )); do
+    word="${COMP_WORDS[$i]}"
+    [[ "$word" == -* ]] && continue
+    printf '%s\n' "$word"
+    return
+  done
+}
+
+_dust_hive_feature_flags_file() {
+  local roots=()
+  local env_name worktree_path repo_root root
+
+  for env_name in "$(_dust_hive_first_positional)" "$(_dust_hive_current_env)"; do
+    [[ -n "$env_name" ]] || continue
+
+    worktree_path="$(_dust_hive_env_worktree_path "$env_name")"
+    [[ -n "$worktree_path" ]] && roots+=("$worktree_path")
+
+    repo_root="$(_dust_hive_json_string "$HOME/.dust-hive/envs/$env_name/metadata.json" "repoRoot")"
+    [[ -n "$repo_root" ]] && roots+=("$repo_root")
+  done
+
+  for root in "${roots[@]}"; do
+    if [[ -f "$root/front/types/shared/feature_flags.ts" ]]; then
+      printf '%s\n' "$root/front/types/shared/feature_flags.ts"
+      return
+    fi
+  done
+}
+
+# Parse flag names out of the source file; invoking the Bun CLI here would be too slow.
+_dust_hive_flags() {
+  local file
+  file="$(_dust_hive_feature_flags_file)"
+  [[ -n "$file" ]] || return
+
+  local flag
+  while IFS= read -r flag; do
+    _dust_hive_word_already_used "$flag" || printf '%s\n' "$flag"
+  done < <(
+    command sed -nE '/WHITELISTABLE_FEATURES_CONFIG = \{/,/^\} as const/ s/^  ([A-Za-z0-9_]+):[[:space:]]*\{[[:space:]]*$/\1/p' "$file" 2>/dev/null
+  )
 }
 
 _dust_hive_complete() {
@@ -513,6 +578,8 @@ _dust_hive_complete() {
           done
           if (( pos == 0 )); then
             COMPREPLY=($(compgen -W "$(_dust_hive_warm_envs)" -- "$cur"))
+          else
+            COMPREPLY=($(compgen -W "$(_dust_hive_flags)" -- "$cur"))
           fi
           ;;
       esac

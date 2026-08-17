@@ -1,9 +1,9 @@
-import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import { moveProjectFile } from "@app/lib/api/projects/context";
 import { uploadFrameContent } from "@app/lib/api/viz/upload_frame_content";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { SCOPED_PREFIX_POD } from "@app/types/file_system";
 import type { InteractiveContentFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

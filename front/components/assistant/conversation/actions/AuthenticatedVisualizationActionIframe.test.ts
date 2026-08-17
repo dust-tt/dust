@@ -18,6 +18,7 @@ describe("getAuthenticatedFrameUserIdentity", () => {
       {
         workspaceId: "w_current",
         isPodEditor: false,
+        isPodMember: false,
         user: authContext.user,
       }
     );
@@ -29,6 +30,18 @@ describe("getAuthenticatedFrameUserIdentity", () => {
     ).toEqual({
       workspaceId: "w_current",
       isPodEditor: true,
+      isPodMember: false,
+      user: authContext.user,
+    });
+  });
+
+  it("forwards the pod membership flag when the host knows it", () => {
+    expect(
+      getAuthenticatedFrameUserIdentity(authContext, "w_current", false, true)
+    ).toEqual({
+      workspaceId: "w_current",
+      isPodEditor: false,
+      isPodMember: true,
       user: authContext.user,
     });
   });

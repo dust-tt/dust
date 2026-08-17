@@ -6,13 +6,13 @@
 //                     conversation belongs to a Pod. Persistent across conversations within
 //                     the same Pod.
 
+import type { FileResource } from "@app/lib/resources/file_resource";
 import {
   LEGACY_PREFIX_CONVERSATION,
   LEGACY_PREFIX_PROJECT,
   SCOPED_PREFIX_CONVERSATION,
   SCOPED_PREFIX_POD,
-} from "@app/lib/api/file_system/types";
-import type { FileResource } from "@app/lib/resources/file_resource";
+} from "@app/types/file_system";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { extensionsForContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";

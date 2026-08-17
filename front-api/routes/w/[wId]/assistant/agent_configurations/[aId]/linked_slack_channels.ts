@@ -1,6 +1,5 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import config from "@app/lib/api/config";
-import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
@@ -20,6 +19,7 @@ const PatchLinkedSlackChannelsRequestBodySchema = z.object({
   slack_channel_internal_ids: z.array(z.string()),
   provider: z.enum(["slack", "slack_bot"]),
   auto_respond_without_mention: z.boolean().optional(),
+  auto_respond_without_mention_skip_thread_replies: z.boolean().optional(),
 });
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/linked_slack_channels.
@@ -39,20 +39,6 @@ app.patch(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
     const body = ctx.req.valid("json");
-
-    if (body.auto_respond_without_mention) {
-      const featureFlags = await getFeatureFlags(auth);
-      if (!featureFlags.includes("slack_enhanced_default_agent")) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "feature_flag_not_found",
-            message:
-              "The auto respond without mention feature is not enabled for this workspace.",
-          },
-        });
-      }
-    }
 
     const [slackDataSource] = await DataSourceResource.listByConnectorProvider(
       auth,
@@ -110,6 +96,8 @@ app.patch(
       agentConfigurationId: agentConfiguration.sId,
       slackChannelInternalIds: body.slack_channel_internal_ids,
       autoRespondWithoutMention: body.auto_respond_without_mention,
+      autoRespondWithoutMentionSkipThreadReplies:
+        body.auto_respond_without_mention_skip_thread_replies,
     });
 
     if (connectorsApiRes.isErr()) {

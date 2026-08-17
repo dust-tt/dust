@@ -3,14 +3,12 @@ import type {
   UsageFilterAgentScope,
   UsageFilterCategory,
   UsageFilterGroup,
-  UsageModelTier,
 } from "@app/components/workspace/analytics/usageFilter";
 import {
   toConsumptionScopeFilter,
   USAGE_FILTER_AGENT_SCOPES,
   USAGE_FILTER_CATEGORIES,
   USAGE_FILTER_CATEGORY_LABEL,
-  USAGE_MODEL_TIERS,
   usageFilterSelectionCount,
 } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
@@ -24,12 +22,13 @@ import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilt
 import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import { useGroups } from "@app/lib/swr/groups";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  BarChart05,
   Button,
+  FilterFunnel01,
   NavigationListLabel,
   PopoverContent,
   PopoverRoot,
@@ -37,6 +36,8 @@ import {
   SearchInput,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
+
+const DEFAULT_MODEL_TIER: ModelsTierName = "balanced";
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
@@ -66,9 +67,8 @@ export function UsageFilterPanel({
   const [activeCategory, setActiveCategory] =
     useState<UsageFilterCategory>("agent");
   const [activeScope, setActiveScope] = useState<UsageFilterAgentScope>("all");
-  const [activeTier, setActiveTier] = useState<UsageModelTier>(
-    USAGE_MODEL_TIERS[0]
-  );
+  const [activeTier, setActiveTier] =
+    useState<ModelsTierName>(DEFAULT_MODEL_TIER);
   const [searchText, setSearchText] = useState("");
   const selectedGroups = useToggleSelectionList<UsageFilterGroup>();
 
@@ -181,7 +181,7 @@ export function UsageFilterPanel({
     <PopoverRoot open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
-          icon={BarChart05}
+          icon={FilterFunnel01}
           label="Filters"
           size="sm"
           variant="outline"

@@ -16,6 +16,11 @@ import {
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
 import { stripFileExtension } from "@app/types/files";
 import {
+  parseCanonicalScopedPath,
+  TOOL_OUTPUTS_FOLDER_NAME,
+} from "@app/types/mount_path";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
   isNumber,
   isString,
   isStringArray,
@@ -38,6 +43,43 @@ function shortenUrl(url: string): string {
 
 function formatStringList(values: string[]): string {
   return truncateQuery(values.join(", "));
+}
+
+function formatEmailRecipientSuffix(to: unknown): string {
+  if (!isStringArray(to)) {
+    return "";
+  }
+
+  if (to.length === 1) {
+    return ` to ${truncateQuery(to[0])}`;
+  }
+
+  return to.length > 1 ? " to several recipients" : "";
+}
+
+function getFilePathReadTarget(filePath: string): string {
+  const scopedPath = parseCanonicalScopedPath(filePath);
+  if (!scopedPath || !scopedPath.relPath) {
+    return `“${truncateQuery(filePath)}”`;
+  }
+
+  let displayName = scopedPath.relPath;
+  if (scopedPath.relPath.startsWith(`${TOOL_OUTPUTS_FOLDER_NAME}/`)) {
+    const fileName = scopedPath.relPath.split("/").at(-1) ?? scopedPath.relPath;
+
+    // Tool output filenames use a 13-digit timestamp prefix for ordering and uniqueness.
+    // Hide this storage detail from the user-facing label.
+    displayName = fileName.replace(/^\d{13}_/, "");
+  }
+
+  switch (scopedPath.scope.kind) {
+    case "canonical-conversation":
+      return `“${truncateQuery(displayName)}” from conversation`;
+    case "canonical-pod":
+      return `“${truncateQuery(displayName)}” from Pod`;
+    default:
+      return assertNever(scopedPath.scope);
+  }
 }
 
 const INTERNAL_TOOL_DISPLAY_LABELS_BY_SERVER = Object.fromEntries(
@@ -197,8 +239,8 @@ function getDynamicToolDisplayLabels({
       if (toolName === "generate_image" && isGenerateImageInputType(inputs)) {
         const name = truncateQuery(stripFileExtension(inputs.outputName));
         return {
-          running: `Generating “${name}”`,
-          done: `Generate “${name}”`,
+          running: `Generating image “${name}”`,
+          done: `Generate image “${name}”`,
         };
       }
       return null;
@@ -216,16 +258,18 @@ function getDynamicToolDisplayLabels({
       }
       if (toolName === "create_draft" && isString(inputs.subject)) {
         const s = truncateQuery(inputs.subject);
+        const recipient = formatEmailRecipientSuffix(inputs.to);
         return {
-          running: `Drafting “${s}”`,
-          done: `Draft “${s}”`,
+          running: `Drafting email “${s}”${recipient}`,
+          done: `Draft email “${s}”${recipient}`,
         };
       }
       if (toolName === "send_mail" && isString(inputs.subject)) {
         const s = truncateQuery(inputs.subject);
+        const recipient = formatEmailRecipientSuffix(inputs.to);
         return {
-          running: `Sending “${s}”`,
-          done: `Send “${s}”`,
+          running: `Sending email “${s}”${recipient}`,
+          done: `Send email “${s}”${recipient}`,
         };
       }
       if (toolName === "delete_draft" && isString(inputs.subject)) {
@@ -250,15 +294,15 @@ function getDynamicToolDisplayLabels({
         if (isString(inputs.to)) {
           const to = truncateQuery(inputs.to);
           return {
-            running: `Posting to channel ${to}`,
-            done: `Post to channel ${to}`,
+            running: `Posting Slack message to ${to}`,
+            done: `Post Slack message to ${to}`,
           };
         }
         if (isStringArray(inputs.to)) {
           const to = `${inputs.to.length} recipients`;
           return {
-            running: `Posting to ${to}`,
-            done: `Post to ${to}`,
+            running: `Posting Slack message to ${to}`,
+            done: `Post Slack message to ${to}`,
           };
         }
       }
@@ -290,8 +334,8 @@ function getDynamicToolDisplayLabels({
       if (toolName === "search_user" && isString(inputs.query)) {
         const q = truncateQuery(inputs.query);
         return {
-          running: `Searching Slack user “${q}”`,
-          done: `Search Slack user “${q}”`,
+          running: `Searching Slack users “${q}”`,
+          done: `Search Slack users “${q}”`,
         };
       }
       if (toolName === "search_channels" && isString(inputs.query)) {
@@ -409,10 +453,10 @@ function getDynamicToolDisplayLabels({
 
     case "files":
       if (toolName === "cat" && isString(inputs.path)) {
-        const path = truncateQuery(inputs.path);
+        const target = getFilePathReadTarget(inputs.path);
         return {
-          running: `Reading “${path}”`,
-          done: `Read “${path}”`,
+          running: `Reading ${target}`,
+          done: `Read ${target}`,
         };
       }
       if (
@@ -566,9 +610,18 @@ function getDynamicToolDisplayLabels({
     case "outlook":
       if (toolName === "create_draft" && isString(inputs.subject)) {
         const s = truncateQuery(inputs.subject);
+        const recipient = formatEmailRecipientSuffix(inputs.to);
         return {
-          running: `Drafting “${s}”`,
-          done: `Draft “${s}”`,
+          running: `Drafting email “${s}”${recipient}`,
+          done: `Draft email “${s}”${recipient}`,
+        };
+      }
+      if (toolName === "send_mail" && isString(inputs.subject)) {
+        const s = truncateQuery(inputs.subject);
+        const recipient = formatEmailRecipientSuffix(inputs.to);
+        return {
+          running: `Sending email “${s}”${recipient}`,
+          done: `Send email “${s}”${recipient}`,
         };
       }
       return null;
@@ -781,17 +834,25 @@ function getDynamicToolDisplayLabels({
           done: `Search Teams messages “${q}”`,
         };
       }
-      if (
-        (toolName === "list_users" ||
-          toolName === "list_channels" ||
-          toolName === "list_chats") &&
-        isString(inputs.nameFilter)
-      ) {
+      if (isString(inputs.nameFilter)) {
         const q = truncateQuery(inputs.nameFilter);
-        return {
-          running: `Listing Teams results matching “${q}”`,
-          done: `List Teams results matching “${q}”`,
-        };
+        switch (toolName) {
+          case "list_users":
+            return {
+              running: `Listing Teams users matching “${q}”`,
+              done: `List Teams users matching “${q}”`,
+            };
+          case "list_channels":
+            return {
+              running: `Listing Teams channels matching “${q}”`,
+              done: `List Teams channels matching “${q}”`,
+            };
+          case "list_chats":
+            return {
+              running: `Listing Teams chats matching “${q}”`,
+              done: `List Teams chats matching “${q}”`,
+            };
+        }
       }
       if (toolName === "post_message" && isString(inputs.targetType)) {
         const targetType = truncateQuery(inputs.targetType);

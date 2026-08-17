@@ -88,11 +88,11 @@ export type AgentConfigurationScope =
  * - 'published': Retrieves all published agents.
  * - 'global': Retrieves all agents exclusively with a 'global' scope.
  * - 'analytics': Agents the caller may report on, for the workspace analytics
- *   surfaces. Admins get every active agent in the workspace — whatever its
- *   scope, whoever edits it, and whether or not they can read the spaces it is
- *   built on — since analytics reports on all of them. Everyone else gets the
- *   same set as 'all'. Never fails on permissions: the scope opens up with the
- *   caller's role.
+ *   surfaces. Managers and admins get every active agent in the workspace —
+ *   whatever its scope, whoever edits it, and whether or not they can read the
+ *   spaces it is built on — since analytics reports on all of them. Everyone
+ *   else gets the same set as 'all'. Never fails on permissions: the scope
+ *   opens up with the caller's role.
  * - 'admin_internal': Grants access to all agents, including private ones.
  * - 'manage': Retrieves all agents for the manage agents view (same as list, but including disabled agents).
  * - 'archived': Retrieves all agents that are archived. Only available to super

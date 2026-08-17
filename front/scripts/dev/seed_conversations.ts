@@ -115,6 +115,7 @@ async function createProject(
   }
 
   return SpaceResource.makeNew(
+    auth,
     {
       name: projectName,
       kind: "project",

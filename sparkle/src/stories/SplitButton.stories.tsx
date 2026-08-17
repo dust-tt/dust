@@ -7,6 +7,7 @@ import { Button, FlexSplitButton } from "../index_with_tw_base";
 
 const meta: Meta<React.ComponentProps<typeof FlexSplitButton>> = {
   title: "Actions/SplitButton",
+  tags: ["a11y-issues"],
   component: FlexSplitButton,
   parameters: {
     docs: {

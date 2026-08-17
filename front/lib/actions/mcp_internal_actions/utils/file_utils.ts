@@ -7,10 +7,6 @@ import {
   makeFileAttachment,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { DustFileSystem } from "@app/lib/api/file_system";
-import {
-  isCanonicalScopedPath,
-  parseScopedFilePath,
-} from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -18,6 +14,10 @@ import { streamToBuffer } from "@app/lib/utils/streams";
 import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
 import { isContentFragmentType } from "@app/types/content_fragment";
+import {
+  isCanonicalScopedPath,
+  parseScopedFilePath,
+} from "@app/types/mount_path";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import { PassThrough } from "stream";

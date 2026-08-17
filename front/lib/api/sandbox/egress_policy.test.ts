@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -39,12 +40,14 @@ vi.mock("@app/lib/file_storage", () => ({
 
 import {
   addOwnerPolicyDomain,
-  deleteLegacySandboxPolicy,
   deleteOwnerPolicy,
   deleteWorkspacePolicy,
+  dismissRequestedOwnerPolicyDomain,
   parseExactEgressDomain,
   readOwnerPolicy,
   readWorkspacePolicy,
+  requestOwnerPolicyDomain,
+  writeOwnerPolicy,
   writeWorkspacePolicy,
 } from "./egress_policy";
 
@@ -53,7 +56,6 @@ const mockAuth = {
 } as unknown as Authenticator;
 
 const WORKSPACE_PATH = "w/workspace-sid/sandbox-egress-policy.json";
-const LEGACY_WORKSPACE_PATH = "workspaces/workspace-sid.json";
 const OWNER_PATH = "w/workspace-sid/sandboxes/owner-sid.json";
 
 const NOT_FOUND = { code: 404 };
@@ -74,7 +76,7 @@ function setupBucketMocks() {
 }
 
 // Path-aware GCS stub: absent paths reject like GCS 404s.
-function setGcsObjects(objects: Record<string, { allowedDomains: string[] }>) {
+function setGcsObjects(objects: Record<string, EgressPolicy>) {
   mockFetchFileContent.mockImplementation(async (filePath: string) => {
     const policy = objects[filePath];
     if (!policy) {
@@ -101,33 +103,7 @@ describe("workspace egress policy storage", () => {
     expect(mockFetchFileContent).toHaveBeenCalledWith(WORKSPACE_PATH);
   });
 
-  it("falls back to the legacy path when the new object is absent", async () => {
-    setGcsObjects({
-      [LEGACY_WORKSPACE_PATH]: { allowedDomains: ["legacy.example.com"] },
-    });
-
-    const result = await readWorkspacePolicy(mockAuth);
-
-    expect(result).toEqual(new Ok({ allowedDomains: ["legacy.example.com"] }));
-    expect(mockFetchFileContent).toHaveBeenCalledWith(WORKSPACE_PATH);
-    expect(mockFetchFileContent).toHaveBeenCalledWith(LEGACY_WORKSPACE_PATH);
-  });
-
-  it("prefers the new layout over the legacy path when both exist", async () => {
-    setGcsObjects({
-      [WORKSPACE_PATH]: { allowedDomains: ["new.example.com"] },
-      [LEGACY_WORKSPACE_PATH]: { allowedDomains: ["legacy.example.com"] },
-    });
-
-    const result = await readWorkspacePolicy(mockAuth);
-
-    expect(result).toEqual(new Ok({ allowedDomains: ["new.example.com"] }));
-    expect(mockFetchFileContent).not.toHaveBeenCalledWith(
-      LEGACY_WORKSPACE_PATH
-    );
-  });
-
-  it("returns an empty policy when neither layout has a file", async () => {
+  it("returns an empty policy when no file exists", async () => {
     setGcsObjects({});
 
     const result = await readWorkspacePolicy(mockAuth);
@@ -135,7 +111,7 @@ describe("workspace egress policy storage", () => {
     expect(result).toEqual(new Ok({ allowedDomains: [] }));
   });
 
-  it("writes normalized policy files to both layouts", async () => {
+  it("writes the normalized policy file", async () => {
     const result = await writeWorkspacePolicy(mockAuth, {
       policy: {
         allowedDomains: ["API.GitHub.COM", "*.GitHub.COM"],
@@ -147,36 +123,14 @@ describe("workspace egress policy storage", () => {
         allowedDomains: ["api.github.com", "*.github.com"],
       })
     );
-    const content = JSON.stringify({
-      allowedDomains: ["api.github.com", "*.github.com"],
-    });
+    expect(mockUploadRawContentToBucket).toHaveBeenCalledTimes(1);
     expect(mockUploadRawContentToBucket).toHaveBeenCalledWith({
-      content,
+      content: JSON.stringify({
+        allowedDomains: ["api.github.com", "*.github.com"],
+      }),
       contentType: "application/json",
       filePath: WORKSPACE_PATH,
     });
-    // Dual-write to the legacy path for front rollback safety.
-    expect(mockUploadRawContentToBucket).toHaveBeenCalledWith({
-      content,
-      contentType: "application/json",
-      filePath: LEGACY_WORKSPACE_PATH,
-    });
-  });
-
-  it("succeeds when only the legacy dual-write fails", async () => {
-    mockUploadRawContentToBucket.mockImplementation(
-      async ({ filePath }: { filePath: string }) => {
-        if (filePath === LEGACY_WORKSPACE_PATH) {
-          throw new Error("legacy write failed");
-        }
-      }
-    );
-
-    const result = await writeWorkspacePolicy(mockAuth, {
-      policy: { allowedDomains: ["api.github.com"] },
-    });
-
-    expect(result).toEqual(new Ok({ allowedDomains: ["api.github.com"] }));
   });
 
   it("does not write invalid domain entries", async () => {
@@ -190,14 +144,34 @@ describe("workspace egress policy storage", () => {
     expect(mockUploadRawContentToBucket).not.toHaveBeenCalled();
   });
 
-  it("deletes both layouts and ignores missing objects", async () => {
+  it("preserves a requestedDomains section when the workspace allowlist is replaced", async () => {
+    setGcsObjects({
+      [WORKSPACE_PATH]: {
+        allowedDomains: ["api.github.com"],
+        requestedDomains: [{ domain: "api.stripe.com", requestedAtMs: 1 }],
+      },
+    });
+
+    // A caller replacing the allowlist without stating the section must not
+    // wipe pending requests — same contract as the owner policy write.
+    const result = await writeWorkspacePolicy(mockAuth, {
+      policy: { allowedDomains: ["api.github.com", "docs.github.com"] },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.requestedDomains).toEqual([
+        { domain: "api.stripe.com", requestedAtMs: 1 },
+      ]);
+    }
+  });
+
+  it("deletes the policy file and ignores missing objects", async () => {
     const result = await deleteWorkspacePolicy(mockAuth);
 
     expect(result).toEqual(new Ok(undefined));
+    expect(mockDelete).toHaveBeenCalledTimes(1);
     expect(mockDelete).toHaveBeenCalledWith(WORKSPACE_PATH, {
-      ignoreNotFound: true,
-    });
-    expect(mockDelete).toHaveBeenCalledWith(LEGACY_WORKSPACE_PATH, {
       ignoreNotFound: true,
     });
   });
@@ -363,21 +337,218 @@ describe("owner egress policy storage", () => {
     });
   });
 
-  it("deletes legacy per-provider policy files without invalidation", async () => {
-    const result = await deleteLegacySandboxPolicy("provider-id");
-
-    expect(result).toEqual(new Ok(undefined));
-    expect(mockDelete).toHaveBeenCalledWith("sandboxes/provider-id.json", {
-      ignoreNotFound: true,
-    });
-    expect(mockMintEgressInvalidationJwt).not.toHaveBeenCalled();
-  });
-
   it("parses exact domains and rejects malformed entries", () => {
     expect(parseExactEgressDomain("API.GitHub.COM")).toEqual(
       new Ok("api.github.com")
     );
     expect(parseExactEgressDomain("127.0.0.1").isErr()).toBe(true);
     expect(parseExactEgressDomain("*.github.com").isErr()).toBe(true);
+  });
+});
+
+describe("pod egress domain requests", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupBucketMocks();
+  });
+
+  it("records a request with the normalized domain", async () => {
+    setGcsObjects({
+      [OWNER_PATH]: { allowedDomains: ["api.github.com"] },
+    });
+
+    const result = await requestOwnerPolicyDomain(mockAuth, {
+      ownerId: "owner-sid",
+      domain: "API.Stripe.COM",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.outcome).toBe("requested");
+      expect(result.value.policy.requestedDomains).toEqual([
+        { domain: "api.stripe.com", requestedAtMs: expect.any(Number) },
+      ]);
+      expect(result.value.policy.allowedDomains).toEqual(["api.github.com"]);
+    }
+  });
+
+  it("reports already_allowed without writing", async () => {
+    setGcsObjects({
+      [OWNER_PATH]: { allowedDomains: ["api.stripe.com"] },
+    });
+
+    const result = await requestOwnerPolicyDomain(mockAuth, {
+      ownerId: "owner-sid",
+      domain: "api.stripe.com",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.outcome).toBe("already_allowed");
+    }
+    expect(mockUploadRawContentToBucket).not.toHaveBeenCalled();
+  });
+
+  it("dedupes an already-pending request without writing", async () => {
+    setGcsObjects({
+      [OWNER_PATH]: {
+        allowedDomains: [],
+        requestedDomains: [{ domain: "api.stripe.com", requestedAtMs: 1 }],
+      },
+    });
+
+    const result = await requestOwnerPolicyDomain(mockAuth, {
+      ownerId: "owner-sid",
+      domain: "api.stripe.com",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.outcome).toBe("already_requested");
+    }
+    expect(mockUploadRawContentToBucket).not.toHaveBeenCalled();
+  });
+
+  it("rejects requests past the pending cap", async () => {
+    setGcsObjects({
+      [OWNER_PATH]: {
+        allowedDomains: [],
+        requestedDomains: Array.from({ length: 50 }, (_, i) => ({
+          domain: `service-${i}.example.com`,
+          requestedAtMs: 1,
+        })),
+      },
+    });
+
+    const result = await requestOwnerPolicyDomain(mockAuth, {
+      ownerId: "owner-sid",
+      domain: "one-more.example.com",
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(mockUploadRawContentToBucket).not.toHaveBeenCalled();
+  });
+
+  it("accepts wildcard requests (every Pod grant is admin-decided)", async () => {
+    setGcsObjects({ [OWNER_PATH]: { allowedDomains: [] } });
+
+    const result = await requestOwnerPolicyDomain(mockAuth, {
+      ownerId: "owner-sid",
+      domain: "*.Stripe.COM",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.outcome).toBe("requested");
+      expect(result.value.policy.requestedDomains).toEqual([
+        { domain: "*.stripe.com", requestedAtMs: expect.any(Number) },
+      ]);
+    }
+  });
+
+  it("preserves pending requests when the allowlist is replaced", async () => {
+    setGcsObjects({
+      [OWNER_PATH]: {
+        allowedDomains: ["api.github.com"],
+        requestedDomains: [{ domain: "api.stripe.com", requestedAtMs: 1 }],
+      },
+    });
+
+    // The admin settings PUT replaces the allowlist without stating the
+    // requests section — it must survive.
+    const result = await writeOwnerPolicy(mockAuth, {
+      ownerId: "owner-sid",
+      policy: { allowedDomains: ["api.github.com", "docs.github.com"] },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.requestedDomains).toEqual([
+        { domain: "api.stripe.com", requestedAtMs: 1 },
+      ]);
+    }
+  });
+
+  it("resolves a request atomically when its domain is approved into the allowlist", async () => {
+    setGcsObjects({
+      [OWNER_PATH]: {
+        allowedDomains: [],
+        requestedDomains: [{ domain: "api.stripe.com", requestedAtMs: 1 }],
+      },
+    });
+
+    // Approve = append + write: one write moves the domain from requested to
+    // allowed, no dedicated helper.
+    const result = await writeOwnerPolicy(mockAuth, {
+      ownerId: "owner-sid",
+      policy: { allowedDomains: ["api.stripe.com"] },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.allowedDomains).toEqual(["api.stripe.com"]);
+      expect(result.value.requestedDomains).toBeUndefined();
+    }
+  });
+
+  it("dismisses a pending request without granting it", async () => {
+    setGcsObjects({
+      [OWNER_PATH]: {
+        allowedDomains: ["api.github.com"],
+        requestedDomains: [
+          { domain: "api.stripe.com", requestedAtMs: 1 },
+          { domain: "api.notion.com", requestedAtMs: 2 },
+        ],
+      },
+    });
+
+    const result = await dismissRequestedOwnerPolicyDomain(mockAuth, {
+      ownerId: "owner-sid",
+      domain: "api.stripe.com",
+    });
+
+    expect(result).toEqual(
+      new Ok({
+        allowedDomains: ["api.github.com"],
+        requestedDomains: [{ domain: "api.notion.com", requestedAtMs: 2 }],
+      })
+    );
+  });
+
+  it("drops malformed pending entries instead of failing the read", async () => {
+    setGcsObjects({
+      [OWNER_PATH]: {
+        allowedDomains: ["api.github.com"],
+        requestedDomains: [
+          { domain: "not a domain!!", requestedAtMs: 1 },
+          { domain: "api.stripe.com", requestedAtMs: 2 },
+        ],
+      },
+    });
+
+    const result = await readOwnerPolicy(mockAuth, "owner-sid");
+
+    // A single bad request entry must not brick reads (and thereby writes)
+    // of the whole policy file.
+    expect(result).toEqual(
+      new Ok({
+        allowedDomains: ["api.github.com"],
+        requestedDomains: [{ domain: "api.stripe.com", requestedAtMs: 2 }],
+      })
+    );
+  });
+
+  it("no-ops a dismiss for a domain that is not pending", async () => {
+    setGcsObjects({
+      [OWNER_PATH]: { allowedDomains: ["api.github.com"] },
+    });
+
+    const result = await dismissRequestedOwnerPolicyDomain(mockAuth, {
+      ownerId: "owner-sid",
+      domain: "api.stripe.com",
+    });
+
+    expect(result).toEqual(new Ok({ allowedDomains: ["api.github.com"] }));
+    expect(mockUploadRawContentToBucket).not.toHaveBeenCalled();
   });
 });

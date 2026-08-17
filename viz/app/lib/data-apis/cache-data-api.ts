@@ -55,6 +55,7 @@ export class CacheDataAPI implements VisualizationDataAPI {
       isAuthenticated: false,
       isWorkspaceMember: false,
       isPodEditor: false,
+      isPodMember: false,
       user: null,
     };
   }

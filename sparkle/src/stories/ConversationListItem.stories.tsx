@@ -10,7 +10,7 @@ import {
 const meta = {
   title: "Lists/ConversationListItem",
   component: ConversationListItem,
-  tags: ["autodocs"],
+  tags: ["a11y-issues", "autodocs"],
   parameters: {
     docs: {
       description: {

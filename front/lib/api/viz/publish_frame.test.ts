@@ -1,7 +1,7 @@
 // esbuild (pulled in by buildFrameBundle) requires a real node environment; jsdom breaks its
 // TextEncoder invariant.
 // @vitest-environment node
-import { splitFrameEntryScopedPath } from "@app/lib/api/files/mount_path";
+
 import type { FrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import { publishFrame } from "@app/lib/api/viz/publish_frame";
 import { Authenticator } from "@app/lib/auth";
@@ -16,6 +16,7 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { frameContentType, sandboxFunctionContentType } from "@app/types/files";
+import { splitFrameEntryScopedPath } from "@app/types/mount_path";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";

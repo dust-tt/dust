@@ -19,12 +19,20 @@ async function backfillWorkspaceSkillGroupPermissions(
   logger: Logger,
   workspace: LightWorkspaceType
 ): Promise<void> {
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  // All groups: `listByWorkspace` filters on read access to the spaces a skill references, and
+  // restricted spaces grant read through group membership only. The default single-group auth
+  // silently skips those skills.
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId, {
+    dangerouslyRequestAllGroups: true,
+  });
 
   // Every status: archived and suggested skills keep their editor group, so their grants must be
-  // written too (an archived skill can be restored).
+  // written too (an archived skill can be restored). `onlyCustom` skips the code-defined
+  // global/system skills: they have no editor group and no row to key grants on (their `id` is
+  // faked to -1, which is the type-wide sentinel).
   const skills = await SkillResource.listByWorkspace(auth, {
     status: [...SKILL_STATUSES],
+    onlyCustom: true,
     withInstructions: false,
     withTools: false,
     withFileAttachments: false,

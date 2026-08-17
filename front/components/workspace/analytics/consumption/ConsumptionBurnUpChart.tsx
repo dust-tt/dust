@@ -179,12 +179,17 @@ export function ConsumptionBurnUpChart({
       }
       height={CHART_HEIGHT}
       legendItems={legendItems}
+      showHeaderDivider
     >
       <LineChart data={chartData} margin={{ ...CHART_MARGIN, top: 24 }}>
-        <CartesianGrid vertical={false} className="stroke-border" />
+        <CartesianGrid
+          vertical={false}
+          strokeDasharray="4 4"
+          className="stroke-border"
+        />
         <XAxis
           dataKey="timestamp"
-          className="text-xs text-muted-foreground"
+          className="text-xs text-faint"
           tickLine={false}
           axisLine={false}
           tickMargin={8}
@@ -194,13 +199,14 @@ export function ConsumptionBurnUpChart({
           }
         />
         <YAxis
-          className="text-xs text-muted-foreground"
+          className="text-xs text-faint"
           tickLine={false}
           axisLine={false}
           tickMargin={8}
           tickFormatter={formatCreditsCompact}
         />
         <Tooltip
+          cursor={false}
           content={ConsumptionBurnUpTooltip}
           wrapperStyle={{ outline: "none", zIndex: 50 }}
         />

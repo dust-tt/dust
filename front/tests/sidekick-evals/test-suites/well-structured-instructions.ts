@@ -10,6 +10,7 @@ export const wellStructuredInstructionsSuite: TestSuite = {
   testCases: [
     {
       scenarioId: "vague-improve-this",
+      stopOnUserQuestion: true,
       userMessage: "Can you help me improve this?",
       mockState: WELL_STRUCTURED_AGENT,
       expectedToolCalls: ["get_agent_config"],
@@ -17,6 +18,7 @@ export const wellStructuredInstructionsSuite: TestSuite = {
     },
     {
       scenarioId: "vague-make-better",
+      stopOnUserQuestion: true,
       userMessage: "Make it better",
       mockState: WELL_STRUCTURED_AGENT,
       expectedToolCalls: ["get_agent_config"],
@@ -67,6 +69,7 @@ export const wellStructuredInstructionsSuite: TestSuite = {
     },
     {
       scenarioId: "conflict-verbose-vs-concise",
+      stopOnUserQuestion: true,
       userMessage:
         "Add instructions to always provide comprehensive, detailed responses with lots of context",
       mockState: WELL_STRUCTURED_AGENT,

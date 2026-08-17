@@ -1,6 +1,9 @@
 import { TRIGGER_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
-import { AddTriggerMenu } from "@app/components/triggers/AddTriggerMenu";
+import {
+  AddTriggerButton,
+  AddTriggerDialog,
+} from "@app/components/triggers/AddTriggerDialog";
 import type { WebhookSourceSheetMode } from "@app/components/triggers/WebhookSourceSheet";
 import { WebhookSourceSheet } from "@app/components/triggers/WebhookSourceSheet";
 import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
@@ -70,6 +73,7 @@ export const AdminTriggersList = ({
   const [sheetMode, setSheetMode] = useState<WebhookSourceSheetMode | null>(
     null
   );
+  const [isAddTriggerOpen, setIsAddTriggerOpen] = useState(false);
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: false,
@@ -247,6 +251,11 @@ export const AdminTriggersList = ({
 
   return (
     <>
+      <AddTriggerDialog
+        isOpen={isAddTriggerOpen}
+        setIsOpen={setIsAddTriggerOpen}
+        createWebhook={createWebhook}
+      />
       <WebhookSourceSheet
         mode={sheetMode}
         onClose={() => {
@@ -258,13 +267,16 @@ export const AdminTriggersList = ({
         <EmptyCTA
           message="You don’t have any triggers yet."
           action={
-            <AddTriggerMenu owner={owner} createWebhook={createWebhook} />
+            <AddTriggerButton
+              variant="outline"
+              onClick={() => setIsAddTriggerOpen(true)}
+            />
           }
         />
       ) : (
         <>
           {portalToHeader(
-            <AddTriggerMenu owner={owner} createWebhook={createWebhook} />
+            <AddTriggerButton onClick={() => setIsAddTriggerOpen(true)} />
           )}
           <DataTable
             data={rows}

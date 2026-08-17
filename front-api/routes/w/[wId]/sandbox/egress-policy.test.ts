@@ -9,10 +9,12 @@ const {
   mockEmitAuditLogEvent,
   mockReadWorkspacePolicy,
   mockWriteWorkspacePolicy,
+  mockDismissRequestedWorkspacePolicyDomain,
 } = vi.hoisted(() => ({
   mockEmitAuditLogEvent: vi.fn(),
   mockReadWorkspacePolicy: vi.fn(),
   mockWriteWorkspacePolicy: vi.fn(),
+  mockDismissRequestedWorkspacePolicyDomain: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
@@ -28,6 +30,8 @@ vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
 vi.mock("@app/lib/api/sandbox/egress_policy", () => ({
   readWorkspacePolicy: mockReadWorkspacePolicy,
   writeWorkspacePolicy: mockWriteWorkspacePolicy,
+  dismissRequestedWorkspacePolicyDomain:
+    mockDismissRequestedWorkspacePolicyDomain,
 }));
 
 async function setupTest({
@@ -60,6 +64,17 @@ function putPolicy(wId: string, body: unknown) {
   });
 }
 
+function dismissRequest(wId: string, body: unknown) {
+  return honoApp.request(
+    `/api/w/${wId}/sandbox/egress-policy/requests/dismiss`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+}
+
 describe("GET/PUT /api/w/:wId/sandbox/egress-policy", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -75,6 +90,9 @@ describe("GET/PUT /api/w/:wId/sandbox/egress-policy", () => {
         return new Ok(policy);
       }
     );
+    mockDismissRequestedWorkspacePolicyDomain.mockResolvedValue(
+      new Ok({ allowedDomains: ["api.github.com"] })
+    );
   });
 
   it("returns the workspace egress policy to workspace admins with Computer enabled", async () => {
@@ -85,8 +103,69 @@ describe("GET/PUT /api/w/:wId/sandbox/egress-policy", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       policy: { allowedDomains: ["api.github.com"] },
+      requestedDomains: [],
     });
     expect(mockReadWorkspacePolicy).toHaveBeenCalledWith(expect.any(Object));
+  });
+
+  it("surfaces pending requests from the same policy read", async () => {
+    const { workspace } = await setupTest();
+    mockReadWorkspacePolicy.mockResolvedValue(
+      new Ok({
+        allowedDomains: ["api.github.com"],
+        requestedDomains: [{ domain: "api.stripe.com", requestedAtMs: 42 }],
+      })
+    );
+
+    const response = await getPolicy(workspace.sId);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      policy: {
+        allowedDomains: ["api.github.com"],
+        requestedDomains: [{ domain: "api.stripe.com", requestedAtMs: 42 }],
+      },
+      requestedDomains: [{ domain: "api.stripe.com", requestedAtMs: 42 }],
+    });
+    expect(mockReadWorkspacePolicy).toHaveBeenCalledTimes(1);
+  });
+
+  it("dismisses a pending request without granting it", async () => {
+    const { workspace } = await setupTest();
+
+    const response = await dismissRequest(workspace.sId, {
+      domain: "api.stripe.com",
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      policy: { allowedDomains: ["api.github.com"] },
+    });
+    expect(mockDismissRequestedWorkspacePolicyDomain).toHaveBeenCalledWith(
+      expect.any(Object),
+      { domain: "api.stripe.com" }
+    );
+    expect(mockWriteWorkspacePolicy).not.toHaveBeenCalled();
+  });
+
+  it("rejects a dismiss with a missing domain", async () => {
+    const { workspace } = await setupTest();
+
+    const response = await dismissRequest(workspace.sId, {});
+
+    expect(response.status).toBe(400);
+    expect(mockDismissRequestedWorkspacePolicyDomain).not.toHaveBeenCalled();
+  });
+
+  it("rejects a dismiss from a non-admin user", async () => {
+    const { workspace } = await setupTest({ role: "user" });
+
+    const response = await dismissRequest(workspace.sId, {
+      domain: "api.stripe.com",
+    });
+
+    expect(response.status).toBe(403);
+    expect(mockDismissRequestedWorkspacePolicyDomain).not.toHaveBeenCalled();
   });
 
   it("updates the workspace egress policy with normalized domains", async () => {

@@ -2066,6 +2066,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "request_egress_domain": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
   },
   "sandbox_functions": {
     "call": {
@@ -3283,6 +3287,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "add_egress_domain": "high",
     "bash": "never_ask",
     "describe_toolset": "never_ask",
+    "request_egress_domain": "low",
   },
   "sandbox_functions": {
     "call": "low",

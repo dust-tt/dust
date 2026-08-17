@@ -1,5 +1,8 @@
 import { MicrosoftThrottlingError } from "@connectors/connectors/microsoft/lib/errors";
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import {
+  ExternalOAuthTokenError,
+  ThirdPartyConfigurationError,
+} from "@connectors/lib/error";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import { ApplicationFailure } from "@temporalio/common";
 import type {
@@ -86,6 +89,16 @@ export function isBillingPolicyError(err: unknown): err is GraphError {
   );
 }
 
+export function isMissingSharePointLicenseError(
+  err: unknown
+): err is GraphError {
+  return (
+    err instanceof GraphError &&
+    err.statusCode === 400 &&
+    err.message.includes("Tenant does not have a SPO license")
+  );
+}
+
 // Identifies JSON parsing errors that may occur when Microsoft's API returns
 // malformed JSON or error responses that are not properly formatted.
 export function isJSONParsingError(err: unknown): err is Error {
@@ -118,6 +131,9 @@ export class MicrosoftCastKnownErrorsInterceptor
       // TODO(2025-02-12): add an error type for Microsoft client errors and catch them at strategic locations (e.g. API call to instantiate a client)
       if (isMicrosoftSignInError(err)) {
         throw new ExternalOAuthTokenError(err);
+      }
+      if (isMissingSharePointLicenseError(err)) {
+        throw new ThirdPartyConfigurationError(err);
       }
       throw err;
     }

@@ -68,35 +68,15 @@ impl GcsPolicyProvider {
         self.cache.invalidate(cache_key).await;
     }
 
-    // Workspace policy lives at `w/{wId}/sandbox-egress-policy.json`. During the layout
-    // migration we fall back to the legacy `workspaces/{wId}.json` path when
-    // the new object is absent (not on errors: those stay fail-closed).
-    // TODO(2026-08-15 EGRESS_RELAYOUT): drop the legacy fallback once the
-    // backfill has run and legacy objects are deleted.
+    // Workspace policy lives at `w/{wId}/sandbox-egress-policy.json`. The
+    // "w2:" cache key is load-bearing: invalidation tokens minted by older
+    // front builds evict exactly this key.
     pub async fn get_workspace_policy(&self, w_id: &str) -> Result<Option<Policy>> {
-        let current = self
-            .get_policy(
-                &format!("w2:{w_id}"),
-                &format!("w/{w_id}/sandbox-egress-policy.json"),
-            )
-            .await?;
-
-        if current.is_some() {
-            return Ok(current);
-        }
-
-        self.get_policy(&format!("w:{w_id}"), &format!("workspaces/{w_id}.json"))
-            .await
-    }
-
-    // Legacy per-sandbox policy, keyed by the ephemeral provider id. Still
-    // read (unioned with the owner policy) so in-flight approvals from before
-    // the layout migration keep working until those sandboxes age out.
-    // TODO(2026-08-15 EGRESS_RELAYOUT): drop once pre-migration sandboxes are
-    // gone.
-    pub async fn get_sandbox_policy(&self, sb_id: &str) -> Result<Option<Policy>> {
-        self.get_policy(&format!("s:{sb_id}"), &format!("sandboxes/{sb_id}.json"))
-            .await
+        self.get_policy(
+            &format!("w2:{w_id}"),
+            &format!("w/{w_id}/sandbox-egress-policy.json"),
+        )
+        .await
     }
 
     // Owner policy: the stable per-owner allowlist at
@@ -111,16 +91,15 @@ impl GcsPolicyProvider {
         .await
     }
 
-    // A domain is allowed if ANY of the workspace, owner, pod, or legacy
-    // sandbox policies allows it. `pod_id` is the inherited pod layer for
-    // conversation sandboxes running inside a pod — same file scheme as
-    // owner policies. Every lookup fails closed: a GCS error never grants.
+    // A domain is allowed if ANY of the workspace, owner, or pod policies
+    // allows it. `pod_id` is the inherited pod layer for conversation
+    // sandboxes running inside a pod — same file scheme as owner policies.
+    // Every lookup fails closed: a GCS error never grants.
     pub async fn evaluate(
         &self,
         w_id: Option<&str>,
         owner_id: Option<&str>,
         pod_id: Option<&str>,
-        sb_id: &str,
         domain: &str,
     ) -> bool {
         let workspace_allows = match w_id {
@@ -139,8 +118,7 @@ impl GcsPolicyProvider {
             return true;
         }
 
-        // The owner path needs both ids; tokens minted before the layout
-        // migration carry no ownerId and skip straight to the legacy file.
+        // The owner path needs both ids.
         let owner_allows = match (w_id, owner_id) {
             (Some(w_id), Some(owner_id)) => match self.get_owner_policy(w_id, owner_id).await {
                 Ok(Some(policy)) => policy.allows(domain),
@@ -169,18 +147,7 @@ impl GcsPolicyProvider {
             _ => false,
         };
 
-        if pod_allows {
-            return true;
-        }
-
-        match self.get_sandbox_policy(sb_id).await {
-            Ok(Some(policy)) => policy.allows(domain),
-            Ok(None) => false,
-            Err(error) => {
-                warn!(error = %error, sb_id, "sandbox policy lookup failed");
-                false
-            }
-        }
+        pod_allows
     }
 
     async fn get_policy(&self, cache_key: &str, object_name: &str) -> Result<Option<Policy>> {

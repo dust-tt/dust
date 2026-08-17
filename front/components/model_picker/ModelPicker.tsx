@@ -11,9 +11,9 @@ import {
   getModelEffortTier,
   getModelTier,
   getModelWithReasoningEffortLabel,
+  getTierLockReason,
   isPremiumModel,
   isSameSelection,
-  isTierLocked,
   resolveShownSelection,
 } from "@app/components/model_picker/modelPickerUtils";
 import { getModelMakerLogo } from "@app/components/providers/types";
@@ -72,6 +72,8 @@ export interface ModelPickerProps {
   ) => void;
   // Lets keyboard `/` Pick model commit through the same path as the button picker.
   commitApiRef?: MutableRefObject<((selection: Selection) => void) | null>;
+  // Lets components outside the input bar (e.g. the sidebar banner) open the menu.
+  openApiRef?: MutableRefObject<(() => void) | null>;
 }
 
 export function ModelPicker({
@@ -89,6 +91,7 @@ export function ModelPicker({
   stickyModelOverride,
   setStickyModelOverride,
   commitApiRef,
+  openApiRef,
 }: ModelPickerProps) {
   const { hasFeature } = useFeatureFlags();
   const hasModelsPicker = hasFeature("models_picker");
@@ -112,7 +115,7 @@ export function ModelPicker({
 
   const [userOverride, setUserOverride] = useState<Selection | null>(null);
 
-  const { models } = useModels({
+  const { models, streams } = useModels({
     owner,
     disabled: !hasModelsPicker,
   });
@@ -161,6 +164,13 @@ export function ModelPicker({
     [models]
   );
 
+  // Meta-models backing the tier rows: their `isSelectable` tells whether the
+  // member's model-tier cap allows the stream at all.
+  const streamModels = useMemo(
+    () => models.filter((model) => isModelStreamId(model.modelId)),
+    [models]
+  );
+
   // Group models by maker, preserving first-seen order of both makers and
   // models within each maker.
   const makerGroups = useMemo<MakerGroup[]>(() => {
@@ -196,6 +206,10 @@ export function ModelPicker({
     commitApiRef.current = commit;
   }
 
+  if (openApiRef) {
+    openApiRef.current = () => setIsOpen(true);
+  }
+
   // Picking a concrete model (or nudging its effort slider) must keep the menu
   // and its open submenus visible so the effort can still be adjusted. The
   // click briefly moves focus/pointer in a way Radix treats as an
@@ -208,7 +222,7 @@ export function ModelPicker({
     Date.now() - lastModelInteractionAtMsRef.current < 300;
 
   const onSelectTier = (tierId: ModelTierId) => {
-    if (isTierLocked(tierId, { lockPremiumEfforts })) {
+    if (getTierLockReason(tierId, { lockPremiumEfforts, streamModels })) {
       return;
     }
     commit({
@@ -292,7 +306,7 @@ export function ModelPicker({
           size={buttonSize}
           icon={buttonIcon}
           label={showLabel ? label : undefined}
-          tooltip={showLabel ? undefined : label}
+          tooltip={showLabel ? undefined : `Model picker: ${label}`}
           disabled={disabled}
         />
       </DropdownMenuTrigger>
@@ -305,6 +319,8 @@ export function ModelPicker({
         lockPremiumEfforts={lockPremiumEfforts}
         makerGroups={makerGroups}
         allModels={allModels}
+        streamModels={streamModels}
+        streams={streams}
         search={search}
         onSearchChange={setSearch}
         moreModelsExpanded={moreModelsExpanded}

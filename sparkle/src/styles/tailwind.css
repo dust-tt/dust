@@ -97,6 +97,16 @@
   }
 }
 
+@keyframes glint-pass {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(160%);
+  }
+}
+
 @layer components {
   .touch-hitbox {
     position: relative;
@@ -196,6 +206,35 @@
   @supports not (corner-shape: squircle) {
     .rounded-squircle-40 {
       border-radius: 24px;
+    }
+  }
+
+  .glint-sweep,
+  .glint-sweep-hover {
+    transform: translateX(-100%);
+    will-change: transform;
+  }
+
+  .glint-ring {
+    will-change: transform;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .glint-host:hover .glint-sweep-hover {
+      animation: glint-pass 840ms cubic-bezier(0.645, 0.045, 0.355, 1) 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .glint-sweep,
+    .glint-sweep-hover {
+      animation: none;
+      display: none;
+      will-change: auto;
+    }
+
+    .glint-ring {
+      will-change: auto;
     }
   }
 

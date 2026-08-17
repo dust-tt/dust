@@ -25,6 +25,8 @@ import { DustGoogleGeminiThreeDotFiveFlashLiteGlobalAgentPlatformStream } from "
 import { DustGoogleGeminiThreeDotFiveFlashLiteGlobalGoogleAiStudioStream } from "@app/lib/llms/stream/endpoints/google_gemini_3_5_flash_lite_global_google_ai_studio";
 import { DustGoogleGeminiThreeDotSixFlashGlobalAgentPlatformStream } from "@app/lib/llms/stream/endpoints/google_gemini_3_6_flash_global_agent_platform";
 import { DustGoogleGeminiThreeDotSixFlashGlobalGoogleAiStudioStream } from "@app/lib/llms/stream/endpoints/google_gemini_3_6_flash_global_google_ai_studio";
+import { DustGoogleGeminiThreeDotSevenFlashGlobalAgentPlatformStream } from "@app/lib/llms/stream/endpoints/google_gemini_3_7_flash_global_agent_platform";
+import { DustGoogleGeminiThreeDotSevenFlashGlobalGoogleAiStudioStream } from "@app/lib/llms/stream/endpoints/google_gemini_3_7_flash_global_google_ai_studio";
 import { DustMistralCodestralEuropeMistralStream } from "@app/lib/llms/stream/endpoints/mistral_codestral_eu_mistral";
 import { DustMistralMistralLargeEuropeMistralStream } from "@app/lib/llms/stream/endpoints/mistral_mistral_large_eu_mistral";
 import { DustMistralMistralMedium35EuropeMistralStream } from "@app/lib/llms/stream/endpoints/mistral_mistral_medium_3_5_eu_mistral";
@@ -57,7 +59,9 @@ import { DustOpenAIGptFiveMiniEuropeOpenAIResponsesStream } from "@app/lib/llms/
 import { DustOpenAIGptFiveMiniGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_mini_global_openai_responses";
 import { DustOpenAIGptFiveNanoEuropeOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_nano_eu_openai_responses";
 import { DustOpenAIGptFiveNanoGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_nano_global_openai_responses";
+import { DustThinkingMachinesInklingGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/thinking_machines_inkling_global_fireworks";
 import { DustXaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/llms/stream/endpoints/xai_grok_four_dot_five_global_xai";
+import { DustXaiGrokFourDotSixGlobalXaiStream } from "@app/lib/llms/stream/endpoints/xai_grok_four_dot_six_global_xai";
 import { DustZAiGlmFiveDotTwoGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/z_ai_glm_five_dot_two_global_fireworks";
 import { isEndpointAvailable } from "@app/lib/llms/stream/utils/is_endpoint_available";
 import type {
@@ -84,6 +88,8 @@ export const DUST_STREAM_ENDPOINTS = {
     DustGoogleGeminiThreeDotFiveFlashGlobalAgentPlatformStream,
   [DustGoogleGeminiThreeDotSixFlashGlobalAgentPlatformStream.id]:
     DustGoogleGeminiThreeDotSixFlashGlobalAgentPlatformStream,
+  [DustGoogleGeminiThreeDotSevenFlashGlobalAgentPlatformStream.id]:
+    DustGoogleGeminiThreeDotSevenFlashGlobalAgentPlatformStream,
   [DustGoogleGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream.id]:
     DustGoogleGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream,
   [DustGoogleGeminiThreeDotFiveFlashLiteGlobalAgentPlatformStream.id]:
@@ -123,6 +129,9 @@ export const DUST_STREAM_ENDPOINTS = {
   [DustMoonshotAiKimiK3GlobalFireworksStream.id]:
     DustMoonshotAiKimiK3GlobalFireworksStream,
 
+  [DustThinkingMachinesInklingGlobalFireworksStream.id]:
+    DustThinkingMachinesInklingGlobalFireworksStream,
+
   [DustGoogleGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioStream.id]:
     DustGoogleGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioStream,
   [DustGoogleGeminiThreeDotFiveFlashLiteGlobalGoogleAiStudioStream.id]:
@@ -133,6 +142,8 @@ export const DUST_STREAM_ENDPOINTS = {
     DustGoogleGeminiThreeDotFiveFlashGlobalGoogleAiStudioStream,
   [DustGoogleGeminiThreeDotSixFlashGlobalGoogleAiStudioStream.id]:
     DustGoogleGeminiThreeDotSixFlashGlobalGoogleAiStudioStream,
+  [DustGoogleGeminiThreeDotSevenFlashGlobalGoogleAiStudioStream.id]:
+    DustGoogleGeminiThreeDotSevenFlashGlobalGoogleAiStudioStream,
 
   [DustMistralCodestralEuropeMistralStream.id]:
     DustMistralCodestralEuropeMistralStream,
@@ -195,6 +206,8 @@ export const DUST_STREAM_ENDPOINTS = {
     DustOpenAIGptFiveGlobalOpenAIResponsesStream,
   [DustXaiGrokFourDotFiveGlobalXaiStream.id]:
     DustXaiGrokFourDotFiveGlobalXaiStream,
+  [DustXaiGrokFourDotSixGlobalXaiStream.id]:
+    DustXaiGrokFourDotSixGlobalXaiStream,
 } as const satisfies Record<StreamEndpointId, DustStreamEndpointConstructor>;
 
 export function getStreamEndpoints(

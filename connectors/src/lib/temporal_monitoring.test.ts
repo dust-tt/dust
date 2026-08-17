@@ -63,7 +63,10 @@ vi.mock("dd-trace", () => ({
 
 import logger from "@connectors/logger/logger";
 
-import { RemoteDatabaseConnectionNotReadonlyError } from "./error";
+import {
+  RemoteDatabaseConnectionNotReadonlyError,
+  ThirdPartyConfigurationError,
+} from "./error";
 import { ActivityInboundLogInterceptor } from "./temporal_monitoring";
 
 const temporalLogger = {
@@ -189,6 +192,34 @@ describe("ActivityInboundLogInterceptor", () => {
     );
     expect(mocks.pauseAndStop).toHaveBeenCalledWith({
       reason: "Stopped on workspace_can_use_product_required_error",
+    });
+  });
+
+  it("marks third-party configuration failures and pauses the connector", async () => {
+    const interceptor = new ActivityInboundLogInterceptor(
+      makeActivityContext(),
+      logger,
+      "snowflake"
+    );
+    const error = new ThirdPartyConfigurationError(
+      new Error("Provider configuration requires user action")
+    );
+    const input = {
+      args: [],
+      headers: {},
+    } satisfies ActivityExecuteInput;
+    const next = vi.fn(async () => {
+      throw error;
+    }) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
+
+    await expect(interceptor.execute(input, next)).rejects.toBe(error);
+
+    expect(mocks.syncFailed).toHaveBeenCalledWith(
+      42,
+      "third_party_internal_error"
+    );
+    expect(mocks.pauseAndStop).toHaveBeenCalledWith({
+      reason: "Stopped on ThirdPartyConfigurationError",
     });
   });
 });

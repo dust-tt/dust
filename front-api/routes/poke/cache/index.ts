@@ -6,19 +6,20 @@ import type {
   GetPokeCacheResponseBody,
   RedisCacheResult,
 } from "@app/types/api/poke/cache";
-import {
-  buildCacheKey,
-  buildCacheKeyPattern,
-  getCacheResourceById,
-} from "@app/types/shared/cache_resource_registry";
 import { isString } from "@app/types/shared/utils/general";
+import { getPokeCacheOperations } from "@front-api/lib/api/poke/cache_catalog";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import type { Context } from "hono";
+import { z } from "zod";
+
+import catalog from "./catalog";
 
 // Mounted at /api/poke/cache. pokeAuth is applied by the parent poke sub-app.
 const app = pokeApp();
+
+app.route("/catalog", catalog);
 
 function resolveCacheKey(
   ctx: Context
@@ -28,8 +29,8 @@ function resolveCacheKey(
   const params = ctx.req.query("params");
 
   if (isString(resourceId)) {
-    const resource = getCacheResourceById(resourceId);
-    if (!resource) {
+    const operations = getPokeCacheOperations(resourceId);
+    if (!operations) {
       return {
         err: apiError(ctx, {
           status_code: 400,
@@ -41,12 +42,9 @@ function resolveCacheKey(
       };
     }
 
-    let parsedParams: Record<string, string>;
+    let rawParams: unknown;
     try {
-      parsedParams = JSON.parse(isString(params) ? params : "{}") as Record<
-        string,
-        string
-      >;
+      rawParams = JSON.parse(isString(params) ? params : "{}");
     } catch {
       return {
         err: apiError(ctx, {
@@ -59,7 +57,21 @@ function resolveCacheKey(
       };
     }
 
-    const missingKeys = resource.params
+    const parsedParamsResult = z.record(z.string()).safeParse(rawParams);
+    if (!parsedParamsResult.success) {
+      return {
+        err: apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The 'params' query parameter must contain strings.",
+          },
+        }),
+      };
+    }
+    const parsedParams = parsedParamsResult.data;
+
+    const missingKeys = operations.description.params
       .filter((p) => !parsedParams[p.key])
       .map((p) => p.key);
 
@@ -75,7 +87,19 @@ function resolveCacheKey(
       };
     }
 
-    return { cacheKey: buildCacheKey(resource, parsedParams) };
+    try {
+      return { cacheKey: operations.buildKey(parsedParams) };
+    } catch {
+      return {
+        err: apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid cache resource parameters.",
+          },
+        }),
+      };
+    }
   }
 
   if (isString(rawKey)) {
@@ -206,8 +230,8 @@ app.delete(
       });
     }
 
-    const resource = getCacheResourceById(resourceId);
-    if (!resource) {
+    const operations = getPokeCacheOperations(resourceId);
+    if (!operations) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -217,7 +241,7 @@ app.delete(
       });
     }
 
-    const pattern = buildCacheKeyPattern(resource);
+    const pattern = operations.keyPattern;
     if (!pattern) {
       return apiError(ctx, {
         status_code: 400,

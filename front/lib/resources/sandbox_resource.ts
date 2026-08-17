@@ -1,6 +1,5 @@
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { revokeAllExecTokensForSandbox } from "@app/lib/api/sandbox/access_tokens";
-import { deleteLegacySandboxPolicy } from "@app/lib/api/sandbox/egress_policy";
 import { SandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import {
@@ -156,25 +155,6 @@ export interface SandboxResource extends ReadonlyAttributesType<SandboxModel> {}
 export class SandboxResource extends BaseResource<SandboxModel> {
   static model: ModelStaticWorkspaceAware<SandboxModel> = SandboxModel;
 
-  // Owner policy files (w/{wId}/sandboxes/{ownerId}.json) intentionally
-  // survive sandbox destruction; only the legacy per-providerId file is
-  // scrubbed here. Owner files are deleted with their owner (conversation
-  // destruction, pod space deletion).
-  private static deleteEgressPolicyAfterDestroy(
-    sandbox: SandboxResource
-  ): void {
-    void deleteLegacySandboxPolicy(sandbox.providerId).catch((err) =>
-      logger.warn(
-        {
-          err,
-          sandboxId: sandbox.sId,
-          sandboxProviderId: sandbox.providerId,
-        },
-        "Failed to delete sandbox egress policy"
-      )
-    );
-  }
-
   // No-op when there is no check or the sandbox is not running — a sleeping
   // or pending_approval sandbox already passed the check when it paused.
   private static async runPreSleepCheck(
@@ -192,7 +172,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     opts: { recordLifecycle: boolean }
   ): Promise<void> {
     await sandbox.updateStatus("deleted");
-    SandboxResource.deleteEgressPolicyAfterDestroy(sandbox);
     if (opts.recordLifecycle) {
       recordLifecycleOperation("destroy");
     }
@@ -457,7 +436,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   //
   // The sandbox row and its owner association are preserved (recreation
   // updates the row in place), as are the owner's egress policy file and GCS
-  // files; only the provider runtime and provider-specific legacy state go.
+  // files; only the provider runtime goes.
   //
   // /!\ Both callbacks run while the lifecycle lock is held: they must not
   // call back into any lifecycle operation on the same owner, and `commit`
@@ -501,7 +480,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
                 )
               );
             }
-            SandboxResource.deleteEgressPolicyAfterDestroy(existing);
             recordLifecycleOperation("destroy");
           }
 
@@ -543,8 +521,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             { sandbox: sandbox.toLogJSON(), error: result.error.message },
             "Failed to destroy sandbox at provider — proceeding with DB cleanup."
           );
-        } else {
-          SandboxResource.deleteEgressPolicyAfterDestroy(sandbox);
         }
       }
 
@@ -843,8 +819,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
               "Failed to destroy kill-requested sandbox at provider — proceeding with recreation."
             );
           }
-        } else {
-          SandboxResource.deleteEgressPolicyAfterDestroy(existing);
         }
         effectiveStatus = "deleted";
       }

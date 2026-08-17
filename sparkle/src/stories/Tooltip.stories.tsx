@@ -14,6 +14,7 @@ import {
 
 const meta = {
   title: "Overlays/Tooltip",
+  tags: ["a11y-issues"],
   component: TooltipProvider,
   parameters: {
     docs: {

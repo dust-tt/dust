@@ -49,6 +49,7 @@ import {
   makeProgrammaticUsageRateLimitKeyForWorkspace,
   makeSidekickMessageRateLimitKeyForWorkspaceActor,
   SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY,
+  SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_ENTERPRISE,
   SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_WINDOW_SECONDS,
 } from "@app/lib/api/assistant/rate_limits";
 import {
@@ -75,6 +76,7 @@ import {
   isNonCreditPricedUserSpendLimitReached,
   isUserSpendLimitRateCapReached,
 } from "@app/lib/api/users/spend_limit";
+import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { isModelAvailable } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -103,6 +105,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { notifyNewProjectConversation } from "@app/lib/notifications/triggers/project-new-conversation";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
+import { isEnterpriseOrDust } from "@app/lib/plans/plan_codes";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
@@ -110,12 +113,10 @@ import type { RunningAgentMessageContext } from "@app/lib/resources/conversation
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
-
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
@@ -2465,12 +2466,15 @@ export async function checkMessagesLimit(
       });
     }
 
+    const sidekickDailyLimit = isEnterpriseOrDust(auth.plan())
+      ? SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_ENTERPRISE
+      : SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY;
     const remaining = await rateLimiter({
       key: makeSidekickMessageRateLimitKeyForWorkspaceActor(
         auth.getNonNullableWorkspace(),
         getMessageRateLimitActor(auth)
       ),
-      maxPerTimeframe: SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY,
+      maxPerTimeframe: sidekickDailyLimit,
       timeframeSeconds:
         SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_WINDOW_SECONDS,
       logger,
@@ -2480,8 +2484,7 @@ export async function checkMessagesLimit(
         status_code: 429,
         api_error: {
           type: "rate_limit_error",
-          message:
-            "You have reached the sidekick usage limit. Please try again later.",
+          message: `You have reached the sidekick usage limit (${sidekickDailyLimit} messages per 24h). Please try again later.`,
         },
       });
     }
@@ -2999,9 +3002,7 @@ async function isMessagesLimitReached(
   }
 
   // Checking rate limit
-  const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
-    owner.sId
-  );
+  const activeSeats = await countActiveSeatsForWorkspace(owner.sId);
 
   const userMessagesLimit = 10 * activeSeats;
   const remainingMessages = await rateLimiter({

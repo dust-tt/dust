@@ -1,8 +1,11 @@
-import { getStreamLLM } from "@app/lib/api/llm";
+import { getBatchLLM, getStreamLLM } from "@app/lib/api/llm";
 import { LLMRunLifecycle } from "@app/lib/api/llm/run_lifecycle";
 import { createLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
+import { DustOpenAIGptFiveDotFiveEuropeOpenAIResponsesBatch } from "@app/lib/llms/batch/endpoints/openai_gpt_five_dot_five_eu_openai_responses";
 import { DustNoopNoopGlobalNoopStream } from "@app/lib/llms/stream/endpoints/noop_noop_global_noop";
+import { DustOpenAIGptFiveDotFiveEuropeOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_five_eu_openai_responses";
+import { DustOpenAIGptFiveDotFiveGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_five_global_openai_responses";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -167,6 +170,65 @@ describe("LLMRunLifecycle", () => {
     expect(await run?.listRunUsages(auth)).toMatchObject([
       { costMicroUsd: 310 },
     ]);
+  });
+});
+
+describe("endpoint billing metadata", () => {
+  it("uses EU pricing for EU stream and batch endpoints", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const credentials = { OPENAI_API_KEY: "test" };
+
+    const streamLlm = getStreamLLM(auth, {
+      credentials,
+      modelInfo: {
+        endpoint: DustOpenAIGptFiveDotFiveEuropeOpenAIResponsesStream,
+        temperature: 0,
+      },
+    });
+    if (!streamLlm) {
+      throw new Error("Expected the EU stream LLM to be available");
+    }
+
+    const batchLlm = await getBatchLLM(auth, {
+      credentials,
+      modelInfo: {
+        endpoint: DustOpenAIGptFiveDotFiveEuropeOpenAIResponsesBatch,
+        temperature: 0,
+      },
+    });
+    if (!batchLlm) {
+      throw new Error("Expected the EU batch LLM to be available");
+    }
+
+    expect(streamLlm.getMetadata()).toMatchObject({
+      inferenceProvider: "openai-responses",
+      inferenceRegion: "eu",
+      region: "eu",
+    });
+    expect(batchLlm.getMetadata()).toMatchObject({
+      inferenceProvider: "openai-responses",
+      inferenceRegion: "eu",
+      region: "eu",
+    });
+  });
+
+  it("keeps global endpoints on global pricing", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const llm = getStreamLLM(auth, {
+      credentials: { OPENAI_API_KEY: "test" },
+      modelInfo: {
+        endpoint: DustOpenAIGptFiveDotFiveGlobalOpenAIResponsesStream,
+        temperature: 0,
+      },
+    });
+    if (!llm) {
+      throw new Error("Expected the global stream LLM to be available");
+    }
+
+    expect(llm.getMetadata()).toMatchObject({
+      inferenceRegion: "global",
+      region: "global",
+    });
   });
 });
 

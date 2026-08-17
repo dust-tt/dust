@@ -96,10 +96,8 @@ export function UserProfileStep({
 }: UserProfileStepProps) {
   return (
     <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
-      <Page.Header
-        title={`Hello ${formData.firstName || "there"}!`}
-        icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
-      />
+      <DustLogoSquare className="-ml-11 h-10 w-32" />
+      <Page.Header title={`Hello ${formData.firstName || "there"}!`} />
       <p className="text-muted-foreground">Let's check a few things.</p>
       {!isAdmin && (
         <p className="text-muted-foreground">

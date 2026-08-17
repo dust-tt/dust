@@ -10,7 +10,7 @@ const MESSAGE_STATUSES = ["info", "default", "error"] as const;
 const meta = {
   title: "Forms & Inputs/Input",
   component: Input,
-  tags: ["autodocs"],
+  tags: ["a11y-issues", "autodocs"],
   parameters: {
     docs: {
       description: {

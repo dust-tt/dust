@@ -85,6 +85,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/:aId/triggers (spaceId
     );
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const openPod = await SpaceResource.makeNew(
+      auth,
       {
         name: `open-pod-${faker.string.alphanumeric(8)}`,
         kind: "project",
@@ -222,6 +223,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers (spaceI
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const trigger = await createScheduleTrigger(workspace, agent.sId, null);
     const openPod = await SpaceResource.makeNew(
+      auth,
       {
         name: `open-pod-${faker.string.alphanumeric(8)}`,
         kind: "project",

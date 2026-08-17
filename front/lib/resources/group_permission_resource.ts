@@ -419,6 +419,29 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     return rows.map((row) => new this(GroupPermissionModel, row.get()));
   }
 
+  // System keys can represent nearly every group in a workspace. Expanding those group ids into
+  // an IN clause on every authenticated request is much more expensive than reading the usually
+  // small workspace grant set through its workspace-leading index and filtering it in memory.
+  // Keep the exact caller group semantics by intersecting with the ids already resolved for the
+  // Authenticator.
+  static async listForGroupsFromWorkspaceScan(
+    workspace: LightWorkspaceType,
+    groupModelIds: ModelId[]
+  ): Promise<GroupPermissionResource[]> {
+    if (groupModelIds.length === 0) {
+      return [];
+    }
+
+    const groupModelIdSet = new Set(groupModelIds);
+    const rows = await GroupPermissionModel.findAll({
+      where: { workspaceId: workspace.id },
+    });
+
+    return rows
+      .filter((row) => groupModelIdSet.has(row.groupId))
+      .map((row) => new this(GroupPermissionModel, row.get()));
+  }
+
   // Deletion-integrity hook: drop every grant (across all groups) targeting one resource. There is
   // no FK on the resource side, so callers invoke this when a resource is deleted. Guards against
   // wiping the type-wide wildcard rows.
@@ -446,6 +469,32 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         resourceId,
       },
       transaction,
+    });
+  }
+
+  static async listForWorkspace(
+    auth: Authenticator
+  ): Promise<GroupPermissionResource[]> {
+    const rows = await GroupPermissionModel.findAll({
+      where: { workspaceId: auth.getNonNullableWorkspace().id },
+    });
+
+    return rows.map((row) => new this(GroupPermissionModel, row.get()));
+  }
+
+  static async deleteByModelIds(
+    auth: Authenticator,
+    ids: ModelId[]
+  ): Promise<void> {
+    if (ids.length === 0) {
+      return;
+    }
+
+    await GroupPermissionModel.destroy({
+      where: {
+        id: ids,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
     });
   }
 

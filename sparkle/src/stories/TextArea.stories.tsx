@@ -5,6 +5,7 @@ import { TextArea } from "../index_with_tw_base";
 
 const meta = {
   title: "Forms & Inputs/TextArea",
+  tags: ["a11y-issues"],
   component: TextArea,
   parameters: {
     docs: {

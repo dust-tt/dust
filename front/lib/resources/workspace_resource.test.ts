@@ -1,45 +1,80 @@
 import { CONVERSATIONS_RETENTION_MIN_DAYS } from "@app/lib/conversations_retention";
 import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
+import { getNamespace } from "@app/tests/utils/test_cls";
+import type { Transaction } from "sequelize";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const inMemoryCache = vi.hoisted(() => new Map<string, string>());
 const deletedKeys = vi.hoisted(() => [] as string[]);
+const cacheReadFailure = vi.hoisted(() => ({ current: null as Error | null }));
 
 vi.mock("@app/lib/utils/cache", () => ({
-  cacheWithRedis: vi
-    .fn()
-    .mockImplementation(
-      <T, Args extends unknown[]>(
-        fn: CacheableFunction<JsonSerializable<T>, Args>,
-        resolver: (...args: Args) => string
-      ) => {
-        return async (...args: Args): Promise<JsonSerializable<T>> => {
-          const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
-          const cached = inMemoryCache.get(key);
-          if (cached) {
-            return JSON.parse(cached) as JsonSerializable<T>;
+  buildCacheWithRedisKey: (cacheId: string, resolverKey: string) =>
+    `cacheWithRedis-${cacheId}-${resolverKey}`,
+  cacheWithRedis: vi.fn().mockImplementation(
+    <T, Args extends unknown[]>(
+      fn: CacheableFunction<JsonSerializable<T>, Args>,
+      resolver: (...args: Args) => string,
+      options?: {
+        cacheId?: string;
+        cacheNullValues?: boolean;
+        readFromKeyFirst?: {
+          cacheId: string;
+          resolver: (...args: Args) => string;
+          mirrorToCanonicalOnHit?: boolean;
+        };
+      }
+    ) => {
+      return async (...args: Args): Promise<JsonSerializable<T>> => {
+        if (cacheReadFailure.current) {
+          throw cacheReadFailure.current;
+        }
+        const key = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
+        const readKey = options?.readFromKeyFirst
+          ? `cacheWithRedis-${options.readFromKeyFirst.cacheId}-${options.readFromKeyFirst.resolver(...args)}`
+          : key;
+        const cached = inMemoryCache.get(readKey);
+        if (cached) {
+          if (options?.readFromKeyFirst?.mirrorToCanonicalOnHit !== false) {
+            inMemoryCache.set(key, cached);
           }
-          const result = await fn(...args);
-          inMemoryCache.set(key, JSON.stringify(result));
-          return result;
+          return JSON.parse(cached) as JsonSerializable<T>;
+        }
+        const result = await fn(...args);
+        if ((options?.cacheNullValues ?? true) || result !== null) {
+          const serializedResult = JSON.stringify(result);
+          inMemoryCache.set(readKey, serializedResult);
+          inMemoryCache.set(key, serializedResult);
+        }
+        return result;
+      };
+    }
+  ),
+  invalidateCacheWithRedis: vi.fn().mockImplementation(
+    <T, Args extends unknown[]>(
+      fn: CacheableFunction<JsonSerializable<T>, Args>,
+      resolver: (...args: Args) => string,
+      options?: {
+        cacheId?: string;
+        readFromKeyFirst?: {
+          cacheId: string;
+          resolver: (...args: Args) => string;
         };
       }
-    ),
-  invalidateCacheWithRedis: vi
-    .fn()
-    .mockImplementation(
-      <T, Args extends unknown[]>(
-        fn: CacheableFunction<JsonSerializable<T>, Args>,
-        resolver: (...args: Args) => string
-      ) => {
-        return (...args: Args): Promise<void> => {
-          const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
-          inMemoryCache.delete(key);
-          deletedKeys.push(key);
-          return Promise.resolve();
-        };
-      }
-    ),
+    ) => {
+      return (...args: Args): Promise<void> => {
+        const key = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
+        inMemoryCache.delete(key);
+        deletedKeys.push(key);
+        if (options?.readFromKeyFirst) {
+          const readKey = `cacheWithRedis-${options.readFromKeyFirst.cacheId}-${options.readFromKeyFirst.resolver(...args)}`;
+          inMemoryCache.delete(readKey);
+          deletedKeys.push(readKey);
+        }
+        return Promise.resolve();
+      };
+    }
+  ),
   bestEffortInvalidateCacheWithRedis: vi
     .fn()
     .mockImplementation(
@@ -99,11 +134,14 @@ vi.mock("@app/lib/resources/kill_switch_resource", () => ({
 
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { WORKSPACE_CACHE_KEY_VERSION } from "@app/types/shared/cache_resource_registry";
 import type { WorkspaceType } from "@app/types/user";
 
 function getCacheKeyForWorkspace(workspaceId: string): string {
-  return `cacheWithRedis-_fetchByIdUncached-workspace:v${WORKSPACE_CACHE_KEY_VERSION}:${workspaceId}`;
+  return WorkspaceResource.byIdCacheOperations.buildKey({ wId: workspaceId });
+}
+
+function getPreviousCacheKeyForWorkspace(workspaceId: string): string {
+  return `cacheWithRedis-_fetchByIdUncached-workspace:v2:${workspaceId}`;
 }
 
 const INVALID_RETENTION_DAYS = CONVERSATIONS_RETENTION_MIN_DAYS - 1;
@@ -113,6 +151,8 @@ describe("WorkspaceResource", () => {
   let workspace: WorkspaceType;
 
   beforeEach(async () => {
+    listEnabledKillSwitches.mockReset().mockResolvedValue([]);
+    cacheReadFailure.current = null;
     workspace = await WorkspaceFactory.basic();
   });
 
@@ -145,10 +185,13 @@ describe("WorkspaceResource", () => {
       it("caches the workspace on first call", async () => {
         const workspaceId = workspace.sId;
         const cacheKey = getCacheKeyForWorkspace(workspaceId);
+        const previousCacheKey = getPreviousCacheKeyForWorkspace(workspaceId);
 
         expect(inMemoryCache.has(cacheKey)).toBe(false);
+        expect(inMemoryCache.has(previousCacheKey)).toBe(false);
         await WorkspaceResource.fetchById(workspaceId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
+        expect(inMemoryCache.has(previousCacheKey)).toBe(true);
       });
 
       it("serves from cache on second call", async () => {
@@ -160,6 +203,49 @@ describe("WorkspaceResource", () => {
 
         await WorkspaceResource.fetchById(workspaceId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
+      });
+
+      it("bypasses the cache in a transaction", async () => {
+        const cacheKey = getCacheKeyForWorkspace(workspace.sId);
+        const transaction: Transaction | undefined =
+          getNamespace("test-namespace")?.get("transaction");
+        if (!transaction) {
+          throw new Error("Expected the test transaction to be available.");
+        }
+
+        const resource = await WorkspaceResource.fetchById(
+          workspace.sId,
+          transaction
+        );
+
+        expect(resource?.sId).toBe(workspace.sId);
+        expect(inMemoryCache.has(cacheKey)).toBe(false);
+      });
+
+      it("falls back to the database when the cache is unavailable", async () => {
+        cacheReadFailure.current = new Error("Redis unavailable");
+
+        const resource = await WorkspaceResource.fetchById(workspace.sId);
+
+        expect(resource?.sId).toBe(workspace.sId);
+      });
+
+      it("applies provider kill switches after reading the cached snapshot", async () => {
+        workspace = await WorkspaceFactory.basic({
+          whiteListedProviders: ["openai", "anthropic"],
+        });
+        listEnabledKillSwitches.mockResolvedValue(["global_blacklist_openai"]);
+
+        const firstFetch = await WorkspaceResource.fetchById(workspace.sId);
+        expect(firstFetch?.whiteListedProviders).toEqual(["anthropic"]);
+
+        listEnabledKillSwitches.mockResolvedValue([]);
+
+        const cachedFetch = await WorkspaceResource.fetchById(workspace.sId);
+        expect(cachedFetch?.whiteListedProviders).toEqual([
+          "openai",
+          "anthropic",
+        ]);
       });
     });
 
@@ -188,6 +274,9 @@ describe("WorkspaceResource", () => {
         await resource?.updateWorkspaceSettings({ name: "Updated Name" });
 
         expect(deletedKeys).toContain(cacheKey);
+        expect(deletedKeys).toContain(
+          getPreviousCacheKeyForWorkspace(workspaceId)
+        );
         expect(inMemoryCache.has(cacheKey)).toBe(false);
       });
     });

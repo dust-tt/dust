@@ -87,6 +87,7 @@ export type KnownModelLLMId =
   | "gemini-3.5-flash"
   | "gemini-3.5-flash-lite"
   | "gemini-3.6-flash"
+  | "gemini-3.7-flash"
   | "deepseek-chat" // deepseek api
   | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/deepseek-v4-pro" // fireworks
@@ -99,9 +100,11 @@ export type KnownModelLLMId =
   | "accounts/fireworks/models/minimax-m2p5" // fireworks
   | "accounts/fireworks/models/glm-5" // fireworks
   | "accounts/fireworks/models/glm-5p2" // fireworks
+  | "accounts/fireworks/models/inkling" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
   | "grok-4.5" // xAI
+  | "grok-4.6" // xAI
   | "grok-4-latest" // xAI
   | "grok-4-fast-non-reasoning-latest"
   | "grok-4-fast-reasoning-latest"
@@ -730,8 +733,7 @@ export type RetrievalDocumentPublicType = z.infer<
 >;
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
-  | "activation_scheduler"
-  | "activation_skill"
+  | "activation_force_nudge"
   | "admin_controlled_pods"
   | "advanced_notion_management"
   | "allow_scim"
@@ -739,7 +741,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
   | "anthropic_cache_diagnostics"
-  | "agent_loop_qos_routing"
   | "audit_logs"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
@@ -788,12 +789,12 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "servicenow_tool"
   | "shopify_tool"
   | "show_debug_tools"
-  | "slack_enhanced_default_agent"
   | "slack_message_splitting"
   | "run_tools_from_prompt"
   | "usage_data_api"
   | "usage_page_read_only"
   | "enable_analytics_consumption"
+  | "enable_analytics_automations"
   | "pricing_groups"
   | "workspace_analytics"
   | "xai_feature"
@@ -3207,6 +3208,11 @@ export const PublicFrameResponseBodySchema = z.object({
   // functions by bare name. Only sent to a viewer who can read the Pod: nobody else can invoke a pod
   // function anyway, so there is no reason to hand out the Pod's layout.
   framePath: z.string().nullable().optional(),
+  // Standing of the authenticated viewer in the Pod hosting the Frame, so the share page can
+  // thread the same identity bits pod hosts do. Display-only: invocations re-authorize
+  // server-side. Absent means false.
+  isPodMember: z.boolean().optional(),
+  isPodEditor: z.boolean().optional(),
 });
 
 export type PublicFrameResponseBodyType = z.infer<

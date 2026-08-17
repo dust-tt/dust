@@ -1,9 +1,8 @@
-import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import {
-  avgCreditsPerUnit,
   fetchConsumptionTopGroups,
+  resolveConsumptionGroupLabels,
 } from "@app/lib/api/analytics/consumption/top";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
@@ -20,7 +19,11 @@ export type ConsumptionTopAgentRow = {
   agentId: string;
   name: string;
   pictureUrl: string | null;
+  description: string | null;
+  modelId: string | null;
+  modelDisplayName: string | null;
   credits: number;
+  previousCredits: number | null;
   messageCount: number;
   avgCreditsPerMessage: number;
 };
@@ -28,6 +31,8 @@ export type ConsumptionTopAgentRow = {
 export type ConsumptionTopAgents = {
   period: ConsumptionPeriod;
   totalCredits: number;
+  hasMore: boolean;
+  totalCount: number;
   // Highest credits first.
   agents: ConsumptionTopAgentRow[];
 };
@@ -39,41 +44,48 @@ export async function fetchConsumptionTopAgents(
   {
     period,
     limit,
+    offset = 0,
+    search,
     filter,
   }: {
     period: ConsumptionPeriod;
     limit: number;
+    offset?: number;
+    search?: string;
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionTopAgents, ElasticsearchError>> {
   const result = await fetchConsumptionTopGroups(auth, {
     dimension: "agent",
-    unit: "message",
     period,
     limit,
+    offset,
+    search,
     filter,
   });
   if (result.isErr()) {
     return result;
   }
-  const { groups, totalCredits } = result.value;
+  const { groups, hasMore, totalCount, totalCredits } = result.value;
 
-  const labels = await resolveDimensionLabels(
-    auth,
-    "agent",
-    groups.map((group) => group.key)
-  );
+  const rows = await resolveConsumptionGroupLabels(auth, "agent", groups);
 
   return new Ok({
     period,
     totalCredits,
-    agents: groups.map((group) => ({
-      agentId: group.key,
-      name: labels.get(group.key)?.name ?? group.key,
-      pictureUrl: labels.get(group.key)?.pictureUrl ?? null,
-      credits: group.credits,
-      messageCount: group.count,
-      avgCreditsPerMessage: avgCreditsPerUnit(group.credits, group.count),
+    hasMore,
+    totalCount,
+    agents: rows.map((row) => ({
+      agentId: row.key,
+      name: row.name,
+      pictureUrl: row.pictureUrl,
+      description: row.description,
+      modelId: row.modelId ?? null,
+      modelDisplayName: row.modelDisplayName ?? null,
+      credits: row.credits,
+      previousCredits: row.previousCredits,
+      messageCount: row.count,
+      avgCreditsPerMessage: row.avgCredits,
     })),
   });
 }

@@ -14,11 +14,11 @@ import { z } from "zod";
 
 const ListWorkAreasQuerySchema = z.object({
   podId: z.string().optional(),
-  status: z.enum(["candidate", "confirmed", "dismissed"]).optional(),
+  status: z.enum(["suggested", "dismissed"]).optional(),
 });
 
 const UpdateWorkAreaBodySchema = z.object({
-  status: z.enum(["candidate", "confirmed", "dismissed"]).optional(),
+  status: z.enum(["suggested", "dismissed"]).optional(),
   title: z.string().max(255).optional(),
   description: z.string().max(512).optional(),
 });

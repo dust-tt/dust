@@ -31,6 +31,7 @@ interface PodFrameSheetProps {
   frameTabs: PodFrameTab[];
   tabsOrder?: string[];
   isEditor: boolean;
+  isMember: boolean;
   isArchived: boolean;
   isOpen: boolean;
   onClose: () => void;
@@ -46,6 +47,7 @@ export function PodFrameSheet({
   frameTabs,
   tabsOrder,
   isEditor,
+  isMember,
   isArchived,
   isOpen,
   onClose,
@@ -164,6 +166,7 @@ export function PodFrameSheet({
                 framePath={framePath}
                 isInDrawer={true}
                 isPodEditor={isEditor}
+                isPodMember={isMember}
                 ref={iframeRef}
               />
             )

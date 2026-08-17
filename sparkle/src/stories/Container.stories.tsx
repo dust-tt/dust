@@ -5,6 +5,7 @@ import { Container } from "../index_with_tw_base";
 
 const meta = {
   title: "Layout/Container",
+  tags: ["a11y-issues"],
   parameters: {
     docs: {
       description: {

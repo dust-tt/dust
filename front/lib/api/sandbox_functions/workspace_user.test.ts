@@ -45,18 +45,35 @@ async function addToSpaceGroup(
   expect(addMemberResult.isOk()).toBe(true);
 }
 
-async function authorizePodEditorRequired(
+async function authorizePodMemberRequired(
   auth: Authenticator,
   space: SpaceResource
 ) {
   return authorizeSandboxFunctionInvocation(auth, {
-    userIdentity: "pod_editor_required",
+    userIdentity: "pod_member_required",
     origin: "interactive_session",
     space,
   });
 }
 
-describe("authorizeSandboxFunctionInvocation with pod_editor_required", () => {
+describe("authorizeSandboxFunctionInvocation with pod_member_required", () => {
+  it("authorizes a member of the pod member group", async () => {
+    const { workspace, adminAuth, space } = await setup();
+    const member = await makeWorkspaceMember(workspace);
+    await addToSpaceGroup(adminAuth, space, "regular_auto", member);
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      member.sId,
+      workspace.sId
+    );
+
+    const authorization = await authorizePodMemberRequired(memberAuth, space);
+
+    expect(authorization.authorized).toBe(true);
+    if (authorization.authorized) {
+      expect(authorization.user?.sId).toBe(member.sId);
+    }
+  });
+
   it("authorizes a member of the pod editor group", async () => {
     const { workspace, adminAuth, space } = await setup();
     const editor = await makeWorkspaceMember(workspace);
@@ -66,29 +83,9 @@ describe("authorizeSandboxFunctionInvocation with pod_editor_required", () => {
       workspace.sId
     );
 
-    const authorization = await authorizePodEditorRequired(editorAuth, space);
+    const authorization = await authorizePodMemberRequired(editorAuth, space);
 
     expect(authorization.authorized).toBe(true);
-    if (authorization.authorized) {
-      expect(authorization.user?.sId).toBe(editor.sId);
-    }
-  });
-
-  it("denies a pod member who is not an editor", async () => {
-    const { workspace, adminAuth, space } = await setup();
-    const member = await makeWorkspaceMember(workspace);
-    await addToSpaceGroup(adminAuth, space, "regular_auto", member);
-    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      member.sId,
-      workspace.sId
-    );
-
-    const authorization = await authorizePodEditorRequired(memberAuth, space);
-
-    expect(authorization.authorized).toBe(false);
-    if (!authorization.authorized) {
-      expect(authorization.errorMessage).toContain("editor");
-    }
   });
 
   it("denies a workspace member outside the pod", async () => {
@@ -99,17 +96,22 @@ describe("authorizeSandboxFunctionInvocation with pod_editor_required", () => {
       workspace.sId
     );
 
-    const authorization = await authorizePodEditorRequired(outsiderAuth, space);
+    const authorization = await authorizePodMemberRequired(outsiderAuth, space);
 
     expect(authorization.authorized).toBe(false);
+    if (!authorization.authorized) {
+      expect(authorization.errorMessage).toContain("member");
+    }
   });
 
-  it("authorizes a workspace admin through their role", async () => {
+  it("denies a workspace admin outside the pod", async () => {
+    // Admins hold `admin` on pods but not `write`, so they cannot publish pod functions and are
+    // not treated as members either.
     const { adminAuth, space } = await setup();
 
-    const authorization = await authorizePodEditorRequired(adminAuth, space);
+    const authorization = await authorizePodMemberRequired(adminAuth, space);
 
-    expect(authorization.authorized).toBe(true);
+    expect(authorization.authorized).toBe(false);
   });
 
   it("denies a userless caller", async () => {
@@ -118,7 +120,7 @@ describe("authorizeSandboxFunctionInvocation with pod_editor_required", () => {
       workspace.sId
     );
 
-    const authorization = await authorizePodEditorRequired(userlessAuth, space);
+    const authorization = await authorizePodMemberRequired(userlessAuth, space);
 
     expect(authorization.authorized).toBe(false);
   });

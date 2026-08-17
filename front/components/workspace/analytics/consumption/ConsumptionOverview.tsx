@@ -3,7 +3,6 @@ import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionOverview as ConsumptionOverviewType } from "@app/lib/api/analytics/consumption/overview";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { formatCredits } from "@app/lib/client/credits";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
@@ -37,7 +36,7 @@ interface SummaryCardProps {
 
 function SummaryCard({ label, value, hint }: SummaryCardProps) {
   return (
-    <div className="flex flex-1 flex-col justify-center gap-1 rounded-xl border border-border p-4">
+    <div className="flex flex-1 flex-col justify-center gap-1 rounded-xl border border-border bg-panel-background p-4">
       <span className="text-xs font-semibold text-muted-foreground">
         {label}
       </span>
@@ -65,7 +64,7 @@ function ConsumptionSummary({
   return (
     <div className="flex flex-col gap-4">
       {creditUsage && (
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-border p-2">
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-panel-background p-2">
           <div className="flex items-center gap-2">
             <Chip
               size="mini"
@@ -113,16 +112,14 @@ function ConsumptionSummary({
 interface ConsumptionOverviewProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
-  filter?: ConsumptionScopeFilter;
 }
 
 export function ConsumptionOverview({
   workspaceId,
   period: periodSelection,
-  filter,
 }: ConsumptionOverviewProps) {
   const { overview, isOverviewLoading, isOverviewError } =
-    useConsumptionOverview({ workspaceId, period: periodSelection, filter });
+    useConsumptionOverview({ workspaceId, period: periodSelection });
 
   if (isOverviewLoading) {
     return (

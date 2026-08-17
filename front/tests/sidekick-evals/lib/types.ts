@@ -37,6 +37,18 @@ interface BaseTestCase {
   mockState: MockAgentState;
   expectedToolCalls?: string[];
   judgeCriteria: string;
+  // The sidekick prompt forbids `get_agent_config` on the first message of a
+  // conversation, so single-message scenarios are seeded with a prior exchange
+  // and evaluated as follow-ups. Set this for the scenarios whose subject IS the
+  // first-message behaviour (discovery, clarifying questions): they run
+  // unseeded, and must not expect `get_agent_config`.
+  isFirstMessage?: boolean;
+  // Set for scenarios whose subject is the clarifying question itself ("should
+  // ask before suggesting"). The run ends as soon as the sidekick calls
+  // `ask_user_question`, mirroring production where the agent loop pauses for
+  // the user. Scenarios that must still produce a suggestion after asking leave
+  // this unset: their question gets a canned answer and the run continues.
+  stopOnUserQuestion?: boolean;
 }
 
 export interface SimpleTestCase extends BaseTestCase {

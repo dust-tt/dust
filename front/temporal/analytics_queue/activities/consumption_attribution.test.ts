@@ -25,7 +25,9 @@ vi.mock(
 
 vi.mock(
   "@app/lib/api/assistant/agent_message_consumption_attribution/store",
-  () => ({ computeAndStoreAgentMessageConsumptionAttribution: vi.fn() })
+  () => ({
+    computeAndStoreAgentMessageConsumptionAttribution: vi.fn(),
+  })
 );
 
 vi.mock("@app/lib/api/assistant/streaming/events", () => ({
@@ -96,6 +98,13 @@ describe("storeAgentMessageConsumptionAnalyticsActivity", () => {
         message,
       })
     ).resolves.toBeUndefined();
+
+    expect(indexAgentMessageConsumptionAnalytics).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        agentMessageId: message.agentMessageId,
+      }
+    );
   });
 
   it("throws the Elasticsearch error so Temporal retries the activity", async () => {

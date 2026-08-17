@@ -1,18 +1,18 @@
 import {
   getMcpServerDisplayName,
   getMcpServerViewDisplayName,
-  isRemoteMCPServerType,
 } from "@app/lib/actions/mcp_helper";
 import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import { SOURCE_ORIGIN_LABELS } from "@app/lib/api/analytics/source_labels";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
-import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
-import { listMCPServersWithViews } from "@app/lib/api/mcp/servers";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { KeyResource } from "@app/lib/resources/key_resource";
+import type { MCPServerViewDisplayMetadata } from "@app/lib/resources/mcp_server_view_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import tracer from "@app/logger/tracer";
@@ -39,6 +39,7 @@ export type ConsumptionFacetCatalog = Record<
 
 type ConsumptionFacetCatalogSource =
   | "members"
+  | "api_keys"
   | "groups"
   | "agents"
   | "models"
@@ -47,8 +48,14 @@ type ConsumptionFacetCatalogSource =
 
 function traceFacetCatalogLoad<T>(
   source: ConsumptionFacetCatalogSource,
+  dimension: ConsumptionScopeDimension,
+  requestedDimension: ConsumptionScopeDimension | null,
   fn: () => Promise<T[]>
 ): Promise<T[]> {
+  if (requestedDimension !== null && requestedDimension !== dimension) {
+    return Promise.resolve([]);
+  }
+
   return tracer.trace(
     "analytics.consumption.facets.catalog.load",
     { resource: source },
@@ -62,33 +69,46 @@ function traceFacetCatalogLoad<T>(
 }
 
 function toolFacetCatalogEntries(
-  mcpServers: MCPServerTypeWithViews[]
+  mcpServerViews: MCPServerViewDisplayMetadata[]
 ): ConsumptionFacetCatalogEntry[] {
-  const entries = mcpServers.flatMap<ConsumptionFacetCatalogEntry>((server) => {
-    if (!isRemoteMCPServerType(server)) {
+  const entries = mcpServerViews.flatMap<ConsumptionFacetCatalogEntry>(
+    (view) => {
+      if (view.serverType === "internal") {
+        return [
+          {
+            value: view.serverName,
+            label: getMcpServerDisplayName({
+              sId: view.mcpServerId,
+              name: view.serverName,
+            }),
+            pictureUrl: null,
+            icon: view.icon,
+          },
+        ];
+      }
+
+      // Remote tool documents store a name in `tool.server_name`. They do not
+      // store the remote server ID. The name comes from the action name override,
+      // then the view name, then the server name. This list covers view and server
+      // names. Elasticsearch adds action name overrides and old names found in
+      // the selected period. Using the server ID here would never match the
+      // indexed data and would show a disabled duplicate in the UI.
       return [
         {
-          value: server.name,
-          label: getMcpServerDisplayName(server),
+          value: view.viewName ?? view.serverName,
+          label: getMcpServerViewDisplayName({
+            name: view.viewName,
+            server: {
+              sId: view.mcpServerId,
+              name: view.serverName,
+            },
+          }),
           pictureUrl: null,
-          icon: server.icon,
+          icon: view.icon,
         },
       ];
     }
-
-    // Remote tool documents store a name in `tool.server_name`. They do not
-    // store the remote server ID. The name comes from the action name override,
-    // then the view name, then the server name. This list covers view and server
-    // names. Elasticsearch adds action name overrides and old names found in
-    // the selected period. Using the server ID here would never match the
-    // indexed data and would show a disabled duplicate in the UI.
-    return server.views.map((view) => ({
-      value: view.name ?? server.name,
-      label: getMcpServerViewDisplayName(view),
-      pictureUrl: null,
-      icon: view.server.icon,
-    }));
-  });
+  );
 
   // The same remote server can have several views with the same name. Keep one
   // filter option for that name.
@@ -97,43 +117,76 @@ function toolFacetCatalogEntries(
 
 /** Lists current workspace entities that can be selected as consumption filters. */
 async function listConsumptionFacetCatalogWithoutTracing(
-  auth: Authenticator
+  auth: Authenticator,
+  requestedDimension: ConsumptionScopeDimension | null = null
 ): Promise<ConsumptionFacetCatalog> {
   // TODO(2026-08-11 OBSERVABILITY): This eagerly loads several complete
   // workspace catalogs and is known to perform poorly on large workspaces.
   // Move most facet metadata into Elasticsearch so this endpoint can query ES
   // instead of loading several unbounded database-backed catalogs.
-  const members = await traceFacetCatalogLoad("members", async () => {
-    const result = await getMembers(auth, { activeOnly: true });
-    return result.members;
-  });
-  const groups = await traceFacetCatalogLoad("groups", () =>
-    GroupResource.listAllWorkspaceGroups(auth, {
-      groupKinds: [...MANAGEABLE_GROUP_KINDS],
-    })
+  const members = await traceFacetCatalogLoad(
+    "members",
+    "user",
+    requestedDimension,
+    async () => {
+      const result = await getMembers(auth, { activeOnly: true });
+      return result.members;
+    }
   );
-  const agents = await traceFacetCatalogLoad("agents", () =>
-    getAgentConfigurationsForView({
-      auth,
-      agentsGetView: "analytics",
-      variant: "extra_light",
-      omitInstructions: true,
-    })
+  const apiKeys = await traceFacetCatalogLoad(
+    "api_keys",
+    "api_key",
+    requestedDimension,
+    () =>
+      KeyResource.listNonSystemKeysByWorkspace(auth.getNonNullableWorkspace())
   );
-  const models = await traceFacetCatalogLoad("models", async () => {
-    const result = await getModelsForAuth(auth);
-    return result.models;
-  });
-  const mcpServers = await traceFacetCatalogLoad("mcp_servers", () =>
-    listMCPServersWithViews(auth)
+  const groups = await traceFacetCatalogLoad(
+    "groups",
+    "group",
+    requestedDimension,
+    () =>
+      GroupResource.listAllWorkspaceGroups(auth, {
+        groupKinds: [...MANAGEABLE_GROUP_KINDS],
+      })
   );
-  const skills = await traceFacetCatalogLoad("skills", () =>
-    SkillResource.listByWorkspace(auth, {
-      status: "active",
-      withInstructions: false,
-      withTools: false,
-      withFileAttachments: false,
-    })
+  const agents = await traceFacetCatalogLoad(
+    "agents",
+    "agent",
+    requestedDimension,
+    () =>
+      getAgentConfigurationsForView({
+        auth,
+        agentsGetView: "analytics",
+        variant: "extra_light",
+        omitInstructions: true,
+      })
+  );
+  const models = await traceFacetCatalogLoad(
+    "models",
+    "model",
+    requestedDimension,
+    async () => {
+      const result = await getModelsForAuth(auth);
+      return result.models;
+    }
+  );
+  const mcpServerViews = await traceFacetCatalogLoad(
+    "mcp_servers",
+    "tool",
+    requestedDimension,
+    () => MCPServerViewResource.listDisplayMetadataByWorkspace(auth)
+  );
+  const skills = await traceFacetCatalogLoad(
+    "skills",
+    "skill",
+    requestedDimension,
+    () =>
+      SkillResource.listByWorkspace(auth, {
+        status: "active",
+        withInstructions: false,
+        withTools: false,
+        withFileAttachments: false,
+      })
   );
 
   return {
@@ -147,6 +200,13 @@ async function listConsumptionFacetCatalogWithoutTracing(
       value: member.sId,
       label: member.fullName,
       pictureUrl: member.image,
+    })),
+    // API key names are not unique and are also the indexed grouping key.
+    // Keep one selectable entry per name so the catalog matches ES buckets.
+    api_key: [...new Set(apiKeys.map((apiKey) => apiKey.name))].map((name) => ({
+      value: name,
+      label: name,
+      pictureUrl: null,
     })),
     group: groups.map((group) => ({
       value: group.sId,
@@ -166,7 +226,7 @@ async function listConsumptionFacetCatalogWithoutTracing(
             model.defaultReasoningEffort
           ) ?? undefined,
       })),
-    tool: toolFacetCatalogEntries(mcpServers),
+    tool: toolFacetCatalogEntries(mcpServerViews),
     skill: skills.map((skill) => ({
       value: skill.sId,
       label: skill.name,
@@ -179,6 +239,17 @@ async function listConsumptionFacetCatalogWithoutTracing(
       pictureUrl: null,
     })),
   };
+}
+
+export async function listConsumptionFacetCatalogDimension(
+  auth: Authenticator,
+  dimension: ConsumptionScopeDimension
+): Promise<ConsumptionFacetCatalogEntry[]> {
+  const catalog = await listConsumptionFacetCatalogWithoutTracing(
+    auth,
+    dimension
+  );
+  return catalog[dimension];
 }
 
 export async function listConsumptionFacetCatalog(

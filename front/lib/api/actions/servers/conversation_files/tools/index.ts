@@ -1,7 +1,5 @@
-import {
-  computeTextByteSize,
-  FILE_OFFLOAD_TEXT_SIZE_BYTES,
-} from "@app/lib/actions/action_output_limits";
+import { Readable } from "node:stream";
+import { FILE_OFFLOAD_TEXT_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getDataSourceURI } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -15,6 +13,10 @@ import {
   CONVERSATION_LIST_FILES_ACTION_NAME,
   CONVERSATION_SEARCH_FILES_ACTION_NAME,
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
+import {
+  collectGrepMatches,
+  compileGrepPattern,
+} from "@app/lib/api/actions/servers/files/tools/grep_regex";
 import { searchFunction } from "@app/lib/api/actions/servers/search/tools";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import {
@@ -42,11 +44,9 @@ import { isImageContent, isTextContent } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 
-const MAX_FILE_SIZE_FOR_GREP = 20 * 1024 * 1024; // 20MB.
 const MAX_CONTENT_SIZE_FOR_LIST_FILES = 1024 * 256; // 256KB.
 
 export const contentFromAttachments = (
@@ -212,37 +212,39 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
 
     // Apply grep filter if provided.
     if (grep) {
-      // Check if the grep pattern is too large.
-      const grepByteSize = computeTextByteSize(grep);
-      if (grepByteSize > MAX_FILE_SIZE_FOR_GREP) {
+      const regexResult = compileGrepPattern(grep);
+      if (regexResult.isErr()) {
         return new Err(
           new MCPError(
-            `Grep pattern is too large (${(grepByteSize / 1024 / 1024).toFixed(2)}MB) to apply grep filtering. ` +
-              `Maximum supported size is ${MAX_FILE_SIZE_FOR_GREP / 1024 / 1024}MB. ` +
-              `Consider using offset/limit to read smaller portions of the file.`,
-            {
-              tracked: false,
-            }
-          )
-        );
-      }
-
-      try {
-        const regex = new RegExp(grep, "gm");
-        const lines = text.split("\n");
-        const matchedLines = lines.filter((line) => regex.test(line));
-        text = matchedLines.join("\n");
-      } catch (e) {
-        return new Err(
-          new MCPError(
-            `Invalid regular expression: ${grep}. Error: ${normalizeError(e)}`,
+            `Unsupported or invalid regular expression. Error: ${regexResult.error.message}`,
             { tracked: false }
           )
         );
       }
+
+      const grepResult = await collectGrepMatches(
+        Readable.from([text]),
+        regexResult.value,
+        {
+          formatMatch: (line) => line,
+          maxMatches: Number.MAX_SAFE_INTEGER,
+        }
+      );
+      if (grepResult.isErr()) {
+        return new Err(
+          new MCPError(
+            `Failed to search file ${title}: ${grepResult.error.message}`,
+            { tracked: false }
+          )
+        );
+      }
+      text = grepResult.value.matches.join("\n");
+      if (grepResult.value.capped) {
+        text += "\n\n[Results truncated to the grep output limit.]";
+      }
       if (text.length === 0) {
         return new Err(
-          new MCPError(`No lines matched the grep pattern: ${grep}.`, {
+          new MCPError(`No lines matched the grep pattern.`, {
             tracked: false,
           })
         );

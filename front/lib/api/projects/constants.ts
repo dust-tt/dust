@@ -1,4 +1,4 @@
-import { podScopedPath } from "@app/lib/api/file_system/types";
+import { podScopedPath } from "@app/types/file_system";
 
 export const PROJECT_CONTEXT_FOLDER_ID = "project-context-folder";
 export const PROJECT_CONTEXT_FOLDER_NAME = "Context";

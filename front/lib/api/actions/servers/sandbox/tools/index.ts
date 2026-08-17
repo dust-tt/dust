@@ -28,9 +28,12 @@ import {
   revokeExecToken,
 } from "@app/lib/api/sandbox/access_tokens";
 import { readNewDenyLogEntries } from "@app/lib/api/sandbox/egress";
+import type { RequestOwnerPolicyDomainOutcome } from "@app/lib/api/sandbox/egress_policy";
 import {
   addOwnerPolicyDomain,
   parseExactEgressDomain,
+  requestOwnerPolicyDomain,
+  requestWorkspacePolicyDomain,
 } from "@app/lib/api/sandbox/egress_policy";
 import {
   createToolManifest,
@@ -52,11 +55,15 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
+import { normalizeEgressPolicyDomain } from "@app/types/sandbox/egress_policy";
 import { isDevelopment } from "@app/types/shared/env";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 import { z } from "zod";
@@ -64,6 +71,7 @@ import { z } from "zod";
 const DEFAULT_WORKING_DIRECTORY = "/home/agent";
 const DEFAULT_EXEC_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24h
 const ADD_EGRESS_DOMAIN_TOOL_NAME = "add_egress_domain" as const;
+const REQUEST_EGRESS_DOMAIN_TOOL_NAME = "request_egress_domain" as const;
 const REDACTION_MARKER_PREFIX = "«redacted:";
 const REDACTION_MARKER_SUFFIX = "»";
 const REDACTION_MIN_LENGTH = 16;
@@ -290,21 +298,27 @@ export async function createSandboxTools(
       return buildDescribeToolsetOutput(auth, providerId, format ?? "yaml");
     },
     [ADD_EGRESS_DOMAIN_TOOL_NAME]: addEgressDomainTool,
+    [REQUEST_EGRESS_DOMAIN_TOOL_NAME]: requestEgressDomainTool,
   };
 
   const tools = buildTools(SANDBOX_TOOLS_METADATA, handlers);
 
-  // The add_egress_domain tool requires Computer access and the
-  // per-workspace setting that admins toggle on top of it.
+  // Both require Computer. add_egress_domain is also gated on the self-serve
+  // toggle; request_egress_domain on sandbox_functions instead — so it only
+  // appears where its Pod/workspace review settings exist, never the toggle.
   const flags = await getFeatureFlags(auth);
-  if (
-    isComputerFeatureEnabled(flags) &&
-    isSandboxAgentEgressRequestsAllowed(auth)
-  ) {
-    return tools;
+  const computerEnabled = isComputerFeatureEnabled(flags);
+  const excluded = new Set<string>();
+  if (!computerEnabled || !isSandboxAgentEgressRequestsAllowed(auth)) {
+    excluded.add(ADD_EGRESS_DOMAIN_TOOL_NAME);
+  }
+  if (!computerEnabled || !flags.includes("sandbox_functions")) {
+    excluded.add(REQUEST_EGRESS_DOMAIN_TOOL_NAME);
   }
 
-  return tools.filter((tool) => tool.name !== ADD_EGRESS_DOMAIN_TOOL_NAME);
+  return excluded.size === 0
+    ? tools
+    : tools.filter((tool) => !excluded.has(tool.name));
 }
 
 export async function buildDescribeToolsetOutput(
@@ -619,4 +633,95 @@ export async function addEgressDomainTool(
         `No change made; this domain is already allowed for this conversation.`;
 
   return new Ok([{ type: "text" as const, text }]);
+}
+
+export async function requestEgressDomainTool(
+  { domain, scope }: { domain: string; scope: "pod" | "workspace" },
+  { auth, runContext }: ToolHandlerExtra
+): Promise<Result<Array<{ type: "text"; text: string }>, MCPError>> {
+  assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
+
+  const parsed = normalizeEgressPolicyDomain(domain);
+  if (parsed.isErr()) {
+    return new Err(new MCPError(parsed.error.message));
+  }
+
+  const requestResult = await fileEgressDomainRequest(
+    auth,
+    runContext.conversation,
+    {
+      scope,
+      domain: parsed.value,
+    }
+  );
+  if (requestResult.isErr()) {
+    return new Err(new MCPError(requestResult.error.message));
+  }
+
+  const target = scope === "workspace" ? "workspace" : "Pod";
+  return new Ok([
+    {
+      type: "text" as const,
+      text: requestOutcomeText(
+        requestResult.value.outcome,
+        target,
+        parsed.value
+      ),
+    },
+  ]);
+}
+
+// Pod scope keys the Pod's policy file by the conversation's spaceId.
+function fileEgressDomainRequest(
+  auth: Authenticator,
+  conversation: ConversationType,
+  { scope, domain }: { scope: "pod" | "workspace"; domain: string }
+): Promise<
+  Result<
+    { policy: EgressPolicy; outcome: RequestOwnerPolicyDomainOutcome },
+    Error
+  >
+> {
+  if (scope === "workspace") {
+    return requestWorkspacePolicyDomain(auth, { domain });
+  }
+  if (!isPodConversation(conversation)) {
+    return Promise.resolve(
+      new Err(
+        new Error(
+          "This conversation is not in a Pod. Request `workspace` scope, or " +
+            "use add_egress_domain to allow a domain for this conversation."
+        )
+      )
+    );
+  }
+  return requestOwnerPolicyDomain(auth, {
+    ownerId: conversation.spaceId,
+    domain,
+  });
+}
+
+function requestOutcomeText(
+  outcome: RequestOwnerPolicyDomainOutcome,
+  target: string,
+  domain: string
+): string {
+  switch (outcome) {
+    case "requested":
+      return (
+        `Requested for the ${target}: ${domain}\n` +
+        `A workspace admin will review this before sandboxes can reach it.`
+      );
+    case "already_allowed":
+      return (
+        `Already allowed for the ${target}: ${domain}\n` + `No request needed.`
+      );
+    case "already_requested":
+      return (
+        `Already requested for the ${target}: ${domain}\n` +
+        `It is waiting for a workspace admin to review.`
+      );
+    default:
+      return assertNever(outcome);
+  }
 }

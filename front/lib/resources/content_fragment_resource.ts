@@ -9,7 +9,6 @@ import {
 import appConfig from "@app/lib/api/config";
 import config from "@app/lib/api/config";
 import { SCOPED_PREFIX_CONVERSATION } from "@app/lib/api/file_system";
-import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
 import {
   isPastedContentOverInlineLimit,
   TRUNCATED_SNIPPET_SIZE,
@@ -52,6 +51,7 @@ import type {
 import type { ContentNodeType } from "@app/types/core/content_node";
 import { CoreAPI } from "@app/types/core/core_api";
 import { isLLMVisionSupportedImageContentType } from "@app/types/files";
+import { getConversationFilesBasePath } from "@app/types/mount_path";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

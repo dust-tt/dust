@@ -592,6 +592,7 @@ export async function createSpaceAndGroup(
     }
 
     const space = await SpaceResource.makeNew(
+      auth,
       {
         name,
         kind: spaceKind,
@@ -702,6 +703,11 @@ export async function createSpaceAndGroup(
         t
       );
     }
+
+    // Write group_permissions once all group associations are in place (#9478). `makeNew` already
+    // wrote the initial member/editor groups; this captures any added afterwards (global viewer,
+    // group-mode selections).
+    await space.writeGroupPermissions(auth, { transaction: t });
 
     return new Ok(space);
   });

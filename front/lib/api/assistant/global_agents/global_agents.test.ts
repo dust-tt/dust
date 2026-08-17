@@ -1,13 +1,20 @@
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { Authenticator } from "@app/lib/auth";
+import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   CLAUDE_OPUS_5_MODEL_ID,
   CLAUDE_SONNET_5_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
+import {
+  AUTO_FAST_MODEL_ID,
+  AUTO_MODEL_ID,
+} from "@app/types/assistant/models/auto";
 import { GEMINI_3_1_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import {
   GPT_5_6_LUNA_MODEL_ID,
@@ -503,5 +510,40 @@ describe("getGlobalAgents Deep Dive model routing", () => {
       modelId: GEMINI_3_1_PRO_MODEL_ID,
       reasoningEffort: "light",
     });
+  });
+});
+
+// @dust is not editable by members, so a Basic-capped member defaulted to the
+// Standard stream would get an agent that only ever fails the tier check.
+describe("getGlobalAgents Dust Auto default", () => {
+  it.each([
+    ["premium", AUTO_MODEL_ID],
+    ["cost_efficient", AUTO_FAST_MODEL_ID],
+  ] as const)("defaults @dust to %s member's highest allowed stream", async (tierName, expectedModelId) => {
+    const workspace = await WorkspaceFactory.basic();
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await FeatureFlagFactory.basic(adminAuth, "models_picker");
+
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+    await ModelsTierResource.setUserMaxAllowedTier(adminAuth, {
+      userId: user.sId,
+      tierName,
+    });
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const agents = await getGlobalAgents(
+      auth,
+      [GLOBAL_AGENTS_SID.DUST],
+      "light"
+    );
+
+    expect(agents).toHaveLength(1);
+    expect(agents[0].model).toMatchObject({ modelId: expectedModelId });
   });
 });

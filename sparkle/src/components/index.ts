@@ -115,6 +115,8 @@ export {
   DialogTrigger,
 } from "./Dialog";
 export { DiffBlock, type DiffChange } from "./DiffBlock";
+export type { DiscoveryGlintProps } from "./DiscoveryGlint";
+export { DiscoveryGlint } from "./DiscoveryGlint";
 export type {
   DropdownMenuFilterOption,
   DropdownMenuItemProps,
@@ -241,6 +243,7 @@ export {
   PopoverTrigger,
 } from "./Popover";
 export { PriceTable } from "./PriceTable";
+export { ProgressBar } from "./ProgressBar";
 export { PuzzleSpinner } from "./PuzzleSpinner";
 export { RadioGroup, RadioGroupCustomItem, RadioGroupItem } from "./RadioGroup";
 export { RainbowEffect } from "./RainbowEffect";

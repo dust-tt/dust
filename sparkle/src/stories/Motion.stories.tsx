@@ -5,7 +5,7 @@ import { TokenChip, useCssVar, withThemedSurface } from "./foundations-helpers";
 
 const meta = {
   title: "Foundations/Motion",
-  tags: ["autodocs"],
+  tags: ["a11y-issues", "autodocs"],
   decorators: [withThemedSurface],
   parameters: {
     layout: "padded",

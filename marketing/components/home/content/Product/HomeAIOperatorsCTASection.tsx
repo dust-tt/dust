@@ -1,9 +1,7 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
-import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import { Button } from "@dust-tt/sparkle";
-import Link from "next/link";
 
 type CTAStatAccent = "blue" | "golden" | "green";
 
@@ -38,8 +36,6 @@ const STAT_THEME: Record<CTAStatAccent, { number: string }> = {
 };
 
 export function HomeAIOperatorsCTASection() {
-  const { openSignUpModal } = useSignUpModal();
-
   return (
     <section className="relative w-full overflow-hidden bg-slate-950 py-32 text-white">
       <div
@@ -99,22 +95,11 @@ export function HomeAIOperatorsCTASection() {
           <Button
             variant="highlight"
             size="md"
-            label="Become an AI Operator"
-            className="active:scale-[0.97] transition-transform duration-100"
-            onClick={withTracking(
-              TRACKING_AREAS.HOME,
-              "ai_operator_become",
-              openSignUpModal
-            )}
-          />
-          <Link
+            label="We're hiring →"
             href="https://dust.tt/jobs"
-            className="group inline-flex items-center gap-2 font-mono text-sm uppercase tracking-[0.1em] text-white/80 transition-colors hover:text-white"
-          >
-            <span className="block h-px w-6 bg-white/40 transition-all duration-200 group-hover:w-10 group-hover:bg-white" />
-            We&apos;re hiring
-            <span aria-hidden="true">→</span>
-          </Link>
+            className="active:scale-[0.97] transition-transform duration-100"
+            onClick={withTracking(TRACKING_AREAS.HOME, "ai_operator_hiring")}
+          />
         </HomeReveal>
         <div className="mt-12 hidden w-full max-w-[760px] grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-white/10">
           {STATS.map((stat, index) => {

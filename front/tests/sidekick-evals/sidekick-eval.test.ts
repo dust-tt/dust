@@ -47,6 +47,20 @@ vi.mock("@anthropic-ai/sdk", async (importOriginal) => {
   return { ...(actual as object), default: AnthropicWithBrowserSupport };
 });
 
+// Every LLM stream persists a `runs` row plus its usage. The evals stream many
+// times per test from concurrent tests, which conflicts with the per-test CLS
+// transaction and with the unique constraint on `dustRunId`. Usage accounting is
+// not what these evals measure, so the lifecycle is stubbed out.
+vi.mock("@app/lib/api/llm/run_lifecycle", () => ({
+  LLMRunLifecycle: {
+    start: async () => ({
+      recordTokenUsage: async () => undefined,
+      recordRunUsages: async () => undefined,
+      close: async () => undefined,
+    }),
+  },
+}));
+
 const evalResults: EvalResult[] = [];
 
 const testCases = RUN_SIDEKICK_EVAL
@@ -147,15 +161,27 @@ describe.skipIf(!RUN_SIDEKICK_EVAL)("Sidekick Evaluation Tests", () => {
       0
     );
 
+    // Scenarios that threw (LLM error, unknown tool, timeout) never record a
+    // result. They still count as failures, otherwise the pass rate is computed
+    // over a smaller denominator and is not comparable across models.
+    const evaluatedScenarioIds = new Set(
+      evalResults.map((r) => r.testCase.scenarioId)
+    );
+    const erroredTestCases = testCases.filter(
+      (t) => !evaluatedScenarioIds.has(t.scenarioId)
+    );
+
+    const totalCount = evalResults.length + erroredTestCases.length;
     const passedCount = evalResults.filter((r) => r.passed).length;
-    const passRate = ((passedCount / evalResults.length) * 100).toFixed(0);
+    const passRate = ((passedCount / totalCount) * 100).toFixed(0);
     const lines = [
       "",
       "=".repeat(60),
       `SIDEKICK EVAL TIMING SUMMARY (agent: ${SIDEKICK_AGENT})`,
       "=".repeat(60),
-      `Total scenarios: ${evalResults.length}`,
-      `Passed: ${passedCount}/${evalResults.length} (${passRate}%)`,
+      `Model: ${sidekickConfig.model.modelId} (reasoning effort: ${sidekickConfig.model.reasoningEffort ?? "default"})`,
+      `Total scenarios: ${totalCount} (${erroredTestCases.length} errored)`,
+      `Passed: ${passedCount}/${totalCount} (${passRate}%)`,
       `Total sidekick model time: ${(totalSidekickTimeMs / 1000).toFixed(1)}s`,
       `Average sidekick model time per scenario: ${(totalSidekickTimeMs / evalResults.length / 1000).toFixed(1)}s`,
       "-".repeat(60),
@@ -163,6 +189,9 @@ describe.skipIf(!RUN_SIDEKICK_EVAL)("Sidekick Evaluation Tests", () => {
         const status = r.passed ? "PASS" : "FAIL";
         return `  [${status}] ${r.testCase.category}/${r.testCase.scenarioId}: ${(r.sidekickModelTimeMs / 1000).toFixed(1)}s`;
       }),
+      ...erroredTestCases.map(
+        (t) => `  [ERR ] ${t.category}/${t.scenarioId}: errored`
+      ),
       "=".repeat(60),
       "",
     ];

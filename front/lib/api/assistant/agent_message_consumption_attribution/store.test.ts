@@ -3,6 +3,7 @@ import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
@@ -15,6 +16,11 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RunFactory } from "@app/tests/utils/RunFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { MISTRAL_SMALL_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
+import { GPT_5_4_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import type { ModelIdType } from "@app/types/assistant/models/types";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -35,32 +41,57 @@ const BILLED_CREDIT_AMOUNT_MICRO = 10_000_000;
 // footprints are deterministic in the assertions below.
 const TOKENS_PER_FOOTPRINT = 2;
 
-async function setupSettledMessageWithUsage() {
-  const {
-    authenticator: auth,
-    globalSpace,
-    workspace,
-  } = await createResourceTest({ role: "admin" });
+async function setupSettledMessageWithUsage({
+  runCount = 1,
+  restrictedConversation = false,
+  modelId,
+}: {
+  runCount?: number;
+  restrictedConversation?: boolean;
+  modelId?: ModelIdType;
+} = {}) {
+  const { authenticator, globalSpace, user, workspace } =
+    await createResourceTest({ role: "admin" });
 
+  let auth = authenticator;
   const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
     auth,
     { name: `Attribution ${generateRandomModelSId()}` }
   );
+  const conversationSpace = restrictedConversation
+    ? await SpaceFactory.project(workspace, user.id)
+    : undefined;
+  if (conversationSpace) {
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+  }
   const conversation = await ConversationFactory.create(auth, {
     agentConfigurationId: agentConfiguration.sId,
     messagesCreatedAt: [],
+    spaceId: conversationSpace?.id,
   });
-  const { run } = await RunFactory.createWithUsage(auth, {
-    inputTokens: INPUT_TOKENS_COUNT,
-    outputTokens: OUTPUT_TOKENS_COUNT,
-    reasoningTokens: REASONING_TOKENS_COUNT,
-  });
+  const runs = [];
+  for (let index = 0; index < runCount; index++) {
+    const { run } = await RunFactory.createWithUsage(auth, {
+      inputTokens: INPUT_TOKENS_COUNT,
+      outputTokens: OUTPUT_TOKENS_COUNT,
+      reasoningTokens: REASONING_TOKENS_COUNT,
+      modelId,
+    });
+    runs.push(run);
+  }
+  const run = runs[0];
+  if (!run) {
+    throw new Error("At least one run is required");
+  }
   // The default factory status is "created", which is a tracked status, so attribution runs.
   const { agentMessage } = await ConversationFactory.createAgentMessage(auth, {
     workspace,
     conversation,
     agentConfig: agentConfiguration,
-    runIds: [run.dustRunId],
+    runIds: runs.map(({ dustRunId }) => dustRunId),
   });
   await ConversationResource.updateAgentMessageCostCredits(auth, {
     agentMessageModelId: agentMessage.agentMessageId,
@@ -73,6 +104,7 @@ async function setupSettledMessageWithUsage() {
     workspace,
     conversation,
     run,
+    runs,
     conversationId: conversation.sId,
     agentMessageId: agentMessage.sId,
     agentMessageModelId: agentMessage.agentMessageId,
@@ -143,6 +175,38 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
         0
       )
     ).toBe(BILLED_CREDIT_AMOUNT_MICRO);
+  });
+
+  it("writes attribution for a project conversation hidden from the workflow auth", async () => {
+    const { workspace, conversationId, agentMessageId, agentMessageModelId } =
+      await setupSettledMessageWithUsage({ restrictedConversation: true });
+    const workflowAuth = await Authenticator.internalBuilderForWorkspace(
+      workspace.sId
+    );
+
+    expect(
+      await ConversationResource.fetchById(workflowAuth, conversationId)
+    ).toBeNull();
+
+    await computeAndStoreAgentMessageConsumptionAttribution(workflowAuth, {
+      agentMessageId,
+      conversationId,
+    });
+
+    const items =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        workflowAuth,
+        {
+          agentMessageModelIds: [agentMessageModelId],
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      );
+
+    expect(items.map((item) => item.itemType).sort()).toEqual([
+      "input",
+      "output",
+      "reasoning",
+    ]);
   });
 
   it("is idempotent across repeated runs", async () => {
@@ -260,6 +324,124 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
     ).toBe(OUTPUT_TOKENS_COUNT - REASONING_TOKENS_COUNT);
   });
 
+  it("removes only the last run's tool result footprint when the message stops", async () => {
+    const {
+      auth,
+      workspace,
+      conversation,
+      runs,
+      conversationId,
+      agentMessageId,
+      agentMessageModelId,
+    } = await setupSettledMessageWithUsage({ runCount: 2 });
+    const firstRun = runs[0];
+    const lastRun = runs[1];
+    if (!firstRun || !lastRun) {
+      throw new Error("Expected two runs");
+    }
+
+    const actions = [];
+    for (const run of [firstRun, lastRun]) {
+      const { action } = await AgentMCPActionFactory.create(auth, {
+        workspace,
+        conversationModelId: conversation.id,
+        agentMessageModelId,
+        status: "succeeded",
+        dustRunId: run.dustRunId,
+      });
+      actions.push(action);
+    }
+    const consumedAction = actions[0];
+    const unconsumedAction = actions[1];
+    if (!consumedAction || !unconsumedAction) {
+      throw new Error("Expected two actions");
+    }
+
+    const getItems = async () => {
+      const items =
+        await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+          auth,
+          {
+            agentMessageModelIds: [agentMessageModelId],
+            maxAttributionVersion:
+              AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+          }
+        );
+      return {
+        items,
+        toolByActionModelId: new Map(
+          items
+            .filter((item) => item.itemType === "tool")
+            .map((item) => [item.agentMCPActionId, item])
+        ),
+      };
+    };
+
+    // A resumable pass records both result footprints because either can still reach a later run.
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+    const { toolByActionModelId: toolsBeforeStop } = await getItems();
+    const consumedToolBeforeStop = toolsBeforeStop.get(consumedAction.id);
+    const unconsumedToolBeforeStop = toolsBeforeStop.get(unconsumedAction.id);
+    expect(consumedToolBeforeStop?.inputTokensCount).toBe(TOKENS_PER_FOOTPRINT);
+    expect(unconsumedToolBeforeStop?.inputTokensCount).toBe(
+      TOKENS_PER_FOOTPRINT
+    );
+
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId,
+      status: "gracefully_stopped",
+    });
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+
+    const { items: itemsAfterStop, toolByActionModelId: toolsAfterStop } =
+      await getItems();
+    const consumedToolAfterStop = toolsAfterStop.get(consumedAction.id);
+    const unconsumedToolAfterStop = toolsAfterStop.get(unconsumedAction.id);
+
+    expect(consumedToolAfterStop).toMatchObject({
+      inputTokensCount: TOKENS_PER_FOOTPRINT,
+      grossAttributedCreditAmountMicro:
+        consumedToolBeforeStop?.grossAttributedCreditAmountMicro,
+      directCreditAmountMicro: consumedToolBeforeStop?.directCreditAmountMicro,
+    });
+    expect(unconsumedToolAfterStop).toMatchObject({
+      inputTokensCount: 0,
+      directCreditAmountMicro:
+        unconsumedToolBeforeStop?.directCreditAmountMicro,
+    });
+    expect(
+      unconsumedToolAfterStop?.grossAttributedCreditAmountMicro
+    ).toBeLessThan(
+      unconsumedToolBeforeStop?.grossAttributedCreditAmountMicro ?? 0
+    );
+    expect(
+      itemsAfterStop.reduce(
+        (total, item) => total + (item.reconciledCreditAmountMicro ?? 0),
+        0
+      )
+    ).toBe(BILLED_CREDIT_AMOUNT_MICRO);
+
+    // A retry cannot subtract the result twice or restore it from stale potential evidence.
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+    expect(
+      (await getItems()).toolByActionModelId.get(unconsumedAction.id)
+    ).toMatchObject({
+      inputTokensCount: 0,
+      grossAttributedCreditAmountMicro:
+        unconsumedToolAfterStop?.grossAttributedCreditAmountMicro,
+    });
+  });
+
   it("stores a sandbox child Frame call as direct-charge-only", async () => {
     const {
       auth,
@@ -363,7 +545,23 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
     );
   });
 
-  it("attributes enabled skill instructions and tool definitions to the tool input", async () => {
+  it.each([
+    {
+      caseName: "omits deferred tool definitions for Anthropic tool search",
+      modelId: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
+      includesToolDefinitions: false,
+    },
+    {
+      caseName: "omits deferred tool definitions for OpenAI tool search",
+      modelId: GPT_5_4_MODEL_CONFIG.modelId,
+      includesToolDefinitions: false,
+    },
+    {
+      caseName: "includes tool definitions when tool search is disabled",
+      modelId: MISTRAL_SMALL_MODEL_CONFIG.modelId,
+      includesToolDefinitions: true,
+    },
+  ])("$caseName", async ({ modelId, includesToolDefinitions }) => {
     const {
       auth,
       globalSpace,
@@ -373,7 +571,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
       conversationId,
       agentMessageId,
       agentMessageModelId,
-    } = await setupSettledMessageWithUsage();
+    } = await setupSettledMessageWithUsage({ modelId });
 
     const internalServer = await InternalMCPServerInMemoryResource.makeNew(
       auth,
@@ -422,9 +620,12 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
     expect(inputTexts[0]).toContain(
       "<dust_system>\n<Measured Skill>\nFollow the enabled skill instructions."
     );
-    expect(inputTexts[0]).toContain(
-      '"name":"common_utilities__set_conversation_title"'
-    );
+    const toolDefinition = '"name":"common_utilities__set_conversation_title"';
+    if (includesToolDefinitions) {
+      expect(inputTexts[0]).toContain(toolDefinition);
+    } else {
+      expect(inputTexts[0]).not.toContain(toolDefinition);
+    }
 
     const items =
       await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(

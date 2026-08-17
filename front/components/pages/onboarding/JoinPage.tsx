@@ -94,10 +94,8 @@ export function JoinPage() {
   return (
     <OnboardingLayout owner={workspace}>
       <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
-        <Page.Header
-          title={`Hello there!`}
-          icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
-        />
+        <DustLogoSquare className="-ml-11 h-10 w-32" />
+        <Page.Header title={`Hello there!`} />
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
             <p>Welcome aboard!</p>

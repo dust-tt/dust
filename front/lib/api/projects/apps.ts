@@ -1,10 +1,11 @@
 import { DustFileSystem } from "@app/lib/api/file_system";
-import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
-import { getPodStateBasePath } from "@app/lib/api/files/mount_path";
 import { getFileContent } from "@app/lib/api/files/utils";
 import { deleteProjectFile } from "@app/lib/api/projects/context";
 import { createPodFrameFile } from "@app/lib/api/projects/pod_frame_file";
-import { deletePodDatabaseReplica } from "@app/lib/api/sandbox/db";
+import {
+  deletePodDatabaseReplica,
+  restartLitestreamDaemon,
+} from "@app/lib/api/sandbox/db";
 import {
   appPrefixFromPodDatabaseName,
   podDatabaseNameWithoutAppPrefix,
@@ -21,6 +22,7 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type {
   FileSystemEntry,
@@ -35,7 +37,9 @@ import type {
   PodAppFunction,
 } from "@app/types/api/pod_apps";
 import { normalizeAppPrefix } from "@app/types/api/pod_function_reference";
+import { SCOPED_PREFIX_POD } from "@app/types/file_system";
 import { isInteractiveContentType } from "@app/types/files";
+import { getPodStateBasePath } from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -43,10 +47,10 @@ import { Err, Ok } from "@app/types/shared/result";
 const POD_DATABASE_FILE_SUFFIX = ".db";
 
 /** The app subfolder holding one drizzle schema file per database. */
-const APP_DATABASES_SUBFOLDER = "databases";
+export const APP_DATABASES_SUBFOLDER = "databases";
 
 /** The app subfolder holding one source file per published function. */
-const APP_FUNCTIONS_SUBFOLDER = "functions";
+export const APP_FUNCTIONS_SUBFOLDER = "functions";
 
 /** Subfolders whose presence marks a pod-root folder as app-shaped. */
 const APP_SHAPED_SUBFOLDERS = [
@@ -55,7 +59,7 @@ const APP_SHAPED_SUBFOLDERS = [
 ];
 
 /** Suffix of a database's schema file, e.g. `chat.db.ts` declares the `chat` database. */
-const POD_DATABASE_SCHEMA_FILE_SUFFIX = ".db.ts";
+export const POD_DATABASE_SCHEMA_FILE_SUFFIX = ".db.ts";
 
 /**
  * A folder's accumulated file-system facts, before published functions and databases are joined in.
@@ -69,7 +73,7 @@ type AppFolder = {
 };
 
 /** Drop the last extension from a file name, e.g. `add-task.ts` -> `add-task`. */
-function stripExtension(fileName: string): string {
+export function stripExtension(fileName: string): string {
   const dotIndex = fileName.lastIndexOf(".");
 
   return dotIndex <= 0 ? fileName : fileName.slice(0, dotIndex);
@@ -454,7 +458,9 @@ export type DeletePodAppResult = PodAppDeleteSummary;
  *
  *  - Functions go first, so no invocation can arrive while the data underneath it is being removed.
  *  - A database's live files must go before its replica, because a running litestream keeps
- *    replicating a database it can still see (the same hazard the pod-scrub path notes).
+ *    replicating a database it can still see (the same hazard the pod-scrub path notes). Removing the
+ *    files does not make the daemon let go of them — its directory watcher only enumerates at start —
+ *    so the daemon is restarted in between, once every live file is gone.
  *
  * And the source folder goes LAST on purpose. Every step is idempotent, and the folder is what makes
  * the app appear in the Apps tab, so a failure part-way through leaves the app still listed and
@@ -500,7 +506,8 @@ export async function deletePodApp(
     }
   }
 
-  // 2. Live database files, then 3. their replicas. Wakes the pod if it is asleep.
+  // 2. Live database files. Wakes the pod if it is asleep.
+  let sandbox: SandboxResource | null = null;
   for (const database of app.databases) {
     const deleteLiveResult = await deleteDatabaseOnSandbox(auth, {
       space: pod,
@@ -516,7 +523,23 @@ export async function deletePodApp(
         )
       );
     }
+    sandbox = deleteLiveResult.value.sandbox;
+  }
 
+  // 3. Make the daemon let go of the files it just lost, so that step 4 wipes replicas nothing is
+  // writing to. A daemon that kept a deleted database open would recreate its prefix right after,
+  // and the pod's next cold start would restore the database from it.
+  if (sandbox) {
+    const restartResult = await restartLitestreamDaemon(auth, sandbox);
+    if (restartResult.isErr()) {
+      return new Err(
+        new PodAppDeleteError("internal", restartResult.error.message)
+      );
+    }
+  }
+
+  // 4. Replicas: the durable copy, and so the step that makes a database deletion stick.
+  for (const database of app.databases) {
     const deleteReplicaResult = await deletePodDatabaseReplica(auth, pod, {
       database: database.onDiskName,
     });
@@ -527,7 +550,7 @@ export async function deletePodApp(
     }
   }
 
-  // 4. Drop the Frames' pinned tabs before their files go, mirroring the delete_frame poke plugin.
+  // 5. Drop the Frames' pinned tabs before their files go, mirroring the delete_frame poke plugin.
   const metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
   if (metadata) {
     for (const frame of app.frames) {
@@ -537,7 +560,7 @@ export async function deletePodApp(
     }
   }
 
-  // 5. Source folder last. `deleteProjectFile` recurses and deletes each FileResource underneath,
+  // 6. Source folder last. `deleteProjectFile` recurses and deletes each FileResource underneath,
   // which is what revokes the Frames' share tokens along with them. Colliding folders all normalize
   // onto this one prefix, so every one of them belongs to the app being deleted.
   const folderNames =

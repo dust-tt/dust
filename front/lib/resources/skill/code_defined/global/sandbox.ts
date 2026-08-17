@@ -1,5 +1,4 @@
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/prompt_context";
-import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { readWorkspacePolicy } from "@app/lib/api/sandbox/egress_policy";
 import {
   createToolManifest,
@@ -16,6 +15,7 @@ import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/types/mount_path";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { Ok } from "@app/types/shared/result";
 
@@ -34,6 +34,7 @@ function buildSandboxInstructionProse({
     instructions.push(
       "You can use the `dsbx` command line tool to list and run tools programmatically in the sandbox.",
       "Use it with `dsbx tools [SERVER_NAME] [TOOL_NAME] [ARGS]...`. Run `dsbx tools --help` for more information.",
+      "`dsbx` tool calls only work while the `bash` command that started them is running: once it returns or hits its timeout, its credentials are revoked and any leftover call fails. Do not background them, and do not start more calls than fit in the timeout — split large batches across several `bash` calls, or raise `timeoutMs`.",
       "For very large argument values, write the value to a file in the sandbox and pass the path with a `__file__:` prefix (e.g. `--query __file__:/tmp/q.txt`) instead of inlining the value on the command line. Any value starting with `__file__:` is read from the file (UTF-8, max 100 MB) and used as the value for that key. File contents that are a JSON object or array are parsed into structured data (e.g. `--files __file__:/tmp/files.json` for a tool expecting an array), exactly as if the same JSON had been passed inline; any other content is used as a string. The file must already exist in the sandbox filesystem.",
       "Pass `--json` (before the server and tool names, e.g. `dsbx tools --json [SERVER_NAME] [TOOL_NAME] [ARGS]...`) to get the tool result as structured JSON (`{ content, isError }`) instead of plain text, which is easier to parse programmatically. Placed after the positional arguments it is treated as a tool argument instead."
     );

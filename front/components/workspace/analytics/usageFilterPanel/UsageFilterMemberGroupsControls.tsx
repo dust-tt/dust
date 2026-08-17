@@ -37,7 +37,7 @@ export function UsageFilterMemberGroupsControls({
     <>
       <NavigationListLabel
         label="Groups"
-        className="bg-transparent font-medium"
+        className="bg-transparent font-medium pt-2 pb-0"
         action={
           <Button
             label="Add group"

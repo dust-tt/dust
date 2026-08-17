@@ -73,7 +73,7 @@ import {
 const meta = {
   title: "Forms & Inputs/Dropdown",
   component: DropdownMenu,
-  tags: ["autodocs"],
+  tags: ["a11y-issues", "autodocs"],
   parameters: {
     docs: {
       description: {

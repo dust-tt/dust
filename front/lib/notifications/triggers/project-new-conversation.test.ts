@@ -1,6 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { getNovuClient } from "@app/lib/notifications";
 import {
+  areForYouNotificationsEnabled,
   filterMembersByNotifyCondition,
   notifyActivationConversationAgentReplied,
 } from "@app/lib/notifications/triggers/project-new-conversation";
@@ -19,6 +20,7 @@ import type { NotificationCondition } from "@app/types/notification_preferences"
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
   DEFAULT_NOTIFICATION_CONDITION,
+  FOR_YOU_NOTIFICATION_METADATA_KEY,
 } from "@app/types/notification_preferences";
 import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, test, vi } from "vitest";
@@ -351,5 +353,49 @@ describe("notifyActivationConversationAgentReplied", () => {
     });
 
     expect(vi.mocked(getNovuClient)).not.toHaveBeenCalled();
+  });
+
+  test("triggers the activation email when For You notifications are explicitly enabled", async () => {
+    await user.setMetadata(FOR_YOU_NOTIFICATION_METADATA_KEY, "true");
+    const conversation = await createNudgeConversation();
+
+    await notifyActivationConversationAgentReplied(auth, {
+      conversationId: conversation.sId,
+    });
+
+    expect(vi.mocked(getNovuClient)).toHaveBeenCalled();
+  });
+
+  test("does not trigger the activation email when For You notifications are disabled", async () => {
+    await user.setMetadata(FOR_YOU_NOTIFICATION_METADATA_KEY, "false");
+    const conversation = await createNudgeConversation();
+
+    await notifyActivationConversationAgentReplied(auth, {
+      conversationId: conversation.sId,
+    });
+
+    expect(vi.mocked(getNovuClient)).not.toHaveBeenCalled();
+  });
+});
+
+describe("areForYouNotificationsEnabled", () => {
+  test("allows sending when metadata is missing", async () => {
+    const { user } = await createResourceTest({ role: "user" });
+
+    expect(await areForYouNotificationsEnabled(user)).toBe(true);
+  });
+
+  test("allows sending when metadata is true", async () => {
+    const { user } = await createResourceTest({ role: "user" });
+    await user.setMetadata(FOR_YOU_NOTIFICATION_METADATA_KEY, "true");
+
+    expect(await areForYouNotificationsEnabled(user)).toBe(true);
+  });
+
+  test("skips sending when metadata is false", async () => {
+    const { user } = await createResourceTest({ role: "user" });
+    await user.setMetadata(FOR_YOU_NOTIFICATION_METADATA_KEY, "false");
+
+    expect(await areForYouNotificationsEnabled(user)).toBe(false);
   });
 });

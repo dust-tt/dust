@@ -20,6 +20,8 @@ import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
   CONVERSATION_UNREAD_TRIGGER_ID,
   DEFAULT_NOTIFICATION_CONDITION,
+  FOR_YOU_NOTIFICATION_METADATA_KEY,
+  isForYouNotificationsEnabled,
   isNotificationCondition,
 } from "@app/types/notification_preferences";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -237,14 +239,21 @@ export function notifyNewProjectConversation(
   });
 }
 
+export async function areForYouNotificationsEnabled(
+  user: UserResource
+): Promise<boolean> {
+  const metadata = await user.getMetadata(FOR_YOU_NOTIFICATION_METADATA_KEY);
+  return isForYouNotificationsEnabled(metadata?.value);
+}
+
 /**
  * Send the dedicated activation email once the agent has replied in an
  * activation-pod conversation. Called from the agent-loop completion path so
- * the notification (and its per-user delay) starts only after the reply exists.
+ * the notification starts only after the reply exists.
  *
  * Runs only if the conversation belongs to an activation pod and was started
- * by the activation nudge workflow. Respects the target user's notification
- * settings.
+ * by the activation nudge workflow. Respects the target user's For You toggle
+ * and "Notify me about" condition; Email frequency does not apply.
  */
 export async function notifyActivationConversationAgentReplied(
   auth: Authenticator,
@@ -293,6 +302,10 @@ export async function notifyActivationConversationAgentReplied(
     space.id
   );
   if (!allowedUser) {
+    return;
+  }
+
+  if (!(await areForYouNotificationsEnabled(allowedUser))) {
     return;
   }
 

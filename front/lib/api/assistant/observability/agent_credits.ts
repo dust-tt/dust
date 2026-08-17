@@ -1,9 +1,6 @@
 import { searchAgentConfigurationsByName } from "@app/lib/api/assistant/configuration/agent";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
-import {
-  resolveAnalyticsAgentLabels,
-  UNKNOWN_AGENT_LABEL,
-} from "@app/lib/api/assistant/observability/agent_labels";
+import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
 import { getUserDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
 import {
   buildCreditsScopeQuery,
@@ -184,9 +181,12 @@ export async function fetchAgentCreditBreakdown(
   // fetchByIds only returns skills the admin can read; others get no description.
   const skillsById = new Map(skills.map((skill) => [skill.sId, skill]));
 
-  const rows: AgentCreditRow[] = buckets.map((bucket) => {
+  const rows: AgentCreditRow[] = buckets.flatMap((bucket) => {
     const agentId = String(bucket.key);
-    const label = agentLabels.get(agentId) ?? UNKNOWN_AGENT_LABEL;
+    const label = agentLabels.get(agentId);
+    if (!label) {
+      return [];
+    }
 
     const topUsers: AgentCreditUser[] = bucketsToArray<SubBucket>(
       bucket.top_users?.buckets
@@ -214,17 +214,19 @@ export async function fetchAgentCreditBreakdown(
       };
     });
 
-    return {
-      agentId,
-      name: label.name,
-      pictureUrl: label.pictureUrl,
-      modelDisplayName: label.modelDisplayName,
-      description: label.description,
-      messageCount: bucket.doc_count,
-      credits: Math.round(bucket.credits?.value ?? 0),
-      topUsers,
-      topSkills,
-    };
+    return [
+      {
+        agentId,
+        name: label.name,
+        pictureUrl: label.pictureUrl,
+        modelDisplayName: label.modelDisplayName,
+        description: label.description,
+        messageCount: bucket.doc_count,
+        credits: Math.round(bucket.credits?.value ?? 0),
+        topUsers,
+        topSkills,
+      },
+    ];
   });
 
   return new Ok(rows);

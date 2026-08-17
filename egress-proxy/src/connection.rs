@@ -215,7 +215,6 @@ async fn handle_connection_inner(
                 token.w_id.as_deref(),
                 token.owner_id.as_deref(),
                 token.pod_id.as_deref(),
-                sb_id,
                 &request.domain,
             )
             .await

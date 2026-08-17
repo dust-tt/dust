@@ -1,6 +1,7 @@
 import { UsageUpgradeButton } from "@app/components/credits/UsageUpgradeButton";
 import { MarkdownEditor } from "@app/components/editor/MarkdownEditor";
 import {
+  ForYouNotificationPreferences,
   NotificationPreferences,
   useNotificationPreferencesForm,
 } from "@app/components/me/NotificationPreferences";
@@ -22,6 +23,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { useAppRouter } from "@app/lib/platform";
+import { useActivationPod } from "@app/lib/swr/activation";
 import {
   useMyTopConversations,
   useMyUsage,
@@ -669,14 +671,22 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const showNotificationPreferences = Boolean(user?.subscriberHash);
+  const { activationPodId, isActivationPodLoading } = useActivationPod({
+    workspaceId: owner.sId,
+    disabled: !showNotificationPreferences,
+  });
+  const displayForYouOption = activationPodId !== null;
   const notif = useNotificationPreferencesForm({
     owner,
     disabled: !showNotificationPreferences,
+    displayForYouOption,
   });
 
   const isDirty = sound.isDirty || notif.isDirty;
   const isLoading =
-    sound.isLoading || (showNotificationPreferences && notif.isLoading);
+    sound.isLoading ||
+    (showNotificationPreferences &&
+      (notif.isLoading || isActivationPodLoading));
 
   const handleSave = async () => {
     setIsSubmitting(true);
@@ -746,6 +756,17 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
               )}
             </div>
           )}
+          {showNotificationPreferences &&
+            displayForYouOption &&
+            notif.status !== "error" && (
+              <div className="flex flex-col gap-4">
+                <Page.SectionHeader
+                  title="For you"
+                  description="Recommendation emails from your learning space"
+                />
+                <ForYouNotificationPreferences control={notif.control} />
+              </div>
+            )}
         </>
       )}
     </SectionContent>

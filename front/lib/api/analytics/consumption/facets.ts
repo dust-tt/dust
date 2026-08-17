@@ -19,6 +19,7 @@ import {
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import tracer from "@app/logger/tracer";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
@@ -30,6 +31,7 @@ import type { estypes } from "@elastic/elasticsearch";
 // consumption. Period-scoped buckets supplement it with historical values after
 // users, agents, or skills are deleted.
 const FACET_COMPOSITE_PAGE_SIZE = 1_000;
+const FACET_ES_QUERY_CONCURRENCY = 6;
 
 export type ConsumptionFacet = {
   value: string;
@@ -54,6 +56,7 @@ export type ConsumptionFacets = {
   facets: {
     agent: ConsumptionAgentFacet[];
     user: ConsumptionFacet[];
+    api_key: ConsumptionFacet[];
     group: ConsumptionFacet[];
     model: ConsumptionModelFacet[];
     tool: ConsumptionFacet[];
@@ -268,14 +271,22 @@ async function fetchConsumptionFacetsWithoutTracing(
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<ConsumptionFacets, ElasticsearchError>> {
-  const bucketsByDimension = new Map<ConsumptionScopeDimension, FacetBuckets>();
-  for (const dimension of CONSUMPTION_SCOPE_DIMENSIONS) {
-    const result = await fetchDimensionFacetBuckets({
-      auth,
-      period,
-      filter,
+  const bucketResults = await concurrentExecutor(
+    CONSUMPTION_SCOPE_DIMENSIONS,
+    async (dimension) => ({
       dimension,
-    });
+      result: await fetchDimensionFacetBuckets({
+        auth,
+        period,
+        filter,
+        dimension,
+      }),
+    }),
+    { concurrency: FACET_ES_QUERY_CONCURRENCY }
+  );
+
+  const bucketsByDimension = new Map<ConsumptionScopeDimension, FacetBuckets>();
+  for (const { dimension, result } of bucketResults) {
     if (result.isErr()) {
       return result;
     }
@@ -297,6 +308,12 @@ async function fetchConsumptionFacetsWithoutTracing(
     "user",
     getFacetBuckets(bucketsByDimension, "user"),
     catalog.user
+  );
+  const apiKeyFacets = await resolveFacets(
+    auth,
+    "api_key",
+    getFacetBuckets(bucketsByDimension, "api_key"),
+    catalog.api_key
   );
   const groupFacets = await resolveFacets(
     auth,
@@ -334,6 +351,7 @@ async function fetchConsumptionFacetsWithoutTracing(
     facets: {
       agent: agentFacets,
       user: userFacets,
+      api_key: apiKeyFacets,
       group: groupFacets,
       model: modelFacets,
       tool: toolFacets,
@@ -351,6 +369,9 @@ export async function fetchConsumptionFacets(
   }
 ): Promise<Result<ConsumptionFacets, ElasticsearchError>> {
   return tracer.trace("analytics.consumption.facets", async (span) => {
+    // This endpoint has too little traffic to reliably survive service-level
+    // head sampling, but its traces are needed to diagnose slow facet loads.
+    span?.setTag("manual.keep", true);
     span?.setTag("workspace.id", auth.getNonNullableWorkspace().sId);
     const result = await fetchConsumptionFacetsWithoutTracing(auth, input);
     if (result.isErr()) {

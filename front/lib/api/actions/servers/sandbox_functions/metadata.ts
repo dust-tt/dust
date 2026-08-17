@@ -49,7 +49,8 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
       "Publish a pod function from a TypeScript source file in the current pod. The source " +
       "must default-export a `fetch(request: Request): Promise<Response>` handler and export a " +
       "`schema` with zod `input` and `output`. Set `schema.userIdentity` to `optional`, " +
-      "`workspace_user_required`, or `interactive_workspace_user_required`. It is bundled on the " +
+      "`workspace_user_required`, `interactive_workspace_user_required`, or " +
+      "`pod_member_required`. It is bundled on the " +
       "pod sandbox (only `zod` is available to import), and its contract is extracted from the " +
       "`schema` export. The published slug is prefixed with the app the source lives in, so " +
       "re-publishing the same name from the same app replaces the previous version while another " +
@@ -88,6 +89,16 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
             "user for approval or authentication. Keep the functions a Frame calls on user " +
             "interaction or on a poll `fast`, and isolate `dsbx tools` calls in their own " +
             "`durable` functions."
+        ),
+      domains: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Exact domains or wildcards (e.g. `api.stripe.com`, `*.stripe.com`) the function " +
+            "makes outbound HTTPS requests to at runtime. Declare every domain the function " +
+            "needs — each becomes a request a workspace admin reviews before the Pod can reach " +
+            "it; it never grants access on its own. A domain the Pod (or workspace) already " +
+            "allows is skipped."
         ),
     },
     stake: "low",

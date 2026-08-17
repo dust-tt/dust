@@ -42,6 +42,7 @@ export async function getConversationMCPServers(
       name: mcpServerView.name ?? serverDisplayMetadata.name,
       description:
         mcpServerView.description ?? serverDisplayMetadata.description,
+      icon: serverDisplayMetadata.icon,
       dataSources: null,
       tables: null,
       childAgentId: null,

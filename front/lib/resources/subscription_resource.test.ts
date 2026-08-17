@@ -5,6 +5,8 @@ const inMemoryCache = vi.hoisted(() => new Map<string, string>());
 const deletedKeys = vi.hoisted(() => [] as string[]);
 
 vi.mock("@app/lib/utils/cache", () => ({
+  buildCacheWithRedisKey: (cacheId: string, resolverKey: string) =>
+    `cacheWithRedis-${cacheId}-${resolverKey}`,
   cacheWithRedis: vi
     .fn()
     .mockImplementation(

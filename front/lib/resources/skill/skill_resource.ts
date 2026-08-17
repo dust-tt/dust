@@ -5,6 +5,7 @@ import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/ag
 import { getEffectiveSpaceIdsForAgentRun } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { updateConversationRequirementsForSkills } from "@app/lib/api/assistant/conversation/skill_permissions";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
+import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import {
   filterUsersWithSharedMembership,
   hasSharedMembership,
@@ -92,8 +93,13 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import { isDefaultFromAvailability } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
+import type { GrantVerb } from "@app/types/group_permissions";
 import { SKILL_GROUP_PREFIX } from "@app/types/groups";
-import type { GroupGrant } from "@app/types/resource_permissions";
+import type {
+  AccessControlList,
+  GroupGrant,
+  RoleGrant,
+} from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -257,6 +263,22 @@ export interface SkillResource
 
 // The role a skill's editor group holds on the skill. Its verbs live in ROLE_REGISTRY.skill.
 const SKILL_EDITOR_GRANT_TYPE = "editor" as const;
+
+const SKILL_ROLE_GRANTS: RoleGrant[] = [
+  { role: "admin", permissions: ["read", "admin"] },
+  { role: "manager", permissions: ["read"] },
+  { role: "user", permissions: ["read"] },
+  { role: "builder", permissions: ["read"] },
+];
+
+// Code-defined global/system skills: everyone in the workspace reads them, nobody edits them — they
+// have no row and no editor group, so no grant can ever point at them.
+const GLOBAL_SKILL_ROLE_GRANTS: RoleGrant[] = [
+  { role: "admin", permissions: ["read"] },
+  { role: "manager", permissions: ["read"] },
+  { role: "user", permissions: ["read"] },
+  { role: "builder", permissions: ["read"] },
+];
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SkillResource extends BaseResource<SkillConfigurationModel> {
@@ -1013,7 +1035,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentLoopData,
       effectiveSpaceIds,
       onlyActive = false,
-    }: SkillFetchContext & { onlyActive?: boolean } = {}
+      withInstructions = true,
+      withTools = true,
+      withFileAttachments = true,
+    }: SkillFetchContext &
+      Pick<
+        SkillConfigurationFindOptions,
+        "withInstructions" | "withTools" | "withFileAttachments"
+      > & { onlyActive?: boolean } = {}
   ): Promise<SkillResource[]> {
     if (sIds.length === 0) {
       return [];
@@ -1046,6 +1075,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           sId: globalSkillIds,
           status: onlyActive ? ["active"] : ["active", "archived", "suggested"],
         },
+        withInstructions,
+        withTools,
+        withFileAttachments,
       },
       { agentLoopData, effectiveSpaceIds }
     );
@@ -2113,11 +2145,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return true;
     }
 
-    if (!this.editorGroup) {
-      return false;
-    }
-
-    return this.editorGroup.canWrite(auth);
+    return this.hasSkillPermission(auth, "write");
   }
 
   canAdministrate(auth: Authenticator): boolean {
@@ -2127,11 +2155,54 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return true;
     }
 
-    if (!this.editorGroup) {
-      return false;
+    return this.hasSkillPermission(auth, "admin");
+  }
+
+  // Serves the decision from `group_permissions` (see `getAccessControlLists`), unless the
+  // `use_legacy_acls` kill switch is on — then it falls back to the pre-migration path, where the
+  // editor group is listed inline in its own ACL and membership decides. Remove the fallback (and
+  // the switch) once the table is trusted.
+  private hasSkillPermission(auth: Authenticator, verb: GrantVerb): boolean {
+    if (isLegacyAclsEnabled()) {
+      if (!this.editorGroup) {
+        return false;
+      }
+
+      return auth.hasPermissionForAcls(
+        verb,
+        this.editorGroup.getAccessControlLists(auth)
+      );
     }
 
-    return this.editorGroup.canAdministrate(auth);
+    return auth.hasPermission(verb, this);
+  }
+
+  /**
+   * The skill's access-control list: the code role rules plus the groups holding a grant on it in
+   * `group_permissions` (written by `writeGroupPermissions` on every mutation of the editor-group
+   * association). The editor group is not read here — membership in it only matters through the
+   * grant it holds.
+   */
+  getAccessControlLists(auth: Authenticator): AccessControlList[] {
+    // Global skills carry no row, so there is no grant to look up (and their synthetic `id` of -1
+    // is the type-wide sentinel, which would resolve the workspace-wide capability grants instead).
+    if (this.globalSId) {
+      return [
+        {
+          roles: GLOBAL_SKILL_ROLE_GRANTS,
+          groups: [],
+          workspaceId: this.workspaceId,
+        },
+      ];
+    }
+
+    return [
+      {
+        roles: SKILL_ROLE_GRANTS,
+        groups: auth.getGroupPermissions("skill", this.id),
+        workspaceId: this.workspaceId,
+      },
+    ];
   }
 
   // The group grants a skill confers, derived from its `group_skills` association: the editor

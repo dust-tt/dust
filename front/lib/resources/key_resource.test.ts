@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const inMemoryCache = vi.hoisted(() => new Map<string, string>());
 
 vi.mock("@app/lib/utils/cache", () => ({
+  buildCacheWithRedisKey: (cacheId: string, resolverKey: string) =>
+    `cacheWithRedis-${cacheId}-${resolverKey}`,
   cacheWithRedis: vi
     .fn()
     .mockImplementation(
