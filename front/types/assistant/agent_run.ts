@@ -4,11 +4,12 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
+import { resolveModel } from "@app/lib/api/assistant/resolve_model";
 import { getStaticReplyForUserMessage } from "@app/lib/api/assistant/static_reply";
 import { legacyModelIdToModel } from "@app/lib/api/llm";
 import { selectPreferredStreamEndpointForWorkspace } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import { DustNoopNoopGlobalNoopStream } from "@app/lib/llms/stream/endpoints/noop_noop_global_noop";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -29,6 +30,7 @@ import {
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { NOOP_MODEL_ID } from "@app/types/assistant/models/noop";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import type { Result } from "../shared/result";
@@ -341,7 +343,16 @@ export async function getAgentLoopDataWithAuth(
 
   // The resolved model is stored in the agent message.
   // Legacy message will not have a resolved model.
-  const { resolvedModel } = agentMessage;
+  let { resolvedModel } = agentMessage;
+  if (!resolvedModel && isModelStreamId(agentModelConfig.modelId)) {
+    // Legacy messages have no stored model resolution. Global agent configurations ignore the
+    // message's configuration version and may now use a stream, so resolve the stream before
+    // selecting its endpoint.
+    ({ resolvedModel } = await resolveModel(auth, {
+      configuration: agentConfiguration,
+      featureFlags: await getFeatureFlags(auth),
+    }));
+  }
   // Global agents may pin the noop model at run time (static replies from the dust and
   // sidekick agents, see `getStaticReplyForUserMessage`). The model stored on the agent
   // message was resolved at creation time without that context, so it must not override
