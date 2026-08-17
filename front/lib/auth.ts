@@ -973,6 +973,10 @@ export class Authenticator {
       ? allGroups.map((g) => g.id)
       : [];
     const keyGroupModelIds = allGroups.map((g) => g.id);
+    const isUnscopedSystemKey = key.isSystem && requestedGroupIds === undefined;
+    const useWorkspacePermissionCache =
+      isUnscopedSystemKey &&
+      (await isSystemKeyPermissionCacheEnabled(keyWorkspace.id));
 
     let permissions: GroupPermissions;
     let keyPermissions: GroupPermissions;
@@ -982,6 +986,7 @@ export class Authenticator {
       permissions = await this.resolvePermissions({
         workspace,
         groupModelIds: workspaceGroupModelIds,
+        useWorkspacePermissionCache,
       });
       keyPermissions = permissions;
     } else {
@@ -989,10 +994,12 @@ export class Authenticator {
         this.resolvePermissions({
           workspace,
           groupModelIds: workspaceGroupModelIds,
+          useWorkspacePermissionCache,
         }),
         this.resolvePermissions({
           workspace: keyWorkspace,
           groupModelIds: keyGroupModelIds,
+          useWorkspacePermissionCache,
         }),
       ]);
     }
@@ -1297,18 +1304,25 @@ export class Authenticator {
   static async resolvePermissions({
     workspace,
     groupModelIds,
+    useWorkspacePermissionCache = false,
   }: {
     workspace?: WorkspaceResource | null;
     groupModelIds: ModelId[];
+    useWorkspacePermissionCache?: boolean;
   }): Promise<GroupPermissions> {
     if (!workspace) {
       return GroupPermissions.empty();
     }
 
     const lightWorkspace = renderLightWorkspaceType({ workspace });
-    const grants = await GroupPermissionResource.listForGroups(lightWorkspace, {
-      groupModelIds,
-    });
+    const grants = useWorkspacePermissionCache
+      ? await GroupPermissionResource.listForGroupsFromWorkspaceCache(
+          lightWorkspace,
+          groupModelIds
+        )
+      : await GroupPermissionResource.listForGroups(lightWorkspace, {
+          groupModelIds,
+        });
 
     return GroupPermissions.fromGrants(grants);
   }
@@ -1974,6 +1988,25 @@ export async function prodAPICredentialsForOwner(
     apiKey: systemAPIKeyRes.value.secret,
     workspaceId: owner.sId,
   };
+}
+
+const SYSTEM_KEY_PERMISSION_CACHE_FEATURE =
+  "system_key_permission_cache" as const satisfies WhitelistableFeature;
+
+async function isSystemKeyPermissionCacheEnabled(
+  workspaceModelId: ModelId
+): Promise<boolean> {
+  const globalFlag = (await GlobalFeatureFlagResource.listAll()).find(
+    (flag) => flag.name === SYSTEM_KEY_PERMISSION_CACHE_FEATURE
+  );
+
+  return (
+    globalFlag !== undefined &&
+    GlobalFeatureFlagResource.isInRollout(
+      workspaceModelId,
+      globalFlag.rolloutPercentage
+    )
+  );
 }
 
 export async function getFeatureFlagsForWorkspace(

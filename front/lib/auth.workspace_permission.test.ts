@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -230,7 +231,26 @@ describe("Authenticator.fromKey permission resolution", () => {
     vi.restoreAllMocks();
   });
 
-  it("resolves permissions for unscoped system keys", async () => {
+  it("keeps the cache disabled until its global rollout starts", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const { systemGroup } = await GroupFactory.defaults(workspace);
+    const databaseLookupSpy = vi.spyOn(
+      GroupPermissionResource,
+      "listForGroups"
+    );
+    const workspaceCacheSpy = vi.spyOn(
+      GroupPermissionResource,
+      "listForGroupsFromWorkspaceCache"
+    );
+    const key = await KeyFactory.system(systemGroup);
+
+    await Authenticator.fromKey(key, workspace.sId);
+
+    expect(databaseLookupSpy).toHaveBeenCalledTimes(1);
+    expect(workspaceCacheSpy).not.toHaveBeenCalled();
+  });
+
+  it("uses the workspace grant cache for unscoped system keys", async () => {
     const workspace = await WorkspaceFactory.basic();
     const { systemGroup } = await GroupFactory.defaults(workspace);
     const adminAuth = await Authenticator.internalAdminForWorkspace(
@@ -258,12 +278,23 @@ describe("Authenticator.fromKey permission resolution", () => {
       // A different agent, so the excluded group's grant is observable by its absence below.
       resourceId: 99,
     });
+    await GlobalFeatureFlagResource.setRolloutPercentage(
+      "system_key_permission_cache",
+      100
+    );
 
+    const workspaceCacheSpy = vi.spyOn(
+      GroupPermissionResource,
+      "listForGroupsFromWorkspaceCache"
+    );
     const key = await KeyFactory.system(systemGroup);
     const { workspaceAuth } = await Authenticator.fromKey(key, workspace.sId);
 
-    // The in-scope group's grant on agent 42 is loaded; the out-of-scope group's grant on agent 99
-    // is not — resolved verbs are caller-scoped and carry no group ids.
+    // The workspace snapshot cache serves this unscoped system key when the rollout is enabled.
+    expect(workspaceCacheSpy).toHaveBeenCalledTimes(1);
+    // The in-scope group's grant on agent 42 is loaded; the out-of-scope (agent_editors) group's
+    // grant on agent 99 is filtered out of the snapshot — resolved verbs are caller-scoped and
+    // carry no group ids.
     expect(workspaceAuth.getGrantedVerbs("agent", 42).length).toBeGreaterThan(
       0
     );
@@ -297,12 +328,23 @@ describe("Authenticator.fromKey permission resolution", () => {
       // A different agent, so the excluded group's grant is observable by its absence below.
       resourceId: 99,
     });
+    await GlobalFeatureFlagResource.setRolloutPercentage(
+      "system_key_permission_cache",
+      100
+    );
 
+    const workspaceCacheSpy = vi.spyOn(
+      GroupPermissionResource,
+      "listForGroupsFromWorkspaceCache"
+    );
     const key = await KeyFactory.system(systemGroup);
     const { workspaceAuth } = await Authenticator.fromKey(key, workspace.sId, [
       includedGroup.sId,
     ]);
 
+    // A scoped key routes through the ordinary database lookup, never the workspace cache — even
+    // with the rollout enabled, because the cache only serves unscoped system keys.
+    expect(workspaceCacheSpy).not.toHaveBeenCalled();
     // The in-scope group's grant on agent 42 is loaded; the out-of-scope group's grant on agent 99
     // is not — resolved verbs are caller-scoped and carry no group ids.
     expect(workspaceAuth.getGrantedVerbs("agent", 42).length).toBeGreaterThan(

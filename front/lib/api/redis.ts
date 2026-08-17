@@ -62,6 +62,7 @@ export type RedisUsageTagsType =
   | "email_context"
   | "otp_challenge"
   | "force_reload_commits"
+  | "group_permissions_cache"
   | "key_usage_tracking"
   | "lock"
   | "sandbox_exec_tokens"

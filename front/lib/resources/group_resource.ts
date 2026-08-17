@@ -3,6 +3,7 @@ import { DustError } from "@app/lib/error";
 import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { advanceWorkspaceGrantsCacheGenerationAfterCommit } from "@app/lib/resources/group_permission_cache";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -2517,13 +2518,19 @@ export class GroupResource extends BaseResource<GroupModel> {
         transaction,
       });
 
-      await GroupPermissionModel.destroy({
+      const deletedGroupPermissions = await GroupPermissionModel.destroy({
         where: {
           groupId: this.id,
           workspaceId: owner.id,
         },
         transaction,
       });
+      if (deletedGroupPermissions > 0) {
+        await advanceWorkspaceGrantsCacheGenerationAfterCommit(
+          owner.id,
+          transaction
+        );
+      }
 
       await this.model.destroy({
         where: {

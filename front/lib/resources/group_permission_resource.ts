@@ -1,11 +1,20 @@
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { CachedWorkspaceGrant } from "@app/lib/resources/group_permission_cache";
+import {
+  advanceWorkspaceGrantsCacheGenerationAfterCommit,
+  getWorkspaceGrantsCacheGeneration,
+  WORKSPACE_GRANTS_CACHE_ID,
+  WORKSPACE_GRANTS_CACHE_TTL_MS,
+  workspaceGrantsCacheKeyResolver,
+} from "@app/lib/resources/group_permission_cache";
 import { assertValidGrant } from "@app/lib/resources/group_permission_registry";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { cacheWithRedis } from "@app/lib/utils/cache";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   CapabilitySpec,
@@ -28,8 +37,11 @@ import assert from "assert";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { literal, Op } from "sequelize";
 
+const MAX_WORKSPACE_GRANTS_GENERATION_READ_ATTEMPTS = 3;
+
 /**
- * All writes to `group_permissions` go through this resource — never a raw model write elsewhere.
+ * Permission-specific writes to `group_permissions` go through this resource. Group deletion also
+ * removes its rows in GroupResource, where it shares this resource's cache invalidation helper.
  * This file covers instance-level grants and reads; wildcard / type-level writes (resourceId = -1,
  * "*") land through dedicated named methods in a follow-up so a defaulted -1 can never silently
  * grant a whole type.
@@ -106,6 +118,36 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     super(GroupPermissionModel, blob);
   }
 
+  private static async listWorkspaceGrantsUncached(
+    workspaceModelId: ModelId,
+    _generation: number
+  ): Promise<CachedWorkspaceGrant[]> {
+    const rows = await GroupPermissionModel.findAll({
+      attributes: ["groupId", "grantType", "resourceType", "resourceId"],
+      where: { workspaceId: workspaceModelId },
+    });
+
+    return rows.map(
+      ({ groupId: groupModelId, grantType, resourceType, resourceId }) => ({
+        groupModelId,
+        grantType,
+        resourceType,
+        resourceId,
+      })
+    );
+  }
+
+  private static listWorkspaceGrantsCached = cacheWithRedis(
+    GroupPermissionResource.listWorkspaceGrantsUncached,
+    workspaceGrantsCacheKeyResolver,
+    {
+      cacheId: WORKSPACE_GRANTS_CACHE_ID,
+      cacheNullValues: false,
+      ttlMs: WORKSPACE_GRANTS_CACHE_TTL_MS,
+      useDistributedLock: true,
+    }
+  );
+
   // A group is scoped to a single workspace, and every grant is scoped to the caller's workspace.
   // The DB only FKs groupId to groups.id (not to the workspace), so we enforce the match here to
   // keep a group from workspace B out of workspace A's grants.
@@ -163,7 +205,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         );
       }
 
-      const [row] = await GroupPermissionModel.findOrCreate({
+      const [row, created] = await GroupPermissionModel.findOrCreate({
         where: {
           workspaceId,
           groupId: group.id,
@@ -173,6 +215,10 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         },
         transaction: t,
       });
+
+      if (created) {
+        await advanceWorkspaceGrantsCacheGenerationAfterCommit(workspaceId, t);
+      }
 
       return new this(GroupPermissionModel, row.get());
     }, transaction);
@@ -441,9 +487,10 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       resourceId > 0,
       "revoke() is instance-level; use revokeTypeWide for type-wide grants."
     );
-    await GroupPermissionModel.destroy({
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    const deleted = await GroupPermissionModel.destroy({
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId: workspaceModelId,
         groupId: group.id,
         grantType,
         resourceType,
@@ -451,6 +498,12 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       },
       transaction,
     });
+    if (deleted > 0) {
+      await advanceWorkspaceGrantsCacheGenerationAfterCommit(
+        workspaceModelId,
+        transaction
+      );
+    }
   }
 
   // Read grants for the given groups, optionally narrowed by grant type / resource type /
@@ -482,6 +535,52 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     return rows.map((row) => new this(GroupPermissionModel, row.get()));
   }
 
+  // System keys can represent nearly every group in a workspace. Cache the compact workspace
+  // grant snapshot independently of the caller's group set, then intersect with the current group
+  // ids on every request. This keeps group membership changes out of this cache's lifecycle.
+  static async listForGroupsFromWorkspaceCache(
+    workspace: LightWorkspaceType,
+    groupModelIds: ModelId[]
+  ): Promise<CachedWorkspaceGrant[]> {
+    if (groupModelIds.length === 0) {
+      return [];
+    }
+
+    const groupModelIdSet = new Set(groupModelIds);
+    for (
+      let attempt = 0;
+      attempt < MAX_WORKSPACE_GRANTS_GENERATION_READ_ATTEMPTS;
+      attempt++
+    ) {
+      const generationBefore = await getWorkspaceGrantsCacheGeneration(
+        workspace.id
+      );
+      const grants = await this.listWorkspaceGrantsCached(
+        workspace.id,
+        generationBefore
+      );
+      const generationAfter = await getWorkspaceGrantsCacheGeneration(
+        workspace.id
+      );
+
+      if (generationBefore === generationAfter) {
+        return grants.filter((grant) =>
+          groupModelIdSet.has(grant.groupModelId)
+        );
+      }
+    }
+
+    const grants = await this.listForGroups(workspace, { groupModelIds });
+    return grants.map(
+      ({ groupId: groupModelId, grantType, resourceType, resourceId }) => ({
+        groupModelId,
+        grantType,
+        resourceType,
+        resourceId,
+      })
+    );
+  }
+
   // Deletion-integrity hook: drop every grant (across all groups) targeting one resource. There is
   // no FK on the resource side, so callers invoke this when a resource is deleted. Guards against
   // wiping the type-wide wildcard rows.
@@ -502,14 +601,22 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       "deleteAllForResource targets a concrete resource; it must not clear type-wide grants."
     );
 
-    return GroupPermissionModel.destroy({
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    const deleted = await GroupPermissionModel.destroy({
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId: workspaceModelId,
         resourceType,
         resourceId,
       },
       transaction,
     });
+    if (deleted > 0) {
+      await advanceWorkspaceGrantsCacheGenerationAfterCommit(
+        workspaceModelId,
+        transaction
+      );
+    }
+    return deleted;
   }
 
   static async listForWorkspace(
@@ -530,20 +637,28 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       return;
     }
 
-    await GroupPermissionModel.destroy({
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    const deleted = await GroupPermissionModel.destroy({
       where: {
         id: ids,
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId: workspaceModelId,
       },
     });
+    if (deleted > 0) {
+      await advanceWorkspaceGrantsCacheGenerationAfterCommit(workspaceModelId);
+    }
   }
 
   // Workspace-scrub hook: drop every grant for the workspace. Must run before groups and the
   // workspace row are torn down, since both FKs are ON DELETE RESTRICT.
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
-    await GroupPermissionModel.destroy({
-      where: { workspaceId: auth.getNonNullableWorkspace().id },
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    const deleted = await GroupPermissionModel.destroy({
+      where: { workspaceId: workspaceModelId },
     });
+    if (deleted > 0) {
+      await advanceWorkspaceGrantsCacheGenerationAfterCommit(workspaceModelId);
+    }
   }
 
   // Grant a permission for the whole resource type (resourceId = -1). Single-group convenience over
@@ -599,6 +714,10 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       })),
       { ignoreDuplicates: true, transaction }
     );
+    await advanceWorkspaceGrantsCacheGenerationAfterCommit(
+      workspaceId,
+      transaction
+    );
   }
 
   // Revoke a group's type-wide grant. No-op if absent.
@@ -606,9 +725,10 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     auth: Authenticator,
     { group, grantType, resourceType, transaction }: TypeWideGrantSpec
   ): Promise<void> {
-    await GroupPermissionModel.destroy({
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    const deleted = await GroupPermissionModel.destroy({
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId: workspaceModelId,
         groupId: group.id,
         grantType,
         resourceType,
@@ -616,6 +736,12 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       },
       transaction,
     });
+    if (deleted > 0) {
+      await advanceWorkspaceGrantsCacheGenerationAfterCommit(
+        workspaceModelId,
+        transaction
+      );
+    }
   }
 
   // Batch of instance-level grants (one INSERT, unique index dedupes). Each is validated; -1 is
@@ -663,6 +789,10 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         resourceId,
       })),
       { ignoreDuplicates: true, transaction }
+    );
+    await advanceWorkspaceGrantsCacheGenerationAfterCommit(
+      workspaceId,
+      transaction
     );
   }
 
@@ -763,15 +893,22 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     { grantType, resourceType }: CapabilitySpec,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
-    await GroupPermissionModel.destroy({
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    const deleted = await GroupPermissionModel.destroy({
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId: workspaceModelId,
         grantType,
         resourceType,
         resourceId: WHOLE_TYPE_RESOURCE_ID,
       },
       transaction,
     });
+    if (deleted > 0) {
+      await advanceWorkspaceGrantsCacheGenerationAfterCommit(
+        workspaceModelId,
+        transaction
+      );
+    }
   }
 
   // Serialize concurrent writes on the same grant tuple. The transaction-scoped advisory lock
@@ -873,13 +1010,20 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    await this.model.destroy({
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    const deleted = await this.model.destroy({
       where: {
         id: this.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId: workspaceModelId,
       },
       transaction,
     });
+    if (deleted > 0) {
+      await advanceWorkspaceGrantsCacheGenerationAfterCommit(
+        workspaceModelId,
+        transaction
+      );
+    }
 
     return new Ok(undefined);
   }

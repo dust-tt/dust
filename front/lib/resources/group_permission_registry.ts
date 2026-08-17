@@ -211,12 +211,13 @@ function maskToVerbs(mask: number): GrantVerb[] {
   return GRANT_VERBS.filter((verb) => (mask & (VERB_BIT.get(verb) ?? 0)) !== 0);
 }
 
-// The grant fields `fromGrants` reads. `GroupPermissionResource` satisfies this structurally, so
-// callers pass resources directly (no DTO conversion); typed as a Pick to avoid coupling to the
-// full resource and to keep the reference type-only.
+// The grant fields `fromGrants` reads — group ids are folded away, so only the grant tuple is
+// needed. Both `GroupPermissionResource` and the cache DTO `CachedWorkspaceGrant` satisfy this
+// structurally, so callers pass either directly (no DTO conversion); typed as a Pick to keep the
+// reference type-only.
 type GrantRow = Pick<
   GroupPermissionResource,
-  "groupId" | "grantType" | "resourceType" | "resourceId"
+  "grantType" | "resourceType" | "resourceId"
 >;
 
 // JSON-serializable form of GroupPermissions, embedded in a serialized Authenticator so it can be
