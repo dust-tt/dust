@@ -3,10 +3,55 @@ import {
   getUsageFilterSummaries,
   removeUsageFilterFromAttributionRow,
   setUsageFilterFromAttributionRow,
+  sortUsageFilterOptionsByAvailability,
   toConsumptionScopeFilter,
 } from "@app/components/workspace/analytics/usageFilter";
 import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import { describe, expect, it } from "vitest";
+
+describe("sortUsageFilterOptionsByAvailability", () => {
+  it("moves options with no activity last while preserving their relative order", () => {
+    const options = [
+      {
+        id: "unavailable-1",
+        name: "Alpha",
+        kind: "group" as const,
+        disabled: true,
+      },
+      {
+        id: "available-1",
+        name: "Beta",
+        kind: "group" as const,
+        disabled: false,
+      },
+      {
+        id: "unavailable-2",
+        name: "Charlie",
+        kind: "group" as const,
+        disabled: true,
+      },
+      {
+        id: "available-2",
+        name: "Delta",
+        kind: "group" as const,
+        disabled: false,
+      },
+    ];
+
+    expect(sortUsageFilterOptionsByAvailability(options)).toEqual([
+      options[1],
+      options[3],
+      options[0],
+      options[2],
+    ]);
+    expect(options.map(({ id }) => id)).toEqual([
+      "unavailable-1",
+      "available-1",
+      "unavailable-2",
+      "available-2",
+    ]);
+  });
+});
 
 describe("toConsumptionScopeFilter", () => {
   it("maps every selected facet to its consumption scope dimension", () => {

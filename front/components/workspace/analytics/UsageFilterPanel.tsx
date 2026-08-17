@@ -5,6 +5,7 @@ import type {
   UsageFilterGroup,
 } from "@app/components/workspace/analytics/usageFilter";
 import {
+  sortUsageFilterOptionsByAvailability,
   toConsumptionScopeFilter,
   USAGE_FILTER_AGENT_SCOPES,
   USAGE_FILTER_CATEGORIES,
@@ -114,22 +115,24 @@ export function UsageFilterPanel({
         ? new Set(selectedGroups.items.flatMap((group) => group.memberIds))
         : null;
 
-    return activeOptions.filter((option) => {
-      if (
-        option.kind === "agent" &&
-        activeScope !== "all" &&
-        option.scope !== activeScope
-      ) {
-        return false;
-      }
-      if (option.kind === "model" && option.tier !== activeTier) {
-        return false;
-      }
-      if (selectedGroupMemberIds && !selectedGroupMemberIds.has(option.id)) {
-        return false;
-      }
-      return !search || option.name.toLowerCase().includes(search);
-    });
+    return sortUsageFilterOptionsByAvailability(
+      activeOptions.filter((option) => {
+        if (
+          option.kind === "agent" &&
+          activeScope !== "all" &&
+          option.scope !== activeScope
+        ) {
+          return false;
+        }
+        if (option.kind === "model" && option.tier !== activeTier) {
+          return false;
+        }
+        if (selectedGroupMemberIds && !selectedGroupMemberIds.has(option.id)) {
+          return false;
+        }
+        return !search || option.name.toLowerCase().includes(search);
+      })
+    );
   }, [
     activeOptions,
     searchText,
