@@ -122,7 +122,7 @@ export function ConsumptionOverview({
   filter,
 }: ConsumptionOverviewProps) {
   const { overview, isOverviewLoading, isOverviewError } =
-    useConsumptionOverview({ workspaceId, period: periodSelection, filter });
+    useConsumptionOverview({ workspaceId, period: periodSelection });
 
   if (isOverviewLoading) {
     return (
