@@ -37,17 +37,25 @@ export interface LegendItem {
   isActive?: boolean;
 }
 
+export type ChartLegendAlignment = "left" | "center" | "right";
+
+const ALIGNMENT_CLASSES: Record<ChartLegendAlignment, string> = {
+  left: "justify-start",
+  center: "justify-center",
+  right: "justify-end",
+};
+
 interface ChartLegendProps {
   items: LegendItem[];
-  className?: string;
+  alignment?: ChartLegendAlignment;
 }
 
-export function ChartLegend({ items, className }: ChartLegendProps) {
+export function ChartLegend({ items, alignment = "left" }: ChartLegendProps) {
   return (
     <div
       className={cn(
         "mt-3 flex flex-wrap items-center gap-x-6 gap-y-2",
-        className
+        ALIGNMENT_CLASSES[alignment]
       )}
     >
       {items.map((item) => (

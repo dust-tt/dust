@@ -278,7 +278,7 @@ function ConsumptionDailyChart({
       }
       height={CHART_HEIGHT}
       legendItems={legendItems}
-      legendClassName="justify-center"
+      legendAlignment="center"
       showHeaderDivider
     >
       <BarChart data={chartData} margin={{ ...CHART_MARGIN, top: 24 }}>
