@@ -6,6 +6,10 @@ export const COMPLETED_AT_FIELD = "completed_at";
 
 export const AGENT_MESSAGE_ID_FIELD = "agent_message_id";
 
+export const CONVERSATION_ID_FIELD = "conversation_id";
+
+export const TRIGGER_ID_FIELD = "trigger_id";
+
 export const CONSUMPTION_SCOPE_DIMENSIONS = [
   "agent",
   "user",

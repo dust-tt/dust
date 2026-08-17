@@ -13,7 +13,7 @@ const ConsumptionFilterSchema = z.record(
   z.string().array()
 );
 
-const ConsumptionPeriodSchema = z.object({
+export const ConsumptionPeriodSchema = z.object({
   period: z.enum(["cycle", "days"]).optional().default("cycle"),
   days: z.coerce
     .number()
