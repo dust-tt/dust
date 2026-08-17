@@ -6,6 +6,7 @@ import {
   notifyActivationConversationAgentReplied,
 } from "@app/lib/notifications/triggers/project-new-conversation";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -306,6 +307,9 @@ describe("notifyActivationConversationAgentReplied", () => {
       description: "Test",
     });
 
+    await ProjectMetadataResource.makeNew(auth, pod, {
+      description: null,
+    });
     await ActivationPodResource.makeNew(auth, { pod, user });
 
     vi.mocked(getNovuClient).mockClear();

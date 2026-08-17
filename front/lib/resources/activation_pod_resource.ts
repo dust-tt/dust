@@ -2,6 +2,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { ActivationPodModel } from "@app/lib/models/activation/activation_pod";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
@@ -65,7 +67,29 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
     return new this(this.model, model.get());
   }
 
-  // Fetches the ActivationPod for a given Pod, if one exists.
+  // An Activation Pod must be a non-archived Pod
+  private static get unarchivedQuery() {
+    return {
+      include: [
+        {
+          model: SpaceModel,
+          attributes: [],
+          required: true,
+          include: [
+            {
+              model: ProjectMetadataModel,
+              as: "projectMetadata",
+              attributes: [],
+              required: true,
+              where: { archivedAt: null },
+            },
+          ],
+        },
+      ],
+    };
+  }
+
+  // Fetches the ActivationPod for a given Pod, if one exists and is not archived.
   static async fetchBySpace(
     auth: Authenticator,
     pod: SpaceResource
@@ -74,22 +98,45 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
     return activationPod ?? null;
   }
 
-  // Fetches the calling user's activation Pod. A user can technically have more
-  // than one over time; we return the most recent, treated as "their" learning
-  // space for surfaces like the Get Started page.
-  static async fetchByUser(
-    auth: Authenticator
+  // Cleanup paths still need the canonical row after a Pod was archived or
+  // its metadata was removed.
+  static async fetchBySpaceIncludingArchived(
+    auth: Authenticator,
+    pod: SpaceResource
   ): Promise<ActivationPodResource | null> {
-    const user = auth.getNonNullableUser();
     const activationPod = await this.model.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        spaceId: pod.id,
+      },
+    });
+
+    return activationPod ? new this(this.model, activationPod.get()) : null;
+  }
+
+  // The calling user's Activation Pods, newest first. Archived pods are omitted.
+  static async listByUser(
+    auth: Authenticator
+  ): Promise<ActivationPodResource[]> {
+    const user = auth.getNonNullableUser();
+    const activationPods = await this.model.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         userId: user.id,
       },
+      include: this.unarchivedQuery.include,
       order: [["createdAt", "DESC"]],
     });
 
-    return activationPod ? new this(this.model, activationPod.get()) : null;
+    return activationPods.map((pod) => new this(this.model, pod.get()));
+  }
+
+  // Fetches the calling user's most recent live Activation Pod.
+  static async fetchByUser(
+    auth: Authenticator
+  ): Promise<ActivationPodResource | null> {
+    const [activationPod] = await this.listByUser(auth);
+    return activationPod ?? null;
   }
 
   // Batch variant of fetchBySpace, avoiding one query per pod (e.g. when the
@@ -107,17 +154,21 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
         spaceId: spaceModelIds,
       },
+      include: this.unarchivedQuery.include,
     });
 
     return activationPods.map((pod) => new this(this.model, pod.get()));
   }
 
-  // Lists every ActivationPod in the calling workspace.
+  // Lists every live Activation Pod in the calling workspace.
   static async listForWorkspace(
     auth: Authenticator
   ): Promise<ActivationPodResource[]> {
     const activationPods = await this.model.findAll({
-      where: { workspaceId: auth.getNonNullableWorkspace().id },
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      include: this.unarchivedQuery.include,
     });
 
     return activationPods.map((pod) => new this(this.model, pod.get()));
@@ -130,7 +181,10 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
   // schedule.
   static async listWorkspaceModelIdsWithActivationPods(): Promise<ModelId[]> {
     const rows = await this.model.findAll({
-      attributes: [[fn("DISTINCT", col("workspaceId")), "workspaceId"]],
+      attributes: [
+        [fn("DISTINCT", col(`${this.model.name}.workspaceId`)), "workspaceId"],
+      ],
+      include: this.unarchivedQuery.include,
       raw: true,
       // WORKSPACE_ISOLATION_BYPASS: nightly reconcile scan across all workspaces
       // to find which ones have a live activation pod (see
