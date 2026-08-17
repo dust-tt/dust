@@ -1,6 +1,5 @@
 /* eslint-disable dust/enforce-client-types-in-public-api */
 
-import { parseRawVizScope } from "@app/types/mount_path";
 import { extractAndVerifyVizAccessTokenFromHeader } from "@app/lib/api/viz/access_tokens";
 import {
   assertVizFileAuthorized,
@@ -10,6 +9,7 @@ import {
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
+import { parseRawVizScope } from "@app/types/mount_path";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";

@@ -1,10 +1,10 @@
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import logger from "@app/logger/logger";
 import {
   getConversationFilesBasePath,
   parseScopedFilePath,
 } from "@app/types/mount_path";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import logger from "@app/logger/logger";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
