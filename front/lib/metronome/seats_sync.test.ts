@@ -477,6 +477,23 @@ describe("syncSeatCount min clamping", () => {
 
 describe("syncSeatCount subscription end boundary", () => {
   const sourceEndingBefore = "2026-09-10T10:00:00.000Z";
+  const boundaryCases = [
+    {
+      name: "exactly at",
+      transitionAt: "2026-09-10T10:00:00.000Z",
+      updatesSource: false,
+    },
+    {
+      name: "one millisecond after",
+      transitionAt: "2026-09-10T10:00:00.001Z",
+      updatesSource: false,
+    },
+    {
+      name: "one millisecond before",
+      transitionAt: "2026-09-10T09:59:59.999Z",
+      updatesSource: true,
+    },
+  ];
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -517,25 +534,9 @@ describe("syncSeatCount subscription end boundary", () => {
     vi.useRealTimers();
   });
 
-  it.each([
-    {
-      name: "exactly at",
-      transitionAt: "2026-09-10T10:00:00.000Z",
-      removesFromSource: false,
-    },
-    {
-      name: "one millisecond after",
-      transitionAt: "2026-09-10T10:00:00.001Z",
-      removesFromSource: false,
-    },
-    {
-      name: "one millisecond before",
-      transitionAt: "2026-09-10T09:59:59.999Z",
-      removesFromSource: true,
-    },
-  ])("$name the source subscription end", async ({
+  it.each(boundaryCases)("$name the SEAT_BASED source end", async ({
     transitionAt,
-    removesFromSource,
+    updatesSource,
   }) => {
     mockGetScheduledFutureMemberships.mockResolvedValue([
       {
@@ -577,11 +578,66 @@ describe("syncSeatCount subscription end boundary", () => {
       removeSeatIds: ["u1"],
       startingAt: transitionAt,
     });
-    if (removesFromSource) {
+    if (updatesSource) {
       expect(mockUpdateSubscriptionSeats).toHaveBeenCalledWith(sourceRemoval);
     } else {
       expect(mockUpdateSubscriptionSeats).not.toHaveBeenCalledWith(
         sourceRemoval
+      );
+    }
+  });
+
+  it.each(boundaryCases)("$name the QUANTITY_ONLY source end", async ({
+    transitionAt,
+    updatesSource,
+  }) => {
+    mockGetScheduledFutureMemberships.mockResolvedValue([
+      {
+        ...membership("u1", "pro_yearly"),
+        startAt: new Date(transitionAt),
+      },
+    ]);
+
+    const result = await syncSeatCount({
+      metronomeCustomerId: "cus_1",
+      contractId: "con_1",
+      workspace: WORKSPACE,
+      planCode: "CP_BUSINESS_PLAN",
+      contract: makeContract([
+        {
+          id: "sub_pro",
+          productId: "pro-product",
+          mode: "QUANTITY_ONLY",
+          endingBefore: sourceEndingBefore,
+        },
+        {
+          id: "sub_pro_yearly",
+          productId: "pro-yearly-product",
+          mode: "QUANTITY_ONLY",
+        },
+      ]),
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockUpdateSubscriptionQuantity).toHaveBeenCalledWith({
+      metronomeCustomerId: "cus_1",
+      contractId: "con_1",
+      subscriptionId: "sub_pro_yearly",
+      quantity: 1,
+      startingAt: transitionAt,
+    });
+    const sourceUpdate = {
+      metronomeCustomerId: "cus_1",
+      contractId: "con_1",
+      subscriptionId: "sub_pro",
+      quantity: 0,
+      startingAt: transitionAt,
+    };
+    if (updatesSource) {
+      expect(mockUpdateSubscriptionQuantity).toHaveBeenCalledWith(sourceUpdate);
+    } else {
+      expect(mockUpdateSubscriptionQuantity).not.toHaveBeenCalledWith(
+        sourceUpdate
       );
     }
   });
