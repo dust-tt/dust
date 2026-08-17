@@ -85,11 +85,7 @@ export function AnalyticsConsumptionPage() {
         }
       />
       <div className="flex flex-col gap-8 pb-8 pt-4">
-        <ConsumptionOverview
-          workspaceId={owner.sId}
-          period={period}
-          filter={scopeFilter}
-        />
+        <ConsumptionOverview workspaceId={owner.sId} period={period} />
         <LazyMotion features={domMax}>
           <div className="flex flex-col gap-4">
             <div className="sticky top-0 z-30 -mb-4 flex flex-col bg-panel-background pb-4 pt-4">
