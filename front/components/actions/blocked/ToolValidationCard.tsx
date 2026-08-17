@@ -14,7 +14,9 @@ import {
   Button,
   Card,
   Check,
+  CheckBoxWithTextAndDescription,
   Checkbox,
+  cn,
   Label,
   PieChart01,
   XClose,
@@ -114,6 +116,11 @@ export function ToolValidationCard({
 
   const toolOverride = getToolOverride(validationRequest.metadata);
   const isSubmitting = isValidating || submittingDecision !== null;
+  const isMediumStake = validationRequest.stake === "medium";
+  const alwaysAllowLabel =
+    validationRequest.stake === "low" || isMediumStake
+      ? getToolValidationAlwaysAllowLabel(validationRequest)
+      : null;
   const {
     metadata: { agentName, mcpServerName },
   } = validationRequest;
@@ -169,27 +176,48 @@ export function ToolValidationCard({
       </div>
 
       {canCurrentUserRespond && (
-        <div className="flex flex-col gap-3 px-4 pb-3 pt-2 sm:flex-row sm:items-center">
-          {(validationRequest.stake === "low" ||
-            validationRequest.stake === "medium") && (
-            <Label
-              htmlFor={`never-ask-again-${validationRequest.actionId}`}
-              className="flex min-h-11 cursor-pointer items-center gap-2 px-1 sm:min-h-0"
-            >
-              <Checkbox
-                id={`never-ask-again-${validationRequest.actionId}`}
-                checked={neverAskAgain}
-                disabled={isSubmitting}
-                onCheckedChange={(check) => {
-                  setNeverAskAgain(!!check);
-                }}
-              />
-              <span className="font-normal">
-                {getToolValidationAlwaysAllowLabel(validationRequest)}
-              </span>
-            </Label>
+        <div
+          className={cn(
+            "flex flex-col gap-3 px-4 pb-3 pt-2",
+            !isMediumStake && "sm:flex-row sm:items-center"
           )}
-          <div className="flex gap-2 sm:ml-auto">
+        >
+          {alwaysAllowLabel &&
+            (isMediumStake ? (
+              <div className="flex min-h-11 items-center px-1">
+                <CheckBoxWithTextAndDescription
+                  id={`never-ask-again-${validationRequest.actionId}`}
+                  text="Don’t ask again"
+                  description={alwaysAllowLabel}
+                  checked={neverAskAgain}
+                  disabled={isSubmitting}
+                  onCheckedChange={(check) => {
+                    setNeverAskAgain(!!check);
+                  }}
+                />
+              </div>
+            ) : (
+              <Label
+                htmlFor={`never-ask-again-${validationRequest.actionId}`}
+                className="flex min-h-11 cursor-pointer items-center gap-2 px-1 sm:min-h-0"
+              >
+                <Checkbox
+                  id={`never-ask-again-${validationRequest.actionId}`}
+                  checked={neverAskAgain}
+                  disabled={isSubmitting}
+                  onCheckedChange={(check) => {
+                    setNeverAskAgain(!!check);
+                  }}
+                />
+                <span className="font-normal">{alwaysAllowLabel}</span>
+              </Label>
+            ))}
+          <div
+            className={cn(
+              "flex gap-2 sm:ml-auto",
+              isMediumStake && "justify-end"
+            )}
+          >
             <Button
               label="Decline"
               variant="outline"

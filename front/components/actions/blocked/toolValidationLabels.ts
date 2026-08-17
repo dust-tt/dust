@@ -21,6 +21,7 @@ import {
 } from "@app/lib/api/actions/servers/pod_tasks/types";
 import { SANDBOX_FUNCTIONS_SERVER_NAME } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { WAKEUPS_SERVER_NAME } from "@app/lib/api/actions/servers/wakeups/metadata";
+import { isString } from "@app/types/shared/utils/general";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
 type ToolOverride = {
@@ -214,18 +215,22 @@ export function getToolValidationAlwaysAllowLabel(
     return data.approvalArgsLabel;
   }
   const args = data.argumentsRequiringApproval ?? [];
-  const argValues = args
+  const approvalParameters = args
     .filter((arg) => data.inputs[arg] != null)
     .map((arg) => {
       const value = data.inputs[arg];
-      if (Array.isArray(value)) {
-        return value.map(String).join(", ");
-      }
-      return JSON.stringify(value);
+      const displayValue = Array.isArray(value)
+        ? value.map(String).join(", ")
+        : isString(value)
+          ? value
+          : JSON.stringify(value);
+      return `${asDisplayName(arg)}: ${displayValue}`;
     });
-  return `Always allow agent to ${asDisplayName(data.metadata.toolName)} ${
-    argValues.length > 0
-      ? ` for the following parameters: ${argValues.join(", ")}`
+  const toolName = asDisplayName(data.metadata.toolName).toLowerCase();
+
+  return `Allow future ${toolName} requests${
+    approvalParameters.length > 0
+      ? ` with ${approvalParameters.join(", ")}`
       : ""
-  }`;
+  }.`;
 }
