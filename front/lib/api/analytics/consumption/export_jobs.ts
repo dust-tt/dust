@@ -3,10 +3,12 @@ import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
-import { buildConsumptionExportGcsPrefix } from "@app/temporal/analytics_queue/activities/consumption_export";
+import {
+  buildConsumptionExportGcsPrefix,
+  makeConsumptionExportWorkflowIdPrefix,
+} from "@app/temporal/analytics_queue/activities/consumption_export";
 import type { LaunchConsumptionExportOutcome } from "@app/temporal/analytics_queue/client";
 import { launchConsumptionExportWorkflow } from "@app/temporal/analytics_queue/client";
-import { makeConsumptionExportWorkflowIdPrefix } from "@app/temporal/analytics_queue/helpers";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 

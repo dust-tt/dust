@@ -11,12 +11,10 @@ import logger from "@app/logger/logger";
 import {
   buildConsumptionExportCacheKey,
   buildConsumptionExportGcsPath,
+  makeConsumptionExportWorkflowId,
 } from "@app/temporal/analytics_queue/activities/consumption_export";
 import { QUEUE_NAME } from "@app/temporal/analytics_queue/config";
-import {
-  makeAgentMessageAnalyticsWorkflowId,
-  makeConsumptionExportWorkflowId,
-} from "@app/temporal/analytics_queue/helpers";
+import { makeAgentMessageAnalyticsWorkflowId } from "@app/temporal/analytics_queue/helpers";
 import { storeAgentMessageConsumptionAttributionV3Signal } from "@app/temporal/analytics_queue/signals";
 import {
   runConsumptionExportWorkflow,
