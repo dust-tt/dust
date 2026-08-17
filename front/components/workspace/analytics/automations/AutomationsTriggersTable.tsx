@@ -2,6 +2,7 @@ import { getIcon } from "@app/components/resources/resources_icons";
 import {
   AvatarNameCell,
   CreditsCell,
+  EntityTooltipCard,
 } from "@app/components/workspace/analytics/creditsTableCells";
 import { useAutomationsTriggers } from "@app/hooks/useAutomationsTriggers";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
@@ -9,10 +10,12 @@ import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/tr
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
+  Avatar,
   Clock,
   DataTable,
   DataTableLoadingSkeleton,
   Icon,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import type { ComponentProps, Dispatch, SetStateAction } from "react";
@@ -27,7 +30,12 @@ interface TriggerRowData extends AutomationTriggerRow {
 function TypeCell({ trigger }: { trigger: AutomationTriggerRow }) {
   switch (trigger.kind) {
     case "schedule":
-      return <TypeLabel visual={Clock} label="Schedule" />;
+      return (
+        <TypeLabel
+          visual={Clock}
+          label={trigger.scheduleDescription || "Schedule"}
+        />
+      );
     case "webhook":
       return (
         <TypeLabel
@@ -60,12 +68,71 @@ function TypeLabel({
   );
 }
 
+function AgentCell({ agent }: { agent: AutomationTriggerRow["agent"] }) {
+  const content = (
+    <div className="min-w-0">
+      <AvatarNameCell name={agent.name} imageUrl={agent.pictureUrl} />
+    </div>
+  );
+
+  if (!agent.description) {
+    return content;
+  }
+
+  return (
+    <Tooltip
+      label={
+        <EntityTooltipCard
+          avatar={
+            <Avatar
+              name={agent.name}
+              visual={agent.pictureUrl ?? undefined}
+              size="xs"
+            />
+          }
+          name={agent.name}
+          description={agent.description}
+          modelId={agent.modelId}
+          modelDisplayName={agent.modelDisplayName}
+        />
+      }
+      className="p-3"
+      tooltipTriggerAsChild
+      trigger={content}
+    />
+  );
+}
+
+function EditorCell({ editor }: { editor: AutomationTriggerRow["editor"] }) {
+  return (
+    <Tooltip
+      label={
+        <div className="flex flex-col">
+          <span>{editor.name}</span>
+          {editor.email && <span>{editor.email}</span>}
+        </div>
+      }
+      tooltipTriggerAsChild
+      trigger={
+        <div className="flex items-center">
+          <Avatar
+            name={editor.name}
+            visual={editor.pictureUrl ?? undefined}
+            size="xs"
+            isRounded
+          />
+        </div>
+      }
+    />
+  );
+}
+
 const columns: ColumnDef<TriggerRowData>[] = [
   {
     id: "name",
     accessorKey: "name",
     header: "Name",
-    meta: { headerAlign: "left" },
+    meta: { className: "w-56", headerAlign: "left" },
     cell: (info) => (
       <DataTable.CellContent className="w-full justify-start text-left">
         <span className="truncate text-sm">{info.row.original.name}</span>
@@ -76,28 +143,21 @@ const columns: ColumnDef<TriggerRowData>[] = [
     id: "agent",
     header: "Agent",
     enableSorting: false,
-    meta: { headerAlign: "left" },
+    meta: { className: "w-44", headerAlign: "left" },
     cell: (info) => (
       <DataTable.CellContent className="w-full justify-start">
-        <AvatarNameCell
-          name={info.row.original.agent.name}
-          imageUrl={info.row.original.agent.pictureUrl}
-        />
+        <AgentCell agent={info.row.original.agent} />
       </DataTable.CellContent>
     ),
   },
   {
     id: "editor",
-    header: "Members",
+    header: "Editor",
     enableSorting: false,
-    meta: { headerAlign: "left" },
+    meta: { className: "w-16", headerAlign: "center" },
     cell: (info) => (
-      <DataTable.CellContent className="w-full justify-start">
-        <AvatarNameCell
-          name={info.row.original.editor.name}
-          imageUrl={info.row.original.editor.pictureUrl}
-          isRounded
-        />
+      <DataTable.CellContent className="w-full justify-center">
+        <EditorCell editor={info.row.original.editor} />
       </DataTable.CellContent>
     ),
   },
@@ -105,7 +165,7 @@ const columns: ColumnDef<TriggerRowData>[] = [
     id: "type",
     header: "Type",
     enableSorting: false,
-    meta: { className: "w-40", headerAlign: "left" },
+    meta: { headerAlign: "left" },
     cell: (info) => (
       <DataTable.CellContent className="w-full justify-start">
         <TypeCell trigger={info.row.original} />
@@ -116,7 +176,7 @@ const columns: ColumnDef<TriggerRowData>[] = [
     id: "runCount",
     accessorKey: "runCount",
     header: "Runs",
-    meta: { className: "w-24", headerAlign: "right" },
+    meta: { className: "w-20", headerAlign: "right" },
     cell: (info) => (
       <DataTable.BasicCellContent
         className="justify-end text-right tabular-nums"
@@ -128,7 +188,7 @@ const columns: ColumnDef<TriggerRowData>[] = [
     id: "credits",
     accessorKey: "credits",
     header: "Credits",
-    meta: { className: "w-28", headerAlign: "right" },
+    meta: { className: "w-24", headerAlign: "right" },
     cell: (info) => (
       <DataTable.CellContent className="w-full justify-end text-right">
         <CreditsCell credits={info.row.original.credits} />
@@ -215,7 +275,7 @@ function TriggersTableBody({
   return (
     <div className="overflow-x-auto">
       <DataTable<TriggerRowData>
-        className="min-w-150"
+        className="min-w-200"
         data={triggers}
         columns={columns}
         totalRowCount={totalCount}

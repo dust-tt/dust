@@ -9,6 +9,7 @@ import { ConsumptionExportPanel } from "@app/components/workspace/analytics/cons
 import {
   AvatarNameCell,
   CostShareCell,
+  EntityTooltipCard,
 } from "@app/components/workspace/analytics/creditsTableCells";
 import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
@@ -121,16 +122,12 @@ function AttributionTooltipCard({
   row: ConsumptionTopRow;
   dimension: "agent" | "skill";
 }) {
-  const { isDark } = useTheme();
   const SkillAvatar = getSkillAvatarIcon(row.icon);
-  const ModelLogo = row.modelId
-    ? getModelLogoByModelId(row.modelId, isDark)
-    : undefined;
 
   return (
-    <div className="flex w-64 flex-col gap-3 py-1 text-left">
-      <div className="flex min-w-0 items-center gap-2">
-        {dimension === "agent" ? (
+    <EntityTooltipCard
+      avatar={
+        dimension === "agent" ? (
           <Avatar
             name={row.name}
             visual={row.pictureUrl ?? undefined}
@@ -138,29 +135,13 @@ function AttributionTooltipCard({
           />
         ) : (
           <SkillAvatar name={row.name} size="xs" />
-        )}
-        <span className="truncate text-base font-semibold text-primary-50">
-          {row.name}
-        </span>
-      </div>
-      <span className="text-sm leading-5 text-primary-200">
-        {row.description}
-      </span>
-      {dimension === "agent" && row.modelDisplayName && (
-        <div className="flex items-center gap-2">
-          <span className="flex size-5 shrink-0 items-center justify-center rounded-sm bg-primary-50">
-            <Icon
-              visual={ModelLogo ?? DustLogoSquare}
-              size="xs"
-              className="text-primary-950"
-            />
-          </span>
-          <span className="text-sm font-medium text-primary-50">
-            {row.modelDisplayName}
-          </span>
-        </div>
-      )}
-    </div>
+        )
+      }
+      name={row.name}
+      description={row.description}
+      modelId={dimension === "agent" ? row.modelId : null}
+      modelDisplayName={dimension === "agent" ? row.modelDisplayName : null}
+    />
   );
 }
 
