@@ -193,7 +193,7 @@ export function ToolValidationCard({
             <Button
               label="Decline"
               variant="outline"
-              size="xs"
+              size="md"
               icon={XClose}
               disabled={isSubmitting}
               isLoading={submittingDecision === "rejected"}
@@ -202,7 +202,7 @@ export function ToolValidationCard({
             <Button
               label={toolOverride?.approveLabel ?? "Allow"}
               variant="highlight"
-              size="xs"
+              size="md"
               icon={Check}
               disabled={isSubmitting}
               isLoading={submittingDecision === "approved"}
