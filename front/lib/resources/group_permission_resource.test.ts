@@ -1,10 +1,14 @@
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { isString } from "@app/types/shared/utils/general";
+import type { QueryOptions } from "sequelize";
+import type { AbstractQuery } from "sequelize/types/dialects/abstract/query";
 import { beforeEach, describe, expect, it } from "vitest";
 
 describe("GroupPermissionResource", () => {
@@ -167,6 +171,50 @@ describe("GroupPermissionResource", () => {
         }
       );
       expect(grants).toEqual([]);
+    });
+  });
+
+  describe("listForGroupsWithBoundArray", () => {
+    it("filters in Postgres through one bound bigint array", async () => {
+      await GroupPermissionResource.grant(auth, {
+        group: groupA,
+        grantType: "reader",
+        resourceType: "space",
+        resourceId: 1,
+      });
+      await GroupPermissionResource.grant(auth, {
+        group: groupB,
+        grantType: "reader",
+        resourceType: "space",
+        resourceId: 2,
+      });
+
+      let capturedQuery: { sql: string; bind: unknown } | undefined;
+      const captureQueryHook = "capture-bound-group-permission-query";
+      const captureQuery = (options: QueryOptions, query: AbstractQuery) => {
+        const sql = Reflect.get(query, "sql");
+        if (isString(sql) && sql.includes('FROM "group_permissions"')) {
+          capturedQuery = { sql, bind: options.bind };
+        }
+      };
+      frontSequelize.addHook("afterQuery", captureQueryHook, captureQuery);
+
+      let grants: GroupPermissionResource[];
+      try {
+        grants = await GroupPermissionResource.listForGroupsWithBoundArray(
+          auth.getNonNullableWorkspace(),
+          [groupA.id]
+        );
+      } finally {
+        frontSequelize.removeHook("afterQuery", captureQueryHook);
+      }
+
+      expect(grants.map((grant) => grant.groupId)).toEqual([groupA.id]);
+      expect(capturedQuery?.sql).toContain(
+        '"group_permissions"."groupId" = ANY ($1::bigint[])'
+      );
+      expect(capturedQuery?.sql).not.toContain('"groupId" IN (');
+      expect(capturedQuery?.bind).toEqual({ groupModelIds: [groupA.id] });
     });
   });
 
