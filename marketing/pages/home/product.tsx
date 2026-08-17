@@ -13,21 +13,23 @@ import type { ReactElement } from "react";
 const CAPABILITY_FEATURES: SecurityFeature[] = [
   {
     id: "org-intelligence",
-    title: "Organizational intelligence",
+    title: "Company knowledge, search, and MCPs",
     description:
-      "Put a deep understanding of how your company works into action",
+      "Put a deep understanding of how your company works, through semantic search and 70+ out-of-the-box MCP connectors, into action.",
     placeholder: "",
   },
   {
     id: "collaboration",
     title: "Human-agent collaboration",
-    description: "Orchestrate complex work across humans and agents",
+    description:
+      "Orchestrate complex work across digital teams of people and agents using Pods and Frames, powered by a shared virtual computer and automations.",
     placeholder: "",
   },
   {
     id: "activation",
-    title: "AI-native activation",
-    description: "Activate reusable AI building blocks that compound with use",
+    title: "Composable workflows that compound with use",
+    description:
+      "Execute structured and unstructured work using reusable, governable AI skills, agents, and memory that compound with use.",
     placeholder: "",
   },
 ];
@@ -35,21 +37,23 @@ const CAPABILITY_FEATURES: SecurityFeature[] = [
 const MODEL_FEATURES: SecurityFeature[] = [
   {
     id: "flexibility",
-    title: "Model flexibility",
-    description: "Power workflows with any frontier or open-source model.",
+    title: "Model flexibility without lock-in",
+    description:
+      "Build custom agents with 20+ frontier and open-source models from OpenAI, Anthropic, Google, Mistral, and more. Choose the right model for each workflow and switch as your needs change.",
     placeholder: "",
   },
   {
     id: "cost",
-    title: "Token costs",
-    description: "Optimize model usage for efficiency and performance.",
+    title: "Performance with cost visibility",
+    description:
+      "Credit-based pricing and usage analytics by agent and model show what each workflow costs, helping you balance performance and efficiency with spend.",
     placeholder: "",
   },
   {
     id: "sovereignty",
-    title: "Sovereignty",
+    title: "AI sovereignty",
     description:
-      "Protect your organization's intelligence from vendor and geopolitical risk.",
+      "Protect your company's data from vendor lock-in and geopolitical risk by controlling where it is processed and which model providers you rely on.",
     placeholder: "",
   },
 ];
@@ -57,22 +61,23 @@ const MODEL_FEATURES: SecurityFeature[] = [
 const GOVERN_FEATURES: SecurityFeature[] = [
   {
     id: "security",
-    title: "Security",
+    title: "Security and access controls",
     description:
-      "Control access to data, tools, and systems across digital workforces of humans and agents.",
+      "Control access to data, tools, and systems across teams of people and agents. Use Spaces and Groups to define permissions, with audit logs to track activity.",
     placeholder: "",
   },
   {
     id: "observability",
-    title: "Observability",
+    title: "AI observability and analytics",
     description:
-      "Track and manage AI usage and adoption across the organization.",
+      "Track and manage AI usage and adoption across the organization with analytics that show how agents and models are being used over time.",
     placeholder: "",
   },
   {
     id: "cost-control",
     title: "Cost control",
-    description: "Measure ROI, forecast consumption, and manage AI costs.",
+    description:
+      "Measure ROI, forecast consumption, and manage AI costs. Use programmatic rate limits to control automated usage and manage a shared credit pool across teams and workflows.",
     placeholder: "",
   },
 ];
@@ -107,20 +112,20 @@ export function Landing() {
             showHeader={false}
             reverse
             features={CAPABILITY_FEATURES}
-            accordionTitle="Multiplayer AI"
+            accordionTitle="Multiplayer AI built for real, cross-functional work"
           />
           <SecurityFeaturesSection
             showHeader={false}
             features={MODEL_FEATURES}
             videoSrc="/static/landing/home/features/best-model.mp4"
-            accordionTitle="Multi-model"
+            accordionTitle="Use any model, switch any time, and control your data"
           />
           <SecurityFeaturesSection
             showHeader={false}
             reverse
             features={GOVERN_FEATURES}
             imageSrc="/static/landing/product/govern-ai-usage.svg"
-            accordionTitle="AI-native governance"
+            accordionTitle="Govern AI usage and costs across people and agents"
           />
           <InteractiveFeaturesSection />
         </div>

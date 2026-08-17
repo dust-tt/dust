@@ -23,8 +23,7 @@ const features: FeatureItem[] = [
     panelGradient: "linear-gradient(125deg, #FFF1F7 0.54%, #FFC3DF 100%)",
     videoSrc: "/static/landing/product/PODS_Website-asset%201.mp4",
     ctaLabel: "Learn more",
-    ctaHref:
-      "https://docs.dust.tt/changelog/pods-a-shared-workspace-for-your-team-and-your-agents",
+    ctaHref: "https://docs.dust.tt/docs/user-documentation/pods/overview",
   },
   {
     id: "skill",
