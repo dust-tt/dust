@@ -2,6 +2,7 @@ import type { CreditUsageState } from "@app/components/app/CreditUsage";
 import { CreditUsage } from "@app/components/app/CreditUsage";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
+import { UserToolsAndTriggersDialog } from "@app/components/me/UserToolsAndTriggersDialog";
 import { UserSettingsPopover } from "@app/components/UserSettingsPopover";
 import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
@@ -55,6 +56,7 @@ import {
   MessageTextCircle01,
   Separator,
   Shapes,
+  ShapesPlus,
   SlackLogo,
   Star01,
   Terminal,
@@ -78,6 +80,7 @@ export function UserMenu({
   const router = useAppRouter();
   const { featureFlags } = useFeatureFlags();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [toolsAndTriggersOpen, setToolsAndTriggersOpen] = useState(false);
 
   const sendNotification = useSendNotification();
   const devMode = useDevMode();
@@ -235,6 +238,11 @@ export function UserMenu({
         onOpenChange={setSettingsOpen}
         owner={owner}
       />
+      <UserToolsAndTriggersDialog
+        open={toolsAndTriggersOpen}
+        onOpenChange={setToolsAndTriggersOpen}
+        owner={owner}
+      />
       <DropdownMenu>
         <DropdownMenuTrigger className="hover:bg-hover data-[state=open]:bg-selected rounded-xl p-2 m-2">
           <div className="group flex cursor-pointer items-center justify-between gap-2">
@@ -381,11 +389,18 @@ export function UserMenu({
 
           <DropdownMenuLabel label="Account" />
           {subscription?.plan.limits.canUseProduct && (
-            <DropdownMenuItem
-              label="Personal Settings"
-              icon={User01}
-              onSelect={() => setSettingsOpen(true)}
-            />
+            <>
+              <DropdownMenuItem
+                label="Personal Settings"
+                icon={User01}
+                onSelect={() => setSettingsOpen(true)}
+              />
+              <DropdownMenuItem
+                label="Tools and Triggers"
+                icon={ShapesPlus}
+                onSelect={() => setToolsAndTriggersOpen(true)}
+              />
+            </>
           )}
 
           <DropdownMenuItem
