@@ -255,15 +255,19 @@ describe("Authenticator.fromKey permission resolution", () => {
       group: excludedGroup,
       grantType: "editor",
       resourceType: "agent",
-      resourceId: 42,
+      // A different agent, so the excluded group's grant is observable by its absence below.
+      resourceId: 99,
     });
 
     const key = await KeyFactory.system(systemGroup);
     const { workspaceAuth } = await Authenticator.fromKey(key, workspace.sId);
 
-    expect(
-      workspaceAuth.getGroupPermissions("agent", 42).map((grant) => grant.id)
-    ).toEqual([includedGroup.id]);
+    // The in-scope group's grant on agent 42 is loaded; the out-of-scope group's grant on agent 99
+    // is not — resolved verbs are caller-scoped and carry no group ids.
+    expect(workspaceAuth.getGrantedVerbs("agent", 42).length).toBeGreaterThan(
+      0
+    );
+    expect(workspaceAuth.getGrantedVerbs("agent", 99)).toEqual([]);
   });
 
   it("resolves permissions for explicitly scoped system keys", async () => {
@@ -290,7 +294,8 @@ describe("Authenticator.fromKey permission resolution", () => {
       group: excludedGroup,
       grantType: "editor",
       resourceType: "agent",
-      resourceId: 42,
+      // A different agent, so the excluded group's grant is observable by its absence below.
+      resourceId: 99,
     });
 
     const key = await KeyFactory.system(systemGroup);
@@ -298,8 +303,11 @@ describe("Authenticator.fromKey permission resolution", () => {
       includedGroup.sId,
     ]);
 
-    expect(
-      workspaceAuth.getGroupPermissions("agent", 42).map((grant) => grant.id)
-    ).toEqual([includedGroup.id]);
+    // The in-scope group's grant on agent 42 is loaded; the out-of-scope group's grant on agent 99
+    // is not — resolved verbs are caller-scoped and carry no group ids.
+    expect(workspaceAuth.getGrantedVerbs("agent", 42).length).toBeGreaterThan(
+      0
+    );
+    expect(workspaceAuth.getGrantedVerbs("agent", 99)).toEqual([]);
   });
 });

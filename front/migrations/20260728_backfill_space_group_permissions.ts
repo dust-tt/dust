@@ -31,7 +31,7 @@ async function backfillWorkspaceSpaceGroupPermissions(
     async (space) => {
       const desiredGrants = space
         .getAccessControlLists(auth)
-        .flatMap((permission) => permission.groups)
+        .flatMap((permission) => permission.groups ?? [])
         .map((grant) => ({
           groupId: grant.id,
           permissions: grant.permissions,
