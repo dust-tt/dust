@@ -211,7 +211,7 @@ export function UsageFilterPanel({
             activeCategory={activeCategory}
             onCategoryChange={handleCategoryChange}
           />
-          <div className="flex h-full w-72 flex-col gap-2 p-2">
+          <div className="flex h-full w-80 flex-col gap-2 p-2">
             <UsageFilterSection
               title={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
               action={
