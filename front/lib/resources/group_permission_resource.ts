@@ -409,32 +409,12 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     const rows = await GroupPermissionModel.findAll({
       where: {
         workspaceId: workspace.id,
-        groupId: groupModelIds,
-        ...(grantType !== undefined ? { grantType } : {}),
-        ...(resourceType !== undefined ? { resourceType } : {}),
-        ...(resourceId !== undefined ? { resourceId } : {}),
-      },
-    });
-
-    return rows.map((row) => new this(GroupPermissionModel, row.get()));
-  }
-
-  // System keys can represent nearly every group in a workspace. Bind their group ids as one
-  // Postgres array so Sequelize does not expand thousands of placeholders into the query text.
-  static async listForGroupsWithBoundArray(
-    workspace: LightWorkspaceType,
-    groupModelIds: ModelId[]
-  ): Promise<GroupPermissionResource[]> {
-    if (groupModelIds.length === 0) {
-      return [];
-    }
-
-    const rows = await GroupPermissionModel.findAll({
-      where: {
-        workspaceId: workspace.id,
         groupId: {
           [Op.any]: literal("$groupModelIds::bigint[]"),
         },
+        ...(grantType !== undefined ? { grantType } : {}),
+        ...(resourceType !== undefined ? { resourceType } : {}),
+        ...(resourceId !== undefined ? { resourceId } : {}),
       },
       bind: { groupModelIds },
     });
