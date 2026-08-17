@@ -18,6 +18,10 @@ vi.mock("@app/lib/utils/cache", () => ({
       options?: {
         cacheId?: string;
         cacheNullValues?: boolean;
+        readFromKeyFirst?: {
+          cacheId: string;
+          resolver: (...args: Args) => string;
+        };
       }
     ) => {
       return async (...args: Args): Promise<JsonSerializable<T>> => {
@@ -25,34 +29,49 @@ vi.mock("@app/lib/utils/cache", () => ({
           throw cacheReadFailure.current;
         }
         const key = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
-        const cached = inMemoryCache.get(key);
+        const readKey = options?.readFromKeyFirst
+          ? `cacheWithRedis-${options.readFromKeyFirst.cacheId}-${options.readFromKeyFirst.resolver(...args)}`
+          : key;
+        const cached = inMemoryCache.get(readKey);
         if (cached) {
+          inMemoryCache.set(key, cached);
           return JSON.parse(cached) as JsonSerializable<T>;
         }
         const result = await fn(...args);
         if ((options?.cacheNullValues ?? true) || result !== null) {
-          inMemoryCache.set(key, JSON.stringify(result));
+          const serializedResult = JSON.stringify(result);
+          inMemoryCache.set(readKey, serializedResult);
+          inMemoryCache.set(key, serializedResult);
         }
         return result;
       };
     }
   ),
-  invalidateCacheWithRedis: vi
-    .fn()
-    .mockImplementation(
-      <T, Args extends unknown[]>(
-        fn: CacheableFunction<JsonSerializable<T>, Args>,
-        resolver: (...args: Args) => string,
-        options?: { cacheId?: string }
-      ) => {
-        return (...args: Args): Promise<void> => {
-          const key = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
-          inMemoryCache.delete(key);
-          deletedKeys.push(key);
-          return Promise.resolve();
+  invalidateCacheWithRedis: vi.fn().mockImplementation(
+    <T, Args extends unknown[]>(
+      fn: CacheableFunction<JsonSerializable<T>, Args>,
+      resolver: (...args: Args) => string,
+      options?: {
+        cacheId?: string;
+        readFromKeyFirst?: {
+          cacheId: string;
+          resolver: (...args: Args) => string;
         };
       }
-    ),
+    ) => {
+      return (...args: Args): Promise<void> => {
+        const key = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
+        inMemoryCache.delete(key);
+        deletedKeys.push(key);
+        if (options?.readFromKeyFirst) {
+          const readKey = `cacheWithRedis-${options.readFromKeyFirst.cacheId}-${options.readFromKeyFirst.resolver(...args)}`;
+          inMemoryCache.delete(readKey);
+          deletedKeys.push(readKey);
+        }
+        return Promise.resolve();
+      };
+    }
+  ),
   bestEffortInvalidateCacheWithRedis: vi
     .fn()
     .mockImplementation(
@@ -118,6 +137,10 @@ function getCacheKeyForWorkspace(workspaceId: string): string {
   return WorkspaceResource.byIdCacheOperations.buildKey({ wId: workspaceId });
 }
 
+function getPreviousCacheKeyForWorkspace(workspaceId: string): string {
+  return `cacheWithRedis-_fetchByIdUncached-workspace:v2:${workspaceId}`;
+}
+
 const INVALID_RETENTION_DAYS = CONVERSATIONS_RETENTION_MIN_DAYS - 1;
 const SHORT_RETENTION_DAYS = 30;
 
@@ -159,10 +182,13 @@ describe("WorkspaceResource", () => {
       it("caches the workspace on first call", async () => {
         const workspaceId = workspace.sId;
         const cacheKey = getCacheKeyForWorkspace(workspaceId);
+        const previousCacheKey = getPreviousCacheKeyForWorkspace(workspaceId);
 
         expect(inMemoryCache.has(cacheKey)).toBe(false);
+        expect(inMemoryCache.has(previousCacheKey)).toBe(false);
         await WorkspaceResource.fetchById(workspaceId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
+        expect(inMemoryCache.has(previousCacheKey)).toBe(true);
       });
 
       it("serves from cache on second call", async () => {
@@ -245,6 +271,9 @@ describe("WorkspaceResource", () => {
         await resource?.updateWorkspaceSettings({ name: "Updated Name" });
 
         expect(deletedKeys).toContain(cacheKey);
+        expect(deletedKeys).toContain(
+          getPreviousCacheKeyForWorkspace(workspaceId)
+        );
         expect(inMemoryCache.has(cacheKey)).toBe(false);
       });
     });

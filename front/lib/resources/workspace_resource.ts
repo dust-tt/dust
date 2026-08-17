@@ -199,6 +199,10 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     version: WORKSPACE_CACHE_KEY_VERSION,
     ttlMs: WORKSPACE_CACHE_TTL_MS,
     key: (workspaceId: string) => workspaceId,
+    readFromKeyFirst: {
+      cacheId: "_fetchByIdUncached",
+      key: (workspaceId: string) => `workspace:v2:${workspaceId}`,
+    },
     loadFromDatabase: WorkspaceResource.fetchByIdFromDatabase,
     toSnapshot: (workspace) => workspace.toCacheSnapshot(),
     fromSnapshot: WorkspaceResource.fromCacheSnapshot,

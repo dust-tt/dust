@@ -15,11 +15,17 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Transaction } from "sequelize";
 import type { z } from "zod";
 
+type CacheKeyDefinition<Input> = {
+  cacheId: string;
+  key: (input: Input) => string;
+};
+
 type CachedResourceLookupDefinition<Input, Snapshot, Resource> = {
   id: string;
   version: number;
   ttlMs: number;
   key: (input: Input) => string;
+  readFromKeyFirst?: CacheKeyDefinition<Input>;
   loadFromDatabase: (
     input: Input,
     transaction?: Transaction
@@ -62,6 +68,7 @@ export function defineCachedResourceLookup<Input, Snapshot, Resource>({
   version,
   ttlMs,
   key,
+  readFromKeyFirst,
   loadFromDatabase,
   toSnapshot,
   fromSnapshot,
@@ -71,6 +78,12 @@ export function defineCachedResourceLookup<Input, Snapshot, Resource>({
   Resource
 >): OperableCachedResourceLookup<Input, Resource> {
   const versionedKey = (input: Input) => `v${version}:${key(input)}`;
+  const readFromKeyFirstOptions = readFromKeyFirst
+    ? {
+        cacheId: readFromKeyFirst.cacheId,
+        resolver: readFromKeyFirst.key,
+      }
+    : undefined;
 
   const loadSnapshotFromDatabase = async (
     input: Input
@@ -90,12 +103,16 @@ export function defineCachedResourceLookup<Input, Snapshot, Resource>({
       cacheId: id,
       cacheNullValues: false,
       ttlMs,
+      readFromKeyFirst: readFromKeyFirstOptions,
     }
   );
   const invalidateSnapshot = invalidateCacheWithRedis(
     loadSnapshotFromDatabase,
     versionedKey,
-    { cacheId: id }
+    {
+      cacheId: id,
+      readFromKeyFirst: readFromKeyFirstOptions,
+    }
   );
 
   return {

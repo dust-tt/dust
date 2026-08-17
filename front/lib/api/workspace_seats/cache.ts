@@ -8,7 +8,10 @@ import type { Transaction } from "sequelize";
 import { z } from "zod";
 
 const WORKSPACE_ACTIVE_SEATS_CACHE_TTL_MS = 5 * 60 * 1000;
-const WORKSPACE_ACTIVE_SEATS_CACHE_ID = "workspace_active_seats";
+// Keep the deployed physical key: the cached payload has not changed, so moving it would only
+// create a rolling-deploy invalidation problem. The Poke operation keeps its owner-facing id.
+const WORKSPACE_ACTIVE_SEATS_CACHE_ID = "_countActiveSeatsInWorkspaceUncached";
+const WORKSPACE_ACTIVE_SEATS_CACHE_OPERATIONS_ID = "workspace_active_seats";
 const workspaceActiveSeatsCacheKey = (workspaceId: string) =>
   `count-active-seats-in-workspace:${workspaceId}`;
 
@@ -31,7 +34,7 @@ const workspaceActiveSeatsCache = defineCache<{ workspaceId: string }, number>({
 });
 
 export const workspaceActiveSeatsCacheOperations = defineCacheOperations({
-  id: WORKSPACE_ACTIVE_SEATS_CACHE_ID,
+  id: WORKSPACE_ACTIVE_SEATS_CACHE_OPERATIONS_ID,
   label: "Workspace active seats",
   inputSchema: z.object({ workspaceId: z.string().min(1) }),
   params: [

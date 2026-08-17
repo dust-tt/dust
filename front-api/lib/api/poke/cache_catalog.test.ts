@@ -13,7 +13,7 @@ describe("Poke cache catalog", () => {
       "cacheWithRedis-workspace_by_sid-v3:workspace-1"
     );
     expect(activeSeats?.buildKey({ workspaceId: "workspace-1" })).toBe(
-      "cacheWithRedis-workspace_active_seats-count-active-seats-in-workspace:workspace-1"
+      "cacheWithRedis-_countActiveSeatsInWorkspaceUncached-count-active-seats-in-workspace:workspace-1"
     );
   });
 

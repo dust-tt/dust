@@ -210,6 +210,63 @@ describe("cacheWithRedis", () => {
         "cacheWithRedis-workspace_by_sid-workspace-1"
       );
     });
+
+    it("reads the migration key first and synchronizes the canonical key", async () => {
+      const mockFn = vi.fn().mockResolvedValue({ data: "fresh" });
+      mockRedisClient.get.mockResolvedValue(
+        JSON.stringify({ data: "from-previous-key" })
+      );
+      mockRedisClient.set.mockResolvedValue("OK");
+
+      const cachedFn = cacheWithRedis(mockFn, (arg: string) => `v3:${arg}`, {
+        cacheId: "workspace_by_sid",
+        ttlMs: 60_000,
+        readFromKeyFirst: {
+          cacheId: "_fetchByIdUncached",
+          resolver: (arg: string) => `workspace:v2:${arg}`,
+        },
+      });
+      const result = await cachedFn("workspace-1");
+
+      expect(result).toEqual({ data: "from-previous-key" });
+      expect(mockFn).not.toHaveBeenCalled();
+      expect(mockRedisClient.get).toHaveBeenCalledWith(
+        "cacheWithRedis-_fetchByIdUncached-workspace:v2:workspace-1"
+      );
+      expect(mockRedisClient.set).toHaveBeenCalledWith(
+        "cacheWithRedis-workspace_by_sid-v3:workspace-1",
+        JSON.stringify({ data: "from-previous-key" }),
+        { PX: 60_000 }
+      );
+    });
+
+    it("refreshes both keys when the migration key misses", async () => {
+      const mockFn = vi.fn().mockResolvedValue({ data: "fresh" });
+      mockRedisClient.get.mockResolvedValue(null);
+      mockRedisClient.set.mockResolvedValue("OK");
+
+      const cachedFn = cacheWithRedis(mockFn, (arg: string) => `v3:${arg}`, {
+        cacheId: "workspace_by_sid",
+        readFromKeyFirst: {
+          cacheId: "_fetchByIdUncached",
+          resolver: (arg: string) => `workspace:v2:${arg}`,
+        },
+      });
+      const result = await cachedFn("workspace-1");
+
+      expect(result).toEqual({ data: "fresh" });
+      expect(mockRedisClient.get).not.toHaveBeenCalledWith(
+        "cacheWithRedis-workspace_by_sid-v3:workspace-1"
+      );
+      expect(mockRedisClient.set).toHaveBeenCalledWith(
+        "cacheWithRedis-_fetchByIdUncached-workspace:v2:workspace-1",
+        JSON.stringify({ data: "fresh" })
+      );
+      expect(mockRedisClient.set).toHaveBeenCalledWith(
+        "cacheWithRedis-workspace_by_sid-v3:workspace-1",
+        JSON.stringify({ data: "fresh" })
+      );
+    });
   });
 
   describe("TTL handling", () => {
@@ -540,6 +597,29 @@ describe("invalidateCacheWithRedis", () => {
     expect(mockRedisClient.del).toHaveBeenCalledWith(
       "cacheWithRedis-workspace_by_sid-workspace-1"
     );
+  });
+
+  it("invalidates both keys during a key migration", async () => {
+    const mockFn = vi.fn();
+    mockRedisClient.del.mockResolvedValue(2);
+
+    const invalidateFn = invalidateCacheWithRedis(
+      mockFn,
+      (arg: string) => `v3:${arg}`,
+      {
+        cacheId: "workspace_by_sid",
+        readFromKeyFirst: {
+          cacheId: "_fetchByIdUncached",
+          resolver: (arg: string) => `workspace:v2:${arg}`,
+        },
+      }
+    );
+    await invalidateFn("workspace-1");
+
+    expect(mockRedisClient.del).toHaveBeenCalledWith([
+      "cacheWithRedis-workspace_by_sid-v3:workspace-1",
+      "cacheWithRedis-_fetchByIdUncached-workspace:v2:workspace-1",
+    ]);
   });
 });
 

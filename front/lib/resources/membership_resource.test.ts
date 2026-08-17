@@ -93,7 +93,7 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 
 function getCacheKeyForWorkspace(workspaceId: string): string {
-  return `cacheWithRedis-workspace_active_seats-count-active-seats-in-workspace:${workspaceId}`;
+  return `cacheWithRedis-_countActiveSeatsInWorkspaceUncached-count-active-seats-in-workspace:${workspaceId}`;
 }
 
 describe("MembershipResource", () => {
@@ -630,7 +630,7 @@ describe("MembershipResource", () => {
         });
 
         const roleCacheKey = `cacheWithRedis-_getActiveRoleForUserInWorkspaceUncached-role:user:${user.id}:workspace:${workspace.id}`;
-        const seatsCacheKey = `cacheWithRedis-workspace_active_seats-count-active-seats-in-workspace:${workspace.sId}`;
+        const seatsCacheKey = getCacheKeyForWorkspace(workspace.sId);
 
         expect(deletedKeys).toContain(roleCacheKey);
         expect(deletedKeys).toContain(seatsCacheKey);
@@ -652,7 +652,7 @@ describe("MembershipResource", () => {
         });
 
         const roleCacheKey = `cacheWithRedis-_getActiveRoleForUserInWorkspaceUncached-role:user:${user.id}:workspace:${workspace.id}`;
-        const seatsCacheKey = `cacheWithRedis-workspace_active_seats-count-active-seats-in-workspace:${workspace.sId}`;
+        const seatsCacheKey = getCacheKeyForWorkspace(workspace.sId);
 
         expect(deletedKeys).toContain(roleCacheKey);
         expect(deletedKeys).toContain(seatsCacheKey);
@@ -676,7 +676,7 @@ describe("MembershipResource", () => {
           });
         await membership?.markFirstUse();
 
-        const seatsCacheKey = `cacheWithRedis-workspace_active_seats-count-active-seats-in-workspace:${workspace.sId}`;
+        const seatsCacheKey = getCacheKeyForWorkspace(workspace.sId);
 
         expect(deletedKeys).toContain(seatsCacheKey);
       });
@@ -693,7 +693,7 @@ describe("MembershipResource", () => {
 
         await MembershipResource.deleteAllForWorkspace(auth);
 
-        const seatsCacheKey = `cacheWithRedis-workspace_active_seats-count-active-seats-in-workspace:${workspace.sId}`;
+        const seatsCacheKey = getCacheKeyForWorkspace(workspace.sId);
 
         expect(deletedKeys).toContain(seatsCacheKey);
       });
@@ -713,7 +713,7 @@ describe("MembershipResource", () => {
         await membership.delete(auth, {});
 
         const roleCacheKey = `cacheWithRedis-_getActiveRoleForUserInWorkspaceUncached-role:user:${user.id}:workspace:${workspace.id}`;
-        const seatsCacheKey = `cacheWithRedis-workspace_active_seats-count-active-seats-in-workspace:${workspace.sId}`;
+        const seatsCacheKey = getCacheKeyForWorkspace(workspace.sId);
 
         expect(deletedKeys).toContain(roleCacheKey);
         expect(deletedKeys).toContain(seatsCacheKey);
@@ -883,7 +883,7 @@ describe("MembershipResource", () => {
         workspace: lightWorkspace,
       });
 
-      const seatsCacheKey = `cacheWithRedis-workspace_active_seats-count-active-seats-in-workspace:${workspace.sId}`;
+      const seatsCacheKey = getCacheKeyForWorkspace(workspace.sId);
       expect(deletedKeys).toContain(seatsCacheKey);
     });
   });
