@@ -18,6 +18,7 @@ import type { z } from "zod";
 type CacheKeyDefinition<Input> = {
   cacheId: string;
   key: (input: Input) => string;
+  keyPattern: string;
 };
 
 type CachedResourceLookupDefinition<Input, Snapshot, Resource> = {
@@ -84,6 +85,11 @@ export function defineCachedResourceLookup<Input, Snapshot, Resource>({
         resolver: readFromKeyFirst.key,
       }
     : undefined;
+  const operationsCacheKey = readFromKeyFirst ?? {
+    cacheId: id,
+    key: versionedKey,
+    keyPattern: `v${version}:*`,
+  };
 
   const loadSnapshotFromDatabase = async (
     input: Input
@@ -151,8 +157,14 @@ export function defineCachedResourceLookup<Input, Snapshot, Resource>({
         params,
         inputSchema,
         buildKey: (input) =>
-          buildCacheWithRedisKey(id, versionedKey(toLookupInput(input))),
-        keyPattern: buildCacheWithRedisKey(id, `v${version}:*`),
+          buildCacheWithRedisKey(
+            operationsCacheKey.cacheId,
+            operationsCacheKey.key(toLookupInput(input))
+          ),
+        keyPattern: buildCacheWithRedisKey(
+          operationsCacheKey.cacheId,
+          operationsCacheKey.keyPattern
+        ),
       }),
   };
 }

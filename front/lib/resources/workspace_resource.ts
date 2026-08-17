@@ -202,6 +202,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     readFromKeyFirst: {
       cacheId: "_fetchByIdUncached",
       key: (workspaceId: string) => `workspace:v2:${workspaceId}`,
+      keyPattern: "workspace:v2:*",
     },
     loadFromDatabase: WorkspaceResource.fetchByIdFromDatabase,
     toSnapshot: (workspace) => workspace.toCacheSnapshot(),
