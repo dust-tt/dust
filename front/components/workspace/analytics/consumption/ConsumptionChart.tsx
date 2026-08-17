@@ -319,28 +319,34 @@ function ConsumptionDailyChart({
             ifOverflow="extendDomain"
           />
         )}
-        {orderedGroups.map((group) => (
-          <Bar
-            key={group.groupKey}
-            dataKey={(datum: ConsumptionTimeseriesPoint) =>
-              datum.values[group.groupKey] ?? 0
-            }
-            name={group.name}
-            stackId="credits"
-            isAnimationActive={false}
-          >
-            {chartData.map((datum) => (
-              <Cell
-                key={datum.timestamp}
-                fill="currentColor"
-                className={cn(
-                  colorByGroupKey.get(group.groupKey),
-                  datum.timestamp === partialTimestamp && PARTIAL_BAR_OPACITY
-                )}
-              />
-            ))}
-          </Bar>
-        ))}
+        {orderedGroups.map((group, rank) => {
+          const colorClassName = getConsumptionChartColor(rank);
+
+          return (
+            <Bar
+              // Recharts keeps each mounted Bar in its original stack slot, so
+              // identify bars by color rank rather than the group occupying it.
+              key={colorClassName}
+              dataKey={(datum: ConsumptionTimeseriesPoint) =>
+                datum.values[group.groupKey] ?? 0
+              }
+              name={group.name}
+              stackId="credits"
+              isAnimationActive={false}
+            >
+              {chartData.map((datum) => (
+                <Cell
+                  key={datum.timestamp}
+                  fill="currentColor"
+                  className={cn(
+                    colorClassName,
+                    datum.timestamp === partialTimestamp && PARTIAL_BAR_OPACITY
+                  )}
+                />
+              ))}
+            </Bar>
+          );
+        })}
       </BarChart>
     </ChartContainer>
   );
