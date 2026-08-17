@@ -18,5 +18,13 @@
             android:name=".DemoPresentationActivity"
             android:exported="true"
             android:screenOrientation="portrait" />
+
+        <receiver
+            android:name=".notifications.DebugNotificationReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.dust.mobile.DEBUG_NOTIFICATION" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
