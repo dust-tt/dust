@@ -81,7 +81,6 @@ interface ToolValidationCardProps {
 
 interface ToolValidationDetailsDialogProps {
   validationRequest: ToolValidationRequest;
-  approvalProgress?: ApprovalProgressProps;
   approvalTitle: string;
   displayLabel: string;
   icon: React.ComponentProps<typeof Avatar>["icon"];
@@ -93,7 +92,6 @@ interface ToolValidationDetailsDialogProps {
 
 function ToolValidationDetailsDialog({
   validationRequest,
-  approvalProgress,
   approvalTitle,
   displayLabel,
   icon,
@@ -121,12 +119,9 @@ function ToolValidationDetailsDialog({
         preventAutoFocusOnClose={false}
       >
         <DialogHeader className="gap-1 p-0">
-          <div className="flex items-center justify-between gap-4 pr-8">
-            <DialogTitle visual={<Avatar icon={icon} size="sm" />}>
-              {approvalTitle}
-            </DialogTitle>
-            {approvalProgress && <ApprovalProgress {...approvalProgress} />}
-          </div>
+          <DialogTitle visual={<Avatar icon={icon} size="sm" />}>
+            {approvalTitle}
+          </DialogTitle>
           <DialogDescription className="pl-11">
             {displayLabel}
           </DialogDescription>
@@ -215,7 +210,6 @@ export function ToolValidationCard({
           {hasDetails && (
             <ToolValidationDetailsDialog
               validationRequest={validationRequest}
-              approvalProgress={approvalProgress}
               approvalTitle={approvalTitle}
               displayLabel={displayLabel}
               icon={icon ?? PieChart01}
