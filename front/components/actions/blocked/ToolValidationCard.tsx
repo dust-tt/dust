@@ -19,7 +19,6 @@ import {
   DialogContainer,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -89,12 +88,7 @@ interface ToolValidationDetailsDialogProps {
   currentUser: UserType;
   owner: LightWorkspaceType;
   conversationId?: string | null;
-  errorMessage: string | null;
-  neverAskAgain: boolean;
   isSubmitting: boolean;
-  submittingDecision: "approved" | "rejected" | null;
-  onNeverAskAgainChange: (checked: boolean) => void;
-  onValidate: (approved: "approved" | "rejected") => Promise<void>;
 }
 
 function ToolValidationDetailsDialog({
@@ -106,12 +100,7 @@ function ToolValidationDetailsDialog({
   currentUser,
   owner,
   conversationId,
-  errorMessage,
-  neverAskAgain,
   isSubmitting,
-  submittingDecision,
-  onNeverAskAgainChange,
-  onValidate,
 }: ToolValidationDetailsDialogProps) {
   const toolOverride = getToolOverride(validationRequest.metadata);
 
@@ -149,50 +138,7 @@ function ToolValidationDetailsDialog({
             owner={owner}
             conversationId={conversationId}
           />
-          {errorMessage && (
-            <div className="mt-2 text-sm font-medium text-warning-800">
-              {errorMessage}
-            </div>
-          )}
         </DialogContainer>
-        <DialogFooter className="flex-col items-stretch gap-3 p-0">
-          {["low", "medium"].includes(validationRequest.stake ?? "") && (
-            <Label
-              htmlFor={`never-ask-again-dialog-${validationRequest.actionId}`}
-              className="flex min-h-11 cursor-pointer items-center gap-2 px-1 sm:min-h-0"
-            >
-              <Checkbox
-                id={`never-ask-again-dialog-${validationRequest.actionId}`}
-                checked={neverAskAgain}
-                disabled={isSubmitting}
-                onCheckedChange={(check) => {
-                  onNeverAskAgainChange(!!check);
-                }}
-              />
-              <span className="font-normal">
-                {getToolValidationAlwaysAllowLabel(validationRequest)}
-              </span>
-            </Label>
-          )}
-          <div className="flex justify-end gap-2">
-            <Button
-              label="Decline"
-              variant="outline"
-              icon={XClose}
-              disabled={isSubmitting}
-              isLoading={submittingDecision === "rejected"}
-              onClick={() => void onValidate("rejected")}
-            />
-            <Button
-              label={toolOverride?.approveLabel ?? "Allow"}
-              variant="highlight"
-              icon={Check}
-              disabled={isSubmitting}
-              isLoading={submittingDecision === "approved"}
-              onClick={() => void onValidate("approved")}
-            />
-          </div>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -276,12 +222,7 @@ export function ToolValidationCard({
               currentUser={currentUser}
               owner={owner}
               conversationId={conversationId}
-              errorMessage={errorMessage}
-              neverAskAgain={neverAskAgain}
               isSubmitting={isSubmitting}
-              submittingDecision={submittingDecision}
-              onNeverAskAgainChange={setNeverAskAgain}
-              onValidate={handleValidation}
             />
           )}
         </div>
