@@ -2,14 +2,11 @@ import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/perio
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import {
-  describeTemporalWorkflow,
-  getTemporalClientForFrontNamespace,
-} from "@app/lib/temporal";
+import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { buildConsumptionExportGcsPrefix } from "@app/temporal/analytics_queue/activities/consumption_export";
 import type { LaunchConsumptionExportOutcome } from "@app/temporal/analytics_queue/client";
 import { launchConsumptionExportWorkflow } from "@app/temporal/analytics_queue/client";
-import { makeConsumptionExportWorkflowId } from "@app/temporal/analytics_queue/helpers";
+import { makeConsumptionExportWorkflowIdPrefix } from "@app/temporal/analytics_queue/helpers";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -72,11 +69,14 @@ export async function isConsumptionExportGenerating(
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const client = await getTemporalClientForFrontNamespace();
 
-  const description = await describeTemporalWorkflow(client, {
-    workflowId: makeConsumptionExportWorkflowId({ workspaceId }),
-  });
+  // Workflow IDs are keyed by period+filter (see makeConsumptionExportWorkflowId), so a running
+  // export for this workspace is matched by prefix rather than by a single fixed workflow ID.
+  const query = `WorkflowId STARTS_WITH "${makeConsumptionExportWorkflowIdPrefix({ workspaceId })}" AND ExecutionStatus="Running"`;
+  for await (const _workflow of client.workflow.list({ query })) {
+    return true;
+  }
 
-  return description?.status.name === "RUNNING";
+  return false;
 }
 
 export async function startConsumptionExport(
