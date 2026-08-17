@@ -48,7 +48,7 @@ function makeSkillDocument(
 }
 
 function mockHits(documents: SkillSearchDocument[]) {
-  mockClientSearch.mockResolvedValue({
+  mockClientSearch.mockResolvedValueOnce({
     hits: {
       hits: documents.map((document) => ({ _source: document })),
     },
@@ -212,6 +212,15 @@ describe("skill_search/search", () => {
       workspace.sId
     );
     const documents = [
+      makeSkillDocument({
+        skill_id: "unreadable-pod",
+        pod_space_id: unreadablePod.sId,
+      }),
+      makeSkillDocument({
+        skill_id: "other-editors-only",
+        availability: "editors",
+        editor_group_id: otherEditorGroup.sId,
+      }),
       makeSkillDocument({ skill_id: "no-pod" }),
       makeSkillDocument({
         skill_id: "readable-pod",
@@ -222,10 +231,6 @@ describe("skill_search/search", () => {
         pod_space_id: openPod.sId,
       }),
       makeSkillDocument({
-        skill_id: "unreadable-pod",
-        pod_space_id: unreadablePod.sId,
-      }),
-      makeSkillDocument({
         skill_id: "missing-pod",
         pod_space_id: missingPodId,
       }),
@@ -234,12 +239,12 @@ describe("skill_search/search", () => {
         availability: "editors",
         editor_group_id: editorGroup.sId,
       }),
-      makeSkillDocument({
-        skill_id: "other-editors-only",
-        availability: "editors",
-        editor_group_id: otherEditorGroup.sId,
-      }),
     ];
+    const visibleDocuments = documents.filter((document) =>
+      ["no-pod", "readable-pod", "open-pod", "my-editors-only"].includes(
+        document.skill_id
+      )
+    );
     mockHits(documents);
     vi.spyOn(
       SkillSearchDocumentResource,
@@ -249,24 +254,60 @@ describe("skill_search/search", () => {
 
     const result = await searchSkillDocuments(auth, {
       searchTerm: "skill",
-      limit: 10,
+      limit: 2,
     });
 
-    expect(fetchByIdsSpy).toHaveBeenCalledWith(auth, [
-      readablePod.sId,
-      openPod.sId,
-      unreadablePod.sId,
-      missingPodId,
-    ]);
+    expect(fetchByIdsSpy).toHaveBeenCalledOnce();
+    const [fetchAuth, fetchedPodIds] = fetchByIdsSpy.mock.calls[0];
+    expect(fetchAuth).toBe(auth);
+    expect(new Set(fetchedPodIds)).toEqual(
+      new Set([readablePod.sId, openPod.sId, unreadablePod.sId, missingPodId])
+    );
+    expect(mockClientSearch).toHaveBeenCalledOnce();
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
       return;
     }
+    expect(
+      SkillSearchDocumentResource.filterSearchDocumentsByCurrentState
+    ).toHaveBeenCalledOnce();
+    expect(
+      SkillSearchDocumentResource.filterSearchDocumentsByCurrentState
+    ).toHaveBeenCalledWith(auth, visibleDocuments);
     expect(result.value.map((document) => document.skill_id)).toEqual([
       "no-pod",
       "readable-pod",
-      "open-pod",
-      "my-editors-only",
     ]);
+  });
+
+  it("allows editors-only skills for API keys", async () => {
+    const { auth } = await createPrivateApiMockRequest({ role: "user" });
+    vi.spyOn(auth, "isKey").mockReturnValue(true);
+    const editorsOnlySkill = makeSkillDocument({
+      skill_id: "editors-only",
+      availability: "editors",
+      editor_group_id: "group-other",
+    });
+    mockHits([editorsOnlySkill]);
+    vi.spyOn(
+      SkillSearchDocumentResource,
+      "filterSearchDocumentsByCurrentState"
+    ).mockImplementation(async (_auth, candidates) => [...candidates]);
+
+    const result = await searchSkillDocuments(auth, {
+      searchTerm: "skill",
+      limit: 10,
+    });
+
+    expect(mockClientSearch).toHaveBeenCalledOnce();
+    expect(
+      SkillSearchDocumentResource.filterSearchDocumentsByCurrentState
+    ).toHaveBeenCalledWith(auth, [editorsOnlySkill]);
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.map((document) => document.skill_id)).toEqual([
+        "editors-only",
+      ]);
+    }
   });
 });

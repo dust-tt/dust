@@ -121,9 +121,10 @@ function getSkillSearchHitSources(
 /**
  * Searches a bounded custom-skill candidate window.
  *
- * Non-pod spaces are filtered directly in Elasticsearch. Projects/pods are
- * authorized from only the IDs present in the candidate window, so a user's
- * potentially unbounded pod memberships are never sent to Elasticsearch.
+ * Non-pod spaces are filtered directly in Elasticsearch. Projects/pods and
+ * editors-only skills are authorized from only the IDs present in the
+ * candidate window, so a user's potentially unbounded memberships are never
+ * sent to Elasticsearch.
  */
 export async function searchSkillDocuments(
   auth: Authenticator,
@@ -154,7 +155,7 @@ export async function searchSkillDocuments(
     Math.max(MIN_SKILL_SEARCH_CANDIDATES, limit * 3)
   );
 
-  const searchResult = await withEs((client) =>
+  const candidateSearchResult = await withEs((client) =>
     client.search<SkillSearchDocument>({
       index: SKILL_SEARCH_ALIAS_NAME,
       query: buildSkillSearchQuery({
@@ -166,15 +167,16 @@ export async function searchSkillDocuments(
       sort: buildSkillSearchSort(searchTerm.trim().length > 0),
     })
   );
-  if (searchResult.isErr()) {
-    return new Err(searchResult.error);
+  if (candidateSearchResult.isErr()) {
+    return new Err(candidateSearchResult.error);
   }
 
-  const candidates =
-    await SkillSearchDocumentResource.filterSearchDocumentsByCurrentState(
-      auth,
-      getSkillSearchHitSources(searchResult.value.hits.hits)
-    );
+  const candidates = getSkillSearchHitSources(
+    candidateSearchResult.value.hits.hits
+  );
+  if (candidates.length === 0) {
+    return new Ok([]);
+  }
   const candidatePodIds = [
     ...new Set(
       candidates.flatMap((candidate) =>
@@ -189,20 +191,24 @@ export async function searchSkillDocuments(
       .map((space) => space.sId)
   );
   const editorGroupIds = new Set(auth.groupIds());
+  const canReadAllEditorsOnly = auth.isKey();
+  const accessFilteredCandidates = candidates
+    .filter(
+      (candidate) =>
+        candidate.pod_space_id === null ||
+        readableCandidatePodIds.has(candidate.pod_space_id)
+    )
+    .filter(
+      (candidate) =>
+        candidate.availability !== "editors" ||
+        canReadAllEditorsOnly ||
+        editorGroupIds.has(candidate.editor_group_id)
+    );
+  const visibleCandidates =
+    await SkillSearchDocumentResource.filterSearchDocumentsByCurrentState(
+      auth,
+      accessFilteredCandidates
+    );
 
-  return new Ok(
-    candidates
-      .filter(
-        (candidate) =>
-          candidate.pod_space_id === null ||
-          readableCandidatePodIds.has(candidate.pod_space_id)
-      )
-      .filter(
-        (candidate) =>
-          candidate.availability !== "editors" ||
-          auth.isKey() ||
-          editorGroupIds.has(candidate.editor_group_id)
-      )
-      .slice(0, limit)
-  );
+  return new Ok(visibleCandidates.slice(0, limit));
 }
