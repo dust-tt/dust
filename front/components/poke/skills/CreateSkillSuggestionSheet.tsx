@@ -1,27 +1,15 @@
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   SKILL_INSTRUCTIONS_LABEL,
   SKILL_INVOCATION_LABEL,
 } from "@app/lib/skills/labels";
-import { usePokeMCPServerViews } from "@app/poke/swr/mcp_server_views";
 import { useCreatePokeSkillSuggestion } from "@app/poke/swr/skills";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionIcons,
   Button,
-  Chip,
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuSearchbar,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
   IconPicker,
   Input,
   Label,
-  Plus,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -30,10 +18,9 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 const DEFAULT_ICON: keyof typeof ActionIcons = "ActionListCheckIcon";
 
@@ -60,27 +47,6 @@ export function CreateSkillSuggestionSheet({
   const [agentFacingDescription, setAgentFacingDescription] = useState("");
   const [instructions, setInstructions] = useState("");
   const [icon, setIcon] = useState<string | null>(null);
-  const [selectedMCPServerViews, setSelectedMCPServerViews] = useState<
-    MCPServerViewType[]
-  >([]);
-  const [mcpSearchText, setMCPSearchText] = useState("");
-
-  const { data: allMCPServerViews, isLoading: isMCPServerViewsLoading } =
-    usePokeMCPServerViews({ owner, disabled: !show, globalSpaceOnly: true });
-
-  // Filter to match the skill builder behavior:
-  // - Only "manual" and "auto" availability
-  // - Only views that don't require configuration
-  const noConfigMCPServerViews = useMemo(() => {
-    return allMCPServerViews.filter((view) => {
-      const { availability } = view.server;
-      if (availability !== "manual" && availability !== "auto") {
-        return false;
-      }
-      const { noRequirement } = getMCPServerRequirements(view);
-      return noRequirement;
-    });
-  }, [allMCPServerViews]);
 
   const resetForm = () => {
     setName("");
@@ -88,8 +54,6 @@ export function CreateSkillSuggestionSheet({
     setAgentFacingDescription("");
     setInstructions("");
     setIcon(null);
-    setSelectedMCPServerViews([]);
-    setMCPSearchText("");
   };
 
   const handleClose = () => {
@@ -102,14 +66,6 @@ export function CreateSkillSuggestionSheet({
     onSuccess: handleClose,
   });
 
-  const filteredMcpServerViews = useMemo(() => {
-    return noConfigMCPServerViews.filter((view) =>
-      getMcpServerViewDisplayName(view)
-        .toLowerCase()
-        .includes(mcpSearchText.toLowerCase())
-    );
-  }, [noConfigMCPServerViews, mcpSearchText]);
-
   const handleSubmit = async () => {
     setIsSubmitting(true);
     await createSkillSuggestion({
@@ -118,7 +74,7 @@ export function CreateSkillSuggestionSheet({
       agentFacingDescription: agentFacingDescription.trim(),
       instructions: instructions.trim(),
       icon: icon ?? null,
-      mcpServerViewIds: selectedMCPServerViews.map((v) => v.sId),
+      mcpServerViewIds: [],
     });
     setIsSubmitting(false);
   };
@@ -211,82 +167,6 @@ export function CreateSkillSuggestionSheet({
                 minRows={8}
                 placeholder="What does this skill do? How should it behave?"
               />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <Label>MCP Servers</Label>
-                <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      icon={Plus}
-                      variant="outline"
-                      label="Add"
-                      isSelect
-                      size="xs"
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    className="w-80"
-                    onAnimationEnd={() => setMCPSearchText("")}
-                  >
-                    <DropdownMenuSearchbar
-                      autoFocus
-                      placeholder="Search MCP servers..."
-                      name="mcp-search"
-                      value={mcpSearchText}
-                      onChange={setMCPSearchText}
-                    />
-                    <DropdownMenuSeparator />
-                    <div className="max-h-60 overflow-auto">
-                      {isMCPServerViewsLoading ? (
-                        <div className="flex items-center justify-center py-4">
-                          <Spinner size="sm" />
-                        </div>
-                      ) : (
-                        filteredMcpServerViews.map((view) => (
-                          <DropdownMenuCheckboxItem
-                            key={view.sId}
-                            label={getMcpServerViewDisplayName(view)}
-                            checked={selectedMCPServerViews.some(
-                              (v) => v.sId === view.sId
-                            )}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSelectedMCPServerViews((prev) => [
-                                  ...prev,
-                                  view,
-                                ]);
-                              } else {
-                                setSelectedMCPServerViews((prev) =>
-                                  prev.filter((v) => v.sId !== view.sId)
-                                );
-                              }
-                            }}
-                            onSelect={(e) => e.preventDefault()}
-                          />
-                        ))
-                      )}
-                    </div>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              {selectedMCPServerViews.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {selectedMCPServerViews.map((view) => (
-                    <Chip
-                      key={view.sId}
-                      label={getMcpServerViewDisplayName(view)}
-                      size="xs"
-                      onRemove={() =>
-                        setSelectedMCPServerViews((prev) =>
-                          prev.filter((v) => v.sId !== view.sId)
-                        )
-                      }
-                    />
-                  ))}
-                </div>
-              )}
             </div>
 
             <div className="flex justify-end gap-2">
