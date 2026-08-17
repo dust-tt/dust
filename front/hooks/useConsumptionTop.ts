@@ -38,6 +38,7 @@ export type ConsumptionTopRow = {
   modelDisplayName: string | null;
   credits: number;
   avgCredits: number;
+  previousCredits: number | null;
 };
 
 type ConsumptionTopResponse =
@@ -65,6 +66,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       modelDisplayName: row.modelDisplayName,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
     }));
   }
   if ("users" in data) {
@@ -78,6 +80,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
     }));
   }
   if ("groups" in data) {
@@ -91,6 +94,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
     }));
   }
   if ("models" in data) {
@@ -104,6 +108,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
     }));
   }
   if ("tools" in data) {
@@ -117,6 +122,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerInvocation,
+      previousCredits: row.previousCredits,
     }));
   }
   if ("skills" in data) {
@@ -130,6 +136,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerInvocation,
+      previousCredits: row.previousCredits,
     }));
   }
   if ("sources" in data) {
@@ -143,6 +150,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
     }));
   }
   if ("apiKeys" in data) {
@@ -156,6 +164,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
     }));
   }
   assertNeverAndIgnore(data);

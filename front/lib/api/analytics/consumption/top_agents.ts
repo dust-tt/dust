@@ -23,6 +23,7 @@ export type ConsumptionTopAgentRow = {
   modelId: string | null;
   modelDisplayName: string | null;
   credits: number;
+  previousCredits: number | null;
   messageCount: number;
   avgCreditsPerMessage: number;
 };
@@ -82,6 +83,7 @@ export async function fetchConsumptionTopAgents(
       modelId: row.modelId ?? null,
       modelDisplayName: row.modelDisplayName ?? null,
       credits: row.credits,
+      previousCredits: row.previousCredits,
       messageCount: row.count,
       avgCreditsPerMessage: row.avgCredits,
     })),

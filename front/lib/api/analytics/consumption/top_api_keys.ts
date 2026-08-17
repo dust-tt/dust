@@ -19,6 +19,7 @@ export type ConsumptionTopApiKeyRow = {
   apiKeyName: string;
   name: string;
   credits: number;
+  previousCredits: number | null;
   messageCount: number;
   avgCreditsPerMessage: number;
 };
@@ -74,6 +75,7 @@ export async function fetchConsumptionTopApiKeys(
       apiKeyName: row.key,
       name: row.name,
       credits: row.credits,
+      previousCredits: row.previousCredits,
       messageCount: row.count,
       avgCreditsPerMessage: row.avgCredits,
     })),
