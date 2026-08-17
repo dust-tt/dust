@@ -3,6 +3,8 @@ import { CONSUMPTION_SCOPE_FILTER_KEYS } from "@app/lib/api/analytics/consumptio
 
 export const CONSUMPTION_PERIOD_DAY_OPTIONS = [7, 30, 90] as const;
 
+export const DEFAULT_CONSUMPTION_PERIOD_DAYS = 30;
+
 export type ConsumptionPeriodDays =
   (typeof CONSUMPTION_PERIOD_DAY_OPTIONS)[number];
 

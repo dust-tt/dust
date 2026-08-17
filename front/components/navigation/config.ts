@@ -414,7 +414,7 @@ export const subNavigationAdmin = ({
               icon: Clock,
               href: `/w/${owner.sId}/analytics/automations`,
               current: isCurrent("analytics_automations"),
-              disabled: !hasManagerRole,
+              disabled: !hasAdminRole,
             },
           ]
         : []),

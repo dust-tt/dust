@@ -10,6 +10,7 @@ import type {
 import {
   AGENT_MESSAGE_ID_FIELD,
   buildConsumptionScopeQuery,
+  CARDINALITY_PRECISION_THRESHOLD,
   CONSUMPTION_DIMENSION_FIELDS,
   CONSUMPTION_DIMENSION_UNIT,
   CREDIT_MICRO_FIELD,
@@ -55,7 +56,6 @@ export type ConsumptionTopGroups = {
 const CREDIT_AGG = "credit_micro";
 const MESSAGES_AGG = "messages";
 const TOTAL_COUNT_AGG = "total_count";
-const CARDINALITY_PRECISION_THRESHOLD = 40_000;
 const MAX_ES_QUERY_CLAUSES = 1_024;
 const MAX_ES_TERMS_QUERY_VALUES = 65_536;
 

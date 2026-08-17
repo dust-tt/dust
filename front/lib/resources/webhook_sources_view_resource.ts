@@ -489,6 +489,10 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     });
   }
 
+  get name(): string {
+    return this.customName ?? this.webhookSource.name;
+  }
+
   static modelIdToSId({
     id,
     workspaceId,
@@ -523,7 +527,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     return {
       id: this.id,
       sId: this.sId,
-      customName: this.customName ?? this.webhookSource.name,
+      customName: this.name,
       description: this.description,
       icon: normalizeWebhookIcon(this.icon),
       provider: this.webhookSource.provider,
@@ -544,7 +548,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     return {
       id: this.id,
       sId: this.sId,
-      customName: this.customName ?? this.webhookSource.name,
+      customName: this.name,
       description: this.description,
       icon: normalizeWebhookIcon(this.icon),
       provider: this.webhookSource.provider,
