@@ -97,7 +97,7 @@ const CONSUMPTION_CHART_COLORS = [
   "text-blue-700",
   "text-blue-600",
   "text-blue-500",
-  "text-blue-50",
+  "text-blue-400",
 ] as const;
 
 // Request the top five categories, leaving the sixth shade available when the
