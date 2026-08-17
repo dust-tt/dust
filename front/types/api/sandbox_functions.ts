@@ -1,3 +1,4 @@
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type {
   SandboxFunctionMCPApproveExecutionEvent,
   SandboxFunctionToolPersonalAuthRequiredEvent,
@@ -44,6 +45,29 @@ export type SandboxFunctionExecutionMode =
 // durable: the mode that can do everything. Backs both the column default and the publish default.
 export const DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE: SandboxFunctionExecutionMode =
   "durable";
+
+// How much a caller has to approve before a published function runs, for the day a function is
+// shared as an MCP tool: `never_ask` runs unattended, `low` asks once and can be always-approved,
+// `high` asks on every call.
+//
+// A subset of MCP_TOOL_STAKE_LEVELS, kept assignable to it so sharing a function needs no
+// translation. `medium` is excluded on purpose: it only means anything paired with
+// `argumentsRequiringApproval` (which argument values scope the approval), and a published function
+// has no way to declare those, so a `medium` function would silently approve on an empty argument
+// set.
+export const SANDBOX_FUNCTION_STAKES = [
+  "never_ask",
+  "low",
+  "high",
+] as const satisfies readonly MCPToolStakeLevelType[];
+
+export type SandboxFunctionStake = (typeof SANDBOX_FUNCTION_STAKES)[number];
+
+// Functions published before stakes existed, and publishes that do not state one, ask once. It is
+// the only safe guess for a function nothing has classified: `never_ask` would run an unreviewed
+// write unattended, and `high` would nag on a read. Backs both the column default and the publish
+// default.
+export const DEFAULT_SANDBOX_FUNCTION_STAKE: SandboxFunctionStake = "low";
 
 export const SANDBOX_FUNCTION_INVOCATION_ORIGINS = [
   "interactive_session",

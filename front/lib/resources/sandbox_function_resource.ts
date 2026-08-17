@@ -30,10 +30,12 @@ import type {
   PostSandboxFunctionInvocationRequestBody,
   SandboxFunctionExecutionMode,
   SandboxFunctionInvocationOrigin,
+  SandboxFunctionStake,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
 import {
   DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
+  DEFAULT_SANDBOX_FUNCTION_STAKE,
   isValidSandboxFunctionSlug,
 } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
@@ -139,6 +141,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       description,
       userIdentity = "optional",
       executionMode = DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
+      defaultStake = DEFAULT_SANDBOX_FUNCTION_STAKE,
       bundleSha256 = null,
       inputSchema,
       outputSchema,
@@ -149,6 +152,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       description: string;
       userIdentity?: SandboxFunctionUserIdentityPolicy;
       executionMode?: SandboxFunctionExecutionMode;
+      defaultStake?: SandboxFunctionStake;
       bundleSha256?: string | null;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
@@ -190,6 +194,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         description,
         userIdentity,
         executionMode,
+        defaultStake,
         bundleSha256,
         inputSchema,
         outputSchema,
@@ -213,6 +218,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       description,
       userIdentity = this.userIdentity ?? "optional",
       executionMode = DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
+      defaultStake = DEFAULT_SANDBOX_FUNCTION_STAKE,
       inputSchema,
       outputSchema,
     }: {
@@ -220,6 +226,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       description: string;
       userIdentity?: SandboxFunctionUserIdentityPolicy;
       executionMode?: SandboxFunctionExecutionMode;
+      defaultStake?: SandboxFunctionStake;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
     }
@@ -259,10 +266,17 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
           // It moves after the upload, and unlike the user identity policy there is no window to
           // guard: whichever mode is in effect while the upload lands, a fast bundle running as
           // durable is harmless and a durable bundle running as fast just fails its tool calls.
+          //
+          // The default stake is restated on the same terms, and for the same reason: a function
+          // that grew a destructive path must not keep the `never_ask` it earned while it was a
+          // read. Nothing gates on the stake until a function is shared as an MCP tool, so it needs
+          // no ordering guard against the upload yet — sharing it will need one, so that a stricter
+          // stake lands before the bundle it applies to, the way the user identity policy does.
           await this.update({
             description,
             userIdentity,
             executionMode,
+            defaultStake,
             // Derived from the exact code the upload above wrote. Landing with the row update
             // (not before the upload) means a warm server can never be told to expect a bundle
             // that is not on disk yet; invocations racing this publish carry the old hash and
@@ -587,6 +601,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       name: sandboxFunctionNameFromSlug(this.slug),
       description: this.description,
       executionMode: this.executionMode,
+      defaultStake: this.defaultStake,
     };
   }
 
@@ -598,6 +613,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       fileId: this.file.sId,
       userIdentity: this.userIdentity,
       executionMode: this.executionMode,
+      defaultStake: this.defaultStake,
       inputSchema: this.inputSchema,
       outputSchema: this.outputSchema,
     };

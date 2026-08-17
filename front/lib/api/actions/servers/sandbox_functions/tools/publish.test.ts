@@ -1,11 +1,15 @@
 import { SANDBOX_FUNCTIONS_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { publishHandler } from "@app/lib/api/actions/servers/sandbox_functions/tools/publish";
 import { buildSandboxFunctionOnSandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
+import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   makeExtra,
   setupProjectConversation,
 } from "@app/tests/utils/conversation_test_factories";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import type { SandboxFunctionStake } from "@app/types/api/sandbox_functions";
+import { DEFAULT_SANDBOX_FUNCTION_STAKE } from "@app/types/api/sandbox_functions";
 import { Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -136,6 +140,54 @@ describe("publishHandler", () => {
     }
     expect(firstText(result.value)).not.toContain("Pod allowlist");
     expect(firstText(result.value)).not.toContain("Requested");
+  });
+
+  it("persists the declared default stake, and defaults it when unstated", async () => {
+    const { auth, conversation, projectId } = await setupProjectConversation();
+    const pod = await SpaceResource.fetchById(auth, projectId);
+    if (!pod) {
+      throw new Error("pod not found");
+    }
+
+    const publish = async (slug: string, defaultStake?: SandboxFunctionStake) =>
+      publishHandler(
+        {
+          slug,
+          description: "Read a task.",
+          path: `pod-${projectId}/TaskList/functions/${slug}.ts`,
+          executionMode: "fast",
+          defaultStake,
+        },
+        makeExtra(auth, conversation)
+      );
+
+    const declared = await publish("read-task", "never_ask");
+    if (declared.isErr()) {
+      throw declared.error;
+    }
+    expect(
+      (
+        await SandboxFunctionResource.fetchBySpaceAndSlug(
+          auth,
+          pod,
+          "tasklist__read-task"
+        )
+      )?.defaultStake
+    ).toBe("never_ask");
+
+    const unstated = await publish("add-task");
+    if (unstated.isErr()) {
+      throw unstated.error;
+    }
+    expect(
+      (
+        await SandboxFunctionResource.fetchBySpaceAndSlug(
+          auth,
+          pod,
+          "tasklist__add-task"
+        )
+      )?.defaultStake
+    ).toBe(DEFAULT_SANDBOX_FUNCTION_STAKE);
   });
 
   it("accepts a bare function name but not one that already carries a prefix", () => {

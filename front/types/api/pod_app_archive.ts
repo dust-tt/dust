@@ -1,5 +1,8 @@
 import { MAX_POD_APP_NAME_LENGTH } from "@app/types/api/pod_apps";
-import { SANDBOX_FUNCTION_EXECUTION_MODES } from "@app/types/api/sandbox_functions";
+import {
+  SANDBOX_FUNCTION_EXECUTION_MODES,
+  SANDBOX_FUNCTION_STAKES,
+} from "@app/types/api/sandbox_functions";
 import type { InteractiveContentFileContentType } from "@app/types/files";
 import { isInteractiveContentType } from "@app/types/files";
 import { PodFrameTabSchema } from "@app/types/pod_frame_tab";
@@ -44,6 +47,11 @@ const PodAppManifestFunctionSchema = z.object({
   name: z.string().min(1),
   description: z.string(),
   executionMode: z.enum(SANDBOX_FUNCTION_EXECUTION_MODES),
+  /**
+   * Optional so archives exported before stakes existed still import under the same format version;
+   * publish then applies its own default.
+   */
+  defaultStake: z.enum(SANDBOX_FUNCTION_STAKES).optional(),
 });
 
 const PodAppManifestDatabaseSchema = z.object({

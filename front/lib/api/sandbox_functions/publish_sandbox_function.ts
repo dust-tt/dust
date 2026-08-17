@@ -9,7 +9,10 @@ import {
   SandboxFunctionResource,
 } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import type { SandboxFunctionExecutionMode } from "@app/types/api/sandbox_functions";
+import type {
+  SandboxFunctionExecutionMode,
+  SandboxFunctionStake,
+} from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -34,12 +37,14 @@ export async function publishSandboxFunction(
     description,
     path: sourcePath,
     executionMode,
+    defaultStake,
   }: {
     space: SpaceResource;
     slug: string;
     description: string;
     path: string;
     executionMode?: SandboxFunctionExecutionMode;
+    defaultStake?: SandboxFunctionStake;
   }
 ): Promise<Result<SandboxFunctionResource, SandboxFunctionError>> {
   // Resolve the model-supplied scoped path (e.g. `pod-{id}/greet.ts`) to its absolute path inside
@@ -95,6 +100,7 @@ export async function publishSandboxFunction(
       description,
       userIdentity,
       executionMode,
+      defaultStake,
       inputSchema,
       outputSchema,
     });
@@ -123,6 +129,7 @@ export async function publishSandboxFunction(
     description,
     userIdentity,
     executionMode,
+    defaultStake,
     bundleSha256: computeSandboxFunctionBundleSha256(bundleCode),
     inputSchema,
     outputSchema,

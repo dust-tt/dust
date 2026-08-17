@@ -9,18 +9,23 @@ import type { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors
 import { publishSandboxFunction } from "@app/lib/api/sandbox_functions/publish_sandbox_function";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import type { SandboxFunctionExecutionMode } from "@app/types/api/sandbox_functions";
+import type {
+  SandboxFunctionExecutionMode,
+  SandboxFunctionStake,
+} from "@app/types/api/sandbox_functions";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export async function publishHandler(
   {
+    defaultStake,
     description,
     domains,
     executionMode,
     path,
     slug,
   }: {
+    defaultStake?: SandboxFunctionStake;
     description: string;
     domains?: string[];
     executionMode: SandboxFunctionExecutionMode;
@@ -42,6 +47,7 @@ export async function publishHandler(
     description,
     path,
     executionMode,
+    defaultStake,
   });
   if (result.isErr()) {
     return new Err(toMCPError(result.error));

@@ -53,6 +53,10 @@ export function ViewPodFunctionTable({
                 <PokeTableCell>{podFunction.executionMode}</PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
+                <PokeTableHead>Default stake</PokeTableHead>
+                <PokeTableCell>{podFunction.defaultStake}</PokeTableCell>
+              </PokeTableRow>
+              <PokeTableRow>
                 <PokeTableHead>Bundle file</PokeTableHead>
                 <PokeTableCellWithCopy label={podFunction.fileId} />
               </PokeTableRow>

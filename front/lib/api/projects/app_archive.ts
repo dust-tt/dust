@@ -217,6 +217,7 @@ export async function exportPodApp(
       name: fn.name,
       description: fn.description,
       executionMode: fn.executionMode,
+      defaultStake: fn.defaultStake,
     })),
     databases: app.databases.map((db) => ({ name: db.name })),
   };
@@ -548,6 +549,7 @@ export async function importPodApp(
       description: fn.description,
       path: sourcePath,
       executionMode: fn.executionMode,
+      defaultStake: fn.defaultStake,
     });
     if (publishResult.isErr()) {
       if (publishResult.error.code === "sandbox_unavailable") {

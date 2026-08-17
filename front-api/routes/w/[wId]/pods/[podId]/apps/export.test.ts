@@ -69,6 +69,9 @@ async function publishFunction(
     inputSchema: EMPTY_SCHEMA,
     outputSchema: EMPTY_SCHEMA,
     executionMode: "fast",
+    // Deliberately not the default, so the manifest assertion proves the stake is carried rather
+    // than re-derived from the column default on the way out.
+    defaultStake: "never_ask",
   });
 }
 
@@ -193,6 +196,7 @@ describe("GET /api/w/:wId/pods/:podId/apps/:prefix/export", () => {
         name: "add-task",
         description: "Function tasklist__add-task.",
         executionMode: "fast",
+        defaultStake: "never_ask",
       },
     ]);
     expect(manifest.databases).toEqual([{ name: "tasks" }]);
