@@ -111,6 +111,15 @@ export const makeSpendLimitCycleWindowBounds = (
   };
 };
 
+// Fixed-window counter backing the admin-configured per-API-key spend cap.
+// Keyed by the key model id (the calling key is active, and key names are
+// unique among active keys, so id and name are 1:1 here). Bucketed on the
+// Metronome contract billing cycle via `makeSpendLimitCycleWindowBounds`, like
+// the per-user key above.
+export const makeApiKeySpendLimitAwuCreditsRateLimitKey = (keyId: number) => {
+  return `api_key:${keyId}:spend_limit_awu_credit_count`;
+};
+
 export const makeProgrammaticUsageRateLimitKeyForWorkspace = (
   owner: LightWorkspaceType
 ) => {

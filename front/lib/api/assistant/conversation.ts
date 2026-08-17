@@ -65,6 +65,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
+import { isApiKeySpendLimitRateCapReached } from "@app/lib/api/keys/spend_limit";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
 import {
   checkProgrammaticUsageLimits,
@@ -2603,17 +2604,29 @@ export async function checkMessagesLimit(
     // Programmatic monthly cap: block programmatic calls when the cap is reached.
     if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
       // Per-API-key credit cap: block when this key's credit state is "capped"
-      // (driven by the Metronome per-key cap alert / reconcile).
+      // (driven by the Metronome per-key cap alert / reconcile), or when the
+      // Redis fixed-window backup reports the cap reached. The backup is
+      // flag-gated while we validate the counter; usage is recorded regardless
+      // (in credit_cost), so the flag only controls blocking.
       const key = auth.key();
-      if (key && (await isApiKeyCapped(owner.sId, key.id))) {
-        return new Err({
-          status_code: 429,
-          api_error: {
-            type: "rate_limit_error",
-            message:
-              "This API key has reached its credit spend limit. Please increase the limit in the Developers > API Keys section of the Dust dashboard.",
-          },
-        });
+      if (key) {
+        const featureFlags = await getFeatureFlags(auth);
+        const capReached =
+          (await isApiKeyCapped(owner.sId, key.id)) ||
+          (featureFlags.includes("enforce_user_spend_limit_rate_cap") &&
+            (await isApiKeySpendLimitRateCapReached(auth, {
+              keyModelId: key.id,
+            })));
+        if (capReached) {
+          return new Err({
+            status_code: 429,
+            api_error: {
+              type: "rate_limit_error",
+              message:
+                "This API key has reached its credit spend limit. Please increase the limit in the Developers > API Keys section of the Dust dashboard.",
+            },
+          });
+        }
       }
 
       const programmaticBlocked = await isProgrammaticApiBlocked(owner.sId);

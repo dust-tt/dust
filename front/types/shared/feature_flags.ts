@@ -339,7 +339,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   enforce_user_spend_limit_rate_cap: {
     description:
-      "Enable the per-user spend-cap backup: record per-user AWU usage into the Redis fixed-window counter and enforce it at message send (blocks with user_cap_reached). When off, usage is neither recorded nor enforced.",
+      "Enable the Redis fixed-window spend-cap backups (per-user, per-API-key, programmatic, and workspace usage cap): record AWU usage into the counters and enforce them at message send. When off, usage is neither recorded nor enforced.",
     stage: "dust_only",
   },
   editable_tool_inputs: {

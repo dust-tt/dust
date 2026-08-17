@@ -1,4 +1,5 @@
 import {
+  makeApiKeySpendLimitAwuCreditsRateLimitKey,
   makeSpendLimitAwuCreditsRateLimitKeyForUser,
   makeSpendLimitCycleWindowBounds,
 } from "@app/lib/api/assistant/rate_limits";
@@ -45,6 +46,7 @@ import type { BillingFrequency } from "@app/lib/metronome/types";
 import { isUserAwuWarned } from "@app/lib/metronome/user_block";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { spendLimitCycleOverrideForAuth } from "@app/lib/spend_limits/cycle";
@@ -411,6 +413,109 @@ export async function getEsConsumedAwuCreditsForUser(
     cycle,
   });
   return consumedByUserId.get(user.sId) ?? 0;
+}
+
+type ApiKeyConsumedCreditsBucket = {
+  key: string;
+  credits?: estypes.AggregationsSumAggregate;
+};
+
+type ApiKeyConsumedCreditsAggs = {
+  by_api_key_name?: estypes.AggregationsMultiBucketAggregateBase<ApiKeyConsumedCreditsBucket>;
+};
+
+/**
+ * Elasticsearch-derived AWU consumption for the current billing cycle, summed
+ * per `api_key_name` — the same dimension the Metronome per-API-key cap alert
+ * aggregates spend on. Used to lazily seed / resync the per-API-key spend-cap
+ * counter. Returns an empty map on no usage or an analytics read failure.
+ */
+async function fetchConsumedAwuCreditsByApiKeyName({
+  workspace,
+  apiKeyNames,
+  cycle,
+}: {
+  workspace: LightWorkspaceType;
+  apiKeyNames: string[];
+  cycle?: BillingCycle;
+}): Promise<Map<string, number>> {
+  if (apiKeyNames.length === 0) {
+    return new Map();
+  }
+
+  const resolvedCycle = cycle ?? (await resolveMetronomeCycle(workspace));
+  if (!resolvedCycle) {
+    return new Map();
+  }
+  const { cycleStart, cycleEnd } = resolvedCycle;
+
+  const result = await searchAnalytics<never, ApiKeyConsumedCreditsAggs>(
+    {
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          { terms: { api_key_name: apiKeyNames } },
+          {
+            range: {
+              timestamp: {
+                gte: cycleStart.toISOString(),
+                lte: cycleEnd.toISOString(),
+              },
+            },
+          },
+        ],
+      },
+    },
+    {
+      aggregations: {
+        by_api_key_name: {
+          terms: {
+            field: "api_key_name",
+            size: Math.max(1, apiKeyNames.length),
+          },
+          aggs: { credits: { sum: { field: "cost.billable_awu" } } },
+        },
+      },
+      size: 0,
+    }
+  );
+  if (result.isErr()) {
+    logger.warn(
+      { err: result.error, workspaceId: workspace.sId },
+      "[MembersUsage] Failed to read per-API-key consumed credits from analytics index"
+    );
+    return new Map();
+  }
+
+  const consumedByApiKeyName = new Map<string, number>();
+  for (const bucket of bucketsToArray<ApiKeyConsumedCreditsBucket>(
+    result.value.aggregations?.by_api_key_name?.buckets
+  )) {
+    consumedByApiKeyName.set(
+      String(bucket.key),
+      Math.round(bucket.credits?.value ?? 0)
+    );
+  }
+  return consumedByApiKeyName;
+}
+
+/**
+ * A single API key's Elasticsearch-derived AWU consumption for the current
+ * billing cycle, scoped by `api_key_name`. Used to lazily seed the per-API-key
+ * spend-cap counter on a Redis miss. Returns 0 when there is no usage or the
+ * analytics read fails.
+ */
+export async function getEsConsumedAwuCreditsForApiKey(
+  auth: Authenticator,
+  { apiKeyName, cycle }: { apiKeyName: string; cycle?: BillingCycle }
+): Promise<number> {
+  const workspace = auth.getNonNullableWorkspace();
+  const consumedByApiKeyName = await fetchConsumedAwuCreditsByApiKeyName({
+    workspace,
+    apiKeyNames: [apiKeyName],
+    cycle,
+  });
+  return consumedByApiKeyName.get(apiKeyName) ?? 0;
 }
 
 async function fetchPerUserUsageCreditsForMembersTableUncached({
@@ -1060,6 +1165,64 @@ export async function resyncSpendLimitCountersFromEsUsage(
   );
 
   return new Ok({ updatedUserCount: results.filter(Boolean).length });
+}
+
+/**
+ * Backfill/repair the per-API-key spend-cap counters for a workspace from
+ * Elasticsearch, overwriting each capped key's counter (SET) so it matches ES.
+ * Use after enabling the cap or to repair drift (the counter otherwise only
+ * accrues from live messages and starts at 0 mid-cycle). Only keys with a
+ * configured `monthlyCapAwuCredits` are seeded. Returns the number of keys
+ * whose counter was written.
+ */
+export async function resyncApiKeySpendLimitCountersFromEsUsage(
+  auth: Authenticator
+): Promise<Result<{ updatedKeyCount: number }, Error>> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const cycle = await resolveMetronomeCycle(workspace);
+  if (!cycle) {
+    return new Err(
+      new Error("No active Metronome billing period to resync against.")
+    );
+  }
+  const bounds = makeSpendLimitCycleWindowBounds(
+    cycle.cycleStart,
+    cycle.cycleEnd
+  );
+
+  const keys = await KeyResource.listNonSystemKeysByWorkspace(workspace);
+  // The cap is per-name (Metronome aggregates spend by `api_key_name`; names
+  // are unique among active keys), so only active, capped keys are seeded.
+  const cappedKeys = keys.filter(
+    (key) => key.isActive && key.monthlyCapAwuCredits !== null
+  );
+  if (cappedKeys.length === 0) {
+    return new Ok({ updatedKeyCount: 0 });
+  }
+
+  const consumedByApiKeyName = await fetchConsumedAwuCreditsByApiKeyName({
+    workspace,
+    apiKeyNames: cappedKeys.map((key) => key.name),
+    cycle,
+  });
+
+  const results = await concurrentExecutor(
+    cappedKeys,
+    async (key) => {
+      const consumed = consumedByApiKeyName.get(key.name) ?? 0;
+      const setResult = await setFixedWindowCount({
+        key: makeApiKeySpendLimitAwuCreditsRateLimitKey(key.id),
+        bounds,
+        value: Math.max(0, Math.round(consumed)),
+        logger,
+      });
+      return setResult.isOk();
+    },
+    { concurrency: 8 }
+  );
+
+  return new Ok({ updatedKeyCount: results.filter(Boolean).length });
 }
 
 export type GetMemberUsageResponseBody = {

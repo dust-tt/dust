@@ -4,6 +4,7 @@ import { isToolExecutionStatusBillable } from "@app/lib/actions/statuses";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import { recordApiKeySpendLimitUsage } from "@app/lib/api/keys/spend_limit";
 import type { ToolCostCategory } from "@app/lib/api/mcp";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import { recordUserSpendLimitUsage } from "@app/lib/api/users/spend_limit";
@@ -326,13 +327,7 @@ export async function computeAndStoreAgentMessageCredits(
   }
 
   // Record against the per-user spend-cap backup (Redis fixed-window counter
-  // over the contract billing cycle). Independent of the plan-level fair-use
-  // limiter above. Gated behind the same feature flag as enforcement so the
-  // counter only accrues where the backup is active; enforcement happens
-  // pre-message in `checkMessagesLimit`.
-  // The cycle override keeps the counter on the same window
-  // enforcement reads: the contract billing period on credit-priced plans, the
-  // UTC calendar month elsewhere (no contract to anchor on).
+  // over the contract billing cycle).
   if (user && recordedCostDelta > 0) {
     const featureFlags = await getFeatureFlags(auth);
     if (featureFlags.includes("enforce_user_spend_limit_rate_cap")) {
@@ -340,6 +335,19 @@ export async function computeAndStoreAgentMessageCredits(
         user,
         incrementBy: recordedCostDelta,
         cycle: spendLimitCycleOverrideForAuth(auth),
+      });
+    }
+  }
+
+  // Record against the per-API-key spend-cap backup (Redis fixed-window counter
+  // over the contract billing cycle).
+  const apiKey = auth.key();
+  if (apiKey && recordedCostDelta > 0) {
+    const featureFlags = await getFeatureFlags(auth);
+    if (featureFlags.includes("enforce_user_spend_limit_rate_cap")) {
+      await recordApiKeySpendLimitUsage(auth, {
+        keyModelId: apiKey.id,
+        incrementBy: recordedCostDelta,
       });
     }
   }
