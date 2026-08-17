@@ -10,7 +10,6 @@ import type {
 import {
   AGENT_MESSAGE_ID_FIELD,
   buildConsumptionScopeQuery,
-  CARDINALITY_PRECISION_THRESHOLD,
   CONSUMPTION_DIMENSION_FIELDS,
   CONSUMPTION_DIMENSION_UNIT,
   CREDIT_MICRO_FIELD,
@@ -46,8 +45,8 @@ export type ConsumptionTopGroups = {
   // Distinct dimension values over the scoped period.
   totalCount: number;
   // Gross credits over the whole scoped period, every document included. Not the
-  // sum of `groups`. The ranking is capped at `limit`, and a dimension that only
-  // exists on some documents (a tool, a skill) accounts for part of the total.
+  // sum of the returned page. A dimension that only exists on some documents (a
+  // tool, a skill) accounts for part of the total.
   totalCredits: number;
 };
 
@@ -55,15 +54,22 @@ export type ConsumptionTopGroups = {
 // bucket reads below cannot drift apart.
 const CREDIT_AGG = "credit_micro";
 const MESSAGES_AGG = "messages";
-const TOTAL_COUNT_AGG = "total_count";
+const RANKING_COMPOSITE_PAGE_SIZE = 1_000;
 const MAX_ES_QUERY_CLAUSES = 1_024;
 const MAX_ES_TERMS_QUERY_VALUES = 65_536;
 
-type GroupBucket = {
-  key: string;
+type GroupBucketMetrics = {
   doc_count: number;
   [CREDIT_AGG]?: estypes.AggregationsSumAggregate;
   [MESSAGES_AGG]?: estypes.AggregationsCardinalityAggregate;
+};
+
+type GroupBucket = GroupBucketMetrics & { key: string };
+
+type CompositeGroupKey = { group: string };
+
+type CompositeGroupBucket = GroupBucketMetrics & {
+  key: CompositeGroupKey;
 };
 
 function subAggs(unit: ConsumptionTopUnit) {
@@ -76,8 +82,10 @@ function subAggs(unit: ConsumptionTopUnit) {
 }
 
 type RankingAggs = {
-  by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
-  [TOTAL_COUNT_AGG]?: estypes.AggregationsCardinalityAggregate;
+  by_group?: estypes.AggregationsCompositeAggregate & {
+    buckets: CompositeGroupBucket[];
+    after_key?: CompositeGroupKey;
+  };
 };
 
 type TopAggs = RankingAggs & {
@@ -86,7 +94,7 @@ type TopAggs = RankingAggs & {
 };
 
 function countFromBucket(
-  bucket: GroupBucket,
+  bucket: GroupBucketMetrics,
   unit: ConsumptionTopUnit
 ): number {
   switch (unit) {
@@ -167,34 +175,24 @@ async function resolveConsumptionTopSearchFilter(
 
 function buildConsumptionTopAggregations({
   dimension,
-  limit,
-  offset,
+  afterKey,
   searchFilter,
 }: {
   dimension: ConsumptionScopeDimension;
-  limit: number;
-  offset: number;
+  afterKey?: CompositeGroupKey;
   searchFilter: estypes.QueryDslQueryContainer | null;
 }): Record<string, estypes.AggregationsAggregationContainer> {
   const unit = CONSUMPTION_DIMENSION_UNIT[dimension];
   const dimensionField = CONSUMPTION_DIMENSION_FIELDS[dimension];
 
-  // TODO(2026-08-14 aubin): Add pagination beyond the maximum bucket count.
-  const requestedBucketCount = offset + limit;
   const rankingAggregations = {
     by_group: {
-      terms: {
-        field: dimensionField,
-        size: requestedBucketCount,
-        order: { [CREDIT_AGG]: "desc" },
+      composite: {
+        size: RANKING_COMPOSITE_PAGE_SIZE,
+        sources: [{ group: { terms: { field: dimensionField } } }],
+        ...(afterKey ? { after: afterKey } : {}),
       },
       aggs: subAggs(unit),
-    },
-    [TOTAL_COUNT_AGG]: {
-      cardinality: {
-        field: dimensionField,
-        precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
-      },
     },
   } satisfies Record<string, estypes.AggregationsAggregationContainer>;
 
@@ -314,34 +312,50 @@ export async function fetchConsumptionTopGroups(
     filter,
   });
 
-  const aggregations = buildConsumptionTopAggregations({
-    dimension,
-    limit,
-    offset,
-    searchFilter,
-  });
+  const rankedGroups: Omit<ConsumptionTopGroup, "previousCredits">[] = [];
+  let afterKey: CompositeGroupKey | undefined;
+  let buckets: CompositeGroupBucket[];
+  let totalCredits = 0;
 
-  const result = await searchConsumptionAnalytics<never, TopAggs>(query, {
-    aggregations,
-    size: 0,
-  });
+  // Composite aggregations page by key rather than by a sub-aggregation. Read
+  // every fixed-size page to stay below search.max_buckets, then restore the
+  // credits ranking before applying the requested offset.
+  do {
+    const aggregations = buildConsumptionTopAggregations({
+      dimension,
+      afterKey,
+      searchFilter,
+    });
+    const result = await searchConsumptionAnalytics<never, TopAggs>(query, {
+      aggregations,
+      size: 0,
+    });
 
-  if (result.isErr()) {
-    return result;
-  }
+    if (result.isErr()) {
+      return result;
+    }
 
-  const ranking = searchFilter
-    ? result.value.aggregations?.ranking
-    : result.value.aggregations;
-  const rankedGroups = bucketsToArray<GroupBucket>(
-    ranking?.by_group?.buckets
-  ).map((bucket) => ({
-    key: String(bucket.key),
-    credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
-    count: countFromBucket(bucket, CONSUMPTION_DIMENSION_UNIT[dimension]),
-  }));
-  const totalCount = Math.round(ranking?.[TOTAL_COUNT_AGG]?.value ?? 0);
-  const pagedGroups = rankedGroups.slice(offset, offset + limit);
+    const ranking = searchFilter
+      ? result.value.aggregations?.ranking
+      : result.value.aggregations;
+    buckets = bucketsToArray<CompositeGroupBucket>(ranking?.by_group?.buckets);
+    rankedGroups.push(
+      ...buckets.map((bucket) => ({
+        key: bucket.key.group,
+        credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
+        count: countFromBucket(bucket, CONSUMPTION_DIMENSION_UNIT[dimension]),
+      }))
+    );
+    totalCredits = microCreditsToCredits(
+      result.value.aggregations?.total_credit_micro?.value ?? 0
+    );
+    afterKey = ranking?.by_group?.after_key;
+  } while (afterKey !== undefined && buckets.length > 0);
+
+  const sortedGroups = rankedGroups.toSorted(
+    (left, right) => right.credits - left.credits
+  );
+  const pagedGroups = sortedGroups.slice(offset, offset + limit);
 
   const previousCreditsResult = await fetchConsumptionPreviousCredits(auth, {
     dimension,
@@ -372,11 +386,9 @@ export async function fetchConsumptionTopGroups(
       ...group,
       previousCredits: previousCreditsByKey.get(group.key) ?? null,
     })),
-    hasMore: totalCount > offset + limit,
-    totalCount,
-    totalCredits: microCreditsToCredits(
-      result.value.aggregations?.total_credit_micro?.value ?? 0
-    ),
+    hasMore: sortedGroups.length > offset + limit,
+    totalCount: sortedGroups.length,
+    totalCredits,
   });
 }
 
