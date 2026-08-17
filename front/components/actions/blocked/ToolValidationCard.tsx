@@ -173,13 +173,9 @@ export function ToolValidationCard({
                     disabled={isSubmitting}
                   />
                 </DialogTrigger>
-                <DialogContent
-                  size="lg"
-                  height="lg"
-                  preventAutoFocusOnClose={false}
-                >
-                  <DialogHeader>
-                    <div className="flex items-start justify-between gap-4 pr-8">
+                <DialogContent size="lg" preventAutoFocusOnClose={false}>
+                  <DialogHeader className="gap-1">
+                    <div className="flex items-center justify-between gap-4 pr-8">
                       <DialogTitle
                         visual={<Avatar icon={icon ?? PieChart01} size="sm" />}
                       >
@@ -189,9 +185,11 @@ export function ToolValidationCard({
                         <ApprovalProgress {...approvalProgress} />
                       )}
                     </div>
-                    <DialogDescription>{displayLabel}</DialogDescription>
+                    <DialogDescription className="pl-11">
+                      {displayLabel}
+                    </DialogDescription>
                   </DialogHeader>
-                  <DialogContainer>
+                  <DialogContainer className="py-3">
                     <ToolValidationDetails
                       blockedAction={validationRequest}
                       user={currentUser}
@@ -204,7 +202,7 @@ export function ToolValidationCard({
                       </div>
                     )}
                   </DialogContainer>
-                  <DialogFooter className="flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <DialogFooter className="flex-col items-stretch gap-3 px-5 pb-4 pt-3">
                     {(validationRequest.stake === "low" ||
                       validationRequest.stake === "medium") && (
                       <Label
@@ -224,7 +222,7 @@ export function ToolValidationCard({
                         </span>
                       </Label>
                     )}
-                    <div className="flex gap-2 sm:ml-auto">
+                    <div className="flex justify-end gap-2">
                       <Button
                         label="Decline"
                         variant="outline"

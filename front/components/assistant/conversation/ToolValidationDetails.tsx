@@ -60,8 +60,11 @@ function formatDisplayValue(value: unknown): string | null {
   if (value === null) {
     return null;
   }
+  if (Array.isArray(value)) {
+    return value.map(String).join(", ");
+  }
   if (typeof value === "object") {
-    // Render objects/arrays as formatted JSON, same as GenericActionDetails.
+    // Render objects as formatted JSON, same as GenericActionDetails.
     // No truncation: the container is overflow-auto.
     return JSON.stringify(value, null, 2);
   }
@@ -82,8 +85,8 @@ interface DisplayableInput {
   key: string;
   label: string;
   value: string;
-  // Whether `value` was produced from an object/array input rather than a
-  // string that merely looks like JSON.
+  // Whether `value` was produced from an object input rather than a string
+  // that merely looks like JSON.
   isJson: boolean;
 }
 
@@ -141,7 +144,8 @@ export function ToolValidationDetails({
         key,
         label: humanizeFieldName(key),
         value: displayValue,
-        isJson: value !== null && typeof value === "object",
+        isJson:
+          value !== null && typeof value === "object" && !Array.isArray(value),
       },
     ];
   });
@@ -263,7 +267,7 @@ export function ToolValidationDetails({
       {displayableInputs.map(({ key, label, value, isJson }) => (
         <div
           key={key}
-          className="grid gap-1 py-3 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] sm:gap-4"
+          className="grid gap-1 py-3 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,8rem)_minmax(0,1fr)] sm:gap-4"
         >
           <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
           <dd className="min-w-0 text-sm text-foreground">
