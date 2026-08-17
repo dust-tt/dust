@@ -21,12 +21,16 @@ type CacheKeyDefinition<Input> = {
   keyPattern: string;
 };
 
+type ReadFromKeyFirstDefinition<Input> = CacheKeyDefinition<Input> & {
+  mirrorToCanonicalOnHit?: boolean;
+};
+
 type CachedResourceLookupDefinition<Input, Snapshot, Resource> = {
   id: string;
   version: number;
   ttlMs: number;
   key: (input: Input) => string;
-  readFromKeyFirst?: CacheKeyDefinition<Input>;
+  readFromKeyFirst?: ReadFromKeyFirstDefinition<Input>;
   loadFromDatabase: (
     input: Input,
     transaction?: Transaction
@@ -83,6 +87,7 @@ export function defineCachedResourceLookup<Input, Snapshot, Resource>({
     ? {
         cacheId: readFromKeyFirst.cacheId,
         resolver: readFromKeyFirst.key,
+        mirrorToCanonicalOnHit: readFromKeyFirst.mirrorToCanonicalOnHit,
       }
     : undefined;
   const operationsCacheKey = readFromKeyFirst ?? {

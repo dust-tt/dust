@@ -203,6 +203,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       cacheId: "_fetchByIdUncached",
       key: (workspaceId: string) => `workspace:v2:${workspaceId}`,
       keyPattern: "workspace:v2:*",
+      mirrorToCanonicalOnHit: false,
     },
     loadFromDatabase: WorkspaceResource.fetchByIdFromDatabase,
     toSnapshot: (workspace) => workspace.toCacheSnapshot(),

@@ -21,6 +21,7 @@ vi.mock("@app/lib/utils/cache", () => ({
         readFromKeyFirst?: {
           cacheId: string;
           resolver: (...args: Args) => string;
+          mirrorToCanonicalOnHit?: boolean;
         };
       }
     ) => {
@@ -34,7 +35,9 @@ vi.mock("@app/lib/utils/cache", () => ({
           : key;
         const cached = inMemoryCache.get(readKey);
         if (cached) {
-          inMemoryCache.set(key, cached);
+          if (options?.readFromKeyFirst?.mirrorToCanonicalOnHit !== false) {
+            inMemoryCache.set(key, cached);
+          }
           return JSON.parse(cached) as JsonSerializable<T>;
         }
         const result = await fn(...args);

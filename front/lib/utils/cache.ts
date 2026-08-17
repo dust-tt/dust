@@ -36,11 +36,13 @@ type KeyResolver<Args extends unknown[]> = (...args: Args) => string;
 
 /**
  * During a rolling key migration, this key remains the source of truth. Reads use it instead of
- * the canonical key, then mirror the value to the canonical key. Invalidation removes both keys.
+ * the canonical key and mirror compatible values by default. Invalidation removes both keys.
  */
 type ReadFromKeyFirst<Args extends unknown[]> = {
   cacheId: string;
   resolver: KeyResolver<Args>;
+  // Disable when a legacy hit cannot safely represent the canonical payload semantics.
+  mirrorToCanonicalOnHit?: boolean;
 };
 
 export function buildCacheWithRedisKey(
@@ -165,15 +167,21 @@ export function cacheWithRedis<T, Args extends unknown[]>(
       }
     };
 
-    const synchronizeCanonicalKey = async (value: string): Promise<void> => {
-      if (readKey !== key) {
+    const synchronizeCanonicalKey = async (
+      value: string,
+      { fromCacheHit }: { fromCacheHit: boolean }
+    ): Promise<void> => {
+      if (
+        readKey !== key &&
+        (!fromCacheHit || readFromKeyFirst?.mirrorToCanonicalOnHit !== false)
+      ) {
         await setValue(key, value);
       }
     };
 
     let cacheVal = await redisCli.get(readKey);
     if (cacheVal) {
-      await synchronizeCanonicalKey(cacheVal);
+      await synchronizeCanonicalKey(cacheVal, { fromCacheHit: true });
       return JSON.parse(cacheVal) as JsonSerializable<T>;
     }
 
@@ -197,7 +205,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
             );
             cacheVal = await redisCli.get(readKey);
             if (cacheVal) {
-              await synchronizeCanonicalKey(cacheVal);
+              await synchronizeCanonicalKey(cacheVal, { fromCacheHit: true });
               return JSON.parse(cacheVal) as JsonSerializable<T>;
             }
             lockValue = await distributedLock(redisCli, readKey);
@@ -208,7 +216,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
       }
       cacheVal = await redisCli.get(readKey);
       if (cacheVal) {
-        await synchronizeCanonicalKey(cacheVal);
+        await synchronizeCanonicalKey(cacheVal, { fromCacheHit: true });
         return JSON.parse(cacheVal) as JsonSerializable<T>;
       }
 
@@ -216,7 +224,9 @@ export function cacheWithRedis<T, Args extends unknown[]>(
       if (cacheNullValues || result != null) {
         const serializedResult = JSON.stringify(result);
         await setValue(readKey, serializedResult);
-        await synchronizeCanonicalKey(serializedResult);
+        await synchronizeCanonicalKey(serializedResult, {
+          fromCacheHit: false,
+        });
       }
       return result;
     } finally {

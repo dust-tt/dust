@@ -240,6 +240,27 @@ describe("cacheWithRedis", () => {
       );
     });
 
+    it("does not mirror an incompatible migration-key hit", async () => {
+      const mockFn = vi.fn().mockResolvedValue({ data: "fresh" });
+      mockRedisClient.get.mockResolvedValue(
+        JSON.stringify({ data: "legacy-semantics" })
+      );
+
+      const cachedFn = cacheWithRedis(mockFn, (arg: string) => `v3:${arg}`, {
+        cacheId: "workspace_by_sid",
+        readFromKeyFirst: {
+          cacheId: "_fetchByIdUncached",
+          resolver: (arg: string) => `workspace:v2:${arg}`,
+          mirrorToCanonicalOnHit: false,
+        },
+      });
+      const result = await cachedFn("workspace-1");
+
+      expect(result).toEqual({ data: "legacy-semantics" });
+      expect(mockFn).not.toHaveBeenCalled();
+      expect(mockRedisClient.set).not.toHaveBeenCalled();
+    });
+
     it("refreshes both keys when the migration key misses", async () => {
       const mockFn = vi.fn().mockResolvedValue({ data: "fresh" });
       mockRedisClient.get.mockResolvedValue(null);
@@ -250,6 +271,7 @@ describe("cacheWithRedis", () => {
         readFromKeyFirst: {
           cacheId: "_fetchByIdUncached",
           resolver: (arg: string) => `workspace:v2:${arg}`,
+          mirrorToCanonicalOnHit: false,
         },
       });
       const result = await cachedFn("workspace-1");
