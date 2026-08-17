@@ -24,8 +24,10 @@ import {
   isAutoInternalMCPServerName,
   matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { POD_APP_TOOL_DEFAULT_STAKE } from "@app/lib/api/actions/servers/pod_app_toolset/metadata";
 import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
-import type { MCPServerType } from "@app/lib/api/mcp";
+import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
+import { sandboxFunctionNameFromSlug } from "@app/lib/api/sandbox_functions/slug";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -34,6 +36,8 @@ import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_serv
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { destroyMCPServerViewDependencies } from "@app/lib/resources/mcp_server_view_helper";
+import { PodAppShareResource } from "@app/lib/resources/pod_app_share_resource";
+import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
@@ -82,6 +86,80 @@ export class InternalMCPServerInMemoryResource {
   ) {
     this.metadata = metadata;
     this.internalServerCredential = internalServerCredential;
+  }
+
+  /**
+   * Per-instance metadata overrides for pod_app_toolset instances. Their identity lives outside
+   * the static registry: the toolset name/description come from the system-space view (set when
+   * the app was shared) and the tools are the shared app's published functions. Without this,
+   * admin and picker surfaces would render a generic, tool-less "Pod App Toolset".
+   */
+  private static async buildPodAppToolsetOverrides(
+    auth: Authenticator,
+    instances: { id: string; name: InternalMCPServerNameType }[]
+  ): Promise<
+    Map<string, { name?: string; description?: string; tools: MCPToolType[] }>
+  > {
+    const overrides = new Map<
+      string,
+      { name?: string; description?: string; tools: MCPToolType[] }
+    >();
+
+    const podAppToolsetIds = instances
+      .filter(({ name }) => name === "pod_app_toolset")
+      .map(({ id }) => id);
+    if (podAppToolsetIds.length === 0) {
+      return overrides;
+    }
+
+    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+    const systemViews = await MCPServerViewModel.findAll({
+      attributes: ["internalMCPServerId", "name", "description"],
+      where: {
+        serverType: "internal",
+        internalMCPServerId: { [Op.in]: podAppToolsetIds },
+        workspaceId: auth.getNonNullableWorkspace().id,
+        vaultId: systemSpace.id,
+      },
+    });
+    const systemViewById = new Map(
+      systemViews.map((view) => [view.internalMCPServerId, view])
+    );
+
+    // O(n) queries acceptable: a workspace holds a handful of shared apps at most, and callers
+    // hydrate instances for a single workspace at a time.
+    for (const id of podAppToolsetIds) {
+      const share = await PodAppShareResource.fetchByInternalMCPServerId(
+        auth,
+        id
+      );
+      const systemView = systemViewById.get(id);
+      const sandboxFunctions = share
+        ? await SandboxFunctionResource.listByPodAppShare(auth, share)
+        : [];
+
+      overrides.set(id, {
+        ...(systemView?.name ? { name: systemView.name } : {}),
+        ...(systemView?.description
+          ? { description: systemView.description }
+          : {}),
+        tools: sandboxFunctions.map((sandboxFunction) => {
+          const toolName = sandboxFunctionNameFromSlug(sandboxFunction.slug);
+          return {
+            name: toolName,
+            description: sandboxFunction.description,
+            inputSchema: sandboxFunction.inputSchema,
+            stake: POD_APP_TOOL_DEFAULT_STAKE,
+            displayLabels: {
+              running: `Calling ${toolName}...`,
+              done: `Called ${toolName}`,
+            },
+          };
+        }),
+      });
+    }
+
+    return overrides;
   }
 
   private static async computeEnabledServerNames(
@@ -384,6 +462,11 @@ export class InternalMCPServerInMemoryResource {
       ])
     );
 
+    const podAppToolsetOverrides = await this.buildPodAppToolsetOverrides(
+      auth,
+      resolvedIds
+    );
+
     return resolvedIds.map(({ id, name }) => {
       if (!enabledServerNames.has(name)) {
         logger.info(
@@ -400,6 +483,7 @@ export class InternalMCPServerInMemoryResource {
         metadata: {
           ...serverMetadata.serverInfo,
           tools: serverMetadata.tools,
+          ...(podAppToolsetOverrides.get(id) ?? {}),
         },
         internalServerCredential: credentialsById.get(id) ?? null,
       });
@@ -499,6 +583,11 @@ export class InternalMCPServerInMemoryResource {
       ])
     );
 
+    const podAppToolsetOverrides = await this.buildPodAppToolsetOverrides(
+      auth,
+      resolvedIds
+    );
+
     return resolvedIds.map(({ id, name }) => {
       if (!enabledServerNames.has(name)) {
         logger.info(
@@ -515,6 +604,7 @@ export class InternalMCPServerInMemoryResource {
         metadata: {
           ...serverMetadata.serverInfo,
           tools: serverMetadata.tools,
+          ...(podAppToolsetOverrides.get(id) ?? {}),
         },
         internalServerCredential: credentialsById.get(id) ?? null,
       });

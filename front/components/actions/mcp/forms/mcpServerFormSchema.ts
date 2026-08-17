@@ -8,7 +8,9 @@ import {
   isRemoteMCPServerType,
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
+  getInternalMCPServerNameAndWorkspaceId,
   getInternalMCPServerToolArgumentsRequiringApproval,
   INTERNAL_MCP_SERVERS,
   isInternalMCPServerName,
@@ -78,35 +80,62 @@ export type MCPServerFormValues = ServerSettings & {
 
 export function getDefaultInternalToolStakeLevel(
   server: MCPServerViewType["server"],
-  toolName: string
+  tool: { name: string; stake?: MCPToolStakeLevelType }
 ): MCPToolStakeLevelType {
-  if (isRemoteMCPServerType(server) || !isInternalMCPServerName(server.name)) {
+  if (isRemoteMCPServerType(server)) {
     return FALLBACK_MCP_TOOL_STAKE_LEVEL;
+  }
+
+  const serverName = internalServerNameFromServer(server);
+  if (!serverName) {
+    return tool.stake ?? FALLBACK_MCP_TOOL_STAKE_LEVEL;
   }
 
   const {
     metadata: { tools },
     availability,
-  } = INTERNAL_MCP_SERVERS[server.name];
+  } = INTERNAL_MCP_SERVERS[serverName];
 
+  // The tool's self-declared stake covers dynamically-listed tools (e.g. pod app toolsets),
+  // which have no static registry entry.
   return (
-    tools.find((tool) => tool.name === toolName)?.stake ??
+    tools.find((t) => t.name === tool.name)?.stake ??
+    tool.stake ??
     (availability === "manual"
       ? FALLBACK_MCP_TOOL_STAKE_LEVEL
       : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL)
   );
 }
 
+/**
+ * The registry identity of an internal server. Decoded from the sId because `server.name` can
+ * carry a per-instance display override (pod app toolsets) and is not a reliable registry key.
+ */
+function internalServerNameFromServer(
+  server: MCPServerViewType["server"]
+): InternalMCPServerNameType | null {
+  const decoded = getInternalMCPServerNameAndWorkspaceId(server.sId);
+  if (decoded.isOk()) {
+    return decoded.value.name;
+  }
+  return isInternalMCPServerName(server.name) ? server.name : null;
+}
+
 export function canToolUseMediumStakeLevel(
   server: MCPServerViewType["server"],
   toolName: string
 ): boolean {
-  if (isRemoteMCPServerType(server) || !isInternalMCPServerName(server.name)) {
+  if (isRemoteMCPServerType(server)) {
+    return false;
+  }
+
+  const serverName = internalServerNameFromServer(server);
+  if (!serverName) {
     return false;
   }
 
   return Boolean(
-    getInternalMCPServerToolArgumentsRequiringApproval(server.name, toolName)
+    getInternalMCPServerToolArgumentsRequiringApproval(serverName, toolName)
       ?.length
   );
 }
@@ -124,7 +153,7 @@ export function getMCPServerFormDefaults(
     const metadata = view.toolsMetadata?.find((m) => m.toolName === tool.name);
     const defaultPermission =
       metadata?.permission ??
-      getDefaultInternalToolStakeLevel(view.server, tool.name);
+      getDefaultInternalToolStakeLevel(view.server, tool);
     toolSettings[tool.name] = {
       enabled: metadata?.enabled ?? true,
       permission: defaultPermission,

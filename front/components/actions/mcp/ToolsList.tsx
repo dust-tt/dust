@@ -142,7 +142,7 @@ function getDefaultToolSettings({
   const metadata = toolMetadataByName[tool.name];
   const defaultPermission = getDefaultInternalToolStakeLevel(
     mcpServerView.server,
-    tool.name
+    tool
   );
 
   return {

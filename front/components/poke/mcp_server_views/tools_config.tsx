@@ -180,7 +180,7 @@ export function ToolsConfigTable({ mcpServerView }: ToolsConfigTableProps) {
       const override = overridesByName.get(tool.name);
       const defaultPermission = getDefaultInternalToolStakeLevel(
         mcpServerView.server,
-        tool.name
+        tool
       );
       const permission = override?.permission ?? defaultPermission;
 

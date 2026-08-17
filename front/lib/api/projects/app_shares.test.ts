@@ -4,6 +4,7 @@ import {
   updatePodAppShare,
 } from "@app/lib/api/projects/app_shares";
 import { Authenticator } from "@app/lib/auth";
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { PodAppShareResource } from "@app/lib/resources/pod_app_share_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
@@ -104,6 +105,29 @@ describe("sharePodApp", () => {
       expect(view.name).toBe("Task List");
       expect(view.description).toBe("Task management tools.");
     }
+
+    // The server instance itself carries the toolset identity and the live tool list, so admin
+    // and picker surfaces render the real name and per-tool settings.
+    const instance = await InternalMCPServerInMemoryResource.fetchById(
+      adminAuth,
+      share.internalMCPServerId
+    );
+    assert(instance, "Expected the server instance to resolve");
+    const serverJSON = instance.toJSON();
+    expect(serverJSON.name).toBe("Task List");
+    expect(serverJSON.description).toBe("Task management tools.");
+    expect(serverJSON.tools).toEqual([
+      {
+        name: "add-task",
+        description: "Function tasklist__add-task.",
+        inputSchema: EMPTY_SCHEMA,
+        stake: "low",
+        displayLabels: {
+          running: "Calling add-task...",
+          done: "Called add-task",
+        },
+      },
+    ]);
   });
 
   it("rejects an app with no published functions", async () => {

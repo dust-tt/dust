@@ -1,3 +1,4 @@
+import { POD_APP_TOOL_DEFAULT_STAKE } from "@app/lib/api/actions/servers/pod_app_toolset/metadata";
 import { callSandboxFunction } from "@app/lib/api/sandbox_functions/call_sandbox_function";
 import {
   SANDBOX_FUNCTION_SLUG_SEPARATOR,
@@ -95,7 +96,7 @@ export async function listPodAppTools(
         inputSchema: asToolInputSchema(sandboxFunction.inputSchema),
         _meta: {
           dust: {
-            stake: "low",
+            stake: POD_APP_TOOL_DEFAULT_STAKE,
             displayLabels: {
               running: `Calling ${name}...`,
               done: `Called ${name}`,
