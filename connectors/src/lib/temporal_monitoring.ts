@@ -20,6 +20,7 @@ import {
   ExternalOAuthTokenError,
   ProviderTransientError,
   RemoteDatabaseConnectionNotReadonlyError,
+  ThirdPartyConfigurationError,
   WorkspaceQuotaExceededError,
 } from "./error";
 import { syncFailed } from "./sync_status";
@@ -66,6 +67,15 @@ function categorizeFinalConnectorError(err: unknown): {
       connectorErrorType: "workspace_quota_exceeded",
       logMessage:
         "Stopping connector manager because of quota exceeded for the workspace.",
+      pauseReason: `Stopped on ${err.name}`,
+    };
+  }
+
+  if (err instanceof ThirdPartyConfigurationError) {
+    return {
+      connectorErrorType: "third_party_internal_error",
+      logMessage:
+        "Stopping connector manager because the third-party configuration requires user action.",
       pauseReason: `Stopped on ${err.name}`,
     };
   }

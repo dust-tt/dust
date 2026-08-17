@@ -123,6 +123,7 @@ const NavigationListItem = React.forwardRef<
         {...props}
       >
         <LinkWrapper
+          className="group/nav-item focus-visible:outline-hidden"
           href={disabled ? undefined : href}
           target={target}
           rel={rel}
@@ -136,6 +137,7 @@ const NavigationListItem = React.forwardRef<
               "text-muted-foreground font-medium",
               "box-border flex items-center w-full gap-1.5 cursor-pointer select-none",
               "items-center outline-hidden rounded-lg text-sm p-2 transition-colors duration-150 motion-reduce:transition-none",
+              "group-focus-visible/nav-item:ring-2 group-focus-visible/nav-item:ring-inset group-focus-visible/nav-item:ring-ring",
               "data-[disabled]:pointer-events-none",
               !disabled &&
                 (keepHoverOnMoreMenu

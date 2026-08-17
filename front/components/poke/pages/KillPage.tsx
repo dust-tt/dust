@@ -76,6 +76,13 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
     note: "Enqueues keep succeeding and in-flight upserts finish. Use to shed Qdrant write load (e.g. during resharding).",
     icon: PauseCircle,
   },
+  use_legacy_acls: {
+    title: "Legacy ACLs",
+    description:
+      "Serve skill permission checks from the legacy editor-group ACLs instead of the group_permissions table.",
+    note: "Revert path for the governance migration. Takes up to 60s to apply on each pod, as permission checks read the switch from an in-process cache.",
+    icon: RefreshCw02,
+  },
 };
 
 const PANEL_HEADING_CLASSES =
