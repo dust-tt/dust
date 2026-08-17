@@ -4,6 +4,7 @@ import { ImportPodAppDialog } from "@app/components/pod/apps/ImportPodAppDialog"
 import { PendingPodAppTile } from "@app/components/pod/apps/PendingPodAppTile";
 import { PodAppImportReportDialog } from "@app/components/pod/apps/PodAppImportReportDialog";
 import { PodAppTile } from "@app/components/pod/apps/PodAppTile";
+import { SharePodAppDialog } from "@app/components/pod/apps/SharePodAppDialog";
 import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
 import type { CustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import {
@@ -79,6 +80,7 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
     null
   );
   const [appPendingClone, setAppPendingClone] = useState<PodApp | null>(null);
+  const [appPendingShare, setAppPendingShare] = useState<PodApp | null>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [importReport, setImportReport] = useState<PodAppImportSummary | null>(
     null
@@ -287,6 +289,11 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
                             ? () => setAppPendingDeletion(entry.app)
                             : undefined
                         }
+                        onShare={
+                          canEdit
+                            ? () => setAppPendingShare(entry.app)
+                            : undefined
+                        }
                         isDeleting={deletingPrefixSet.has(entry.app.prefix)}
                       />
                     );
@@ -348,6 +355,16 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
           isOpen
           onClose={() => setAppPendingDeletion(null)}
           onSubmit={() => void onDelete(appPendingDeletion)}
+        />
+      )}
+      {appPendingShare && (
+        <SharePodAppDialog
+          key={`share-${appPendingShare.prefix}`}
+          owner={owner}
+          podId={pod.sId}
+          app={appPendingShare}
+          isOpen
+          onClose={() => setAppPendingShare(null)}
         />
       )}
       {isImportOpen && (
