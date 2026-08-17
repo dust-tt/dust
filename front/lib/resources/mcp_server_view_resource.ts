@@ -711,8 +711,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   static async listDisplayMetadataByWorkspace(
     auth: Authenticator
   ): Promise<MCPServerViewDisplayMetadata[]> {
-    const views = await this.model.findAll({
+    const views = await this.baseFetchWithAuthorization(auth, {
       attributes: [
+        "id",
+        "workspaceId",
+        "vaultId",
         "serverType",
         "name",
         "internalMCPServerId",
