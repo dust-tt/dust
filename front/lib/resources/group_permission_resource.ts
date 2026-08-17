@@ -23,7 +23,7 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import assert from "assert";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
-import { Op } from "sequelize";
+import { literal, Op } from "sequelize";
 
 /**
  * All writes to `group_permissions` go through this resource — never a raw model write elsewhere.
@@ -419,12 +419,9 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     return rows.map((row) => new this(GroupPermissionModel, row.get()));
   }
 
-  // System keys can represent nearly every group in a workspace. Expanding those group ids into
-  // an IN clause on every authenticated request is much more expensive than reading the usually
-  // small workspace grant set through its workspace-leading index and filtering it in memory.
-  // Keep the exact caller group semantics by intersecting with the ids already resolved for the
-  // Authenticator.
-  static async listForGroupsFromWorkspaceScan(
+  // System keys can represent nearly every group in a workspace. Bind their group ids as one
+  // Postgres array so Sequelize does not expand thousands of placeholders into the query text.
+  static async listForGroupsWithBoundArray(
     workspace: LightWorkspaceType,
     groupModelIds: ModelId[]
   ): Promise<GroupPermissionResource[]> {
@@ -432,14 +429,17 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       return [];
     }
 
-    const groupModelIdSet = new Set(groupModelIds);
     const rows = await GroupPermissionModel.findAll({
-      where: { workspaceId: workspace.id },
+      where: {
+        workspaceId: workspace.id,
+        groupId: {
+          [Op.any]: literal("$groupModelIds::bigint[]"),
+        },
+      },
+      bind: { groupModelIds },
     });
 
-    return rows
-      .filter((row) => groupModelIdSet.has(row.groupId))
-      .map((row) => new this(GroupPermissionModel, row.get()));
+    return rows.map((row) => new this(GroupPermissionModel, row.get()));
   }
 
   // Deletion-integrity hook: drop every grant (across all groups) targeting one resource. There is

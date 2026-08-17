@@ -230,7 +230,7 @@ describe("Authenticator.fromKey permission resolution", () => {
     vi.restoreAllMocks();
   });
 
-  it("uses a workspace grant scan for unscoped system keys", async () => {
+  it("uses the bound-array lookup for unscoped system keys", async () => {
     const workspace = await WorkspaceFactory.basic();
     const { systemGroup } = await GroupFactory.defaults(workspace);
     const adminAuth = await Authenticator.internalAdminForWorkspace(
@@ -258,14 +258,14 @@ describe("Authenticator.fromKey permission resolution", () => {
       resourceId: 42,
     });
 
-    const workspaceScanSpy = vi.spyOn(
+    const boundArrayLookupSpy = vi.spyOn(
       GroupPermissionResource,
-      "listForGroupsFromWorkspaceScan"
+      "listForGroupsWithBoundArray"
     );
     const key = await KeyFactory.system(systemGroup);
     const { workspaceAuth } = await Authenticator.fromKey(key, workspace.sId);
 
-    expect(workspaceScanSpy).toHaveBeenCalledTimes(1);
+    expect(boundArrayLookupSpy).toHaveBeenCalledTimes(1);
     expect(
       workspaceAuth.getGroupPermissions("agent", 42).map((grant) => grant.id)
     ).toEqual([includedGroup.id]);
@@ -298,16 +298,16 @@ describe("Authenticator.fromKey permission resolution", () => {
       resourceId: 42,
     });
 
-    const workspaceScanSpy = vi.spyOn(
+    const boundArrayLookupSpy = vi.spyOn(
       GroupPermissionResource,
-      "listForGroupsFromWorkspaceScan"
+      "listForGroupsWithBoundArray"
     );
     const key = await KeyFactory.system(systemGroup);
     const { workspaceAuth } = await Authenticator.fromKey(key, workspace.sId, [
       includedGroup.sId,
     ]);
 
-    expect(workspaceScanSpy).not.toHaveBeenCalled();
+    expect(boundArrayLookupSpy).not.toHaveBeenCalled();
     expect(
       workspaceAuth.getGroupPermissions("agent", 42).map((grant) => grant.id)
     ).toEqual([includedGroup.id]);

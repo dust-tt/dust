@@ -1307,7 +1307,7 @@ export class Authenticator {
 
     const lightWorkspace = renderLightWorkspaceType({ workspace });
     const grants = scanWorkspacePermissions
-      ? await GroupPermissionResource.listForGroupsFromWorkspaceScan(
+      ? await GroupPermissionResource.listForGroupsWithBoundArray(
           lightWorkspace,
           groupModelIds
         )
