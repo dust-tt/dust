@@ -14,14 +14,25 @@ fun buildFrameWrapperHtml(code: String, fileId: String, vizUrl: String): String 
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
         <style>
         * { margin: 0; padding: 0; }
-        html, body { width: 100%; height: 100%; overflow: hidden; background: transparent; }
-        iframe { width: 100%; height: 100%; border: none; }
+        html, body { width: 100%; height: 100vh; min-height: 100vh; overflow: hidden; background: #fff; }
+        iframe { position: fixed; inset: 0; display: block; width: 100%; height: 100vh; border: none; background: #fff; }
         </style>
         </head><body>
-        <iframe id="viz" src="$url" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"></iframe>
+        <iframe id="viz" title="Frame preview" src="$url" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"></iframe>
         <script>
         const FRAME_CODE = `$escapedCode`;
         const IDENTIFIER = '$vizIdentifier';
+        function resizeFrame() {
+          const viewportHeight = Math.max(window.innerHeight || 0, 1);
+          document.documentElement.style.height = viewportHeight + 'px';
+          document.body.style.height = viewportHeight + 'px';
+          const iframe = document.getElementById('viz');
+          if (iframe) iframe.style.height = viewportHeight + 'px';
+        }
+        window.addEventListener('resize', resizeFrame);
+        window.addEventListener('orientationchange', resizeFrame);
+        requestAnimationFrame(resizeFrame);
+        setTimeout(resizeFrame, 100);
         function postAnswer(messageUniqueId, result) {
           const iframe = document.getElementById('viz');
           if (!iframe || !iframe.contentWindow) return;
@@ -51,6 +62,9 @@ fun buildFrameWrapperHtml(code: String, fileId: String, vizUrl: String): String 
           if (!data || !data.command || data.identifier !== IDENTIFIER) return;
           if (data.command === 'getCodeToExecute') {
             postAnswer(data.messageUniqueId, { code: FRAME_CODE });
+            if (window.DustFrameBridge) {
+              window.DustFrameBridge.frameReady();
+            }
           }
           else if (data.command === 'getFile') {
             if (window.DustFrameBridge && data.params && data.params.fileId) {

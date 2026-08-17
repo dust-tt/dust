@@ -15,7 +15,14 @@ class FrameHtmlTest {
         )
 
         assertTrue(html.contains("""src="https://viz.dust.tt/content?identifier=viz-file_123&fullHeight=true""""))
+        assertTrue(html.contains("""title="Frame preview"""))
+        assertTrue(html.contains("height: 100vh"))
+        assertTrue(html.contains("position: fixed; inset: 0"))
         assertTrue(html.contains("const IDENTIFIER = 'viz-file_123';"))
+        assertTrue(html.contains("function resizeFrame()"))
+        assertTrue(html.contains("Math.max(window.innerHeight || 0, 1)"))
+        assertTrue(html.contains("iframe.style.height = viewportHeight + 'px'"))
+        assertTrue(html.contains("window.addEventListener('orientationchange', resizeFrame)"))
     }
 
     @Test
@@ -27,6 +34,7 @@ class FrameHtmlTest {
         )
 
         assertTrue(html.contains("data.command === 'getCodeToExecute'"))
+        assertTrue(html.contains("window.DustFrameBridge.frameReady();"))
         assertTrue(html.contains("window.DustFrameBridge.getFile(data.messageUniqueId, data.params.fileId);"))
         assertTrue(html.contains("window.__dustAnswerFile = function(messageUniqueId, base64, contentType)"))
         assertTrue(html.contains("fileBlob: new Blob([bytes], { type: contentType || 'application/octet-stream' })"))

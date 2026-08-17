@@ -3,12 +3,13 @@ package com.dust.mobile.core
 import com.dust.mobile.core.model.ConversationMessagesResponse
 import com.dust.mobile.core.model.ConversationsResponse
 import com.dust.mobile.core.model.ConversationMessage
+import com.dust.mobile.core.model.ContentFragmentPayload
 import com.dust.mobile.core.model.GeneratedFile
+import com.dust.mobile.core.model.ToolInputValue
 import com.dust.mobile.core.network.DustJson
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ParsingTest {
@@ -24,107 +25,73 @@ class ParsingTest {
     }
 
     @Test
-    fun `conversation preview supports versioned content arrays`() {
-        val json = """
-            {
-              "conversations": [{
-                "sId": "c1",
-                "created": 1700000000000,
-                "updated": 1700000100000,
-                "title": "Planning",
-                "unread": true,
-                "actionRequired": false,
-                "content": [[
-                  {
-                    "type": "user_message",
-                    "visibility": "hidden",
-                    "content": "hidden",
-                    "user": {"fullName": "Hidden"}
-                  },
-                  {
-                    "type": "user_message",
-                    "visibility": "visible",
-                    "content": "  # Hello   Dust ",
-                    "user": {"fullName": "Ada", "image": "avatar.png"}
-                  }
-                ]]
-              }],
-              "hasMore": false,
-              "lastValue": null
-            }
-        """.trimIndent()
-
-        val response = DustJson.decodeFromString<ConversationsResponse>(json)
-
-        val preview = response.conversations.single().preview
-        assertEquals("Ada", preview?.authorName)
-        assertEquals("avatar.png", preview?.authorAvatarUrl)
-        assertEquals("Hello Dust", preview?.snippet)
-        assertEquals(0, preview?.replyCount)
-    }
-
-    @Test
-    fun `conversation preview ignores malformed preview content without failing response`() {
-        val json = """
-            {
-              "conversations": [{
-                "sId": "c1",
-                "created": 1700000000000,
-                "updated": 1700000100000,
-                "title": "Planning",
-                "unread": false,
-                "actionRequired": false,
-                "content": [{
-                  "visibility": "visible",
-                  "content": "Missing type should not fail the conversation list"
-                }]
-              }],
-              "hasMore": false,
-              "lastValue": null
-            }
-        """.trimIndent()
-
-        val response = DustJson.decodeFromString<ConversationsResponse>(json)
-
-        assertEquals("c1", response.conversations.single().sId)
-        assertNull(response.conversations.single().preview)
-    }
-
-    @Test
-    fun `conversation preview preserves agent avatar identity`() {
-        val json = """
-            {
-              "conversations": [{
-                "sId": "c1",
-                "created": 1700000000000,
-                "updated": 1700000100000,
-                "title": "Planning",
-                "unread": true,
-                "actionRequired": false,
-                "content": [{
-                  "type": "agent_message",
-                  "status": "succeeded",
-                  "content": "Ready for review",
-                  "configuration": {
-                    "name": "Dust",
-                    "pictureUrl": "https://dust.tt/static/systemavatar/dust_avatar_full.png"
-                  }
-                }]
-              }],
-              "hasMore": false,
-              "lastValue": null
-            }
-        """.trimIndent()
-
-        val preview = DustJson.decodeFromString<ConversationsResponse>(json)
-            .conversations.single().preview
-
-        assertEquals("Dust", preview?.authorName)
-        assertEquals(
-            "https://dust.tt/static/systemavatar/dust_avatar_full.png",
-            preview?.authorAvatarUrl,
+    fun `tool inputs preserve nested JSON values`() {
+        val input = DustJson.decodeFromString<ToolInputValue>(
+            """{"filters":{"owners":["me","team"],"active":true}}""",
         )
-        assertTrue(preview?.isAgent == true)
+
+        assertEquals(
+            """{"filters":{"owners":["me","team"],"active":true}}""",
+            input.displayValue,
+        )
+    }
+
+    @Test
+    fun `content fragments reject ambiguous wire payloads`() {
+        val json = """
+            {
+              "title": "Invalid",
+              "fileId": "f1",
+              "nodeId": "n1",
+              "nodeDataSourceViewId": "dsv1",
+              "context": {"profilePictureUrl": null}
+            }
+        """.trimIndent()
+
+        assertThrows(Exception::class.java) {
+            DustJson.decodeFromString<ContentFragmentPayload>(json)
+        }
+    }
+
+    @Test
+    fun `conversation list item decodes without message content`() {
+        val json = """
+            {
+              "conversations": [{
+                "sId": "c1",
+                "created": 1700000000000,
+                "updated": 1700000100000,
+                "title": "Planning",
+                "unread": true,
+                "actionRequired": false,
+                "hasError": true,
+                "lastReadMs": 1700000050000,
+                "metadata": {},
+                "nextWakeupAt": 1700000200000,
+                "requestedSpaceIds": ["space-1"],
+                "spaceId": "space-1",
+                "triggerId": "trigger-1",
+                "isRunningAgentLoop": true
+              }],
+              "hasMore": false,
+              "lastValue": null
+            }
+        """.trimIndent()
+
+        val response = DustJson.decodeFromString<ConversationsResponse>(json)
+        val conversation = response.conversations.single()
+
+        assertEquals("c1", conversation.sId)
+        assertEquals("Planning", conversation.title)
+        assertEquals(true, conversation.unread)
+        assertEquals(false, conversation.actionRequired)
+        assertEquals(true, conversation.hasError)
+        assertEquals(1700000050000.0, conversation.lastReadMs)
+        assertEquals(1700000200000.0, conversation.nextWakeupAt)
+        assertEquals(listOf("space-1"), conversation.requestedSpaceIds)
+        assertEquals("space-1", conversation.spaceId)
+        assertEquals("trigger-1", conversation.triggerId)
+        assertEquals(true, conversation.isRunningAgentLoop)
     }
 
     @Test

@@ -15,6 +15,9 @@ data class AppConfig(
     fun conversationUrl(workspaceId: String, conversationId: String): String =
         "${appUrl.trimEnd('/')}/w/$workspaceId/assistant/$conversationId"
 
+    fun podUrl(workspaceId: String, podId: String): String =
+        "${appUrl.trimEnd('/')}/w/$workspaceId/pods/$podId"
+
     companion object {
         fun debug(): AppConfig = AppConfig(
             apiBaseUrl = "http://10.0.2.2:3000",
@@ -31,8 +34,9 @@ data class AppConfig(
 object Endpoints {
     const val LOGIN = "/api/workos/login"
     const val AUTHENTICATE = "/api/workos/authenticate"
-    const val LOGOUT = "/api/workos/logout"
+    const val REVOKE_SESSION = "/api/workos/revoke-session"
     const val USER = "/api/user"
+    const val MOBILE_NOTIFICATION_TOKENS = "/api/user/mobile_notification_tokens"
 
     fun conversations(workspaceId: String): String =
         "/api/w/$workspaceId/assistant/conversations"
@@ -80,7 +84,7 @@ object Endpoints {
         "/api/w/$workspaceId/assistant/conversations/$conversationId/actions/blocked"
 
     fun validateAction(workspaceId: String, conversationId: String, messageId: String): String =
-        "/api/v1/w/$workspaceId/assistant/conversations/$conversationId/messages/$messageId/validate-action"
+        "/api/w/$workspaceId/assistant/conversations/$conversationId/messages/$messageId/validate-action"
 
     fun retryMessage(workspaceId: String, conversationId: String, messageId: String): String =
         "/api/v1/w/$workspaceId/assistant/conversations/$conversationId/messages/$messageId/retry"
@@ -108,6 +112,24 @@ object Endpoints {
 
     fun spaceConversations(workspaceId: String, spaceId: String): String =
         "/api/w/$workspaceId/assistant/conversations/spaces/$spaceId"
+
+    fun space(workspaceId: String, spaceId: String): String =
+        "/api/w/$workspaceId/spaces/$spaceId"
+
+    fun podFiles(workspaceId: String, podId: String): String =
+        "/api/w/$workspaceId/spaces/$podId/files"
+
+    fun podTasks(workspaceId: String, podId: String): String =
+        "/api/w/$workspaceId/spaces/$podId/project_tasks"
+
+    fun podTask(workspaceId: String, podId: String, taskId: String): String =
+        "/api/w/$workspaceId/spaces/$podId/project_tasks/$taskId"
+
+    fun podMetadata(workspaceId: String, podId: String): String =
+        "/api/w/$workspaceId/spaces/$podId/project_metadata"
+
+    fun podNotificationPreferences(workspaceId: String, podId: String): String =
+        "/api/w/$workspaceId/spaces/$podId/project_notification_preferences"
 }
 
 fun withQuery(endpoint: String, params: Map<String, String?>): String {

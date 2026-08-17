@@ -20,6 +20,7 @@ import com.dust.mobile.core.stream.StreamingReconnect
 import com.dust.mobile.core.stream.StreamingEventParser
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StreamingTest {
@@ -62,6 +63,31 @@ class StreamingTest {
         val title = (envelope.data as ConversationEventData.ConversationTitle).event.title
         assertEquals("evt_1", envelope.eventId)
         assertEquals("Quarterly planning", title)
+    }
+
+    @Test
+    fun `parses agent loop step on generation tokens`() {
+        val envelope = StreamingEventParser.parseMessageEvent(
+            """
+            {
+              "eventId": "evt_1",
+              "data": {
+                "type": "generation_tokens",
+                "created": 1700000000000,
+                "configurationId": "dust",
+                "messageId": "m1",
+                "text": "Hello",
+                "classification": "tokens",
+                "traceId": "trace-1",
+                "step": 3
+              }
+            }
+            """.trimIndent(),
+        )
+
+        val tokens = (envelope.data as StreamingEventData.GenerationTokens).event
+        assertEquals("trace-1", tokens.traceId)
+        assertEquals(3, tokens.step)
     }
 
     @Test
@@ -152,6 +178,75 @@ class StreamingTest {
     }
 
     @Test
+    fun `agent stream appends content across agent loop steps`() {
+        val stream = AgentMessageStream("m1")
+
+        stream.apply(generationTokens(text = "First result. ", traceId = "trace-0", step = 0))
+        stream.apply(generationTokens(text = "Final answer.", traceId = "trace-1", step = 1))
+
+        assertEquals("First result. Final answer.", stream.snapshot.content)
+    }
+
+    @Test
+    fun `agent stream shadow replays a same step retry without clearing content`() {
+        val stream = AgentMessageStream("m1")
+        val visibleSnapshots = mutableListOf<String>()
+
+        stream.apply(generationTokens(text = "Hello ", traceId = "attempt-1", step = 0))
+        visibleSnapshots += stream.snapshot.content
+        stream.apply(generationTokens(text = "world", traceId = "attempt-1", step = 0))
+        visibleSnapshots += stream.snapshot.content
+        stream.apply(
+            generationTokens(
+                text = "Trying again",
+                classification = TokenClassification.CHAIN_OF_THOUGHT,
+                traceId = "attempt-2",
+                step = 0,
+            ),
+        )
+        visibleSnapshots += stream.snapshot.content
+        stream.apply(generationTokens(text = "Hello ", step = 0))
+        visibleSnapshots += stream.snapshot.content
+        stream.apply(generationTokens(text = "world!", step = 0))
+        visibleSnapshots += stream.snapshot.content
+
+        assertEquals("Hello world!", stream.snapshot.content)
+        assertTrue(visibleSnapshots.zipWithNext().all { (before, after) -> after.startsWith(before) })
+    }
+
+    @Test
+    fun `agent stream keeps visible content during a divergent same step retry`() {
+        val stream = AgentMessageStream("m1")
+
+        stream.apply(generationTokens(text = "Draft answer", traceId = "attempt-1", step = 0))
+        stream.apply(
+            generationTokens(
+                text = "Retrying",
+                classification = TokenClassification.CHAIN_OF_THOUGHT,
+                traceId = "attempt-2",
+                step = 0,
+            ),
+        )
+        stream.apply(generationTokens(text = "Different answer", step = 0))
+
+        assertEquals("Draft answer", stream.snapshot.content)
+
+        stream.apply(
+            StreamingEventData.AgentMessageSuccess(
+                AgentMessageSuccessEvent(
+                    created = 2.0,
+                    configurationId = "dust",
+                    messageId = "m1",
+                    message = finalAgentMessage(content = "Different answer", chainOfThought = null),
+                ),
+            ),
+        )
+
+        assertEquals("Different answer", stream.snapshot.content)
+        assertEquals(AgentMessageStatus.SUCCEEDED, stream.snapshot.status)
+    }
+
+    @Test
     fun `terminal agent message clears streamed chain of thought when final message has none`() {
         val stream = AgentMessageStream("m1")
 
@@ -185,6 +280,23 @@ class StreamingTest {
             stream.snapshot.completedSteps,
         )
     }
+
+    private fun generationTokens(
+        text: String,
+        classification: TokenClassification = TokenClassification.TOKENS,
+        traceId: String? = null,
+        step: Int? = null,
+    ): StreamingEventData.GenerationTokens = StreamingEventData.GenerationTokens(
+        GenerationTokensEvent(
+            created = 1.0,
+            configurationId = "dust",
+            messageId = "m1",
+            text = text,
+            classification = classification,
+            traceId = traceId,
+            step = step,
+        ),
+    )
 
     private fun finalAgentMessage(content: String, chainOfThought: String?): AgentMessage =
         AgentMessage(

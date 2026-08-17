@@ -17,6 +17,11 @@ class SendReadinessTest {
     }
 
     @Test
+    fun `can send with a skill reference only`() {
+        assertTrue(canSendMessage(text = "", hasAttachments = false, hasSkillReferences = true))
+    }
+
+    @Test
     fun `cannot send with knowledge only`() {
         assertFalse(canSendMessage(text = "", hasAttachments = false))
     }

@@ -1,12 +1,5 @@
 package com.dust.mobile.core.model
 
-fun replyCountLabel(replyCount: Int): String? =
-    when {
-        replyCount <= 0 -> null
-        replyCount == 1 -> "1 reply"
-        else -> "$replyCount replies"
-    }
-
 fun List<Conversation>.filteredByTitleSearch(searchText: String): List<Conversation> =
     if (searchText.isEmpty()) {
         this

@@ -2,12 +2,35 @@ package com.dust.mobile.core.model
 
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.buildClassSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonEncoder
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonObject
+
+@Serializable
+enum class ConversationVisibility {
+    @SerialName("unlisted")
+    UNLISTED,
+
+    @SerialName("deleted")
+    DELETED,
+
+    @SerialName("test")
+    TEST,
+}
 
 @Serializable
 data class CreateConversationRequest(
     val title: String? = null,
-    val visibility: String = "unlisted",
+    val visibility: ConversationVisibility = ConversationVisibility.UNLISTED,
     val spaceId: String? = null,
     val message: CreateMessagePayload,
     val contentFragments: List<ContentFragmentPayload> = emptyList(),
@@ -18,6 +41,9 @@ data class CreateMessagePayload(
     val content: String,
     val mentions: List<MentionPayload>,
     val context: MessageContext,
+    @OptIn(ExperimentalSerializationApi::class)
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val clientRequestId: String? = null,
 )
 
 @Serializable
@@ -39,6 +65,9 @@ data class PostMessageRequest(
     val content: String,
     val mentions: List<MentionPayload>,
     val context: MessageContext,
+    @OptIn(ExperimentalSerializationApi::class)
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val clientRequestId: String? = null,
 )
 
 @Serializable
@@ -46,39 +75,104 @@ data class PostMessageResponse(
     val message: UserMessage,
 )
 
-@Serializable
-data class ContentFragmentPayload(
-    val title: String,
-    @OptIn(ExperimentalSerializationApi::class)
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val fileId: String? = null,
-    @OptIn(ExperimentalSerializationApi::class)
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val nodeId: String? = null,
-    @OptIn(ExperimentalSerializationApi::class)
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val nodeDataSourceViewId: String? = null,
-    @OptIn(ExperimentalSerializationApi::class)
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val url: String? = null,
-    val context: ContentFragmentContext,
-) {
+@Serializable(with = ContentFragmentPayloadSerializer::class)
+sealed interface ContentFragmentPayload {
+    val title: String
+    val context: ContentFragmentContext
+    val url: String?
+    val clientRequestId: String?
+
+    @Serializable
+    data class File(
+        override val title: String,
+        val fileId: String,
+        override val context: ContentFragmentContext,
+        @OptIn(ExperimentalSerializationApi::class)
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
+        override val url: String? = null,
+        @OptIn(ExperimentalSerializationApi::class)
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
+        override val clientRequestId: String? = null,
+    ) : ContentFragmentPayload
+
+    @Serializable
+    data class Node(
+        override val title: String,
+        val nodeId: String,
+        val nodeDataSourceViewId: String,
+        override val context: ContentFragmentContext,
+        @OptIn(ExperimentalSerializationApi::class)
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
+        override val url: String? = null,
+        @OptIn(ExperimentalSerializationApi::class)
+        @EncodeDefault(EncodeDefault.Mode.NEVER)
+        override val clientRequestId: String? = null,
+    ) : ContentFragmentPayload
+
     companion object {
-        fun file(title: String, fileId: String, context: ContentFragmentContext): ContentFragmentPayload =
-            ContentFragmentPayload(title = title, fileId = fileId, context = context)
+        fun file(
+            title: String,
+            fileId: String,
+            context: ContentFragmentContext,
+            url: String? = null,
+            clientRequestId: String? = null,
+        ): ContentFragmentPayload = File(
+            title = title,
+            fileId = fileId,
+            context = context,
+            url = url,
+            clientRequestId = clientRequestId,
+        )
 
         fun node(
             title: String,
             nodeId: String,
             nodeDataSourceViewId: String,
             context: ContentFragmentContext,
+            url: String? = null,
+            clientRequestId: String? = null,
         ): ContentFragmentPayload =
-            ContentFragmentPayload(
+            Node(
                 title = title,
                 nodeId = nodeId,
                 nodeDataSourceViewId = nodeDataSourceViewId,
                 context = context,
+                url = url,
+                clientRequestId = clientRequestId,
             )
+    }
+}
+
+object ContentFragmentPayloadSerializer : KSerializer<ContentFragmentPayload> {
+    override val descriptor: SerialDescriptor = buildClassSerialDescriptor("ContentFragmentPayload")
+
+    override fun deserialize(decoder: Decoder): ContentFragmentPayload {
+        val input = decoder as? JsonDecoder
+            ?: throw SerializationException("ContentFragmentPayload can only be decoded from JSON")
+        val element = input.decodeJsonElement()
+        val obj = element.jsonObject
+        return when {
+            obj["fileId"] != null && obj["nodeId"] == null && obj["nodeDataSourceViewId"] == null ->
+                input.json.decodeFromJsonElement(ContentFragmentPayload.File.serializer(), element)
+            obj["fileId"] == null && obj["nodeId"] != null && obj["nodeDataSourceViewId"] != null ->
+                input.json.decodeFromJsonElement(ContentFragmentPayload.Node.serializer(), element)
+            else -> throw SerializationException("Content fragment must reference exactly one file or node")
+        }
+    }
+
+    override fun serialize(encoder: Encoder, value: ContentFragmentPayload) {
+        val output = encoder as? JsonEncoder
+            ?: throw SerializationException("ContentFragmentPayload can only be encoded to JSON")
+        when (value) {
+            is ContentFragmentPayload.File -> output.encodeSerializableValue(
+                ContentFragmentPayload.File.serializer(),
+                value,
+            )
+            is ContentFragmentPayload.Node -> output.encodeSerializableValue(
+                ContentFragmentPayload.Node.serializer(),
+                value,
+            )
+        }
     }
 }
 
@@ -86,36 +180,6 @@ data class ContentFragmentPayload(
 data class ContentFragmentContext(
     val profilePictureUrl: String? = null,
 )
-
-@Serializable
-data class PostContentFragmentRequest(
-    val title: String,
-    @OptIn(ExperimentalSerializationApi::class)
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val fileId: String? = null,
-    @OptIn(ExperimentalSerializationApi::class)
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val nodeId: String? = null,
-    @OptIn(ExperimentalSerializationApi::class)
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val nodeDataSourceViewId: String? = null,
-    @OptIn(ExperimentalSerializationApi::class)
-    @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val url: String? = null,
-    val context: ContentFragmentContext,
-) {
-    companion object {
-        fun from(payload: ContentFragmentPayload): PostContentFragmentRequest =
-            PostContentFragmentRequest(
-                title = payload.title,
-                fileId = payload.fileId,
-                nodeId = payload.nodeId,
-                nodeDataSourceViewId = payload.nodeDataSourceViewId,
-                url = payload.url,
-                context = payload.context,
-            )
-    }
-}
 
 @Serializable
 data class PostContentFragmentResponse(
