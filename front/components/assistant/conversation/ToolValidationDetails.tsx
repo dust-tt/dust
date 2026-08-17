@@ -45,7 +45,11 @@ import {
   UPDATE_SKILL_TOOL_NAME,
 } from "@app/lib/api/actions/servers/skill_authoring/metadata";
 import { useSkill } from "@app/lib/swr/skill_configurations";
-import { isNumber, isString } from "@app/types/shared/utils/general";
+import {
+  isNumber,
+  isString,
+  removeNulls,
+} from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { Markdown } from "@dust-tt/sparkle";
 
@@ -127,28 +131,26 @@ export function ToolValidationDetails({
     ? "Loading…"
     : (skill?.name ?? "Unknown skill");
 
-  const displayableInputs: DisplayableInput[] = Object.entries(
-    blockedAction.inputs
-  ).flatMap(([key, value]) => {
-    if (isSkillAuthoringUpdate && key === "sId") {
-      return [{ key, label: "Skill", value: resolvedSkillName, isJson: false }];
-    }
+  const displayableInputs: DisplayableInput[] = removeNulls(
+    Object.entries(blockedAction.inputs).map(([key, value]) => {
+      if (isSkillAuthoringUpdate && key === "sId") {
+        return { key, label: "Skill", value: resolvedSkillName, isJson: false };
+      }
 
-    const displayValue = formatDisplayValue(value);
-    if (displayValue === null) {
-      return [];
-    }
+      const displayValue = formatDisplayValue(value);
+      if (displayValue === null) {
+        return null;
+      }
 
-    return [
-      {
+      return {
         key,
         label: humanizeFieldName(key),
         value: displayValue,
         isJson:
           value !== null && typeof value === "object" && !Array.isArray(value),
-      },
-    ];
-  });
+      };
+    })
+  );
 
   if (
     blockedAction.metadata.mcpServerName === ASHBY_SERVER_NAME &&
