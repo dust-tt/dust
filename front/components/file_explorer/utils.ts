@@ -1,4 +1,3 @@
-import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import {
   frameSlideshowContentType,
@@ -9,6 +8,7 @@ import {
   isSandboxFunctionContentType,
   stripMimeParameters,
 } from "@app/types/files";
+import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/types/mount_path";
 
 const VIEWER_CONTENT_TYPES = new Set<string>([
   "application/msword",

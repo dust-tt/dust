@@ -1,12 +1,12 @@
-import {
-  getConversationFilesBasePath,
-  parseScopedFilePath,
-} from "@app/lib/api/files/mount_path";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { isSupportedImageContentType } from "@app/types/files";
+import {
+  getConversationFilesBasePath,
+  parseScopedFilePath,
+} from "@app/types/mount_path";
 import { isString } from "@app/types/shared/utils/general";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { workspaceApp } from "@front-api/middlewares/ctx";

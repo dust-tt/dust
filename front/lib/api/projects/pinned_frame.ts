@@ -1,7 +1,7 @@
 import { DustFileSystem } from "@app/lib/api/file_system";
-import { resolveCanonicalScopedPath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { resolveCanonicalScopedPath } from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 

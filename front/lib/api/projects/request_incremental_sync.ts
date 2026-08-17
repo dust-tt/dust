@@ -1,10 +1,10 @@
 import { default as config } from "@app/lib/api/config";
-import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import { fetchProjectDataSource } from "@app/lib/api/projects/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { SCOPED_PREFIX_POD } from "@app/types/file_system";
 
 /**
  * Fire-and-forget request for a debounced dust_project incremental sync.

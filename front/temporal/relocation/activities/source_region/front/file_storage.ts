@@ -1,4 +1,3 @@
-import { getBaseMountPathForWorkspace } from "@app/lib/api/files/mount_path";
 import fileStorageConfig from "@app/lib/file_storage/config";
 import { getContentFragmentBaseCloudStorageForWorkspace } from "@app/lib/resources/content_fragment_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -9,6 +8,7 @@ import type {
   DataSourceCoreIds,
 } from "@app/temporal/relocation/activities/types";
 import { StorageTransferService } from "@app/temporal/relocation/lib/file_storage/transfer";
+import { getBaseMountPathForWorkspace } from "@app/types/mount_path";
 import type { RegionType } from "@app/types/region";
 
 export async function startTransferFrontPublicFiles({

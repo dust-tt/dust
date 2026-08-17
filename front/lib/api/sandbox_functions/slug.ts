@@ -1,9 +1,9 @@
+import { normalizeAppPrefix } from "@app/types/api/pod_function_reference";
+import { SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX } from "@app/types/api/sandbox_functions";
 import {
   parseCanonicalScopedPath,
   resolveCanonicalScopedPath,
-} from "@app/lib/api/files/mount_path";
-import { normalizeAppPrefix } from "@app/types/api/pod_function_reference";
-import { SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX } from "@app/types/api/sandbox_functions";
+} from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 

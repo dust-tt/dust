@@ -1,5 +1,4 @@
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/prompt_context";
-import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { readWorkspacePolicy } from "@app/lib/api/sandbox/egress_policy";
 import {
   createToolManifest,
@@ -16,6 +15,7 @@ import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/types/mount_path";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { Ok } from "@app/types/shared/result";
 

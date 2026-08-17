@@ -6,23 +6,12 @@ import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/cont
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import {
-  DustFileSystemError,
-  podScopedPath,
-} from "@app/lib/api/file_system/types";
-import {
   deleteGCSMountFile,
   moveFile,
   renameGCSMountDirectory,
   renameGCSMountFile,
 } from "@app/lib/api/files/gcs_mount/files";
 import { moveMountFileWithinScope } from "@app/lib/api/files/mount_file_ops";
-import type { ResolveMountFilePathError } from "@app/lib/api/files/mount_path";
-import {
-  getPodFilesBasePath,
-  joinMountRelativePath,
-  normalizeMountParentRelativePath,
-  validateMountFolderName,
-} from "@app/lib/api/files/mount_path";
 import { requestDustProjectIncrementalSync } from "@app/lib/api/projects/request_incremental_sync";
 import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
@@ -40,6 +29,14 @@ import type { ConversationAttachmentType } from "@app/types/api/assistant/conver
 import type { FileSystemDirectoryEntry } from "@app/types/api/file_system/types";
 import type { ContentNodeType } from "@app/types/core/content_node";
 import type { ConnectorProvider } from "@app/types/data_source";
+import { DustFileSystemError, podScopedPath } from "@app/types/file_system";
+import type { ResolveMountFilePathError } from "@app/types/mount_path";
+import {
+  getPodFilesBasePath,
+  joinMountRelativePath,
+  normalizeMountParentRelativePath,
+  validateMountFolderName,
+} from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";

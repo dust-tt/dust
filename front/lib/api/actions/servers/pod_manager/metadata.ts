@@ -9,8 +9,8 @@ import {
   PodMembersToAddSchema,
   PodMembersToRemoveSchema,
 } from "@app/lib/api/actions/servers/pod_manager/types";
-import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
+import { SCOPED_PREFIX_POD } from "@app/types/file_system";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { z } from "zod";
 
