@@ -366,9 +366,35 @@ async function fetchWorkspaceAgentConfigurationsForView(
   });
 }
 
-export async function getAgentConfigurationsForView<
-  V extends AgentFetchVariant,
->({
+type AgentConfigurationsForViewBaseArgs = {
+  auth: Authenticator;
+  agentsGetView: AgentsGetViewType;
+  agentPrefix?: string;
+  limit?: number;
+  sort?: SortStrategyType;
+  dangerouslySkipPermissionFiltering?: boolean;
+};
+
+type FullAgentConfigurationsForViewArgs = AgentConfigurationsForViewBaseArgs & {
+  variant: "full";
+  omitInstructions?: never;
+  omitHeavyAttributes?: never;
+};
+
+type LightAgentConfigurationsForViewArgs =
+  AgentConfigurationsForViewBaseArgs & {
+    variant: Exclude<AgentFetchVariant, "full">;
+    omitInstructions?: boolean;
+    omitHeavyAttributes?: boolean;
+  };
+
+export function getAgentConfigurationsForView(
+  args: FullAgentConfigurationsForViewArgs
+): Promise<AgentConfigurationType[]>;
+export function getAgentConfigurationsForView(
+  args: LightAgentConfigurationsForViewArgs
+): Promise<LightAgentConfigurationType[]>;
+export async function getAgentConfigurationsForView({
   auth,
   agentsGetView,
   agentPrefix,
@@ -378,19 +404,7 @@ export async function getAgentConfigurationsForView<
   dangerouslySkipPermissionFiltering,
   omitInstructions,
   omitHeavyAttributes,
-}: {
-  auth: Authenticator;
-  agentsGetView: AgentsGetViewType;
-  agentPrefix?: string;
-  variant: V;
-  limit?: number;
-  sort?: SortStrategyType;
-  dangerouslySkipPermissionFiltering?: boolean;
-  omitInstructions?: boolean;
-  omitHeavyAttributes?: boolean;
-}): Promise<
-  V extends "full" ? AgentConfigurationType[] : LightAgentConfigurationType[]
-> {
+}: FullAgentConfigurationsForViewArgs | LightAgentConfigurationsForViewArgs) {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -419,12 +433,6 @@ export async function getAgentConfigurationsForView<
       agentsGetView === "favorites")
   ) {
     throw new Error(`'${agentsGetView}' view is specific to a user.`);
-  }
-
-  // Omission options are incompatible with the "full" variant since callers of
-  // "full" inherently want the complete agent configuration.
-  if ((omitInstructions || omitHeavyAttributes) && variant === "full") {
-    throw new Error("Omission options cannot be combined with variant 'full'.");
   }
 
   const shouldOmitInstructions = omitInstructions || omitHeavyAttributes;
