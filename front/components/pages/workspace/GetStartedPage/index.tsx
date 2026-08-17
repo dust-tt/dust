@@ -29,7 +29,7 @@ import { FOR_YOU_EMAIL_UTM } from "@app/lib/tracking/campaigns";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { resolveDefaultAgentId } from "@app/types/user";
 import { Button, Spinner } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const QUICK_PROMPTS = [
   {
@@ -142,21 +142,22 @@ export function GetStartedPage() {
 
   const firstName = user?.firstName ?? user?.fullName?.split(" ")[0] ?? "there";
 
-  // useLayoutEffect runs before paint; RootLayout only strips UTMs in a
-  // useEffect (after paint), so the campaign params are still on the URL here.
-  useLayoutEffect(() => {
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("utm_campaign") !== FOR_YOU_EMAIL_UTM.utm_campaign) {
-      return;
-    }
-    const conversationId = params.get("utm_content");
+    const fromEmail =
+      params.get("utm_campaign") === FOR_YOU_EMAIL_UTM.utm_campaign;
+    const conversationId = fromEmail ? params.get("utm_content") : null;
     trackEvent({
       area: TRACKING_AREAS.WORKSPACE,
-      object: "for_you_email",
-      action: TRACKING_ACTIONS.CLICK,
-      extra: conversationId ? { conversation_id: conversationId } : undefined,
+      object: "for_you_page",
+      action: TRACKING_ACTIONS.OPEN,
+      extra: {
+        user_id: user.sId,
+        from_email: fromEmail,
+        ...(conversationId ? { conversation_id: conversationId } : {}),
+      },
     });
-  }, []);
+  }, [user.sId]);
 
   // The whole surface is scoped to the user's activation Pod, so without one
   // there is nothing to show. Redirect to the workspace home once the Pod
