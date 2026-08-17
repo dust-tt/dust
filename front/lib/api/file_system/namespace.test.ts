@@ -497,18 +497,24 @@ describe("filesystem namespace rename", () => {
       parentId: root.id,
       name: request.destinationName,
     });
+    expect(renamedRes.isOk() && renamedRes.value.replacedNodeId).toBeNull();
     expect(retriedRes.isOk() && retriedRes.value.node).toMatchObject({
       id: source.id,
       name: request.destinationName,
     });
+    expect(retriedRes.isOk() && retriedRes.value.replacedNodeId).toBeNull();
     expect(oldPathRes.isOk() && oldPathRes.value.node).toBeNull();
     expect(newPathRes.isOk() && newPathRes.value.node?.id).toBe(source.id);
     expect(noOpRes.isOk() && noOpRes.value.node?.id).toBe(source.id);
+    expect(noOpRes.isOk() && noOpRes.value.replacedNodeId).toBeNull();
     expect(reusedRequestIdRes.isErr() && reusedRequestIdRes.error.code).toBe(
       "invalid_operation"
     );
     expect(replacementRes.isOk() && replacementRes.value.node?.id).toBe(
       replacement.id
+    );
+    expect(replacementRes.isOk() && replacementRes.value.replacedNodeId).toBe(
+      source.id
     );
     expect(replacedSourceRes.isErr() && replacedSourceRes.error.code).toBe(
       "not_found"
@@ -517,6 +523,10 @@ describe("filesystem namespace rename", () => {
       replayedAfterReplacementRes.isOk() &&
         replayedAfterReplacementRes.value.node
     ).toEqual(renamedRes.isOk() ? renamedRes.value.node : undefined);
+    expect(
+      replayedAfterReplacementRes.isOk() &&
+        replayedAfterReplacementRes.value.replacedNodeId
+    ).toBeNull();
   });
 
   it("moves a directory tree between conversation and Pod roots", async () => {
@@ -682,6 +692,9 @@ describe("filesystem namespace rename", () => {
       name: destination.name,
       blobId: source.blobId,
     });
+    expect(renamedRes.isOk() && renamedRes.value.replacedNodeId).toBe(
+      destination.id
+    );
     expect(replacedNodeRes.isErr() && replacedNodeRes.error.code).toBe(
       "not_found"
     );
@@ -732,6 +745,9 @@ describe("filesystem namespace rename", () => {
       id: source.id,
       name: destination.name,
     });
+    expect(renamedRes.isOk() && renamedRes.value.replacedNodeId).toBe(
+      destination.id
+    );
     expect(replacedNodeRes.isErr() && replacedNodeRes.error.code).toBe(
       "not_found"
     );
@@ -996,6 +1012,11 @@ describe("filesystem namespace removal", () => {
       scope,
       request
     );
+    const replacement = await createNode(authenticator, scope, {
+      parentId: root.id,
+      name: file.name,
+      kind: "file",
+    });
     const retriedRes = await applyFileSystemOperation(
       authenticator,
       scope,
@@ -1021,12 +1042,12 @@ describe("filesystem namespace removal", () => {
       { blobId }
     );
 
-    expect(removedRes.isOk() && removedRes.value).toEqual({});
-    expect(retriedRes.isOk() && retriedRes.value).toEqual({});
+    expect(removedRes.isOk() && removedRes.value.removedNodeId).toBe(file.id);
+    expect(retriedRes.isOk() && retriedRes.value.removedNodeId).toBe(file.id);
     expect(reusedRequestIdRes.isErr() && reusedRequestIdRes.error.code).toBe(
       "invalid_operation"
     );
-    expect(lookupRes.isOk() && lookupRes.value.node).toBeNull();
+    expect(lookupRes.isOk() && lookupRes.value.node?.id).toBe(replacement.id);
     expect(getAttrRes.isErr() && getAttrRes.error.code).toBe("not_found");
     expect(cleanup).toMatchObject({ nodeId: file.id, blobId });
   });

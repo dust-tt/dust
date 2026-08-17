@@ -66,6 +66,10 @@ type MoveOptions = Pick<
 > & {
   destinationParent: FileSystemNodeResource;
 };
+interface RenameChildResult {
+  node: FileSystemNodeResource;
+  replacedNodeId: number | null;
+}
 type PrepareContentUploadRequest = Extract<
   FileSystemOperation,
   { operation: "prepareContentUpload" }
@@ -573,7 +577,7 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     auth: Authenticator,
     scope: FileSystemScope,
     options: RemoveChildOptions
-  ): Promise<Result<undefined, FileSystemOperationError>> {
+  ): Promise<Result<number, FileSystemOperationError>> {
     const accessRes = this.checkWritableDirectory(auth, scope, {
       description: "parent",
     });
@@ -621,7 +625,7 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     }
 
     await child.destroyAndRetireBlob(auth, options.transaction);
-    return new Ok(undefined);
+    return new Ok(child.id);
   }
 
   private async moveDescendantsToRoot(
@@ -671,7 +675,7 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     auth: Authenticator,
     scope: FileSystemScope,
     options: MoveOptions
-  ): Promise<Result<FileSystemNodeResource, FileSystemOperationError>> {
+  ): Promise<Result<RenameChildResult, FileSystemOperationError>> {
     const nameRes = FileSystemNodeResource.validateName(
       options.destinationName
     );
@@ -683,7 +687,7 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
       this.parentId === options.destinationParent.id &&
       this.name === options.destinationName
     ) {
-      return new Ok(this);
+      return new Ok({ node: this, replacedNodeId: null });
     }
 
     if (
@@ -732,6 +736,7 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
       );
     }
 
+    const replacedNodeId = destination?.id ?? null;
     if (destination) {
       await destination.destroyAndRetireBlob(auth, options.transaction);
     }
@@ -756,14 +761,14 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
       options.transaction
     );
 
-    return new Ok(this);
+    return new Ok({ node: this, replacedNodeId });
   }
 
   async renameChild(
     auth: Authenticator,
     scope: FileSystemScope,
     options: RenameChildOptions
-  ): Promise<Result<FileSystemNodeResource, FileSystemOperationError>> {
+  ): Promise<Result<RenameChildResult, FileSystemOperationError>> {
     const sourceAccessRes = this.checkWritableDirectory(auth, scope, {
       description: "source",
     });

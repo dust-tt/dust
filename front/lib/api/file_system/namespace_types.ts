@@ -180,6 +180,8 @@ export type FileSystemOperation = z.infer<typeof FileSystemOperationSchema>;
 export const FileSystemOperationResponseSchema = z.object({
   roots: z.array(FileSystemNodeSchema).optional(),
   node: FileSystemNodeSchema.nullable().optional(),
+  removedNodeId: FileSystemNodeIdSchema.optional(),
+  replacedNodeId: FileSystemNodeIdSchema.nullable().optional(),
   nodes: z.array(FileSystemNodeSchema).optional(),
   nextAfterName: z.string().nullable().optional(),
   content: FileSystemContentSchema.optional(),

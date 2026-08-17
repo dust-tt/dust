@@ -114,6 +114,88 @@ describe("POST /api/v1/w/[wId]/sandbox/filesystem", () => {
     );
   });
 
+  it("returns the node removed or replaced by a namespace mutation", async () => {
+    const context = await createSandboxTokenTestContext();
+    const token = await generateSandboxFileSystemToken(context.auth, {
+      sandbox: context.sandbox,
+      roots: [
+        {
+          kind: "conversation",
+          id: context.conversation.sId,
+          permissions: { canRead: true, canWrite: true },
+        },
+      ],
+    });
+    const initializeResponse = await requestFileSystem(
+      context.workspace.sId,
+      token,
+      { operation: "initialize" }
+    );
+    const initialized = FileSystemOperationResponseSchema.parse(
+      await initializeResponse.json()
+    );
+    const root = initialized.roots?.[0];
+    if (!root) {
+      throw new Error("Expected a conversation filesystem root.");
+    }
+
+    const createFile = async (name: string) => {
+      const response = await requestFileSystem(context.workspace.sId, token, {
+        operation: "create",
+        requestId: randomUUID(),
+        parentId: root.id,
+        name,
+        kind: "file",
+        mode: 0o644,
+      });
+      const created = FileSystemOperationResponseSchema.parse(
+        await response.json()
+      );
+      if (!created.node) {
+        throw new Error(`Expected ${name} to be created.`);
+      }
+      return created.node;
+    };
+    const source = await createFile("source.txt");
+    const destination = await createFile("destination.txt");
+
+    const renameResponse = await requestFileSystem(
+      context.workspace.sId,
+      token,
+      {
+        operation: "rename",
+        requestId: randomUUID(),
+        sourceParentId: root.id,
+        sourceName: source.name,
+        destinationParentId: root.id,
+        destinationName: destination.name,
+      }
+    );
+    expect(renameResponse.status).toBe(200);
+    const renamed = FileSystemOperationResponseSchema.parse(
+      await renameResponse.json()
+    );
+    expect(renamed.node?.id).toBe(source.id);
+    expect(renamed.replacedNodeId).toBe(destination.id);
+
+    const removeResponse = await requestFileSystem(
+      context.workspace.sId,
+      token,
+      {
+        operation: "remove",
+        requestId: randomUUID(),
+        parentId: root.id,
+        name: destination.name,
+        kind: "file",
+      }
+    );
+    expect(removeResponse.status).toBe(200);
+    const removed = FileSystemOperationResponseSchema.parse(
+      await removeResponse.json()
+    );
+    expect(removed.removedNodeId).toBe(source.id);
+  });
+
   it("rejects malformed filesystem operations before running them", async () => {
     const context = await createSandboxTokenTestContext();
     const token = await generateSandboxFileSystemToken(context.auth, {
