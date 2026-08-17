@@ -20,7 +20,7 @@ function UsageFilterOptionListSkeleton() {
   return (
     <div aria-hidden="true" className="flex flex-col gap-0.5">
       {["w-24", "w-32", "w-20", "w-36", "w-28", "w-24"].map((width, index) => (
-        <div key={index} className="flex items-center gap-2 py-1">
+        <div key={index} className="flex items-center gap-2 px-2 py-1">
           <LoadingBlock className="h-4 w-4 shrink-0 rounded" />
           <LoadingBlock className="h-4 w-4 shrink-0 rounded" />
           <LoadingBlock className={`h-3 ${width}`} />
@@ -100,7 +100,10 @@ export function UsageFilterOptionCheckboxList({
                 ? `${checkboxId}-availability`
                 : undefined;
               return (
-                <div key={option.id} className="flex items-center gap-2 py-1">
+                <div
+                  key={option.id}
+                  className="flex items-center gap-2 px-2 py-1"
+                >
                   <Checkbox
                     id={checkboxId}
                     checked={checked}
