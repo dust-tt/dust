@@ -211,7 +211,7 @@ export function UsageFilterPanel({
             activeCategory={activeCategory}
             onCategoryChange={handleCategoryChange}
           />
-          <div className="flex h-full w-72 flex-col gap-4 p-2">
+          <div className="flex h-full w-72 flex-col gap-2 p-2">
             <UsageFilterSection
               title={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
               action={
@@ -236,7 +236,7 @@ export function UsageFilterPanel({
             </UsageFilterSection>
             <div
               ref={setContentScrollContainer}
-              className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-2"
+              className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto"
             >
               {activeCategory === "member" && (
                 <UsageFilterMemberGroupsControls
