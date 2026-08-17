@@ -85,9 +85,26 @@ function makeAuthBlockedAction(
   };
 }
 
+function makeValidationBlockedAction(
+  actionId: string
+): AgentLoopBlockedToolExecution & {
+  status: "blocked_validation_required";
+} {
+  const { authorizationInfo: _authorizationInfo, ...action } =
+    makeAuthBlockedAction(actionId);
+
+  return {
+    ...action,
+    status: "blocked_validation_required",
+    stake: "low",
+    authorizationInfo: null,
+  };
+}
+
 function Consumer() {
   const {
     getBlockedActionItems,
+    getApprovalProgress,
     getFirstBlockedActionForMessage,
     refreshBlockedActions,
     removeCompletedAction,
@@ -95,6 +112,9 @@ function Consumer() {
 
   const firstAction = getFirstBlockedActionForMessage("msg_1");
   const firstActionItem = getBlockedActionItems("user_1")[0];
+  const approvalProgress = firstAction
+    ? getApprovalProgress({ actionId: firstAction.actionId, userId: "user_1" })
+    : undefined;
 
   return (
     <div>
@@ -104,6 +124,11 @@ function Consumer() {
       </span>
       <span data-testid="blocked-message-id">
         {firstActionItem?.blockedAction.messageId ?? "none"}
+      </span>
+      <span data-testid="approval-progress">
+        {approvalProgress
+          ? `${approvalProgress.current}/${approvalProgress.total}`
+          : "none"}
       </span>
       <button
         type="button"
@@ -155,6 +180,36 @@ describe("BlockedActionsProvider", () => {
     await user.click(screen.getByRole("button", { name: "resolve" }));
 
     expect(screen.getByTestId("first-action")).toHaveTextContent("action_2");
+  });
+
+  it("preserves approval progress as actions are resolved", async () => {
+    const user = userEvent.setup();
+    blockedActionsMock = [
+      makeValidationBlockedAction("action_1"),
+      makeValidationBlockedAction("action_2"),
+      makeValidationBlockedAction("action_3"),
+    ];
+
+    const { rerender } = renderProvider();
+
+    expect(screen.getByTestId("approval-progress")).toHaveTextContent("1/3");
+
+    await user.click(screen.getByRole("button", { name: "resolve" }));
+    expect(screen.getByTestId("approval-progress")).toHaveTextContent("2/3");
+
+    blockedActionsMock = [
+      makeValidationBlockedAction("action_2"),
+      makeValidationBlockedAction("action_3"),
+    ];
+    rerender(
+      <BlockedActionsProvider owner={owner} conversation={conversation}>
+        <Consumer />
+      </BlockedActionsProvider>
+    );
+    expect(screen.getByTestId("approval-progress")).toHaveTextContent("2/3");
+
+    await user.click(screen.getByRole("button", { name: "resolve" }));
+    expect(screen.getByTestId("approval-progress")).toHaveTextContent("3/3");
   });
 
   it("revalidates the blocked actions cache when an action is resolved", async () => {

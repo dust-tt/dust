@@ -5,11 +5,13 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPApproveExecutionEventBase } from "@app/lib/actions/mcp_internal_actions/events";
 import { getApprovalArgsLabel } from "@app/lib/actions/tool_approval_labels";
+import { getToolDisplayLabels } from "@app/lib/actions/tool_display_labels";
 import type { Authenticator } from "@app/lib/auth";
 
 type ApprovalToolConfiguration = Pick<
   MCPToolConfigurationType,
   | "argumentsRequiringApproval"
+  | "displayLabels"
   | "icon"
   | "mcpServerName"
   | "originalName"
@@ -35,11 +37,19 @@ export async function makeMCPApproveExecutionEventBase(
 ): Promise<MCPApproveExecutionEventBase> {
   const argumentsRequiringApproval =
     toolConfiguration.argumentsRequiringApproval ?? [];
+  const internalMCPServerName = getInternalMCPServerNameFromSId(
+    toolConfiguration.toolServerId
+  );
+  const displayLabels =
+    getToolDisplayLabels({
+      internalMCPServerName,
+      mcpServerName: toolConfiguration.mcpServerName,
+      toolName: toolConfiguration.originalName,
+      inputs: approvalLabelInputs,
+    }) ?? toolConfiguration.displayLabels;
   const approvalArgsLabel = await getApprovalArgsLabel({
     auth,
-    internalMCPServerName: getInternalMCPServerNameFromSId(
-      toolConfiguration.toolServerId
-    ),
+    internalMCPServerName,
     toolName: toolConfiguration.originalName,
     agentName: approvalSubjectName,
     inputs: approvalLabelInputs,
@@ -56,7 +66,8 @@ export async function makeMCPApproveExecutionEventBase(
     metadata: {
       toolName: toolConfiguration.originalName,
       mcpServerName: toolConfiguration.mcpServerName,
-      agentName: "agent",
+      displayLabel: displayLabels?.done,
+      agentName: approvalSubjectName,
       icon: toolConfiguration.icon,
       displayedAs: getInternalMCPServerDisplayedAs(
         toolConfiguration.toolServerId
