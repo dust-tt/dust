@@ -35,7 +35,7 @@
     "framer-motion": "^12.7.3",
     "lucide-react": "^0.363.0",
     "motion": "^12.7.3",
-    "next": "^14.2.35",
+    "next": "14.2.35",
     "pino": "^8.11.0",
     "pino-pretty": "^10.0.0",
     "posthog-js": "^1.266.1",
