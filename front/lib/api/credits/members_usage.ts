@@ -1,5 +1,6 @@
 import {
   makeApiKeySpendLimitAwuCreditsRateLimitKey,
+  makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace,
   makeSpendLimitAwuCreditsRateLimitKeyForUser,
   makeSpendLimitCycleWindowBounds,
 } from "@app/lib/api/assistant/rate_limits";
@@ -25,6 +26,7 @@ import {
   CONTRACT_CREDIT_TYPE_FREE_SEAT,
   getCreditTypeAwuId,
   toFreeMetronomeUserId,
+  USAGE_TYPE_PROGRAMMATIC,
 } from "@app/lib/metronome/constants";
 import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import { getPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
@@ -506,6 +508,64 @@ export async function getEsConsumedAwuCreditsForApiKey(
     cycle,
   });
   return consumedByApiKeyName.get(apiKeyName) ?? 0;
+}
+
+/**
+ * The workspace's Elasticsearch-derived *programmatic* AWU consumption for the
+ * current billing cycle (summed over `usage_type = programmatic`) — the same
+ * dimension the Metronome programmatic cap alert is scoped to. Used to lazily
+ * seed / resync the programmatic spend-cap counter. Returns 0 when there is no
+ * usage or the analytics read fails.
+ */
+export async function getEsConsumedProgrammaticAwuCredits(
+  auth: Authenticator,
+  { cycle }: { cycle?: BillingCycle }
+): Promise<number> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const resolvedCycle = cycle ?? (await resolveMetronomeCycle(workspace));
+  if (!resolvedCycle) {
+    return 0;
+  }
+  const { cycleStart, cycleEnd } = resolvedCycle;
+
+  const result = await searchAnalytics<
+    never,
+    { credits?: estypes.AggregationsSumAggregate }
+  >(
+    {
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          { term: { usage_type: USAGE_TYPE_PROGRAMMATIC } },
+          {
+            range: {
+              timestamp: {
+                gte: cycleStart.toISOString(),
+                lte: cycleEnd.toISOString(),
+              },
+            },
+          },
+        ],
+      },
+    },
+    {
+      aggregations: { credits: { sum: { field: "cost.billable_awu" } } },
+      size: 0,
+    }
+  );
+  if (result.isErr()) {
+    logger.warn(
+      { err: result.error, workspaceId: workspace.sId },
+      "[MembersUsage] Failed to read programmatic consumed credits from analytics index"
+    );
+    return 0;
+  }
+
+  return Math.max(
+    0,
+    Math.round(result.value.aggregations?.credits?.value ?? 0)
+  );
 }
 
 async function fetchPerUserUsageCreditsForMembersTable({
@@ -1084,6 +1144,48 @@ export async function resyncApiKeySpendLimitCountersFromEsUsage(
   );
 
   return new Ok({ updatedKeyCount: results.filter(Boolean).length });
+}
+
+/**
+ * Backfill/repair the workspace programmatic spend-cap counter from
+ * Elasticsearch, overwriting it (SET) with the programmatic AWU consumption for
+ * the current cycle. No-op (not seeded) when there is no positive programmatic
+ * cap — that case defers to the programmatic credit-state machine, not the
+ * counter.
+ */
+export async function resyncProgrammaticSpendLimitCounterFromEsUsage(
+  auth: Authenticator
+): Promise<Result<{ programmaticCounterSeeded: boolean }, Error>> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  const cap = config?.programmaticMonthlyCapAwuCredits ?? 0;
+  if (cap <= 0) {
+    return new Ok({ programmaticCounterSeeded: false });
+  }
+
+  const cycle = await resolveMetronomeCycle(workspace);
+  if (!cycle) {
+    return new Err(
+      new Error("No active Metronome billing period to resync against.")
+    );
+  }
+  const bounds = makeSpendLimitCycleWindowBounds(
+    cycle.cycleStart,
+    cycle.cycleEnd
+  );
+
+  const consumed = await getEsConsumedProgrammaticAwuCredits(auth, { cycle });
+  const setResult = await setFixedWindowCount({
+    key: makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace(
+      workspace
+    ),
+    bounds,
+    value: Math.max(0, Math.round(consumed)),
+    logger,
+  });
+  return new Ok({ programmaticCounterSeeded: setResult.isOk() });
 }
 
 export type GetMemberUsageResponseBody = {

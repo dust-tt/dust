@@ -130,6 +130,15 @@ export const makeApiKeySpendLimitAwuCreditsRateLimitKey = (keyId: number) => {
   return `api_key:${keyId}:spend_limit_awu_credit_count`;
 };
 
+// Fixed-window counter backing the workspace programmatic monthly spend cap
+// (programmatic-only AWU usage). Workspace-scoped; bucketed on the Metronome
+// contract billing cycle via `makeSpendLimitCycleWindowBounds`.
+export const makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace = (
+  owner: LightWorkspaceType
+) => {
+  return `workspace:${owner.id}:programmatic_spend_limit_awu_credit_count`;
+};
+
 export const makeProgrammaticUsageRateLimitKeyForWorkspace = (
   owner: LightWorkspaceType
 ) => {
