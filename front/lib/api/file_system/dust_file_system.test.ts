@@ -1,4 +1,8 @@
 import { createConversation } from "@app/lib/api/assistant/conversation";
+import {
+  DustFileSystem,
+  sanitizeFileSystemName,
+} from "@app/lib/api/file_system/dust_file_system";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -13,10 +17,6 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import {
-  DustFileSystem,
-  sanitizeFileSystemName,
-} from "@app/lib/api/file_system/dust_file_system";
 import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";

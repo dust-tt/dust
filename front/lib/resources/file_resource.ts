@@ -7,6 +7,7 @@ import {
   SCOPED_PREFIX_POD,
   sanitizeFileSystemName,
 } from "@app/lib/api/file_system";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   getProcessedContentType,
   hasProcessedVersion,
@@ -53,7 +54,6 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import { CoreAPI } from "@app/types/core/core_api";
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type {
   AuthorizedFileAccessAllowlist,
   AuthorizedFileRef,
