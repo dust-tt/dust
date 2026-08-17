@@ -26,7 +26,7 @@ class AndroidSpeechRecorder {
         check(minimumBufferSize > 0) { "Microphone is not available" }
         val bufferSize = max(minimumBufferSize, ScribeRealtimeClient.SAMPLE_RATE_HZ / 5 * 2)
         val audioRecord = AudioRecord.Builder()
-            .setAudioSource(MediaRecorder.AudioSource.MIC)
+            .setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION)
             .setAudioFormat(
                 AudioFormat.Builder()
                     .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
