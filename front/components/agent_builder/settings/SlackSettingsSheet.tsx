@@ -1,5 +1,6 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { buildDefaultAgentSlackPickerChannels } from "@app/components/agent_builder/settings/buildDefaultAgentSlackPickerChannels";
 import { useSlackUserPrivateChannels } from "@app/lib/swr/assistants";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 import type { DataSourceType } from "@app/types/data_source";
@@ -29,8 +30,6 @@ import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { useController } from "react-hook-form";
-
-const SLACK_CHANNEL_INTERNAL_ID_PREFIX = "slack-channel-";
 
 type SlackChannel = {
   slackChannelId: string;
@@ -117,46 +116,14 @@ function SlackChannelsList({
       disabled,
     });
 
-  const publicChannels = useMemo(() => {
-    if (!resources) {
-      return [];
-    }
-
-    return resources
-      .filter((resource) =>
-        resource.internalId.startsWith(SLACK_CHANNEL_INTERNAL_ID_PREFIX)
-      )
-      .map((resource) => ({
-        slackChannelId: resource.internalId.substring(
-          SLACK_CHANNEL_INTERNAL_ID_PREFIX.length
-        ),
-        slackChannelName: resource.title,
-        sourceUrl: resource.sourceUrl,
-        isPrivate: false as const,
-      }));
-  }, [resources]);
-
-  const mergedChannels = useMemo(() => {
-    const byId = new Map<string, SlackChannel>();
-
-    for (const channel of publicChannels) {
-      byId.set(channel.slackChannelId, channel);
-    }
-
-    for (const channel of privateChannels) {
-      // Prefer the private-channel entry so admins see the lock affordance.
-      byId.set(channel.slackChannelId, {
-        slackChannelId: channel.slackChannelId,
-        slackChannelName: channel.slackChannelName,
-        sourceUrl: channel.sourceUrl,
-        isPrivate: true,
-      });
-    }
-
-    return Array.from(byId.values()).sort((a, b) =>
-      a.slackChannelName.localeCompare(b.slackChannelName)
-    );
-  }, [publicChannels, privateChannels]);
+  const mergedChannels = useMemo(
+    () =>
+      buildDefaultAgentSlackPickerChannels({
+        connectorResources: resources ?? [],
+        privateChannels,
+      }),
+    [resources, privateChannels]
+  );
 
   const filteredChannels = useMemo(() => {
     if (searchQuery.trim() === "") {
