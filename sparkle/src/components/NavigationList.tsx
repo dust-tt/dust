@@ -123,7 +123,7 @@ const NavigationListItem = React.forwardRef<
         {...props}
       >
         <LinkWrapper
-          className="group/nav-item outline-hidden"
+          className="group/nav-item focus-visible:outline-hidden"
           href={disabled ? undefined : href}
           target={target}
           rel={rel}

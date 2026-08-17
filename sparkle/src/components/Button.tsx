@@ -452,7 +452,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     return href && isInteractive ? (
       <LinkWrapper
-        className="group/button-link outline-hidden"
+        className="group/button-link focus-visible:outline-hidden"
         href={href}
         target={target}
         rel={rel}
