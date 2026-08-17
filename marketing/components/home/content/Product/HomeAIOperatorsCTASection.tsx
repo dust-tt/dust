@@ -1,7 +1,7 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
-import { LegacyButton as Button } from "@dust-tt/sparkle";
+import { Button } from "@dust-tt/sparkle";
 
 type CTAStatAccent = "blue" | "golden" | "green";
 

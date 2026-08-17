@@ -27,7 +27,7 @@ import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import { classNames, getFaviconPath } from "@marketing/lib/utils";
 import { getOrCreateAnonymousId } from "@marketing/lib/utils/anonymous_id";
 import { appendUTMParams } from "@marketing/lib/utils/utm";
-import { LegacyButton as Button, cn } from "@dust-tt/sparkle";
+import { Button, cn } from "@dust-tt/sparkle";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import Script from "next/script";
