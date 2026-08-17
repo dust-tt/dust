@@ -794,6 +794,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "usage_page_read_only"
   | "enable_analytics_consumption"
+  | "enable_analytics_automations"
   | "pricing_groups"
   | "workspace_analytics"
   | "xai_feature"

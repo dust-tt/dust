@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Analytics GitHub",
+    "provider": "github",
+    "subscribedEvents": ["push", "pull_request", "issues"],
+    "description": "Receives GitHub repository events for code changes and issues.",
+    "icon": "GithubLogo"
+  },
+  {
+    "name": "Analytics Linear",
+    "provider": "linear",
+    "subscribedEvents": ["Issue", "Comment"],
+    "description": "Receives Linear issue and comment updates.",
+    "icon": "LinearLogo"
+  }
+]
