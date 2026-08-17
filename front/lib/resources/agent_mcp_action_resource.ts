@@ -24,6 +24,9 @@ import {
   isUserQuestionResumeState,
 } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import { AGENT_DELEGATION_SERVER_NAME } from "@app/lib/api/actions/servers/agent_delegation/metadata";
+import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/metadata";
+import { isRunAgentResumeState } from "@app/lib/api/actions/servers/run_agent/types";
 import { getCitationsFromToolOutput } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
@@ -1477,6 +1480,20 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       executionDurationMs: this.executionDurationMs,
       displayLabels,
     };
+  }
+
+  getRunAgentChildConversationId(): string | null {
+    if (
+      this.metadata.internalMCPServerName !== RUN_AGENT_SERVER_NAME &&
+      this.metadata.internalMCPServerName !== AGENT_DELEGATION_SERVER_NAME
+    ) {
+      return null;
+    }
+
+    const { resumeState } = this.stepContext;
+    return isRunAgentResumeState(resumeState)
+      ? resumeState.conversationId
+      : null;
   }
 
   /**
