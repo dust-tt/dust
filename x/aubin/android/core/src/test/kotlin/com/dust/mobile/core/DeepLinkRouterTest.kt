@@ -88,6 +88,42 @@ class DeepLinkRouterTest {
     }
 
     @Test
+    fun `resolves new conversation shortcut`() {
+        val target = DeepLinkRouter.resolve(
+            rawUrl = "dust://compose",
+            appUrl = "https://app.dust.tt",
+        )
+
+        assertEquals(DeepLinkTarget.NewConversation(), target)
+    }
+
+    @Test
+    fun `resolves workspace and agent for Android search compose links`() {
+        val target = DeepLinkRouter.resolve(
+            rawUrl = "dust://compose?workspaceId=workspace+id&agentId=agent%2Fone",
+            appUrl = "https://app.dust.tt",
+        )
+
+        assertEquals(
+            DeepLinkTarget.NewConversation(
+                workspaceId = "workspace id",
+                agentId = "agent/one",
+            ),
+            target,
+        )
+    }
+
+    @Test
+    fun `resolves catch up shortcut`() {
+        val target = DeepLinkRouter.resolve(
+            rawUrl = "dust://catch-up",
+            appUrl = "https://app.dust.tt",
+        )
+
+        assertEquals(DeepLinkTarget.CatchUp, target)
+    }
+
+    @Test
     fun `custom frame callback uses the first path segment as token`() {
         val target = DeepLinkRouter.resolve(
             rawUrl = "dust://frame/frame_token/ignored",
@@ -118,9 +154,69 @@ class DeepLinkRouterTest {
     }
 
     @Test
+    fun `resolves production conversation link`() {
+        val target = DeepLinkRouter.resolve(
+            rawUrl = "https://app.dust.tt/w/w1/assistant/c1?messageId=m1",
+            appUrl = "https://app.dust.tt",
+        )
+
+        assertEquals(DeepLinkTarget.Conversation("w1", "c1", "m1"), target)
+    }
+
+    @Test
+    fun `resolves configured local conversation link`() {
+        val target = DeepLinkRouter.resolve(
+            rawUrl = "http://10.0.2.2:3000/w/w1/assistant/c1",
+            appUrl = "http://10.0.2.2:3000",
+        )
+
+        assertEquals(DeepLinkTarget.Conversation("w1", "c1"), target)
+    }
+
+    @Test
+    fun `resolves custom conversation link`() {
+        val target = DeepLinkRouter.resolve(
+            rawUrl = "dust://conversation/w1/c1?messageId=m1",
+            appUrl = "https://app.dust.tt",
+        )
+
+        assertEquals(DeepLinkTarget.Conversation("w1", "c1", "m1"), target)
+    }
+
+    @Test
+    fun `resolves production pod link`() {
+        val target = DeepLinkRouter.resolve(
+            rawUrl = "https://app.dust.tt/w/w1/pods/p1",
+            appUrl = "https://app.dust.tt",
+        )
+
+        assertEquals(DeepLinkTarget.Pod("w1", "p1"), target)
+    }
+
+    @Test
+    fun `resolves custom pod link`() {
+        val target = DeepLinkRouter.resolve(
+            rawUrl = "dust://pod/w1/p1",
+            appUrl = "https://app.dust.tt",
+        )
+
+        assertEquals(DeepLinkTarget.Pod("w1", "p1"), target)
+    }
+
+    @Test
     fun `rejects non dust frame links`() {
         val target = DeepLinkRouter.resolve(
             rawUrl = "https://example.com/share/frame/frame_token",
+            appUrl = "https://app.dust.tt",
+        )
+
+        assertNull(target)
+    }
+
+    @Test
+    fun `rejects conversation link on an unrelated host`() {
+        val target = DeepLinkRouter.resolve(
+            rawUrl = "https://example.com/w/w1/assistant/c1",
             appUrl = "https://app.dust.tt",
         )
 
