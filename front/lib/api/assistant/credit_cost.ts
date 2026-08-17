@@ -168,6 +168,15 @@ export async function computeAndStoreAgentMessageCredits(
   const recordedCostDelta =
     costCredits !== null ? costCredits - (previousCostCredits ?? 0) : 0;
 
+  // Roll the same delta up into this message's `totalCostCredits` and that of
+  // every run_agent ancestor, so the message-level total (own cost + all
+  // sub-agent costs) can be read directly instead of walking the sub-agent tree
+  // at read time. Additive and order-independent across parent/child finalizes.
+  await ConversationResource.addTotalCostCreditsForMessageAndAncestors(auth, {
+    agentMessageId,
+    delta: recordedCostDelta,
+  });
+
   const user = auth.user();
   const plan = auth.plan();
   const assistantLimits = plan?.limits.assistant;
