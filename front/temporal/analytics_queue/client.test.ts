@@ -193,9 +193,11 @@ describe("launchConsumptionExportWorkflow", () => {
       const gcsPath = buildConsumptionExportGcsPath(
         workspaceId,
         buildConsumptionExportCacheKey({
-          period: openEndedPeriod,
+          period: {
+            startDate: openEndedPeriod.startDate,
+            endDate: "2026-08-14T23:59:59.999Z",
+          },
           filter: filterA,
-          salt: "2026-08-14",
         })
       );
       fileStorageMock.setFileExists((filePath) => filePath === gcsPath);
@@ -220,9 +222,11 @@ describe("launchConsumptionExportWorkflow", () => {
       const workflowId = makeConsumptionExportWorkflowId({
         workspaceId,
         exportId: buildConsumptionExportCacheKey({
-          period: openEndedPeriod,
+          period: {
+            startDate: openEndedPeriod.startDate,
+            endDate: "2026-08-14T23:59:59.999Z",
+          },
           filter: filterA,
-          salt: "2026-08-14",
         }),
       });
 
@@ -230,9 +234,11 @@ describe("launchConsumptionExportWorkflow", () => {
       const yesterdaysGcsPath = buildConsumptionExportGcsPath(
         workspaceId,
         buildConsumptionExportCacheKey({
-          period: openEndedPeriod,
+          period: {
+            startDate: openEndedPeriod.startDate,
+            endDate: "2026-08-13T23:59:59.999Z",
+          },
           filter: filterA,
-          salt: "2026-08-13",
         })
       );
       fileStorageMock.setFileExists(

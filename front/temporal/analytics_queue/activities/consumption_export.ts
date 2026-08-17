@@ -35,24 +35,18 @@ function canonicalizeConsumptionScopeFilter(
 }
 
 // Hashed (rather than kept as plain text) because a filter selecting many agents/users/tools
-// can get long, and this value is used as a GCS object name. `salt`, when passed, forces a
-// unique key regardless of period/filter — used for open-ended periods (e.g. "this cycle")
-// whose data keeps changing while the period itself stays the same, so every trigger must
-// produce its own export rather than reusing a previous, now-stale one.
+// can get long, and this value is used as a GCS object name.
 export function buildConsumptionExportCacheKey({
   period,
   filter,
-  salt,
 }: {
   period: ConsumptionPeriod;
   filter: ConsumptionScopeFilter;
-  salt?: string;
 }): string {
   const payload = JSON.stringify({
     startDate: period.startDate,
     endDate: period.endDate,
     filter: canonicalizeConsumptionScopeFilter(filter),
-    salt: salt ?? null,
   });
   return createHash("sha256").update(payload).digest("hex");
 }

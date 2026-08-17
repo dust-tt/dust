@@ -183,14 +183,22 @@ export type LaunchConsumptionExportOutcome =
       filter: ConsumptionScopeFilter;
     };
 
-// A period is "open-ended" while its end is still in the future relative to now
-function isOpenEndedPeriod(period: ConsumptionPeriod): boolean {
-  return new Date(period.endDate).getTime() > Date.now();
+function endOfUtcToday(): Date {
+  const now = new Date();
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1) - 1
+  );
 }
 
-// Open-ended periods are salted by calendar day (UTC)
-function currentUtcDayBucket(): string {
-  return new Date().toISOString().slice(0, 10);
+// Caps an open-ended period (e.g. "this cycle") to today, so exports stay
+// cacheable within a day but refresh once new data can have accrued.
+function resolveExportPeriod(period: ConsumptionPeriod): ConsumptionPeriod {
+  const endOfTodayMs = endOfUtcToday().getTime();
+  const endMs = Math.min(new Date(period.endDate).getTime(), endOfTodayMs);
+  return {
+    startDate: period.startDate,
+    endDate: new Date(endMs).toISOString(),
+  };
 }
 
 async function isConsumptionExportRunning(
@@ -220,13 +228,15 @@ export async function launchConsumptionExportWorkflow(
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const authType = auth.toJSON();
 
+  const exportPeriod = resolveExportPeriod(period);
   const exportId = buildConsumptionExportCacheKey({
-    period,
+    period: exportPeriod,
     filter,
-    salt: isOpenEndedPeriod(period) ? currentUtcDayBucket() : undefined,
   });
   const gcsPath = buildConsumptionExportGcsPath(workspaceId, exportId);
 
+  // Checked here rather than inside the workflow so a cache hit returns immediately,
+  // without paying for a Temporal round-trip.
   const [cached] = await getPrivateUploadBucket().file(gcsPath).exists();
   if (cached) {
     return new Ok({ status: "cached", gcsPath });
@@ -237,6 +247,9 @@ export async function launchConsumptionExportWorkflow(
   const workflowId = makeConsumptionExportWorkflowId({ workspaceId, exportId });
 
   try {
+    // Distinct from the WorkflowExecutionAlreadyStartedError caught below: this catches
+    // an in-flight export before start() is even attempted, so callers get an
+    // "already_running" outcome instead of paying for and then discarding a start call.
     const running = await isConsumptionExportRunning(
       client.workflow.getHandle(workflowId)
     );
@@ -245,7 +258,7 @@ export async function launchConsumptionExportWorkflow(
     }
 
     await client.workflow.start(runConsumptionExportWorkflow, {
-      args: [authType, { period, filter, exportId }],
+      args: [authType, { period: exportPeriod, filter, exportId }],
       taskQueue: QUEUE_NAME,
       workflowId,
       memo: {
