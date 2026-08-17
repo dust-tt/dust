@@ -1,6 +1,7 @@
 import type { AgentBuilderScheduleTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ScheduleEditionScheduler } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionScheduler";
 import { TriggerPodSelector } from "@app/components/agent_builder/triggers/TriggerPodSelector";
+import { TriggerStatusToggle } from "@app/components/agent_builder/triggers/TriggerStatusToggle";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -8,7 +9,6 @@ import {
   Input,
   Label,
   Separator,
-  SliderToggle,
   TextArea,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -38,35 +38,6 @@ function ScheduleEditionNameInput({ isEditor }: ScheduleEditionNameInputProps) {
         message={error?.message}
         messageStatus="error"
       />
-    </div>
-  );
-}
-
-interface ScheduleEditionStatusToggleProps {
-  isEditor: boolean;
-}
-
-function ScheduleEditionStatusToggle({
-  isEditor,
-}: ScheduleEditionStatusToggleProps) {
-  const { control } = useFormContext<TriggerViewsSheetFormValues>();
-  const {
-    field: { value: status, onChange: setStatus },
-  } = useController({ control, name: "schedule.status" });
-
-  const isEnabled = status === "enabled";
-
-  return (
-    <div className="space-y-1">
-      <Label>Status</Label>
-      <div className="flex flex-row items-center gap-2">
-        <span className="w-16">{isEnabled ? "Enabled" : "Disabled"}</span>
-        <SliderToggle
-          disabled={!isEditor}
-          selected={isEnabled}
-          onClick={() => setStatus(isEnabled ? "disabled" : "enabled")}
-        />
-      </div>
     </div>
   );
 }
@@ -151,7 +122,7 @@ export function ScheduleEditionSheetContent({
         {" "}
         <div className="flex flex-row items-center justify-between gap-4">
           <ScheduleEditionNameInput isEditor={isEditor} />
-          <ScheduleEditionStatusToggle isEditor={isEditor} />
+          <TriggerStatusToggle name="schedule.status" isEditor={isEditor} />
         </div>
         <ScheduleEditionScheduler isEditor={isEditor} owner={owner} />
         <Separator />
