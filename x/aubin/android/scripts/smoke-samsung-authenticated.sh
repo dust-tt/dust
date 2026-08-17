@@ -167,13 +167,14 @@ is_login_dump() {
 is_authenticated_inbox_dump() {
   local xml_path="$1"
   grep -q 'package="com.dust.mobile"' "$xml_path" &&
-    grep -q 'text="Search conversations"' "$xml_path" &&
+    grep -q 'text="Search"' "$xml_path" &&
     grep -q 'content-desc="Account menu"' "$xml_path"
 }
 
 assert_authenticated_compose_controls() {
   grep -q 'text="Ask anything or call an agent with @"' "$OUT_DIR/authenticated-compose.xml"
-  grep -q 'text="Dust"' "$OUT_DIR/authenticated-compose.xml"
+  grep -q 'text="New conversation"' "$OUT_DIR/authenticated-compose.xml"
+  grep -q 'text="@Dust"' "$OUT_DIR/authenticated-compose.xml"
   grep -q 'content-desc="Add context"' "$OUT_DIR/authenticated-compose.xml"
   grep -q 'content-desc="Voice input"' "$OUT_DIR/authenticated-compose.xml"
   if grep -q 'content-desc="Send"\|text="Quick starts"\|text="Draft customer brief"' \
@@ -292,9 +293,9 @@ wait_for_authenticated_inbox() {
 
     if grep -q 'package="com.dust.mobile"' "$xml_path" &&
       grep -q 'text="Inbox"' "$xml_path" &&
-      grep -q 'text="Search conversations"' "$xml_path" &&
+      grep -q 'text="Search"' "$xml_path" &&
       ! grep -q 'text="Sign in"' "$xml_path"; then
-      capture_stable_screen authenticated-inbox /sdcard/dust-authenticated-current.xml "$xml_path" 'text="Search conversations"'
+      capture_stable_screen authenticated-inbox /sdcard/dust-authenticated-current.xml "$xml_path" 'text="Search"'
       if is_local_preview_dump "$xml_path"; then
         echo "Local preview is open, not a real authenticated workspace." >&2
         echo "Run make smoke-samsung-prod-visible to reset to the prod login flow, then rerun this helper." >&2
@@ -345,7 +346,7 @@ run_preflight() {
     fi
 
     if is_authenticated_inbox_dump "$xml_path"; then
-      capture_stable_screen authenticated-preflight /sdcard/dust-authenticated-preflight.xml "$xml_path" 'text="Search conversations"'
+      capture_stable_screen authenticated-preflight /sdcard/dust-authenticated-preflight.xml "$xml_path" 'text="Search"'
       echo "Authenticated smoke preflight passed. A signed-in inbox is already visible on the Samsung viewport."
       echo "Artifacts: $OUT_DIR/authenticated-preflight.png and $OUT_DIR/authenticated-preflight.xml"
       return
@@ -368,7 +369,7 @@ run_preflight() {
       fi
 
       if is_authenticated_inbox_dump "$xml_path"; then
-        capture_stable_screen authenticated-preflight /sdcard/dust-authenticated-preflight.xml "$xml_path" 'text="Search conversations"'
+        capture_stable_screen authenticated-preflight /sdcard/dust-authenticated-preflight.xml "$xml_path" 'text="Search"'
         echo "Authenticated smoke preflight passed. A signed-in inbox is already visible on the Samsung viewport."
         echo "Artifacts: $OUT_DIR/authenticated-preflight.png and $OUT_DIR/authenticated-preflight.xml"
         return

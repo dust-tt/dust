@@ -156,10 +156,13 @@ demo_screen_expected_text() {
   case "$1" in
     loading) echo "Loading Dust" ;;
     session-expired) echo "Your session expired. Sign in again to continue." ;;
+    inbox-loading) echo "Revenue Team" ;;
     inbox) echo "Revenue Team" ;;
     empty-inbox) echo "No conversations yet" ;;
     compose) echo "Ask anything or call an agent with @" ;;
     detail) echo "Briefing" ;;
+    thinking) echo "Thinking..." ;;
+    streaming) echo "Streaming" ;;
     files) echo "customer-briefing.pdf" ;;
     *)
       echo "Unknown demo screen: $1" >&2
@@ -210,6 +213,20 @@ assert_text_top_at_least() {
     echo "Text '$text' is too close to the status bar in $xml_path: top=$top, expected >= $min_top." >&2
     exit 1
   fi
+}
+
+assert_only_avatar_description() {
+  local xml_path="$1"
+  local allowed_description="$2"
+  local avatar_description
+
+  while IFS= read -r avatar_description; do
+    [[ -z "$avatar_description" ]] && continue
+    if [[ "$avatar_description" != "content-desc=\"$allowed_description\"" ]]; then
+      echo "Unexpected avatar on demo screen: $avatar_description" >&2
+      exit 1
+    fi
+  done < <(grep -oE 'content-desc="[^"]+ avatar"' "$xml_path" || true)
 }
 
 capture_login_ui() {
@@ -523,6 +540,10 @@ HTML
         <img src="demo-inbox.png" alt="Demo inbox screen">
       </figure>
       <figure>
+        <figcaption>Demo inbox loading</figcaption>
+        <img src="demo-inbox-loading.png" alt="Demo inbox loading screen">
+      </figure>
+      <figure>
         <figcaption>Demo empty inbox</figcaption>
         <img src="demo-empty-inbox.png" alt="Demo empty inbox screen">
       </figure>
@@ -533,6 +554,14 @@ HTML
       <figure>
         <figcaption>Demo detail</figcaption>
         <img src="demo-detail.png" alt="Demo detail screen">
+      </figure>
+      <figure>
+        <figcaption>Demo thinking</figcaption>
+        <img src="demo-thinking.png" alt="Demo thinking screen">
+      </figure>
+      <figure>
+        <figcaption>Demo answer streaming</figcaption>
+        <img src="demo-streaming.png" alt="Demo streaming screen">
       </figure>
       <figure>
         <figcaption>Demo files</figcaption>
@@ -565,9 +594,12 @@ HTML
       echo "- Demo loading: $OUT_DIR/demo-loading.png"
       echo "- Demo session expired: $OUT_DIR/demo-session-expired.png"
       echo "- Demo inbox: $OUT_DIR/demo-inbox.png"
+      echo "- Demo inbox loading: $OUT_DIR/demo-inbox-loading.png"
       echo "- Demo empty inbox: $OUT_DIR/demo-empty-inbox.png"
       echo "- Demo compose: $OUT_DIR/demo-compose.png"
       echo "- Demo detail: $OUT_DIR/demo-detail.png"
+      echo "- Demo thinking: $OUT_DIR/demo-thinking.png"
+      echo "- Demo streaming: $OUT_DIR/demo-streaming.png"
       echo "- Demo files: $OUT_DIR/demo-files.png"
     fi
     echo
@@ -601,6 +633,7 @@ set_avd_config() {
 
 ensure_samsung_avd() {
   if "$EMULATOR" -list-avds | grep -qx "$AVD"; then
+    set_avd_config "hw.keyboard" "yes"
     return
   fi
 
@@ -618,6 +651,7 @@ ensure_samsung_avd() {
   set_avd_config "hw.lcd.height" "2340"
   set_avd_config "hw.lcd.density" "425"
   set_avd_config "hw.ramSize" "4096"
+  set_avd_config "hw.keyboard" "yes"
   set_avd_config "showDeviceFrame" "no"
   set_avd_config "skin.name" "1080x2340"
   set_avd_config "skin.path" "_no_skin"
@@ -704,7 +738,7 @@ fi
 if [[ "${CAPTURE_DEMO_UI:-0}" == "1" ]]; then
   ./gradlew :app:assembleDebug
   "$ADB" install -r "$ROOT_DIR/app/build/outputs/apk/debug/app-debug.apk"
-  for screen in loading session-expired inbox empty-inbox compose detail files; do
+  for screen in loading session-expired inbox-loading inbox empty-inbox compose detail thinking streaming files; do
     "$ADB" shell am start -S -n "$PACKAGE/.android.DemoPresentationActivity" --es screen "$screen" >/dev/null
     expected_text="$(demo_screen_expected_text "$screen")"
     wait_for_demo_screen_text "$screen" "$expected_text"
@@ -720,12 +754,16 @@ if [[ "${CAPTURE_DEMO_UI:-0}" == "1" ]]; then
   : >"$OUT_DIR/demo-copy-leaks.log"
   grep -q 'text="Loading Dust"' "$OUT_DIR/demo-loading.xml"
   grep -q 'text="Your session expired. Sign in again to continue."' "$OUT_DIR/demo-session-expired.xml"
+  grep -q 'content-desc="Loading conversations"' "$OUT_DIR/demo-inbox-loading.xml"
   grep -q 'text="Pods"' "$OUT_DIR/demo-inbox.xml"
-  grep -q 'text="Customer Ops"' "$OUT_DIR/demo-inbox.xml"
-  grep -q 'text="Launch Planning"' "$OUT_DIR/demo-inbox.xml"
+  if grep -Eq 'text="Customer Ops"|text="Launch Planning"' "$OUT_DIR/demo-inbox.xml"; then
+    echo "Demo inbox should keep Pod links collapsed." >&2
+    exit 1
+  fi
   grep -q 'text="Coordinate launch follow-ups"' "$OUT_DIR/demo-inbox.xml"
   assert_text_top_at_least "Revenue Team" "$OUT_DIR/demo-inbox.xml" 80
   grep -q 'content-desc="Refresh conversations"' "$OUT_DIR/demo-inbox.xml"
+  assert_only_avatar_description "$OUT_DIR/demo-inbox.xml" "Lea Martin avatar"
   if grep -q 'text="@sales' "$OUT_DIR/demo-inbox.xml"; then
     echo "Demo inbox should use customer-facing preview copy, not raw @sales mention text." >&2
     exit 1
@@ -737,7 +775,8 @@ if [[ "${CAPTURE_DEMO_UI:-0}" == "1" ]]; then
   grep -q 'text="No conversations yet"' "$OUT_DIR/demo-empty-inbox.xml"
   assert_text_top_at_least "Revenue Team" "$OUT_DIR/demo-empty-inbox.xml" 80
   grep -q 'text="Ask anything or call an agent with @"' "$OUT_DIR/demo-compose.xml"
-  grep -q 'text="Dust"' "$OUT_DIR/demo-compose.xml"
+  grep -q 'text="New conversation"' "$OUT_DIR/demo-compose.xml"
+  grep -q 'text="@Dust"' "$OUT_DIR/demo-compose.xml"
   grep -q 'content-desc="Add context"' "$OUT_DIR/demo-compose.xml"
   grep -q 'content-desc="Voice input"' "$OUT_DIR/demo-compose.xml"
   if grep -Eq 'text="Quick starts"|text="Draft customer brief"|content-desc="Send"' "$OUT_DIR/demo-compose.xml"; then
@@ -745,17 +784,22 @@ if [[ "${CAPTURE_DEMO_UI:-0}" == "1" ]]; then
     exit 1
   fi
   grep -q 'text="Briefing"' "$OUT_DIR/demo-detail.xml"
-  grep -q 'content-desc="Conversation files"' "$OUT_DIR/demo-detail.xml"
+  grep -q 'content-desc="Open files and Frames"' "$OUT_DIR/demo-detail.xml"
   grep -q 'text="Ask anything or call an agent with @"' "$OUT_DIR/demo-detail.xml"
   grep -q 'content-desc="Add context"' "$OUT_DIR/demo-detail.xml"
   grep -q 'content-desc="Voice input"' "$OUT_DIR/demo-detail.xml"
+  grep -q 'content-desc="New conversation"' "$OUT_DIR/demo-detail.xml"
   if grep -Eq 'content-desc="Photos"|content-desc="Files"|content-desc="Knowledge"|content-desc="Send"' \
     "$OUT_DIR/demo-detail.xml"; then
     echo "Demo detail should group secondary context actions behind the composer plus button." >&2
     exit 1
   fi
+  grep -q 'text="Thinking..."' "$OUT_DIR/demo-thinking.xml"
+  grep -q 'content-desc="New conversation"' "$OUT_DIR/demo-thinking.xml"
+  grep -q 'text="Streaming"' "$OUT_DIR/demo-streaming.xml"
+  grep -q 'content-desc="New conversation"' "$OUT_DIR/demo-streaming.xml"
   grep -q 'text="customer-briefing.pdf"' "$OUT_DIR/demo-files.xml"
-  grep -q 'text="Conversation Files"' "$OUT_DIR/demo-files.xml"
+  grep -q 'text="Conversation files"' "$OUT_DIR/demo-files.xml"
   if grep -q 'text="Close"' "$OUT_DIR/demo-files.xml"; then
     echo "Demo files should use app-bar back navigation, not a visible Close button." >&2
     exit 1
