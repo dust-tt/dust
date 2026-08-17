@@ -71,7 +71,7 @@ export function computeTokensCostForUsageInMicroUsd({
     regionalPricing ?? MODEL_PRICING[modelId] ?? DEFAULT_PRICING;
   const pricing =
     basePricing.long_context &&
-    promptTokens > basePricing.long_context.prompt_token_threshold
+    promptTokens >= basePricing.long_context.prompt_token_threshold
       ? basePricing.long_context
       : basePricing;
 

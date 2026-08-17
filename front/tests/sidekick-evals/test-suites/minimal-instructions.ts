@@ -10,6 +10,7 @@ export const minimalInstructionsSuite: TestSuite = {
   testCases: [
     {
       scenarioId: "make-it-better",
+      stopOnUserQuestion: true,
       userMessage: "Make it better",
       mockState: MINIMAL_INSTRUCTIONS_AGENT,
       expectedToolCalls: ["get_agent_config"],

@@ -70,6 +70,22 @@ export function getProcessCommand(pid: number): string | null {
   return stdout.length > 0 ? stdout : null;
 }
 
+export function openUrl(url: string): void {
+  const command = isMacOS() ? "open" : "xdg-open";
+  const result = spawnSync(command, [url], { encoding: "utf-8" });
+
+  if (result.error) {
+    if (isErrnoException(result.error) && result.error.code === "ENOENT") {
+      throw new Error(`${command} not found in PATH`);
+    }
+    throw result.error;
+  }
+
+  if (result.status !== 0) {
+    throw new Error(`${command} failed: ${result.stderr?.trim() || "unknown error"}`);
+  }
+}
+
 // ============================================================================
 // Port Detection Abstraction
 // ============================================================================

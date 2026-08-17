@@ -807,6 +807,22 @@ export function isInteractiveContentFileContentOutput(
   return output !== undefined && output.type === "interactive_content_file";
 }
 
+const NotificationSidePanelControlSchema = z.object({
+  type: z.literal("side_panel_control"),
+  panel: z.enum(["files"]),
+  action: z.enum(["open", "close"]),
+});
+
+type SidePanelControlProgressOutput = z.infer<
+  typeof NotificationSidePanelControlSchema
+>;
+
+export function isSidePanelControlOutput(
+  output: ProgressNotificationOutput
+): output is SidePanelControlProgressOutput {
+  return output !== undefined && output.type === "side_panel_control";
+}
+
 const InternalAllowedIconSchema = z.enum([...INTERNAL_ALLOWED_ICONS]);
 
 const CustomResourceIconSchema = z.enum([...CUSTOM_RESOURCE_ALLOWED]);
@@ -890,6 +906,7 @@ export const ProgressNotificationOutputSchema = z
   .union([
     NotificationImageContentSchema,
     NotificationInteractiveContentFileContentSchema,
+    NotificationSidePanelControlSchema,
     NotificationRunAgentContentSchema,
     NotificationStoreResourceContentSchema,
     NotificationTextContentSchema,

@@ -4,6 +4,10 @@ import {
   STATIC_MODEL_TIERS,
 } from "@app/lib/api/assistant/token_pricing/tiers";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
+import type {
+  EnabledModelConfigurationType,
+  ModelStreamResolutionsType,
+} from "@app/types/api/assistant/models";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import type { ModelStreamIdType } from "@app/types/assistant/models/auto";
 import {
@@ -38,38 +42,34 @@ const MODEL_TIER_LOCKED_TOOLTIP =
   "Contact your administrator to get access.";
 
 // The three primary picks of the model picker. Each tier is backed by a
-// meta-model that is resolved to a concrete model at message-send time:
-//   - Fast     -> auto_fast (curated pool of small, cheap models)
-//   - Standard -> auto       (Dust picks any available model — the old "Auto")
-//   - Complex  -> auto_complex  (curated pool of powerful models)
+// meta-model that is resolved to a concrete model at message-send time. Tier ids
+// keep the meta-model wording; `name` is what users see:
+//   - "Basic"     -> auto_fast (curated pool of small, cheap models)
+//   - "Standard"  -> auto       (Dust picks any available model — the old "Auto")
+//   - "Premium"   -> auto_complex  (curated pool of powerful models)
 export type ModelTierId = "fast" | "standard" | "complex";
 
 interface ModelTierDefinition {
   id: ModelTierId;
   metaModelId: ModelStreamIdType;
   name: string;
-  // Short right-aligned blurb shown next to the tier name.
-  description: string;
 }
 
 export const MODEL_TIERS: ModelTierDefinition[] = [
   {
     id: "fast",
     metaModelId: AUTO_FAST_MODEL_ID,
-    name: "Fast",
-    description: "Quick, low cost",
+    name: "Basic",
   },
   {
     id: "standard",
     metaModelId: AUTO_MODEL_ID,
     name: "Standard",
-    description: "Best for most",
   },
   {
     id: "complex",
     metaModelId: AUTO_COMPLEX_MODEL_ID,
-    name: "Complex",
-    description: "Slower, most capable",
+    name: "Premium",
   },
 ];
 
@@ -92,11 +92,45 @@ export function getModelTier(tierId: ModelTierId): ModelTierDefinition {
 
 const PREMIUM_MODEL_TIER_IDS: ModelTierId[] = ["complex"];
 
-export function isTierLocked(
+// A tier row is locked either because the workspace is on a legacy plan without
+// premium access, or because the stream's own model tier is above the member's
+// cap — the server refuses such a selection, so the picker must not offer it.
+export function getTierLockReason(
   tierId: ModelTierId,
-  { lockPremiumEfforts }: { lockPremiumEfforts: boolean }
-): boolean {
-  return lockPremiumEfforts && PREMIUM_MODEL_TIER_IDS.includes(tierId);
+  {
+    lockPremiumEfforts,
+    streamModels,
+  }: {
+    lockPremiumEfforts: boolean;
+    streamModels: EnabledModelConfigurationType[];
+  }
+): ModelLockReason | null {
+  if (lockPremiumEfforts && PREMIUM_MODEL_TIER_IDS.includes(tierId)) {
+    return "premium";
+  }
+
+  const { metaModelId } = getModelTier(tierId);
+  const streamModel = streamModels.find(
+    (model) => model.modelId === metaModelId
+  );
+  // Absent means we can't tell yet: the tier rows render before the models
+  // payload lands (`useModels` returns an empty list while it is in flight), so
+  // locking on absence would flash every row locked on each open. Default to
+  // unlocked — the server refuses an out-of-tier stream at send time anyway.
+  if (streamModel && !streamModel.isSelectable) {
+    return "model_tier";
+  }
+
+  return null;
+}
+export function getDefaultTierId(
+  streamModels: EnabledModelConfigurationType[]
+): ModelTierId {
+  const standard = streamModels.find(
+    (model) => model.modelId === AUTO_MODEL_ID
+  );
+
+  return standard && !standard.isSelectable ? "fast" : "standard";
 }
 
 // Per reasoning-effort blurbs surfaced in the effort slider tooltip.
@@ -109,6 +143,19 @@ const REASONING_EFFORT_INFO: Record<ReasoningEffort, string> = {
 
 export function getReasoningEffortLabel(effort: ReasoningEffort): string {
   return effort === "none" ? "None" : capitalize(effort);
+}
+
+export function getTierResolvedModelLabel(
+  tierId: ModelTierId,
+  streams: ModelStreamResolutionsType | null
+): string | undefined {
+  const resolution = streams?.[getModelTier(tierId).metaModelId];
+  if (!resolution) {
+    return undefined;
+  }
+  return resolution.reasoningEffort === "none"
+    ? resolution.displayName
+    : `${resolution.displayName} ${getReasoningEffortLabel(resolution.reasoningEffort)}`;
 }
 
 // What the picker is currently showing, decoupled from the payload we send:
@@ -432,14 +479,14 @@ function resolveAgentDefault({
   models,
 }: {
   agentModel: AgentModelConfigurationType | null;
-  models: ModelConfigurationType[];
+  models: EnabledModelConfigurationType[];
 }): Selection {
-  const standardDefault: Selection = {
-    display: { kind: "tier", tierId: "standard" },
+  const tierDefault: Selection = {
+    display: { kind: "tier", tierId: getDefaultTierId(models) },
     toSend: undefined,
   };
   if (!agentModel) {
-    return standardDefault;
+    return tierDefault;
   }
   if (isModelStreamId(agentModel.modelId)) {
     return {
@@ -452,7 +499,7 @@ function resolveAgentDefault({
   }
   const model = findAgentModel(models, agentModel);
   if (!model) {
-    return standardDefault;
+    return tierDefault;
   }
 
   // Keep `toSend` undefined so the agent runs its own configured model/effort
@@ -476,7 +523,7 @@ export function resolveShownSelection({
   agentModel: AgentModelConfigurationType | null;
   lastRequestedModel: ModelSelectionType | null;
   sessionSticky?: ModelSelectionType | null;
-  models: ModelConfigurationType[];
+  models: EnabledModelConfigurationType[];
 }): { shown: Selection; agentDefault: Selection } {
   const agentDefault = resolveAgentDefault({ agentModel, models });
   const shown =

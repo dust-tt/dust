@@ -32,6 +32,12 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
   },
+  "agent_delegation": {
+    "run_agent": {
+      "freeUsage": false,
+      "toolCostCategory": "basic",
+    },
+  },
   "agent_memory": {
     "compact_memory": {
       "freeUsage": true,
@@ -292,6 +298,16 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
     "semantic_search": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
+    },
+  },
+  "conversation_side_panel": {
+    "open_frame": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "set_files_side_panel": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
     },
   },
   "data_sources_file_system": {
@@ -2050,6 +2066,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "request_egress_domain": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
   },
   "sandbox_functions": {
     "call": {
@@ -2113,6 +2133,24 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "advanced",
     },
     "update_incident": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
+  "shopify": {
+    "export_customer_ltv": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "export_products": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "export_sales": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "export_top_customers_by_period": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
@@ -2655,6 +2693,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "update_recommendation": "never_ask",
     "update_work_area": "never_ask",
   },
+  "agent_delegation": {
+    "run_agent": "never_ask",
+  },
   "agent_memory": {
     "compact_memory": "never_ask",
     "edit_entries": "never_ask",
@@ -2736,6 +2777,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list": "never_ask",
     "list_content_nodes_and_tables": "never_ask",
     "semantic_search": "never_ask",
+  },
+  "conversation_side_panel": {
+    "open_frame": "never_ask",
+    "set_files_side_panel": "never_ask",
   },
   "data_sources_file_system": {
     "cat": "never_ask",
@@ -3242,6 +3287,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "add_egress_domain": "high",
     "bash": "never_ask",
     "describe_toolset": "never_ask",
+    "request_egress_domain": "low",
   },
   "sandbox_functions": {
     "call": "low",
@@ -3263,6 +3309,12 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_incident": "never_ask",
     "list_incidents": "never_ask",
     "update_incident": "low",
+  },
+  "shopify": {
+    "export_customer_ltv": "never_ask",
+    "export_products": "never_ask",
+    "export_sales": "never_ask",
+    "export_top_customers_by_period": "never_ask",
   },
   "skill_authoring": {
     "create_skill": "high",

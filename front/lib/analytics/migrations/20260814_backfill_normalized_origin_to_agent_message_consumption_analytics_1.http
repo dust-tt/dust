@@ -1,0 +1,33 @@
+POST /front.agent_message_consumption_analytics_1/_update_by_query?wait_for_completion=false&slices=auto&scroll_size=5000&requests_per_second=10000
+{
+  "conflicts": "proceed",
+  "script": {
+    "lang": "painless",
+    "source": "String origin = ctx._source.context_origin; ctx._source.normalized_origin = params.sources.containsKey(origin) ? params.sources[origin] : origin;",
+    "params": {
+      "sources": {
+        "cli_programmatic": "cli",
+        "triggered_programmatic": "triggered",
+        "slack_workflow": "slack"
+      }
+    }
+  },
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "exists": {
+            "field": "context_origin"
+          }
+        }
+      ],
+      "must_not": [
+        {
+          "exists": {
+            "field": "normalized_origin"
+          }
+        }
+      ]
+    }
+  }
+}

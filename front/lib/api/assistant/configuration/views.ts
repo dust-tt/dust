@@ -64,6 +64,7 @@ function determineGlobalAgentIdsToFetch(
     case "list":
     case "manage":
     case "all":
+    case "analytics":
     case "favorites":
     case "admin_internal":
       return undefined; // undefined means all global agents will be fetched
@@ -169,6 +170,17 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
         ...baseAgentsSequelizeQuery,
         where: baseWhereConditions,
       });
+
+    // Analytics reports on every agent, so managers and admins get the private
+    // ones too. Everyone else sees what `all` returns.
+    case "analytics":
+      return AgentConfigurationModel.findAll({
+        ...baseAgentsSequelizeQuery,
+        where: auth.isManager()
+          ? baseWhereConditions
+          : baseConditionsAndScopesIn(["workspace", "published", "visible"]),
+      });
+
     case "current_user":
       const authorId = auth.getNonNullableUser().id;
       const r = await AgentConfigurationModel.findAll({
@@ -321,7 +333,13 @@ async function fetchWorkspaceAgentConfigurationsForView(
     }
   );
 
-  const allowedAgentModels = dangerouslySkipPermissionFiltering
+  // Analytics counts credits for agents built on spaces a manager cannot read,
+  // so the manager analytics view has to list them as well.
+  const skipPermissionFiltering =
+    dangerouslySkipPermissionFiltering ||
+    (agentsGetView === "analytics" && auth.isManager());
+
+  const allowedAgentModels = skipPermissionFiltering
     ? agentModels
     : await filterAgentsByRequestedSpaces(auth, agentModels);
 

@@ -352,6 +352,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: true,
     high: true,
   },
+  "gemini-3.7-flash": {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
   "deepseek-chat": {
     none: true,
     light: false,
@@ -418,6 +424,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: false,
     high: true,
   },
+  "accounts/fireworks/models/inkling": {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
   "grok-3-latest": {
     none: true,
     light: false,
@@ -431,6 +443,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     high: false,
   },
   "grok-4.5": {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  "grok-4.6": {
     none: false,
     light: true,
     medium: true,

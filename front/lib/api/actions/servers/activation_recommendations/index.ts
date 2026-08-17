@@ -294,10 +294,10 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
         ]);
       }
 
-      const lines = rows.map(
-        (r, i) =>
-          `${i + 1}. [${r.status}] ${r.sId} — "${r.title}": ${r.description}`
-      );
+      const lines = rows.map((r, i) => {
+        const workArea = r.toJSON();
+        return `${i + 1}. [${workArea.status}] ${workArea.sId} — "${workArea.title}": ${workArea.description}`;
+      });
 
       return new Ok([
         {
@@ -338,7 +338,7 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
       );
 
       const lines = created.map(
-        (r) => `${r.sId} — "${r.title}" (status: candidate)`
+        (r) => `${r.sId} — "${r.title}" (status: suggested)`
       );
 
       return new Ok([

@@ -306,6 +306,7 @@ Step 1 — Scan \`inspect_conversation\` for knowledge-access actions. Look for 
 - \`semantic_search\` (server: \`search\`), \`retrieve_recent_documents\` (server: \`project_manager\`) → semantic / recent retrieval
 - \`cat\`, \`find\`, \`list\`, \`locate_in_tree\` → filesystem browsing (server: \`data_sources_file_system\`)
 - \`query_tables\`, \`get_database_schema\` → table/SQL access
+- \`query\`, \`describe_tables\`, \`list\`, \`find\` (server: \`data_warehouses\`) → data warehouse access
 - \`run_agent\` → sub-agent (inspect child conversation separately)
 
 Step 2 — Call \`inspect_message\` on those specific messages. In the tool call Input JSON, look for:
@@ -315,8 +316,12 @@ Step 2 — Call \`inspect_message\` on those specific messages. In the tool call
 Step 3 — Corroborate with citations. \`:cite[ref]\` directives in agent responses confirm which
 sources were actually used. Prioritize sources that appear in both tool inputs AND citations.
 
-Step 4 — Recommend with context, never auto-add. For each source, suggest it with a one-line
-reason tied to its role: e.g. "Notion: used to retrieve project briefs for the report".
+Step 4 — Resolve each source into something suggestable. The conversation gives you a URI, not a
+\`dataSourceViewId\`: call \`search_knowledge\` to find the matching source in this workspace and use
+the \`dataSourceViewId\` it returns.
+
+Step 5 — Recommend with context, never auto-add. For each source, call \`suggest_knowledge\` with a
+one-line reason tied to its role: e.g. "Notion: used to retrieve project briefs for the report".
 </identifying_knowledge_sources>
 
 <mapping_to_suggestions>

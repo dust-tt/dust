@@ -13,6 +13,10 @@ export function formatCreditValue(credits: number): string {
   return `${formatCredits(credits)} credit${pluralize(credits)}`;
 }
 
+export function toolUsageLabel(callCount: number): string {
+  return `${callCount} use${pluralize(callCount)}`;
+}
+
 // Short recurring-period label for a fair-use timeframe (e.g. "per day").
 // Returns an empty string for the "lifetime" sentinel, which has no period.
 export function formatFairUseTimeframe(

@@ -201,6 +201,21 @@ app.get(
     const space =
       spaceId && auth ? await SpaceResource.fetchById(auth, spaceId) : null;
     const canRead = space && space.isProject() && auth && space.canRead(auth);
+    // Standing of the viewer in the Pod hosting the Frame, mirroring what pod hosts thread into
+    // the frame identity (podInfo.isMember / podInfo.isEditor). Display-only: invocations
+    // re-authorize server-side.
+    const isPodMember = !!(
+      space &&
+      space.isProject() &&
+      auth &&
+      space.isMember(auth)
+    );
+    const isPodEditor = !!(
+      space &&
+      space.isProject() &&
+      auth &&
+      space.canAdministrate(auth)
+    );
 
     // Generate access token for viz rendering.
     const accessToken = generateVizAccessToken({
@@ -229,6 +244,12 @@ app.get(
       // Lets the frame enable member-only tools (e.g. callFunction) client-side;
       // real authorization still happens server-side on invocation.
       isAuthenticatedMember: !!user,
+      isPodMember,
+      isPodEditor,
+      // Lets a shared Frame in an app folder resolve bare function references, exactly as it does
+      // when opened from the Pod. Withheld from viewers who cannot read the Pod, who cannot invoke
+      // its functions either.
+      framePath: canRead && auth ? file.toScopedPath(auth) : null,
     });
   }
 );

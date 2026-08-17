@@ -16,6 +16,8 @@ import {
   RUN_MODEL_MAX_RETRIES,
   TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
 } from "@app/temporal/agent_loop/config";
+import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
+import { waitForAllPromises } from "@app/temporal/agent_loop/lib/wait_for_all_promises";
 import {
   isRunModelLLMUnresponsiveError,
   isTerminalRunModelTimeout,
@@ -40,7 +42,9 @@ import type {
   WorkflowInterceptorsFactory,
 } from "@temporalio/workflow";
 import {
+  ActivityCancellationType,
   CancellationScope,
+  patched,
   proxyActivities,
   proxySinks,
   setHandler,
@@ -95,6 +99,26 @@ const { runToolActivity: runRetryableToolActivity } = proxyActivities<
     maximumAttempts: RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
   },
 });
+
+const { runToolActivity: runToolActivityWithExplicitCancellation } =
+  proxyActivities<typeof runToolActivities>({
+    startToCloseTimeout: toolActivityStartToCloseTimeoutMs,
+    heartbeatTimeout: TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
+    cancellationType: ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
+    retry: {
+      maximumAttempts: 1,
+    },
+  });
+
+const { runToolActivity: runRetryableToolActivityWithExplicitCancellation } =
+  proxyActivities<typeof runToolActivities>({
+    startToCloseTimeout: toolActivityStartToCloseTimeoutMs,
+    heartbeatTimeout: TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
+    cancellationType: ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
+    retry: {
+      maximumAttempts: RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
+    },
+  });
 
 const { publishDeferredEventsActivity } = proxyActivities<
   typeof publishDeferredEventsActivities
@@ -478,23 +502,43 @@ async function executeStepIteration({
   }
 
   // Execute tools and collect any deferred events.
-  const toolResults = await Promise.all(
-    actionBlobs.map(({ actionId, retryPolicy }) =>
+  let toolResults: ToolExecutionResult[];
+  if (patched("wait-for-all-tool-activities-before-finalization")) {
+    const toolActivityPromises = actionBlobs.map(({ actionId, retryPolicy }) =>
       retryPolicy === "no_retry"
-        ? runToolActivity(authType, {
+        ? runToolActivityWithExplicitCancellation(authType, {
             actionId,
             runAgentArgs: agentLoopArgs,
             step: currentStep,
             runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
           })
-        : runRetryableToolActivity(authType, {
+        : runRetryableToolActivityWithExplicitCancellation(authType, {
             actionId,
             runAgentArgs: agentLoopArgs,
             step: currentStep,
             runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
           })
-    )
-  );
+    );
+    toolResults = await waitForAllPromises(toolActivityPromises);
+  } else {
+    toolResults = await Promise.all(
+      actionBlobs.map(({ actionId, retryPolicy }) =>
+        retryPolicy === "no_retry"
+          ? runToolActivity(authType, {
+              actionId,
+              runAgentArgs: agentLoopArgs,
+              step: currentStep,
+              runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
+            })
+          : runRetryableToolActivity(authType, {
+              actionId,
+              runAgentArgs: agentLoopArgs,
+              step: currentStep,
+              runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
+            })
+      )
+    );
+  }
 
   // Collect all deferred events from tool executions.
   const allDeferredEvents = toolResults.flatMap(

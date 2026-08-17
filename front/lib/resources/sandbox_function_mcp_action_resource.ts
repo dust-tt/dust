@@ -29,7 +29,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { removeNulls } from "@app/types/shared/utils/general";
+import { isRecord, removeNulls } from "@app/types/shared/utils/general";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import type { Attributes, Transaction } from "sequelize";
@@ -38,6 +38,52 @@ import { Op } from "sequelize";
 // Outputs share the agent MCP output items GCS prefix (`w/<wsId>/...` so workspace relocation
 // transfers the objects), but with one object per action holding the full content array — dsbx
 // consumes the output exactly once as a whole, there is no per-block rendering.
+
+// The output object is either a bare content array (version 1, still the format when the tool
+// result carries no structuredContent so readers of older deploys keep working) or a versioned
+// envelope `{version: 2, content, structuredContent}`. `readOutput` reads both.
+const OUTPUT_ENVELOPE_VERSION = 2;
+
+export type SandboxFunctionMCPActionOutput = {
+  content: CallToolResult["content"];
+  structuredContent?: CallToolResult["structuredContent"];
+};
+
+function parseOutputObject(
+  parsed: unknown
+): Result<SandboxFunctionMCPActionOutput, Error> {
+  // Version 1: a bare content array.
+  if (Array.isArray(parsed)) {
+    return new Ok({ content: parsed });
+  }
+  // Version 2 envelope. The object is written by `createOutputItems` below, so shape validation
+  // stays a light guard (matching the trust level of the version-1 read path). The version is
+  // checked so a future format bump fails loudly here instead of being silently misparsed.
+  if (
+    parsed !== null &&
+    typeof parsed === "object" &&
+    "version" in parsed &&
+    parsed.version === OUTPUT_ENVELOPE_VERSION &&
+    "content" in parsed &&
+    Array.isArray(parsed.content)
+  ) {
+    const structuredContent =
+      "structuredContent" in parsed &&
+      parsed.structuredContent !== null &&
+      typeof parsed.structuredContent === "object" &&
+      isRecord(parsed.structuredContent)
+        ? parsed.structuredContent
+        : undefined;
+
+    return new Ok({
+      content: parsed.content,
+      ...(structuredContent !== undefined ? { structuredContent } : {}),
+    });
+  }
+  return new Err(
+    new Error("Unrecognized sandbox function MCP action output format.")
+  );
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SandboxFunctionMCPActionResource
@@ -270,16 +316,28 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
   // Writes the full content array to a single GCS object and records its path on the row. Written
   // exactly once, at tool completion. Returns the stored contents in the generic tool output item
   // shape shared with AgentMCPActionResource.createOutputItems.
+  // When the tool result carries a structuredContent payload, the object is a versioned envelope
+  // instead of a bare array; see `parseOutputObject`.
   async createOutputItems(
     auth: Authenticator,
     contents: Array<{
       content: CallToolResult["content"][number];
       fileId?: ModelId;
-    }>
+    }>,
+    options?: { structuredContent?: CallToolResult["structuredContent"] }
   ): Promise<Result<ToolOutputItemType[], Error>> {
     const gcsPath = this.outputGcsPathFor(auth);
     const file = getPrivateUploadBucket().file(gcsPath);
-    const json = JSON.stringify(contents.map((c) => c.content));
+    const content = contents.map((c) => c.content);
+    const json = JSON.stringify(
+      options?.structuredContent !== undefined
+        ? {
+            version: OUTPUT_ENVELOPE_VERSION,
+            content,
+            structuredContent: options.structuredContent,
+          }
+        : content
+    );
 
     const writeResult = await withRetry(() =>
       file.save(Buffer.from(json, "utf-8"), {
@@ -330,7 +388,9 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
     );
   }
 
-  async readOutput(): Promise<Result<CallToolResult["content"] | null, Error>> {
+  async readOutput(): Promise<
+    Result<SandboxFunctionMCPActionOutput | null, Error>
+  > {
     if (!this.outputGcsPath) {
       return new Ok(null);
     }
@@ -345,12 +405,15 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
       return new Err(downloadResult.error);
     }
 
+    let parsed: unknown;
     try {
       const [buffer] = downloadResult.value;
-      return new Ok(JSON.parse(buffer.toString("utf-8")));
+      parsed = JSON.parse(buffer.toString("utf-8"));
     } catch (err) {
       return new Err(normalizeError(err));
     }
+
+    return parseOutputObject(parsed);
   }
 
   // GCS objects are deleted best-effort AFTER the rows (post-commit when a transaction is

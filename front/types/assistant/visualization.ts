@@ -35,16 +35,28 @@ export type UserIdentityState =
   | {
       isAuthenticated: true;
       isWorkspaceMember: true;
+      // Whether the viewer is an editor of the Pod hosting the Frame. Display-only: functions
+      // resolve the caller server-side, never from what the Frame sends.
+      isPodEditor: boolean;
+      // Whether the viewer belongs to one of the Pod's groups (member or editor). Display-only,
+      // like isPodEditor: gate what the Frame shows, never what the server allows.
+      isPodMember: boolean;
       user: WorkspaceUserIdentity;
     }
   | {
       isAuthenticated: false;
       isWorkspaceMember: false;
+      isPodEditor: false;
+      isPodMember: false;
       user: null;
     };
 
 export interface ScopedWorkspaceUserIdentity {
   workspaceId: string;
+  // Optional: only hosts rendering inside a pod know editorship and membership; absent means
+  // false.
+  isPodEditor?: boolean;
+  isPodMember?: boolean;
   user: WorkspaceUserIdentity;
 }
 

@@ -1,12 +1,14 @@
 import config from "@app/lib/api/config";
 import type { SandboxImageId } from "@app/lib/api/sandbox/image";
 import {
+  devSandboxImageId,
   formatSandboxImageId,
   getSandboxImageFromRegistry,
 } from "@app/lib/api/sandbox/image";
 import {
   buildSandboxImage,
   createGCPRegistryFactory,
+  deleteUnbuiltE2BTemplate,
   templateExists,
 } from "@app/lib/api/sandbox/providers/e2b_template";
 import logger from "@app/logger/logger";
@@ -22,6 +24,31 @@ interface BuildArgs {
   dockerRegistry: string;
   rebuild: boolean;
   confirm: boolean;
+  release: boolean;
+}
+
+// The release alias is CI's to publish: `sandbox_image_check.ts` treats its
+// presence as "this version was built from main" and skips the region's build
+// otherwise. Local builds are namespaced per developer instead.
+function resolveImageId(
+  releaseImageId: SandboxImageId,
+  release: boolean
+): SandboxImageId {
+  if (release) {
+    return releaseImageId;
+  }
+
+  const devSuffix = config.getSandboxDevImageSuffix();
+  if (!devSuffix) {
+    logger.error(
+      "Set SBX_DEV_IMAGE_SUFFIX (e.g. your username) in front/.env.local to " +
+        "build a sandbox image locally, or pass --release if you intend " +
+        "to deploy the image in production."
+    );
+    process.exit(1);
+  }
+
+  return devSandboxImageId(releaseImageId, devSuffix);
 }
 
 async function promptYesNo(question: string): Promise<boolean> {
@@ -58,11 +85,15 @@ async function buildImage(args: BuildArgs): Promise<void> {
     dockerRegistry,
     rebuild,
     confirm,
+    release,
   } = args;
 
-  const imageId: SandboxImageId = { imageName, tag };
+  const imageId = resolveImageId({ imageName, tag }, release);
 
-  logger.info({ imageName, tag }, "Starting sandbox image build");
+  logger.info(
+    { imageId: formatSandboxImageId(imageId), release },
+    "Starting sandbox image build"
+  );
 
   const existsResult = await templateExists(imageId);
   if (existsResult.isErr()) {
@@ -156,6 +187,18 @@ async function buildImage(args: BuildArgs): Promise<void> {
   });
 
   if (result.isErr()) {
+    const cleanupResult = await deleteUnbuiltE2BTemplate(imageId);
+    if (cleanupResult.isErr()) {
+      logger.error(
+        { err: cleanupResult.error, imageId: formatSandboxImageId(imageId) },
+        "Failed to delete the template left behind by the failed build"
+      );
+    } else if (cleanupResult.value) {
+      logger.info(
+        { imageId: formatSandboxImageId(imageId) },
+        "Deleted the template left behind by the failed build"
+      );
+    }
     process.exit(1);
   }
 
@@ -204,6 +247,14 @@ yargs(hideBin(process.argv))
     default: false,
     describe: "Skip all interactive prompts",
   })
+  .option("release", {
+    type: "boolean",
+    default: false,
+    describe:
+      "Publish under the release alias (CI only). Without it, the build is " +
+      "namespaced with SBX_DEV_IMAGE_SUFFIX so it cannot mask a missing " +
+      "release build",
+  })
   .help("h")
   .alias("h", "help")
   .parseAsync()
@@ -215,6 +266,7 @@ yargs(hideBin(process.argv))
       dockerRegistry: getDockerRegistry(args["docker-registry"]),
       rebuild: args.rebuild,
       confirm: args.confirm,
+      release: args.release,
     });
     process.exit(0);
   })

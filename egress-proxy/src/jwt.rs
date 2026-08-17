@@ -20,6 +20,12 @@ pub struct ValidatedToken {
     // owner policy file `w/{wId}/sandboxes/{ownerId}.json`. Optional for
     // back-compat with tokens minted before the owner-keyed layout.
     pub owner_id: Option<String>,
+    // Pod the sandbox runs in, when the owner is a conversation inside a
+    // pod: adds the pod's policy file `w/{wId}/sandboxes/{podId}.json` as an
+    // inherited layer on top of the owner file. Absent for workspace-only
+    // conversations and for pod-owned sandboxes (whose ownerId already IS
+    // the pod).
+    pub pod_id: Option<String>,
     pub action: Option<String>,
 }
 
@@ -41,6 +47,8 @@ struct Claims {
     w_id: Option<String>,
     #[serde(rename = "ownerId")]
     owner_id: Option<String>,
+    #[serde(rename = "podId")]
+    pod_id: Option<String>,
     action: Option<String>,
     exp: usize,
 }
@@ -83,12 +91,14 @@ fn claims_to_validated_token(
     let sb_id = normalize_claim(claims.sb_id);
     let w_id = normalize_claim(claims.w_id);
     let owner_id = normalize_claim(claims.owner_id);
+    let pod_id = normalize_claim(claims.pod_id);
     let action = normalize_claim(claims.action);
 
     Ok(ValidatedToken {
         sb_id,
         w_id,
         owner_id,
+        pod_id,
         action,
     })
 }
@@ -140,6 +150,8 @@ mod tests {
         w_id: Option<&'a str>,
         #[serde(rename = "ownerId", skip_serializing_if = "Option::is_none")]
         owner_id: Option<&'a str>,
+        #[serde(rename = "podId", skip_serializing_if = "Option::is_none")]
+        pod_id: Option<&'a str>,
         #[serde(skip_serializing_if = "Option::is_none")]
         action: Option<&'a str>,
         iss: &'a str,
@@ -168,6 +180,7 @@ mod tests {
             sb_id: None,
             w_id: None,
             owner_id: None,
+            pod_id: None,
             action: Some("invalidate-policy"),
             iss: EXPECTED_ISSUER,
             aud: EXPECTED_AUDIENCE,
@@ -227,6 +240,7 @@ mod tests {
             sb_id: None,
             w_id: Some("workspace"),
             owner_id: None,
+            pod_id: None,
             action: Some("invalidate-policy"),
             iss: EXPECTED_ISSUER,
             aud: EXPECTED_AUDIENCE,
@@ -243,6 +257,7 @@ mod tests {
                 sb_id: None,
                 w_id: Some("workspace".to_string()),
                 owner_id: None,
+                pod_id: None,
                 action: Some("invalidate-policy".to_string()),
             }
         );
@@ -255,6 +270,7 @@ mod tests {
             sb_id: Some("sbx"),
             w_id: Some("workspace"),
             owner_id: Some("owner"),
+            pod_id: None,
             action: None,
             iss: EXPECTED_ISSUER,
             aud: EXPECTED_AUDIENCE,
@@ -268,6 +284,31 @@ mod tests {
         assert_eq!(validated.sb_id.as_deref(), Some("sbx"));
         assert_eq!(validated.w_id.as_deref(), Some("workspace"));
         assert_eq!(validated.owner_id.as_deref(), Some("owner"));
+    }
+
+    #[test]
+    fn validates_token_with_pod_id() {
+        // A conversation sandbox inside a pod carries the workspace scope
+        // (wId) like every sandbox, plus its own policy scope (ownerId) and
+        // the pod's inherited scope (podId).
+        let validator = JwtValidator::new("secret");
+        let token = token_with_claims(TestClaims {
+            sb_id: Some("sbx"),
+            w_id: Some("workspace"),
+            owner_id: Some("conversation"),
+            pod_id: Some("pod-space"),
+            action: None,
+            iss: EXPECTED_ISSUER,
+            aud: EXPECTED_AUDIENCE,
+            exp: future_exp(60),
+        });
+
+        let validated = validator
+            .validate(&token)
+            .expect("token with podId should validate");
+
+        assert_eq!(validated.owner_id.as_deref(), Some("conversation"));
+        assert_eq!(validated.pod_id.as_deref(), Some("pod-space"));
     }
 
     #[test]
@@ -291,6 +332,7 @@ mod tests {
             sb_id: Some("sbx"),
             w_id: Some("workspace"),
             owner_id: Some("   "),
+            pod_id: None,
             action: None,
             iss: EXPECTED_ISSUER,
             aud: EXPECTED_AUDIENCE,
@@ -322,6 +364,7 @@ mod tests {
             sb_id: Some("sbx"),
             w_id: Some("workspace"),
             owner_id: None,
+            pod_id: None,
             action: None,
             iss: EXPECTED_ISSUER,
             aud: "wrong",
@@ -344,6 +387,7 @@ mod tests {
             sb_id: Some(sb_id),
             w_id,
             owner_id: None,
+            pod_id: None,
             action: None,
             iss: EXPECTED_ISSUER,
             aud: EXPECTED_AUDIENCE,

@@ -155,6 +155,13 @@ template), you are authoring (B), and "edit slide N in place" is the wrong
 instinct. **Do not reach for the blank layout to bridge the gap; clone a real
 slide instead.**
 
+Decision rule for C: mode C is only for when no deck exists *anywhere*. If the
+user references a template, brand deck, or "our usual slides" that is not
+attached to the conversation, **ask them to upload it** rather than authoring a
+look-alike from scratch. A from-scratch approximation of a template that really
+exists is the exact failure this skill exists to prevent; do not silently fall
+back to mode C to bridge a missing file.
+
 **All three modes converge on the same per-slide loop (§4)**, and that loop is
 the build; it is not optional in any of them. They differ *only* in the **setup
 before the loop**: mode A has none (you edit in place), mode B clones exemplars
@@ -419,6 +426,14 @@ placeholder (a callout, a label), copy the typeface and color from the matching
 placeholder in \`--layouts\`; otherwise the segment falls back to the theme's Arial
 and looks foreign next to the rest of the deck.
 
+**Constrained shapes (chevrons, trapezoids, pills).** Text inside a
+non-rectangular shape has less room than its box suggests: the notched or
+sloped sides eat into the text area. Keep internal margins generous (>= 0.25"
+on the notched sides) and size the copy so the **longest single word** fits on
+one line at the template's size; a chevron or funnel label wrapping mid-word is
+one of the most common defects. Prefer cutting the label over shrinking the
+font, and confirm the fit in the \`--qa\` render.
+
 **Tables.** Update the cells of the table that is already there; never draw a new
 one over it. The same segment rule applies to cells: a styled cell is split into
 runs just like any paragraph, so route it through \`set_text\` too:
@@ -445,6 +460,12 @@ _, rId = pic.part.get_or_add_image_part("/files/conversation/logo.png")
 pic._element.blipFill.blip.set(qn("r:embed"), rId)
 \`\`\`
 
+This applies to **logos** in particular: never substitute a typed brand name (a
+text wordmark) for a logo image, and never redraw or approximate one with
+shapes. A retyped name in any font is not a logo. If the correct logo asset is
+missing, ask for it or fetch the official file, then swap it into the existing
+picture as above; and never replace a logo the template already embeds.
+
 **Never put your text over a background image that already has text.** Some
 template backgrounds bake a headline, tagline, or watermark into the image itself
 (a small corner logo is fine; a sentence is not). Layering your own text on top
@@ -462,7 +483,12 @@ visible placeholder (\`[TBD: Q3 revenue]\`) and flag it rather than inventing a
 number. Templates carry builder instructions: \`<Client name>\`, bracketed
 prompts, notes / off-slide text ("replace with this quarter's figures";
 \`--text\` includes notes). Read them, act on them, then remove them so none
-survive in the delivered deck.
+survive in the delivered deck. Builder guidance is **not** the same as legal
+text: mandatory mentions, disclaimers, risk warnings, and audience tags
+("Internal only", "Professionals only", "Marketing communication", "refer to
+the prospectus") are *content*, never scaffolding. Never delete or weaken them
+without an explicit user request, whether they live on a dedicated disclaimer
+slide or in a footer, and check in QA that they survived your edits.
 
 ### 4.2 QA the edited slides with \`pptx_inspect --qa N[,N,...]\` (never skip a readback)
 
@@ -659,6 +685,12 @@ three modes.
   palette and typography. For matplotlib only, pull \`bg1\` / \`tx1\` / accents
   from the theme line so it does not read as a foreign screenshot, then insert
   the PNG.
+- **Drawn content.** When you must draw non-placeholder content (a native
+  chart, a diagram, a callout group) on a cloned shell, derive a safe
+  rectangle first: left and width from the title placeholder, top just below
+  the title's bottom edge, bottom just above the footer band (\`--slide\` gives
+  every box in inches). Keep everything you draw inside that rectangle so it
+  never collides with the title, footer, logo, or page number.
 - **Palette.** Use only the theme's six accents.
 - **Margins.** Keep at least 0.5". The bottom ~0.5" is the master's logo/footer
   band; content reaching into it is overflow, not layout. Move it up or split the
@@ -685,7 +717,7 @@ export const pptxSkill = {
   instructions: PPTX_SKILL_INSTRUCTIONS,
   exposeInstructions: true,
   mcpServers: [{ name: "sandbox" }],
-  version: 5,
+  version: 6,
   icon: "ActionSlideshowIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);

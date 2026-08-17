@@ -1,11 +1,12 @@
 import { evaluateActivation } from "@app/lib/api/activation/evaluator";
-import { isEligibleForNudge } from "@app/lib/api/activation/nudge";
-import { emitActivationEvent } from "@app/lib/api/activation/trigger";
+import {
+  isEligibleForNudge,
+  postActivationNudge,
+} from "@app/lib/api/activation/nudge";
 import type { Authenticator } from "@app/lib/auth";
-import { ActivationNudgeResource } from "@app/lib/resources/activation_nudge_resource";
+import { getFeatureFlags } from "@app/lib/auth";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -86,6 +87,11 @@ export async function determineEligibleActivationUsers(
   }
   const byUser = activationResult.value;
 
+  // When forced, nudge users even if they are already considered activated:
+  // the activated-user filter below is skipped so every candidate is eligible.
+  const flags = await getFeatureFlags(auth);
+  const forceNudge = flags.includes("activation_force_nudge");
+
   const eligible: NudgePlan[] = [];
   const skipped: SkippedUser[] = [];
   for (const candidate of candidates) {
@@ -105,7 +111,7 @@ export async function determineEligibleActivationUsers(
         "[Activation] Evaluation result"
       );
     }
-    if (result?.activated) {
+    if (result?.activated && !forceNudge) {
       skipped.push({
         userId: candidate.userId,
         podId: candidate.podId,
@@ -149,8 +155,7 @@ export async function runActivationForWorkspace(
     return new Ok(plan);
   }
 
-  // Emit one activation event per eligible (pod, user), carrying the target
-  // user's sId so only that user's pod trigger matches and fires.
+  // Post one nudge per eligible (pod, user).
   if (plan.eligible.length === 0) {
     return new Ok(plan);
   }
@@ -158,14 +163,21 @@ export async function runActivationForWorkspace(
   const pods = await SpaceResource.fetchByIds(auth, uniqueSpaceIds);
   const podById = new Map(pods.map((pod) => [pod.sId, pod]));
 
+  const activationPods = await ActivationPodResource.fetchBySpaceModelIds(
+    auth,
+    pods.map((pod) => pod.id)
+  );
+  const activationPodBySpaceModelId = new Map(
+    activationPods.map((activationPod) => [
+      activationPod.spaceId,
+      activationPod,
+    ])
+  );
+
   const users = await UserResource.fetchByIds([
     ...new Set(plan.eligible.map((p) => p.targetUserId)),
   ]);
   const userBySId = new Map(users.map((user) => [user.sId, user]));
-
-  // Collected across pods so the trigger lookup and the nudge inserts below
-  // can each run as a single batched query instead of one per pod.
-  const firedTriggersByPod: { pod: SpaceResource; triggerId: string }[] = [];
 
   await concurrentExecutor(
     plan.eligible,
@@ -174,13 +186,22 @@ export async function runActivationForWorkspace(
       if (!pod) {
         logger.error(
           { workspaceId, spaceId },
-          "[Activation] pod space not found, skipping event"
+          "[Activation] pod space not found, skipping nudge"
+        );
+        return;
+      }
+
+      const activationPod = activationPodBySpaceModelId.get(pod.id);
+      if (!activationPod) {
+        logger.error(
+          { workspaceId, spaceId },
+          "[Activation] pod is not an Activation Pod, skipping nudge"
         );
         return;
       }
 
       const user = userBySId.get(targetUserId) ?? null;
-      if (!(await isEligibleForNudge(auth, pod, { user }))) {
+      if (!(await isEligibleForNudge(auth, { pod, activationPod, user }))) {
         logger.info(
           { workspaceId, spaceId, userId: targetUserId },
           "[Activation] Pod is not eligible for a nudge, skipping."
@@ -188,53 +209,16 @@ export async function runActivationForWorkspace(
         return;
       }
 
-      const result = await emitActivationEvent(auth, pod, targetUserId);
+      const result = await postActivationNudge(auth, { pod, activationPod });
       if (result.isErr()) {
         logger.error(
           { workspaceId, spaceId, userId: targetUserId, error: result.error },
-          "[Activation] Failed to emit activation event for user."
+          "[Activation] Failed to post the nudge for user."
         );
-        return;
       }
-
-      const { triggerId } = result.value;
-      if (!triggerId) {
-        logger.warn(
-          { workspaceId, spaceId, userId: targetUserId },
-          "[Activation] Activation event did not fire the pod's trigger."
-        );
-        return;
-      }
-
-      firedTriggersByPod.push({ pod, triggerId });
     },
     { concurrency: 3 }
   );
-
-  if (firedTriggersByPod.length > 0) {
-    const triggers = await TriggerResource.fetchByIds(
-      auth,
-      firedTriggersByPod.map(({ triggerId }) => triggerId)
-    );
-    const triggerById = new Map(
-      triggers.map((trigger) => [trigger.sId, trigger])
-    );
-
-    const nudges: { pod: SpaceResource; trigger: TriggerResource }[] = [];
-    for (const { pod, triggerId } of firedTriggersByPod) {
-      const trigger = triggerById.get(triggerId);
-      if (!trigger) {
-        logger.error(
-          { workspaceId, spaceId: pod.sId, triggerId },
-          "[Activation] Activation trigger not found after firing."
-        );
-        continue;
-      }
-      nudges.push({ pod, trigger });
-    }
-
-    await ActivationNudgeResource.bulkCreate(auth, nudges);
-  }
 
   return new Ok(plan);
 }

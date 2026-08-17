@@ -19,6 +19,19 @@ export function isModelsTierName(value: unknown): value is ModelsTierName {
   return MODELS_TIER_NAMES.includes(value as ModelsTierName);
 }
 
+// Single source of truth for how tiers are named to users. The same three words
+// name the model-picker streams (`auto_fast`/`auto`/`auto_complex`) and the
+// analytics usage filter, so a tier means the same thing everywhere.
+const MODELS_TIER_DISPLAY_NAMES: Record<ModelsTierName, string> = {
+  cost_efficient: "Basic",
+  balanced: "Standard",
+  premium: "Premium",
+};
+
+export function getModelsTierDisplayName(tierName: ModelsTierName): string {
+  return MODELS_TIER_DISPLAY_NAMES[tierName];
+}
+
 export type ModelTierSelection = {
   modelId: ModelIdType;
   providerId: ModelProviderIdType;
@@ -36,7 +49,7 @@ export const MODELS_TIERS: readonly ModelsTierDefinition[] = [
     id: 1,
     name: "cost_efficient",
     description:
-      "Cost efficient models sacrificing on performance to cut on price while remaining acceptable to use Dust with.",
+      "Basic, cost efficient models sacrificing on performance to cut on price while remaining acceptable to use Dust with.",
   },
   {
     id: 2,
@@ -332,6 +345,11 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     high: "premium",
   },
   "gemini-3.6-flash": {
+    light: "cost_efficient",
+    medium: "balanced",
+    high: "premium",
+  },
+  "gemini-3.7-flash": {
     light: "balanced",
     medium: "balanced",
     high: "premium",
@@ -384,6 +402,11 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   "accounts/fireworks/models/glm-5p2": {
     high: "balanced",
   },
+  "accounts/fireworks/models/inkling": {
+    light: "balanced",
+    medium: "balanced",
+    high: "balanced",
+  },
   "grok-3-latest": {
     none: "balanced",
   },
@@ -394,6 +417,11 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     light: "balanced",
     medium: "balanced",
     high: "balanced",
+  },
+  "grok-4.6": {
+    light: "balanced",
+    medium: "balanced",
+    high: "premium",
   },
   "grok-4-latest": {
     none: "balanced",
@@ -416,13 +444,17 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   noop: {
     none: "balanced",
   },
+  // Streams are meta-models: they never bill at their own tier, they resolve to
+  // a concrete candidate at message-send time. They are tiered as the tier they
+  // are named after, so a member capped below a stream cannot pick it at all —
+  // rather than picking it and silently getting a cheaper model.
   auto: {
     none: "balanced",
   },
   auto_fast: {
-    none: "balanced",
+    none: "cost_efficient",
   },
   auto_complex: {
-    none: "balanced",
+    none: "premium",
   },
 } satisfies StaticModelTiersMap;

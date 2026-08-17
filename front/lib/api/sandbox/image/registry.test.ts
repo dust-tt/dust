@@ -94,7 +94,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.69",
+      tag: "0.8.84",
     });
   });
 
@@ -457,7 +457,7 @@ describe("sandbox image registry", () => {
     expect(runCommands).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.44/dsbx-linux-x86_64"
+          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.50/dsbx-linux-x86_64"
         ),
         expect.stringContaining(
           "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx"
@@ -646,7 +646,7 @@ describe("sandbox image registry", () => {
         expect.objectContaining({ name: "drizzle-orm", version: "0.45.2" }),
         expect.objectContaining({ name: "drizzle-kit", version: "0.31.10" }),
         expect.objectContaining({ name: "@libsql/client", version: "0.17.4" }),
-        expect.objectContaining({ name: "@dust/pod", version: "0.1.0" }),
+        expect.objectContaining({ name: "@dust/pod", version: "0.2.0" }),
       ])
     );
   });

@@ -1,9 +1,9 @@
 import { createConversation } from "@app/lib/api/assistant/conversation";
-import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { PassThrough } from "stream";

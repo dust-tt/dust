@@ -3,6 +3,7 @@ export * from "./apps";
 export * from "./conversations";
 export * from "./data_source_views";
 export * from "./data_sources";
+export * from "./files";
 export * from "./global";
 export * from "./mcp_server_views";
 export * from "./skills";

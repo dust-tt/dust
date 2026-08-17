@@ -9,7 +9,6 @@ import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/orga
 import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
-import { ActivationNudgeModel } from "@app/lib/models/activation/activation_nudge";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
   AgentChildAgentConfigurationModel,
@@ -29,6 +28,7 @@ import { MembershipInvitationModel } from "@app/lib/models/membership_invitation
 import { SubscriptionModel } from "@app/lib/models/plan";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
+import { ActivationWorkAreaResource } from "@app/lib/resources/activation_work_area_resource";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -83,6 +83,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
+import { WorkspacePlanLimitOverrideResource } from "@app/lib/resources/workspace_plan_limit_override_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
@@ -270,25 +271,13 @@ export async function scrubSpaceActivity({
     await UserProjectPreferencesResource.deleteAllBySpace(auth, space.id);
   }
 
-  // Delete activation nudges sent for this Pod. The FK to spaces is
-  // `onDelete: "RESTRICT"`, so these rows must be removed before the space
-  // can be hard-deleted.
-  await ActivationNudgeModel.destroy({
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      spaceId: space.id,
-    },
-  });
-
-  // Delete recommendations made in this Pod before deleting the activation
-  // pod record itself. The FK from activation_recommendations to
-  // activation_pods is `onDelete: "RESTRICT"`, so the recommendations must
-  // be removed first or the destroy below fails. The FK from spaces to
-  // activation_pods is `onDelete: "RESTRICT"` too, so this row must be
-  // removed before the space can be hard-deleted.
   const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
   if (activationPod) {
     await ActivationRecommendationResource.deleteAllForActivationPod(
+      auth,
+      activationPod
+    );
+    await ActivationWorkAreaResource.deleteAllForActivationPod(
       auth,
       activationPod
     );
@@ -854,6 +843,8 @@ export async function deleteWorkspaceActivity({
   await FeatureFlagResource.deleteAllForWorkspace(auth);
   await AgentMemoryResource.deleteAllForWorkspace(auth);
   await OnboardingTaskResource.deleteAllForWorkspace(auth);
+  await ActivationRecommendationResource.deleteAllForWorkspace(auth);
+  await ActivationWorkAreaResource.deleteAllForWorkspace(auth);
   await RemoteMCPServerToolMetadataModel.destroy({
     where: { workspaceId: workspace.id },
   });
@@ -863,6 +854,7 @@ export async function deleteWorkspaceActivity({
   await SelfImprovingSkillsUsageResource.deleteAllForWorkspace(auth);
   await WorkspaceVerificationAttemptResource.deleteAllForWorkspace(auth);
   await WorkspaceSeatLimitResource.deleteAllForWorkspace({ workspace });
+  await WorkspacePlanLimitOverrideResource.deleteAllForWorkspace({ workspace });
 
   hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
 

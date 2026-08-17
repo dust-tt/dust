@@ -178,6 +178,7 @@ describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages", () => {
       workspace.sId
     );
     await FeatureFlagFactory.basic(userAuth, "models_picker");
+    await FeatureFlagFactory.basic(userAuth, "claude_4_5_opus_feature");
     const conversation = await ConversationFactory.create(userAuth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],

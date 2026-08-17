@@ -38,7 +38,9 @@
     { "name": "user_analytics", "id": 1039 },
     { "name": "activation_recommendations", "id": 1040 },
     { "name": "agent_templates", "id": 1041 },
-    { "name": "user_memory", "id": 1043 }
+    { "name": "user_memory", "id": 1043 },
+    { "name": "conversation_side_panel", "id": 1044 },
+    { "name": "agent_delegation", "id": 1045 }
   ],
   "manual": [
     { "name": "github", "id": 1 },
@@ -83,6 +85,7 @@
     { "name": "poke", "id": 1027 },
     { "name": "clari_copilot", "id": 1030 },
     { "name": "workday", "id": 1038 },
-    { "name": "servicenow", "id": 1042 }
+    { "name": "servicenow", "id": 1042 },
+    { "name": "shopify", "id": 1046 }
   ]
 }

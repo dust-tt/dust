@@ -679,20 +679,14 @@
                   },
                   "editors": {
                     "type": "array",
+                    "description": "Emails of the workspace members to set as editors of the agent. Omitting this field keeps the current editors; providing it replaces the whole list.",
                     "items": {
-                      "type": "object",
-                      "properties": {
-                        "user_id": {
-                          "type": "string"
-                        },
-                        "email": {
-                          "type": "string"
-                        },
-                        "full_name": {
-                          "type": "string"
-                        }
-                      }
-                    }
+                      "type": "string",
+                      "format": "email"
+                    },
+                    "example": [
+                      "alice@example.com"
+                    ]
                   },
                   "skills": {
                     "type": "array",
@@ -970,20 +964,14 @@
                   },
                   "editors": {
                     "type": "array",
+                    "description": "Emails of the workspace members to set as editors of the agent.",
                     "items": {
-                      "type": "object",
-                      "properties": {
-                        "user_id": {
-                          "type": "string"
-                        },
-                        "email": {
-                          "type": "string"
-                        },
-                        "full_name": {
-                          "type": "string"
-                        }
-                      }
-                    }
+                      "type": "string",
+                      "format": "email"
+                    },
+                    "example": [
+                      "alice@example.com"
+                    ]
                   },
                   "toolset": {
                     "type": "array",
@@ -3397,6 +3385,72 @@
         }
       }
     },
+    "/api/v1/w/{wId}/skills/{skillId}": {
+      "delete": {
+        "summary": "Archive a skill",
+        "description": "Soft-archives a custom skill in the workspace.",
+        "tags": [
+          "Skills"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "Unique string identifier for the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "skillId",
+            "required": true,
+            "description": "Unique string identifier for the custom skill",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Skill archived successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "403": {
+            "description": "Forbidden. The caller is not allowed to archive skills."
+          },
+          "404": {
+            "description": "Skill not found."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/skills": {
       "get": {
         "summary": "List skills",
@@ -3555,6 +3609,15 @@
                       "format": "email"
                     },
                     "description": "Optional editor email addresses to add to imported or updated skills. Editors must be active workspace builders. Existing skills keep their current editors."
+                  },
+                  "availability": {
+                    "type": "string",
+                    "enum": [
+                      "editors",
+                      "workspace_users",
+                      "users_and_agents"
+                    ],
+                    "description": "Optional availability to apply to imported or updated skills. editors is unpublished, workspace_users is published, and users_and_agents is discoverable. New skills default to editors and existing skills keep their current availability when omitted."
                   }
                 }
               }
@@ -6074,6 +6137,217 @@
         }
       }
     },
+    "/api/w/{wId}/analytics/consumption/facets": {
+      "post": {
+        "summary": "List consumption analytics facets",
+        "description": "Lists current workspace entities and historical indexed values present in the selected period for each consumption dimension. A facet is disabled when it has no indexed document in that period after applying every active filter except the facet's own dimension.",
+        "tags": [
+          "Private Analytics"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "period": {
+                    "type": "string",
+                    "enum": [
+                      "cycle",
+                      "days"
+                    ],
+                    "default": "cycle"
+                  },
+                  "days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 30
+                  },
+                  "filter": {
+                    "type": "object",
+                    "description": "Map of consumption dimensions to selected values.",
+                    "additionalProperties": false,
+                    "properties": {
+                      "agents": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "users": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "api_keys": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "groups": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "models": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "tools": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "skills": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "sources": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Consumption facets and their contextual availability",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "period",
+                    "facets"
+                  ],
+                  "properties": {
+                    "period": {
+                      "type": "object",
+                      "required": [
+                        "startDate",
+                        "endDate"
+                      ],
+                      "properties": {
+                        "startDate": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      }
+                    },
+                    "facets": {
+                      "type": "object",
+                      "required": [
+                        "agent",
+                        "user",
+                        "api_key",
+                        "group",
+                        "model",
+                        "tool",
+                        "skill",
+                        "source"
+                      ],
+                      "properties": {
+                        "agent": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PrivateConsumptionFacet"
+                          }
+                        },
+                        "user": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PrivateConsumptionFacet"
+                          }
+                        },
+                        "api_key": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PrivateConsumptionFacet"
+                          }
+                        },
+                        "group": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PrivateConsumptionFacet"
+                          }
+                        },
+                        "model": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PrivateConsumptionFacet"
+                          }
+                        },
+                        "tool": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PrivateConsumptionFacet"
+                          }
+                        },
+                        "skill": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PrivateConsumptionFacet"
+                          }
+                        },
+                        "source": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PrivateConsumptionFacet"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body"
+          },
+          "403": {
+            "description": "Manager role required"
+          },
+          "500": {
+            "description": "Failed to retrieve consumption facets"
+          }
+        }
+      }
+    },
     "/api/w/{wId}/assistant/agent_configurations": {
       "get": {
         "summary": "List agent configurations",
@@ -6100,6 +6374,7 @@
               "type": "string",
               "enum": [
                 "all",
+                "analytics",
                 "list",
                 "favorites",
                 "published",
@@ -10292,6 +10567,66 @@
   },
   "components": {
     "schemas": {
+      "PrivateConsumptionFacet": {
+        "type": "object",
+        "required": [
+          "value",
+          "label",
+          "pictureUrl",
+          "documentCount",
+          "disabled"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "description": "Raw indexed value accepted by the corresponding consumption filter."
+          },
+          "label": {
+            "type": "string",
+            "description": "Human-readable label, falling back to the raw value when its resource was deleted."
+          },
+          "pictureUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "icon": {
+            "type": "string",
+            "nullable": true,
+            "description": "Design-system icon name for tool and skill facets when known."
+          },
+          "documentCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number of matching indexed documents after applying the selected period and every other facet."
+          },
+          "disabled": {
+            "type": "boolean",
+            "description": "Whether selecting this value would produce no matching indexed document."
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "global",
+              "visible",
+              "hidden"
+            ],
+            "description": "Current agent scope, when the agent still has accessible configuration metadata."
+          },
+          "maker": {
+            "type": "string",
+            "description": "Model maker, for known model facets."
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "cost_efficient",
+              "balanced",
+              "premium"
+            ],
+            "description": "Default reasoning-effort tier, for known model facets."
+          }
+        }
+      },
       "PrivateUser": {
         "type": "object",
         "description": "Authenticated user with their workspaces and subscriber hash.",
@@ -12522,6 +12857,9 @@
             "$ref": "#/components/schemas/PrivateAgentMessageNewEvent"
           },
           {
+            "$ref": "#/components/schemas/PrivateAgentMessageConsumptionUpdatedEvent"
+          },
+          {
             "$ref": "#/components/schemas/PrivateAgentMessageDoneEvent"
           },
           {
@@ -12632,6 +12970,37 @@
               "success",
               "error"
             ]
+          }
+        }
+      },
+      "PrivateAgentMessageConsumptionUpdatedEvent": {
+        "type": "object",
+        "required": [
+          "type",
+          "created",
+          "conversationId",
+          "messageId",
+          "costCredits"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "agent_message_consumption_updated"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          },
+          "costCredits": {
+            "type": "number",
+            "nullable": true
           }
         }
       },
@@ -14250,7 +14619,7 @@
       },
       "ModelSelection": {
         "type": "object",
-        "description": "Optional per-message model and reasoning-effort override applied to the\nmentioned agent(s). When omitted, each agent runs its configured model.\nIf the requested model is not available to the workspace, the agent's\nconfigured model is used instead. An unknown provider, model, or\nreasoning effort results in a 400.\n",
+        "description": "Optional per-message model and reasoning-effort override applied to the\nmentioned agent(s). When omitted, each agent runs its configured model.\nA provider/model pair that is not authorized for the workspace is\nrejected with a 400 (`model_disabled`), it does not fall back to the\nagent's configured model. A malformed object, or an unknown reasoning\neffort, also results in a 400.\n",
         "required": [
           "providerId",
           "modelId"

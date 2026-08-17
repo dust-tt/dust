@@ -1,22 +1,15 @@
 import type {
   UsageFilter,
-  UsageFilterAgentOption,
+  UsageFilterAgentScope,
   UsageFilterCategory,
   UsageFilterGroup,
-  UsageFilterMemberOption,
-  UsageFilterModelOption,
-  UsageFilterOptionForCategory,
-  UsageFilterScope,
-  UsageFilterSkillOption,
-  UsageFilterSourceOption,
-  UsageFilterToolOption,
-  UsageModelTier,
 } from "@app/components/workspace/analytics/usageFilter";
 import {
+  toConsumptionScopeFilter,
+  USAGE_FILTER_AGENT_SCOPES,
   USAGE_FILTER_CATEGORIES,
   USAGE_FILTER_CATEGORY_LABEL,
-  USAGE_FILTER_SCOPES,
-  USAGE_MODEL_TIERS,
+  usageFilterSelectionCount,
 } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
 import { UsageFilterCategoryNav } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterCategoryNav";
@@ -26,11 +19,16 @@ import { UsageFilterModelComplexityControls } from "@app/components/workspace/an
 import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
-import { useSearchMembers } from "@app/lib/swr/memberships";
+import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
+import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
+import { useGroups } from "@app/lib/swr/groups";
+import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  BarChart05,
   Button,
+  FilterFunnel01,
   NavigationListLabel,
   PopoverContent,
   PopoverRoot,
@@ -39,30 +37,24 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
+const DEFAULT_MODEL_TIER: ModelsTierName = "balanced";
+
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
-  categoryOptions: {
-    agent: UsageFilterAgentOption[];
-    model: UsageFilterModelOption[];
-    tool: UsageFilterToolOption[];
-    skill: UsageFilterSkillOption[];
-    source: UsageFilterSourceOption[];
-  };
-  groups: UsageFilterGroup[];
+  period: ConsumptionPeriodSelection;
   filter: UsageFilter;
   onFilterChange: (next: UsageFilter) => void;
 }
 
 export function UsageFilterPanel({
   owner,
-  categoryOptions,
-  groups,
+  period,
   filter,
   onFilterChange,
 }: UsageFilterPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
-  // Selections are staged while the panel is open and only propagated
-  // when the user clicks Apply.
+  // Selections are staged while the panel is open and only propagated when
+  // the user clicks Apply. Facet availability follows the staged query.
   const {
     draftFilter,
     setDraftFilter,
@@ -74,75 +66,93 @@ export function UsageFilterPanel({
   } = useUsageFilter(filter);
   const [activeCategory, setActiveCategory] =
     useState<UsageFilterCategory>("agent");
-  const [activeScope, setActiveScope] = useState<UsageFilterScope>(
-    USAGE_FILTER_SCOPES[0]
-  );
-  const [activeTier, setActiveTier] = useState<UsageModelTier>(
-    USAGE_MODEL_TIERS[0]
-  );
+  const [activeScope, setActiveScope] = useState<UsageFilterAgentScope>("all");
+  const [activeTier, setActiveTier] =
+    useState<ModelsTierName>(DEFAULT_MODEL_TIER);
   const [searchText, setSearchText] = useState("");
+  const selectedGroups = useToggleSelectionList<UsageFilterGroup>();
 
-  const { members } = useSearchMembers({
+  const draftScopeFilter = useMemo(
+    () => toConsumptionScopeFilter(draftFilter),
+    [draftFilter]
+  );
+  const {
+    options: categoryOptions,
+    isFacetsLoading,
+    isFacetsError,
+    isFacetsValidating,
+  } = useConsumptionFacets({
     workspaceId: owner.sId,
-    searchTerm: activeCategory === "member" ? searchText : "",
-    pageIndex: 0,
-    pageSize: 100,
-    disabled: !isOpen || activeCategory !== "member",
+    period,
+    filter: draftScopeFilter,
+    disabled: !isOpen,
   });
 
-  const memberOptions = useMemo<UsageFilterMemberOption[]>(
+  const isMemberCategoryActive = isOpen && activeCategory === "member";
+  const { groups: workspaceGroups } = useGroups({
+    owner,
+    kinds: MANAGEABLE_GROUP_KINDS,
+    withMembers: true,
+    disabled: !isMemberCategoryActive,
+  });
+
+  const groups = useMemo<UsageFilterGroup[]>(
     () =>
-      members.map((m) => ({
-        id: m.sId,
-        name: m.fullName,
-        kind: "member",
-        image: m.image,
+      workspaceGroups.map((group) => ({
+        id: group.sId,
+        name: group.name,
+        memberIds: group.memberIds ?? [],
       })),
-    [members]
+    [workspaceGroups]
   );
 
-  const resolvedCategoryOptions = useMemo<{
-    [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
-  }>(
-    () => ({
-      ...categoryOptions,
-      member: memberOptions,
-    }),
-    [categoryOptions, memberOptions]
-  );
-
-  const activeOptions = resolvedCategoryOptions[activeCategory];
+  const activeOptions = categoryOptions[activeCategory];
   const filteredOptions = useMemo(() => {
     const search = searchText.trim().toLowerCase();
+    const selectedGroupMemberIds =
+      activeCategory === "member" && selectedGroups.items.length > 0
+        ? new Set(selectedGroups.items.flatMap((group) => group.memberIds))
+        : null;
+
     return activeOptions.filter((option) => {
-      if (option.kind === "agent" && option.scope !== activeScope) {
+      if (
+        option.kind === "agent" &&
+        activeScope !== "all" &&
+        option.scope !== activeScope
+      ) {
         return false;
       }
       if (option.kind === "model" && option.tier !== activeTier) {
         return false;
       }
-      if (search && !option.name.toLowerCase().includes(search)) {
+      if (selectedGroupMemberIds && !selectedGroupMemberIds.has(option.id)) {
         return false;
       }
-      return true;
+      return !search || option.name.toLowerCase().includes(search);
     });
-  }, [activeOptions, searchText, activeScope, activeTier]);
+  }, [
+    activeOptions,
+    searchText,
+    activeScope,
+    activeTier,
+    activeCategory,
+    selectedGroups.items,
+  ]);
 
+  const optionListKey = `${isOpen}|${activeCategory}|${searchText}|${activeScope}|${activeTier}`;
   const selectedIdsForActiveCategory = useMemo(
     () =>
       new Set((draftFilter[activeCategory] ?? []).map((option) => option.id)),
     [draftFilter, activeCategory]
   );
-
-  const appliedSelectionCount = useMemo(
-    () =>
-      USAGE_FILTER_CATEGORIES.reduce(
-        (count, category) => count + (filter[category]?.length ?? 0),
-        0
-      ),
-    [filter]
+  const enabledFilteredOptions = filteredOptions.filter(
+    (option) => !option.disabled
+  );
+  const unselectedEnabledOptions = enabledFilteredOptions.filter(
+    (option) => !selectedIdsForActiveCategory.has(option.id)
   );
 
+  const appliedSelectionCount = usageFilterSelectionCount(filter);
   const categoriesWithSelection = useMemo(
     () =>
       USAGE_FILTER_CATEGORIES.filter(
@@ -156,6 +166,7 @@ export function UsageFilterPanel({
     if (open) {
       setDraftFilter(filter);
       setSearchText("");
+      selectedGroups.setItems([]);
     }
   };
 
@@ -164,22 +175,13 @@ export function UsageFilterPanel({
     setSearchText("");
   };
 
-  const handleCancel = () => {
-    setIsOpen(false);
-  };
-
-  const handleApply = () => {
-    onFilterChange(draftFilter);
-    setIsOpen(false);
-  };
-
   const activeCategorySelectionCount = draftFilter[activeCategory]?.length ?? 0;
 
   return (
     <PopoverRoot open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
-          icon={BarChart05}
+          icon={FilterFunnel01}
           label="Filters"
           size="sm"
           variant="outline"
@@ -219,11 +221,16 @@ export function UsageFilterPanel({
               placeholder={`Search ${USAGE_FILTER_CATEGORY_LABEL[activeCategory].toLowerCase()}`}
             />
             {activeCategory === "member" && (
-              <UsageFilterMemberGroupsControls groups={groups} />
+              <UsageFilterMemberGroupsControls
+                groups={groups}
+                selectedGroups={selectedGroups.items}
+                onAddGroup={selectedGroups.add}
+                onRemoveGroup={selectedGroups.remove}
+              />
             )}
             {activeCategory === "model" && (
               <UsageFilterModelComplexityControls
-                models={categoryOptions.model}
+                moreModelsCatalog={categoryOptions.model}
                 selectedModelIds={selectedIdsForActiveCategory}
                 onToggleModel={(model) => toggleOption("model", model)}
                 activeTier={activeTier}
@@ -232,20 +239,34 @@ export function UsageFilterPanel({
             )}
             {activeCategory === "agent" && (
               <UsageFilterAgentScopeControls
+                scopes={USAGE_FILTER_AGENT_SCOPES}
                 activeScope={activeScope}
                 onScopeChange={setActiveScope}
               />
             )}
-            <UsageFilterOptionCheckboxList
-              category={activeCategory}
-              categoryLabel={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
-              options={filteredOptions}
-              selectedIds={selectedIdsForActiveCategory}
-              onToggleOption={(option) => toggleOption(activeCategory, option)}
-              onSelectAll={() =>
-                selectAllFiltered(activeCategory, filteredOptions)
-              }
-            />
+            {isFacetsError ? (
+              <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
+                Failed to load filters.
+              </div>
+            ) : (
+              <UsageFilterOptionCheckboxList
+                key={optionListKey}
+                category={activeCategory}
+                categoryLabel={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
+                options={filteredOptions}
+                selectedIds={selectedIdsForActiveCategory}
+                onToggleOption={(option) =>
+                  toggleOption(activeCategory, option)
+                }
+                onSelectAll={() =>
+                  selectAllFiltered(activeCategory, unselectedEnabledOptions)
+                }
+                selectAllLabel="Select all"
+                hasSelectableOptions={unselectedEnabledOptions.length > 0}
+                isLoading={isFacetsLoading}
+                isUpdating={isFacetsValidating}
+              />
+            )}
           </div>
           <UsageFilterSelectionSummary
             categoriesWithSelection={categoriesWithSelection}
@@ -256,8 +277,11 @@ export function UsageFilterPanel({
         </div>
         <UsageFilterFooter
           onClearAll={clearAllCategories}
-          onCancel={handleCancel}
-          onApply={handleApply}
+          onCancel={() => setIsOpen(false)}
+          onApply={() => {
+            onFilterChange(draftFilter);
+            setIsOpen(false);
+          }}
         />
       </PopoverContent>
     </PopoverRoot>

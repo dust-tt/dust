@@ -10,7 +10,7 @@ import {
   getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd,
 } from "@app/lib/reinforcement/consumption";
 import { useReinforcementBillingUnit } from "@app/lib/swr/useSelfImprovingSkillsSettings";
-import { ContentMessage, InfoCircle, Page, Stars02 } from "@dust-tt/sparkle";
+import { ContentMessage, InfoCircle, Page } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 export function SelfImprovingSkillsPage() {
@@ -70,7 +70,6 @@ export function SelfImprovingSkillsPage() {
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="Self-Improving Skills"
-          icon={Stars02}
           description={
             <span>
               Configure self-improving skills settings for this workspace.{" "}

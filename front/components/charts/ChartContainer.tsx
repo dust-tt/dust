@@ -1,8 +1,9 @@
-import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartLegend } from "@app/components/charts/ChartLegend";
+import { CHART_HEIGHT } from "@app/components/charts/constants";
 import {
   Button,
+  cn,
   Maximize01,
   Sheet,
   SheetContainer,
@@ -28,6 +29,7 @@ interface ChartContainerProps {
   description?: string;
   legendItems?: LegendItem[];
   isAllowFullScreen?: boolean;
+  showHeaderDivider?: boolean;
 }
 
 export function ChartContainer({
@@ -43,13 +45,19 @@ export function ChartContainer({
   description,
   legendItems,
   isAllowFullScreen,
+  showHeaderDivider,
 }: ChartContainerProps) {
   const message = isLoading ? null : (errorMessage ?? emptyMessage);
   const [isFullscreen, setIsFullscreen] = useState(false);
   return (
     <>
       <div className="observability-chart-container rounded-lg border border-border bg-background p-4">
-        <div className="flex items-center justify-between">
+        <div
+          className={cn(
+            "flex items-center justify-between",
+            showHeaderDivider && "border-b border-border pb-3"
+          )}
+        >
           <div className="flex shrink-0 items-center justify-between gap-2">
             <h3 className="text-base font-medium text-foreground">{title}</h3>
             {statusChip}
@@ -74,8 +82,11 @@ export function ChartContainer({
         )}
         {isLoading || message ? (
           <div
-            className="flex items-center justify-center"
-            style={{ height: CHART_HEIGHT }}
+            className={cn(
+              "flex items-center justify-center",
+              showHeaderDivider && "mt-3"
+            )}
+            style={{ height: height ?? CHART_HEIGHT }}
           >
             {isLoading ? (
               <Spinner size="lg" />
@@ -85,7 +96,11 @@ export function ChartContainer({
           </div>
         ) : (
           <>
-            <ResponsiveContainer width="100%" height={height}>
+            <ResponsiveContainer
+              className={cn(showHeaderDivider && "mt-3")}
+              width="100%"
+              height={height}
+            >
               {children}
             </ResponsiveContainer>
             {bottomControls}

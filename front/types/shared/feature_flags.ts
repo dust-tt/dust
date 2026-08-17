@@ -28,11 +28,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Opt into Anthropic prompt-cache diagnostics to report cache-miss reasons on agent-loop steps",
     stage: "dust_only",
   },
-  agent_loop_qos_routing: {
-    description:
-      "Route agent loop workflows to per-surface QoS task queues (schedules/interactive/programmatic/batch) instead of the single default queue. Requires the per-queue worker deployments to be running.",
-    stage: "rolling_out",
-  },
   use_vertex_for_supported_models: {
     description:
       "Route LLM calls through Vertex AI when supported instead of the direct provider's API",
@@ -69,7 +64,8 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "on_demand",
   },
   claude_4_5_opus_feature: {
-    description: "Access to Claude 4.5 Opus model in the agent builder",
+    description:
+      "Access to Claude Opus and GPT 5.6 Sol models in the agent builder",
     stage: "on_demand",
   },
   claude_fable_5_feature: {
@@ -167,11 +163,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to noop model in the agent builder",
     stage: "dust_only",
   },
-  slack_enhanced_default_agent: {
-    description:
-      "Enhanced default agent feature for Slack channels - auto-respond to all messages in channel",
-    stage: "on_demand",
-  },
   slack_message_splitting: {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
@@ -203,22 +194,16 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "ServiceNow MCP tool",
     stage: "on_demand",
   },
+  shopify_tool: {
+    description: "Shopify MCP tool",
+    stage: "on_demand",
+  },
   workday_mcp: {
     description: "Workday MCP tool",
     stage: "on_demand",
   },
   sandbox_functions: {
     description: "Enable Pod Function invocation endpoints",
-    stage: "dust_only",
-  },
-  sandbox_function_stdout_result: {
-    description:
-      "Return Pod function results through the worker dsbx stdout channel instead of the in-sandbox HTTP callback",
-    stage: "dust_only",
-  },
-  sandbox_function_fast_execution: {
-    description:
-      "Return Pod function results in the invocation response when the invocation settles before it returns",
     stage: "dust_only",
   },
   run_tools_from_prompt: {
@@ -317,12 +302,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Model picker in the conversation input bar: keep Auto (the agent's configured model) or pick a specific model and reasoning effort.",
     stage: "dust_only",
   },
-  activation_skill: {
-    description: "Enable the Activation skill for agentic user activation pods",
-    stage: "dust_only",
-  },
-  activation_scheduler: {
-    description: "Enable the per-workspace Activation scheduler workflow",
+  activation_force_nudge: {
+    description:
+      "Bypass the activated-user check in the activation orchestrator so already-activated users are still nudged",
     stage: "dust_only",
   },
   admin_controlled_pods: {
@@ -359,6 +341,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Allow editing tool inputs before approving a tool call in the tool validation UI.",
     stage: "dust_only",
+  },
+  skip_free_usage_rate_limit: {
+    description:
+      "Skip the per-user daily free-usage cost cap enforced at the LLM call site. Escape hatch to unstick legitimate workspaces that legitimately exceed the free-usage limit.",
+    stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

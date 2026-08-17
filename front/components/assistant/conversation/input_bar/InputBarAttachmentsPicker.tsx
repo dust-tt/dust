@@ -1,3 +1,4 @@
+import { DropdownAnchorTrigger } from "@app/components/assistant/conversation/input_bar/DropdownAnchorTrigger";
 import { getSingularFileCategoryLabelForContentType } from "@app/components/file_explorer/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { NodePathTooltip } from "@app/components/NodePathTooltip";
@@ -36,7 +37,6 @@ import type { DropdownMenuFilterOption } from "@dust-tt/sparkle";
 import {
   Attachment01,
   Button,
-  ChevronRight,
   DoubleIcon,
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -108,6 +108,7 @@ interface InputBarAttachmentsPickerProps {
   onExternalOpenChange?: (open: boolean) => void;
   onOpenChange?: (open: boolean) => void;
   anchorRef?: React.RefObject<HTMLElement | null>;
+  prefetch?: boolean;
 }
 
 const PAGE_SIZE = 25;
@@ -278,6 +279,7 @@ export const InputBarAttachmentsPicker = ({
   onExternalOpenChange,
   onOpenChange,
   anchorRef,
+  prefetch = false,
 }: InputBarAttachmentsPickerProps) => {
   const isMobile = useIsMobile();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -304,7 +306,7 @@ export const InputBarAttachmentsPicker = ({
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
     kinds: ["global", "regular", "project"],
-    disabled: !isOpen,
+    disabled: !isOpen && !prefetch,
   });
 
   const spacesMap = useMemo(
@@ -572,34 +574,24 @@ export const InputBarAttachmentsPicker = ({
           />
         </DropdownMenuTrigger>
       ) : type === "dropdown" && isExternallyControlled ? (
-        <DropdownMenuTrigger asChild>
-          <div
-            ref={(el) => {
-              if (el && anchorRef?.current) {
-                const rect = anchorRef.current.getBoundingClientRect();
-                el.style.position = "fixed";
-                el.style.top = `${rect.top}px`;
-                el.style.left = `${rect.left}px`;
-                el.style.width = `${rect.width}px`;
-                el.style.height = `${rect.height}px`;
-                el.style.pointerEvents = "none";
-                el.style.opacity = "0";
-              }
-            }}
-          />
-        </DropdownMenuTrigger>
+        <DropdownAnchorTrigger anchorRef={anchorRef} />
       ) : (
         <DropdownMenuSubTrigger
+          label="Attach knowledge"
+          icon={
+            <Icon
+              size="xs"
+              visual={Attachment01}
+              className="text-muted-foreground"
+            />
+          }
+          disabled={disabled || isLoading || isAnyToolFileUploading}
           onClick={(e) => {
             e.stopPropagation();
             e.preventDefault();
             setIsOpen(true);
           }}
-        >
-          <Attachment01 className="w-5 h-5" />
-          Attach knowledge
-          <ChevronRight className="w-5 h-5" />
-        </DropdownMenuSubTrigger>
+        />
       )}
       <ContentWrapper
         // Radix ScrollArea wraps content in a content-height `display:table` div. Force it to fill

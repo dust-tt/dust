@@ -45,7 +45,6 @@ function TopAgentsCell({ agents, onAgentClick }: TopAgentsCellProps) {
               name={agent.name}
               visual={agent.pictureUrl ?? undefined}
               size="xs"
-              isRounded
             />
             <span className="flex min-w-0 items-baseline gap-1.5">
               <span className="truncate text-sm">{agent.name}</span>
@@ -95,6 +94,7 @@ const columns: ColumnDef<UserCreditRowData>[] = [
         <AvatarNameCell
           name={info.row.original.name}
           imageUrl={info.row.original.imageUrl}
+          isRounded
         />
       </DataTable.CellContent>
     ),

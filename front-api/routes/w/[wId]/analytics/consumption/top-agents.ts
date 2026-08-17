@@ -1,6 +1,6 @@
 import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import {
-  ConsumptionTopQuerySchema,
+  ConsumptionTopBodySchema,
   toConsumptionPeriodInput,
 } from "@app/lib/api/analytics/consumption/schema";
 import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/consumption/top_agents";
@@ -17,13 +17,14 @@ export type { GetConsumptionTopAgentsResponse };
 const app = workspaceApp();
 
 /** @ignoreswagger */
-app.get(
+app.post(
   "/",
   ensureIsManager(),
-  validate("query", ConsumptionTopQuerySchema),
+  validate("json", ConsumptionTopBodySchema),
   async (ctx): HandlerResult<GetConsumptionTopAgentsResponse> => {
     const auth = ctx.get("auth");
-    const { limit, filter, ...periodQuery } = ctx.req.valid("query");
+    const { limit, offset, search, filter, ...periodQuery } =
+      ctx.req.valid("json");
 
     const period = await resolveConsumptionPeriod(
       auth,
@@ -33,6 +34,8 @@ app.get(
     const result = await fetchConsumptionTopAgents(auth, {
       period,
       limit,
+      offset,
+      search,
       filter,
     });
     if (result.isErr()) {

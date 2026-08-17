@@ -241,5 +241,11 @@ export async function getProjectPodFunctionMCPActionOutput(
     );
   }
 
-  return new Ok({ output: outputResult.value });
+  const output = outputResult.value;
+  return new Ok({
+    output: output?.content ?? null,
+    ...(output?.structuredContent !== undefined
+      ? { structuredContent: output.structuredContent }
+      : {}),
+  });
 }

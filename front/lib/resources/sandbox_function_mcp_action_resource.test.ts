@@ -162,11 +162,105 @@ describe("SandboxFunctionMCPActionResource", () => {
     expect(outputRes.isOk()).toBe(true);
     expect(action.outputGcsPath).toContain(action.sId);
 
+    // Without structuredContent the stored object stays a bare content array, so readers of
+    // older deploys keep working.
+    const storedBuffer = gcsStore.get(
+      action.outputGcsPath ?? "missing-output-path"
+    );
+    expect(JSON.parse(storedBuffer?.toString("utf-8") ?? "")).toEqual(content);
+
     const readBack = await action.readOutput();
     expect(readBack.isOk()).toBe(true);
     if (readBack.isOk()) {
-      expect(readBack.value).toEqual(content);
+      expect(readBack.value).toEqual({ content });
     }
+  });
+
+  it("writes a versioned envelope when the output carries structuredContent", async () => {
+    const { authenticator, invocation, mcpServerView } = await setup();
+    const action = await SandboxFunctionMCPActionFactory.create(authenticator, {
+      invocation,
+      mcpServerView,
+    });
+
+    const content = [{ type: "text" as const, text: "4" }];
+    const structuredContent = { items: [{ id: 1 }], nextCursor: "abc" };
+    const outputRes = await action.createOutputItems(
+      authenticator,
+      content.map((c) => ({ content: c })),
+      { structuredContent }
+    );
+    expect(outputRes.isOk()).toBe(true);
+
+    const storedBuffer = gcsStore.get(
+      action.outputGcsPath ?? "missing-output-path"
+    );
+    expect(JSON.parse(storedBuffer?.toString("utf-8") ?? "")).toEqual({
+      version: 2,
+      content,
+      structuredContent,
+    });
+
+    const readBack = await action.readOutput();
+    expect(readBack.isOk()).toBe(true);
+    if (readBack.isOk()) {
+      expect(readBack.value).toEqual({ content, structuredContent });
+    }
+  });
+
+  it("dual-reads legacy bare-array outputs", async () => {
+    const { authenticator, invocation, mcpServerView } = await setup();
+    const action = await SandboxFunctionMCPActionFactory.create(authenticator, {
+      invocation,
+      mcpServerView,
+    });
+
+    // Persist a modern output to record the GCS path on the row, then overwrite the object with
+    // the legacy bare-array format written by previous deploys.
+    const content = [{ type: "text" as const, text: "legacy" }];
+    const outputRes = await action.createOutputItems(authenticator, [
+      { content: { type: "text", text: "placeholder" } },
+    ]);
+    expect(outputRes.isOk()).toBe(true);
+    gcsStore.set(
+      action.outputGcsPath ?? "missing-output-path",
+      Buffer.from(JSON.stringify(content), "utf-8")
+    );
+
+    const readBack = await action.readOutput();
+    expect(readBack.isOk()).toBe(true);
+    if (readBack.isOk()) {
+      expect(readBack.value).toEqual({ content });
+    }
+  });
+
+  it("errors on an unrecognized output format", async () => {
+    const { authenticator, invocation, mcpServerView } = await setup();
+    const action = await SandboxFunctionMCPActionFactory.create(authenticator, {
+      invocation,
+      mcpServerView,
+    });
+
+    const outputRes = await action.createOutputItems(authenticator, [
+      { content: { type: "text", text: "placeholder" } },
+    ]);
+    expect(outputRes.isOk()).toBe(true);
+    const gcsPath = action.outputGcsPath ?? "missing-output-path";
+
+    gcsStore.set(
+      gcsPath,
+      Buffer.from(JSON.stringify({ not: "an output" }), "utf-8")
+    );
+    const readBack = await action.readOutput();
+    expect(readBack.isErr()).toBe(true);
+
+    // An envelope with an unknown version fails loudly instead of being silently misparsed.
+    gcsStore.set(
+      gcsPath,
+      Buffer.from(JSON.stringify({ version: 3, content: [] }), "utf-8")
+    );
+    const unknownVersionReadBack = await action.readOutput();
+    expect(unknownVersionReadBack.isErr()).toBe(true);
   });
 
   it("marks the action as succeeded or errored with a duration", async () => {

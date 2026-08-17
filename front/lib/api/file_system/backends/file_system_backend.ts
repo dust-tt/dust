@@ -1,13 +1,13 @@
 import type { SandboxMountAdapter } from "@app/lib/api/file_system/sandbox/sandbox_mount_adapter";
 import type {
-  DustFileSystemError,
-  FileSystemMount,
-  SandboxOnlyMount,
-} from "@app/lib/api/file_system/types";
-import type {
   FileSystemDirectoryEntry,
   FileSystemEntry,
 } from "@app/types/api/file_system/types";
+import type {
+  DustFileSystemError,
+  FileSystemMount,
+  SandboxOnlyMount,
+} from "@app/types/file_system";
 import type { Result } from "@app/types/shared/result";
 import type { Readable } from "stream";
 

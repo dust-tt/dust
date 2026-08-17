@@ -8,8 +8,11 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import type { LightWorkspaceType } from "@app/types/user";
 import { cn, ResizableHandle, ResizablePanel } from "@dust-tt/sparkle";
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
+
+// Resize events fire on every drag move; avoid re-rendering panel content.
+const MemoizedConversationSidePanelContent = memo(ConversationSidePanelContent);
 
 interface ConversationSidePanelContainerProps {
   conversation?: ConversationWithoutContentType;
@@ -23,6 +26,9 @@ export default function ConversationSidePanelContainer({
   const { currentPanel, setPanelRef, onPanelClosed } =
     useConversationSidePanelContext();
   const panelRef = useRef<ImperativePanelHandle | null>(null);
+  const [panelContentSizePercent, setPanelContentSizePercent] = useState(
+    DEFAULT_RIGHT_PANEL_SIZE
+  );
   const [fullScreenHash] = useHashParam(FULL_SCREEN_HASH_PARAM);
   const isFullScreen = fullScreenHash === "true";
 
@@ -73,6 +79,12 @@ export default function ConversationSidePanelContainer({
           withHandle={currentPanel && !isFullScreen}
           disabled={!currentPanel || isFullScreen}
           className="z-50"
+          onDragging={(isDragging) => {
+            // Pointer resizing skips transitions, so release completes a drag collapse.
+            if (!isDragging && panelRef.current?.isCollapsed()) {
+              onPanelClosed();
+            }
+          }}
         />
       )}
       {/* Panel Container - either Interactive Content or Actions */}
@@ -80,16 +92,25 @@ export default function ConversationSidePanelContainer({
         ref={panelRef}
         minSize={20}
         defaultSize={0}
-        onTransitionEnd={() => {
-          if (panelRef.current?.isCollapsed()) {
+        onResize={(size) => {
+          if (size > 0) {
+            setPanelContentSizePercent(size);
+          }
+        }}
+        onTransitionEnd={(event) => {
+          // Programmatic and keyboard collapses keep content until motion completes.
+          if (
+            event.target === event.currentTarget &&
+            event.propertyName === "flex-grow" &&
+            panelRef.current?.isCollapsed()
+          ) {
             onPanelClosed();
           }
         }}
         collapsible
         collapsedSize={0}
         className={cn(
-          // Smooth transition animation similar to sidebar
-          "flex-0 overflow-hidden transition-all duration-300 ease-out",
+          "flex-0 overflow-hidden",
           !currentPanel && "hidden w-0 md:block",
           // On mobile: overlay full screen with absolute positioning.
           "md:relative",
@@ -98,11 +119,17 @@ export default function ConversationSidePanelContainer({
         )}
       >
         {currentPanel && conversation && (
-          <ConversationSidePanelContent
-            conversation={conversation}
-            owner={owner}
-            currentPanel={currentPanel}
-          />
+          <div
+            className="h-full @container"
+            // Keep content width and container queries stable during animation.
+            style={{ width: `${panelContentSizePercent}cqw` }}
+          >
+            <MemoizedConversationSidePanelContent
+              conversation={conversation}
+              owner={owner}
+              currentPanel={currentPanel}
+            />
+          </div>
         )}
       </ResizablePanel>
     </>

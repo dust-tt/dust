@@ -39,7 +39,7 @@ import { usePodsSectionCollapsed } from "@app/hooks/usePodsSectionCollapsed";
 import { useSearchPods } from "@app/hooks/useSearchPods";
 import { useStarredPodsSectionCollapsed } from "@app/hooks/useStarredPodsSectionCollapsed";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
@@ -436,13 +436,10 @@ export function AgentSidebarMenu({
 
   const { providersHealth } = useAuth();
   const noHealthyProviders = !hasHealthyProviders(providersHealth);
-  const { hasFeature } = useFeatureFlags();
-  const hasActivationSkill = hasFeature("activation_skill");
   const { activationPodId } = useActivationPod({
     workspaceId: owner.sId,
-    disabled: !hasActivationSkill,
   });
-  const showGetStarted = hasActivationSkill && activationPodId !== null;
+  const showGetStarted = activationPodId !== null;
   const { recommendations: activationRecsForBadge } =
     useActivationRecommendations({
       workspaceId: owner.sId,
@@ -469,6 +466,12 @@ export function AgentSidebarMenu({
   } = usePodConversationsSummary({
     workspaceId: owner.sId,
   });
+
+  // Hide the Learning Space pod from the UI. Users can only see "For you"
+  const visibleSummary = useMemo(
+    () => summary.filter(({ space }) => space.sId !== activationPodId),
+    [summary, activationPodId]
+  );
 
   useEffect(() => {
     const handleConversationsUpdated = () => {
@@ -612,12 +615,12 @@ export function AgentSidebarMenu({
 
   const availablePods = useMemo(
     () =>
-      summary
+      visibleSummary
         .map(({ space }) => space)
         .filter((space) =>
           space.name.toLowerCase().includes(podSearchText.toLowerCase().trim())
         ),
-    [summary, podSearchText]
+    [visibleSummary, podSearchText]
   );
 
   const moveSelectionToPod = useCallback(
@@ -725,7 +728,9 @@ export function AgentSidebarMenu({
   const sidebarTitleFilter = titleFilter;
 
   const starredSection = useMemo(() => {
-    const starredSummary = summary.filter(({ space }) => space.isStarred);
+    const starredSummary = visibleSummary.filter(
+      ({ space }) => space.isStarred
+    );
     const starredCountInSummary = starredSummary.length;
 
     if (starredCountInSummary === 0) {
@@ -765,7 +770,7 @@ export function AgentSidebarMenu({
       </NavigationList>
     );
   }, [
-    summary,
+    visibleSummary,
     owner,
     sidebarTitleFilter,
     moveConversationToPod,
@@ -775,7 +780,9 @@ export function AgentSidebarMenu({
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const podsSection = useMemo(() => {
-    const nonStarredSummary = summary.filter((pod) => !pod.space.isStarred);
+    const nonStarredSummary = visibleSummary.filter(
+      (pod) => !pod.space.isStarred
+    );
 
     const VISIBLE_PODS = 4;
     const hiddenSummary = nonStarredSummary.slice(VISIBLE_PODS);
@@ -841,13 +848,184 @@ export function AgentSidebarMenu({
     );
   }, [
     owner,
-    summary,
+    visibleSummary,
     setIsCreatePodModalOpen,
     isPodsSectionCollapsed,
     setPodsSectionCollapsed,
     isSummaryLoading,
     sidebarTitleFilter,
   ]);
+
+  const navItemsSection = (showGetStarted ||
+    (!isMultiSelect && !hideActions)) && (
+    <NavigationList className="mx-sidebar-side-spacing pt-1">
+      {showGetStarted && (
+        <NavigationListItem
+          label="For you"
+          icon={Lightbulb04}
+          href={getGetStartedRoute(owner.sId)}
+          selected={router.asPath?.startsWith(getGetStartedRoute(owner.sId))}
+          suffix={
+            activationRecsForBadge.length > 0 ? (
+              <Counter
+                value={activationRecsForBadge.length}
+                size="xs"
+                variant="highlight"
+              />
+            ) : undefined
+          }
+        />
+      )}
+      {!isMultiSelect && !hideActions && (
+        <>
+          <NavigationListItem
+            href={getAgentBuilderRoute(owner.sId, "manage")}
+            icon={Robot}
+            label="Agents"
+            selected={router.asPath.startsWith(
+              `/w/${owner.sId}/builder/agents`
+            )}
+            data-gtm-label="assistantManagementButton"
+            data-gtm-location="sidebarMenu"
+            onClick={withTracking(TRACKING_AREAS.BUILDER, "manage_agents", () =>
+              setSidebarOpen(false)
+            )}
+            keepHoverOnMoreMenu
+            moreMenu={
+              canCreateAgent ? (
+                <div
+                  className={cn(
+                    "absolute right-2 top-1.5",
+                    "transition-opacity",
+                    "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
+                    "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
+                    "has-[[data-state=open]]:opacity-100"
+                  )}
+                >
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="xs"
+                        icon={Plus}
+                        label="New"
+                        variant="ghost-secondary"
+                        className="data-[state=open]:bg-hover"
+                        disabled={noHealthyProviders}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      side="bottom"
+                      align="center"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <DropdownMenuLabel label="New agent" />
+                      <DropdownMenuItem
+                        href={getAgentBuilderRoute(owner.sId, "new")}
+                        icon={File02}
+                        label="From scratch"
+                        data-gtm-label="assistantCreationButton"
+                        data-gtm-location="sidebarMenu"
+                        onClick={withTracking(
+                          TRACKING_AREAS.BUILDER,
+                          "create_from_scratch",
+                          () => setSidebarOpen(false)
+                        )}
+                      />
+                      <DropdownMenuItem
+                        href={getAgentBuilderRoute(owner.sId, "create")}
+                        icon={MagicWand02}
+                        label="From template"
+                        data-gtm-label="assistantCreationButton"
+                        data-gtm-location="sidebarMenu"
+                        onClick={withTracking(
+                          TRACKING_AREAS.BUILDER,
+                          "create_from_template",
+                          () => setSidebarOpen(false)
+                        )}
+                      />
+                      <DropdownMenuItem
+                        icon={
+                          isUploadingYAML ? <Spinner size="xs" /> : Brackets
+                        }
+                        label={isUploadingYAML ? "Uploading..." : "From YAML"}
+                        disabled={isUploadingYAML}
+                        onClick={triggerYAMLUpload}
+                        data-gtm-label="yamlUploadButton"
+                        data-gtm-location="sidebarMenu"
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ) : undefined
+            }
+          />
+          <NavigationListItem
+            href={getSkillBuilderRoute(owner.sId, "manage")}
+            icon={SKILL_ICON}
+            label="Skills"
+            selected={router.asPath.startsWith(
+              `/w/${owner.sId}/builder/skills`
+            )}
+            onClick={withTracking(TRACKING_AREAS.BUILDER, "manage_skills", () =>
+              setSidebarOpen(false)
+            )}
+            keepHoverOnMoreMenu
+            moreMenu={
+              canCreateSkill ? (
+                <div
+                  className={cn(
+                    "absolute right-2 top-1.5",
+                    "transition-opacity",
+                    "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
+                    "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
+                    "has-[[data-state=open]]:opacity-100"
+                  )}
+                >
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="xs"
+                        icon={Plus}
+                        label="New"
+                        variant="ghost-secondary"
+                        className="data-[state=open]:bg-hover"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      side="bottom"
+                      align="center"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <DropdownMenuLabel label="New skill" />
+                      <DropdownMenuItem
+                        href={getSkillBuilderRoute(owner.sId, "new")}
+                        icon={SKILL_ICON}
+                        label="From scratch"
+                        onClick={() => setSidebarOpen(false)}
+                      />
+                      <DropdownMenuItem
+                        icon={FolderOpen}
+                        label="From existing"
+                        onClick={() => setIsImportSkillDialogOpen(true)}
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ) : undefined
+            }
+          />
+        </>
+      )}
+    </NavigationList>
+  );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const conversationsList = useMemo(() => {
@@ -861,6 +1039,7 @@ export function AgentSidebarMenu({
         toggleConversationSelection={toggleConversationSelection}
         activeConversationId={activeConversationId}
         owner={owner}
+        topSection={navItemsSection}
         starredSection={starredSection}
         podsSection={podsSection}
         hasTriggeredConversations={hasTriggeredConversations}
@@ -882,6 +1061,7 @@ export function AgentSidebarMenu({
     toggleConversationSelection,
     activeConversationId,
     owner,
+    navItemsSection,
     starredSection,
     podsSection,
     hasTriggeredConversations,
@@ -1027,194 +1207,7 @@ export function AgentSidebarMenu({
                 </div>
               </div>
             )}
-            {(showGetStarted || (!isMultiSelect && !hideActions)) && (
-              <NavigationList className="mx-sidebar-side-spacing mb-4 flex-shrink-0 pt-1">
-                {showGetStarted && (
-                  <NavigationListItem
-                    label="For you"
-                    icon={Lightbulb04}
-                    href={getGetStartedRoute(owner.sId)}
-                    selected={router.asPath?.startsWith(
-                      getGetStartedRoute(owner.sId)
-                    )}
-                    suffix={
-                      activationRecsForBadge.length > 0 ? (
-                        <Counter
-                          value={activationRecsForBadge.length}
-                          size="xs"
-                          variant="highlight"
-                        />
-                      ) : undefined
-                    }
-                  />
-                )}
-                {!isMultiSelect && !hideActions && (
-                  <>
-                    <NavigationListItem
-                      href={getAgentBuilderRoute(owner.sId, "manage")}
-                      icon={Robot}
-                      label="Agents"
-                      selected={router.asPath.startsWith(
-                        `/w/${owner.sId}/builder/agents`
-                      )}
-                      data-gtm-label="assistantManagementButton"
-                      data-gtm-location="sidebarMenu"
-                      onClick={withTracking(
-                        TRACKING_AREAS.BUILDER,
-                        "manage_agents",
-                        () => setSidebarOpen(false)
-                      )}
-                      keepHoverOnMoreMenu
-                      moreMenu={
-                        canCreateAgent ? (
-                          <div
-                            className={cn(
-                              "absolute right-2 top-1.5",
-                              "transition-opacity",
-                              "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
-                              "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
-                              "has-[[data-state=open]]:opacity-100"
-                            )}
-                          >
-                            <DropdownMenu modal={false}>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  size="xs"
-                                  icon={Plus}
-                                  label="New"
-                                  variant="ghost-secondary"
-                                  className="data-[state=open]:bg-hover"
-                                  disabled={noHealthyProviders}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                  }}
-                                />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent
-                                side="bottom"
-                                align="center"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <DropdownMenuLabel label="New agent" />
-                                <DropdownMenuItem
-                                  href={getAgentBuilderRoute(owner.sId, "new")}
-                                  icon={File02}
-                                  label="From scratch"
-                                  data-gtm-label="assistantCreationButton"
-                                  data-gtm-location="sidebarMenu"
-                                  onClick={withTracking(
-                                    TRACKING_AREAS.BUILDER,
-                                    "create_from_scratch",
-                                    () => setSidebarOpen(false)
-                                  )}
-                                />
-                                <DropdownMenuItem
-                                  href={getAgentBuilderRoute(
-                                    owner.sId,
-                                    "create"
-                                  )}
-                                  icon={MagicWand02}
-                                  label="From template"
-                                  data-gtm-label="assistantCreationButton"
-                                  data-gtm-location="sidebarMenu"
-                                  onClick={withTracking(
-                                    TRACKING_AREAS.BUILDER,
-                                    "create_from_template",
-                                    () => setSidebarOpen(false)
-                                  )}
-                                />
-                                <DropdownMenuItem
-                                  icon={
-                                    isUploadingYAML ? (
-                                      <Spinner size="xs" />
-                                    ) : (
-                                      Brackets
-                                    )
-                                  }
-                                  label={
-                                    isUploadingYAML
-                                      ? "Uploading..."
-                                      : "From YAML"
-                                  }
-                                  disabled={isUploadingYAML}
-                                  onClick={triggerYAMLUpload}
-                                  data-gtm-label="yamlUploadButton"
-                                  data-gtm-location="sidebarMenu"
-                                />
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        ) : undefined
-                      }
-                    />
-                    <NavigationListItem
-                      href={getSkillBuilderRoute(owner.sId, "manage")}
-                      icon={SKILL_ICON}
-                      label="Skills"
-                      selected={router.asPath.startsWith(
-                        `/w/${owner.sId}/builder/skills`
-                      )}
-                      onClick={withTracking(
-                        TRACKING_AREAS.BUILDER,
-                        "manage_skills",
-                        () => setSidebarOpen(false)
-                      )}
-                      keepHoverOnMoreMenu
-                      moreMenu={
-                        canCreateSkill ? (
-                          <div
-                            className={cn(
-                              "absolute right-2 top-1.5",
-                              "transition-opacity",
-                              "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
-                              "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
-                              "has-[[data-state=open]]:opacity-100"
-                            )}
-                          >
-                            <DropdownMenu modal={false}>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  size="xs"
-                                  icon={Plus}
-                                  label="New"
-                                  variant="ghost-secondary"
-                                  className="data-[state=open]:bg-hover"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                  }}
-                                />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent
-                                side="bottom"
-                                align="center"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <DropdownMenuLabel label="New skill" />
-                                <DropdownMenuItem
-                                  href={getSkillBuilderRoute(owner.sId, "new")}
-                                  icon={SKILL_ICON}
-                                  label="From scratch"
-                                  onClick={() => setSidebarOpen(false)}
-                                />
-                                <DropdownMenuItem
-                                  icon={FolderOpen}
-                                  label="From existing"
-                                  onClick={() =>
-                                    setIsImportSkillDialogOpen(true)
-                                  }
-                                />
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        ) : undefined
-                      }
-                    />
-                  </>
-                )}
-              </NavigationList>
-            )}
+            {isSearchActive && navItemsSection}
             <div className="min-h-0 flex-1 overflow-hidden">
               {isConversationsError && (
                 <Label className="px-3 py-4 text-xs font-medium text-muted-foreground">
@@ -1272,8 +1265,7 @@ interface UnreadConversationsSectionProps {
   conversations: ConversationListItemType[];
   pods: PodListItemType[];
   isMultiSelect: boolean;
-  isMarkingAllAsRead: boolean;
-  onMarkAllAsRead: (conversationIds: string[]) => void;
+  onMarkAllAsRead: (conversationIds: string[]) => Promise<void>;
   selectedConversations: ConversationListItemType[];
   toggleConversationSelection: (c: ConversationListItemType) => void;
   activeConversationId: string | null;
@@ -1300,7 +1292,6 @@ function UnreadConversationsSection({
   conversations,
   pods,
   isMultiSelect,
-  isMarkingAllAsRead,
   titleFilter,
   onMarkAllAsRead,
   selectedConversations,
@@ -1311,6 +1302,23 @@ function UnreadConversationsSection({
   const conversationGroups = useMemo(
     () => groupUnreadConversations(conversations, pods),
     [conversations, pods]
+  );
+
+  // Which mark-as-read button is in flight ("all" or a pod's spaceId), so
+  // only the clicked button shows a spinner.
+  const [markingScope, setMarkingScope] = useState<string | null>(null);
+
+  const handleMarkAsRead = useCallback(
+    async (scope: string, conversationIds: string[]) => {
+      setMarkingScope(scope);
+      try {
+        await onMarkAllAsRead(conversationIds);
+      } finally {
+        // Only clear our own scope: another button may be in flight.
+        setMarkingScope((prev) => (prev === scope ? null : prev));
+      }
+    },
+    [onMarkAllAsRead]
   );
 
   const podById = useMemo(
@@ -1334,8 +1342,13 @@ function UnreadConversationsSection({
             size="xmini"
             variant="ghost-secondary"
             label="Mark all as read"
-            onClick={() => onMarkAllAsRead(conversations.map((c) => c.sId))}
-            isLoading={isMarkingAllAsRead}
+            onClick={() =>
+              void handleMarkAsRead(
+                "all",
+                conversations.map((c) => c.sId)
+              )
+            }
+            isLoading={markingScope === "all"}
             hasLighterFont
             className="hover:bg-hover active:bg-selected"
           />
@@ -1371,51 +1384,79 @@ function UnreadConversationsSection({
             case "pod": {
               const pod = podById.get(group.spaceId);
               return [
-                <NavigationListLabel
-                  key={`pod-label-${group.spaceId}`}
-                  className="bg-background"
-                  label={group.podName}
-                  icon={pod ? getSpaceIcon(pod) : undefined}
-                  isSticky
-                  action={
-                    shouldShowMarkAllAsReadButton ? (
-                      <Button
-                        size="xmini"
-                        variant="ghost-secondary"
-                        label="Mark as read"
-                        onClick={() =>
-                          onMarkAllAsRead(group.conversations.map((c) => c.sId))
-                        }
-                        isLoading={isMarkingAllAsRead}
-                        hasLighterFont
-                        className="hover:bg-hover active:bg-selected"
-                      />
-                    ) : null
-                  }
-                />,
-                ...group.conversations.map((conversation) => (
-                  <motion.div
-                    key={conversation.sId}
-                    style={GRID_STYLE}
-                    animate={GRID_ANIMATE}
-                    exit={GRID_EXIT}
-                    transition={{ ease: "easeOut", duration: 0.1 }}
+                <motion.div
+                  key={`pod-group-${group.spaceId}`}
+                  style={GRID_STYLE}
+                  animate={GRID_ANIMATE}
+                  exit={GRID_EXIT}
+                  transition={{ ease: "easeOut", duration: 0.1 }}
+                >
+                  {/* Hovering the pod's "Mark as read" button highlights the
+                   * whole block (header + conversations) it would clear. */}
+                  <div
+                    className={cn(
+                      "flex flex-col gap-0.5 overflow-hidden rounded-lg",
+                      "transition-colors duration-150 motion-reduce:transition-none",
+                      "has-[[data-mark-read=pod]:hover]:bg-hover",
+                      "has-[[data-mark-read=pod]:focus-visible]:bg-hover"
+                    )}
                   >
-                    <div className="overflow-hidden">
-                      <ConversationListItem
-                        conversation={conversation}
-                        isMultiSelect={isMultiSelect}
-                        selectedConversations={selectedConversations}
-                        toggleConversationSelection={
-                          toggleConversationSelection
-                        }
-                        activeConversationId={activeConversationId}
-                        owner={owner}
-                        showStatusDot={false}
-                      />
-                    </div>
-                  </motion.div>
-                )),
+                    <NavigationListLabel
+                      // Static group header: no text cursor, and bg-transparent
+                      // lets the hover block show through. mt-2/pt-2 splits the
+                      // label's pt-4 to keep half the spacing outside the block.
+                      className="bg-transparent cursor-default select-none mt-2 pt-2"
+                      label={group.podName}
+                      icon={pod ? getSpaceIcon(pod) : undefined}
+                      action={
+                        shouldShowMarkAllAsReadButton ? (
+                          <Button
+                            size="xmini"
+                            variant="ghost-secondary"
+                            label="Mark as read"
+                            data-mark-read="pod"
+                            onClick={() =>
+                              void handleMarkAsRead(
+                                group.spaceId,
+                                group.conversations.map((c) => c.sId)
+                              )
+                            }
+                            isLoading={markingScope === group.spaceId}
+                            hasLighterFont
+                            className="hover:bg-hover active:bg-selected"
+                          />
+                        ) : null
+                      }
+                    />
+                    <AnimatePresence initial={false}>
+                      {group.conversations.map((conversation) => (
+                        <motion.div
+                          key={conversation.sId}
+                          style={GRID_STYLE}
+                          animate={GRID_ANIMATE}
+                          exit={GRID_EXIT}
+                          transition={{ ease: "easeOut", duration: 0.1 }}
+                        >
+                          {/* Indented under the pod header so the conversation
+                           * reads as nested inside the pod group. */}
+                          <div className="overflow-hidden pl-3">
+                            <ConversationListItem
+                              conversation={conversation}
+                              isMultiSelect={isMultiSelect}
+                              selectedConversations={selectedConversations}
+                              toggleConversationSelection={
+                                toggleConversationSelection
+                              }
+                              activeConversationId={activeConversationId}
+                              owner={owner}
+                              showStatusDot={false}
+                            />
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                </motion.div>,
               ];
             }
             default:
@@ -1629,6 +1670,7 @@ interface NavigationListWithInboxProps {
   toggleConversationSelection: (conversation: ConversationListItemType) => void;
   activeConversationId: string | null;
   owner: WorkspaceType;
+  topSection?: React.ReactNode;
   starredSection?: React.ReactNode;
   podsSection?: React.ReactNode;
   hasTriggeredConversations: boolean;
@@ -1651,6 +1693,7 @@ function NavigationListWithInbox({
   toggleConversationSelection,
   activeConversationId,
   owner,
+  topSection,
   starredSection,
   podsSection,
   hasTriggeredConversations,
@@ -1668,6 +1711,28 @@ function NavigationListWithInbox({
   const [scrollViewport, setScrollViewport] = useState<HTMLDivElement | null>(
     null
   );
+  const [isScrolled, setIsScrolled] = useState(false);
+  const scrollTopSentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const sentinel = scrollTopSentinelRef.current;
+    if (
+      !scrollViewport ||
+      !sentinel ||
+      typeof IntersectionObserver === "undefined"
+    ) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsScrolled(!entry.isIntersecting),
+      { root: scrollViewport }
+    );
+    observer.observe(sentinel);
+
+    return () => observer.disconnect();
+  }, [scrollViewport]);
+
   const { isConversationsSectionCollapsed, setConversationsSectionCollapsed } =
     useConversationsSectionCollapsed();
   const {
@@ -1682,7 +1747,7 @@ function NavigationListWithInbox({
     );
   }, [conversations, titleFilter]);
 
-  const { markAllAsRead, isMarkingAllAsRead } = useMarkAllConversationsAsRead({
+  const { markAllAsRead } = useMarkAllConversationsAsRead({
     owner,
   });
 
@@ -1733,7 +1798,20 @@ function NavigationListWithInbox({
       viewportRef={setScrollViewport}
       className="dd-privacy-mask h-full w-full"
     >
+      <div ref={scrollTopSentinelRef} className="h-px" aria-hidden />
+      <div className="sticky top-0 z-30 h-0" aria-hidden>
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-x-0 top-0 h-8 backdrop-blur-[4px]",
+            "bg-app-background/100",
+            "[mask-image:linear-gradient(to_bottom,black_0%,transparent_100%)]",
+            "transition-opacity duration-200",
+            isScrolled ? "opacity-100" : "opacity-0"
+          )}
+        />
+      </div>
       <div className="flex flex-col gap-4">
+        {topSection}
         <AnimatePresence initial={false}>
           {triggeredConversations.length > 0 && (
             <motion.div
@@ -1749,7 +1827,6 @@ function NavigationListWithInbox({
                   conversations={triggeredConversations}
                   pods={pods}
                   isMultiSelect={isMultiSelect}
-                  isMarkingAllAsRead={isMarkingAllAsRead}
                   titleFilter={titleFilter}
                   onMarkAllAsRead={markAllAsRead}
                   selectedConversations={selectedConversations}
@@ -1774,7 +1851,6 @@ function NavigationListWithInbox({
                   conversations={skillSuggestionConversations}
                   pods={pods}
                   isMultiSelect={isMultiSelect}
-                  isMarkingAllAsRead={isMarkingAllAsRead}
                   titleFilter={titleFilter}
                   onMarkAllAsRead={markAllAsRead}
                   selectedConversations={selectedConversations}
@@ -1799,7 +1875,6 @@ function NavigationListWithInbox({
                   conversations={inboxConversations}
                   pods={pods}
                   isMultiSelect={isMultiSelect}
-                  isMarkingAllAsRead={isMarkingAllAsRead}
                   titleFilter={titleFilter}
                   onMarkAllAsRead={markAllAsRead}
                   selectedConversations={selectedConversations}

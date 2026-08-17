@@ -1,4 +1,3 @@
-import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import {
   buildSourceChartData,
@@ -6,6 +5,7 @@ import {
 } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { CHART_HEIGHT } from "@app/components/charts/constants";
 import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import { useAgentContextOrigin } from "@app/lib/swr/assistants";
 import { isString } from "@app/types/shared/utils/general";

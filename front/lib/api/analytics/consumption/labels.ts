@@ -2,12 +2,15 @@ import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumpti
 import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
 import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
 import { getUserDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
-import { resolveServerDisplayNames } from "@app/lib/api/assistant/observability/tool_usage";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 
 /**
  * Resolve display names / labels (and pictureUrl where applicable)
@@ -16,6 +19,8 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
  * The expected mapping is:
  * - "agent": agent sIds
  * - "user": user sIds
+ * - "api_key": raw API key names
+ * - "group": group sIds
  * - "model": raw model ids
  * - "tool": MCP server names
  * - "skill": skill sIds
@@ -26,13 +31,23 @@ export type DimensionLabel = {
   name: string;
   // Only agents and users have one; null for every other dimension.
   pictureUrl: string | null;
+  // Only agents and skills have one; null for every other dimension.
+  description: string | null;
+  // Only agents have model metadata.
+  modelId?: string;
+  modelDisplayName?: string;
+  // Only tools and skills have an icon.
+  icon?: string | null;
 };
 
 function labelsFromNames(
   names: Map<string, string>
 ): Map<string, DimensionLabel> {
   return new Map(
-    [...names].map(([key, name]) => [key, { name, pictureUrl: null }])
+    [...names].map(([key, name]) => [
+      key,
+      { name, pictureUrl: null, description: null },
+    ])
   );
 }
 
@@ -50,8 +65,17 @@ export async function resolveDimensionLabels(
       const labels = await resolveAnalyticsAgentLabels(auth, keys);
       return new Map(
         keys.map((key) => {
-          const label = labels.get(key) ?? { name: key, pictureUrl: null };
-          return [key, { name: label.name, pictureUrl: label.pictureUrl }];
+          const label = labels.get(key);
+          return [
+            key,
+            {
+              name: label?.name ?? key,
+              pictureUrl: label?.pictureUrl ?? null,
+              description: label?.description || null,
+              modelId: label?.modelId,
+              modelDisplayName: label?.modelDisplayName,
+            },
+          ];
         })
       );
     }
@@ -67,9 +91,23 @@ export async function resolveDimensionLabels(
             {
               name: getUserDisplayName(user),
               pictureUrl: user?.imageUrl ?? null,
+              description: null,
             },
           ];
         })
+      );
+    }
+
+    case "api_key":
+      return labelsFromNames(new Map(keys.map((key) => [key, key])));
+
+    case "group": {
+      const groups = await GroupResource.listAllWorkspaceGroups(auth, {
+        groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
+      });
+      const namesById = new Map(groups.map((group) => [group.sId, group.name]));
+      return labelsFromNames(
+        new Map(keys.map((key) => [key, namesById.get(key) ?? key]))
       );
     }
 
@@ -84,19 +122,44 @@ export async function resolveDimensionLabels(
       );
 
     case "tool": {
-      // The key is the MCP server name. Internal servers get their display name
-      // from the name itself; remote ones are keyed by sId and need a lookup.
-      const displayNames = await resolveServerDisplayNames(auth, keys);
-      return labelsFromNames(
-        new Map(keys.map((key) => [key, displayNames.get(key) || key]))
+      const metadata =
+        await MCPServerViewResource.resolveDisplayMetadataByNames(auth, keys);
+      return new Map(
+        keys.map((key) => {
+          const tool = metadata.get(key);
+          return [
+            key,
+            {
+              name: tool?.name ?? asDisplayToolName(key),
+              pictureUrl: null,
+              description: null,
+              icon: tool?.icon ?? null,
+            },
+          ];
+        })
       );
     }
 
     case "skill": {
-      const skills = await SkillResource.fetchByIds(auth, keys);
-      const namesById = new Map(skills.map((skill) => [skill.sId, skill.name]));
-      return labelsFromNames(
-        new Map(keys.map((key) => [key, namesById.get(key) ?? key]))
+      const skills = await SkillResource.fetchByIds(auth, keys, {
+        withInstructions: false,
+        withTools: false,
+        withFileAttachments: false,
+      });
+      const skillsById = new Map(skills.map((skill) => [skill.sId, skill]));
+      return new Map(
+        keys.map((key) => {
+          const skill = skillsById.get(key);
+          return [
+            key,
+            {
+              name: skill?.name ?? key,
+              pictureUrl: null,
+              description: skill?.userFacingDescription ?? null,
+              icon: skill?.icon ?? null,
+            },
+          ];
+        })
       );
     }
 

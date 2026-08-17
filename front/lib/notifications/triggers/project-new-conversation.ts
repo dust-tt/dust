@@ -11,12 +11,17 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { isPodConversation } from "@app/types/assistant/conversation";
+import {
+  ACTIVATION_NUDGE_ORIGIN,
+  isPodConversation,
+} from "@app/types/assistant/conversation";
 import type { NotificationCondition } from "@app/types/notification_preferences";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
   CONVERSATION_UNREAD_TRIGGER_ID,
   DEFAULT_NOTIFICATION_CONDITION,
+  FOR_YOU_NOTIFICATION_METADATA_KEY,
+  isForYouNotificationsEnabled,
   isNotificationCondition,
 } from "@app/types/notification_preferences";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -234,14 +239,21 @@ export function notifyNewProjectConversation(
   });
 }
 
+export async function areForYouNotificationsEnabled(
+  user: UserResource
+): Promise<boolean> {
+  const metadata = await user.getMetadata(FOR_YOU_NOTIFICATION_METADATA_KEY);
+  return isForYouNotificationsEnabled(metadata?.value);
+}
+
 /**
  * Send the dedicated activation email once the agent has replied in an
  * activation-pod conversation. Called from the agent-loop completion path so
- * the notification (and its per-user delay) starts only after the reply exists.
+ * the notification starts only after the reply exists.
  *
  * Runs only if the conversation belongs to an activation pod and was started
- * by the activation nudge workflow. Respects the target user's notification
- * settings.
+ * by the activation nudge workflow. Respects the target user's For You toggle
+ * and "Notify me about" condition; Email frequency does not apply.
  */
 export async function notifyActivationConversationAgentReplied(
   auth: Authenticator,
@@ -267,12 +279,15 @@ export async function notifyActivationConversationAgentReplied(
   }
 
   const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
-  // Only the conversation created by the pod's own activation nudge trigger gets the notification
-  if (
-    activationPod === null ||
-    activationPod.triggerId === null ||
-    conversationResource.triggerId !== activationPod.triggerId
-  ) {
+  if (activationPod === null) {
+    return;
+  }
+
+  // Only a conversation Dust opened with a nudge gets the notification, not one
+  // the user started themselves.
+  const openingOrigin =
+    await conversationResource.openingUserMessageOrigin(auth);
+  if (openingOrigin !== ACTIVATION_NUDGE_ORIGIN) {
     return;
   }
 
@@ -287,6 +302,10 @@ export async function notifyActivationConversationAgentReplied(
     space.id
   );
   if (!allowedUser) {
+    return;
+  }
+
+  if (!(await areForYouNotificationsEnabled(allowedUser))) {
     return;
   }
 

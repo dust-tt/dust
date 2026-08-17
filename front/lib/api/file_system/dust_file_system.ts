@@ -19,18 +19,6 @@
 import config from "@app/lib/api/config";
 import type { FileSystemBackend } from "@app/lib/api/file_system/backends/file_system_backend";
 import { GCSFileSystemBackend } from "@app/lib/api/file_system/backends/gcs_file_system_backend";
-import type {
-  FileSystemMount,
-  SandboxOnlyMount,
-} from "@app/lib/api/file_system/types";
-import {
-  DustFileSystemError,
-  LEGACY_PREFIX_CONVERSATION,
-  LEGACY_PREFIX_PROJECT,
-  SCOPED_PREFIX_CONVERSATION,
-  SCOPED_PREFIX_POD,
-  SCOPED_PREFIX_USER,
-} from "@app/lib/api/file_system/types";
 import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import type { Authenticator } from "@app/lib/auth";
 import fileStorageConfig from "@app/lib/file_storage/config";
@@ -45,6 +33,15 @@ import type {
 } from "@app/types/api/file_system/types";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
+import type { FileSystemMount, SandboxOnlyMount } from "@app/types/file_system";
+import {
+  DustFileSystemError,
+  LEGACY_PREFIX_CONVERSATION,
+  LEGACY_PREFIX_PROJECT,
+  SCOPED_PREFIX_CONVERSATION,
+  SCOPED_PREFIX_POD,
+  SCOPED_PREFIX_USER,
+} from "@app/types/file_system";
 import { isSupportedImageContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -53,9 +50,9 @@ import assert from "assert";
 import * as path from "path";
 import type { Readable } from "stream";
 
-export type { FileSystemMount } from "@app/lib/api/file_system/types";
-export { DustFileSystemError } from "@app/lib/api/file_system/types";
 export type { FileSystemEntry } from "@app/types/api/file_system/types";
+export type { FileSystemMount } from "@app/types/file_system";
+export { DustFileSystemError } from "@app/types/file_system";
 
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHAR_RE = /[\x00-\x1F\x7F-\x9F]/g;

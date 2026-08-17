@@ -1,6 +1,7 @@
 import {
   FILE_OFFLOAD_SNIPPET_LENGTH,
   FILE_OFFLOAD_TEXT_SIZE_BYTES,
+  TOOL_OUTPUT_OFFLOAD_META_KEY,
 } from "@app/lib/actions/action_output_limits";
 import type {
   InternalServerSideMCPToolConfigurationType,
@@ -16,7 +17,6 @@ import type {
   DataSourceNodeContentType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolContext } from "@app/lib/actions/types";
-import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
@@ -34,6 +34,7 @@ import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctio
 import { createPersistedSandboxFunctionInvocationTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/types/mount_path";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -301,6 +302,13 @@ describe("processToolResults", () => {
       expect(stored.resource.uri).toMatch(
         new RegExp(`${TOOL_OUTPUTS_FOLDER_NAME}/`)
       );
+
+      // The machine-readable counterpart of the archive sentence rides the block's _meta.
+      expect(stored._meta?.[TOOL_OUTPUT_OFFLOAD_META_KEY]).toEqual({
+        fullContentPath: stored.resource.uri,
+        totalBytes: Buffer.byteLength(largeText, "utf8"),
+        contentType: "text/plain",
+      });
     }
 
     // Offloaded to DustFileSystem, so generatedFiles is empty.
@@ -770,6 +778,188 @@ describe("processToolResults", () => {
     expect(refetched?.outputGcsPath).toBe(
       `w/${workspace.sId}/mcp_output_items/${action.sId}/output.json`
     );
+  });
+
+  it("should replace the head of offloaded JSON with a parse-safe stub in a sandbox function run context", async () => {
+    const { auth, toolContext } = await setupSandboxFunctionTest();
+
+    const largeJson = JSON.stringify({
+      data: "x".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES),
+    });
+
+    const { outputItems } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent: [{ type: "text", text: largeJson }],
+    });
+
+    expect(outputItems).toHaveLength(1);
+    const stored = outputItems[0].content;
+    expect(stored.type).toBe("resource");
+    assert(stored.type === "resource" && "text" in stored.resource);
+
+    // The stub is a single JSON line followed by the archive sentence, byte-identical to the
+    // sentence conversation snippets carry (existing function code regexes it).
+    const lines = stored.resource.text.split("\n");
+    expect(lines).toHaveLength(2);
+    expect(lines[1]).toBe(`[Full content archived at ${stored.resource.uri}]`);
+
+    // The stub itself parses and points at the full content, like the _meta descriptor.
+    expect(lines[0].length).toBeLessThanOrEqual(FILE_OFFLOAD_SNIPPET_LENGTH);
+    const stub = JSON.parse(lines[0]);
+    expect(stub.__dust_offloaded__).toBe(true);
+    expect(stub.fullContentPath).toBe(stored.resource.uri);
+    expect(stub.totalBytes).toBe(Buffer.byteLength(largeJson, "utf8"));
+    expect(stub.head.length).toBeGreaterThan(0);
+    expect(largeJson.startsWith(stub.head)).toBe(true);
+
+    expect(stored._meta?.[TOOL_OUTPUT_OFFLOAD_META_KEY]).toEqual({
+      fullContentPath: stored.resource.uri,
+      totalBytes: Buffer.byteLength(largeJson, "utf8"),
+      contentType: "application/json",
+    });
+
+    // The descriptor survives output-item persistence: it is part of the single GCS object
+    // recorded on the sandbox action.
+    const outputWrite = fileStorageMock.saveFileCalls.find((call) =>
+      call.filePath.endsWith("/output.json")
+    );
+    expect(outputWrite).toBeDefined();
+    const persisted = JSON.parse(outputWrite?.content.toString() ?? "");
+    expect(persisted[0]._meta?.[TOOL_OUTPUT_OFFLOAD_META_KEY]).toEqual({
+      fullContentPath: stored.resource.uri,
+      totalBytes: Buffer.byteLength(largeJson, "utf8"),
+      contentType: "application/json",
+    });
+  });
+
+  it("should keep the plain snippet for offloaded non-JSON text in a sandbox function run context", async () => {
+    const { auth, toolContext } = await setupSandboxFunctionTest();
+
+    const largeText = "x".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES + 1);
+
+    const { outputItems } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent: [{ type: "text", text: largeText }],
+    });
+
+    expect(outputItems).toHaveLength(1);
+    const stored = outputItems[0].content;
+    expect(stored.type).toBe("resource");
+    assert(stored.type === "resource" && "text" in stored.resource);
+
+    // Non-JSON content keeps today's exact snippet shape: raw head, truncation marker, sentence.
+    expect(
+      stored.resource.text.startsWith(
+        largeText.substring(0, FILE_OFFLOAD_SNIPPET_LENGTH)
+      )
+    ).toBe(true);
+    expect(stored.resource.text).toContain("... (truncated)");
+    expect(stored.resource.text).toContain(
+      `[Full content archived at ${stored.resource.uri}]`
+    );
+    expect(stored.resource.text).not.toContain("__dust_offloaded__");
+
+    expect(stored._meta?.[TOOL_OUTPUT_OFFLOAD_META_KEY]).toEqual({
+      fullContentPath: stored.resource.uri,
+      totalBytes: Buffer.byteLength(largeText, "utf8"),
+      contentType: "text/plain",
+    });
+  });
+
+  it("should keep today's snippet for offloaded JSON in an agent loop run context", async () => {
+    const { auth, toolContext } = await setupTest();
+
+    const largeJson = JSON.stringify({
+      data: "x".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES),
+    });
+
+    const { outputItems } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent: [{ type: "text", text: largeJson }],
+    });
+
+    expect(outputItems).toHaveLength(1);
+    const stored = outputItems[0].content;
+    expect(stored.type).toBe("resource");
+    assert(stored.type === "resource" && "text" in stored.resource);
+
+    // Conversation snippets are untouched by the parse-safe stub: raw head + sentence.
+    expect(
+      stored.resource.text.startsWith(
+        largeJson.substring(0, FILE_OFFLOAD_SNIPPET_LENGTH)
+      )
+    ).toBe(true);
+    expect(stored.resource.text).not.toContain("__dust_offloaded__");
+    expect(stored.resource.text).toContain(
+      `[Full content archived at ${stored.resource.uri}]`
+    );
+
+    // The descriptor is attached in every run context.
+    expect(stored._meta?.[TOOL_OUTPUT_OFFLOAD_META_KEY]).toEqual({
+      fullContentPath: stored.resource.uri,
+      totalBytes: Buffer.byteLength(largeJson, "utf8"),
+      contentType: "application/json",
+    });
+  });
+
+  it("should attach the offload descriptor to offloaded resource text blocks", async () => {
+    const { auth, toolContext } = await setupTest();
+
+    const largeResourceText = "y".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES + 1);
+
+    const { outputItems } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent: [
+        {
+          type: "resource",
+          resource: { uri: "file://test.txt", text: largeResourceText },
+        },
+      ],
+    });
+
+    expect(outputItems).toHaveLength(1);
+    const stored = outputItems[0].content;
+    expect(stored.type).toBe("resource");
+    assert(stored.type === "resource" && "text" in stored.resource);
+
+    const descriptor = stored._meta?.[TOOL_OUTPUT_OFFLOAD_META_KEY];
+    expect(descriptor).toMatchObject({
+      totalBytes: Buffer.byteLength(largeResourceText, "utf8"),
+      contentType: "text/plain",
+    });
+    expect(stored.resource.text).toContain("[Full content archived at ");
+  });
+
+  it("should persist a versioned envelope when the tool result carries structuredContent in a sandbox function run context", async () => {
+    const { auth, action, toolContext } = await setupSandboxFunctionTest();
+
+    const toolCallResultContent: CallToolResult["content"] = [
+      { type: "text", text: "human-readable result" },
+    ];
+    const structuredContent = { items: [{ id: 1 }], nextCursor: "abc" };
+
+    const { outputItems } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent,
+      toolCallResultStructuredContent: structuredContent,
+    });
+
+    expect(outputItems).toHaveLength(1);
+
+    const outputWrite = fileStorageMock.saveFileCalls.find((call) =>
+      call.filePath.endsWith(`mcp_output_items/${action.sId}/output.json`)
+    );
+    expect(outputWrite).toBeDefined();
+    expect(JSON.parse(outputWrite?.content.toString() ?? "")).toEqual({
+      version: 2,
+      content: toolCallResultContent,
+      structuredContent,
+    });
   });
 
   it("should throw and leave the action without an output path when the sandbox output write fails", async () => {

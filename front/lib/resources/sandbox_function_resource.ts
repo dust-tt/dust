@@ -3,6 +3,7 @@ import type {
   PokePodFunctionDetails,
 } from "@app/lib/api/poke/projects";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
+import { sandboxFunctionNameFromSlug } from "@app/lib/api/sandbox_functions/slug";
 import { authorizeSandboxFunctionInvocation } from "@app/lib/api/sandbox_functions/workspace_user";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
@@ -24,6 +25,7 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import type { PodAppFunction } from "@app/types/api/pod_apps";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   SandboxFunctionExecutionMode,
@@ -38,7 +40,7 @@ import { sandboxFunctionContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import { createHash } from "crypto";
@@ -75,8 +77,20 @@ function userIdentityPolicyStrength(
       return 1;
     case "interactive_workspace_user_required":
       return 2;
+    case "pod_member_required":
+      // The pod-scoped audience ranks above the workspace-wide, session-bound policy: a publish
+      // moving to it always commits the policy before exposing the new bundle.
+      return 3;
     default:
-      return assertNever(policy);
+      // The stored policy can be a value this revision does not know: one from a newer revision
+      // in a mixed-version deploy, or a retired policy (e.g. `pod_editor_required`). Rank it
+      // strictest so the republish never loosens it early and simply overwrites it with the
+      // upload; invoking it is denied regardless (see authorizeSandboxFunctionInvocation).
+      // `assertNeverAndIgnore` (not `assertNever`) is deliberate although this is server code:
+      // republish is the only path that rewrites a stored policy, so throwing here would make a
+      // function carrying a retired policy permanently unrepairable.
+      assertNeverAndIgnore(policy);
+      return Number.POSITIVE_INFINITY;
   }
 }
 
@@ -539,6 +553,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     const authorization = await authorizeSandboxFunctionInvocation(auth, {
       userIdentity: this.userIdentity,
       origin,
+      space: this.space,
     });
     if (!authorization.authorized) {
       return new Err(
@@ -561,6 +576,17 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       createdAt: this.createdAt.toISOString(),
       updatedAt: this.updatedAt.toISOString(),
       author: author ? author.fullName() : null,
+    };
+  }
+
+  // What the Pod's Apps tab shows for a function it lists under its app. Carries both the full slug
+  // (which addresses the function) and the bare name (which is all the app's own view needs to show).
+  toPodAppJSON(): PodAppFunction {
+    return {
+      slug: this.slug,
+      name: sandboxFunctionNameFromSlug(this.slug),
+      description: this.description,
+      executionMode: this.executionMode,
     };
   }
 

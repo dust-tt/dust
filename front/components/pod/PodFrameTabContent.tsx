@@ -49,6 +49,9 @@ export function PodFrameTabContent({
           fileContent={fileContent}
           vizUrl={vizUrl}
           identifier={`viz-frame-tab-${fileId}`}
+          isPodEditor={podInfo.isEditor}
+          isPodMember={podInfo.isMember}
+          framePath={tab.path}
         />
       </div>
     </div>

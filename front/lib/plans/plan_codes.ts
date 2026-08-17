@@ -149,9 +149,9 @@ export function isProOrBusinessPlanCode(plan?: PlanType) {
 }
 
 /**
- * `isUpgraded` returns true if the plan has access to all features of Dust, including large
- * language models (meaning it's either a paid plan or free plan with (eg friends and family, or
- * free trial plan)).
+ * `isUpgraded` returns true if the plan has access to paid Dust features (meaning it's either a
+ * paid plan or a free plan with upgraded access, such as friends and family or a free trial).
+ * Plan-specific entitlements such as large-model access must use their dedicated checks instead.
  *
  * Note: We didn't go for isFree or isPayingWorkspace as we have "upgraded" plans that are free.
  */

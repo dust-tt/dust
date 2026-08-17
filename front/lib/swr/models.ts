@@ -22,6 +22,7 @@ export function useModels({
   return {
     models: data?.models ?? emptyArray(),
     defaultModel: data?.defaultModel ?? null,
+    streams: data?.streams ?? null,
     isModelsLoading: !error && !data && !disabled,
     isModelsError: !!error,
   };

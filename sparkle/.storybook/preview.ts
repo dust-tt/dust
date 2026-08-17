@@ -7,6 +7,11 @@ import { create } from "storybook/theming/create";
 
 const preview: Preview = {
   parameters: {
+    // Surface axe violations as warnings in the test widget without failing
+    // runs. Components with known violations carry the "a11y-issues" tag
+    // (badge configured in manager.ts). `npm run a11y:sync` re-runs the suite
+    // in strict mode (VITE_A11Y_STRICT=1 → violations fail) to refresh tags.
+    a11y: { test: import.meta.env.VITE_A11Y_STRICT ? "error" : "todo" },
     docs: {
       // Render docs pages in the system fonts (Geist is loaded by fonts.css).
       theme: create({

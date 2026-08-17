@@ -25,14 +25,17 @@ export function makeInternalMCPServer(
   return new McpServer(serverInfo);
 }
 
-// Returns an MCPError when the caller is not a workspace admin, null otherwise.
-// For internal tools that expose workspace-wide data and must enforce admin
-// access independently of skill/agent/server visibility.
-export function workspaceAdminGuard(auth: Authenticator): MCPError | null {
-  if (!auth.isAdmin()) {
-    return new MCPError("This tool is restricted to workspace admins.", {
-      tracked: false,
-    });
+// Returns an MCPError when the caller is neither a workspace manager nor an
+// admin, null otherwise. For internal tools that expose workspace-wide data and
+// must enforce access independently of skill/agent/server visibility.
+export function workspaceManagerGuard(auth: Authenticator): MCPError | null {
+  if (!auth.isManager()) {
+    return new MCPError(
+      "This tool is restricted to workspace admins and managers.",
+      {
+        tracked: false,
+      }
+    );
   }
   return null;
 }

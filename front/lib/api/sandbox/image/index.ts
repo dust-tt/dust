@@ -6,7 +6,10 @@ import {
 } from "@app/lib/api/sandbox/image/registry";
 import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import type { ToolEntry } from "@app/lib/api/sandbox/image/types";
-import { DSBX_TOOL_NAME } from "@app/lib/api/sandbox/image/types";
+import {
+  DSBX_TOOL_NAME,
+  devSandboxImageId,
+} from "@app/lib/api/sandbox/image/types";
 import type { Authenticator } from "@app/lib/auth";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isDevelopment } from "@app/types/shared/env";
@@ -56,6 +59,21 @@ export function filterDsbxToolEntries(
   return tools.filter((tool) => tool.name !== DSBX_TOOL_NAME);
 }
 
+// Dev-only: resolve the developer's own image alias, so a locally built image
+// can be exercised without publishing over the release alias. Set
+// SBX_DEV_IMAGE_SUFFIX and build with `sandbox_image_build.ts` (no --release).
+// Leave it unset to run against the release image CI built.
+function withDevImageId(image: SandboxImage): SandboxImage {
+  const { imageId } = image;
+  if (!imageId) {
+    return image;
+  }
+
+  return image.register(
+    devSandboxImageId(imageId, config.getSandboxDevImageSuffix())
+  );
+}
+
 export function getSandboxImage(
   _auth?: Authenticator
 ): Result<SandboxImage, Error> {
@@ -68,7 +86,7 @@ export function getSandboxImage(
     return imageResult;
   }
 
-  const image = imageResult.value;
+  const image = withDevImageId(imageResult.value);
 
   // Dev-only: bypass all egress restrictions. Pairs with skipping the dsbx
   // forwarder + tearing down in-sandbox nftables in tools/index.ts.
@@ -109,5 +127,8 @@ export type {
   ToolProfile,
   ToolRuntime,
 } from "@app/lib/api/sandbox/image/types";
-export { formatSandboxImageId } from "@app/lib/api/sandbox/image/types";
+export {
+  devSandboxImageId,
+  formatSandboxImageId,
+} from "@app/lib/api/sandbox/image/types";
 export { getRegisteredImages, getSandboxImageFromRegistry };

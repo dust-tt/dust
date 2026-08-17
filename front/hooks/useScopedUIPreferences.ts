@@ -8,6 +8,7 @@ const SYSTEM_POD_TABS = [
   "conversations",
   "tasks",
   "files",
+  "apps",
   "connected_data",
   "settings",
 ] as const;

@@ -6,8 +6,8 @@ import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces"
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type {
-  CombinedResourcePermissions,
-  GroupPermission,
+  AccessControlList,
+  GroupGrant,
 } from "@app/types/resource_permissions";
 import { removeNulls } from "@app/types/shared/utils/general";
 import assert from "assert";
@@ -147,8 +147,8 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
       // Editor group stays empty while admin-controlled.
       return false;
     }
-    const requestedPermissions = await this.requestedPermissions();
-    return auth.canWrite(requestedPermissions);
+    const acls = await this.getAccessControlLists(auth);
+    return auth.hasPermissionForAcls("write", acls);
   }
 
   async canRemoveMember(
@@ -160,15 +160,17 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
     if (!skipCheckLastMember && editorsCount <= 1) {
       return false;
     }
-    const requestedPermissions = await this.requestedPermissions();
-    return auth.canWrite(requestedPermissions);
+    const acls = await this.getAccessControlLists(auth);
+    return auth.hasPermissionForAcls("write", acls);
   }
 
-  async requestedPermissions(): Promise<CombinedResourcePermissions[]> {
+  async getAccessControlLists(
+    auth: Authenticator
+  ): Promise<AccessControlList[]> {
     if (this.space.isProject()) {
       // Only gets the editor groups correponding to the space management mode
       const editorGroupSpaces = await this.getEditorGroupSpaces(true);
-      const editorGroupsPermissions: GroupPermission[] = editorGroupSpaces.map(
+      const editorGroupsPermissions: GroupGrant[] = editorGroupSpaces.map(
         (egs) => ({
           id: egs.groupId,
           permissions: ["admin", "read", "write"],

@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { getSeatPlan } from "@app/lib/api/credits/seat_plan";
+import { getWorkspacePlanLimitOverrides } from "@app/lib/api/plan_limit_overrides";
 import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -10,6 +11,7 @@ import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import { getCachedWorkspaceMetronomeAlerts } from "@app/lib/metronome/alerts/workspace_alerts";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
 import { isWorkspaceProgrammaticWarningReached } from "@app/lib/metronome/user_block";
+import type { PlanLimitOverride } from "@app/lib/plans/plan_limit_overrides";
 import { getCustomerId, getStripeSubscription } from "@app/lib/plans/stripe";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
@@ -68,6 +70,10 @@ export type PokeWorkspaceInfo = {
   membersCount: number;
   metronomeCustomerId: string | null;
   pendingSubscription: SubscriptionType | null;
+  // Per-workspace overrides of the plan seat limits, or null when the workspace
+  // has none. `activeSubscription.plan` already carries the effective values;
+  // this tells Poke which of them are overridden rather than plan-given.
+  planLimitOverride: PlanLimitOverride | null;
   poolCreditState: WorkspacePoolCreditState;
   seatPlan: SeatPlanResponseBody | null;
   // The Metronome alerts backing each credit dimension — id and current status —
@@ -180,6 +186,8 @@ export async function getPokeWorkspaceInfo(
     );
   const pendingSubscription = pendingSubscriptionResource?.toJSON() ?? null;
 
+  const planLimitOverride = await getWorkspacePlanLimitOverrides(auth);
+
   const [membersCount, seatPlanResult] = await Promise.all([
     MembershipResource.getMembersCountForWorkspace({
       workspace: owner,
@@ -225,6 +233,7 @@ export async function getPokeWorkspaceInfo(
     metronomeCustomerId: workspaceResource.metronomeCustomerId ?? null,
     seatPlan,
     pendingSubscription,
+    planLimitOverride,
     poolCreditState: workspaceResource.poolCreditState,
     poolAlert,
     programmaticAlerts,

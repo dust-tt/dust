@@ -24,17 +24,62 @@ describe("getFrameRuntimeAccess", () => {
       userIdentity: {
         isAuthenticated: true,
         isWorkspaceMember: true,
+        isPodEditor: false,
+        isPodMember: false,
+        user,
+      },
+    });
+  });
+
+  it("forwards pod editorship from the scoped identity", () => {
+    expect(
+      getFrameRuntimeAccess("w_current", true, {
+        ...scopedUserIdentity,
+        isPodEditor: true,
+      })
+    ).toEqual({
+      canInvokeFunctions: true,
+      userIdentity: {
+        isAuthenticated: true,
+        isWorkspaceMember: true,
+        isPodEditor: true,
+        isPodMember: false,
+        user,
+      },
+    });
+  });
+
+  it("forwards pod membership from the scoped identity", () => {
+    expect(
+      getFrameRuntimeAccess("w_current", true, {
+        ...scopedUserIdentity,
+        isPodMember: true,
+      })
+    ).toEqual({
+      canInvokeFunctions: true,
+      userIdentity: {
+        isAuthenticated: true,
+        isWorkspaceMember: true,
+        isPodEditor: false,
+        isPodMember: true,
         user,
       },
     });
   });
 
   it("fails closed for an identity from another workspace", () => {
-    expect(getFrameRuntimeAccess("w_other", true, scopedUserIdentity)).toEqual({
+    expect(
+      getFrameRuntimeAccess("w_other", true, {
+        ...scopedUserIdentity,
+        isPodEditor: true,
+      })
+    ).toEqual({
       canInvokeFunctions: false,
       userIdentity: {
         isAuthenticated: false,
         isWorkspaceMember: false,
+        isPodEditor: false,
+        isPodMember: false,
         user: null,
       },
     });
@@ -48,6 +93,8 @@ describe("getFrameRuntimeAccess", () => {
       userIdentity: {
         isAuthenticated: true,
         isWorkspaceMember: true,
+        isPodEditor: false,
+        isPodMember: false,
         user,
       },
     });

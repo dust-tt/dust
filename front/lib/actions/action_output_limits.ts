@@ -9,6 +9,23 @@ export const FILE_OFFLOAD_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB for non-im
 
 export const FILE_OFFLOAD_SNIPPET_LENGTH = 8_000; // Approximately 2K tokens.
 
+// Key of the machine-readable offload descriptor in a content block's `_meta`. Attached to every
+// block whose full text was offloaded to the run context's file system, so code consumers
+// (function code via `@dust/pod`, future SDKs) can read the full content back without parsing the
+// human-facing "[Full content archived at ...]" sentence. Reverse-domain prefixed per the MCP
+// `_meta` naming convention.
+export const TOOL_OUTPUT_OFFLOAD_META_KEY = "tt.dust/offload";
+
+// The descriptor stored under TOOL_OUTPUT_OFFLOAD_META_KEY. This is a wire contract consumed
+// in-sandbox (`@dust/pod` carries its own copy of the shape): fields are append-only.
+export interface ToolOutputOffloadDescriptor {
+  // Scoped path of the archived full content (e.g. "pod-{pId}/.tool_outputs/{slug}/{file}"),
+  // resolvable in-sandbox under the /files gcsfuse mount.
+  fullContentPath: string;
+  totalBytes: number;
+  contentType: string;
+}
+
 // Hard limits for remote MCP server tool results.
 // When any content block exceeds these sizes, the entire tool result is rejected.
 const REMOTE_MAX_TEXT_SIZE_BYTES = 2 * 1024 * 1024; // 2MB.
@@ -18,6 +35,11 @@ const REMOTE_MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB.
 const REMOTE_MAX_RESOURCE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB.
 // Hard limit on the entire array of tool outputs.
 const REMOTE_MAX_TOOL_RESULT_SIZE_BYTES = 50 * 1024 * 1024; // 50MB.
+
+// Hard limit on the `structuredContent` payload of remote MCP tool results. Oversized payloads
+// are dropped (the model-facing content is unaffected) rather than failing the tool call, since
+// they used to be discarded entirely.
+export const REMOTE_MAX_STRUCTURED_CONTENT_SIZE_BYTES = 2 * 1024 * 1024; // 2MB.
 
 export function computeTextByteSize(text: string): number {
   return Buffer.byteLength(text, "utf8");

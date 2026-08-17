@@ -2,7 +2,7 @@ import { ContextUsageIndicator } from "@app/components/assistant/conversation/in
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarButtons } from "@app/components/assistant/conversation/input_bar/InputBarButtons";
 import type { PendingInputText } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { InputBarSpacesPicker } from "@app/components/assistant/conversation/input_bar/InputBarSpacesPicker";
+import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
 import {
   INPUT_BAR_COMPACT_CONTENT_ENTER_ANIMATION_CLASSES,
   INPUT_BAR_COMPACT_PILL_INNER_CLASSES,
@@ -101,7 +101,6 @@ import {
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,
-  Type01,
   VoicePicker,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
@@ -343,6 +342,7 @@ const InputBarContainer = ({
 
   const [startsWithUserMention, setStartsWithUserMention] = useState(false);
   const canSubmitEmpty = !!selectedSingleAgent;
+
   const [isBlockTooltipOpen, setIsBlockTooltipOpen] = useState(false);
   const blockTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
@@ -380,7 +380,6 @@ const InputBarContainer = ({
   >(undefined);
   const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
-  const [isToolbarOpen, setIsToolbarOpen] = useState(false);
   const plusButtonRef = useRef<HTMLDivElement>(null);
   const isWidthConstrained = useIsWidthConstrained();
   const shouldEnableSlashSuggestion = actions.includes("capabilities");
@@ -928,9 +927,33 @@ const InputBarContainer = ({
     setOverlayOpen("knowledge-picker", showKnowledgePicker);
   }, [showKnowledgePicker, setOverlayOpen]);
 
-  useEffect(() => {
-    setOverlayOpen("toolbar", isToolbarOpen);
-  }, [isToolbarOpen, setOverlayOpen]);
+  const handleAgentRemove = useCallback(() => {
+    setSelectedSingleAgent(null);
+  }, [setSelectedSingleAgent]);
+  const handleAgentPickerOpenChange = useCallback(
+    (open: boolean) => {
+      setOverlayOpen("agent-picker", open);
+    },
+    [setOverlayOpen]
+  );
+  const handleCapabilitiesPickerOpenChange = useCallback(
+    (open: boolean) => {
+      setOverlayOpen("capabilities-picker", open);
+    },
+    [setOverlayOpen]
+  );
+  const handleAttachmentsPickerOpenChange = useCallback(
+    (open: boolean) => {
+      setOverlayOpen("attachments-picker", open);
+    },
+    [setOverlayOpen]
+  );
+  const handlePlusMenuOpenChange = useCallback(
+    (open: boolean) => {
+      setOverlayOpen("plus-menu", open);
+    },
+    [setOverlayOpen]
+  );
 
   useEffect(() => {
     // If an attachment disappears from the uploader, remove its chip from the editor
@@ -1118,7 +1141,7 @@ const InputBarContainer = ({
 
     // Sync: when a dataSourceLink chip is deleted from the editor, remove
     // the corresponding attached node so the attachment card disappears.
-    if (currentEditor) {
+    if (currentEditor && attachedNodesRef.current.length > 0) {
       const chipNodeIds = new Set<string>();
       currentEditor.state.doc.descendants((node) => {
         if (node.type.name === "dataSourceLink" && node.attrs?.nodeId) {
@@ -1547,6 +1570,12 @@ const InputBarContainer = ({
 
   const hideCapabilities = startsWithUserMention && !selectedSingleAgent;
 
+  const canShowVoicePicker =
+    !subscription.plan.isByok &&
+    owner.metadata?.allowVoiceTranscription !== false &&
+    actions.includes("voice") &&
+    !isCompact;
+
   const isDefaultAgentUnavailable =
     !conversation &&
     !isAgentBuilder &&
@@ -1558,12 +1587,16 @@ const InputBarContainer = ({
   const contentEditableClasses = classNames(
     "inline-block w-full",
     "border-0 outline-hidden ring-0 focus:border-0 focus:outline-hidden focus:ring-0",
-    "whitespace-pre-wrap font-normal",
+    "whitespace-pre-wrap font-normal text-base",
     "px-3 md:pl-4 pt-3 md:pt-3.5"
   );
 
   const isRecording = activeVoiceService.status === "recording";
   const isVoiceActive = activeVoiceService.status !== "idle";
+  // Keep the send button (and its spinner) while a submit is in flight — the
+  // editor clears optimistically — but let the mic own the row while it is
+  // recording or transcribing, where it shows a timer and a level meter.
+  const showSendButton = !isVoiceActive || isSubmitting;
   const compactPreviewText = editorService.getTrimmedText();
   const compactDisplayPlaceholder =
     (disableInput ? submitBlockMessage : placeholder) ?? "Get work done";
@@ -1670,6 +1703,16 @@ const InputBarContainer = ({
         )}
         aria-hidden={isCompact}
         onClick={(e) => {
+          // Overlays rendered by our pickers (dropdowns, sub-dropdowns, popovers) are portalled
+          // out of this div but stay React descendants, so their clicks still bubble here.
+          // Refocusing the editor on those steals focus from the overlay, which makes Radix
+          // dismiss it (e.g. clicking a sub-dropdown searchbar would close it).
+          if (
+            !(e.target instanceof Node) ||
+            !e.currentTarget.contains(e.target)
+          ) {
+            return;
+          }
           if (hasActiveSelectionInEditor(editorRef.current?.view.dom)) {
             return;
           }
@@ -1682,32 +1725,6 @@ const InputBarContainer = ({
         }}
       >
         <div className="flex w-0 flex-grow flex-col">
-          {!isRecording && editor && (
-            <div
-              className={cn("relative flex px-0 pt-1", !isMobile && "hidden")}
-            >
-              <Button
-                variant="ghost-secondary"
-                icon={Type01}
-                size={buttonSize}
-                onClick={() => setIsToolbarOpen(!isToolbarOpen)}
-              />
-              <Toolbar
-                variant="overlay"
-                className={cn(
-                  isToolbarOpen
-                    ? "pointer-events-auto w-full"
-                    : "pointer-events-none hidden"
-                )}
-                onClose={(e: React.MouseEvent<HTMLButtonElement>) => {
-                  e.stopPropagation();
-                  setIsToolbarOpen(false);
-                }}
-              >
-                <ToolBarContent editor={editor} />
-              </Toolbar>
-            </div>
-          )}
           <div className="relative">
             <EditorContent
               editor={editor}
@@ -1715,7 +1732,7 @@ const InputBarContainer = ({
                 contentEditableClasses,
                 "scrollbar-hide",
                 "overflow-y-auto",
-                "max-h-[40vh] min-h-14 md:min-h-16"
+                "max-h-[40vh] min-h-11"
               )}
             />
           </div>
@@ -1730,12 +1747,12 @@ const InputBarContainer = ({
             )}
           </BubbleMenu>
           <div
-            className={cn("mt-auto flex w-full flex-col", "pt-1.5 pb-2")}
+            className={cn("mt-auto flex w-full flex-col", "pt-2 pb-3")}
             style={{
               transition: `padding ${COLLAPSE_TRANSITION}`,
             }}
           >
-            <div className="mb-1 flex flex-wrap items-center px-2">
+            <div className="mb-1 flex flex-wrap items-center px-3">
               {selectedMCPServerViews.map((msv) => (
                 <React.Fragment key={msv.sId}>
                   {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
@@ -1782,12 +1799,12 @@ const InputBarContainer = ({
               ))}
             </div>
             <div className="flex min-h-7 w-full items-center">
-              <div className={cn("flex w-full items-center px-2")}>
+              <div className={cn("flex w-full items-center px-3")}>
                 {!isRecording && (
                   <div
                     className={cn(
                       "flex items-center",
-                      isWidthConstrained ? "gap-0.5" : "gap-1"
+                      isWidthConstrained ? "gap-1" : "gap-1.5"
                     )}
                   >
                     <InputBarButtons
@@ -1806,7 +1823,7 @@ const InputBarContainer = ({
                       isDefaultAgentUnavailable={isDefaultAgentUnavailable}
                       isInputDisabled={disableInput}
                       lastRequestedModel={lastRequestedModel}
-                      onAgentRemove={() => setSelectedSingleAgent(null)}
+                      onAgentRemove={handleAgentRemove}
                       onMCPServerViewSelect={onMCPServerViewSelect}
                       modelSelectionRef={modelSelectionRef}
                       modelSelectionCommitRef={modelSelectionCommitRef}
@@ -1816,41 +1833,33 @@ const InputBarContainer = ({
                       owner={owner}
                       selectedAgent={selectedSingleAgent}
                       selectedMCPServerViews={selectedMCPServerViews}
+                      selectedSpaceIds={selectedSpaceIds}
+                      onSelectedSpaceIdsChange={
+                        handleSelectedSpaceIdsChangeSafely
+                      }
+                      spaces={
+                        shouldShowSpacesAction ? selectableSpaces : undefined
+                      }
+                      isSpacesLoading={isSelectableSpacesLoading}
+                      canDeselectSelectedSpaces={!conversation?.sId}
                       space={space}
                       user={user}
-                      onAgentPickerOpenChange={(open) =>
-                        setOverlayOpen("agent-picker", open)
+                      onAgentPickerOpenChange={handleAgentPickerOpenChange}
+                      onCapabilitiesPickerOpenChange={
+                        handleCapabilitiesPickerOpenChange
                       }
-                      onCapabilitiesPickerOpenChange={(open) =>
-                        setOverlayOpen("capabilities-picker", open)
+                      onAttachmentsPickerOpenChange={
+                        handleAttachmentsPickerOpenChange
                       }
-                      onAttachmentsPickerOpenChange={(open) =>
-                        setOverlayOpen("attachments-picker", open)
-                      }
+                      onPlusMenuOpenChange={handlePlusMenuOpenChange}
                     />
-                    {shouldShowSpacesAction && (
-                      <InputBarSpacesPicker
-                        buttonSize={buttonSize}
-                        canDeselectSelectedSpaces={!conversation?.sId}
-                        disabled={disableInput}
-                        isLoading={isSelectableSpacesLoading}
-                        onOpenChange={(open) =>
-                          setOverlayOpen("spaces-picker", open)
-                        }
-                        onSelectedSpaceIdsChange={
-                          handleSelectedSpaceIdsChangeSafely
-                        }
-                        selectedSpaceIds={selectedSpaceIds}
-                        spaces={selectableSpaces}
-                      />
-                    )}
                   </div>
                 )}
                 <div className="grow" />
                 <div
                   className={cn(
                     "flex items-center",
-                    isWidthConstrained ? "gap-1" : "gap-1.5"
+                    isWidthConstrained ? "gap-1.5" : "gap-2.5"
                   )}
                 >
                   {clientType === "extension" && (
@@ -1966,9 +1975,27 @@ const InputBarContainer = ({
                   <div
                     className={cn(
                       "flex items-center",
-                      isWidthConstrained ? "gap-0.5" : "gap-1"
+                      isWidthConstrained ? "gap-1" : "gap-2"
                     )}
                   >
+                    {clientType !== "extension" &&
+                      actions.includes("model-picker") && (
+                        <InputBarModelPicker
+                          agentModel={
+                            (selectedSingleAgent &&
+                              agentsById.get(selectedSingleAgent.id)?.model) ??
+                            null
+                          }
+                          agentId={selectedSingleAgent?.id ?? null}
+                          lastRequestedModel={lastRequestedModel}
+                          owner={owner}
+                          buttonSize={buttonSize}
+                          side={conversation ? "top" : "bottom"}
+                          disabled={disableInput}
+                          selectionRef={modelSelectionRef}
+                          commitApiRef={modelSelectionCommitRef}
+                        />
+                      )}
                     {conversation && (
                       <ContextUsageIndicator
                         buttonSize={buttonSize}
@@ -1976,85 +2003,86 @@ const InputBarContainer = ({
                         conversationId={conversation?.sId}
                       />
                     )}
-                    {!subscription.plan.isByok &&
-                      owner.metadata?.allowVoiceTranscription !== false &&
-                      actions.includes("voice") &&
-                      !isCompact && (
-                        <VoicePicker
-                          status={activeVoiceService.status}
-                          level={activeVoiceService.level}
-                          elapsedSeconds={activeVoiceService.elapsedSeconds}
-                          onRecordStart={activeVoiceService.startRecording}
-                          onRecordStop={activeVoiceService.stopRecording}
-                          size={buttonSize}
-                          showStopLabel={!isWidthConstrained}
-                          disabled={disableInput}
-                        />
-                      )}
                   </div>
-                  <TooltipProvider>
-                    <TooltipRoot
-                      open={isBlockTooltipOpen && submitBlockMessage !== null}
-                    >
-                      <TooltipTrigger
-                        asChild
-                        onPointerEnter={() => {
-                          if (submitBlockMessage) {
-                            setIsBlockTooltipOpen(true);
-                          }
-                        }}
-                        onPointerLeave={() => {
-                          if (blockTooltipTimerRef.current) {
-                            clearTimeout(blockTooltipTimerRef.current);
-                            blockTooltipTimerRef.current = null;
-                          }
-                          setIsBlockTooltipOpen(false);
-                        }}
+                  {canShowVoicePicker && (
+                    <VoicePicker
+                      status={activeVoiceService.status}
+                      level={activeVoiceService.level}
+                      elapsedSeconds={activeVoiceService.elapsedSeconds}
+                      onRecordStart={activeVoiceService.startRecording}
+                      onRecordStop={activeVoiceService.stopRecording}
+                      size={buttonSize}
+                      showStopLabel={!isWidthConstrained}
+                      disabled={disableInput}
+                      buttonProps={{ className: "rounded-full" }}
+                    />
+                  )}
+                  {showSendButton && (
+                    <TooltipProvider>
+                      <TooltipRoot
+                        open={isBlockTooltipOpen && submitBlockMessage !== null}
                       >
-                        <Button
-                          size={buttonSize}
-                          isLoading={
-                            isSubmitting &&
-                            activeVoiceService.status !== "transcribing"
-                          }
-                          icon={ArrowUp}
-                          variant={
-                            isSubmitBlocked ? "ghost-secondary" : "highlight"
-                          }
-                          disabled={isSubmitDisabled}
-                          className="rounded-full"
-                          onClick={async (
-                            e: React.MouseEvent<HTMLButtonElement>
-                          ) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (disableAutoFocus) {
-                              editorService.blur();
-                              // wait a bit for the keyboard to be closed on mobile
-                              if (isMobile) {
-                                editorService.setLoading(true);
-                                await new Promise((resolve) =>
-                                  setTimeout(resolve, 500)
-                                );
-                                editorService.setLoading(false);
-                              }
+                        <TooltipTrigger
+                          asChild
+                          onPointerEnter={() => {
+                            if (submitBlockMessage) {
+                              setIsBlockTooltipOpen(true);
                             }
-                            onEnterKeyDownWithShake(
-                              editorService.isEmpty() && !canSubmitEmpty,
-                              editorService.getMarkdownAndMentions(),
-                              () => {
-                                editorService.clearEditor();
-                              },
-                              editorService.setLoading
-                            );
                           }}
-                        />
-                      </TooltipTrigger>
-                      {submitBlockMessage && (
-                        <TooltipContent>{submitBlockMessage}</TooltipContent>
-                      )}
-                    </TooltipRoot>
-                  </TooltipProvider>
+                          onPointerLeave={() => {
+                            if (blockTooltipTimerRef.current) {
+                              clearTimeout(blockTooltipTimerRef.current);
+                              blockTooltipTimerRef.current = null;
+                            }
+                            setIsBlockTooltipOpen(false);
+                          }}
+                        >
+                          <Button
+                            size={buttonSize}
+                            aria-label="Send message"
+                            isLoading={
+                              isSubmitting &&
+                              activeVoiceService.status !== "transcribing"
+                            }
+                            icon={ArrowUp}
+                            variant={
+                              isSubmitBlocked ? "ghost-secondary" : "highlight"
+                            }
+                            disabled={isSubmitDisabled}
+                            className="rounded-full"
+                            onClick={async (
+                              e: React.MouseEvent<HTMLButtonElement>
+                            ) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (disableAutoFocus) {
+                                editorService.blur();
+                                // wait a bit for the keyboard to be closed on mobile
+                                if (isMobile) {
+                                  editorService.setLoading(true);
+                                  await new Promise((resolve) =>
+                                    setTimeout(resolve, 500)
+                                  );
+                                  editorService.setLoading(false);
+                                }
+                              }
+                              onEnterKeyDownWithShake(
+                                editorService.isEmpty() && !canSubmitEmpty,
+                                editorService.getMarkdownAndMentions(),
+                                () => {
+                                  editorService.clearEditor();
+                                },
+                                editorService.setLoading
+                              );
+                            }}
+                          />
+                        </TooltipTrigger>
+                        {submitBlockMessage && (
+                          <TooltipContent>{submitBlockMessage}</TooltipContent>
+                        )}
+                      </TooltipRoot>
+                    </TooltipProvider>
+                  )}
                 </div>
               </div>
             </div>

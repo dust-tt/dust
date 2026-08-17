@@ -71,7 +71,7 @@ export function Navigation({
     >
       {isMobile ? (
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-          <div className="fixed left-0 top-0 z-40 flex shrink-0 items-center px-2 pt-2">
+          <div className="fixed left-0 top-[var(--banner-height)] z-40 flex shrink-0 items-center px-2 pt-2">
             <SheetTrigger asChild>
               <Button
                 variant="ghost"

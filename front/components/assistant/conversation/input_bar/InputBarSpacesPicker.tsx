@@ -1,7 +1,7 @@
+import { DropdownAnchorTrigger } from "@app/components/assistant/conversation/input_bar/DropdownAnchorTrigger";
 import { getSpaceIcon } from "@app/lib/spaces";
 import type { SelectableConversationSpaceType } from "@app/types/assistant/conversation";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -9,14 +9,25 @@ import {
   DropdownMenuLabel,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  Icon,
   Planet,
   Spinner,
 } from "@dust-tt/sparkle";
+import type React from "react";
 import { useMemo, useState } from "react";
 
+export function getSpacesPickerLabel(selectedSpaceIds: string[]): string {
+  if (selectedSpaceIds.length === 0) {
+    return "Spaces";
+  }
+
+  return `${selectedSpaceIds.length} additional Space${selectedSpaceIds.length > 1 ? "s" : ""}`;
+}
+
 interface InputBarSpacesPickerProps {
-  buttonSize: "xs" | "sm";
   canDeselectSelectedSpaces: boolean;
   disabled: boolean;
   isLoading: boolean;
@@ -24,10 +35,13 @@ interface InputBarSpacesPickerProps {
   onSelectedSpaceIdsChange: (spaceIds: string[]) => void;
   selectedSpaceIds: string[];
   spaces: SelectableConversationSpaceType[];
+  type?: "dropdown" | "subdropdown";
+  externalOpen?: boolean;
+  onExternalOpenChange?: (open: boolean) => void;
+  anchorRef?: React.RefObject<HTMLElement | null>;
 }
 
 export function InputBarSpacesPicker({
-  buttonSize,
   canDeselectSelectedSpaces,
   disabled,
   isLoading,
@@ -35,7 +49,18 @@ export function InputBarSpacesPicker({
   onSelectedSpaceIdsChange,
   selectedSpaceIds,
   spaces,
+  type = "subdropdown",
+  externalOpen,
+  onExternalOpenChange,
+  anchorRef,
 }: InputBarSpacesPickerProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isExternallyControlled = externalOpen !== undefined;
+  const isOpen = isExternallyControlled ? externalOpen : internalOpen;
+  const setIsOpen = isExternallyControlled
+    ? (open: boolean) => onExternalOpenChange?.(open)
+    : setInternalOpen;
+
   const selectedSpaceIdsSet = useMemo(
     () => new Set(selectedSpaceIds),
     [selectedSpaceIds]
@@ -52,10 +77,7 @@ export function InputBarSpacesPicker({
     );
   }, [searchText, spaces]);
 
-  const tooltip =
-    selectedSpaceIds.length > 0
-      ? `${selectedSpaceIds.length} additional Space${selectedSpaceIds.length > 1 ? "s" : ""}`
-      : "Add Spaces";
+  const label = getSpacesPickerLabel(selectedSpaceIds);
 
   const handleSpaceCheckedChange = (spaceId: string, checked: boolean) => {
     if (!checked && !canDeselectSelectedSpaces) {
@@ -74,28 +96,46 @@ export function InputBarSpacesPicker({
     onSelectedSpaceIdsChange(selectedSpaceIds.filter((id) => id !== spaceId));
   };
 
+  const Wrapper = type === "dropdown" ? DropdownMenu : DropdownMenuSub;
+  const ContentWrapper =
+    type === "dropdown" ? DropdownMenuContent : DropdownMenuSubContent;
+
   return (
-    <DropdownMenu
+    <Wrapper
+      open={isOpen}
       onOpenChange={(open) => {
+        setIsOpen(open);
         if (open) {
           setSearchText("");
         }
         onOpenChange?.(open);
       }}
     >
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost-secondary"
-          size={buttonSize}
-          icon={Planet}
-          tooltip={tooltip}
-          aria-label={tooltip}
+      {type === "dropdown" ? (
+        <DropdownAnchorTrigger anchorRef={anchorRef} />
+      ) : (
+        <DropdownMenuSubTrigger
+          label={label}
+          icon={
+            <Icon size="xs" visual={Planet} className="text-muted-foreground" />
+          }
           disabled={disabled}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            setIsOpen(true);
+          }}
         />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="start"
-        className="w-80"
+      )}
+      <ContentWrapper
+        className="w-80 max-w-[calc(100vw-1rem)]"
+        collisionPadding={8}
+        {...(type === "dropdown"
+          ? {
+              align: "end" as const,
+              onInteractOutside: () => setIsOpen(false),
+            }
+          : {})}
         dropdownHeaders={
           <>
             <DropdownMenuSearchbar
@@ -146,7 +186,7 @@ export function InputBarSpacesPicker({
             })}
           </div>
         )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </ContentWrapper>
+    </Wrapper>
   );
 }

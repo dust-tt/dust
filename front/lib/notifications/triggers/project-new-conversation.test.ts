@@ -1,12 +1,12 @@
 import { Authenticator } from "@app/lib/auth";
 import { getNovuClient } from "@app/lib/notifications";
 import {
+  areForYouNotificationsEnabled,
   filterMembersByNotifyCondition,
   notifyActivationConversationAgentReplied,
 } from "@app/lib/notifications/triggers/project-new-conversation";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import type { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -14,13 +14,13 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { NotificationCondition } from "@app/types/notification_preferences";
 import {
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
   DEFAULT_NOTIFICATION_CONDITION,
+  FOR_YOU_NOTIFICATION_METADATA_KEY,
 } from "@app/types/notification_preferences";
 import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, test, vi } from "vitest";
@@ -291,12 +291,13 @@ describe("notifyActivationConversationAgentReplied", () => {
   let user: UserResource;
   let pod: SpaceResource;
   let agent: LightAgentConfigurationType;
-  let activationTrigger: TriggerResource;
+  let workspace: LightWorkspaceType;
 
   beforeEach(async () => {
     const result = await createResourceTest({ role: "user" });
     user = result.user;
     auth = result.authenticator;
+    workspace = result.workspace;
 
     pod = await SpaceFactory.project(result.workspace, user.id);
 
@@ -305,26 +306,33 @@ describe("notifyActivationConversationAgentReplied", () => {
       description: "Test",
     });
 
-    activationTrigger = await TriggerFactory.webhook(auth, {
-      agentConfigurationId: agent.sId,
-      spaceId: pod.id,
-    });
-    await ActivationPodResource.makeNew(auth, {
-      pod,
-      user,
-      trigger: activationTrigger,
-    });
+    await ActivationPodResource.makeNew(auth, { pod, user });
 
     vi.mocked(getNovuClient).mockClear();
   });
 
-  test("triggers the activation email for the pod's nudge-created conversation", async () => {
+  // A conversation Dust opened with a nudge: its opening message carries the
+  // nudge origin and has no author.
+  async function createNudgeConversation() {
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: agent.sId,
       messagesCreatedAt: [],
       spaceId: pod.id,
-      triggerId: activationTrigger.id,
     });
+    await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: "Run the Dust Learning workflow.",
+      origin: "system_activation",
+      authorless: true,
+    });
+
+    return conversation;
+  }
+
+  test("triggers the activation email for the pod's nudge-created conversation", async () => {
+    const conversation = await createNudgeConversation();
 
     await notifyActivationConversationAgentReplied(auth, {
       conversationId: conversation.sId,
@@ -345,5 +353,49 @@ describe("notifyActivationConversationAgentReplied", () => {
     });
 
     expect(vi.mocked(getNovuClient)).not.toHaveBeenCalled();
+  });
+
+  test("triggers the activation email when For You notifications are explicitly enabled", async () => {
+    await user.setMetadata(FOR_YOU_NOTIFICATION_METADATA_KEY, "true");
+    const conversation = await createNudgeConversation();
+
+    await notifyActivationConversationAgentReplied(auth, {
+      conversationId: conversation.sId,
+    });
+
+    expect(vi.mocked(getNovuClient)).toHaveBeenCalled();
+  });
+
+  test("does not trigger the activation email when For You notifications are disabled", async () => {
+    await user.setMetadata(FOR_YOU_NOTIFICATION_METADATA_KEY, "false");
+    const conversation = await createNudgeConversation();
+
+    await notifyActivationConversationAgentReplied(auth, {
+      conversationId: conversation.sId,
+    });
+
+    expect(vi.mocked(getNovuClient)).not.toHaveBeenCalled();
+  });
+});
+
+describe("areForYouNotificationsEnabled", () => {
+  test("allows sending when metadata is missing", async () => {
+    const { user } = await createResourceTest({ role: "user" });
+
+    expect(await areForYouNotificationsEnabled(user)).toBe(true);
+  });
+
+  test("allows sending when metadata is true", async () => {
+    const { user } = await createResourceTest({ role: "user" });
+    await user.setMetadata(FOR_YOU_NOTIFICATION_METADATA_KEY, "true");
+
+    expect(await areForYouNotificationsEnabled(user)).toBe(true);
+  });
+
+  test("skips sending when metadata is false", async () => {
+    const { user } = await createResourceTest({ role: "user" });
+    await user.setMetadata(FOR_YOU_NOTIFICATION_METADATA_KEY, "false");
+
+    expect(await areForYouNotificationsEnabled(user)).toBe(false);
   });
 });

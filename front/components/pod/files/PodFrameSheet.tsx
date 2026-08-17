@@ -31,6 +31,7 @@ interface PodFrameSheetProps {
   frameTabs: PodFrameTab[];
   tabsOrder?: string[];
   isEditor: boolean;
+  isMember: boolean;
   isArchived: boolean;
   isOpen: boolean;
   onClose: () => void;
@@ -46,6 +47,7 @@ export function PodFrameSheet({
   frameTabs,
   tabsOrder,
   isEditor,
+  isMember,
   isArchived,
   isOpen,
   onClose,
@@ -161,7 +163,10 @@ export function PodFrameSheet({
                 key={`viz-${fileId}`}
                 conversationId={null}
                 spaceId={fileMetadata?.useCaseMetadata.spaceId}
+                framePath={framePath}
                 isInDrawer={true}
+                isPodEditor={isEditor}
+                isPodMember={isMember}
                 ref={iframeRef}
               />
             )

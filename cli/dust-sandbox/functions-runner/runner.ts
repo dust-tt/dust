@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 // Embedded runner for `dsbx function` and `dsbx db`. Subcommands:
 //   runner run <path>                            stdin request envelope -> stdout Output JSON
-//   runner serve <path> <socketPath>             warm server: keep <path> imported, serve
-//                                                invocations over a unix socket until idle
+//   runner serve <functionsDir> <socketPath>     warm worker: serve invocations of any function
+//                                                in <functionsDir> over a unix socket until idle
 //   runner get <path>                            -> stdout FunctionSchema JSON (or {error})
 //   runner build <src> <outBundle> <outSchema>   bundle + extract schema to files
 //   runner db-reconcile <dbPath> <schemaFile>    additive-only DDL reconcile -> stdout envelope
@@ -16,10 +16,24 @@ import { errorEnvelope, podDatabaseMaxSizeBytes } from "./db/common.ts";
 import { runQuery } from "./db/query.ts";
 import { reconcile } from "./db/reconcile.ts";
 import { generateSchemaFileText } from "./db/schema.ts";
+import { applyResultSpillPolicy, emitEnvelopeLine } from "./emit.ts";
 import { invoke } from "./invoke.ts";
 import { BadInputError, parseInput, type RequestInput } from "./protocol.ts";
 import { getFunctionSchema } from "./schema.ts";
 import { serve } from "./serve.ts";
+
+// Everything this process creates — including files the function body creates
+// itself — must stay group-writable. The shared sandbox directories are setgid
+// with a `g::rwx` default ACL (`/pod-state/databases`, `/files`), but a default
+// ACL only masks the mode a process asks for; it cannot add bits the umask
+// stripped. With the inherited 022/027 umask, a SQLite database a function
+// opens directly lands at 0644/0640 owned by `agent-proxied:agent`, and
+// litestream (user `dust-state`, group `agent`) can then read but never write
+// it — every replication sync fails with SQLITE_READONLY, forever. `dsbx db
+// reconcile` already chmods 0660 for exactly this reason; the umask extends the
+// same guarantee to files it did not create. 007 keeps `other` empty: group
+// `agent` is the sandbox's own trust boundary, everyone else stays out.
+process.umask(0o007);
 
 async function runHandler(handlerPath: string): Promise<number> {
   const raw = await Bun.stdin.text();
@@ -28,25 +42,24 @@ async function runHandler(handlerPath: string): Promise<number> {
     input = parseInput(raw);
   } catch (e) {
     const message = e instanceof BadInputError ? e.message : String(e);
-    process.stdout.write(
-      `${JSON.stringify({ ok: false, error: { code: "bad_input", message } })}\n`
-    );
+    emitEnvelopeLine({ ok: false, error: { code: "bad_input", message } });
     return 2;
   }
   const out = await invoke(handlerPath, input);
-  process.stdout.write(`${JSON.stringify(out)}\n`);
-  return out.ok ? 0 : 1;
+  // An oversized result is spilled to a scratch file and replaced by a
+  // pointer envelope; over the hard cap it becomes an output_too_large error.
+  const delivered = applyResultSpillPolicy(out);
+  emitEnvelopeLine(delivered);
+  return delivered.ok ? 0 : 1;
 }
 
 async function getHandler(handlerPath: string): Promise<number> {
   try {
     const schema = await getFunctionSchema(handlerPath);
-    process.stdout.write(`${JSON.stringify(schema)}\n`);
+    emitEnvelopeLine(schema);
     return 0;
   } catch (e) {
-    process.stdout.write(
-      `${JSON.stringify({ error: e instanceof Error ? e.message : String(e) })}\n`
-    );
+    emitEnvelopeLine({ error: e instanceof Error ? e.message : String(e) });
     return 1;
   }
 }
@@ -54,29 +67,25 @@ async function getHandler(handlerPath: string): Promise<number> {
 async function buildHandler(args: string[]): Promise<number> {
   const [srcPath, outBundlePath, outSchemaPath] = args;
   if (!srcPath || !outBundlePath || !outSchemaPath) {
-    process.stdout.write(
-      `${JSON.stringify({
-        ok: false,
-        error: {
-          kind: "bad_args",
-          message: "usage: runner build <src> <outBundle> <outSchema>",
-        },
-      })}\n`
-    );
+    emitEnvelopeLine({
+      ok: false,
+      error: {
+        kind: "bad_args",
+        message: "usage: runner build <src> <outBundle> <outSchema>",
+      },
+    });
     return 2;
   }
   const result = await build(srcPath, outBundlePath, outSchemaPath);
-  process.stdout.write(`${JSON.stringify(result)}\n`);
+  emitEnvelopeLine(result);
   return result.ok ? 0 : 1;
 }
 
 function emitDbBadArgs(usage: string): number {
-  process.stdout.write(
-    `${JSON.stringify({
-      ok: false,
-      error: { kind: "bad_args", message: usage },
-    })}\n`
-  );
+  emitEnvelopeLine({
+    ok: false,
+    error: { kind: "bad_args", message: usage },
+  });
   return 2;
 }
 
@@ -90,10 +99,10 @@ async function dbReconcileHandler(args: string[]): Promise<number> {
   }
   const result = await reconcile(dbPath, schemaFile);
   if (result.isErr()) {
-    process.stdout.write(`${JSON.stringify(errorEnvelope(result.error))}\n`);
+    emitEnvelopeLine(errorEnvelope(result.error));
     return 1;
   }
-  process.stdout.write(`${JSON.stringify({ ok: true, ...result.value })}\n`);
+  emitEnvelopeLine({ ok: true, ...result.value });
   return 0;
 }
 
@@ -104,11 +113,11 @@ async function dbSchemaHandler(args: string[]): Promise<number> {
   }
   const result = generateSchemaFileText(dbPath);
   if (result.isErr()) {
-    process.stdout.write(`${JSON.stringify(errorEnvelope(result.error))}\n`);
+    emitEnvelopeLine(errorEnvelope(result.error));
     return 1;
   }
   await Bun.write(outSchemaTs, result.value);
-  process.stdout.write(`${JSON.stringify({ ok: true })}\n`);
+  emitEnvelopeLine({ ok: true });
   return 0;
 }
 
@@ -123,18 +132,16 @@ async function dbQueryHandler(args: string[]): Promise<number> {
   }
   const maxSizeBytes = podDatabaseMaxSizeBytes();
   if (maxSizeBytes.isErr()) {
-    process.stdout.write(
-      `${JSON.stringify(errorEnvelope(maxSizeBytes.error))}\n`
-    );
+    emitEnvelopeLine(errorEnvelope(maxSizeBytes.error));
     return 1;
   }
   const sql = await Bun.stdin.text();
   const result = runQuery(dbPath, sql, maxSizeBytes.value, spillDir);
   if (result.isErr()) {
-    process.stdout.write(`${JSON.stringify(errorEnvelope(result.error))}\n`);
+    emitEnvelopeLine(errorEnvelope(result.error));
     return 1;
   }
-  process.stdout.write(`${JSON.stringify({ ok: true, ...result.value })}\n`);
+  emitEnvelopeLine({ ok: true, ...result.value });
   return 0;
 }
 
@@ -164,15 +171,15 @@ async function main(): Promise<number> {
     case "get":
       return getHandler(handlerPath);
     case "serve": {
-      const [, socketPath] = rest;
-      if (!socketPath) {
+      const [functionsDir, socketPath] = rest;
+      if (!functionsDir || !socketPath) {
         process.stderr.write(
-          "usage: runner serve <handler-path> <socket-path>\n"
+          "usage: runner serve <functions-dir> <socket-path>\n"
         );
         return 2;
       }
-      // Never returns: the server exits itself (idle, lifetime, staleness).
-      return serve(handlerPath, socketPath);
+      // Never returns: the worker exits itself (idle, lifetime, staleness).
+      return serve(functionsDir, socketPath);
     }
     default:
       process.stderr.write(`runner: unknown command "${command}"\n`);

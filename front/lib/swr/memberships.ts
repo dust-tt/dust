@@ -170,7 +170,7 @@ export function useSearchMembers<
     searchParams.set("role", role);
   }
 
-  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+  const { data, error, isValidating, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
       `/api/w/${workspaceId}/members/search?${searchParams.toString()}`,
       searchMembersFetcher,
@@ -186,6 +186,7 @@ export function useSearchMembers<
     members: data?.members ?? emptyArray(),
     totalMembersCount: data?.total ?? 0,
     isLoading: !error && !data && !disabled,
+    isMembersValidating: isValidating,
     isError: !!error,
     mutate,
     mutateRegardlessOfQueryParams,

@@ -29,9 +29,13 @@ export function WebhookRequestStatusBadge({
       label: "Rate Limited",
       variant: "warning",
     },
+    credits_exhausted: {
+      label: "Out Of Credits",
+      variant: "warning",
+    },
   };
 
-  const config = statusConfig[status];
+  const config = statusConfig[status] ?? { label: status, variant: "info" };
 
   return (
     <Chip

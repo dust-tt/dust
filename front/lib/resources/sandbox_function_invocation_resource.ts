@@ -1,8 +1,4 @@
 import config from "@app/lib/api/config";
-import {
-  getPodSandboxFunctionsMountPoint,
-  podDatabaseExecEnvVars,
-} from "@app/lib/api/files/mount_path";
 import type {
   PokePodFunctionInvocation,
   PokePodFunctionInvocationDetails,
@@ -16,19 +12,23 @@ import { isSandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { recordSandboxFunctionRun } from "@app/lib/api/sandbox/instrumentation";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
+import { podDatabasePrefixFromSlug } from "@app/lib/api/sandbox_functions/db_naming";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
-import { parseStdoutResultEnvelope } from "@app/lib/api/sandbox_functions/result_delivery";
+import {
+  parseStdoutResultEnvelope,
+  resolveSpilledResult,
+} from "@app/lib/api/sandbox_functions/result_delivery";
 import {
   authorizeSandboxFunctionInvocation,
   getAuthenticatedWorkspaceUser,
 } from "@app/lib/api/sandbox_functions/workspace_user";
 import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   SandboxFunctionInvocationModel,
   SandboxFunctionModel,
@@ -55,6 +55,10 @@ import type {
   SandboxFunctionInvocationStatus,
   SandboxFunctionInvocationType,
 } from "@app/types/api/sandbox_functions";
+import {
+  getPodSandboxFunctionsMountPoint,
+  podDatabaseExecEnvVars,
+} from "@app/types/mount_path";
 import { isDevelopment } from "@app/types/shared/env";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -76,12 +80,11 @@ const SANDBOX_FUNCTION_EXEC_TIMEOUT_MS = 2 * 60 * 1000;
 // and re-running it would repeat those writes.
 const SANDBOX_FUNCTION_INLINE_EXEC_TIMEOUT_MS = 10 * 1000;
 const DSBX_BIN_PATH = "/opt/bin/dsbx";
-// Caps on runner output surfaced on failure: a small head for the error forwarded to the agent,
-// a larger one for the log fields.
-const SANDBOX_FUNCTION_ERROR_DETAIL_MAX_CHARS = 2_048;
+// Cap on runner output surfaced in the log fields on failure.
 const SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS = 16_384;
 const GCS_CONCURRENCY = 4;
 const SANDBOX_FUNCTION_INVOCATION_DATA_VERSION = 2;
+const FUNCTION_WARM_ENABLED_ENV = "DUST_FUNCTION_WARM_ENABLED";
 const POD_USER_IDENTITY_ENV = "DUST_POD_USER_IDENTITY";
 
 // "admin" reads every invocation of the function without resolving a workspace user: poke
@@ -216,41 +219,18 @@ function dustAPIBaseUrlForSandbox(): string {
     : config.getApiBaseUrl();
 }
 
-function buildSandboxFunctionRunCommand(
-  slug: string,
-  { stdoutResultDelivery }: { stdoutResultDelivery: boolean }
-): string {
+function buildSandboxFunctionRunCommand(slug: string): string {
   // dsbx resolves `function run <slug>` as `${DUST_FUNCTIONS_DIR}/<slug>.ts`, which is the
-  // read-only mount of the pod's published bundles.
-  if (stdoutResultDelivery) {
-    return `${DSBX_BIN_PATH} function run --result-delivery stdout -- ${shellEscape(slug)}`;
-  }
-  return `${DSBX_BIN_PATH} function run ${shellEscape(slug)}`;
-}
-
-/**
- * Whether an invocation runs inline, in the request that creates it, instead of through the
- * invocation workflow.
- *
- * Only a fast function qualifies. A durable one may call a tool that waits on the user for
- * approval or authentication, and holding the request there would deadlock: the approval card
- * only renders once the client holds the invocation.
- */
-async function shouldExecuteInline(
-  auth: Authenticator,
-  sandboxFunction: SandboxFunctionResource
-): Promise<boolean> {
-  if (sandboxFunction.executionMode !== "fast") {
-    return false;
-  }
-
-  return hasFeatureFlag(auth, "sandbox_function_fast_execution");
+  // read-only mount of the pod's published bundles. Results always come back on the exec's own
+  // stdout rather than through the in-sandbox HTTP callback.
+  return `${DSBX_BIN_PATH} function run --result-delivery stdout -- ${shellEscape(slug)}`;
 }
 
 function getSandboxFunctionUserIdentity(
   auth: Authenticator,
   user: UserResource | null,
-  invocation: SandboxFunctionInvocationResource
+  invocation: SandboxFunctionInvocationResource,
+  space: SpaceResource
 ) {
   const workspace = auth.getNonNullableWorkspace();
   if (
@@ -263,6 +243,12 @@ function getSandboxFunctionUserIdentity(
 
   return {
     workspaceId: workspace.sId,
+    // Same predicate as the `isEditor` the pod UI serializes: pod editor group members plus
+    // workspace admins via role.
+    isPodEditor: space.canAdministrate(auth),
+    // Same predicate as the pod UI's `isMember` and the `pod_member_required` policy: users in
+    // any of the pod's groups. Workspace admins outside them are not members.
+    isPodMember: space.isMember(auth),
     user: {
       sId: user.sId,
       firstName: user.firstName,
@@ -614,6 +600,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         const authorization = await authorizeSandboxFunctionInvocation(auth, {
           userIdentity: persistedFunction.userIdentity,
           origin: this.origin ?? "delegated",
+          // The space is fixed at creation, so the in-memory copy is safe to reuse alongside
+          // the re-fetched row.
+          space: sandboxFunction.space,
         });
         return { persistedFunction, authorization };
       };
@@ -656,10 +645,6 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
       // No updateLastActivityAt here: ensurePodSandboxReady's ensureActive just wrote it.
       const sandbox = ensureResult.value.sandbox;
-      const stdoutResultDelivery = await hasFeatureFlag(
-        auth,
-        "sandbox_function_stdout_result"
-      );
 
       const execId = generateExecId();
       // The mode, not the transport, decides this: a fast function is denied tools however it
@@ -675,9 +660,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         noTools,
       });
 
-      const command = buildSandboxFunctionRunCommand(sandboxFunction.slug, {
-        stdoutResultDelivery,
-      });
+      const command = buildSandboxFunctionRunCommand(sandboxFunction.slug);
       const inputEnvelope = {
         method: "POST",
         url: `https://dust.local/sandbox-functions/${sandboxFunction.sId}/invocations/${this.sId}`,
@@ -701,7 +684,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       const userIdentity = getSandboxFunctionUserIdentity(
         auth,
         authorization.user,
-        this
+        this,
+        sandboxFunction.space
       );
 
       const execStartedAtMs = Date.now();
@@ -712,8 +696,16 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           DUST_FUNCTIONS_DIR: getPodSandboxFunctionsMountPoint(
             sandboxFunction.space.sId
           ),
-          ...podDatabaseExecEnvVars(),
+          // The app prefix comes from the slug, so `db("chat")` in the bundle resolves to this
+          // app's own database without the source naming the app.
+          ...podDatabaseExecEnvVars({
+            databasePrefix: podDatabasePrefixFromSlug(sandboxFunction.slug),
+          }),
           DUST_SANDBOX_TOKEN: token,
+          // Durable functions may still spawn tool clients that inherit the function process's
+          // native environment. Keep them cold until all tool calls read the invocation context;
+          // fast functions cannot call tools and are safe to serve from a resident worker.
+          [FUNCTION_WARM_ENABLED_ENV]: noTools ? "1" : "0",
           // Set this for every invocation so userless calls cannot inherit a sandbox-level value.
           [POD_USER_IDENTITY_ENV]: userIdentity
             ? JSON.stringify(userIdentity)
@@ -758,56 +750,39 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         return execResult;
       }
 
-      if (stdoutResultDelivery) {
-        const { exitCode, stdout, stderr } = execResult.value;
-        logger.info(
-          {
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            sandboxFunctionId: sandboxFunction.sId,
-            invocationId: this.sId,
-            exitCode,
-            stdoutBytes: Buffer.byteLength(stdout, "utf8"),
-            deliveryMode: "stdout",
-          },
-          "Pod function stdout result delivery"
-        );
-        // Persist from the envelope even on non-zero exit: dsbx may still have
-        // written a well-formed invocation_failed envelope the worker should keep.
-        const { outcome: normalized, timings } =
-          parseStdoutResultEnvelope(stdout);
-        recordSandboxFunctionRun({
-          runnerKind: timings?.runnerKind ?? "unknown",
-          status: normalized.ok ? "success" : "error",
-          durationMs: Date.now() - execStartedAtMs,
-        });
-        if (!normalized.ok || exitCode !== 0) {
-          // Mirror the callback path's failure logging: without the raw
-          // stdout/stderr there is no way to diagnose a rejected envelope.
-          logger.error(
-            {
-              workspaceId: auth.getNonNullableWorkspace().sId,
-              spaceId: sandboxFunction.space.sId,
-              sandboxFunctionId: sandboxFunction.sId,
-              slug: sandboxFunction.slug,
-              invocationId: this.sId,
-              exitCode,
-              stdout: truncate(stdout, SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS),
-              stderr: truncate(stderr, SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS),
-              deliveryMode: "stdout",
-            },
-            "Sandbox function invocation failed"
-          );
-        }
-        if (normalized.ok) {
-          await this.succeed(normalized.output);
-        } else {
-          await this.fail(normalized.error);
-        }
-        return new Ok(undefined);
-      }
-
-      if (execResult.value.exitCode !== 0) {
-        const { exitCode, stdout, stderr } = execResult.value;
+      const { exitCode, stdout, stderr } = execResult.value;
+      // Persist from the envelope even on non-zero exit: dsbx may still have
+      // written a well-formed invocation_failed envelope the worker should keep.
+      const parsed = parseStdoutResultEnvelope(stdout);
+      const { timings } = parsed;
+      logger.info(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          sandboxFunctionId: sandboxFunction.sId,
+          invocationId: this.sId,
+          exitCode,
+          stdoutBytes: Buffer.byteLength(stdout, "utf8"),
+          ...(parsed.spill === null
+            ? {}
+            : { spilledResultBytes: parsed.spill.resultBytes }),
+        },
+        "Pod function stdout result delivery"
+      );
+      // An oversized result was spilled to a sandbox-local file: read it back
+      // through the provider and normalize it exactly like an inline outcome.
+      const normalized =
+        parsed.spill === null
+          ? parsed.outcome
+          : await resolveSpilledResult(parsed.spill, (path) =>
+              sandbox.readFile(auth, path)
+            );
+      recordSandboxFunctionRun({
+        runnerKind: timings?.runnerKind ?? "unknown",
+        status: normalized.ok ? "success" : "error",
+        durationMs: Date.now() - execStartedAtMs,
+      });
+      if (!normalized.ok || exitCode !== 0) {
+        // Without the raw stdout/stderr there is no way to diagnose a rejected envelope.
         logger.error(
           {
             workspaceId: auth.getNonNullableWorkspace().sId,
@@ -821,19 +796,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           },
           "Sandbox function invocation failed"
         );
-        // Surface the runner's stderr (stdout when empty) so the agent sees the actual cause,
-        // not just the exit code.
-        const detail = truncate(
-          stderr || stdout,
-          SANDBOX_FUNCTION_ERROR_DETAIL_MAX_CHARS
-        ).trim();
-        return new Err(
-          new Error(
-            `Pod function invocation failed with exit code ${exitCode}${
-              detail ? `:\n${detail}` : "."
-            }`
-          )
-        );
+      }
+      if (normalized.ok) {
+        await this.succeed(normalized.output);
+      } else {
+        await this.fail(normalized.error);
       }
 
       return new Ok(undefined);
@@ -999,12 +966,15 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       origin?: SandboxFunctionInvocationOrigin;
     }
   ): Promise<Result<SandboxFunctionInvocationResource, Error>> {
-    const inline = await shouldExecuteInline(auth, sandboxFunction);
-    // Deferring is only safe when no other process reads the blob during execution: with stdout
-    // delivery the result comes back on the exec's own stdout, but callback delivery has dsbx
-    // POST to a route that fetches the invocation (and its blob) mid-execution.
-    const deferInitialWrite =
-      inline && (await hasFeatureFlag(auth, "sandbox_function_stdout_result"));
+    // An inline invocation runs in the request that creates it. Only a fast function qualifies:
+    // a durable one may call a tool that waits on the user for approval or authentication, and
+    // holding the request there would deadlock, since the approval card only renders once the
+    // client holds the invocation.
+    const inline = sandboxFunction.executionMode === "fast";
+    // Deferring is only safe because no other process reads the blob during execution, which
+    // holds because every run is started with `--result-delivery stdout`: the result comes back
+    // on the exec's own stdout rather than through a callback route that would fetch the
+    // invocation, and its blob, mid-execution.
     const invocation = await this.makeNew(
       auth,
       {
@@ -1014,7 +984,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         origin,
       },
       undefined,
-      { deferInitialWrite }
+      { deferInitialWrite: inline }
     );
     const publishCreated = () =>
       publishSandboxFunctionInvocationEvent(

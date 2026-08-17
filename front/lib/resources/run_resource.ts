@@ -4,14 +4,17 @@ import type { TokenUsage } from "@app/lib/api/llm/types/events";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import type { UsageType } from "@app/lib/metronome/types";
+import type { Region } from "@app/lib/model_constructors/types/regions";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
+import type { RunUsageState } from "@app/lib/resources/storage/models/runs";
 import {
   RunModel,
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { getRunExecutionsDeletionCutoffDate } from "@app/temporal/hard_delete/utils";
@@ -51,10 +54,28 @@ export interface RunUsageType {
 }
 
 export interface RunUsageWithRunKeyType extends RunUsageType {
+  inferenceProvider: string | null;
+  region: Region | null;
   runKey: string | null;
   runUsageModelId: ModelId;
   runModelId: ModelId;
   usageType: UsageType | null;
+}
+
+export interface RunUsageAttemptType extends RunUsageType {
+  inferenceProvider: string | null;
+  region: Region | null;
+  runUsageModelId: ModelId;
+  usageState: RunUsageState | null;
+  usageType: UsageType | null;
+}
+
+interface PendingRunUsageParameters {
+  inferenceProvider: string;
+  modelId: ModelIdType;
+  providerId: ModelProviderIdType;
+  region: Region | null;
+  usageType?: UsageType;
 }
 
 type FetchRunOptions<T extends boolean> = {
@@ -79,6 +100,40 @@ export class RunResource extends BaseResource<RunModel> {
     const run = await RunResource.model.create(blob);
 
     return new this(RunResource.model, run.get());
+  }
+
+  static async makeNewWithPendingUsage(
+    blob: CreationAttributes<RunModel>,
+    usage: PendingRunUsageParameters
+  ): Promise<{ run: RunResource; runUsageModelId: ModelId }> {
+    return withTransaction(async (transaction) => {
+      const runModel = await RunResource.model.create(blob, { transaction });
+      const runUsageModel = await RunUsageModel.create(
+        {
+          runId: runModel.id,
+          workspaceId: blob.workspaceId,
+          providerId: usage.providerId,
+          inferenceProvider: usage.inferenceProvider,
+          region: usage.region,
+          modelId: usage.modelId,
+          promptTokens: 0,
+          completionTokens: 0,
+          reasoningTokens: null,
+          cachedTokens: null,
+          cacheCreationTokens: null,
+          costMicroUsd: 0,
+          isBatch: false,
+          usageType: usage.usageType ?? null,
+          usageState: "pending",
+        },
+        { transaction }
+      );
+
+      return {
+        run: new this(RunResource.model, runModel.get()),
+        runUsageModelId: runUsageModel.id,
+      };
+    });
   }
 
   private static getOptions<T extends boolean>(
@@ -260,6 +315,9 @@ export class RunResource extends BaseResource<RunModel> {
       where: {
         runId: { [Op.in]: runModelIds },
         workspaceId: auth.getNonNullableWorkspace().id,
+        // Pending and unavailable attempts are reconciliation records, not
+        // billable usage. Null supports rows written during rolling deploys.
+        [Op.or]: [{ usageState: "reported" }, { usageState: null }],
       },
     });
 
@@ -269,6 +327,8 @@ export class RunResource extends BaseResource<RunModel> {
       runKey: runKeyByModelId.get(usage.runId) ?? null,
       completionTokens: usage.completionTokens,
       reasoningTokens: usage.reasoningTokens,
+      inferenceProvider: usage.inferenceProvider,
+      region: usage.region,
       modelId: usage.modelId as ModelIdType,
       promptTokens: usage.promptTokens,
       providerId: usage.providerId as ModelProviderIdType,
@@ -414,6 +474,8 @@ export class RunResource extends BaseResource<RunModel> {
           runId: this.id,
           workspaceId: this.workspaceId,
           providerId,
+          inferenceProvider: null,
+          region: null,
           modelId,
           promptTokens,
           completionTokens,
@@ -423,10 +485,15 @@ export class RunResource extends BaseResource<RunModel> {
           costMicroUsd,
           isBatch,
           usageType: usageType ?? null,
+          usageState: "reported",
         })
       )
     );
 
+    this.emitRunUsageMetrics(usages);
+  }
+
+  private emitRunUsageMetrics(usages: RunUsageType[]): void {
     for (const usage of usages) {
       const tags = [
         `provider_id:${usage.providerId}`,
@@ -487,11 +554,133 @@ export class RunResource extends BaseResource<RunModel> {
       usageType?: UsageType;
     } = {}
   ) {
+    const runUsage = this.tokenUsageToRunUsage(usage, modelId, {
+      isBatch,
+      inferenceRegion,
+    });
+    if (!runUsage) {
+      return;
+    }
+
+    await this.recordRunUsage(auth, [runUsage], { usageType });
+
+    // Return the computed cost so callers can meter it (e.g. the free-usage cost
+    // cap). The result is undefined when the model is unknown and nothing was recorded.
+    return runUsage.costMicroUsd;
+  }
+
+  async markPendingRunUsageUnavailable(
+    auth: Authenticator,
+    runUsageModelId: ModelId
+  ): Promise<void> {
+    await RunUsageModel.update(
+      { usageState: "unavailable" },
+      {
+        where: {
+          id: runUsageModelId,
+          runId: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          usageState: "pending",
+        },
+      }
+    );
+  }
+
+  async finalizePendingRunUsage(
+    auth: Authenticator,
+    runUsageModelId: ModelId,
+    usages: RunUsageType[],
+    { usageType }: { usageType?: UsageType } = {}
+  ): Promise<boolean> {
+    const [firstUsage, ...additionalUsages] = usages;
+    if (!firstUsage) {
+      return false;
+    }
+
+    const [updatedCount] = await RunUsageModel.update(
+      {
+        providerId: firstUsage.providerId,
+        modelId: firstUsage.modelId,
+        promptTokens: firstUsage.promptTokens,
+        completionTokens: firstUsage.completionTokens,
+        reasoningTokens: firstUsage.reasoningTokens,
+        cachedTokens: firstUsage.cachedTokens,
+        cacheCreationTokens: firstUsage.cacheCreationTokens ?? null,
+        costMicroUsd: firstUsage.costMicroUsd,
+        isBatch: firstUsage.isBatch,
+        usageType: usageType ?? null,
+        usageState: "reported",
+      },
+      {
+        where: {
+          id: runUsageModelId,
+          runId: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          usageState: "pending",
+        },
+      }
+    );
+
+    // Provider streams report usage once. Treat repeated finalization as an
+    // idempotent replay instead of inserting duplicate billable rows.
+    if (updatedCount === 0) {
+      return false;
+    }
+
+    if (additionalUsages.length > 0) {
+      await this.recordRunUsage(auth, additionalUsages, { usageType });
+    }
+    this.emitRunUsageMetrics([firstUsage]);
+    return true;
+  }
+
+  async finalizePendingTokenUsage(
+    auth: Authenticator,
+    runUsageModelId: ModelId,
+    usage: TokenUsage,
+    modelId: ModelIdType,
+    {
+      inferenceRegion = "global",
+      usageType,
+    }: {
+      inferenceRegion?: InferenceRegionType;
+      usageType?: UsageType;
+    } = {}
+  ): Promise<number | undefined> {
+    const runUsage = this.tokenUsageToRunUsage(usage, modelId, {
+      isBatch: false,
+      inferenceRegion,
+    });
+    if (!runUsage) {
+      return undefined;
+    }
+
+    const wasFinalized = await this.finalizePendingRunUsage(
+      auth,
+      runUsageModelId,
+      [runUsage],
+      { usageType }
+    );
+    return wasFinalized ? runUsage.costMicroUsd : undefined;
+  }
+
+  private tokenUsageToRunUsage(
+    usage: TokenUsage,
+    modelId: ModelIdType,
+    {
+      isBatch,
+      inferenceRegion,
+    }: {
+      isBatch: boolean;
+      inferenceRegion: InferenceRegionType;
+    }
+  ): RunUsageType | null {
     const modelConfig = getModelConfigByModelId(modelId);
 
     if (!modelConfig) {
       logger.warn({ modelId }, "Unsupported model for usage recording");
-      return;
+
+      return null;
     }
 
     // totalOutputTokens is the canonical inclusive billed output total. Any
@@ -507,23 +696,19 @@ export class RunResource extends BaseResource<RunModel> {
       inferenceRegion,
     });
 
-    return this.recordRunUsage(
-      auth,
-      [
-        {
-          cacheCreationTokens: usage.cacheCreationTokens,
-          cachedTokens: usage.cachedTokens ?? null,
-          completionTokens: usage.totalOutputTokens,
-          reasoningTokens: usage.reasoningTokens ?? null,
-          modelId: modelConfig.modelId,
-          promptTokens: usage.inputTokens,
-          providerId: modelConfig.providerId,
-          costMicroUsd: usageCostMicroUsd,
-          isBatch,
-        },
-      ],
-      { usageType }
-    );
+    return {
+      cacheCreationTokens: usage.cacheCreationTokens,
+      cachedTokens: usage.cachedTokens ?? null,
+      completionTokens: usage.totalOutputTokens,
+      reasoningTokens: usage.reasoningTokens ?? null,
+      modelId: modelConfig.modelId,
+      promptTokens: usage.inputTokens,
+      providerId: modelConfig.providerId,
+      // Token pricing can produce fractional micro-dollar values. Run usage stores a BIGINT, so
+      // normalize explicitly instead of relying on coercion that differs between inserts and updates.
+      costMicroUsd: Math.round(usageCostMicroUsd),
+      isBatch,
+    };
   }
 
   async listRunUsages(auth: Authenticator): Promise<RunUsageType[]> {
@@ -532,6 +717,35 @@ export class RunResource extends BaseResource<RunModel> {
     });
 
     return usages.map(({ runModelId, ...usage }) => usage);
+  }
+
+  async listRunUsageAttempts(
+    auth: Authenticator
+  ): Promise<RunUsageAttemptType[]> {
+    const usages = await RunUsageModel.findAll({
+      where: {
+        runId: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      order: [["id", "ASC"]],
+    });
+
+    return usages.map((usage) => ({
+      runUsageModelId: usage.id,
+      completionTokens: usage.completionTokens,
+      reasoningTokens: usage.reasoningTokens,
+      inferenceProvider: usage.inferenceProvider,
+      region: usage.region,
+      modelId: usage.modelId as ModelIdType,
+      promptTokens: usage.promptTokens,
+      providerId: usage.providerId as ModelProviderIdType,
+      cachedTokens: usage.cachedTokens,
+      cacheCreationTokens: usage.cacheCreationTokens,
+      costMicroUsd: usage.costMicroUsd,
+      isBatch: usage.isBatch,
+      usageType: usage.usageType,
+      usageState: usage.usageState,
+    }));
   }
 }
 

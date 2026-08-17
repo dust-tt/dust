@@ -6,11 +6,16 @@ import type {
   Selection,
 } from "@app/components/model_picker/modelPickerUtils";
 import {
+  getModelLockTooltip,
+  getTierLockReason,
+  getTierResolvedModelLabel,
   isTierDisplayed,
-  isTierLocked,
   MODEL_TIERS,
-  PREMIUM_MODEL_LOCKED_TOOLTIP,
 } from "@app/components/model_picker/modelPickerUtils";
+import type {
+  EnabledModelConfigurationType,
+  ModelStreamResolutionsType,
+} from "@app/types/api/assistant/models";
 import type {
   ModelConfigurationType,
   ModelMakerIdType,
@@ -22,13 +27,14 @@ import {
   BarLow,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   Icon,
   Lock01,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
-// Tier trigger icons: rising bars from Fast to Complex.
+// Tier trigger icons: rising bars from Basic to Premium.
 const TIER_ICON: Record<ModelTierId, ComponentType> = {
   fast: BarLow,
   standard: BarHalf,
@@ -46,6 +52,8 @@ interface ModelPickerContentProps {
   lockPremiumEfforts: boolean;
   makerGroups: MakerGroup[];
   allModels: ModelConfigurationType[];
+  streamModels: EnabledModelConfigurationType[];
+  streams: ModelStreamResolutionsType | null;
   search: string;
   onSearchChange: (value: string) => void;
   moreModelsExpanded: boolean;
@@ -67,6 +75,8 @@ export function ModelPickerContent({
   lockPremiumEfforts,
   makerGroups,
   allModels,
+  streamModels,
+  streams,
   search,
   onSearchChange,
   moreModelsExpanded,
@@ -79,19 +89,28 @@ export function ModelPickerContent({
   onRevert,
 }: ModelPickerContentProps) {
   return (
-    <DropdownMenuContent className="w-72" align="start" side={side}>
+    <DropdownMenuContent
+      className="w-84 max-w-(--radix-dropdown-menu-content-available-width)"
+      align="start"
+      side={side}
+    >
+      <DropdownMenuLabel label="Model" />
+
       {MODEL_TIERS.map((tier) => {
         const isSelected = isTierDisplayed(tier.id, shown.display);
         const isDefault = isTierDisplayed(tier.id, agentDefault.display);
-        const locked = isTierLocked(tier.id, { lockPremiumEfforts });
-        if (locked) {
+        const lockReason = getTierLockReason(tier.id, {
+          lockPremiumEfforts,
+          streamModels,
+        });
+        if (lockReason) {
           return (
             <DropdownMenuItem
               key={tier.id}
               icon={TIER_ICON[tier.id]}
               label={tier.name}
               disabled
-              tooltip={PREMIUM_MODEL_LOCKED_TOOLTIP}
+              tooltip={getModelLockTooltip(lockReason)}
               endComponent={
                 <Icon
                   visual={Lock01}
@@ -115,8 +134,8 @@ export function ModelPickerContent({
                   onRevert={onRevert}
                 />
               ) : (
-                <span className="whitespace-nowrap text-xs text-muted-foreground">
-                  {tier.description}
+                <span className="whitespace-nowrap text-xs text-faint">
+                  {getTierResolvedModelLabel(tier.id, streams)}
                 </span>
               )
             }

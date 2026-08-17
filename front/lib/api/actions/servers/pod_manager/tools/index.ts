@@ -1705,6 +1705,11 @@ export function createProjectManagerTools(
           const { pod } = contextRes.value;
           const moveRes = await moveConversationToProject(auth, {
             conversation,
+            currentAgentConversationId: isAgentLoopRunContext(
+              toolContext?.runContext
+            )
+              ? toolContext.runContext.conversation.sId
+              : undefined,
             spaceId: pod.sId,
           });
 

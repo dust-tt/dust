@@ -269,16 +269,25 @@ export function ConversationContainerVirtuoso({
         <>
           <div
             id="agent-input-header"
-            className="flex h-fit w-full max-w-conversation flex-col items-center justify-end gap-4 py-4 md:min-h-[20vh]"
+            className="flex h-fit w-full max-w-conversation flex-col items-center justify-end gap-4 pb-8 pt-4 md:min-h-[20vh]"
             ref={startConversationRef}
           >
-            <Page.Header title={greeting} />
+            <Page.Header
+              title={
+                <h3 className="heading-3xl font-medium text-foreground">
+                  {greeting}
+                </h3>
+              }
+            />
           </div>
           <div
             className={classNames(
               "sticky bottom-0 z-20 flex max-h-dvh w-full",
               "pb-2",
-              "md:w-full md:max-w-conversation md:pb-4"
+              // px-1 keeps a constant gutter so the card's shadow ring never
+              // clips at the scroller edge; max-w compensates so the card
+              // still measures exactly --container-conversation when wide.
+              "md:w-full md:max-w-[calc(var(--container-conversation)+0.5rem)] md:px-1 md:pb-4"
             )}
           >
             <InputBar

@@ -1,11 +1,11 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
-import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import {
   getDayTimestamps,
   getIndexedColor,
 } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
 import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
@@ -344,10 +344,7 @@ export function WorkspaceToolUsageChart({
         </div>
       }
     >
-      <LineChart
-        data={data}
-        margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
-      >
+      <LineChart data={data} margin={CHART_MARGIN}>
         <CartesianGrid vertical={false} className="stroke-border" />
         <XAxis
           dataKey="date"

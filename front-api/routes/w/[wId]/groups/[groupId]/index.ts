@@ -6,6 +6,7 @@ import type {
   PatchGroupResponseBody,
 } from "@app/types/api/groups/manage";
 import { PatchGroupBodySchema } from "@app/types/api/groups/manage";
+import { isManageableGroupKind } from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
@@ -63,8 +64,9 @@ app.get(
 
     const group = groupRes.value;
 
-    // This management API only surfaces manually-managed groups.
-    if (!group.isRegularManual()) {
+    // This management API only surfaces groups exposed in workspace admin UIs: manually-managed
+    // ones (editable) and provisioned ones (read-only).
+    if (!isManageableGroupKind(group.kind)) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

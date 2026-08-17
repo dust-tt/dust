@@ -114,7 +114,7 @@ export function AgentActionsPanel({
   owner,
 }: AgentActionsPanelProps) {
   const {
-    onPanelClosed,
+    closePanel,
     virtuosoMsg,
     data: rawData,
   } = useConversationSidePanelContext();
@@ -133,7 +133,7 @@ export function AgentActionsPanel({
       messageId={messageId}
       actionId={actionId}
       virtuosoMsg={virtuosoMsg}
-      onClose={onPanelClosed}
+      onClose={closePanel}
     />
   );
 }

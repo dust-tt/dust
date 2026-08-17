@@ -191,6 +191,17 @@ async function setupSettledMessage({
 }
 
 describe("loadAgentMessageConsumptionAnalyticsInput", () => {
+  it("returns null when the message context no longer exists", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      authenticator,
+      { agentMessageId: "missing-agent-message" }
+    );
+
+    expect(input).toBeNull();
+  });
+
   it("loads the authoritative inputs for billed user usage", async () => {
     const context = await setupSettledMessage();
 
@@ -316,6 +327,36 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
     });
   });
 
+  it("preserves the agent chain when the parent conversation was deleted", async () => {
+    const testContext = await createResourceTest({ role: "admin" });
+    const parent = await createAgenticMessage({
+      auth: testContext.authenticator,
+      workspace: testContext.workspace,
+      depth: 0,
+      agentName: "Deleted parent agent",
+    });
+    const child = await setupSettledMessage({
+      testContext,
+      depth: 1,
+      agenticOriginMessageId: parent.agentMessage.sId,
+      agentName: "Child agent",
+    });
+    await parent.conversation.updateVisibilityToDeleted(
+      testContext.authenticator
+    );
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(child.auth, {
+      agentMessageId: child.agentMessage.sId,
+    });
+
+    expect(input?.agent).toMatchObject({
+      parent_ids: [parent.agent.sId],
+      direct_parent_id: parent.agent.sId,
+      root_id: parent.agent.sId,
+      depth: 1,
+    });
+  });
+
   it("includes usage explicitly classified as programmatic", async () => {
     const context = await setupSettledMessage({
       usageType: USAGE_TYPE_PROGRAMMATIC,
@@ -351,6 +392,21 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
     );
 
     expect(input).toBeNull();
+  });
+
+  it("loads billed consumption when the conversation was deleted", async () => {
+    const context = await setupSettledMessage();
+    await context.conversation.updateVisibilityToDeleted(context.auth);
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      context.auth,
+      { agentMessageId: context.agentMessage.sId }
+    );
+
+    expect(input).toMatchObject({
+      billedCredits: 5,
+      conversationId: context.conversation.sId,
+    });
   });
 
   it("fails when usage has not been classified for billing", async () => {

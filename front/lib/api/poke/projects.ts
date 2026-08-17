@@ -116,4 +116,6 @@ export type PokeGetPodFunctionInvocation = {
 
 export type PokeGetPodFunctionMCPActionOutput = {
   output: CallToolResult["content"] | null;
+  // Machine-readable payload of the tool result, when the tool provided one.
+  structuredContent?: CallToolResult["structuredContent"];
 };

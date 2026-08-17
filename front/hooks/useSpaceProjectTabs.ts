@@ -11,6 +11,7 @@ export type SystemPodTab =
   | "conversations"
   | "tasks"
   | "files"
+  | "apps"
   | "connected_data"
   | "settings";
 
@@ -27,6 +28,7 @@ const CONNECTED_DATA_QUERY_PARAMS = ["dsvId", "parentId", "q"] as const;
 
 const SYSTEM_POD_TAB_HASHES = new Set<string>([
   "files",
+  "apps",
   "settings",
   "conversations",
   "tasks",

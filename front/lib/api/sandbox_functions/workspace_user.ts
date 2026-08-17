@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type {
   SandboxFunctionInvocationOrigin,
@@ -32,9 +33,12 @@ export async function authorizeSandboxFunctionInvocation(
   {
     userIdentity,
     origin,
+    space,
   }: {
     userIdentity: SandboxFunctionUserIdentityPolicy | null;
     origin: SandboxFunctionInvocationOrigin;
+    // The pod the function belongs to, for policies scoped to the caller's standing in it.
+    space: SpaceResource;
   }
 ): Promise<SandboxFunctionAuthorization> {
   const user = await getAuthenticatedWorkspaceUser(auth);
@@ -63,9 +67,28 @@ export async function authorizeSandboxFunctionInvocation(
               "This Pod Function requires a logged-in workspace member in a live Dust session.",
           };
     }
+    case "pod_member_required": {
+      // Membership means belonging to any of the pod's groups (member or editor — a user is never
+      // in both): the people who hold write on the pod and can publish its functions. Workspace
+      // admins outside those groups cannot write to the pod, so they are deliberately not
+      // authorized. `canRead` would not do either: open pods grant read to the whole workspace, so
+      // it cannot separate members from bystanders.
+      const authorized = user !== null && space.isMember(auth);
+      return authorized
+        ? { authorized: true, user }
+        : {
+            authorized: false,
+            errorMessage: "This Pod Function requires a member of its Pod.",
+          };
+    }
     default:
-      // The policy is persisted as a plain string, so a revision newer than this one can store a
-      // value it does not know. Deny rather than throw so a mixed-version deploy fails closed.
+      // The policy is persisted as a plain string, so the store can hold a value this revision
+      // does not know: one from a newer revision in a mixed-version deploy, or a retired policy
+      // (e.g. `pod_editor_required`) that predates its removal. Deny rather than throw so both
+      // fail closed; a retired policy is repaired by republishing with a supported one.
+      // `assertNeverAndIgnore` (not `assertNever`) is deliberate although this is server code:
+      // the value is cross-revision data, not internal control flow, and throwing would turn
+      // these invocations into 500s instead of this clean denial.
       assertNeverAndIgnore(policy);
       return {
         authorized: false,

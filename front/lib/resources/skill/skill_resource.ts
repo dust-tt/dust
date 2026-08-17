@@ -33,11 +33,13 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { verbsForGrantAtLevel } from "@app/lib/resources/group_permission_registry";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import {
-  createResourcePermissionsFromSpacesWithMap,
+  createAccessControlListFromSpacesWithMap,
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
@@ -90,7 +92,13 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import { isDefaultFromAvailability } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
+import type { GrantVerb } from "@app/types/group_permissions";
 import { SKILL_GROUP_PREFIX } from "@app/types/groups";
+import type {
+  AccessControlList,
+  GroupGrant,
+  RoleGrant,
+} from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -251,6 +259,17 @@ export interface SkillResource
  * @see GlobalSkillsRegistry for global skill definitions
  * @see SystemSkillsRegistry for always-enabled system skill definitions
  */
+
+// The role a skill's editor group holds on the skill. Its verbs live in ROLE_REGISTRY.skill.
+const SKILL_EDITOR_GRANT_TYPE = "editor" as const;
+
+const SKILL_ROLE_GRANTS: RoleGrant[] = [
+  { role: "admin", permissions: ["read", "admin"] },
+  { role: "manager", permissions: ["read"] },
+  { role: "user", permissions: ["read"] },
+  { role: "builder", permissions: ["read"] },
+];
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
@@ -510,6 +529,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       await skillResource.normalizeSkillReferenceTags(auth, { transaction });
       await skillResource.syncSkillReferences(auth, { transaction });
 
+      // Mirror the editor-group association into group_permissions, in the same transaction as the
+      // association itself.
+      await skillResource.writeGroupPermissions(auth, { transaction });
+
       return skillResource;
     });
   }
@@ -667,10 +690,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     const allowedCustomSkills = validCustomSkills.filter((skill) =>
-      auth.canRead(
-        createResourcePermissionsFromSpacesWithMap(
+      auth.hasPermissionForAcls(
+        "read",
+        createAccessControlListFromSpacesWithMap(
           spaceIdToGroupsMap,
-          skill.requestedSpaceIds
+          skill.requestedSpaceIds,
+          auth.getNonNullableWorkspace().id
         )
       )
     );
@@ -1000,7 +1025,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentLoopData,
       effectiveSpaceIds,
       onlyActive = false,
-    }: SkillFetchContext & { onlyActive?: boolean } = {}
+      withInstructions = true,
+      withTools = true,
+      withFileAttachments = true,
+    }: SkillFetchContext &
+      Pick<
+        SkillConfigurationFindOptions,
+        "withInstructions" | "withTools" | "withFileAttachments"
+      > & { onlyActive?: boolean } = {}
   ): Promise<SkillResource[]> {
     if (sIds.length === 0) {
       return [];
@@ -1033,6 +1065,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           sId: globalSkillIds,
           status: onlyActive ? ["active"] : ["active", "archived", "suggested"],
         },
+        withInstructions,
+        withTools,
+        withFileAttachments,
       },
       { agentLoopData, effectiveSpaceIds }
     );
@@ -2104,7 +2139,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return false;
     }
 
-    return this.editorGroup.canWrite(auth);
+    const legacyAcls = this.editorGroup.getAccessControlLists(auth);
+    this.shadowCompareSkillPermission(auth, legacyAcls, "write");
+
+    return auth.hasPermissionForAcls("write", legacyAcls);
   }
 
   canAdministrate(auth: Authenticator): boolean {
@@ -2118,7 +2156,125 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return false;
     }
 
-    return this.editorGroup.canAdministrate(auth);
+    const legacyAcls = this.editorGroup.getAccessControlLists(auth);
+    this.shadowCompareSkillPermission(auth, legacyAcls, "admin");
+
+    return auth.hasPermissionForAcls("admin", legacyAcls);
+  }
+
+  /**
+   * The skill's access-control list built from governance data: the code role rules plus the
+   * groups held in `group_permissions`. Stands on its own — it reads nothing from the editor-group
+   * association — so at the flip (#9480) this becomes the served `getAccessControlLists(auth)` and
+   * the legacy path is deleted without touching it.
+   *
+   * Until then it is the shadow-compare candidate.
+   */
+  governanceAcls(auth: Authenticator): AccessControlList[] {
+    return [
+      {
+        roles: SKILL_ROLE_GRANTS,
+        groups: auth.getGroupPermissions("skill", this.id),
+        workspaceId: this.workspaceId,
+      },
+    ];
+  }
+
+  // Shadow-compare (#9479): while the `group_permissions_shadow` flag is on for the workspace, check
+  // whether the governance ACL yields the same decision as the legacy editor-group ACL. Legacy is
+  // the editor group's own `getAccessControlLists(auth)` (the group listed inline); the candidate is
+  // `governanceAcls`, built independently from the table. Delegates the flag lookup + compare + log
+  // to the Authenticator as fire-and-forget — never changes the served result.
+  //
+  // Callers skip this for API keys (code-ruled: any key may write any skill, which the table has no
+  // way to express) and for skills without an editor group (global/system skills, not part of the
+  // migration).
+  private shadowCompareSkillPermission(
+    auth: Authenticator,
+    legacyAcls: AccessControlList[],
+    permission: GrantVerb
+  ): void {
+    auth.shadowComparePermission(
+      permission,
+      legacyAcls,
+      this.governanceAcls(auth),
+      {
+        resource: "skill",
+        skillId: this.sId,
+        permission,
+        workspaceId: this.workspaceId,
+        // Null for non-user callers (internal auth); API keys skip shadow-compare entirely.
+        userId: auth.user()?.sId ?? null,
+      }
+    );
+  }
+
+  // The group grants a skill confers, derived from its `group_skills` association: the editor
+  // group holds the `editor` role. The verbs come from the registry rather than being restated
+  // here, so this cannot drift from `ROLE_REGISTRY.skill.editor`.
+  private skillGroupGrants(): GroupGrant[] {
+    if (!this.editorGroup) {
+      return [];
+    }
+
+    return [
+      {
+        id: this.editorGroup.id,
+        permissions: verbsForGrantAtLevel(
+          SKILL_EDITOR_GRANT_TYPE,
+          "skill",
+          "instance"
+        ),
+      },
+    ];
+  }
+
+  // Writes this skill's `group_permissions` rows directly from its `group_skills` association
+  // (see `skillGroupGrants`). The skill mutation paths call this to keep the table in sync as it
+  // becomes the source of truth. Idempotent — it clears the skill's instance grants then
+  // re-inserts the desired set, so it is safe to re-run.
+  async writeGroupPermissions(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    // Clear this skill's instance grants, then re-insert the desired set. `resourceId` is the
+    // skill id (> 0), so the type-wide governance rows (-1) are never touched.
+    await GroupPermissionResource.deleteAllForResource(auth, {
+      resourceType: "skill",
+      resourceId: this.id,
+      transaction,
+    });
+
+    const desiredGrants = this.skillGroupGrants();
+    if (desiredGrants.length === 0) {
+      return;
+    }
+
+    const groups = await GroupResource.fetchByModelIds(
+      auth,
+      desiredGrants.map((grant) => grant.id),
+      { transaction }
+    );
+
+    await GroupPermissionResource.grantMany(auth, {
+      grants: groups.map((group) => ({
+        group,
+        grantType: SKILL_EDITOR_GRANT_TYPE,
+        resourceType: "skill" as const,
+        resourceId: this.id,
+      })),
+      transaction,
+    });
+  }
+
+  // Backfill entry: (re-)derive this skill's `group_permissions` from its `group_skills`
+  // association. Delegates to `writeGroupPermissions` — the same logic the mutation paths use — so
+  // the one-off backfill and the ongoing writes can never disagree. Idempotent; safe to re-run.
+  async reconcileGroupPermissions(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    return this.writeGroupPermissions(auth, { transaction });
   }
 
   private async listActiveAgents(
@@ -3671,6 +3827,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
         await GroupSkillModel.destroy({
           where: whereWorkspaceIdAndSkillId,
+          transaction,
+        });
+
+        // Drop the skill's instance grants before the editor group goes away: group_permissions
+        // rows are keyed by both, and this also covers grants held by any other group.
+        await GroupPermissionResource.deleteAllForResource(auth, {
+          resourceType: "skill",
+          resourceId: this.id,
           transaction,
         });
 

@@ -35,7 +35,7 @@ import {
   isRegularManualGroupKind,
   isSkillEditorGroupKind,
 } from "@app/types/groups";
-import type { ResourcePermission } from "@app/types/resource_permissions";
+import type { AccessControlList } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -2251,7 +2251,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     newName: string
   ): Promise<Result<undefined, Error>> {
-    if (!auth.canAdministrate(this.requestedPermissions())) {
+    if (!auth.hasPermission("admin", this)) {
       return new Err(new Error("Only admins can update group names."));
     }
 
@@ -2571,10 +2571,10 @@ export class GroupResource extends BaseResource<GroupModel> {
    * NOT inherited, i.e., if you set a permission for role "user", an "admin"
    * will NOT have it
    *
-   * @returns Array of ResourcePermission objects defining the default access
+   * @returns Array of AccessControlList objects defining the default access
    * configuration
    */
-  requestedPermissions(): ResourcePermission[] {
+  getAccessControlLists(auth: Authenticator): AccessControlList[] {
     if (this.kind === "agent_editors" || this.kind === "skill_editors") {
       return [
         {
@@ -2672,15 +2672,15 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   canRead(auth: Authenticator): boolean {
-    return auth.canRead(this.requestedPermissions());
+    return auth.hasPermission("read", this);
   }
 
   canWrite(auth: Authenticator): boolean {
-    return auth.canWrite(this.requestedPermissions());
+    return auth.hasPermission("write", this);
   }
 
   canAdministrate(auth: Authenticator): boolean {
-    return auth.canAdministrate(this.requestedPermissions());
+    return auth.hasPermission("admin", this);
   }
 
   isSystem(): boolean {
@@ -2958,5 +2958,34 @@ export class GroupResource extends BaseResource<GroupModel> {
       ...group.toJSON(),
       memberCount: memberCounts.get(group.id) ?? 0,
     }));
+  }
+
+  /**
+   * Batched counterpart of `toJSONWithMemberCount` that also carries each
+   * group's active member sIds, resolved in two queries total regardless of
+   * group count.
+   */
+  static async fetchJSONWithMembers(
+    auth: Authenticator,
+    groups: GroupResource[]
+  ): Promise<(GroupType & { memberIds: string[] })[]> {
+    const membershipsByGroup =
+      await GroupResource.getActiveMembershipsForGroups(auth, groups);
+    const userModelIds = [...new Set(Object.values(membershipsByGroup).flat())];
+    const users = await UserResource.fetchByModelIds(userModelIds);
+    const sIdByModelId = new Map(users.map((user) => [user.id, user.sId]));
+
+    return groups.map((group) => {
+      const memberIds = removeNulls(
+        (membershipsByGroup[group.id] ?? []).map((userModelId) =>
+          sIdByModelId.get(userModelId)
+        )
+      );
+      return {
+        ...group.toJSON(),
+        memberCount: memberIds.length,
+        memberIds,
+      };
+    });
   }
 }

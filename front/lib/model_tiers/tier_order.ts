@@ -1,6 +1,8 @@
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
-import { MODELS_TIER_NAMES } from "@app/lib/api/assistant/token_pricing/tiers";
-import { formatAsDisplayName } from "@app/types/shared/utils/string_utils";
+import {
+  getModelsTierDisplayName,
+  MODELS_TIER_NAMES,
+} from "@app/lib/api/assistant/token_pricing/tiers";
 
 export const DEFAULT_MAX_MODEL_TIER: ModelsTierName = "premium";
 
@@ -49,5 +51,5 @@ export function formatMaxTierDescription(
     return undefined;
   }
 
-  return `Includes ${lowerTiers.map(formatAsDisplayName).join(", ")}`;
+  return `Includes ${lowerTiers.map(getModelsTierDisplayName).join(", ")}`;
 }

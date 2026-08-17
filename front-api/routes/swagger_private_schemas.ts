@@ -2,6 +2,46 @@
  * @swagger
  * components:
  *   schemas:
+ *     PrivateConsumptionFacet:
+ *       type: object
+ *       required:
+ *         - value
+ *         - label
+ *         - pictureUrl
+ *         - documentCount
+ *         - disabled
+ *       properties:
+ *         value:
+ *           type: string
+ *           description: Raw indexed value accepted by the corresponding consumption filter.
+ *         label:
+ *           type: string
+ *           description: Human-readable label, falling back to the raw value when its resource was deleted.
+ *         pictureUrl:
+ *           type: string
+ *           nullable: true
+ *         icon:
+ *           type: string
+ *           nullable: true
+ *           description: Design-system icon name for tool and skill facets when known.
+ *         documentCount:
+ *           type: integer
+ *           minimum: 0
+ *           description: Number of matching indexed documents after applying the selected period and every other facet.
+ *         disabled:
+ *           type: boolean
+ *           description: Whether selecting this value would produce no matching indexed document.
+ *         scope:
+ *           type: string
+ *           enum: [global, visible, hidden]
+ *           description: Current agent scope, when the agent still has accessible configuration metadata.
+ *         maker:
+ *           type: string
+ *           description: Model maker, for known model facets.
+ *         tier:
+ *           type: string
+ *           enum: [cost_efficient, balanced, premium]
+ *           description: Default reasoning-effort tier, for known model facets.
  *     PrivateUser:
  *       type: object
  *       description: Authenticated user with their workspaces and subscriber hash.
@@ -1456,6 +1496,7 @@
  *       oneOf:
  *         - $ref: '#/components/schemas/PrivateUserMessageNewEvent'
  *         - $ref: '#/components/schemas/PrivateAgentMessageNewEvent'
+ *         - $ref: '#/components/schemas/PrivateAgentMessageConsumptionUpdatedEvent'
  *         - $ref: '#/components/schemas/PrivateAgentMessageDoneEvent'
  *         - $ref: '#/components/schemas/PrivateCompactionMessageNewEvent'
  *         - $ref: '#/components/schemas/PrivateCompactionMessageDoneEvent'
@@ -1508,6 +1549,22 @@
  *         status:
  *           type: string
  *           enum: [success, error]
+ *     PrivateAgentMessageConsumptionUpdatedEvent:
+ *       type: object
+ *       required: [type, created, conversationId, messageId, costCredits]
+ *       properties:
+ *         type:
+ *           type: string
+ *           enum: [agent_message_consumption_updated]
+ *         created:
+ *           type: integer
+ *         conversationId:
+ *           type: string
+ *         messageId:
+ *           type: string
+ *         costCredits:
+ *           type: number
+ *           nullable: true
  *     PrivateCompactionMessageNewEvent:
  *       type: object
  *       required: [type, created, messageId, message]

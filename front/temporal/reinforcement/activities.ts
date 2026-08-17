@@ -9,6 +9,7 @@ import {
   sendBatchCallToLlm,
   storeLlmResult,
 } from "@app/lib/api/llm/batch_llm";
+import { isFreeUsageBlocked } from "@app/lib/api/llm/free_usage";
 import { getStreamEndpointFromLegacyModelId } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import type { BatchStatus } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
@@ -261,6 +262,22 @@ async function runReinforcedSkillsStep({
       userId: auth.user()?.sId,
     },
   };
+
+  // Enforce the per-user daily free-usage cost cap before running this free call.
+  if (
+    llmParameters.context &&
+    (await isFreeUsageBlocked(auth, llmParameters.context))
+  ) {
+    logger.info(
+      { contextId, workspaceId: owner.sId },
+      "ReinforcedSkills: free-usage limit reached, stopping"
+    );
+    return {
+      isTerminal: true,
+      suggestionsCreated: 0,
+      approvedSourceSuggestionIds: [],
+    };
+  }
 
   const llm = await getStreamLLM(auth, llmParameters);
   if (!llm) {

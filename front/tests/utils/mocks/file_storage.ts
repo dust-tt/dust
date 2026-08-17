@@ -13,6 +13,18 @@ interface SaveFileCall {
   contentType: string | undefined;
 }
 
+interface SignedUrlCall {
+  filePath: string;
+  options: Record<string, unknown> | undefined;
+}
+
+interface MockFileMetadata {
+  contentType: string;
+  size: string;
+  contentEncoding?: string;
+  contentDisposition?: string;
+}
+
 // Minimal duck-typed stand-in for the GCS `File` objects `getSortedFileVersions` resolves to.
 // Callers (e.g. FileResource.revert()) only ever call `.copy(dest)` and `.delete()` on them.
 export interface MockFileVersion {
@@ -35,18 +47,28 @@ class FileStorageMock {
   private _writeStreamCalls: WriteStreamCall[] = [];
   private _readStreamCalls: string[] = [];
   private _saveFileCalls: SaveFileCall[] = [];
+  private _signedUrlCalls: SignedUrlCall[] = [];
+  private _signedUploadUrlCalls: SignedUrlCall[] = [];
+  private _metadataCalls: string[] = [];
   private _objectStore = new Map<string, string>();
   private _fetchNotFoundPredicate: (filePath: string) => boolean = () => false;
   private _existsPredicate: (filePath: string) => boolean = () => true;
   private _saveShouldFail: (filePath: string) => boolean = () => false;
-  private _metadataForPath: (
-    filePath: string
-  ) => { contentType: string; size: string } | null = () => null;
+  private _metadataForPath: (filePath: string) => MockFileMetadata | null =
+    () => null;
   private _contentForPath: (filePath: string) => string | null = () => null;
   private _sortedFileVersions: (filePath: string) => MockFileVersion[] | null =
     () => null;
   private _copyFileShouldFail: (src: string, dest: string) => boolean = () =>
     false;
+  private _filesByPrefix: (
+    prefix: string
+  ) => { name: string; metadata: Record<string, unknown> }[] | null = () =>
+    null;
+  private _subdirectoryNames: (prefix: string) => string[] | null = () => null;
+  private _deletedPrefixes: string[] = [];
+  private _onDeleteByPrefix: (prefix: string) => void = () => {};
+  private _ignoreDeleteByPrefixInListings = false;
 
   get writeStreamCalls(): readonly WriteStreamCall[] {
     return this._writeStreamCalls;
@@ -58,6 +80,18 @@ class FileStorageMock {
 
   get saveFileCalls(): readonly SaveFileCall[] {
     return this._saveFileCalls;
+  }
+
+  get signedUrlCalls(): readonly SignedUrlCall[] {
+    return this._signedUrlCalls;
+  }
+
+  get signedUploadUrlCalls(): readonly SignedUrlCall[] {
+    return this._signedUploadUrlCalls;
+  }
+
+  get metadataCalls(): readonly string[] {
+    return this._metadataCalls;
   }
 
   /**
@@ -81,9 +115,7 @@ class FileStorageMock {
    * Return null to fall back to the default (`text/plain`, size 0). Reset between tests
    * via `reset()`.
    */
-  setFileMetadata(
-    fn: (filePath: string) => { contentType: string; size: string } | null
-  ): void {
+  setFileMetadata(fn: (filePath: string) => MockFileMetadata | null): void {
     this._metadataForPath = fn;
   }
 
@@ -115,6 +147,42 @@ class FileStorageMock {
   }
 
   /**
+   * Controls what `bucket.getAllFilesByPrefix({ prefix })` resolves to, keyed by the prefix. Return
+   * null (the default) to resolve an empty list. Reset between tests via `reset()`.
+   */
+  setFilesByPrefix(
+    fn: (
+      prefix: string
+    ) => { name: string; metadata: Record<string, unknown> }[] | null
+  ): void {
+    this._filesByPrefix = fn;
+  }
+
+  /**
+   * Controls what `bucket.listSubdirectoryNames({ prefix })` resolves to, keyed by the prefix.
+   * Return null (the default) to resolve an empty list. Reset between tests via `reset()`.
+   */
+  setSubdirectoryNames(fn: (prefix: string) => string[] | null): void {
+    this._subdirectoryNames = fn;
+  }
+
+  /**
+   * Observe every `bucket.deleteByPrefix(prefix)` call, e.g. to assert the order of a delete
+   * sequence. Reset between tests via `reset()`.
+   */
+  setOnDeleteByPrefix(fn: (prefix: string) => void): void {
+    this._onDeleteByPrefix = fn;
+  }
+
+  /**
+   * Make `listSubdirectoryNames` ignore prior `deleteByPrefix` calls, so a prefix keeps being listed
+   * after it was deleted. Simulates a silently-failed prefix wipe. Reset between tests via `reset()`.
+   */
+  setIgnoreDeleteByPrefixInListings(ignore: boolean): void {
+    this._ignoreDeleteByPrefixInListings = ignore;
+  }
+
+  /**
    * Makes `fetchFileContent(path)` throw a GCS-shaped not-found error
    * (`{ code: 404 }`) for matching paths that were not previously written via
    * `uploadRawContentToBucket` and have no `setFileContent` override. Enables
@@ -135,10 +203,18 @@ class FileStorageMock {
     return this._objectStore.get(filePath);
   }
 
+  // Seed the in-memory object store directly (no write path).
+  setObject(filePath: string, content: string): void {
+    this._objectStore.set(filePath, content);
+  }
+
   reset(): void {
     this._writeStreamCalls.length = 0;
     this._readStreamCalls.length = 0;
     this._saveFileCalls.length = 0;
+    this._signedUrlCalls.length = 0;
+    this._signedUploadUrlCalls.length = 0;
+    this._metadataCalls.length = 0;
     this._objectStore.clear();
     this._fetchNotFoundPredicate = () => false;
     this._existsPredicate = () => true;
@@ -147,6 +223,11 @@ class FileStorageMock {
     this._contentForPath = () => null;
     this._sortedFileVersions = () => null;
     this._copyFileShouldFail = () => false;
+    this._filesByPrefix = () => null;
+    this._subdirectoryNames = () => null;
+    this._deletedPrefixes.length = 0;
+    this._onDeleteByPrefix = () => {};
+    this._ignoreDeleteByPrefixInListings = false;
   }
 
   /**
@@ -202,14 +283,16 @@ class FileStorageMock {
       exists: vi.fn(() =>
         Promise.resolve([this._existsPredicate(filePath ?? "")])
       ),
-      getMetadata: vi.fn(() =>
-        Promise.resolve([
-          this._metadataForPath(filePath ?? "") ?? {
+      getMetadata: vi.fn(() => {
+        const path = filePath ?? "";
+        this._metadataCalls.push(path);
+        return Promise.resolve([
+          this._metadataForPath(path) ?? {
             contentType: "text/plain",
             size: "0",
           },
-        ])
-      ),
+        ]);
+      }),
       getSignedUrl: vi.fn().mockResolvedValue(["https://signed-url.test"]),
       publicUrl: vi.fn().mockReturnValue("https://public-url.test"),
       save: vi
@@ -241,7 +324,18 @@ class FileStorageMock {
       getFileContentType: vi
         .fn()
         .mockResolvedValue({ isOk: () => false, isErr: () => true }),
-      getSignedUrl: vi.fn().mockResolvedValue("https://signed-url.test"),
+      getSignedUrl: vi.fn(
+        (filePath: string, options?: Record<string, unknown>) => {
+          this._signedUrlCalls.push({ filePath, options });
+          return Promise.resolve("https://signed-url.test");
+        }
+      ),
+      getSignedUploadUrl: vi.fn(
+        (filePath: string, options?: Record<string, unknown>) => {
+          this._signedUploadUrlCalls.push({ filePath, options });
+          return Promise.resolve("https://signed-upload-url.test");
+        }
+      ),
       uploadFileToBucket: vi.fn().mockResolvedValue(undefined),
       uploadBufferToBucket: vi.fn(
         (args: { buffer: Buffer; contentType: string; filePath: string }) => {
@@ -306,6 +400,8 @@ class FileStorageMock {
         return Promise.resolve(undefined);
       }),
       deleteByPrefix: vi.fn(async (prefix: string) => {
+        this._deletedPrefixes.push(prefix);
+        this._onDeleteByPrefix(prefix);
         for (const path of [...this._objectStore.keys()]) {
           if (path.startsWith(prefix)) {
             this._objectStore.delete(path);
@@ -313,9 +409,22 @@ class FileStorageMock {
         }
       }),
       deleteFiles: vi.fn().mockResolvedValue(undefined),
-      getAllFilesByPrefix: vi
-        .fn()
-        .mockResolvedValue({ files: [], pageFetchCount: 1 }),
+      getAllFilesByPrefix: vi.fn(({ prefix }: { prefix: string }) =>
+        Promise.resolve({
+          files: this._filesByPrefix(prefix) ?? [],
+          pageFetchCount: 1,
+        })
+      ),
+      listSubdirectoryNames: vi.fn(({ prefix }: { prefix: string }) => {
+        const normalized = prefix.endsWith("/") ? prefix : `${prefix}/`;
+        const names = (this._subdirectoryNames(prefix) ?? []).filter(
+          (name) =>
+            this._ignoreDeleteByPrefixInListings ||
+            (!this._deletedPrefixes.includes(`${normalized}${name}/`) &&
+              !this._deletedPrefixes.includes(normalized))
+        );
+        return Promise.resolve(names);
+      }),
       getSortedFileVersions: vi.fn(({ filePath }: { filePath: string }) =>
         Promise.resolve(new Ok(this._sortedFileVersions(filePath) ?? []))
       ),

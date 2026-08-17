@@ -202,6 +202,9 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
     fileContent,
     vizUrl,
     identifier: `viz-banner-${fileId}`,
+    isPodEditor: podInfo.isEditor,
+    isPodMember: podInfo.isMember,
+    framePath: pinnedFramePath,
   };
 
   const controlsProps = {

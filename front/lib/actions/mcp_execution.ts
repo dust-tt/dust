@@ -1,4 +1,8 @@
-import { FILE_OFFLOAD_SNIPPET_LENGTH } from "@app/lib/actions/action_output_limits";
+import type { ToolOutputOffloadDescriptor } from "@app/lib/actions/action_output_limits";
+import {
+  FILE_OFFLOAD_SNIPPET_LENGTH,
+  TOOL_OUTPUT_OFFLOAD_META_KEY,
+} from "@app/lib/actions/action_output_limits";
 import type {
   MCPToolConfigurationType,
   ToolNotificationEvent,
@@ -19,9 +23,14 @@ import type {
   ActionGeneratedFileType,
   ToolContext,
   ToolOutputItemType,
+  ToolRunContext,
 } from "@app/lib/actions/types";
-import { isAgentLoopRunContext } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  isSandboxFunctionRunContext,
+} from "@app/lib/actions/types";
 import { isInternalServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import type { PersistedToolOutput } from "@app/lib/api/files/action_output_fs";
 import { persistToolOutput } from "@app/lib/api/files/action_output_fs";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
@@ -74,15 +83,79 @@ function getFileName(resource: { uri: string }): string {
 /**
  * Builds the model-visible snippet for a content block whose full text was offloaded to the
  * file system by persistToolOutput. The scoped path pointer is what lets the model read the
- * rest of the content back, so it must always be present.
+ * rest of the content back, so it must always be present. The
+ * "[Full content archived at <path>]" sentence is a stable contract — existing function code
+ * regexes it — and must stay byte-identical across variants.
+ *
+ * In a sandbox function run context, JSON content gets a parse-safe stub instead of the blind
+ * character cut: code that strips the archive sentence and JSON.parses the rest gets an explicit
+ * offload pointer object instead of JSON cut mid-string. Conversation (agent loop) snippets are
+ * untouched.
  */
-function makeOffloadedSnippet(text: string, scopedPath: string): string {
+function makeOffloadedSnippet(
+  text: string,
+  offload: PersistedToolOutput,
+  runContext: ToolRunContext
+): string {
+  const archiveSentence = `[Full content archived at ${offload.scopedPath}]`;
+
+  if (
+    isSandboxFunctionRunContext(runContext) &&
+    offload.contentType === "application/json"
+  ) {
+    return `${makeParseSafeOffloadStub(text, offload)}\n${archiveSentence}`;
+  }
+
   const head = text.substring(0, FILE_OFFLOAD_SNIPPET_LENGTH);
   // The offload threshold is in bytes while the snippet cut is in characters, so multibyte
   // content can be offloaded without losing any character here — only claim truncation when
   // characters were actually dropped.
   const truncatedSuffix = head.length < text.length ? "... (truncated)" : "";
-  return `${head}${truncatedSuffix}\n[Full content archived at ${scopedPath}]`;
+  return `${head}${truncatedSuffix}\n${archiveSentence}`;
+}
+
+/**
+ * Serializes the parse-safe stub that replaces the head of offloaded JSON content for sandbox
+ * function consumers. The serialized stub is capped at FILE_OFFLOAD_SNIPPET_LENGTH characters
+ * (like the plain head cut): JSON escaping can inflate the head, so trim by the measured overage
+ * until it fits — every head character serializes to at least one character, so this converges
+ * in a few rounds.
+ */
+function makeParseSafeOffloadStub(
+  text: string,
+  offload: PersistedToolOutput
+): string {
+  let head = text.substring(0, FILE_OFFLOAD_SNIPPET_LENGTH);
+  for (;;) {
+    const serialized = JSON.stringify({
+      __dust_offloaded__: true,
+      fullContentPath: offload.scopedPath,
+      totalBytes: offload.totalBytes,
+      head,
+    });
+    const overageChars = serialized.length - FILE_OFFLOAD_SNIPPET_LENGTH;
+    if (overageChars <= 0 || head.length === 0) {
+      return serialized;
+    }
+    head = head.substring(0, Math.max(0, head.length - overageChars));
+  }
+}
+
+/**
+ * Builds the `_meta` payload attached to every offloaded content block: the machine-readable
+ * counterpart of the archive sentence, letting code consumers locate the full content without
+ * parsing the snippet text.
+ */
+function makeOffloadMeta(offload: PersistedToolOutput): {
+  [TOOL_OUTPUT_OFFLOAD_META_KEY]: ToolOutputOffloadDescriptor;
+} {
+  return {
+    [TOOL_OUTPUT_OFFLOAD_META_KEY]: {
+      fullContentPath: offload.scopedPath,
+      totalBytes: offload.totalBytes,
+      contentType: offload.contentType,
+    },
+  };
 }
 
 export async function processToolNotification(
@@ -183,10 +256,14 @@ export async function processToolResults(
   {
     localLogger,
     toolCallResultContent,
+    toolCallResultStructuredContent,
     toolContext,
   }: {
     localLogger: Logger;
     toolCallResultContent: CallToolResult["content"];
+    // Machine-readable payload of the tool result. Persisted alongside the content for sandbox
+    // function actions; agent-loop actions only persist the model-facing content blocks.
+    toolCallResultStructuredContent?: CallToolResult["structuredContent"];
     toolContext: ToolContext;
   }
 ): Promise<{
@@ -225,7 +302,8 @@ export async function processToolResults(
           if (res.value !== null) {
             const snippet = makeOffloadedSnippet(
               block.text,
-              res.value.scopedPath
+              res.value,
+              runContext
             );
             return {
               content: {
@@ -235,6 +313,7 @@ export async function processToolResults(
                   mimeType: "text/plain",
                   text: snippet,
                 },
+                _meta: makeOffloadMeta(res.value),
               },
               file: null,
             };
@@ -412,7 +491,7 @@ export async function processToolResults(
           if (res.value !== null) {
             const snippet =
               text !== null
-                ? makeOffloadedSnippet(text, res.value.scopedPath)
+                ? makeOffloadedSnippet(text, res.value, runContext)
                 : "";
             return {
               content: {
@@ -421,6 +500,7 @@ export async function processToolResults(
                   ...sanitizedResource,
                   text: snippet,
                 },
+                _meta: makeOffloadMeta(res.value),
               },
               file: null,
             };
@@ -496,14 +576,20 @@ export async function processToolResults(
   );
 
   // Persist the processed contents on the run context's action: per-item rows for agent loop
-  // actions, a single output object for sandbox function actions.
-  const outputRes = await runContext.action.createOutputItems(
-    auth,
-    cleanContent.map((c) => ({
-      content: sanitizeStringsDeep(c.content),
-      fileId: c.file?.id,
-    }))
-  );
+  // actions, a single output object for sandbox function actions. Sandbox function actions also
+  // persist the structuredContent so programmatic consumers get a machine-readable payload.
+  const cleanContentItems = cleanContent.map((c) => ({
+    content: sanitizeStringsDeep(c.content),
+    fileId: c.file?.id,
+  }));
+  const outputRes = isSandboxFunctionRunContext(runContext)
+    ? await runContext.action.createOutputItems(auth, cleanContentItems, {
+        structuredContent:
+          toolCallResultStructuredContent !== undefined
+            ? sanitizeStringsDeep(toolCallResultStructuredContent)
+            : undefined,
+      })
+    : await runContext.action.createOutputItems(auth, cleanContentItems);
 
   // Surfaced as an exception: there is no acceptable degraded state for unpersisted tool outputs.
   if (outputRes.isErr()) {

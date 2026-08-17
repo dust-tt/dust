@@ -221,6 +221,16 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
       name: this.envName,
       kind: this.kind,
       allowed_domains: formatAllowedDomainsForAudit(this.allowedDomains),
+      // Pod-scoped rows carry their pod space sId; workspace rows omit the
+      // key entirely (metadata values must be strings, never null).
+      ...(this.spaceId !== null
+        ? {
+            space_id: SpaceResource.modelIdToSId({
+              id: this.spaceId,
+              workspaceId: this.workspaceId,
+            }),
+          }
+        : {}),
     };
   }
 

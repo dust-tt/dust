@@ -10,6 +10,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { FileShareScope } from "@app/types/files";
 import { frameContentType } from "@app/types/files";
@@ -77,6 +78,101 @@ describe("GET /api/v1/public/frames/[token]", () => {
     }
     return honoApp.request(`/api/v1/public/frames/${token}`, { headers });
   };
+
+  // A shared Frame that lives in an app folder must resolve its app's functions by bare name just
+  // as it does when opened from the Pod, so the response has to tell it which app it belongs to.
+  const createPodAppFrame = async () => {
+    const pod = await SpaceFactory.project(workspace, user.id);
+    const file = await FileFactory.create(auth, user, {
+      contentType: frameContentType,
+      fileName: "TaskList.tsx",
+      fileSize: 100,
+      status: "ready",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: pod.sId },
+      mountFilePath: `w/${workspace.sId}/pods/${pod.sId}/files/TaskList/TaskList.tsx`,
+    });
+
+    await file.setShareScope(auth, "workspace_and_emails");
+    const shareInfo = await file.getShareInfo();
+    const token = shareInfo!.shareUrl.split("/").at(-1)!;
+
+    // The Authenticator caches its group memberships, and `auth` predates this pod, so it would
+    // not be able to read it. Rebuild one that can.
+    const podAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    return { pod, file, token, podAuth };
+  };
+
+  describe("framePath for a Pod app Frame", () => {
+    it("returns the scoped path for a viewer who can read the Pod", async () => {
+      const { pod, token, podAuth } = await createPodAppFrame();
+      vi.mocked(resolveOptionalAuth).mockResolvedValue(podAuth);
+
+      const response = await requestFrame(token);
+
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.framePath).toBe(`pod-${pod.sId}/TaskList/TaskList.tsx`);
+    });
+
+    it("withholds it from a viewer who cannot read the Pod", async () => {
+      const { file, token } = await createPodAppFrame();
+      vi.mocked(resolveOptionalAuth).mockResolvedValue(null);
+
+      const sessionToken = await createGrantAndSession(
+        file,
+        "external@example.com"
+      );
+      const response = await requestFrame(token, {
+        cookies: { dust_frame_session: sessionToken },
+      });
+
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      // Such a viewer cannot invoke the Pod's functions either, so there is no reason to hand them
+      // the Pod's layout.
+      expect(body.framePath).toBeNull();
+    });
+  });
+
+  describe("pod identity for a Pod Frame", () => {
+    // The share page is not a pod host, so these flags are how a shared Frame learns the viewer's
+    // standing in the Pod (e.g. to show member-only affordances instead of a guest view).
+    it("reports the standing of a viewer in the Pod", async () => {
+      // createPodAppFrame makes the viewer the pod's creator, who lands in its editor group.
+      const { token, podAuth } = await createPodAppFrame();
+      vi.mocked(resolveOptionalAuth).mockResolvedValue(podAuth);
+
+      const response = await requestFrame(token);
+
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.isPodMember).toBe(true);
+      expect(body.isPodEditor).toBe(true);
+    });
+
+    it("reports no standing for a viewer outside the Pod", async () => {
+      const { file, token } = await createPodAppFrame();
+      vi.mocked(resolveOptionalAuth).mockResolvedValue(null);
+
+      const sessionToken = await createGrantAndSession(
+        file,
+        "external@example.com"
+      );
+      const response = await requestFrame(token, {
+        cookies: { dust_frame_session: sessionToken },
+      });
+
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.isPodMember).toBe(false);
+      expect(body.isPodEditor).toBe(false);
+    });
+  });
 
   describe("workspace_and_emails scope", () => {
     it("allows logged-in workspace member without a grant", async () => {

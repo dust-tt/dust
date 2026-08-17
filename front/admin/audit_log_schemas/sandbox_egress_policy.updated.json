@@ -11,6 +11,7 @@
   "metadata": {
     "allowed_domain_count": "string",
     "allowed_domains": "string",
+    "space_id": "string",
     "actor_type": "string"
   }
 }

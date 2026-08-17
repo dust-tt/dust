@@ -568,7 +568,7 @@ export const PEOPLE: Record<string, TeamMember> = {
     github: "https://github.com/tarishi-dust",
   },
   janethgermann: {
-    name: "Janet Ghermann",
+    name: "Janet Gehrmann",
     title: "Founders Office, US",
     image: "https://ca.slack-edge.com/T050RH73H9P-U0BGEGF2LRW-dcde12826613-512",
     linkedIn: "https://www.linkedin.com/in/janet-gehrmann",

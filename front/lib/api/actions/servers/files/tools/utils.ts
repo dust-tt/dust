@@ -11,11 +11,6 @@ import {
   PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { getGCSPathFromScopedPath } from "@app/lib/api/files/gcs_mount/files";
-import {
-  getConversationFilesBasePath,
-  getPodFilesBasePath,
-  parseScopedFilePath,
-} from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -26,6 +21,11 @@ import {
   frameSlideshowContentType,
   stripMimeParameters,
 } from "@app/types/files";
+import {
+  getConversationFilesBasePath,
+  getPodFilesBasePath,
+  parseScopedFilePath,
+} from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";

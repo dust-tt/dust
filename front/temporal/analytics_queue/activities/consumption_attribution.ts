@@ -1,12 +1,10 @@
 import { indexAgentMessageConsumptionAnalytics } from "@app/lib/analytics/agent_message_consumption";
 import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
+import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import type {
-  AgentLoopArgs,
-  AgentMessageRef,
-} from "@app/types/assistant/agent_run";
+import type { AgentMessageRef } from "@app/types/assistant/agent_run";
 
 async function storeAgentMessageConsumptionAttribution(
   authType: AuthenticatorType,
@@ -14,22 +12,23 @@ async function storeAgentMessageConsumptionAttribution(
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
 
-  await computeAndStoreAgentMessageConsumptionAttribution(auth, message);
-}
+  const consumptionUpdate =
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, message);
 
-export async function storeAgentMessageConsumptionAttributionActivity(
-  authType: AuthenticatorType,
-  {
-    agentLoopArgs,
-  }: {
-    agentLoopArgs: AgentLoopArgs;
+  if (consumptionUpdate) {
+    await publishConversationRelatedEvent({
+      conversationId: message.conversationId,
+      event: {
+        type: "agent_message_consumption_updated",
+        conversationId: message.conversationId,
+        costCredits: consumptionUpdate.costCredits,
+        created: Date.now(),
+        messageId: message.agentMessageId,
+      },
+    });
   }
-): Promise<void> {
-  await storeAgentMessageConsumptionAttribution(authType, agentLoopArgs);
 }
 
-// V1/V2 keep their original AgentLoopArgs activity payload for replay. V3 only needs this stable
-// message reference, which also lets historical backfills use the same durable workflow.
 export async function storeAgentMessageConsumptionAttributionForMessageActivity(
   authType: AuthenticatorType,
   { message }: { message: AgentMessageRef }
@@ -43,6 +42,7 @@ export async function storeAgentMessageConsumptionAnalyticsActivity(
   { message }: { message: AgentMessageRef }
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
+
   const result = await indexAgentMessageConsumptionAnalytics(auth, {
     agentMessageId: message.agentMessageId,
   });

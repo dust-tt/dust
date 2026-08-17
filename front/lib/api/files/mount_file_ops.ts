@@ -1,15 +1,15 @@
 import type { GCSMountPoint } from "@app/lib/api/files/gcs_mount/files";
 import { moveFile } from "@app/lib/api/files/gcs_mount/files";
-import type { ResolveMountFilePathError } from "@app/lib/api/files/mount_path";
+import type { Authenticator } from "@app/lib/auth";
+import { FileResource } from "@app/lib/resources/file_resource";
+import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
+import type { ResolveMountFilePathError } from "@app/types/mount_path";
 import {
   getConversationFilesBasePath,
   getPodFilesBasePath,
   normalizeAndValidateMountRelativeFilePath,
   resolveMoveSourcePath,
-} from "@app/lib/api/files/mount_path";
-import type { Authenticator } from "@app/lib/auth";
-import { FileResource } from "@app/lib/resources/file_resource";
-import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
+} from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";

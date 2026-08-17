@@ -68,12 +68,15 @@ export interface ReasoningEvent {
 // Opaque provider-specific block (e.g. an Anthropic server-tool block) captured
 // for verbatim replay. The block stays opaque to the generic pipeline.
 // Passthrough blocks only originate from labs Dust talks to directly (Anthropic
-// only today). Fireworks-hosted labs (moonshot_ai, z_ai) and the noop lab never
-// produce one. xai reuses the OpenAI Responses converter, which tags its
-// passthrough blocks under the "openai" provider, so "xai" never appears as a
-// passthrough value either. All are excluded to keep the value mappable to the
-// persisted provider vocabulary.
-export type PassthroughLab = Exclude<Lab, "moonshot_ai" | "z_ai" | "xai">;
+// only today). Fireworks-hosted labs (moonshot_ai, thinking_machines, z_ai) and
+// the noop lab never produce one. xai reuses the OpenAI Responses converter,
+// which tags its passthrough blocks under the "openai" provider, so "xai" never
+// appears as a passthrough value either. All are excluded to keep the value
+// mappable to the persisted provider vocabulary.
+export type PassthroughLab = Exclude<
+  Lab,
+  "moonshot_ai" | "thinking_machines" | "z_ai" | "xai"
+>;
 
 export type ProviderPassthroughContent = {
   provider: PassthroughLab;

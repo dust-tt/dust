@@ -2,8 +2,6 @@ import { activationManagementPlugin } from "@app/lib/api/poke/plugins/spaces/act
 import { Authenticator } from "@app/lib/auth";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { makeSId } from "@app/lib/resources/string_ids";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -12,24 +10,20 @@ import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  mockGetOrCreateActivationWebhookSourceView,
-  mockCreateActivationTrigger,
-  mockFireActivationNudge,
+  mockPostActivationNudge,
   mockListActivationPodsByUser,
   mockStartActivationWorkspaceSchedule,
 } = vi.hoisted(() => ({
-  mockGetOrCreateActivationWebhookSourceView: vi.fn(),
-  mockCreateActivationTrigger: vi.fn(),
-  mockFireActivationNudge: vi.fn(),
+  mockPostActivationNudge: vi.fn(),
   mockListActivationPodsByUser: vi.fn(),
   mockStartActivationWorkspaceSchedule: vi.fn(),
 }));
 
-vi.mock("@app/lib/api/activation/trigger", () => ({
-  getOrCreateActivationWebhookSourceView:
-    mockGetOrCreateActivationWebhookSourceView,
-  createActivationTrigger: mockCreateActivationTrigger,
-  fireActivationNudge: mockFireActivationNudge,
+vi.mock("@app/lib/api/activation/nudge", () => ({
+  postActivationNudge: mockPostActivationNudge,
+}));
+
+vi.mock("@app/lib/api/activation/pods", () => ({
   listActivationPodsByUser: mockListActivationPodsByUser,
 }));
 
@@ -38,32 +32,17 @@ vi.mock("@app/temporal/activation_scheduler/client", () => ({
 }));
 
 beforeEach(async () => {
-  mockGetOrCreateActivationWebhookSourceView.mockReset();
-  mockCreateActivationTrigger.mockReset();
-  mockFireActivationNudge.mockReset();
+  mockPostActivationNudge.mockReset();
   mockListActivationPodsByUser.mockReset();
   mockStartActivationWorkspaceSchedule.mockReset();
 
-  mockGetOrCreateActivationWebhookSourceView.mockResolvedValue(
-    new Ok({ sId: "wsv_test" })
-  );
-  mockCreateActivationTrigger.mockResolvedValue(
-    new Ok({ triggerId: makeSId("trigger", { id: 1, workspaceId: 1 }) })
-  );
-  // A fake trigger with just an `id`: the plugin only forwards it to
-  // `ActivationPodResource.makeNew` (spied below) and `fireActivationNudge`
-  // (mocked), neither of which touches the DB here.
-  vi.spyOn(TriggerResource, "fetchById").mockResolvedValue({
-    id: 1,
-  } as unknown as TriggerResource);
-  mockFireActivationNudge.mockResolvedValue(new Ok(undefined));
+  mockPostActivationNudge.mockResolvedValue(new Ok({ conversationId: "conv" }));
   // No user has a pod yet, so every target is provisioned fresh.
   mockListActivationPodsByUser.mockResolvedValue(new Map());
   mockStartActivationWorkspaceSchedule.mockResolvedValue(new Ok(undefined));
 
   // The canonical ActivationPod row is orthogonal to the schedule lifecycle
-  // under test, and recording it with the fake trigger above would violate the
-  // triggerId foreign key. Stub it out.
+  // under test. Stub it out.
   vi.spyOn(ActivationPodResource, "makeNew").mockResolvedValue(
     {} as ActivationPodResource
   );
@@ -111,7 +90,10 @@ describe("activationManagementPlugin.execute", () => {
       pushedResource: [],
       workAreas,
       activationPlaybook,
-      podName: "",
+      targetingMode: ["users"],
+      guidance: ["curated"],
+      pctActivated: 0,
+      pctNotActivated: 0,
       forceRecreate: false,
     });
 
@@ -119,12 +101,14 @@ describe("activationManagementPlugin.execute", () => {
     expect(mockStartActivationWorkspaceSchedule).toHaveBeenCalledWith({
       workspaceId: workspace.sId,
     });
-    expect(mockFireActivationNudge).toHaveBeenCalledWith(
+    expect(mockPostActivationNudge).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         context: expect.objectContaining({ workAreas, activationPlaybook }),
       })
     );
+
+    expect(ActivationPodResource.makeNew).toHaveBeenCalled();
   });
 
   it("returns Err and does not report success when starting the schedule fails", async () => {
@@ -140,7 +124,10 @@ describe("activationManagementPlugin.execute", () => {
       pushedResource: [],
       workAreas: "",
       activationPlaybook: "",
-      podName: "",
+      targetingMode: ["users"],
+      guidance: ["curated"],
+      pctActivated: 0,
+      pctNotActivated: 0,
       forceRecreate: false,
     });
 

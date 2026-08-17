@@ -125,6 +125,9 @@ async function listAgentMessageRefs({
             as: "conversation",
             attributes: ["sId"],
             required: true,
+            where: {
+              workspaceId: workspace.id,
+            },
           },
         ],
       },

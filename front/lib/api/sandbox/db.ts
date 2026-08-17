@@ -1,4 +1,3 @@
-import { getPodStateBasePath } from "@app/lib/api/files/mount_path";
 import {
   recordPodStateHealth,
   traceSandboxStartupPhase,
@@ -15,6 +14,7 @@ import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
+import { getPodStateBasePath } from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -90,6 +90,10 @@ const SYNC_WAIT_TIMEOUT_SECONDS = 10;
 const SYNC_EXEC_TIMEOUT_MS = 15_000;
 // Cheap probes and file operations stay tightly bounded.
 const PROBE_EXEC_TIMEOUT_MS = 10_000;
+// A restart waits out the stop half, and litestream's graceful shutdown syncs
+// every managed database before exiting: seconds normally, up to the unit's
+// 90s TimeoutStopSec when one of them cannot reach its replica.
+const DAEMON_RESTART_EXEC_TIMEOUT_MS = 120_000;
 // Cold-start restore may pull a large snapshot + LTX chain through gcsfuse.
 const RESTORE_EXEC_TIMEOUT_MS = 120_000;
 
@@ -409,6 +413,36 @@ async function startLitestreamDaemon(
 }
 
 /**
+ * Restart the litestream daemon: re-derive the managed set from what is live on disk right now.
+ *
+ * The directory watcher only enumerates /pod-state/databases at start, so a database whose live
+ * files were just deleted stays open in the running daemon — free to keep writing to, and so
+ * recreate, the replica prefix a delete is about to wipe. A restart is what makes the daemon let go
+ * of it, and the static config (baked at image build) brings back every database that IS still live.
+ *
+ * The default budget covers a full graceful shutdown; callers on a tight path (the pre-sleep check
+ * runs inside the reaper's per-batch budget) pass their own and accept a timeout instead.
+ */
+export async function restartLitestreamDaemon(
+  auth: Authenticator,
+  sandbox: SandboxResource,
+  { timeoutMs = DAEMON_RESTART_EXEC_TIMEOUT_MS }: { timeoutMs?: number } = {}
+): Promise<Result<void, Error>> {
+  const result = await sandbox.execRoot(
+    auth,
+    rootCommand.exec(SYSTEMCTL_BIN, ["restart", LITESTREAM_UNIT_NAME]),
+    { timeoutMs }
+  );
+  if (result.isErr()) {
+    return result;
+  }
+  if (result.value.exitCode !== 0) {
+    return new Err(execFailure("litestream daemon restart", result.value));
+  }
+  return new Ok(undefined);
+}
+
+/**
  * Pre-sleep health check (reaper sleep, pauseForApproval, and best-effort
  * before kill-requested destroys): make sure every committed transaction
  * reached the GCS replica before the VM is allowed to pause (and later be
@@ -549,14 +583,11 @@ export async function ensurePodStateHealthOnSleep(
         "Pod state pre-sleep: litestream sync failed — restarting daemon, not pausing"
       );
       // Best-effort recovery; the reaper retries the whole check on its next
-      // cycle (status stays `running`). The config is static (baked at image
-      // build) and the directory watcher re-discovers every live database on
-      // start, so a plain restart recovers the full managed set.
-      await sandbox.execRoot(
-        auth,
-        rootCommand.exec(SYSTEMCTL_BIN, ["restart", LITESTREAM_UNIT_NAME]),
-        { timeoutMs: PROBE_EXEC_TIMEOUT_MS }
-      );
+      // cycle (status stays `running`), so this keeps the probe budget rather
+      // than waiting out a full graceful shutdown here.
+      await restartLitestreamDaemon(auth, sandbox, {
+        timeoutMs: PROBE_EXEC_TIMEOUT_MS,
+      });
       return new Err(failure);
     }
   }
@@ -717,6 +748,57 @@ export async function deletePodStatePrefix(
         podId: space.sId,
       })
     );
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
+/**
+ * Delete ONE database's litestream replica: the GCS prefix the directory watcher keys on that
+ * database's filename.
+ *
+ * The replica is the durable copy of a pod database, and `setupPodStateOnColdStart` restores every
+ * replica it finds. So a replica that survives resurrects a database whose live files were deleted —
+ * which makes this the step that actually makes a database deletion stick.
+ *
+ * Call it AFTER the live files are gone AND the daemon has been restarted (`restartLitestreamDaemon`):
+ * a running litestream keeps replicating a database it can still see, and removing the files does not
+ * make it let go — the directory watcher only enumerates at start, so until the restart the daemon
+ * still holds the database and recreates the prefix this wipes. The delete is verified by re-listing,
+ * because a silently-surviving replica is indistinguishable from success until the pod next boots.
+ */
+export async function deletePodDatabaseReplica(
+  auth: Authenticator,
+  space: SpaceResource,
+  { database }: { database: string }
+): Promise<Result<void, Error>> {
+  if (!isValidPodDatabaseName(database)) {
+    return new Err(new Error(`Invalid pod database name: '${database}'.`));
+  }
+
+  const statePrefix = getPodStateBasePath({
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    podId: space.sId,
+  });
+  const replicaDirName = `${database}.db`;
+
+  try {
+    const bucket = getPrivateUploadBucket();
+    await bucket.deleteByPrefix(`${statePrefix}${replicaDirName}/`);
+
+    const remaining = await bucket.listSubdirectoryNames({
+      prefix: statePrefix,
+    });
+    if (remaining.includes(replicaDirName)) {
+      return new Err(
+        new Error(
+          `Replica of pod database '${database}' still present after deletion; ` +
+            "the database would be restored on the pod's next cold start."
+        )
+      );
+    }
+
     return new Ok(undefined);
   } catch (err) {
     return new Err(normalizeError(err));

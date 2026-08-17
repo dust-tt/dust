@@ -1,4 +1,5 @@
 import { getStreamLLM } from "@app/lib/api/llm";
+import { isFreeUsageBlocked } from "@app/lib/api/llm/free_usage";
 import { getStreamEndpointFromLegacyModelId } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
@@ -66,6 +67,13 @@ export async function runMultiActionsAgent(
   );
   if (!endpoint) {
     return new Err(new Error(`Model ${config.modelId} not supported`));
+  }
+
+  // Enforce the per-user daily free-usage cost cap before running a free call.
+  if (options.context && (await isFreeUsageBlocked(auth, options.context))) {
+    return new Err(
+      new Error("The daily free-usage limit has been reached for this user.")
+    );
   }
 
   const llm = await getStreamLLM(auth, {

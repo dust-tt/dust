@@ -102,9 +102,7 @@ export const SANDBOX_TOOLS_METADATA = [
       "allowlist surface as denied entries in `<network_proxy_logs>` in " +
       "the bash tool output. Allowlist entries added through this tool " +
       "persist for the lifetime of the conversation (across sandbox " +
-      "restarts). In a Pod, approvals are Pod-wide: the domain is allowed " +
-      "for every conversation in the Pod and the Pod's shared sandbox, so " +
-      "make that scope clear when asking the user.",
+      "restarts) and are scoped to this conversation only.",
     schema: {
       domain: z
         .string()
@@ -125,6 +123,38 @@ export const SANDBOX_TOOLS_METADATA = [
     displayLabels: {
       running: "Requesting Computer network access",
       done: "Allow domain in the Computer",
+      icon: "ActionGlobeAltIcon",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: "request_egress_domain",
+    description:
+      "Request a domain be permanently added to a shared network allowlist, " +
+      "for a workspace admin to approve. `pod` scope covers all sandboxes " +
+      "in the current Pod (only call it inside a Pod); `workspace` scope " +
+      "covers all sandboxes in the workspace. One domain per call; wildcards " +
+      "allowed.",
+    schema: {
+      domain: z
+        .string()
+        .min(1)
+        .describe(
+          'Domain to request, e.g. "api.stripe.com" or "*.stripe.com".'
+        ),
+      scope: z
+        .enum(["pod", "workspace"])
+        .describe(
+          "`pod` adds it to this Pod's allowlist (for the Pod's functions); " +
+            "`workspace` adds it for every sandbox in the workspace. Prefer " +
+            "`pod` unless all sandboxes genuinely need the domain."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Requesting network access",
+      done: "Requested a domain",
       icon: "ActionGlobeAltIcon",
     },
     toolCostCategory: "basic",

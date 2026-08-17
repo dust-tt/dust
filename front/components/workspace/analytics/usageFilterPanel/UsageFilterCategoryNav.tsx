@@ -29,29 +29,36 @@ export function UsageFilterCategoryNav({
         label="Filter"
         className="bg-transparent pt-1.5 font-medium"
       />
-      <NavigationList className="min-h-0 flex-1">
+      <NavigationList role="tablist" className="min-h-0 flex-1">
         {categories.map((category) => {
           const selectionCount = draftFilter[category]?.length ?? 0;
           return (
-            <NavigationListItem
+            <button
+              type="button"
+              role="tab"
+              aria-selected={category === activeCategory}
+              className="w-full text-left"
               key={category}
-              selected={category === activeCategory}
-              avatar={
-                <span className="label-sm grow overflow-hidden text-ellipsis whitespace-nowrap primary-dark">
-                  {USAGE_FILTER_CATEGORY_LABEL[category]}
-                </span>
-              }
-              suffix={
-                selectionCount > 0 ? (
-                  <Counter
-                    value={selectionCount}
-                    size="xs"
-                    variant="highlight"
-                  />
-                ) : undefined
-              }
               onClick={() => onCategoryChange(category)}
-            />
+            >
+              <NavigationListItem
+                selected={category === activeCategory}
+                avatar={
+                  <span className="label-sm grow overflow-hidden text-ellipsis whitespace-nowrap primary-dark">
+                    {USAGE_FILTER_CATEGORY_LABEL[category]}
+                  </span>
+                }
+                suffix={
+                  selectionCount > 0 ? (
+                    <Counter
+                      value={selectionCount}
+                      size="xs"
+                      variant="highlight"
+                    />
+                  ) : undefined
+                }
+              />
+            </button>
           );
         })}
       </NavigationList>

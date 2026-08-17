@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import { isResourceSId } from "@app/lib/resources/string_ids";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
@@ -231,14 +232,23 @@ export async function resolveServerDisplayNames(
   serverNames: string[]
 ): Promise<Map<string, string>> {
   const unique = [...new Set(serverNames)];
-  const remoteNameMap = await RemoteMCPServerResource.resolveNamesBySIds(
+  const remoteServerIds = unique.filter((id) =>
+    isResourceSId("remote_mcp_server", id)
+  );
+  const remoteServers = await RemoteMCPServerResource.fetchByIds(
     auth,
-    unique
+    remoteServerIds
+  );
+  const remoteServerMap = new Map(
+    remoteServers.map((server) => [server.sId, server])
   );
 
   const displayMap = new Map<string, string>();
   for (const name of unique) {
-    displayMap.set(name, remoteNameMap.get(name) ?? asDisplayToolName(name));
+    displayMap.set(
+      name,
+      remoteServerMap.get(name)?.cachedName ?? asDisplayToolName(name)
+    );
   }
   return displayMap;
 }

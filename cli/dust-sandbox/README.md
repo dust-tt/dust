@@ -49,8 +49,9 @@ cargo build
 Functions are self-contained Bun bundles in `$DUST_FUNCTIONS_DIR`, named
 `<name>.ts`. `dsbx` executes them via an embedded runner (`bun` required).
 
-- `dsbx function run <name>` — request envelope JSON on stdin → parsed output or error envelope
-  on stdout (`{ok, response}` / `{ok:false, error}`).
+- `dsbx function run <name>` — request envelope JSON on stdin → a protocol v3 result envelope
+  on stdout (`{protocolVersion, delivery, outcome, timingsMs?}`), exit 0 whenever an envelope
+  was written, so the caller classifies from `outcome` rather than the exit code.
 - `dsbx function get <name>` — prints `{name, description, userIdentity,
   input_schema, output_schema}` (JSON Schema).
 
@@ -94,3 +95,17 @@ compiling `dsbx`; `build.rs` fails early with instructions if it is missing. CI,
 the release workflow, and `upsert_dsbx_to_sandbox.sh` build it on the host
 first. Rebuild it after changing any runner source (`protocol.ts`, `invoke.ts`,
 `schema.ts`, `runner.ts`).
+
+## The `@dust/pod` runtime package
+
+`pod/` is the runtime library sandbox function code imports (`db()`,
+`currentUser()`). It is not part of `dsbx`: the image vendors it into
+`/opt/npm-global/lib/node_modules/@dust/pod` at image build time (see
+`front/lib/api/sandbox/image/pod_package.ts`), and published bundles keep it as
+an external import. So neither rebuilding `dsbx` nor republishing a function
+picks up a change to it — only a new image does, gated by
+`DUST_BASE_IMAGE_VERSION`.
+
+For the dev loop, `upsert_pod_package_to_sandbox.sh` builds it and pushes it
+into one running sandbox, then drops the warm function servers so the next
+invocation re-imports it (a resident server holds the module it started with).

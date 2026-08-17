@@ -1,0 +1,8 @@
+PUT /front.agent_message_consumption_analytics_1/_mapping
+{
+  "properties": {
+    "normalized_origin": {
+      "type": "keyword"
+    }
+  }
+}

@@ -1,11 +1,12 @@
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
 import { usePodConversations } from "@app/hooks/conversations";
+import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { PodConversationListItemType } from "@app/types/api/assistant/conversation/spaces";
 import { stripMarkdown } from "@app/types/shared/utils/markdown";
 import type { WorkspaceType } from "@app/types/user";
-import { Avatar, cn } from "@dust-tt/sparkle";
+import { ConversationListItem, cn } from "@dust-tt/sparkle";
 import { format } from "date-fns";
 import { useMemo } from "react";
 
@@ -19,11 +20,24 @@ function RecentConversationRow({
   owner,
 }: RecentConversationRowProps) {
   const router = useAppRouter();
+  const activeConversationId = useActiveConversationId();
   const unread = conversation.unreadMessageCount > 0;
 
   return (
-    <button
-      type="button"
+    <ConversationListItem
+      className={cn(activeConversationId === conversation.id && "bg-selected")}
+      conversation={{
+        id: conversation.id,
+        title: conversation.title,
+        description: stripMarkdown(conversation.description ?? ""),
+        updatedAt: new Date(conversation.updated),
+      }}
+      unread={unread}
+      creator={{
+        fullName: conversation.creator?.name ?? "",
+        portrait: conversation.creator?.visual ?? "",
+      }}
+      time={format(new Date(conversation.updated), "HH:mm")}
       onClick={() => {
         void router.push(
           getConversationRoute(owner.sId, conversation.id),
@@ -33,35 +47,7 @@ function RecentConversationRow({
           }
         );
       }}
-      className="relative flex w-full items-center gap-2 p-3 text-left hover:bg-muted-background"
-    >
-      <span
-        className={cn(
-          "h-4 w-0.5 shrink-0 rounded-r-full",
-          unread ? "bg-highlight" : "bg-transparent"
-        )}
-      />
-      <Avatar
-        size="xs"
-        name={conversation.creator?.name ?? ""}
-        visual={conversation.creator?.visual ?? undefined}
-        isRounded
-      />
-      {conversation.creator?.name && (
-        <span className="shrink-0 text-sm text-foreground">
-          {conversation.creator.name}
-        </span>
-      )}
-      <span className="shrink-0 text-sm font-medium text-foreground">
-        {conversation.title}
-      </span>
-      <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
-        {stripMarkdown(conversation.description ?? "")}
-      </span>
-      <span className="shrink-0 text-xs text-faint">
-        {format(new Date(conversation.updated), "HH:mm")}
-      </span>
-    </button>
+    />
   );
 }
 

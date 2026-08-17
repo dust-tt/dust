@@ -32,13 +32,6 @@ function getWorkspacePolicyPath(auth: Authenticator): string {
   return `w/${auth.getNonNullableWorkspace().sId}/sandbox-egress-policy.json`;
 }
 
-// TODO(2026-08-15 EGRESS_RELAYOUT): drop the legacy path (reads fall back to
-// it, writes dual-write it for front rollback safety) once the backfill has
-// run and legacy objects are deleted.
-function getLegacyWorkspacePolicyPath(auth: Authenticator): string {
-  return `workspaces/${auth.getNonNullableWorkspace().sId}.json`;
-}
-
 function getOwnerPolicyPath(auth: Authenticator, ownerId: string): string {
   return `w/${auth.getNonNullableWorkspace().sId}/sandboxes/${ownerId}.json`;
 }
@@ -77,23 +70,32 @@ export async function readWorkspacePolicy(
   if (current.isErr()) {
     return current;
   }
-  if (current.value !== null) {
-    return new Ok(current.value);
-  }
 
-  const legacy = await fetchPolicyAtPath(getLegacyWorkspacePolicyPath(auth));
-  if (legacy.isErr()) {
-    return legacy;
-  }
-
-  return new Ok(legacy.value ?? EMPTY_EGRESS_POLICY);
+  return new Ok(current.value ?? EMPTY_EGRESS_POLICY);
 }
 
 export async function writeWorkspacePolicy(
   auth: Authenticator,
   { policy }: { policy: EgressPolicy }
 ): Promise<Result<EgressPolicy, Error>> {
-  const normalizedPolicy = normalizeEgressPolicy(policy);
+  // Mirror writeOwnerPolicy: a caller replacing the allowlist without stating
+  // the requestedDomains section must not wipe pending requests. No producer
+  // writes workspace requests yet, so this preserves nothing today — but it
+  // keeps both write paths symmetric so a future workspace-request flow does
+  // not have to re-discover this footgun.
+  let effectivePolicy = policy;
+  if (policy.requestedDomains === undefined) {
+    const current = await readWorkspacePolicy(auth);
+    if (current.isErr()) {
+      return current;
+    }
+    effectivePolicy = {
+      ...policy,
+      requestedDomains: current.value.requestedDomains,
+    };
+  }
+
+  const normalizedPolicy = normalizeEgressPolicy(effectivePolicy);
 
   if (normalizedPolicy.isErr()) {
     return normalizedPolicy;
@@ -109,25 +111,6 @@ export async function writeWorkspacePolicy(
     return new Err(normalizeError(error));
   }
 
-  // Dual-write the legacy path so a front rollback keeps seeing (and safely
-  // editing) the same policy. Best-effort: the new path is canonical and the
-  // proxy prefers it.
-  try {
-    await getPolicyBucket().uploadRawContentToBucket({
-      content: JSON.stringify(normalizedPolicy.value),
-      contentType: "application/json",
-      filePath: getLegacyWorkspacePolicyPath(auth),
-    });
-  } catch (error) {
-    logger.warn(
-      {
-        error: normalizeError(error),
-        workspaceId: auth.getNonNullableWorkspace().sId,
-      },
-      "Failed to dual-write legacy workspace egress policy path"
-    );
-  }
-
   await invalidateWorkspacePolicyCache(auth);
 
   return new Ok(normalizedPolicy.value);
@@ -137,13 +120,6 @@ export async function deleteWorkspacePolicy(
   auth: Authenticator
 ): Promise<Result<void, Error>> {
   try {
-    // Legacy first: if the new-path delete succeeded but the legacy delete
-    // failed, reads would fall back to the still-present legacy file and the
-    // "deleted" policy would resurrect. Deleting legacy first leaves the
-    // (canonical) new path authoritative in every partial-failure state.
-    await getPolicyBucket().delete(getLegacyWorkspacePolicyPath(auth), {
-      ignoreNotFound: true,
-    });
     await getPolicyBucket().delete(getWorkspacePolicyPath(auth), {
       ignoreNotFound: true,
     });
@@ -189,16 +165,32 @@ export async function readOwnerPolicy(
 // (Shared Computer) policies: like the workspace policy — and unlike the
 // agent tool's exact-domain appends — wildcard entries such as
 // `*.github.com` are supported, and there is no domain-count cap (also
-// mirroring the workspace policy). Note the asymmetry with
-// addOwnerPolicyDomain, which caps at SANDBOX_POLICY_MAX_DOMAINS and writes
-// the same pod files (tool approvals from a Pod's conversations are
-// Pod-scoped): an admin list over the cap makes every tool append in that
-// Pod fail its cap check.
+// mirroring the workspace policy). Tool approvals never touch pod files
+// (they land in the conversation's own policy file), so an over-cap admin
+// list does not interfere with addOwnerPolicyDomain's cap check.
 export async function writeOwnerPolicy(
   auth: Authenticator,
   { ownerId, policy }: { ownerId: string; policy: EgressPolicy }
 ): Promise<Result<EgressPolicy, Error>> {
-  const normalizedPolicyRes = normalizeEgressPolicy(policy);
+  // Callers replacing the allowlist (the admin settings PUT) don't carry the
+  // requestedDomains section — preserve the file's pending requests unless
+  // the caller states them explicitly. Combined with normalizeEgressPolicy
+  // dropping requests whose domain is now allowed, this makes "append the
+  // domain and PUT" an atomic approve: one write moves it from requested to
+  // allowed.
+  let effectivePolicy = policy;
+  if (policy.requestedDomains === undefined) {
+    const current = await readOwnerPolicy(auth, ownerId);
+    if (current.isErr()) {
+      return current;
+    }
+    effectivePolicy = {
+      ...policy,
+      requestedDomains: current.value.requestedDomains,
+    };
+  }
+
+  const normalizedPolicyRes = normalizeEgressPolicy(effectivePolicy);
 
   if (normalizedPolicyRes.isErr()) {
     return normalizedPolicyRes;
@@ -275,24 +267,174 @@ export async function addOwnerPolicyDomain(
   }
 }
 
-// Deletes the legacy per-providerId policy file written before the
-// owner-keyed layout. Still called on sandbox destroy so pre-migration files
-// get cleaned up as their sandboxes die. No proxy cache invalidation: the
-// sandbox (and its token) is gone, so the cached entry just ages out with
-// the TTL.
-// TODO(2026-08-15 EGRESS_RELAYOUT): remove with the legacy layout.
-export async function deleteLegacySandboxPolicy(
-  sandboxProviderId: string
-): Promise<Result<void, Error>> {
-  try {
-    await getPolicyBucket().delete(`sandboxes/${sandboxProviderId}.json`, {
-      ignoreNotFound: true,
-    });
+// Caps the pending-request section: the proxy re-reads this file on every
+// cache miss, so an agent must not be able to grow it unboundedly.
+const SANDBOX_POLICY_MAX_REQUESTED_DOMAINS = 50;
 
-    return new Ok(undefined);
-  } catch (error) {
-    return new Err(normalizeError(error));
+export type RequestOwnerPolicyDomainOutcome =
+  | "requested"
+  | "already_allowed"
+  | "already_requested";
+
+// Records an agent's pod-scoped domain request in the policy file's
+// requestedDomains section for admin review — never grants anything. Exact
+// domains only (same rule as tool approvals: no agent-supplied wildcards).
+// The read/write pair a scope's request/dismiss helpers operate on, plus a
+// label for the cap error. Pod requests use the owner file, workspace
+// requests the workspace file — the logic is otherwise identical.
+type PolicyDomainScope = {
+  read: () => Promise<Result<EgressPolicy, Error>>;
+  write: (policy: EgressPolicy) => Promise<Result<EgressPolicy, Error>>;
+  label: string;
+};
+
+async function requestPolicyDomain(
+  scope: PolicyDomainScope,
+  { domain }: { domain: string }
+): Promise<
+  Result<
+    { policy: EgressPolicy; outcome: RequestOwnerPolicyDomainOutcome },
+    Error
+  >
+> {
+  // Wildcards are accepted (unlike the conversation add): every request is
+  // reviewed by an admin before it grants, the same trust boundary as the
+  // admin settings PUT, which also allows them.
+  const parsedDomain = normalizeEgressPolicyDomain(domain);
+  if (parsedDomain.isErr()) {
+    return new Err(parsedDomain.error);
   }
+
+  const currentPolicy = await scope.read();
+  if (currentPolicy.isErr()) {
+    return new Err(currentPolicy.error);
+  }
+
+  // Exact-string membership on the normalized pattern: a domain covered by
+  // an existing wildcard still records a request and surfaces to the admin,
+  // who resolves it by approving (redundant entry) or dismissing.
+  if (currentPolicy.value.allowedDomains.includes(parsedDomain.value)) {
+    return new Ok({ policy: currentPolicy.value, outcome: "already_allowed" });
+  }
+  const pending = currentPolicy.value.requestedDomains ?? [];
+  if (pending.some((request) => request.domain === parsedDomain.value)) {
+    return new Ok({
+      policy: currentPolicy.value,
+      outcome: "already_requested",
+    });
+  }
+  if (pending.length >= SANDBOX_POLICY_MAX_REQUESTED_DOMAINS) {
+    return new Err(
+      new Error(
+        `This ${scope.label} already has ${SANDBOX_POLICY_MAX_REQUESTED_DOMAINS} pending domain requests. Ask an admin to review them before requesting more.`
+      )
+    );
+  }
+
+  const written = await scope.write({
+    allowedDomains: currentPolicy.value.allowedDomains,
+    requestedDomains: [
+      ...pending,
+      {
+        domain: parsedDomain.value,
+        requestedAtMs: Date.now(),
+      },
+    ],
+  });
+  if (written.isErr()) {
+    return written;
+  }
+
+  return new Ok({ policy: written.value, outcome: "requested" });
+}
+
+async function dismissRequestedPolicyDomain(
+  scope: PolicyDomainScope,
+  domain: string
+): Promise<Result<EgressPolicy, Error>> {
+  const parsedDomain = normalizeEgressPolicyDomain(domain);
+  if (parsedDomain.isErr()) {
+    return new Err(parsedDomain.error);
+  }
+
+  const currentPolicy = await scope.read();
+  if (currentPolicy.isErr()) {
+    return currentPolicy;
+  }
+
+  const pending = currentPolicy.value.requestedDomains ?? [];
+  const remaining = pending.filter(
+    (request) => request.domain !== parsedDomain.value
+  );
+  if (remaining.length === pending.length) {
+    return new Ok(currentPolicy.value);
+  }
+
+  return scope.write({
+    allowedDomains: currentPolicy.value.allowedDomains,
+    requestedDomains: remaining,
+  });
+}
+
+function ownerScope(auth: Authenticator, ownerId: string): PolicyDomainScope {
+  return {
+    read: () => readOwnerPolicy(auth, ownerId),
+    write: (policy) => writeOwnerPolicy(auth, { ownerId, policy }),
+    label: "Pod",
+  };
+}
+
+function workspaceScope(auth: Authenticator): PolicyDomainScope {
+  return {
+    read: () => readWorkspacePolicy(auth),
+    write: (policy) => writeWorkspacePolicy(auth, { policy }),
+    label: "workspace",
+  };
+}
+
+// Records a pod-scoped domain request (in the owner file's requestedDomains
+// section) for admin review — never grants.
+export async function requestOwnerPolicyDomain(
+  auth: Authenticator,
+  { ownerId, domain }: { ownerId: string; domain: string }
+): Promise<
+  Result<
+    { policy: EgressPolicy; outcome: RequestOwnerPolicyDomainOutcome },
+    Error
+  >
+> {
+  return requestPolicyDomain(ownerScope(auth, ownerId), { domain });
+}
+
+// Records a workspace-scoped domain request (in the workspace policy file's
+// requestedDomains section) for admin review — never grants.
+export async function requestWorkspacePolicyDomain(
+  auth: Authenticator,
+  { domain }: { domain: string }
+): Promise<
+  Result<
+    { policy: EgressPolicy; outcome: RequestOwnerPolicyDomainOutcome },
+    Error
+  >
+> {
+  return requestPolicyDomain(workspaceScope(auth), { domain });
+}
+
+// Removes a pending request without granting it. Approval needs no
+// dedicated helper: appending the domain to allowedDomains and writing the
+// policy resolves the request atomically (see writeOwnerPolicy).
+export async function dismissRequestedOwnerPolicyDomain(
+  auth: Authenticator,
+  { ownerId, domain }: { ownerId: string; domain: string }
+): Promise<Result<EgressPolicy, Error>> {
+  return dismissRequestedPolicyDomain(ownerScope(auth, ownerId), domain);
+}
+
+export async function dismissRequestedWorkspacePolicyDomain(
+  auth: Authenticator,
+  { domain }: { domain: string }
+): Promise<Result<EgressPolicy, Error>> {
+  return dismissRequestedPolicyDomain(workspaceScope(auth), domain);
 }
 
 // Owner files outlive individual sandboxes by design; they are deleted when

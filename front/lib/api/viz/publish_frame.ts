@@ -15,7 +15,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-type PublishFrameErrorCode =
+export type PublishFrameErrorCode =
   | "allowlist_failed"
   | "build_failed"
   | "entry_not_found"
@@ -27,7 +27,7 @@ type PublishFrameErrorCode =
   | "pod_function_schema_invalid"
   | "pod_scope_not_found";
 
-class PublishFrameError extends Error {
+export class PublishFrameError extends Error {
   constructor(
     readonly code: PublishFrameErrorCode,
     message: string

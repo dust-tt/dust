@@ -1,8 +1,8 @@
 import { DustFileSystem } from "@app/lib/api/file_system";
-import { resolveCanonicalScopedPath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { isInteractiveContentType } from "@app/types/files";
+import { resolveCanonicalScopedPath } from "@app/types/mount_path";
 import type { PodFrameTab, PodTabsOrder } from "@app/types/pod_frame_tab";
 import {
   MAX_POD_FRAME_TABS,

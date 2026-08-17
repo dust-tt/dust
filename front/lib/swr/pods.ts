@@ -26,6 +26,12 @@ import type {
   FileSystemEntry,
   GetSpaceFilesResponseBody,
 } from "@app/types/api/file_system/types";
+import type { ImportPodAppResponseBody } from "@app/types/api/pod_app_archive";
+import type {
+  ClonePodAppResponseBody,
+  GetPodAppsResponseBody,
+  PodApp,
+} from "@app/types/api/pod_apps";
 import type {
   GetPodMetadataResponseBody,
   PatchPodMetadataResponseBody,
@@ -111,6 +117,250 @@ export function usePodContextAttachments({
     isPodContextAttachmentsError: !!error,
     mutatePodContextAttachments: mutate,
     refreshPodContextAttachments,
+  };
+}
+
+export function usePodApps({
+  owner,
+  podId,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const podAppsFetcher: Fetcher<GetPodAppsResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    !podId ? null : `/api/w/${owner.sId}/pods/${podId}/apps`,
+    podAppsFetcher,
+    { disabled, keepPreviousData: true }
+  );
+
+  return {
+    apps: data?.apps ?? emptyArray<PodApp>(),
+    isPodAppsLoading: !disabled && !error && !data,
+    isPodAppsError: !!error,
+    mutatePodApps: mutate,
+  };
+}
+
+export function useClonePodApp({
+  owner,
+  podId,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutatePodApps } = usePodApps({ owner, podId, disabled: true });
+
+  return async (
+    app: PodApp,
+    name: string
+  ): Promise<Result<ClonePodAppResponseBody["app"], Error>> => {
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/pods/${podId}/apps/${encodeURIComponent(app.prefix)}/clone`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: `Failed to clone ${app.name ?? app.prefix}`,
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      const { app: cloned }: ClonePodAppResponseBody = await res.json();
+      sendNotification({
+        type: "success",
+        title: `${cloned.name} created`,
+        description: `${cloned.publishedFunctionSlugs.length} function(s) published, ${cloned.reconciledDatabaseNames.length} database(s) created empty.`,
+      });
+      await mutatePodApps();
+
+      return new Ok(cloned);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: `Failed to clone ${app.name ?? app.prefix}`,
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
+export function getPodAppExportUrl(
+  owner: LightWorkspaceType,
+  podId: string,
+  prefix: string
+): string {
+  return `/api/w/${owner.sId}/pods/${podId}/apps/${encodeURIComponent(prefix)}/export`;
+}
+
+export function useDownloadPodApp({
+  owner,
+  podId,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  return async (app: PodApp): Promise<void> => {
+    const appName = app.name ?? app.prefix;
+
+    try {
+      const res = await clientFetch(
+        getPodAppExportUrl(owner, podId, app.prefix)
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: `Failed to download ${appName}`,
+          description: errorData.message,
+        });
+        return;
+      }
+
+      // Fetch-then-blob (rather than a bare <a href> to the endpoint) so the download carries
+      // the same auth context as every other API call, matching `useFileDownload`.
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = blobUrl;
+      anchor.download = `${app.prefix}.podapp.zip`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: `Failed to download ${appName}`,
+        description: errorMessage,
+      });
+    }
+  };
+}
+
+export function useImportPodApp({
+  owner,
+  podId,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutatePodApps } = usePodApps({ owner, podId, disabled: true });
+
+  return async (
+    file: File,
+    name?: string
+  ): Promise<Result<ImportPodAppResponseBody["app"], Error>> => {
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      if (name !== undefined && name.trim().length > 0) {
+        body.append("name", name.trim());
+      }
+
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/pods/${podId}/apps/import`,
+        { method: "POST", body }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to import app",
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      const { app }: ImportPodAppResponseBody = await res.json();
+      const hasIssues = app.warnings.length > 0 || app.skipped.length > 0;
+      sendNotification({
+        type: hasIssues ? "info" : "success",
+        title: `${app.name} imported`,
+        description: `${app.publishedFunctionSlugs.length} function(s) published, ${app.reconciledDatabaseNames.length} database(s) created empty${hasIssues ? `, ${app.warnings.length + app.skipped.length} issue(s) to review` : ""}.`,
+      });
+      await mutatePodApps();
+
+      return new Ok(app);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to import app",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
+export function useDeletePodApp({
+  owner,
+  podId,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutatePodApps } = usePodApps({ owner, podId, disabled: true });
+
+  return async (app: PodApp): Promise<Result<void, Error>> => {
+    const appName = app.name ?? app.prefix;
+
+    try {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/pods/${podId}/apps/${encodeURIComponent(app.prefix)}`,
+        { method: "DELETE" }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: `Failed to delete ${appName}`,
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      sendNotification({
+        type: "success",
+        title: `${appName} deleted`,
+      });
+      await mutatePodApps();
+
+      return new Ok(undefined);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: `Failed to delete ${appName}`,
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
   };
 }
 
@@ -1359,6 +1609,7 @@ export function usePodEgressPolicy({
 
   return {
     policy: data?.policy ?? EMPTY_EGRESS_POLICY,
+    requestedDomains: data?.requestedDomains ?? emptyArray(),
     isPodEgressPolicyLoading: disabled ? false : isLoading,
     isPodEgressPolicyError: !!error,
     mutatePodEgressPolicy: mutate,
@@ -1402,7 +1653,16 @@ export function useUpdatePodEgressPolicy({
       }
 
       const data: PutPodEgressPolicyResponseBody = await response.json();
-      await mutatePodEgressPolicy({ policy: data.policy }, false);
+      // Keep requestedDomains, or the other pending rows vanish until refetch.
+      await mutatePodEgressPolicy(
+        {
+          policy: data.policy,
+          requestedDomains: (data.policy.requestedDomains ?? []).map(
+            ({ domain: d, requestedAtMs }) => ({ domain: d, requestedAtMs })
+          ),
+        },
+        false
+      );
       sendNotification({
         type: "success",
         title: "Pod network policy updated",
@@ -1423,4 +1683,67 @@ export function useUpdatePodEgressPolicy({
   };
 
   return { updatePodEgressPolicy, isUpdatingPodEgressPolicy };
+}
+
+export function useDismissPodEgressRequest({
+  owner,
+  podId,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const [isDismissingRequest, setIsDismissing] = useState(false);
+  const { mutatePodEgressPolicy } = usePodEgressPolicy({
+    owner,
+    podId,
+    disabled: true,
+  });
+
+  const dismissPodEgressRequest = async (domain: string): Promise<boolean> => {
+    setIsDismissing(true);
+    try {
+      const response = await clientFetch(
+        `${podEgressPolicyUrl(owner.sId, podId)}/requests/dismiss`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ domain }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await getErrorFromResponse(response);
+        sendNotification({
+          type: "error",
+          title: "Failed to reject domain request",
+          description: error.message,
+        });
+        return false;
+      }
+
+      const data: PutPodEgressPolicyResponseBody = await response.json();
+      await mutatePodEgressPolicy(
+        {
+          policy: data.policy,
+          requestedDomains: (data.policy.requestedDomains ?? []).map(
+            ({ domain: d, requestedAtMs }) => ({ domain: d, requestedAtMs })
+          ),
+        },
+        false
+      );
+      return true;
+    } catch {
+      sendNotification({
+        type: "error",
+        title: "Failed to reject domain request",
+        description: "An unexpected error occurred. Please try again.",
+      });
+      return false;
+    } finally {
+      setIsDismissing(false);
+    }
+  };
+
+  return { dismissPodEgressRequest, isDismissingRequest };
 }

@@ -57,6 +57,14 @@ export {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "./Collapsible";
+export type { ComposerVariantType } from "./Composer";
+export { COMPOSER_VARIANTS, Composer } from "./Composer";
+export type {
+  ComposerSuggestionItem,
+  ComposerSuggestionSource,
+  ComposerSuggestionTriggerType,
+} from "./ComposerInput";
+export { COMPOSER_SUGGESTION_TRIGGERS, ComposerInput } from "./ComposerInput";
 export { ConfettiBackground } from "./ConfettiBackground";
 export { Container } from "./Container";
 export {
@@ -107,6 +115,8 @@ export {
   DialogTrigger,
 } from "./Dialog";
 export { DiffBlock, type DiffChange } from "./DiffBlock";
+export type { DiscoveryGlintProps } from "./DiscoveryGlint";
+export { DiscoveryGlint } from "./DiscoveryGlint";
 export type {
   DropdownMenuFilterOption,
   DropdownMenuItemProps,
@@ -233,6 +243,7 @@ export {
   PopoverTrigger,
 } from "./Popover";
 export { PriceTable } from "./PriceTable";
+export { PuzzleSpinner } from "./PuzzleSpinner";
 export { RadioGroup, RadioGroupCustomItem, RadioGroupItem } from "./RadioGroup";
 export { RainbowEffect } from "./RainbowEffect";
 export {

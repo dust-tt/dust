@@ -16,6 +16,11 @@ import {
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
 import { stripFileExtension } from "@app/types/files";
 import {
+  parseCanonicalScopedPath,
+  TOOL_OUTPUTS_FOLDER_NAME,
+} from "@app/types/mount_path";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
   isNumber,
   isString,
   isStringArray,
@@ -38,6 +43,31 @@ function shortenUrl(url: string): string {
 
 function formatStringList(values: string[]): string {
   return truncateQuery(values.join(", "));
+}
+
+function getFilePathReadTarget(filePath: string): string {
+  const scopedPath = parseCanonicalScopedPath(filePath);
+  if (!scopedPath || !scopedPath.relPath) {
+    return `“${truncateQuery(filePath)}”`;
+  }
+
+  let displayName = scopedPath.relPath;
+  if (scopedPath.relPath.startsWith(`${TOOL_OUTPUTS_FOLDER_NAME}/`)) {
+    const fileName = scopedPath.relPath.split("/").at(-1) ?? scopedPath.relPath;
+
+    // Tool output filenames use a 13-digit timestamp prefix for ordering and uniqueness.
+    // Hide this storage detail from the user-facing label.
+    displayName = fileName.replace(/^\d{13}_/, "");
+  }
+
+  switch (scopedPath.scope.kind) {
+    case "canonical-conversation":
+      return `“${truncateQuery(displayName)}” from conversation`;
+    case "canonical-pod":
+      return `“${truncateQuery(displayName)}” from Pod`;
+    default:
+      return assertNever(scopedPath.scope);
+  }
 }
 
 const INTERNAL_TOOL_DISPLAY_LABELS_BY_SERVER = Object.fromEntries(
@@ -409,10 +439,10 @@ function getDynamicToolDisplayLabels({
 
     case "files":
       if (toolName === "cat" && isString(inputs.path)) {
-        const path = truncateQuery(inputs.path);
+        const target = getFilePathReadTarget(inputs.path);
         return {
-          running: `Reading “${path}”`,
-          done: `Read “${path}”`,
+          running: `Reading ${target}`,
+          done: `Read ${target}`,
         };
       }
       if (

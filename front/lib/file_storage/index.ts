@@ -8,6 +8,7 @@ import { frameContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 import { stripNullBytes } from "@app/types/shared/utils/string_utils";
 import type { Bucket, File, SaveOptions } from "@google-cloud/storage";
 import { RETRYABLE_ERR_FN_DEFAULT, Storage } from "@google-cloud/storage";
@@ -293,6 +294,29 @@ export class FileStorage {
     return signedUrl.toString();
   }
 
+  async getSignedUploadUrl(
+    filename: string,
+    {
+      contentType,
+      expirationDelayMs,
+      extensionHeaders,
+    }: {
+      contentType: string;
+      expirationDelayMs: number;
+      extensionHeaders?: Record<string, string>;
+    }
+  ): Promise<string> {
+    const [signedUrl] = await this.file(filename).getSignedUrl({
+      version: "v4",
+      action: "write",
+      expires: Date.now() + expirationDelayMs,
+      contentType,
+      extensionHeaders,
+    });
+
+    return signedUrl;
+  }
+
   file(filename: string) {
     return this.bucket.file(filename);
   }
@@ -344,6 +368,72 @@ export class FileStorage {
     } while (pageToken);
 
     return { files: allFiles, pageFetchCount };
+  }
+
+  /**
+   * The `prefixes` of a delimited list response, i.e. the common prefixes GCS rolled up. The Node
+   * client types the raw API response as `{}`, so read the field defensively rather than asserting a
+   * shape the types do not promise.
+   */
+  private extractCommonPrefixes(apiResponse: unknown): string[] {
+    if (
+      !apiResponse ||
+      typeof apiResponse !== "object" ||
+      !("prefixes" in apiResponse)
+    ) {
+      return [];
+    }
+
+    const { prefixes } = apiResponse;
+
+    return Array.isArray(prefixes) ? prefixes.filter(isString) : [];
+  }
+
+  /**
+   * Names of the immediate "subdirectories" under `prefix`, using a GCS delimited list so the
+   * objects inside them are never enumerated. Use this instead of `getAllFilesByPrefix` whenever the
+   * directory names are all you need and the subtrees can be large.
+   */
+  async listSubdirectoryNames({
+    prefix,
+    pageSize = 1000,
+  }: {
+    prefix: string;
+    pageSize?: number;
+  }): Promise<string[]> {
+    const normalizedPrefix = prefix.endsWith("/") ? prefix : `${prefix}/`;
+    const names: string[] = [];
+    let pageToken: string | undefined;
+
+    do {
+      const [, nextQuery, apiResponse] = await this.bucket.getFiles({
+        prefix: normalizedPrefix,
+        delimiter: "/",
+        maxResults: pageSize,
+        pageToken,
+        autoPaginate: false,
+      });
+
+      for (const commonPrefix of this.extractCommonPrefixes(apiResponse)) {
+        const name = commonPrefix
+          .slice(normalizedPrefix.length)
+          .replace(/\/$/, "");
+        if (name) {
+          names.push(name);
+        }
+      }
+
+      const nextToken =
+        nextQuery &&
+        typeof nextQuery === "object" &&
+        "pageToken" in nextQuery &&
+        nextQuery.pageToken
+          ? String(nextQuery.pageToken)
+          : undefined;
+      pageToken = nextToken || undefined;
+    } while (pageToken);
+
+    return names;
   }
 
   async getSortedFileVersions({

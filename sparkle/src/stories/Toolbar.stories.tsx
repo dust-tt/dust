@@ -174,7 +174,7 @@ function handleOverlayClose(
 const meta = {
   title: "Navigation/Toolbar",
   component: Toolbar,
-  tags: ["autodocs"],
+  tags: ["a11y-issues", "autodocs"],
   parameters: {
     docs: {
       description: {

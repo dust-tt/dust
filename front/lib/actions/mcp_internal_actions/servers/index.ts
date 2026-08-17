@@ -6,6 +6,7 @@ import {
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
 import { default as activationRecommendationsServer } from "@app/lib/api/actions/servers/activation_recommendations";
+import { default as agentDelegationServer } from "@app/lib/api/actions/servers/agent_delegation";
 import { default as agentMemoryServer } from "@app/lib/api/actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/api/actions/servers/agent_router";
 import { default as agentSidekickAgentStateServer } from "@app/lib/api/actions/servers/agent_sidekick_agent_state";
@@ -17,6 +18,7 @@ import { default as clariCopilotServer } from "@app/lib/api/actions/servers/clar
 import { default as commonUtilitiesServer } from "@app/lib/api/actions/servers/common_utilities";
 import { default as confluenceServer } from "@app/lib/api/actions/servers/confluence";
 import { default as conversationFilesServer } from "@app/lib/api/actions/servers/conversation_files";
+import { default as conversationSidePanelServer } from "@app/lib/api/actions/servers/conversation_side_panel";
 import { default as dataSourcesFileSystemServer } from "@app/lib/api/actions/servers/data_sources_file_system";
 import { default as dataWarehousesServer } from "@app/lib/api/actions/servers/data_warehouses";
 import { default as databricksServer } from "@app/lib/api/actions/servers/databricks";
@@ -65,6 +67,7 @@ import { default as sandboxServer } from "@app/lib/api/actions/servers/sandbox";
 import { default as sandboxFunctionsServer } from "@app/lib/api/actions/servers/sandbox_functions";
 import { default as searchServer } from "@app/lib/api/actions/servers/search";
 import { default as servicenowServer } from "@app/lib/api/actions/servers/servicenow";
+import { default as shopifyServer } from "@app/lib/api/actions/servers/shopify";
 import { default as skillAuthoringServer } from "@app/lib/api/actions/servers/skill_authoring";
 import { default as skillManagementServer } from "@app/lib/api/actions/servers/skill_management";
 import { default as slabServer } from "@app/lib/api/actions/servers/slab";
@@ -170,6 +173,8 @@ export async function getInternalMCPServer(
       return includeDataServer(auth, toolContext);
     case "run_agent":
       return runAgentServer(auth, toolContext);
+    case "agent_delegation":
+      return agentDelegationServer(auth, toolContext);
     case "run_dust_app":
       return dustAppServer(auth, toolContext);
     case "agent_router":
@@ -198,12 +203,16 @@ export async function getInternalMCPServer(
       return dataSourcesFileSystemServer(auth, toolContext);
     case "conversation_files":
       return conversationFilesServer(auth, toolContext);
+    case "conversation_side_panel":
+      return conversationSidePanelServer(auth, toolContext);
     case "files":
       return filesServer(auth, toolContext);
     case "databricks":
       return databricksServer(auth, toolContext);
     case "servicenow":
       return servicenowServer(auth, toolContext);
+    case "shopify":
+      return shopifyServer(auth, toolContext);
     case "jira":
       return jiraServer(auth, toolContext);
     case "luma":

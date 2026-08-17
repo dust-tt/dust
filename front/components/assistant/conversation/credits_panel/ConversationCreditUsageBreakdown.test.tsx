@@ -70,7 +70,7 @@ describe("ConversationCreditUsageBreakdown", () => {
     expect(screen.queryByText("File tool")).not.toBeInTheDocument();
     expect(screen.queryByText("Title tool")).not.toBeInTheDocument();
     expect(screen.getByText("Other tools")).toBeInTheDocument();
-    expect(screen.getByText("2 tool uses")).toBeInTheDocument();
+    expect(screen.getByText("2 uses")).toBeInTheDocument();
     expect(screen.getByText("GPT-5 Mini")).toBeInTheDocument();
     expect(screen.getByText("15 credits")).toBeInTheDocument();
     expect(screen.queryByText("Research agent")).not.toBeInTheDocument();

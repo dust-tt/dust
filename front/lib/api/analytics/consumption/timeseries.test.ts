@@ -192,7 +192,7 @@ describe("fetchConsumptionTimeseries", () => {
       expect.arrayContaining([
         { term: { "agent.id": "a1" } },
         { term: { "tool.attributed_skill_ids": "s1" } },
-        { terms: { context_origin: ["web", "slack"] } },
+        { terms: { normalized_origin: ["web", "slack"] } },
       ])
     );
   });
@@ -243,6 +243,8 @@ describe("fetchConsumptionTimeseries", () => {
     it.each([
       "agent",
       "user",
+      "api_key",
+      "group",
       "model",
       "tool",
       "skill",

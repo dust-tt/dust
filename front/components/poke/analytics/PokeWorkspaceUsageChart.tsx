@@ -1,13 +1,13 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import {
   ACTIVE_USERS_PALETTE,
-  CHART_HEIGHT,
   USAGE_METRICS_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
 import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
+import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
 import { formatShortDate } from "@app/lib/utils/timestamps";
 import {
   usePokeWorkspaceActiveUsersMetrics,
@@ -356,10 +356,7 @@ export function PokeWorkspaceUsageChart({
       legendItems={legendItems}
       additionalControls={controls}
     >
-      <LineChart
-        data={data}
-        margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
-      >
+      <LineChart data={data} margin={CHART_MARGIN}>
         <CartesianGrid vertical={false} className="stroke-border" />
         <XAxis
           dataKey="date"

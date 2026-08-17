@@ -1,13 +1,12 @@
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type {
-  UsageFilterModelOption,
-  UsageModelTier,
-} from "@app/components/workspace/analytics/usageFilter";
+import type { UsageFilterModelOption } from "@app/components/workspace/analytics/usageFilter";
+import { UsageFilterAvailabilityStatus } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAvailabilityStatus";
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import {
-  USAGE_MODEL_TIER_LABEL,
-  USAGE_MODEL_TIERS,
-} from "@app/components/workspace/analytics/usageFilter";
+  getModelsTierDisplayName,
+  MODELS_TIER_NAMES,
+} from "@app/lib/api/assistant/token_pricing/tiers";
 import {
   getModelMakerDisplayName,
   MODEL_MAKER_IDS,
@@ -32,22 +31,43 @@ import {
 import type { ComponentType } from "react";
 import { Fragment, useState } from "react";
 
-const MODEL_TIER_ICON: Record<UsageModelTier, ComponentType> = {
-  fast: BarLow,
-  standard: BarHalf,
-  complex: BarFull,
+const MODEL_TIER_ICON: Record<ModelsTierName, ComponentType> = {
+  cost_efficient: BarLow,
+  balanced: BarHalf,
+  premium: BarFull,
 };
 
 interface UsageFilterModelComplexityControlsProps {
-  models: UsageFilterModelOption[];
+  moreModelsCatalog: UsageFilterModelOption[];
   selectedModelIds: Set<string>;
   onToggleModel: (model: UsageFilterModelOption) => void;
-  activeTier: UsageModelTier;
-  onTierChange: (tier: UsageModelTier) => void;
+  activeTier: ModelsTierName;
+  onTierChange: (tier: ModelsTierName) => void;
+}
+
+function getModelSelectionStatus({
+  isSelected,
+  isUnavailable,
+}: {
+  isSelected: boolean;
+  isUnavailable: boolean;
+}) {
+  if (!isSelected && !isUnavailable) {
+    return undefined;
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      {isUnavailable && <UsageFilterAvailabilityStatus />}
+      {isSelected && (
+        <Icon visual={Check} size="sm" className="text-muted-foreground" />
+      )}
+    </div>
+  );
 }
 
 export function UsageFilterModelComplexityControls({
-  models,
+  moreModelsCatalog,
   selectedModelIds,
   onToggleModel,
   activeTier,
@@ -75,21 +95,23 @@ export function UsageFilterModelComplexityControls({
   const isSearchingMoreModels = moreModelsQuery !== "";
 
   const moreModelsSearchResults = isSearchingMoreModels
-    ? models.filter((model) =>
+    ? moreModelsCatalog.filter((model) =>
         model.name.toLowerCase().includes(moreModelsQuery)
       )
     : [];
 
   const moreModelsGroups = MODEL_MAKER_IDS.flatMap((lab) => {
-    const labModels = models.filter((model) => model.lab === lab);
+    const labModels = moreModelsCatalog.filter((model) => model.lab === lab);
     return labModels.length > 0 ? [{ lab, models: labModels }] : [];
   });
+  const isModelSelectionDisabled = (model: UsageFilterModelOption) =>
+    model.disabled && !selectedModelIds.has(model.id);
 
   return (
     <>
       <NavigationListLabel
         label="Complexity"
-        className="bg-transparent font-medium"
+        className="bg-transparent font-medium pt-2 pb-0"
         action={
           <DropdownMenu
             open={isMoreModelsOpen}
@@ -115,17 +137,26 @@ export function UsageFilterModelComplexityControls({
                     <DropdownMenuItem
                       key={model.id}
                       label={model.name}
-                      icon={getModelMakerLogo(model.lab, isDark)}
-                      endComponent={
-                        selectedModelIds.has(model.id) ? (
-                          <Icon
-                            visual={Check}
-                            size="sm"
-                            className="text-muted-foreground"
-                          />
-                        ) : undefined
+                      icon={
+                        model.lab
+                          ? getModelMakerLogo(model.lab, isDark)
+                          : undefined
                       }
-                      onClick={() => onToggleModel(model)}
+                      aria-disabled={isModelSelectionDisabled(model)}
+                      className={
+                        isModelSelectionDisabled(model)
+                          ? "opacity-50"
+                          : undefined
+                      }
+                      endComponent={getModelSelectionStatus({
+                        isSelected: selectedModelIds.has(model.id),
+                        isUnavailable: model.disabled,
+                      })}
+                      onClick={() => {
+                        if (!isModelSelectionDisabled(model)) {
+                          onToggleModel(model);
+                        }
+                      }}
                       onSelect={(e) => e.preventDefault()}
                     />
                   ))
@@ -151,6 +182,7 @@ export function UsageFilterModelComplexityControls({
                         />
                       }
                       onClick={() => handleToggleExpandedModelLab(lab)}
+                      aria-expanded={expandedModelLab === lab}
                       onSelect={(e) => e.preventDefault()}
                     />
                     {expandedModelLab === lab &&
@@ -158,17 +190,21 @@ export function UsageFilterModelComplexityControls({
                         <DropdownMenuItem
                           key={model.id}
                           label={model.name}
-                          className="pl-8"
-                          endComponent={
-                            selectedModelIds.has(model.id) ? (
-                              <Icon
-                                visual={Check}
-                                size="sm"
-                                className="text-muted-foreground"
-                              />
-                            ) : undefined
+                          aria-disabled={isModelSelectionDisabled(model)}
+                          className={
+                            isModelSelectionDisabled(model)
+                              ? "pl-8 opacity-50"
+                              : "pl-8"
                           }
-                          onClick={() => onToggleModel(model)}
+                          endComponent={getModelSelectionStatus({
+                            isSelected: selectedModelIds.has(model.id),
+                            isUnavailable: model.disabled,
+                          })}
+                          onClick={() => {
+                            if (!isModelSelectionDisabled(model)) {
+                              onToggleModel(model);
+                            }
+                          }}
                           onSelect={(e) => e.preventDefault()}
                         />
                       ))}
@@ -179,14 +215,19 @@ export function UsageFilterModelComplexityControls({
           </DropdownMenu>
         }
       />
+      <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+        Price tier of all the models actually billed — not only the Basic /
+        Standard / Premium options offered in the model picker.
+      </p>
       <div className="flex items-center gap-1">
-        {USAGE_MODEL_TIERS.map((tier) => (
+        {MODELS_TIER_NAMES.map((tier) => (
           <Button
             key={tier}
-            label={USAGE_MODEL_TIER_LABEL[tier]}
+            label={getModelsTierDisplayName(tier)}
             icon={MODEL_TIER_ICON[tier]}
             size="xs"
             variant={activeTier === tier ? "primary" : "outline"}
+            aria-pressed={activeTier === tier}
             onClick={() => onTierChange(tier)}
           />
         ))}

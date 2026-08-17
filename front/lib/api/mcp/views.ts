@@ -106,16 +106,19 @@ export async function updateNameAndDescriptionForMCPServerViews(
   if (name) {
     const systemView = views.find((v) => v.space.kind === "system");
     if (systemView) {
-      const systemViews = await MCPServerViewResource.listBySpace(
+      await MCPServerViewResource.hydrateRemoteServerHeavyAttributes(
         auth,
-        systemView.space
+        [systemView],
+        ["cachedTools"]
       );
-      const hasConflict = systemViews.some((v) => {
-        if (v.mcpServerId === mcpServerId) {
-          return false;
-        }
-        return (v.name ?? v.getServerDisplayMetadata().name) === name;
-      });
+      const { hasConflict } =
+        await MCPServerViewResource.hasNameConflictInSpaceByName(
+          auth,
+          name,
+          systemView.space,
+          systemView.getServerTools(),
+          { excludedMCPServerViewId: systemView.sId }
+        );
 
       if (hasConflict) {
         return new Err(

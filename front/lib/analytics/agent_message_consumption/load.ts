@@ -165,7 +165,13 @@ async function loadAnalyticsUser({
 
 export async function loadAgentMessageConsumptionAnalyticsInput(
   auth: Authenticator,
-  { agentMessageId }: { agentMessageId: string }
+  {
+    agentMessageId,
+    preloadedActions,
+  }: {
+    agentMessageId: string;
+    preloadedActions?: AgentMCPActionResource[];
+  }
 ): Promise<AgentMessageConsumptionAnalyticsInput | null> {
   const workspace = auth.getNonNullableWorkspace();
   const context =
@@ -174,12 +180,24 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
       { agentMessageId }
     );
   if (!context) {
-    throw new Error(
-      "Agent message, conversation, or triggering user message not found"
-    );
+    return null;
   }
 
   const { agentMessage, conversation, triggeringUserMessage } = context;
+  // Deleted conversations still incurred billable consumption and must remain visible in
+  // historical analytics. This system workflow is already workspace-scoped and loads the message
+  // graph without user permission filtering, so load the conversation under the same conditions.
+  const messageConversation = await ConversationResource.fetchById(
+    auth,
+    conversation.conversationId,
+    {
+      dangerouslySkipPermissionFiltering: true,
+      includeDeleted: true,
+    }
+  );
+  if (!messageConversation) {
+    throw new Error("Agent message conversation not found");
+  }
   if (
     !AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status) ||
     !isTerminalAgentMessageStatus(agentMessage.status)
@@ -210,9 +228,11 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
       agentMessageModelIds: [agentMessage.agentMessageModelId],
       maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
     });
-  const actions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
-    agentMessage.agentMessageModelId,
-  ]);
+  const actions =
+    preloadedActions ??
+    (await AgentMCPActionResource.listByAgentMessageIds(auth, [
+      agentMessage.agentMessageModelId,
+    ]));
   const actionsWithOutputs =
     await AgentMCPActionResource.enrichActionsWithOutputItems(auth, {
       actions,
@@ -233,15 +253,11 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     agentMessage.agentMessageModelId,
     { withToolMetadata: true }
   );
-  const messageConversation = await ConversationResource.fetchById(
-    auth,
-    conversation.conversationId
-  );
-  if (!messageConversation) {
-    throw new Error("Agent message conversation not found");
-  }
   const ancestorAgentIds = (
-    await listAgenticAncestors(auth, messageConversation, { agentMessageId })
+    await listAgenticAncestors(auth, messageConversation, {
+      agentMessageId,
+      includeDeleted: true,
+    })
   )
     .map((ancestor) => ancestor.agentConfigurationId)
     .reverse();

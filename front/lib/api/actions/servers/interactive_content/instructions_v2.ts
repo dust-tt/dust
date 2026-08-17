@@ -114,8 +114,10 @@ The same decision rule applies regardless of where the data came from:
 ### useUserIdentity Reference
 
 - Import \`useUserIdentity\` from \`@dust/react-hooks\` to know who is viewing the Frame.
-- It returns \`{ isAuthenticated, isWorkspaceMember, user, isLoading, error }\`. When \`isAuthenticated\` is true, \`user\` is \`{ sId, firstName, lastName, fullName, image }\`; otherwise \`user\` is \`null\`.
+- It returns \`{ isAuthenticated, isWorkspaceMember, isPodMember, isPodEditor, user, isLoading, error }\`. When \`isAuthenticated\` is true, \`user\` is \`{ sId, firstName, lastName, fullName, image }\`; otherwise \`user\` is \`null\`.
 - \`isAuthenticated\` is only true for a signed-in member of the workspace that owns the Frame. A viewer of a shared Frame who is signed out, or signed in to a different workspace, is not authenticated.
+- \`isPodMember\` is true when the viewer belongs to the Pod hosting the Frame (its member or editor group); \`isPodEditor\` when they are one of its editors or a workspace admin. Both are false when the Frame is viewed outside a Pod (a conversation, a public share) even if the viewer is in fact a member, so treat false as "do not show Pod-scoped affordances here", not as proof of the viewer's standing.
+- \`isPodMember\` mirrors the predicate of the \`pod_member_required\` function policy: a Frame whose button calls a function declared \`pod_member_required\` should render that button only when \`isPodMember\` is true, instead of letting non-members discover the restriction through a failed call.
 - Render the \`isLoading\` state, and treat \`error\` and the unauthenticated case identically: fall back to the unauthenticated view rather than showing an error.
 - A Frame cannot sign anyone in. The viewer is already authenticated to Dust or they are not, and nothing the Frame renders can change that. When a Frame only makes sense for an authenticated member, render a plain view saying the content is unavailable to them, rather than a login prompt or a button that will not work.
 

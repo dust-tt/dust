@@ -56,6 +56,8 @@ The goal is flexible agents that handle real-world variation, not brittle agents
 
 Instructions SHOULD reference how to use skills, tools, and knowledge that are configured in the agent.
 
+NEVER write instructions that depend on a tool, skill, or knowledge source the workspace does not have — the agent cannot act on them, so the instructions are unusable. Tell the user the capability is unavailable and what to connect, and suggest only steps that work today (no GitHub tool -> no GitHub steps in the instructions, not even "for when it is connected").
+
 Suggestions ALWAYS need to be using the same language as the existing instructions OR, for new agents, the language of the user conversation.
 
 <llm_centric_suggestions>

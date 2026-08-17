@@ -6,6 +6,10 @@ import type {
   ToolMeta,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { ACTIVATION_RECOMMENDATIONS_SERVER } from "@app/lib/api/actions/servers/activation_recommendations/metadata";
+import {
+  AGENT_DELEGATION_SERVER,
+  AGENT_DELEGATION_SERVER_NAME,
+} from "@app/lib/api/actions/servers/agent_delegation/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import {
   AGENT_ROUTER_SERVER,
@@ -20,6 +24,7 @@ import { CLARI_COPILOT_SERVER } from "@app/lib/api/actions/servers/clari_copilot
 import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
+import { CONVERSATION_SIDE_PANEL_SERVER } from "@app/lib/api/actions/servers/conversation_side_panel/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
 import { DATABRICKS_SERVER } from "@app/lib/api/actions/servers/databricks/metadata";
@@ -74,6 +79,7 @@ import {
 import { SANDBOX_FUNCTIONS_SERVER } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
 import { SERVICENOW_SERVER } from "@app/lib/api/actions/servers/servicenow/metadata";
+import { SHOPIFY_SERVER } from "@app/lib/api/actions/servers/shopify/metadata";
 import { SKILL_AUTHORING_SERVER } from "@app/lib/api/actions/servers/skill_authoring/metadata";
 import { SKILL_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/skill_management/metadata";
 import { SLAB_SERVER } from "@app/lib/api/actions/servers/slab/metadata";
@@ -160,11 +166,13 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "agent_sidekick_context",
   "agent_templates",
   "agent_memory",
+  AGENT_DELEGATION_SERVER_NAME,
   "agent_router",
   ASHBY_SERVER_NAME,
   "clari_copilot",
   "confluence",
   "conversation_files",
+  "conversation_side_panel",
   "files",
   "databricks",
   "data_sources_file_system",
@@ -205,6 +213,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "salesforce",
   "salesloft",
   "servicenow",
+  "shopify",
   "slab",
   "slack",
   "slack_bot",
@@ -472,6 +481,17 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: CONVERSATION_FILES_SERVER,
+  },
+  conversation_side_panel: {
+    id: 1044,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: CONVERSATION_SIDE_PANEL_SERVER,
   },
   slack: {
     id: 18,
@@ -1177,7 +1197,7 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     id: 1035,
     // Available to all workspaces unless the admin opts out, and hidden from the
     // builder tool-picker; the skill wires it by name. Data access is enforced
-    // per-tool via auth.isAdmin().
+    // per-tool via auth.isManager().
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isRestricted: ({ isWorkspaceAnalyticsEnabled }) =>
@@ -1215,8 +1235,7 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     id: 1039,
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) =>
-      !featureFlags.includes("activation_skill"),
+    isRestricted: undefined,
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
@@ -1227,8 +1246,7 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     id: 1040,
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
-    isRestricted: ({ featureFlags }) =>
-      !featureFlags.includes("activation_skill"),
+    isRestricted: undefined,
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
@@ -1259,6 +1277,22 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     timeoutMs: undefined,
     metadata: SERVICENOW_SERVER,
   },
+  shopify: {
+    id: 1046,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("shopify_tool");
+    },
+    isPreview: true,
+    // no Shopify OAuth provider yet (preview), so auth uses requiresBearerToken
+    // (we are using an access token from a client as bearer + shop domain via X-Shopify-Shop header)
+    requiresBearerToken: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: SHOPIFY_SERVER,
+  },
   user_memory: {
     id: 1043,
     availability: "auto_hidden_builder",
@@ -1271,6 +1305,17 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: USER_MEMORY_SERVER,
+  },
+  [AGENT_DELEGATION_SERVER_NAME]: {
+    id: 1045,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: AGENT_DELEGATION_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
@@ -1543,7 +1588,11 @@ export function resolveInternalMCPServerToolStakeLevel(
 export function getInternalMCPServerToolDisplayLabels(
   name: InternalMCPServerNameType
 ): Record<string, ToolDisplayLabels> | null {
-  const server = INTERNAL_MCP_SERVERS[name];
+  const server: InternalMCPServerEntry | undefined = INTERNAL_MCP_SERVERS[name];
+  if (!server) {
+    return null;
+  }
+
   const displayLabelsByTool: Record<string, ToolDisplayLabels> = {};
   let hasDisplayLabels = false;
 

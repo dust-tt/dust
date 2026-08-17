@@ -1,5 +1,7 @@
 mod client;
+mod error;
 mod types;
 
 pub use client::DustApiClient;
-pub use types::{parse_content_block, ContentBlock};
+pub use error::DustApiError;
+pub use types::{parse_content_block, CallToolResult, ContentBlock};

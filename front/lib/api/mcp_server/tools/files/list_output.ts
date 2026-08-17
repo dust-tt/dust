@@ -1,6 +1,5 @@
 import type { DustFileSystem } from "@app/lib/api/file_system";
 import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
-import { parseProcessedFilename } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import type {
   FileSystemEntry,
@@ -10,6 +9,7 @@ import {
   isInteractiveContentType,
   stripMimeParameters,
 } from "@app/types/files";
+import { parseProcessedFilename } from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import partition from "lodash/partition";

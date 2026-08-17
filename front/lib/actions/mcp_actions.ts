@@ -2,8 +2,10 @@
 
 import {
   computeContentSize,
+  computeTextByteSize,
   getRemoteContentMaxSize,
   isWithinRemoteContentLimit,
+  REMOTE_MAX_STRUCTURED_CONTENT_SIZE_BYTES,
 } from "@app/lib/actions/action_output_limits";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
@@ -63,6 +65,7 @@ import {
   makeToolInterruptionError,
   shouldRetryToolInterruption,
 } from "@app/lib/actions/tool_interruptions";
+import { applyToolSourceLoadingPolicy } from "@app/lib/actions/tool_loading";
 import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type {
   AgentLoopListToolsContext,
@@ -109,6 +112,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isRecord } from "@app/types/shared/utils/general";
 import { slugify } from "@app/types/shared/utils/string_utils";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
@@ -829,11 +833,21 @@ export function postProcessMCPToolResult(
   let content: CallToolResult["content"] = (toolCallResult.content ??
     []) as CallToolResult["content"];
 
-  if (content.length === 0 && toolCallResult.structuredContent) {
+  // On the compatibility branch of the SDK result union, `structuredContent` resolves to
+  // `unknown` through the index signature — narrow it back to the object shape.
+  const rawStructuredContent: unknown = toolCallResult.structuredContent;
+  let structuredContent: CallToolResult["structuredContent"] =
+    typeof rawStructuredContent === "object" &&
+    rawStructuredContent !== null &&
+    isRecord(rawStructuredContent)
+      ? rawStructuredContent
+      : undefined;
+
+  if (content.length === 0 && structuredContent) {
     content = [
       {
         type: "text",
-        text: JSON.stringify(toolCallResult.structuredContent),
+        text: JSON.stringify(structuredContent),
       },
     ];
   }
@@ -864,6 +878,20 @@ export function postProcessMCPToolResult(
         ],
       };
     }
+
+    // Drop (rather than fail on) oversized structuredContent from remote servers: it used to be
+    // discarded entirely, so an oversized payload must not start failing tool calls.
+    if (
+      structuredContent !== undefined &&
+      computeTextByteSize(JSON.stringify(structuredContent)) >
+        REMOTE_MAX_STRUCTURED_CONTENT_SIZE_BYTES
+    ) {
+      logger.info(
+        { toolName: toolConfiguration.name },
+        "Dropping oversized structuredContent from remote MCP tool result"
+      );
+      structuredContent = undefined;
+    }
   }
   if (serverType === "internal" || serverType === "client") {
     // The MCP SDK is now stripping extra properties from the tool result (both client and server).
@@ -883,6 +911,7 @@ export function postProcessMCPToolResult(
   return {
     isError: toolCallResult.isError === true ? true : false,
     content,
+    ...(structuredContent !== undefined ? { structuredContent } : {}),
   };
 }
 
@@ -1263,8 +1292,7 @@ export async function tryListMCPTools(
         }
 
         processedTools.push({
-          ...toolConfig,
-          ...(isFromSkillServer ? { eager: undefined } : {}),
+          ...applyToolSourceLoadingPolicy(toolConfig, { isFromSkillServer }),
           originalName: toolConfig.name,
           mcpServerName: action.name,
           name: toolName,

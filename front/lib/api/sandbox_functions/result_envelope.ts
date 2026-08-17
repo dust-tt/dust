@@ -86,6 +86,38 @@ const ProtocolVersionProbeSchema = z.object({
   protocolVersion: z.number(),
 });
 
+// The only directory a result-spill pointer may name. The runner writes spilled results there
+// (cli/dust-sandbox/functions-runner) and the pointer rides the exec's stdout, which untrusted
+// function code can also write to: restricting read-back to this scratch directory keeps a forged
+// pointer from making front read an arbitrary sandbox file.
+export const SANDBOX_FUNCTION_RESULT_SPILL_DIR = "/tmp/dust-fn-results/";
+
+// A result too large to inline on stdout: the runner writes the full envelope JSON to a
+// sandbox-local scratch file and emits this pointer instead. Deliberately not `.strict()`: a
+// field added by a newer dsbx must not turn a pointer into an invalid-envelope failure.
+const ResultSpillPointerSchema = z.object({
+  ok: z.literal(true),
+  resultFile: z.string().min(1),
+  resultBytes: z.number().int().nonnegative(),
+});
+
+export type SandboxFunctionResultSpillPointer = z.infer<
+  typeof ResultSpillPointerSchema
+>;
+
+/**
+ * Extract a result-spill pointer from a parsed stdout value (a protocol v3 envelope or a bare
+ * runner outcome). Returns null for inline outcomes and for anything an older dsbx emits.
+ */
+export function extractResultSpillPointer(
+  parsedEnvelope: unknown
+): SandboxFunctionResultSpillPointer | null {
+  const envelope = ResultEnvelopeV3Schema.safeParse(parsedEnvelope);
+  const outcome = envelope.success ? envelope.data.outcome : parsedEnvelope;
+  const pointer = ResultSpillPointerSchema.safeParse(outcome);
+  return pointer.success ? pointer.data : null;
+}
+
 // Lenient by design: timings are diagnostics from whatever dsbx version runs in the sandbox, and
 // absence or new shapes must never affect result handling. Only the consumed field is modeled.
 const ResultTimingsSchema = z.object({

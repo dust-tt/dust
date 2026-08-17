@@ -37,10 +37,18 @@ enum Commands {
     /// Interact with MCP servers and tools
     Tools {
         /// Emit the tool execution result as JSON (`{ content, isError }`)
-        /// instead of plain text. Must be placed before the positional
-        /// arguments. Ignored when listing servers or tools.
+        /// instead of plain text; failures emit
+        /// `{ error: { code, message, retryable, status? } }` on stdout and
+        /// exit non-zero. Must be placed before the positional arguments.
+        /// Ignored when listing servers or tools.
         #[arg(long)]
         json: bool,
+        /// Tool arguments as a single JSON object (`-` reads it from stdin),
+        /// bypassing per-key parsing and coercion entirely. Must be placed
+        /// before the positional arguments and cannot be combined with
+        /// --key value pairs.
+        #[arg(long)]
+        args_json: Option<String>,
         /// Server name (omit to list all servers)
         server_name: Option<String>,
         /// Tool name to execute
@@ -56,9 +64,27 @@ async fn main() {
     init_tracing();
 
     if let Err(error) = run().await {
-        error!(error = %error, "dsbx command failed");
-        std::process::exit(1);
+        // `{:#}` prints the whole context chain, not just the outermost
+        // message (typed API errors carry the useful part as the cause).
+        let error_chain = format!("{error:#}");
+        error!(error = %error_chain, "dsbx command failed");
+        std::process::exit(exit_code_for(&error));
     }
+}
+
+/// Typed failures exit with their stable per-code exit codes; everything else
+/// keeps the generic 1 (2 is reserved by clap for usage errors).
+fn exit_code_for(error: &anyhow::Error) -> i32 {
+    if let Some(api_error) = error.downcast_ref::<api::DustApiError>() {
+        return api_error.code.exit_code();
+    }
+    if error
+        .downcast_ref::<commands::OffloadResolutionError>()
+        .is_some()
+    {
+        return commands::OffloadResolutionError::EXIT_CODE;
+    }
+    1
 }
 
 async fn run() -> anyhow::Result<()> {
@@ -73,8 +99,8 @@ async fn run() -> anyhow::Result<()> {
         Commands::Function { command } => match command {
             commands::function::FunctionCommand::Run {
                 name,
-                result_delivery,
-            } => commands::cmd_function_run(&name, result_delivery).await?,
+                result_delivery: _,
+            } => commands::cmd_function_run(&name).await?,
             commands::function::FunctionCommand::Get { name } => {
                 commands::cmd_function_get(&name).await?
             }
@@ -96,6 +122,7 @@ async fn run() -> anyhow::Result<()> {
         },
         Commands::Tools {
             json,
+            args_json,
             server_name,
             tool_name,
             args,
@@ -105,7 +132,8 @@ async fn run() -> anyhow::Result<()> {
                 (None, _) => commands::cmd_list_servers(&client).await?,
                 (Some(server), None) => commands::cmd_list_tools(&client, &server).await?,
                 (Some(server), Some(tool)) => {
-                    commands::cmd_exec(&client, &server, &tool, &args, json).await?
+                    commands::cmd_exec(&client, &server, &tool, &args, args_json.as_deref(), json)
+                        .await?
                 }
             }
         }
@@ -137,14 +165,44 @@ mod tests {
         Cli::command().debug_assert();
     }
 
-    fn tools_fields(cli: Cli) -> (bool, Option<String>, Option<String>, Vec<String>) {
+    #[test]
+    fn exit_code_classifies_typed_errors() {
+        let api_error = anyhow::Error::new(api::DustApiError::from_http_response(429, "slow down"))
+            .context("POST /sandbox/actions/call");
+        assert_eq!(exit_code_for(&api_error), 13);
+
+        let offload_error = anyhow::Error::new(commands::OffloadResolutionError::new(
+            "could not read the offloaded tool output at /files/pod-x/y.json".to_string(),
+        ))
+        .context("tools exec");
+        assert_eq!(exit_code_for(&offload_error), 15);
+
+        assert_eq!(exit_code_for(&anyhow::anyhow!("boom")), 1);
+    }
+
+    struct ToolsFields {
+        json: bool,
+        args_json: Option<String>,
+        server_name: Option<String>,
+        tool_name: Option<String>,
+        args: Vec<String>,
+    }
+
+    fn tools_fields(cli: Cli) -> ToolsFields {
         match cli.command {
             Commands::Tools {
                 json,
+                args_json,
                 server_name,
                 tool_name,
                 args,
-            } => (json, server_name, tool_name, args),
+            } => ToolsFields {
+                json,
+                args_json,
+                server_name,
+                tool_name,
+                args,
+            },
             _ => panic!("expected Tools subcommand"),
         }
     }
@@ -153,23 +211,29 @@ mod tests {
     fn json_flag_parses_before_positionals() {
         let cli = Cli::try_parse_from(["dsbx", "tools", "--json", "srv", "tool", "--foo", "bar"])
             .expect("should parse");
-        let (json, server, tool, args) = tools_fields(cli);
+        let fields = tools_fields(cli);
 
-        assert!(json, "--json before positionals should set json=true");
-        assert_eq!(server.as_deref(), Some("srv"));
-        assert_eq!(tool.as_deref(), Some("tool"));
-        assert_eq!(args, vec!["--foo".to_string(), "bar".to_string()]);
+        assert!(
+            fields.json,
+            "--json before positionals should set json=true"
+        );
+        assert_eq!(fields.server_name.as_deref(), Some("srv"));
+        assert_eq!(fields.tool_name.as_deref(), Some("tool"));
+        assert_eq!(fields.args, vec!["--foo".to_string(), "bar".to_string()]);
     }
 
     #[test]
     fn json_flag_after_positionals_is_swallowed_into_args() {
         let cli = Cli::try_parse_from(["dsbx", "tools", "srv", "tool", "--foo", "bar", "--json"])
             .expect("should parse");
-        let (json, _, _, args) = tools_fields(cli);
+        let fields = tools_fields(cli);
 
-        assert!(!json, "--json after positionals should NOT toggle the flag");
         assert!(
-            args.contains(&"--json".to_string()),
+            !fields.json,
+            "--json after positionals should NOT toggle the flag"
+        );
+        assert!(
+            fields.args.contains(&"--json".to_string()),
             "--json should land in trailing args instead"
         );
     }
@@ -177,8 +241,62 @@ mod tests {
     #[test]
     fn tools_without_json_defaults_to_false() {
         let cli = Cli::try_parse_from(["dsbx", "tools", "srv", "tool"]).expect("should parse");
-        let (json, ..) = tools_fields(cli);
-        assert!(!json);
+        let fields = tools_fields(cli);
+        assert!(!fields.json);
+        assert!(fields.args_json.is_none());
+    }
+
+    #[test]
+    fn args_json_parses_before_positionals() {
+        let cli = Cli::try_parse_from([
+            "dsbx",
+            "tools",
+            "--json",
+            "--args-json",
+            r#"{"query": "hello"}"#,
+            "srv",
+            "tool",
+        ])
+        .expect("should parse");
+        let fields = tools_fields(cli);
+
+        assert!(fields.json);
+        assert_eq!(fields.args_json.as_deref(), Some(r#"{"query": "hello"}"#));
+        assert_eq!(fields.server_name.as_deref(), Some("srv"));
+        assert_eq!(fields.tool_name.as_deref(), Some("tool"));
+        assert!(fields.args.is_empty());
+    }
+
+    #[test]
+    fn args_json_accepts_stdin_sentinel() {
+        let cli = Cli::try_parse_from(["dsbx", "tools", "--args-json", "-", "srv", "tool"])
+            .expect("should parse");
+        let fields = tools_fields(cli);
+        assert_eq!(fields.args_json.as_deref(), Some("-"));
+    }
+
+    #[test]
+    fn args_json_after_trailing_args_is_swallowed_into_args() {
+        // Once the trailing var-arg capture has started (first --key token),
+        // --args-json is data, not the flag; same behavior as --json.
+        let cli = Cli::try_parse_from([
+            "dsbx",
+            "tools",
+            "srv",
+            "tool",
+            "--foo",
+            "bar",
+            "--args-json",
+            "{}",
+        ])
+        .expect("should parse");
+        let fields = tools_fields(cli);
+
+        assert!(
+            fields.args_json.is_none(),
+            "--args-json after trailing args should NOT set the flag"
+        );
+        assert!(fields.args.contains(&"--args-json".to_string()));
     }
 
     #[test]
@@ -191,10 +309,7 @@ mod tests {
                     result_delivery,
                 } => {
                     assert_eq!(name, "greet");
-                    assert_eq!(
-                        result_delivery,
-                        commands::function::ResultDelivery::Callback
-                    );
+                    assert_eq!(result_delivery, commands::function::ResultDelivery::Stdout);
                 }
                 _ => panic!("expected run"),
             },
@@ -202,8 +317,9 @@ mod tests {
         }
     }
 
+    // front still sends the flag. Parsing it must keep working until front stops.
     #[test]
-    fn function_run_parses_stdout_result_delivery() {
+    fn function_run_still_accepts_the_result_delivery_flag() {
         let cli = Cli::try_parse_from([
             "dsbx",
             "function",
@@ -215,12 +331,8 @@ mod tests {
         .expect("parse");
         match cli.command {
             Commands::Function { command } => match command {
-                commands::function::FunctionCommand::Run {
-                    name,
-                    result_delivery,
-                } => {
+                commands::function::FunctionCommand::Run { name, .. } => {
                     assert_eq!(name, "greet");
-                    assert_eq!(result_delivery, commands::function::ResultDelivery::Stdout);
                 }
                 _ => panic!("expected run"),
             },

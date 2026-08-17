@@ -1,6 +1,8 @@
 import { isProviderWhitelisted } from "@app/lib/api/assistant/provider_whitelist";
-import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
+import {
+  isCreditPricedPlanPrefix,
+  isUpgraded,
+} from "@app/lib/plans/plan_codes";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
@@ -10,17 +12,53 @@ import type { PlanType } from "@app/types/plan";
 import type { RegionType } from "@app/types/region";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
-function isAdvancedModel(m: ModelConfigurationType): boolean {
-  return m.availableIfOneOf?.plansWithAdvancedModels === true;
-}
-
-export function getAdvancedModels(): ModelConfigurationType[] {
-  return SUPPORTED_MODEL_CONFIGS.filter(isAdvancedModel);
-}
-
 // False if the model requires an on-demand/dust-only feature flag (not GA).
 export function isModelReleased(m: ModelConfigurationType): boolean {
   return !m.availableIfOneOf?.featureFlag;
+}
+
+function checkModelSpecificAccessRules(
+  modelConfiguration: ModelConfigurationType,
+  {
+    featureFlags,
+    plan,
+  }: {
+    featureFlags: WhitelistableFeature[];
+    plan: PlanType | null;
+  }
+): boolean {
+  const { availableIfOneOf, largeModel } = modelConfiguration;
+
+  // First check: downgraded plans only have access to the small models.
+  if (largeModel && !isUpgraded(plan)) {
+    return false;
+  }
+
+  // Second check: if we have a model-specific override rule, we honor it.
+  if (availableIfOneOf) {
+    const { creditPricedPlan, plansWithAdvancedModels, featureFlag } =
+      availableIfOneOf;
+
+    const passesCreditPlanCondition =
+      creditPricedPlan === true &&
+      plan !== null &&
+      isCreditPricedPlanPrefix(plan.code);
+
+    const passesAdvancedModelCondition =
+      plansWithAdvancedModels === true && plan?.hasAdvancedModelAccess === true;
+
+    const passesFeatureFlagCondition =
+      featureFlag !== undefined && featureFlags.includes(featureFlag);
+
+    return (
+      passesCreditPlanCondition ||
+      passesAdvancedModelCondition ||
+      passesFeatureFlagCondition
+    );
+  }
+
+  // If there's no override and no downgraded-plan restriction, the model is allowed.
+  return true;
 }
 
 // Returns true if the model is available to the workspace for build.
@@ -38,11 +76,12 @@ export function isModelAvailable(
     region: RegionType;
   }
 ) {
-  // Otherwise, we filter too early.
-  const includeAdvancedModelInPicker =
-    featureFlags.includes("models_picker") && isAdvancedModel(m);
+  const hasAccess = checkModelSpecificAccessRules(m, {
+    featureFlags,
+    plan,
+  });
 
-  if (m.largeModel && !isUpgraded(plan) && !includeAdvancedModelInPicker) {
+  if (!hasAccess) {
     return false;
   }
 
@@ -54,24 +93,7 @@ export function isModelAvailable(
     return false;
   }
 
-  if (!m.availableIfOneOf) {
-    return true;
-  }
-
-  const { plansWithAdvancedModels, featureFlag } = m.availableIfOneOf;
-
-  if (
-    plansWithAdvancedModels === true &&
-    (plan?.hasAdvancedModelAccess || includeAdvancedModelInPicker)
-  ) {
-    return true;
-  }
-
-  if (featureFlag && featureFlags.includes(featureFlag)) {
-    return true;
-  }
-
-  return false;
+  return true;
 }
 
 // Returns true if the model is enabled for the workspace.

@@ -15,6 +15,7 @@ export const RUN_AGENT_SERVER_NAME = "run_agent" as const;
 // This is a placeholder tool name used in the metadata for UI detection.
 // The actual tool name is dynamic: `run_<agent_name>`.
 export const RUN_AGENT_PLACEHOLDER_TOOL_NAME = RUN_AGENT_SERVER_NAME;
+export const GENERIC_RUN_AGENT_TOOL_NAME = RUN_AGENT_SERVER_NAME;
 
 type RunAgentToolDescriptionArgs =
   | {
@@ -89,6 +90,9 @@ export const RUN_AGENT_CONFIGURABLE_PROPERTIES = {
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
 };
 
+const { childAgent: _childAgent, ...RUN_AGENT_RUNTIME_PROPERTIES } =
+  RUN_AGENT_CONFIGURABLE_PROPERTIES;
+
 export const RUN_AGENT_TOOL_SCHEMA = {
   description: z
     .string()
@@ -137,6 +141,30 @@ export const RUN_AGENT_TOOL_SCHEMA = {
     .nullable(),
 };
 
+export const GENERIC_RUN_AGENT_TOOL_SCHEMA = {
+  ...RUN_AGENT_TOOL_SCHEMA,
+  ...RUN_AGENT_RUNTIME_PROPERTIES,
+  agentId: z
+    .string()
+    .describe(
+      "The sId of the agent to run. Use agent_router.list_all_published_agents to find an accessible agent."
+    ),
+};
+
+export const GENERIC_RUN_AGENT_TOOLS_METADATA = [
+  {
+    name: GENERIC_RUN_AGENT_TOOL_NAME,
+    description:
+      "Run an accessible workspace agent by ID. Use agent_router.list_all_published_agents first to discover agent IDs.",
+    schema: GENERIC_RUN_AGENT_TOOL_SCHEMA,
+    stake: "never_ask",
+    displayLabels: { running: "Running agent", done: "Run agent" },
+    enableAlerting: true,
+    toolCostCategory: "basic",
+    freeUsage: false,
+  },
+] as const;
+
 export const RUN_AGENT_SERVER = {
   serverInfo: {
     name: RUN_AGENT_SERVER_NAME,
@@ -146,9 +174,6 @@ export const RUN_AGENT_SERVER = {
     icon: "ActionRobotIcon",
     documentationUrl: null,
   },
-  // The actual tool name is dynamic, but we need a placeholder tool
-  // with the configurable properties schema so that the UI can detect that this server
-  // requires child agent configuration before being added.
   tools: [
     {
       name: RUN_AGENT_PLACEHOLDER_TOOL_NAME,

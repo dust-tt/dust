@@ -1,4 +1,3 @@
-import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
@@ -7,9 +6,7 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
 import type { CreationOptional, ForeignKey } from "sequelize";
 
 // One row = one Activation Pod: a Pod (project space) provisioned by the
-// activation flow. Canonical record for a pod's owner and activation trigger,
-// replacing the ProjectMetadata provisioningSource flag and the join through
-// WebhookSourcesView/Trigger used to resolve a pod's trigger.
+// activation flow. Canonical record for a pod's owner.
 export class ActivationPodModel extends WorkspaceAwareModel<ActivationPodModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -18,8 +15,6 @@ export class ActivationPodModel extends WorkspaceAwareModel<ActivationPodModel> 
   declare spaceId: ForeignKey<SpaceModel["id"]>;
   // The user for whom we created the activation pod.
   declare userId: ForeignKey<UserModel["id"]>;
-  // The Pod's activation trigger. Null until provisioned.
-  declare triggerId: ForeignKey<TriggerModel["id"]> | null;
   // Whether the Pod uses the compact UI variant.
   declare isCompactUIView: CreationOptional<boolean>;
 }
@@ -48,7 +43,6 @@ ActivationPodModel.init(
     indexes: [
       { unique: true, fields: ["spaceId"], concurrently: true },
       { fields: ["userId"], concurrently: true },
-      { unique: true, fields: ["triggerId"], concurrently: true },
     ],
   }
 );
@@ -67,12 +61,4 @@ ActivationPodModel.belongsTo(UserModel, {
 });
 UserModel.hasMany(ActivationPodModel, {
   foreignKey: { name: "userId", allowNull: false },
-});
-
-ActivationPodModel.belongsTo(TriggerModel, {
-  foreignKey: { name: "triggerId", allowNull: true },
-  onDelete: "SET NULL",
-});
-TriggerModel.hasOne(ActivationPodModel, {
-  foreignKey: { name: "triggerId", allowNull: true },
 });

@@ -23,6 +23,18 @@ export const RUNNER_ERROR_CODES = [
   "bad_return",
   "http_error",
   "invalid_output",
+  // Emitted by the warm server's admission layer (serve.ts), never by
+  // invoke(): the function is at its concurrency limit and the invocation
+  // was refused before anything executed.
+  "overloaded",
+  // Minted by dsbx (src/commands/function/run.rs), never by this runner: the
+  // runner's stdout envelope was cut mid-JSON in transit, so the function ran
+  // but its result was lost. Listed here so front's mirror of the wire enum
+  // stays a single aligned list.
+  "output_truncated",
+  // The serialized result exceeds the hard size cap; the function must store
+  // large data in a pod file or database and return a pointer instead.
+  "output_too_large",
 ] as const;
 
 export type ErrorCode = (typeof RUNNER_ERROR_CODES)[number];

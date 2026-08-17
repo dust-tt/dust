@@ -2,6 +2,7 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { Authenticator } from "@app/lib/auth";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
@@ -10,6 +11,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -98,12 +100,10 @@ afterEach(() => {
 async function setupSandboxFunction({
   addCallerToSpace = true,
   withSandboxFunctionsFeatureFlag = true,
-  withFastExecutionFeatureFlag = false,
   userIdentity = "optional",
 }: {
   addCallerToSpace?: boolean;
   withSandboxFunctionsFeatureFlag?: boolean;
-  withFastExecutionFeatureFlag?: boolean;
   userIdentity?: SandboxFunctionUserIdentityPolicy;
 } = {}) {
   const { workspace, auth: adminAuth } = await createPrivateApiMockRequest({
@@ -112,13 +112,6 @@ async function setupSandboxFunction({
   if (withSandboxFunctionsFeatureFlag) {
     await FeatureFlagFactory.basic(adminAuth, "sandbox_functions");
   }
-  if (withFastExecutionFeatureFlag) {
-    await FeatureFlagFactory.basic(
-      adminAuth,
-      "sandbox_function_fast_execution"
-    );
-  }
-
   const space = await SpaceFactory.project(workspace);
   const file = await FileFactory.create(adminAuth, null, {
     contentType: sandboxFunctionContentType,
@@ -372,9 +365,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
   });
 
   it("returns the result inline when the invocation succeeds before the response", async () => {
-    const { workspace, sandboxFunction } = await setupSandboxFunction({
-      withFastExecutionFeatureFlag: true,
-    });
+    const { workspace, sandboxFunction } = await setupSandboxFunction();
     mockInvocationEventStream([
       {
         type: "sandbox_function_invocation_result",
@@ -396,9 +387,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
   });
 
   it("returns the error inline when the invocation fails before the response", async () => {
-    const { workspace, sandboxFunction } = await setupSandboxFunction({
-      withFastExecutionFeatureFlag: true,
-    });
+    const { workspace, sandboxFunction } = await setupSandboxFunction();
     mockInvocationEventStream([
       {
         type: "sandbox_function_invocation_error",
@@ -425,9 +414,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
   // Holding the response until an invocation blocked on user input settles would deadlock: the
   // approval card only renders once the client holds the invocation.
   it("returns no outcome when the invocation blocks on a tool approval", async () => {
-    const { workspace, sandboxFunction } = await setupSandboxFunction({
-      withFastExecutionFeatureFlag: true,
-    });
+    const { workspace, sandboxFunction } = await setupSandboxFunction();
     mockInvocationEventStream([
       toolApprovalEvent({
         invocationId: "sfi_ignored",
@@ -452,7 +439,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
     expect(body.outcome).toBeUndefined();
   });
 
-  it("does not wait for an outcome when fast execution is disabled", async () => {
+  it("returns no outcome when the stream ends without settling", async () => {
     const { workspace, sandboxFunction } = await setupSandboxFunction();
 
     const response = await postInvocation({
@@ -463,7 +450,7 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
     expect(response.status).toBe(201);
     const body = await response.json();
     expect(body.outcome).toBeUndefined();
-    expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
+    expect(getSandboxFunctionInvocationEvents).toHaveBeenCalled();
   });
 
   it("allows a workspace member to invoke a workspace-user-required function", async () => {
@@ -492,6 +479,49 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
 
     expect(response.status).toBe(201);
     expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
+  });
+
+  it("allows a pod member to invoke a pod-member-required function", async () => {
+    const { workspace, sandboxFunction } = await setupSandboxFunction({
+      userIdentity: "pod_member_required",
+    });
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(201);
+    expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
+  });
+
+  it("denies a workspace member outside an open pod on a pod-member-required function", async () => {
+    const { workspace, sandboxFunction, space, adminAuth } =
+      await setupSandboxFunction({
+        userIdentity: "pod_member_required",
+        addCallerToSpace: false,
+      });
+    // Open the pod so the caller clears the read gate and the policy itself denies (a restricted
+    // pod would 404 at fetch before the policy runs).
+    const globalGroupResult =
+      await GroupResource.fetchWorkspaceGlobalGroup(adminAuth);
+    expect(globalGroupResult.isOk()).toBe(true);
+    if (globalGroupResult.isOk()) {
+      await GroupSpaceFactory.associate(space, globalGroupResult.value);
+    }
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+    });
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({
+      error: {
+        type: "user_authentication_required",
+      },
+    });
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
   });
 
   it("records an OAuth invocation as delegated", async () => {

@@ -8,6 +8,7 @@ import type {
 } from "@app/lib/skill_detection";
 import { parseGitHubRepoUrl } from "@app/lib/skill_detection";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { getManageSkillsRoute } from "@app/lib/utils/router";
 import type { GetSkillHistoryResponseBody } from "@app/types/api/assistant/skills/history";
 import type {
   GetSkillResponseBody,
@@ -434,6 +435,18 @@ export function useUpdateSkillFavorite({
 
         void mutateActiveSkills();
         void mutateActiveSkillsWithRelations();
+
+        if (isFavorite) {
+          sendNotification({
+            type: "success",
+            title: "Added to favorites",
+            description: skill.name,
+            action: {
+              label: "View",
+              href: `${getManageSkillsRoute(owner.sId)}#?selectedTab=favorites`,
+            },
+          });
+        }
         return true;
       } catch (err) {
         sendNotification({

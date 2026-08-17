@@ -1,8 +1,4 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import {
-  isDustFileSystemError,
-  SCOPED_PREFIX_POD,
-} from "@app/lib/api/file_system/types";
 import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
 import { createProjectFolder } from "@app/lib/api/projects/context";
 import { PostPodFolderRequestBodySchema } from "@app/lib/api/projects/pod_mount_schemas";
@@ -11,6 +7,10 @@ import type {
   GetSpaceFilesResponseBody,
   PostSpaceFolderResponseBody,
 } from "@app/types/api/file_system/types";
+import {
+  isDustFileSystemError,
+  SCOPED_PREFIX_POD,
+} from "@app/types/file_system";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";

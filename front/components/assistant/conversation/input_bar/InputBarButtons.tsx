@@ -1,17 +1,27 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
-import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
-import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
+import {
+  CapabilitiesPicker,
+  CapabilitySetupDialog,
+} from "@app/components/assistant/CapabilitiesPicker";
 import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
+import { InputBarPlusMenu } from "@app/components/assistant/conversation/input_bar/InputBarPlusMenu";
+import {
+  INPUT_BAR_PILL_HOVER_CLASSNAME,
+  INPUT_BAR_PILL_SURFACE_CLASSNAME,
+} from "@app/components/assistant/conversation/input_bar/inputBarPillStyles";
 import type useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import type { MCPServerViewLightType } from "@app/lib/api/mcp";
+import type { MCPServerType, MCPServerViewLightType } from "@app/lib/api/mcp";
 import { useAppRouter } from "@app/lib/platform";
-import { useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
+import { useIsMobile, useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
 import { setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type {
+  ConversationWithoutContentType,
+  SelectableConversationSpaceType,
+} from "@app/types/assistant/conversation";
 import type {
   RichAgentMention,
   RichMention,
@@ -70,11 +80,17 @@ interface InputBarButtonsProps {
   owner: WorkspaceType;
   selectedAgent: RichAgentMention | null;
   selectedMCPServerViews: MCPServerViewLightType[];
+  selectedSpaceIds: string[];
+  onSelectedSpaceIdsChange: (spaceIds: string[]) => void;
+  spaces?: SelectableConversationSpaceType[];
+  isSpacesLoading?: boolean;
+  canDeselectSelectedSpaces?: boolean;
   space: SpaceType | undefined;
   user: UserType | null;
   onAgentPickerOpenChange?: (open: boolean) => void;
   onCapabilitiesPickerOpenChange?: (open: boolean) => void;
   onAttachmentsPickerOpenChange?: (open: boolean) => void;
+  onPlusMenuOpenChange?: (open: boolean) => void;
 }
 
 export const InputBarButtons = React.memo(function InputBarButtons({
@@ -103,14 +119,23 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   owner,
   selectedAgent,
   selectedMCPServerViews,
+  selectedSpaceIds,
+  onSelectedSpaceIdsChange,
+  spaces,
+  isSpacesLoading,
+  canDeselectSelectedSpaces,
   space,
   user,
   onAgentPickerOpenChange,
   onCapabilitiesPickerOpenChange,
   onAttachmentsPickerOpenChange,
+  onPlusMenuOpenChange,
 }: InputBarButtonsProps) {
   const router = useAppRouter();
+  const isMobile = useIsMobile();
   const isWidthConstrained = useIsWidthConstrained();
+  const [serverToSetup, setServerToSetup] =
+    React.useState<MCPServerType | null>(null);
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
   const spaceId = conversation?.spaceId ?? space?.sId ?? undefined;
 
@@ -150,15 +175,17 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             aria-label={`Selected agent: ${selectedAgent.label}`}
             aria-disabled={isInputDisabled}
             className={cn(
-              "inline-flex box-border items-center rounded-lg h-7 heading-xs px-2 gap-1.5 bg-muted-background border-border text-primary-900 transition-colors duration-200",
+              "inline-flex box-border items-center rounded-full heading-xs px-2 gap-1.5 text-primary-900 transition-colors duration-200",
+              buttonSize === "xs" ? "h-6" : "h-8",
+              INPUT_BAR_PILL_SURFACE_CLASSNAME,
               isWidthConstrained && "pl-1",
               isInputDisabled
                 ? "opacity-50 pointer-events-none"
-                : "cursor-pointer hover:bg-hover"
+                : cn("cursor-pointer", INPUT_BAR_PILL_HOVER_CLASSNAME)
             )}
           >
-            <Avatar size="xxs" visual={selectedAgent.pictureUrl} />
-            {!isWidthConstrained && (
+            <Avatar size="3xs" visual={selectedAgent.pictureUrl} />
+            {(!isWidthConstrained || isMobile) && (
               <span className="grow truncate notranslate">
                 {selectedAgent.label}
               </span>
@@ -192,12 +219,19 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             icon={Robot}
             label={!isWidthConstrained ? "Agent" : undefined}
             disabled={isInputDisabled}
-            className={cn(disableAgentSelector && "bg-primary-150")}
+            isRounded
+            className={cn(
+              INPUT_BAR_PILL_SURFACE_CLASSNAME,
+              INPUT_BAR_PILL_HOVER_CLASSNAME,
+              disableAgentSelector && "bg-primary-150"
+            )}
           />
         )
       }
     />
   );
+  const isExtension = clientType === "extension";
+
   const toolsButton = actions.includes("capabilities") && (
     <CapabilitiesPicker
       owner={owner}
@@ -205,49 +239,12 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       selectedMCPServerViews={selectedMCPServerViews}
       onSelect={onMCPServerViewSelect}
       onSkillSelect={onSkillSelect}
+      onSetupServer={setServerToSetup}
       onOpenChange={onCapabilitiesPickerOpenChange}
       buttonSize={buttonSize}
       disabled={isInputDisabled}
     />
   );
-  const attachmentButton = actions.includes("attachment") &&
-    clientType !== "extension" && (
-      <>
-        <input
-          accept={getSupportedFileExtensions().join(",")}
-          onChange={async (e) => {
-            await fileUploaderService.handleFileChange(e);
-            if (fileInputRef.current) {
-              fileInputRef.current.value = "";
-            }
-            editorService.focusEnd();
-          }}
-          ref={fileInputRef}
-          style={{ display: "none" }}
-          type="file"
-          multiple={true}
-        />
-        <InputBarAttachmentsPicker
-          fileUploaderService={fileUploaderService}
-          owner={owner}
-          isLoading={false}
-          onNodeSelect={onNodeSelect}
-          onNodeUnselect={onNodeUnselect}
-          attachedNodes={attachedNodes}
-          buttonSize={buttonSize}
-          onOpenChange={onAttachmentsPickerOpenChange}
-          toolFileUpload={{
-            useCase: "conversation",
-            useCaseMetadata: {
-              conversationId: conversation?.sId,
-            },
-          }}
-          spaceId={spaceId}
-          type="dropdown"
-          disabled={isInputDisabled}
-        />
-      </>
-    );
 
   const selectedAgentModel =
     (selectedAgent &&
@@ -268,12 +265,75 @@ export const InputBarButtons = React.memo(function InputBarButtons({
     />
   );
 
+  // Only reachable through the `/upload-file` slash command, which is gated on
+  // the same action.
+  const hiddenFileInput = actions.includes("attachment") && (
+    <input
+      accept={getSupportedFileExtensions().join(",")}
+      onChange={async (e) => {
+        await fileUploaderService.handleFileChange(e);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        editorService.focusEnd();
+      }}
+      ref={fileInputRef}
+      style={{ display: "none" }}
+      type="file"
+      multiple={true}
+    />
+  );
+
   return (
     <>
-      {agentButton}
-      {modelPickerButton}
-      {!hideCapabilities && toolsButton}
-      {attachmentButton}
+      {hiddenFileInput}
+      {isExtension ? (
+        <>
+          {agentButton}
+          {modelPickerButton}
+          {!hideCapabilities && toolsButton}
+        </>
+      ) : (
+        <>
+          {agentButton}
+          <InputBarPlusMenu
+            owner={owner}
+            user={user}
+            buttonSize={buttonSize}
+            disabled={isInputDisabled}
+            hideCapabilities={
+              hideCapabilities || !actions.includes("capabilities")
+            }
+            hideAttachments={!actions.includes("attachment")}
+            selectedMCPServerViews={selectedMCPServerViews}
+            onMCPServerViewSelect={onMCPServerViewSelect}
+            onSkillSelect={onSkillSelect}
+            onSetupServer={setServerToSetup}
+            fileUploaderService={fileUploaderService}
+            onNodeSelect={onNodeSelect}
+            onNodeUnselect={onNodeUnselect}
+            attachedNodes={attachedNodes}
+            conversation={conversation}
+            spaceId={spaceId}
+            selectedSpaceIds={selectedSpaceIds}
+            onSelectedSpaceIdsChange={onSelectedSpaceIdsChange}
+            spaces={spaces}
+            isSpacesLoading={isSpacesLoading}
+            canDeselectSelectedSpaces={canDeselectSelectedSpaces}
+            onOpenChange={onPlusMenuOpenChange}
+            onCapabilitiesPickerOpenChange={onCapabilitiesPickerOpenChange}
+            onAttachmentsPickerOpenChange={onAttachmentsPickerOpenChange}
+          />
+        </>
+      )}
+      {serverToSetup && (
+        <CapabilitySetupDialog
+          owner={owner}
+          server={serverToSetup}
+          onClose={() => setServerToSetup(null)}
+          onServerViewAdded={onMCPServerViewSelect}
+        />
+      )}
     </>
   );
 });

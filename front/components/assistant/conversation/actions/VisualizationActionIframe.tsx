@@ -10,6 +10,11 @@ import type {
 import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
+import type { PodFunctionScope } from "@app/types/api/pod_function_reference";
+import {
+  podFunctionScopeFromFramePath,
+  resolvePodFunctionReference,
+} from "@app/types/api/pod_function_reference";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   PostSandboxFunctionInvocationResponseBody,
@@ -91,11 +96,15 @@ export function getFrameRuntimeAccess(
       ? {
           isAuthenticated: true,
           isWorkspaceMember: true,
+          isPodEditor: scopedUserIdentity.isPodEditor ?? false,
+          isPodMember: scopedUserIdentity.isPodMember ?? false,
           user: scopedUserIdentity.user,
         }
       : {
           isAuthenticated: false,
           isWorkspaceMember: false,
+          isPodEditor: false,
+          isPodMember: false,
           user: null,
         };
 
@@ -379,6 +388,7 @@ function useVisualizationDataHandler({
   createSandboxFunctionInvocation,
   getFileBlob,
   onEditText,
+  podFunctionScope,
   setCodeDrawerOpened,
   setContentHeight,
   setErrorMessage,
@@ -396,6 +406,7 @@ function useVisualizationDataHandler({
     Result<PostSandboxFunctionInvocationResponseBody, SandboxFunctionCallError>
   >;
   getFileBlob: (fileId: string) => Promise<Blob | null>;
+  podFunctionScope: PodFunctionScope | null;
   onEditText?: EditTextFn;
   setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
   setContentHeight: (v: SetStateAction<number>) => void;
@@ -465,8 +476,27 @@ function useVisualizationDataHandler({
 
       switch (data.command) {
         case "callFunction": {
-          const invocationRes = await createSandboxFunctionInvocation(
+          // A Frame in an app folder may name its own functions by bare slug; qualify it here, the
+          // only layer that both knows which Frame is calling and is trusted about it.
+          const referenceRes = resolvePodFunctionReference(
             data.params.functionIdOrSlug,
+            podFunctionScope
+          );
+          if (referenceRes.isErr()) {
+            sendErrorToIframe(
+              data,
+              {
+                code: "not_supported",
+                message: referenceRes.error.message,
+              },
+              event.source,
+              { conversationId, workspaceId }
+            );
+            break;
+          }
+
+          const invocationRes = await createSandboxFunctionInvocation(
+            referenceRes.value,
             data.params.input
           );
 
@@ -573,6 +603,7 @@ function useVisualizationDataHandler({
     downloadFileFromBlob,
     getFileBlob,
     onEditText,
+    podFunctionScope,
     setContentHeight,
     setErrorMessage,
     setCodeDrawerOpened,
@@ -619,6 +650,12 @@ export interface VisualizationActionIframeProps {
   agentConfigurationId: string | null;
   canInvokeFunctions: boolean;
   conversationId: string | null;
+  /**
+   * Canonical scoped path of the Frame being rendered (`pod-{podId}/MyApp/MyApp.tsx`), when the host
+   * knows it. Only Pod hosts do, and it is what lets a Frame in an app folder call its functions by
+   * bare name; without it, relative references are refused.
+   */
+  framePath?: string | null;
   isEditable?: boolean;
   isInDrawer?: boolean;
   onEditText?: EditTextFn;
@@ -642,6 +679,13 @@ export const VisualizationActionIframe = forwardRef<
   const [retryClicked, setRetryClicked] = useState(false);
   const [isCodeDrawerOpen, setCodeDrawerOpened] = useState(false);
   const vizIframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  // Only Pod hosts pass a frame path, so only Frames in an app folder get a scope; everything else
+  // resolves to null and must use fully qualified references.
+  const podFunctionScope = useMemo(
+    () => podFunctionScopeFromFramePath(props.framePath),
+    [props.framePath]
+  );
 
   // In-flight sandbox function invocations. Each entry mounts a
   // SandboxFunctionInvocation; the resolver of the pending `callFunction` promise is kept
@@ -878,6 +922,7 @@ export const VisualizationActionIframe = forwardRef<
     createSandboxFunctionInvocation,
     getFileBlob,
     onEditText,
+    podFunctionScope,
     setCodeDrawerOpened,
     setContentHeight,
     setErrorMessage,

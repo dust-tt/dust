@@ -94,15 +94,21 @@ export function useMarkAllConversationsAsRead({
           throw new Error("Failed to mark conversations as read");
         }
 
-        void mutatePodSummary();
-        void mutatePodConversations();
-        void mutateUnreadConversationIds();
-
         sendNotification({
           type: "success",
           title: "All conversations marked as read",
           description: `${total} conversation${total > 1 ? "s" : ""} marked as read.`,
         });
+
+        // Unread pod conversations are rendered from these caches, so hold
+        // the loading state until they refresh and the rows animate out.
+        // allSettled: a failed revalidation keeps stale data but is not a
+        // mark-as-read failure.
+        await Promise.allSettled([
+          mutatePodSummary(),
+          mutatePodConversations(),
+          mutateUnreadConversationIds(),
+        ]);
       } catch {
         void mutateConversations();
 

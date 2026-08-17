@@ -20,7 +20,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import {
-  createResourcePermissionsFromSpacesWithMap,
+  createAccessControlListFromSpacesWithMap,
   createSpaceIdToGroupsMap,
 } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -681,7 +681,7 @@ describe("destroyConversation", () => {
     expect(stillThere).not.toBeNull();
   });
 
-  it("does not scrub the Pod's egress policy file when destroying a pod conversation", async () => {
+  it("deletes the conversation's own policy file, never the Pod's, when destroying a pod conversation", async () => {
     mockDeleteOwnerPolicy.mockResolvedValue(new Ok(undefined));
     const workspace = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
@@ -715,9 +715,17 @@ describe("destroyConversation", () => {
 
     await destroyConversation(podAuth, { conversation });
 
-    // Pod conversations never own a policy file — the Pod's file is scrubbed
-    // by hardDeleteSpace, not conversation destruction.
-    expect(mockDeleteOwnerPolicy).not.toHaveBeenCalled();
+    // Pod conversations own their own policy file (on-the-fly approvals land
+    // there) — destroying the conversation deletes it. The Pod's own file is
+    // untouched: the delete targets the conversation sId, never the pod's.
+    expect(mockDeleteOwnerPolicy).toHaveBeenCalledWith(
+      expect.anything(),
+      conversation.sId
+    );
+    expect(mockDeleteOwnerPolicy).not.toHaveBeenCalledWith(
+      expect.anything(),
+      pod.sId
+    );
   });
 
   it("should delete batched message resources chunk by chunk", async () => {
@@ -1356,9 +1364,10 @@ describe("createResourcePermissionsFromSpacesWithMap", () => {
   });
 
   it("should resolve space ids to group permissions", () => {
-    const permissions = createResourcePermissionsFromSpacesWithMap(
+    const permissions = createAccessControlListFromSpacesWithMap(
       spaceIdToGroupsMap,
-      [globalSpace.id]
+      [globalSpace.id],
+      auth.getNonNullableWorkspace().id
     );
 
     expect(permissions).toBeDefined();
@@ -1368,9 +1377,10 @@ describe("createResourcePermissionsFromSpacesWithMap", () => {
   });
 
   it("should handle multiple space ids", () => {
-    const permissions = createResourcePermissionsFromSpacesWithMap(
+    const permissions = createAccessControlListFromSpacesWithMap(
       spaceIdToGroupsMap,
-      [globalSpace.id, regularSpace.id]
+      [globalSpace.id, regularSpace.id],
+      auth.getNonNullableWorkspace().id
     );
 
     expect(permissions).toBeDefined();
@@ -1379,17 +1389,19 @@ describe("createResourcePermissionsFromSpacesWithMap", () => {
 
   it("should throw assertion error for missing spaces", () => {
     expect(() =>
-      createResourcePermissionsFromSpacesWithMap(
+      createAccessControlListFromSpacesWithMap(
         spaceIdToGroupsMap,
-        [99999] // Non-existent space Id.
+        [99999], // Non-existent space Id.
+        auth.getNonNullableWorkspace().id
       )
     ).toThrow("No group IDs found for space ID 99999");
   });
 
   it("should handle empty space ids array", () => {
-    const permissions = createResourcePermissionsFromSpacesWithMap(
+    const permissions = createAccessControlListFromSpacesWithMap(
       spaceIdToGroupsMap,
-      []
+      [],
+      auth.getNonNullableWorkspace().id
     );
 
     expect(permissions).toBeDefined();

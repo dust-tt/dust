@@ -61,6 +61,9 @@ pub enum ActionPollResponse {
         // Raw blocks; the plain-text formatter parses them lazily so JSON
         // mode can emit unknown block types verbatim.
         content: Vec<serde_json::Value>,
+        // Machine-readable payload of the tool result, when the tool
+        // provided one. Passed through verbatim.
+        structured_content: Option<serde_json::Value>,
         is_error: bool,
     },
 }
@@ -79,27 +82,15 @@ struct ActionData {
     status: String,
     #[serde(default)]
     output: Option<Vec<serde_json::Value>>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ApiErrorEnvelope {
-    error: ApiErrorBody,
-}
-
-#[derive(Debug, Deserialize)]
-struct ApiErrorBody {
     #[serde(default)]
-    message: Option<String>,
+    structured_content: Option<serde_json::Value>,
 }
 
 pub fn parse_action_poll_response(body: &str) -> anyhow::Result<ActionPollResponse> {
-    if let Ok(envelope) = serde_json::from_str::<ApiErrorEnvelope>(body) {
-        let message = envelope
-            .error
-            .message
-            .as_deref()
-            .unwrap_or("unknown API error");
-        anyhow::bail!("API error: {message}");
+    // A body shaped like front's `{"error":{...}}` envelope is an API error
+    // regardless of HTTP status; surface it typed so callers can classify.
+    if let Some(api_error) = super::error::DustApiError::parse_envelope(None, body) {
+        return Err(api_error.into());
     }
 
     let raw: ActionPollResponseRaw = serde_json::from_str(body)
@@ -111,7 +102,12 @@ pub fn parse_action_poll_response(body: &str) -> anyhow::Result<ActionPollRespon
         ActionPollResponseRaw::Success { action } => {
             let is_error = action.status == "errored";
             let content = action.output.unwrap_or_default();
-            Ok(ActionPollResponse::Success { content, is_error })
+            let structured_content = action.structured_content;
+            Ok(ActionPollResponse::Success {
+                content,
+                structured_content,
+                is_error,
+            })
         }
     }
 }
@@ -137,6 +133,11 @@ pub struct CallToolResponse {
 #[serde(rename_all = "camelCase")]
 pub struct CallToolResult {
     pub content: Vec<serde_json::Value>,
+    // Machine-readable payload of the tool result, when the tool provided
+    // one. Omitted from `--json` output when absent so existing consumers see
+    // unchanged output.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub structured_content: Option<serde_json::Value>,
     pub is_error: bool,
 }
 
@@ -221,11 +222,41 @@ mod tests {
         )
         .expect("should parse");
         match resp {
-            ActionPollResponse::Success { content, is_error } => {
+            ActionPollResponse::Success {
+                content,
+                structured_content,
+                is_error,
+            } => {
                 assert!(!is_error);
                 assert_eq!(content.len(), 1);
                 assert_eq!(content[0]["type"], "text");
                 assert_eq!(content[0]["text"], "hello");
+                assert!(structured_content.is_none());
+            }
+            _ => panic!("expected success"),
+        }
+    }
+
+    #[test]
+    fn parse_success_poll_response_with_structured_content() {
+        let resp = parse_action_poll_response(
+            r#"{
+                "status":"success",
+                "action":{
+                    "status":"succeeded",
+                    "output":[{"type":"text","text":"hello"}],
+                    "structuredContent":{"items":[{"id":1}],"nextCursor":"abc"}
+                }
+            }"#,
+        )
+        .expect("should parse");
+        match resp {
+            ActionPollResponse::Success {
+                structured_content, ..
+            } => {
+                let structured = structured_content.expect("should carry structuredContent");
+                assert_eq!(structured["items"][0]["id"], 1);
+                assert_eq!(structured["nextCursor"], "abc");
             }
             _ => panic!("expected success"),
         }
@@ -262,12 +293,19 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.to_string().contains("bad token"));
+        // The envelope surfaces typed so the poll loop treats it as terminal
+        // and `--json` consumers get a classified error.
+        let api_error = err
+            .downcast_ref::<super::super::error::DustApiError>()
+            .expect("should carry a DustApiError");
+        assert_eq!(api_error.message, "bad token");
     }
 
     #[test]
     fn call_tool_result_serializes_with_camelcase() {
         let result = CallToolResult {
             content: vec![serde_json::json!({"type": "text", "text": "hello"})],
+            structured_content: None,
             is_error: false,
         };
 
@@ -279,6 +317,67 @@ mod tests {
         assert!(value.get("is_error").is_none());
         assert_eq!(value["content"][0]["type"], "text");
         assert_eq!(value["content"][0]["text"], "hello");
+        // Absent structuredContent is omitted so existing `--json` consumers
+        // see unchanged output.
+        assert!(value.get("structuredContent").is_none());
+        assert!(value.get("structured_content").is_none());
+    }
+
+    #[test]
+    fn call_tool_result_serializes_structured_content_with_camelcase() {
+        let result = CallToolResult {
+            content: vec![serde_json::json!({"type": "text", "text": "hello"})],
+            structured_content: Some(serde_json::json!({"items": [1, 2], "nextCursor": "abc"})),
+            is_error: false,
+        };
+
+        let value: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&result).expect("should serialize"))
+                .expect("should round-trip");
+
+        assert_eq!(value["structuredContent"]["items"][1], 2);
+        assert_eq!(value["structuredContent"]["nextCursor"], "abc");
+        assert!(value.get("structured_content").is_none());
+    }
+
+    #[test]
+    fn call_tool_result_preserves_block_meta_offload_descriptor() {
+        // Offloaded tool outputs carry a machine-readable descriptor in the block's `_meta`
+        // (key "tt.dust/offload"); the CLI must pass it through verbatim so in-sandbox
+        // consumers can resolve the full content.
+        let poll_body = r#"{
+            "status":"success",
+            "action":{
+                "status":"succeeded",
+                "output":[{
+                    "type":"resource",
+                    "resource":{"uri":"pod-x/.tool_outputs/fn/1_tool.json","mimeType":"text/plain","text":"snippet"},
+                    "_meta":{"tt.dust/offload":{"fullContentPath":"pod-x/.tool_outputs/fn/1_tool.json","totalBytes":123456,"contentType":"application/json"}}
+                }]
+            }
+        }"#;
+        let resp = parse_action_poll_response(poll_body).expect("should parse");
+        let content = match resp {
+            ActionPollResponse::Success { content, .. } => content,
+            _ => panic!("expected success"),
+        };
+
+        let result = CallToolResult {
+            content,
+            structured_content: None,
+            is_error: false,
+        };
+        let value: serde_json::Value =
+            serde_json::from_str(&serde_json::to_string(&result).expect("should serialize"))
+                .expect("should round-trip");
+
+        let descriptor = &value["content"][0]["_meta"]["tt.dust/offload"];
+        assert_eq!(
+            descriptor["fullContentPath"],
+            "pod-x/.tool_outputs/fn/1_tool.json"
+        );
+        assert_eq!(descriptor["totalBytes"], 123456);
+        assert_eq!(descriptor["contentType"], "application/json");
     }
 
     #[test]
@@ -288,6 +387,7 @@ mod tests {
                 "type": "future_block",
                 "payload": {"k": 1}
             })],
+            structured_content: None,
             is_error: true,
         };
 

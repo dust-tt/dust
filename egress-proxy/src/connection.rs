@@ -162,6 +162,22 @@ async fn handle_connection_inner(
         }
     };
 
+    // A podId only ever accompanies a conversation-in-pod token, which always
+    // carries wId and ownerId. Reject the impossible shapes before policy
+    // evaluation: the proxy is the authorization boundary, and a malformed
+    // (signed) token must not pick up the pod's inherited allowlist through
+    // a future minting regression.
+    if token.pod_id.is_some() && (token.w_id.is_none() || token.owner_id.is_none()) {
+        deny(
+            stream,
+            DenyReason::InvalidClaims,
+            Some(&token),
+            Some(&request),
+        )
+        .await;
+        return Err(DenyReason::InvalidClaims);
+    }
+
     if request.domain.is_empty() {
         // TODO(sandbox-egress): Track empty_domain separately from malformed_handshake because
         // this is the expected deny path for non-HTTP/non-TLS connections where dsbx cannot
@@ -198,7 +214,7 @@ async fn handle_connection_inner(
             .evaluate(
                 token.w_id.as_deref(),
                 token.owner_id.as_deref(),
-                sb_id,
+                token.pod_id.as_deref(),
                 &request.domain,
             )
             .await

@@ -144,15 +144,13 @@ const VariantQuerySchema = z.object({
  *                       enum: [standard, protected]
  *               editors:
  *                 type: array
+ *                 description: >-
+ *                   Emails of the workspace members to set as editors of the agent. Omitting this
+ *                   field keeps the current editors; providing it replaces the whole list.
  *                 items:
- *                   type: object
- *                   properties:
- *                     user_id:
- *                       type: string
- *                     email:
- *                       type: string
- *                     full_name:
- *                       type: string
+ *                   type: string
+ *                   format: email
+ *                 example: ["alice@example.com"]
  *               skills:
  *                 type: array
  *                 description: Replaces the skills enabled on the agent configuration.

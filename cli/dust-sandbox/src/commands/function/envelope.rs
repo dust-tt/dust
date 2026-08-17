@@ -2,11 +2,13 @@ use serde::{Deserialize, Serialize};
 
 pub const RESULT_PROTOCOL_VERSION: u32 = 3;
 
+/// How a function result reaches Dust. Stdout is the only mode: the worker that
+/// started the command reads a protocol v3 envelope off the exec's own stdout.
+/// Kept as an enum because it is also the envelope's `delivery` wire field.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum, Serialize, Deserialize)]
 #[value(rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 pub enum ResultDelivery {
-    Callback,
     Stdout,
 }
 
@@ -30,6 +32,17 @@ pub enum RunnerKind {
     Cold,
 }
 
+/// Whether a warm worker served the invocation from a bundle it had already
+/// imported, or paid the import on this request. Observability for the
+/// pool's affinity routing: a high `fresh` share means functions keep
+/// landing on workers that do not hold their bundle.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum ImportKind {
+    Cached,
+    Fresh,
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct TimingsMs {
@@ -39,6 +52,9 @@ pub struct TimingsMs {
     /// treats timingsMs as opaque, so this cannot break the wire contract.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runner_kind: Option<RunnerKind>,
+    /// Additive, warm runs only: see [`ImportKind`].
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub import_kind: Option<ImportKind>,
 }
 
 impl ResultEnvelope {
@@ -52,11 +68,15 @@ impl ResultEnvelope {
     }
 
     pub fn stdout_invocation_failed(message: impl Into<String>) -> Self {
+        Self::stdout_error("invocation_failed", message)
+    }
+
+    pub fn stdout_error(code: &str, message: impl Into<String>) -> Self {
         Self::stdout_outcome(
             serde_json::json!({
                 "ok": false,
                 "error": {
-                    "code": "invocation_failed",
+                    "code": code,
                     "message": message.into(),
                 }
             }),
@@ -84,6 +104,7 @@ mod tests {
                 total: 12,
                 runner: 8,
                 runner_kind: Some(RunnerKind::Warm),
+                import_kind: Some(ImportKind::Cached),
             }),
         );
 
@@ -94,7 +115,7 @@ mod tests {
                 "protocolVersion": 3,
                 "delivery": "stdout",
                 "outcome": { "ok": true, "output": { "hello": "world" } },
-                "timingsMs": { "total": 12, "runner": 8, "runnerKind": "warm" },
+                "timingsMs": { "total": 12, "runner": 8, "runnerKind": "warm", "importKind": "cached" },
             })
         );
     }

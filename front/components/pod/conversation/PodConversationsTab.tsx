@@ -207,7 +207,7 @@ export function PodConversationsTab({
               <Icon visual={getSpaceIcon(podInfo)} />
               <h2
                 className={cn(
-                  "heading-2xl text-foreground",
+                  "heading-2xl font-medium text-foreground",
                   podInfo.archivedAt && "text-muted-foreground"
                 )}
               >
@@ -232,6 +232,7 @@ export function PodConversationsTab({
                 draftKey={`space-${podInfo.sId}-new-conversation`}
                 space={podInfo}
                 disableAutoFocus={false}
+                isFloating={false}
                 placeholder={`Get work done...`}
                 defaultAgentId={defaultAgentId}
                 isDefaultAgentLoading={isPodMetadataLoading}

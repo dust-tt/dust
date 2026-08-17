@@ -28,6 +28,7 @@ type BlockedActionsContextType = {
     messageId: string;
     blockedAction: AgentLoopBlockedToolExecution;
   }) => void;
+  refreshBlockedActions: () => Promise<void>;
   removeCompletedAction: (actionId: string) => void;
   removeAllBlockedActionsForMessage: (params: {
     messageId: string;
@@ -35,6 +36,7 @@ type BlockedActionsContextType = {
   }) => void;
   hasPendingValidations: (userId: string) => boolean;
   getBlockedActions: (userId: string) => AgentLoopBlockedToolExecution[];
+  getBlockedActionItems: (userId: string) => BlockedActionQueueItem[];
   getFirstBlockedActionForMessage: (
     messageId: string
   ) => AgentLoopBlockedToolExecution | undefined;
@@ -204,6 +206,10 @@ export function BlockedActionsProvider({
     [stopPulsingAction, mutateBlockedActions]
   );
 
+  const refreshBlockedActions = useCallback(async () => {
+    await mutateBlockedActions();
+  }, [mutateBlockedActions]);
+
   const hasPendingValidations = useCallback(
     (userId: string) => {
       return blockedActionsQueue.some(
@@ -218,18 +224,22 @@ export function BlockedActionsProvider({
     [blockedActionsQueue]
   );
 
-  const getBlockedActions = useCallback(
+  const getBlockedActionItems = useCallback(
     (userId: string) => {
-      return blockedActionsQueue
-        .filter((action) =>
-          canCurrentUserRespondToParentUserMessage({
-            parentUserId: action.blockedAction.userId,
-            currentUserId: userId,
-          })
-        )
-        .map((action) => action.blockedAction);
+      return blockedActionsQueue.filter((action) =>
+        canCurrentUserRespondToParentUserMessage({
+          parentUserId: action.blockedAction.userId,
+          currentUserId: userId,
+        })
+      );
     },
     [blockedActionsQueue]
+  );
+
+  const getBlockedActions = useCallback(
+    (userId: string) =>
+      getBlockedActionItems(userId).map((action) => action.blockedAction),
+    [getBlockedActionItems]
   );
 
   const { mutateConversations } = useConversations({
@@ -285,10 +295,12 @@ export function BlockedActionsProvider({
   const value = useMemo(
     () => ({
       enqueueBlockedAction,
+      refreshBlockedActions,
       removeCompletedAction,
       removeAllBlockedActionsForMessage,
       hasPendingValidations,
       getBlockedActions,
+      getBlockedActionItems,
       getFirstBlockedActionForMessage,
       startPulsingAction,
       stopPulsingAction,
@@ -296,10 +308,12 @@ export function BlockedActionsProvider({
     }),
     [
       enqueueBlockedAction,
+      refreshBlockedActions,
       removeCompletedAction,
       removeAllBlockedActionsForMessage,
       hasPendingValidations,
       getBlockedActions,
+      getBlockedActionItems,
       getFirstBlockedActionForMessage,
       startPulsingAction,
       stopPulsingAction,

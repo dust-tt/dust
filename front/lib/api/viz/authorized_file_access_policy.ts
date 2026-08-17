@@ -1,9 +1,9 @@
-import { legacyScopedPathsMatch } from "@app/lib/api/files/mount_path";
 import type {
   AuthorizedFileAccessAllowlist,
   FileShareScope,
   FileUseCase,
 } from "@app/types/files";
+import { legacyScopedPathsMatch } from "@app/types/mount_path";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const FNV_OFFSET_BASIS_64 = BigInt("0xcbf29ce484222325");

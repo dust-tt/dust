@@ -49,6 +49,7 @@ import {
   makeProgrammaticUsageRateLimitKeyForWorkspace,
   makeSidekickMessageRateLimitKeyForWorkspaceActor,
   SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY,
+  SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_ENTERPRISE,
   SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_WINDOW_SECONDS,
 } from "@app/lib/api/assistant/rate_limits";
 import {
@@ -104,6 +105,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { notifyNewProjectConversation } from "@app/lib/notifications/triggers/project-new-conversation";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
+import { isEnterpriseOrDust } from "@app/lib/plans/plan_codes";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
@@ -165,6 +167,7 @@ import {
   isUserMention,
   toMentionType,
 } from "@app/types/assistant/mentions";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type {
   ContentFragmentContextType,
@@ -780,12 +783,15 @@ export async function postUserMessage(
     const supportedModelConfig = getSupportedModelConfig(agentConfig.model);
     if (
       !supportedModelConfig ||
-      !isModelAvailable(supportedModelConfig, {
-        featureFlags,
-        plan,
-        regionalModelsOnly: owner.regionalModelsOnly,
-        region: regionConfig.getCurrentRegion(),
-      })
+      !(
+        isModelStreamId(supportedModelConfig.modelId) ||
+        isModelAvailable(supportedModelConfig, {
+          featureFlags,
+          plan,
+          regionalModelsOnly: owner.regionalModelsOnly,
+          region: regionConfig.getCurrentRegion(),
+        })
+      )
     ) {
       return new Err({
         status_code: 400,
@@ -2460,12 +2466,15 @@ export async function checkMessagesLimit(
       });
     }
 
+    const sidekickDailyLimit = isEnterpriseOrDust(auth.plan())
+      ? SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_ENTERPRISE
+      : SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY;
     const remaining = await rateLimiter({
       key: makeSidekickMessageRateLimitKeyForWorkspaceActor(
         auth.getNonNullableWorkspace(),
         getMessageRateLimitActor(auth)
       ),
-      maxPerTimeframe: SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY,
+      maxPerTimeframe: sidekickDailyLimit,
       timeframeSeconds:
         SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_WINDOW_SECONDS,
       logger,
@@ -2475,8 +2484,7 @@ export async function checkMessagesLimit(
         status_code: 429,
         api_error: {
           type: "rate_limit_error",
-          message:
-            "You have reached the sidekick usage limit. Please try again later.",
+          message: `You have reached the sidekick usage limit (${sidekickDailyLimit} messages per 24h). Please try again later.`,
         },
       });
     }
@@ -3121,6 +3129,8 @@ export async function isConversationEventAllowedForAuth(
     case "user_message_new":
     case "agent_message_new":
       return true;
+
+    case "agent_message_consumption_updated":
     case "agent_message_done":
     case "compaction_message_new":
     case "compaction_message_done":
@@ -3130,6 +3140,7 @@ export async function isConversationEventAllowedForAuth(
     case "plan_updated":
     case "wake_up_updated":
       return true;
+
     default:
       assertNever(type);
   }

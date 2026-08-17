@@ -1,7 +1,7 @@
-import { getBaseMountPathForWorkspace } from "@app/lib/api/files/mount_path";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import { getBaseMountPathForWorkspace } from "@app/types/mount_path";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 const PROGRESS_LOG_INTERVAL = 100;

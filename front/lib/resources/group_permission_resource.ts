@@ -20,7 +20,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { UserType } from "@app/types/user";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 import assert from "assert";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { Op } from "sequelize";
@@ -395,8 +395,11 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
 
   // Read grants for the given groups, optionally narrowed by grant type / resource type /
   // resource. The (workspaceId, resourceType, resourceId) index backs type/resource-scoped reads.
+  // Grants for the given groups in a workspace. Takes a LightWorkspaceType (not an Authenticator) so
+  // it can resolve a caller's grant set before an Authenticator exists (see
+  // `Authenticator.resolvePermissions`). Omit the filters to load every grant.
   static async listForGroups(
-    auth: Authenticator,
+    workspace: LightWorkspaceType,
     { groupModelIds, grantType, resourceType, resourceId }: ListForGroupsSpec
   ): Promise<GroupPermissionResource[]> {
     if (groupModelIds.length === 0) {
@@ -405,7 +408,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
 
     const rows = await GroupPermissionModel.findAll({
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId: workspace.id,
         groupId: groupModelIds,
         ...(grantType !== undefined ? { grantType } : {}),
         ...(resourceType !== undefined ? { resourceType } : {}),
@@ -414,6 +417,29 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     });
 
     return rows.map((row) => new this(GroupPermissionModel, row.get()));
+  }
+
+  // System keys can represent nearly every group in a workspace. Expanding those group ids into
+  // an IN clause on every authenticated request is much more expensive than reading the usually
+  // small workspace grant set through its workspace-leading index and filtering it in memory.
+  // Keep the exact caller group semantics by intersecting with the ids already resolved for the
+  // Authenticator.
+  static async listForGroupsFromWorkspaceScan(
+    workspace: LightWorkspaceType,
+    groupModelIds: ModelId[]
+  ): Promise<GroupPermissionResource[]> {
+    if (groupModelIds.length === 0) {
+      return [];
+    }
+
+    const groupModelIdSet = new Set(groupModelIds);
+    const rows = await GroupPermissionModel.findAll({
+      where: { workspaceId: workspace.id },
+    });
+
+    return rows
+      .filter((row) => groupModelIdSet.has(row.groupId))
+      .map((row) => new this(GroupPermissionModel, row.get()));
   }
 
   // Deletion-integrity hook: drop every grant (across all groups) targeting one resource. There is

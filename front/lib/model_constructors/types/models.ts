@@ -23,6 +23,7 @@ export const CLAUDE_HAIKU_4_5 = "claude-haiku-4-5-20251001" as const;
 export const GEMINI_3_1_PRO = "gemini-3.1-pro-preview" as const;
 export const GEMINI_3_5_FLASH = "gemini-3.5-flash" as const;
 export const GEMINI_3_6_FLASH = "gemini-3.6-flash" as const;
+export const GEMINI_3_7_FLASH = "gemini-3.7-flash" as const;
 export const GEMINI_3_1_FLASH_LITE = "gemini-3.1-flash-lite" as const;
 export const GEMINI_3_5_FLASH_LITE = "gemini-3.5-flash-lite" as const;
 
@@ -41,8 +42,10 @@ export const KIMI_K3 = "kimi-k3" as const;
 export const MINIMAX_M2P5 = "minimax-m2p5" as const;
 export const GLM_5 = "glm-5" as const;
 export const GLM_5P2 = "glm-5p2" as const;
+export const INKLING = "inkling" as const;
 
 export const GROK_4_5 = "grok-4.5" as const;
+export const GROK_4_6 = "grok-4.6" as const;
 
 // Dummy model used for local/dev testing (static replies, simulated credit
 // consumption). Served by the in-process noop endpoint, not an external API.
@@ -73,6 +76,7 @@ export const MODELS = [
   GEMINI_3_1_PRO,
   GEMINI_3_5_FLASH,
   GEMINI_3_6_FLASH,
+  GEMINI_3_7_FLASH,
   GEMINI_3_1_FLASH_LITE,
   GEMINI_3_5_FLASH_LITE,
   MISTRAL_LARGE,
@@ -89,7 +93,9 @@ export const MODELS = [
   MINIMAX_M2P5,
   GLM_5,
   GLM_5P2,
+  INKLING,
   GROK_4_5,
+  GROK_4_6,
   NOOP_MODEL,
 ] as const;
 
@@ -114,5 +120,6 @@ export const ORDERED_LARGE_MODELS = [
   GPT_5,
   GPT_5_1,
   GEMINI_3_1_PRO,
+  GROK_4_6,
   GROK_4_5,
 ];

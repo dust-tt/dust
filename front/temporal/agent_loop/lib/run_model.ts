@@ -43,6 +43,7 @@ import {
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import { getStreamLLM } from "@app/lib/api/llm";
+import { isFreeUsageBlocked } from "@app/lib/api/llm/free_usage";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import {
   getByokUserFacingLLMErrorMessage,
@@ -64,6 +65,10 @@ import {
   parseAnthropicToolSearchBlock,
   TOOL_SEARCH_SERVER_TOOL_NAMES,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
+import {
+  isToolDeferred,
+  isToolSearchEnabledForModel,
+} from "@app/lib/model_constructors/types/tool_search";
 import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -97,11 +102,7 @@ import type {
 import { isAgentMessageType } from "@app/types/assistant/conversation";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import { isTextContent } from "@app/types/assistant/generation";
-import {
-  ANTHROPIC_PROVIDER_ID,
-  isByokProviderId,
-  OPENAI_PROVIDER_ID,
-} from "@app/types/assistant/models/providers";
+import { isByokProviderId } from "@app/types/assistant/models/providers";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -142,7 +143,9 @@ export function buildToolDefinitionsForTokenCount(
   toolSearchEnabled: boolean
 ): string {
   const specsInContext = toolSearchEnabled
-    ? specifications.filter((s) => s.eager)
+    ? specifications.filter(
+        (specification) => !isToolDeferred(specification, toolSearchEnabled)
+      )
     : specifications;
   return JSON.stringify([
     ...(toolSearchEnabled ? [TOOL_SEARCH_TOOL] : []),
@@ -478,6 +481,7 @@ export async function runModel(
         reasoningEffort: modelInfo.reasoningEffort,
         featureFlags,
         agentScope: agentConfiguration.scope,
+        modelResolutionMethod: agentMessage.modelResolutionMethod,
       }
     );
     if (accessError) {
@@ -655,10 +659,7 @@ export async function runModel(
 
   // Specs carry the intrinsic `eager` property only. Whether a non-eager tool is
   // deferred behind tool search is a provider-specific policy applied downstream.
-  const toolSearchEnabled =
-    (modelConfig.providerId === ANTHROPIC_PROVIDER_ID ||
-      modelConfig.providerId === OPENAI_PROVIDER_ID) &&
-    !!modelConfig.supportsToolSearch;
+  const toolSearchEnabled = isToolSearchEnabledForModel(modelConfig);
   const baseSpecifications: AgentActionSpecification[] =
     buildBaseSpecifications(availableActions, agentConfiguration);
 
@@ -784,7 +785,22 @@ export async function runModel(
     conversationId: conversation.sId,
     userId: auth.user()?.sId,
     workspaceId: conversation.owner.sId,
+    // Lets the LLM call site classify free usage (e.g. sidekick) and enforce the
+    // per-user free-usage cost cap.
+    userMessageOrigin: userMessage.context.origin,
   };
+
+  // Enforce the per-user daily free-usage cost cap before running a free call
+  // (e.g. sidekick). Runs per step, so a runaway free loop is stopped mid-run.
+  if (await isFreeUsageBlocked(auth, traceContext)) {
+    await publishAgentError({
+      code: "free_usage_limit_reached",
+      message:
+        "You have reached the free usage credits cap for this 24h period. Please try again later.",
+      metadata: null,
+    });
+    return null;
+  }
 
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,

@@ -23,6 +23,9 @@ export type GetGroupsResponseBody = {
 const GetGroupsQuerySchema = z.object({
   kind: z.union([GroupKindCodec, z.array(GroupKindCodec)]).optional(),
   spaceId: z.string().optional(),
+  // When "true", each group also carries its member sIds (one extra batched
+  // query) instead of just memberCount.
+  withMembers: z.enum(["true", "false"]).optional(),
 });
 
 // Mounted at /api/w/:wId/groups.
@@ -34,7 +37,7 @@ app.get(
   validate("query", GetGroupsQuerySchema),
   async (ctx): HandlerResult<GetGroupsResponseBody> => {
     const auth = ctx.get("auth");
-    const { kind, spaceId } = ctx.req.valid("query");
+    const { kind, spaceId, withMembers } = ctx.req.valid("query");
 
     const groupKinds: GroupKind[] = kind
       ? Array.isArray(kind)
@@ -47,7 +50,10 @@ app.get(
       : await GroupResource.listAllWorkspaceGroups(auth, { groupKinds });
 
     return ctx.json({
-      groups: await GroupResource.toJSONWithMemberCounts(auth, groups),
+      groups:
+        withMembers === "true"
+          ? await GroupResource.fetchJSONWithMembers(auth, groups)
+          : await GroupResource.toJSONWithMemberCounts(auth, groups),
     });
   }
 );

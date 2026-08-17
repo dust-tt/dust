@@ -171,6 +171,14 @@ describe("GET/POST /api/w/:wId/spaces/:spaceId/sandbox/env-vars", () => {
       workspace: auth.getNonNullableWorkspace(),
     });
     expect(workspaceVars).toHaveLength(0);
+
+    // Pod-scoped audit events identify their pod.
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "sandbox_env_var.created",
+        metadata: expect.objectContaining({ space_id: pod.sId }),
+      })
+    );
   });
 
   it("returns 200 when overwriting an existing env var", async () => {

@@ -68,11 +68,13 @@ function validateConsumptionItemShape(
   }
 }
 
-// Each row explains one component of an agent message's cost (a model token bucket or a tool
-// call). The credit amounts here are an attribution breakdown, not the bill: they are un-rounded
-// micro-credits priced cache-naive, whereas the authoritative charge is the Metronome AWU amount
-// rounded up per execution. These rows are not expected to sum to the billed amount. They rank
-// what drove the cost. See attribution_builder.ts for the pricing rationale.
+// Each row explains one component of an agent message's cost (a model token bucket or a tool call).
+// `grossAttributedCreditAmountMicro` is cache-naive evidence and is not expected to sum to the
+// bill. It is stable once complete except for one monotonic correction: terminal messages remove a
+// final tool result that never reached another model run. `reconciledCreditAmountMicro`
+// materializes the item's share of the authoritative Metronome AWU charge. It remains null until a
+// complete attribution version can be allocated. See attribution_builder.ts and allocation.ts for
+// the pricing and reconciliation rationale.
 export class AgentMessageConsumptionItemModel extends WorkspaceAwareModel<AgentMessageConsumptionItemModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -87,6 +89,7 @@ export class AgentMessageConsumptionItemModel extends WorkspaceAwareModel<AgentM
   declare inputTokensCount: number | null;
   declare outputTokensCount: number | null;
   declare grossAttributedCreditAmountMicro: number;
+  declare reconciledCreditAmountMicro: number | null;
   declare directCreditAmountMicro: number | null;
   declare completedAt: Date | null;
 }
@@ -156,6 +159,11 @@ AgentMessageConsumptionItemModel.init(
     grossAttributedCreditAmountMicro: {
       type: DataTypes.BIGINT,
       allowNull: false,
+      validate: { min: 0 },
+    },
+    reconciledCreditAmountMicro: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
       validate: { min: 0 },
     },
     directCreditAmountMicro: {

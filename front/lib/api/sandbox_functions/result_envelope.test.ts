@@ -1,4 +1,5 @@
 import {
+  extractResultSpillPointer,
   normalizeSandboxFunctionResult,
   SANDBOX_FUNCTION_RESULT_PROTOCOL_VERSION,
 } from "@app/lib/api/sandbox_functions/result_envelope";
@@ -41,6 +42,56 @@ describe("normalizeSandboxFunctionResult", () => {
       error: {
         code: "invalid_output",
         message: "Function output does not match schema.output.",
+      },
+    });
+  });
+
+  it("preserves the large-output error codes from a protocol v3 failure envelope", () => {
+    expect(
+      normalizeSandboxFunctionResult({
+        protocolVersion: 3,
+        delivery: "stdout",
+        outcome: {
+          ok: false,
+          error: {
+            code: "output_truncated",
+            message:
+              "function output was truncated in transit (read 2097152 bytes, runner exit 0); " +
+              "return a smaller payload or write large data to a pod file",
+          },
+        },
+      })
+    ).toEqual({
+      ok: false,
+      error: {
+        code: "output_truncated",
+        message:
+          "function output was truncated in transit (read 2097152 bytes, runner exit 0); " +
+          "return a smaller payload or write large data to a pod file",
+      },
+    });
+
+    expect(
+      normalizeSandboxFunctionResult({
+        protocolVersion: 3,
+        delivery: "stdout",
+        outcome: {
+          ok: false,
+          error: {
+            code: "output_too_large",
+            message:
+              "function result is 6291456 bytes, over the 5242880-byte limit; " +
+              "store large data in a pod file or database and return a pointer to it",
+          },
+        },
+      })
+    ).toEqual({
+      ok: false,
+      error: {
+        code: "output_too_large",
+        message:
+          "function result is 6291456 bytes, over the 5242880-byte limit; " +
+          "store large data in a pod file or database and return a pointer to it",
       },
     });
   });
@@ -209,6 +260,52 @@ describe("normalizeSandboxFunctionResult", () => {
           message: "Sandbox function returned an invalid result envelope.",
         },
       });
+    }
+  });
+});
+
+describe("extractResultSpillPointer", () => {
+  const pointer = {
+    ok: true,
+    resultFile: "/tmp/dust-fn-results/abc.json",
+    resultBytes: 300_000,
+  };
+
+  it("extracts a pointer from a protocol v3 envelope outcome", () => {
+    expect(
+      extractResultSpillPointer({
+        protocolVersion: 3,
+        delivery: "stdout",
+        outcome: pointer,
+        timingsMs: { total: 12, runner: 8 },
+      })
+    ).toEqual(pointer);
+  });
+
+  it("extracts a bare pointer", () => {
+    expect(extractResultSpillPointer(pointer)).toEqual(pointer);
+  });
+
+  it("tolerates additive fields from a newer dsbx", () => {
+    expect(
+      extractResultSpillPointer({ ...pointer, futureField: "ignored" })
+    ).toEqual(pointer);
+  });
+
+  it("returns null for inline outcomes and legacy shapes", () => {
+    for (const value of [
+      { ok: true, output: { hello: "world" } },
+      { ok: false, error: { code: "threw", message: "boom" } },
+      {
+        protocolVersion: 3,
+        delivery: "stdout",
+        outcome: { ok: true, output: 1 },
+      },
+      { ok: true, response: { status: 200 } },
+      null,
+      "not-an-envelope",
+    ]) {
+      expect(extractResultSpillPointer(value)).toBeNull();
     }
   });
 });

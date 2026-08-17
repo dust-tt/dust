@@ -18,6 +18,7 @@ export const SANDBOX_FUNCTION_USER_IDENTITY_POLICIES = [
   "optional",
   "workspace_user_required",
   "interactive_workspace_user_required",
+  "pod_member_required",
 ] as const;
 
 export type SandboxFunctionUserIdentityPolicy =
@@ -96,6 +97,16 @@ export const SANDBOX_FUNCTION_RUNNER_ERROR_CODES = [
   "bad_return",
   "http_error",
   "invalid_output",
+  // Emitted by the warm server's admission layer when the function is at its
+  // concurrency limit and the invocation was refused before anything ran.
+  "overloaded",
+  // Minted by dsbx's run wrapper when the runner's stdout envelope was cut
+  // mid-JSON in transit, so the function ran but its result was lost.
+  "output_truncated",
+  // Emitted by the runner when the serialized result exceeds the hard size
+  // cap; the function must store large data in a pod file or database and
+  // return a pointer instead.
+  "output_too_large",
 ] as const;
 
 // Codes minted by front, for failures that happen outside the runner and therefore have no

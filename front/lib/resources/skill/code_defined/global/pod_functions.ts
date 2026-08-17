@@ -93,6 +93,17 @@ skill covers creating it and moving it into the app folder with \`${FILES_MOVE_T
 
 Functions that no Frame calls still get an app folder, named after what they do together.
 
+**Copying an app folder still needs two steps of its own.** The databases and the published slugs
+follow the new folder, but nothing is live until you publish the copy's functions and reconcile its
+databases. After copying \`MyApp/\` to \`MyAppCopy/\`, do both, and the copy is a separate app with its
+own data. Renaming an app folder is the same.
+
+The copy's Frame needs no edit **as long as it refers to its own functions by bare name** (see
+"Calling a function from a Frame"), because those references resolve against whichever app folder the
+Frame ends up in. A Frame that instead hard-codes \`<podId>/myapp__list-notes\` keeps calling the
+ORIGINAL app's functions after the copy, and so reads and writes the original's data: rewrite those
+references to bare names and re-publish it.
+
 #### Authoring a function
 
 Write the source as a TypeScript file in the app's \`functions\` folder, at
@@ -153,9 +164,12 @@ Functions of the same Pod can share durable SQLite databases (via \`drizzle-orm\
 - **One schema file per database** at \`<AppName>/databases/{db}.db.ts\`: the single source of truth
   declaring that database's full schema with drizzle's \`sqliteTable\` DSL. Every function imports
   its table objects from it as \`../databases/{db}.db.ts\` (never hand-write tables in a function
-  file), so functions sharing a database belong to the same app. The database name itself is
-  Pod-wide rather than app-scoped, so pick one that will not collide with another app's
-  (\`${toolName("db_list")}\` shows what the Pod already has).
+  file), so functions sharing a database belong to the same app. Name the database for what it
+  holds within the app (\`chat\`, \`notes\`), not for the app: the app folder namespaces it, so two
+  apps can each own a \`chat\` without colliding. Never write the app name in \`db()\` or the schema
+  file — the prefix is applied for you from the app folder. \`${toolName("db_list")}\` shows the
+  resulting on-disk names (\`myapp__chat\`), which is how the db tools address a database; \`db()\`
+  and the schema file always use the short name.
 - **Name functions that use this db.ts by writting a comment a the top** 
 - **Apply the schema file with \`${toolName("db_reconcile")}\`**; it creates the database and
   applies additive DDL after edits, and enforces the rules below. Publishing does not touch
@@ -251,8 +265,10 @@ overwritten from within the Computer.
 
 **The published slug is \`<app>__<name>\`.** You pass the bare \`<name>\`; publish derives the prefix
 from the app folder in \`path\` (\`TaskList\` becomes \`tasklist\`, \`Task List\` becomes \`task-list\`) and
-reports the full slug back. Use that reported slug everywhere afterwards: \`${toolName("get")}\`,
-\`${toolName("call")}\`, \`${toolName("unpublish")}\`, and a Frame's reference. Only the app folder
+reports the full slug back. Use that reported slug for the tools that address the function:
+\`${toolName("get")}\`, \`${toolName("call")}\` and \`${toolName("unpublish")}\`. A Frame in the same
+app is the exception and uses the bare \`<name>\` instead, see "Calling a function from a Frame".
+Only the app folder
 contributes, so \`functions/\` and any folder nested under it never appear in the slug, and moving a
 source inside its app does not rename the function. A source at the Pod root has no app folder and
 keeps its bare name; moving it into one later *does* rename its function, leaving the old slug
@@ -281,11 +297,21 @@ return inline is written to a pod file whose path it reports), and \`${toolName(
 #### Calling a function from a Frame
 
 A Frame calls published functions through the injected \`@dust/react-hooks\` module, not the
-\`call\` tool. Always pass the fully qualified \`<podId>/<slug>\` reference reported by
-\`${toolName("get")}\`. Never pass a bare slug or infer the function from the Frame's current Pod.
-This keeps the reference stable if the Frame is moved. The slug in that reference is the full
-published slug, app prefix included (\`<podId>/tasklist__add-task\`), never the bare name you passed
-to \`${toolName("publish")}\`.
+\`call\` tool. There are two ways to name a function, and which one you use matters:
+
+- **A Frame inside an app folder refers to its own app's functions by bare name**: pass
+  \`add-task\`, the same name you passed to \`${toolName("publish")}\`, with no Pod and no app
+  prefix. The reference resolves against the app folder the Frame itself lives in, so the app stays
+  copyable: a copy's Frame calls the copy's functions with no edit to its source. Use this for every
+  function the Frame's own app publishes.
+- **Anything else takes the fully qualified \`<podId>/<slug>\` reference** reported by
+  \`${toolName("get")}\`, app prefix included (\`<podId>/tasklist__add-task\`). This is the only way
+  to reach a function in another app or another Pod, and it is what a Frame that does not live in an
+  app folder must use for everything.
+
+Never write your own app's prefix into a reference. \`tasklist__add-task\` with no Pod is not a
+shorthand and is refused: inside the app use \`add-task\`, outside it use the full
+\`<podId>/tasklist__add-task\`.
 
 ##### Designing functions for a Frame
 
@@ -306,7 +332,7 @@ disable the query.
 import { usePodFunction } from "@dust/react-hooks"
 
 const { data, error, isLoading, isValidating, mutate } = usePodFunction(
-  "<podId>/list-comments",
+  "list-comments",
   { threadId }
 )
 \`\`\`
@@ -319,8 +345,8 @@ to the query cache without revalidating.
 \`\`\`tsx
 import { usePodFunction, usePodFunctionMutation } from "@dust/react-hooks"
 
-const comments = usePodFunction("<podId>/list-comments", { threadId })
-const addComment = usePodFunctionMutation("<podId>/post-comment")
+const comments = usePodFunction("list-comments", { threadId })
+const addComment = usePodFunctionMutation("post-comment")
 
 async function handleAddComment(body: string) {
   const updatedComments = await addComment.trigger({ threadId, body })
@@ -351,7 +377,9 @@ fall back to a generic message for the rest. The ones worth branching on are \`i
 function's own request failed, \`sandbox_function_not_found\`, and \`not_supported\`.
 
 Pod functions in shared Frames are available to authenticated members of the Pod's workspace;
-anonymous viewers cannot call them.
+anonymous viewers cannot call them. When a function is declared \`"pod_member_required"\`, have the
+Frame gate the affordance on \`useUserIdentity\`'s \`isPodMember\` flag so non-members are not
+shown a button that can only fail; the flag is display-only and the policy is what enforces.
 
 #### Knowing who called a function
 
@@ -368,6 +396,12 @@ Declare the policy alongside the input and output schemas:
 - \`"workspace_user_required"\` refuses the call unless it comes from a current member of the Pod's
   workspace. Use it as soon as the function reads or writes anything that belongs to a person, or
   performs an action that should be attributable.
+- \`"pod_member_required"\` further requires the caller to belong to the Pod itself (its member or
+  editor group; workspace admins outside those groups are refused). Use it when the function
+  mutates the Pod's state and bystanders of an open Pod should only look.
+- \`"interactive_workspace_user_required"\` requires the call to come directly from a workspace
+  member's live Dust session, refusing agents, schedules, and API clients acting on the member's
+  behalf. Use it for consequential actions that a human must click themselves.
 
 \`\`\`ts
 import { z } from "zod";
@@ -382,7 +416,11 @@ export const schema = {
 \`\`\`
 
 Inside \`fetch\`, \`currentUser()\` from \`@dust/pod\` returns the caller as
-\`{ sId, firstName, lastName, fullName, image }\`, or \`null\` when the invocation has no user.
+\`{ sId, firstName, lastName, fullName, image, isPodMember, isPodEditor }\`, or \`null\` when the
+invocation has no user. \`isPodMember\` says whether the caller belongs to the Pod (member or
+editor group); \`isPodEditor\` whether they are an editor or a workspace admin. These are resolved
+by the platform per invocation, so they are trustworthy inputs for branching — e.g. a function
+open to the whole workspace can still reserve one code path for Pod members.
 Under \`"workspace_user_required"\` the platform has already rejected userless calls, so a
 non-null user is guaranteed; under \`"optional"\` you must handle \`null\` yourself.
 
@@ -431,11 +469,12 @@ to the caller, otherwise a guessed id reaches another user's data.
 
 Split capabilities across functions rather than branching inside one. A \`list-notes\` and a
 \`delete-note\` published separately can carry different policies and are each easy to reason about;
-one \`notes\` function taking an \`action\` field is not. If a capability must be restricted to a
-subset of members, keep that list in the database and check it against \`currentUser().sId\` —
-the platform only tells you the caller is a workspace member, not what they are allowed to do.`,
+one \`notes\` function taking an \`action\` field is not. If a capability must be restricted to an
+app-specific subset of users, keep that list in the database and check it against
+\`currentUser().sId\` — the platform tells you the caller's standing (workspace member, Pod
+member, Pod editor), not what your app allows them to do.`,
   mcpServers: [{ name: SANDBOX_FUNCTIONS_SERVER_NAME }],
-  version: 5,
+  version: 8,
   icon: "PuzzleIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);

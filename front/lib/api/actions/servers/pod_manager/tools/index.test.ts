@@ -1,17 +1,21 @@
+import { makePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/pod_configuration_uri";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import { createProjectManagerTools } from "@app/lib/api/actions/servers/pod_manager/tools";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { processEventForDatabase } from "@app/temporal/agent_loop/activities/common";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { getTestStreamEndpoint } from "@app/tests/utils/models";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { getAgentLoopData } from "@app/types/assistant/agent_run";
 import {
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
@@ -121,7 +125,18 @@ async function createConversationFromNestedAgent() {
   );
   assert(createdConversation);
 
-  return { createdConversation, extra, pod, tools };
+  return {
+    agent,
+    auth,
+    createdConversation,
+    extra,
+    parentConversation,
+    pod,
+    runContext,
+    tools,
+    user,
+    workspace,
+  };
 }
 
 describe("pod_manager create_conversation", () => {
@@ -151,5 +166,116 @@ describe("pod_manager create_conversation", () => {
     expect(
       output.conversations.map((conversation) => conversation.sId)
     ).toContain(createdConversation.sId);
+  });
+});
+
+describe("pod_manager move_conversation", () => {
+  it("moves the current conversation and lets its agent loop complete", async () => {
+    const {
+      auth,
+      extra,
+      parentConversation,
+      runContext,
+      tools,
+      user,
+      workspace,
+    } = await createConversationFromNestedAgent();
+    const targetPod = await SpaceFactory.project(workspace, user.id);
+    await auth.refresh();
+    await ConversationResource.setIsRunningAgentLoop(auth, {
+      conversation: parentConversation,
+      isRunningAgentLoop: true,
+    });
+
+    const result = await getTool(tools, "move_conversation").handler(
+      {
+        destination: "pod",
+        dustPod: {
+          uri: makePodConfigurationURI(workspace.sId, targetPod.sId),
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
+        },
+      },
+      extra
+    );
+
+    expect(result.isOk()).toBe(true);
+    const movedConversation = await ConversationResource.fetchById(
+      auth,
+      parentConversation.sId
+    );
+    expect(movedConversation?.toJSON().spaceId).toBe(targetPod.sId);
+
+    const agentLoopArgs = {
+      agentMessageId: runContext.agentMessage.sId,
+      agentMessageVersion: runContext.agentMessage.version,
+      conversationId: parentConversation.sId,
+      conversationTitle: parentConversation.title,
+      userMessageId: runContext.userMessage.sId,
+      userMessageVersion: runContext.userMessage.version,
+      userMessageOrigin: runContext.userMessage.context.origin,
+    };
+    const agentLoopData = await getAgentLoopData(auth.toJSON(), agentLoopArgs);
+    assert(agentLoopData.isOk());
+    expect(agentLoopData.value.conversation.spaceId).toBe(targetPod.sId);
+
+    const shouldPublish = await processEventForDatabase(auth, {
+      event: {
+        type: "agent_message_success",
+        created: Date.now(),
+        configurationId: agentLoopData.value.agentConfiguration.sId,
+        messageId: agentLoopData.value.agentMessage.sId,
+        message: agentLoopData.value.agentMessage,
+        runIds: [],
+      },
+      agentMessage: agentLoopData.value.agentMessage,
+      conversation: agentLoopData.value.conversation,
+      step: 1,
+    });
+    expect(shouldPublish).toBe(true);
+
+    const completedConversation = await ConversationResource.fetchById(
+      auth,
+      parentConversation.sId
+    );
+    expect(completedConversation?.isRunningAgentLoop).toBe(false);
+  });
+
+  it("still rejects another conversation whose agent loop is running", async () => {
+    const { agent, auth, extra, tools, user, workspace } =
+      await createConversationFromNestedAgent();
+    const targetPod = await SpaceFactory.project(workspace, user.id);
+    const otherConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+    await auth.refresh();
+    await ConversationResource.setIsRunningAgentLoop(auth, {
+      conversation: otherConversation,
+      isRunningAgentLoop: true,
+    });
+
+    const result = await getTool(tools, "move_conversation").handler(
+      {
+        destination: "pod",
+        conversationId: otherConversation.sId,
+        dustPod: {
+          uri: makePodConfigurationURI(workspace.sId, targetPod.sId),
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
+        },
+      },
+      extra
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain(
+        "Wait for the agent to finish before moving this conversation."
+      );
+    }
+    const unmovedConversation = await ConversationResource.fetchById(
+      auth,
+      otherConversation.sId
+    );
+    expect(unmovedConversation?.toJSON().spaceId).toBeNull();
   });
 });

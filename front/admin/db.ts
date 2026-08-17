@@ -1,4 +1,3 @@
-import { ActivationNudgeModel } from "@app/lib/models/activation/activation_nudge";
 import { ActivationPodModel } from "@app/lib/models/activation/activation_pod";
 import { ActivationRecommendationModel } from "@app/lib/models/activation/activation_recommendation";
 import { ActivationWorkAreaModel } from "@app/lib/models/activation/activation_work_area";
@@ -91,6 +90,9 @@ import { CreditUsageConfigurationModel } from "@app/lib/resources/storage/models
 import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { FileSystemBlobCleanupModel } from "@app/lib/resources/storage/models/file_system_blob_cleanup";
+import { FileSystemMutationModel } from "@app/lib/resources/storage/models/file_system_mutation";
+import { FileSystemNodeModel } from "@app/lib/resources/storage/models/file_system_node";
 import {
   AuthorizedFileAccessModel,
   ExternalViewerSessionModel,
@@ -152,6 +154,7 @@ import { UserProjectPreferencesModel } from "@app/lib/resources/storage/models/u
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
+import { WorkspacePlanLimitOverrideModel } from "@app/lib/resources/storage/models/workspace_plan_limit_override";
 import { WorkspaceSeatLimitModel } from "@app/lib/resources/storage/models/workspace_seat_limit";
 import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
 import { isDevelopment, isTest } from "@app/types/shared/env";
@@ -180,6 +183,9 @@ export function loadAllModels() {
     CloneModel,
     KeyModel,
     FileModel,
+    FileSystemNodeModel,
+    FileSystemMutationModel,
+    FileSystemBlobCleanupModel,
     SandboxFunctionModel,
     SandboxFunctionInvocationModel,
     ShareableFileModel,
@@ -285,9 +291,9 @@ export function loadAllModels() {
     WorkspaceSensitivityLabelConfigModel,
     SandboxEnvVarModel,
     WorkspaceSeatLimitModel,
+    WorkspacePlanLimitOverrideModel,
     ActivationPodModel,
     ActivationRecommendationModel,
-    ActivationNudgeModel,
     ActivationWorkAreaModel,
   ];
 }

@@ -1,6 +1,5 @@
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { revokeAllExecTokensForSandbox } from "@app/lib/api/sandbox/access_tokens";
-import { deleteLegacySandboxPolicy } from "@app/lib/api/sandbox/egress_policy";
 import { SandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import {
@@ -42,10 +41,15 @@ import assert from "assert";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { col, fn, Op, where } from "sequelize";
 
-export interface EnsureSandboxResult {
+export interface EnsureSandboxResult<TScope = undefined> {
   freshlyCreated: boolean;
   sandbox: SandboxResource;
   wokeFromSleep: boolean;
+  // Owner scope resolved inside the lifecycle lock (see
+  // SandboxCreateOwner.resolveScope). Callers must derive every
+  // scope-dependent input (egress claims, mounts, runtime owner) from this,
+  // never from state read before the lock.
+  scope: TScope;
 }
 
 export type SandboxCreateBlob = {
@@ -54,6 +58,12 @@ export type SandboxCreateBlob = {
   baseImage: string;
   version: string;
 };
+
+// The strict provider destroy inside a scope transition failed: the
+// transition was aborted fail-closed with the kill request left in place.
+// Typed so transition callers can map it without widening their own error
+// unions.
+export class ScopeTransitionDestroyError extends Error {}
 
 export type SandboxLifecycleOwner = {
   lockKey: string;
@@ -70,15 +80,22 @@ export type SandboxPreSleepCheck = (
   sandbox: SandboxResource
 ) => Promise<Result<void, Error>>;
 
-type SandboxCreateOwner = SandboxLifecycleOwner & {
+type SandboxCreateOwner<TScope> = SandboxLifecycleOwner & {
   createSandbox: (blob: SandboxCreateBlob) => Promise<SandboxResource>;
+  // Resolves the owner's authorization scope (e.g. a conversation's current
+  // pod association). Runs as the first step INSIDE the lifecycle lock so a
+  // scope transition (a move's destroy + spaceId change, which holds the
+  // same lock) can never interleave between the read and the create/wake it
+  // parameterizes. Owners with immutable scope return a constant.
+  resolveScope: () => Promise<Result<TScope, Error>>;
   // Owner env vars are only consumed when a sandbox is actually created.
   // Owners whose env requires DB reads (e.g. pod env vars) should pass the
   // factory form so ensureActive calls on an already-running sandbox don't
-  // pay for loads that would be discarded.
+  // pay for loads that would be discarded. The factory receives the
+  // lock-resolved scope.
   envVars:
     | Record<string, string>
-    | (() => Promise<Result<Record<string, string>, Error>>);
+    | ((scope: TScope) => Promise<Result<Record<string, string>, Error>>);
   logLabel: string;
 };
 
@@ -99,7 +116,31 @@ export type SandboxDeleteOwner = SandboxLifecycleOwner & {
 // Activity writes are throttled to this granularity; the reaper's inactivity
 // thresholds are minutes-scale, so a lastActivityAt up to 30s stale is
 // indistinguishable to it.
+// How long an acquired lifecycle lock stays valid. Must comfortably exceed
+// the slowest operation performed under it (provider create/wake and, for
+// scope transitions, provider destroy + the database move) — if the lease
+// expires mid-operation, a concurrent ensure or move can acquire the lock
+// and the scope-serialization guarantee is gone. The cost of a generous TTL
+// is that a crashed holder strands the lock for up to this long; waiters
+// give up at executeWithLock's 30s acquisition timeout well before that,
+// and the kill-requested recovery self-heals once the lease expires. That
+// trade is deliberate: a heartbeat-renewed lease would shrink the stranding
+// window, but the machinery it needs (an extend loop, abort semantics for
+// a lost lease mid-operation) is only worth building if crash-stranded
+// locks show up in practice — a rare event with a bounded,
+// one-conversation blast radius.
+const SANDBOX_LIFECYCLE_LOCK_TTL_MS = 5 * 60 * 1000;
+
 const LAST_ACTIVITY_WRITE_INTERVAL_MS = 30_000;
+
+// How long a kill-requested sandbox may keep failing its pre-destroy flush
+// before the destroy proceeds anyway. The flush is best-effort durability, not
+// a precondition: a sandbox whose state cannot be replicated (e.g. a database
+// file the litestream user cannot write) fails the check identically on every
+// sweep, and without a deadline it pins a running VM and blocks the image
+// rollout forever. Generous enough that a transient GCS or daemon hiccup still
+// resolves on a later sweep — the reaper sweeps every 5 minutes.
+const KILL_REQUESTED_FLUSH_GRACE_MS = 60 * 60 * 1000;
 
 // Owner identity env vars are reserved for owner adapters. SandboxResource
 // only enforces the env contract and does not interpret owner types.
@@ -113,25 +154,6 @@ export interface SandboxResource extends ReadonlyAttributesType<SandboxModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SandboxResource extends BaseResource<SandboxModel> {
   static model: ModelStaticWorkspaceAware<SandboxModel> = SandboxModel;
-
-  // Owner policy files (w/{wId}/sandboxes/{ownerId}.json) intentionally
-  // survive sandbox destruction; only the legacy per-providerId file is
-  // scrubbed here. Owner files are deleted with their owner (conversation
-  // destruction, pod space deletion).
-  private static deleteEgressPolicyAfterDestroy(
-    sandbox: SandboxResource
-  ): void {
-    void deleteLegacySandboxPolicy(sandbox.providerId).catch((err) =>
-      logger.warn(
-        {
-          err,
-          sandboxId: sandbox.sId,
-          sandboxProviderId: sandbox.providerId,
-        },
-        "Failed to delete sandbox egress policy"
-      )
-    );
-  }
 
   // No-op when there is no check or the sandbox is not running — a sleeping
   // or pending_approval sandbox already passed the check when it paused.
@@ -150,7 +172,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     opts: { recordLifecycle: boolean }
   ): Promise<void> {
     await sandbox.updateStatus("deleted");
-    SandboxResource.deleteEgressPolicyAfterDestroy(sandbox);
     if (opts.recordLifecycle) {
       recordLifecycleOperation("destroy");
     }
@@ -384,6 +405,102 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * Full cleanup under the lifecycle lock: best-effort destroy at the provider,
    * then delete the owner link and DB row.
    */
+  // Runs an owner scope transition (e.g. a conversation move) under the
+  // lifecycle lock, in three phases without releasing it:
+  //
+  //   1. `prepare` — re-read and validate against CURRENT state (the caller's
+  //      view predates the lock and may have been invalidated by a concurrent
+  //      transition). An Err aborts with the runtime untouched: no kill
+  //      request, no destroy.
+  //   2. Strict destroy — killRequestedAt, provider destroy, mark deleted.
+  //   3. `commit` — the database transition, fed by what `prepare` resolved.
+  //
+  // Holding the lock across all three means no concurrent ensureActive can
+  // create or wake a sandbox from the pre-transition scope, and no concurrent
+  // transition can validate against a state this one is about to change. The
+  // next access recreates the sandbox from the post-transition scope via the
+  // existing deleted-state recreate path.
+  //
+  // Ordering is the crash-recovery story: killRequestedAt is set before the
+  // provider call (a crash after it leaves the kill-requested branch or the
+  // reaper to finish the destroy), the sandbox is marked deleted only after
+  // the provider destroy succeeded, and a crash before `commit` leaves the
+  // sandbox gone but the owner unmoved — its next access recreates the
+  // still-current scope.
+  //
+  // Unlike other lifecycle operations this must run even where no sandbox
+  // provider is configured: the transition itself is mandatory, and with no
+  // provider nothing can be running, so the runtime destroy is vacuous. A
+  // provider destroy failure (other than NotFound) fails the transition —
+  // the kill request stays in place so the next access completes the reset.
+  //
+  // The sandbox row and its owner association are preserved (recreation
+  // updates the row in place), as are the owner's egress policy file and GCS
+  // files; only the provider runtime goes.
+  //
+  // /!\ Both callbacks run while the lifecycle lock is held: they must not
+  // call back into any lifecycle operation on the same owner, and `commit`
+  // must create and commit its own transaction — a transaction that outlives
+  // the lock hold reopens the race this method exists to close.
+  static async runScopeTransition<TPrep, T, E extends Error>(
+    auth: Authenticator,
+    owner: SandboxLifecycleOwner,
+    {
+      prepare,
+      commit,
+    }: {
+      prepare: () => Promise<Result<TPrep, E>>;
+      commit: (prep: TPrep) => Promise<Result<T, E>>;
+    }
+  ): Promise<Result<T, E | ScopeTransitionDestroyError>> {
+    return executeWithLock<Result<T, E | ScopeTransitionDestroyError>>(
+      `sandbox:lifecycle:${owner.lockKey}`,
+      async () => {
+        const prepResult = await prepare();
+        if (prepResult.isErr()) {
+          return prepResult;
+        }
+
+        const existing = await owner.fetchSandbox();
+        if (existing && existing.status !== "deleted") {
+          await existing.requestKill();
+
+          const provider = getSandboxProvider();
+          if (provider) {
+            const destroyResult = await provider.destroy(existing.providerId, {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+            });
+            if (
+              destroyResult.isErr() &&
+              !(destroyResult.error instanceof SandboxNotFoundError)
+            ) {
+              return new Err(
+                new ScopeTransitionDestroyError(
+                  `Failed to destroy sandbox for scope transition: ${destroyResult.error.message}`
+                )
+              );
+            }
+            recordLifecycleOperation("destroy");
+          }
+
+          await existing.updateStatus("deleted");
+          logger.info(
+            { sandbox: existing.toLogJSON() },
+            "Destroyed sandbox for owner scope transition"
+          );
+        }
+
+        return commit(prepResult.value);
+      },
+      undefined,
+      {
+        traceAcquireResource: "sandbox:lifecycle",
+        lockTtlMs: SANDBOX_LIFECYCLE_LOCK_TTL_MS,
+        retryIntervalMs: 25,
+      }
+    );
+  }
+
   static async deleteByOwner(
     auth: Authenticator,
     owner: SandboxDeleteOwner
@@ -404,8 +521,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             { sandbox: sandbox.toLogJSON(), error: result.error.message },
             "Failed to destroy sandbox at provider — proceeding with DB cleanup."
           );
-        } else {
-          SandboxResource.deleteEgressPolicyAfterDestroy(sandbox);
         }
       }
 
@@ -443,6 +558,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       undefined,
       {
         traceAcquireResource: "sandbox:lifecycle",
+        lockTtlMs: SANDBOX_LIFECYCLE_LOCK_TTL_MS,
         // Contended by concurrent invocations of the same pod: transitions
         // hold this lock from milliseconds (status checks) to seconds
         // (wake/create), and waiters on the fast side of that range should
@@ -455,11 +571,12 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   // Owner env vars come either as a plain record or as a factory for owners
   // whose env requires DB reads — the factory only runs on the create paths,
   // so ensure calls on an already-running sandbox pay nothing.
-  private static async resolveOwnerEnvVars(
-    owner: SandboxCreateOwner
+  private static async resolveOwnerEnvVars<TScope>(
+    owner: SandboxCreateOwner<TScope>,
+    scope: TScope
   ): Promise<Result<Record<string, string>, Error>> {
     return typeof owner.envVars === "function"
-      ? owner.envVars()
+      ? owner.envVars(scope)
       : new Ok(owner.envVars);
   }
 
@@ -531,9 +648,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * destroy-and-recreate of a still-running sandbox: a failure is logged and
    * recreation proceeds.
    */
-  static async ensureActive(
+  static async ensureActive<TScope = undefined>(
     auth: Authenticator,
-    owner: SandboxCreateOwner,
+    owner: SandboxCreateOwner<TScope>,
     opts: {
       beforeSleep?: SandboxPreSleepCheck;
       // Use the sandbox only if it is already running: do not create, wake, or recreate one.
@@ -541,7 +658,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       // cannot wait for.
       requireRunning?: boolean;
     } = {}
-  ): Promise<Result<EnsureSandboxResult, Error>> {
+  ): Promise<Result<EnsureSandboxResult<TScope>, Error>> {
     assert(
       auth.getNonNullableWorkspace().id !== undefined,
       "Cannot ensure sandbox without a workspace"
@@ -578,15 +695,32 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       // Same touch the locked path performs, so the reaper's inactivity clock keeps running for
       // sandboxes served entirely through the fast path. Throttled internally to one write/30s.
       await existing.updateLastActivityAt();
+      // Resolved outside the lock: this path never creates, wakes, or mints,
+      // so the scope parameterizes nothing lifecycle-ordered. requireRunning
+      // callers must therefore have lock-independent (immutable) scope.
+      const fastPathScopeResult = await owner.resolveScope();
+      if (fastPathScopeResult.isErr()) {
+        return fastPathScopeResult;
+      }
       return new Ok({
         sandbox: existing,
         freshlyCreated: false,
         wokeFromSleep: false,
+        scope: fastPathScopeResult.value,
       });
     }
 
     return this.withLifecycleLock(owner.lockKey, async (provider) => {
       const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
+      // First thing under the lock: a scope transition holds this same lock,
+      // so everything derived from here cannot be invalidated by a
+      // concurrent move.
+      const scopeResult = await owner.resolveScope();
+      if (scopeResult.isErr()) {
+        return scopeResult;
+      }
+      const scope = scopeResult.value;
+
       const existing = await owner.fetchSandbox();
 
       if (!existing) {
@@ -596,7 +730,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         }
 
         const createConfig = imageResult.value.toCreateConfig();
-        const ownerEnvVarsResult = await this.resolveOwnerEnvVars(owner);
+        const ownerEnvVarsResult = await this.resolveOwnerEnvVars(owner, scope);
         if (ownerEnvVarsResult.isErr()) {
           return ownerEnvVarsResult;
         }
@@ -633,7 +767,12 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           "Created new sandbox for owner"
         );
 
-        return new Ok({ sandbox, freshlyCreated: true, wokeFromSleep: false });
+        return new Ok({
+          sandbox,
+          freshlyCreated: true,
+          wokeFromSleep: false,
+          scope,
+        });
       }
 
       let effectiveStatus: SandboxStatus = existing.status;
@@ -680,8 +819,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
               "Failed to destroy kill-requested sandbox at provider — proceeding with recreation."
             );
           }
-        } else {
-          SandboxResource.deleteEgressPolicyAfterDestroy(existing);
         }
         effectiveStatus = "deleted";
       }
@@ -740,7 +877,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           }
 
           const createConfig = imageResult.value.toCreateConfig();
-          const ownerEnvVarsResult = await this.resolveOwnerEnvVars(owner);
+          const ownerEnvVarsResult = await this.resolveOwnerEnvVars(
+            owner,
+            scope
+          );
           if (ownerEnvVarsResult.isErr()) {
             return ownerEnvVarsResult;
           }
@@ -800,7 +940,12 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         recordLifecycleOperation("create");
       }
 
-      return new Ok({ sandbox: existing, freshlyCreated, wokeFromSleep });
+      return new Ok({
+        sandbox: existing,
+        freshlyCreated,
+        wokeFromSleep,
+        scope,
+      });
     });
   }
 
@@ -1121,7 +1266,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * `SandboxNotFoundError` as success.
    *
    * An `opts.beforeSleep` Err skips the destroy for this sweep: the row keeps
-   * its `killRequestedAt`, so the reaper retries next cycle.
+   * its `killRequestedAt`, so the reaper retries next cycle. Once the kill
+   * request is older than `KILL_REQUESTED_FLUSH_GRACE_MS` the destroy proceeds
+   * despite the failing flush, matching what the destroy-and-recreate path
+   * already does — an unflushable sandbox must not pin a VM forever.
    */
   static async dangerouslyDestroyIfKillRequested(
     auth: Authenticator,
@@ -1147,16 +1295,31 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         sandbox
       );
       if (checkResult.isErr()) {
-        // TODO(@jd 20260730: remove the panic true)
+        const killRequestedForMs =
+          Date.now() - sandbox.killRequestedAt.getTime();
+        if (killRequestedForMs < KILL_REQUESTED_FLUSH_GRACE_MS) {
+          // TODO(@jd 20260730: remove the panic true)
+          logger.error(
+            {
+              sandbox: sandbox.toLogJSON(),
+              err: checkResult.error,
+              killRequestedForMs,
+              panic: true,
+            },
+            "Kill-requested destroy: pre-destroy health check failed — skipping destroy this sweep."
+          );
+          return checkResult;
+        }
+
         logger.error(
           {
             sandbox: sandbox.toLogJSON(),
             err: checkResult.error,
+            killRequestedForMs,
             panic: true,
           },
-          "Kill-requested destroy: pre-destroy health check failed — skipping destroy this sweep."
+          "Kill-requested destroy: pre-destroy health check still failing past the grace period — destroying anyway, unreplicated pod state is lost."
         );
-        return checkResult;
       }
 
       const result = await provider.destroy(sandbox.providerId, tracingOpts);

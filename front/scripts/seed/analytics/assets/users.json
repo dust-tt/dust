@@ -1,0 +1,37 @@
+[
+  {
+    "sId": "SeedUserNora",
+    "username": "nora",
+    "email": "nora@example.com",
+    "firstName": "Nora",
+    "lastName": "Patel"
+  },
+  {
+    "sId": "SeedUserMilo",
+    "username": "milo",
+    "email": "milo@example.com",
+    "firstName": "Milo",
+    "lastName": "Fontaine"
+  },
+  {
+    "sId": "SeedUserInes",
+    "username": "ines",
+    "email": "ines@example.com",
+    "firstName": "Ines",
+    "lastName": "Duarte"
+  },
+  {
+    "sId": "SeedUserTheo",
+    "username": "theo",
+    "email": "theo@example.com",
+    "firstName": "Theo",
+    "lastName": "Brandt"
+  },
+  {
+    "sId": "SeedUserSacha",
+    "username": "sacha",
+    "email": "sacha@example.com",
+    "firstName": "Sacha",
+    "lastName": "Okafor"
+  }
+]

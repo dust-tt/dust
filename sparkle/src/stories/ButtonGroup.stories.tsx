@@ -37,7 +37,7 @@ const DefaultButtons = ({
 const meta = {
   title: "Actions/ButtonGroup",
   component: ButtonGroup,
-  tags: ["autodocs"],
+  tags: ["a11y-issues", "autodocs"],
   parameters: {
     docs: {
       description: {

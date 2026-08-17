@@ -50,10 +50,8 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
     workspaceId: owner.sId,
     spaceId: conversation?.spaceId ?? null,
   });
-  const hasActivationSkill = hasFeature("activation_skill");
   const { activationPodId } = useActivationPod({
     workspaceId: owner.sId,
-    disabled: !hasActivationSkill,
   });
   const isMobile = useIsMobile();
 

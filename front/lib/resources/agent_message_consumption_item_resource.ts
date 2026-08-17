@@ -4,6 +4,7 @@ import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -15,7 +16,7 @@ import { Err } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
-import { Op } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 
 export type ConversationConsumptionMessageFacts = {
   agentConfigurationId: string;
@@ -269,9 +270,9 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
   }
 
   /**
-   * Bulk-inserts final tools, then completes only conflicting rows that are still pending. The
-   * insert waits on concurrent writes to the unique action identity, so the following lookup sees
-   * the settled conflict state without requiring a lock or allowing a stale pending write to win.
+   * Bulk-inserts final tools, then resolves conflicts by completing pending rows or removing a
+   * terminal result footprint. The insert waits on concurrent writes to the unique action identity,
+   * so the following lookup sees settled state without a separate lock.
    *
    * // TODO(2026-08-01 flav): Revisit based on how often it happens.
    * A resumed approval pass resubmits facts from earlier passes. PostgreSQL allocates sequence
@@ -318,7 +319,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     );
 
     // PostgreSQL returns an ID only for rows inserted by ON CONFLICT DO NOTHING. Most passes create
-    // final tools directly, so they finish without the pending-row lookup below.
+    // final tools directly, so they finish without the conflict lookup below.
     if (insertedRows.every((row) => Boolean(row.id))) {
       return;
     }
@@ -326,53 +327,99 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     const recordByActionModelId = new Map(
       records.map((record) => [record.action.id, record])
     );
-    const pendingRows = await this.model.findAll({
-      attributes: ["id", "agentMCPActionId"],
+    const existingRows = await this.model.findAll({
+      attributes: [
+        "id",
+        "agentMCPActionId",
+        "completedAt",
+        "directCreditAmountMicro",
+        "inputTokensCount",
+        "outputTokensCount",
+      ],
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         agentMessageId: agentMessageModelId,
         attributionVersion,
         agentMCPActionId: { [Op.in]: [...recordByActionModelId.keys()] },
         itemType: "tool",
-        completedAt: { [Op.is]: null },
       },
       transaction,
     });
 
-    for (const pendingRow of pendingRows) {
-      const actionModelId = pendingRow.agentMCPActionId;
+    for (const existingRow of existingRows) {
+      const actionModelId = existingRow.agentMCPActionId;
       assert(
         actionModelId !== null,
-        "A pending tool row must reference an action"
+        "An existing tool row must reference an action"
       );
       const record = recordByActionModelId.get(actionModelId);
       assert(
         record,
-        "A pending tool row must have matching completion evidence"
+        "An existing tool row must have matching completion evidence"
       );
 
-      await this.model.update(
-        {
-          itemType: "tool",
-          agentMCPActionId: actionModelId,
-          inputTokensCount: record.inputTokensCount,
-          grossAttributedCreditAmountMicro:
-            record.grossAttributedCreditAmountMicro,
-          directCreditAmountMicro: record.directCreditAmountMicro,
-          completedAt: now,
-        },
-        {
-          where: {
-            id: pendingRow.id,
-            workspaceId: auth.getNonNullableWorkspace().id,
-            agentMessageId: agentMessageModelId,
-            attributionVersion,
+      if (existingRow.completedAt === null) {
+        await this.model.update(
+          {
             itemType: "tool",
-            completedAt: { [Op.is]: null },
+            agentMCPActionId: actionModelId,
+            inputTokensCount: record.inputTokensCount,
+            grossAttributedCreditAmountMicro:
+              record.grossAttributedCreditAmountMicro,
+            directCreditAmountMicro: record.directCreditAmountMicro,
+            completedAt: now,
           },
-          transaction,
-        }
-      );
+          {
+            where: {
+              id: existingRow.id,
+              workspaceId: auth.getNonNullableWorkspace().id,
+              agentMessageId: agentMessageModelId,
+              attributionVersion,
+              itemType: "tool",
+              completedAt: { [Op.is]: null },
+            },
+            transaction,
+          }
+        );
+        continue;
+      }
+
+      // A terminal pass may prove that a potential result never reached another model run. Permit
+      // only that one-way correction. Stale non-terminal passes cannot restore the footprint.
+      if (
+        record.inputTokensCount === 0 &&
+        (existingRow.inputTokensCount ?? 0) > 0
+      ) {
+        assert(
+          existingRow.outputTokensCount === record.outputTokensCount &&
+            existingRow.directCreditAmountMicro ===
+              record.directCreditAmountMicro,
+          "Removing a tool result cannot change its call or direct-charge evidence"
+        );
+        await this.model.update(
+          {
+            itemType: "tool",
+            agentMCPActionId: actionModelId,
+            inputTokensCount: 0,
+            outputTokensCount: record.outputTokensCount,
+            grossAttributedCreditAmountMicro:
+              record.grossAttributedCreditAmountMicro,
+            directCreditAmountMicro: record.directCreditAmountMicro,
+          },
+          {
+            where: {
+              id: existingRow.id,
+              workspaceId: auth.getNonNullableWorkspace().id,
+              agentMessageId: agentMessageModelId,
+              attributionVersion,
+              itemType: "tool",
+              completedAt: { [Op.ne]: null },
+              inputTokensCount: { [Op.gt]: 0 },
+            },
+            transaction,
+          }
+        );
+      }
     }
   }
 
@@ -381,11 +428,11 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
    * Callers pass the whole desired set and this reconciles it in one transaction, so the materializer
    * never coordinates a read then separate inserts and updates.
    *
-   * Three write shapes, one per identity class:
-   * - Model buckets and already-final tools with no prior row are inserted, first write wins, so a
-   *   re-finalize with the same identity is a no-op.
+   * Four write shapes, one per lifecycle state:
+   * - Model buckets and already-final tools with no prior row are inserted.
    * - A final tool is upserted on its (message, version, itemKey) identity only while the existing
    *   row is pending. This completes an approval-spanning tool without changing a completed fact.
+   * - A terminal pass may remove a completed tool's result footprint. This transition is one-way.
    * - A still-blocked tool is inserted pending and never overwrites an existing row, so a completed
    *   row from a concurrent pass is not regressed to pending.
    */
@@ -489,6 +536,58 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         );
       }
     }, transaction);
+  }
+
+  static async setReconciledCreditAmounts(
+    auth: Authenticator,
+    {
+      reconciledCreditAmountByItem,
+      transaction,
+    }: {
+      reconciledCreditAmountByItem: ReadonlyMap<
+        AgentMessageConsumptionItemResource,
+        number
+      >;
+      transaction?: Transaction;
+    }
+  ): Promise<void> {
+    const changedAllocations = [...reconciledCreditAmountByItem].filter(
+      ([item, reconciledCreditAmountMicro]) =>
+        item.reconciledCreditAmountMicro !== reconciledCreditAmountMicro
+    );
+    if (changedAllocations.length === 0) {
+      return;
+    }
+
+    // `unnest` pairs both arrays by position into rows of item ID and reconciled amount.
+    // biome-ignore lint/plugin/noRawSql: Sequelize cannot bulk-update each row with a distinct value.
+    await frontSequelize.query(
+      `
+        UPDATE agent_message_consumption_items AS item
+        SET
+          "reconciledCreditAmountMicro" = allocation.reconciled_credit_amount_micro,
+          "updatedAt" = $updatedAt
+        FROM unnest(
+          $itemModelIds::bigint[],
+          $reconciledCreditAmountsMicro::bigint[]
+        ) AS allocation(item_model_id, reconciled_credit_amount_micro)
+        WHERE item.id = allocation.item_model_id
+          AND item."workspaceId" = $workspaceModelId
+      `,
+      {
+        bind: {
+          itemModelIds: changedAllocations.map(([item]) => item.id),
+          reconciledCreditAmountsMicro: changedAllocations.map(
+            ([, reconciledCreditAmountMicro]) => reconciledCreditAmountMicro
+          ),
+          // Raw SQL bypasses Sequelize timestamping, so set it explicitly.
+          updatedAt: new Date(),
+          workspaceModelId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+        type: QueryTypes.UPDATE,
+      }
+    );
   }
 
   static async listByAgentMessageModelIds(

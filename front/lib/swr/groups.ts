@@ -24,11 +24,15 @@ export function useGroups({
   owner,
   kinds,
   spaceId,
+  withMembers,
   disabled,
 }: {
   owner: LightWorkspaceType;
   kinds?: readonly GroupKind[];
   spaceId?: string;
+  // Also resolves each group's member sIds (one extra batched query
+  // server-side) instead of just its memberCount.
+  withMembers?: boolean;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -40,9 +44,12 @@ export function useGroups({
     if (spaceId) {
       params.append("spaceId", spaceId);
     }
+    if (withMembers) {
+      params.append("withMembers", "true");
+    }
     const queryString = params.toString();
     return `/api/w/${owner.sId}/groups${queryString ? `?${queryString}` : ""}`;
-  }, [owner.sId, kinds, spaceId]);
+  }, [owner.sId, kinds, spaceId, withMembers]);
 
   const groupsFetcher: Fetcher<GetGroupsResponseBody> = fetcher;
 

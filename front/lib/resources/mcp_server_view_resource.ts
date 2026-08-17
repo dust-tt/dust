@@ -18,9 +18,11 @@ import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getAvailabilityOfInternalMCPServerById,
   getAvailabilityOfInternalMCPServerByName,
+  getInternalMCPServerIconByName,
   getInternalMCPServerNameAndWorkspaceId,
   INTERNAL_MCP_SERVERS,
   isAutoInternalMCPServerName,
+  isInternalMCPServerName,
   isValidInternalMCPServerId,
   matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -69,6 +71,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import {
   formatUserFullName,
   isWorkspaceAnalyticsEnabled,
@@ -249,7 +252,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     auth: Authenticator,
     name: string,
     space: SpaceResource,
-    tools: readonly MCPToolType[] = []
+    tools: readonly MCPToolType[] = [],
+    { excludedMCPServerViewId }: { excludedMCPServerViewId?: string } = {}
   ): Promise<{ hasConflict: boolean; name: string }> {
     const candidateToolNames = removeNulls(
       tools.map((tool) => {
@@ -261,6 +265,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     );
     const existingViews = await this.listBySpace(auth, space);
     const hasConflict = existingViews.some((view) => {
+      if (view.sId === excludedMCPServerViewId) {
+        return false;
+      }
+
       const existingName = view.name ?? view.getServerDisplayMetadata().name;
       if (existingName === name) {
         return true;
@@ -690,6 +698,50 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   ): Promise<MCPServerViewResource[]> {
     const { includeHeavyAttributes, ...findOptions } = options ?? {};
     return this.baseFetch(auth, findOptions, { includeHeavyAttributes });
+  }
+
+  static async resolveDisplayMetadataByNames(
+    auth: Authenticator,
+    names: string[]
+  ) {
+    const uniqueNames = [...new Set(names)];
+    const metadata = new Map<
+      string,
+      {
+        name: string;
+        icon: CustomResourceIconType | InternalAllowedIconType;
+      }
+    >();
+
+    for (const name of uniqueNames) {
+      if (isInternalMCPServerName(name)) {
+        metadata.set(name, {
+          name: asDisplayToolName(name),
+          icon: getInternalMCPServerIconByName(name),
+        });
+      }
+    }
+
+    const remoteNames = uniqueNames.filter(
+      (name) => !isInternalMCPServerName(name)
+    );
+    if (remoteNames.length === 0) {
+      return metadata;
+    }
+
+    const remoteServers = await RemoteMCPServerResource.fetchByNames(
+      auth,
+      remoteNames
+    );
+
+    for (const server of remoteServers) {
+      metadata.set(server.cachedName, {
+        name: server.cachedName,
+        icon: server.icon,
+      });
+    }
+
+    return metadata;
   }
 
   static async listBySpaces(

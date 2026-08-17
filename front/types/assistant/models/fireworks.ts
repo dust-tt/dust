@@ -20,6 +20,8 @@ export const FIREWORKS_GLM_5_MODEL_ID =
   "accounts/fireworks/models/glm-5" as const;
 export const FIREWORKS_GLM_5P2_MODEL_ID =
   "accounts/fireworks/models/glm-5p2" as const;
+export const FIREWORKS_INKLING_MODEL_ID =
+  "accounts/fireworks/models/inkling" as const;
 export const FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
   modelMaker: "deepseek",
@@ -347,6 +349,57 @@ export const FIREWORKS_GLM_5_MODEL_CONFIG: ModelConfigurationType = {
   },
   defaultReasoningEffort: "light",
   supportsResponseFormat: true,
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
+  availableIfOneOf: {
+    featureFlag: "fireworks_new_model_feature",
+  },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
+};
+
+// Specs, availability, and pricing verified 2026-08-14 against
+// https://fireworks.ai/models/fireworks/inkling (serverless, 1040k context,
+// function calling, image input, $1/$0.17/$4.05 per 1M tokens) and
+// https://huggingface.co/thinkingmachines/Inkling (text/image/audio input,
+// text output, controllable thinking). The native endpoint limits are kept in
+// model_constructors; Dust caps generation at 64k tokens.
+export const FIREWORKS_INKLING_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "fireworks",
+  modelMaker: "thinking_machines",
+  modelId: FIREWORKS_INKLING_MODEL_ID,
+  displayName: "Inkling (Fireworks)",
+  // Fireworks metadata reports 1,048,576 tokens, while the live inference API
+  // enforces a 1,000,000-token prompt-plus-completion budget.
+  contextSize: 1_000_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Thinking Machines Lab's open-weights multimodal Mixture-of-Experts model with controllable reasoning and 1M context (served via Fireworks).",
+  shortDescription:
+    "Inkling with controllable reasoning, vision, and 1M context.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportedReasoningEfforts: {
+    // Fireworks accepts `none` as the lowest effort, but Inkling still emits a
+    // reasoning trace at that level, so Dust does not present it as disabled.
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "high",
+  useNativeLightReasoning: true,
+  // Fireworks documents JSON-schema response formats, confirmed live for
+  // Inkling on 2026-08-14:
+  // https://docs.fireworks.ai/structured-responses/structured-response-formatting
+  supportsResponseFormat: true,
+  // Inkling's official renderer uses an o200k-base tokenizer:
+  // https://tinker-docs.thinkingmachines.ai/cookbook/inkling/tml-renderers/
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   availableIfOneOf: {
     featureFlag: "fireworks_new_model_feature",

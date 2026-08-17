@@ -3,7 +3,6 @@ import { awaitSandboxFunctionInvocationOutcome } from "@app/lib/api/sandbox_func
 import { isSandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { resolveSandboxFunctionActionAuthentication } from "@app/lib/api/sandbox_functions/resolve_authentication";
 import { validateSandboxFunctionAction } from "@app/lib/api/sandbox_functions/validate_action";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type {
   PostSandboxFunctionInvocationRequestBody,
@@ -122,11 +121,6 @@ app.post(
       });
     }
 
-    const fastExecution = await hasFeatureFlag(
-      auth,
-      "sandbox_function_fast_execution"
-    );
-
     const invocationResult = await sandboxFunction.invoke(auth, body, {
       origin:
         auth.authMethod() === "session" ? "interactive_session" : "delegated",
@@ -157,12 +151,11 @@ app.post(
     const invocation = invocationResult.value;
     // An inline execution settles the instance it ran on, so the outcome is usually already in
     // memory; the stream read-back is only for invocations that escalated to the workflow.
-    const outcome = fastExecution
-      ? (invocation.settledOutcome() ??
-        (await awaitSandboxFunctionInvocationOutcome({
-          invocationId: invocation.sId,
-        })))
-      : null;
+    const outcome =
+      invocation.settledOutcome() ??
+      (await awaitSandboxFunctionInvocationOutcome({
+        invocationId: invocation.sId,
+      }));
 
     return ctx.json(
       {

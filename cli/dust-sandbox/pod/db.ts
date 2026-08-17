@@ -1,16 +1,26 @@
 import type { Changes, SQLQueryBindings, Statement } from "bun:sqlite";
 import { Database } from "bun:sqlite";
+import { existsSync } from "node:fs";
 import type { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
+
+import { podEnv } from "./context.ts";
 
 /**
  * Pod state databases.
  *
  * `db(name)` returns a cached Drizzle instance over the pod's live SQLite
- * database at `${DUST_POD_DATABASES_DIR}/{name}.db`. Databases are created by
- * `dsbx db reconcile` (the db_reconcile tool), never here: the file is opened
- * must-exist so a typo'd name errors clearly instead of minting an empty
- * database. Functions that never call `db()` pay nothing.
+ * database at `${DUST_POD_DATABASES_DIR}/{prefix}{name}.db`. Databases are
+ * created by `dsbx db reconcile` (the db_reconcile tool), never here: the file
+ * is opened must-exist so a typo'd name errors clearly instead of minting an
+ * empty database. Functions that never call `db()` pay nothing.
+ *
+ * `name` is the app-relative name the function's source writes, and the app
+ * prefix comes from the environment ({@link POD_DATABASE_PREFIX_ENV}) rather
+ * than the source. That is what lets a whole app folder be copied within a pod
+ * without editing any source: the copy publishes under its own prefix and
+ * therefore resolves `db("chat")` to its own database. See
+ * {@link resolveDatabasePath} for the resolution order.
  *
  * Disk guardrails — pod state must not fill the sandbox disk by accident:
  *
@@ -58,6 +68,23 @@ export const POD_SPACE_ID_ENV = "SPACE_ID";
  */
 export const POD_DATABASE_MAX_SIZE_BYTES_ENV =
   "DUST_POD_DATABASE_MAX_SIZE_BYTES";
+
+/**
+ * Env var carrying the app prefix (separator included, e.g. `"myapp__"`) that
+ * namespaces this function's databases inside the pod's flat databases
+ * directory. Optional: empty or absent means unprefixed names, which is what
+ * functions published outside an app folder get.
+ *
+ * Front owns the value and derives it from the invoked function's slug, so no
+ * layer below front knows how a prefix is built. Read through `podEnv`, so a
+ * resident server serving two apps resolves each invocation against its own
+ * prefix rather than a process-wide one.
+ *
+ * Not a security boundary: the databases directory is local disk the workload
+ * can read and write directly, so app prefixing prevents accidental collisions
+ * between apps, it does not isolate them.
+ */
+export const POD_DATABASE_PREFIX_ENV = "DUST_POD_DATABASE_PREFIX";
 
 /** How long a connection waits on a locked database before failing. */
 export const POD_DATABASE_BUSY_TIMEOUT_MS = 5000;
@@ -234,7 +261,7 @@ class PodSqliteDatabase extends Database {
 }
 
 function podDatabasesDir(): string {
-  const dir = process.env[POD_DATABASES_DIR_ENV];
+  const dir = podEnv(POD_DATABASES_DIR_ENV);
   if (dir === undefined || dir.length === 0) {
     throw new PodDatabaseError(
       `${POD_DATABASES_DIR_ENV} is not set: the databases directory is ` +
@@ -245,8 +272,41 @@ function podDatabasesDir(): string {
   return dir;
 }
 
+/**
+ * Resolve the app-relative `name` to a database file path.
+ *
+ * Order, and why: the app-prefixed file wins when it exists, so an app that has
+ * been reconciled under app namespacing always gets its own database. Otherwise
+ * the bare name is used, which covers two cases — functions published outside an
+ * app folder (no prefix at all), and databases created before app namespacing
+ * existed, whose files are still on disk under their bare names.
+ *
+ * That bare-name branch is transitional. While it is in place, two apps that
+ * both reconcile a name which already exists unprefixed keep sharing that one
+ * legacy database, exactly as they do today; only databases created from here on
+ * are namespaced. Reconcile applies the same order (in front), so the file
+ * db() opens is always the file reconcile applied the schema to.
+ */
+function resolveDatabasePath(dir: string, name: string): string {
+  // Through podEnv, like every other env read here: a resident server runs
+  // concurrent invocations from different apps, and their prefixes differ. Read
+  // straight from process.env and every warm invocation would resolve against
+  // whichever prefix the cold run happened to leave there.
+  const prefix = podEnv(POD_DATABASE_PREFIX_ENV) ?? "";
+  if (prefix.length > 0) {
+    // No need to re-check the name contract here: a prefix long enough to push
+    // the qualified name past it is one reconcile refuses to create a file for,
+    // so the existence check below is what rejects it.
+    const prefixedPath = `${dir}/${prefix}${name}.db`;
+    if (existsSync(prefixedPath)) {
+      return prefixedPath;
+    }
+  }
+  return `${dir}/${name}.db`;
+}
+
 function podDatabaseMaxSizeBytes(): number {
-  const raw = process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV];
+  const raw = podEnv(POD_DATABASE_MAX_SIZE_BYTES_ENV);
   if (raw === undefined || raw.length === 0) {
     throw new PodDatabaseError(
       `${POD_DATABASE_MAX_SIZE_BYTES_ENV} is not set: the per-database size ` +
@@ -309,7 +369,9 @@ function applyPragmas(sqlite: PodSqliteDatabase, maxSizeBytes: number): void {
 const instances = new Map<string, PodDatabase>();
 
 /**
- * Get the pod's Drizzle handle for database `name`.
+ * Get the pod's Drizzle handle for database `name`, where `name` is the app's
+ * own name for it (`db("chat")`) and the app prefix is applied by
+ * {@link resolveDatabasePath} from the environment.
  *
  * @throws PodDatabaseInvalidNameError when `name` does not match the contract.
  * @throws PodDatabasesUnavailableError when SPACE_ID is absent — this sandbox
@@ -325,11 +387,11 @@ export function db(name: string): PodDatabase {
   if (!POD_DATABASE_NAME_REGEX.test(name)) {
     throw new PodDatabaseInvalidNameError(name);
   }
-  const spaceId = process.env[POD_SPACE_ID_ENV];
+  const spaceId = podEnv(POD_SPACE_ID_ENV);
   if (spaceId === undefined || spaceId.length === 0) {
     throw new PodDatabasesUnavailableError();
   }
-  const path = `${podDatabasesDir()}/${name}.db`;
+  const path = resolveDatabasePath(podDatabasesDir(), name);
   const cached = instances.get(path);
   if (cached !== undefined) {
     return cached;

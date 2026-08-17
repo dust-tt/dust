@@ -252,6 +252,7 @@ export const shrinkWrapSuite: TestSuite = {
   testCases: [
     {
       scenarioId: "bug-triage-clarificationclarification",
+      stopOnUserQuestion: true,
       userMessage: buildShrinkWrapInitialMessage(BUG_TRIAGE_MESSAGES),
       mockState: BLANK_AGENT,
       judgeCriteria: `This is a shrink-wrap scenario where the sidekick receives a conversation but NO explicit user instruction. The sidekick must clarify with the user before making changes.

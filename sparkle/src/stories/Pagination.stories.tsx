@@ -26,7 +26,7 @@ const meta: Meta<typeof Pagination> = {
       />
     );
   },
-  tags: ["ai-generated", "needs-work"],
+  tags: ["a11y-issues", "ai-generated", "needs-work"],
   parameters: {
     docs: {
       description: {
@@ -62,11 +62,12 @@ export const NavigatesPages: Story = {
 };
 
 // Single project-wide CssCheck. Pagination's page-number buttons use `font-medium`, which
-// Tailwind compiles to `font-weight: 500`. A concrete computed value is the only proof that the
-// shared preview actually loaded Sparkle's stylesheet — `toBeVisible` would pass even unstyled.
+// Sparkle's theme remaps to `--font-weight-medium: 450` (variable font). A concrete computed
+// value is the only proof that the shared preview actually loaded Sparkle's stylesheet —
+// `toBeVisible` would pass even unstyled, and Tailwind's default would yield 500.
 export const CssCheck: Story = {
   play: async ({ canvas }) => {
     const pageButton = canvas.getByRole("button", { name: "1" });
-    await expect(getComputedStyle(pageButton).fontWeight).toBe("500");
+    await expect(getComputedStyle(pageButton).fontWeight).toBe("450");
   },
 };

@@ -85,7 +85,7 @@ export function RecommendationItem({
             <ol className="mt-4 flex flex-col gap-2">
               {rec.steps.map((step, i) => (
                 <li key={step} className="flex items-start gap-2 text-sm">
-                  <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full border border-stone-100 bg-gradient-to-t from-stone-50 to-white px-1 text-xs font-semibold leading-4 text-muted-foreground shadow-sm">
+                  <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full border border-border bg-muted-background px-1 text-xs font-semibold leading-4 text-muted-foreground shadow-sm">
                     {i + 1}
                   </span>
                   <span className="leading-5 text-muted-foreground">

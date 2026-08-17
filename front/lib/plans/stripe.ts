@@ -1662,13 +1662,16 @@ const METRONOME_INVOICE_LINES_CLEANED_FLAG = "lines_cleaned";
  * Metronome represents a fully-applied commit/credit as a pair of lines on the
  * same invoice with equal and opposite amounts: a negative line whose
  * description is "<label> applied", and the positive usage/subscription line
- * it offsets, whose description contains "(<label>)" (e.g. a negative
+ * it offsets. The positive line references the label in one of two formats:
+ * as its own parenthesized group, "(<label>)" (e.g. a negative
  * "Platform Seat (Yearly) commitment: 53 seats applied" line offsetting a
  * positive "Platform Seat (Yearly) (Platform Seat (Yearly) commitment: 53
- * seats)" line). Neither line carries metadata identifying the pairing (there
- * is no such thing as `metronome_commit_id` on Stripe line items — Metronome
- * does not document or set one), so we match them by description + amount
- * instead.
+ * seats)" line), or as the last comma-separated element of the quantity/price
+ * group, ", <label>)" (e.g. "Max Seat (0.0013, $150.00, Business subscription
+ * activation (max monthly))"). Neither line carries metadata identifying the
+ * pairing (there is no such thing as `metronome_commit_id` on Stripe line
+ * items — Metronome does not document or set one), so we match them by
+ * description + amount instead.
  */
 function findCommitAppliedLineIds(
   lines: Stripe.InvoiceLineItem[]
@@ -1693,7 +1696,8 @@ function findCommitAppliedLineIds(
         !matchedLineIds.has(candidate.id) &&
         candidate.amount === -creditLine.amount &&
         candidate.currency === creditLine.currency &&
-        candidate.description?.includes(`(${label})`)
+        (candidate.description?.includes(`(${label})`) ||
+          candidate.description?.includes(`, ${label})`))
     );
 
     if (offsetLine) {

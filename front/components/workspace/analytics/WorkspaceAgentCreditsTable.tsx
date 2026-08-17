@@ -38,6 +38,7 @@ function TopUsersCell({ users }: { users: AgentCreditUser[] }) {
           key={user.userId}
           name={user.name}
           imageUrl={user.imageUrl}
+          isRounded
         />
       )}
     />

@@ -417,9 +417,10 @@
  *       description: |
  *         Optional per-message model and reasoning-effort override applied to the
  *         mentioned agent(s). When omitted, each agent runs its configured model.
- *         If the requested model is not available to the workspace, the agent's
- *         configured model is used instead. An unknown provider, model, or
- *         reasoning effort results in a 400.
+ *         A provider/model pair that is not authorized for the workspace is
+ *         rejected with a 400 (`model_disabled`), it does not fall back to the
+ *         agent's configured model. A malformed object, or an unknown reasoning
+ *         effort, also results in a 400.
  *       required:
  *         - providerId
  *         - modelId

@@ -31,9 +31,10 @@ const FUNCTION_WORKING_DIR_ENV: &str = "DUST_FUNCTION_WORKING_DIR";
 /// TODO(SANDBOX FUNCTION) Consider adding a dedicated node_modules dedicated to sandbox functions.
 const FUNCTIONS_GLOBAL_NODE_MODULES: &str = "/opt/npm-global/lib/node_modules";
 
-/// The function bundle runner, pre-bundled (Zod inlined) at dev time and
-/// committed. Embedded so `dsbx` is a single binary; cross-compilation does
-/// not need `bun`.
+/// The function bundle runner, a generated build artifact (Zod inlined), NOT
+/// committed: `bun run build` in `functions-runner/` produces it before dsbx
+/// compiles (see build.rs). Embedded so `dsbx` is a single binary;
+/// cross-compilation does not need `bun`.
 const RUNNER_JS: &str = include_str!("../../../functions-runner/runner.js");
 
 /// The unprivileged, egress-proxied user the sandbox runs agent code as (the
@@ -45,14 +46,15 @@ const DEFAULT_FUNCTION_WORKING_DIR: &str = "/home/agent";
 
 #[derive(Subcommand)]
 pub enum FunctionCommand {
-    /// Execute a function. Request envelope JSON on stdin; deliver the result
-    /// via `--result-delivery` (HTTP callback by default, or a protocol v3
-    /// envelope on stdout).
+    /// Execute a function. Request envelope JSON on stdin, protocol v3 result
+    /// envelope on stdout.
     Run {
-        /// How to deliver the function result. Default remains the in-sandbox
-        /// HTTP callback; `stdout` returns a protocol v3 envelope on stdout for
-        /// the worker that started the command.
-        #[arg(long, value_enum, default_value_t = ResultDelivery::Callback)]
+        /// Accepted and ignored: `stdout` is the only delivery mode. The flag
+        /// stays because front still passes `--result-delivery stdout`, and
+        /// dsbx is pinned by release, so a binary that rejected it would break
+        /// every invocation the moment DSBX_CLI_VERSION moved. Remove it with
+        /// front's argument, not before.
+        #[arg(long, value_enum, default_value_t = ResultDelivery::Stdout)]
         result_delivery: ResultDelivery,
         /// Function name (resolved to a <name>.<ext> bundle in ${DUST_FUNCTIONS_DIR})
         name: String,

@@ -1,7 +1,7 @@
 "use client";
 
 import { normalizeSandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
-import { POD_FUNCTION_REFERENCE_REGEX } from "@viz/app/lib/pod-function-slug";
+import { isPodFunctionReference } from "@viz/app/lib/pod-function-slug";
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
 import type { UserIdentityState } from "@viz/app/types";
 import {
@@ -64,11 +64,12 @@ function resolvePodFunction(slug: string | null): {
   if (slug === null) {
     return { functionId: null };
   }
-  if (!POD_FUNCTION_REFERENCE_REGEX.test(slug)) {
+  if (!isPodFunctionReference(slug)) {
     return {
       functionId: null,
       error: new Error(
-        "Pod Function hooks require a fully qualified <podId>/<slug> reference."
+        "Pod Function hooks require a <podId>/<slug> reference, or a bare function name " +
+          "from a Frame that lives in an app folder."
       ),
     };
   }
@@ -160,6 +161,8 @@ export function useUserIdentity(): UseUserIdentityResult {
       error: result.error,
       isAuthenticated: false,
       isWorkspaceMember: false,
+      isPodEditor: false,
+      isPodMember: false,
       isLoading: !result.error,
       user: null,
     };

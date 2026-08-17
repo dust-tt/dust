@@ -108,9 +108,6 @@ export const RESOURCES_PREFIX = {
   // Activation recommendations.
   activation_recommendation: "arc",
 
-  // Activation nudges.
-  activation_nudge: "anu",
-
   // Activation pods.
   activation_pod: "apo",
 

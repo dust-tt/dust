@@ -1,5 +1,6 @@
 // Import a function handler, validate its input and output, and call its default fetch.
 
+import { runWithInvocationEnv } from "./context.ts";
 import {
   decodeRequestBody,
   type InvocationError,
@@ -45,7 +46,31 @@ function getProperty(value: unknown, property: string): unknown {
   return value[property];
 }
 
+/**
+ * Import a function handler and run one invocation.
+ *
+ * When `invocationEnv` is provided, the whole invocation (import included:
+ * module top-level code runs on first import) executes inside a per-invocation
+ * context carrying that environment, which @dust/pod reads through `podEnv()`.
+ * This is how a resident server runs concurrent invocations with different
+ * callers without touching process.env. Without it (cold runs, where the
+ * process environment IS the invocation's), no context is entered and
+ * @dust/pod falls back to process.env.
+ */
 export async function invoke(
+  handlerPath: string,
+  input: RequestInput,
+  invocationEnv?: Readonly<Record<string, string>>
+): Promise<Output> {
+  if (invocationEnv !== undefined) {
+    return runWithInvocationEnv(invocationEnv, () =>
+      invokeInContext(handlerPath, input)
+    );
+  }
+  return invokeInContext(handlerPath, input);
+}
+
+async function invokeInContext(
   handlerPath: string,
   input: RequestInput
 ): Promise<Output> {

@@ -10,6 +10,14 @@
 
 // Verbs are the granular capabilities a role grants. They are never stored — roles map to them in
 // the registry, and capability questions are expressed in verbs.
+//
+// A verb's position in this array is its bit in the `PermissionSet` bitmask (verb at index i => bit
+// `1 << i`; see `group_permission_registry`). Consequences:
+// - Never reorder or remove a verb: it would silently reassign every subsequent verb's bit and
+//   change the meaning of already-computed masks.
+// - Add new verbs only at the end.
+// - Keep the total at most 31 verbs: JS bitwise operators work on 32-bit integers, so beyond that
+//   the shift overflows and masks break.
 export const GRANT_VERBS = [
   "read",
   "write",

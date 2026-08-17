@@ -1,4 +1,9 @@
 import config from "@app/lib/api/config";
+import {
+  contributeFreeUsageCostForUser,
+  isFreeUsageContext,
+} from "@app/lib/api/llm/free_usage";
+import { LLMRunLifecycle } from "@app/lib/api/llm/run_lifecycle";
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
   createLLMTraceId,
@@ -141,6 +146,7 @@ export abstract class LLM<
       yield* this.completeStream(streamParameters, metadata);
       return;
     }
+
     const { conversation, prompt, specifications, previousMessageId } =
       streamParameters;
 
@@ -350,43 +356,6 @@ export abstract class LLM<
               errorType: buffer.error.type,
               errorMessage: buffer.error.message,
             },
-          });
-        }
-
-        const run = await RunResource.makeNew({
-          appId: null,
-          dustRunId: this.traceId,
-          runType: "deploy",
-          // Assumption made that this class exclusively uses Dust credentials.
-          useWorkspaceCredentials: false,
-          workspaceId: this.authenticator.getNonNullableWorkspace().id,
-        });
-
-        // Classify usage at creation for internal/utility LLM operations
-        // (everything except the agent conversation itself): they are never
-        // billed and never processed by the usage queue, so they are free.
-        // agent_conversation runs are left untagged here and classified
-        // (free/user/programmatic) by the usage queue, which knows the
-        // triggering message origin.
-        const usageType =
-          this.context.operationType === "agent_conversation"
-            ? undefined
-            : USAGE_TYPE_FREE;
-
-        // Run usage is only populated if the run is successful.
-        if (buffer.runTokenUsage) {
-          await run.recordTokenUsage(
-            this.authenticator,
-            buffer.runTokenUsage,
-            this.modelId,
-            { inferenceRegion: this.metadata.inferenceRegion, usageType }
-          );
-        }
-
-        const simulatedRunUsages = this.getSimulatedRunUsages();
-        if (simulatedRunUsages) {
-          await run.recordRunUsage(this.authenticator, simulatedRunUsages, {
-            usageType,
           });
         }
 
@@ -736,14 +705,57 @@ export abstract class LLM<
     streamParameters: LLMStreamParameters,
     metadata?: LLMStreamMetadata
   ): AsyncGenerator<LLMEvent> {
-    const payload = await this.buildStreamRequestPayload(
-      streamParameters,
-      metadata
-    );
+    // Persist first: if this fails, no provider request is made. Every provider
+    // attempt therefore starts with a durable run and pending usage row.
+    const usageType = this.getUsageType();
+    const lifecycle = await LLMRunLifecycle.start(this.authenticator, {
+      dustRunId: this.traceId,
+      inferenceProvider: this.metadata.inferenceProvider,
+      inferenceRegion: this.metadata.inferenceRegion,
+      modelId: this.modelId,
+      providerId: this.modelConfig.providerId,
+      region: this.metadata.region ?? null,
+      usageType,
+    });
 
-    // Update the generation span with the actual payload.
-    this.generation?.update({ input: payload });
+    try {
+      const payload = await this.buildStreamRequestPayload(
+        streamParameters,
+        metadata
+      );
 
-    yield* this.sendRequest(payload);
+      // Update the generation span with the actual payload.
+      this.generation?.update({ input: payload });
+
+      const simulatedRunUsages = this.getSimulatedRunUsages();
+      if (simulatedRunUsages) {
+        await lifecycle.recordRunUsages(simulatedRunUsages);
+      }
+
+      for await (const event of this.sendRequest(payload)) {
+        if (event.type === "token_usage") {
+          const costMicroUsd = await lifecycle.recordTokenUsage(event.content);
+          const user = this.authenticator.user();
+          if (usageType === USAGE_TYPE_FREE && user && costMicroUsd) {
+            await contributeFreeUsageCostForUser(
+              this.authenticator.getNonNullableWorkspace(),
+              user.id,
+              costMicroUsd
+            );
+          }
+        }
+        yield event;
+      }
+    } finally {
+      await lifecycle.close();
+    }
+  }
+
+  private getUsageType() {
+    // Calls without tracing context cannot be attributed to a billable agent conversation,
+    // so keep them free until the caller provides that context.
+    return !this.context || isFreeUsageContext(this.context)
+      ? USAGE_TYPE_FREE
+      : undefined;
   }
 }

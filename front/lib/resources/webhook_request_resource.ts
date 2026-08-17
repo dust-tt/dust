@@ -15,6 +15,7 @@ import type {
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
   Attributes,
   CreationAttributes,
@@ -359,6 +360,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
       failed: number;
       notMatched: number;
       rateLimited: number;
+      creditsExhausted: number;
     }>;
   }> {
     const workspace = auth.getNonNullableWorkspace();
@@ -408,6 +410,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
         failed: number;
         notMatched: number;
         rateLimited: number;
+        creditsExhausted: number;
       }
     >();
     for (const row of dailyRows) {
@@ -421,6 +424,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
           failed: 0,
           notMatched: 0,
           rateLimited: 0,
+          creditsExhausted: 0,
         });
       }
       const entry = dailyMap.get(date)!;
@@ -437,6 +441,11 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
         case "rate_limited":
           entry.rateLimited += count;
           break;
+        case "credits_exhausted":
+          entry.creditsExhausted += count;
+          break;
+        default:
+          assertNeverAndIgnore(status);
       }
     }
 

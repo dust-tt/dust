@@ -1,10 +1,10 @@
 import type { BillingCycle } from "@app/lib/client/subscription";
 import type {
-  CreditUsagePace,
   CreditUsageStatus,
+  CreditUsageTarget,
 } from "@app/types/api/credits/usage_status";
 
-const ON_PACE_REMAINING_COVERAGE = 0.85;
+const ON_TARGET_REMAINING_COVERAGE = 0.85;
 const ELEVATED_REMAINING_COVERAGE = 0.5;
 
 /**
@@ -13,35 +13,35 @@ const ELEVATED_REMAINING_COVERAGE = 0.5;
  *
  *   remaining coverage = remaining credit ratio / remaining cycle ratio
  *
- * - on_pace (blue): coverage >= 0.85. The 15% relative tolerance absorbs
+ * - on_target (blue): coverage >= 0.85. The 15% relative tolerance absorbs
  *   normal usage variation and avoids noisy warnings near the boundary. For
  *   example, with 80% of the cycle left, 68% of credits remaining is blue.
  * - elevated (orange): 0.5 <= coverage < 0.85. Usage is meaningfully ahead of
- *   pace and deserves attention.
+ *   target and deserves attention.
  * - critical (red): coverage < 0.5. The remaining credits cover less than half
  *   of the remaining cycle, so the user is likely to run out well before reset.
  *
  * Exhausted credits are always critical. Once the cycle has ended, any
- * positive remaining balance is on pace.
+ * positive remaining balance is on target.
  */
-function classifyCreditUsagePace({
+function classifyCreditUsageTarget({
   remainingCreditRatio,
   remainingCycleRatio,
 }: {
   remainingCreditRatio: number;
   remainingCycleRatio: number;
-}): CreditUsagePace {
+}): CreditUsageTarget {
   if (remainingCreditRatio <= 0) {
     return "critical";
   }
 
   if (remainingCycleRatio <= 0) {
-    return "on_pace";
+    return "on_target";
   }
 
   const remainingCoverage = remainingCreditRatio / remainingCycleRatio;
-  if (remainingCoverage >= ON_PACE_REMAINING_COVERAGE) {
-    return "on_pace";
+  if (remainingCoverage >= ON_TARGET_REMAINING_COVERAGE) {
+    return "on_target";
   }
   if (remainingCoverage >= ELEVATED_REMAINING_COVERAGE) {
     return "elevated";
@@ -82,7 +82,7 @@ export function computeCreditUsageStatus({
   return {
     usedPercentage: Math.round(usedRatio * 100),
     resetAt: billingCycle.cycleEnd.toISOString(),
-    pace: classifyCreditUsagePace({
+    target: classifyCreditUsageTarget({
       remainingCreditRatio,
       remainingCycleRatio,
     }),

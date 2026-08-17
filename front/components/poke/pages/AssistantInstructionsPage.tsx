@@ -101,7 +101,7 @@ export function AssistantInstructionsPage() {
 
   return (
     <div>
-      <h3 className="mb-4 text-xl font-bold">Instructions for @{agentName}</h3>
+      <h3 className="mb-4 text-xl font-bold">Instructions for {agentName}</h3>
       <div className="overflow-auto rounded-xl border border-border p-2">
         <EditorContent editor={editor} className="leading-7" />
       </div>

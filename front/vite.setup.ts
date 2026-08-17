@@ -74,10 +74,28 @@ function createStatefulMockRedisClient() {
       }
       return entry.value;
     }),
-    set: vi.fn(async (key: string, value: string, opts?: { EX?: number }) => {
-      const expiresAtMs = opts?.EX ? Date.now() + opts.EX * 1000 : 0;
-      redisStore.set(key, { value, expiresAtMs });
-    }),
+    set: vi.fn(
+      async (
+        key: string,
+        value: string,
+        opts?: { EX?: number; PX?: number }
+      ) => {
+        // The "OK" return matters: distributedLock treats anything else as
+        // acquisition failure, and a mock that returns undefined spins
+        // executeWithLock's acquire loop until its 30s timeout in every
+        // suite that takes a lock. NX is deliberately NOT enforced: tests
+        // run sequentially, so mutual exclusion never needs to hold, and
+        // enforcing it would break consumers that legitimately re-set a
+        // live key (and require the unlock Lua script to really delete).
+        const expiresAtMs = opts?.EX
+          ? Date.now() + opts.EX * 1000
+          : opts?.PX
+            ? Date.now() + opts.PX
+            : 0;
+        redisStore.set(key, { value, expiresAtMs });
+        return "OK";
+      }
+    ),
     del: vi.fn(async (key: string) => {
       redisStore.delete(key);
       redisHashStore.delete(key);

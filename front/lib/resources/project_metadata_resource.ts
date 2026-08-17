@@ -233,6 +233,29 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     await this.update({ frameTabs, tabsOrder }, transaction);
   }
 
+  async removeFramePath(
+    framePath: string,
+    transaction?: Transaction
+  ): Promise<void> {
+    const frameTabs = (this.frameTabs ?? []).filter(
+      (tab) => tab.path !== framePath
+    );
+    const tabsOrder = normalizeTabsOrder(
+      (this.tabsOrder ?? []).filter((entry) => entry !== framePath),
+      frameTabs.map((tab) => tab.path)
+    );
+
+    await this.update(
+      {
+        pinnedFramePath:
+          this.pinnedFramePath === framePath ? null : this.pinnedFramePath,
+        frameTabs,
+        tabsOrder,
+      },
+      transaction
+    );
+  }
+
   async updateDefaultAgentId(
     defaultAgentId: string | null,
     transaction?: Transaction

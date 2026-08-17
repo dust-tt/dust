@@ -9,6 +9,7 @@ import type {
   AgentContextPrunedEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
+  AgentMessageConsumptionUpdatedEvent,
   AgentMessageDoneEvent,
   AgentMessageGracefullyStoppedEvent,
   AgentMessageSuccessEvent,
@@ -48,6 +49,7 @@ export type ConversationEvents =
   | AgentMessageNewEvent
   | UserMessageNewEvent
   | UserMessagePromotedEvent
+  | AgentMessageConsumptionUpdatedEvent
   | AgentMessageDoneEvent
   | CompactionMessageNewEvent
   | CompactionMessageDoneEvent

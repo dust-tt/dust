@@ -1,7 +1,7 @@
-export type CreditUsagePace = "on_pace" | "elevated" | "critical";
+export type CreditUsageTarget = "on_target" | "elevated" | "critical";
 
 export interface CreditUsageStatus {
   usedPercentage: number;
   resetAt: string;
-  pace: CreditUsagePace;
+  target: CreditUsageTarget;
 }
