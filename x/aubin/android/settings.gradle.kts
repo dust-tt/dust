@@ -19,4 +19,5 @@ include(":core")
 
 if (providers.gradleProperty("skipAndroidApp").orNull != "true") {
     include(":app")
+    include(":baselineprofile")
 }
