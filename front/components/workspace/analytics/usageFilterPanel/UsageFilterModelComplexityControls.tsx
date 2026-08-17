@@ -2,6 +2,7 @@ import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { UsageFilterModelOption } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterAvailabilityStatus } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAvailabilityStatus";
+import { UsageFilterSection } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSection";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import {
   getModelsTierDisplayName,
@@ -26,7 +27,6 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   Icon,
-  NavigationListLabel,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 import { Fragment, useState } from "react";
@@ -108,113 +108,107 @@ export function UsageFilterModelComplexityControls({
     model.disabled && !selectedModelIds.has(model.id);
 
   return (
-    <>
-      <NavigationListLabel
-        label="Complexity"
-        className="bg-transparent px-0 pt-2 pb-0 font-medium"
-        action={
-          <DropdownMenu
-            open={isMoreModelsOpen}
-            onOpenChange={handleMoreModelsOpenChange}
-          >
-            <DropdownMenuTrigger asChild>
-              <Button
-                label="More models"
-                size="xmini"
-                variant="ghost-secondary"
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuSearchbar
-                name="usage-filter-more-models-search"
-                placeholder="Search for model"
-                value={moreModelsSearch}
-                onChange={setMoreModelsSearch}
-              />
-              {isSearchingMoreModels ? (
-                moreModelsSearchResults.length > 0 ? (
-                  moreModelsSearchResults.map((model) => (
-                    <DropdownMenuItem
-                      key={model.id}
-                      label={model.name}
-                      icon={
-                        model.lab
-                          ? getModelMakerLogo(model.lab, isDark)
-                          : undefined
+    <UsageFilterSection
+      title="Complexity"
+      action={
+        <DropdownMenu
+          open={isMoreModelsOpen}
+          onOpenChange={handleMoreModelsOpenChange}
+        >
+          <DropdownMenuTrigger asChild>
+            <Button
+              label="More models"
+              size="xmini"
+              variant="ghost-secondary"
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuSearchbar
+              name="usage-filter-more-models-search"
+              placeholder="Search for model"
+              value={moreModelsSearch}
+              onChange={setMoreModelsSearch}
+            />
+            {isSearchingMoreModels ? (
+              moreModelsSearchResults.length > 0 ? (
+                moreModelsSearchResults.map((model) => (
+                  <DropdownMenuItem
+                    key={model.id}
+                    label={model.name}
+                    icon={
+                      model.lab
+                        ? getModelMakerLogo(model.lab, isDark)
+                        : undefined
+                    }
+                    aria-disabled={isModelSelectionDisabled(model)}
+                    className={
+                      isModelSelectionDisabled(model) ? "opacity-50" : undefined
+                    }
+                    endComponent={getModelSelectionStatus({
+                      isSelected: selectedModelIds.has(model.id),
+                      isUnavailable: model.disabled,
+                    })}
+                    onClick={() => {
+                      if (!isModelSelectionDisabled(model)) {
+                        onToggleModel(model);
                       }
-                      aria-disabled={isModelSelectionDisabled(model)}
-                      className={
-                        isModelSelectionDisabled(model)
-                          ? "opacity-50"
-                          : undefined
-                      }
-                      endComponent={getModelSelectionStatus({
-                        isSelected: selectedModelIds.has(model.id),
-                        isUnavailable: model.disabled,
-                      })}
-                      onClick={() => {
-                        if (!isModelSelectionDisabled(model)) {
-                          onToggleModel(model);
-                        }
-                      }}
-                      onSelect={(e) => e.preventDefault()}
-                    />
-                  ))
-                ) : (
-                  <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-                    No models found
-                  </div>
-                )
-              ) : (
-                moreModelsGroups.map(({ lab, models }) => (
-                  <Fragment key={lab}>
-                    <DropdownMenuItem
-                      label={getModelMakerDisplayName(lab)}
-                      icon={getModelMakerLogo(lab, isDark)}
-                      endComponent={
-                        <Icon
-                          visual={
-                            expandedModelLab === lab
-                              ? ChevronDown
-                              : ChevronRight
-                          }
-                          size="xs"
-                        />
-                      }
-                      onClick={() => handleToggleExpandedModelLab(lab)}
-                      aria-expanded={expandedModelLab === lab}
-                      onSelect={(e) => e.preventDefault()}
-                    />
-                    {expandedModelLab === lab &&
-                      models.map((model) => (
-                        <DropdownMenuItem
-                          key={model.id}
-                          label={model.name}
-                          aria-disabled={isModelSelectionDisabled(model)}
-                          className={
-                            isModelSelectionDisabled(model)
-                              ? "pl-8 opacity-50"
-                              : "pl-8"
-                          }
-                          endComponent={getModelSelectionStatus({
-                            isSelected: selectedModelIds.has(model.id),
-                            isUnavailable: model.disabled,
-                          })}
-                          onClick={() => {
-                            if (!isModelSelectionDisabled(model)) {
-                              onToggleModel(model);
-                            }
-                          }}
-                          onSelect={(e) => e.preventDefault()}
-                        />
-                      ))}
-                  </Fragment>
+                    }}
+                    onSelect={(e) => e.preventDefault()}
+                  />
                 ))
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        }
-      />
+              ) : (
+                <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+                  No models found
+                </div>
+              )
+            ) : (
+              moreModelsGroups.map(({ lab, models }) => (
+                <Fragment key={lab}>
+                  <DropdownMenuItem
+                    label={getModelMakerDisplayName(lab)}
+                    icon={getModelMakerLogo(lab, isDark)}
+                    endComponent={
+                      <Icon
+                        visual={
+                          expandedModelLab === lab ? ChevronDown : ChevronRight
+                        }
+                        size="xs"
+                      />
+                    }
+                    onClick={() => handleToggleExpandedModelLab(lab)}
+                    aria-expanded={expandedModelLab === lab}
+                    onSelect={(e) => e.preventDefault()}
+                  />
+                  {expandedModelLab === lab &&
+                    models.map((model) => (
+                      <DropdownMenuItem
+                        key={model.id}
+                        label={model.name}
+                        aria-disabled={isModelSelectionDisabled(model)}
+                        className={
+                          isModelSelectionDisabled(model)
+                            ? "pl-8 opacity-50"
+                            : "pl-8"
+                        }
+                        endComponent={getModelSelectionStatus({
+                          isSelected: selectedModelIds.has(model.id),
+                          isUnavailable: model.disabled,
+                        })}
+                        onClick={() => {
+                          if (!isModelSelectionDisabled(model)) {
+                            onToggleModel(model);
+                          }
+                        }}
+                        onSelect={(e) => e.preventDefault()}
+                      />
+                    ))}
+                </Fragment>
+              ))
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      }
+    >
       <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
         Price tier of all the models actually billed — not only the Basic /
         Standard / Premium options offered in the model picker.
@@ -232,6 +226,6 @@ export function UsageFilterModelComplexityControls({
           />
         ))}
       </div>
-    </>
+    </UsageFilterSection>
   );
 }

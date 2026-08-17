@@ -6,12 +6,12 @@ import type {
 import { FILTER_PICKER_PAGE_SIZE } from "@app/components/workspace/analytics/usageFilterPanel/constants";
 import { UsageFilterAvailabilityStatus } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAvailabilityStatus";
 import { UsageFilterOptionIcon } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionIcon";
+import { UsageFilterSection } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSection";
 import {
   Button,
   Checkbox,
   Label,
   LoadingBlock,
-  NavigationListLabel,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -67,25 +67,23 @@ export function UsageFilterOptionCheckboxList({
   const loadMore = () =>
     setVisibleCount((current) => current + FILTER_PICKER_PAGE_SIZE);
   return (
-    <>
-      <NavigationListLabel
-        label={`All ${categoryLabel}`}
-        className="bg-transparent px-0 font-medium"
-        action={
-          <div className="flex items-center gap-2">
-            {isUpdating && (
-              <span className="text-xs text-muted-foreground">Updating…</span>
-            )}
-            <Button
-              label={selectAllLabel}
-              size="xmini"
-              variant="ghost-secondary"
-              onClick={onSelectAll}
-              disabled={!hasSelectableOptions || isUpdating}
-            />
-          </div>
-        }
-      />
+    <UsageFilterSection
+      title={`All ${categoryLabel}`}
+      action={
+        <div className="flex items-center gap-2">
+          {isUpdating && (
+            <span className="text-xs text-muted-foreground">Updating…</span>
+          )}
+          <Button
+            label={selectAllLabel}
+            size="xmini"
+            variant="ghost-secondary"
+            onClick={onSelectAll}
+            disabled={!hasSelectableOptions || isUpdating}
+          />
+        </div>
+      }
+    >
       <div
         aria-busy={isLoading || isUpdating}
         className="flex flex-col gap-0.5"
@@ -159,6 +157,6 @@ export function UsageFilterOptionCheckboxList({
           </div>
         )}
       </div>
-    </>
+    </UsageFilterSection>
   );
 }

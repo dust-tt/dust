@@ -17,6 +17,7 @@ import { UsageFilterFooter } from "@app/components/workspace/analytics/usageFilt
 import { UsageFilterMemberGroupsControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterMemberGroupsControls";
 import { UsageFilterModelComplexityControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterModelComplexityControls";
 import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
+import { UsageFilterSection } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSection";
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
 import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
@@ -29,7 +30,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   FilterFunnel01,
-  NavigationListLabel,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -211,10 +211,9 @@ export function UsageFilterPanel({
             activeCategory={activeCategory}
             onCategoryChange={handleCategoryChange}
           />
-          <div className="flex h-full w-72 flex-col gap-2 p-2">
-            <NavigationListLabel
-              label={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
-              className="bg-transparent pt-1.5 pb-0 font-medium"
+          <div className="flex h-full w-72 flex-col gap-4 p-2">
+            <UsageFilterSection
+              title={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
               action={
                 <Button
                   label="Clear"
@@ -227,16 +226,17 @@ export function UsageFilterPanel({
                   }
                 />
               }
-            />
-            <SearchInput
-              name="usage-filter-search"
-              value={searchText}
-              onChange={handleSearchChange}
-              placeholder={`Search ${USAGE_FILTER_CATEGORY_LABEL[activeCategory].toLowerCase()}`}
-            />
+            >
+              <SearchInput
+                name="usage-filter-search"
+                value={searchText}
+                onChange={handleSearchChange}
+                placeholder={`Search ${USAGE_FILTER_CATEGORY_LABEL[activeCategory].toLowerCase()}`}
+              />
+            </UsageFilterSection>
             <div
               ref={setContentScrollContainer}
-              className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2"
+              className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-2"
             >
               {activeCategory === "member" && (
                 <UsageFilterMemberGroupsControls

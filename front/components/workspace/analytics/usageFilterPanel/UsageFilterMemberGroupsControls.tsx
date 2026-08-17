@@ -1,10 +1,10 @@
 import type { UsageFilterGroup } from "@app/components/workspace/analytics/usageFilter";
+import { UsageFilterSection } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSection";
 import {
   Button,
   Chip,
   NavigationList,
   NavigationListItem,
-  NavigationListLabel,
   Plus,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -34,20 +34,18 @@ export function UsageFilterMemberGroupsControls({
   };
 
   return (
-    <>
-      <NavigationListLabel
-        label="Groups"
-        className="bg-transparent px-0 pt-2 pb-0 font-medium"
-        action={
-          <Button
-            label="Add group"
-            icon={Plus}
-            size="xmini"
-            variant="ghost-secondary"
-            onClick={() => setIsAddGroupOpen((current) => !current)}
-          />
-        }
-      />
+    <UsageFilterSection
+      title="Groups"
+      action={
+        <Button
+          label="Add group"
+          icon={Plus}
+          size="xmini"
+          variant="ghost-secondary"
+          onClick={() => setIsAddGroupOpen((current) => !current)}
+        />
+      }
+    >
       {isAddGroupOpen && (
         <NavigationList className="max-h-32">
           {availableGroups.length > 0 ? (
@@ -81,6 +79,6 @@ export function UsageFilterMemberGroupsControls({
           ))}
         </div>
       )}
-    </>
+    </UsageFilterSection>
   );
 }
