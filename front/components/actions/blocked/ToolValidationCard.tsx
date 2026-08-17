@@ -179,10 +179,10 @@ export function ToolValidationCard({
               >
                 <DialogContent
                   size="lg"
-                  className="gap-4"
+                  className="gap-4 p-5"
                   preventAutoFocusOnClose={false}
                 >
-                  <DialogHeader className="gap-1">
+                  <DialogHeader className="gap-1 p-0">
                     <div className="flex items-center justify-between gap-4 pr-8">
                       <DialogTitle
                         visual={<Avatar icon={icon ?? PieChart01} size="sm" />}
@@ -197,7 +197,7 @@ export function ToolValidationCard({
                       {displayLabel}
                     </DialogDescription>
                   </DialogHeader>
-                  <DialogContainer className="py-0">
+                  <DialogContainer className="p-0">
                     <ToolValidationDetails
                       blockedAction={validationRequest}
                       user={currentUser}
@@ -210,7 +210,7 @@ export function ToolValidationCard({
                       </div>
                     )}
                   </DialogContainer>
-                  <DialogFooter className="flex-col items-stretch gap-3 px-5 pb-4 pt-0">
+                  <DialogFooter className="flex-col items-stretch gap-3 p-0">
                     {(validationRequest.stake === "low" ||
                       validationRequest.stake === "medium") && (
                       <Label
