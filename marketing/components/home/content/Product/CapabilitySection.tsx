@@ -24,10 +24,7 @@ export function CapabilitySection() {
               className="absolute inset-0 h-full w-full object-cover"
             />
             <div className="relative z-10 flex w-full flex-col items-center gap-8 px-6">
-              <H2
-                className="text-center text-3xl font-medium text-white md:text-4xl xl:text-5xl"
-                style={{ textAlign: "center" }}
-              >
+              <H2 className="text-center text-3xl font-medium text-white md:text-4xl xl:text-5xl">
                 The AI system built for
                 <br />
                 your whole organization

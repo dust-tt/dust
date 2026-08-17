@@ -64,10 +64,7 @@ export function SecurityFeaturesSection({
       {showHeader && (
         <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 text-center sm:gap-2 lg:px-8">
           <HomeReveal>
-            <H2
-              className="text-center text-3xl font-medium md:text-4xl xl:text-5xl"
-              style={{ textAlign: "center" }}
-            >
+            <H2 className="text-center text-3xl font-medium md:text-4xl xl:text-5xl">
               Built with enterprise-grade security
             </H2>
           </HomeReveal>

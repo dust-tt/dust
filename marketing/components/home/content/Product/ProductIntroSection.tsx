@@ -14,13 +14,7 @@ export function ProductIntroSection() {
       <div className="flex flex-col gap-16">
         <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 text-center sm:gap-2 lg:px-6">
           <HomeReveal>
-            <H1
-              className="text-center text-5xl font-semibold md:text-6xl lg:text-7xl"
-              style={{
-                textAlign: "center",
-                fontFamily: "var(--font-sans, inherit)",
-              }}
-            >
+            <H1 className="text-center text-5xl font-semibold md:text-6xl lg:text-7xl">
               The multiplayer, multi-model AI system that compounds
               organizational intelligence
             </H1>
