@@ -332,8 +332,8 @@ impl FileStore {
             self.commit_content(&mut opened)
         })();
         if result.is_err() {
-            // The cached path was already resized. Do not leave those bytes
-            // associated with the previous committed blob after a failed CAS.
+            // No open handle remains to retry this truncate. Drop its changed
+            // local bytes so a later open fetches the saved version.
             if let Err(error) = self.discard_content(inode) {
                 warn!(inode = inode.0, %error, "failed to discard rejected truncate");
             }
@@ -364,9 +364,40 @@ impl FileStore {
             &upload,
             size,
         )?;
-        let node = Node::from_remote(remote)?;
-        self.content.update(inode, &node, size)?;
-        self.cache_node(node.clone())?;
+        self.finish_content_commit(opened, remote, size)
+    }
+
+    fn finish_content_commit(
+        &self,
+        opened: &mut OpenedContent,
+        remote: RemoteNode,
+        size: u64,
+    ) -> io::Result<Node> {
+        let inode = opened.node.inode;
+        let node = match Node::from_remote(remote) {
+            Ok(node) => node,
+            Err(error) => {
+                // Front accepted the new blob, but its response cannot be used.
+                // Do not leave changed bytes labelled with the previous blob ID.
+                if let Err(discard_error) = self.discard_content(inode) {
+                    warn!(inode = inode.0, %discard_error, "failed to discard content after an invalid commit response");
+                }
+                return Err(error);
+            }
+        };
+        if let Err(error) = self
+            .content
+            .update(inode, &node, size)
+            .and_then(|()| self.cache_node(node.clone()))
+        {
+            // The write is already durable. If both caches can be dropped, a
+            // later open can reload the new revision and this commit succeeded.
+            if let Err(discard_error) = self.discard_content(inode) {
+                warn!(inode = inode.0, %discard_error, "failed to discard content after a cache update error");
+                return Err(error);
+            }
+            warn!(inode = inode.0, %error, "discarded content after a cache update error");
+        }
         opened.expected_blob_id = node.blob_id.clone();
         opened.content_type = node.content_type().to_owned();
         opened.node = node.clone();
@@ -374,10 +405,11 @@ impl FileStore {
     }
 
     pub fn discard_content(&self, inode: INodeNo) -> io::Result<()> {
-        // A failed final commit must invalidate both caches. The local pathname
-        // may contain bytes that Front never accepted for the inode's old blob.
-        self.invalidate_node(inode)?;
-        self.content.discard(inode)
+        // Always try both. The local path may contain bytes that do not match
+        // the node still held in the metadata cache.
+        let metadata_result = self.invalidate_node(inode);
+        let content_result = self.content.discard(inode);
+        metadata_result.and(content_result)
     }
 
     fn metadata(&self) -> io::Result<MutexGuard<'_, MetadataCache>> {
@@ -595,7 +627,40 @@ mod tests {
     }
 
     #[test]
-    fn failed_handleless_truncate_discards_unpublished_cache_bytes() {
+    fn invalid_committed_response_discards_old_cache_entries() {
+        let directory = tempdir().expect("temporary directory");
+        let store = store(directory.path(), 1024);
+        let node = file(3, 3);
+        stage(&store, &node, b"new");
+        let mut opened = store
+            .open_content(node.inode, libc::O_RDWR)
+            .expect("open writer");
+
+        let invalid_remote = RemoteNode {
+            id: 0,
+            parent_id: Some(2),
+            name: node.name.clone(),
+            kind: RemoteNodeKind::File,
+            mode: node.mode,
+            size: node.size,
+            content_type: Some(node.content_type().to_owned()),
+            blob_id: Some("committed-blob".to_owned()),
+            created_at_ms: 0,
+            modified_at_ms: 0,
+        };
+        store
+            .finish_content_commit(&mut opened, invalid_remote, node.size)
+            .expect_err("reject invalid committed node");
+
+        assert!(!store.content_path(node.inode).exists());
+        assert!(store
+            .cached_node(node.inode)
+            .expect("metadata cache")
+            .is_none());
+    }
+
+    #[test]
+    fn failed_handleless_truncate_discards_changed_cache_bytes() {
         let directory = tempdir().expect("temporary directory");
         let store = store(directory.path(), 1024);
         let node = file(3, 3);

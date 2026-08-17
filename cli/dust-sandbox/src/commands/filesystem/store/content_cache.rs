@@ -173,8 +173,8 @@ impl ContentCache {
         match fs::remove_file(&cached.path) {
             Ok(()) => Ok(()),
             Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
-            // Keep the cache entry invalid even if local cleanup fails. A later
-            // open must fetch the committed blob instead of trusting these bytes.
+            // Keep the entry invalid even if removing its local file fails.
+            // A later open must fetch Front's committed version.
             Err(error) => Err(error),
         }
     }
