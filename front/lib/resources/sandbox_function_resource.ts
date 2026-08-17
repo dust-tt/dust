@@ -394,7 +394,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   static async fetchById(
     auth: Authenticator,
     sandboxFunctionId: string,
-    { capability }: { capability?: FrameShareCapability } = {}
+    capability?: FrameShareCapability
   ): Promise<SandboxFunctionResource | null> {
     if (!isResourceSId("sandbox_function", sandboxFunctionId)) {
       return null;
@@ -507,7 +507,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     auth: Authenticator,
     space: SpaceResource,
     slug: string,
-    { capability }: { capability?: FrameShareCapability } = {}
+    capability?: FrameShareCapability
   ): Promise<SandboxFunctionResource | null> {
     if (!space.isProject()) {
       return null;
@@ -524,11 +524,13 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   static async fetchByIdOrSlug(
     auth: Authenticator,
     functionIdOrSlug: string,
-    { capability }: { capability?: FrameShareCapability } = {}
+    capability?: FrameShareCapability
   ): Promise<SandboxFunctionResource | null> {
-    const sandboxFunction = await this.fetchById(auth, functionIdOrSlug, {
-      capability,
-    });
+    const sandboxFunction = await this.fetchById(
+      auth,
+      functionIdOrSlug,
+      capability
+    );
     if (sandboxFunction) {
       return sandboxFunction;
     }
@@ -546,7 +548,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       return null;
     }
 
-    return this.fetchBySpaceAndSlug(auth, space, slug, { capability });
+    return this.fetchBySpaceAndSlug(auth, space, slug, capability);
   }
 
   static async deleteAllForSpace(

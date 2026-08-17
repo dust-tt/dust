@@ -36,9 +36,11 @@ export async function resolveSandboxFunctionWithCapability(
     return null;
   }
 
-  return SandboxFunctionResource.fetchByIdOrSlug(auth, functionIdOrSlug, {
-    capability,
-  });
+  return SandboxFunctionResource.fetchByIdOrSlug(
+    auth,
+    functionIdOrSlug,
+    capability
+  );
 }
 
 /**
