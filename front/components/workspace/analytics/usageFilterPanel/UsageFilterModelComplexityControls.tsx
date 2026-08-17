@@ -1,7 +1,7 @@
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { FilterAvailabilityStatus } from "@app/components/workspace/analytics/filterPanel/FilterAvailabilityStatus";
 import type { UsageFilterModelOption } from "@app/components/workspace/analytics/usageFilter";
-import { UsageFilterAvailabilityStatus } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAvailabilityStatus";
 import { UsageFilterSection } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSection";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import {
@@ -58,7 +58,7 @@ function getModelSelectionStatus({
 
   return (
     <div className="flex items-center gap-2">
-      {isUnavailable && <UsageFilterAvailabilityStatus />}
+      {isUnavailable && <FilterAvailabilityStatus />}
       {isSelected && (
         <Icon visual={Check} size="sm" className="text-muted-foreground" />
       )}

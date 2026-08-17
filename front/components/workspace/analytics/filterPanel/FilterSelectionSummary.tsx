@@ -1,9 +1,7 @@
 import type {
-  UsageFilter,
-  UsageFilterCategory,
-} from "@app/components/workspace/analytics/usageFilter";
-import { USAGE_FILTER_CATEGORY_LABEL } from "@app/components/workspace/analytics/usageFilter";
-import { UsageFilterOptionIcon } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionIcon";
+  CategoryFilter,
+  FilterOptionBase,
+} from "@app/components/workspace/analytics/filterPanel/filterState";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Button,
@@ -16,28 +14,39 @@ import {
   NavigationListLabel,
   XClose,
 } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 import { useState } from "react";
 
-interface UsageFilterSelectionSummaryProps {
-  categoriesWithSelection: UsageFilterCategory[];
-  draftFilter: UsageFilter;
-  onClearCategory: (category: UsageFilterCategory) => void;
-  onRemoveOption: (category: UsageFilterCategory, id: string) => void;
+interface FilterSelectionSummaryProps<
+  Category extends string,
+  Option extends FilterOptionBase,
+> {
+  categoriesWithSelection: Category[];
+  categoryLabels: Record<Category, string>;
+  filter: CategoryFilter<Category, Option>;
+  onClearCategory: (category: Category) => void;
+  onRemoveOption: (category: Category, id: string) => void;
+  renderIcon?: (option: Option) => ReactNode;
 }
 
-export function UsageFilterSelectionSummary({
+export function FilterSelectionSummary<
+  Category extends string,
+  Option extends FilterOptionBase,
+>({
   categoriesWithSelection,
-  draftFilter,
+  categoryLabels,
+  filter,
   onClearCategory,
   onRemoveOption,
-}: UsageFilterSelectionSummaryProps) {
+  renderIcon,
+}: FilterSelectionSummaryProps<Category, Option>) {
   // Sections are open by default; a category lands here once the user
   // collapses it.
-  const [collapsedCategories, setCollapsedCategories] = useState<
-    Set<UsageFilterCategory>
-  >(new Set());
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<Category>>(
+    new Set()
+  );
 
-  const handleToggleCategoryOpen = (category: UsageFilterCategory) => {
+  const handleToggleCategoryOpen = (category: Category) => {
     setCollapsedCategories((current) => {
       const next = new Set(current);
       if (next.has(category)) {
@@ -50,7 +59,7 @@ export function UsageFilterSelectionSummary({
   };
 
   const selectionCount = categoriesWithSelection.reduce(
-    (total, category) => total + (draftFilter[category]?.length ?? 0),
+    (total, category) => total + (filter[category]?.length ?? 0),
     0
   );
 
@@ -68,7 +77,7 @@ export function UsageFilterSelectionSummary({
               <div key={category}>
                 <NavigationListLabel
                   className="bg-transparent font-medium"
-                  label={`${USAGE_FILTER_CATEGORY_LABEL[category]} (${draftFilter[category]?.length ?? 0})`}
+                  label={`${categoryLabels[category]} (${filter[category]?.length ?? 0})`}
                   action={
                     <div className="flex items-center gap-1">
                       <Button
@@ -89,12 +98,12 @@ export function UsageFilterSelectionSummary({
                 />
                 <Collapsible open={isCategoryOpen}>
                   <CollapsibleContent>
-                    {(draftFilter[category] ?? []).map((option) => (
+                    {(filter[category] ?? []).map((option) => (
                       <NavigationListItem
                         key={`${category}:${option.id}`}
                         avatar={
                           <div className="flex grow items-center gap-2 overflow-hidden">
-                            <UsageFilterOptionIcon option={option} />
+                            {renderIcon?.(option)}
                             <span className="label-sm overflow-hidden text-ellipsis whitespace-nowrap primary-dark">
                               {option.name}
                             </span>
