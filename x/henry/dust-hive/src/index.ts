@@ -428,15 +428,15 @@ cli
   );
 
 cli
-  .command("flag [name] [flagName]", "Toggle a feature flag on the workspace")
-  .option("-d, --disable", "Disable the flag (default is enable)")
+  .command("flag [name] [...flagNames]", "Toggle feature flags on the workspace")
+  .option("-d, --disable", "Disable the flags (default is enable)")
   .action(
     async (
       name: string | undefined,
-      flagName: string | undefined,
+      flagNames: string[] | undefined,
       options: { disable?: boolean }
     ) => {
-      await prepareAndRun(flagCommand(name, flagName, { disable: Boolean(options.disable) }));
+      await prepareAndRun(flagCommand(name, flagNames, { disable: Boolean(options.disable) }));
     }
   );
 

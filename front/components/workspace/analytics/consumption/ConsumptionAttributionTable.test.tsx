@@ -10,14 +10,25 @@ import {
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockUseConsumptionTop } = vi.hoisted(() => ({
+const {
+  mockUseConsumptionTop,
+  mockUseConsumptionExports,
+  mockUseStartConsumptionExport,
+} = vi.hoisted(() => ({
   mockUseConsumptionTop: vi.fn(),
+  mockUseConsumptionExports: vi.fn(),
+  mockUseStartConsumptionExport: vi.fn(),
 }));
 
 vi.mock("@app/hooks/useConsumptionTop", () => ({
   useConsumptionTop: mockUseConsumptionTop,
+}));
+
+vi.mock("@app/hooks/useConsumptionExports", () => ({
+  useConsumptionExports: mockUseConsumptionExports,
+  useStartConsumptionExport: mockUseStartConsumptionExport,
 }));
 
 vi.mock("@app/components/sparkle/ThemeContext", () => ({
@@ -64,12 +75,26 @@ function ControlledAttributionTable({
         setDimension(nextDimension);
       }}
       onAddFilter={vi.fn()}
+      onRemoveFilter={vi.fn()}
       onViewAll={vi.fn()}
     />
   );
 }
 
 describe("ConsumptionAttributionTable", () => {
+  beforeEach(() => {
+    mockUseConsumptionExports.mockReturnValue({
+      exports: [],
+      isGenerating: false,
+      isConsumptionExportsLoading: false,
+      isConsumptionExportsError: undefined,
+    });
+    mockUseStartConsumptionExport.mockReturnValue({
+      isStarting: false,
+      startConsumptionExport: vi.fn().mockResolvedValue(undefined),
+    });
+  });
+
   it("caps the available pages and fetches the selected fixed-size page", async () => {
     const rows = Array.from({ length: 1_025 }, (_, index) => ({
       id: `agent-${index + 1}`,
@@ -97,6 +122,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -154,6 +180,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -180,6 +207,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -205,6 +233,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -300,6 +329,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -322,6 +352,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="model"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -368,6 +399,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -395,6 +427,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -411,6 +444,7 @@ describe("ConsumptionAttributionTable", () => {
           modelDisplayName: null,
           credits: 100,
           avgCredits: 10,
+          previousCredits: null,
         },
       ],
       totalCredits: 100,
@@ -427,6 +461,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -440,6 +475,80 @@ describe("ConsumptionAttributionTable", () => {
 
       expect(animatedAncestor).toHaveStyle({ opacity: "1" });
     });
+  });
+
+  it("toggles the filter button between add and remove", () => {
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [
+        {
+          id: "agent-id",
+          name: "Research agent",
+          pictureUrl: null,
+          description: null,
+          icon: null,
+          modelId: null,
+          modelDisplayName: null,
+          credits: 100,
+          avgCredits: 10,
+        },
+      ],
+      totalCredits: 100,
+      totalCount: 1,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+
+    const onAddFilter = vi.fn();
+    const onRemoveFilter = vi.fn();
+
+    const { rerender } = render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="agent"
+        onDimensionChange={vi.fn()}
+        onAddFilter={onAddFilter}
+        onRemoveFilter={onRemoveFilter}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    const addButton = screen.getByRole("button", {
+      name: "Add Research agent to filters",
+    });
+    fireEvent.click(addButton);
+    expect(onAddFilter).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "agent-id" })
+    );
+    expect(onRemoveFilter).not.toHaveBeenCalled();
+
+    rerender(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="agent"
+        filter={{ agents: ["agent-id"] }}
+        onDimensionChange={vi.fn()}
+        onAddFilter={onAddFilter}
+        onRemoveFilter={onRemoveFilter}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    const removeButton = screen.getByRole("button", {
+      name: "Remove Research agent from filters",
+    });
+    expect(
+      screen.queryByRole("button", { name: "Add Research agent to filters" })
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(removeButton);
+    expect(onRemoveFilter).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "agent-id" })
+    );
+    expect(onAddFilter).toHaveBeenCalledTimes(1);
   });
 
   it("renders the skill identity and description without a model", () => {
@@ -469,11 +578,17 @@ describe("ConsumptionAttributionTable", () => {
         dimension="skill"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
 
-    const tooltip = screen.getByRole("tooltip");
+    const tooltip = screen
+      .getAllByRole("tooltip")
+      .find((candidate) => within(candidate).queryByText("Research"));
+    if (!tooltip) {
+      throw new Error("Expected a tooltip with the skill's identity card");
+    }
     expect(within(tooltip).getByText("Research")).toBeInTheDocument();
     expect(
       within(tooltip).getByText("Researches a topic in depth.")

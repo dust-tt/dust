@@ -1,13 +1,13 @@
 import { isToolGeneratedFilePath } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { SandboxFunctionRunContext } from "@app/lib/actions/types";
 import { executeQuery } from "@app/lib/api/actions/servers/query_tables_v2/helpers";
-import { getPodFilesBasePath } from "@app/lib/api/files/mount_path";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";
 import { createPersistedSandboxFunctionInvocationTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
 import { CoreAPI } from "@app/types/core/core_api";
+import { getPodFilesBasePath } from "@app/types/mount_path";
 import { Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { afterEach, describe, expect, it, vi } from "vitest";

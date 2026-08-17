@@ -1,4 +1,3 @@
-import { getPodStateBasePath } from "@app/lib/api/files/mount_path";
 import {
   recordPodStateHealth,
   traceSandboxStartupPhase,
@@ -15,6 +14,7 @@ import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
+import { getPodStateBasePath } from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";

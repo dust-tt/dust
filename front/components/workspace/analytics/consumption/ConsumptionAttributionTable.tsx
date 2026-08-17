@@ -5,29 +5,34 @@ import {
   isInternalAllowedIcon,
 } from "@app/components/resources/resources_icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
+import { ConsumptionExportPanel } from "@app/components/workspace/analytics/consumption/ConsumptionExportPanel";
 import {
   AvatarNameCell,
   CostShareCell,
+  EntityTooltipCard,
 } from "@app/components/workspace/analytics/creditsTableCells";
 import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useDebounce } from "@app/hooks/useDebounce";
-import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/constants";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import { normalizedConsumptionFilter } from "@app/lib/analytics/consumption_period";
+import {
+  DEFAULT_CONSUMPTION_PERIOD_DAYS,
+  normalizedConsumptionFilter,
+} from "@app/lib/analytics/consumption_period";
 import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
-import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/api/analytics/consumption/schema";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import { formatCredits } from "@app/lib/client/credits";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import {
+  ArrowNarrowDownRight,
+  ArrowNarrowUpRight,
   Avatar,
   Button,
   ChevronDown,
   ChevronUp,
+  cn,
   DataTable,
   DustLogoSquare,
   FilterFunnel01,
@@ -40,6 +45,7 @@ import {
   TabsList,
   TabsTrigger,
   Tooltip,
+  XCircle,
 } from "@dust-tt/sparkle";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import type { Transition, Variants } from "framer-motion";
@@ -116,16 +122,12 @@ function AttributionTooltipCard({
   row: ConsumptionTopRow;
   dimension: "agent" | "skill";
 }) {
-  const { isDark } = useTheme();
   const SkillAvatar = getSkillAvatarIcon(row.icon);
-  const ModelLogo = row.modelId
-    ? getModelLogoByModelId(row.modelId, isDark)
-    : undefined;
 
   return (
-    <div className="flex w-64 flex-col gap-3 py-1 text-left">
-      <div className="flex min-w-0 items-center gap-2">
-        {dimension === "agent" ? (
+    <EntityTooltipCard
+      avatar={
+        dimension === "agent" ? (
           <Avatar
             name={row.name}
             visual={row.pictureUrl ?? undefined}
@@ -133,28 +135,60 @@ function AttributionTooltipCard({
           />
         ) : (
           <SkillAvatar name={row.name} size="xs" />
-        )}
-        <span className="truncate text-base font-semibold text-primary-50">
-          {row.name}
-        </span>
-      </div>
-      <span className="text-sm leading-5 text-primary-200">
-        {row.description}
-      </span>
-      {dimension === "agent" && row.modelDisplayName && (
-        <div className="flex items-center gap-2">
-          <span className="flex size-5 shrink-0 items-center justify-center rounded-sm bg-primary-50">
-            <Icon
-              visual={ModelLogo ?? DustLogoSquare}
-              size="xs"
-              className="text-primary-950"
-            />
-          </span>
-          <span className="text-sm font-medium text-primary-50">
-            {row.modelDisplayName}
-          </span>
-        </div>
+        )
+      }
+      name={row.name}
+      description={row.description}
+      modelId={dimension === "agent" ? row.modelId : null}
+      modelDisplayName={dimension === "agent" ? row.modelDisplayName : null}
+    />
+  );
+}
+
+// Growth is undefined (not just zero) with no prior credits to grow from, so
+// callers must distinguish that case from an actual percentage.
+function growthPercent(
+  currentCredits: number,
+  previousCredits: number | null
+): number | null {
+  return previousCredits && previousCredits > 0
+    ? ((currentCredits - previousCredits) / previousCredits) * 100
+    : null;
+}
+
+function VsPrevCell({
+  credits,
+  previousCredits,
+}: {
+  credits: number;
+  previousCredits: number | null;
+}) {
+  const growth = growthPercent(credits, previousCredits);
+
+  if (growth === null) {
+    return (
+      <DataTable.CellContent className="w-full justify-end text-right">
+        <Tooltip
+          label="Not enough data to compute"
+          tooltipTriggerAsChild
+          trigger={<span className="text-sm text-muted-foreground">N.A</span>}
+        />
+      </DataTable.CellContent>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex w-full items-center justify-end gap-1 text-right text-sm tabular-nums",
+        growth > 100 ? "text-highlight-600" : "text-muted-foreground"
       )}
+    >
+      <Icon
+        visual={growth >= 0 ? ArrowNarrowUpRight : ArrowNarrowDownRight}
+        size="xs"
+      />
+      <span>{Math.round(Math.abs(growth))}%</span>
     </div>
   );
 }
@@ -285,6 +319,17 @@ function buildColumns({
       ),
     },
     {
+      id: "vsPrev",
+      header: "vs prev",
+      meta: { sizeRatio: 18, headerAlign: "right" },
+      cell: (info) => (
+        <VsPrevCell
+          credits={info.row.original.credits}
+          previousCredits={info.row.original.previousCredits}
+        />
+      ),
+    },
+    {
       id: "details",
       header: "",
       enableSorting: false,
@@ -320,21 +365,24 @@ function buildColumns({
         return (
           <DataTable.CellContent className="w-full justify-end">
             <Button
-              icon={FilterFunnel01}
+              icon={isFilterSelected ? XCircle : FilterFunnel01}
               variant="ghost-secondary"
               size="xs"
-              disabled={isFilterSelected}
               tooltip={
-                isFilterSelected ? "Already in filters" : "Add to filters"
+                isFilterSelected ? "Remove from filters" : "Add to filters"
               }
               aria-label={
                 isFilterSelected
-                  ? `${row.name} is already in filters`
+                  ? `Remove ${row.name} from filters`
                   : `Add ${row.name} to filters`
               }
               onClick={(event) => {
                 event.stopPropagation();
-                row.onAddFilter();
+                if (isFilterSelected) {
+                  row.onRemoveFilter();
+                } else {
+                  row.onAddFilter();
+                }
               }}
             />
           </DataTable.CellContent>
@@ -350,6 +398,7 @@ interface AttributionRowsProps {
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
   onAddFilter: (row: ConsumptionTopRow) => void;
+  onRemoveFilter: (row: ConsumptionTopRow) => void;
   search: string;
   onViewAll: (
     dimension: ConsumptionDimension,
@@ -363,6 +412,7 @@ function AttributionRows({
   period,
   filter,
   onAddFilter,
+  onRemoveFilter,
   search,
   onViewAll,
 }: AttributionRowsProps) {
@@ -428,8 +478,9 @@ function AttributionRows({
         onClick: () =>
           setExpandedRowId((current) => (current === row.id ? null : row.id)),
         onAddFilter: () => onAddFilter(row),
+        onRemoveFilter: () => onRemoveFilter(row),
       })),
-    [rows, onAddFilter]
+    [rows, onAddFilter, onRemoveFilter]
   );
   const isLoading = isTopLoading;
   const skeletonRowCount =
@@ -535,6 +586,7 @@ interface ConsumptionAttributionTableProps {
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
   onAddFilter: (row: ConsumptionTopRow) => void;
+  onRemoveFilter: (row: ConsumptionTopRow) => void;
   // Owned by the page: the selected tab also drives the chart's breakdown.
   dimension: ConsumptionDimension;
   onDimensionChange: (dimension: ConsumptionDimension) => void;
@@ -549,6 +601,7 @@ export function ConsumptionAttributionTable({
   period,
   filter,
   onAddFilter,
+  onRemoveFilter,
   dimension,
   onDimensionChange,
   onViewAll,
@@ -574,19 +627,14 @@ export function ConsumptionAttributionTable({
     filter: normalizedConsumptionFilter(filter),
   };
 
-  // Every raw consumption line with no aggregation, for users who want to
-  // build their own analysis on top of it.
-  const rawCsvDownload = useDownloadCsv({
-    url: `/api/w/${workspaceId}/analytics/consumption/export-raw`,
-    filename: `dust_consumption_lines_export_${workspaceId}.zip`,
-    body: exportBody,
-  });
-
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-4">
         <h3 className="text-base font-semibold text-foreground">Attribution</h3>
-        <CsvDownloadButton {...rawCsvDownload} label="Download raw data" />
+        <ConsumptionExportPanel
+          workspaceId={workspaceId}
+          exportBody={exportBody}
+        />
       </div>
       <div className="rounded-lg border border-border bg-panel-background p-4">
         <div className="flex flex-col gap-3">
@@ -659,6 +707,7 @@ export function ConsumptionAttributionTable({
                     period={period}
                     filter={filter}
                     onAddFilter={onAddFilter}
+                    onRemoveFilter={onRemoveFilter}
                     search={debouncedValue}
                     onViewAll={onViewAll}
                   />

@@ -1,9 +1,11 @@
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import { normalizedConsumptionFilter } from "@app/lib/analytics/consumption_period";
+import {
+  DEFAULT_CONSUMPTION_PERIOD_DAYS,
+  normalizedConsumptionFilter,
+} from "@app/lib/analytics/consumption_period";
 import type { ConsumptionTopBody } from "@app/lib/api/analytics/consumption/schema";
-import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/api/analytics/consumption/schema";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/consumption/top_agents";
 import type { GetConsumptionTopApiKeysResponse } from "@app/lib/api/analytics/consumption/top_api_keys";
@@ -38,6 +40,7 @@ export type ConsumptionTopRow = {
   modelDisplayName: string | null;
   credits: number;
   avgCredits: number;
+  previousCredits: number | null;
 };
 
 type ConsumptionTopResponse =
@@ -65,6 +68,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       modelDisplayName: row.modelDisplayName,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
     }));
   }
   if ("users" in data) {
@@ -78,6 +82,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
     }));
   }
   if ("groups" in data) {
@@ -91,6 +96,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
     }));
   }
   if ("models" in data) {
@@ -104,6 +110,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
     }));
   }
   if ("tools" in data) {
@@ -117,6 +124,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerInvocation,
+      previousCredits: row.previousCredits,
     }));
   }
   if ("skills" in data) {
@@ -130,6 +138,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerInvocation,
+      previousCredits: row.previousCredits,
     }));
   }
   if ("sources" in data) {
@@ -143,6 +152,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
     }));
   }
   if ("apiKeys" in data) {
@@ -156,6 +166,7 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
     }));
   }
   assertNeverAndIgnore(data);

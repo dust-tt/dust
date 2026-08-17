@@ -1,7 +1,7 @@
 import { getDataSources } from "@app/lib/api/data_sources";
+import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import type { Authenticator } from "@app/lib/auth";
 import { doesConnectorProviderCountTowardConnectionsLimit } from "@app/lib/data_sources";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspacePlanLimitOverrideResource } from "@app/lib/resources/workspace_plan_limit_override_resource";
 import type { PlanType } from "@app/types/plan";
@@ -46,9 +46,7 @@ export async function checkWorkspaceFitsPlanLimits(
     planLimitOverride?.maxConnectionsCount ?? limits.connections.count;
 
   if (maxUsers !== -1) {
-    const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
-      workspace.sId
-    );
+    const activeSeats = await countActiveSeatsForWorkspace(workspace.sId);
     if (activeSeats > maxUsers) {
       violations.push(
         `active seats (${activeSeats}) exceed plan maxUsers (${maxUsers})`

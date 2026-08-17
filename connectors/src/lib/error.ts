@@ -115,6 +115,18 @@ export class RemoteDatabaseConnectionNotReadonlyError extends Error {
   }
 }
 
+// An external provider configuration prevents the connector from making
+// progress and requires customer action before synchronization can resume.
+export class ThirdPartyConfigurationError extends Error {
+  declare cause?: Error;
+
+  constructor(readonly innerError?: Error) {
+    super(innerError?.message);
+    this.cause = innerError;
+    this.name = "ThirdPartyConfigurationError";
+  }
+}
+
 export class WorkspaceQuotaExceededError extends Error {
   constructor() {
     super(

@@ -76,6 +76,7 @@ import {
   isNonCreditPricedUserSpendLimitReached,
   isUserSpendLimitRateCapReached,
 } from "@app/lib/api/users/spend_limit";
+import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { isModelAvailable } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -112,12 +113,10 @@ import type { RunningAgentMessageContext } from "@app/lib/resources/conversation
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
-
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
@@ -3003,9 +3002,7 @@ async function isMessagesLimitReached(
   }
 
   // Checking rate limit
-  const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
-    owner.sId
-  );
+  const activeSeats = await countActiveSeatsForWorkspace(owner.sId);
 
   const userMessagesLimit = 10 * activeSeats;
   const remainingMessages = await rateLimiter({

@@ -1,9 +1,10 @@
+import { MAX_CONVERSATION_DEPTH } from "@app/lib/api/assistant/conversation/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -623,12 +624,10 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
   }
 
   /**
-   * Fetches every agent message and persisted attribution facts belonging directly to a
-   * user-visible conversation. Superseded and deleted message versions are retained because any
-   * execution that ran remains part of the conversation's bill.
-   *
-   * TODO(2026-08-04 FLAV) Include run-agent descendants once their lineage can be traversed without
-   * a recursive read-time query.
+   * Fetches every agent message and persisted attribution fact belonging to a
+   * user-visible conversation or one of its recursively spawned `run_agent`
+   * conversations. Superseded and deleted message versions are retained because
+   * any execution that ran remains part of the conversation's bill.
    */
   static async fetchConversationConsumptionFacts(
     auth: Authenticator,
@@ -642,7 +641,71 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
   ): Promise<{
     messages: ConversationConsumptionMessageFacts[];
   }> {
+    const messages: ConversationConsumptionMessageFacts[] = [];
+    const visitedConversationIds = new Set([conversation.sId]);
+    let conversations = [conversation];
+
+    for (
+      let depth = 0;
+      conversations.length > 0 && depth <= MAX_CONVERSATION_DEPTH;
+      depth++
+    ) {
+      const directFacts = await this.fetchDirectConversationsConsumptionFacts(
+        auth,
+        { conversations, maxAttributionVersion }
+      );
+      messages.push(...directFacts.messages);
+
+      if (depth === MAX_CONVERSATION_DEPTH) {
+        break;
+      }
+
+      const childConversationIds = [
+        ...new Set(
+          directFacts.messages
+            .flatMap((message) =>
+              message.actions.map((action) =>
+                action.getRunAgentChildConversationId()
+              )
+            )
+            .filter(
+              (childConversationId): childConversationId is string =>
+                childConversationId !== null &&
+                !visitedConversationIds.has(childConversationId)
+            )
+        ),
+      ];
+
+      for (const childConversationId of childConversationIds) {
+        visitedConversationIds.add(childConversationId);
+      }
+      conversations = await ConversationResource.fetchByIds(
+        auth,
+        childConversationIds,
+        { includeDeleted: true }
+      );
+    }
+
+    return { messages };
+  }
+
+  private static async fetchDirectConversationsConsumptionFacts(
+    auth: Authenticator,
+    {
+      conversations,
+      maxAttributionVersion,
+    }: {
+      conversations: ConversationResource[];
+      maxAttributionVersion: number;
+    }
+  ): Promise<{
+    messages: ConversationConsumptionMessageFacts[];
+  }> {
     const workspaceId = auth.getNonNullableWorkspace().id;
+    const conversationModelIds = conversations.map(
+      (conversation) => conversation.id
+    );
+
     // Agent messages own the authoritative bill and the execution metadata needed to explain it.
     const agentMessages = await AgentMessageModel.findAll({
       attributes: [
@@ -654,7 +717,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       ],
       where: {
         workspaceId,
-        conversationId: conversation.id,
+        conversationId: { [Op.in]: conversationModelIds },
       },
       order: [["id", "ASC"]],
     });
@@ -665,26 +728,21 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       dustRunIds: agentMessage.runIds ?? [],
       status: agentMessage.status,
     }));
-    const agentMessageModelIds = messageFacts.map(
+    const fetchedAgentMessageModelIds = messageFacts.map(
       (message) => message.agentMessageModelId
     );
 
-    // Attribution rows are conversation-scoped. Actions are still attached through their message.
-    const [itemModels, actions] = await Promise.all([
-      this.model.findAll({
-        where: {
-          workspaceId,
-          conversationId: conversation.id,
-          attributionVersion: { [Op.lte]: maxAttributionVersion },
-        },
-        order: [
-          ["agentMessageId", "ASC"],
-          ["id", "ASC"],
-        ],
+    // Attribution rows and actions stay attached to their owning message across conversations.
+    const [items, actions] = await Promise.all([
+      this.listByAgentMessageModelIds(auth, {
+        agentMessageModelIds: fetchedAgentMessageModelIds,
+        maxAttributionVersion,
       }),
-      AgentMCPActionResource.listByAgentMessageIds(auth, agentMessageModelIds),
+      AgentMCPActionResource.listByAgentMessageIds(
+        auth,
+        fetchedAgentMessageModelIds
+      ),
     ]);
-    const items = itemModels.map((item) => new this(this.model, item.get()));
 
     // Rebuild per-message facts because reconciliation happens independently for each bill.
     const itemsByMessageModelId = new Map<

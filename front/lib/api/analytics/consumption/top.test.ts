@@ -9,10 +9,13 @@ import { fetchConsumptionTopSkills } from "@app/lib/api/analytics/consumption/to
 import { fetchConsumptionTopSources } from "@app/lib/api/analytics/consumption/top_sources";
 import { fetchConsumptionTopTools } from "@app/lib/api/analytics/consumption/top_tools";
 import { fetchConsumptionTopUsers } from "@app/lib/api/analytics/consumption/top_users";
-import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
+import {
+  ElasticsearchError,
+  searchConsumptionAnalytics,
+} from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock(import("@app/lib/api/elasticsearch"), async (orig) => {
@@ -90,6 +93,12 @@ function lastSearchCall() {
   return calls[calls.length - 1];
 }
 
+// The ranking search — always the first call, since a second call for the
+// previous-period comparison follows it whenever the ranking has keys.
+function rankingSearchCall() {
+  return vi.mocked(searchConsumptionAnalytics).mock.calls[0];
+}
+
 describe("consumption top rankings", () => {
   afterEach(() => {
     vi.mocked(searchConsumptionAnalytics).mockReset();
@@ -147,6 +156,9 @@ describe("consumption top rankings", () => {
         modelId: "claude-4-sonnet",
         modelDisplayName: "Claude 4 Sonnet",
         credits: 3,
+        // The mocked search response is reused for the previous-period
+        // query too, so the previous credits come out equal.
+        previousCredits: 3,
         // The 7 documents of the bucket belong to 2 messages.
         messageCount: 2,
         avgCreditsPerMessage: 1.5,
@@ -155,7 +167,7 @@ describe("consumption top rankings", () => {
 
     // Ranked on agent.id by gross credits, with a per-message cardinality
     // sub-agg — a message spans several documents.
-    const [query, options] = lastSearchCall();
+    const [query, options] = rankingSearchCall();
     expect(query.bool?.filter).toContainEqual({
       range: { completed_at: { gte: PERIOD.startDate, lt: PERIOD.endDate } },
     });
@@ -229,9 +241,11 @@ describe("consumption top rankings", () => {
     ]);
     expect(result.value.hasMore).toBe(true);
     expect(result.value.totalCount).toBe(4);
-    expect(lastSearchCall()[1]?.aggregations?.by_group?.terms).toMatchObject({
-      size: 3,
-    });
+    expect(rankingSearchCall()[1]?.aggregations?.by_group?.terms).toMatchObject(
+      {
+        size: 3,
+      }
+    );
   });
 
   it.each([
@@ -348,6 +362,7 @@ describe("consumption top rankings", () => {
         name: "Web Search & Browse",
         icon: "Globe01Icon",
         credits: 2,
+        previousCredits: 2,
         // 4 tool documents, one per call — not a message cardinality.
         invocationCount: 4,
         avgCreditsPerInvocation: 0.5,
@@ -401,12 +416,15 @@ describe("consumption top rankings", () => {
         apiKeyName: "Production key",
         name: "Production key",
         credits: 3,
+        // The filtered ranking's response nests buckets under `ranking`,
+        // which the previous-period query doesn't produce, so no match.
+        previousCredits: null,
         messageCount: 2,
         avgCreditsPerMessage: 1.5,
       },
     ]);
 
-    const [, options] = lastSearchCall();
+    const [, options] = rankingSearchCall();
     expect(listConsumptionFacetCatalogDimension).toHaveBeenCalledWith(
       auth,
       "api_key"
@@ -463,6 +481,7 @@ describe("consumption top rankings", () => {
         description: "Researches a topic in depth",
         icon: "search",
         credits: 2.5,
+        previousCredits: 2.5,
         invocationCount: 5,
         avgCreditsPerInvocation: 0.5,
       },
@@ -503,6 +522,7 @@ describe("consumption top rankings", () => {
       name: "Jane Doe",
       pictureUrl: null,
       credits: 2,
+      previousCredits: 2,
       messageCount: 4,
       avgCreditsPerMessage: 0.5,
     });
@@ -523,6 +543,7 @@ describe("consumption top rankings", () => {
       groupId: "key1",
       name: "Engineering",
       credits: 2,
+      previousCredits: 2,
       messageCount: 4,
       avgCreditsPerMessage: 0.5,
     });
@@ -543,6 +564,7 @@ describe("consumption top rankings", () => {
       modelId: "key1",
       name: "Claude 4 Sonnet",
       credits: 2,
+      previousCredits: 2,
       messageCount: 4,
       avgCreditsPerMessage: 0.5,
     });
@@ -579,6 +601,7 @@ describe("consumption top rankings", () => {
       source: "web",
       name: "Conversation",
       credits: 4,
+      previousCredits: 4,
       messageCount: 4,
       avgCreditsPerMessage: 1,
     });
@@ -664,5 +687,42 @@ describe("consumption top rankings", () => {
       return;
     }
     expect(result.value.agents[0].avgCreditsPerMessage).toBe(0);
+  });
+
+  it("still returns the ranking when the previous-period lookup fails", async () => {
+    const { auth } = await setup();
+    mockLabels({ agent1: "@dust" });
+    // The ranking query succeeds, then the previous-period query fails.
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValueOnce(
+      esResponse({
+        by_group: {
+          buckets: [
+            {
+              key: "agent1",
+              doc_count: 1,
+              credit_micro: { value: 3_000_000 },
+              messages: { value: 1 },
+            },
+          ],
+        },
+        total_count: { value: 1 },
+        total_credit_micro: { value: 3_000_000 },
+      })
+    );
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      new Err(new ElasticsearchError("connection_error", "boom"))
+    );
+
+    const result = await fetchConsumptionTopAgents(auth, {
+      period: PERIOD,
+      limit: 10,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.agents[0].credits).toBe(3);
+    expect(result.value.agents[0].previousCredits).toBeNull();
   });
 });

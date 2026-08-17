@@ -1,7 +1,7 @@
-import type { SandboxOnlyMount } from "@app/lib/api/file_system/types";
-import { getPodSandboxFunctionsMountPoint } from "@app/lib/api/files/mount_path";
 import { POD_STATE_REPLICA_MOUNT_POINT } from "@app/lib/api/sandbox/db";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import type { SandboxOnlyMount } from "@app/types/file_system";
+import { getPodSandboxFunctionsMountPoint } from "@app/types/mount_path";
 
 /**
  * The pod sandbox's sandbox-only mounts, shared by the bring-up path

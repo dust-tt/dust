@@ -1,4 +1,5 @@
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
+import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import {
   SKILL_INSTRUCTIONS_LABEL,
@@ -64,6 +65,7 @@ app.post(
         userFacingDescription,
         agentFacingDescription,
         instructions,
+        instructionsHtml: convertMarkdownToBlockHtml(instructions),
         icon: skillIcon,
         availability: DEFAULT_SKILL_AVAILABILITY,
       },

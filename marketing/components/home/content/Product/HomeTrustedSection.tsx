@@ -212,7 +212,7 @@ export function HomeTrustedSection() {
   const logos = useLogoSet();
   const marqueeLogos = [...logos, ...logos];
   return (
-    <section className="flex w-full items-center justify-center bg-linear-to-b from-background via-blue-50/40 to-blue-100/60 pb-20 pt-12">
+    <section className="flex w-full items-center justify-center bg-background pb-20 pt-12">
       <style dangerouslySetInnerHTML={{ __html: MARQUEE_CSS }} />
       <div className="mx-auto flex w-full max-w-[1280px] flex-col items-center justify-center gap-12 text-center">
         <HomeReveal>

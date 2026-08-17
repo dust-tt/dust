@@ -1,8 +1,4 @@
 import config from "@app/lib/api/config";
-import {
-  getPodSandboxFunctionsMountPoint,
-  podDatabaseExecEnvVars,
-} from "@app/lib/api/files/mount_path";
 import type {
   PokePodFunctionInvocation,
   PokePodFunctionInvocationDetails,
@@ -59,6 +55,10 @@ import type {
   SandboxFunctionInvocationStatus,
   SandboxFunctionInvocationType,
 } from "@app/types/api/sandbox_functions";
+import {
+  getPodSandboxFunctionsMountPoint,
+  podDatabaseExecEnvVars,
+} from "@app/types/mount_path";
 import { isDevelopment } from "@app/types/shared/env";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";

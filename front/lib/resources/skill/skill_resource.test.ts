@@ -1,4 +1,5 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
@@ -16,12 +17,11 @@ import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/glob
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { serializeSkillTag } from "@app/lib/skills/format";
-import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
@@ -35,6 +35,10 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/permissions/legacy_acls", () => ({
+  isLegacyAclsEnabled: vi.fn(() => false),
+}));
 
 describe("SkillResource", () => {
   let testContext: Awaited<ReturnType<typeof createResourceTest>>;
@@ -2798,14 +2802,15 @@ describe("SkillResource", () => {
     });
   });
 
-  describe("group_permissions shadow-compare", () => {
-    // A skill's editor group grants [read, write, admin]; a "user" role grants only read, so write
-    // and admin flow purely through the group — isolating the group-vs-table check.
+  describe("group_permissions as the source of truth", () => {
+    // A skill's editor group grants [read, write, admin] through its group_permissions row; a
+    // "user" role grants only read, so write and admin flow purely through the grant.
     //
     // Returns a `buildEditorAuth` thunk rather than a ready authenticator: an Authenticator
     // snapshots its grants at construction, so callers must build it AFTER any grant mutation.
     async function setupSkillWithEditor(name: string): Promise<{
       skill: SkillResource;
+      editor: UserResource;
       buildEditorAuth: () => Promise<Authenticator>;
     }> {
       const skill = await SkillFactory.create(testContext.authenticator, {
@@ -2823,6 +2828,7 @@ describe("SkillResource", () => {
 
       return {
         skill,
+        editor,
         buildEditorAuth: () =>
           Authenticator.fromUserIdAndWorkspaceId(
             editor.sId,
@@ -2831,77 +2837,76 @@ describe("SkillResource", () => {
       };
     }
 
-    // Simulates a skill created before the dual-write shipped: the association exists but the
-    // table holds no grant for it.
-    async function clearSkillGrants(skill: SkillResource): Promise<void> {
+    it("grants write and admin to an editor through the table", async () => {
+      const { skill, buildEditorAuth } =
+        await setupSkillWithEditor("Governed Skill");
+      const editorAuth = await buildEditorAuth();
+
+      expect(skill.canWrite(editorAuth)).toBe(true);
+      expect(skill.canAdministrate(editorAuth)).toBe(true);
+    });
+
+    it("denies an editor whose grant is missing, despite group membership", async () => {
+      // The decision now comes from group_permissions alone: dropping the row revokes access even
+      // though the user is still a member of the editor group.
+      const { skill, editor, buildEditorAuth } =
+        await setupSkillWithEditor("Ungranted Skill");
       await GroupPermissionResource.deleteAllForResource(
         testContext.authenticator,
         { resourceType: "skill", resourceId: skill.id }
       );
-    }
 
-    it("logs a mismatch when the table diverges from the editor-group rules", async () => {
+      const editorAuth = await buildEditorAuth();
+
+      // Membership is untouched — only the grant is gone.
+      const members = await skill.editorGroup!.getActiveMembers(editorAuth);
+      expect(members.map((m) => m.sId)).toContain(editor.sId);
+      expect(skill.canWrite(editorAuth)).toBe(false);
+      expect(skill.canAdministrate(editorAuth)).toBe(false);
+    });
+
+    it("falls back to the editor group when the use_legacy_acls kill switch is on", async () => {
       const { skill, buildEditorAuth } = await setupSkillWithEditor(
-        "Shadow Mismatch Skill"
+        "Legacy Switch Skill"
       );
-      await clearSkillGrants(skill);
-      await FeatureFlagFactory.basic(
+      await GroupPermissionResource.deleteAllForResource(
         testContext.authenticator,
-        "group_permissions_shadow"
+        { resourceType: "skill", resourceId: skill.id }
       );
-
       const editorAuth = await buildEditorAuth();
-      const warn = vi.spyOn(logger, "warn");
 
-      // Served result is unchanged: the editor group still grants write via code.
+      // No grant row: the table-backed path denies.
+      expect(skill.canWrite(editorAuth)).toBe(false);
+
+      // The kill-switch restores the pre-migration decision, taken from group membership.
+      vi.mocked(isLegacyAclsEnabled).mockReturnValue(true);
       expect(skill.canWrite(editorAuth)).toBe(true);
-
-      await vi.waitFor(() =>
-        expect(warn).toHaveBeenCalledWith(
-          expect.objectContaining({
-            resource: "skill",
-            skillId: skill.sId,
-            permission: "write",
-          }),
-          "group_permissions_shadow_mismatch"
-        )
-      );
+      expect(skill.canAdministrate(editorAuth)).toBe(true);
     });
 
-    it("keeps the governance role rules in sync with the editor-group ACL", async () => {
-      // `governanceAcls` restates the role rules so it can stand alone at the flip; they must stay
-      // identical to what the skill_editors group declares while both paths coexist.
-      const { skill, buildEditorAuth } = await setupSkillWithEditor(
-        "Shadow Role Rules Skill"
-      );
-      const editorAuth = await buildEditorAuth();
+    it("keeps a non-editor out, and lets a workspace admin administrate but not write", async () => {
+      const { skill } = await setupSkillWithEditor("Role Rules Skill");
 
-      const byRole = (grants: { role: string }[]) =>
-        [...grants].sort((a, b) => a.role.localeCompare(b.role));
+      const authFor = async (role: "user" | "admin") => {
+        const user = await UserFactory.basic();
+        await MembershipFactory.associate(testContext.workspace, user, {
+          role,
+        });
+        return Authenticator.fromUserIdAndWorkspaceId(
+          user.sId,
+          testContext.workspace.sId
+        );
+      };
 
-      expect(byRole(skill.governanceAcls(editorAuth)[0].roles)).toEqual(
-        byRole(skill.editorGroup!.getAccessControlLists(editorAuth)[0].roles)
-      );
-    });
+      const otherAuth = await authFor("user");
+      expect(skill.canWrite(otherAuth)).toBe(false);
+      expect(skill.canAdministrate(otherAuth)).toBe(false);
 
-    it("never logs a mismatch while the flag is off", async () => {
-      const { skill, buildEditorAuth } = await setupSkillWithEditor(
-        "Shadow Flag Off Skill"
-      );
-      await clearSkillGrants(skill);
-
-      const editorAuth = await buildEditorAuth();
-      const warn = vi.spyOn(logger, "warn");
-
-      expect(skill.canWrite(editorAuth)).toBe(true);
-
-      // Flush the fire-and-forget; with the flag off it short-circuits before comparing.
-      await new Promise((resolve) => setImmediate(resolve));
-      await new Promise((resolve) => setImmediate(resolve));
-      expect(warn).not.toHaveBeenCalledWith(
-        expect.anything(),
-        "group_permissions_shadow_mismatch"
-      );
+      // An admin who is not an editor: the role rules grant admin (manage the editor list) but
+      // never write — editing the skill itself stays with its editors.
+      const adminAuth = await authFor("admin");
+      expect(skill.canAdministrate(adminAuth)).toBe(true);
+      expect(skill.canWrite(adminAuth)).toBe(false);
     });
   });
 });

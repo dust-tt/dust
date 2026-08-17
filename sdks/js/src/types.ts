@@ -794,6 +794,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "usage_page_read_only"
   | "enable_analytics_consumption"
+  | "enable_analytics_automations"
   | "pricing_groups"
   | "workspace_analytics"
   | "xai_feature"
@@ -3207,6 +3208,11 @@ export const PublicFrameResponseBodySchema = z.object({
   // functions by bare name. Only sent to a viewer who can read the Pod: nobody else can invoke a pod
   // function anyway, so there is no reason to hand out the Pod's layout.
   framePath: z.string().nullable().optional(),
+  // Standing of the authenticated viewer in the Pod hosting the Frame, so the share page can
+  // thread the same identity bits pod hosts do. Display-only: invocations re-authorize
+  // server-side. Absent means false.
+  isPodMember: z.boolean().optional(),
+  isPodEditor: z.boolean().optional(),
 });
 
 export type PublicFrameResponseBodyType = z.infer<

@@ -1,10 +1,9 @@
+import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/period";
 import { CONSUMPTION_SCOPE_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import { z } from "zod";
 
 /** Shared validation for consumption analytics periods and filters. */
-
-export const DEFAULT_CONSUMPTION_PERIOD_DAYS = 30;
 
 export const DEFAULT_CONSUMPTION_TOP_LIMIT = 10;
 
@@ -13,7 +12,7 @@ const ConsumptionFilterSchema = z.record(
   z.string().array()
 );
 
-const ConsumptionPeriodSchema = z.object({
+export const ConsumptionPeriodSchema = z.object({
   period: z.enum(["cycle", "days"]).optional().default("cycle"),
   days: z.coerce
     .number()

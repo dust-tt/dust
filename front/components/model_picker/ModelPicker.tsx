@@ -72,6 +72,8 @@ export interface ModelPickerProps {
   ) => void;
   // Lets keyboard `/` Pick model commit through the same path as the button picker.
   commitApiRef?: MutableRefObject<((selection: Selection) => void) | null>;
+  // Lets components outside the input bar (e.g. the sidebar banner) open the menu.
+  openApiRef?: MutableRefObject<(() => void) | null>;
 }
 
 export function ModelPicker({
@@ -89,6 +91,7 @@ export function ModelPicker({
   stickyModelOverride,
   setStickyModelOverride,
   commitApiRef,
+  openApiRef,
 }: ModelPickerProps) {
   const { hasFeature } = useFeatureFlags();
   const hasModelsPicker = hasFeature("models_picker");
@@ -201,6 +204,10 @@ export function ModelPicker({
 
   if (commitApiRef) {
     commitApiRef.current = commit;
+  }
+
+  if (openApiRef) {
+    openApiRef.current = () => setIsOpen(true);
   }
 
   // Picking a concrete model (or nudging its effort slider) must keep the menu

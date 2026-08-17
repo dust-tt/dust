@@ -1,4 +1,4 @@
-import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
+import { SCOPED_PREFIX_POD } from "@app/types/file_system";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -24,7 +24,7 @@ import { Err, Ok } from "@app/types/shared/result";
  * and the invocation request carries no Frame identity. This module is the shared contract so the host
  * and front's own path derivation compute the same prefix from the same folder name.
  *
- * (`@app/lib/api/file_system/types` is import-free, so importing it here keeps this module safe to
+ * (`@app/types/file_system` is import-free, so importing it here keeps this module safe to
  * pull into the browser bundle.)
  */
 

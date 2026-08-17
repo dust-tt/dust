@@ -28,8 +28,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = [
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Listing Teams teams",
-      done: "List Teams teams",
+      running: "Listing joined teams",
+      done: "List joined teams",
     },
     toolCostCategory: "advanced",
     freeUsage: false,

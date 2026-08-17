@@ -806,7 +806,7 @@ describe("MCPServerViewResource", () => {
     });
   });
 
-  describe("toolsMetadata", () => {
+  describe("display and tool metadata", () => {
     let workspace: WorkspaceType;
     let adminAuth: Authenticator;
 
@@ -815,6 +815,32 @@ describe("MCPServerViewResource", () => {
       adminAuth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       await SpaceFactory.defaults(adminAuth);
       await FeatureFlagFactory.basic(adminAuth, "dev_mcp_actions");
+    });
+
+    it("lists display metadata for internal and remote servers", async () => {
+      const internalServer = await InternalMCPServerInMemoryResource.makeNew(
+        adminAuth,
+        { name: "ashby", useCase: null }
+      );
+      const remoteServer = await RemoteMCPServerFactory.create(workspace);
+
+      const metadata =
+        await MCPServerViewResource.listDisplayMetadataByWorkspace(adminAuth);
+
+      expect(metadata).toContainEqual({
+        serverType: "internal",
+        viewName: null,
+        mcpServerId: internalServer.id,
+        serverName: internalServer.toJSON().name,
+        icon: internalServer.toJSON().icon,
+      });
+      expect(metadata).toContainEqual({
+        serverType: "remote",
+        viewName: null,
+        mcpServerId: remoteServer.sId,
+        serverName: remoteServer.cachedName,
+        icon: remoteServer.icon,
+      });
     });
 
     it("should populate toolsMetadata for internal server views", async () => {

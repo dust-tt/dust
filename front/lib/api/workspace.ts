@@ -1,4 +1,5 @@
 import { updateWorkOSOrganizationName } from "@app/lib/api/workos/organization";
+import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { updateMetronomeCustomerName } from "@app/lib/metronome/client";
@@ -703,9 +704,7 @@ export async function checkSeatCountForWorkspace(
   }
   const { data: subscriptionItems } = stripeSubscription.items;
 
-  const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
-    workspace.sId
-  );
+  const activeSeats = await countActiveSeatsForWorkspace(workspace.sId);
 
   for (const item of subscriptionItems) {
     const usageToReportRes = getUsageToReportForSubscriptionItem(item);

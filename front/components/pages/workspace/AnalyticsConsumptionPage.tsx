@@ -1,3 +1,4 @@
+import { CHART_HEIGHT } from "@app/components/charts/constants";
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import { ConsumptionOverview } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
@@ -8,6 +9,7 @@ import { UsageFilterSummary } from "@app/components/workspace/analytics/UsageFil
 import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
 import {
   addUsageFilterFromAttributionRow,
+  removeUsageFilterFromAttributionRow,
   setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
 } from "@app/components/workspace/analytics/usageFilter";
@@ -16,7 +18,13 @@ import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
-import { cn, Page, SafeSuspense, safeLazy } from "@dust-tt/sparkle";
+import {
+  cn,
+  LoadingBlock,
+  Page,
+  SafeSuspense,
+  safeLazy,
+} from "@dust-tt/sparkle";
 import { domMax, LazyMotion, m, useReducedMotion } from "framer-motion";
 
 import { useMemo, useState } from "react";
@@ -32,7 +40,29 @@ const ConsumptionChart = safeLazy(
 );
 
 function ChartFallback() {
-  return <div className="h-64 animate-pulse rounded-lg bg-muted-background" />;
+  return (
+    <div aria-hidden="true" className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <LoadingBlock className="h-5 w-28" />
+        <div className="rounded-2xl border border-border-dark bg-background p-1">
+          <LoadingBlock className="h-8 w-36 rounded-xl" />
+        </div>
+      </div>
+      <div className="rounded-lg border border-border bg-background p-4">
+        <div className="border-b border-border pb-3">
+          <LoadingBlock className="h-6 w-36" />
+        </div>
+        <LoadingBlock
+          className="mt-3 w-full"
+          style={{ height: CHART_HEIGHT }}
+        />
+        <div className="mt-3 flex h-5 items-center gap-6">
+          <LoadingBlock className="h-4 w-32" />
+          <LoadingBlock className="h-4 w-36" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function AnalyticsConsumptionPage() {
@@ -84,11 +114,7 @@ export function AnalyticsConsumptionPage() {
         }
       />
       <div className="flex flex-col gap-8 pb-8 pt-4">
-        <ConsumptionOverview
-          workspaceId={owner.sId}
-          period={period}
-          filter={scopeFilter}
-        />
+        <ConsumptionOverview workspaceId={owner.sId} period={period} />
         <LazyMotion features={domMax}>
           <div className="flex flex-col gap-4">
             <div className="sticky top-0 z-30 -mb-4 flex flex-col bg-panel-background pb-4 pt-4">
@@ -128,6 +154,15 @@ export function AnalyticsConsumptionPage() {
           onAddFilter={(selectedRow) => {
             setFilter((current) =>
               addUsageFilterFromAttributionRow(current, dimension, selectedRow)
+            );
+          }}
+          onRemoveFilter={(selectedRow) => {
+            setFilter((current) =>
+              removeUsageFilterFromAttributionRow(
+                current,
+                dimension,
+                selectedRow
+              )
             );
           }}
           dimension={dimension}

@@ -20,12 +20,12 @@
  */
 
 import { DustFileSystem } from "@app/lib/api/file_system";
-import { resolveCanonicalScopedPath } from "@app/lib/api/files/mount_path";
 import { Authenticator } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { isInteractiveContentType } from "@app/types/files";
+import { resolveCanonicalScopedPath } from "@app/types/mount_path";
 import type { PodFrameTab } from "@app/types/pod_frame_tab";
 import {
   MAX_POD_FRAME_TABS,

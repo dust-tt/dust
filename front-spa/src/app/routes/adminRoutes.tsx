@@ -15,6 +15,13 @@ const AnalyticsConsumptionPage = withSuspense(
     ),
   "AnalyticsConsumptionPage"
 );
+const AnalyticsAutomationsPage = withSuspense(
+  () =>
+    import(
+      "@dust-tt/front/components/pages/workspace/AnalyticsAutomationsPage"
+    ),
+  "AnalyticsAutomationsPage"
+);
 const APIKeysPage = withSuspense(
   () =>
     import("@dust-tt/front/components/pages/workspace/developers/APIKeysPage"),
@@ -125,6 +132,10 @@ export const adminRoutes: RouteObject[] = [
     // Admin-only areas.
     element: <RequireRoleLayout requiredRole="admin" />,
     children: [
+      {
+        path: "analytics/automations",
+        element: <AnalyticsAutomationsPage />,
+      },
       { path: "model-providers", element: <ModelProvidersPage /> },
       { path: "branding", element: <WorkspaceBrandingPage /> },
       { path: "developers/api-keys", element: <APIKeysPage /> },

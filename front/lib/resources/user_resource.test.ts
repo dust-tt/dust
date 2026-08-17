@@ -14,6 +14,8 @@ vi.mock("@app/lib/user_search/search", () => ({
 }));
 
 vi.mock("@app/lib/utils/cache", () => ({
+  buildCacheWithRedisKey: (cacheId: string, resolverKey: string) =>
+    `cacheWithRedis-${cacheId}-${resolverKey}`,
   cacheWithRedis: vi
     .fn()
     .mockImplementation(

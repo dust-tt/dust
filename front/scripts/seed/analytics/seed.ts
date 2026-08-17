@@ -3,7 +3,9 @@ import { seedHiddenAgent } from "@app/scripts/seed/analytics/hiddenAgent";
 import type {
   AgentAsset,
   SkillAsset,
+  TriggerAsset,
   UserAsset,
+  WebhookSourceAsset,
 } from "@app/scripts/seed/factories";
 import {
   createSeedContext,
@@ -11,7 +13,9 @@ import {
   seedConsumptionAnalytics,
   seedGroup,
   seedSkill,
+  seedTriggers,
   seedUsers,
+  seedWebhookSources,
 } from "@app/scripts/seed/factories";
 import { removeNulls } from "@app/types/shared/utils/general";
 import * as fs from "fs";
@@ -20,7 +24,9 @@ import * as path from "path";
 interface Assets {
   agents: AgentAsset[];
   skills: SkillAsset[];
+  triggers: TriggerAsset[];
   users: UserAsset[];
+  webhookSources: WebhookSourceAsset[];
 }
 
 function loadAssets(): Assets {
@@ -30,7 +36,9 @@ function loadAssets(): Assets {
   return {
     agents: read("agents.json"),
     skills: read("skills.json"),
+    triggers: read("triggers.json"),
     users: read("users.json"),
+    webhookSources: read("webhook-sources.json"),
   };
 }
 
@@ -53,7 +61,7 @@ makeScript(
     },
   },
   async ({ daysBack, messagesPerDay, execute }, logger) => {
-    const { agents, skills, users } = loadAssets();
+    const { agents, skills, triggers, users, webhookSources } = loadAssets();
 
     const ctx = await createSeedContext({ execute, logger });
 
@@ -94,16 +102,33 @@ makeScript(
     // 4. Enough agents for the rankings to have a long tail and an "others"
     // series in the chart.
     logger.info("Seeding agents...");
-    await seedAgents(ctx, agents, { skills: removeNulls(createdSkills) });
+    const createdAgents = await seedAgents(ctx, agents, {
+      skills: removeNulls(createdSkills),
+    });
 
     logger.info("Seeding the hidden agent...");
     await seedHiddenAgent(ctx, {
       owner: createdUsers.get(HIDDEN_AGENT_OWNER_ID),
     });
 
-    // 5. The consumption documents themselves.
+    // 5. Triggers, which the automated share of the consumption is attributed
+    // to. They stay disabled: the seed fabricates their consumption rather than
+    // letting Temporal actually run them.
+    logger.info("Seeding webhook sources...");
+    const createdWebhookSources = await seedWebhookSources(ctx, webhookSources);
+
+    logger.info("Seeding triggers...");
+    const createdTriggers = await seedTriggers(ctx, triggers, createdAgents, {
+      webhookSources: createdWebhookSources,
+    });
+
+    // 6. The consumption documents themselves.
     logger.info("Seeding consumption analytics...");
-    await seedConsumptionAnalytics(ctx, { daysBack, messagesPerDay });
+    await seedConsumptionAnalytics(ctx, {
+      daysBack,
+      messagesPerDay,
+      triggerIds: [...createdTriggers.values()].map((trigger) => trigger.sId),
+    });
 
     logger.info("Analytics seed completed");
   }

@@ -20,8 +20,60 @@ type BlockedActionQueueItem = {
   blockedAction: AgentLoopBlockedToolExecution;
 };
 
+type ApprovalQueueItem = Pick<
+  AgentLoopBlockedToolExecution,
+  "actionId" | "userId"
+> & {
+  messageId: string;
+};
+
+type ApprovalProgress = {
+  current: number;
+  total: number;
+};
+
+type BlockedActionsState = {
+  conversationId: string | null;
+  blockedActionsQueue: BlockedActionQueueItem[];
+  approvalQueue: ApprovalQueueItem[];
+};
+
 const EMPTY_BLOCKED_ACTIONS_QUEUE: BlockedActionQueueItem[] = [];
+const EMPTY_APPROVAL_QUEUE: ApprovalQueueItem[] = [];
 const pulseDurationMs = 3000;
+
+function getApprovalQueueItems(
+  blockedActionsQueue: BlockedActionQueueItem[]
+): ApprovalQueueItem[] {
+  return blockedActionsQueue.flatMap(({ blockedAction, messageId }) =>
+    blockedAction.status === "blocked_validation_required"
+      ? [
+          {
+            actionId: blockedAction.actionId,
+            userId: blockedAction.userId,
+            messageId,
+          },
+        ]
+      : []
+  );
+}
+
+function mergeApprovalQueue(
+  approvalQueue: ApprovalQueueItem[],
+  blockedActionsQueue: BlockedActionQueueItem[]
+): ApprovalQueueItem[] {
+  const activeApprovals = getApprovalQueueItems(blockedActionsQueue);
+  if (activeApprovals.length === 0) {
+    return EMPTY_APPROVAL_QUEUE;
+  }
+
+  // Keep resolved approvals in the batch so remaining actions retain their original positions.
+  const knownActionIds = new Set(approvalQueue.map(({ actionId }) => actionId));
+  return [
+    ...approvalQueue,
+    ...activeApprovals.filter(({ actionId }) => !knownActionIds.has(actionId)),
+  ];
+}
 
 type BlockedActionsContextType = {
   enqueueBlockedAction: (params: {
@@ -37,6 +89,10 @@ type BlockedActionsContextType = {
   hasPendingValidations: (userId: string) => boolean;
   getBlockedActions: (userId: string) => AgentLoopBlockedToolExecution[];
   getBlockedActionItems: (userId: string) => BlockedActionQueueItem[];
+  getApprovalProgress: (params: {
+    actionId: string;
+    userId: string;
+  }) => ApprovalProgress | undefined;
   getFirstBlockedActionForMessage: (
     messageId: string
   ) => AgentLoopBlockedToolExecution | undefined;
@@ -81,9 +137,12 @@ export function BlockedActionsProvider({
   });
 
   // Inlined queue management logic
-  const [blockedActionsQueue, setBlockedActionsQueue] = useState<
-    BlockedActionQueueItem[]
-  >([]);
+  const [{ blockedActionsQueue, approvalQueue }, setBlockedActionsState] =
+    useState<BlockedActionsState>({
+      conversationId,
+      blockedActionsQueue: EMPTY_BLOCKED_ACTIONS_QUEUE,
+      approvalQueue: EMPTY_APPROVAL_QUEUE,
+    });
 
   // State for tracking pulsing state of user manual required actions
   const [pulsingActionIds, setPulsingActionIds] = useState<Set<string>>(
@@ -112,13 +171,23 @@ export function BlockedActionsProvider({
           return [{ blockedAction: action, messageId: outerMessageId }];
         });
 
-      setBlockedActionsQueue(
-        blockedActions.flatMap((action) =>
-          flattenBlockedActions([action], action.messageId)
-        )
+      const nextBlockedActionsQueue = blockedActions.flatMap((action) =>
+        flattenBlockedActions([action], action.messageId)
       );
+      setBlockedActionsState((state) => ({
+        conversationId,
+        blockedActionsQueue: nextBlockedActionsQueue,
+        approvalQueue:
+          state.conversationId === conversationId
+            ? mergeApprovalQueue(state.approvalQueue, nextBlockedActionsQueue)
+            : getApprovalQueueItems(nextBlockedActionsQueue),
+      }));
     } else {
-      setBlockedActionsQueue(EMPTY_BLOCKED_ACTIONS_QUEUE);
+      setBlockedActionsState({
+        conversationId,
+        blockedActionsQueue: EMPTY_BLOCKED_ACTIONS_QUEUE,
+        approvalQueue: EMPTY_APPROVAL_QUEUE,
+      });
     }
   }, [conversationId, blockedActions]);
 
@@ -130,21 +199,39 @@ export function BlockedActionsProvider({
       messageId: string;
       blockedAction: AgentLoopBlockedToolExecution;
     }) => {
-      setBlockedActionsQueue((prevQueue) => {
-        const existingIndex = prevQueue.findIndex(
+      setBlockedActionsState((state) => {
+        const previousQueue =
+          state.conversationId === conversationId
+            ? state.blockedActionsQueue
+            : EMPTY_BLOCKED_ACTIONS_QUEUE;
+        const existingIndex = previousQueue.findIndex(
           (v) => v.blockedAction.actionId === blockedAction.actionId
         );
 
         // If the action is not in the queue, add it.
         // If the action is in the queue, replace it with the new one.
-        return existingIndex === -1
-          ? [...prevQueue, { blockedAction, messageId }]
-          : prevQueue.map((item, index) =>
-              index === existingIndex ? { blockedAction, messageId } : item
-            );
+        const nextBlockedActionsQueue =
+          existingIndex === -1
+            ? [...previousQueue, { blockedAction, messageId }]
+            : previousQueue.map((item, index) =>
+                index === existingIndex ? { blockedAction, messageId } : item
+              );
+        const previousApprovalQueue =
+          state.conversationId === conversationId
+            ? state.approvalQueue
+            : EMPTY_APPROVAL_QUEUE;
+
+        return {
+          conversationId,
+          blockedActionsQueue: nextBlockedActionsQueue,
+          approvalQueue: mergeApprovalQueue(
+            previousApprovalQueue,
+            nextBlockedActionsQueue
+          ),
+        };
       });
     },
-    []
+    [conversationId]
   );
 
   const startPulsingAction = useCallback((actionId: string) => {
@@ -191,9 +278,23 @@ export function BlockedActionsProvider({
     (actionId: string) => {
       stopPulsingAction(actionId);
 
-      setBlockedActionsQueue((prevQueue) =>
-        prevQueue.filter((item) => item.blockedAction.actionId !== actionId)
-      );
+      setBlockedActionsState((state) => {
+        const nextBlockedActionsQueue = state.blockedActionsQueue.filter(
+          (item) => item.blockedAction.actionId !== actionId
+        );
+        const hasPendingApprovals = nextBlockedActionsQueue.some(
+          ({ blockedAction }) =>
+            blockedAction.status === "blocked_validation_required"
+        );
+
+        return {
+          ...state,
+          blockedActionsQueue: nextBlockedActionsQueue,
+          approvalQueue: hasPendingApprovals
+            ? state.approvalQueue
+            : EMPTY_APPROVAL_QUEUE,
+        };
+      });
 
       // Revalidate the blocked actions cache. Resolving an action happens
       // right after the OAuth popup closes, which refocuses the window and
@@ -242,6 +343,25 @@ export function BlockedActionsProvider({
     [getBlockedActionItems]
   );
 
+  const getApprovalProgress = useCallback(
+    ({ actionId, userId }: { actionId: string; userId: string }) => {
+      const userApprovalQueue = approvalQueue.filter((action) =>
+        canCurrentUserRespondToParentUserMessage({
+          parentUserId: action.userId,
+          currentUserId: userId,
+        })
+      );
+      const currentIndex = userApprovalQueue.findIndex(
+        (action) => action.actionId === actionId
+      );
+
+      return currentIndex === -1
+        ? undefined
+        : { current: currentIndex + 1, total: userApprovalQueue.length };
+    },
+    [approvalQueue]
+  );
+
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
     options: { disabled: true },
@@ -255,9 +375,25 @@ export function BlockedActionsProvider({
       messageId: string;
       conversationId: string;
     }) => {
-      setBlockedActionsQueue((prevQueue) =>
-        prevQueue.filter((item) => item.messageId !== messageId)
-      );
+      setBlockedActionsState((state) => {
+        const nextBlockedActionsQueue = state.blockedActionsQueue.filter(
+          (item) => item.messageId !== messageId
+        );
+        const hasPendingApprovals = nextBlockedActionsQueue.some(
+          ({ blockedAction }) =>
+            blockedAction.status === "blocked_validation_required"
+        );
+
+        return {
+          ...state,
+          blockedActionsQueue: nextBlockedActionsQueue,
+          approvalQueue: hasPendingApprovals
+            ? state.approvalQueue.filter(
+                (approval) => approval.messageId !== messageId
+              )
+            : EMPTY_APPROVAL_QUEUE,
+        };
+      });
 
       // This is to update the unread inbox state in sidebar menu.
       // We only show the conversation in unread inbox if actionRequired is true (and this happens only when you come back to a conversation
@@ -301,6 +437,7 @@ export function BlockedActionsProvider({
       hasPendingValidations,
       getBlockedActions,
       getBlockedActionItems,
+      getApprovalProgress,
       getFirstBlockedActionForMessage,
       startPulsingAction,
       stopPulsingAction,
@@ -314,6 +451,7 @@ export function BlockedActionsProvider({
       hasPendingValidations,
       getBlockedActions,
       getBlockedActionItems,
+      getApprovalProgress,
       getFirstBlockedActionForMessage,
       startPulsingAction,
       stopPulsingAction,

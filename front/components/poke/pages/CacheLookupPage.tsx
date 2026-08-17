@@ -1,20 +1,16 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
+  usePokeCacheCatalog,
   usePokeCacheDeleteAll,
   usePokeCacheInvalidate,
   usePokeCacheLookup,
 } from "@app/poke/swr/cache";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import type {
+  PokeCacheResourceDescriptor,
   RedisCacheResult,
   RedisInstance,
 } from "@app/types/api/poke/cache";
-import type { CacheResourceDefinition } from "@app/types/shared/cache_resource_registry";
-import {
-  buildCacheKey,
-  buildCacheKeyPattern,
-  CACHE_RESOURCE_REGISTRY,
-} from "@app/types/shared/cache_resource_registry";
 import {
   Button,
   ContentMessage,
@@ -261,24 +257,20 @@ type LookupQuery =
     };
 
 interface ResourceLookupFormProps {
+  resources: PokeCacheResourceDescriptor[];
   onSubmit: (query: LookupQuery) => void;
 }
 
-function ResourceLookupForm({ onSubmit }: ResourceLookupFormProps) {
+function ResourceLookupForm({ resources, onSubmit }: ResourceLookupFormProps) {
   const [selectedResource, setSelectedResource] =
-    useState<CacheResourceDefinition | null>(null);
+    useState<PokeCacheResourceDescriptor | null>(null);
   const [paramValues, setParamValues] = useState<Record<string, string>>({});
 
   const allParamsFilled =
     selectedResource !== null &&
     selectedResource.params.every((p) => paramValues[p.key]?.trim());
 
-  const computedKey =
-    selectedResource && allParamsFilled
-      ? buildCacheKey(selectedResource, paramValues)
-      : null;
-
-  function handleSelectResource(resource: CacheResourceDefinition) {
+  function handleSelectResource(resource: PokeCacheResourceDescriptor) {
     setSelectedResource(resource);
     setParamValues({});
   }
@@ -317,7 +309,7 @@ function ResourceLookupForm({ onSubmit }: ResourceLookupFormProps) {
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-72">
-            {CACHE_RESOURCE_REGISTRY.map((resource) => (
+            {resources.map((resource) => (
               <DropdownMenuItem
                 key={resource.id}
                 onClick={() => handleSelectResource(resource)}
@@ -343,15 +335,6 @@ function ResourceLookupForm({ onSubmit }: ResourceLookupFormProps) {
               />
             </div>
           ))}
-
-          {computedKey && (
-            <div>
-              <Label isMuted>Computed Key</Label>
-              <code className="mt-1 block break-all rounded bg-muted-background p-2 text-xs text-muted-foreground">
-                {computedKey}
-              </code>
-            </div>
-          )}
 
           <Button
             label="Lookup"
@@ -409,16 +392,18 @@ function RawKeyForm({ onSubmit }: RawKeyFormProps) {
   );
 }
 
-function ResourceInvalidateForm() {
+function ResourceInvalidateForm({
+  resources,
+}: {
+  resources: PokeCacheResourceDescriptor[];
+}) {
   const [selectedResource, setSelectedResource] =
-    useState<CacheResourceDefinition | null>(null);
+    useState<PokeCacheResourceDescriptor | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
   const { doDeleteAll, isDeletingAll } = usePokeCacheDeleteAll();
 
-  const pattern = selectedResource
-    ? buildCacheKeyPattern(selectedResource)
-    : null;
+  const pattern = selectedResource?.keyPattern ?? null;
 
   return (
     <div className="space-y-4 py-4">
@@ -434,7 +419,7 @@ function ResourceInvalidateForm() {
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-72">
-            {CACHE_RESOURCE_REGISTRY.map((resource) => (
+            {resources.map((resource) => (
               <DropdownMenuItem
                 key={resource.id}
                 onClick={() => setSelectedResource(resource)}
@@ -515,6 +500,7 @@ function ResourceInvalidateForm() {
 
 export function CacheLookupPage() {
   usePokePageMetadata({ name: "Cache Lookup" });
+  const { resources } = usePokeCacheCatalog();
 
   const [query, setQuery] = useState<LookupQuery | null>(null);
 
@@ -568,7 +554,7 @@ export function CacheLookupPage() {
               </TabsList>
 
               <TabsContent value="resource">
-                <ResourceLookupForm onSubmit={setQuery} />
+                <ResourceLookupForm resources={resources} onSubmit={setQuery} />
               </TabsContent>
 
               <TabsContent value="raw">
@@ -576,7 +562,7 @@ export function CacheLookupPage() {
               </TabsContent>
 
               <TabsContent value="invalidate">
-                <ResourceInvalidateForm />
+                <ResourceInvalidateForm resources={resources} />
               </TabsContent>
             </Tabs>
           </div>
