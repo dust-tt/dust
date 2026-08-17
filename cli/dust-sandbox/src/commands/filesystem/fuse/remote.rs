@@ -1,3 +1,9 @@
+//! Runs Front and GCS work away from the Linux FUSE request threads.
+//!
+//! Separate bounded pools cover file details, file contents, name changes, and
+//! final RELEASE work. This keeps a slow upload from stopping local reads and
+//! puts a fixed limit on how much waiting work the daemon keeps in memory.
+
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 

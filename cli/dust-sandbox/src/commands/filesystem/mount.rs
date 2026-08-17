@@ -1,3 +1,8 @@
+//! Parses the `dsbx filesystem mount` options and starts one FUSE mount.
+//!
+//! The command runs the filesystem in the current process. Production starts
+//! it through `supervise`, which can restart the mount process if it exits.
+
 use std::path::PathBuf;
 
 #[cfg(not(target_os = "linux"))]

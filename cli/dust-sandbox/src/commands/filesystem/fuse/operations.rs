@@ -1,3 +1,10 @@
+//! Handles the file operations sent by the Linux FUSE kernel driver.
+//!
+//! Each method validates the Linux request, calls `DustFuse` or `FileStore`,
+//! and sends exactly one reply back to Linux. Calls that may wait on Front or
+//! GCS are handed to the bounded worker pools instead of blocking a FUSE
+//! request thread.
+
 use std::os::unix::fs::FileExt;
 use std::time::SystemTime;
 

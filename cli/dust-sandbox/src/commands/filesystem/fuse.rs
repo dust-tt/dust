@@ -1,3 +1,10 @@
+//! Mounts the Dust file tree through Linux FUSE.
+//!
+//! This file owns the shared state used by FUSE calls: the Front-backed store,
+//! open handles, local file changes that are not saved yet, and limits for
+//! calls that may wait on Front or GCS. The actual Linux FUSE calls live in
+//! `operations`; the other child modules keep their supporting code separate.
+
 use std::ffi::OsStr;
 use std::io;
 use std::path::Path;

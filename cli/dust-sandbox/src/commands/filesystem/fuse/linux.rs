@@ -1,3 +1,9 @@
+//! Converts Dust file data and errors into the values Linux expects.
+//!
+//! This includes `stat` fields, file kinds, executable-bit checks, filesystem
+//! size information, open-flag checks, and errno replies. It also reads the
+//! local disk capacity reported by `statfs`.
+
 use std::ffi::{CString, OsStr};
 use std::io;
 use std::os::unix::ffi::OsStrExt;

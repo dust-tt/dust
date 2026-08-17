@@ -1,3 +1,10 @@
+//! Keeps the state Linux expects us to remember between OPEN and RELEASE.
+//!
+//! Linux gives later READ, WRITE, FLUSH, and RELEASE calls a temporary handle
+//! number. This file maps that number to the local file and its unsaved state.
+//! It also keeps directory listings stable while READDIR returns them over
+//! several calls, and prevents two operations from changing one inode at once.
+
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io;

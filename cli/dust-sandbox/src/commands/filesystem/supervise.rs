@@ -1,3 +1,9 @@
+//! Keeps the Dust FUSE mount running inside a sandbox.
+//!
+//! It starts `dsbx filesystem mount`, waits for it to exit, removes the stale
+//! mount left by a crash, and starts a new child with a short backoff. A lock
+//! prevents two supervisors from managing the same mount at once.
+
 use std::ffi::CString;
 use std::fs::{self, File, OpenOptions};
 use std::io;
