@@ -1,6 +1,7 @@
 import { DropdownMenuCheckboxItemProps } from "@radix-ui/react-dropdown-menu";
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState } from "react";
+import { expect, waitFor, within } from "storybook/test";
 
 import { Spinner } from "@sparkle/components";
 import {
@@ -137,6 +138,55 @@ export const SimpleDropdown: Story = {
         </DropdownMenuContent>
       </DropdownMenu>
     );
+  },
+};
+
+export const KeyboardNavigation: Story = {
+  render: () => (
+    <div className="flex gap-2">
+      <button type="button">Before dropdown</button>
+      <DropdownMenu>
+        <DropdownMenuTrigger>Open Keyboard Dropdown</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem label="First item" />
+          <DropdownMenuItem label="Second item" />
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <button type="button">After dropdown</button>
+    </div>
+  ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const beforeButton = canvas.getByRole("button", {
+      name: "Before dropdown",
+    });
+    const trigger = canvas.getByRole("button", {
+      name: "Open Keyboard Dropdown",
+    });
+    const afterButton = canvas.getByRole("button", {
+      name: "After dropdown",
+    });
+    trigger.focus();
+    await userEvent.keyboard("{Enter}");
+
+    const documentBody = within(canvasElement.ownerDocument.body);
+    const menuItems = await documentBody.findAllByRole("menuitem");
+    await expect(menuItems[0]).toHaveFocus();
+
+    await userEvent.keyboard("{ArrowDown}");
+    await expect(menuItems[1]).toHaveFocus();
+
+    await userEvent.tab();
+    await waitFor(() => expect(afterButton).toHaveFocus());
+
+    await userEvent.tab({ shift: true });
+    await expect(trigger).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    await expect(
+      (await documentBody.findAllByRole("menuitem"))[0]
+    ).toHaveFocus();
+
+    await userEvent.tab({ shift: true });
+    await waitFor(() => expect(beforeButton).toHaveFocus());
   },
 };
 

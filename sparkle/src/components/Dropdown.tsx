@@ -27,6 +27,7 @@ import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import * as React from "react";
 import { useMemo, useRef } from "react";
+import { tabbable } from "tabbable";
 
 const ITEM_VARIANTS = ["default", "warning"] as const;
 
@@ -312,6 +313,52 @@ const OPEN_SEARCHABLE_MENU_ITEM_SELECTOR = [
   '[data-radix-menu-content][data-state=open] [role="menuitemradio"]',
 ].join(", ");
 
+type TabbableElement = ReturnType<typeof tabbable>[number];
+
+function getDropdownMenuTrigger(content: HTMLElement): HTMLElement | null {
+  return content.ownerDocument.getElementById(
+    content.getAttribute("aria-labelledby") ?? ""
+  );
+}
+
+function handleDropdownMenuTab(
+  event: React.KeyboardEvent<HTMLDivElement>,
+  onExit: (element: TabbableElement) => void
+): void {
+  const content = event.currentTarget;
+  const trigger = getDropdownMenuTrigger(content);
+  if (!trigger) {
+    return;
+  }
+
+  const tabbableElements = tabbable(content.ownerDocument.body).filter(
+    (element) =>
+      !element.closest('[data-radix-menu-content][data-state="open"]')
+  );
+  const triggerIndex = tabbableElements.indexOf(trigger);
+  if (triggerIndex === -1) {
+    return;
+  }
+
+  const nextIndex = event.shiftKey
+    ? (triggerIndex - 1 + tabbableElements.length) % tabbableElements.length
+    : (triggerIndex + 1) % tabbableElements.length;
+  const nextElement = tabbableElements[nextIndex];
+
+  // Radix suppresses Tab inside menus. Close through its Escape path so
+  // controlled roots receive onOpenChange, then transfer focus after unmount.
+  event.preventDefault();
+  event.stopPropagation();
+  onExit(nextElement);
+  content.dispatchEvent(
+    new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true,
+    })
+  );
+}
+
 function getFirstDropdownMenuItem(container: ParentNode): HTMLElement | null {
   return container.querySelector<HTMLElement>(SEARCHABLE_MENU_ITEM_SELECTOR);
 }
@@ -398,6 +445,7 @@ const DropdownMenuContent = React.forwardRef<
   ) => {
     const viewportRef = useRef<HTMLDivElement>(null);
     const itemElementsRef = useRef(new Map<string, HTMLElement>());
+    const tabExitTargetRef = useRef<TabbableElement | null>(null);
 
     const handleKeyDownCapture = (e: React.KeyboardEvent<HTMLDivElement>) => {
       onKeyDownCapture?.(e);
@@ -427,6 +475,13 @@ const DropdownMenuContent = React.forwardRef<
         return;
       }
 
+      if (e.key === "Tab") {
+        handleDropdownMenuTab(e, (element) => {
+          tabExitTargetRef.current = element;
+        });
+        return;
+      }
+
       if (isDropdownTextEntryElement(document.activeElement)) {
         return;
       }
@@ -450,7 +505,13 @@ const DropdownMenuContent = React.forwardRef<
 
     const handleCloseAutoFocus = React.useCallback(
       (event: Event) => {
-        if (preventAutoFocusOnClose) {
+        const tabExitTarget = tabExitTargetRef.current;
+        tabExitTargetRef.current = null;
+
+        if (tabExitTarget) {
+          event.preventDefault();
+          tabExitTarget.focus();
+        } else if (preventAutoFocusOnClose) {
           event.preventDefault();
         }
         onCloseAutoFocus?.(event);
