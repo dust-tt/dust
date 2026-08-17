@@ -271,6 +271,32 @@ describe("getToolDisplayLabels", () => {
       done: "Search HubSpot deals “acme renewal”",
     });
   });
+
+  it.each([
+    {
+      to: ["aubin@dust.tt"],
+      running: "Sending email “Approval UI” to aubin@dust.tt",
+      done: "Send email “Approval UI” to aubin@dust.tt",
+    },
+    {
+      to: ["aubin@dust.tt", "seb@dust.tt"],
+      running: "Sending email “Approval UI” to several recipients",
+      done: "Send email “Approval UI” to several recipients",
+    },
+    {
+      to: undefined,
+      running: "Sending email “Approval UI”",
+      done: "Send email “Approval UI”",
+    },
+  ])("includes Gmail recipients in send labels", ({ to, running, done }) => {
+    expect(
+      getToolDisplayLabels({
+        internalMCPServerName: "gmail",
+        toolName: "send_mail",
+        inputs: { subject: "Approval UI", to },
+      })
+    ).toEqual({ running, done });
+  });
 });
 
 describe("getStaticToolDisplayLabelsFromFunctionCallName", () => {

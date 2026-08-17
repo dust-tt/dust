@@ -253,9 +253,16 @@ function getDynamicToolDisplayLabels({
       }
       if (toolName === "send_mail" && isString(inputs.subject)) {
         const s = truncateQuery(inputs.subject);
+        const recipients = isStringArray(inputs.to) ? inputs.to : [];
+        const recipient =
+          recipients.length === 1
+            ? ` to ${truncateQuery(recipients[0])}`
+            : recipients.length > 1
+              ? " to several recipients"
+              : "";
         return {
-          running: `Sending “${s}”`,
-          done: `Send “${s}”`,
+          running: `Sending email “${s}”${recipient}`,
+          done: `Send email “${s}”${recipient}`,
         };
       }
       if (toolName === "delete_draft" && isString(inputs.subject)) {
