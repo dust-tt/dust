@@ -22,7 +22,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   Label,
   PieChart01,
   XClose,
@@ -133,6 +132,8 @@ export function ToolValidationCard({
   const displayLabel =
     validationRequest.metadata.displayLabel ??
     asDisplayName(validationRequest.metadata.toolName);
+  const hasDetails =
+    canCurrentUserRespond && Object.keys(validationRequest.inputs).length > 0;
 
   return (
     <Card
@@ -148,14 +149,26 @@ export function ToolValidationCard({
             {approvalTitle}
           </div>
         </div>
-        {approvalProgress && <ApprovalProgress {...approvalProgress} />}
+        <div className="flex shrink-0 items-center gap-2">
+          {approvalProgress && <ApprovalProgress {...approvalProgress} />}
+          {hasDetails && (
+            <Button
+              label="Review details"
+              variant="ghost"
+              size="sm"
+              className="min-h-11 sm:min-h-0"
+              disabled={isSubmitting}
+              onClick={() => setDetailsOpen(true)}
+            />
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-4 px-5 py-4">
         <div className="text-base">{displayLabel}</div>
         {canCurrentUserRespond ? (
           <>
-            {Object.keys(validationRequest.inputs).length > 0 && (
+            {hasDetails && (
               <Dialog
                 open={detailsOpen}
                 onOpenChange={(open) => {
@@ -164,15 +177,6 @@ export function ToolValidationCard({
                   }
                 }}
               >
-                <DialogTrigger asChild>
-                  <Button
-                    label="Review details"
-                    variant="outline"
-                    size="sm"
-                    className="min-h-11 self-start sm:min-h-0"
-                    disabled={isSubmitting}
-                  />
-                </DialogTrigger>
                 <DialogContent size="lg" preventAutoFocusOnClose={false}>
                   <DialogHeader className="gap-1">
                     <div className="flex items-center justify-between gap-4 pr-8">
