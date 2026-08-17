@@ -963,11 +963,6 @@ export class Authenticator {
       ? allGroups.map((g) => g.id)
       : [];
     const keyGroupModelIds = allGroups.map((g) => g.id);
-    // Unscoped system keys represent nearly every group in their workspace. Bind those ids as one
-    // Postgres array so Sequelize does not expand thousands of placeholders into the query text.
-    // Explicitly scoped system keys keep the regular group-id lookup.
-    const useBoundArrayPermissionLookup =
-      key.isSystem && requestedGroupIds === undefined;
 
     let permissions: GroupPermissions;
     let keyPermissions: GroupPermissions;
@@ -977,7 +972,6 @@ export class Authenticator {
       permissions = await this.resolvePermissions({
         workspace,
         groupModelIds: workspaceGroupModelIds,
-        useBoundArrayPermissionLookup,
       });
       keyPermissions = permissions;
     } else {
@@ -985,12 +979,10 @@ export class Authenticator {
         this.resolvePermissions({
           workspace,
           groupModelIds: workspaceGroupModelIds,
-          useBoundArrayPermissionLookup,
         }),
         this.resolvePermissions({
           workspace: keyWorkspace,
           groupModelIds: keyGroupModelIds,
-          useBoundArrayPermissionLookup,
         }),
       ]);
     }
@@ -1295,25 +1287,18 @@ export class Authenticator {
   static async resolvePermissions({
     workspace,
     groupModelIds,
-    useBoundArrayPermissionLookup = false,
   }: {
     workspace?: WorkspaceResource | null;
     groupModelIds: ModelId[];
-    useBoundArrayPermissionLookup?: boolean;
   }): Promise<GroupPermissions> {
     if (!workspace) {
       return GroupPermissions.empty();
     }
 
     const lightWorkspace = renderLightWorkspaceType({ workspace });
-    const grants = useBoundArrayPermissionLookup
-      ? await GroupPermissionResource.listForGroupsWithBoundArray(
-          lightWorkspace,
-          groupModelIds
-        )
-      : await GroupPermissionResource.listForGroups(lightWorkspace, {
-          groupModelIds,
-        });
+    const grants = await GroupPermissionResource.listForGroups(lightWorkspace, {
+      groupModelIds,
+    });
 
     return GroupPermissions.fromGrants(grants);
   }
