@@ -38,10 +38,13 @@ interface CostShareBarProps {
 export function CostShareBar({ percentage, className }: CostShareBarProps) {
   return (
     <div
-      className={cn("h-1.5 overflow-hidden rounded-full bg-muted", className)}
+      className={cn(
+        "h-1.5 overflow-hidden rounded-full bg-muted-background",
+        className
+      )}
     >
       <div
-        className="h-full rounded-full bg-primary"
+        className="h-full rounded-full bg-primary-light"
         style={{ width: `${percentage}%` }}
       />
     </div>
