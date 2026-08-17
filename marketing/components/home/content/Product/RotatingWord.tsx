@@ -14,16 +14,19 @@ type Phase = "typing" | "pausing" | "deleting";
 
 export function RotatingWord() {
   const [wordIndex, setWordIndex] = useState(0);
-  // Start fully typed so the server-rendered headline is complete and
-  // reduced-motion users see a finished word.
-  const [text, setText] = useState(WORDS[0]);
-  const [phase, setPhase] = useState<Phase>("pausing");
+  const [text, setText] = useState("");
+  const [phase, setPhase] = useState<Phase>("typing");
 
   useEffect(() => {
+    const currentWord = WORDS[wordIndex];
+
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      // No animation: show the current word fully typed.
+      if (text !== currentWord) {
+        setText(currentWord);
+      }
       return;
     }
-    const currentWord = WORDS[wordIndex];
 
     if (phase === "typing") {
       if (text.length < currentWord.length) {
@@ -32,15 +35,15 @@ export function RotatingWord() {
         }, TYPING_SPEED_MS);
         return () => clearTimeout(timeout);
       }
-      setPhase("pausing");
-      return;
+      const timeout = setTimeout(
+        () => setPhase("pausing"),
+        PAUSE_AFTER_TYPE_MS
+      );
+      return () => clearTimeout(timeout);
     }
 
     if (phase === "pausing") {
-      const timeout = setTimeout(
-        () => setPhase("deleting"),
-        PAUSE_AFTER_TYPE_MS
-      );
+      const timeout = setTimeout(() => setPhase("deleting"), 0);
       return () => clearTimeout(timeout);
     }
 
