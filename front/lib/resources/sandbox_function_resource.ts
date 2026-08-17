@@ -375,12 +375,12 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       const blob = sandboxFunction.get();
       // Three prioritized gates: the caller's own access, then the app the capability grants,
       // then the execution-side bypass (spacesById is only built for it).
+      const capabilityGrantsFunction =
+        capabilitySpace?.id === blob.spaceId &&
+        appPrefixFromSlug(blob.slug) === capability?.appPrefix;
       const space =
         accessibleSpacesById.get(blob.spaceId) ??
-        (capabilitySpace?.id === blob.spaceId &&
-        appPrefixFromSlug(blob.slug) === capability?.appPrefix
-          ? capabilitySpace
-          : undefined) ??
+        (capabilityGrantsFunction ? capabilitySpace : undefined) ??
         spacesById?.get(blob.spaceId);
       const file = filesById.get(blob.fileId);
       if (!space || !file) {
