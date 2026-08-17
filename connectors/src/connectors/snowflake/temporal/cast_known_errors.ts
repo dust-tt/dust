@@ -1,4 +1,7 @@
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import {
+  ExternalOAuthTokenError,
+  ThirdPartyConfigurationError,
+} from "@connectors/lib/error";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
@@ -168,6 +171,15 @@ function isSnowflakeInvalidJwtError(
   );
 }
 
+function isSnowflakeListingTrialExpiredError(err: unknown): err is Error {
+  return (
+    err instanceof Error &&
+    "code" in err &&
+    typeof err.code === "string" &&
+    err.code === "090693"
+  );
+}
+
 export class SnowflakeCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {
@@ -191,6 +203,9 @@ export class SnowflakeCastKnownErrorsInterceptor
         isSnowflakeInvalidJwtError(err)
       ) {
         throw new ExternalOAuthTokenError(err);
+      }
+      if (isSnowflakeListingTrialExpiredError(err)) {
+        throw new ThirdPartyConfigurationError(err);
       }
       throw err;
     }
