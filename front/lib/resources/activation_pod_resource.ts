@@ -3,7 +3,6 @@ import { ActivationPodModel } from "@app/lib/models/activation/activation_pod";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
-import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
@@ -72,18 +71,11 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
     return {
       include: [
         {
-          model: SpaceModel,
+          model: ProjectMetadataModel,
+          as: "projectMetadata",
           attributes: [],
           required: true,
-          include: [
-            {
-              model: ProjectMetadataModel,
-              as: "projectMetadata",
-              attributes: [],
-              required: true,
-              where: { archivedAt: null },
-            },
-          ],
+          where: { archivedAt: null },
         },
       ],
     };
