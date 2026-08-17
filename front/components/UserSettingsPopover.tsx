@@ -10,8 +10,6 @@ import {
   SoundNotificationPreferences,
   useSoundNotificationPreferencesForm,
 } from "@app/components/me/SoundNotificationPreferences";
-import { UserToolsTable } from "@app/components/me/UserToolsTable";
-import { UserTriggersTable } from "@app/components/me/UserTriggersTable";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { MyAwuUsageFromAnalyticsChart } from "@app/components/workspace/AwuUsageFromAnalyticsChart";
@@ -72,19 +70,16 @@ import {
   Page,
   Separator,
   Settings01,
-  ShapesPlus,
   SliderToggle,
   Spinner,
   Stars02,
   Sun,
   Tabs,
-  TabsContent,
   TabsList,
   TabsTrigger,
   Tooltip,
   User01,
   XClose,
-  Zap,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ExternalLinkIcon } from "lucide-react";
@@ -99,7 +94,6 @@ type SettingsSection =
   | "customization"
   | "notifications"
   | "memory"
-  | "tools"
   | "invitations";
 
 interface UserSettingsPopoverProps {
@@ -773,27 +767,6 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
   );
 }
 
-// ─── Tools & Triggers ─────────────────────────────────────────────────────────
-
-function ToolsSection({ owner }: { owner: WorkspaceType }) {
-  return (
-    <SectionContent title="Tools and Triggers">
-      <Tabs defaultValue="tools">
-        <TabsList border>
-          <TabsTrigger value="tools" label="Tools" icon={Zap} />
-          <TabsTrigger value="triggers" label="Triggers" icon={Bell01} />
-        </TabsList>
-        <TabsContent value="tools">
-          <UserToolsTable owner={owner} />
-        </TabsContent>
-        <TabsContent value="triggers">
-          <UserTriggersTable owner={owner} />
-        </TabsContent>
-      </Tabs>
-    </SectionContent>
-  );
-}
-
 // ─── Invitations ──────────────────────────────────────────────────────────────
 
 interface InvitationsSectionProps {
@@ -944,7 +917,6 @@ const NAV_ITEMS: Array<{
   { section: "customization", icon: Settings01, label: "Customization" },
   { section: "memory", icon: Brain, label: "Memory" },
   { section: "notifications", icon: Bell01, label: "Notifications" },
-  { section: "tools", icon: ShapesPlus, label: "Tools and Triggers" },
   { section: "invitations", icon: Mail01, label: "Invitations" },
 ];
 
@@ -1060,7 +1032,6 @@ export function UserSettingsPopover({
               <NotificationsSection owner={owner} />
             )}
             {activeSection === "memory" && <MemorySection owner={owner} />}
-            {activeSection === "tools" && <ToolsSection owner={owner} />}
             {activeSection === "invitations" && (
               <InvitationsSection
                 invitations={pendingInvitations}
