@@ -209,22 +209,24 @@ export function UsageFilterModelComplexityControls({
         </DropdownMenu>
       }
     >
-      <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-        Price tier of all the models actually billed — not only the Basic /
-        Standard / Premium options offered in the model picker.
-      </p>
-      <div className="flex items-center gap-1">
-        {MODELS_TIER_NAMES.map((tier) => (
-          <Button
-            key={tier}
-            label={getModelsTierDisplayName(tier)}
-            icon={MODEL_TIER_ICON[tier]}
-            size="xs"
-            variant={activeTier === tier ? "primary" : "outline"}
-            aria-pressed={activeTier === tier}
-            onClick={() => onTierChange(tier)}
-          />
-        ))}
+      <div className="flex flex-col gap-2 px-2">
+        <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+          Price tier of all the models actually billed — not only the Basic /
+          Standard / Premium options offered in the model picker.
+        </p>
+        <div className="flex items-center gap-1">
+          {MODELS_TIER_NAMES.map((tier) => (
+            <Button
+              key={tier}
+              label={getModelsTierDisplayName(tier)}
+              icon={MODEL_TIER_ICON[tier]}
+              size="xs"
+              variant={activeTier === tier ? "primary" : "outline"}
+              aria-pressed={activeTier === tier}
+              onClick={() => onTierChange(tier)}
+            />
+          ))}
+        </div>
       </div>
     </UsageFilterSection>
   );
