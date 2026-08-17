@@ -428,12 +428,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       invocationId,
     }: { sandboxFunctionId: string; invocationId: string }
   ): Promise<SandboxFunctionResource | null> {
-    if (
-      !isResourceSId("sandbox_function", sandboxFunctionId) ||
-      !isResourceSId("sandbox_function_invocation", invocationId)
-    ) {
-      return null;
-    }
     const sandboxFunctionModelId = getResourceIdFromSId(sandboxFunctionId);
     const invocationModelId = getResourceIdFromSId(invocationId);
     if (sandboxFunctionModelId === null || invocationModelId === null) {
