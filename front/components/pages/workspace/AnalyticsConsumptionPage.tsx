@@ -115,22 +115,20 @@ export function AnalyticsConsumptionPage() {
       />
       <div className="flex flex-col gap-8 pb-8 pt-4">
         <ConsumptionOverview workspaceId={owner.sId} period={period} />
-        <LazyMotion features={domMax}>
-          <div className="flex flex-col gap-4">
-            <div className="sticky top-0 z-30 -mb-4 flex flex-col bg-panel-background pb-4 pt-4">
-              <div className="flex items-center justify-between gap-4">
-                <h2 className="text-lg font-semibold text-foreground">
-                  Explore
-                </h2>
-                <UsageFilterPanel
-                  owner={owner}
-                  period={period}
-                  filter={filter}
-                  onFilterChange={setFilter}
-                />
-              </div>
-              <UsageFilterSummary filter={filter} onFilterChange={setFilter} />
+        <div className="flex flex-col gap-4">
+          <div className="sticky top-0 z-30 -mb-4 flex flex-col bg-panel-background pb-4 pt-4">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-lg font-semibold text-foreground">Explore</h2>
+              <UsageFilterPanel
+                owner={owner}
+                period={period}
+                filter={filter}
+                onFilterChange={setFilter}
+              />
             </div>
+            <UsageFilterSummary filter={filter} onFilterChange={setFilter} />
+          </div>
+          <LazyMotion features={domMax}>
             <m.div
               layout={!shouldReduceMotion}
               transition={{ duration: shouldReduceMotion ? 0 : 0.18 }}
@@ -145,35 +143,43 @@ export function AnalyticsConsumptionPage() {
                 />
               </SafeSuspense>
             </m.div>
-          </div>
-        </LazyMotion>
-        <ConsumptionAttributionTable
-          workspaceId={owner.sId}
-          period={period}
-          filter={scopeFilter}
-          onAddFilter={(selectedRow) => {
-            setFilter((current) =>
-              addUsageFilterFromAttributionRow(current, dimension, selectedRow)
-            );
-          }}
-          onRemoveFilter={(selectedRow) => {
-            setFilter((current) =>
-              removeUsageFilterFromAttributionRow(
-                current,
-                dimension,
-                selectedRow
-              )
-            );
-          }}
-          dimension={dimension}
-          onDimensionChange={handleDimensionChange}
-          onViewAll={(nextDimension, selectedRow) => {
-            setFilter((current) =>
-              setUsageFilterFromAttributionRow(current, dimension, selectedRow)
-            );
-            handleDimensionChange(nextDimension);
-          }}
-        />
+          </LazyMotion>
+          <ConsumptionAttributionTable
+            workspaceId={owner.sId}
+            period={period}
+            filter={scopeFilter}
+            onAddFilter={(selectedRow) => {
+              setFilter((current) =>
+                addUsageFilterFromAttributionRow(
+                  current,
+                  dimension,
+                  selectedRow
+                )
+              );
+            }}
+            onRemoveFilter={(selectedRow) => {
+              setFilter((current) =>
+                removeUsageFilterFromAttributionRow(
+                  current,
+                  dimension,
+                  selectedRow
+                )
+              );
+            }}
+            dimension={dimension}
+            onDimensionChange={handleDimensionChange}
+            onViewAll={(nextDimension, selectedRow) => {
+              setFilter((current) =>
+                setUsageFilterFromAttributionRow(
+                  current,
+                  dimension,
+                  selectedRow
+                )
+              );
+              handleDimensionChange(nextDimension);
+            }}
+          />
+        </div>
       </div>
     </Page.Vertical>
   );
