@@ -170,7 +170,8 @@ impl HandleTable {
 
     pub fn insert_file(&self, open: OpenFile) -> io::Result<u64> {
         let inode = open.inode();
-        // READ uses this descriptor without taking the state mutex. Large
+        // try_clone duplicates the Linux file descriptor, not the file bytes.
+        // READ uses this descriptor without taking the OpenFile mutex. Large
         // reads may arrive in parallel, and a remote commit may hold that
         // mutex while it uploads bytes.
         let local_file = Arc::new(open.duplicate_file()?);
