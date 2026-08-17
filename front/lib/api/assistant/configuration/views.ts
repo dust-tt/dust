@@ -22,10 +22,13 @@ import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
-import type { Attributes } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
-type AgentConfigurationAttribute = keyof Attributes<AgentConfigurationModel>;
+const HEAVY_AGENT_CONFIGURATION_ATTRIBUTES = [
+  "description",
+  "instructionsHtml",
+  "responseFormat",
+] as const;
 
 const sortStrategies: Record<SortStrategyType, SortStrategy> = {
   alphabetical: {
@@ -133,7 +136,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     owner,
     sort,
     omitInstructions,
-    excludeAttributes = [],
+    omitHeavyAttributes,
   }: {
     agentPrefix?: string;
     agentsGetView: Exclude<AgentsGetViewType, "global">;
@@ -142,7 +145,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     owner: WorkspaceType;
     sort?: SortStrategyType;
     omitInstructions?: boolean;
-    excludeAttributes?: readonly AgentConfigurationAttribute[];
+    omitHeavyAttributes?: boolean;
   }
 ): Promise<AgentConfigurationModel[]> {
   const sortStrategy = sort && sortStrategies[sort];
@@ -153,9 +156,9 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     ...(agentPrefix ? { name: { [Op.iLike]: `${agentPrefix}%` } } : {}),
   };
 
-  const attributesToExclude: AgentConfigurationAttribute[] = [
+  const attributesToExclude = [
     ...(omitInstructions ? (["instructions"] as const) : []),
-    ...excludeAttributes,
+    ...(omitHeavyAttributes ? HEAVY_AGENT_CONFIGURATION_ATTRIBUTES : []),
   ];
   const excludeAttributesFromSelect =
     attributesToExclude.length > 0
@@ -309,7 +312,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     variant,
     dangerouslySkipPermissionFiltering,
     omitInstructions,
-    excludeAttributes,
+    omitHeavyAttributes,
   }: {
     agentPrefix?: string;
     agentsGetView: Exclude<AgentsGetViewType, "global">;
@@ -318,7 +321,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     variant: AgentFetchVariant;
     dangerouslySkipPermissionFiltering?: boolean;
     omitInstructions?: boolean;
-    excludeAttributes?: readonly AgentConfigurationAttribute[];
+    omitHeavyAttributes?: boolean;
   }
 ) {
   const user = auth.user();
@@ -341,7 +344,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       owner,
       sort,
       omitInstructions,
-      excludeAttributes,
+      omitHeavyAttributes,
     }
   );
 
@@ -372,7 +375,7 @@ export async function getAgentConfigurationsForView<
   sort,
   dangerouslySkipPermissionFiltering,
   omitInstructions,
-  excludeAttributes,
+  omitHeavyAttributes,
 }: {
   auth: Authenticator;
   agentsGetView: AgentsGetViewType;
@@ -382,7 +385,7 @@ export async function getAgentConfigurationsForView<
   sort?: SortStrategyType;
   dangerouslySkipPermissionFiltering?: boolean;
   omitInstructions?: boolean;
-  excludeAttributes?: readonly AgentConfigurationAttribute[];
+  omitHeavyAttributes?: boolean;
 }): Promise<
   V extends "full" ? AgentConfigurationType[] : LightAgentConfigurationType[]
 > {
@@ -454,7 +457,7 @@ export async function getAgentConfigurationsForView<
       variant,
       dangerouslySkipPermissionFiltering,
       omitInstructions,
-      excludeAttributes,
+      omitHeavyAttributes,
     }),
   ]);
 

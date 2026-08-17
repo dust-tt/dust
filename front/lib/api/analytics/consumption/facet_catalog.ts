@@ -144,11 +144,7 @@ async function listConsumptionFacetCatalogWithoutTracing(
           agentsGetView: "analytics",
           variant: "extra_light",
           omitInstructions: true,
-          excludeAttributes: [
-            "description",
-            "instructionsHtml",
-            "responseFormat",
-          ],
+          omitHeavyAttributes: true,
         })
       ),
       traceFacetCatalogLoad("models", "model", requestedDimension, async () => {
