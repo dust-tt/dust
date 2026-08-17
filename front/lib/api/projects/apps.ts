@@ -1,5 +1,4 @@
 import { DustFileSystem } from "@app/lib/api/file_system";
-import { getPodStateBasePath } from "@app/lib/api/files/mount_path";
 import { getFileContent } from "@app/lib/api/files/utils";
 import { deleteProjectFile } from "@app/lib/api/projects/context";
 import { createPodFrameFile } from "@app/lib/api/projects/pod_frame_file";
@@ -40,6 +39,7 @@ import type {
 import { normalizeAppPrefix } from "@app/types/api/pod_function_reference";
 import { SCOPED_PREFIX_POD } from "@app/types/file_system";
 import { isInteractiveContentType } from "@app/types/files";
+import { getPodStateBasePath } from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 

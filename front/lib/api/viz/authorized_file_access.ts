@@ -1,5 +1,3 @@
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { legacyScopedPathsMatch } from "@app/lib/api/files/mount_path";
 import {
   isAllowlistShareScopeStale,
   isAllowlistStale,
@@ -11,6 +9,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { streamToBuffer } from "@app/lib/utils/streams";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import { DustFileSystem } from "@app/types/dust_file_system";
 import type {
   AuthorizedFileAccessAllowlist,
   AuthorizedFileAccessShareError,
@@ -19,6 +18,7 @@ import type {
   FileShareScope,
 } from "@app/types/files";
 import { getAuthorizedFileRefLabel } from "@app/types/files";
+import { legacyScopedPathsMatch } from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";

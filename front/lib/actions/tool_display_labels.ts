@@ -18,7 +18,7 @@ import { stripFileExtension } from "@app/types/files";
 import {
   parseCanonicalScopedPath,
   TOOL_OUTPUTS_FOLDER_NAME,
-} from "@app/types/scoped_file_path";
+} from "@app/types/mount_path";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   isNumber,

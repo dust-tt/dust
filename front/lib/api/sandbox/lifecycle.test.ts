@@ -56,7 +56,7 @@ vi.mock("@app/lib/api/sandbox/egress", () => ({
   prepareSandboxEgressBeforeMount: mockPrepareSandboxEgressBeforeMount,
 }));
 
-vi.mock("@app/lib/api/file_system/dust_file_system", () => ({
+vi.mock("@app/types/dust_file_system", () => ({
   DustFileSystem: {
     forConversation: mockForConversation,
     forPod: mockForPod,

@@ -23,13 +23,13 @@ import {
   revertClientExecutableFileChanges,
 } from "@app/lib/api/files/client_executable";
 import { formatValidationWarningsForLLM } from "@app/lib/api/files/content_validation";
-import { splitFrameEntryScopedPath } from "@app/lib/api/files/mount_path";
 import { exportInteractiveContentFileAsPdf } from "@app/lib/api/files/pdf_export";
 import { screenshotInteractiveContentFile } from "@app/lib/api/files/screenshot";
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import { publishFrame } from "@app/lib/api/viz/publish_frame";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { splitFrameEntryScopedPath } from "@app/types/mount_path";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";

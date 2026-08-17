@@ -1,18 +1,18 @@
 import { FILE_OFFLOAD_TEXT_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
 import { isResourceContentWithText } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolRunContext } from "@app/lib/actions/types";
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import {
   resolveResourceOutput,
   shouldOffloadTextBlock,
 } from "@app/lib/api/files/action_output_fs/registry";
-import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { DustFileSystem } from "@app/types/dust_file_system";
 import { conversationScopedPath, podScopedPath } from "@app/types/file_system";
 import type { AllSupportedFileContentType } from "@app/types/files";
+import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";

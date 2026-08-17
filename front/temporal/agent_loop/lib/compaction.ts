@@ -7,7 +7,6 @@ import { renderConversationAsText } from "@app/lib/api/assistant/conversation/re
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
 import { isProviderWhitelistedForAuth } from "@app/lib/api/assistant/models";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
@@ -20,6 +19,7 @@ import type {
 import { isCompactionMessageType } from "@app/types/assistant/conversation";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type { SupportedModel } from "@app/types/assistant/models/types";
+import { DustFileSystem } from "@app/types/dust_file_system";
 import type { DustFileSystemError } from "@app/types/file_system";
 import { conversationScopedPath } from "@app/types/file_system";
 import type { Result } from "@app/types/shared/result";

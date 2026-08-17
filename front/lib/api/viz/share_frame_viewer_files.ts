@@ -1,4 +1,3 @@
-import { parseCanonicalScopedPath } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ShareFileResponseBody } from "@app/lib/resources/file_resource";
@@ -12,6 +11,7 @@ import {
   entryToAuthorizedFileRef,
   getAuthorizedFileRefLabel,
 } from "@app/types/files";
+import { parseCanonicalScopedPath } from "@app/types/mount_path";
 import path from "path";
 
 export type ShareFrameViewerFileSourceKind =

@@ -1,4 +1,3 @@
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { setupPodStateOnColdStart } from "@app/lib/api/sandbox/db";
 import {
   ensureSandboxEgressOnExec,
@@ -22,6 +21,7 @@ import type {
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
+import { DustFileSystem } from "@app/types/dust_file_system";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 

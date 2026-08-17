@@ -9,7 +9,6 @@ import {
   scopedPathsFromArgs,
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
 import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
-import { parseProcessedFilename } from "@app/lib/api/files/mount_path";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type { FileSystemMount } from "@app/types/file_system";
@@ -21,6 +20,7 @@ import {
   isInteractiveContentType,
   stripMimeParameters,
 } from "@app/types/files";
+import { parseProcessedFilename } from "@app/types/mount_path";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import partition from "lodash/partition";

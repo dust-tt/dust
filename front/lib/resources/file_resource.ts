@@ -7,18 +7,6 @@ import {
   SCOPED_PREFIX_POD,
   sanitizeFileSystemName,
 } from "@app/lib/api/file_system";
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import type { FrameScopedPathContext } from "@app/lib/api/files/mount_path";
-import {
-  disambiguateFileName,
-  getConversationFilePath,
-  getConversationFilesBasePath,
-  getPodFilesBasePath,
-  getPodSandboxFunctionsBasePath,
-  isLegacyScopedPath,
-  makeProcessedMountFileName,
-  resolveCanonicalScopedPath,
-} from "@app/lib/api/files/mount_path";
 import {
   getProcessedContentType,
   hasProcessedVersion,
@@ -65,6 +53,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import { CoreAPI } from "@app/types/core/core_api";
+import { DustFileSystem } from "@app/types/dust_file_system";
 import type {
   AuthorizedFileAccessAllowlist,
   AuthorizedFileRef,
@@ -85,6 +74,17 @@ import {
   isInteractiveContentType,
   isSandboxFunctionContentType,
 } from "@app/types/files";
+import type { FrameScopedPathContext } from "@app/types/mount_path";
+import {
+  disambiguateFileName,
+  getConversationFilePath,
+  getConversationFilesBasePath,
+  getPodFilesBasePath,
+  getPodSandboxFunctionsBasePath,
+  isLegacyScopedPath,
+  makeProcessedMountFileName,
+  resolveCanonicalScopedPath,
+} from "@app/types/mount_path";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

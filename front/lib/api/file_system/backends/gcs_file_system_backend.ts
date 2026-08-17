@@ -1,7 +1,6 @@
 import type { GCSMountTarget } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import { GCSSandboxMountAdapter } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import type { SandboxMountAdapter } from "@app/lib/api/file_system/sandbox/sandbox_mount_adapter";
-import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import fileStorageConfig from "@app/lib/file_storage/config";
 import { getCachedPrivateUploadSignedUrl } from "@app/lib/file_storage/signed_url_cache";
@@ -18,6 +17,7 @@ import {
   SCOPED_PREFIX_USER,
 } from "@app/types/file_system";
 import { stripMimeParameters } from "@app/types/files";
+import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";

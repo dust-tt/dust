@@ -4,10 +4,6 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { GCSMountDirectoryAlreadyExistsError } from "@app/lib/api/files/gcs_mount/errors";
-import {
-  getConversationFilesBasePath,
-  getPodFilesBasePath,
-} from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import {
@@ -20,6 +16,10 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
+import {
+  getConversationFilesBasePath,
+  getPodFilesBasePath,
+} from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";

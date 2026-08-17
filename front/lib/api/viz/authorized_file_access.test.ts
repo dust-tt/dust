@@ -1,4 +1,3 @@
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   assertVizFileAuthorized,
   diffAuthorizedFileRefs,
@@ -28,6 +27,7 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { DustFileSystem } from "@app/types/dust_file_system";
 import type {
   AuthorizedFileAccessAllowlist,
   FileUseCase,
