@@ -11,6 +11,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import assert from "assert";
+import isEqual from "lodash/isEqual";
 import type { Transaction, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
@@ -276,5 +277,50 @@ export class SkillSearchDocumentResource {
         return document?.skill_id === skillId ? [document] : [];
       });
     }, existingTransaction);
+  }
+
+  /**
+   * Fail closed when an Elasticsearch document's permission-bearing fields no
+   * longer match the canonical database state.
+   */
+  static async filterSearchDocumentsByCurrentState(
+    auth: Authenticator,
+    documents: readonly SkillSearchDocument[],
+    options: TransactionOptions = {}
+  ): Promise<SkillSearchDocument[]> {
+    if (documents.length === 0) {
+      return [];
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const currentDocuments = await this.fetchSearchDocuments(
+      auth,
+      documents.map((document) => document.skill_id),
+      options
+    );
+    const currentDocumentBySkillId = new Map(
+      currentDocuments.map((document) => [document.skill_id, document])
+    );
+
+    return documents.filter((document) => {
+      const currentDocument = currentDocumentBySkillId.get(document.skill_id);
+      return (
+        document.workspace_id === workspace.sId &&
+        currentDocument !== undefined &&
+        document.status === currentDocument.status &&
+        document.availability === currentDocument.availability &&
+        isEqual(
+          [...document.requested_space_ids].sort(),
+          [...currentDocument.requested_space_ids].sort()
+        ) &&
+        isEqual(
+          [...document.non_pod_space_ids].sort(),
+          [...currentDocument.non_pod_space_ids].sort()
+        ) &&
+        document.non_pod_space_count === currentDocument.non_pod_space_count &&
+        document.pod_space_id === currentDocument.pod_space_id &&
+        document.editor_group_id === currentDocument.editor_group_id
+      );
+    });
   }
 }
