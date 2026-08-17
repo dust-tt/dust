@@ -29,22 +29,33 @@ function StatBlock({
   label,
   primaryText,
   caption,
+  captionTooltipLabel,
 }: {
   label: string;
   primaryText: ReactNode;
   caption: string;
+  captionTooltipLabel?: string;
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-2">
       <h4 className="text-xs font-semibold text-muted-foreground">{label}</h4>
       <div className="flex min-w-0 items-baseline gap-2 text-xs">
         <div className="truncate">{primaryText}</div>
-        <Tooltip
-          trigger={
-            <span className="truncate text-muted-foreground">{caption}</span>
-          }
-          label={CAPTION_TOOLTIP_LABEL}
-        />
+        {captionTooltipLabel ? (
+          <Tooltip
+            tooltipTriggerAsChild
+            trigger={
+              <span className="ml-auto truncate text-muted-foreground">
+                {caption}
+              </span>
+            }
+            label={captionTooltipLabel}
+          />
+        ) : (
+          <span className="ml-auto truncate text-muted-foreground">
+            {caption}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -137,6 +148,7 @@ export function AutomationsTriggerBreakdown({
           </>
         }
         caption={ratioCaption(trigger.runCount, medianRunCount)}
+        captionTooltipLabel={CAPTION_TOOLTIP_LABEL}
       />
       <StatBlock
         label="What each run costs"
