@@ -22,8 +22,10 @@ import { microCreditsToCredits } from "@app/lib/credits/units";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
+import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type { TriggerKind } from "@app/types/assistant/triggers";
+import { isScheduleTrigger } from "@app/types/assistant/triggers";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -38,11 +40,16 @@ export type AutomationTriggerRow = {
     agentId: string;
     name: string;
     pictureUrl: string | null;
+    description: string | null;
+    modelId: string | null;
+    modelDisplayName: string | null;
   };
   editor: {
     name: string;
+    email: string | null;
     pictureUrl: string | null;
   };
+  scheduleDescription: string | null;
   webhookSourceName: string | null;
   webhookIcon: InternalAllowedIconType | CustomResourceIconType | null;
   runCount: number;
@@ -238,6 +245,7 @@ export async function fetchAutomationTriggers(
     const webhookSource = trigger.webhookSourceViewId
       ? webhookSources.get(trigger.webhookSourceViewId)
       : undefined;
+    const triggerJSON = trigger.toJSON();
 
     return {
       triggerId: trigger.sId,
@@ -247,11 +255,18 @@ export async function fetchAutomationTriggers(
         agentId: trigger.agentConfigurationId,
         name: agentLabel?.name ?? trigger.agentConfigurationId,
         pictureUrl: agentLabel?.pictureUrl ?? null,
+        description: agentLabel?.description ?? null,
+        modelId: agentLabel?.modelId ?? null,
+        modelDisplayName: agentLabel?.modelDisplayName ?? null,
       },
       editor: {
         name: getUserDisplayName(editor),
+        email: editor?.email ?? null,
         pictureUrl: editor?.imageUrl ?? null,
       },
+      scheduleDescription: isScheduleTrigger(triggerJSON)
+        ? describeScheduleConfig(triggerJSON.configuration)
+        : null,
       webhookSourceName: webhookSource?.name ?? null,
       webhookIcon: webhookSource?.icon ?? null,
       runCount,
