@@ -5,6 +5,7 @@ import {
   filterMembersByNotifyCondition,
   notifyActivationConversationAgentReplied,
 } from "@app/lib/notifications/triggers/project-new-conversation";
+import { getActivationNewConversationEmailSubject } from "@app/lib/notifications/workflows/activation-new-conversation";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
@@ -18,6 +19,7 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { NotificationCondition } from "@app/types/notification_preferences";
 import {
+  ACTIVATION_NEW_CONVERSATION_TRIGGER_ID,
   CONVERSATION_NOTIFICATION_METADATA_KEYS,
   DEFAULT_NOTIFICATION_CONDITION,
   FOR_YOU_NOTIFICATION_METADATA_KEY,
@@ -25,15 +27,35 @@ import {
 import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+const { mockTriggerBulk } = vi.hoisted(() => ({
+  mockTriggerBulk: vi.fn().mockResolvedValue({ result: [] }),
+}));
+
 // Mock Novu client so tests can assert whether the activation email was triggered.
 vi.mock(import("@app/lib/notifications"), async (importOriginal) => {
   const mod = await importOriginal();
   return {
     ...mod,
     getNovuClient: vi.fn().mockResolvedValue({
-      triggerBulk: vi.fn().mockResolvedValue({ result: [] }),
+      triggerBulk: mockTriggerBulk,
     }),
   };
+});
+
+describe("getActivationNewConversationEmailSubject", () => {
+  test("uses the recommendation name", () => {
+    expect(
+      getActivationNewConversationEmailSubject(
+        "  Prepare the weekly\ncustomer review  "
+      )
+    ).toBe("[Dust] Recommendation For You: Prepare the weekly customer review");
+  });
+
+  test("falls back when no recommendation name is available", () => {
+    expect(getActivationNewConversationEmailSubject(null)).toBe(
+      "[Dust] Recommendation For You: A recommendation for you"
+    );
+  });
 });
 
 describe("filterMembersByNotifyCondition", () => {
@@ -309,6 +331,7 @@ describe("notifyActivationConversationAgentReplied", () => {
     await ActivationPodResource.makeNew(auth, { pod, user });
 
     vi.mocked(getNovuClient).mockClear();
+    mockTriggerBulk.mockClear();
   });
 
   // A conversation Dust opened with a nudge: its opening message carries the
@@ -339,6 +362,25 @@ describe("notifyActivationConversationAgentReplied", () => {
     });
 
     expect(vi.mocked(getNovuClient)).toHaveBeenCalled();
+  });
+
+  test("uses a stable Novu transaction for repeated completions of the same nudge conversation", async () => {
+    const conversation = await createNudgeConversation();
+
+    await notifyActivationConversationAgentReplied(auth, {
+      conversationId: conversation.sId,
+    });
+    await notifyActivationConversationAgentReplied(auth, {
+      conversationId: conversation.sId,
+    });
+
+    expect(mockTriggerBulk).toHaveBeenCalledTimes(2);
+    const firstEvent = mockTriggerBulk.mock.calls[0][0].events[0];
+    const secondEvent = mockTriggerBulk.mock.calls[1][0].events[0];
+    expect(firstEvent.transactionId).toBe(
+      `${ACTIVATION_NEW_CONVERSATION_TRIGGER_ID}-${workspace.sId}-${conversation.sId}-${user.sId}`
+    );
+    expect(secondEvent.transactionId).toBe(firstEvent.transactionId);
   });
 
   test("does not trigger the activation email for a conversation the user starts", async () => {
