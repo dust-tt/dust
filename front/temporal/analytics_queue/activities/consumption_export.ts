@@ -21,6 +21,24 @@ export function buildConsumptionExportGcsPath(
   return `${buildConsumptionExportGcsPrefix(workspaceId)}${exportId}.zip`;
 }
 
+export function makeConsumptionExportWorkflowIdPrefix({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): string {
+  return `consumption-export-${workspaceId}-`;
+}
+
+export function makeConsumptionExportWorkflowId({
+  workspaceId,
+  exportId,
+}: {
+  workspaceId: string;
+  exportId: string;
+}): string {
+  return `${makeConsumptionExportWorkflowIdPrefix({ workspaceId })}${exportId}`;
+}
+
 // Sorted independently of request key/array order so equivalent filters hash identically.
 function canonicalizeConsumptionScopeFilter(
   filter: ConsumptionScopeFilter

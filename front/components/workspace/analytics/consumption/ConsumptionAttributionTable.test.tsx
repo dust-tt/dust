@@ -10,14 +10,25 @@ import {
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockUseConsumptionTop } = vi.hoisted(() => ({
+const {
+  mockUseConsumptionTop,
+  mockUseConsumptionExports,
+  mockUseStartConsumptionExport,
+} = vi.hoisted(() => ({
   mockUseConsumptionTop: vi.fn(),
+  mockUseConsumptionExports: vi.fn(),
+  mockUseStartConsumptionExport: vi.fn(),
 }));
 
 vi.mock("@app/hooks/useConsumptionTop", () => ({
   useConsumptionTop: mockUseConsumptionTop,
+}));
+
+vi.mock("@app/hooks/useConsumptionExports", () => ({
+  useConsumptionExports: mockUseConsumptionExports,
+  useStartConsumptionExport: mockUseStartConsumptionExport,
 }));
 
 vi.mock("@app/components/sparkle/ThemeContext", () => ({
@@ -71,6 +82,19 @@ function ControlledAttributionTable({
 }
 
 describe("ConsumptionAttributionTable", () => {
+  beforeEach(() => {
+    mockUseConsumptionExports.mockReturnValue({
+      exports: [],
+      isGenerating: false,
+      isConsumptionExportsLoading: false,
+      isConsumptionExportsError: undefined,
+    });
+    mockUseStartConsumptionExport.mockReturnValue({
+      isStarting: false,
+      startConsumptionExport: vi.fn().mockResolvedValue(undefined),
+    });
+  });
+
   it("caps the available pages and fetches the selected fixed-size page", async () => {
     const rows = Array.from({ length: 1_025 }, (_, index) => ({
       id: `agent-${index + 1}`,

@@ -3,16 +3,14 @@ import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/
 import {
   buildConsumptionExportCacheKey,
   buildConsumptionExportGcsPath,
+  makeConsumptionExportWorkflowId,
 } from "@app/temporal/analytics_queue/activities/consumption_export";
 import {
   launchConsumptionExportWorkflow,
   launchStoreAgentMessageConsumptionAttributionWorkflow,
 } from "@app/temporal/analytics_queue/client";
 import { QUEUE_NAME } from "@app/temporal/analytics_queue/config";
-import {
-  makeAgentMessageAnalyticsWorkflowId,
-  makeConsumptionExportWorkflowId,
-} from "@app/temporal/analytics_queue/helpers";
+import { makeAgentMessageAnalyticsWorkflowId } from "@app/temporal/analytics_queue/helpers";
 import { storeAgentMessageConsumptionAttributionV3Signal } from "@app/temporal/analytics_queue/signals";
 import { storeAgentMessageConsumptionAttributionV3Workflow } from "@app/temporal/analytics_queue/workflows";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";

@@ -5,7 +5,7 @@ import {
   isInternalAllowedIcon,
 } from "@app/components/resources/resources_icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
+import { ConsumptionExportPanel } from "@app/components/workspace/analytics/consumption/ConsumptionExportPanel";
 import {
   AvatarNameCell,
   CostShareCell,
@@ -13,7 +13,6 @@ import {
 import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useDebounce } from "@app/hooks/useDebounce";
-import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/constants";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { normalizedConsumptionFilter } from "@app/lib/analytics/consumption_period";
@@ -645,19 +644,14 @@ export function ConsumptionAttributionTable({
     filter: normalizedConsumptionFilter(filter),
   };
 
-  // Every raw consumption line with no aggregation, for users who want to
-  // build their own analysis on top of it.
-  const rawCsvDownload = useDownloadCsv({
-    url: `/api/w/${workspaceId}/analytics/consumption/export-raw`,
-    filename: `dust_consumption_lines_export_${workspaceId}.zip`,
-    body: exportBody,
-  });
-
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-4">
         <h3 className="text-base font-semibold text-foreground">Attribution</h3>
-        <CsvDownloadButton {...rawCsvDownload} label="Download raw data" />
+        <ConsumptionExportPanel
+          workspaceId={workspaceId}
+          exportBody={exportBody}
+        />
       </div>
       <div className="rounded-lg border border-border bg-panel-background p-4">
         <div className="flex flex-col gap-3">
