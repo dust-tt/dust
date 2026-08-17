@@ -10,6 +10,7 @@ import type {
 import {
   AGENT_MESSAGE_ID_FIELD,
   buildConsumptionScopeQuery,
+  CARDINALITY_PRECISION_THRESHOLD,
   CONSUMPTION_DIMENSION_FIELDS,
   CONSUMPTION_DIMENSION_UNIT,
   CREDIT_MICRO_FIELD,
@@ -45,8 +46,8 @@ export type ConsumptionTopGroups = {
   // Distinct dimension values over the scoped period.
   totalCount: number;
   // Gross credits over the whole scoped period, every document included. Not the
-  // sum of the returned page. A dimension that only exists on some documents (a
-  // tool, a skill) accounts for part of the total.
+  // sum of `groups`. The ranking is capped at `limit`, and a dimension that only
+  // exists on some documents (a tool, a skill) accounts for part of the total.
   totalCredits: number;
 };
 
@@ -54,23 +55,19 @@ export type ConsumptionTopGroups = {
 // bucket reads below cannot drift apart.
 const CREDIT_AGG = "credit_micro";
 const MESSAGES_AGG = "messages";
+const TOTAL_COUNT_AGG = "total_count";
 const RANKING_COMPOSITE_PAGE_SIZE = 1_000;
 const MAX_ES_QUERY_CLAUSES = 1_024;
 const MAX_ES_TERMS_QUERY_VALUES = 65_536;
 
-type GroupBucketMetrics = {
+type GroupBucket<Key = string> = {
+  key: Key;
   doc_count: number;
   [CREDIT_AGG]?: estypes.AggregationsSumAggregate;
   [MESSAGES_AGG]?: estypes.AggregationsCardinalityAggregate;
 };
 
-type GroupBucket = GroupBucketMetrics & { key: string };
-
 type CompositeGroupKey = { group: string };
-
-type CompositeGroupBucket = GroupBucketMetrics & {
-  key: CompositeGroupKey;
-};
 
 function subAggs(unit: ConsumptionTopUnit) {
   return {
@@ -83,9 +80,10 @@ function subAggs(unit: ConsumptionTopUnit) {
 
 type RankingAggs = {
   by_group?: estypes.AggregationsCompositeAggregate & {
-    buckets: CompositeGroupBucket[];
+    buckets: GroupBucket<CompositeGroupKey>[];
     after_key?: CompositeGroupKey;
   };
+  [TOTAL_COUNT_AGG]?: estypes.AggregationsCardinalityAggregate;
 };
 
 type TopAggs = RankingAggs & {
@@ -94,7 +92,7 @@ type TopAggs = RankingAggs & {
 };
 
 function countFromBucket(
-  bucket: GroupBucketMetrics,
+  bucket: GroupBucket<unknown>,
   unit: ConsumptionTopUnit
 ): number {
   switch (unit) {
@@ -193,6 +191,12 @@ function buildConsumptionTopAggregations({
         ...(afterKey ? { after: afterKey } : {}),
       },
       aggs: subAggs(unit),
+    },
+    [TOTAL_COUNT_AGG]: {
+      cardinality: {
+        field: dimensionField,
+        precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+      },
     },
   } satisfies Record<string, estypes.AggregationsAggregationContainer>;
 
@@ -314,7 +318,8 @@ export async function fetchConsumptionTopGroups(
 
   const rankedGroups: Omit<ConsumptionTopGroup, "previousCredits">[] = [];
   let afterKey: CompositeGroupKey | undefined;
-  let buckets: CompositeGroupBucket[];
+  let buckets: GroupBucket<CompositeGroupKey>[];
+  let totalCount = 0;
   let totalCredits = 0;
 
   // Composite aggregations page by key rather than by a sub-aggregation. Read
@@ -338,7 +343,9 @@ export async function fetchConsumptionTopGroups(
     const ranking = searchFilter
       ? result.value.aggregations?.ranking
       : result.value.aggregations;
-    buckets = bucketsToArray<CompositeGroupBucket>(ranking?.by_group?.buckets);
+    buckets = bucketsToArray<GroupBucket<CompositeGroupKey>>(
+      ranking?.by_group?.buckets
+    );
     rankedGroups.push(
       ...buckets.map((bucket) => ({
         key: bucket.key.group,
@@ -349,6 +356,7 @@ export async function fetchConsumptionTopGroups(
     totalCredits = microCreditsToCredits(
       result.value.aggregations?.total_credit_micro?.value ?? 0
     );
+    totalCount = Math.round(ranking?.[TOTAL_COUNT_AGG]?.value ?? 0);
     afterKey = ranking?.by_group?.after_key;
   } while (afterKey !== undefined && buckets.length > 0);
 
@@ -386,8 +394,8 @@ export async function fetchConsumptionTopGroups(
       ...group,
       previousCredits: previousCreditsByKey.get(group.key) ?? null,
     })),
-    hasMore: sortedGroups.length > offset + limit,
-    totalCount: sortedGroups.length,
+    hasMore: totalCount > offset + limit,
+    totalCount,
     totalCredits,
   });
 }
