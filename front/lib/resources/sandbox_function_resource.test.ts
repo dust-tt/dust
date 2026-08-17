@@ -10,6 +10,7 @@ import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { PodAppShareFactory } from "@app/tests/utils/PodAppShareFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { SandboxFunctionStake } from "@app/types/api/sandbox_functions";
@@ -712,5 +713,108 @@ describe("SandboxFunctionResource", () => {
     await expect(
       SandboxFunctionResource.fetchById(adminAuth, sandboxFunction.sId)
     ).resolves.toMatchObject({ id: sandboxFunction.id });
+  });
+});
+
+describe("SandboxFunctionResource pod app share gate", () => {
+  async function setupSharedApp() {
+    const { authenticator: adminAuth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace);
+
+    const makeFunction = async (slug: string, fileName: string) => {
+      const file = await FileFactory.create(adminAuth, null, {
+        contentType: sandboxFunctionContentType,
+        fileName,
+        fileSize: 100,
+        status: "created",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: pod.sId },
+      });
+      return SandboxFunctionResource.makeNew(adminAuth, {
+        space: pod,
+        file,
+        slug,
+        description: `Function ${slug}.`,
+        inputSchema,
+        outputSchema,
+      });
+    };
+
+    await makeFunction("notes__list", "list.ts");
+    await makeFunction("other__fn", "fn.ts");
+
+    const share = await PodAppShareFactory.create(adminAuth, {
+      space: pod,
+      appPrefix: "notes",
+    });
+
+    const outsider = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, outsider, { role: "user" });
+    const outsiderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      outsider.sId,
+      workspace.sId
+    );
+    assert(outsiderAuth, "Expected an authenticator for the outsider");
+
+    return { adminAuth, pod, share, outsiderAuth };
+  }
+
+  it("resolves a shared app's functions for a workspace user without pod access", async () => {
+    const { share, outsiderAuth } = await setupSharedApp();
+
+    const listed = await SandboxFunctionResource.listByPodAppShare(
+      outsiderAuth,
+      share
+    );
+    expect(listed.map(({ slug }) => slug)).toEqual(["notes__list"]);
+
+    const fetched = await SandboxFunctionResource.fetchBySlugWithPodAppShare(
+      outsiderAuth,
+      share,
+      "notes__list"
+    );
+    expect(fetched?.slug).toBe("notes__list");
+  });
+
+  it("does not resolve functions of a different app in the same pod", async () => {
+    const { share, outsiderAuth } = await setupSharedApp();
+
+    expect(
+      await SandboxFunctionResource.fetchBySlugWithPodAppShare(
+        outsiderAuth,
+        share,
+        "other__fn"
+      )
+    ).toBeNull();
+  });
+
+  it("does not widen the default fetchers", async () => {
+    const { pod, outsiderAuth } = await setupSharedApp();
+
+    expect(
+      await SandboxFunctionResource.fetchBySpaceAndSlug(
+        outsiderAuth,
+        pod,
+        "notes__list"
+      )
+    ).toBeNull();
+    expect(
+      await SandboxFunctionResource.fetchByIdOrSlug(
+        outsiderAuth,
+        `${pod.sId}/notes__list`
+      )
+    ).toBeNull();
+  });
+
+  it("pod members still resolve through their own access", async () => {
+    const { adminAuth, share } = await setupSharedApp();
+
+    const listed = await SandboxFunctionResource.listByPodAppShare(
+      adminAuth,
+      share
+    );
+    expect(listed.map(({ slug }) => slug)).toEqual(["notes__list"]);
   });
 });
