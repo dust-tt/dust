@@ -470,7 +470,7 @@ export const fetchTree = async (
       connection,
     });
     if (schemasRes.isErr()) {
-      if (isSnowflakeObjectNotFoundError(schemasRes.error)) {
+      if (isSnowflakeDatabaseUnavailableError(schemasRes.error)) {
         localLogger.warn(
           { database: db.name },
           "Database no longer exists or is inaccessible, skipping."
@@ -488,7 +488,7 @@ export const fetchTree = async (
       connection,
     });
     if (tablesRes.isErr()) {
-      if (isSnowflakeObjectNotFoundError(tablesRes.error)) {
+      if (isSnowflakeDatabaseUnavailableError(tablesRes.error)) {
         localLogger.warn(
           { database: db.name },
           "Database no longer exists or is inaccessible, skipping."
@@ -821,12 +821,16 @@ async function _closeConnection(
 }
 
 /**
- * Snowflake error code 002043: "Object does not exist, or operation cannot be
- * performed." Raised when a database or schema has been dropped / made
- * inaccessible after SHOW DATABASES returned it.
+ * Raised when a database has been dropped, made inaccessible, or its share was
+ * revoked after SHOW DATABASES returned it. These are database-scoped failures,
+ * so the rest of the account can still be synchronized.
  */
-function isSnowflakeObjectNotFoundError(err: Error): boolean {
-  return "code" in err && (err as Error & { code: string }).code === "002043";
+export function isSnowflakeDatabaseUnavailableError(err: Error): boolean {
+  return (
+    "code" in err &&
+    typeof err.code === "string" &&
+    ["002043", "003030"].includes(err.code)
+  );
 }
 
 /**
