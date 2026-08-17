@@ -4,11 +4,13 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import { SOURCE_ORIGIN_LABELS } from "@app/lib/api/analytics/source_labels";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import { filterAgentsByRequestedSpaces } from "@app/lib/api/assistant/configuration/agent";
+import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import type { MCPServerViewDisplayMetadata } from "@app/lib/resources/mcp_server_view_resource";
@@ -21,6 +23,7 @@ import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
+import { Op } from "sequelize";
 
 export type ConsumptionFacetCatalogEntry = {
   value: string;
@@ -115,6 +118,45 @@ function toolFacetCatalogEntries(
   return [...new Map(entries.map((entry) => [entry.value, entry])).values()];
 }
 
+async function listAgentFacetCatalogEntries(
+  auth: Authenticator
+): Promise<ConsumptionFacetCatalogEntry[]> {
+  const isManager = auth.isManager();
+  const [workspaceAgents, globalAgents] = await Promise.all([
+    AgentConfigurationModel.findAll({
+      attributes: [
+        "sId",
+        "name",
+        "pictureUrl",
+        "scope",
+        ...(!isManager ? ["requestedSpaceIds"] : []),
+      ],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        status: "active",
+        ...(!isManager
+          ? { scope: { [Op.in]: ["workspace", "published", "visible"] } }
+          : {}),
+      },
+    }),
+    getGlobalAgents(auth, undefined, "extra_light"),
+  ]);
+
+  const visibleWorkspaceAgents = isManager
+    ? workspaceAgents
+    : await filterAgentsByRequestedSpaces(auth, workspaceAgents);
+
+  return [
+    ...globalAgents.filter((agent) => agent.status === "active"),
+    ...visibleWorkspaceAgents,
+  ].map((agent) => ({
+    value: agent.sId,
+    label: agent.name,
+    pictureUrl: agent.pictureUrl,
+    scope: agent.scope,
+  }));
+}
+
 /** Lists current workspace entities that can be selected as consumption filters. */
 async function listConsumptionFacetCatalogWithoutTracing(
   auth: Authenticator,
@@ -124,78 +166,42 @@ async function listConsumptionFacetCatalogWithoutTracing(
   // workspace catalogs and is known to perform poorly on large workspaces.
   // Move most facet metadata into Elasticsearch so this endpoint can query ES
   // instead of loading several unbounded database-backed catalogs.
-  const members = await traceFacetCatalogLoad(
-    "members",
-    "user",
-    requestedDimension,
-    async () => {
-      const result = await getMembers(auth, { activeOnly: true });
-      return result.members;
-    }
-  );
-  const apiKeys = await traceFacetCatalogLoad(
-    "api_keys",
-    "api_key",
-    requestedDimension,
-    () =>
-      KeyResource.listNonSystemKeysByWorkspace(auth.getNonNullableWorkspace())
-  );
-  const groups = await traceFacetCatalogLoad(
-    "groups",
-    "group",
-    requestedDimension,
-    () =>
-      GroupResource.listAllWorkspaceGroups(auth, {
-        groupKinds: [...MANAGEABLE_GROUP_KINDS],
-      })
-  );
-  const agents = await traceFacetCatalogLoad(
-    "agents",
-    "agent",
-    requestedDimension,
-    () =>
-      getAgentConfigurationsForView({
-        auth,
-        agentsGetView: "analytics",
-        variant: "extra_light",
-        omitInstructions: true,
-      })
-  );
-  const models = await traceFacetCatalogLoad(
-    "models",
-    "model",
-    requestedDimension,
-    async () => {
-      const result = await getModelsForAuth(auth);
-      return result.models;
-    }
-  );
-  const mcpServerViews = await traceFacetCatalogLoad(
-    "mcp_servers",
-    "tool",
-    requestedDimension,
-    () => MCPServerViewResource.listDisplayMetadataByWorkspace(auth)
-  );
-  const skills = await traceFacetCatalogLoad(
-    "skills",
-    "skill",
-    requestedDimension,
-    () =>
-      SkillResource.listByWorkspace(auth, {
-        status: "active",
-        withInstructions: false,
-        withTools: false,
-        withFileAttachments: false,
-      })
-  );
+  const [members, apiKeys, groups, agents, models, mcpServerViews, skills] =
+    await Promise.all([
+      traceFacetCatalogLoad("members", "user", requestedDimension, async () => {
+        const result = await getMembers(auth, { activeOnly: true });
+        return result.members;
+      }),
+      traceFacetCatalogLoad("api_keys", "api_key", requestedDimension, () =>
+        KeyResource.listNonSystemKeysByWorkspace(auth.getNonNullableWorkspace())
+      ),
+      traceFacetCatalogLoad("groups", "group", requestedDimension, () =>
+        GroupResource.listAllWorkspaceGroups(auth, {
+          groupKinds: [...MANAGEABLE_GROUP_KINDS],
+        })
+      ),
+      traceFacetCatalogLoad("agents", "agent", requestedDimension, () =>
+        listAgentFacetCatalogEntries(auth)
+      ),
+      traceFacetCatalogLoad("models", "model", requestedDimension, async () => {
+        const result = await getModelsForAuth(auth);
+        return result.models;
+      }),
+      traceFacetCatalogLoad("mcp_servers", "tool", requestedDimension, () =>
+        MCPServerViewResource.listDisplayMetadataByWorkspace(auth)
+      ),
+      traceFacetCatalogLoad("skills", "skill", requestedDimension, () =>
+        SkillResource.listByWorkspace(auth, {
+          status: "active",
+          withInstructions: false,
+          withTools: false,
+          withFileAttachments: false,
+        })
+      ),
+    ]);
 
   return {
-    agent: agents.map((agent) => ({
-      value: agent.sId,
-      label: agent.name,
-      pictureUrl: agent.pictureUrl,
-      scope: agent.scope,
-    })),
+    agent: agents,
     user: members.map((member) => ({
       value: member.sId,
       label: member.fullName,
