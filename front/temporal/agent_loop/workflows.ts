@@ -594,34 +594,29 @@ export async function runSandboxChildToolWorkflow({
     runAgentArgs: agentLoopArgs,
     step,
   };
-  const effectiveRetryPolicy = retryPolicy ?? "no_retry";
-  const useRetryPolicy =
-    retryPolicy !== undefined && patched("sandbox-child-tool-retry-policy");
-  let shouldRetryOnInterrupt: boolean;
-  switch (effectiveRetryPolicy) {
-    case "retry_on_interrupt":
-      shouldRetryOnInterrupt = useRetryPolicy;
-      break;
-    case "no_retry":
-      shouldRetryOnInterrupt = false;
-      break;
-    default:
-      assertNever(effectiveRetryPolicy);
-  }
   let toolResult: ToolExecutionResult;
-  try {
-    toolResult = shouldRetryOnInterrupt
-      ? await runRetryableToolActivity(authType, activityArgs)
-      : await runToolActivity(authType, activityArgs);
-  } catch (error) {
-    if (useRetryPolicy) {
+  if (retryPolicy !== undefined && patched("sandbox-child-tool-retry-policy")) {
+    try {
+      switch (retryPolicy) {
+        case "retry_on_interrupt":
+          toolResult = await runRetryableToolActivity(authType, activityArgs);
+          break;
+        case "no_retry":
+          toolResult = await runToolActivity(authType, activityArgs);
+          break;
+        default:
+          assertNever(retryPolicy);
+      }
+    } catch (error) {
       await CancellationScope.nonCancellable(() =>
         finalizeErroredSandboxChildToolActivity(authType, {
           actionModelId,
         })
       );
+      throw error;
     }
-    throw error;
+  } else {
+    toolResult = await runToolActivity(authType, activityArgs);
   }
 
   const { deferredEvents } = toolResult;
