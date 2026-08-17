@@ -367,10 +367,14 @@ export function CreateSkillSuggestionSheet({
                         <>
                           {skillItems.length > 0 && (
                             <>
-                              <DropdownMenuLabel label="Skills" />
+                              <DropdownMenuLabel
+                                label="Skills"
+                                className="pl-3"
+                              />
                               {skillItems.map((item) => (
                                 <DropdownMenuItem
                                   key={item.id}
+                                  className="pl-3"
                                   label={item.label}
                                   description={item.description}
                                   icon={item.icon}
@@ -384,10 +388,14 @@ export function CreateSkillSuggestionSheet({
                           )}
                           {toolItems.length > 0 && (
                             <>
-                              <DropdownMenuLabel label="Tools" />
+                              <DropdownMenuLabel
+                                label="Tools"
+                                className="pl-3"
+                              />
                               {toolItems.map((item) => (
                                 <DropdownMenuItem
                                   key={item.id}
+                                  className="pl-3"
                                   label={item.label}
                                   description={item.description}
                                   icon={item.icon}
