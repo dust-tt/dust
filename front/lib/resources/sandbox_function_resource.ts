@@ -768,6 +768,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       description: this.description,
       executionMode: this.executionMode,
       defaultStake: this.defaultStake,
+      // A null stored policy means "optional", matching authorizeSandboxFunctionInvocation.
+      userIdentity: this.userIdentity ?? "optional",
     };
   }
 

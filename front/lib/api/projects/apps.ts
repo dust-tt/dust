@@ -21,6 +21,7 @@ import { unpublishSandboxFunction } from "@app/lib/api/sandbox_functions/unpubli
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { PodAppShareResource } from "@app/lib/resources/pod_app_share_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -347,11 +348,17 @@ export async function listPodApps(
     return new Err(listResult.error);
   }
 
-  const [sandboxFunctions, databaseOnDiskNames, metadata] = await Promise.all([
-    SandboxFunctionResource.listBySpace(auth, pod),
-    listPodDatabaseOnDiskNames(auth, pod),
-    ProjectMetadataResource.fetchBySpace(auth, pod),
-  ]);
+  const [sandboxFunctions, databaseOnDiskNames, metadata, shares] =
+    await Promise.all([
+      SandboxFunctionResource.listBySpace(auth, pod),
+      listPodDatabaseOnDiskNames(auth, pod),
+      ProjectMetadataResource.fetchBySpace(auth, pod),
+      PodAppShareResource.listBySpace(auth, pod),
+    ]);
+
+  const shareByPrefix = new Map(
+    shares.map((share) => [share.appPrefix, share])
+  );
 
   const functionsByPrefix = groupFunctionsByAppPrefix(sandboxFunctions);
   const pinnedFramePaths = new Set(
@@ -425,6 +432,7 @@ export async function listPodApps(
       ),
       collidingFolderNames:
         prefixFolders.length > 1 ? prefixFolders.map((f) => f.name) : [],
+      share: shareByPrefix.get(prefix)?.toJSON() ?? null,
     });
   }
 

@@ -41,14 +41,6 @@ async function internalAdminAuth(auth: Authenticator): Promise<Authenticator> {
   );
 }
 
-function toSummary(share: PodAppShareResource): PodAppShareSummary {
-  return {
-    appPrefix: share.appPrefix,
-    toolsetName: share.toolsetName,
-    description: share.description,
-  };
-}
-
 /**
  * Share a pod app to the workspace as an agent toolset: mint a pod_app_toolset server instance,
  * create its system + global views, and record the binding. Not one DB transaction — the
@@ -144,7 +136,7 @@ export async function sharePodApp(
       description,
     });
 
-    return new Ok(toSummary(share));
+    return new Ok(share.toJSON());
   } catch (error) {
     // Best-effort cleanup: without the share row the views are orphans; remove them so a retry
     // can start clean.
@@ -263,7 +255,7 @@ export async function updatePodAppShare(
   }
   await share.updateShareDetails({ toolsetName: name, description });
 
-  return new Ok(toSummary(share));
+  return new Ok(share.toJSON());
 }
 
 /**

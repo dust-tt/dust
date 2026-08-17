@@ -5,6 +5,7 @@ import { PodAppShareModel } from "@app/lib/resources/storage/models/pod_app_shar
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticSoftDeletable } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import type { PodAppShareSummary } from "@app/types/api/pod_apps";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import assert from "assert";
@@ -194,6 +195,14 @@ export class PodAppShareResource extends BaseResource<PodAppShareModel> {
       "Only pod editors can unshare a pod app."
     );
     await this.delete(auth, {});
+  }
+
+  toJSON(): PodAppShareSummary {
+    return {
+      appPrefix: this.appPrefix,
+      toolsetName: this.toolsetName,
+      description: this.description,
+    };
   }
 
   async delete(

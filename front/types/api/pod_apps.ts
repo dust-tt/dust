@@ -1,6 +1,7 @@
 import type {
   SandboxFunctionExecutionMode,
   SandboxFunctionStake,
+  SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
 import { z } from "zod";
 
@@ -35,6 +36,8 @@ export type PodAppFunction = {
   executionMode: SandboxFunctionExecutionMode;
   /** The approval level a tool derived from this function starts at. */
   defaultStake: SandboxFunctionStake;
+  /** Who may invoke the function; `pod_member_required` stays members-only even when shared. */
+  userIdentity: SandboxFunctionUserIdentityPolicy;
 };
 
 export type PodAppDatabase = {
@@ -64,6 +67,8 @@ export type PodApp = {
    * share published slugs and databases, so the UI warns instead of merging them quietly.
    */
   collidingFolderNames: string[];
+  /** Non-null when the app is shared to the workspace as an agent toolset. */
+  share: PodAppShareSummary | null;
 };
 
 export type GetPodAppsResponseBody = {
