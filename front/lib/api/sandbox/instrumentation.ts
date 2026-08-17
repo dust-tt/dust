@@ -28,6 +28,7 @@ type SandboxStartupPhase =
   | "egress_prep"
   | "gcs_mount"
   | "gcs_refresh"
+  | "filesystem.database_mount"
   | "egress_on_exec"
   | "telemetry_start"
   // provider.create split.

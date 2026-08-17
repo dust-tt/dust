@@ -11,6 +11,7 @@ import {
 } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { getPaginationParams } from "@app/lib/api/pagination";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -171,6 +172,10 @@ const app = workspaceApp();
  *               metadata:
  *                 type: object
  *                 nullable: true
+ *                 properties:
+ *                   useDatabaseFileSystem:
+ *                     type: boolean
+ *                     description: Use the database-backed filesystem for a fresh standalone conversation.
  *               selectedSpaceIds:
  *                 type: array
  *                 items:
@@ -257,6 +262,29 @@ app.post(
       ...(selectedSpaceIds ?? []),
       ...(message?.context.selectedSpaceIds ?? []),
     ]);
+
+    if (metadata?.useDatabaseFileSystem === true) {
+      if (spaceId) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Pod conversations inherit their Pod filesystem and cannot select one directly.",
+          },
+        });
+      }
+      if (!(await hasFeatureFlag(auth, "dust_filesystem"))) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The database-backed filesystem is not enabled for this workspace.",
+          },
+        });
+      }
+    }
 
     if (allSelectedSpaceIds.length > 0) {
       const validationResult = await validateSelectableSpaces(auth, {

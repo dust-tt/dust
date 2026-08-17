@@ -1,3 +1,4 @@
+import { DATABASE_FILE_SYSTEM_POD_PREFIX } from "@app/lib/api/file_system/storage_mode";
 import {
   moveConversationOutOfProject,
   moveConversationToProject,
@@ -76,6 +77,33 @@ describe("moveConversationToProject", () => {
     const setup = await createResourceTest({});
     auth = setup.authenticator;
     workspace = setup.workspace;
+  });
+
+  it("does not move an existing conversation into a database filesystem Pod", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+    const pod = await SpaceFactory.project(workspace, undefined, {
+      name: `${DATABASE_FILE_SYSTEM_POD_PREFIX}Move test`,
+    });
+    const internalAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const memberGroup = await fetchRegularAutoGroup(pod, internalAuth);
+    expect(memberGroup).not.toBeNull();
+    await memberGroup?.dangerouslyAddMember(internalAuth, {
+      user: auth.getNonNullableUser().toJSON(),
+    });
+    await auth.refresh();
+
+    const result = await moveConversationToProject(auth, {
+      conversation,
+      spaceId: pod.sId,
+    });
+
+    expect(result.isErr() && result.error.code).toBe("invalid_request_error");
   });
 
   it("moves a non-project conversation to a project and updates its space", async () => {
@@ -860,6 +888,24 @@ describe("moveConversationOutOfProject", () => {
     const setup = await createResourceTest({});
     auth = setup.authenticator;
     workspace = setup.workspace;
+  });
+
+  it("does not move a conversation out of a database filesystem Pod", async () => {
+    const user = auth.getNonNullableUser();
+    const pod = await SpaceFactory.project(workspace, user.id, {
+      name: `${DATABASE_FILE_SYSTEM_POD_PREFIX}Move out test`,
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+      spaceId: pod.id,
+    });
+    await auth.refresh();
+
+    const result = await moveConversationOutOfProject(auth, { conversation });
+
+    expect(result.isErr() && result.error.code).toBe("invalid_request_error");
   });
 
   it("moves a project conversation out and clears its spaceId", async () => {

@@ -246,6 +246,14 @@ app.post(
               message: spaceRes.error.message,
             },
           });
+        case "invalid_request_error":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: spaceRes.error.message,
+            },
+          });
         case "unauthorized":
           return apiError(ctx, {
             status_code: 403,

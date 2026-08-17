@@ -8,10 +8,12 @@ import {
 import { getWebhookSourcesUsage } from "@app/lib/api/agent_triggers";
 import { hardDeleteApp } from "@app/lib/api/apps";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
+import { isDatabaseFileSystemPodName } from "@app/lib/api/file_system/storage_mode";
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects/connector";
 import { deleteOwnerPolicy } from "@app/lib/api/sandbox/egress_policy";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -625,6 +627,7 @@ export async function createSpaceAndGroup(
       | "limit_reached"
       | "space_already_exists"
       | "internal_error"
+      | "invalid_request_error"
       | "unauthorized"
     >
   >
@@ -643,6 +646,20 @@ export async function createSpaceAndGroup(
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
   const { name: rawName, isRestricted, spaceKind, managementMode } = params;
+  const name = rawName.trim();
+
+  if (
+    spaceKind === "project" &&
+    isDatabaseFileSystemPodName(name) &&
+    !(await hasFeatureFlag(auth, "dust_filesystem"))
+  ) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "The database-backed filesystem is not enabled for this workspace."
+      )
+    );
+  }
 
   const result = await withTransaction(async (t) => {
     await getWorkspaceAdministrationVersionLock(owner, t);
@@ -663,8 +680,6 @@ export async function createSpaceAndGroup(
     }
 
     // Trim the name to prevent issues with leading/trailing whitespace
-    const name = rawName.trim();
-
     if (spaceKind === "regular" && !isRestricted) {
       assert(
         managementMode === "manual",

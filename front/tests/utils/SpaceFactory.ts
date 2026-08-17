@@ -94,8 +94,11 @@ export class SpaceFactory {
     );
   }
 
-  static async project(workspace: WorkspaceType, creatorId?: number) {
-    const name = "project " + faker.string.alphanumeric(8);
+  static async project(
+    workspace: WorkspaceType,
+    creatorId?: number,
+    { name = "project " + faker.string.alphanumeric(8) }: { name?: string } = {}
+  ) {
     const group = await GroupResource.makeNew({
       name: `${PROJECT_GROUP_PREFIX} ${name}`,
       workspaceId: workspace.id,

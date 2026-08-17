@@ -409,7 +409,16 @@ app.patch(
     }
 
     if (name) {
-      await space.updateName(auth, name);
+      const nameRes = await space.updateName(auth, name);
+      if (nameRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: nameRes.error.message,
+          },
+        });
+      }
     }
     return ctx.json({ space: space.toJSON() });
   }

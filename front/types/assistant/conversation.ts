@@ -528,6 +528,8 @@ export type ConversationMetadata = Record<string, unknown> & {
   urlAccessMode?: ConversationUrlAccessMode;
   projectTaskId?: string;
   useFileSystem?: boolean;
+  /** Selects the database-backed filesystem for a fresh standalone conversation. */
+  useDatabaseFileSystem?: boolean;
 };
 
 function isConversationUrlAccessMode(
