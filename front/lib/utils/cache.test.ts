@@ -211,7 +211,7 @@ describe("cacheWithRedis", () => {
       );
     });
 
-    it("reads the migration key first and synchronizes the canonical key", async () => {
+    it("reads the new key and copies the hit to the previous key", async () => {
       const mockFn = vi.fn().mockResolvedValue({ data: "fresh" });
       mockRedisClient.get.mockResolvedValue(
         JSON.stringify({ data: "from-previous-key" })
@@ -221,9 +221,13 @@ describe("cacheWithRedis", () => {
       const cachedFn = cacheWithRedis(mockFn, (arg: string) => `v3:${arg}`, {
         cacheId: "workspace_by_sid",
         ttlMs: 60_000,
-        readFromKeyFirst: {
-          cacheId: "_fetchByIdUncached",
-          resolver: (arg: string) => `workspace:v2:${arg}`,
+        migration: {
+          previousKey: {
+            cacheId: "_fetchByIdUncached",
+            resolver: (arg: string) => `workspace:v2:${arg}`,
+          },
+          readFrom: "new",
+          copyToOtherKey: "after_read",
         },
       });
       const result = await cachedFn("workspace-1");
@@ -231,16 +235,16 @@ describe("cacheWithRedis", () => {
       expect(result).toEqual({ data: "from-previous-key" });
       expect(mockFn).not.toHaveBeenCalled();
       expect(mockRedisClient.get).toHaveBeenCalledWith(
-        "cacheWithRedis-_fetchByIdUncached-workspace:v2:workspace-1"
+        "cacheWithRedis-workspace_by_sid-v3:workspace-1"
       );
       expect(mockRedisClient.set).toHaveBeenCalledWith(
-        "cacheWithRedis-workspace_by_sid-v3:workspace-1",
+        "cacheWithRedis-_fetchByIdUncached-workspace:v2:workspace-1",
         JSON.stringify({ data: "from-previous-key" }),
         { PX: 60_000 }
       );
     });
 
-    it("does not mirror an incompatible migration-key hit", async () => {
+    it("can read the previous key without copying a cache hit", async () => {
       const mockFn = vi.fn().mockResolvedValue({ data: "fresh" });
       mockRedisClient.get.mockResolvedValue(
         JSON.stringify({ data: "legacy-semantics" })
@@ -248,10 +252,13 @@ describe("cacheWithRedis", () => {
 
       const cachedFn = cacheWithRedis(mockFn, (arg: string) => `v3:${arg}`, {
         cacheId: "workspace_by_sid",
-        readFromKeyFirst: {
-          cacheId: "_fetchByIdUncached",
-          resolver: (arg: string) => `workspace:v2:${arg}`,
-          mirrorToCanonicalOnHit: false,
+        migration: {
+          previousKey: {
+            cacheId: "_fetchByIdUncached",
+            resolver: (arg: string) => `workspace:v2:${arg}`,
+          },
+          readFrom: "previous",
+          copyToOtherKey: "after_load",
         },
       });
       const result = await cachedFn("workspace-1");
@@ -268,10 +275,13 @@ describe("cacheWithRedis", () => {
 
       const cachedFn = cacheWithRedis(mockFn, (arg: string) => `v3:${arg}`, {
         cacheId: "workspace_by_sid",
-        readFromKeyFirst: {
-          cacheId: "_fetchByIdUncached",
-          resolver: (arg: string) => `workspace:v2:${arg}`,
-          mirrorToCanonicalOnHit: false,
+        migration: {
+          previousKey: {
+            cacheId: "_fetchByIdUncached",
+            resolver: (arg: string) => `workspace:v2:${arg}`,
+          },
+          readFrom: "previous",
+          copyToOtherKey: "after_load",
         },
       });
       const result = await cachedFn("workspace-1");
@@ -630,9 +640,13 @@ describe("invalidateCacheWithRedis", () => {
       (arg: string) => `v3:${arg}`,
       {
         cacheId: "workspace_by_sid",
-        readFromKeyFirst: {
-          cacheId: "_fetchByIdUncached",
-          resolver: (arg: string) => `workspace:v2:${arg}`,
+        migration: {
+          previousKey: {
+            cacheId: "_fetchByIdUncached",
+            resolver: (arg: string) => `workspace:v2:${arg}`,
+          },
+          readFrom: "new",
+          copyToOtherKey: "after_read",
         },
       }
     );
@@ -787,9 +801,13 @@ describe("batchInvalidateCacheWithRedis", () => {
       (arg: string) => `v2:${arg}`,
       {
         cacheId: "canonical",
-        readFromKeyFirst: {
-          cacheId: "previous",
-          resolver: (arg) => `v1:${arg}`,
+        migration: {
+          previousKey: {
+            cacheId: "previous",
+            resolver: (arg) => `v1:${arg}`,
+          },
+          readFrom: "new",
+          copyToOtherKey: "after_read",
         },
       }
     );

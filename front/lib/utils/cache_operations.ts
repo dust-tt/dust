@@ -17,7 +17,9 @@ export type CacheOperationDescription = {
 export type CacheOperations = {
   description: CacheOperationDescription;
   buildKey: (params: Record<string, string>) => string;
+  buildKeysToDelete: (params: Record<string, string>) => string[];
   keyPattern: string | null;
+  keyPatternsToDelete: string[];
 };
 
 export function defineCacheOperations<Input>({
@@ -26,14 +28,18 @@ export function defineCacheOperations<Input>({
   params,
   inputSchema,
   buildKey,
+  buildKeysToDelete,
   keyPattern,
+  keyPatternsToDelete,
 }: {
   id: string;
   label: string;
   params: CacheOperationParam[];
   inputSchema: z.ZodType<Input>;
   buildKey: (input: Input) => string;
+  buildKeysToDelete?: (input: Input) => string[];
   keyPattern: string | null;
+  keyPatternsToDelete?: string[];
 }): CacheOperations {
   return {
     description: {
@@ -43,6 +49,12 @@ export function defineCacheOperations<Input>({
       supportsBulkInvalidation: keyPattern !== null,
     },
     buildKey: (rawParams) => buildKey(inputSchema.parse(rawParams)),
+    buildKeysToDelete: (rawParams) => {
+      const input = inputSchema.parse(rawParams);
+      return buildKeysToDelete ? buildKeysToDelete(input) : [buildKey(input)];
+    },
     keyPattern,
+    keyPatternsToDelete:
+      keyPatternsToDelete ?? (keyPattern === null ? [] : [keyPattern]),
   };
 }

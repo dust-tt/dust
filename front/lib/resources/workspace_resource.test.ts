@@ -18,10 +18,13 @@ vi.mock("@app/lib/utils/cache", () => ({
       options?: {
         cacheId?: string;
         cacheNullValues?: boolean;
-        readFromKeyFirst?: {
-          cacheId: string;
-          resolver: (...args: Args) => string;
-          mirrorToCanonicalOnHit?: boolean;
+        migration?: {
+          previousKey: {
+            cacheId: string;
+            resolver: (...args: Args) => string;
+          };
+          readFrom: "previous" | "new";
+          copyToOtherKey: "after_load" | "after_read";
         };
       }
     ) => {
@@ -29,14 +32,23 @@ vi.mock("@app/lib/utils/cache", () => ({
         if (cacheReadFailure.current) {
           throw cacheReadFailure.current;
         }
-        const key = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
-        const readKey = options?.readFromKeyFirst
-          ? `cacheWithRedis-${options.readFromKeyFirst.cacheId}-${options.readFromKeyFirst.resolver(...args)}`
-          : key;
+        const newKey = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
+        const previousKey = options?.migration
+          ? `cacheWithRedis-${options.migration.previousKey.cacheId}-${options.migration.previousKey.resolver(...args)}`
+          : null;
+        const readKey =
+          options?.migration?.readFrom === "previous" && previousKey
+            ? previousKey
+            : newKey;
+        const otherKey = previousKey
+          ? readKey === newKey
+            ? previousKey
+            : newKey
+          : null;
         const cached = inMemoryCache.get(readKey);
         if (cached) {
-          if (options?.readFromKeyFirst?.mirrorToCanonicalOnHit !== false) {
-            inMemoryCache.set(key, cached);
+          if (otherKey && options?.migration?.copyToOtherKey === "after_read") {
+            inMemoryCache.set(otherKey, cached);
           }
           return JSON.parse(cached) as JsonSerializable<T>;
         }
@@ -44,7 +56,9 @@ vi.mock("@app/lib/utils/cache", () => ({
         if ((options?.cacheNullValues ?? true) || result !== null) {
           const serializedResult = JSON.stringify(result);
           inMemoryCache.set(readKey, serializedResult);
-          inMemoryCache.set(key, serializedResult);
+          if (otherKey) {
+            inMemoryCache.set(otherKey, serializedResult);
+          }
         }
         return result;
       };
@@ -56,20 +70,22 @@ vi.mock("@app/lib/utils/cache", () => ({
       resolver: (...args: Args) => string,
       options?: {
         cacheId?: string;
-        readFromKeyFirst?: {
-          cacheId: string;
-          resolver: (...args: Args) => string;
+        migration?: {
+          previousKey: {
+            cacheId: string;
+            resolver: (...args: Args) => string;
+          };
         };
       }
     ) => {
       return (...args: Args): Promise<void> => {
-        const key = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
-        inMemoryCache.delete(key);
-        deletedKeys.push(key);
-        if (options?.readFromKeyFirst) {
-          const readKey = `cacheWithRedis-${options.readFromKeyFirst.cacheId}-${options.readFromKeyFirst.resolver(...args)}`;
-          inMemoryCache.delete(readKey);
-          deletedKeys.push(readKey);
+        const newKey = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
+        inMemoryCache.delete(newKey);
+        deletedKeys.push(newKey);
+        if (options?.migration) {
+          const previousKey = `cacheWithRedis-${options.migration.previousKey.cacheId}-${options.migration.previousKey.resolver(...args)}`;
+          inMemoryCache.delete(previousKey);
+          deletedKeys.push(previousKey);
         }
         return Promise.resolve();
       };
