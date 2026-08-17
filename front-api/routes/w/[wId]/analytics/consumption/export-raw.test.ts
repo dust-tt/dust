@@ -4,12 +4,24 @@ import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { describeWorkflowMock, startWorkflowMock } = vi.hoisted(() => ({
-  describeWorkflowMock: vi.fn().mockResolvedValue({
-    status: { name: "COMPLETED" },
-  }),
-  startWorkflowMock: vi.fn().mockResolvedValue(undefined),
-}));
+const { describeWorkflowMock, startWorkflowMock, listWorkflowMock } =
+  vi.hoisted(() => ({
+    describeWorkflowMock: vi.fn().mockResolvedValue({
+      status: { name: "COMPLETED" },
+    }),
+    startWorkflowMock: vi.fn().mockResolvedValue(undefined),
+    listWorkflowMock: vi.fn(),
+  }));
+
+function asyncIterableOf<T>(items: T[]) {
+  return {
+    [Symbol.asyncIterator]: async function* () {
+      for (const item of items) {
+        yield item;
+      }
+    },
+  };
+}
 
 vi.mock("@app/lib/temporal", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@app/lib/temporal")>();
@@ -19,6 +31,7 @@ vi.mock("@app/lib/temporal", async (importOriginal) => {
       workflow: {
         start: startWorkflowMock,
         getHandle: vi.fn().mockReturnValue({ describe: describeWorkflowMock }),
+        list: listWorkflowMock,
       },
     }),
   };
@@ -27,6 +40,9 @@ vi.mock("@app/lib/temporal", async (importOriginal) => {
 beforeEach(() => {
   describeWorkflowMock.mockResolvedValue({ status: { name: "COMPLETED" } });
   startWorkflowMock.mockResolvedValue(undefined);
+  listWorkflowMock.mockReturnValue(asyncIterableOf([]));
+  // No cached export by default, so POST tests exercise the actual workflow start.
+  fileStorageMock.setFileExists(() => false);
 });
 
 async function setupTest({
@@ -69,7 +85,7 @@ describe("GET /api/w/:wId/analytics/consumption/export-raw", () => {
 
   it("lists past exports for the workspace, newest first", async () => {
     const { workspace } = await setupTest();
-    const prefix = `consumption_exports/w/${workspace.sId}/`;
+    const prefix = `w/${workspace.sId}/consumption_exports/`;
     fileStorageMock.setFilesByPrefix((requestedPrefix) => {
       if (requestedPrefix !== prefix) {
         return null;
@@ -112,7 +128,7 @@ describe("GET /api/w/:wId/analytics/consumption/export-raw", () => {
   });
 
   it("reports isGenerating when the workspace's export workflow is running", async () => {
-    describeWorkflowMock.mockResolvedValue({ status: { name: "RUNNING" } });
+    listWorkflowMock.mockReturnValue(asyncIterableOf([{}]));
     fileStorageMock.setFilesByPrefix(() => []);
     const { workspace } = await setupTest();
 
