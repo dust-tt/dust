@@ -6,6 +6,7 @@ import {
 import type { FileSystemOperationErrorCode } from "@app/lib/api/file_system/namespace_types";
 import { fileSystemScopeFromSandboxClaims } from "@app/lib/api/file_system/sandbox_scope";
 import { isSandboxFileSystemTokenPayload } from "@app/lib/api/sandbox/access_tokens";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { sandboxApp } from "@front-api/middlewares/ctx";
 import { sandboxAuth } from "@front-api/middlewares/sandbox_auth";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -31,6 +32,8 @@ function statusForFileSystemError(
     case "not_empty":
     case "stale":
       return 409;
+    default:
+      return assertNever(code);
   }
 }
 
