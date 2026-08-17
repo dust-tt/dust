@@ -1,6 +1,7 @@
 import { listConsumptionFacetCatalogDimension } from "@app/lib/api/analytics/consumption/facet_catalog";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import { previousConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { fetchConsumptionTopAgents } from "@app/lib/api/analytics/consumption/top_agents";
 import { fetchConsumptionTopApiKeys } from "@app/lib/api/analytics/consumption/top_api_keys";
 import { fetchConsumptionTopGroups } from "@app/lib/api/analytics/consumption/top_groups";
@@ -41,10 +42,48 @@ const PERIOD: ConsumptionPeriod = {
   endDate: "2026-08-01T00:00:00.000Z",
 };
 
+// The query is a single request spanning both periods (see
+// fetchConsumptionTopGroups), so tests that assert on the date range need
+// this to build the expected union bound.
+const PREVIOUS_PERIOD = previousConsumptionPeriod(PERIOD);
+
 function esResponse(aggregations: unknown) {
   return new Ok({ aggregations }) as Awaited<
     ReturnType<typeof searchConsumptionAnalytics>
   >;
+}
+
+// A ranked bucket, with its current- and previous-period nested filter aggs.
+// `previousCreditMicro` defaults to `creditMicro` so growth reads as flat,
+// matching what most tests want; pass `previousDocCount: 0` for "no prior
+// consumption at all" (null vs-prev).
+function bucket({
+  key,
+  docCount,
+  creditMicro,
+  messages,
+  previousCreditMicro = creditMicro,
+  previousDocCount = docCount,
+}: {
+  key: string;
+  docCount: number;
+  creditMicro: number;
+  messages?: number;
+  previousCreditMicro?: number;
+  previousDocCount?: number;
+}) {
+  return {
+    key,
+    current_period: {
+      doc_count: docCount,
+      credit_micro: { value: creditMicro },
+      ...(messages !== undefined ? { messages: { value: messages } } : {}),
+    },
+    previous_period: {
+      doc_count: previousDocCount,
+      credit_micro: { value: previousCreditMicro },
+    },
+  };
 }
 
 function mockAggs({
@@ -60,12 +99,12 @@ function mockAggs({
 }) {
   const ranking = {
     by_group: { buckets },
-    total_count: { value: totalCount },
+    total_count: { count: { value: totalCount } },
   };
   vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
     esResponse({
       ...(filtered ? { ranking } : ranking),
-      total_credit_micro: { value: totalMicro },
+      total_credit_micro: { value: { value: totalMicro } },
     })
   );
 }
@@ -87,16 +126,11 @@ async function setup() {
   return { auth };
 }
 
-// The last search the code under test issued, as [query, options].
+// The last search the code under test issued — one call per fetch, since the
+// ranking and the vs-prev credits now share a single Elasticsearch request.
 function lastSearchCall() {
   const calls = vi.mocked(searchConsumptionAnalytics).mock.calls;
   return calls[calls.length - 1];
-}
-
-// The ranking search — always the first call, since a second call for the
-// previous-period comparison follows it whenever the ranking has keys.
-function rankingSearchCall() {
-  return vi.mocked(searchConsumptionAnalytics).mock.calls[0];
 }
 
 describe("consumption top rankings", () => {
@@ -106,7 +140,7 @@ describe("consumption top rankings", () => {
     vi.mocked(resolveDimensionLabels).mockReset();
   });
 
-  it("ranks agents on gross credits and averages over distinct messages", async () => {
+  it("ranks agents on gross credits and averages over distinct messages, in a single request", async () => {
     const { auth } = await setup();
     vi.mocked(resolveDimensionLabels).mockResolvedValue(
       new Map([
@@ -124,12 +158,12 @@ describe("consumption top rankings", () => {
     );
     mockAggs({
       buckets: [
-        {
+        bucket({
           key: "agent1",
-          doc_count: 7,
-          credit_micro: { value: 3_000_000 },
-          messages: { value: 2 },
-        },
+          docCount: 7,
+          creditMicro: 3_000_000,
+          messages: 2,
+        }),
       ],
       totalMicro: 5_000_000,
     });
@@ -156,8 +190,8 @@ describe("consumption top rankings", () => {
         modelId: "claude-4-sonnet",
         modelDisplayName: "Claude 4 Sonnet",
         credits: 3,
-        // The mocked search response is reused for the previous-period
-        // query too, so the previous credits come out equal.
+        // The mocked bucket reuses the current period's credits for the
+        // previous one, so growth comes out flat.
         previousCredits: 3,
         // The 7 documents of the bucket belong to 2 messages.
         messageCount: 2,
@@ -165,27 +199,57 @@ describe("consumption top rankings", () => {
       },
     ]);
 
-    // Ranked on agent.id by gross credits, with a per-message cardinality
-    // sub-agg — a message spans several documents.
-    const [query, options] = rankingSearchCall();
+    // A single call: the query spans the union of both periods, and the
+    // ranking/vs-prev split happens through nested filter aggregations.
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(1);
+    const [query, options] = lastSearchCall();
     expect(query.bool?.filter).toContainEqual({
-      range: { completed_at: { gte: PERIOD.startDate, lt: PERIOD.endDate } },
+      range: {
+        completed_at: { gte: PREVIOUS_PERIOD.startDate, lt: PERIOD.endDate },
+      },
     });
+
+    // Ranked on agent.id by current-period gross credits, with a per-message
+    // cardinality sub-agg — a message spans several documents.
     expect(options?.aggregations?.by_group?.terms).toMatchObject({
       field: "agent.id",
       size: 10,
-      order: { credit_micro: "desc" },
+      order: { "current_period>credit_micro": "desc" },
     });
-    expect(
-      options?.aggregations?.by_group?.aggs?.credit_micro?.sum?.field
-    ).toBe("credit_micro");
-    expect(
-      options?.aggregations?.by_group?.aggs?.messages?.cardinality?.field
-    ).toBe("agent_message_id");
-    expect(options?.aggregations?.total_credit_micro?.sum?.field).toBe(
+    const byGroupAggs = options?.aggregations?.by_group?.aggs;
+    expect(byGroupAggs?.current_period?.filter).toEqual({
+      range: { completed_at: { gte: PERIOD.startDate, lt: PERIOD.endDate } },
+    });
+    expect(byGroupAggs?.current_period?.aggs?.credit_micro?.sum?.field).toBe(
       "credit_micro"
     );
-    expect(options?.aggregations?.total_count?.cardinality).toEqual({
+    expect(
+      byGroupAggs?.current_period?.aggs?.messages?.cardinality?.field
+    ).toBe("agent_message_id");
+    expect(byGroupAggs?.previous_period?.filter).toEqual({
+      range: {
+        completed_at: {
+          gte: PREVIOUS_PERIOD.startDate,
+          lt: PREVIOUS_PERIOD.endDate,
+        },
+      },
+    });
+    expect(byGroupAggs?.previous_period?.aggs?.credit_micro?.sum?.field).toBe(
+      "credit_micro"
+    );
+
+    expect(options?.aggregations?.total_credit_micro?.filter).toEqual({
+      range: { completed_at: { gte: PERIOD.startDate, lt: PERIOD.endDate } },
+    });
+    expect(
+      options?.aggregations?.total_credit_micro?.aggs?.value?.sum?.field
+    ).toBe("credit_micro");
+    expect(options?.aggregations?.total_count?.filter).toEqual({
+      range: { completed_at: { gte: PERIOD.startDate, lt: PERIOD.endDate } },
+    });
+    expect(
+      options?.aggregations?.total_count?.aggs?.count?.cardinality
+    ).toEqual({
       field: "agent.id",
       precision_threshold: 40_000,
     });
@@ -197,30 +261,30 @@ describe("consumption top rankings", () => {
     mockLabels({ agent2: "Agent 2", agent3: "Agent 3" });
     mockAggs({
       buckets: [
-        {
+        bucket({
           key: "agent1",
-          doc_count: 1,
-          credit_micro: { value: 4_000_000 },
-          messages: { value: 1 },
-        },
-        {
+          docCount: 1,
+          creditMicro: 4_000_000,
+          messages: 1,
+        }),
+        bucket({
           key: "agent2",
-          doc_count: 1,
-          credit_micro: { value: 3_000_000 },
-          messages: { value: 1 },
-        },
-        {
+          docCount: 1,
+          creditMicro: 3_000_000,
+          messages: 1,
+        }),
+        bucket({
           key: "agent3",
-          doc_count: 1,
-          credit_micro: { value: 2_000_000 },
-          messages: { value: 1 },
-        },
-        {
+          docCount: 1,
+          creditMicro: 2_000_000,
+          messages: 1,
+        }),
+        bucket({
           key: "agent4",
-          doc_count: 1,
-          credit_micro: { value: 1_000_000 },
-          messages: { value: 1 },
-        },
+          docCount: 1,
+          creditMicro: 1_000_000,
+          messages: 1,
+        }),
       ],
       totalMicro: 10_000_000,
     });
@@ -241,11 +305,48 @@ describe("consumption top rankings", () => {
     ]);
     expect(result.value.hasMore).toBe(true);
     expect(result.value.totalCount).toBe(4);
-    expect(rankingSearchCall()[1]?.aggregations?.by_group?.terms).toMatchObject(
-      {
-        size: 3,
-      }
-    );
+    expect(lastSearchCall()[1]?.aggregations?.by_group?.terms).toMatchObject({
+      size: 3,
+    });
+  });
+
+  it("drops candidate buckets with no current-period activity", async () => {
+    const { auth } = await setup();
+    mockLabels({ agent1: "Agent 1" });
+    mockAggs({
+      buckets: [
+        bucket({
+          key: "agent1",
+          docCount: 1,
+          creditMicro: 1_000_000,
+          messages: 1,
+        }),
+        // Only ever active in the previous period: a terms candidate the
+        // union-range query surfaces, but it must not show up in the ranking.
+        bucket({
+          key: "agent_stale",
+          docCount: 0,
+          creditMicro: 0,
+          previousCreditMicro: 5_000_000,
+          previousDocCount: 3,
+        }),
+      ],
+      totalCount: 1,
+      totalMicro: 1_000_000,
+    });
+
+    const result = await fetchConsumptionTopAgents(auth, {
+      period: PERIOD,
+      limit: 10,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.agents.map((agent) => agent.agentId)).toEqual([
+      "agent1",
+    ]);
   });
 
   it.each([
@@ -338,11 +439,11 @@ describe("consumption top rankings", () => {
     );
     mockAggs({
       buckets: [
-        {
+        bucket({
           key: "web_search_browse",
-          doc_count: 4,
-          credit_micro: { value: 2_000_000 },
-        },
+          docCount: 4,
+          creditMicro: 2_000_000,
+        }),
       ],
       totalMicro: 10_000_000,
     });
@@ -375,7 +476,9 @@ describe("consumption top rankings", () => {
     expect(options?.aggregations?.by_group?.terms).toMatchObject({
       field: "tool.server_name",
     });
-    expect(options?.aggregations?.by_group?.aggs?.messages).toBeUndefined();
+    expect(
+      options?.aggregations?.by_group?.aggs?.current_period?.aggs?.messages
+    ).toBeUndefined();
   });
 
   it("ranks API key names on gross credits per distinct message", async () => {
@@ -390,12 +493,12 @@ describe("consumption top rankings", () => {
     mockLabels({ "Production key": "Production key" });
     mockAggs({
       buckets: [
-        {
+        bucket({
           key: "Production key",
-          doc_count: 6,
-          credit_micro: { value: 3_000_000 },
-          messages: { value: 2 },
-        },
+          docCount: 6,
+          creditMicro: 3_000_000,
+          messages: 2,
+        }),
       ],
       totalMicro: 5_000_000,
       filtered: true,
@@ -416,15 +519,13 @@ describe("consumption top rankings", () => {
         apiKeyName: "Production key",
         name: "Production key",
         credits: 3,
-        // The filtered ranking's response nests buckets under `ranking`,
-        // which the previous-period query doesn't produce, so no match.
-        previousCredits: null,
+        previousCredits: 3,
         messageCount: 2,
         avgCreditsPerMessage: 1.5,
       },
     ]);
 
-    const [, options] = rankingSearchCall();
+    const [, options] = lastSearchCall();
     expect(listConsumptionFacetCatalogDimension).toHaveBeenCalledWith(
       auth,
       "api_key"
@@ -438,8 +539,8 @@ describe("consumption top rankings", () => {
       }
     );
     expect(
-      options?.aggregations?.ranking?.aggs?.by_group?.aggs?.messages
-        ?.cardinality?.field
+      options?.aggregations?.ranking?.aggs?.by_group?.aggs?.current_period?.aggs
+        ?.messages?.cardinality?.field
     ).toBe("agent_message_id");
   });
 
@@ -459,9 +560,7 @@ describe("consumption top rankings", () => {
       ])
     );
     mockAggs({
-      buckets: [
-        { key: "skl_1", doc_count: 5, credit_micro: { value: 2_500_000 } },
-      ],
+      buckets: [bucket({ key: "skl_1", docCount: 5, creditMicro: 2_500_000 })],
       totalMicro: 10_000_000,
     });
 
@@ -491,19 +590,21 @@ describe("consumption top rankings", () => {
     expect(options?.aggregations?.by_group?.terms).toMatchObject({
       field: "tool.attributed_skill_ids",
     });
-    expect(options?.aggregations?.by_group?.aggs?.messages).toBeUndefined();
+    expect(
+      options?.aggregations?.by_group?.aggs?.current_period?.aggs?.messages
+    ).toBeUndefined();
   });
 
   it("ranks users, groups and models per message on their own key", async () => {
     const { auth } = await setup();
     mockAggs({
       buckets: [
-        {
+        bucket({
           key: "key1",
-          doc_count: 6,
-          credit_micro: { value: 2_000_000 },
-          messages: { value: 4 },
-        },
+          docCount: 6,
+          creditMicro: 2_000_000,
+          messages: 4,
+        }),
       ],
       totalMicro: 2_000_000,
     });
@@ -578,12 +679,12 @@ describe("consumption top rankings", () => {
     mockLabels({ web: "Conversation" });
     mockAggs({
       buckets: [
-        {
+        bucket({
           key: "web",
-          doc_count: 10,
-          credit_micro: { value: 4_000_000 },
-          messages: { value: 4 },
-        },
+          docCount: 10,
+          creditMicro: 4_000_000,
+          messages: 4,
+        }),
       ],
       totalMicro: 4_000_000,
     });
@@ -635,12 +736,12 @@ describe("consumption top rankings", () => {
     mockLabels({});
     mockAggs({
       buckets: [
-        {
+        bucket({
           key: "agent_gone",
-          doc_count: 1,
-          credit_micro: { value: 1_000_000 },
-          messages: { value: 1 },
-        },
+          docCount: 1,
+          creditMicro: 1_000_000,
+          messages: 1,
+        }),
       ],
       totalMicro: 1_000_000,
     });
@@ -667,12 +768,12 @@ describe("consumption top rankings", () => {
     mockLabels({ agent1: "@dust" });
     mockAggs({
       buckets: [
-        {
+        bucket({
           key: "agent1",
-          doc_count: 0,
-          credit_micro: { value: 1_000_000 },
-          messages: { value: 0 },
-        },
+          docCount: 1,
+          creditMicro: 1_000_000,
+          messages: 0,
+        }),
       ],
       totalMicro: 1_000_000,
     });
@@ -689,29 +790,22 @@ describe("consumption top rankings", () => {
     expect(result.value.agents[0].avgCreditsPerMessage).toBe(0);
   });
 
-  it("still returns the ranking when the previous-period lookup fails", async () => {
+  it("reports null vs-prev growth for a group with no prior consumption", async () => {
     const { auth } = await setup();
     mockLabels({ agent1: "@dust" });
-    // The ranking query succeeds, then the previous-period query fails.
-    vi.mocked(searchConsumptionAnalytics).mockResolvedValueOnce(
-      esResponse({
-        by_group: {
-          buckets: [
-            {
-              key: "agent1",
-              doc_count: 1,
-              credit_micro: { value: 3_000_000 },
-              messages: { value: 1 },
-            },
-          ],
-        },
-        total_count: { value: 1 },
-        total_credit_micro: { value: 3_000_000 },
-      })
-    );
-    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
-      new Err(new ElasticsearchError("connection_error", "boom"))
-    );
+    mockAggs({
+      buckets: [
+        bucket({
+          key: "agent1",
+          docCount: 1,
+          creditMicro: 3_000_000,
+          messages: 1,
+          previousDocCount: 0,
+          previousCreditMicro: 0,
+        }),
+      ],
+      totalMicro: 3_000_000,
+    });
 
     const result = await fetchConsumptionTopAgents(auth, {
       period: PERIOD,
@@ -724,5 +818,20 @@ describe("consumption top rankings", () => {
     }
     expect(result.value.agents[0].credits).toBe(3);
     expect(result.value.agents[0].previousCredits).toBeNull();
+  });
+
+  it("fails the ranking when the merged Elasticsearch request errors", async () => {
+    const { auth } = await setup();
+    mockLabels({ agent1: "@dust" });
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      new Err(new ElasticsearchError("connection_error", "boom"))
+    );
+
+    const result = await fetchConsumptionTopAgents(auth, {
+      period: PERIOD,
+      limit: 10,
+    });
+
+    expect(result.isOk()).toBe(false);
   });
 });

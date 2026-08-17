@@ -10,6 +10,7 @@ import type {
 import {
   AGENT_MESSAGE_ID_FIELD,
   buildConsumptionScopeQuery,
+  COMPLETED_AT_FIELD,
   CONSUMPTION_DIMENSION_FIELDS,
   CONSUMPTION_DIMENSION_UNIT,
   CREDIT_MICRO_FIELD,
@@ -21,7 +22,6 @@ import {
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { microCreditsToCredits } from "@app/lib/credits/units";
-import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -55,15 +55,24 @@ export type ConsumptionTopGroups = {
 const CREDIT_AGG = "credit_micro";
 const MESSAGES_AGG = "messages";
 const TOTAL_COUNT_AGG = "total_count";
+// Nested filter aggregations that isolate the current and previous period
+// within a single query spanning both, so the ranking and the vs-prev
+// credits come back in one Elasticsearch round trip.
+const CURRENT_PERIOD_AGG = "current_period";
+const PREVIOUS_PERIOD_AGG = "previous_period";
 const CARDINALITY_PRECISION_THRESHOLD = 40_000;
 const MAX_ES_QUERY_CLAUSES = 1_024;
 const MAX_ES_TERMS_QUERY_VALUES = 65_536;
 
-type GroupBucket = {
-  key: string;
-  doc_count: number;
+type PeriodBucket = estypes.AggregationsSingleBucketAggregateBase & {
   [CREDIT_AGG]?: estypes.AggregationsSumAggregate;
   [MESSAGES_AGG]?: estypes.AggregationsCardinalityAggregate;
+};
+
+type GroupBucket = {
+  key: string;
+  [CURRENT_PERIOD_AGG]?: PeriodBucket;
+  [PREVIOUS_PERIOD_AGG]?: PeriodBucket;
 };
 
 function subAggs(unit: ConsumptionTopUnit) {
@@ -75,29 +84,43 @@ function subAggs(unit: ConsumptionTopUnit) {
   };
 }
 
+function periodRangeFilter(
+  period: ConsumptionPeriod
+): estypes.QueryDslQueryContainer {
+  return {
+    range: {
+      [COMPLETED_AT_FIELD]: { gte: period.startDate, lt: period.endDate },
+    },
+  };
+}
+
 type RankingAggs = {
   by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
-  [TOTAL_COUNT_AGG]?: estypes.AggregationsCardinalityAggregate;
+  [TOTAL_COUNT_AGG]?: estypes.AggregationsSingleBucketAggregateBase & {
+    count?: estypes.AggregationsCardinalityAggregate;
+  };
 };
 
 type TopAggs = RankingAggs & {
   ranking?: estypes.AggregationsSingleBucketAggregateBase & RankingAggs;
-  total_credit_micro?: estypes.AggregationsSumAggregate;
+  total_credit_micro?: estypes.AggregationsSingleBucketAggregateBase & {
+    value?: estypes.AggregationsSumAggregate;
+  };
 };
 
 function countFromBucket(
-  bucket: GroupBucket,
+  current: PeriodBucket | undefined,
   unit: ConsumptionTopUnit
 ): number {
   switch (unit) {
     case "message":
-      return Math.round(bucket[MESSAGES_AGG]?.value ?? 0);
+      return Math.round(current?.[MESSAGES_AGG]?.value ?? 0);
     case "invocation":
       // One tool document is one invocation, so the bucket counts itself. A
       // multi-valued dimension (a tool call attributed to several skills) puts
       // the same document in several buckets, which is the intent: each skill is
       // credited with the invocation it is responsible for.
-      return bucket.doc_count;
+      return current?.doc_count ?? 0;
     default:
       assertNever(unit);
   }
@@ -170,30 +193,55 @@ function buildConsumptionTopAggregations({
   limit,
   offset,
   searchFilter,
+  period,
+  previousPeriod,
 }: {
   dimension: ConsumptionScopeDimension;
   limit: number;
   offset: number;
   searchFilter: estypes.QueryDslQueryContainer | null;
+  period: ConsumptionPeriod;
+  previousPeriod: ConsumptionPeriod;
 }): Record<string, estypes.AggregationsAggregationContainer> {
   const unit = CONSUMPTION_DIMENSION_UNIT[dimension];
   const dimensionField = CONSUMPTION_DIMENSION_FIELDS[dimension];
 
   // TODO(2026-08-14 aubin): Add pagination beyond the maximum bucket count.
   const requestedBucketCount = offset + limit;
+  // The query spans both periods (see fetchConsumptionTopGroups), so a term
+  // active only in the previous period can otherwise consume a terms
+  // candidate slot ahead of a real current-period contender. Padding
+  // shard_size makes that far less likely without changing what's returned.
+  const shardSize = requestedBucketCount * 3 + 50;
+
   const rankingAggregations = {
     by_group: {
       terms: {
         field: dimensionField,
         size: requestedBucketCount,
-        order: { [CREDIT_AGG]: "desc" },
+        shard_size: shardSize,
+        order: { [`${CURRENT_PERIOD_AGG}>${CREDIT_AGG}`]: "desc" },
       },
-      aggs: subAggs(unit),
+      aggs: {
+        [CURRENT_PERIOD_AGG]: {
+          filter: periodRangeFilter(period),
+          aggs: subAggs(unit),
+        },
+        [PREVIOUS_PERIOD_AGG]: {
+          filter: periodRangeFilter(previousPeriod),
+          aggs: { [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } } },
+        },
+      },
     },
     [TOTAL_COUNT_AGG]: {
-      cardinality: {
-        field: dimensionField,
-        precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+      filter: periodRangeFilter(period),
+      aggs: {
+        count: {
+          cardinality: {
+            field: dimensionField,
+            precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+          },
+        },
       },
     },
   } satisfies Record<string, estypes.AggregationsAggregationContainer>;
@@ -209,75 +257,11 @@ function buildConsumptionTopAggregations({
 
   return {
     ...rankingRootAggregations,
-    total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
+    total_credit_micro: {
+      filter: periodRangeFilter(period),
+      aggs: { value: { sum: { field: CREDIT_MICRO_FIELD } } },
+    },
   };
-}
-
-type PreviousCreditsAggs = {
-  by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
-};
-
-// Sums credits per key over `previousPeriod`, scoped to exactly the keys
-// passed in (the current page's ranking) rather than re-ranking that window,
-// since we only need those keys' prior credits to compute their growth.
-async function fetchConsumptionPreviousCredits(
-  auth: Authenticator,
-  {
-    dimension,
-    previousPeriod,
-    filter,
-    keys,
-  }: {
-    dimension: ConsumptionScopeDimension;
-    previousPeriod: ConsumptionPeriod;
-    filter?: ConsumptionScopeFilter;
-    keys: string[];
-  }
-): Promise<Result<Map<string, number>, ElasticsearchError>> {
-  if (keys.length === 0) {
-    return new Ok(new Map());
-  }
-
-  const query = buildConsumptionScopeQuery({
-    auth,
-    startDate: previousPeriod.startDate,
-    endDate: previousPeriod.endDate,
-    filter,
-  });
-
-  const result = await searchConsumptionAnalytics<never, PreviousCreditsAggs>(
-    query,
-    {
-      aggregations: {
-        by_group: {
-          terms: {
-            field: CONSUMPTION_DIMENSION_FIELDS[dimension],
-            include: keys,
-            size: keys.length,
-          },
-          aggs: { [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } } },
-        },
-      },
-      size: 0,
-    }
-  );
-
-  if (result.isErr()) {
-    return result;
-  }
-
-  const buckets = bucketsToArray<GroupBucket>(
-    result.value.aggregations?.by_group?.buckets
-  );
-
-  return new Ok(
-    new Map(
-      buckets.map((bucket) => [
-        String(bucket.key),
-        microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
-      ])
-    )
-  );
 }
 
 /**
@@ -307,9 +291,15 @@ export async function fetchConsumptionTopGroups(
     search,
   });
 
+  const previousPeriod = previousConsumptionPeriod(period);
+
+  // A single query over the union of both periods, so the ranking and the
+  // vs-prev credits come back in one Elasticsearch round trip instead of two.
+  // previousPeriod.endDate is always period.startDate (see
+  // previousConsumptionPeriod), so the union range is contiguous.
   const query = buildConsumptionScopeQuery({
     auth,
-    startDate: period.startDate,
+    startDate: previousPeriod.startDate,
     endDate: period.endDate,
     filter,
   });
@@ -319,6 +309,8 @@ export async function fetchConsumptionTopGroups(
     limit,
     offset,
     searchFilter,
+    period,
+    previousPeriod,
   });
 
   const result = await searchConsumptionAnalytics<never, TopAggs>(query, {
@@ -333,49 +325,34 @@ export async function fetchConsumptionTopGroups(
   const ranking = searchFilter
     ? result.value.aggregations?.ranking
     : result.value.aggregations;
-  const rankedGroups = bucketsToArray<GroupBucket>(
-    ranking?.by_group?.buckets
-  ).map((bucket) => ({
-    key: String(bucket.key),
-    credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
-    count: countFromBucket(bucket, CONSUMPTION_DIMENSION_UNIT[dimension]),
-  }));
-  const totalCount = Math.round(ranking?.[TOTAL_COUNT_AGG]?.value ?? 0);
+  const unit = CONSUMPTION_DIMENSION_UNIT[dimension];
+  const rankedGroups = bucketsToArray<GroupBucket>(ranking?.by_group?.buckets)
+    // A bucket with no current-period activity only exists to let its
+    // previous-period volume compete for a terms candidate slot; it never
+    // belongs in the ranking itself.
+    .filter((bucket) => (bucket[CURRENT_PERIOD_AGG]?.doc_count ?? 0) > 0)
+    .map((bucket) => {
+      const current = bucket[CURRENT_PERIOD_AGG];
+      const previous = bucket[PREVIOUS_PERIOD_AGG];
+      return {
+        key: String(bucket.key),
+        credits: microCreditsToCredits(current?.[CREDIT_AGG]?.value ?? 0),
+        count: countFromBucket(current, unit),
+        previousCredits:
+          previous && previous.doc_count > 0
+            ? microCreditsToCredits(previous[CREDIT_AGG]?.value ?? 0)
+            : null,
+      };
+    });
+  const totalCount = Math.round(ranking?.[TOTAL_COUNT_AGG]?.count?.value ?? 0);
   const pagedGroups = rankedGroups.slice(offset, offset + limit);
 
-  const previousCreditsResult = await fetchConsumptionPreviousCredits(auth, {
-    dimension,
-    previousPeriod: previousConsumptionPeriod(period),
-    filter,
-    keys: pagedGroups.map((group) => group.key),
-  });
-  // The prior-period lookup only feeds the vs-prev display column: a failure
-  // there should not take down the current-period ranking, which already
-  // succeeded. Fall back to unknown growth for every group instead.
-  if (previousCreditsResult.isErr()) {
-    logger.warn(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        dimension,
-        err: previousCreditsResult.error,
-      },
-      "[ConsumptionAnalytics] Failed to fetch previous-period credits, " +
-        "falling back to null vs-prev values."
-    );
-  }
-  const previousCreditsByKey = previousCreditsResult.isOk()
-    ? previousCreditsResult.value
-    : new Map<string, number>();
-
   return new Ok({
-    groups: pagedGroups.map((group) => ({
-      ...group,
-      previousCredits: previousCreditsByKey.get(group.key) ?? null,
-    })),
+    groups: pagedGroups,
     hasMore: totalCount > offset + limit,
     totalCount,
     totalCredits: microCreditsToCredits(
-      result.value.aggregations?.total_credit_micro?.value ?? 0
+      result.value.aggregations?.total_credit_micro?.value?.value ?? 0
     ),
   });
 }
