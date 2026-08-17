@@ -1,4 +1,8 @@
-import { sandboxFunctionNameFromSlug } from "@app/lib/api/sandbox_functions/slug";
+import { callSandboxFunction } from "@app/lib/api/sandbox_functions/call_sandbox_function";
+import {
+  SANDBOX_FUNCTION_SLUG_SEPARATOR,
+  sandboxFunctionNameFromSlug,
+} from "@app/lib/api/sandbox_functions/slug";
 import type { Authenticator } from "@app/lib/auth";
 import { PodAppShareResource } from "@app/lib/resources/pod_app_share_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
@@ -102,6 +106,10 @@ export async function listPodAppTools(
     });
 }
 
+function errorResult(text: string): CallToolResult {
+  return { content: [{ type: "text", text }], isError: true };
+}
+
 export async function callPodAppTool(
   auth: Authenticator,
   mcpServerId: string,
@@ -109,6 +117,38 @@ export async function callPodAppTool(
   args: Record<string, unknown>,
   context?: SandboxFunctionInvocationContext
 ): Promise<CallToolResult> {
-  // Implemented in the next task.
-  throw new Error("Not implemented");
+  const resolved = await resolveShare(auth, mcpServerId);
+  if (!resolved) {
+    return errorResult("No shared app is bound to this toolset anymore.");
+  }
+  const { share } = resolved;
+
+  const slug = `${share.appPrefix}${SANDBOX_FUNCTION_SLUG_SEPARATOR}${toolName}`;
+  const sandboxFunction =
+    await SandboxFunctionResource.fetchBySlugWithPodAppShare(auth, share, slug);
+  if (!sandboxFunction) {
+    return errorResult(`No function "${toolName}" in this toolset.`);
+  }
+
+  const result = await callSandboxFunction(
+    auth,
+    sandboxFunction,
+    args,
+    context
+  );
+  if (result.isErr()) {
+    const { code, message } = result.error;
+    return errorResult(
+      `Function "${toolName}" returned an error (${code}): ${message}`
+    );
+  }
+
+  return {
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify(result.value, null, 2) ?? "null",
+      },
+    ],
+  };
 }

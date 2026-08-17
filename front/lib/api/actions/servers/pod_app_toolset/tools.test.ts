@@ -1,5 +1,9 @@
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
-import { listPodAppTools } from "@app/lib/api/actions/servers/pod_app_toolset/tools";
+import {
+  callPodAppTool,
+  listPodAppTools,
+} from "@app/lib/api/actions/servers/pod_app_toolset/tools";
+import { callSandboxFunction } from "@app/lib/api/sandbox_functions/call_sandbox_function";
 import { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -12,6 +16,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
+import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -21,6 +26,10 @@ vi.mock("@app/lib/lock", () => ({
   executeWithLock: vi.fn(
     async (_lockName: string, callback: () => Promise<unknown>) => callback()
   ),
+}));
+
+vi.mock("@app/lib/api/sandbox_functions/call_sandbox_function", () => ({
+  callSandboxFunction: vi.fn(),
 }));
 
 const inputSchema: JSONSchema = {
@@ -198,5 +207,76 @@ describe("pod_app_toolset listPodAppTools", () => {
       prefix: 654321,
     });
     expect(await listPodAppTools(outsiderAuth, unknownServerId)).toEqual([]);
+  });
+});
+
+describe("pod_app_toolset callPodAppTool", () => {
+  it("resolves the function through the share and returns its result", async () => {
+    const { mcpServerId, makeFunction, outsiderAuth } = await setupSharedApp();
+    await makeFunction("notes__list", "list.ts");
+    vi.mocked(callSandboxFunction).mockResolvedValue(new Ok({ items: [1, 2] }));
+
+    const result = await callPodAppTool(
+      outsiderAuth,
+      mcpServerId,
+      "list",
+      { query: "x" },
+      { timezone: "Europe/Paris" }
+    );
+
+    expect(result.isError).toBeUndefined();
+    expect(result.content).toEqual([
+      { type: "text", text: JSON.stringify({ items: [1, 2] }, null, 2) },
+    ]);
+    expect(vi.mocked(callSandboxFunction)).toHaveBeenCalledWith(
+      outsiderAuth,
+      expect.objectContaining({ slug: "notes__list" }),
+      { query: "x" },
+      { timezone: "Europe/Paris" }
+    );
+  });
+
+  it("reports an unknown tool name as an error result", async () => {
+    const { mcpServerId, outsiderAuth } = await setupSharedApp();
+
+    const result = await callPodAppTool(outsiderAuth, mcpServerId, "nope", {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content).toEqual([
+      { type: "text", text: 'No function "nope" in this toolset.' },
+    ]);
+    expect(vi.mocked(callSandboxFunction)).not.toHaveBeenCalled();
+  });
+
+  it("reports a revoked share as an error result", async () => {
+    const { adminAuth, share, mcpServerId, makeFunction, outsiderAuth } =
+      await setupSharedApp();
+    await makeFunction("notes__list", "list.ts");
+    await share.revoke(adminAuth);
+
+    const result = await callPodAppTool(outsiderAuth, mcpServerId, "list", {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content).toEqual([
+      { type: "text", text: "No shared app is bound to this toolset anymore." },
+    ]);
+  });
+
+  it("surfaces function errors with their code and message", async () => {
+    const { mcpServerId, makeFunction, outsiderAuth } = await setupSharedApp();
+    await makeFunction("notes__list", "list.ts");
+    vi.mocked(callSandboxFunction).mockResolvedValue(
+      new Err({ code: "invocation_failed", message: "boom" })
+    );
+
+    const result = await callPodAppTool(outsiderAuth, mcpServerId, "list", {});
+
+    expect(result.isError).toBe(true);
+    expect(result.content).toEqual([
+      {
+        type: "text",
+        text: 'Function "list" returned an error (invocation_failed): boom',
+      },
+    ]);
   });
 });
