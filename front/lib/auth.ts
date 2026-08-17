@@ -963,10 +963,10 @@ export class Authenticator {
       ? allGroups.map((g) => g.id)
       : [];
     const keyGroupModelIds = allGroups.map((g) => g.id);
-    // Unscoped system keys represent nearly every group in their workspace. Resolve their grants
-    // from the workspace grant set so large workspaces do not send thousands of group ids to
-    // Postgres on every request. Explicitly scoped system keys keep the group-id query.
-    const scanWorkspacePermissions =
+    // Unscoped system keys represent nearly every group in their workspace. Bind those ids as one
+    // Postgres array so Sequelize does not expand thousands of placeholders into the query text.
+    // Explicitly scoped system keys keep the regular group-id lookup.
+    const useBoundArrayPermissionLookup =
       key.isSystem && requestedGroupIds === undefined;
 
     let permissions: GroupPermissions;
@@ -977,7 +977,7 @@ export class Authenticator {
       permissions = await this.resolvePermissions({
         workspace,
         groupModelIds: workspaceGroupModelIds,
-        scanWorkspacePermissions,
+        useBoundArrayPermissionLookup,
       });
       keyPermissions = permissions;
     } else {
@@ -985,12 +985,12 @@ export class Authenticator {
         this.resolvePermissions({
           workspace,
           groupModelIds: workspaceGroupModelIds,
-          scanWorkspacePermissions,
+          useBoundArrayPermissionLookup,
         }),
         this.resolvePermissions({
           workspace: keyWorkspace,
           groupModelIds: keyGroupModelIds,
-          scanWorkspacePermissions,
+          useBoundArrayPermissionLookup,
         }),
       ]);
     }
@@ -1295,18 +1295,18 @@ export class Authenticator {
   static async resolvePermissions({
     workspace,
     groupModelIds,
-    scanWorkspacePermissions = false,
+    useBoundArrayPermissionLookup = false,
   }: {
     workspace?: WorkspaceResource | null;
     groupModelIds: ModelId[];
-    scanWorkspacePermissions?: boolean;
+    useBoundArrayPermissionLookup?: boolean;
   }): Promise<GroupPermissions> {
     if (!workspace) {
       return GroupPermissions.empty();
     }
 
     const lightWorkspace = renderLightWorkspaceType({ workspace });
-    const grants = scanWorkspacePermissions
+    const grants = useBoundArrayPermissionLookup
       ? await GroupPermissionResource.listForGroupsWithBoundArray(
           lightWorkspace,
           groupModelIds
