@@ -69,8 +69,7 @@ export async function isConsumptionExportGenerating(
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const client = await getTemporalClientForFrontNamespace();
 
-  // Workflow IDs are keyed by period+filter (see makeConsumptionExportWorkflowId), so a running
-  // export for this workspace is matched by prefix rather than by a single fixed workflow ID.
+  // Export for this workspace is matched by prefix.
   const query = `WorkflowId STARTS_WITH "${makeConsumptionExportWorkflowIdPrefix({ workspaceId })}" AND ExecutionStatus="Running"`;
   for await (const _workflow of client.workflow.list({ query })) {
     return true;
