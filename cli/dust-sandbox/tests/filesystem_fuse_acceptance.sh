@@ -238,6 +238,15 @@ command -v tar >/dev/null
 mkdir -p "$POD_DIR/packed" "$POD_DIR/unpacked"
 printf archived >"$POD_DIR/packed/archived.txt"
 cp -p "$POD_DIR/packed/archived.txt" "$POD_DIR/packed/copied.txt"
+
+# The time a file reports must stay put once its write is saved. `cp -p` looks
+# at the file before closing it, and Linux keeps what it read for a second, so a
+# time that only settles after the save makes tar and rsync report that the file
+# changed while they were reading it.
+COPIED_MTIME="$(stat -c %.9Y "$POD_DIR/packed/copied.txt")"
+sleep 2
+test "$(stat -c %.9Y "$POD_DIR/packed/copied.txt")" = "$COPIED_MTIME"
+
 tar -cf "$POD_DIR/archive.tar" -C "$POD_DIR/packed" .
 tar -xf "$POD_DIR/archive.tar" -C "$POD_DIR/unpacked"
 test "$(cat "$POD_DIR/unpacked/archived.txt")" = archived

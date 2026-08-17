@@ -126,7 +126,11 @@ impl Filesystem for DustFuse {
         _flags: Option<BsdFileFlags>,
         reply: ReplyAttr,
     ) {
-        if uid.is_some() || gid.is_some() {
+        // Dust stores no owner, and every file reports the daemon's own user.
+        // A request for the owner the file already has changes nothing, so it
+        // is accepted: `tar -x` run by root sets the owner on every file it
+        // writes. Asking for any other owner is still refused.
+        if uid.is_some_and(|uid| uid != self.uid) || gid.is_some_and(|gid| gid != self.gid) {
             reply.error(Errno::EPERM);
             return;
         }

@@ -156,6 +156,14 @@ writing to that file during the upload waits and then continues, which is what
 the same program would see on a local disk. `stat` on the file does not wait: it
 reports the size already staged for the next save.
 
+While a file is being written, its size and time come from the local staged
+copy, and Linux keeps that answer for a second. The save then gives the file the
+time Front recorded, and no reply carries that new time back. The daemon
+therefore tells Linux to drop what it holds for that file once a save
+completes. Without it, a program that reads a file it has just written sees the
+time change under it, and `tar` and `rsync` report that the file changed while
+they were reading it.
+
 Front gives every upload its own blob ID and commits it against the blob that
 was opened. If the reply to a commit is lost, the client sends the same commit
 again, and Front answers that the blob it was given is out of date. The daemon
@@ -266,6 +274,12 @@ the same mode.
   the caller. Requests that set a time report success and change nothing, so
   `tar -x`, `cp -p`, `rsync` and `touch` work while the times they ask for are
   dropped.
+- Dust stores no owner, and every file reports the daemon's own user. Asking for
+  that same owner changes nothing and is accepted, which is what `tar -x` run by
+  root does on every file it writes. Asking for another owner is refused.
+- Only the executable bits can be changed. A `chmod` that alters the read or
+  write bits is refused, so unpacking an archive written on another filesystem
+  can still fail on its modes even though its times are accepted.
 - Each queue of Front work has a fixed waiting limit. A request that arrives
   when its queue is full, or that waits more than five seconds for a slot, gets
   `EAGAIN`. This only happens when the sandbox has far more filesystem work in

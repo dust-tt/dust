@@ -14,6 +14,7 @@ mod supervise;
 
 use std::io;
 
+use anyhow::bail;
 use clap::Subcommand;
 
 #[derive(Debug, Subcommand)]
@@ -25,12 +26,21 @@ pub enum FilesystemCommand {
 }
 
 pub fn run(command: FilesystemCommand) -> anyhow::Result<()> {
-    match command {
+    // `dsbx` runs its commands inside a Tokio runtime, and the filesystem
+    // cannot start there: the blocking HTTP client refuses to be built while a
+    // runtime is entered on the thread, and the mount then keeps its thread
+    // busy until it ends. This thread runs no runtime, so both are fine, and
+    // the runtime the filesystem starts for itself can also be dropped here.
+    let running = std::thread::spawn(move || match command {
         FilesystemCommand::Mount(args) => mount::run(args),
         #[cfg(target_os = "linux")]
         FilesystemCommand::Supervise(args) => supervise::run(args),
         #[cfg(not(target_os = "linux"))]
         FilesystemCommand::Supervise(args) => mount::run(args),
+    });
+    match running.join() {
+        Ok(result) => result,
+        Err(_) => bail!("the filesystem command panicked"),
     }
 }
 
