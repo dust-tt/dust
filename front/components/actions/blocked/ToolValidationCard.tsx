@@ -193,7 +193,7 @@ export function ToolValidationCard({
                       {displayLabel}
                     </DialogDescription>
                   </DialogHeader>
-                  <DialogContainer className="py-3">
+                  <DialogContainer className="pb-3 pt-4">
                     <ToolValidationDetails
                       blockedAction={validationRequest}
                       user={currentUser}
