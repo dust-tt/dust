@@ -115,11 +115,13 @@ export class InternalMCPServerInMemoryResource {
       name,
       useCase,
       viewName,
+      viewDescription,
       oauthScope,
     }: {
       name: InternalMCPServerNameType;
       useCase: MCPOAuthUseCase | null;
       viewName?: string;
+      viewDescription?: string;
       oauthScope?: string | null;
     }
   ) {
@@ -237,6 +239,7 @@ export class InternalMCPServerInMemoryResource {
       oauthScope: oauthScope ?? null,
       isRestrictedToSkills: false,
       ...(viewName ? { name: viewName } : {}),
+      ...(viewDescription ? { description: viewDescription } : {}),
     });
 
     return server;

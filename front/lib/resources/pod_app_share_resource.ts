@@ -77,7 +77,14 @@ export class PodAppShareResource extends BaseResource<PodAppShareModel> {
 
   private static async baseFetch(
     auth: Authenticator,
-    options: ResourceFindOptions<PodAppShareModel> = {}
+    {
+      includeDeletedSpace,
+      ...options
+    }: ResourceFindOptions<PodAppShareModel> & {
+      // Pods are soft-deleted before being scrubbed; without this, shares of a pod being
+      // deleted resolve to no space and are silently dropped here.
+      includeDeletedSpace?: boolean;
+    } = {}
   ): Promise<PodAppShareResource[]> {
     const { where, ...rest } = options;
     const shares = await this.model.findAll({
@@ -90,7 +97,8 @@ export class PodAppShareResource extends BaseResource<PodAppShareModel> {
 
     const spaces = await SpaceResource.fetchByModelIds(
       auth,
-      Array.from(new Set(shares.map((share) => share.get().spaceId)))
+      Array.from(new Set(shares.map((share) => share.get().spaceId))),
+      { includeDeleted: includeDeletedSpace }
     );
     const spacesById = new Map(
       spaces
@@ -140,6 +148,31 @@ export class PodAppShareResource extends BaseResource<PodAppShareModel> {
       return [];
     }
     return this.baseFetch(auth, { where: { spaceId: space.id } });
+  }
+
+  /**
+   * Scrub-time cleanup: hard-deletes every share row of the pod (revoked ones included — the
+   * spaceId FK is ON DELETE RESTRICT, so soft-deleted rows would block the space scrub) and
+   * returns what was active so the caller can clean up the bound server views.
+   */
+  static async deleteAllForSpace(
+    auth: Authenticator,
+    space: SpaceResource
+  ): Promise<PodAppShareResource[]> {
+    const shares = await this.baseFetch(auth, {
+      where: { spaceId: space.id },
+      includeDeletedSpace: true,
+    });
+
+    await this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        spaceId: space.id,
+      },
+      hardDelete: true,
+    });
+
+    return shares;
   }
 
   async updateShareDetails({

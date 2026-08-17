@@ -2,6 +2,7 @@ import { hardDeleteApp } from "@app/lib/api/apps";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
+import { scrubPodAppSharesForSpace } from "@app/lib/api/projects/app_shares";
 import { deletePodStatePrefix } from "@app/lib/api/sandbox/db";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { deleteWebhookSource } from "@app/lib/api/webhook_source";
@@ -175,6 +176,10 @@ export async function scrubSpaceActivity({
     if (deleteSandboxFunctionsResult.isErr()) {
       throw deleteSandboxFunctionsResult.error;
     }
+
+    // App shares FK the space with ON DELETE RESTRICT, so their rows (and the toolset views
+    // bound to them) must be gone before the space can be hard-deleted.
+    await scrubPodAppSharesForSpace(auth, space);
 
     // Destroy the pod sandbox at the provider and drop its ownership row. The
     // FK from sandbox_owners to spaces is `onDelete: "RESTRICT"`, so the row

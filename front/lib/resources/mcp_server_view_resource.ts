@@ -1307,7 +1307,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       name,
       description,
       editedAt: new Date(),
-      editedByUserId: auth.getNonNullableUser().id,
+      // Internal-admin authenticators (e.g. the pod app share flow) carry no user.
+      editedByUserId: auth.user()?.id ?? null,
     });
     return new Ok(affectedCount);
   }

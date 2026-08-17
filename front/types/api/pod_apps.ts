@@ -89,6 +89,38 @@ export const ClonePodAppRequestBodySchema = z.object({
   name: z.string().min(1).max(MAX_POD_APP_NAME_LENGTH),
 });
 
+/** Max length of the sharer-provided toolset description, which agents use for discovery. */
+export const MAX_POD_APP_SHARE_DESCRIPTION_LENGTH = 2048;
+
+/** How a shared app surfaces on listings and share endpoints. */
+export type PodAppShareSummary = {
+  appPrefix: string;
+  toolsetName: string;
+  description: string;
+};
+
+export const SharePodAppRequestBodySchema = z.object({
+  name: z.string().min(1).max(MAX_POD_APP_NAME_LENGTH).optional(),
+  description: z.string().min(1).max(MAX_POD_APP_SHARE_DESCRIPTION_LENGTH),
+});
+
+export const UpdatePodAppShareRequestBodySchema = z.object({
+  name: z.string().min(1).max(MAX_POD_APP_NAME_LENGTH).optional(),
+  description: z
+    .string()
+    .min(1)
+    .max(MAX_POD_APP_SHARE_DESCRIPTION_LENGTH)
+    .optional(),
+});
+
+export type SharePodAppResponseBody = {
+  share: PodAppShareSummary;
+};
+
+export type DeletePodAppShareResponseBody = {
+  success: true;
+};
+
 /** What a clone created, as the business layer reports it and the endpoint returns it. */
 export type PodAppCloneSummary = {
   prefix: string;

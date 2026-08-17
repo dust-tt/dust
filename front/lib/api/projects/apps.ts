@@ -1,5 +1,6 @@
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { getFileContent } from "@app/lib/api/files/utils";
+import { unsharePodApp } from "@app/lib/api/projects/app_shares";
 import { deleteProjectFile } from "@app/lib/api/projects/context";
 import { createPodFrameFile } from "@app/lib/api/projects/pod_frame_file";
 import {
@@ -558,6 +559,15 @@ export async function deletePodApp(
         await metadata.removeFramePath(frame.path);
       }
     }
+  }
+
+  // 5bis. Revoke the app's workspace share (toolset views + share row) before the folder goes.
+  // Idempotent and retry-safe, like every step before the folder delete.
+  const unshareResult = await unsharePodApp(auth, pod, prefix);
+  if (unshareResult.isErr() && unshareResult.error.code !== "not_shared") {
+    return new Err(
+      new PodAppDeleteError("internal", unshareResult.error.message)
+    );
   }
 
   // 6. Source folder last. `deleteProjectFile` recurses and deletes each FileResource underneath,
