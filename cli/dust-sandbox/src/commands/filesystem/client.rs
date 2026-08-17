@@ -10,6 +10,8 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 use tracing::warn;
 
+use super::errno;
+
 const FILESYSTEM_ERROR_HEADER: &str = "x-dust-filesystem-error";
 const GCS_CREATE_ONLY_HEADER: &str = "x-goog-if-generation-match";
 const GCS_CREATE_ONLY_VALUE: &str = "0";
@@ -458,16 +460,14 @@ fn invalid_response() -> io::Error {
     errno(libc::EIO)
 }
 
-fn errno(code: i32) -> io::Error {
-    io::Error::from_raw_os_error(code)
-}
-
 #[cfg(test)]
-mod test_support {
+pub(super) mod test_support {
     use std::io::Read;
     use std::net::TcpStream;
 
-    pub(super) fn read_request(stream: &mut TcpStream) -> String {
+    // The module itself is only reachable inside `filesystem`, so this stays
+    // private to the filesystem tests.
+    pub fn read_request(stream: &mut TcpStream) -> String {
         let mut request = Vec::new();
         let mut expected_len = None;
         loop {

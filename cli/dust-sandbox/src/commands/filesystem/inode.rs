@@ -1,5 +1,7 @@
 use std::io;
 
+use super::errno;
+
 #[cfg(target_os = "linux")]
 pub(super) use fuser::INodeNo;
 
@@ -19,6 +21,13 @@ impl INodeNo {
 const DATABASE_NODE_ONE_INODE: INodeNo = INodeNo(0x8000_0000_0000_0001);
 const MAX_DATABASE_NODE_ID: u64 = i64::MAX as u64;
 
+// The `conversation` and `pod` links exist only in this daemon, so they take
+// numbers above every valid database ID. Linux needs a separate inode for each
+// name it sees: giving a link the number of the directory it points to would
+// make the kernel move that directory between the two names.
+pub(super) const CONVERSATION_LINK_INODE: INodeNo = INodeNo(0x8000_0000_0000_0002);
+pub(super) const POD_LINK_INODE: INodeNo = INodeNo(0x8000_0000_0000_0003);
+
 pub(super) fn inode_for_node_id(node_id: u64) -> io::Result<INodeNo> {
     match node_id {
         1 => Ok(DATABASE_NODE_ONE_INODE),
@@ -33,10 +42,6 @@ pub(super) fn node_id_for_inode(inode: INodeNo) -> io::Result<u64> {
         INodeNo(2..=MAX_DATABASE_NODE_ID) => Ok(inode.0),
         _ => Err(errno(libc::EINVAL)),
     }
-}
-
-fn errno(code: i32) -> io::Error {
-    io::Error::from_raw_os_error(code)
 }
 
 #[cfg(test)]
@@ -74,5 +79,19 @@ mod tests {
         ] {
             assert!(node_id_for_inode(inode).is_err());
         }
+    }
+
+    #[test]
+    fn root_link_inodes_belong_to_no_database_row() {
+        for inode in [
+            super::CONVERSATION_LINK_INODE,
+            super::POD_LINK_INODE,
+            DATABASE_NODE_ONE_INODE,
+        ] {
+            assert_ne!(inode, INodeNo::ROOT);
+        }
+        assert_ne!(super::CONVERSATION_LINK_INODE, super::POD_LINK_INODE);
+        assert!(node_id_for_inode(super::CONVERSATION_LINK_INODE).is_err());
+        assert!(node_id_for_inode(super::POD_LINK_INODE).is_err());
     }
 }

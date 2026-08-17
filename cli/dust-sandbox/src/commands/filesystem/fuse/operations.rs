@@ -75,11 +75,20 @@ impl Filesystem for DustFuse {
         reply: ReplyAttr,
     ) {
         if let Some(handle) = handle {
-            match self.node_for_handle(handle.0, inode) {
-                Ok(node) => reply.attr(&KERNEL_ENTRY_TTL, &self.attributes(&node)),
-                Err(error) => reply.error(to_errno(error)),
+            match self.node_for_free_handle(handle.0, inode) {
+                Ok(Some(node)) => {
+                    reply.attr(&KERNEL_ENTRY_TTL, &self.attributes(&node));
+                    return;
+                }
+                // A commit is uploading through this handle. The shared file
+                // details below carry the same staged size, so `stat` on an
+                // open file answers instead of waiting for that upload.
+                Ok(None) => {}
+                Err(error) => {
+                    reply.error(to_errno(error));
+                    return;
+                }
             }
-            return;
         }
         let filesystem = self.clone();
         self.spawn_remote("getattr", RemoteWork::Metadata, move |rejected| {
@@ -103,8 +112,12 @@ impl Filesystem for DustFuse {
         uid: Option<u32>,
         gid: Option<u32>,
         size: Option<u64>,
-        atime: Option<TimeOrNow>,
-        mtime: Option<TimeOrNow>,
+        // Dust records when a file's contents last changed and stores no time
+        // chosen by the caller. These two are accepted and dropped: `tar -x`,
+        // `cp -p` and `touch` set a time on every file they write, and would
+        // otherwise report an error on each one.
+        _atime: Option<TimeOrNow>,
+        _mtime: Option<TimeOrNow>,
         _ctime: Option<SystemTime>,
         handle: Option<FileHandle>,
         _creation_time: Option<SystemTime>,
@@ -115,12 +128,6 @@ impl Filesystem for DustFuse {
     ) {
         if uid.is_some() || gid.is_some() {
             reply.error(Errno::EPERM);
-            return;
-        }
-        if atime.is_some() || mtime.is_some() {
-            // This filesystem currently stores content time and executable bits.
-            // Do not report success for `touch` until Front stores explicit times.
-            reply.error(Errno::ENOTSUP);
             return;
         }
         if handle.is_some() && mode.is_none() {
@@ -146,6 +153,16 @@ impl Filesystem for DustFuse {
                 Err(error) => reply.error(to_errno(error)),
             }
         });
+    }
+
+    fn readlink(&self, _request: &Request, inode: INodeNo, reply: ReplyData) {
+        // `/files/conversation` and `/files/pod` are links to the roots that
+        // carry a Dust identifier in their name. The daemon builds them when it
+        // starts, so answering here needs no call to Front.
+        match self.store.read_link(inode) {
+            Ok(target) => reply.data(target.as_bytes()),
+            Err(error) => reply.error(to_errno(error)),
+        }
     }
 
     fn mkdir(
@@ -321,7 +338,7 @@ impl Filesystem for DustFuse {
     ) {
         let result = (|| {
             let shared = self.handles.file(handle.0)?;
-            let mut open = try_open_file(&shared)?;
+            let mut open = lock_open_file(&shared)?;
             let inode = open.inode();
             let (written, size) = open.record_write(offset, data)?;
             self.stage_attributes(inode, size)?;

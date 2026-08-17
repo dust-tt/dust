@@ -7,7 +7,10 @@ use tracing::warn;
 use uuid::Uuid;
 
 use super::client::{FileSystemClient, NodeKind as RemoteNodeKind, RemoteNode};
-use super::inode::{inode_for_node_id, node_id_for_inode, INodeNo};
+use super::errno;
+use super::inode::{
+    inode_for_node_id, node_id_for_inode, INodeNo, CONVERSATION_LINK_INODE, POD_LINK_INODE,
+};
 
 // Keeps downloaded file bytes on local disk while open handles are using them.
 mod content_cache;
@@ -25,6 +28,9 @@ const DEFAULT_CONTENT_TYPE: &str = "application/octet-stream";
 pub enum NodeKind {
     File,
     Directory,
+    // Only the `conversation` and `pod` links at the top of the mount. The
+    // database holds no symbolic link of its own.
+    Symlink,
 }
 
 #[derive(Clone, Debug)]
@@ -51,10 +57,65 @@ impl Node {
     }
 }
 
+// `/files` holds one directory per conversation or Pod, named with its Dust
+// identifier. Prompts and older tools also use the shorter `conversation` and
+// `pod` paths, which this daemon adds as symbolic links to those directories.
+struct RootLink {
+    inode: INodeNo,
+    name: &'static str,
+    target: String,
+}
+
+// The name of each link, the start of the root directory name it points to, and
+// the inode it keeps for the life of the mount.
+const ROOT_LINKS: [(&str, &str, INodeNo); 2] = [
+    ("conversation", "conversation-", CONVERSATION_LINK_INODE),
+    ("pod", "pod-", POD_LINK_INODE),
+];
+
+impl RootLink {
+    fn all(roots: &[Node]) -> Vec<Self> {
+        ROOT_LINKS
+            .into_iter()
+            .filter_map(|(name, prefix, inode)| {
+                // A root already using the short name needs no link, and a
+                // second entry under that name would hide the root itself.
+                if roots.iter().any(|root| root.name == name) {
+                    return None;
+                }
+                let target = roots.iter().find(|root| root.name.starts_with(prefix))?;
+                Some(Self {
+                    inode,
+                    name,
+                    target: target.name.clone(),
+                })
+            })
+            .collect()
+    }
+
+    fn node(&self) -> Node {
+        Node {
+            inode: self.inode,
+            parent_inode: Some(FUSE_ROOT_INODE),
+            name: self.name.to_owned(),
+            kind: NodeKind::Symlink,
+            // A symbolic link carries no permission of its own, and its size is
+            // the length of the name it points to.
+            mode: 0o777,
+            size: self.target.len() as u64,
+            created_at_ms: 0,
+            modified_at_ms: 0,
+            blob_id: None,
+            content_type: None,
+        }
+    }
+}
+
 pub struct FileStore {
     client: FileSystemClient,
     staging_dir: PathBuf,
     roots: Vec<Node>,
+    root_links: Vec<RootLink>,
     content: ContentCache,
     // This daemon cache and Linux's entry cache each last one second. Together,
     // a change from another sandbox can take almost two seconds to become visible.
@@ -82,10 +143,12 @@ impl FileStore {
             .into_iter()
             .map(Node::from_remote)
             .collect::<io::Result<Vec<_>>>()?;
+        let root_links = RootLink::all(&roots);
         Ok(Self {
             client,
             staging_dir: staging_dir.to_path_buf(),
             roots,
+            root_links,
             content: ContentCache::new(cache_capacity_bytes),
             metadata: Mutex::new(MetadataCache::new()?),
         })
@@ -94,6 +157,9 @@ impl FileStore {
     pub fn node(&self, inode: INodeNo) -> io::Result<Node> {
         if inode == FUSE_ROOT_INODE {
             return Ok(Node::root());
+        }
+        if let Some(link) = self.root_link(inode) {
+            return Ok(link.node());
         }
         if let Some(node) = self.cached_node(inode)? {
             return Ok(node);
@@ -106,7 +172,7 @@ impl FileStore {
     pub fn lookup(&self, parent_inode: INodeNo, name: &str) -> io::Result<Node> {
         validate_name(name)?;
         if parent_inode == FUSE_ROOT_INODE {
-            return self.root_by_name(name).ok_or_else(|| errno(libc::ENOENT));
+            return self.root_entry(name).ok_or_else(|| errno(libc::ENOENT));
         }
         let node = Node::from_remote(self.client.lookup(node_id_for_inode(parent_inode)?, name)?)?;
         self.cache_node(node.clone())?;
@@ -115,14 +181,9 @@ impl FileStore {
 
     pub fn children(&self, parent_inode: INodeNo) -> io::Result<Vec<Node>> {
         if parent_inode == FUSE_ROOT_INODE {
-            let mut roots = self.roots.clone();
-            for alias in ["conversation", "pod"] {
-                if let Some(mut root) = self.root_by_name(alias) {
-                    root.name = alias.to_owned();
-                    roots.push(root);
-                }
-            }
-            return Ok(roots);
+            let mut entries = self.roots.clone();
+            entries.extend(self.root_links.iter().map(RootLink::node));
+            return Ok(entries);
         }
         if let Some(children) = self.cached_children(parent_inode)? {
             return Ok(children);
@@ -137,21 +198,28 @@ impl FileStore {
         Ok(children)
     }
 
-    fn root_by_name(&self, name: &str) -> Option<Node> {
-        self.roots
+    // The top of the mount holds the roots granted by the sandbox token plus
+    // the short links to them.
+    fn root_entry(&self, name: &str) -> Option<Node> {
+        if let Some(root) = self.roots.iter().find(|root| root.name == name) {
+            return Some(root.clone());
+        }
+        self.root_links
             .iter()
-            .find(|root| root.name == name)
-            .or_else(|| match name {
-                // Keep the paths used in prompts and older tools while the canonical
-                // root names continue to include their stable Dust identifiers.
-                "conversation" => self
-                    .roots
-                    .iter()
-                    .find(|root| root.name.starts_with("conversation-")),
-                "pod" => self.roots.iter().find(|root| root.name.starts_with("pod-")),
-                _ => None,
-            })
-            .cloned()
+            .find(|link| link.name == name)
+            .map(RootLink::node)
+    }
+
+    fn root_link(&self, inode: INodeNo) -> Option<&RootLink> {
+        self.root_links.iter().find(|link| link.inode == inode)
+    }
+
+    // Returns the root directory name that one of the short links points to.
+    pub fn read_link(&self, inode: INodeNo) -> io::Result<String> {
+        // EINVAL is what Linux expects when a path turns out not to be a link.
+        self.root_link(inode)
+            .map(|link| link.target.clone())
+            .ok_or_else(|| errno(libc::EINVAL))
     }
 
     pub fn create_file(&self, parent_inode: INodeNo, name: &str, mode: u16) -> io::Result<Node> {
@@ -192,8 +260,12 @@ impl FileStore {
 
     pub fn remove_file(&self, parent_inode: INodeNo, name: &str) -> io::Result<()> {
         let node = self.lookup(parent_inode, name)?;
-        if node.kind != NodeKind::File {
-            return Err(errno(libc::EISDIR));
+        match node.kind {
+            NodeKind::File => {}
+            NodeKind::Directory => return Err(errno(libc::EISDIR)),
+            // `rm /files/conversation` arrives here. The links are part of the
+            // mount layout, so no sandbox command removes them.
+            NodeKind::Symlink => return Err(errno(libc::EPERM)),
         }
         self.remove(parent_inode, name, node.inode, RemoteNodeKind::File)
     }
@@ -358,13 +430,39 @@ impl FileStore {
         let mut upload_file = opened.file.try_clone()?;
         upload_file.seek(SeekFrom::Start(0))?;
         self.client.upload(&upload, upload_file, size)?;
-        let remote = self.client.commit_upload(
+        let remote = match self.client.commit_upload(
             node_id,
             opened.expected_blob_id.as_deref(),
             &upload,
             size,
-        )?;
+        ) {
+            Ok(remote) => remote,
+            // A commit whose response was lost is sent again by the HTTP
+            // client. Front has already stored the new blob by then, so the
+            // second try reports the blob it was given as out of date.
+            Err(error) if error.raw_os_error() == Some(libc::ESTALE) => {
+                self.node_after_lost_commit(node_id, &upload.blob_id, error)?
+            }
+            Err(error) => return Err(error),
+        };
         self.finish_content_commit(opened, remote, size)
+    }
+
+    // Reports whether the commit that answered ESTALE is one this daemon has
+    // already made. Front gives every upload its own blob ID, so a node holding
+    // the blob we just uploaded can only be the result of our own commit. Any
+    // other blob means another sandbox wrote the file first, which stays an
+    // error the caller must see.
+    fn node_after_lost_commit(
+        &self,
+        node_id: u64,
+        blob_id: &str,
+        stale: io::Error,
+    ) -> io::Result<RemoteNode> {
+        match self.client.node(node_id) {
+            Ok(remote) if remote.blob_id.as_deref() == Some(blob_id) => Ok(remote),
+            _ => Err(stale),
+        }
     }
 
     fn finish_content_commit(
@@ -495,22 +593,22 @@ fn validate_name(name: &str) -> io::Result<()> {
     }
 }
 
-fn errno(code: i32) -> io::Error {
-    io::Error::from_raw_os_error(code)
-}
-
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::io::Write;
+    use std::net::TcpListener;
     use std::sync::Mutex;
+    use std::thread::JoinHandle;
 
     use tempfile::tempdir;
 
+    use super::super::client::test_support::read_request;
     use super::super::client::{NodeKind as RemoteNodeKind, RemoteNode};
     use super::super::inode::{inode_for_node_id, node_id_for_inode};
     use super::{
-        CachedContent, ContentCache, FileStore, FileSystemClient, MetadataCache, Node, NodeKind,
-        FUSE_ROOT_INODE,
+        errno, CachedContent, ContentCache, FileStore, FileSystemClient, MetadataCache, Node,
+        NodeKind, RootLink, FUSE_ROOT_INODE,
     };
 
     fn file(inode: u64, size: u64) -> Node {
@@ -528,17 +626,42 @@ mod tests {
         }
     }
 
-    fn store(staging_dir: &std::path::Path, capacity: u64) -> FileStore {
+    // Nothing listens on this address, so a test that expects a call to Front
+    // to fail needs no server of its own.
+    const UNREACHABLE_FRONT: &str = "http://127.0.0.1:1";
+
+    fn root(inode: u64, name: &str) -> Node {
+        Node {
+            inode: super::INodeNo(inode),
+            parent_inode: Some(FUSE_ROOT_INODE),
+            name: name.to_owned(),
+            kind: NodeKind::Directory,
+            mode: 0o755,
+            size: 0,
+            created_at_ms: 0,
+            modified_at_ms: 0,
+            blob_id: None,
+            content_type: None,
+        }
+    }
+
+    fn store(
+        staging_dir: &std::path::Path,
+        capacity: u64,
+        api_url: &str,
+        roots: Vec<Node>,
+    ) -> FileStore {
         FileStore {
             client: FileSystemClient::new(
-                "http://127.0.0.1:1",
+                api_url,
                 "1",
                 "test-token".to_owned(),
                 staging_dir.join("token"),
             )
             .expect("filesystem client"),
             staging_dir: staging_dir.to_path_buf(),
-            roots: Vec::new(),
+            root_links: RootLink::all(&roots),
+            roots,
             content: ContentCache::new(capacity),
             metadata: Mutex::new(MetadataCache::new().expect("metadata cache")),
         }
@@ -584,7 +707,7 @@ mod tests {
     #[test]
     fn public_open_keeps_zero_capacity_cache_content_alive_until_close() {
         let directory = tempdir().expect("temporary directory");
-        let store = store(directory.path(), 0);
+        let store = store(directory.path(), 0, UNREACHABLE_FRONT, Vec::new());
         let first = file(3, 3);
         stage(&store, &first, b"one");
         let first_open = store
@@ -608,7 +731,7 @@ mod tests {
     #[test]
     fn public_open_allows_one_writer_per_inode() {
         let directory = tempdir().expect("temporary directory");
-        let store = store(directory.path(), 1024);
+        let store = store(directory.path(), 1024, UNREACHABLE_FRONT, Vec::new());
         let node = file(3, 3);
         stage(&store, &node, b"one");
         let first = store
@@ -629,7 +752,7 @@ mod tests {
     #[test]
     fn invalid_committed_response_discards_old_cache_entries() {
         let directory = tempdir().expect("temporary directory");
-        let store = store(directory.path(), 1024);
+        let store = store(directory.path(), 1024, UNREACHABLE_FRONT, Vec::new());
         let node = file(3, 3);
         stage(&store, &node, b"new");
         let mut opened = store
@@ -662,7 +785,7 @@ mod tests {
     #[test]
     fn failed_handleless_truncate_discards_changed_cache_bytes() {
         let directory = tempdir().expect("temporary directory");
-        let store = store(directory.path(), 1024);
+        let store = store(directory.path(), 1024, UNREACHABLE_FRONT, Vec::new());
         let node = file(3, 3);
         stage(&store, &node, b"one");
 
@@ -675,5 +798,159 @@ mod tests {
             .cached_node(node.inode)
             .expect("metadata cache")
             .is_none());
+    }
+
+    #[test]
+    fn the_short_root_name_is_a_link_with_an_inode_of_its_own() {
+        let directory = tempdir().expect("temporary directory");
+        let conversation = root(2, "conversation-abc");
+        let store = store(
+            directory.path(),
+            1024,
+            UNREACHABLE_FRONT,
+            vec![conversation.clone()],
+        );
+
+        let link = store
+            .lookup(FUSE_ROOT_INODE, "conversation")
+            .expect("look up the short name");
+        assert_eq!(link.kind, NodeKind::Symlink);
+        assert_eq!(
+            store.read_link(link.inode).expect("read the link"),
+            "conversation-abc"
+        );
+        // Linux moves a directory between two names that report one inode, so
+        // the link must never carry the inode of the root it points to.
+        assert_ne!(link.inode, conversation.inode);
+        assert_eq!(
+            store.node(link.inode).expect("stat the link").kind,
+            link.kind
+        );
+
+        let root_directory = store
+            .lookup(FUSE_ROOT_INODE, "conversation-abc")
+            .expect("look up the root");
+        assert_eq!(root_directory.kind, NodeKind::Directory);
+        assert_eq!(root_directory.inode, conversation.inode);
+    }
+
+    #[test]
+    fn the_mount_root_lists_each_root_with_its_link() {
+        let directory = tempdir().expect("temporary directory");
+        let store = store(
+            directory.path(),
+            1024,
+            UNREACHABLE_FRONT,
+            vec![root(2, "conversation-abc")],
+        );
+
+        let entries = store
+            .children(FUSE_ROOT_INODE)
+            .expect("list the mount root")
+            .into_iter()
+            .map(|node| (node.name, node.kind))
+            .collect::<Vec<_>>();
+
+        // This sandbox holds no Pod root, so it gets no `pod` link either.
+        assert_eq!(
+            entries,
+            vec![
+                ("conversation-abc".to_owned(), NodeKind::Directory),
+                ("conversation".to_owned(), NodeKind::Symlink),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_root_already_using_the_short_name_gets_no_link() {
+        let directory = tempdir().expect("temporary directory");
+        let store = store(
+            directory.path(),
+            1024,
+            UNREACHABLE_FRONT,
+            vec![root(2, "conversation")],
+        );
+
+        let entry = store
+            .lookup(FUSE_ROOT_INODE, "conversation")
+            .expect("look up the root");
+
+        assert_eq!(entry.kind, NodeKind::Directory);
+        assert_eq!(store.children(FUSE_ROOT_INODE).expect("list").len(), 1);
+    }
+
+    #[test]
+    fn reading_a_link_from_anything_but_a_link_is_rejected() {
+        let directory = tempdir().expect("temporary directory");
+        let store = store(directory.path(), 1024, UNREACHABLE_FRONT, Vec::new());
+
+        assert_eq!(
+            store
+                .read_link(super::INodeNo(3))
+                .expect_err("reject a regular file")
+                .raw_os_error(),
+            Some(libc::EINVAL)
+        );
+    }
+
+    // Answers one metadata call with the file details Front holds.
+    fn front_serving_blob(blob_id: &'static str) -> (String, JoinHandle<()>) {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("listen");
+        let address = listener.local_addr().expect("local address");
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept request");
+            read_request(&mut stream);
+            let body = serde_json::json!({
+                "node": {
+                    "id": 3,
+                    "parentId": 2,
+                    "name": "file.txt",
+                    "kind": "file",
+                    "mode": 0o644,
+                    "size": 3,
+                    "contentType": null,
+                    "blobId": blob_id,
+                    "createdAtMs": 1,
+                    "modifiedAtMs": 1
+                }
+            })
+            .to_string();
+            write!(
+                stream,
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                body.len(),
+                body
+            )
+            .expect("write response");
+        });
+        (format!("http://{address}"), server)
+    }
+
+    #[test]
+    fn a_commit_whose_reply_was_lost_is_accepted_on_the_second_try() {
+        let directory = tempdir().expect("temporary directory");
+        let (api_url, server) = front_serving_blob("uploaded-blob");
+        let store = store(directory.path(), 1024, &api_url, Vec::new());
+
+        let recovered = store
+            .node_after_lost_commit(3, "uploaded-blob", errno(libc::ESTALE))
+            .expect("accept a commit this daemon already made");
+
+        assert_eq!(recovered.blob_id.as_deref(), Some("uploaded-blob"));
+        server.join().expect("server thread");
+    }
+
+    #[test]
+    fn a_commit_refused_because_another_sandbox_wrote_first_stays_an_error() {
+        let directory = tempdir().expect("temporary directory");
+        let (api_url, server) = front_serving_blob("another-sandbox-blob");
+        let store = store(directory.path(), 1024, &api_url, Vec::new());
+
+        let error = store
+            .node_after_lost_commit(3, "uploaded-blob", errno(libc::ESTALE))
+            .expect_err("report the conflict to the caller");
+
+        assert_eq!(error.raw_os_error(), Some(libc::ESTALE));
+        server.join().expect("server thread");
     }
 }

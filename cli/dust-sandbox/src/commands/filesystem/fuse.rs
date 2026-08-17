@@ -11,7 +11,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard, TryLockError};
 use std::time::Duration;
 
-use anyhow::Context;
+use anyhow::{bail, Context};
 use fuser::{
     AccessFlags, BsdFileFlags, Config, Errno, FileAttr, FileHandle, Filesystem, FopenFlags,
     Generation, INodeNo, InitFlags, KernelConfig, LockOwner, MountOption, OpenFlags, RenameFlags,
@@ -20,16 +20,16 @@ use fuser::{
 };
 use tracing::{debug, info, warn};
 
+use super::errno;
+use super::remote::{RemoteExecutor, RemoteWork};
 use super::store::{is_writable, FileStore, Node, NodeKind, FUSE_ROOT_INODE};
 
 mod handles;
 mod linux;
 mod operations;
-mod remote;
 
 use handles::{DirectoryEntry, HandleTable, InodeLocks, OpenFile};
 use linux::*;
-use remote::{RemoteExecutor, RemoteWork};
 
 // Linux may retain an entry for one second after the daemon's own one-second
 // cache was read, so a change from another sandbox can take almost two seconds.
@@ -51,7 +51,14 @@ pub fn mount(
         cache_capacity_bytes,
     )
     .context("failed to initialize filesystem namespace")?;
-    let filesystem = DustFuse::new(store, tokio::runtime::Handle::current());
+    // `fuser::mount` below keeps this thread busy until the mount ends, and
+    // every call to Front runs on the Tokio runtime instead. A current thread
+    // runtime owns no other thread to run them on, so it would answer nothing.
+    let runtime = tokio::runtime::Handle::current();
+    if runtime.runtime_flavor() == tokio::runtime::RuntimeFlavor::CurrentThread {
+        bail!("the Dust filesystem needs the multi threaded Tokio runtime");
+    }
+    let filesystem = DustFuse::new(store, runtime);
     let mut config = Config::default();
     config.mount_options = vec![
         MountOption::FSName("dust-files".to_owned()),
@@ -422,7 +429,7 @@ impl DustFuse {
         let _inode = self.inode_locks.lock(inode)?;
         self.commit_handle_locked(handle, true)?;
         let shared = self.handles.file(handle)?;
-        let open = try_open_file(&shared)?;
+        let open = lock_open_file(&shared)?;
         if data_only {
             open.sync_data()
         } else {
@@ -458,7 +465,7 @@ impl DustFuse {
             // make the real writer fail its next fsync with ESTALE.
             if let Some(handle) = handle {
                 let shared = self.handles.file(handle.0)?;
-                let mut open = try_open_file(&shared)?;
+                let mut open = lock_open_file(&shared)?;
                 if open.inode() != inode || !open.is_writable() {
                     return Err(errno(libc::EBADF));
                 }
@@ -504,12 +511,28 @@ impl DustFuse {
 
     fn node_for_handle(&self, handle: u64, inode: INodeNo) -> io::Result<Node> {
         let shared = self.handles.file(handle)?;
-        let open = try_open_file(&shared)?;
+        let open = lock_open_file(&shared)?;
+        self.node_of_open_file(&open, inode)
+    }
+
+    // Reads the file details of an open handle without waiting for a commit
+    // that may be uploading through it. `None` asks the caller to read the
+    // shared file details instead, which report the same staged size.
+    fn node_for_free_handle(&self, handle: u64, inode: INodeNo) -> io::Result<Option<Node>> {
+        let shared = self.handles.file(handle)?;
+        let open = match shared.try_lock() {
+            Ok(open) => open,
+            Err(TryLockError::WouldBlock) => return Ok(None),
+            Err(TryLockError::Poisoned(_)) => return Err(errno(libc::EIO)),
+        };
+        self.node_of_open_file(&open, inode).map(Some)
+    }
+
+    fn node_of_open_file(&self, open: &OpenFile, inode: INodeNo) -> io::Result<Node> {
         if open.inode() != inode {
             return Err(errno(libc::EBADF));
         }
         let mut node = open.node().clone();
-        node.size = open.node().size;
         self.apply_staged_attributes(&mut node)?;
         Ok(node)
     }
@@ -525,10 +548,10 @@ impl DustFuse {
     }
 }
 
-fn try_open_file(shared: &Arc<Mutex<OpenFile>>) -> io::Result<MutexGuard<'_, OpenFile>> {
-    match shared.try_lock() {
-        Ok(open) => Ok(open),
-        Err(TryLockError::WouldBlock) => Err(errno(libc::EAGAIN)),
-        Err(TryLockError::Poisoned(_)) => Err(errno(libc::EIO)),
-    }
+// Waits until the handle is free. A commit holds it while it uploads the staged
+// file, so a write or a truncate that arrives during that upload waits here.
+// Waiting is what a local filesystem does, and it also keeps the bytes being
+// uploaded unchanged until the upload finishes.
+fn lock_open_file(shared: &Arc<Mutex<OpenFile>>) -> io::Result<MutexGuard<'_, OpenFile>> {
+    shared.lock().map_err(|_| errno(libc::EIO))
 }
