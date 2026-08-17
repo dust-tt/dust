@@ -22,6 +22,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
   Label,
   PieChart01,
   XClose,
@@ -93,9 +94,6 @@ export function ToolValidationCard({
 }: ToolValidationCardProps) {
   const [neverAskAgain, setNeverAskAgain] = useState(false);
   const toolOverride = getToolOverride(validationRequest.metadata);
-  const [detailsOpen, setDetailsOpen] = useState(
-    toolOverride?.detailsOpen ?? false
-  );
   const [submittingDecision, setSubmittingDecision] = useState<
     "approved" | "rejected" | null
   >(null);
@@ -118,7 +116,6 @@ export function ToolValidationCard({
       );
       if (success) {
         setNeverAskAgain(false);
-        setDetailsOpen(false);
       }
     } finally {
       setSubmittingDecision(null);
@@ -152,14 +149,91 @@ export function ToolValidationCard({
         <div className="flex shrink-0 items-center gap-2">
           {approvalProgress && <ApprovalProgress {...approvalProgress} />}
           {hasDetails && (
-            <Button
-              label="Review details"
-              variant="ghost"
-              size="sm"
-              className="min-h-11 sm:min-h-0"
-              disabled={isSubmitting}
-              onClick={() => setDetailsOpen(true)}
-            />
+            <Dialog defaultOpen={toolOverride?.detailsOpen ?? false}>
+              <DialogTrigger asChild>
+                <Button
+                  label="Review details"
+                  variant="ghost"
+                  size="sm"
+                  className="min-h-11 sm:min-h-0"
+                  disabled={isSubmitting}
+                />
+              </DialogTrigger>
+              <DialogContent
+                size="lg"
+                className="gap-4 p-5"
+                preventAutoFocusOnClose={false}
+              >
+                <DialogHeader className="gap-1 p-0">
+                  <div className="flex items-center justify-between gap-4 pr-8">
+                    <DialogTitle
+                      visual={<Avatar icon={icon ?? PieChart01} size="sm" />}
+                    >
+                      {approvalTitle}
+                    </DialogTitle>
+                    {approvalProgress && (
+                      <ApprovalProgress {...approvalProgress} />
+                    )}
+                  </div>
+                  <DialogDescription className="pl-11">
+                    {displayLabel}
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogContainer className="p-0">
+                  <ToolValidationDetails
+                    blockedAction={validationRequest}
+                    user={currentUser}
+                    owner={owner}
+                    conversationId={conversationId}
+                  />
+                  {errorMessage && (
+                    <div className="mt-2 text-sm font-medium text-warning-800">
+                      {errorMessage}
+                    </div>
+                  )}
+                </DialogContainer>
+                <DialogFooter className="flex-col items-stretch gap-3 p-0">
+                  {["low", "medium"].includes(
+                    validationRequest.stake ?? ""
+                  ) && (
+                    <Label
+                      htmlFor={`never-ask-again-dialog-${validationRequest.actionId}`}
+                      className="flex min-h-11 cursor-pointer items-center gap-2 px-1 sm:min-h-0"
+                    >
+                      <Checkbox
+                        id={`never-ask-again-dialog-${validationRequest.actionId}`}
+                        checked={neverAskAgain}
+                        disabled={isSubmitting}
+                        onCheckedChange={(check) => {
+                          setNeverAskAgain(!!check);
+                        }}
+                      />
+                      <span className="font-normal">
+                        {getToolValidationAlwaysAllowLabel(validationRequest)}
+                      </span>
+                    </Label>
+                  )}
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      label="Decline"
+                      variant="outline"
+                      icon={XClose}
+                      disabled={isSubmitting}
+                      isLoading={submittingDecision === "rejected"}
+                      onClick={() => void handleValidation("rejected")}
+                    />
+                    <Button
+                      label={toolOverride?.approveLabel ?? "Allow"}
+                      variant="highlight"
+                      icon={Check}
+                      disabled={isSubmitting}
+                      isLoading={submittingDecision === "approved"}
+                      onClick={() => void handleValidation("approved")}
+                    />
+                  </div>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           )}
         </div>
       </div>
@@ -168,90 +242,6 @@ export function ToolValidationCard({
         <div className="text-base">{displayLabel}</div>
         {canCurrentUserRespond ? (
           <>
-            {hasDetails && (
-              <Dialog
-                open={detailsOpen}
-                onOpenChange={(open) => {
-                  if (!isSubmitting) {
-                    setDetailsOpen(open);
-                  }
-                }}
-              >
-                <DialogContent
-                  size="lg"
-                  className="gap-4 p-5"
-                  preventAutoFocusOnClose={false}
-                >
-                  <DialogHeader className="gap-1 p-0">
-                    <div className="flex items-center justify-between gap-4 pr-8">
-                      <DialogTitle
-                        visual={<Avatar icon={icon ?? PieChart01} size="sm" />}
-                      >
-                        {approvalTitle}
-                      </DialogTitle>
-                      {approvalProgress && (
-                        <ApprovalProgress {...approvalProgress} />
-                      )}
-                    </div>
-                    <DialogDescription className="pl-11">
-                      {displayLabel}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <DialogContainer className="p-0">
-                    <ToolValidationDetails
-                      blockedAction={validationRequest}
-                      user={currentUser}
-                      owner={owner}
-                      conversationId={conversationId}
-                    />
-                    {errorMessage && (
-                      <div className="mt-2 text-sm font-medium text-warning-800">
-                        {errorMessage}
-                      </div>
-                    )}
-                  </DialogContainer>
-                  <DialogFooter className="flex-col items-stretch gap-3 p-0">
-                    {(validationRequest.stake === "low" ||
-                      validationRequest.stake === "medium") && (
-                      <Label
-                        htmlFor={`never-ask-again-dialog-${validationRequest.actionId}`}
-                        className="flex min-h-11 cursor-pointer items-center gap-2 px-1 sm:min-h-0"
-                      >
-                        <Checkbox
-                          id={`never-ask-again-dialog-${validationRequest.actionId}`}
-                          checked={neverAskAgain}
-                          disabled={isSubmitting}
-                          onCheckedChange={(check) => {
-                            setNeverAskAgain(!!check);
-                          }}
-                        />
-                        <span className="font-normal">
-                          {getToolValidationAlwaysAllowLabel(validationRequest)}
-                        </span>
-                      </Label>
-                    )}
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        label="Decline"
-                        variant="outline"
-                        icon={XClose}
-                        disabled={isSubmitting}
-                        isLoading={submittingDecision === "rejected"}
-                        onClick={() => void handleValidation("rejected")}
-                      />
-                      <Button
-                        label={toolOverride?.approveLabel ?? "Allow"}
-                        variant="highlight"
-                        icon={Check}
-                        disabled={isSubmitting}
-                        isLoading={submittingDecision === "approved"}
-                        onClick={() => void handleValidation("approved")}
-                      />
-                    </div>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
             {errorMessage && (
               <div className="text-sm font-medium text-warning-800">
                 {errorMessage}
@@ -271,8 +261,7 @@ export function ToolValidationCard({
 
       {canCurrentUserRespond && (
         <div className="flex flex-col gap-3 px-4 pb-3 pt-2 sm:flex-row sm:items-center">
-          {(validationRequest.stake === "low" ||
-            validationRequest.stake === "medium") && (
+          {["low", "medium"].includes(validationRequest.stake ?? "") && (
             <Label
               htmlFor={`never-ask-again-${validationRequest.actionId}`}
               className="flex min-h-11 cursor-pointer items-center gap-2 px-1 sm:min-h-0"
