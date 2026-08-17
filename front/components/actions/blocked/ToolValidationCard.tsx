@@ -114,6 +114,9 @@ export function ToolValidationCard({
 
   const toolOverride = getToolOverride(validationRequest.metadata);
   const isSubmitting = isValidating || submittingDecision !== null;
+  const {
+    metadata: { agentName, mcpServerName },
+  } = validationRequest;
 
   return (
     <Card
@@ -125,7 +128,9 @@ export function ToolValidationCard({
       <div className="flex items-center justify-between gap-3 px-5 pt-4">
         <div className="flex min-w-0 items-center gap-3">
           <Avatar icon={icon ?? PieChart01} size="sm" />
-          <div className="heading-base min-w-0 wrap-break-word">{`Allow ${validationRequest.metadata.agentName} to use ${asDisplayName(validationRequest.metadata.mcpServerName)}?`}</div>
+          <div className="heading-base min-w-0 wrap-break-word">
+            {`Allow ${agentName} to use ${asDisplayName(mcpServerName)}?`}
+          </div>
         </div>
         {approvalProgress && <ApprovalProgress {...approvalProgress} />}
       </div>
