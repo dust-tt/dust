@@ -93,12 +93,11 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
         ),
       defaultStake: z
         .enum(SANDBOX_FUNCTION_STAKES)
-        .optional()
         .describe(
           "How much approval the function should require once it is shared as a tool, derived " +
             "from what it does rather than from how it is called: `never_ask` for a read that " +
             "changes nothing, `low` for anything that writes/deletes, and `high` only for something " +
-            "extremely dangerous. Defaults to `low`."
+            "extremely dangerous."
         ),
       domains: z
         .array(z.string())

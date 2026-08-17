@@ -25,7 +25,7 @@ export async function publishHandler(
     path,
     slug,
   }: {
-    defaultStake?: SandboxFunctionStake;
+    defaultStake: SandboxFunctionStake;
     description: string;
     domains?: string[];
     executionMode: SandboxFunctionExecutionMode;

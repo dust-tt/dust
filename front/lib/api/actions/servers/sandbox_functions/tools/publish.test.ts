@@ -8,8 +8,6 @@ import {
   setupProjectConversation,
 } from "@app/tests/utils/conversation_test_factories";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
-import type { SandboxFunctionStake } from "@app/types/api/sandbox_functions";
-import { DEFAULT_SANDBOX_FUNCTION_STAKE } from "@app/types/api/sandbox_functions";
 import { Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -78,6 +76,7 @@ describe("publishHandler", () => {
         description: "Add a task.",
         path: `pod-${projectId}/TaskList/functions/add-task.ts`,
         executionMode: "fast",
+        defaultStake: "low",
       },
       makeExtra(auth, conversation)
     );
@@ -103,6 +102,7 @@ describe("publishHandler", () => {
         description: "Charge a card.",
         path: `pod-${projectId}/Billing/functions/charge.ts`,
         executionMode: "fast",
+        defaultStake: "low",
         domains: ["API.Stripe.COM", "*.stripe.com"],
       },
       makeExtra(auth, conversation)
@@ -131,6 +131,7 @@ describe("publishHandler", () => {
         description: "Greet.",
         path: `pod-${projectId}/App/functions/greet.ts`,
         executionMode: "fast",
+        defaultStake: "low",
       },
       makeExtra(auth, conversation)
     );
@@ -142,29 +143,27 @@ describe("publishHandler", () => {
     expect(firstText(result.value)).not.toContain("Requested");
   });
 
-  it("persists the declared default stake, and defaults it when unstated", async () => {
+  it("persists the declared default stake", async () => {
     const { auth, conversation, projectId } = await setupProjectConversation();
     const pod = await SpaceResource.fetchById(auth, projectId);
     if (!pod) {
       throw new Error("pod not found");
     }
 
-    const publish = async (slug: string, defaultStake?: SandboxFunctionStake) =>
-      publishHandler(
-        {
-          slug,
-          description: "Read a task.",
-          path: `pod-${projectId}/TaskList/functions/${slug}.ts`,
-          executionMode: "fast",
-          defaultStake,
-        },
-        makeExtra(auth, conversation)
-      );
-
-    const declared = await publish("read-task", "never_ask");
-    if (declared.isErr()) {
-      throw declared.error;
+    const result = await publishHandler(
+      {
+        slug: "read-task",
+        description: "Read a task.",
+        path: `pod-${projectId}/TaskList/functions/read-task.ts`,
+        executionMode: "fast",
+        defaultStake: "never_ask",
+      },
+      makeExtra(auth, conversation)
+    );
+    if (result.isErr()) {
+      throw result.error;
     }
+
     expect(
       (
         await SandboxFunctionResource.fetchBySpaceAndSlug(
@@ -174,20 +173,23 @@ describe("publishHandler", () => {
         )
       )?.defaultStake
     ).toBe("never_ask");
+  });
 
-    const unstated = await publish("add-task");
-    if (unstated.isErr()) {
-      throw unstated.error;
-    }
-    expect(
-      (
-        await SandboxFunctionResource.fetchBySpaceAndSlug(
-          auth,
-          pod,
-          "tasklist__add-task"
-        )
-      )?.defaultStake
-    ).toBe(DEFAULT_SANDBOX_FUNCTION_STAKE);
+  it("requires a default stake on every publish", () => {
+    const metadata = SANDBOX_FUNCTIONS_TOOLS_METADATA.find(
+      (tool) => tool.name === "publish"
+    );
+
+    expect(metadata).toBeDefined();
+    expect(metadata?.schema.defaultStake.safeParse(undefined).success).toBe(
+      false
+    );
+    expect(metadata?.schema.defaultStake.safeParse("medium").success).toBe(
+      false
+    );
+    expect(metadata?.schema.defaultStake.safeParse("never_ask").success).toBe(
+      true
+    );
   });
 
   it("accepts a bare function name but not one that already carries a prefix", () => {
