@@ -12,6 +12,7 @@ import {
 } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { hasAll } from "@app/lib/matcher/operators/array";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
@@ -2549,6 +2550,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
+  /**
+   * The skill's editors. Together with `batchListEditors`, the only place editors are read from:
+   * callers must not reach into `editorGroup` themselves, so that changing where editors are
+   * stored is a change to these two methods alone.
+   *
+   * Returns null when the skill has no editor group (global/system skills).
+   */
   async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
     return this.editorGroup?.getActiveMembers(auth) ?? null;
   }
@@ -2579,11 +2587,112 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return new Ok(undefined);
     }
 
-    const addResult = await this.editorGroup.dangerouslyAddMembers(auth, {
-      users: usersToAdd.map((u) => u.toJSON()),
-    });
+    const addResult = await this.addEditors(auth, usersToAdd);
     if (addResult.isErr()) {
       return new Err(new Error(addResult.error.message));
+    }
+
+    return new Ok(undefined);
+  }
+
+  /**
+   * Adds editors, surfacing the group's typed errors so callers can map them (the editors endpoint
+   * turns them into status codes). Authorizes the caller, then mirrors the underlying group
+   * operation one-to-one — `upsertEditors` is the wrapper that additionally skips users who are
+   * already editors.
+   */
+  async addEditors(
+    auth: Authenticator,
+    users: UserResource[]
+  ): Promise<
+    Result<
+      undefined,
+      DustError<
+        | "unauthorized"
+        | "user_not_found"
+        | "user_already_member"
+        | "group_requirements_not_met"
+        | "system_or_global_group"
+      >
+    >
+  > {
+    if (users.length === 0) {
+      return new Ok(undefined);
+    }
+
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "User is not authorized to update skill editors."
+        )
+      );
+    }
+
+    if (!this.editorGroup) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "The skill does not have an editors group."
+        )
+      );
+    }
+
+    const addResult = await this.editorGroup.dangerouslyAddMembers(auth, {
+      users: users.map((u) => u.toJSON()),
+    });
+    if (addResult.isErr()) {
+      return addResult;
+    }
+
+    return new Ok(undefined);
+  }
+
+  /**
+   * Removes editors. Like `addEditors`: authorizes the caller, then surfaces the group's typed
+   * errors for the caller to map.
+   */
+  async removeEditors(
+    auth: Authenticator,
+    users: UserResource[]
+  ): Promise<
+    Result<
+      undefined,
+      DustError<
+        | "unauthorized"
+        | "user_not_found"
+        | "user_not_member"
+        | "system_or_global_group"
+      >
+    >
+  > {
+    if (users.length === 0) {
+      return new Ok(undefined);
+    }
+
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "User is not authorized to update skill editors."
+        )
+      );
+    }
+
+    if (!this.editorGroup) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "The skill does not have an editors group."
+        )
+      );
+    }
+
+    const removeResult = await this.editorGroup.dangerouslyRemoveMembers(auth, {
+      users: users.map((u) => u.toJSON()),
+    });
+    if (removeResult.isErr()) {
+      return removeResult;
     }
 
     return new Ok(undefined);
@@ -2855,7 +2964,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * Batch list editors for multiple skills. Keyed by skill sId.
+   * Batch list editors for multiple skills. Keyed by skill sId. The batched counterpart of
+   * `listEditors` — see it for why editors are only ever read through these two methods.
    */
   static async batchListEditors(
     auth: Authenticator,
