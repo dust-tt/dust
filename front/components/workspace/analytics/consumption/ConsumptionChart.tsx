@@ -71,7 +71,7 @@ function TodayPartialLabel({ viewBox }: TodayPartialLabelProps) {
           width={rectWidth}
           height={rectHeight}
           rx={4}
-          className="fill-gray-700"
+          className="fill-muted-foreground"
         />
       )}
       <text
