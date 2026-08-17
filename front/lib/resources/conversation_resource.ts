@@ -951,6 +951,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const workspaceId = auth.getNonNullableWorkspace().id;
 
+    // `agent_message_sid` is a `messages.sId` (the agent message's identifier is
+    // carried on its wrapping message row; `agent_messages` has no `sId`).
+    // `agenticOriginMessageId` likewise references the parent agent message's
+    // `messages.sId`. The final UPDATE resolves each sId back to its
+    // `agent_messages` row via `messages.agentMessageId`.
     const query = `
       WITH RECURSIVE ancestors AS (
         -- The message itself contributes its own cost to its own total.
@@ -963,11 +968,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           um."agenticOriginMessageId" AS agent_message_sid,
           a.depth + 1
         FROM ancestors a
-        JOIN agent_messages am
-          ON am."sId" = a.agent_message_sid
-         AND am."workspaceId" = :workspaceId
         JOIN messages reply
-          ON reply."agentMessageId" = am.id
+          ON reply."sId" = a.agent_message_sid
          AND reply."workspaceId" = :workspaceId
         JOIN messages user_msg
           ON user_msg.id = reply."parentId"
@@ -982,7 +984,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       UPDATE agent_messages am
       SET "totalCostCredits" = COALESCE(am."totalCostCredits", 0) + :delta
       FROM ancestors a
-      WHERE am."sId" = a.agent_message_sid
+      JOIN messages m
+        ON m."sId" = a.agent_message_sid
+       AND m."workspaceId" = :workspaceId
+       AND m."agentMessageId" IS NOT NULL
+      WHERE am.id = m."agentMessageId"
         AND am."workspaceId" = :workspaceId
     `;
 
