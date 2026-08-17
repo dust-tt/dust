@@ -1,6 +1,5 @@
 package com.dust.mobile.android.ui.theme
 
-import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -9,42 +8,38 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.view.WindowCompat
 import com.dust.mobile.android.R
 
 private val DustLightColors = lightColorScheme(
     primary = Color(0xFF0C0A09),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFFBFAF9),
+    primaryContainer = Color(0xFFF5F5F4),
     onPrimaryContainer = Color(0xFF0C0A09),
-    secondary = Color(0xFF1C91FF),
+    secondary = Color(0xFF0B79C9),
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFE9F7FF),
-    onSecondaryContainer = Color(0xFF085092),
-    tertiary = Color(0xFFE14322),
+    secondaryContainer = Color(0xFFE7F3FB),
+    onSecondaryContainer = Color(0xFF064A7A),
+    tertiary = Color(0xFF8A5A00),
     onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFFFF1F7),
-    onTertiaryContainer = Color(0xFF8C230D),
-    error = Color(0xFFE14322),
+    tertiaryContainer = Color(0xFFFFF2C6),
+    onTertiaryContainer = Color(0xFF4A3000),
+    error = Color(0xFFC7364F),
     onError = Color.White,
-    errorContainer = Color(0xFFFFF1F7),
-    onErrorContainer = Color(0xFF8C230D),
-    background = Color.White,
+    errorContainer = Color(0xFFFFE9ED),
+    onErrorContainer = Color(0xFF711A2B),
+    background = Color(0xFFFBFAF9),
     onBackground = Color(0xFF0C0A09),
     surface = Color.White,
     onSurface = Color(0xFF0C0A09),
     surfaceTint = Color.Transparent,
-    surfaceVariant = Color(0xFFFBFAF9),
+    surfaceVariant = Color(0xFFF8F7F6),
     onSurfaceVariant = Color(0xFF57534D),
     surfaceBright = Color.White,
     surfaceDim = Color(0xFFFBFAF9),
@@ -53,8 +48,8 @@ private val DustLightColors = lightColorScheme(
     surfaceContainer = Color(0xFFF5F5F4),
     surfaceContainerHigh = Color(0xFFEEEEEC),
     surfaceContainerHighest = Color(0xFFE7E5E4),
-    outline = Color(0xFFEEEEEC),
-    outlineVariant = Color(0xFFF5F5F4),
+    outline = Color(0xFFD6D3D1),
+    outlineVariant = Color(0xFFEEEEEC),
     inverseSurface = Color(0xFF0C0A09),
     inverseOnSurface = Color(0xFFE7E5E4),
     inversePrimary = Color(0xFFE7E5E4),
@@ -64,36 +59,36 @@ private val DustLightColors = lightColorScheme(
 private val DustDarkColors = darkColorScheme(
     primary = Color(0xFFE7E5E4),
     onPrimary = Color(0xFF0C0A09),
-    primaryContainer = Color(0xFF191715),
+    primaryContainer = Color(0xFF262321),
     onPrimaryContainer = Color(0xFFE7E5E4),
-    secondary = Color(0xFF1C91FF),
-    onSecondary = Color.White,
-    secondaryContainer = Color(0xFF041728),
-    onSecondaryContainer = Color(0xFFCAEBFF),
-    tertiary = Color(0xFFE14322),
-    onTertiary = Color.White,
-    tertiaryContainer = Color(0xFF220A04),
-    onTertiaryContainer = Color(0xFFFFDCEC),
-    error = Color(0xFFE14322),
-    onError = Color.White,
-    errorContainer = Color(0xFF220A04),
-    onErrorContainer = Color(0xFFFFDCEC),
-    background = Color(0xFF141211),
+    secondary = Color(0xFF66B8F6),
+    onSecondary = Color(0xFF072036),
+    secondaryContainer = Color(0xFF0B3150),
+    onSecondaryContainer = Color(0xFFD7EDFF),
+    tertiary = Color(0xFFF2C05A),
+    onTertiary = Color(0xFF3D2800),
+    tertiaryContainer = Color(0xFF493300),
+    onTertiaryContainer = Color(0xFFFFE8A3),
+    error = Color(0xFFFF8A9B),
+    onError = Color(0xFF4D0B16),
+    errorContainer = Color(0xFF5D1625),
+    onErrorContainer = Color(0xFFFFD9E0),
+    background = Color(0xFF171514),
     onBackground = Color(0xFFE7E5E4),
-    surface = Color(0xFF141211),
+    surface = Color(0xFF1B1918),
     onSurface = Color(0xFFE7E5E4),
     surfaceTint = Color.Transparent,
-    surfaceVariant = Color(0xFF191715),
+    surfaceVariant = Color(0xFF211F1D),
     onSurfaceVariant = Color(0xFFA6A09B),
     surfaceBright = Color(0xFF262221),
-    surfaceDim = Color(0xFF141211),
-    surfaceContainerLowest = Color(0xFF0C0A09),
-    surfaceContainerLow = Color(0xFF191715),
-    surfaceContainer = Color(0xFF1F1C19),
-    surfaceContainerHigh = Color(0xFF262221),
-    surfaceContainerHighest = Color(0xFF44403B),
-    outline = Color(0xFF44403B),
-    outlineVariant = Color(0xFF262221),
+    surfaceDim = Color(0xFF171514),
+    surfaceContainerLowest = Color(0xFF12100F),
+    surfaceContainerLow = Color(0xFF211F1D),
+    surfaceContainer = Color(0xFF292624),
+    surfaceContainerHigh = Color(0xFF35312E),
+    surfaceContainerHighest = Color(0xFF46413D),
+    outline = Color(0xFF57534D),
+    outlineVariant = Color(0xFF35312E),
     inverseSurface = Color(0xFFE7E5E4),
     inverseOnSurface = Color(0xFF0C0A09),
     inversePrimary = Color(0xFF44403B),
@@ -180,32 +175,19 @@ private val DustTypography = Typography(
 )
 
 private val DustShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(20.dp),
-    extraLarge = RoundedCornerShape(24.dp),
+    extraSmall = RoundedCornerShape(6.dp),
+    small = RoundedCornerShape(8.dp),
+    medium = RoundedCornerShape(12.dp),
+    large = RoundedCornerShape(16.dp),
+    extraLarge = RoundedCornerShape(20.dp),
 )
 
 @Composable
-@Suppress("DEPRECATION")
 fun DustTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
     val colorScheme = if (darkTheme) DustDarkColors else DustLightColors
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.background.toArgb()
-            window.navigationBarColor = colorScheme.background.toArgb()
-            WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = !darkTheme
-                isAppearanceLightNavigationBars = !darkTheme
-            }
-        }
-    }
     MaterialTheme(
         colorScheme = colorScheme,
         typography = DustTypography,
