@@ -4,6 +4,7 @@ import {
 } from "@app/hooks/useConsumptionExports";
 import type { ConsumptionExportListItem } from "@app/lib/api/analytics/consumption/export_jobs";
 import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
+import { getBaseUrl } from "@app/lib/api/config";
 import { formatFileSize } from "@app/lib/utils";
 import {
   Button,
@@ -30,7 +31,7 @@ function ConsumptionExportRow({
 }) {
   return (
     <a
-      href={`/api/w/${workspaceId}/analytics/consumption/export-raw/${item.name}/download`}
+      href={`${getBaseUrl()}/api/w/${workspaceId}/analytics/consumption/export-raw/${item.name}/download`}
       className="flex items-center justify-between gap-4 rounded-md px-2 py-1.5 hover:bg-muted-background"
     >
       <span className="text-sm text-foreground">
