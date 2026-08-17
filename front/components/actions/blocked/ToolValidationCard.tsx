@@ -100,7 +100,7 @@ export function ToolValidationCard({
     <Card
       variant="secondary"
       containerClassName="w-full max-w-xl"
-      className="flex-col p-0"
+      className="flex-col p-0 shadow"
       isPulsing={isPulsing}
     >
       <div className="flex items-center justify-between gap-3 px-5 pt-4">
