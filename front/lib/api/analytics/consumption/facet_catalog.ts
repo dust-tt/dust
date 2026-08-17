@@ -124,45 +124,71 @@ async function listConsumptionFacetCatalogWithoutTracing(
   // workspace catalogs and is known to perform poorly on large workspaces.
   // Move most facet metadata into Elasticsearch so this endpoint can query ES
   // instead of loading several unbounded database-backed catalogs.
-  const [members, apiKeys, groups, agents, models, mcpServerViews, skills] =
-    await Promise.all([
-      traceFacetCatalogLoad("members", "user", requestedDimension, async () => {
-        const result = await getMembers(auth, { activeOnly: true });
-        return result.members;
-      }),
-      traceFacetCatalogLoad("api_keys", "api_key", requestedDimension, () =>
-        KeyResource.listNonSystemKeysByWorkspace(auth.getNonNullableWorkspace())
-      ),
-      traceFacetCatalogLoad("groups", "group", requestedDimension, () =>
-        GroupResource.listAllWorkspaceGroups(auth, {
-          groupKinds: [...MANAGEABLE_GROUP_KINDS],
-        })
-      ),
-      traceFacetCatalogLoad("agents", "agent", requestedDimension, () =>
-        getAgentConfigurationsForView({
-          auth,
-          agentsGetView: "analytics",
-          variant: "extra_light",
-          omitInstructions: true,
-          omitHeavyAttributes: true,
-        })
-      ),
-      traceFacetCatalogLoad("models", "model", requestedDimension, async () => {
-        const result = await getModelsForAuth(auth);
-        return result.models;
-      }),
-      traceFacetCatalogLoad("mcp_servers", "tool", requestedDimension, () =>
-        MCPServerViewResource.listDisplayMetadataByWorkspace(auth)
-      ),
-      traceFacetCatalogLoad("skills", "skill", requestedDimension, () =>
-        SkillResource.listByWorkspace(auth, {
-          status: "active",
-          withInstructions: false,
-          withTools: false,
-          withFileAttachments: false,
-        })
-      ),
-    ]);
+  const members = await traceFacetCatalogLoad(
+    "members",
+    "user",
+    requestedDimension,
+    async () => {
+      const result = await getMembers(auth, { activeOnly: true });
+      return result.members;
+    }
+  );
+  const apiKeys = await traceFacetCatalogLoad(
+    "api_keys",
+    "api_key",
+    requestedDimension,
+    () =>
+      KeyResource.listNonSystemKeysByWorkspace(auth.getNonNullableWorkspace())
+  );
+  const groups = await traceFacetCatalogLoad(
+    "groups",
+    "group",
+    requestedDimension,
+    () =>
+      GroupResource.listAllWorkspaceGroups(auth, {
+        groupKinds: [...MANAGEABLE_GROUP_KINDS],
+      })
+  );
+  const agents = await traceFacetCatalogLoad(
+    "agents",
+    "agent",
+    requestedDimension,
+    () =>
+      getAgentConfigurationsForView({
+        auth,
+        agentsGetView: "analytics",
+        variant: "extra_light",
+        omitInstructions: true,
+        omitHeavyAttributes: true,
+      })
+  );
+  const models = await traceFacetCatalogLoad(
+    "models",
+    "model",
+    requestedDimension,
+    async () => {
+      const result = await getModelsForAuth(auth);
+      return result.models;
+    }
+  );
+  const mcpServerViews = await traceFacetCatalogLoad(
+    "mcp_servers",
+    "tool",
+    requestedDimension,
+    () => MCPServerViewResource.listDisplayMetadataByWorkspace(auth)
+  );
+  const skills = await traceFacetCatalogLoad(
+    "skills",
+    "skill",
+    requestedDimension,
+    () =>
+      SkillResource.listByWorkspace(auth, {
+        status: "active",
+        withInstructions: false,
+        withTools: false,
+        withFileAttachments: false,
+      })
+  );
 
   return {
     agent: agents.map((agent) => ({
