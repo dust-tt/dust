@@ -1,4 +1,5 @@
 import { LegendDot } from "@app/components/charts/ChartTooltip";
+import { cn } from "@dust-tt/sparkle";
 
 export type LegendEntry = {
   key: string;
@@ -38,11 +39,17 @@ export interface LegendItem {
 
 interface ChartLegendProps {
   items: LegendItem[];
+  className?: string;
 }
 
-export function ChartLegend({ items }: ChartLegendProps) {
+export function ChartLegend({ items, className }: ChartLegendProps) {
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+    <div
+      className={cn(
+        "mt-3 flex flex-wrap items-center gap-x-6 gap-y-2",
+        className
+      )}
+    >
       {items.map((item) => (
         <div
           key={item.key}

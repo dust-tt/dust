@@ -28,6 +28,7 @@ interface ChartContainerProps {
   height?: number;
   description?: string;
   legendItems?: LegendItem[];
+  legendClassName?: string;
   isAllowFullScreen?: boolean;
   showHeaderDivider?: boolean;
 }
@@ -44,6 +45,7 @@ export function ChartContainer({
   height,
   description,
   legendItems,
+  legendClassName,
   isAllowFullScreen,
   showHeaderDivider,
 }: ChartContainerProps) {
@@ -104,7 +106,9 @@ export function ChartContainer({
               {children}
             </ResponsiveContainer>
             {bottomControls}
-            {legendItems && <ChartLegend items={legendItems} />}
+            {legendItems && (
+              <ChartLegend items={legendItems} className={legendClassName} />
+            )}
           </>
         )}
       </div>
@@ -134,7 +138,12 @@ export function ChartContainer({
                     {children}
                   </ResponsiveContainer>
                   {bottomControls}
-                  {legendItems && <ChartLegend items={legendItems} />}
+                  {legendItems && (
+                    <ChartLegend
+                      items={legendItems}
+                      className={legendClassName}
+                    />
+                  )}
                 </div>
               </div>
             </SheetContainer>
