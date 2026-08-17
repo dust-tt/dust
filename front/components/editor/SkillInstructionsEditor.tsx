@@ -106,6 +106,7 @@ interface SkillInstructionsSkillReferencesOptions {
 
 interface UseSkillInstructionsEditorProps {
   content: string;
+  enableSlashCommands?: boolean;
   htmlContent?: string;
   isReadOnly: boolean;
   skillReferences?: SkillInstructionsSkillReferencesOptions;
@@ -116,12 +117,14 @@ interface UseSkillInstructionsEditorProps {
 
 function buildSkillInstructionsEditableExtensions({
   currentSkillIdRef,
+  enableSlashCommands,
   onSelectRef,
   onSkillDetailsRef,
   onToolDetailsRef,
   owner,
 }: {
   currentSkillIdRef: React.RefObject<string | null>;
+  enableSlashCommands: boolean;
   onSelectRef: React.RefObject<
     ((item: SlashCommand, editor: Editor, range: Range) => void) | undefined
   >;
@@ -134,13 +137,17 @@ function buildSkillInstructionsEditableExtensions({
   owner?: LightWorkspaceType;
 }) {
   return [
-    SlashCommandExtension.configure({
-      currentSkillIdRef,
-      onSelectRef,
-      onSkillDetailsRef,
-      onToolDetailsRef,
-      owner,
-    }),
+    ...(enableSlashCommands
+      ? [
+          SlashCommandExtension.configure({
+            currentSkillIdRef,
+            onSelectRef,
+            onSkillDetailsRef,
+            onToolDetailsRef,
+            owner,
+          }),
+        ]
+      : []),
     AgentInstructionDiffExtension,
     Placeholder.configure({
       placeholder: "What does this skill do? How should it behave?",
@@ -155,6 +162,7 @@ function buildSkillInstructionsEditableExtensions({
 
 export function useSkillInstructionsEditor({
   content,
+  enableSlashCommands = true,
   htmlContent,
   isReadOnly,
   skillReferences,
@@ -188,12 +196,13 @@ export function useSkillInstructionsEditor({
     () =>
       buildSkillInstructionsEditableExtensions({
         currentSkillIdRef,
+        enableSlashCommands,
         onSelectRef,
         onSkillDetailsRef,
         onToolDetailsRef,
         owner,
       }),
-    [currentSkillId, owner]
+    [currentSkillId, enableSlashCommands, owner]
   );
 
   const extensions = useMemo(
