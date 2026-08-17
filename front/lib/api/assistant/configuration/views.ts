@@ -26,6 +26,7 @@ import { Op, Sequelize } from "sequelize";
 
 const HEAVY_AGENT_CONFIGURATION_ATTRIBUTES = [
   "description",
+  "instructions",
   "instructionsHtml",
   "responseFormat",
 ] as const;
@@ -156,10 +157,11 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     ...(agentPrefix ? { name: { [Op.iLike]: `${agentPrefix}%` } } : {}),
   };
 
-  const attributesToExclude = [
-    ...(omitInstructions ? (["instructions"] as const) : []),
-    ...(omitHeavyAttributes ? HEAVY_AGENT_CONFIGURATION_ATTRIBUTES : []),
-  ];
+  const attributesToExclude = omitHeavyAttributes
+    ? HEAVY_AGENT_CONFIGURATION_ATTRIBUTES
+    : omitInstructions
+      ? (["instructions"] as const)
+      : [];
   const excludeAttributesFromSelect =
     attributesToExclude.length > 0
       ? { attributes: { exclude: [...new Set(attributesToExclude)] } }
@@ -419,13 +421,13 @@ export async function getAgentConfigurationsForView<
     throw new Error(`'${agentsGetView}' view is specific to a user.`);
   }
 
-  // `omitInstructions` is incompatible with the "full" variant since callers of
-  // "full" inherently want the instructions text.
-  if (omitInstructions && variant === "full") {
-    throw new Error(
-      "`omitInstructions` cannot be combined with variant 'full'."
-    );
+  // Omission options are incompatible with the "full" variant since callers of
+  // "full" inherently want the complete agent configuration.
+  if ((omitInstructions || omitHeavyAttributes) && variant === "full") {
+    throw new Error("Omission options cannot be combined with variant 'full'.");
   }
+
+  const shouldOmitInstructions = omitInstructions || omitHeavyAttributes;
 
   const applySortAndLimit = makeApplySortAndLimit(sort, limit);
 
@@ -434,7 +436,7 @@ export async function getAgentConfigurationsForView<
       agentPrefix,
       agentsGetView,
       variant,
-      omitInstructions,
+      omitInstructions: shouldOmitInstructions,
     });
 
     return applySortAndLimit(allGlobalAgents);
@@ -447,7 +449,7 @@ export async function getAgentConfigurationsForView<
       agentPrefix,
       agentsGetView,
       variant,
-      omitInstructions,
+      omitInstructions: shouldOmitInstructions,
     }),
     fetchWorkspaceAgentConfigurationsForView(auth, owner, {
       agentPrefix,
@@ -456,7 +458,7 @@ export async function getAgentConfigurationsForView<
       sort,
       variant,
       dangerouslySkipPermissionFiltering,
-      omitInstructions,
+      omitInstructions: shouldOmitInstructions,
       omitHeavyAttributes,
     }),
   ]);
