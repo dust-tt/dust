@@ -25,14 +25,19 @@ vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
 async function setupTest({
   role = "admin",
   disableComputerFeature = false,
+  enableSandboxFunctions = true,
 }: {
   role?: MembershipRoleType;
   disableComputerFeature?: boolean;
+  enableSandboxFunctions?: boolean;
 } = {}) {
   const { workspace, auth, user, ...rest } = await createPrivateApiMockRequest({
     role,
   });
 
+  if (enableSandboxFunctions) {
+    await FeatureFlagFactory.basic(auth, "sandbox_functions");
+  }
   if (disableComputerFeature) {
     await FeatureFlagFactory.basic(auth, "disable_computer_feature");
   }

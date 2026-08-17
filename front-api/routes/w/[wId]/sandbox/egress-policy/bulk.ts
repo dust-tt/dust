@@ -9,12 +9,16 @@ import type { GetPodEgressPoliciesBulkResponseBody } from "@app/types/api/sandbo
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 
-// Mounted at /api/w/:wId/sandbox/egress-policy/bulk. Read-only multi-pod
-// view for the central Computer admin page's network comparison; the parent
-// sandbox sub-app applies the workspace-admin and Computer-feature gates.
-// Pod policy mutations stay on the single-pod route.
+// Mounted at /api/w/:wId/sandbox/egress-policy/bulk. Read-only multi-pod view
+// for the central Computer admin page's network comparison. The parent sub-app
+// applies the workspace-admin + Computer gates; the multi-pod comparison is
+// additionally gated on sandbox_functions (it reads pod settings, which are
+// sandbox_functions-only). Pod policy mutations stay on the single-pod route.
 const app = workspaceApp();
+
+app.use("*", withFeatureFlag("sandbox_functions"));
 
 /** @ignoreswagger */
 app.get(

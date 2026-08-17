@@ -1,4 +1,5 @@
 import { getSpaceIcon } from "@app/lib/spaces";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { PodType } from "@app/types/space";
 import {
   Building04,
@@ -38,6 +39,9 @@ function labelForScope(scope: SandboxAdminScope, pods: PodType[]): string {
       }
       return `${scope.podIds.length} Pods`;
     }
+    default:
+      assertNeverAndIgnore(scope);
+      return "";
   }
 }
 
@@ -67,6 +71,9 @@ export function SandboxScopePicker({
         return new Set(pods.map((pod) => pod.sId));
       case "pods":
         return new Set(scope.podIds);
+      default:
+        assertNeverAndIgnore(scope);
+        return new Set<string>();
     }
   }, [scope, pods]);
 

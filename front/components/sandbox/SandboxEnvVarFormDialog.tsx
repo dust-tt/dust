@@ -1,3 +1,4 @@
+import { ALLOWED_DOMAINS_HELPER_TEXT } from "@app/components/sandbox/env_var_display";
 import {
   ENV_VAR_NAME_SUFFIX_REGEX,
   envVarPrefixForKind,
@@ -11,6 +12,7 @@ import {
 import { normalizeEgressPolicyDomains } from "@app/types/sandbox/egress_policy";
 import type { SandboxEnvVarType } from "@app/types/sandbox/env_var";
 import { SANDBOX_ENV_VAR_KINDS } from "@app/types/sandbox/env_var";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   CheckboxWithText,
@@ -40,9 +42,6 @@ import { z } from "zod";
 
 const NAME_HELPER_TEXT =
   "Uppercase letters, digits and underscores. Up to 64 characters after the prefix.";
-
-const ALLOWED_DOMAINS_HELPER_TEXT =
-  "Use exact domains such as api.openai.com or wildcards such as *.mistral.ai.";
 
 export function parseAllowedDomainsText(value: string): string[] {
   return value
@@ -141,6 +140,10 @@ const formSchema = z
         }
         return;
       }
+
+      default:
+        assertNeverAndIgnore(data.kind);
+        return;
     }
   });
 
@@ -148,10 +151,6 @@ type FormValues = z.infer<typeof formSchema>;
 
 export type SandboxEnvVarPodOption = { sId: string; name: string };
 
-// create: everything editable. replace: name and kind locked, value only —
-// the row's stored domains are kept. override: creates independently scoped
-// Pod copies of a workspace variable (name and kind locked, domains
-// editable for secrets, the workspace baseline is untouched).
 export type SandboxEnvVarFormDialogMode =
   | { kind: "create" }
   | { kind: "replace"; envVar: SandboxEnvVarType }
@@ -209,24 +208,35 @@ function defaultValuesForMode(
         applyTo: "pods",
         selectedPodIds: initialPodIds,
       };
+    default:
+      assertNeverAndIgnore(mode);
+      return {
+        name: "",
+        value: "",
+        kind: "config",
+        allowedDomainsText: "",
+        applyTo: "workspace",
+        selectedPodIds: [],
+      };
   }
 }
 
-// Searchable checkbox list used for Pod targeting inside the dialog (the
-// page-level scope picker is a dropdown; this one lives inside a form).
+interface PodChecklistProps {
+  pods: SandboxEnvVarPodOption[];
+  selectedPodIds: string[];
+  onChange: (podIds: string[]) => void;
+  disabled: boolean;
+  errorMessage?: string;
+}
+
+// Searchable checkbox list for Pod targeting inside the dialog form.
 function PodChecklist({
   pods,
   selectedPodIds,
   onChange,
   disabled,
   errorMessage,
-}: {
-  pods: SandboxEnvVarPodOption[];
-  selectedPodIds: string[];
-  onChange: (podIds: string[]) => void;
-  disabled: boolean;
-  errorMessage?: string;
-}) {
+}: PodChecklistProps) {
   const [searchText, setSearchText] = useState("");
   const normalizedSearchText = searchText.trim().toLowerCase();
   const filteredPods = normalizedSearchText
@@ -446,6 +456,9 @@ export function SandboxEnvVarFormDialog({
         return "Replace variable";
       case "override":
         return `Override ${mode.envVar.name} in Pods`;
+      default:
+        assertNeverAndIgnore(mode);
+        return "";
     }
   })();
 
@@ -566,7 +579,11 @@ export function SandboxEnvVarFormDialog({
                   id="sandbox-env-var-name"
                   type="text"
                   placeholder="API_TOKEN"
-                  className={namePrefix === "DSEC_" ? "pl-14" : "pl-11"}
+                  className={
+                    namePrefix === envVarPrefixForKind("https_secret")
+                      ? "pl-14"
+                      : "pl-11"
+                  }
                   isError={nameMessage.isError}
                   message={nameMessage.message}
                   messageStatus={nameMessage.isError ? "error" : "info"}

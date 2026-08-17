@@ -10,6 +10,7 @@ import { useComputerAdminAccess } from "@app/hooks/useComputerAdminAccess";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import type { SandboxPodSelection } from "@app/lib/swr/sandbox";
 import { usePodsAsAdmin } from "@app/lib/swr/spaces";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ContentMessage, InfoCircle, Page } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -30,8 +31,13 @@ export function SandboxPage() {
         return [];
       case "all-pods":
         return pods;
-      case "pods":
-        return pods.filter((pod) => scope.podIds.includes(pod.sId));
+      case "pods": {
+        const podIdsSet = new Set(scope.podIds);
+        return pods.filter((pod) => podIdsSet.has(pod.sId));
+      }
+      default:
+        assertNeverAndIgnore(scope);
+        return [];
     }
   }, [scope, pods]);
 

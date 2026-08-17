@@ -1,3 +1,4 @@
+import { labelForKind } from "@app/components/sandbox/env_var_display";
 import type {
   SandboxEnvVarFormDialogMode,
   SandboxEnvVarPodOption,
@@ -9,7 +10,6 @@ import {
   useSandboxEnvVars,
 } from "@app/lib/swr/sandbox";
 import type { SandboxEnvVarKind } from "@app/types/sandbox/env_var";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { PodType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -35,18 +35,6 @@ interface MultiPodEnvVarsSectionProps {
   allPods: SandboxEnvVarPodOption[];
 }
 
-function labelForKind(kind: SandboxEnvVarKind): string {
-  switch (kind) {
-    case "config":
-      return "Config";
-    case "https_secret":
-      return "HTTPS secret";
-    default:
-      assertNeverAndIgnore(kind);
-      return "";
-  }
-}
-
 type VariableRow = {
   name: string;
   kind: SandboxEnvVarKind;
@@ -55,11 +43,8 @@ type VariableRow = {
   overriddenInPodNames: string[];
 };
 
-// Read-only comparison of env vars across the selected Pods, grouped by
-// name. Values are write-only and never compared — this view only shows
-// where each name is defined. Editing a value happens in the workspace or
-// single-Pod views; adding one variable to several Pods goes through the
-// bulk dialog.
+// Values are write-only and never compared; this view only shows where each
+// name is defined across the selected Pods.
 export function MultiPodEnvVarsSection({
   owner,
   selection,

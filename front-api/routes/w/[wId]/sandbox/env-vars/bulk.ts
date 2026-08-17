@@ -19,6 +19,7 @@ import { SANDBOX_ENV_VAR_KINDS } from "@app/types/sandbox/env_var";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 import { z } from "zod";
 
 const PostSandboxEnvVarsBulkBodySchema = z.object({
@@ -29,11 +30,14 @@ const PostSandboxEnvVarsBulkBodySchema = z.object({
   podIds: z.array(z.string()).min(1).max(100),
 });
 
-// Mounted at /api/w/:wId/sandbox/env-vars/bulk. Multi-pod reads and writes
-// for the central Computer admin page; the parent sandbox sub-app applies
-// the workspace-admin and Computer-feature gates. Values are never returned
-// (write-only invariant), so the cross-pod read is comparison-safe.
+// Mounted at /api/w/:wId/sandbox/env-vars/bulk. Multi-pod reads and writes for
+// the central Computer admin page. The parent sub-app applies the
+// workspace-admin + Computer gates; the multi-pod feature is additionally
+// gated on sandbox_functions (it operates on pod settings, which are
+// sandbox_functions-only). Values are never returned (write-only invariant).
 const app = workspaceApp();
+
+app.use("*", withFeatureFlag("sandbox_functions"));
 
 /** @ignoreswagger */
 app.get(

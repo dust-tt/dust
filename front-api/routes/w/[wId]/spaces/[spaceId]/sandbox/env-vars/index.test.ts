@@ -22,17 +22,17 @@ vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
 
 async function setupTest({
   role = "admin",
-  disableComputerFeature = false,
+  enableSandboxFunctions = true,
 }: {
   role?: MembershipRoleType;
-  disableComputerFeature?: boolean;
+  enableSandboxFunctions?: boolean;
 } = {}) {
   const { workspace, auth, user, ...rest } = await createPrivateApiMockRequest({
     role,
   });
 
-  if (disableComputerFeature) {
-    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
+  if (enableSandboxFunctions) {
+    await FeatureFlagFactory.basic(auth, "sandbox_functions");
   }
 
   const pod = await SpaceFactory.project(workspace, user.id);
@@ -68,9 +68,9 @@ describe("GET/POST /api/w/:wId/spaces/:spaceId/sandbox/env-vars", () => {
     });
   });
 
-  it("returns 403 when Computer is disabled", async () => {
+  it("returns 403 without sandbox_functions", async () => {
     const { workspace, pod } = await setupTest({
-      disableComputerFeature: true,
+      enableSandboxFunctions: false,
     });
 
     const response = await listEnvVars(workspace.sId, pod.sId);

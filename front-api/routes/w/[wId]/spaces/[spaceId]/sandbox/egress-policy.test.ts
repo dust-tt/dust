@@ -22,17 +22,17 @@ vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
 
 async function setupTest({
   role = "admin",
-  disableComputerFeature = false,
+  enableSandboxFunctions = true,
 }: {
   role?: MembershipRoleType;
-  disableComputerFeature?: boolean;
+  enableSandboxFunctions?: boolean;
 } = {}) {
   const { workspace, auth, ...rest } = await createPrivateApiMockRequest({
     role,
   });
 
-  if (disableComputerFeature) {
-    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
+  if (enableSandboxFunctions) {
+    await FeatureFlagFactory.basic(auth, "sandbox_functions");
   }
 
   return { workspace, auth, ...rest };
@@ -164,8 +164,8 @@ describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
     });
   });
 
-  it("rejects workspaces with Computer disabled with a 403", async () => {
-    const { workspace } = await setupTest({ disableComputerFeature: true });
+  it("rejects workspaces without sandbox_functions with a 403", async () => {
+    const { workspace } = await setupTest({ enableSandboxFunctions: false });
     const pod = await SpaceFactory.project(workspace);
 
     const response = await getPolicy(workspace.sId, pod.sId);

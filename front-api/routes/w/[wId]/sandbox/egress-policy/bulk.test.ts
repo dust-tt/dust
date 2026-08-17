@@ -1,5 +1,6 @@
 import { writeOwnerPolicy } from "@app/lib/api/sandbox/egress_policy";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -10,12 +11,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 async function setupTest({
   role = "admin",
+  enableSandboxFunctions = true,
 }: {
   role?: MembershipRoleType;
+  enableSandboxFunctions?: boolean;
 } = {}) {
   const { workspace, auth, user, ...rest } = await createPrivateApiMockRequest({
     role,
   });
+
+  if (enableSandboxFunctions) {
+    await FeatureFlagFactory.basic(auth, "sandbox_functions");
+  }
 
   const podA = await SpaceFactory.project(workspace, user.id);
   const podB = await SpaceFactory.project(workspace, user.id);

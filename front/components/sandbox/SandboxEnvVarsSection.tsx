@@ -1,3 +1,7 @@
+import {
+  ALLOWED_DOMAINS_HELPER_TEXT,
+  labelForKind,
+} from "@app/components/sandbox/env_var_display";
 import type {
   SandboxEnvVarFormDialogMode,
   SandboxEnvVarPodOption,
@@ -15,11 +19,7 @@ import {
 } from "@app/lib/swr/sandbox";
 import { timeAgoFrom } from "@app/lib/utils";
 import { normalizeEgressPolicyDomains } from "@app/types/sandbox/egress_policy";
-import type {
-  SandboxEnvVarKind,
-  SandboxEnvVarType,
-} from "@app/types/sandbox/env_var";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import type { SandboxEnvVarType } from "@app/types/sandbox/env_var";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -46,28 +46,11 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-const ALLOWED_DOMAINS_HELPER_TEXT =
-  "Use exact domains such as api.openai.com or wildcards such as *.mistral.ai.";
-
-function labelForKind(kind: SandboxEnvVarKind): string {
-  switch (kind) {
-    case "config":
-      return "Config";
-    case "https_secret":
-      return "HTTPS secret";
-    default:
-      assertNeverAndIgnore(kind);
-      return "";
-  }
-}
-
 interface SandboxEnvVarsSectionProps {
   owner: LightWorkspaceType;
   // Present for pod-scoped env vars (pods are project spaces); absent for
   // workspace-scoped ones.
   spaceId?: string;
-  // Tie to visibility when the section can be mounted but hidden.
-  disabled?: boolean;
   // Central admin page, workspace scope only: enables applying a new
   // variable to specific Pods and the per-row "Override in Pods" action.
   targetablePods?: SandboxEnvVarPodOption[];
@@ -76,7 +59,6 @@ interface SandboxEnvVarsSectionProps {
 export function SandboxEnvVarsSection({
   owner,
   spaceId,
-  disabled = false,
   targetablePods,
 }: SandboxEnvVarsSectionProps) {
   const { isAdmin, isComputerEnabled, canAdministrateComputer } =
@@ -93,7 +75,7 @@ export function SandboxEnvVarsSection({
     useSandboxEnvVars({
       owner,
       spaceId,
-      disabled: disabled || !canAdministrateComputer,
+      disabled: !canAdministrateComputer,
     });
   const { patchSandboxEnvVar, isPatchingSandboxEnvVar } = usePatchSandboxEnvVar(
     { owner, spaceId }
