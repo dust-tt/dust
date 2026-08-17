@@ -353,7 +353,7 @@ export function CreateSkillSuggestionSheet({
                       value={capabilitySearchText}
                       onChange={setCapabilitySearchText}
                     />
-                    <DropdownMenuSeparator />
+                    <DropdownMenuSeparator className="my-0" />
                     <div className="max-h-72 overflow-auto">
                       {isCapabilitiesLoading ? (
                         <div className="flex items-center justify-center py-4">
@@ -369,7 +369,7 @@ export function CreateSkillSuggestionSheet({
                             <>
                               <DropdownMenuLabel
                                 label="Skills"
-                                className="pl-3"
+                                className="py-1 pl-3"
                               />
                               {skillItems.map((item) => (
                                 <DropdownMenuItem
@@ -378,19 +378,20 @@ export function CreateSkillSuggestionSheet({
                                   label={item.label}
                                   description={item.description}
                                   icon={item.icon}
+                                  truncateText
                                   onSelect={() => handleInsertCapability(item)}
                                 />
                               ))}
                             </>
                           )}
                           {skillItems.length > 0 && toolItems.length > 0 && (
-                            <DropdownMenuSeparator />
+                            <DropdownMenuSeparator className="my-0" />
                           )}
                           {toolItems.length > 0 && (
                             <>
                               <DropdownMenuLabel
                                 label="Tools"
-                                className="pl-3"
+                                className="py-1 pl-3"
                               />
                               {toolItems.map((item) => (
                                 <DropdownMenuItem
@@ -399,6 +400,7 @@ export function CreateSkillSuggestionSheet({
                                   label={item.label}
                                   description={item.description}
                                   icon={item.icon}
+                                  truncateText
                                   onSelect={() => handleInsertCapability(item)}
                                 />
                               ))}
