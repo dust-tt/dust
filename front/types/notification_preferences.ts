@@ -109,6 +109,9 @@ export const PROVIDER_CREDENTIALS_HEALTH_UPDATED_TAG =
 export const USER_AWU_CAP_REACHED_TRIGGER_ID = "user-awu-cap-reached" as const;
 export const USER_AWU_CAP_REACHED_TAG = "user-awu-cap-reached" as const;
 
+export const CONSUMPTION_EXPORT_READY_TRIGGER_ID =
+  "consumption-export-ready" as const;
+
 export const BALANCE_THRESHOLD_REACHED_TRIGGER_ID =
   "balance-threshold-reached" as const;
 export const BALANCE_THRESHOLD_REACHED_TAG =
