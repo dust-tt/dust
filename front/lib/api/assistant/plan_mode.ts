@@ -4,7 +4,7 @@ import { writeToConversationFolder } from "@app/lib/api/files/action_output_fs";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { DustFileSystem } from "@app/types/dust_file_system";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { SCOPED_PREFIX_CONVERSATION } from "@app/types/file_system";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

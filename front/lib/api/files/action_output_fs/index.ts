@@ -9,7 +9,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { DustFileSystem } from "@app/types/dust_file_system";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { conversationScopedPath, podScopedPath } from "@app/types/file_system";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/types/mount_path";

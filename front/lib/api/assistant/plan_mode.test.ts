@@ -9,8 +9,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import type { FileSystemEntry } from "@app/types/dust_file_system";
-import { DustFileSystem } from "@app/types/dust_file_system";
+import type { FileSystemEntry } from "@app/lib/api/file_system/dust_file_system";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { Ok } from "@app/types/shared/result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 

@@ -4,7 +4,7 @@ export {
   DustFileSystemError,
   parseScopedPrefix,
   sanitizeFileSystemName,
-} from "@app/types/dust_file_system";
+} from "@app/lib/api/file_system/dust_file_system";
 export type {
   DustFileSystemErrorCode,
   FileSystemMount,

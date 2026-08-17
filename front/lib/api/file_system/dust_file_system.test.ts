@@ -16,7 +16,7 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   DustFileSystem,
   sanitizeFileSystemName,
-} from "@app/types/dust_file_system";
+} from "@app/lib/api/file_system/dust_file_system";
 import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";

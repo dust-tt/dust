@@ -19,7 +19,7 @@ import type {
 import { isCompactionMessageType } from "@app/types/assistant/conversation";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type { SupportedModel } from "@app/types/assistant/models/types";
-import { DustFileSystem } from "@app/types/dust_file_system";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { DustFileSystemError } from "@app/types/file_system";
 import { conversationScopedPath } from "@app/types/file_system";
 import type { Result } from "@app/types/shared/result";

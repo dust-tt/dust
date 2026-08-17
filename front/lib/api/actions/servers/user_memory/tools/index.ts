@@ -14,7 +14,7 @@ import {
 } from "@app/lib/api/user_memory";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_USER_MEMORY_CONTENT_LENGTH } from "@app/types/api/me/memory";
-import { DustFileSystem } from "@app/types/dust_file_system";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 

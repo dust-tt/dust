@@ -16,7 +16,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import { DustFileSystem } from "@app/types/dust_file_system";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
