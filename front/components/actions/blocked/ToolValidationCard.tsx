@@ -94,10 +94,7 @@ export function ToolValidationCard({
   };
 
   const toolOverride = getToolOverride(validationRequest.metadata);
-  const alwaysAllowLabel = getToolValidationAlwaysAllowLabel(validationRequest);
   const isSubmitting = isValidating || submittingDecision !== null;
-  const alwaysAllowInputId = `never-ask-again-${validationRequest.actionId}`;
-  const hasDetails = Object.keys(validationRequest.inputs).length > 0;
 
   return (
     <Card
@@ -130,7 +127,7 @@ export function ToolValidationCard({
         </div>
         {canCurrentUserRespond ? (
           <>
-            {hasDetails && (
+            {Object.keys(validationRequest.inputs).length > 0 && (
               <ToolValidationDetails
                 blockedAction={validationRequest}
                 user={currentUser}
@@ -161,18 +158,20 @@ export function ToolValidationCard({
           {(validationRequest.stake === "low" ||
             validationRequest.stake === "medium") && (
             <Label
-              htmlFor={alwaysAllowInputId}
+              htmlFor={`never-ask-again-${validationRequest.actionId}`}
               className="flex min-h-11 cursor-pointer items-center gap-2 px-1 sm:min-h-0"
             >
               <Checkbox
-                id={alwaysAllowInputId}
+                id={`never-ask-again-${validationRequest.actionId}`}
                 checked={neverAskAgain}
                 disabled={isSubmitting}
                 onCheckedChange={(check) => {
                   setNeverAskAgain(!!check);
                 }}
               />
-              <span className="font-normal">{alwaysAllowLabel}</span>
+              <span className="font-normal">
+                {getToolValidationAlwaysAllowLabel(validationRequest)}
+              </span>
             </Label>
           )}
           <div className="flex gap-2 sm:ml-auto">
