@@ -177,7 +177,11 @@ export function ToolValidationCard({
                   }
                 }}
               >
-                <DialogContent size="lg" preventAutoFocusOnClose={false}>
+                <DialogContent
+                  size="lg"
+                  className="gap-4"
+                  preventAutoFocusOnClose={false}
+                >
                   <DialogHeader className="gap-1">
                     <div className="flex items-center justify-between gap-4 pr-8">
                       <DialogTitle
@@ -193,7 +197,7 @@ export function ToolValidationCard({
                       {displayLabel}
                     </DialogDescription>
                   </DialogHeader>
-                  <DialogContainer className="pb-3 pt-4">
+                  <DialogContainer className="py-0">
                     <ToolValidationDetails
                       blockedAction={validationRequest}
                       user={currentUser}
@@ -206,7 +210,7 @@ export function ToolValidationCard({
                       </div>
                     )}
                   </DialogContainer>
-                  <DialogFooter className="flex-col items-stretch gap-3 px-5 pb-4 pt-3">
+                  <DialogFooter className="flex-col items-stretch gap-3 px-5 pb-4 pt-0">
                     {(validationRequest.stake === "low" ||
                       validationRequest.stake === "medium") && (
                       <Label
