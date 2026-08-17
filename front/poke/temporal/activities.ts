@@ -271,7 +271,8 @@ export async function scrubSpaceActivity({
     await UserProjectPreferencesResource.deleteAllBySpace(auth, space.id);
   }
 
-  const activationPod = await ActivationPodResource.fetchBySpace(auth, space);
+  const activationPod =
+    await ActivationPodResource.fetchBySpaceIncludingArchived(auth, space);
   if (activationPod) {
     await ActivationRecommendationResource.deleteAllForActivationPod(
       auth,
