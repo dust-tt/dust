@@ -28,7 +28,10 @@ import type {
   TriggerType,
   WebhookConfig,
 } from "@app/types/assistant/triggers";
-import { getTriggerStatusOwner } from "@app/types/assistant/triggers";
+import {
+  getTriggerStatusOwner,
+  isValidTriggerStatus,
+} from "@app/types/assistant/triggers";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -263,6 +266,30 @@ export class TriggerResource extends BaseResource<TriggerModel> {
 
   static listByWorkspace(auth: Authenticator) {
     return this.baseFetch(auth);
+  }
+
+  static async countByStatus(
+    auth: Authenticator
+  ): Promise<Record<TriggerStatus, number>> {
+    const rows = await this.model.count({
+      where: { workspaceId: auth.getNonNullableWorkspace().id },
+      group: ["status"],
+    });
+
+    const counts: Record<TriggerStatus, number> = {
+      enabled: 0,
+      disabled: 0,
+      relocating: 0,
+      downgraded: 0,
+    };
+    for (const row of rows) {
+      const { status } = row;
+      if (typeof status === "string" && isValidTriggerStatus(status)) {
+        counts[status] = row.count;
+      }
+    }
+
+    return counts;
   }
 
   static async listBySpace(
