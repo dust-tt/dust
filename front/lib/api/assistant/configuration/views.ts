@@ -25,7 +25,6 @@ import type { WorkspaceType } from "@app/types/user";
 import { Op, Sequelize } from "sequelize";
 
 const HEAVY_AGENT_CONFIGURATION_ATTRIBUTES = [
-  "description",
   "instructions",
   "instructionsHtml",
   "responseFormat",
