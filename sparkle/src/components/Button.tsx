@@ -51,7 +51,8 @@ const buttonVariants = cva(
     // `transform` stays in the transition list for the `press` scale.
     "transition-[color,background-color,border-color,transform] duration-100 ease-out",
     "motion-reduce:transition-none",
-    "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0",
+    "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring focus-visible:ring-offset-0",
+    "group-focus-visible/button-link:ring-2 group-focus-visible/button-link:ring-inset group-focus-visible/button-link:ring-ring",
     // data-disabled is set only when truly disabled (not loading), so loading buttons
     // keep their full-color active look while :disabled guards block interaction for both.
     "data-[disabled]:shadow-none",
@@ -451,6 +452,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     return href && isInteractive ? (
       <LinkWrapper
+        className="group/button-link outline-hidden"
         href={href}
         target={target}
         rel={rel}
