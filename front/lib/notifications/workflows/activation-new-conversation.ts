@@ -9,6 +9,7 @@ import {
   getActivationRecommendation,
   getConversationDetails,
 } from "@app/lib/notifications/helpers";
+import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FOR_YOU_EMAIL_UTM } from "@app/lib/tracking/campaigns";
 import { getGetStartedRoute } from "@app/lib/utils/router";
@@ -24,6 +25,18 @@ import { z } from "zod";
 // to the target user as a dedicated, standalone email. It has no digest step, so a
 // conversation sent this way is never also bundled into the unread digest for the same activity.
 
+const ACTIVATION_NEW_CONVERSATION_EMAIL_SUBJECT_FALLBACK =
+  "A recommendation for you";
+
+export function getActivationNewConversationEmailSubject(
+  recommendationName: string | null
+): string {
+  const normalizedName = recommendationName?.replace(/\s+/g, " ").trim();
+  return `[Dust] Recommendation For You: ${
+    normalizedName || ACTIVATION_NEW_CONVERSATION_EMAIL_SUBJECT_FALLBACK
+  }`;
+}
+
 const activationNewConversationPayloadSchema = z.object({
   workspaceId: z.string(),
   conversationId: z.string(),
@@ -34,7 +47,8 @@ type activationNewConversationPayloadType = z.infer<
 >;
 
 const activationNewConversationDetailsSchema = z.object({
-  subject: z.string(),
+  recommendationName: z.string().nullable(),
+  actionLabel: z.string(),
   workspaceName: z.string(),
   podName: z.string(),
   goal: z.string().nullable(),
@@ -84,7 +98,8 @@ const getActivationNewConversationDetails = async ({
     // Only reached for a deleted conversation, in which case the email step is
     // already skipped, so this value is never actually delivered.
     return {
-      subject: "A new conversation",
+      recommendationName: null,
+      actionLabel: "Start building",
       workspaceName: "your workspace",
       podName: "your pod",
       goal: null,
@@ -96,9 +111,20 @@ const getActivationNewConversationDetails = async ({
     subscriberId: subscriberId ?? "",
     payload,
   });
+  const recommendations = subscriberId
+    ? await ActivationRecommendationResource.fetchByConversationSId(
+        await Authenticator.fromUserIdAndWorkspaceId(
+          subscriberId,
+          payload.workspaceId
+        ),
+        payload.conversationId
+      )
+    : [];
 
   return {
-    subject: detailsResult.value.subject,
+    recommendationName:
+      recommendations[0]?.title ?? detailsResult.value.subject,
+    actionLabel: recommendations[0]?.ctaLabel?.trim() || "Start building",
     workspaceName: detailsResult.value.workspaceName,
     podName: detailsResult.value.projectName ?? "your pod",
     goal,
@@ -140,13 +166,15 @@ export const activationNewConversationWorkflow = workflow(
           podName: details.podName,
           goal: details.goal,
           action: {
-            label: details.subject,
+            label: details.actionLabel,
             url: forYouUrl,
           },
         });
 
         return {
-          subject: `[Dust] Recommendation For You: ${details.subject}`,
+          subject: getActivationNewConversationEmailSubject(
+            details.recommendationName
+          ),
           body,
         };
       },
@@ -183,10 +211,16 @@ export const triggerActivationNewConversationEmail = async (
       conversationId: conversation.sId,
     };
 
+    // A nudge conversation should produce exactly one email. Agent-loop
+    // finalization and Temporal activities are both retryable, so use the
+    // conversation and recipient as Novu's stable deduplication boundary.
+    const transactionId = `${ACTIVATION_NEW_CONVERSATION_TRIGGER_ID}-${payload.workspaceId}-${payload.conversationId}-${userToNotify.sId}`;
+
     const r = await novuClient.triggerBulk({
       events: [
         {
           workflowId: ACTIVATION_NEW_CONVERSATION_TRIGGER_ID,
+          transactionId,
           to: {
             subscriberId: userToNotify.sId,
             email: userToNotify.email,
