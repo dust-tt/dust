@@ -1,5 +1,5 @@
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
-import { Avatar, cn, Tooltip } from "@dust-tt/sparkle";
+import { Avatar, ProgressBar, Tooltip } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
 function EmptyCell() {
@@ -30,33 +30,12 @@ export function AvatarNameCell({
   );
 }
 
-interface CostShareBarProps {
-  percentage: number;
-  className?: string;
-}
-
-export function CostShareBar({ percentage, className }: CostShareBarProps) {
-  return (
-    <div
-      className={cn(
-        "h-1.5 overflow-hidden rounded-full bg-muted-background",
-        className
-      )}
-    >
-      <div
-        className="h-full rounded-full bg-primary-light"
-        style={{ width: `${percentage}%` }}
-      />
-    </div>
-  );
-}
-
 export function CostShareCell({ share }: { share: number }) {
   const percentage = Math.round(Math.min(100, share * 100));
 
   return (
     <div className="flex items-center gap-2">
-      <CostShareBar className="w-24" percentage={percentage} />
+      <ProgressBar className="w-24" percentage={percentage} />
       <span className="w-8 text-right text-xs text-muted-foreground tabular-nums">
         {percentage}%
       </span>
