@@ -106,6 +106,31 @@ describe("moveConversationToProject", () => {
     expect(result.isErr() && result.error.code).toBe("invalid_request_error");
   });
 
+  it("does not move an opted-in standalone conversation into a Pod", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+    const optInRes = await ConversationResource.inheritDatabaseFileSystem(
+      auth,
+      conversation.sId
+    );
+    expect(optInRes.isOk()).toBe(true);
+    const pod = await SpaceFactory.project(
+      workspace,
+      auth.getNonNullableUser().id
+    );
+    await auth.refresh();
+
+    const result = await moveConversationToProject(auth, {
+      conversation,
+      spaceId: pod.sId,
+    });
+
+    expect(result.isErr() && result.error.code).toBe("invalid_request_error");
+  });
+
   it("moves a non-project conversation to a project and updates its space", async () => {
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent",

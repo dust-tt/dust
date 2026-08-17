@@ -100,8 +100,7 @@ export class DatabaseSandboxMountAdapter implements SandboxMountAdapter {
     ).createSandboxAdapter([], this.sandboxOnlyMounts);
   }
 
-  async setup(
-    auth: Authenticator,
+  private async checkImage(
     sandbox: SandboxResource,
     image: SandboxImage
   ): Promise<Result<void, Error>> {
@@ -110,6 +109,24 @@ export class DatabaseSandboxMountAdapter implements SandboxMountAdapter {
       return new Err(
         new Error("Sandbox image does not contain the Dust filesystem daemon.")
       );
+    }
+    if (this.sandboxOnlyMounts.length > 0 && !image.hasCapability("gcsfuse")) {
+      await sandbox.requestKill();
+      return new Err(
+        new Error("Sandbox image cannot mount the Pod's GCS-only directories.")
+      );
+    }
+    return new Ok(undefined);
+  }
+
+  async setup(
+    auth: Authenticator,
+    sandbox: SandboxResource,
+    image: SandboxImage
+  ): Promise<Result<void, Error>> {
+    const imageRes = await this.checkImage(sandbox, image);
+    if (imageRes.isErr()) {
+      return imageRes;
     }
 
     const tokenResult = await this.writeToken(auth, sandbox);
@@ -196,11 +213,9 @@ export class DatabaseSandboxMountAdapter implements SandboxMountAdapter {
     sandbox: SandboxResource,
     image: SandboxImage
   ): Promise<Result<void, Error>> {
-    if (!image.hasCapability("dust_filesystem")) {
-      await sandbox.requestKill();
-      return new Err(
-        new Error("Sandbox image does not contain the Dust filesystem daemon.")
-      );
+    const imageRes = await this.checkImage(sandbox, image);
+    if (imageRes.isErr()) {
+      return imageRes;
     }
     const tokenResult = await this.writeToken(auth, sandbox);
     if (tokenResult.isErr()) {

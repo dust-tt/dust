@@ -399,13 +399,16 @@ export class DustFileSystem {
 
     const mount = createPodMount(auth, space, { includeLegacy: false });
 
-    const backend = new GCSFileSystemBackend(
-      owner.sId,
-      fileStorageConfig.getGcsPrivateUploadsBucket()
+    const storageMode = fileSystemStorageModeForPod(space);
+    const backend = DustFileSystem.createBackend(
+      auth,
+      [mount],
+      storageMode,
+      sandboxOnlyMounts
     );
 
     return new Ok(
-      new DustFileSystem(auth, [mount], backend, sandboxOnlyMounts)
+      new DustFileSystem(auth, [mount], backend, storageMode, sandboxOnlyMounts)
     );
   }
 

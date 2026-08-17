@@ -1,8 +1,10 @@
+import { DustError } from "@app/lib/error";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { GetSpacesResponseBody } from "@app/types/api/spaces";
+import { Err } from "@app/types/shared/result";
 import type { SpaceKind } from "@app/types/space";
 import { describe, expect, it, vi } from "vitest";
 
@@ -156,5 +158,34 @@ describe("POST /api/w/:wId/spaces", () => {
         isRestricted: false,
       })
     );
+  });
+
+  it("returns the database filesystem opt-in error from project creation", async () => {
+    mockCreateSpaceAndGroup.mockResolvedValue(
+      new Err(
+        new DustError(
+          "invalid_request_error",
+          "The database-backed filesystem is not enabled for this workspace."
+        )
+      )
+    );
+    const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
+
+    const response = await postSpace(workspace, {
+      name: "[Dust FS] Test project",
+      isRestricted: true,
+      spaceKind: "project",
+      managementMode: "manual",
+      memberIds: [],
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message:
+          "The database-backed filesystem is not enabled for this workspace.",
+      },
+    });
   });
 });

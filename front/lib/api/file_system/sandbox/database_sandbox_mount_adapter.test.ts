@@ -1,10 +1,11 @@
+import { GCSFileSystemBackend } from "@app/lib/api/file_system/backends/gcs_file_system_backend";
 import { DatabaseSandboxMountAdapter } from "@app/lib/api/file_system/sandbox/database_sandbox_mount_adapter";
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import type { RootCommand } from "@app/lib/api/sandbox/root_command";
 import { renderRootCommand } from "@app/lib/api/sandbox/root_command";
 import { setupPlainConversation } from "@app/tests/utils/conversation_test_factories";
 import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
-import type { FileSystemMount } from "@app/types/file_system";
+import type { FileSystemMount, SandboxOnlyMount } from "@app/types/file_system";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -47,6 +48,15 @@ const mounts: FileSystemMount[] = [
     legacyPrefix: "project",
     legacySandboxMountPoint: "/files/pod",
     permissions: { canRead: true, canWrite: true },
+  },
+];
+
+const sandboxOnlyMounts: SandboxOnlyMount[] = [
+  {
+    kind: "pod_state",
+    id: "pod1",
+    sandboxMountPoint: "/pod-state/replica",
+    readOnly: false,
   },
 ];
 
@@ -142,6 +152,48 @@ describe("DatabaseSandboxMountAdapter", () => {
     expect(result.isErr()).toBe(true);
     expect(requestKill).toHaveBeenCalledOnce();
     expect(execRoot).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when a Pod image cannot mount its GCS-only directories", async () => {
+    const { auth, sandbox, execRoot, requestKill } = await setup();
+    const adapter = new DatabaseSandboxMountAdapter(mounts, sandboxOnlyMounts);
+
+    const result = await adapter.setup(
+      auth,
+      sandbox,
+      SandboxImage.fromDocker("incomplete-image").withCapability(
+        "dust_filesystem"
+      )
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(requestKill).toHaveBeenCalledOnce();
+    expect(execRoot).not.toHaveBeenCalled();
+  });
+
+  it("mounts the Pod's GCS-only directories before starting the daemon", async () => {
+    const { auth, sandbox, execRoot } = await setup();
+    const auxiliarySetup = vi.fn().mockResolvedValue(new Ok(undefined));
+    const createAdapter = vi
+      .spyOn(GCSFileSystemBackend.prototype, "createSandboxAdapter")
+      .mockReturnValue({
+        setup: auxiliarySetup,
+        refreshCredential: vi.fn(),
+      });
+    const adapter = new DatabaseSandboxMountAdapter(mounts, sandboxOnlyMounts);
+    const image = SandboxImage.fromDocker("complete-image")
+      .withCapability("dust_filesystem")
+      .withCapability("gcsfuse");
+
+    const result = await adapter.setup(auth, sandbox, image);
+
+    expect(result.isOk()).toBe(true);
+    expect(createAdapter).toHaveBeenCalledWith([], sandboxOnlyMounts);
+    expect(auxiliarySetup).toHaveBeenCalledWith(auth, sandbox, image);
+    expect(auxiliarySetup.mock.invocationCallOrder[0]).toBeLessThan(
+      execRoot.mock.invocationCallOrder[1]
+    );
+    createAdapter.mockRestore();
   });
 
   it("rotates the token without restarting the mounted daemon", async () => {

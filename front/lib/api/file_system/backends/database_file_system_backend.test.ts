@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { text } from "node:stream/consumers";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { FileSystemScope } from "@app/lib/api/file_system/namespace_scope";
 import { DATABASE_FILE_SYSTEM_POD_PREFIX } from "@app/lib/api/file_system/storage_mode";
@@ -8,6 +9,7 @@ import { FileSystemNodeResource } from "@app/lib/resources/file_system_node_reso
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import assert from "assert";
 import { describe, expect, it } from "vitest";
@@ -63,6 +65,34 @@ async function databaseFileSystem() {
 }
 
 describe("DatabaseFileSystemBackend", () => {
+  it("writes and reads immutable GCS content through a database node", async () => {
+    const { conversation, dustFileSystem } = await databaseFileSystem();
+    const path = `conversation-${conversation.sId}/report.txt`;
+    fileStorageMock.setFileMetadata(() => ({
+      size: "5",
+      contentType: "text/plain",
+      contentEncoding: "identity",
+    }));
+
+    const written = await dustFileSystem.write(path, "hello", "text/plain");
+
+    expect(written.isOk()).toBe(true);
+    expect(fileStorageMock.saveFileCalls).toHaveLength(1);
+    const [saved] = fileStorageMock.saveFileCalls;
+    assert(saved);
+    fileStorageMock.setFileContent((filePath) =>
+      filePath === saved.filePath ? "hello" : null
+    );
+    const read = await dustFileSystem.read(path);
+    assert(read.isOk() && read.value);
+    expect(await text(read.value)).toBe("hello");
+    expect(await dustFileSystem.stat(path)).toEqual(
+      expect.objectContaining({
+        value: { contentType: "text/plain", sizeBytes: 5 },
+      })
+    );
+  });
+
   it("preserves the inode while moving a file from a conversation to its Pod", async () => {
     const { auth, conversation, dustFileSystem, pod, scope, conversationRoot } =
       await databaseFileSystem();
