@@ -59,6 +59,7 @@ import { OPENAI_USAGE_SERVER } from "@app/lib/api/actions/servers/openai_usage/m
 import { OUTLOOK_CALENDAR_SERVER } from "@app/lib/api/actions/servers/outlook/calendar_metadata";
 import { OUTLOOK_MAIL_SERVER } from "@app/lib/api/actions/servers/outlook/mail_metadata";
 import { PLAN_MODE_SERVER } from "@app/lib/api/actions/servers/plan_mode/metadata";
+import { POD_APP_TOOLSET_SERVER } from "@app/lib/api/actions/servers/pod_app_toolset/metadata";
 import { POD_MANAGER_SERVER } from "@app/lib/api/actions/servers/pod_manager/metadata";
 import { POD_TASKS_SERVER } from "@app/lib/api/actions/servers/pod_tasks/metadata";
 import { POKE_SERVER } from "@app/lib/api/actions/servers/poke/metadata";
@@ -240,6 +241,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "poke",
   "sandbox",
   "sandbox_functions",
+  "pod_app_toolset",
   "ask_user_question",
   "wakeups",
   "plan_mode",
@@ -1104,6 +1106,19 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     timeoutMs: undefined,
     metadata: SANDBOX_FUNCTIONS_SERVER,
   },
+  pod_app_toolset: {
+    id: 1047,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isPreview: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("sandbox_functions");
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: POD_APP_TOOLSET_SERVER,
+  },
   user_mentions: {
     id: 1026,
     availability: "auto_hidden_builder",
@@ -1383,6 +1398,7 @@ type DynamicInternalMCPToolNameOverrides = {
   missing_action_catcher: string;
   run_agent: string;
   run_dust_app: string;
+  pod_app_toolset: string;
   search: "find_tags";
 };
 
