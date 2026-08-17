@@ -1,41 +1,34 @@
 import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
-import { useEffect, useState } from "react";
 
-// Self-hosted product overview (no third-party player chrome).
-const VIDEO_SRC =
+const _VIDEO_SRC =
   "/static/landing/product/Dust%20-%20Self-improving%20Skills%20-%20V4.mp4";
 
+const videoUrl = new URL("https://fast.wistia.net/embed/iframe/hyatgdecn7");
+videoUrl.searchParams.set("seo", "true");
+videoUrl.searchParams.set("videoFoam", "true");
+videoUrl.searchParams.set("autoPlay", "true");
+videoUrl.searchParams.set("muted", "true");
+videoUrl.searchParams.set("playsinline", "true");
+videoUrl.searchParams.set("playButton", "false");
+videoUrl.searchParams.set("smallPlayButton", "false");
+videoUrl.searchParams.set("settingsControl", "false");
+videoUrl.searchParams.set("fullscreenButton", "false");
+videoUrl.searchParams.set("endVideoBehavior", "loop");
+videoUrl.searchParams.set("captions", "on");
+
 export function ProductVideoSection() {
-  // Controls appear on hover for pointer devices; always visible on touch
-  // devices (no hover) so playback stays controllable.
-  const [showControls, setShowControls] = useState(false);
-  const [isTouch, setIsTouch] = useState(false);
-
-  useEffect(() => {
-    setIsTouch(window.matchMedia("(hover: none)").matches);
-  }, []);
-
   return (
     <section className="w-full bg-background py-14 lg:py-24">
       <div className="mx-auto w-full max-w-[1180px] px-6">
         <HomeReveal>
-          {/* 16:9 responsive frame; scales fluidly with the viewport. */}
-          <div
-            className="relative w-full overflow-hidden rounded-2xl bg-muted pt-[56.25%] shadow-sm"
-            onMouseEnter={() => setShowControls(true)}
-            onMouseLeave={() => setShowControls(false)}
-          >
-            <video
-              src={VIDEO_SRC}
+          <div className="relative w-full rounded-2xl pt-[56.25%]">
+            {/* 16:9 aspect ratio */}
+            <iframe
+              src={videoUrl.toString()}
               title="Dust product overview"
-              // Muted is required for browsers to allow autoplay.
-              autoPlay
-              muted
-              loop
-              playsInline
-              controls={isTouch || showControls}
-              preload="auto"
-              className="absolute inset-0 h-full w-full object-cover"
+              allow="autoplay; fullscreen"
+              frameBorder="0"
+              className="absolute inset-0 h-full w-full overflow-hidden rounded-2xl"
             />
           </div>
         </HomeReveal>
