@@ -29,7 +29,7 @@ require_file "$LOCAL_PREVIEW_DIR/local-preview-workspace-menu.png"
 require_file "$LOCAL_PREVIEW_DIR/local-preview-workspace-launch.png"
 require_file "$LOCAL_PREVIEW_DIR/local-preview-workspace-menu-return.png"
 
-DEMO_SCREENS=(loading session-expired inbox empty-inbox compose detail files)
+DEMO_SCREENS=(loading session-expired inbox-loading inbox empty-inbox compose detail thinking streaming files)
 AUTHENTICATED_SCREENS=(inbox account-menu compose)
 
 has_demo_artifacts() {
@@ -159,6 +159,13 @@ if has_demo_artifacts; then
       </article>
       <article>
         <div>
+          <h2>Demo inbox loading</h2>
+          <p><a href="prod-review.html">Open demo states review</a></p>
+        </div>
+        <img src="demo-inbox-loading.png" alt="Demo inbox loading screen">
+      </article>
+      <article>
+        <div>
           <h2>Demo empty inbox</h2>
           <p><a href="prod-review.html">Open demo states review</a></p>
         </div>
@@ -180,6 +187,20 @@ if has_demo_artifacts; then
       </article>
       <article>
         <div>
+          <h2>Demo thinking</h2>
+          <p><a href="prod-review.html">Open demo states review</a></p>
+        </div>
+        <img src="demo-thinking.png" alt="Demo thinking screen">
+      </article>
+      <article>
+        <div>
+          <h2>Demo answer streaming</h2>
+          <p><a href="prod-review.html">Open demo states review</a></p>
+        </div>
+        <img src="demo-streaming.png" alt="Demo streaming screen">
+      </article>
+      <article>
+        <div>
           <h2>Demo files</h2>
           <p><a href="prod-review.html">Open demo states review</a></p>
         </div>
@@ -193,9 +214,12 @@ Demo state screenshots:
 - $OUT_DIR/demo-loading.png
 - $OUT_DIR/demo-session-expired.png
 - $OUT_DIR/demo-inbox.png
+- $OUT_DIR/demo-inbox-loading.png
 - $OUT_DIR/demo-empty-inbox.png
 - $OUT_DIR/demo-compose.png
 - $OUT_DIR/demo-detail.png
+- $OUT_DIR/demo-thinking.png
+- $OUT_DIR/demo-streaming.png
 - $OUT_DIR/demo-files.png
 MANIFEST
 )"

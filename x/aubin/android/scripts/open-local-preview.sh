@@ -6,6 +6,7 @@ ADB="${ADB:-${ANDROID_SDK:+$ANDROID_SDK/platform-tools/adb}}"
 PACKAGE="${PACKAGE:-com.dust.mobile}"
 ACTIVITY="${ACTIVITY:-.android.MainActivity}"
 OUT_DIR="${OUT_DIR:-/tmp/dust-android-samsung-smoke/local-preview-flow}"
+CLEAR_APP_DATA="${CLEAR_APP_DATA:-0}"
 
 if [[ -z "${ADB:-}" || ! -x "$ADB" ]]; then
   echo "ADB was not found. Set ANDROID_HOME, ANDROID_SDK_ROOT, or ADB." >&2
@@ -96,14 +97,15 @@ clear_legacy_top_level_artifacts
 "$ADB" shell am force-stop com.android.chrome >/dev/null 2>&1 || true
 "$ADB" shell am force-stop com.google.android.documentsui >/dev/null 2>&1 || true
 "$ADB" shell am force-stop "$PACKAGE" >/dev/null 2>&1 || true
-"$ADB" shell pm clear "$PACKAGE" >/dev/null
-sleep 1
-"$ADB" shell am force-stop "$PACKAGE" >/dev/null 2>&1 || true
+if [[ "$CLEAR_APP_DATA" == "1" ]]; then
+  "$ADB" shell pm clear "$PACKAGE" >/dev/null
+  sleep 1
+fi
 "$ADB" logcat -c
 "$ADB" shell am start -S -a android.intent.action.VIEW -d "dust://local-preview" -p "$PACKAGE" >/dev/null
 wait_for_dust_activity_ready
 
-wait_for_text "Search conversations" /sdcard/dust-local-preview-inbox.xml "$OUT_DIR/local-preview-inbox.xml"
+wait_for_text "Search" /sdcard/dust-local-preview-inbox.xml "$OUT_DIR/local-preview-inbox.xml"
 
 if "$ADB" logcat -d -v time | grep -Ei 'FATAL EXCEPTION|ANR in com\.dust\.mobile|Process com\.dust\.mobile has died|Unable to start activity|Unable to resume activity' >"$OUT_DIR/local-preview-failures.log"; then
   echo "Local preview launch failed. Crash or ANR signatures were written to $OUT_DIR/local-preview-failures.log" >&2

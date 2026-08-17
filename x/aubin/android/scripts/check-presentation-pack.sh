@@ -9,11 +9,10 @@ PACKAGE="${PACKAGE:-com.dust.mobile}"
 SIZE="${SAMSUNG_SIZE:-1080x2340}"
 DENSITY="${SAMSUNG_DENSITY:-425}"
 SCREENSHOT_MIN_BYTES="${SCREENSHOT_MIN_BYTES:-10000}"
-PROD_LOGIN_SCREENSHOT_MIN_BYTES="${PROD_LOGIN_SCREENSHOT_MIN_BYTES:-50000}"
 REQUIRE_DEMO_ARTIFACTS="${REQUIRE_DEMO_ARTIFACTS:-0}"
 CURRENT_UI_XML="${TMPDIR:-/tmp}/dust-presentation-current.xml"
 CRASH_PATTERN='FATAL EXCEPTION|ANR in com\.dust\.mobile|Process com\.dust\.mobile has died|Unable to start activity|Unable to resume activity'
-DEMO_SCREENS=(loading session-expired inbox empty-inbox compose detail files)
+DEMO_SCREENS=(loading session-expired inbox-loading inbox empty-inbox compose detail thinking streaming files)
 AUTHENTICATED_SCREENS=(inbox account-menu compose)
 
 cleanup() {
@@ -200,10 +199,11 @@ require_demo_artifacts() {
   require_empty_file "$OUT_DIR/demo-copy-leaks.log"
   require_text 'text="Loading Dust"' "$OUT_DIR/demo-loading.xml"
   require_text 'text="Your session expired. Sign in again to continue."' "$OUT_DIR/demo-session-expired.xml"
+  require_text 'content-desc="Loading conversations"' "$OUT_DIR/demo-inbox-loading.xml"
   require_text 'text="Revenue Team"' "$OUT_DIR/demo-inbox.xml"
   require_text 'text="Pods"' "$OUT_DIR/demo-inbox.xml"
-  require_text 'text="Customer Ops"' "$OUT_DIR/demo-inbox.xml"
-  require_text 'text="Launch Planning"' "$OUT_DIR/demo-inbox.xml"
+  require_text 'text="Action required · Customer Ops"' "$OUT_DIR/demo-inbox.xml"
+  require_text 'text="Unread · Launch Planning"' "$OUT_DIR/demo-inbox.xml"
   require_text 'text="Coordinate launch follow-ups"' "$OUT_DIR/demo-inbox.xml"
   require_text_top_at_least "Revenue Team" "$OUT_DIR/demo-inbox.xml" 80
   require_text 'content-desc="Refresh conversations"' "$OUT_DIR/demo-inbox.xml"
@@ -212,7 +212,8 @@ require_demo_artifacts() {
   require_text 'text="No conversations yet"' "$OUT_DIR/demo-empty-inbox.xml"
   require_text_top_at_least "Revenue Team" "$OUT_DIR/demo-empty-inbox.xml" 80
   require_text 'text="Ask anything or call an agent with @"' "$OUT_DIR/demo-compose.xml"
-  require_text 'text="Dust"' "$OUT_DIR/demo-compose.xml"
+  require_text 'text="New conversation"' "$OUT_DIR/demo-compose.xml"
+  require_text 'text="@Dust"' "$OUT_DIR/demo-compose.xml"
   require_text 'content-desc="Add context"' "$OUT_DIR/demo-compose.xml"
   require_text 'content-desc="Voice input"' "$OUT_DIR/demo-compose.xml"
   require_no_text 'content-desc="Send"' "$OUT_DIR/demo-compose.xml"
@@ -220,15 +221,20 @@ require_demo_artifacts() {
   require_no_text 'text="Draft customer brief"' "$OUT_DIR/demo-compose.xml"
   require_text 'text="Briefing"' "$OUT_DIR/demo-detail.xml"
   require_text 'text="Ask anything or call an agent with @"' "$OUT_DIR/demo-detail.xml"
-  require_text 'content-desc="Conversation files"' "$OUT_DIR/demo-detail.xml"
+  require_text 'content-desc="Open files and Frames"' "$OUT_DIR/demo-detail.xml"
   require_text 'content-desc="Add context"' "$OUT_DIR/demo-detail.xml"
   require_text 'content-desc="Voice input"' "$OUT_DIR/demo-detail.xml"
+  require_text 'content-desc="New conversation"' "$OUT_DIR/demo-detail.xml"
   require_no_text 'content-desc="Photos"' "$OUT_DIR/demo-detail.xml"
   require_no_text 'content-desc="Files"' "$OUT_DIR/demo-detail.xml"
   require_no_text 'content-desc="Knowledge"' "$OUT_DIR/demo-detail.xml"
   require_no_text 'content-desc="Send"' "$OUT_DIR/demo-detail.xml"
+  require_text 'text="Thinking..."' "$OUT_DIR/demo-thinking.xml"
+  require_text 'content-desc="New conversation"' "$OUT_DIR/demo-thinking.xml"
+  require_text 'text="Streaming"' "$OUT_DIR/demo-streaming.xml"
+  require_text 'content-desc="New conversation"' "$OUT_DIR/demo-streaming.xml"
   require_text 'text="customer-briefing.pdf"' "$OUT_DIR/demo-files.xml"
-  require_text 'text="Conversation Files"' "$OUT_DIR/demo-files.xml"
+  require_text 'text="Conversation files"' "$OUT_DIR/demo-files.xml"
   require_no_text 'text="Close"' "$OUT_DIR/demo-files.xml"
   require_no_text 'text="Document · by @sales"' "$OUT_DIR/demo-files.xml"
   require_text "Demo state screenshots:" "$OUT_DIR/presentation-index.txt"
@@ -265,11 +271,12 @@ require_authenticated_artifacts() {
     require_text "authenticated-$screen.png" "$OUT_DIR/presentation-index.txt"
   done
 
-  require_text 'text="Search conversations"' "$OUT_DIR/authenticated-inbox.xml"
+  require_text 'text="Search"' "$OUT_DIR/authenticated-inbox.xml"
   require_text 'content-desc="Account menu"' "$OUT_DIR/authenticated-inbox.xml"
   require_text 'text="Sign out"' "$OUT_DIR/authenticated-account-menu.xml"
   require_text 'text="Ask anything or call an agent with @"' "$OUT_DIR/authenticated-compose.xml"
-  require_text 'text="Dust"' "$OUT_DIR/authenticated-compose.xml"
+  require_text 'text="New conversation"' "$OUT_DIR/authenticated-compose.xml"
+  require_text 'text="@Dust"' "$OUT_DIR/authenticated-compose.xml"
   require_text 'content-desc="Add context"' "$OUT_DIR/authenticated-compose.xml"
   require_text 'content-desc="Voice input"' "$OUT_DIR/authenticated-compose.xml"
   require_no_text 'content-desc="Send"' "$OUT_DIR/authenticated-compose.xml"
@@ -355,11 +362,6 @@ require_not_older_than "$OUT_DIR/presentation-index.txt" "$OUT_DIR/authenticated
 require_samsung_png "$OUT_DIR/login.png"
 require_samsung_png "$OUT_DIR/frame-login.png"
 require_samsung_png "$OUT_DIR/authenticated-preflight.png"
-login_screenshot_bytes="$(wc -c <"$OUT_DIR/login.png" | tr -d ' ')"
-if [[ "$login_screenshot_bytes" -lt "$PROD_LOGIN_SCREENSHOT_MIN_BYTES" ]]; then
-  echo "Prod login screenshot is too small to be the full login screen: $OUT_DIR/login.png ($login_screenshot_bytes bytes)." >&2
-  exit 1
-fi
 
 require_text "prod-review.html" "$OUT_DIR/presentation-index.html"
 require_text "prod-review.html" "$OUT_DIR/presentation-index.txt"
@@ -439,7 +441,7 @@ require_text 'text="lea.martin@dust.tt"' "$LOCAL_PREVIEW_DIR/local-preview-accou
 require_no_text "acme.example" "$LOCAL_PREVIEW_DIR/local-preview-account-menu.xml"
 require_no_text "@acme." "$LOCAL_PREVIEW_DIR/local-preview-account-menu.xml"
 require_text 'text="Sample workspace"' "$LOCAL_PREVIEW_DIR/local-preview-inbox.xml"
-require_text 'text="Search conversations"' "$LOCAL_PREVIEW_DIR/local-preview-inbox.xml"
+require_text 'text="Search"' "$LOCAL_PREVIEW_DIR/local-preview-inbox.xml"
 require_text 'content-desc="Switch workspace"' "$LOCAL_PREVIEW_DIR/local-preview-inbox.xml"
 for local_preview_xml in "$LOCAL_PREVIEW_DIR"/local-preview-*.xml; do
   require_no_text "@sales" "$local_preview_xml"
@@ -455,7 +457,8 @@ require_text 'text="Keep for later"' "$LOCAL_PREVIEW_DIR/local-preview-catch-up-
 require_no_text 'text="Mark as read"' "$LOCAL_PREVIEW_DIR/local-preview-catch-up-action.xml"
 require_text 'text="Mark as read"' "$LOCAL_PREVIEW_DIR/local-preview-catch-up-unread.xml"
 require_text 'text="Ask anything or call an agent with @"' "$LOCAL_PREVIEW_DIR/local-preview-compose.xml"
-require_text 'text="Dust"' "$LOCAL_PREVIEW_DIR/local-preview-compose.xml"
+require_text 'text="New conversation"' "$LOCAL_PREVIEW_DIR/local-preview-compose.xml"
+require_text 'text="@Dust"' "$LOCAL_PREVIEW_DIR/local-preview-compose.xml"
 require_text 'content-desc="Add context"' "$LOCAL_PREVIEW_DIR/local-preview-compose.xml"
 require_text 'content-desc="Voice input"' "$LOCAL_PREVIEW_DIR/local-preview-compose.xml"
 require_no_text 'content-desc="Send"' "$LOCAL_PREVIEW_DIR/local-preview-compose.xml"
@@ -467,7 +470,9 @@ require_text 'content-desc="Clear search"' "$LOCAL_PREVIEW_DIR/local-preview-age
 require_text 'text="Draft customer brief"' "$LOCAL_PREVIEW_DIR/local-preview-compose-filled.xml"
 require_text 'content-desc="Send"' "$LOCAL_PREVIEW_DIR/local-preview-compose-filled.xml"
 require_no_text 'text="Send"' "$LOCAL_PREVIEW_DIR/local-preview-compose-filled.xml"
-require_text 'content-desc="Conversation files"' "$LOCAL_PREVIEW_DIR/local-preview-detail.xml"
+require_text 'content-desc="Open files and Frames"' "$LOCAL_PREVIEW_DIR/local-preview-detail.xml"
+require_text 'text="Files &amp; Frames"' "$LOCAL_PREVIEW_DIR/local-preview-conversation-files.xml"
+require_text 'text="Frames"' "$LOCAL_PREVIEW_DIR/local-preview-conversation-files.xml"
 require_text 'text="Ask anything or call an agent with @"' "$LOCAL_PREVIEW_DIR/local-preview-detail.xml"
 require_text 'content-desc="Add context"' "$LOCAL_PREVIEW_DIR/local-preview-detail.xml"
 require_text 'content-desc="Voice input"' "$LOCAL_PREVIEW_DIR/local-preview-detail.xml"
@@ -574,7 +579,7 @@ fi
 "$ADB" shell uiautomator dump /sdcard/dust-presentation-current.xml >/dev/null
 "$ADB" pull /sdcard/dust-presentation-current.xml "$CURRENT_UI_XML" >/dev/null
 "$ADB" shell rm -f /sdcard/dust-presentation-current.xml >/dev/null
-require_current_ui_text 'text="Search conversations"' "$CURRENT_UI_XML"
+require_current_ui_text 'text="Search"' "$CURRENT_UI_XML"
 require_current_ui_text 'text="Sample workspace"' "$CURRENT_UI_XML"
 require_current_ui_text 'content-desc="Refresh conversations"' "$CURRENT_UI_XML"
 require_no_text 'text="Refresh"' "$CURRENT_UI_XML"

@@ -17,7 +17,7 @@ PRESENTATION_AUTH_TIMEOUT_SECONDS ?= $(if $(AUTH_TIMEOUT_SECONDS),$(AUTH_TIMEOUT
 
 .DEFAULT_GOAL := help
 
-.PHONY: help show-app bypass-login doctor devices phone-doctor test verify presentation-check presentation-refresh presentation-check-workos presentation-capture-workos presentation-check-clean presentation-index presentation-summary check-presentation-pack check-brand-assets check-build-config core-test app-test build assemble-debug assemble-prod-debug phone-release install-debug install-prod-debug install-phone run-debug run-prod-debug run-phone run-prod-debug-local-preview smoke-samsung-prod smoke-samsung-prod-visible smoke-samsung-prod-visible-fresh smoke-samsung-local-preview present-samsung-local-preview smoke-samsung-auth-resilience smoke-samsung-auth-resilience-current smoke-samsung-authenticated-preflight smoke-samsung-authenticated smoke-samsung-demo-ui lint-debug lint-prod-debug logs phone-diagnostics uninstall clean-local
+.PHONY: help show-app bypass-login doctor devices phone-doctor test verify presentation-check presentation-refresh presentation-check-workos presentation-capture-workos presentation-check-clean presentation-index presentation-summary check-presentation-pack check-architecture check-brand-assets check-build-config core-test app-test app-device-test baseline-profile benchmark build assemble-debug assemble-prod-debug phone-release install-debug install-prod-debug install-phone run-debug run-prod-debug run-phone run-prod-debug-local-preview smoke-samsung-prod smoke-samsung-prod-visible smoke-samsung-prod-visible-fresh smoke-samsung-local-preview present-samsung-local-preview smoke-samsung-auth-resilience smoke-samsung-auth-resilience-current smoke-samsung-authenticated-preflight smoke-samsung-authenticated smoke-samsung-demo-ui lint-debug lint-prod-debug logs test-notification phone-diagnostics uninstall clean-local
 
 ## help: list available targets
 help:
@@ -53,8 +53,8 @@ test:
 	$(GRADLE) test
 
 ## verify: run the full Android test/build/lint gate
-verify: check-brand-assets
-	$(GRADLE) :core:test :app:testDebugUnitTest :app:assembleDebug :app:lintDebug :app:assembleProdDebug :app:lintProdDebug :app:assembleRelease :app:assemblePhoneRelease
+verify: check-architecture check-brand-assets
+	$(GRADLE) :core:test :app:testDebugUnitTest :app:assembleDebugAndroidTest :app:assembleDebug :app:lintDebug :app:assembleProdDebug :app:lintProdDebug :app:assembleRelease :app:assemblePhoneRelease
 	$(MAKE) check-build-config
 
 ## presentation-check: run the full readiness gate, verify artifacts, and leave the Samsung sample workspace inbox open
@@ -123,9 +123,13 @@ check-presentation-pack:
 check-brand-assets:
 	scripts/check-brand-assets.sh
 
+## check-architecture: enforce Android package boundaries and UI design invariants
+check-architecture:
+	scripts/check-architecture.sh
+
 ## check-build-config: verify generated build variants use expected URLs and bypass flags
 check-build-config:
-	$(GRADLE) :app:generateDebugBuildConfig :app:generateProdDebugBuildConfig :app:generateReleaseBuildConfig :app:generatePhoneReleaseBuildConfig :app:processDebugMainManifest :app:processProdDebugMainManifest :app:processReleaseMainManifest :app:processPhoneReleaseMainManifest
+	$(GRADLE) :app:generateDebugBuildConfig :app:generateProdDebugBuildConfig :app:generateReleaseBuildConfig :app:generatePhoneReleaseBuildConfig :app:generateNonMinifiedReleaseBuildConfig :app:generateBenchmarkReleaseBuildConfig :app:processDebugMainManifest :app:processProdDebugMainManifest :app:processReleaseMainManifest :app:processPhoneReleaseMainManifest :app:processNonMinifiedReleaseMainManifest :app:processBenchmarkReleaseMainManifest
 	scripts/check-build-config.sh
 
 ## core-test: run JVM tests for the core module only
@@ -135,6 +139,18 @@ core-test:
 ## app-test: run Android app JVM tests
 app-test:
 	$(GRADLE) :app:testDebugUnitTest
+
+## app-device-test: run Android instrumentation tests on the selected attached device
+app-device-test:
+	$(GRADLE) :app:connectedDebugAndroidTest
+
+## baseline-profile: generate release Baseline and Startup Profiles on an attached API 33+ device
+baseline-profile:
+	$(GRADLE) :app:generateReleaseBaselineProfile
+
+## benchmark: measure startup, inbox scrolling, and conversation opening on an attached physical device
+benchmark:
+	$(GRADLE) :baselineprofile:connectedBenchmarkReleaseAndroidTest
 
 ## build: run the full Gradle build
 build:
@@ -247,6 +263,10 @@ lint-prod-debug:
 logs:
 	ADB="$(ADB)" PACKAGE="$(PACKAGE)" ACTIVITY="$(ACTIVITY)" scripts/android-device.sh logs
 
+## test-notification: post a debug notification; KIND can be agent, user, mention, or action
+test-notification:
+	ADB="$(ADB)" PACKAGE="$(PACKAGE)" scripts/test-notification.sh "$(if $(KIND),$(KIND),agent)"
+
 ## phone-diagnostics: capture app state, current UI, rendering data, and recent logs
 phone-diagnostics:
 	ADB="$(ADB)" PACKAGE="$(PACKAGE)" ACTIVITY="$(ACTIVITY)" scripts/android-device.sh diagnostics
@@ -257,4 +277,4 @@ uninstall:
 
 ## clean-local: remove local Gradle/Kotlin build artifacts
 clean-local:
-	rm -rf .gradle .kotlin app/build core/build
+	rm -rf .gradle .kotlin app/build core/build baselineprofile/build

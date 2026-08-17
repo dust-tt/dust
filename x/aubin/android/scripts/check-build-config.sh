@@ -28,6 +28,8 @@ manifest_path_for_variant() {
     prodDebug) echo "$MERGED_MANIFEST_DIR/prodDebug/processProdDebugMainManifest/AndroidManifest.xml" ;;
     phoneRelease) echo "$MERGED_MANIFEST_DIR/phoneRelease/processPhoneReleaseMainManifest/AndroidManifest.xml" ;;
     release) echo "$MERGED_MANIFEST_DIR/release/processReleaseMainManifest/AndroidManifest.xml" ;;
+    nonMinifiedRelease) echo "$MERGED_MANIFEST_DIR/nonMinifiedRelease/processNonMinifiedReleaseMainManifest/AndroidManifest.xml" ;;
+    benchmarkRelease) echo "$MERGED_MANIFEST_DIR/benchmarkRelease/processBenchmarkReleaseMainManifest/AndroidManifest.xml" ;;
     *)
       echo "Unknown variant '$1'." >&2
       exit 1
@@ -92,5 +94,13 @@ assert_config_value "phoneRelease" "DUST_APP_URL" '"https://app.dust.tt"'
 assert_config_value "phoneRelease" "LOCAL_AUTH_BYPASS_ENABLED" "false"
 assert_config_value "phoneRelease" "LOCAL_AUTH_BYPASS_BUTTON_ENABLED" "false"
 assert_manifest_not_contains "phoneRelease" 'android:host="local-preview"'
+
+for variant in nonMinifiedRelease benchmarkRelease; do
+  assert_config_value "$variant" "DUST_API_BASE_URL" '"https://dust.tt"'
+  assert_config_value "$variant" "DUST_APP_URL" '"https://app.dust.tt"'
+  assert_config_value "$variant" "LOCAL_AUTH_BYPASS_ENABLED" "true"
+  assert_config_value "$variant" "LOCAL_AUTH_BYPASS_BUTTON_ENABLED" "false"
+  assert_manifest_not_contains "$variant" 'android:host="local-preview"'
+done
 
 echo "Dust Android build variants use the expected URLs, auth-bypass flags, and local-preview deep links."
