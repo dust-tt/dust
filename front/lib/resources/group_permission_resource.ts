@@ -472,6 +472,32 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     });
   }
 
+  static async listForWorkspace(
+    auth: Authenticator
+  ): Promise<GroupPermissionResource[]> {
+    const rows = await GroupPermissionModel.findAll({
+      where: { workspaceId: auth.getNonNullableWorkspace().id },
+    });
+
+    return rows.map((row) => new this(GroupPermissionModel, row.get()));
+  }
+
+  static async deleteByModelIds(
+    auth: Authenticator,
+    ids: ModelId[]
+  ): Promise<void> {
+    if (ids.length === 0) {
+      return;
+    }
+
+    await GroupPermissionModel.destroy({
+      where: {
+        id: ids,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+  }
+
   // Workspace-scrub hook: drop every grant for the workspace. Must run before groups and the
   // workspace row are torn down, since both FKs are ON DELETE RESTRICT.
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {

@@ -44,6 +44,7 @@ import logger from "@app/logger/logger";
 import { MAX_WORKSPACES_TO_DOWNGRADE_PER_RUN } from "@app/temporal/scrub_workspace/config";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import chunk from "lodash/chunk";
 import groupBy from "lodash/groupBy";
@@ -144,7 +145,6 @@ export async function scrubWorkspaceData({
   await deleteSandboxEnvVars(auth);
   await deleteDatasources(auth);
   await deleteSpaces(auth);
-  await rebuildRemainingSpacePermissions(auth);
   await cleanupCustomerio(auth);
   await disableWorkOSSSOAndSCIM(renderLightWorkspaceType({ workspace }), {
     disableSSO: true,
@@ -190,8 +190,49 @@ export async function pauseAllTriggers({
   }
 }
 
+// The scrub leaves the workspace itself alive, so it keeps the spaces the workspace cannot work
+// without and removes everything its users created.
+function isKeptByScrub(space: SpaceResource): boolean {
+  switch (space.kind) {
+    case "system":
+    case "global":
+    case "conversations":
+      return true;
+    case "regular":
+    case "project":
+      return false;
+    default:
+      assertNever(space.kind);
+  }
+}
+
+async function listAllSpaces(auth: Authenticator) {
+  return SpaceResource.listWorkspaceSpaces(auth, {
+    includeConversationsSpace: true,
+    includeProjectSpaces: true,
+  });
+}
+
 async function deleteGroupPermissions(auth: Authenticator) {
-  await GroupPermissionResource.deleteAllForWorkspace(auth);
+  // The spaces the scrub keeps keep their grants: wiping them would leave the workspace with
+  // spaces nobody can reach.
+  const keptSpaceModelIds = new Set(
+    (await listAllSpaces(auth)).filter(isKeptByScrub).map((space) => space.id)
+  );
+
+  const permissions = await GroupPermissionResource.listForWorkspace(auth);
+  const permissionsToDelete = permissions.filter(
+    (permission) =>
+      !(
+        permission.resourceType === "space" &&
+        keptSpaceModelIds.has(permission.resourceId)
+      )
+  );
+
+  await GroupPermissionResource.deleteByModelIds(
+    auth,
+    permissionsToDelete.map((permission) => permission.id)
+  );
 }
 
 async function deleteTakeaways(auth: Authenticator) {
@@ -274,17 +315,11 @@ async function deleteSandboxEnvVars(auth: Authenticator) {
 }
 
 async function deleteDatasources(auth: Authenticator) {
-  const globalAndSystemSpaces = await SpaceResource.listWorkspaceDefaultSpaces(
-    auth,
-    { includeConversationsSpace: true }
-  );
+  // Retrieve and delete all data sources associated with the spaces the scrub keeps. The others
+  // will be deleted when deleting their space.
+  const keptSpaces = (await listAllSpaces(auth)).filter(isKeptByScrub);
 
-  // Retrieve and delete all data sources associated with the system and global spaces.
-  // Others will be deleted when deleting the spaces.
-  const dataSources = await DataSourceResource.listBySpaces(
-    auth,
-    globalAndSystemSpaces
-  );
+  const dataSources = await DataSourceResource.listBySpaces(auth, keptSpaces);
 
   for (const ds of dataSources) {
     // Perform a soft delete and initiate a workflow for permanent deletion of the data source.
@@ -297,35 +332,14 @@ async function deleteDatasources(auth: Authenticator) {
   }
 }
 
-// Remove all user-created spaces and their associated groups,
-// preserving only the system and global spaces.
+// Remove all user-created spaces and their associated groups, preserving the ones the scrub keeps.
 async function deleteSpaces(auth: Authenticator) {
-  const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
-    includeProjectSpaces: true,
-  });
-
-  // Filter out system and global spaces.
-  const filteredSpaces = spaces.filter(
-    (space) => !space.isGlobal() && !space.isSystem()
+  const spacesToDelete = (await listAllSpaces(auth)).filter(
+    (space) => !isKeptByScrub(space)
   );
 
-  for (const space of filteredSpaces) {
+  for (const space of spacesToDelete) {
     await softDeleteSpaceAndLaunchScrubWorkflow(auth, space);
-  }
-}
-
-// The scrub wipes every grant of the workspace up-front (`deleteGroupPermissions`) so the spaces it
-// removes can be torn down, which also leaves the spaces it keeps without any. Re-derive the grants
-// of whatever is still live once the deletions are done — the system and global spaces, plus the
-// conversations space, which the scrub does not delete.
-async function rebuildRemainingSpacePermissions(auth: Authenticator) {
-  const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
-    includeConversationsSpace: true,
-    includeProjectSpaces: true,
-  });
-
-  for (const space of spaces) {
-    await space.writeGroupPermissions(auth);
   }
 }
 
