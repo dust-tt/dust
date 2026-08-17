@@ -21,7 +21,7 @@ app.post(
   validate("json", AutomationTriggersBodySchema),
   async (ctx): HandlerResult<GetAutomationTriggersResponse> => {
     const auth = ctx.get("auth");
-    const { limit, offset, ...periodQuery } = ctx.req.valid("json");
+    const { limit, offset, filter, ...periodQuery } = ctx.req.valid("json");
 
     const period = await resolveConsumptionPeriod(
       auth,
@@ -32,6 +32,7 @@ app.post(
       period,
       limit,
       offset,
+      filter,
     });
     if (result.isErr()) {
       logger.error(

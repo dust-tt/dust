@@ -9,6 +9,7 @@ import {
 } from "@app/components/workspace/analytics/creditsTableCells";
 import { useAutomationsTriggers } from "@app/hooks/useAutomationsTriggers";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type { AutomationTriggersFilter } from "@app/lib/api/analytics/automations/schema";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import { useUpdateTriggerStatus } from "@app/lib/swr/agent_triggers";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
@@ -292,11 +293,13 @@ function buildColumns({
 interface AutomationsTriggersTableProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
+  filter?: AutomationTriggersFilter;
 }
 
 export function AutomationsTriggersTable({
   workspaceId,
   period,
+  filter,
 }: AutomationsTriggersTableProps) {
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -314,6 +317,7 @@ export function AutomationsTriggersTable({
   } = useAutomationsTriggers({
     workspaceId,
     period,
+    filter,
     limit: pagination.pageSize,
     offset: pagination.pageIndex * pagination.pageSize,
   });

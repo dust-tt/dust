@@ -24,6 +24,7 @@ import {
 import type {
   ScheduleConfig,
   TriggerExecutionMode,
+  TriggerKind,
   TriggerStatus,
   TriggerType,
   WebhookConfig,
@@ -276,6 +277,15 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     ]);
 
     return { enabled, total };
+  }
+
+  static listByWorkspaceAndKinds(
+    auth: Authenticator,
+    kinds: TriggerKind[]
+  ): Promise<TriggerResource[]> {
+    return this.baseFetch(auth, {
+      where: { kind: { [Op.in]: kinds } },
+    });
   }
 
   static async listBySpace(
