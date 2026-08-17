@@ -2,21 +2,14 @@ import { useAutomationsTriggerBreakdown } from "@app/hooks/useAutomationsTrigger
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import { formatCredits } from "@app/lib/client/credits";
-import { LoadingBlock, ProgressBar } from "@dust-tt/sparkle";
+import { LoadingBlock, Tooltip } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
-// A trigger at 2x its comparison's median fills the bar; further outliers
-// (a trigger running 24x more than most) still just cap at 100%.
-const RATIO_BAR_SCALE = 2;
+const CAPTION_TOOLTIP_LABEL =
+  "Compared to the median across all triggers for this period.";
+
 const RATIO_MORE_THRESHOLD = 1.5;
 const RATIO_LESS_THRESHOLD = 1 / RATIO_MORE_THRESHOLD;
-
-function ratioPercentage(value: number, median: number): number {
-  if (median <= 0) {
-    return 0;
-  }
-  return Math.round(Math.min(100, (value / median / RATIO_BAR_SCALE) * 100));
-}
 
 function ratioCaption(value: number, median: number): string {
   if (median <= 0) {
@@ -35,23 +28,23 @@ function ratioCaption(value: number, median: number): string {
 function StatBlock({
   label,
   primaryText,
-  percentage,
   caption,
 }: {
   label: string;
   primaryText: ReactNode;
-  percentage: number;
   caption: string;
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-2">
       <h4 className="text-xs font-semibold text-muted-foreground">{label}</h4>
-      <div className="flex flex-col gap-1">
-        <div className="truncate text-xs">{primaryText}</div>
-        <ProgressBar className="w-full" percentage={percentage} />
-        <span className="truncate text-xs text-muted-foreground">
-          {caption}
-        </span>
+      <div className="flex min-w-0 items-baseline gap-2 text-xs">
+        <div className="truncate">{primaryText}</div>
+        <Tooltip
+          trigger={
+            <span className="truncate text-muted-foreground">{caption}</span>
+          }
+          label={CAPTION_TOOLTIP_LABEL}
+        />
       </div>
     </div>
   );
@@ -75,9 +68,8 @@ function CreditDestinationBlock({
         <h4 className="text-xs font-semibold text-muted-foreground">
           Where the credits go
         </h4>
-        <div className="flex flex-col gap-1">
+        <div className="flex items-baseline gap-2">
           <LoadingBlock className="h-4 w-24" />
-          <LoadingBlock className="h-1.5 w-full rounded-full" />
           <LoadingBlock className="h-3 w-20" />
         </div>
       </div>
@@ -109,7 +101,6 @@ function CreditDestinationBlock({
           {creditDestination.name}
         </span>
       }
-      percentage={percentage}
       caption={`${percentage}% of its credits`}
     />
   );
@@ -145,7 +136,6 @@ export function AutomationsTriggerBreakdown({
             <span className="text-muted-foreground">times</span>
           </>
         }
-        percentage={ratioPercentage(trigger.runCount, medianRunCount)}
         caption={ratioCaption(trigger.runCount, medianRunCount)}
       />
       <StatBlock
@@ -158,7 +148,6 @@ export function AutomationsTriggerBreakdown({
             <span className="text-muted-foreground">credits</span>
           </>
         }
-        percentage={ratioPercentage(costPerRun, medianCostPerRun)}
         caption={ratioCaption(costPerRun, medianCostPerRun)}
       />
       <CreditDestinationBlock

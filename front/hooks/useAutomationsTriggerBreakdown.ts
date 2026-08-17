@@ -1,5 +1,6 @@
 import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_period";
 import type { GetAutomationTriggerBreakdownResponse } from "@app/lib/api/analytics/automations/breakdown";
 import type { AutomationTriggerBreakdownBody } from "@app/lib/api/analytics/automations/schema";
 
