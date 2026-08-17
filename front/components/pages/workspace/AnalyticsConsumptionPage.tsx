@@ -8,6 +8,7 @@ import { UsageFilterSummary } from "@app/components/workspace/analytics/UsageFil
 import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
 import {
   addUsageFilterFromAttributionRow,
+  removeUsageFilterFromAttributionRow,
   setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
 } from "@app/components/workspace/analytics/usageFilter";
@@ -128,6 +129,15 @@ export function AnalyticsConsumptionPage() {
           onAddFilter={(selectedRow) => {
             setFilter((current) =>
               addUsageFilterFromAttributionRow(current, dimension, selectedRow)
+            );
+          }}
+          onRemoveFilter={(selectedRow) => {
+            setFilter((current) =>
+              removeUsageFilterFromAttributionRow(
+                current,
+                dimension,
+                selectedRow
+              )
             );
           }}
           dimension={dimension}

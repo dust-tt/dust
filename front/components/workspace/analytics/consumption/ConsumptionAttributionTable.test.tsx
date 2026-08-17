@@ -64,6 +64,7 @@ function ControlledAttributionTable({
         setDimension(nextDimension);
       }}
       onAddFilter={vi.fn()}
+      onRemoveFilter={vi.fn()}
       onViewAll={vi.fn()}
     />
   );
@@ -97,6 +98,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -154,6 +156,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -180,6 +183,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -205,6 +209,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -300,6 +305,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -322,6 +328,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="model"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -368,6 +375,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -395,6 +403,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -428,6 +437,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -441,6 +451,80 @@ describe("ConsumptionAttributionTable", () => {
 
       expect(animatedAncestor).toHaveStyle({ opacity: "1" });
     });
+  });
+
+  it("toggles the filter button between add and remove", () => {
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [
+        {
+          id: "agent-id",
+          name: "Research agent",
+          pictureUrl: null,
+          description: null,
+          icon: null,
+          modelId: null,
+          modelDisplayName: null,
+          credits: 100,
+          avgCredits: 10,
+        },
+      ],
+      totalCredits: 100,
+      totalCount: 1,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+
+    const onAddFilter = vi.fn();
+    const onRemoveFilter = vi.fn();
+
+    const { rerender } = render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="agent"
+        onDimensionChange={vi.fn()}
+        onAddFilter={onAddFilter}
+        onRemoveFilter={onRemoveFilter}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    const addButton = screen.getByRole("button", {
+      name: "Add Research agent to filters",
+    });
+    fireEvent.click(addButton);
+    expect(onAddFilter).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "agent-id" })
+    );
+    expect(onRemoveFilter).not.toHaveBeenCalled();
+
+    rerender(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="agent"
+        filter={{ agents: ["agent-id"] }}
+        onDimensionChange={vi.fn()}
+        onAddFilter={onAddFilter}
+        onRemoveFilter={onRemoveFilter}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    const removeButton = screen.getByRole("button", {
+      name: "Remove Research agent from filters",
+    });
+    expect(
+      screen.queryByRole("button", { name: "Add Research agent to filters" })
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(removeButton);
+    expect(onRemoveFilter).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "agent-id" })
+    );
+    expect(onAddFilter).toHaveBeenCalledTimes(1);
   });
 
   it("renders the skill identity and description without a model", () => {
@@ -470,6 +554,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="skill"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );

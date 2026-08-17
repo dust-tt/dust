@@ -1,6 +1,7 @@
 import {
   addUsageFilterFromAttributionRow,
   getUsageFilterSummaries,
+  removeUsageFilterFromAttributionRow,
   setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
 } from "@app/components/workspace/analytics/usageFilter";
@@ -231,5 +232,91 @@ describe("addUsageFilterFromAttributionRow", () => {
     const twice = addUsageFilterFromAttributionRow(once, "user", row);
 
     expect(twice).toEqual(once);
+  });
+});
+
+describe("removeUsageFilterFromAttributionRow", () => {
+  const row = {
+    id: "selected-member",
+    name: "Ada",
+    pictureUrl: null,
+  };
+
+  it.each<{ dimension: ConsumptionScopeDimension }>([
+    { dimension: "agent" },
+    { dimension: "user" },
+    { dimension: "group" },
+    { dimension: "model" },
+    { dimension: "tool" },
+    { dimension: "skill" },
+    { dimension: "source" },
+    { dimension: "api_key" },
+  ])("removes a previously added $dimension row, clearing the category", ({
+    dimension,
+  }) => {
+    const added = addUsageFilterFromAttributionRow({}, dimension, row);
+
+    expect(toConsumptionScopeFilter(added)).not.toEqual({});
+
+    const removed = removeUsageFilterFromAttributionRow(added, dimension, row);
+
+    expect(toConsumptionScopeFilter(removed)).toEqual({});
+  });
+
+  it("removes only the targeted row, preserving other selections", () => {
+    const filter = addUsageFilterFromAttributionRow(
+      {
+        member: [
+          {
+            id: "other-member",
+            name: "Grace",
+            kind: "member",
+            image: null,
+            disabled: false,
+          },
+        ],
+      },
+      "user",
+      row
+    );
+
+    const removed = removeUsageFilterFromAttributionRow(filter, "user", row);
+
+    expect(removed.member?.map(({ id }) => id)).toEqual(["other-member"]);
+  });
+
+  it("preserves other categories when clearing the targeted one", () => {
+    const filter = addUsageFilterFromAttributionRow(
+      {
+        tool: [
+          {
+            id: "tool-1",
+            name: "Web search",
+            kind: "tool",
+            icon: null,
+            disabled: false,
+          },
+        ],
+      },
+      "user",
+      row
+    );
+
+    const removed = removeUsageFilterFromAttributionRow(filter, "user", row);
+
+    expect(removed.member).toBeUndefined();
+    expect(removed.tool?.map(({ id }) => id)).toEqual(["tool-1"]);
+  });
+
+  it("is a no-op when the row is not selected", () => {
+    const filter = addUsageFilterFromAttributionRow({}, "user", {
+      id: "other-member",
+      name: "Grace",
+      pictureUrl: null,
+    });
+
+    const removed = removeUsageFilterFromAttributionRow(filter, "user", row);
+
+    expect(removed).toEqual(filter);
   });
 });

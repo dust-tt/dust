@@ -26,6 +26,7 @@ import type { ConsumptionDimension } from "./consumptionDimensions";
 export type AttributionRowData = ConsumptionTopRow & {
   onClick: () => void;
   onAddFilter: () => void;
+  onRemoveFilter: () => void;
 };
 
 const ATTRIBUTION_SKELETON_ROW_COUNT = 10;
