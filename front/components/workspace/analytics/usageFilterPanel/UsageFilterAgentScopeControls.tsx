@@ -17,7 +17,7 @@ export function UsageFilterAgentScopeControls({
     <>
       <NavigationListLabel
         label="Scopes"
-        className="bg-transparent font-medium pt-2 pb-0"
+        className="bg-transparent px-0 pt-2 pb-0 font-medium"
       />
       <div className="flex items-center gap-1">
         {scopes.map((scope) => (

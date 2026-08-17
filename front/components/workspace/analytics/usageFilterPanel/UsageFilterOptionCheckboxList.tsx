@@ -20,7 +20,7 @@ function UsageFilterOptionListSkeleton() {
   return (
     <div aria-hidden="true" className="flex flex-col gap-0.5">
       {["w-24", "w-32", "w-20", "w-36", "w-28", "w-24"].map((width, index) => (
-        <div key={index} className="flex items-center gap-2 py-1 pl-1 pr-2">
+        <div key={index} className="flex items-center gap-2 py-1">
           <LoadingBlock className="h-4 w-4 shrink-0 rounded" />
           <LoadingBlock className="h-4 w-4 shrink-0 rounded" />
           <LoadingBlock className={`h-3 ${width}`} />
@@ -42,6 +42,7 @@ interface UsageFilterOptionCheckboxListProps {
   isLoadingMore?: boolean;
   isLoading?: boolean;
   isUpdating?: boolean;
+  scrollContainer: HTMLDivElement | null;
 }
 
 export function UsageFilterOptionCheckboxList({
@@ -56,12 +57,8 @@ export function UsageFilterOptionCheckboxList({
   isLoadingMore = false,
   isLoading = false,
   isUpdating = false,
+  scrollContainer,
 }: UsageFilterOptionCheckboxListProps) {
-  // Tracked as state so InfiniteScroll re-renders once the node
-  // mounts and can attach its scroll listener directly to it.
-  const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
-    null
-  );
   // Reset on category/search/scope change by remounting this component with
   // a fresh `key` from the parent instead of tracking a reset key here.
   const [visibleCount, setVisibleCount] = useState(FILTER_PICKER_PAGE_SIZE);
@@ -73,7 +70,7 @@ export function UsageFilterOptionCheckboxList({
     <>
       <NavigationListLabel
         label={`All ${categoryLabel}`}
-        className="bg-transparent font-medium"
+        className="bg-transparent px-0 font-medium"
         action={
           <div className="flex items-center gap-2">
             {isUpdating && (
@@ -90,9 +87,8 @@ export function UsageFilterOptionCheckboxList({
         }
       />
       <div
-        ref={setScrollContainer}
         aria-busy={isLoading || isUpdating}
-        className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto"
+        className="flex flex-col gap-0.5"
       >
         {isLoading && options.length === 0 ? (
           <UsageFilterOptionListSkeleton />
@@ -106,10 +102,7 @@ export function UsageFilterOptionCheckboxList({
                 ? `${checkboxId}-availability`
                 : undefined;
               return (
-                <div
-                  key={option.id}
-                  className="flex items-center gap-2 py-1 pl-1 pr-2"
-                >
+                <div key={option.id} className="flex items-center gap-2 py-1">
                   <Checkbox
                     id={checkboxId}
                     checked={checked}
