@@ -1,3 +1,4 @@
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { z } from "zod";
 
 export type CronScheduleConfig = {
@@ -71,6 +72,7 @@ export type TriggerExecutionMode = "fair_use" | "programmatic";
 export const TRIGGER_STATUSES = [
   "enabled",
   "disabled",
+  "disabled_by_admin",
   "relocating",
   "downgraded",
 ] as const;
@@ -78,6 +80,30 @@ export type TriggerStatus = (typeof TRIGGER_STATUSES)[number];
 
 export function isValidTriggerStatus(status: string): status is TriggerStatus {
   return (TRIGGER_STATUSES as readonly string[]).includes(status);
+}
+
+// Who may set or clear a status: the trigger's editor, only an admin, or only
+// Dust's bulk jobs (workspace relocation, plan downgrade).
+export type TriggerStatusOwner = "editor" | "admin" | "system";
+
+export function getTriggerStatusOwner(
+  status: TriggerStatus
+): TriggerStatusOwner {
+  switch (status) {
+    case "enabled":
+    case "disabled":
+      return "editor";
+    case "disabled_by_admin":
+      return "admin";
+    case "relocating":
+    case "downgraded":
+      return "system";
+    default:
+      // Called from client components: a status shipped server-first must not
+      // crash old clients. Unknown statuses are treated as locked.
+      assertNeverAndIgnore(status);
+      return "system";
+  }
 }
 
 export const WEBHOOK_REQUEST_TRIGGER_STATUSES = [
