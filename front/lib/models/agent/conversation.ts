@@ -26,6 +26,7 @@ import type { ModelResolutionMethodType } from "@app/types/assistant/models/type
 import { MODEL_RESOLUTION_METHODS } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { Op } from "sequelize";
 
 export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -39,6 +40,7 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare triggerId: ForeignKey<TriggerModel["id"]> | null;
   declare hasError: CreationOptional<boolean>;
   declare metadata: CreationOptional<ConversationMetadata>;
+  declare clientRequestId: string | null;
 
   declare requestedSpaceIds: number[];
 
@@ -98,6 +100,11 @@ ConversationModel.init(
       allowNull: false,
       defaultValue: {},
     },
+    clientRequestId: {
+      type: DataTypes.STRING(128),
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     modelName: "conversation",
@@ -116,6 +123,17 @@ ConversationModel.init(
       {
         fields: ["workspaceId", "createdAt"],
         name: "conversations_workspace_id_created_at_idx",
+      },
+      {
+        unique: true,
+        fields: ["workspaceId", "clientRequestId"],
+        where: {
+          clientRequestId: {
+            [Op.ne]: null,
+          },
+        },
+        name: "conversations_workspace_client_request_id",
+        concurrently: true,
       },
     ],
     sequelize: frontSequelize,
@@ -820,6 +838,7 @@ export class MessageModel extends WorkspaceAwareModel<MessageModel> {
   declare version: CreationOptional<number>;
   declare rank: number;
   declare visibility: CreationOptional<MessageVisibility>;
+  declare clientRequestId: string | null;
 
   declare conversationId: ForeignKey<ConversationModel["id"]>;
 
@@ -868,6 +887,11 @@ MessageModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    clientRequestId: {
+      type: DataTypes.STRING(128),
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     modelName: "message",
@@ -911,6 +935,17 @@ MessageModel.init(
       },
       {
         fields: ["workspaceId", "conversationId", "sId"],
+      },
+      {
+        unique: true,
+        fields: ["workspaceId", "conversationId", "clientRequestId"],
+        where: {
+          clientRequestId: {
+            [Op.ne]: null,
+          },
+        },
+        name: "messages_workspace_conversation_client_request_id",
+        concurrently: true,
       },
       // Index for data retention workflow - optimizes GROUP BY with MAX(createdAt).
       {
