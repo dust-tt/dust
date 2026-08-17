@@ -4,13 +4,11 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
 import { SOURCE_ORIGIN_LABELS } from "@app/lib/api/analytics/source_labels";
-import { filterAgentsByRequestedSpaces } from "@app/lib/api/assistant/configuration/agent";
-import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
+import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import type { MCPServerViewDisplayMetadata } from "@app/lib/resources/mcp_server_view_resource";
@@ -23,7 +21,6 @@ import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
-import { Op } from "sequelize";
 
 export type ConsumptionFacetCatalogEntry = {
   value: string;
@@ -118,45 +115,6 @@ function toolFacetCatalogEntries(
   return [...new Map(entries.map((entry) => [entry.value, entry])).values()];
 }
 
-async function listAgentFacetCatalogEntries(
-  auth: Authenticator
-): Promise<ConsumptionFacetCatalogEntry[]> {
-  const isManager = auth.isManager();
-  const [workspaceAgents, globalAgents] = await Promise.all([
-    AgentConfigurationModel.findAll({
-      attributes: [
-        "sId",
-        "name",
-        "pictureUrl",
-        "scope",
-        ...(!isManager ? ["requestedSpaceIds"] : []),
-      ],
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        status: "active",
-        ...(!isManager
-          ? { scope: { [Op.in]: ["workspace", "published", "visible"] } }
-          : {}),
-      },
-    }),
-    getGlobalAgents(auth, undefined, "extra_light"),
-  ]);
-
-  const visibleWorkspaceAgents = isManager
-    ? workspaceAgents
-    : await filterAgentsByRequestedSpaces(auth, workspaceAgents);
-
-  return [
-    ...globalAgents.filter((agent) => agent.status === "active"),
-    ...visibleWorkspaceAgents,
-  ].map((agent) => ({
-    value: agent.sId,
-    label: agent.name,
-    pictureUrl: agent.pictureUrl,
-    scope: agent.scope,
-  }));
-}
-
 /** Lists current workspace entities that can be selected as consumption filters. */
 async function listConsumptionFacetCatalogWithoutTracing(
   auth: Authenticator,
@@ -181,7 +139,17 @@ async function listConsumptionFacetCatalogWithoutTracing(
         })
       ),
       traceFacetCatalogLoad("agents", "agent", requestedDimension, () =>
-        listAgentFacetCatalogEntries(auth)
+        getAgentConfigurationsForView({
+          auth,
+          agentsGetView: "analytics",
+          variant: "extra_light",
+          omitInstructions: true,
+          excludeAttributes: [
+            "description",
+            "instructionsHtml",
+            "responseFormat",
+          ],
+        })
       ),
       traceFacetCatalogLoad("models", "model", requestedDimension, async () => {
         const result = await getModelsForAuth(auth);
@@ -201,7 +169,12 @@ async function listConsumptionFacetCatalogWithoutTracing(
     ]);
 
   return {
-    agent: agents,
+    agent: agents.map((agent) => ({
+      value: agent.sId,
+      label: agent.name,
+      pictureUrl: agent.pictureUrl,
+      scope: agent.scope,
+    })),
     user: members.map((member) => ({
       value: member.sId,
       label: member.fullName,
