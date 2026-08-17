@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getNovuClient } from "@app/lib/notifications";
+import { FCM_DATA_ONLY_TRIGGER_OVERRIDES } from "@app/lib/notifications/mobile-push";
 import { triggerActivationNewConversationEmail } from "@app/lib/notifications/workflows/activation-new-conversation";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -189,6 +190,7 @@ const triggerProjectNewConversationNotifications = async (
           lastName: user.lastName ?? undefined,
         },
         payload,
+        overrides: FCM_DATA_ONLY_TRIGGER_OVERRIDES,
       })),
     });
 

@@ -32,6 +32,10 @@ export type PostUserMetadataResponseBody = {
   success: boolean;
 };
 
+export type MobileNotificationTokenResponseBody = {
+  success: true;
+};
+
 export type GetUserMetadataResponseBody = {
   metadata: UserMetadataType | null;
 };
