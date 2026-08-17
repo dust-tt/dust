@@ -8,7 +8,12 @@ import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { Clock, DataTable, Icon, Spinner } from "@dust-tt/sparkle";
+import {
+  Clock,
+  DataTable,
+  DataTableLoadingSkeleton,
+  Icon,
+} from "@dust-tt/sparkle";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import type { ComponentProps, Dispatch, SetStateAction } from "react";
 import { useState } from "react";
@@ -187,9 +192,7 @@ function TriggersTableBody({
 }: TriggersTableBodyProps) {
   if (isLoading) {
     return (
-      <div className="flex h-48 items-center justify-center">
-        <Spinner size="lg" />
-      </div>
+      <DataTableLoadingSkeleton showSelectionColumn={false} showTrailingCell />
     );
   }
 
@@ -204,7 +207,7 @@ function TriggersTableBody({
   if (triggers.length === 0) {
     return (
       <div className="text-sm text-muted-foreground">
-        This workspace has no trigger yet.
+        No automation ran over this period.
       </div>
     );
   }

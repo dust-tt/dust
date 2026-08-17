@@ -1,8 +1,10 @@
 import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import { normalizedConsumptionFilter } from "@app/lib/analytics/consumption_period";
+import {
+  DEFAULT_CONSUMPTION_PERIOD_DAYS,
+  normalizedConsumptionFilter,
+} from "@app/lib/analytics/consumption_period";
 import type { ConsumptionBody } from "@app/lib/api/analytics/consumption/schema";
-import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/api/analytics/consumption/schema";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type {
   ConsumptionBreakdownDimension,

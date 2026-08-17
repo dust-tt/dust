@@ -10,6 +10,8 @@ export const CONVERSATION_ID_FIELD = "conversation_id";
 
 export const TRIGGER_ID_FIELD = "trigger_id";
 
+export const CARDINALITY_PRECISION_THRESHOLD = 40_000;
+
 export const CONSUMPTION_SCOPE_DIMENSIONS = [
   "agent",
   "user",

@@ -5,6 +5,7 @@ import type {
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import {
   buildConsumptionScopeQuery,
+  CARDINALITY_PRECISION_THRESHOLD,
   CONVERSATION_ID_FIELD,
   CREDIT_MICRO_FIELD,
   TRIGGER_ID_FIELD,
@@ -21,8 +22,9 @@ import { microCreditsToCredits } from "@app/lib/credits/units";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
-import type { TriggerKind, TriggerType } from "@app/types/assistant/triggers";
-import { isWebhookTrigger } from "@app/types/assistant/triggers";
+import { normalizeWebhookIcon } from "@app/lib/webhook_source";
+import type { TriggerKind } from "@app/types/assistant/triggers";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -49,7 +51,8 @@ export type AutomationTriggerRow = {
 
 export type AutomationTriggers = {
   period: ConsumptionPeriod;
-  // Rows come from Postgres, so a trigger that never ran still counts.
+  // Triggers that consumed over the period, approximate past
+  // CARDINALITY_PRECISION_THRESHOLD.
   totalCount: number;
   triggers: AutomationTriggerRow[];
 };
@@ -58,6 +61,7 @@ export type GetAutomationTriggersResponse = AutomationTriggers;
 
 const CREDIT_AGG = "credit_micro";
 const RUNS_AGG = "runs";
+const TOTAL_COUNT_AGG = "total_count";
 
 type TriggerBucket = {
   key: string;
@@ -67,27 +71,34 @@ type TriggerBucket = {
 
 type TriggerAggs = {
   by_trigger?: estypes.AggregationsMultiBucketAggregateBase<TriggerBucket>;
+  [TOTAL_COUNT_AGG]?: estypes.AggregationsCardinalityAggregate;
 };
 
-type TriggerConsumption = {
+type RankedTrigger = {
+  triggerId: string;
   runCount: number;
   credits: number;
 };
 
-async function fetchTriggersConsumption(
+/**
+ * The period's triggers ranked by gross credits, highest first. Ranking and
+ * paging both happen in Elasticsearch, so neither grows with the number of
+ * triggers the workspace holds.
+ */
+async function fetchTriggersRanking(
   auth: Authenticator,
   {
     period,
-    triggerIds,
+    limit,
+    offset,
   }: {
     period: ConsumptionPeriod;
-    triggerIds: string[];
+    limit: number;
+    offset: number;
   }
-): Promise<Result<Map<string, TriggerConsumption>, ElasticsearchError>> {
-  if (triggerIds.length === 0) {
-    return new Ok(new Map());
-  }
-
+): Promise<
+  Result<{ ranking: RankedTrigger[]; totalCount: number }, ElasticsearchError>
+> {
   const query = buildConsumptionScopeQuery({
     auth,
     startDate: period.startDate,
@@ -99,13 +110,19 @@ async function fetchTriggersConsumption(
       by_trigger: {
         terms: {
           field: TRIGGER_ID_FIELD,
-          include: triggerIds,
-          size: triggerIds.length,
+          size: offset + limit,
+          order: { [CREDIT_AGG]: "desc" },
         },
         aggs: {
           [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
           // One trigger run is one conversation.
           [RUNS_AGG]: { cardinality: { field: CONVERSATION_ID_FIELD } },
+        },
+      },
+      [TOTAL_COUNT_AGG]: {
+        cardinality: {
+          field: TRIGGER_ID_FIELD,
+          precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
         },
       },
     },
@@ -119,51 +136,44 @@ async function fetchTriggersConsumption(
     result.value.aggregations?.by_trigger?.buckets
   );
 
-  return new Ok(
-    new Map(
-      buckets.map((bucket) => [
-        String(bucket.key),
-        {
-          runCount: Math.round(bucket[RUNS_AGG]?.value ?? 0),
-          credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
-        },
-      ])
-    )
-  );
+  return new Ok({
+    ranking: buckets.slice(offset, offset + limit).map((bucket) => ({
+      triggerId: String(bucket.key),
+      runCount: Math.round(bucket[RUNS_AGG]?.value ?? 0),
+      credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
+    })),
+    totalCount: Math.round(
+      result.value.aggregations?.[TOTAL_COUNT_AGG]?.value ?? 0
+    ),
+  });
 }
+
+type WebhookSourceLabel = {
+  name: string;
+  icon: InternalAllowedIconType | CustomResourceIconType;
+};
 
 async function resolveWebhookSources(
   auth: Authenticator,
-  triggers: TriggerType[]
-): Promise<
-  Map<
-    string,
-    { name: string; icon: InternalAllowedIconType | CustomResourceIconType }
-  >
-> {
-  const webhookSourceViewIds = [
-    ...new Set(
-      removeNulls(
-        triggers.map((trigger) =>
-          isWebhookTrigger(trigger) ? trigger.webhookSourceViewId : null
-        )
-      )
-    ),
+  triggers: TriggerResource[]
+): Promise<Map<ModelId, WebhookSourceLabel>> {
+  const webhookSourceViewModelIds = [
+    ...new Set(removeNulls(triggers.map((t) => t.webhookSourceViewId))),
   ];
-  if (webhookSourceViewIds.length === 0) {
+  if (webhookSourceViewModelIds.length === 0) {
     return new Map();
   }
 
-  const views = await WebhookSourcesViewResource.fetchByIds(
+  const views = await WebhookSourcesViewResource.fetchByModelIds(
     auth,
-    webhookSourceViewIds
+    webhookSourceViewModelIds
   );
 
   return new Map(
-    views.map((view) => {
-      const { sId, customName, icon } = view.toJSON();
-      return [sId, { name: customName, icon }];
-    })
+    views.map((view) => [
+      view.id,
+      { name: view.name, icon: normalizeWebhookIcon(view.icon) },
+    ])
   );
 }
 
@@ -179,49 +189,55 @@ export async function fetchAutomationTriggers(
     offset: number;
   }
 ): Promise<Result<AutomationTriggers, ElasticsearchError>> {
-  const triggers = (await TriggerResource.listByWorkspace(auth)).map(
-    (trigger) => trigger.toJSON()
+  const rankingResult = await fetchTriggersRanking(auth, {
+    period,
+    limit,
+    offset,
+  });
+  if (rankingResult.isErr()) {
+    return rankingResult;
+  }
+  const { ranking, totalCount } = rankingResult.value;
+
+  const triggers = await TriggerResource.fetchByIds(
+    auth,
+    ranking.map((ranked) => ranked.triggerId)
+  );
+  const triggersById = new Map(
+    triggers.map((trigger) => [trigger.sId, trigger])
   );
 
-  const consumptionResult = await fetchTriggersConsumption(auth, {
-    period,
-    triggerIds: triggers.map((trigger) => trigger.sId),
-  });
-  if (consumptionResult.isErr()) {
-    return consumptionResult;
-  }
-  const consumption = consumptionResult.value;
-
-  const creditsFor = (triggerId: string) =>
-    consumption.get(triggerId)?.credits ?? 0;
-  const page = [...triggers]
-    .sort(
-      (a, b) =>
-        creditsFor(b.sId) - creditsFor(a.sId) || a.name.localeCompare(b.name)
-    )
-    .slice(offset, offset + limit);
+  // A trigger deleted since it ran keeps its consumption in Elasticsearch, with
+  // nothing left to name it.
+  const page = removeNulls(
+    ranking.map((ranked) => {
+      const trigger = triggersById.get(ranked.triggerId);
+      return trigger ? { ...ranked, trigger } : null;
+    })
+  );
 
   const [agentLabels, editors, webhookSources] = await Promise.all([
     resolveAnalyticsAgentLabels(auth, [
-      ...new Set(page.map((trigger) => trigger.agentConfigurationId)),
+      ...new Set(page.map(({ trigger }) => trigger.agentConfigurationId)),
     ]),
     UserResource.fetchByModelIds([
-      ...new Set(page.map((trigger) => trigger.editor)),
+      ...new Set(page.map(({ trigger }) => trigger.editor)),
     ]),
-    resolveWebhookSources(auth, page),
+    resolveWebhookSources(
+      auth,
+      page.map(({ trigger }) => trigger)
+    ),
   ]);
   const editorsByModelId = new Map(
     editors.map((editor) => [editor.id, editor])
   );
 
-  const rows = page.map((trigger) => {
-    const metrics = consumption.get(trigger.sId);
+  const rows = page.map(({ trigger, runCount, credits }) => {
     const agentLabel = agentLabels.get(trigger.agentConfigurationId);
     const editor = editorsByModelId.get(trigger.editor);
-    const webhookSource =
-      isWebhookTrigger(trigger) && trigger.webhookSourceViewId
-        ? webhookSources.get(trigger.webhookSourceViewId)
-        : undefined;
+    const webhookSource = trigger.webhookSourceViewId
+      ? webhookSources.get(trigger.webhookSourceViewId)
+      : undefined;
 
     return {
       triggerId: trigger.sId,
@@ -238,14 +254,14 @@ export async function fetchAutomationTriggers(
       },
       webhookSourceName: webhookSource?.name ?? null,
       webhookIcon: webhookSource?.icon ?? null,
-      runCount: metrics?.runCount ?? 0,
-      credits: metrics?.credits ?? 0,
+      runCount,
+      credits,
     };
   });
 
   return new Ok({
     period,
-    totalCount: triggers.length,
+    totalCount,
     triggers: rows,
   });
 }

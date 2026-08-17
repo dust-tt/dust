@@ -1,9 +1,11 @@
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import { normalizedConsumptionFilter } from "@app/lib/analytics/consumption_period";
+import {
+  DEFAULT_CONSUMPTION_PERIOD_DAYS,
+  normalizedConsumptionFilter,
+} from "@app/lib/analytics/consumption_period";
 import type { ConsumptionTopBody } from "@app/lib/api/analytics/consumption/schema";
-import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/api/analytics/consumption/schema";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/consumption/top_agents";
 import type { GetConsumptionTopApiKeysResponse } from "@app/lib/api/analytics/consumption/top_api_keys";

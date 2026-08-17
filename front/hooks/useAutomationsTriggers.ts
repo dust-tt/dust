@@ -1,11 +1,11 @@
 import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_period";
 import type { AutomationTriggersBody } from "@app/lib/api/analytics/automations/schema";
 import type {
   AutomationTriggerRow,
   GetAutomationTriggersResponse,
 } from "@app/lib/api/analytics/automations/triggers";
-import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/api/analytics/consumption/schema";
 import { emptyArray } from "@app/lib/swr/swr";
 
 export function useAutomationsTriggers({
