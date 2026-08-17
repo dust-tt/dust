@@ -44,7 +44,9 @@ function ChartFallback() {
     <div aria-hidden="true" className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <LoadingBlock className="h-5 w-28" />
-        <LoadingBlock className="h-[42px] w-40 rounded-2xl" />
+        <div className="rounded-2xl border border-border-dark bg-background p-1">
+          <LoadingBlock className="h-8 w-36 rounded-xl" />
+        </div>
       </div>
       <div className="rounded-lg border border-border bg-background p-4">
         <div className="border-b border-border pb-3">
