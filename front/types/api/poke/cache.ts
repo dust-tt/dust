@@ -24,3 +24,19 @@ export type DeleteAllPokeCacheResponseBody = {
   pattern: string;
   deletedCount: number;
 };
+
+export type PokeCacheResourceDescriptor = {
+  id: string;
+  label: string;
+  params: Array<{
+    key: string;
+    label: string;
+    type: "string" | "number";
+    placeholder: string;
+  }>;
+  keyPattern: string | null;
+};
+
+export type GetPokeCacheCatalogResponseBody = {
+  resources: PokeCacheResourceDescriptor[];
+};

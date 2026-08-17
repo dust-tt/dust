@@ -6,6 +6,7 @@ import {
 import { storeStripeCheckoutSessionStatus } from "@app/lib/api/stripe/checkout_status";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { getMembers } from "@app/lib/api/workspace";
+import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { Authenticator } from "@app/lib/auth";
 import {
   deleteCreditFromVoidedInvoice,
@@ -50,7 +51,6 @@ import {
   refundYearlyMigrationProration,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -640,9 +640,7 @@ async function handleStripeCheckoutCompleted({
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const workspaceSeats = await MembershipResource.countActiveSeatsInWorkspace(
-      workspace.sId
-    );
+    const workspaceSeats = await countActiveSeatsForWorkspace(workspace.sId);
     await ServerSideTracking.trackSubscriptionCreated({
       workspace: renderLightWorkspaceType({ workspace }),
       planCode,

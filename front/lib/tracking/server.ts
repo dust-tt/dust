@@ -1,5 +1,5 @@
+import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { PostHogServerSideTracking } from "@app/lib/tracking/posthog/server";
@@ -68,9 +68,7 @@ export class ServerSideTracking {
       const seatsByWorkspaceId = keyBy(
         await Promise.all(
           user.workspaces.map(async (workspace) => {
-            const seats = await MembershipResource.countActiveSeatsInWorkspace(
-              workspace.sId
-            );
+            const seats = await countActiveSeatsForWorkspace(workspace.sId);
             return { sId: workspace.sId, seats };
           })
         ),
