@@ -38,7 +38,7 @@ impl Filesystem for DustFuse {
                     Ok(())
                 }
             });
-            reply_empty(result, reply);
+            reply_ok_or_error(result, reply);
         });
     }
 
@@ -203,7 +203,7 @@ impl Filesystem for DustFuse {
                 reply.error(Errno::EAGAIN);
                 return;
             }
-            reply_empty(filesystem.unlink_node(parent, &name), reply);
+            reply_ok_or_error(filesystem.unlink_node(parent, &name), reply);
         });
     }
 
@@ -221,7 +221,7 @@ impl Filesystem for DustFuse {
                 reply.error(Errno::EAGAIN);
                 return;
             }
-            reply_empty(filesystem.remove_directory_node(parent, &name), reply);
+            reply_ok_or_error(filesystem.remove_directory_node(parent, &name), reply);
         });
     }
 
@@ -259,7 +259,7 @@ impl Filesystem for DustFuse {
                 reply.error(Errno::EAGAIN);
                 return;
             }
-            reply_empty(
+            reply_ok_or_error(
                 filesystem.rename_node(parent, &name, new_parent, &new_name),
                 reply,
             );
@@ -348,7 +348,7 @@ impl Filesystem for DustFuse {
                 return;
             }
             debug!(handle = handle.0, "flushing filesystem handle");
-            reply_empty(filesystem.commit_handle(handle.0, false), reply);
+            reply_ok_or_error(filesystem.commit_handle(handle.0, false), reply);
         });
     }
 
@@ -368,7 +368,7 @@ impl Filesystem for DustFuse {
                 reply.error(Errno::EIO);
                 return;
             }
-            reply_empty(filesystem.release_handle(handle.0), reply);
+            reply_ok_or_error(filesystem.release_handle(handle.0), reply);
         });
     }
 
@@ -386,7 +386,7 @@ impl Filesystem for DustFuse {
                 reply.error(Errno::EAGAIN);
                 return;
             }
-            reply_empty(filesystem.sync_handle(handle.0, data_only), reply);
+            reply_ok_or_error(filesystem.sync_handle(handle.0, data_only), reply);
         });
     }
 
@@ -424,7 +424,7 @@ impl Filesystem for DustFuse {
         _flags: OpenFlags,
         reply: ReplyEmpty,
     ) {
-        reply_empty(self.handles.remove_directory(handle.0), reply);
+        reply_ok_or_error(self.handles.remove_directory(handle.0), reply);
     }
 
     fn statfs(&self, _request: &Request, _inode: INodeNo, reply: ReplyStatfs) {

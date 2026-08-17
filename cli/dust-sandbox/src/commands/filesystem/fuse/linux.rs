@@ -143,7 +143,7 @@ pub(super) fn to_errno(error: io::Error) -> Errno {
     Errno::from_i32(error.raw_os_error().unwrap_or(libc::EIO))
 }
 
-pub(super) fn reply_empty(result: io::Result<()>, reply: ReplyEmpty) {
+pub(super) fn reply_ok_or_error(result: io::Result<()>, reply: ReplyEmpty) {
     match result {
         Ok(()) => reply.ok(),
         Err(error) => reply.error(to_errno(error)),
