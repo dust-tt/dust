@@ -380,7 +380,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       // then the pre-authorized bypass (spacesById is only built for it).
       const podAppShareGrantsFunction =
         podAppShareSpace?.id === blob.spaceId &&
-        appPrefixFromSlug(blob.slug) === podAppShare?.appPrefix;
+        appPrefixFromSlug(blob.slug) === podAppShare?.appName;
       const space =
         accessibleSpacesById.get(blob.spaceId) ??
         (podAppShareGrantsFunction ? podAppShareSpace : undefined) ??
@@ -532,7 +532,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
     return sandboxFunctions.filter(
       (sandboxFunction) =>
-        appPrefixFromSlug(sandboxFunction.slug) === share.appPrefix
+        appPrefixFromSlug(sandboxFunction.slug) === share.appName
     );
   }
 
@@ -541,7 +541,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     share: PodAppShareResource,
     slug: string
   ): Promise<SandboxFunctionResource | null> {
-    if (appPrefixFromSlug(slug) !== share.appPrefix) {
+    if (appPrefixFromSlug(slug) !== share.appName) {
       return null;
     }
 

@@ -7,7 +7,7 @@ export class PodAppShareFactory {
     auth: Authenticator,
     opts: {
       space: SpaceResource;
-      appPrefix: string;
+      appName: string;
       internalMCPServerId?: string;
       toolsetName?: string;
       description?: string;
@@ -15,11 +15,11 @@ export class PodAppShareFactory {
   ): Promise<PodAppShareResource> {
     return PodAppShareResource.makeNew(auth, {
       space: opts.space,
-      appPrefix: opts.appPrefix,
+      appName: opts.appName,
       internalMCPServerId:
-        opts.internalMCPServerId ?? `ims_test_${opts.appPrefix}`,
-      toolsetName: opts.toolsetName ?? opts.appPrefix,
-      description: opts.description ?? `Toolset for ${opts.appPrefix}.`,
+        opts.internalMCPServerId ?? `ims_test_${opts.appName}`,
+      toolsetName: opts.toolsetName ?? opts.appName,
+      description: opts.description ?? `Toolset for ${opts.appName}.`,
     });
   }
 }

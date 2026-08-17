@@ -87,7 +87,7 @@ async function setupSharedApp() {
   });
   const share = await PodAppShareFactory.create(adminAuth, {
     space: pod,
-    appPrefix: "notes",
+    appName: "notes",
     internalMCPServerId: mcpServerId,
   });
 

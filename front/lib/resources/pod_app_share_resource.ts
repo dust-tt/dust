@@ -41,13 +41,13 @@ export class PodAppShareResource extends BaseResource<PodAppShareModel> {
     auth: Authenticator,
     {
       space,
-      appPrefix,
+      appName,
       internalMCPServerId,
       toolsetName,
       description,
     }: {
       space: SpaceResource;
-      appPrefix: string;
+      appName: string;
       internalMCPServerId: string;
       toolsetName: string;
       description: string;
@@ -66,7 +66,7 @@ export class PodAppShareResource extends BaseResource<PodAppShareModel> {
     const share = await this.model.create({
       workspaceId: auth.getNonNullableWorkspace().id,
       spaceId: space.id,
-      appPrefix,
+      appName,
       internalMCPServerId,
       sharedByUserId: auth.user()?.id ?? null,
       toolsetName,
@@ -117,16 +117,16 @@ export class PodAppShareResource extends BaseResource<PodAppShareModel> {
     });
   }
 
-  static async fetchByPodAndAppPrefix(
+  static async fetchByPodAndAppName(
     auth: Authenticator,
     space: SpaceResource,
-    appPrefix: string
+    appName: string
   ): Promise<PodAppShareResource | null> {
     if (!space.isProject()) {
       return null;
     }
     const [share] = await this.baseFetch(auth, {
-      where: { spaceId: space.id, appPrefix },
+      where: { spaceId: space.id, appName },
     });
     return share ?? null;
   }
@@ -199,7 +199,7 @@ export class PodAppShareResource extends BaseResource<PodAppShareModel> {
 
   toJSON(): PodAppShareSummary {
     return {
-      appPrefix: this.appPrefix,
+      appName: this.appName,
       toolsetName: this.toolsetName,
       description: this.description,
     };

@@ -65,7 +65,7 @@ export async function sharePodApp(
     );
   }
 
-  const existing = await PodAppShareResource.fetchByPodAndAppPrefix(
+  const existing = await PodAppShareResource.fetchByPodAndAppName(
     auth,
     pod,
     prefix
@@ -130,7 +130,7 @@ export async function sharePodApp(
 
     const share = await PodAppShareResource.makeNew(auth, {
       space: pod,
-      appPrefix: prefix,
+      appName: prefix,
       internalMCPServerId: server.id,
       toolsetName,
       description,
@@ -162,7 +162,7 @@ export async function unsharePodApp(
   pod: SpaceResource,
   prefix: string
 ): Promise<Result<undefined, PodAppShareError>> {
-  const share = await PodAppShareResource.fetchByPodAndAppPrefix(
+  const share = await PodAppShareResource.fetchByPodAndAppName(
     auth,
     pod,
     prefix
@@ -197,7 +197,7 @@ export async function updatePodAppShare(
   prefix: string,
   { name, description }: { name?: string; description?: string }
 ): Promise<Result<PodAppShareSummary, PodAppShareError>> {
-  const share = await PodAppShareResource.fetchByPodAndAppPrefix(
+  const share = await PodAppShareResource.fetchByPodAndAppName(
     auth,
     pod,
     prefix

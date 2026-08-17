@@ -117,7 +117,7 @@ describe("POST /api/w/:wId/pods/:podId/apps/:prefix/share", () => {
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.share).toEqual({
-      appPrefix: "tasklist",
+      appName: "tasklist",
       toolsetName: "Task List",
       description: "Task management tools.",
     });
@@ -129,7 +129,7 @@ describe("POST /api/w/:wId/pods/:podId/apps/:prefix/share", () => {
     const listBody = await listRes.json();
     expect(listBody.apps).toHaveLength(1);
     expect(listBody.apps[0].share).toEqual({
-      appPrefix: "tasklist",
+      appName: "tasklist",
       toolsetName: "Task List",
       description: "Task management tools.",
     });
@@ -210,7 +210,7 @@ describe("PATCH /api/w/:wId/pods/:podId/apps/:prefix/share", () => {
     const body = await res.json();
     expect(body.share.description).toBe("Better description.");
 
-    const shareRow = await PodAppShareResource.fetchByPodAndAppPrefix(
+    const shareRow = await PodAppShareResource.fetchByPodAndAppName(
       auth,
       pod,
       "tasklist"
@@ -249,7 +249,7 @@ describe("DELETE /api/w/:wId/pods/:podId/apps/:prefix/share", () => {
       description: "Task management tools.",
     });
     expect(created.status).toBe(201);
-    const shareRow = await PodAppShareResource.fetchByPodAndAppPrefix(
+    const shareRow = await PodAppShareResource.fetchByPodAndAppName(
       auth,
       pod,
       "tasklist"
@@ -265,7 +265,7 @@ describe("DELETE /api/w/:wId/pods/:podId/apps/:prefix/share", () => {
     expect(await res.json()).toEqual({ success: true });
 
     expect(
-      await PodAppShareResource.fetchByPodAndAppPrefix(auth, pod, "tasklist")
+      await PodAppShareResource.fetchByPodAndAppName(auth, pod, "tasklist")
     ).toBeNull();
 
     const adminAuth = await Authenticator.internalAdminForWorkspace(
@@ -340,7 +340,7 @@ describe("DELETE /api/w/:wId/pods/:podId/apps/:prefix with an active share", () 
 
     expect(res.status).toBe(200);
     expect(
-      await PodAppShareResource.fetchByPodAndAppPrefix(auth, pod, "tasklist")
+      await PodAppShareResource.fetchByPodAndAppName(auth, pod, "tasklist")
     ).toBeNull();
   });
 });

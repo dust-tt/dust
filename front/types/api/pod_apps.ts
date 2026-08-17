@@ -99,7 +99,7 @@ export const MAX_POD_APP_SHARE_DESCRIPTION_LENGTH = 2048;
 
 /** How a shared app surfaces on listings and share endpoints. */
 export type PodAppShareSummary = {
-  appPrefix: string;
+  appName: string;
   toolsetName: string;
   description: string;
 };

@@ -79,12 +79,12 @@ describe("sharePodApp", () => {
 
     assert(result.isOk(), "Expected sharePodApp to succeed");
     expect(result.value).toEqual({
-      appPrefix: "tasklist",
+      appName: "tasklist",
       toolsetName: "Task List",
       description: "Task management tools.",
     });
 
-    const share = await PodAppShareResource.fetchByPodAndAppPrefix(
+    const share = await PodAppShareResource.fetchByPodAndAppName(
       editorAuth,
       pod,
       "tasklist"
@@ -177,7 +177,7 @@ describe("unsharePodApp", () => {
       description: "Task management tools.",
     });
     expect(shared.isOk()).toBe(true);
-    const share = await PodAppShareResource.fetchByPodAndAppPrefix(
+    const share = await PodAppShareResource.fetchByPodAndAppName(
       editorAuth,
       pod,
       "tasklist"
@@ -188,7 +188,7 @@ describe("unsharePodApp", () => {
     expect(result.isOk()).toBe(true);
 
     expect(
-      await PodAppShareResource.fetchByPodAndAppPrefix(
+      await PodAppShareResource.fetchByPodAndAppName(
         editorAuth,
         pod,
         "tasklist"
@@ -228,12 +228,12 @@ describe("updatePodAppShare", () => {
     });
     assert(result.isOk(), "Expected update to succeed");
     expect(result.value).toEqual({
-      appPrefix: "tasklist",
+      appName: "tasklist",
       toolsetName: "Better Tasks",
       description: "Improved.",
     });
 
-    const share = await PodAppShareResource.fetchByPodAndAppPrefix(
+    const share = await PodAppShareResource.fetchByPodAndAppName(
       editorAuth,
       pod,
       "tasklist"

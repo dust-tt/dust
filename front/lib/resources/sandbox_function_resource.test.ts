@@ -747,7 +747,7 @@ describe("SandboxFunctionResource pod app share gate", () => {
 
     const share = await PodAppShareFactory.create(adminAuth, {
       space: pod,
-      appPrefix: "notes",
+      appName: "notes",
     });
 
     const outsider = await UserFactory.basic();

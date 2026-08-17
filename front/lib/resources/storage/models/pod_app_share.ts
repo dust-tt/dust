@@ -9,7 +9,7 @@ import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wra
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 
 /**
- * Records that a pod app (identified by its normalized app prefix) is shared to the workspace as
+ * Records that a pod app (identified by its normalized app name — the slug prefix) is shared to the workspace as
  * an agent toolset. `internalMCPServerId` is the sId of the dedicated `pod_app_toolset` internal
  * MCP server instance whose views expose the app's functions; the row is the binding between the
  * instance and the app. `toolsetName` mirrors the views' display name so listings never need a
@@ -20,7 +20,7 @@ export class PodAppShareModel extends SoftDeletableWorkspaceAwareModel<PodAppSha
   declare updatedAt: CreationOptional<Date>;
 
   declare spaceId: ForeignKey<SpaceModel["id"]>;
-  declare appPrefix: string;
+  declare appName: string;
   declare internalMCPServerId: string;
   declare sharedByUserId: ForeignKey<UserModel["id"]> | null;
   declare toolsetName: string;
@@ -48,7 +48,7 @@ PodAppShareModel.init(
       type: DataTypes.BIGINT,
       allowNull: false,
     },
-    appPrefix: {
+    appName: {
       type: DataTypes.STRING(255),
       allowNull: false,
     },
@@ -70,11 +70,11 @@ PodAppShareModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        fields: ["workspaceId", "spaceId", "appPrefix"],
+        fields: ["workspaceId", "spaceId", "appName"],
         where: { deletedAt: null },
         unique: true,
         concurrently: true,
-        name: "pod_app_shares_workspace_space_app_prefix_active",
+        name: "pod_app_shares_workspace_space_app_name_active",
       },
       {
         fields: ["workspaceId", "internalMCPServerId"],

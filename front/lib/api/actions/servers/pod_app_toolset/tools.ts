@@ -123,7 +123,7 @@ export async function callPodAppTool(
   }
   const { share } = resolved;
 
-  const slug = `${share.appPrefix}${SANDBOX_FUNCTION_SLUG_SEPARATOR}${toolName}`;
+  const slug = `${share.appName}${SANDBOX_FUNCTION_SLUG_SEPARATOR}${toolName}`;
   const sandboxFunction =
     await SandboxFunctionResource.fetchBySlugWithPodAppShare(auth, share, slug);
   if (!sandboxFunction) {

@@ -33,17 +33,17 @@ describe("PodAppShareResource", () => {
 
     const share = await PodAppShareFactory.create(editorAuth, {
       space: pod,
-      appPrefix: "notes",
+      appName: "notes",
       internalMCPServerId: "ims_abc123",
       toolsetName: "Notes",
       description: "Note-taking tools.",
     });
 
-    expect(share.appPrefix).toBe("notes");
+    expect(share.appName).toBe("notes");
     expect(share.toolsetName).toBe("Notes");
     expect(share.space.id).toBe(pod.id);
 
-    const byPrefix = await PodAppShareResource.fetchByPodAndAppPrefix(
+    const byPrefix = await PodAppShareResource.fetchByPodAndAppName(
       editorAuth,
       pod,
       "notes"
@@ -64,7 +64,7 @@ describe("PodAppShareResource", () => {
     await expect(
       PodAppShareFactory.create(outsiderAuth, {
         space: pod,
-        appPrefix: "notes",
+        appName: "notes",
       })
     ).rejects.toThrow("Only pod editors");
 
@@ -73,7 +73,7 @@ describe("PodAppShareResource", () => {
     await expect(
       PodAppShareFactory.create(editorAuth, {
         space: globalSpace,
-        appPrefix: "notes",
+        appName: "notes",
       })
     ).rejects.toThrow("can only belong to pods");
   });
@@ -83,14 +83,14 @@ describe("PodAppShareResource", () => {
 
     const share = await PodAppShareFactory.create(editorAuth, {
       space: pod,
-      appPrefix: "notes",
+      appName: "notes",
       internalMCPServerId: "ims_first",
     });
 
     await share.revoke(editorAuth);
 
     expect(
-      await PodAppShareResource.fetchByPodAndAppPrefix(editorAuth, pod, "notes")
+      await PodAppShareResource.fetchByPodAndAppName(editorAuth, pod, "notes")
     ).toBeNull();
     expect(
       await PodAppShareResource.fetchByInternalMCPServerId(
@@ -102,10 +102,10 @@ describe("PodAppShareResource", () => {
     // The partial unique index only covers active rows, so re-sharing succeeds.
     const reshared = await PodAppShareFactory.create(editorAuth, {
       space: pod,
-      appPrefix: "notes",
+      appName: "notes",
       internalMCPServerId: "ims_second",
     });
-    expect(reshared.appPrefix).toBe("notes");
+    expect(reshared.appName).toBe("notes");
   });
 
   it("revoke is editor-gated", async () => {
@@ -113,7 +113,7 @@ describe("PodAppShareResource", () => {
 
     const share = await PodAppShareFactory.create(editorAuth, {
       space: pod,
-      appPrefix: "notes",
+      appName: "notes",
     });
 
     await expect(share.revoke(outsiderAuth)).rejects.toThrow(
@@ -129,12 +129,12 @@ describe("PodAppShareResource", () => {
 
     const shareA = await PodAppShareFactory.create(adminAuth, {
       space: pod,
-      appPrefix: "notes",
+      appName: "notes",
       internalMCPServerId: "ims_a",
     });
     const shareB = await PodAppShareFactory.create(adminAuth, {
       space: pod,
-      appPrefix: "tasks",
+      appName: "tasks",
       internalMCPServerId: "ims_b",
     });
     await shareB.revoke(adminAuth);
@@ -152,7 +152,7 @@ describe("PodAppShareResource", () => {
 
     const share = await PodAppShareFactory.create(editorAuth, {
       space: pod,
-      appPrefix: "notes",
+      appName: "notes",
     });
 
     await share.updateShareDetails({
@@ -162,7 +162,7 @@ describe("PodAppShareResource", () => {
     expect(share.toolsetName).toBe("Better Notes");
     expect(share.description).toBe("Improved.");
 
-    const fetched = await PodAppShareResource.fetchByPodAndAppPrefix(
+    const fetched = await PodAppShareResource.fetchByPodAndAppName(
       editorAuth,
       pod,
       "notes"

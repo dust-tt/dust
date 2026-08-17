@@ -356,9 +356,7 @@ export async function listPodApps(
       PodAppShareResource.listBySpace(auth, pod),
     ]);
 
-  const shareByPrefix = new Map(
-    shares.map((share) => [share.appPrefix, share])
-  );
+  const shareByPrefix = new Map(shares.map((share) => [share.appName, share]));
 
   const functionsByPrefix = groupFunctionsByAppPrefix(sandboxFunctions);
   const pinnedFramePaths = new Set(
