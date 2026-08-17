@@ -26,8 +26,10 @@ export async function selfHealSandboxFunctionExecutionMode(
   // frame share token); the refused tool call's invocation is the proof.
   const sandboxFunction = await SandboxFunctionResource.fetchByIdForExecution(
     auth,
-    sandboxFunctionId,
-    { invocationId }
+    {
+      sandboxFunctionId,
+      invocationId,
+    }
   );
   if (!sandboxFunction) {
     logger.error(

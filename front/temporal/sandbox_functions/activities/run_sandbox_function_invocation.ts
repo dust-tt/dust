@@ -18,8 +18,10 @@ export async function runSandboxFunctionInvocationActivity(
   // frame share token); the invocation row is the proof of authorization.
   const sandboxFunction = await SandboxFunctionResource.fetchByIdForExecution(
     auth,
-    sandboxFunctionId,
-    { invocationId }
+    {
+      sandboxFunctionId,
+      invocationId,
+    }
   );
   if (!sandboxFunction) {
     throw new Error(`Pod function not found: ${sandboxFunctionId}`);

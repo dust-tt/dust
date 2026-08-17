@@ -176,8 +176,10 @@ export async function createSandboxFunctionMCPAction(
   // frame share token); the validated claims name the invocation, which is the proof.
   const sandboxFunction = await SandboxFunctionResource.fetchByIdForExecution(
     auth,
-    sandboxFunctionId,
-    { invocationId }
+    {
+      sandboxFunctionId,
+      invocationId,
+    }
   );
   if (!sandboxFunction) {
     return new Err(

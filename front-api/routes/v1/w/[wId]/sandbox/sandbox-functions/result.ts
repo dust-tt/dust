@@ -54,8 +54,10 @@ app.post(
     // a frame share token); the validated claims name the invocation, which is the proof.
     const sandboxFunction = await SandboxFunctionResource.fetchByIdForExecution(
       auth,
-      sandboxClaims.sandboxFunctionId,
-      { invocationId: sandboxClaims.invocationId }
+      {
+        sandboxFunctionId: sandboxClaims.sandboxFunctionId,
+        invocationId: sandboxClaims.invocationId,
+      }
     );
     if (!sandboxFunction) {
       return apiError(ctx, {

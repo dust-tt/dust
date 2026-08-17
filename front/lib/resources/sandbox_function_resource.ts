@@ -423,8 +423,10 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
    */
   static async fetchByIdForExecution(
     auth: Authenticator,
-    sandboxFunctionId: string,
-    { invocationId }: { invocationId: string }
+    {
+      sandboxFunctionId,
+      invocationId,
+    }: { sandboxFunctionId: string; invocationId: string }
   ): Promise<SandboxFunctionResource | null> {
     if (
       !isResourceSId("sandbox_function", sandboxFunctionId) ||
