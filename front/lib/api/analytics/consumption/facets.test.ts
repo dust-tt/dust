@@ -54,7 +54,7 @@ describe("fetchConsumptionFacets", () => {
     vi.mocked(listConsumptionFacetCatalog).mockReset();
   });
 
-  it("merges current and historical values with contextual availability", async () => {
+  it("merges current and historical values sorted by availability then label", async () => {
     const { authenticator } = await createResourceTest({ role: "manager" });
     vi.mocked(resolveDimensionLabels).mockImplementation(
       async (_auth, _dimension, values) =>
@@ -156,6 +156,13 @@ describe("fetchConsumptionFacets", () => {
     }
     expect(result.value.facets.agent).toEqual([
       {
+        value: "agent_enabled",
+        label: "Zulu",
+        pictureUrl: null,
+        documentCount: 3,
+        disabled: false,
+      },
+      {
         value: "agent_disabled",
         label: "Alpha",
         pictureUrl: null,
@@ -169,13 +176,6 @@ describe("fetchConsumptionFacets", () => {
         documentCount: 0,
         disabled: true,
         scope: "visible",
-      },
-      {
-        value: "agent_enabled",
-        label: "Zulu",
-        pictureUrl: null,
-        documentCount: 3,
-        disabled: false,
       },
     ]);
     expect(result.value.facets.user).toEqual([

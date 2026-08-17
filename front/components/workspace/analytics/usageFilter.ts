@@ -130,15 +130,6 @@ export interface UsageFilterGroup {
   memberIds: string[];
 }
 
-export function sortUsageFilterOptionsByAvailability<
-  T extends UsageFilterOption,
->(options: T[]): T[] {
-  return [
-    ...options.filter((option) => !option.disabled),
-    ...options.filter((option) => option.disabled),
-  ];
-}
-
 export type UsageFilterOptionForCategory<C extends UsageFilterCategory> =
   Extract<UsageFilterOption, { kind: C }>;
 
