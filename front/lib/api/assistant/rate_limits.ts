@@ -139,6 +139,15 @@ export const makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace = (
   return `workspace:${owner.id}:programmatic_spend_limit_awu_credit_count`;
 };
 
+// Fixed-window counter backing the workspace usage cap (`usageCapCredits`): the
+// PAYG pool cap over all pool (non-free-seat) AWU usage. Workspace-scoped;
+// bucketed on the Metronome contract billing cycle.
+export const makeUsageCapSpendLimitAwuCreditsRateLimitKeyForWorkspace = (
+  owner: LightWorkspaceType
+) => {
+  return `workspace:${owner.id}:usage_cap_spend_limit_awu_credit_count`;
+};
+
 export const makeProgrammaticUsageRateLimitKeyForWorkspace = (
   owner: LightWorkspaceType
 ) => {

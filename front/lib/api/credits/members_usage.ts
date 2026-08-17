@@ -3,6 +3,7 @@ import {
   makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace,
   makeSpendLimitAwuCreditsRateLimitKeyForUser,
   makeSpendLimitCycleWindowBounds,
+  makeUsageCapSpendLimitAwuCreditsRateLimitKeyForWorkspace,
 } from "@app/lib/api/assistant/rate_limits";
 import { computeCreditUsageStatus } from "@app/lib/api/credits/usage_status";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
@@ -564,6 +565,69 @@ export async function getEsConsumedProgrammaticAwuCredits(
       "[MembersUsage] Failed to read programmatic consumed credits from analytics index"
     );
     return null;
+  }
+
+  return Math.max(
+    0,
+    Math.round(result.value.aggregations?.credits?.value ?? 0)
+  );
+}
+
+/**
+ * The workspace's Elasticsearch-derived *pool* AWU consumption for the current
+ * billing cycle — all non-free-seat billable usage (paid-seat users +
+ * programmatic). Free-seat usage is excluded (`must_not is_free_seat`): it draws
+ * from the free-seat credit type, a separate Metronome credit type the PAYG
+ * usage cap (`usageCapCredits`) does not measure. Used to lazily seed / resync
+ * the workspace usage-cap counter. Returns 0 on no usage or an analytics read
+ * failure.
+ */
+export async function getEsConsumedWorkspaceAwuCredits(
+  auth: Authenticator,
+  { cycle }: { cycle?: BillingCycle }
+): Promise<number> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const resolvedCycle = cycle ?? (await resolveMetronomeCycle(workspace));
+  if (!resolvedCycle) {
+    return 0;
+  }
+  const { cycleStart, cycleEnd } = resolvedCycle;
+
+  const result = await searchAnalytics<
+    never,
+    { credits?: estypes.AggregationsSumAggregate }
+  >(
+    {
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          {
+            range: {
+              timestamp: {
+                gte: cycleStart.toISOString(),
+                lte: cycleEnd.toISOString(),
+              },
+            },
+          },
+        ],
+        // Paid/pool usage only (`must_not is_free_seat=true` rather than
+        // `is_free_seat=false` so historical docs without the field count as
+        // paid) — mirrors the `paid_credits` split in the per-user query.
+        must_not: [{ term: { is_free_seat: true } }],
+      },
+    },
+    {
+      aggregations: { credits: { sum: { field: "cost.billable_awu" } } },
+      size: 0,
+    }
+  );
+  if (result.isErr()) {
+    logger.warn(
+      { err: result.error, workspaceId: workspace.sId },
+      "[MembersUsage] Failed to read workspace consumed credits from analytics index"
+    );
+    return 0;
   }
 
   return Math.max(
@@ -1199,6 +1263,43 @@ export async function resyncProgrammaticSpendLimitCounterFromEsUsage(
     logger,
   });
   return new Ok({ programmaticCounterSeeded: setResult.isOk() });
+}
+
+/**
+ * Backfill/repair the workspace usage-cap (`usageCapCredits`) counter from
+ * Elasticsearch, overwriting it (SET) with the pool AWU consumption for the
+ * current cycle. No-op (not seeded) when no usage cap is configured.
+ */
+export async function resyncWorkspaceSpendLimitCounterFromEsUsage(
+  auth: Authenticator
+): Promise<Result<{ workspaceCounterSeeded: boolean }, Error>> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  if ((config?.usageCapCredits ?? null) === null) {
+    return new Ok({ workspaceCounterSeeded: false });
+  }
+
+  const cycle = await resolveMetronomeCycle(workspace);
+  if (!cycle) {
+    return new Err(
+      new Error("No active Metronome billing period to resync against.")
+    );
+  }
+  const bounds = makeSpendLimitCycleWindowBounds(
+    cycle.cycleStart,
+    cycle.cycleEnd
+  );
+
+  const consumed = await getEsConsumedWorkspaceAwuCredits(auth, { cycle });
+  const setResult = await setFixedWindowCount({
+    key: makeUsageCapSpendLimitAwuCreditsRateLimitKeyForWorkspace(workspace),
+    bounds,
+    value: Math.max(0, Math.round(consumed)),
+    logger,
+  });
+  return new Ok({ workspaceCounterSeeded: setResult.isOk() });
 }
 
 export type GetMemberUsageResponseBody = {
