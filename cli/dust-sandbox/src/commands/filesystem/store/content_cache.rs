@@ -156,6 +156,24 @@ impl ContentCache {
         Ok(())
     }
 
+    pub(super) fn discard(&self, inode: INodeNo) -> io::Result<()> {
+        let mut state = self.state()?;
+        let Some(cached) = state.entries.pop(&inode) else {
+            return Ok(());
+        };
+        state.cached_bytes = state
+            .cached_bytes
+            .checked_sub(cached.size_bytes)
+            .ok_or_else(|| errno(libc::EIO))?;
+        match fs::remove_file(&cached.path) {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+            // Keep the entry invalid even if removing its local file fails.
+            // A later open must fetch Front's committed version.
+            Err(error) => Err(error),
+        }
+    }
+
     pub(super) fn reserve_open(
         &self,
         inode: INodeNo,
