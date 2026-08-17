@@ -214,18 +214,23 @@ export function getToolValidationAlwaysAllowLabel(
     return data.approvalArgsLabel;
   }
   const args = data.argumentsRequiringApproval ?? [];
-  const argValues = args
+  const approvalScopes = args
     .filter((arg) => data.inputs[arg] != null)
     .map((arg) => {
       const value = data.inputs[arg];
-      if (Array.isArray(value)) {
-        return value.map(String).join(", ");
-      }
-      return JSON.stringify(value);
+      const displayValue = Array.isArray(value)
+        ? value.map(String).join(", ")
+        : typeof value === "string" ||
+            typeof value === "number" ||
+            typeof value === "boolean"
+          ? String(value)
+          : JSON.stringify(value);
+
+      return `${asDisplayName(arg)} is ${displayValue}`;
     });
-  return `Always allow agent to ${asDisplayName(data.metadata.toolName)} ${
-    argValues.length > 0
-      ? ` for the following parameters: ${argValues.join(", ")}`
+  return `Always allow ${data.metadata.agentName} to ${asDisplayName(data.metadata.toolName)}${
+    approvalScopes.length > 0
+      ? ` only when ${approvalScopes.join(" and ")}`
       : ""
   }`;
 }

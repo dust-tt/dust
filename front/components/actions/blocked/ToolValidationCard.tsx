@@ -14,7 +14,6 @@ import {
   Button,
   Card,
   Check,
-  Checkbox,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -22,7 +21,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  Label,
   PieChart01,
   XClose,
 } from "@dust-tt/sparkle";
@@ -151,11 +149,9 @@ export function ToolValidationCard({
   isPulsing = false,
   onValidate,
 }: ToolValidationCardProps) {
-  const [neverAskAgain, setNeverAskAgain] = useState(false);
   const toolOverride = getToolOverride(validationRequest.metadata);
-  const [submittingDecision, setSubmittingDecision] = useState<
-    "approved" | "rejected" | null
-  >(null);
+  const [submittingDecision, setSubmittingDecision] =
+    useState<MCPValidationOutputType | null>(null);
   const isSubmitting = isValidating || submittingDecision !== null;
 
   const canCurrentUserRespond = canCurrentUserRespondToParentUserMessage({
@@ -167,15 +163,10 @@ export function ToolValidationCard({
     ? getIcon(validationRequest.metadata.icon)
     : undefined;
 
-  const handleValidation = async (approved: "approved" | "rejected") => {
-    setSubmittingDecision(approved);
+  const handleValidation = async (approvalState: MCPValidationOutputType) => {
+    setSubmittingDecision(approvalState);
     try {
-      const success = await onValidate(
-        approved === "approved" && neverAskAgain ? "always_approved" : approved
-      );
-      if (success) {
-        setNeverAskAgain(false);
-      }
+      await onValidate(approvalState);
     } finally {
       setSubmittingDecision(null);
     }
@@ -190,6 +181,17 @@ export function ToolValidationCard({
     asDisplayName(validationRequest.metadata.toolName);
   const hasDetails =
     canCurrentUserRespond && Object.keys(validationRequest.inputs).length > 0;
+  const canAlwaysAllow = ["low", "medium"].includes(
+    validationRequest.stake ?? ""
+  );
+  const approveLabel = toolOverride?.approveLabel ?? "Allow";
+  const approveOnceLabel = canAlwaysAllow
+    ? `${approveLabel} once`
+    : approveLabel;
+  const alwaysAllowScopeLabel =
+    validationRequest.stake === "medium"
+      ? getToolValidationAlwaysAllowLabel(validationRequest)
+      : null;
 
   return (
     <Card
@@ -244,26 +246,13 @@ export function ToolValidationCard({
       </div>
 
       {canCurrentUserRespond && (
-        <div className="flex flex-col gap-3 px-4 pb-3 pt-2 sm:flex-row sm:items-center">
-          {["low", "medium"].includes(validationRequest.stake ?? "") && (
-            <Label
-              htmlFor={`never-ask-again-${validationRequest.actionId}`}
-              className="flex min-h-11 cursor-pointer items-center gap-2 px-1 sm:min-h-0"
-            >
-              <Checkbox
-                id={`never-ask-again-${validationRequest.actionId}`}
-                checked={neverAskAgain}
-                disabled={isSubmitting}
-                onCheckedChange={(check) => {
-                  setNeverAskAgain(!!check);
-                }}
-              />
-              <span className="font-normal">
-                {getToolValidationAlwaysAllowLabel(validationRequest)}
-              </span>
-            </Label>
+        <div className="flex flex-col gap-3 px-4 pb-3 pt-2">
+          {alwaysAllowScopeLabel && (
+            <div className="text-sm text-muted-foreground">
+              {alwaysAllowScopeLabel}
+            </div>
           )}
-          <div className="flex gap-2 sm:ml-auto">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button
               label="Decline"
               variant="outline"
@@ -272,8 +261,17 @@ export function ToolValidationCard({
               isLoading={submittingDecision === "rejected"}
               onClick={() => void handleValidation("rejected")}
             />
+            {canAlwaysAllow && (
+              <Button
+                label="Always allow"
+                variant="outline"
+                disabled={isSubmitting}
+                isLoading={submittingDecision === "always_approved"}
+                onClick={() => void handleValidation("always_approved")}
+              />
+            )}
             <Button
-              label={toolOverride?.approveLabel ?? "Allow"}
+              label={approveOnceLabel}
               variant="highlight"
               icon={Check}
               disabled={isSubmitting}
