@@ -34,12 +34,31 @@ type ToolValidationRequest = Pick<
   | "argumentsRequiringApproval"
 >;
 
+type ApprovalProgressProps = {
+  current: number;
+  total: number;
+};
+
+function ApprovalProgress({ current, total }: ApprovalProgressProps) {
+  if (total <= 1) {
+    return null;
+  }
+
+  return (
+    <div className="heading-xs shrink-0 text-muted-foreground">
+      <span className="sr-only">
+        Approval {current} of {total}
+      </span>
+      <span aria-hidden="true">
+        {current}/{total}
+      </span>
+    </div>
+  );
+}
+
 interface ToolValidationCardProps {
   validationRequest: ToolValidationRequest;
-  approvalProgress?: {
-    current: number;
-    total: number;
-  };
+  approvalProgress?: ApprovalProgressProps;
   triggeringUser: UserType | null;
   // The viewer looking at the card. Passed in rather than read from `AuthContext` because shared
   // frames render this card outside of any AuthProvider.
@@ -108,16 +127,7 @@ export function ToolValidationCard({
           <Avatar icon={icon ?? PieChart01} size="sm" />
           <div className="heading-base min-w-0 wrap-break-word">{`Allow ${validationRequest.metadata.agentName} to use ${asDisplayName(validationRequest.metadata.mcpServerName)}?`}</div>
         </div>
-        {approvalProgress && approvalProgress.total > 1 && (
-          <div className="heading-xs shrink-0 text-muted-foreground">
-            <span className="sr-only">
-              Approval {approvalProgress.current} of {approvalProgress.total}
-            </span>
-            <span aria-hidden="true">
-              {approvalProgress.current}/{approvalProgress.total}
-            </span>
-          </div>
-        )}
+        {approvalProgress && <ApprovalProgress {...approvalProgress} />}
       </div>
 
       <div className="flex flex-col gap-4 px-5 py-4">
