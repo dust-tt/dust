@@ -33,7 +33,7 @@
     "knip": "^5.80.0",
     "lefthook": "2.1.8",
     "react-doctor": "^0.5.0",
-    "wrangler": "4.80.0"
+    "wrangler": "4.114.0"
   },
   "engines": {
     "node": ">=24.0.0"
@@ -47,7 +47,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/node": "^24.12.2",
     "dd-trace": "^5.87.0",
-    "esbuild": "^0.27.3",
+    "esbuild": "0.28.1",
     "next": "14.2.35",
     "undici": "^7.24.0"
   }

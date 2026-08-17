@@ -59,9 +59,9 @@
     "@storybook/react": "10.4.1",
     "@storybook/react-vite": "10.4.1",
     "@svgr/cli": "^8.0.1",
-    "@vitest/browser": "4.0.18",
-    "@vitest/browser-playwright": "4.0.18",
-    "@vitest/coverage-v8": "4.0.18",
+    "@vitest/browser": "4.1.10",
+    "@vitest/browser-playwright": "4.1.10",
+    "@vitest/coverage-v8": "4.1.10",
     "@tailwindcss/forms": "^0.5.9",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
@@ -86,7 +86,7 @@
     "typescript-transform-paths": "^3.4.7",
     "uuid": "^9.0.1",
     "vite": "^8.0.0",
-    "vitest": "^4.0.16"
+    "vitest": "^4.1.0"
   },
   "peerDependencies": {
     "react": "^18.3.1",
