@@ -2,7 +2,7 @@ import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   isDustFileSystemError,
   SCOPED_PREFIX_POD,
-} from "@app/lib/api/file_system/types";
+} from "@app/types/file_system";
 import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
 import { createProjectFolder } from "@app/lib/api/projects/context";
 import { PostPodFolderRequestBodySchema } from "@app/lib/api/projects/pod_mount_schemas";

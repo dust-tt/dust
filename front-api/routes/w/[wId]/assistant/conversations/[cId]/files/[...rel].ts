@@ -3,7 +3,7 @@ import {
   getConversationFilesBasePath,
   isResolveMountFilePathError,
   resolveScopedMountFilePath,
-} from "@app/lib/api/files/mount_path";
+} from "@app/types/mount_path";
 import { MoveMountFileRequestBodySchema } from "@app/lib/api/files/mount_schemas";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";

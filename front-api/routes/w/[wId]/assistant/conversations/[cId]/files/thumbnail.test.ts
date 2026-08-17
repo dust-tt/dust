@@ -1,5 +1,5 @@
 import { createConversation } from "@app/lib/api/assistant/conversation";
-import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
+import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";

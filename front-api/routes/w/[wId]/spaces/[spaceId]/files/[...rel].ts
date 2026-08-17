@@ -2,7 +2,7 @@ import {
   getPodFilesBasePath,
   isResolveMountFilePathError,
   resolveScopedMountFilePath,
-} from "@app/lib/api/files/mount_path";
+} from "@app/types/mount_path";
 import { MoveMountFileRequestBodySchema } from "@app/lib/api/files/mount_schemas";
 import {
   deleteProjectFile,

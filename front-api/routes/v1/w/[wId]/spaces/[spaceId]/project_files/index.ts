@@ -1,5 +1,5 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
+import { SCOPED_PREFIX_POD } from "@app/types/file_system";
 import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";

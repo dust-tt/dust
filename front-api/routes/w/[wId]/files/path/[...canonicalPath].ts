@@ -1,6 +1,6 @@
 import config from "@app/lib/api/config";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import type { DustFileSystemError } from "@app/lib/api/file_system/types";
+import type { DustFileSystemError } from "@app/types/file_system";
 import {
   convertCanonicalFileToPdf,
   deleteCanonicalFile,

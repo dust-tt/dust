@@ -1,7 +1,7 @@
 import {
   getConversationFilesBasePath,
   parseScopedFilePath,
-} from "@app/lib/api/files/mount_path";
+} from "@app/types/mount_path";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";

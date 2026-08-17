@@ -1,6 +1,6 @@
 /* eslint-disable dust/enforce-client-types-in-public-api */
 
-import { parseRawVizScope } from "@app/lib/api/files/mount_path";
+import { parseRawVizScope } from "@app/types/mount_path";
 import { extractAndVerifyVizAccessTokenFromHeader } from "@app/lib/api/viz/access_tokens";
 import {
   assertVizFileAuthorized,
