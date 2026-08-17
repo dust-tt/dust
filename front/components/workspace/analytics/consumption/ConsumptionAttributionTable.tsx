@@ -165,11 +165,11 @@ function AttributionTooltipCard({
 // Growth is undefined (not just zero) with no prior credits to grow from, so
 // callers must distinguish that case from an actual percentage.
 function growthPercent(
-  credits: number,
+  currentCredits: number,
   previousCredits: number | null
 ): number | null {
   return previousCredits && previousCredits > 0
-    ? ((credits - previousCredits) / previousCredits) * 100
+    ? ((currentCredits - previousCredits) / previousCredits) * 100
     : null;
 }
 
