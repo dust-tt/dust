@@ -211,7 +211,7 @@ export function UsageFilterModelComplexityControls({
     >
       <div className="flex flex-col gap-2 px-2">
         <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-          Price tier of all the models actually billed — not only the Basic /
+          Price tier of all the models actually billed, not only the Basic /
           Standard / Premium options offered in the model picker.
         </p>
         <div className="flex items-center gap-1">
