@@ -37,6 +37,21 @@ const logger = mainLogger.child({ provider: "notion" });
 const NOTION_SEARCH_PAGE_SIZE = 90;
 const MIN_NOTION_SEARCH_PAGE_SIZE_ON_RENDERING_BUDGET_ERROR = 10;
 
+// Notion can return this formula result even though @notionhq/client@2 does not
+// include it in FormulaPropertyResponse.
+type UnsupportedFormulaPageProperty = {
+  id: string;
+  type: "formula";
+  formula: {
+    type: "unsupported";
+    unsupported: Record<string, never>;
+  };
+};
+
+type NotionPageProperty =
+  | PageObjectProperties[PropertyKeys]
+  | UnsupportedFormulaPageProperty;
+
 const notionClientLogger = (
   level: LogLevel,
   message: string,
@@ -966,7 +981,7 @@ export async function validateAccessToken(notionAccessToken: string) {
 }
 
 export function parsePropertyValue(
-  property: PageObjectProperties[PropertyKeys]
+  property: NotionPageProperty
 ): string | string[] | null {
   const parseDateProp = (d?: { start: string; end: string | null } | null) => {
     if (d?.start && d?.end) {
@@ -1068,6 +1083,8 @@ export function parsePropertyValue(
             return parseDateProp(property.formula.date);
           case "number":
             return `${property.formula.number}`;
+          case "unsupported":
+            return null;
           default:
             assertNever(property.formula);
         }
