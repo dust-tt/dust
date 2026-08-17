@@ -522,6 +522,45 @@ export function SandboxEnvVarFormDialog({
                 selected Pod.
               </ContentMessage>
             ) : null}
+            {showApplyToControl ? (
+              <div className="flex flex-col gap-2">
+                <Label>Scope</Label>
+                <RadioGroup
+                  value={applyToField.value}
+                  onValueChange={(value) => {
+                    applyToField.onChange(value);
+                  }}
+                >
+                  <RadioGroupItem
+                    id="sandbox-env-var-apply-workspace"
+                    value="workspace"
+                    label="Workspace-wide"
+                    disabled={isSaving}
+                  />
+                  <RadioGroupItem
+                    id="sandbox-env-var-apply-pods"
+                    value="pods"
+                    label="Specific Pods"
+                    disabled={isSaving}
+                  />
+                </RadioGroup>
+                {applyToField.value === "workspace" ? (
+                  <span className="text-xs text-muted-foreground">
+                    A workspace-wide value doesn't clear existing per-Pod
+                    overrides; the Pod value still wins where set.
+                  </span>
+                ) : null}
+                {applyToField.value === "pods" && podTargeting ? (
+                  <PodChecklist
+                    pods={podTargeting.pods}
+                    selectedPodIds={selectedPodIdsField.value}
+                    onChange={(podIds) => selectedPodIdsField.onChange(podIds)}
+                    disabled={isSaving}
+                    errorMessage={errors.selectedPodIds?.message}
+                  />
+                ) : null}
+              </div>
+            ) : null}
             {mode.kind === "create" ? (
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between gap-3">
@@ -654,31 +693,7 @@ export function SandboxEnvVarFormDialog({
                 {valueMessage.message}
               </div>
             </div>
-            {showApplyToControl ? (
-              <div className="flex flex-col gap-2">
-                <Label>Apply this variable to</Label>
-                <RadioGroup
-                  value={applyToField.value}
-                  onValueChange={(value) => {
-                    applyToField.onChange(value);
-                  }}
-                >
-                  <RadioGroupItem
-                    id="sandbox-env-var-apply-workspace"
-                    value="workspace"
-                    label="Entire workspace"
-                    disabled={isSaving}
-                  />
-                  <RadioGroupItem
-                    id="sandbox-env-var-apply-pods"
-                    value="pods"
-                    label="Specific Pods"
-                    disabled={isSaving}
-                  />
-                </RadioGroup>
-              </div>
-            ) : null}
-            {targetsPods && podTargeting ? (
+            {mode.kind === "override" && podTargeting ? (
               <PodChecklist
                 pods={podTargeting.pods}
                 selectedPodIds={selectedPodIdsField.value}
