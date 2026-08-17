@@ -87,9 +87,10 @@ function aggregateMessageDetails(
 
 /**
  * Aggregates the latest stable bill and newest complete attribution available for each message
- * belonging directly to a conversation. In-progress messages are ignored until they reach a
- * terminal state. If any completed billed message lacks a complete attribution, the stable total
- * remains available while the detailed breakdown is withheld.
+ * belonging to a conversation and its recursively spawned `run_agent` conversations. In-progress
+ * messages are ignored until they reach a terminal state. If any completed billed message lacks a
+ * complete attribution, the stable total remains available while the detailed breakdown is
+ * withheld.
  */
 export async function getConversationConsumption(
   auth: Authenticator,
