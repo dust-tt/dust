@@ -153,7 +153,7 @@ export function PodAppTile({
               <Chip
                 size="xs"
                 color="success"
-                label="Shared"
+                label="Tools"
                 className="shrink-0"
               />
             )}
