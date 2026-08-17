@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_edit_24"
+        android:shortcutId="new_conversation"
+        android:shortcutLongLabel="@string/shortcut_new_conversation_long"
+        android:shortcutShortLabel="@string/shortcut_new_conversation_short">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="dust://compose"
+            android:targetClass="com.dust.mobile.android.MainActivity"
+            android:targetPackage="com.dust.mobile" />
+    </shortcut>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_notifications_24"
+        android:shortcutId="catch_up"
+        android:shortcutLongLabel="@string/shortcut_catch_up_long"
+        android:shortcutShortLabel="@string/shortcut_catch_up_short">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="dust://catch-up"
+            android:targetClass="com.dust.mobile.android.MainActivity"
+            android:targetPackage="com.dust.mobile" />
+    </shortcut>
+
+    <share-target android:targetClass="com.dust.mobile.android.MainActivity">
+        <data android:mimeType="text/*" />
+        <data android:mimeType="image/*" />
+        <data android:mimeType="application/pdf" />
+        <data android:mimeType="application/json" />
+        <data android:mimeType="application/msword" />
+        <data android:mimeType="application/vnd.ms-excel" />
+        <data android:mimeType="application/vnd.ms-powerpoint" />
+        <data android:mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+        <data android:mimeType="application/vnd.openxmlformats-officedocument.presentationml.presentation" />
+        <data android:mimeType="application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+        <category android:name="com.dust.mobile.category.AGENT_SHARE_TARGET" />
+    </share-target>
+</shortcuts>
