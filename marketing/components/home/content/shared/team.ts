@@ -637,6 +637,13 @@ export const PEOPLE: Record<string, TeamMember> = {
     linkedIn: "https://www.linkedin.com/in/achille-burah/",
     github: "https://github.com/achilleburah",
   },
+  ulysselevallois: {
+    name: "Ulysse Levallois",
+    title: "Solution Engineer",
+    image: "https://avatars.githubusercontent.com/u/117780740",
+    linkedIn: "https://www.linkedin.com/in/ulysse-levallois/",
+    github: "https://github.com/ulysse-lev",
+  },
 };
 
 export const TEAM_AVATAR_URLS: string[] = Object.values(PEOPLE).map(
