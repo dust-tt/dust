@@ -140,6 +140,35 @@ exec 6<&-
 test "$OLD_CONTENT" = old-destination
 test "$(cat "$CONVERSATION_DIR/destination.txt")" = new-source
 
+# Dirty descriptors remain usable after unlink or rename-over, but fsync must
+# never publish their bytes back into a path that now names another inode.
+export DUST_DIRTY_UNLINK_PATH="$CONVERSATION_DIR/dirty-unlink.txt"
+export DUST_DIRTY_DESTINATION_PATH="$CONVERSATION_DIR/dirty-destination.txt"
+export DUST_DIRTY_SOURCE_PATH="$CONVERSATION_DIR/dirty-source.txt"
+printf committed >"$DUST_DIRTY_UNLINK_PATH"
+printf old-destination >"$DUST_DIRTY_DESTINATION_PATH"
+printf new-source >"$DUST_DIRTY_SOURCE_PATH"
+"$JS_RUNTIME" -e '
+  const fs = require("node:fs");
+
+  const unlinked = fs.openSync(process.env.DUST_DIRTY_UNLINK_PATH, "r+");
+  fs.writeSync(unlinked, Buffer.from("dirty"), 0, 5, 0);
+  fs.unlinkSync(process.env.DUST_DIRTY_UNLINK_PATH);
+  fs.fsyncSync(unlinked);
+  fs.closeSync(unlinked);
+
+  const replaced = fs.openSync(process.env.DUST_DIRTY_DESTINATION_PATH, "r+");
+  fs.writeSync(replaced, Buffer.from("dirty"), 0, 5, 0);
+  fs.renameSync(
+    process.env.DUST_DIRTY_SOURCE_PATH,
+    process.env.DUST_DIRTY_DESTINATION_PATH,
+  );
+  fs.fsyncSync(replaced);
+  fs.closeSync(replaced);
+'
+test ! -e "$DUST_DIRTY_UNLINK_PATH"
+test "$(cat "$DUST_DIRTY_DESTINATION_PATH")" = new-source
+
 # A populated directory tree moves across roots without changing any inode.
 mkdir -p "$CONVERSATION_DIR/project/nested"
 printf child >"$CONVERSATION_DIR/project/nested/child.txt"

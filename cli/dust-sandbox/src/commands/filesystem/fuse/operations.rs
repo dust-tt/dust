@@ -177,12 +177,7 @@ impl Filesystem for DustFuse {
                 reply.error(Errno::EAGAIN);
                 return;
             }
-            let result = (|| {
-                let _namespace = filesystem.namespace_write()?;
-                filesystem
-                    .store
-                    .create_directory(parent, &name, permissions)
-            })();
+            let result = filesystem.create_directory_node(parent, &name, permissions);
             match result {
                 Ok(node) => reply.entry(
                     &KERNEL_ENTRY_TTL,
@@ -208,19 +203,7 @@ impl Filesystem for DustFuse {
                 reply.error(Errno::EAGAIN);
                 return;
             }
-            let result = (|| {
-                let _namespace = filesystem.namespace_write()?;
-                let node = filesystem.lookup_node(parent, &name)?;
-                let _inode = filesystem.inode_locks.lock(node.inode)?;
-                filesystem.mark_unlinked(node.inode, true)?;
-                if let Err(error) = filesystem.store.remove_file(parent, &name) {
-                    filesystem.mark_unlinked(node.inode, false)?;
-                    return Err(error);
-                }
-                filesystem.clear_staged_attributes(node.inode)?;
-                Ok(())
-            })();
-            reply_empty(result, reply);
+            reply_empty(filesystem.unlink_node(parent, &name), reply);
         });
     }
 
@@ -238,14 +221,7 @@ impl Filesystem for DustFuse {
                 reply.error(Errno::EAGAIN);
                 return;
             }
-            let result = (|| {
-                let _namespace = filesystem.namespace_write()?;
-                let node = filesystem.lookup_node(parent, &name)?;
-                filesystem.store.remove_directory(parent, &name)?;
-                filesystem.clear_staged_attributes(node.inode)?;
-                Ok(())
-            })();
-            reply_empty(result, reply);
+            reply_empty(filesystem.remove_directory_node(parent, &name), reply);
         });
     }
 
@@ -283,42 +259,10 @@ impl Filesystem for DustFuse {
                 reply.error(Errno::EAGAIN);
                 return;
             }
-            let result = (|| {
-                let _namespace = filesystem.namespace_write()?;
-                if parent == new_parent && name == new_name {
-                    return Ok(());
-                }
-                let source = filesystem.lookup_node(parent, &name)?;
-                let destination_inode = match filesystem.lookup_node(new_parent, &new_name) {
-                    Ok(destination) => Some(destination.inode),
-                    Err(error) if error.raw_os_error() == Some(libc::ENOENT) => None,
-                    Err(error) => return Err(error),
-                };
-                let _destination = destination_inode
-                    .map(|inode| filesystem.inode_locks.lock(inode))
-                    .transpose()?;
-                if let Some(destination_inode) = destination_inode {
-                    filesystem.mark_unlinked(destination_inode, true)?;
-                }
-                let rename_result: io::Result<()> = (|| {
-                    filesystem
-                        .store
-                        .rename(parent, &name, new_parent, &new_name)?;
-                    Ok(())
-                })();
-                if rename_result.is_err() {
-                    if let Some(destination_inode) = destination_inode {
-                        filesystem.mark_unlinked(destination_inode, false)?;
-                    }
-                }
-                rename_result?;
-                if let Some(destination_inode) = destination_inode {
-                    filesystem.clear_staged_attributes(destination_inode)?;
-                }
-                debug!(inode = source.inode.0, "renamed filesystem inode");
-                Ok(())
-            })();
-            reply_empty(result, reply);
+            reply_empty(
+                filesystem.rename_node(parent, &name, new_parent, &new_name),
+                reply,
+            );
         });
     }
 
@@ -534,21 +478,7 @@ impl Filesystem for DustFuse {
                 reply.error(Errno::EAGAIN);
                 return;
             }
-            let result = (|| {
-                let _namespace = filesystem.namespace_write()?;
-                let node = filesystem.store.create_file(parent, &name, permissions)?;
-                let handle = match filesystem.open_node(node.inode, flags) {
-                    Ok(handle) => handle,
-                    Err(error) => {
-                        // A path-based cleanup could delete a different node if
-                        // another sandbox moved this node and reused the name.
-                        // Keep the empty node until Front supports delete-by-id.
-                        warn!(inode = node.inode.0, %error, "created file but local open failed");
-                        return Err(error);
-                    }
-                };
-                Ok((node, handle))
-            })();
+            let result = filesystem.create_and_open_node(parent, &name, permissions, flags);
             match result {
                 Ok((node, handle)) => reply.created(
                     &KERNEL_ENTRY_TTL,

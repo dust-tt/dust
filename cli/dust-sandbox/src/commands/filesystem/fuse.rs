@@ -168,6 +168,86 @@ impl DustFuse {
         Ok(children)
     }
 
+    fn create_directory_node(
+        &self,
+        parent: INodeNo,
+        name: &str,
+        permissions: u16,
+    ) -> io::Result<Node> {
+        let _namespace = self.namespace_write()?;
+        self.store.create_directory(parent, name, permissions)
+    }
+
+    fn create_and_open_node(
+        &self,
+        parent: INodeNo,
+        name: &str,
+        permissions: u16,
+        flags: i32,
+    ) -> io::Result<(Node, u64)> {
+        let _namespace = self.namespace_write()?;
+        let node = self.store.create_file(parent, name, permissions)?;
+        let handle = match self.open_node(node.inode, flags) {
+            Ok(handle) => handle,
+            Err(error) => {
+                // A path-based cleanup could delete a different node if
+                // another sandbox moved this node and reused the name.
+                // Keep the empty node until Front supports delete-by-id.
+                warn!(inode = node.inode.0, %error, "created file but local open failed");
+                return Err(error);
+            }
+        };
+        Ok((node, handle))
+    }
+
+    fn unlink_node(&self, parent: INodeNo, name: &str) -> io::Result<()> {
+        let _namespace = self.namespace_write()?;
+        let node = self.lookup_node(parent, name)?;
+        let _inode = self.inode_locks.lock(node.inode)?;
+        self.store.remove_file(parent, name)?;
+        // Do this only after Front confirms the removal. A failed removal must
+        // leave a dirty open handle able to publish its bytes later.
+        self.mark_unlinked(node.inode)?;
+        self.clear_staged_attributes(node.inode)
+    }
+
+    fn remove_directory_node(&self, parent: INodeNo, name: &str) -> io::Result<()> {
+        let _namespace = self.namespace_write()?;
+        let node = self.lookup_node(parent, name)?;
+        self.store.remove_directory(parent, name)?;
+        self.clear_staged_attributes(node.inode)
+    }
+
+    fn rename_node(
+        &self,
+        parent: INodeNo,
+        name: &str,
+        new_parent: INodeNo,
+        new_name: &str,
+    ) -> io::Result<()> {
+        let _namespace = self.namespace_write()?;
+        if parent == new_parent && name == new_name {
+            return Ok(());
+        }
+        let destination_inode = match self.lookup_node(new_parent, new_name) {
+            Ok(destination) => Some(destination.inode),
+            Err(error) if error.raw_os_error() == Some(libc::ENOENT) => None,
+            Err(error) => return Err(error),
+        };
+        let _destination = destination_inode
+            .map(|inode| self.inode_locks.lock(inode))
+            .transpose()?;
+        let node = self.store.rename(parent, name, new_parent, new_name)?;
+        if let Some(destination_inode) = destination_inode {
+            // The old destination stays readable through existing descriptors,
+            // but those descriptors must never replace the new path later.
+            self.mark_unlinked(destination_inode)?;
+            self.clear_staged_attributes(destination_inode)?;
+        }
+        debug!(inode = node.inode.0, "renamed filesystem inode");
+        Ok(())
+    }
+
     fn open_directory(&self, inode: INodeNo) -> io::Result<u64> {
         let directory = self.node(inode)?;
         if directory.kind != NodeKind::Directory {
@@ -267,7 +347,21 @@ impl DustFuse {
         result
     }
 
+    fn handle_inode(&self, handle: u64) -> io::Result<INodeNo> {
+        let shared = self.handles.file(handle)?;
+        let open = shared.lock().map_err(|_| errno(libc::EIO))?;
+        Ok(open.inode())
+    }
+
     fn commit_handle(&self, handle: u64, commit_deferred_truncate: bool) -> io::Result<()> {
+        let inode = self.handle_inode(handle)?;
+        let _inode = self.inode_locks.lock(inode)?;
+        self.commit_handle_locked(handle, commit_deferred_truncate)
+    }
+
+    // The caller holds this inode's lock so a remove or rename-over cannot
+    // change whether the open file is still allowed to publish its bytes.
+    fn commit_handle_locked(&self, handle: u64, commit_deferred_truncate: bool) -> io::Result<()> {
         let shared = self.handles.file(handle)?;
         let mut open = shared.lock().map_err(|_| errno(libc::EIO))?;
         if open.is_unlinked() {
@@ -293,49 +387,40 @@ impl DustFuse {
 
     fn release_handle(&self, handle: u64) -> io::Result<()> {
         debug!(handle, "releasing filesystem handle");
-        let (inode, dirty) = {
-            let shared = self.handles.file(handle)?;
-            let open = shared.lock().map_err(|_| errno(libc::EIO))?;
-            (open.inode(), open.is_dirty())
-        };
-        let release = || {
-            // Linux ignores errors returned by RELEASE. Written data and fsync
-            // had the opportunity to report a failure. An O_TRUNC-only handle
-            // reaches this final commit intentionally.
-            let commit_result = self.commit_handle(handle, true);
-            let removed = self.handles.remove_file(handle)?;
-            if commit_result.is_err() {
-                self.clear_staged_attributes(inode)?;
-                self.store.discard_content(inode)?;
-            }
-            drop(removed);
-            debug!(
-                handle,
-                remaining_handles = self.handles.file_count()?,
-                "released filesystem handle"
-            );
-            if let Err(error) = &commit_result {
-                warn!(
-                    handle,
-                    errno = error.raw_os_error(),
-                    error = %error,
-                    "final filesystem handle commit failed during release"
-                );
-            }
-            commit_result
-        };
-        if dirty {
-            // A failed final commit must discard dirty bytes before a new OPEN
-            // can use them. OPEN takes the same inode lock.
-            let _inode = self.inode_locks.lock(inode)?;
-            release()
-        } else {
-            release()
+        let inode = self.handle_inode(handle)?;
+        // Keep remove, rename-over, and the final commit in one order. The
+        // locked helper avoids taking this same lock a second time.
+        let _inode = self.inode_locks.lock(inode)?;
+        // Linux ignores errors returned by RELEASE. Written data and fsync
+        // had the opportunity to report a failure. An O_TRUNC-only handle
+        // reaches this final commit intentionally.
+        let commit_result = self.commit_handle_locked(handle, true);
+        let removed = self.handles.remove_file(handle)?;
+        if commit_result.is_err() {
+            self.clear_staged_attributes(inode)?;
+            self.store.discard_content(inode)?;
         }
+        drop(removed);
+        debug!(
+            handle,
+            remaining_handles = self.handles.file_count()?,
+            "released filesystem handle"
+        );
+        if let Err(error) = &commit_result {
+            warn!(
+                handle,
+                errno = error.raw_os_error(),
+                error = %error,
+                "final filesystem handle commit failed during release"
+            );
+        }
+        commit_result
     }
 
     fn sync_handle(&self, handle: u64, data_only: bool) -> io::Result<()> {
-        self.commit_handle(handle, true)?;
+        let inode = self.handle_inode(handle)?;
+        let _inode = self.inode_locks.lock(inode)?;
+        self.commit_handle_locked(handle, true)?;
         let shared = self.handles.file(handle)?;
         let open = try_open_file(&shared)?;
         if data_only {
@@ -409,10 +494,10 @@ impl DustFuse {
         }
     }
 
-    fn mark_unlinked(&self, inode: INodeNo, unlinked: bool) -> io::Result<()> {
+    fn mark_unlinked(&self, inode: INodeNo) -> io::Result<()> {
         for open in self.handles.files_for_inode(inode)? {
             let mut open = open.lock().map_err(|_| errno(libc::EIO))?;
-            open.mark_unlinked(unlinked);
+            open.mark_unlinked();
         }
         Ok(())
     }

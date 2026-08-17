@@ -90,16 +90,12 @@ impl OpenFile {
         self.defer_truncate_commit = false;
     }
 
-    pub fn mark_unlinked(&mut self, unlinked: bool) {
-        self.unlinked = unlinked;
+    pub fn mark_unlinked(&mut self) {
+        self.unlinked = true;
     }
 
     pub fn is_unlinked(&self) -> bool {
         self.unlinked
-    }
-
-    pub fn is_dirty(&self) -> bool {
-        self.dirty
     }
 
     pub fn replace_node(&mut self, node: Node) {
@@ -295,9 +291,12 @@ fn errno(code: i32) -> io::Error {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::{mpsc, Arc, Barrier};
+    use std::time::Duration;
+
     use fuser::INodeNo;
 
-    use super::{DirectoryEntry, HandleTable};
+    use super::{DirectoryEntry, HandleTable, InodeLocks};
     use crate::commands::filesystem::store::NodeKind;
 
     #[test]
@@ -317,5 +316,30 @@ mod tests {
 
         handles.remove_directory(handle).expect("release directory");
         assert!(handles.directory(handle).is_err());
+    }
+
+    #[test]
+    fn inode_lock_waits_for_the_current_operation() {
+        let locks = Arc::new(InodeLocks::new());
+        let inode = INodeNo(42);
+        let current = locks.lock(inode).expect("lock inode");
+        let ready = Arc::new(Barrier::new(2));
+        let (acquired_tx, acquired_rx) = mpsc::channel();
+
+        let waiter_locks = Arc::clone(&locks);
+        let waiter_ready = Arc::clone(&ready);
+        let waiter = std::thread::spawn(move || {
+            waiter_ready.wait();
+            let _guard = waiter_locks.lock(inode).expect("wait for inode");
+            acquired_tx.send(()).expect("report acquired lock");
+        });
+
+        ready.wait();
+        assert!(acquired_rx.try_recv().is_err());
+        drop(current);
+        acquired_rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("waiter acquires released inode");
+        waiter.join().expect("join waiter");
     }
 }

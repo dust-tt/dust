@@ -44,6 +44,8 @@ pub(super) fn file_attributes(node: &Node, uid: u32, gid: u32) -> FileAttr {
             NodeKind::Directory => 0o777,
             NodeKind::File => 0o666 | (node.mode & 0o111),
         },
+        // A file has one directory entry. A directory also has its own `.`
+        // entry, so Linux expects at least two links.
         nlink: if node.kind == NodeKind::Directory {
             2
         } else {
