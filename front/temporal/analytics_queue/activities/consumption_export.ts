@@ -30,7 +30,7 @@ function canonicalizeConsumptionScopeFilter(
       const [, values] = entry;
       return values !== undefined && values.length > 0;
     })
-    .map(([key, values]) => [key, [...values].sort()])
+    .map(([key, values]) => [key, [...values].sort()] as const)
     .sort(([a], [b]) => a.localeCompare(b));
 }
 
