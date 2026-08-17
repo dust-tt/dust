@@ -1,23 +1,25 @@
 import {
   getToolOverride,
   getToolValidationAlwaysAllowLabel,
-  getToolValidationTitle,
 } from "@app/components/actions/blocked/toolValidationLabels";
 import { ToolValidationDetails } from "@app/components/assistant/conversation/ToolValidationDetails";
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
+  Avatar,
   Button,
+  Card,
   Check,
   Checkbox,
-  ContentMessage,
   Label,
+  PieChart01,
   XClose,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 // Display data needed to render a tool validation card, for both agent-loop and sandbox-function
 // blocked tool executions.
@@ -34,6 +36,10 @@ type ToolValidationRequest = Pick<
 
 interface ToolValidationCardProps {
   validationRequest: ToolValidationRequest;
+  approvalProgress?: {
+    current: number;
+    total: number;
+  };
   triggeringUser: UserType | null;
   // The viewer looking at the card. Passed in rather than read from `AuthContext` because shared
   // frames render this card outside of any AuthProvider.
@@ -49,6 +55,7 @@ interface ToolValidationCardProps {
 
 export function ToolValidationCard({
   validationRequest,
+  approvalProgress,
   triggeringUser,
   currentUser,
   owner,
@@ -59,106 +66,137 @@ export function ToolValidationCard({
   onValidate,
 }: ToolValidationCardProps) {
   const [neverAskAgain, setNeverAskAgain] = useState(false);
+  const [submittingDecision, setSubmittingDecision] = useState<
+    "approved" | "rejected" | null
+  >(null);
 
-  const canCurrentUserRespond = useMemo(
-    () =>
-      canCurrentUserRespondToParentUserMessage({
-        parentUserId: validationRequest.userId,
-        currentUserId: currentUser.sId,
-      }),
-    [validationRequest.userId, currentUser.sId]
-  );
+  const canCurrentUserRespond = canCurrentUserRespondToParentUserMessage({
+    parentUserId: validationRequest.userId,
+    currentUserId: currentUser.sId,
+  });
 
   const icon = validationRequest.metadata.icon
     ? getIcon(validationRequest.metadata.icon)
     : undefined;
 
   const handleValidation = async (approved: "approved" | "rejected") => {
-    const success = await onValidate(
-      approved === "approved" && neverAskAgain ? "always_approved" : approved
-    );
-    if (success) {
-      setNeverAskAgain(false);
+    setSubmittingDecision(approved);
+    try {
+      const success = await onValidate(
+        approved === "approved" && neverAskAgain ? "always_approved" : approved
+      );
+      if (success) {
+        setNeverAskAgain(false);
+      }
+    } finally {
+      setSubmittingDecision(null);
     }
   };
 
   const toolOverride = getToolOverride(validationRequest.metadata);
-  const title = getToolValidationTitle(
-    validationRequest,
-    canCurrentUserRespond
-  );
   const alwaysAllowLabel = getToolValidationAlwaysAllowLabel(validationRequest);
+  const isSubmitting = isValidating || submittingDecision !== null;
+  const alwaysAllowInputId = `never-ask-again-${validationRequest.actionId}`;
+  const hasDetails = Object.keys(validationRequest.inputs).length > 0;
 
   return (
-    <ContentMessage
-      title={title}
-      variant="primary"
-      className="flex w-full flex-col gap-3 sm:w-80 sm:min-w-125"
-      icon={icon}
+    <Card
+      variant="secondary"
+      containerClassName="w-full max-w-xl"
+      className="flex-col p-0"
+      isPulsing={isPulsing}
     >
-      {canCurrentUserRespond ? (
-        <>
-          <ToolValidationDetails
-            blockedAction={validationRequest}
-            user={currentUser}
-            owner={owner}
-            conversationId={conversationId}
-            defaultExpanded={toolOverride?.detailsExpanded}
-          />
-          {errorMessage && (
-            <div className="mt-2 text-sm font-medium text-warning-800">
-              {errorMessage}
-            </div>
-          )}
-          <div className="flex flex-col gap-3 sm:mt-3">
-            {(validationRequest.stake === "low" ||
-              validationRequest.stake === "medium") && (
-              <Label
-                htmlFor="never-ask-again"
-                className="flex w-fit cursor-pointer flex-row items-center gap-2 py-1 pr-2 text-xs"
-              >
-                <Checkbox
-                  id="never-ask-again"
-                  checked={neverAskAgain}
-                  onCheckedChange={(check) => {
-                    setNeverAskAgain(!!check);
-                  }}
-                />
-                <span className="text-normal font-normal">
-                  {alwaysAllowLabel}
-                </span>
-              </Label>
-            )}
-            <div className="hidden sm:block sm:grow" />
-            <div className="flex flex-row gap-3 self-end">
-              <Button
-                label="Decline"
-                variant="outline"
-                size="xs"
-                icon={XClose}
-                disabled={isValidating}
-                isPulsing={isPulsing}
-                onClick={() => void handleValidation("rejected")}
-              />
-              <Button
-                label={toolOverride?.approveLabel ?? "Allow"}
-                variant="highlight"
-                size="xs"
-                icon={Check}
-                disabled={isValidating}
-                isPulsing={isPulsing}
-                onClick={() => void handleValidation("approved")}
-              />
-            </div>
+      <div className="flex items-center justify-between gap-3 px-5 pt-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar icon={icon ?? PieChart01} size="sm" />
+          <div className="heading-base min-w-0 wrap-break-word">{`Allow ${validationRequest.metadata.agentName} to use ${asDisplayName(validationRequest.metadata.mcpServerName)}?`}</div>
+        </div>
+        {approvalProgress && approvalProgress.total > 1 && (
+          <div className="heading-xs shrink-0 text-muted-foreground">
+            <span className="sr-only">
+              Approval {approvalProgress.current} of {approvalProgress.total}
+            </span>
+            <span aria-hidden="true">
+              {approvalProgress.current}/{approvalProgress.total}
+            </span>
           </div>
-        </>
-      ) : (
-        <div className="font-sm whitespace-normal wrap-break-word text-foreground">
-          Waiting for{" "}
-          <span className="font-semibold">{triggeringUser?.fullName}</span> to
-          confirm.
+        )}
+      </div>
+
+      <div className="flex flex-col gap-4 px-5 py-4">
+        <div className="text-base">
+          {validationRequest.metadata.displayLabel ??
+            asDisplayName(validationRequest.metadata.toolName)}
+        </div>
+        {canCurrentUserRespond ? (
+          <>
+            {hasDetails && (
+              <ToolValidationDetails
+                blockedAction={validationRequest}
+                user={currentUser}
+                owner={owner}
+                conversationId={conversationId}
+                defaultExpanded={toolOverride?.detailsExpanded}
+              />
+            )}
+            {errorMessage && (
+              <div className="text-sm font-medium text-warning-800">
+                {errorMessage}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-sm wrap-break-word text-muted-foreground">
+            Waiting for{" "}
+            <span className="font-semibold text-foreground">
+              {triggeringUser?.fullName}
+            </span>{" "}
+            to confirm.
+          </div>
+        )}
+      </div>
+
+      {canCurrentUserRespond && (
+        <div className="flex flex-col gap-3 px-4 pb-3 pt-2 sm:flex-row sm:items-center">
+          {(validationRequest.stake === "low" ||
+            validationRequest.stake === "medium") && (
+            <Label
+              htmlFor={alwaysAllowInputId}
+              className="flex min-h-11 cursor-pointer items-center gap-2 px-1 sm:min-h-0"
+            >
+              <Checkbox
+                id={alwaysAllowInputId}
+                checked={neverAskAgain}
+                disabled={isSubmitting}
+                onCheckedChange={(check) => {
+                  setNeverAskAgain(!!check);
+                }}
+              />
+              <span className="font-normal">{alwaysAllowLabel}</span>
+            </Label>
+          )}
+          <div className="flex gap-2 sm:ml-auto">
+            <Button
+              label="Decline"
+              variant="outline"
+              size="xs"
+              icon={XClose}
+              disabled={isSubmitting}
+              isLoading={submittingDecision === "rejected"}
+              onClick={() => void handleValidation("rejected")}
+            />
+            <Button
+              label={toolOverride?.approveLabel ?? "Allow"}
+              variant="highlight"
+              size="xs"
+              icon={Check}
+              disabled={isSubmitting}
+              isLoading={submittingDecision === "approved"}
+              onClick={() => void handleValidation("approved")}
+            />
+          </div>
         </div>
       )}
-    </ContentMessage>
+    </Card>
   );
 }

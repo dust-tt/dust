@@ -51,6 +51,23 @@ export function MCPToolValidationRequired({
 
   const isPulsing = isActionPulsing(blockedAction.actionId);
 
+  const approvalProgress = useMemo(() => {
+    if (!user) {
+      return undefined;
+    }
+
+    const pendingApprovals = getBlockedActions(user.sId).filter(
+      (action) => action.status === "blocked_validation_required"
+    );
+    const currentIndex = pendingApprovals.findIndex(
+      (action) => action.actionId === blockedAction.actionId
+    );
+
+    return currentIndex === -1
+      ? undefined
+      : { current: currentIndex + 1, total: pendingApprovals.length };
+  }, [blockedAction.actionId, getBlockedActions, user]);
+
   const handleValidationStart = () => {
     // Stop pulsing immediately when the user takes an action.
     stopPulsingAction(blockedAction.actionId);
@@ -135,6 +152,7 @@ export function MCPToolValidationRequired({
   return (
     <ToolValidationCard
       validationRequest={blockedAction}
+      approvalProgress={approvalProgress}
       triggeringUser={triggeringUser}
       currentUser={user}
       owner={owner}
