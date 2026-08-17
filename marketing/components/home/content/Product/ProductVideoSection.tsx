@@ -1,14 +1,13 @@
 import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
 
-const _VIDEO_SRC =
-  "/static/landing/product/Dust%20-%20Self-improving%20Skills%20-%20V4.mp4";
-
 const videoUrl = new URL("https://fast.wistia.net/embed/iframe/hyatgdecn7");
 videoUrl.searchParams.set("seo", "true");
 videoUrl.searchParams.set("videoFoam", "true");
 videoUrl.searchParams.set("autoPlay", "true");
 videoUrl.searchParams.set("muted", "true");
 videoUrl.searchParams.set("playsinline", "true");
+videoUrl.searchParams.set("playbar", "false");
+videoUrl.searchParams.set("controlsVisibleOnLoad", "false");
 videoUrl.searchParams.set("playButton", "false");
 videoUrl.searchParams.set("smallPlayButton", "false");
 videoUrl.searchParams.set("settingsControl", "false");
