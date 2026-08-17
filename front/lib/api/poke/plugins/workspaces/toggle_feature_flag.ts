@@ -1,5 +1,4 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { invalidateFeatureFlagsCache } from "@app/lib/auth";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -88,13 +87,6 @@ export const toggleFeatureFlagPlugin = createPlugin({
     }
     if (toRemove.length > 0) {
       await FeatureFlagResource.disableMany(workspace, toRemove);
-    }
-
-    // Bust the server-side memoizer cache on this pod so subsequent SSR
-    // requests hitting it immediately reflect the updated flags. Other pods
-    // will pick up the change once their 3s memoizer TTL expires.
-    if (toAdd.length > 0 || toRemove.length > 0) {
-      invalidateFeatureFlagsCache(auth);
     }
 
     const actions: string[] = [];

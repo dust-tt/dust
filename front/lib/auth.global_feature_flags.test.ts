@@ -1,22 +1,15 @@
-import {
-  Authenticator,
-  getFeatureFlags,
-  hasFeatureFlag,
-  invalidateFeatureFlagsCache,
-  invalidateGlobalFeatureFlagsCache,
-} from "@app/lib/auth";
+import { Authenticator, getFeatureFlags, hasFeatureFlag } from "@app/lib/auth";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { GlobalFeatureFlagModel } from "@app/lib/models/global_feature_flag";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
+import type { RequestStorageEnv } from "@app/types/shared/utils/request_context";
+import { RequestQueryCache } from "@app/types/shared/utils/request_context";
+import { Hono } from "hono";
+import { contextStorage } from "hono/context-storage";
 import { afterEach, describe, expect, it } from "vitest";
-
-function invalidateAllCaches(auth: Authenticator) {
-  invalidateFeatureFlagsCache(auth);
-  invalidateGlobalFeatureFlagsCache();
-}
 
 describe("getFeatureFlags with global flags", () => {
   afterEach(async () => {
@@ -32,7 +25,6 @@ describe("getFeatureFlags with global flags", () => {
       "labs_transcripts",
       100
     );
-    invalidateAllCaches(auth);
 
     const flags = await getFeatureFlags(auth);
     expect(flags).toContain("labs_transcripts");
@@ -48,7 +40,6 @@ describe("getFeatureFlags with global flags", () => {
       "labs_transcripts",
       100
     );
-    invalidateAllCaches(auth);
 
     const flags = await getFeatureFlags(auth);
     // Should appear exactly once, not duplicated.
@@ -65,7 +56,6 @@ describe("getFeatureFlags with global flags", () => {
       100
     );
     await GlobalFeatureFlagResource.setRolloutPercentage("labs_transcripts", 0);
-    invalidateAllCaches(auth);
 
     const flags = await getFeatureFlags(auth);
     expect(flags).not.toContain("labs_transcripts");
@@ -81,7 +71,6 @@ describe("getFeatureFlags with global flags", () => {
       "labs_transcripts",
       bucket + 1
     );
-    invalidateAllCaches(auth);
 
     const flagsIn = await getFeatureFlags(auth);
     expect(flagsIn).toContain("labs_transcripts");
@@ -92,7 +81,6 @@ describe("getFeatureFlags with global flags", () => {
         "labs_transcripts",
         bucket
       );
-      invalidateAllCaches(auth);
 
       const flagsOut = await getFeatureFlags(auth);
       expect(flagsOut).not.toContain("labs_transcripts");
@@ -108,7 +96,6 @@ describe("getFeatureFlags with global flags", () => {
       "labs_transcripts",
       100
     );
-    invalidateAllCaches(auth);
 
     const flags = await getFeatureFlags(auth);
     expect(flags).toContain("deepseek_feature");
@@ -123,7 +110,6 @@ describe("getFeatureFlags with global flags", () => {
       "disable_computer_feature",
       "deepseek_feature",
     ]);
-    invalidateAllCaches(auth);
 
     const flags = await getFeatureFlags(auth);
     expect(flags).toContain("disable_computer_feature");
@@ -138,7 +124,6 @@ describe("getFeatureFlags with global flags", () => {
       "disable_computer_feature",
       "deepseek_feature",
     ]);
-    invalidateAllCaches(auth);
 
     const flags = await getFeatureFlags(auth);
     expect(isComputerFeatureEnabled(flags)).toBe(false);
@@ -153,7 +138,6 @@ describe("getFeatureFlags with global flags", () => {
     expect(isComputerFeatureEnabled(flags)).toBe(true);
 
     await FeatureFlagResource.enable(workspace, "disable_computer_feature");
-    invalidateAllCaches(auth);
 
     const disabledFlags = await getFeatureFlags(auth);
     expect(disabledFlags).toContain("disable_computer_feature");
@@ -172,19 +156,59 @@ describe("getFeatureFlags with global flags", () => {
       name: "sandbox_tools" as never,
       rolloutPercentage: 100,
     });
-    invalidateAllCaches(auth);
 
     const flags = await getFeatureFlags(auth);
     expect(flags).not.toContain("sandbox_tools");
     expect(isComputerFeatureEnabled(flags)).toBe(true);
 
     await FeatureFlagResource.enable(workspace, "disable_computer_feature");
-    invalidateAllCaches(auth);
 
     const disabledFlags = await getFeatureFlags(auth);
     expect(disabledFlags).not.toContain("sandbox_tools");
     expect(disabledFlags).toContain("disable_computer_feature");
     expect(isComputerFeatureEnabled(disabledFlags)).toBe(false);
+  });
+
+  it("keeps a stable resource snapshot until the next request", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const app = new Hono<RequestStorageEnv>();
+    const requestContext = {
+      method: "GET",
+      route: "/test",
+      url: "/test",
+    };
+
+    app.use(contextStorage());
+    app.use(async (c, next) => {
+      c.set("requestContext", requestContext);
+      c.set("queryCache", new RequestQueryCache());
+      return next();
+    });
+    app.get("/read-write", async (c) => {
+      const first = await FeatureFlagResource.listForWorkspace(workspace);
+      const second = await FeatureFlagResource.listForWorkspace(workspace);
+      expect(second).toBe(first);
+
+      await FeatureFlagResource.enable(workspace, "deepseek_feature");
+
+      const afterMutation =
+        await FeatureFlagResource.listForWorkspace(workspace);
+      expect(afterMutation).toBe(first);
+      expect(afterMutation.map((flag) => flag.name)).not.toContain(
+        "deepseek_feature"
+      );
+
+      return c.body(null);
+    });
+    app.get("/read", async (c) => {
+      const flags = await FeatureFlagResource.listForWorkspace(workspace);
+      expect(flags.map((flag) => flag.name)).toContain("deepseek_feature");
+
+      return c.body(null);
+    });
+
+    expect((await app.request("/read-write")).status).toBe(200);
+    expect((await app.request("/read")).status).toBe(200);
   });
 });
 

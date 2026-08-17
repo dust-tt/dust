@@ -3,14 +3,17 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
-import type { RequestContext } from "@app/types/shared/utils/request_context";
-import { runWithRequestContext } from "@app/types/shared/utils/request_context";
+import {
+  type RequestContext,
+  RequestQueryCache,
+  type RequestStorageEnv,
+} from "@app/types/shared/utils/request_context";
 import { getClientIpFromContext } from "@front-api/lib/request";
 import { createMiddleware } from "hono/factory";
 import { routePath } from "hono/route";
 
 type RequestLoggerEnv = {
-  Variables: {
+  Variables: RequestStorageEnv["Variables"] & {
     auth?: Authenticator;
     session?: SessionWithUser;
     streaming?: boolean;
@@ -54,12 +57,6 @@ const routeConcurrencyStates = new Map<string, RouteConcurrencyState>();
 
 export const requestLogger = createMiddleware<RequestLoggerEnv>(
   async (c, next) => {
-    if (SKIP_LOGGER_PATHS.has(c.req.path) || c.req.method === "OPTIONS") {
-      // Also drop the APM trace so these requests don't show up in Datadog.
-      tracer.scope().active()?.setTag("manual.drop", true);
-      return next();
-    }
-
     // Mutable: `route` starts as the raw URL path and is updated to the matched
     // route pattern in the finally block (routePath is only set after routing).
     // Any unhandled rejection fired from the handler will see the updated value
@@ -70,6 +67,14 @@ export const requestLogger = createMiddleware<RequestLoggerEnv>(
       route: c.req.path,
       url: c.req.path,
     };
+    c.set("requestContext", reqCtx);
+    c.set("queryCache", new RequestQueryCache());
+
+    if (SKIP_LOGGER_PATHS.has(c.req.path) || c.req.method === "OPTIONS") {
+      // Also drop the APM trace so these requests don't show up in Datadog.
+      tracer.scope().active()?.setTag("manual.drop", true);
+      return next();
+    }
 
     // `routePath(c)` defaults to the current middleware route (`/*` here).
     // `-1` points at the leaf handler route selected by Hono, which is already
@@ -98,31 +103,29 @@ export const requestLogger = createMiddleware<RequestLoggerEnv>(
     routeConcurrencyState.inFlightPeaks.add(peakRef);
 
     const startMs = performance.now();
-    await runWithRequestContext(reqCtx, async () => {
-      try {
-        await next();
-      } finally {
-        routeConcurrencyState.inFlightPeaks.delete(peakRef);
-        routeConcurrencyState.activeRequests -= 1;
-        if (routeConcurrencyState.activeRequests === 0) {
-          routeConcurrencyStates.delete(concurrencyKey);
-        }
-
-        const _routePath = routePath(c);
-        if (_routePath) {
-          // dd-trace's Hono auto-instrumentation can land on a wildcard
-          // middleware path (e.g. `/api/w/:wId/*` from
-          // `app.use("*", workspaceAuth())`) instead of the matched handler
-          // route. Override with Hono's own routePath, which always points at
-          // the handler that ran.
-          const span = tracer.scope().active();
-          if (span) {
-            span.setTag("resource.name", `${c.req.method} ${_routePath}`);
-          }
-          reqCtx.route = _routePath;
-        }
+    try {
+      await next();
+    } finally {
+      routeConcurrencyState.inFlightPeaks.delete(peakRef);
+      routeConcurrencyState.activeRequests -= 1;
+      if (routeConcurrencyState.activeRequests === 0) {
+        routeConcurrencyStates.delete(concurrencyKey);
       }
-    });
+
+      const _routePath = routePath(c);
+      if (_routePath) {
+        // dd-trace's Hono auto-instrumentation can land on a wildcard
+        // middleware path (e.g. `/api/w/:wId/*` from
+        // `app.use("*", workspaceAuth())`) instead of the matched handler
+        // route. Override with Hono's own routePath, which always points at
+        // the handler that ran.
+        const span = tracer.scope().active();
+        if (span) {
+          span.setTag("resource.name", `${c.req.method} ${_routePath}`);
+        }
+        reqCtx.route = _routePath;
+      }
+    }
 
     const durationMs = Math.round(performance.now() - startMs);
 
