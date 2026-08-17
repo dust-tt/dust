@@ -27,6 +27,7 @@ const TRIGGERS: GetAutomationTriggersResponse = {
       triggerId: "trg1",
       name: "Competitor watch",
       kind: "schedule",
+      status: "enabled",
       agent: {
         agentId: "agent1",
         name: "deep-dive",
@@ -50,6 +51,7 @@ const TRIGGERS: GetAutomationTriggersResponse = {
       triggerId: "trg2",
       name: "Inbound triage",
       kind: "webhook",
+      status: "disabled",
       agent: {
         agentId: "agent2",
         name: "support",

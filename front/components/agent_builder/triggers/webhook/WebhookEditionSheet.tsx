@@ -3,7 +3,10 @@ import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/Re
 import { TriggerPodSelector } from "@app/components/agent_builder/triggers/TriggerPodSelector";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/webhook/WebhookEditionFilters";
+import { TRIGGER_STATUS_LABELS } from "@app/components/triggers/TriggerStatusChip";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
+import { isSystemDisabledTriggerStatus } from "@app/types/assistant/triggers";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import type {
@@ -27,6 +30,7 @@ import {
   Separator,
   SliderToggle,
   TextArea,
+  Tooltip,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo } from "react";
@@ -70,19 +74,40 @@ function WebhookEditionStatusToggle({
   const {
     field: { value: status, onChange: setStatus },
   } = useController({ control, name: "webhook.status" });
+  const { isAdmin } = useAuth();
 
   const isEnabled = status === "enabled";
+  // Non-admins cannot flip an admin lock; nobody edits system-owned statuses.
+  const isStatusLocked =
+    isSystemDisabledTriggerStatus(status) ||
+    (status === "disabled_by_admin" && !isAdmin);
+  const statusLabel = TRIGGER_STATUS_LABELS[status];
+
+  const toggle = (
+    <SliderToggle
+      disabled={!isEditor || isStatusLocked}
+      selected={isEnabled}
+      onClick={() => setStatus(isEnabled ? "disabled" : "enabled")}
+    />
+  );
 
   return (
     <div className="space-y-1">
       <Label>Status</Label>
       <div className="flex flex-row items-center gap-2">
-        <span className="w-16">{isEnabled ? "Enabled" : "Disabled"}</span>
-        <SliderToggle
-          disabled={!isEditor}
-          selected={isEnabled}
-          onClick={() => setStatus(isEnabled ? "disabled" : "enabled")}
-        />
+        <span className="min-w-16 whitespace-nowrap">{statusLabel}</span>
+        {isStatusLocked ? (
+          <Tooltip
+            label={
+              isSystemDisabledTriggerStatus(status)
+                ? "This trigger's status is managed by Dust."
+                : "Only an admin can re-enable this trigger."
+            }
+            trigger={<div>{toggle}</div>}
+          />
+        ) : (
+          toggle
+        )}
       </div>
     </div>
   );

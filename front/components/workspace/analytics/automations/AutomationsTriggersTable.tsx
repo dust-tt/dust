@@ -1,3 +1,4 @@
+import { ConfirmContext } from "@app/components/Confirm";
 import { getIcon } from "@app/components/resources/resources_icons";
 import {
   AvatarNameCell,
@@ -7,7 +8,10 @@ import {
 import { useAutomationsTriggers } from "@app/hooks/useAutomationsTriggers";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
+import { useUpdateTriggerStatus } from "@app/lib/swr/agent_triggers";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
+import type { TriggerStatus } from "@app/types/assistant/triggers";
+import { isSystemDisabledTriggerStatus } from "@app/types/assistant/triggers";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   Avatar,
@@ -15,15 +19,20 @@ import {
   DataTable,
   DataTableLoadingSkeleton,
   Icon,
+  SliderToggle,
   Tooltip,
 } from "@dust-tt/sparkle";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import type { ComponentProps, Dispatch, SetStateAction } from "react";
-import { useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 const TRIGGERS_PAGE_SIZE = 25;
 
 interface TriggerRowData extends AutomationTriggerRow {
+  displayStatus: TriggerStatus;
+  isStatusPending: boolean;
+  onToggleStatus: () => void;
+  // onClick satisfies DataTable's row shape, which is otherwise a weak type.
   onClick?: () => void;
 }
 
@@ -49,6 +58,43 @@ function TypeCell({ trigger }: { trigger: AutomationTriggerRow }) {
       );
     default:
       assertNeverAndIgnore(trigger.kind);
+      return null;
+  }
+}
+
+function RunningCell({ row }: { row: TriggerRowData }) {
+  switch (row.displayStatus) {
+    // The page is admin-only, so an admin-locked trigger stays toggleable here.
+    case "enabled":
+    case "disabled":
+    case "disabled_by_admin":
+      return (
+        <SliderToggle
+          selected={row.displayStatus === "enabled"}
+          disabled={row.isStatusPending}
+          onClick={row.onToggleStatus}
+        />
+      );
+    case "relocating":
+    case "downgraded":
+      return (
+        <Tooltip
+          label={
+            row.displayStatus === "relocating"
+              ? "Disabled while the workspace is being relocated."
+              : "Disabled following a plan downgrade."
+          }
+          trigger={
+            // A disabled SliderToggle needs a wrapper to be a valid Tooltip
+            // trigger.
+            <div>
+              <SliderToggle selected={false} disabled />
+            </div>
+          }
+        />
+      );
+    default:
+      assertNeverAndIgnore(row.displayStatus);
       return null;
   }
 }
@@ -195,6 +241,17 @@ const columns: ColumnDef<TriggerRowData>[] = [
       </DataTable.CellContent>
     ),
   },
+  {
+    id: "status",
+    header: "Enabled",
+    enableSorting: false,
+    meta: { className: "w-24", headerAlign: "left" },
+    cell: (info) => (
+      <DataTable.CellContent className="w-full justify-start">
+        <RunningCell row={info.row.original} />
+      </DataTable.CellContent>
+    ),
+  },
 ];
 
 interface AutomationsTriggersTableProps {
@@ -219,12 +276,88 @@ export function AutomationsTriggersTable({
       offset: pagination.pageIndex * pagination.pageSize,
     });
 
+  const confirm = useContext(ConfirmContext);
+  const updateTriggerStatus = useUpdateTriggerStatus({ workspaceId });
+
+  // The table data comes from an expensive Elasticsearch query, so instead of
+  // revalidating after a toggle we track the new statuses locally.
+  const [statusOverrides, setStatusOverrides] = useState<
+    Record<string, TriggerStatus>
+  >({});
+  const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(new Set());
+
+  // Refetched rows (pagination, period change) already carry any status we
+  // wrote, so overrides only need to live until the next fetch.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: triggers is the reset signal, not a body dependency
+  useEffect(() => {
+    setStatusOverrides({});
+  }, [triggers]);
+
+  const handleToggle = useCallback(
+    async (trigger: AutomationTriggerRow, currentStatus: TriggerStatus) => {
+      if (isSystemDisabledTriggerStatus(currentStatus)) {
+        return;
+      }
+      const nextStatus = currentStatus === "enabled" ? "disabled" : "enabled";
+
+      if (nextStatus === "disabled") {
+        const confirmed = await confirm({
+          title: "Disable this automation?",
+          message: `"${trigger.name}" will stop running for ${trigger.editor.name}. Only an admin will be able to re-enable it.`,
+          validateVariant: "warning",
+          validateLabel: "Disable",
+          cancelLabel: "Cancel",
+        });
+        if (!confirmed) {
+          return;
+        }
+      }
+
+      setPendingIds((ids) => new Set([...ids, trigger.triggerId]));
+      const success = await updateTriggerStatus({
+        agentConfigurationId: trigger.agent.agentId,
+        triggerId: trigger.triggerId,
+        status: nextStatus,
+      });
+      if (success) {
+        // This page is admin-only, so a disable is stored server-side as
+        // disabled_by_admin.
+        setStatusOverrides((overrides) => ({
+          ...overrides,
+          [trigger.triggerId]:
+            nextStatus === "disabled" ? "disabled_by_admin" : "enabled",
+        }));
+      }
+      setPendingIds((ids) => {
+        const next = new Set(ids);
+        next.delete(trigger.triggerId);
+        return next;
+      });
+    },
+    [confirm, updateTriggerStatus]
+  );
+
+  const rows: TriggerRowData[] = useMemo(
+    () =>
+      triggers.map((trigger) => {
+        const displayStatus =
+          statusOverrides[trigger.triggerId] ?? trigger.status;
+        return {
+          ...trigger,
+          displayStatus,
+          isStatusPending: pendingIds.has(trigger.triggerId),
+          onToggleStatus: () => void handleToggle(trigger, displayStatus),
+        };
+      }),
+    [triggers, statusOverrides, pendingIds, handleToggle]
+  );
+
   return (
     <div className="rounded-lg border border-border bg-panel-background p-4">
       <TriggersTableBody
         isLoading={isTriggersLoading}
         isError={!!isTriggersError}
-        triggers={triggers}
+        rows={rows}
         totalCount={totalCount}
         pagination={pagination}
         setPagination={setPagination}
@@ -236,7 +369,7 @@ export function AutomationsTriggersTable({
 interface TriggersTableBodyProps {
   isLoading: boolean;
   isError: boolean;
-  triggers: AutomationTriggerRow[];
+  rows: TriggerRowData[];
   totalCount: number;
   pagination: PaginationState;
   setPagination: Dispatch<SetStateAction<PaginationState>>;
@@ -245,7 +378,7 @@ interface TriggersTableBodyProps {
 function TriggersTableBody({
   isLoading,
   isError,
-  triggers,
+  rows,
   totalCount,
   pagination,
   setPagination,
@@ -264,7 +397,7 @@ function TriggersTableBody({
     );
   }
 
-  if (triggers.length === 0) {
+  if (rows.length === 0) {
     return (
       <div className="text-sm text-muted-foreground">
         No automation ran over this period.
@@ -276,7 +409,7 @@ function TriggersTableBody({
     <div className="overflow-x-auto">
       <DataTable<TriggerRowData>
         className="min-w-200"
-        data={triggers}
+        data={rows}
         columns={columns}
         totalRowCount={totalCount}
         pagination={pagination}

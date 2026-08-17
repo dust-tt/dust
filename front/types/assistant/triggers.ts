@@ -71,6 +71,7 @@ export type TriggerExecutionMode = "fair_use" | "programmatic";
 export const TRIGGER_STATUSES = [
   "enabled",
   "disabled",
+  "disabled_by_admin",
   "relocating",
   "downgraded",
 ] as const;
@@ -78,6 +79,22 @@ export type TriggerStatus = (typeof TRIGGER_STATUSES)[number];
 
 export function isValidTriggerStatus(status: string): status is TriggerStatus {
   return (TRIGGER_STATUSES as readonly string[]).includes(status);
+}
+
+// Statuses set and restored by bulk jobs (workspace relocation, plan
+// downgrade); users cannot toggle out of them.
+export function isSystemDisabledTriggerStatus(
+  status: TriggerStatus
+): status is "relocating" | "downgraded" {
+  return status === "relocating" || status === "downgraded";
+}
+
+// Statuses a trigger editor can set or clear; the others (admin lock,
+// relocation, downgrade) are admin- or system-owned.
+export function isUserManagedTriggerStatus(
+  status: TriggerStatus
+): status is "enabled" | "disabled" {
+  return status === "enabled" || status === "disabled";
 }
 
 export const WEBHOOK_REQUEST_TRIGGER_STATUSES = [

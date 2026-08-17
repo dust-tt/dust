@@ -7,7 +7,10 @@ import {
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { GetTriggersResponseBody } from "@app/types/api/assistant/configuration/triggers";
-import { TriggerSchema } from "@app/types/assistant/triggers";
+import {
+  isSystemDisabledTriggerStatus,
+  TriggerSchema,
+} from "@app/types/assistant/triggers";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -222,6 +225,37 @@ app.patch(
       }
 
       const validatedTrigger = triggerValidation.data;
+
+      const nextStatus = validatedTrigger.status ?? "enabled";
+      if (
+        nextStatus !== triggerToUpdate.status &&
+        (triggerToUpdate.isSystemDisabled ||
+          isSystemDisabledTriggerStatus(nextStatus))
+      ) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "This trigger's status is managed by Dust and cannot be changed.",
+          },
+        });
+      }
+
+      const canUpdateStatus = triggerToUpdate.canUpdateStatusTo(
+        auth,
+        nextStatus
+      );
+      if (!canUpdateStatus) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "Only an admin can change the status of this trigger.",
+          },
+        });
+      }
+
       const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
         ? getResourceIdFromSId(validatedTrigger.webhookSourceViewId)
         : null;

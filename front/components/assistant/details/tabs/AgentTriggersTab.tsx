@@ -1,3 +1,4 @@
+import { TriggerStatusChip } from "@app/components/triggers/TriggerStatusChip";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   useAgentTriggers,
@@ -126,7 +127,16 @@ export function AgentTriggersTab({
               key={trigger.sId}
               icon={getTriggerIcon(trigger)}
               label={trigger.name}
-              description={getTriggerDescription(trigger)}
+              description={
+                trigger.status === "enabled" ? (
+                  getTriggerDescription(trigger)
+                ) : (
+                  <div className="flex flex-col items-start gap-1">
+                    <span>{getTriggerDescription(trigger)}</span>
+                    <TriggerStatusChip status={trigger.status} />
+                  </div>
+                )
+              }
               canAdd={false}
               disabled={trigger.status !== "enabled"}
               onClick={() => onEditTrigger(trigger)}

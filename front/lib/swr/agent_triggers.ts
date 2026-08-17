@@ -11,6 +11,7 @@ import type { GetTriggerEstimationResponseBody } from "@app/lib/triggers/trigger
 import type {
   GetTriggersResponseBody,
   GetUserTriggersResponseBody,
+  PatchTriggerStatusRequestBody,
   PatchTriggersRequestBody,
   PostTextAsCronRuleRequestBody,
   PostTextAsCronRuleResponseBody,
@@ -243,6 +244,68 @@ export function useUpdateTrigger({
   );
 
   return updateTrigger;
+}
+
+export function useUpdateTriggerStatus({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  const updateTriggerStatus = useCallback(
+    async ({
+      agentConfigurationId,
+      triggerId,
+      status,
+    }: {
+      agentConfigurationId: string;
+      triggerId: string;
+      status: PatchTriggerStatusRequestBody["status"];
+    }): Promise<boolean> => {
+      try {
+        const response = await clientFetch(
+          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers/${triggerId}/status`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status }),
+          }
+        );
+
+        if (response.ok) {
+          sendNotification({
+            type: "success",
+            title:
+              status === "enabled" ? "Trigger enabled" : "Trigger disabled",
+            description:
+              status === "enabled"
+                ? "The trigger is now running."
+                : "The trigger is no longer running.",
+          });
+          return true;
+        } else {
+          const errorData = await getErrorFromResponse(response);
+          sendNotification({
+            type: "error",
+            title: "Failed to update trigger",
+            description: `Error: ${errorData.message}`,
+          });
+          return false;
+        }
+      } catch {
+        sendNotification({
+          type: "error",
+          title: "Failed to update trigger",
+          description: "An unexpected error occurred. Please try again.",
+        });
+        return false;
+      }
+    },
+    [workspaceId, sendNotification]
+  );
+
+  return updateTriggerStatus;
 }
 
 function responseToScheduleConfig(

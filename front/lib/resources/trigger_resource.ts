@@ -28,6 +28,10 @@ import type {
   TriggerType,
   WebhookConfig,
 } from "@app/types/assistant/triggers";
+import {
+  isSystemDisabledTriggerStatus,
+  isUserManagedTriggerStatus,
+} from "@app/types/assistant/triggers";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -120,6 +124,24 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       id: this.id,
       workspaceId: this.workspaceId,
     });
+  }
+
+  get isDisabledByAdmin(): boolean {
+    return this.status === "disabled_by_admin";
+  }
+
+  get isSystemDisabled(): boolean {
+    return isSystemDisabledTriggerStatus(this.status);
+  }
+
+  canUpdateStatusTo(auth: Authenticator, to: TriggerStatus): boolean {
+    if (auth.isAdmin() || this.status === to) {
+      return true;
+    }
+    // Non-admins can only move a trigger between enabled and disabled.
+    return (
+      isUserManagedTriggerStatus(this.status) && isUserManagedTriggerStatus(to)
+    );
   }
 
   private static async baseFetch(
@@ -366,6 +388,30 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     ) {
       return new Err(
         new Error("Only the editor of the trigger can update the trigger")
+      );
+    }
+
+    if (blob.status !== undefined && blob.status !== trigger.status) {
+      // relocating/downgraded are set and restored by bulk jobs, which go
+      // through enable()/disable(). The editing path never crosses them.
+      if (
+        trigger.isSystemDisabled ||
+        isSystemDisabledTriggerStatus(blob.status)
+      ) {
+        return new Err(
+          new Error(
+            "This trigger's status is managed by Dust and cannot be changed"
+          )
+        );
+      }
+    }
+
+    if (
+      blob.status !== undefined &&
+      !trigger.canUpdateStatusTo(auth, blob.status)
+    ) {
+      return new Err(
+        new Error("Only an admin can set or clear the disabled_by_admin status")
       );
     }
 
@@ -804,6 +850,12 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       return new Ok(undefined);
     }
 
+    if (!this.canUpdateStatusTo(auth, "enabled")) {
+      return new Err(
+        new Error("Only an admin can change the status of this trigger")
+      );
+    }
+
     const previousStatus = this.status;
 
     try {
@@ -864,6 +916,12 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     auth: Authenticator,
     targetStatus: Exclude<TriggerStatus, "enabled"> = "disabled"
   ): Promise<Result<undefined, Error>> {
+    if (!this.canUpdateStatusTo(auth, targetStatus)) {
+      return new Err(
+        new Error("Only an admin can change the status of this trigger")
+      );
+    }
+
     // Even when the status is already the target, we still reconcile the
     // Temporal workflow below: a previous disable may have flipped the status
     // but failed (or been interrupted) before removing the schedule, leaving an
