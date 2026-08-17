@@ -25,14 +25,12 @@ export function CapabilitySection() {
             />
             <div className="relative z-10 flex w-full flex-col items-center gap-8 px-6">
               <H2 className="text-center text-3xl font-medium text-white md:text-4xl xl:text-5xl">
-                The AI system built for
-                <br />
-                your whole organization
+                Bring teams, models, and systems together around the work
               </H2>
               <img
-                src="/static/landing/product/Product%20screen%201.svg"
+                src="/static/landing/product/product-screen-chat.png"
                 alt="Dust chat interface with conversation history, projects, and an agent ready to help"
-                className="w-full max-w-[1040px]"
+                className="aspect-[2/1] w-full max-w-[1040px] rounded-t-2xl object-cover object-top shadow-lg"
               />
             </div>
           </div>

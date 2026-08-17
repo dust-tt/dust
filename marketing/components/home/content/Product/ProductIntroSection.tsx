@@ -4,6 +4,7 @@ import {
   HomeReveal,
   HomeRevealStyles,
 } from "@marketing/components/home/content/Product/HomeReveal";
+import { RotatingWord } from "@marketing/components/home/content/Product/RotatingWord";
 import { Button, Rocket02 } from "@dust-tt/sparkle";
 import Link from "next/link";
 
@@ -15,15 +16,14 @@ export function ProductIntroSection() {
         <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 text-center sm:gap-2 lg:px-6">
           <HomeReveal>
             <H1 className="text-center text-5xl font-semibold md:text-6xl lg:text-7xl">
-              The multiplayer, multi-model AI system that compounds
-              organizational intelligence
+              Multiplayer AI for <RotatingWord />
             </H1>
           </HomeReveal>
           <HomeReveal delay={80}>
             <P size="lg" className="text-base text-muted-foreground sm:text-lg">
-              Dust gives AI Operators at the world&apos;s fastest-moving
-              companies the power to rewire how work gets done, connecting any
-              model, any tool, any team.
+              Dust is multiplayer, multi-model AI that gives digital teams of
+              people and agents a single place to work together in parallel,
+              with shared knowledge, tools, and skills, and governed by design.
             </P>
           </HomeReveal>
           <HomeReveal delay={160}>
