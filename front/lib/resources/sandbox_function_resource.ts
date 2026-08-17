@@ -414,12 +414,11 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   }
 
   /**
-   * Resolve a function for executing an existing invocation: temporal activities and sandbox-token
-   * callbacks re-enter resolution under an auth that cannot carry the caller's original grant (a
-   * serialized session snapshot, a sandbox token), so caller-facing space permissions do not
-   * apply there. The invocation row is the proof of authorization — creating it passed the
-   * caller-facing gates, and the userIdentity policy re-runs at execution — so resolution here is
-   * workspace-scoped only. Only for paths executing that specific invocation.
+   * Gets the function if the invocation row exists
+   * In the context of a temporal activity or a sandbox callback, we don't have the original caller's
+   * grant (e.g. a frame share token) in the auth. Instead, we rely on the fact that the invocation row
+   * was created earlier when we did have the caller's grant. The presence of the invocation row
+   * is sufficient proof that the caller was authorized to invoke the function
    */
   static async fetchByIdForExecution(
     auth: Authenticator,
@@ -434,6 +433,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       return null;
     }
 
+    // We don't need the invocation row itself, just its existence to prove that the caller was
+    // authorized to invoke the function
     const invocation = await SandboxFunctionInvocationModel.findOne({
       where: {
         id: invocationModelId,
