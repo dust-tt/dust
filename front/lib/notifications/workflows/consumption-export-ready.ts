@@ -52,13 +52,13 @@ export function notifyConsumptionExportReady(
     return;
   }
   const workspaceId = auth.getNonNullableWorkspace().sId;
-  const userSId = user.sId;
+  const userId = user.sId;
 
   const payload: ConsumptionExportReadyPayloadType = { workspaceId };
 
   // Ties the Novu transaction to the stable exportId so a Temporal retry after the
   // completion ack is lost re-sends the same transaction instead of a duplicate notification.
-  const transactionId = `consumption-export-ready-${workspaceId}-${userSId}-${exportId}`;
+  const transactionId = `consumption-export-ready-${workspaceId}-${userId}-${exportId}`;
 
   void getNovuClient()
     .then((novuClient) =>
@@ -68,7 +68,7 @@ export function notifyConsumptionExportReady(
             workflowId: CONSUMPTION_EXPORT_READY_TRIGGER_ID,
             transactionId,
             to: {
-              subscriberId: userSId,
+              subscriberId: userId,
               email: user.email,
               firstName: user.firstName,
               lastName: user.lastName ?? undefined,
@@ -81,14 +81,14 @@ export function notifyConsumptionExportReady(
     .then((r) => {
       if (r.result.some((res) => !!res.error?.length)) {
         logger.error(
-          { workspaceId, userSId, transactionId },
+          { workspaceId, userId, transactionId },
           "Failed to trigger consumption export ready notification"
         );
       }
     })
     .catch((err) => {
       logger.error(
-        { err, workspaceId, userSId, transactionId },
+        { err, workspaceId, userId, transactionId },
         "Failed to trigger consumption export ready notification"
       );
     });
