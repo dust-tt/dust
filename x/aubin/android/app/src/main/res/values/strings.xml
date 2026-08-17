@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Dust</string>
+    <string name="ask_dust_tile_label">Ask Dust</string>
     <string name="dust_logo_content_description">Dust logo</string>
+    <string name="shortcut_new_conversation_short">New conversation</string>
+    <string name="shortcut_new_conversation_long">Start a new Dust conversation</string>
+    <string name="shortcut_catch_up_short">Catch Up</string>
+    <string name="shortcut_catch_up_long">Review conversations that need you</string>
+    <string name="share_with_agent">Share with %1$s</string>
+    <string name="catch_up_widget_name">Catch Up</string>
+    <string name="catch_up_widget_description">Actions, mentions, and unread conversations</string>
 </resources>
