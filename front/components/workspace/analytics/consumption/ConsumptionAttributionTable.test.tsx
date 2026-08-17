@@ -64,6 +64,7 @@ function ControlledAttributionTable({
         setDimension(nextDimension);
       }}
       onAddFilter={vi.fn()}
+      onRemoveFilter={vi.fn()}
       onViewAll={vi.fn()}
     />
   );
@@ -97,6 +98,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -154,6 +156,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -180,6 +183,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -205,6 +209,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -300,6 +305,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -322,6 +328,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="model"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -368,6 +375,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -395,6 +403,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -428,6 +437,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="agent"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );
@@ -470,6 +480,7 @@ describe("ConsumptionAttributionTable", () => {
         dimension="skill"
         onDimensionChange={vi.fn()}
         onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
         onViewAll={vi.fn()}
       />
     );

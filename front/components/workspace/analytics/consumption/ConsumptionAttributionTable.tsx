@@ -43,6 +43,7 @@ import {
   TabsList,
   TabsTrigger,
   Tooltip,
+  XCircle,
 } from "@dust-tt/sparkle";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import type { Transition, Variants } from "framer-motion";
@@ -382,21 +383,24 @@ function buildColumns({
         return (
           <DataTable.CellContent className="w-full justify-end">
             <Button
-              icon={FilterFunnel01}
+              icon={isFilterSelected ? XCircle : FilterFunnel01}
               variant="ghost-secondary"
               size="xs"
-              disabled={isFilterSelected}
               tooltip={
-                isFilterSelected ? "Already in filters" : "Add to filters"
+                isFilterSelected ? "Remove from filters" : "Add to filters"
               }
               aria-label={
                 isFilterSelected
-                  ? `${row.name} is already in filters`
+                  ? `Remove ${row.name} from filters`
                   : `Add ${row.name} to filters`
               }
               onClick={(event) => {
                 event.stopPropagation();
-                row.onAddFilter();
+                if (isFilterSelected) {
+                  row.onRemoveFilter();
+                } else {
+                  row.onAddFilter();
+                }
               }}
             />
           </DataTable.CellContent>
@@ -412,6 +416,7 @@ interface AttributionRowsProps {
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
   onAddFilter: (row: ConsumptionTopRow) => void;
+  onRemoveFilter: (row: ConsumptionTopRow) => void;
   search: string;
   onViewAll: (
     dimension: ConsumptionDimension,
@@ -425,6 +430,7 @@ function AttributionRows({
   period,
   filter,
   onAddFilter,
+  onRemoveFilter,
   search,
   onViewAll,
 }: AttributionRowsProps) {
@@ -490,8 +496,9 @@ function AttributionRows({
         onClick: () =>
           setExpandedRowId((current) => (current === row.id ? null : row.id)),
         onAddFilter: () => onAddFilter(row),
+        onRemoveFilter: () => onRemoveFilter(row),
       })),
-    [rows, onAddFilter]
+    [rows, onAddFilter, onRemoveFilter]
   );
   const isLoading = isTopLoading;
   const skeletonRowCount =
@@ -597,6 +604,7 @@ interface ConsumptionAttributionTableProps {
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
   onAddFilter: (row: ConsumptionTopRow) => void;
+  onRemoveFilter: (row: ConsumptionTopRow) => void;
   // Owned by the page: the selected tab also drives the chart's breakdown.
   dimension: ConsumptionDimension;
   onDimensionChange: (dimension: ConsumptionDimension) => void;
@@ -611,6 +619,7 @@ export function ConsumptionAttributionTable({
   period,
   filter,
   onAddFilter,
+  onRemoveFilter,
   dimension,
   onDimensionChange,
   onViewAll,
@@ -721,6 +730,7 @@ export function ConsumptionAttributionTable({
                     period={period}
                     filter={filter}
                     onAddFilter={onAddFilter}
+                    onRemoveFilter={onRemoveFilter}
                     search={debouncedValue}
                     onViewAll={onViewAll}
                   />

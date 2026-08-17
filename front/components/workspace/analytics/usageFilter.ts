@@ -291,6 +291,15 @@ export function addUsageFilterFromAttributionRow(
   );
 }
 
+export function removeUsageFilterFromAttributionRow(
+  filter: UsageFilter,
+  dimension: ConsumptionScopeDimension,
+  row: AttributionFilterRow
+): UsageFilter {
+  const option = usageFilterOptionFromAttributionRow(dimension, row);
+  return removeUsageFilterOption(filter, option.kind, option.id);
+}
+
 // Maps an attribution row to the filter UI option shape, replacing that
 // dimension while preserving the other filters.
 export function setUsageFilterFromAttributionRow(
