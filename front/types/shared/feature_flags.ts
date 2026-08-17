@@ -155,6 +155,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to the new consumption-based Analytics dashboard, built alongside the current one while it is brought to parity.",
     stage: "dust_only",
   },
+  enable_analytics_automations: {
+    description:
+      "Access to the Automation analytics page, breaking down what triggers and programmatic runs cost.",
+    stage: "dust_only",
+  },
   xai_feature: {
     description: "Access to xAI models in the agent builder",
     stage: "on_demand",
