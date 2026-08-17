@@ -11,6 +11,7 @@ import com.dust.mobile.core.model.ConversationMessage
 import com.dust.mobile.core.model.ActivityStep
 import com.dust.mobile.core.model.ActivityTimelineRowKind
 import com.dust.mobile.core.model.GeneratedFile
+import com.dust.mobile.core.model.MAX_ACTIVE_THINKING_DISPLAY_LENGTH
 import com.dust.mobile.core.model.MAX_THINKING_DISPLAY_LENGTH
 import com.dust.mobile.core.model.MessageType
 import com.dust.mobile.core.model.ToolApprovalInfo
@@ -224,7 +225,7 @@ class MessageDisplayTest {
             activeActions = emptyList(),
         )
 
-        assertEquals("Done", display.headerLabel)
+        assertEquals("Completed", display.headerLabel)
         assertEquals(listOf("t1", "a1", "a2", "a3", "a4", "done"), display.rows.map { it.id })
         assertEquals(ActivityTimelineRowKind.DONE, display.rows.last().kind)
     }
@@ -269,7 +270,7 @@ class MessageDisplayTest {
             activeActions = listOf(ActiveAction(id = 7, label = "Searching", serverName = "search")),
         )
 
-        assertEquals("Thinking...", display.headerLabel)
+        assertEquals("Working...", display.headerLabel)
         assertEquals(
             listOf(
                 ActivityTimelineRowKind.ACTION,
@@ -277,6 +278,37 @@ class MessageDisplayTest {
                 ActivityTimelineRowKind.ACTIVE_ACTION,
             ),
             display.rows.map { it.kind },
+        )
+    }
+
+    @Test
+    fun `activityTimelineDisplay labels an expanded generating timeline as writing`() {
+        val display = activityTimelineDisplay(
+            isStreaming = true,
+            isGenerating = true,
+            chainOfThought = null,
+            completedSteps = listOf(ActivityStep.Action(id = "a1", label = "Read file", serverName = "drive")),
+            activeActions = emptyList(),
+        )
+
+        assertEquals("Writing...", display.headerLabel)
+    }
+
+    @Test
+    fun `activityTimelineDisplay bounds active thinking to its latest text`() {
+        val content = "a".repeat(20) + "b".repeat(MAX_ACTIVE_THINKING_DISPLAY_LENGTH)
+
+        val display = activityTimelineDisplay(
+            isStreaming = true,
+            isGenerating = false,
+            chainOfThought = content,
+            completedSteps = emptyList(),
+            activeActions = emptyList(),
+        )
+
+        assertEquals(
+            "..." + "b".repeat(MAX_ACTIVE_THINKING_DISPLAY_LENGTH),
+            display.rows.single().label,
         )
     }
 
@@ -306,6 +338,22 @@ class MessageDisplayTest {
         assertEquals(false, expanded.rows.first().isTruncated)
         assertEquals(true, expanded.rows.first().isExpandable)
         assertEquals(content, expanded.rows.first().label)
+    }
+
+    @Test
+    fun `activityTimelineDisplay keeps long completed thinking compact while streaming`() {
+        val content = "x".repeat(MAX_THINKING_DISPLAY_LENGTH + 10)
+
+        val display = activityTimelineDisplay(
+            isStreaming = true,
+            isGenerating = false,
+            chainOfThought = null,
+            completedSteps = listOf(ActivityStep.Thinking(id = "t1", content = content)),
+            activeActions = emptyList(),
+        )
+
+        assertEquals(true, display.rows.first().isTruncated)
+        assertEquals(true, display.rows.first().isExpandable)
     }
 
     @Test

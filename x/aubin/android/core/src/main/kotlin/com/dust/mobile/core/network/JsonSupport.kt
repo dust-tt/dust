@@ -8,5 +8,4 @@ val DustJson = Json {
     ignoreUnknownKeys = true
     encodeDefaults = true
     explicitNulls = true
-    isLenient = true
 }

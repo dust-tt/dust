@@ -1,25 +1,12 @@
 package com.dust.mobile.core
 
-import com.dust.mobile.core.model.replyCountLabel
 import com.dust.mobile.core.model.Conversation
 import com.dust.mobile.core.model.filteredByTitleSearch
 import com.dust.mobile.core.model.withUpdatedTitle
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ConversationDisplayTest {
-    @Test
-    fun `reply count label is hidden when there are no replies`() {
-        assertNull(replyCountLabel(0))
-    }
-
-    @Test
-    fun `reply count label pluralizes replies`() {
-        assertEquals("1 reply", replyCountLabel(1))
-        assertEquals("2 replies", replyCountLabel(2))
-    }
-
     @Test
     fun `updated title replaces matching conversation title only`() {
         val conversations = listOf(

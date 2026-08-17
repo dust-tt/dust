@@ -6,14 +6,6 @@ import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
 
 @Serializable
-data class FileUploadRequest(
-    val contentType: String,
-    val fileName: String,
-    val fileSize: Int,
-    val useCase: String = "conversation",
-)
-
-@Serializable
 data class UploadedFile(
     val sId: String,
     val uploadUrl: String,
@@ -42,6 +34,7 @@ data class ConversationAttachment(
     val contentType: String,
     val sourceUrl: String? = null,
     val source: String? = null,
+    val hidden: Boolean = false,
 ) {
     val id: String
         get() = fileId ?: "$title-$contentType"

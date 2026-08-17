@@ -75,7 +75,9 @@ fun renderMessageMarkdown(content: String): RenderedMarkdownDocument {
         if (paragraphLines.isEmpty()) {
             return
         }
-        blocks += MarkdownBlock.Paragraph(parseMarkdownInlines(paragraphLines.joinToString(" ").trim()))
+        blocks += MarkdownBlock.Paragraph(
+            parseMarkdownInlines(paragraphLines.joinToString(" ").trim()),
+        )
         paragraphLines.clear()
     }
 
@@ -88,7 +90,6 @@ fun renderMessageMarkdown(content: String): RenderedMarkdownDocument {
                 flushParagraph()
                 index += 1
             }
-
             trimmed.startsWith(CODE_FENCE_MARKER) || trimmed.startsWith(TILDE_FENCE_MARKER) -> {
                 flushParagraph()
                 val marker = if (trimmed.startsWith(CODE_FENCE_MARKER)) {
@@ -112,13 +113,11 @@ fun renderMessageMarkdown(content: String): RenderedMarkdownDocument {
                     language = language,
                 )
             }
-
             HORIZONTAL_RULE_REGEX.matches(trimmed) -> {
                 flushParagraph()
                 blocks += MarkdownBlock.Divider
                 index += 1
             }
-
             HEADING_REGEX.matches(trimmed) -> {
                 flushParagraph()
                 val match = HEADING_REGEX.matchEntire(trimmed) ?: error("validated by matches")
@@ -128,14 +127,12 @@ fun renderMessageMarkdown(content: String): RenderedMarkdownDocument {
                 )
                 index += 1
             }
-
             parseTable(lines, index) != null -> {
                 flushParagraph()
                 val table = parseTable(lines, index) ?: error("validated by previous parse")
                 blocks += table.block
                 index = table.nextIndex
             }
-
             QUOTE_REGEX.matches(trimmed) -> {
                 flushParagraph()
                 val quoteLines = mutableListOf<String>()
@@ -144,9 +141,10 @@ fun renderMessageMarkdown(content: String): RenderedMarkdownDocument {
                     quoteLines += quoteMatch.groupValues[1].trim()
                     index += 1
                 }
-                blocks += MarkdownBlock.Quote(parseMarkdownInlines(quoteLines.joinToString(" ").trim()))
+                blocks += MarkdownBlock.Quote(
+                    parseMarkdownInlines(quoteLines.joinToString(" ").trim()),
+                )
             }
-
             TASK_LIST_ITEM_REGEX.matches(trimmed) -> {
                 flushParagraph()
                 val match = TASK_LIST_ITEM_REGEX.matchEntire(trimmed) ?: error("validated by matches")
@@ -156,7 +154,6 @@ fun renderMessageMarkdown(content: String): RenderedMarkdownDocument {
                 )
                 index += 1
             }
-
             LIST_ITEM_REGEX.matches(trimmed) -> {
                 flushParagraph()
                 val match = LIST_ITEM_REGEX.matchEntire(trimmed) ?: error("validated by matches")
@@ -166,7 +163,6 @@ fun renderMessageMarkdown(content: String): RenderedMarkdownDocument {
                 )
                 index += 1
             }
-
             else -> {
                 paragraphLines += trimmed
                 index += 1
@@ -226,180 +222,12 @@ private fun isTableSeparatorCell(cell: String): Boolean =
 private fun markdownTableCell(cell: String): MarkdownTableCell =
     MarkdownTableCell(parseMarkdownInlines(cell))
 
-fun processCiteDirectives(markdown: String): CiteProcessResult {
-    var counter = 0
-    val seen = linkedMapOf<String, Int>()
-    val ordered = mutableListOf<CiteEntry>()
-    val result = StringBuilder()
-    var cursor = 0
-
-    for (match in CITE_REGEX.findAll(markdown)) {
-        result.append(markdown.substring(cursor, match.range.first))
-        val markers = match.groupValues[1]
-            .split(",")
-            .mapNotNull { ref ->
-                val trimmed = ref.trim()
-                if (trimmed.isEmpty()) {
-                    null
-                } else {
-                    val number = seen.getOrPut(trimmed) {
-                        counter += 1
-                        ordered += CiteEntry(ref = trimmed, number = counter)
-                        counter
-                    }
-                    superscript(number)
-                }
-            }
-        result.append(markers.joinToString(separator = "\u2009"))
-        cursor = match.range.last + 1
-    }
-    result.append(markdown.substring(cursor))
-    return CiteProcessResult(text = result.toString(), mapping = ordered)
-}
-
-data class CiteProcessResult(
-    val text: String,
-    val mapping: List<CiteEntry>,
-)
-
-private fun replaceMentionDirectives(content: String): String =
-    MENTION_REGEX.replace(content) { match -> "[@${match.groupValues[1]}](dust://mention)" }
-
-private fun parseMarkdownInlines(text: String): List<MarkdownInline> {
-    val inlines = mutableListOf<MarkdownInline>()
-    var cursor = 0
-
-    while (cursor < text.length) {
-        val match = findNextInlineMatch(text, cursor) ?: break
-        if (match.start > cursor) {
-            inlines += MarkdownInline.Text(text.substring(cursor, match.start))
-        }
-        inlines += match.inline
-        cursor = match.endExclusive
-    }
-
-    if (cursor < text.length) {
-        inlines += MarkdownInline.Text(text.substring(cursor))
-    }
-
-    return inlines.mergeAdjacentText()
-}
-
-private fun findNextInlineMatch(text: String, startIndex: Int): InlineMatch? =
-    listOfNotNull(
-        LINK_REGEX.find(text, startIndex)?.let {
-            InlineMatch(
-                start = it.range.first,
-                endExclusive = it.range.last + 1,
-                inline = if (it.groupValues[2] == MENTION_URL) {
-                    MarkdownInline.Mention(label = it.groupValues[1])
-                } else {
-                    MarkdownInline.Link(label = it.groupValues[1], url = it.groupValues[2])
-                },
-            )
-        },
-        AUTOLINK_REGEX.find(text, startIndex)?.let { match ->
-            val endExclusive = autolinkEndExclusive(text, match.range.last + 1)
-            val url = text.substring(match.range.first, endExclusive)
-            InlineMatch(
-                start = match.range.first,
-                endExclusive = endExclusive,
-                inline = MarkdownInline.Link(label = url, url = url),
-            )
-        },
-        INLINE_CODE_REGEX.find(text, startIndex)?.let {
-            InlineMatch(
-                start = it.range.first,
-                endExclusive = it.range.last + 1,
-                inline = MarkdownInline.Code(it.groupValues[1]),
-            )
-        },
-        STRONG_ASTERISK_REGEX.find(text, startIndex)?.let {
-            InlineMatch(
-                start = it.range.first,
-                endExclusive = it.range.last + 1,
-                inline = MarkdownInline.Strong(it.groupValues[1]),
-            )
-        },
-        STRONG_UNDERSCORE_REGEX.find(text, startIndex)?.let {
-            InlineMatch(
-                start = it.range.first,
-                endExclusive = it.range.last + 1,
-                inline = MarkdownInline.Strong(it.groupValues[1]),
-            )
-        },
-        STRIKETHROUGH_REGEX.find(text, startIndex)?.let {
-            InlineMatch(
-                start = it.range.first,
-                endExclusive = it.range.last + 1,
-                inline = MarkdownInline.Strikethrough(it.groupValues[1]),
-            )
-        },
-        EMPHASIS_ASTERISK_REGEX.find(text, startIndex)?.let {
-            InlineMatch(
-                start = it.range.first,
-                endExclusive = it.range.last + 1,
-                inline = MarkdownInline.Emphasis(it.groupValues[1]),
-            )
-        },
-        EMPHASIS_UNDERSCORE_REGEX.find(text, startIndex)?.let {
-            InlineMatch(
-                start = it.range.first,
-                endExclusive = it.range.last + 1,
-                inline = MarkdownInline.Emphasis(it.groupValues[1]),
-            )
-        },
-    ).minWithOrNull(compareBy<InlineMatch> { it.start }.thenBy { it.endExclusive })
-
-private fun autolinkEndExclusive(text: String, initialEndExclusive: Int): Int {
-    var endExclusive = initialEndExclusive
-    while (endExclusive > 0 && text[endExclusive - 1] in AUTOLINK_TRAILING_PUNCTUATION) {
-        endExclusive -= 1
-    }
-    return endExclusive
-}
-
-private fun List<MarkdownInline>.mergeAdjacentText(): List<MarkdownInline> =
-    buildList {
-        this@mergeAdjacentText.forEach { inline ->
-            val previous = lastOrNull()
-            if (previous is MarkdownInline.Text && inline is MarkdownInline.Text) {
-                removeAt(lastIndex)
-                add(MarkdownInline.Text(previous.text + inline.text))
-            } else {
-                add(inline)
-            }
-        }
-    }
-
-private fun superscript(number: Int): String =
-    number.toString().map { digit -> SUPERSCRIPT_DIGITS[digit.digitToInt()] }.joinToString("")
-
-private data class InlineMatch(
-    val start: Int,
-    val endExclusive: Int,
-    val inline: MarkdownInline,
-)
-
 private const val CODE_FENCE_MARKER = "```"
 private const val TILDE_FENCE_MARKER = "~~~"
-private const val MENTION_URL = "dust://mention"
 
-private val MENTION_REGEX = Regex(""":mention(?:_user)?\[([^\]]*)]\{[^}]*\}""")
-private val CITE_REGEX = Regex(""":cite\[([^\]]*)](?:\{[^}]*\})?""")
 private val HEADING_REGEX = Regex("""^(#{1,6})\s+(.+)$""")
 private val QUOTE_REGEX = Regex("""^>\s?(.*)$""")
 private val TASK_LIST_ITEM_REGEX = Regex("""^[-*+]\s+\[([ xX])]\s+(.+)$""")
 private val LIST_ITEM_REGEX = Regex("""^(?:(\d+)[.)]|[-*+])\s+(.+)$""")
 private val HORIZONTAL_RULE_REGEX = Regex("""^([-*_])(?:\s*\1){2,}\s*$""")
 private val TABLE_SEPARATOR_CELL_REGEX = Regex("""^:?-{3,}:?$""")
-private val LINK_REGEX = Regex("""\[([^\]\n]+)]\(([^)\s]+)\)""")
-private val AUTOLINK_REGEX = Regex("""https?://[^\s<>()]+""")
-private val INLINE_CODE_REGEX = Regex("""`([^`\n]+)`""")
-private val STRONG_ASTERISK_REGEX = Regex("""\*\*([^*\n]+)\*\*""")
-private val STRONG_UNDERSCORE_REGEX = Regex("""__([^_\n]+)__""")
-private val STRIKETHROUGH_REGEX = Regex("""~~([^~\n]+)~~""")
-private val EMPHASIS_ASTERISK_REGEX = Regex("""(?<!\*)\*([^*\n]+)\*(?!\*)""")
-private val EMPHASIS_UNDERSCORE_REGEX = Regex("""(?<!\w)_([^_\n]+)_(?!\w)""")
-private val AUTOLINK_TRAILING_PUNCTUATION = setOf('.', ',', ';', ':', '!', '?')
-private val SUPERSCRIPT_DIGITS = listOf("⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹")

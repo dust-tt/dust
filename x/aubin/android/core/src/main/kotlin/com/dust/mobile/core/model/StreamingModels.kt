@@ -102,6 +102,7 @@ data class GenerationTokensEvent(
     val text: String,
     val classification: TokenClassification,
     val traceId: String? = null,
+    val step: Int? = null,
 )
 
 @Serializable

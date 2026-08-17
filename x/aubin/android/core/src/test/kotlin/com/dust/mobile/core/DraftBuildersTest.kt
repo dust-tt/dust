@@ -120,7 +120,7 @@ class DraftBuildersTest {
               "title": "chart.png",
               "contentType": "image/png",
               "sourceUrl": null,
-              "source": "dust"
+              "source": "agent"
             }
             """.trimIndent(),
         )

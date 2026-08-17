@@ -3,7 +3,9 @@ package com.dust.mobile.core
 import com.dust.mobile.core.auth.AuthService
 import com.dust.mobile.core.config.AppConfig
 import com.dust.mobile.core.network.ApiClient
+import com.dust.mobile.core.network.HttpMethod
 import com.dust.mobile.core.network.HttpResponse
+import java.util.Base64
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -103,6 +105,22 @@ class AuthServiceTest {
             """{"grant_type":"refresh_token","refresh_token":"refresh"}""",
             engine.requests.single().body?.decodeToString(),
         )
+    }
+
+    @Test
+    fun `logout revokes the WorkOS session from the access token`() = runTest {
+        val engine = FakeHttpEngine(HttpResponse(statusCode = 200))
+        val service = AuthService(AppConfig.production(), ApiClient(AppConfig.production(), engine))
+        val payload = Base64.getUrlEncoder().withoutPadding()
+            .encodeToString("""{"sid":"session_123"}""".encodeToByteArray())
+
+        service.serverLogout("header.$payload.signature")
+
+        val request = engine.requests.single()
+        assertEquals(HttpMethod.POST, request.method)
+        assertEquals("https://dust.tt/api/workos/revoke-session", request.url)
+        assertEquals("Bearer header.$payload.signature", request.headers["Authorization"])
+        assertEquals("""{"session_id":"session_123"}""", request.body?.decodeToString())
     }
 
     private fun authResponse(): HttpResponse =

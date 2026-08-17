@@ -38,7 +38,10 @@ class AgentMessageStream(messageId: String) {
 
     private var thinkingBuffer = ""
     private var lastGenerationTraceId: String? = null
+    private var lastGenerationStep: Int? = null
     private var retryThinkingBuffer: String? = null
+    private var retryContentBuffer: String? = null
+    private var currentStepContentStart = 0
     private var stepCounter = 0
 
     fun apply(event: StreamingEventData) {
@@ -105,19 +108,20 @@ class AgentMessageStream(messageId: String) {
     }
 
     private fun applyTokens(tokens: GenerationTokensEvent) {
-        val traceChanged = didTraceChange(tokens.traceId)
+        val retryStarted = observeGenerationBoundary(tokens.traceId, tokens.step)
+        if (retryStarted) {
+            retryContentBuffer = ""
+        }
         when (tokens.classification) {
             TokenClassification.TOKENS -> {
                 retryThinkingBuffer = null
-                val current = if (traceChanged) "" else snapshot.content
                 snapshot = snapshot.copy(
-                    content = current + tokens.text,
+                    content = contentWithTokens(tokens.text),
                     activity = Activity.GENERATING,
                 )
             }
             TokenClassification.CHAIN_OF_THOUGHT -> {
-                if (traceChanged) {
-                    snapshot = snapshot.copy(content = "")
+                if (retryStarted) {
                     retryThinkingBuffer = ""
                 }
 
@@ -146,15 +150,48 @@ class AgentMessageStream(messageId: String) {
         }
     }
 
-    private fun didTraceChange(traceId: String?): Boolean {
-        if (traceId == null) return false
-        val changed = lastGenerationTraceId?.let { it != traceId } == true
-        lastGenerationTraceId = traceId
-        return changed
+    private fun contentWithTokens(text: String): String {
+        val retry = retryContentBuffer ?: return snapshot.content + text
+        val nextRetry = retry + text
+        retryContentBuffer = nextRetry
+
+        val contentStart = currentStepContentStart.coerceIn(0, snapshot.content.length)
+        val committedPrefix = snapshot.content.substring(0, contentStart)
+        val visibleStepContent = snapshot.content.substring(contentStart)
+        return when {
+            visibleStepContent.startsWith(nextRetry) -> snapshot.content
+            nextRetry.startsWith(visibleStepContent) -> {
+                retryContentBuffer = null
+                committedPrefix + nextRetry
+            }
+            else -> snapshot.content
+        }
+    }
+
+    private fun observeGenerationBoundary(traceId: String?, step: Int?): Boolean {
+        val previousTraceId = lastGenerationTraceId
+        val previousStep = lastGenerationStep
+        val stepChanged = step != null && previousStep != null && step != previousStep
+
+        if (step != null && (previousStep == null || stepChanged)) {
+            currentStepContentStart = snapshot.content.length
+            retryContentBuffer = null
+            retryThinkingBuffer = null
+        }
+
+        val traceChanged = traceId != null && previousTraceId != null && traceId != previousTraceId
+        if (traceId != null) {
+            lastGenerationTraceId = traceId
+        }
+        if (step != null) {
+            lastGenerationStep = step
+        }
+        return traceChanged && !stepChanged
     }
 
     private fun finalize(status: AgentMessageStatus, final: AgentMessage?) {
         flushThinkingBuffer()
+        retryContentBuffer = null
         snapshot = snapshot.copy(
             content = final?.content ?: snapshot.content,
             chainOfThought = if (final != null) final.chainOfThought else snapshot.chainOfThought,

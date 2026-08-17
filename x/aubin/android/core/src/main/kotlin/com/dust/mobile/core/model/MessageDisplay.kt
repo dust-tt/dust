@@ -141,7 +141,7 @@ fun activityTimelineDisplay(
         completedSteps.forEach { step ->
             when (step) {
                 is ActivityStep.Thinking -> {
-                    val isExpandable = !isStreaming && step.content.length > MAX_THINKING_DISPLAY_LENGTH
+                    val isExpandable = step.content.length > MAX_THINKING_DISPLAY_LENGTH
                     val isTruncated = isExpandable && step.id !in expandedThinkingIds
                     add(
                         ActivityTimelineRow(
@@ -169,11 +169,16 @@ fun activityTimelineDisplay(
         }
 
         if (isStreaming && !chainOfThought.isNullOrBlank()) {
+            val activeThinking = if (chainOfThought.length > MAX_ACTIVE_THINKING_DISPLAY_LENGTH) {
+                "..." + chainOfThought.takeLast(MAX_ACTIVE_THINKING_DISPLAY_LENGTH)
+            } else {
+                chainOfThought
+            }
             add(
                 ActivityTimelineRow(
                     id = "active-thinking",
                     kind = ActivityTimelineRowKind.ACTIVE_THINKING,
-                    label = chainOfThought,
+                    label = activeThinking,
                 ),
             )
         }
@@ -211,12 +216,18 @@ fun activityTimelineDisplay(
     }
 
     return ActivityTimelineDisplay(
-        headerLabel = if (isStreaming) "Thinking..." else "Done",
+        headerLabel = when {
+            !isStreaming -> "Completed"
+            activeActions.isNotEmpty() -> "Working..."
+            isGenerating -> "Writing..."
+            else -> "Thinking..."
+        },
         rows = rows,
     )
 }
 
-const val MAX_THINKING_DISPLAY_LENGTH = 250
+const val MAX_THINKING_DISPLAY_LENGTH = 420
+const val MAX_ACTIVE_THINKING_DISPLAY_LENGTH = 1_200
 
 fun toolApprovalDisplay(approval: ToolApprovalInfo): ToolApprovalDisplay {
     val server = approval.mcpServerName ?: "Tool"

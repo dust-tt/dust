@@ -6,6 +6,8 @@ import com.dust.mobile.core.model.AuthResponse
 import com.dust.mobile.core.model.TokenExchangeRequest
 import com.dust.mobile.core.model.TokenRefreshRequest
 import com.dust.mobile.core.network.ApiClient
+import com.dust.mobile.core.network.DustJson
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.net.URI
 import java.net.URLEncoder
@@ -66,7 +68,13 @@ class AuthService(
         )
 
     suspend fun serverLogout(accessToken: String) {
-        apiClient.send(Endpoints.LOGOUT, com.dust.mobile.core.network.HttpMethod.POST, EmptyBody, accessToken)
+        val sessionId = accessToken.sessionIdOrNull() ?: return
+        apiClient.send(
+            Endpoints.REVOKE_SESSION,
+            com.dust.mobile.core.network.HttpMethod.POST,
+            RevokeSessionRequest(sessionId),
+            accessToken,
+        )
     }
 
     fun extractCode(callbackUrl: String): String? {
@@ -84,13 +92,22 @@ class AuthService(
             }
     }
 
-    @Serializable
-    private object EmptyBody
-
     private companion object {
         const val PKCE_RANDOM_BYTES = 32
     }
 }
+
+@Serializable
+private data class AccessTokenClaims(val sid: String? = null)
+
+@Serializable
+private data class RevokeSessionRequest(@SerialName("session_id") val sessionId: String)
+
+private fun String.sessionIdOrNull(): String? = runCatching {
+    val payload = split('.').getOrNull(1) ?: return@runCatching null
+    val claimsJson = Base64.getUrlDecoder().decode(payload).decodeToString()
+    DustJson.decodeFromString<AccessTokenClaims>(claimsJson).sid
+}.getOrNull()
 
 private fun ByteArray.base64Url(): String =
     Base64.getUrlEncoder().withoutPadding().encodeToString(this)

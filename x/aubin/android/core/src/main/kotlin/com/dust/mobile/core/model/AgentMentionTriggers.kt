@@ -1,10 +1,24 @@
 package com.dust.mobile.core.model
 
-fun shouldOpenAgentPicker(text: String): Boolean {
-    if (!text.endsWith("@")) return false
-    val beforeAt = text.dropLast(1)
-    return beforeAt.isEmpty() || beforeAt.last().isWhitespace()
+data class AgentMentionQuery(
+    val startIndex: Int,
+    val query: String,
+)
+
+fun activeAgentMentionQuery(text: String): AgentMentionQuery? {
+    val currentLineStart = text.lastIndexOf('\n') + 1
+    for (index in text.lastIndex downTo currentLineStart) {
+        if (text[index] != '@') continue
+        if (index > 0 && !text[index - 1].isWhitespace()) continue
+
+        val query = text.substring(index + 1)
+        if (query.any(Char::isWhitespace) || '@' in query) return null
+        return AgentMentionQuery(startIndex = index, query = query)
+    }
+    return null
 }
 
-fun removeTrailingAgentPickerTrigger(text: String): String =
-    if (shouldOpenAgentPicker(text)) text.dropLast(1) else text
+fun removeActiveAgentMentionQuery(text: String): String {
+    val mentionQuery = activeAgentMentionQuery(text) ?: return text
+    return text.substring(0, mentionQuery.startIndex)
+}

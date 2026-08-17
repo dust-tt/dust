@@ -1,5 +1,6 @@
 package com.dust.mobile.core.model
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 sealed interface Capability {
@@ -104,9 +105,21 @@ data class SearchDataSourceView(
 )
 
 @Serializable
+enum class SearchViewType {
+    @SerialName("table")
+    TABLE,
+
+    @SerialName("document")
+    DOCUMENT,
+
+    @SerialName("all")
+    ALL,
+}
+
+@Serializable
 data class SearchRequest(
     val query: String,
-    val viewType: String = "all",
+    val viewType: SearchViewType = SearchViewType.ALL,
     val includeDataSources: Boolean = false,
     val limit: Int = 25,
 )
