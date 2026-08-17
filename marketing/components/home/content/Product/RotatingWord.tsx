@@ -6,14 +6,23 @@ const DELETING_SPEED_MS = 40;
 const PAUSE_AFTER_TYPE_MS = 1500;
 const PAUSE_AFTER_DELETE_MS = 300;
 
+// Reserve the widest word's footprint so the centered headline does not
+// reflow on every keystroke.
+const LONGEST_WORD = WORDS.reduce((a, b) => (b.length > a.length ? b : a));
+
 type Phase = "typing" | "pausing" | "deleting";
 
 export function RotatingWord() {
   const [wordIndex, setWordIndex] = useState(0);
-  const [text, setText] = useState("");
-  const [phase, setPhase] = useState<Phase>("typing");
+  // Start fully typed so the server-rendered headline is complete and
+  // reduced-motion users see a finished word.
+  const [text, setText] = useState(WORDS[0]);
+  const [phase, setPhase] = useState<Phase>("pausing");
 
   useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
     const currentWord = WORDS[wordIndex];
 
     if (phase === "typing") {
@@ -23,15 +32,15 @@ export function RotatingWord() {
         }, TYPING_SPEED_MS);
         return () => clearTimeout(timeout);
       }
-      const timeout = setTimeout(
-        () => setPhase("pausing"),
-        PAUSE_AFTER_TYPE_MS
-      );
-      return () => clearTimeout(timeout);
+      setPhase("pausing");
+      return;
     }
 
     if (phase === "pausing") {
-      const timeout = setTimeout(() => setPhase("deleting"), 0);
+      const timeout = setTimeout(
+        () => setPhase("deleting"),
+        PAUSE_AFTER_TYPE_MS
+      );
       return () => clearTimeout(timeout);
     }
 
@@ -50,10 +59,18 @@ export function RotatingWord() {
   }, [text, phase, wordIndex]);
 
   return (
-    <span className="whitespace-nowrap text-blue-600">
-      {text}
-      <span aria-hidden="true" className="animate-pulse">
-        |
+    <span className="relative inline-block whitespace-nowrap text-blue-600">
+      <span className="invisible" aria-hidden="true">
+        {LONGEST_WORD}|
+      </span>
+      <span className="absolute inset-y-0 left-0">
+        {text}
+        <span
+          aria-hidden="true"
+          className="motion-safe:animate-pulse motion-reduce:hidden"
+        >
+          |
+        </span>
       </span>
     </span>
   );

@@ -29,7 +29,7 @@ const CAPABILITY_FEATURES: SecurityFeature[] = [
     id: "activation",
     title: "Composable workflows that compound with use",
     description:
-      "Execute structured and unstructured work using reusable, governable AI skills, agents, and memory that compound with use. ",
+      "Execute structured and unstructured work using reusable, governable AI skills, agents, and memory that compound with use.",
     placeholder: "",
   },
 ];
@@ -112,7 +112,7 @@ export function Landing() {
             showHeader={false}
             reverse
             features={CAPABILITY_FEATURES}
-            accordionTitle="Multiplayer AI built for real, cross-functional work "
+            accordionTitle="Multiplayer AI built for real, cross-functional work"
           />
           <SecurityFeaturesSection
             showHeader={false}
