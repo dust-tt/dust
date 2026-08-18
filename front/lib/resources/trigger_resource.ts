@@ -18,10 +18,15 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import {
+  createOrUpdateGmailMonitorSchedule,
+  deleteGmailMonitorSchedule,
+} from "@app/temporal/triggers/monitor_client";
+import {
   createOrUpdateAgentSchedule,
   deleteTriggerSchedule,
 } from "@app/temporal/triggers/schedule_client";
 import type {
+  MonitorConfig,
   ScheduleConfig,
   TriggerExecutionMode,
   TriggerKind,
@@ -841,6 +846,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         });
       case "webhook":
         return new Ok(undefined);
+      case "monitor":
+        return createOrUpdateGmailMonitorSchedule({ auth, trigger: this });
       default:
         assertNever(this.kind);
     }
@@ -857,6 +864,11 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         });
       case "webhook":
         return new Ok(undefined);
+      case "monitor":
+        return deleteGmailMonitorSchedule({
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          trigger: this,
+        });
       default:
         assertNever(this.kind);
     }
@@ -1063,6 +1075,19 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
   }
 
+  async updateMonitorState({
+    baseline,
+    lastCheckedAt,
+  }: {
+    baseline: unknown;
+    lastCheckedAt: Date;
+  }): Promise<void> {
+    await this.update({
+      monitorBaseline: baseline,
+      monitorLastCheckedAt: lastCheckedAt,
+    });
+  }
+
   static modelIdToSId({
     id,
     workspaceId,
@@ -1110,12 +1135,20 @@ export class TriggerResource extends BaseResource<TriggerModel> {
             })
           : null,
       };
-    } else {
+    }
+
+    if (this.kind === "monitor") {
       return {
         ...base,
-        kind: "schedule" as const,
-        configuration: this.configuration as ScheduleConfig,
+        kind: "monitor" as const,
+        configuration: this.configuration as MonitorConfig,
       };
     }
+
+    return {
+      ...base,
+      kind: "schedule" as const,
+      configuration: this.configuration as ScheduleConfig,
+    };
   }
 }

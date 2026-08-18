@@ -127,6 +127,11 @@ export interface MCPServerViewType {
   }[];
 }
 
+export type GetMonitorableMCPServerViewsResponseBody = {
+  success: true;
+  serverViews: MCPServerViewType[];
+};
+
 // Light variants for list surfaces that only render names, descriptions and icons (conversation
 // capabilities picker, slash menu). Served by GET /mcp/views/jit; full types are structurally
 // assignable to them.

@@ -15,6 +15,7 @@ import type {
   GetMCPServersUsageResponseBody,
   GetMCPServerViewsListResponseBody,
   GetMCPServerViewsNotActivatedResponseBody,
+  GetMonitorableMCPServerViewsResponseBody,
   MCPServerType,
   MCPServerTypeWithViews,
   MCPServerViewNameConflict,
@@ -889,6 +890,26 @@ export function useMCPServerViews({
     isMCPServerViewsLoading: !error && !data && !disabled,
     isMCPServerViewsError: error,
     mutateMCPServerViews: mutate,
+  };
+}
+
+export function useMonitorableMCPServerViews({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const { fetcher } = useFetcher();
+  const configFetcher: Fetcher<GetMonitorableMCPServerViewsResponseBody> =
+    fetcher;
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/mcp/monitorable`,
+    configFetcher
+  );
+
+  return {
+    serverViews: data?.serverViews ?? emptyArray<MCPServerViewType>(),
+    isMCPServerViewsLoading: !error && !data,
+    isMCPServerViewsError: !!error,
   };
 }
 

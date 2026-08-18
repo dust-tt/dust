@@ -1,4 +1,5 @@
 import type { AgentBuilderTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { MCPToolMonitorEditionSheetContent } from "@app/components/agent_builder/triggers/monitor/MCPToolMonitorEditionSheet";
 import { ScheduleEditionSheetContent } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionSheet";
 import { TriggerSelectionPageContent } from "@app/components/agent_builder/triggers/TriggerSelectionPage";
 import type { SheetMode } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
@@ -15,6 +16,7 @@ import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import { useMonitorableMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
@@ -80,6 +82,18 @@ function triggerTypeToBuilderType(
         webhookSourceViewId: trigger.webhookSourceViewId,
         executionPerDayLimitOverride: trigger.executionPerDayLimitOverride,
         executionMode: trigger.executionMode,
+        spaceId: trigger.spaceId,
+      };
+    case "monitor":
+      return {
+        sId: trigger.sId,
+        status: trigger.status,
+        name: trigger.name,
+        kind: "monitor",
+        customPrompt: trigger.customPrompt,
+        naturalLanguageDescription: trigger.naturalLanguageDescription,
+        configuration: trigger.configuration,
+        editor: trigger.editor,
         spaceId: trigger.spaceId,
       };
     default:
@@ -456,12 +470,14 @@ function TriggerEditView({
     form,
     currentPageId,
     webhookSourceView,
+    selectedMCPServerView,
     editTrigger,
     isEditor,
     isOnSelectionPage,
     pageTitle,
     handleScheduleSelect,
     handleWebhookSelect,
+    handleMCPMonitorSelect,
     handleCancel,
     handleFormSubmit,
   } = useTriggerSheetState({
@@ -470,6 +486,9 @@ function TriggerEditView({
     mode,
     webhookSourceViews,
     onSuccess: onClose,
+  });
+  const { serverViews: mcpServerViews } = useMonitorableMCPServerViews({
+    owner,
   });
 
   return (
@@ -494,6 +513,8 @@ function TriggerEditView({
           {currentPageId === "trigger-selection" && (
             <TriggerSelectionPageContent
               onScheduleSelect={handleScheduleSelect}
+              onMCPMonitorSelect={handleMCPMonitorSelect}
+              mcpServerViews={mcpServerViews}
               onWebhookSelect={handleWebhookSelect}
               webhookSourceViews={webhookSourceViews}
             />
@@ -512,6 +533,12 @@ function TriggerEditView({
               agentConfigurationId={agentConfigurationId}
               webhookSourceView={webhookSourceView}
               isEditor={isEditor}
+            />
+          )}
+          {currentPageId === "mcp-monitor-edition" && (
+            <MCPToolMonitorEditionSheetContent
+              isEditor={isEditor}
+              mcpServerView={selectedMCPServerView}
             />
           )}
         </SheetContainer>

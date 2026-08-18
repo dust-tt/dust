@@ -33,6 +33,8 @@ function getTriggerIcon(trigger: TriggerType) {
       return Clock;
     case "webhook":
       return Bell01;
+    case "monitor":
+      return Bell01;
     default:
       assertNever(trigger);
   }

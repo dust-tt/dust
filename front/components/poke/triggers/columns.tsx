@@ -108,6 +108,9 @@ export function makeColumnsForTriggers(
         if (trigger.kind === "schedule") {
           return `${describeScheduleConfig(trigger.configuration)} (${trigger.configuration.timezone})`;
         }
+        if (trigger.kind === "monitor") {
+          return `Gmail every ${trigger.configuration.intervalMinutes} minutes`;
+        }
         // Webhook: show event + filter summary
         const parts: string[] = [];
         if (trigger.configuration.event) {
