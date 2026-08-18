@@ -10,6 +10,7 @@ import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { microCreditsToCredits } from "@app/lib/credits/units";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/analytics";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -18,6 +19,9 @@ import type { estypes } from "@elastic/elasticsearch";
 import AdmZip from "adm-zip";
 
 const EXPORT_PAGE_SIZE = 10_000;
+// Fetches slices concurrently instead of paginating one page at a time.
+// Trades higher peak memory (one in-flight page per slice) for lower wall-clock time.
+const EXPORT_SLICE_COUNT = 4;
 
 type ConsumptionLineExportRow = {
   completedAt: string;
@@ -107,11 +111,19 @@ const CONSUMPTION_LINE_EXPORT_HEADERS: (keyof ConsumptionLineExportRow)[] = [
   "executionTimeMs",
 ];
 
-// One document per unit of billed credit consumption
-async function fetchAllConsumptionDocuments(
-  query: estypes.QueryDslQueryContainer
+const CONSUMPTION_EXPORT_SORT: estypes.Sort = [
+  { completed_at: "asc" },
+  { agent_message_id: "asc" },
+  { consumption_key: "asc" },
+];
+
+// Fetches one slice of the sliced-search partition to completion, paginating
+// within the slice with search_after.
+async function fetchConsumptionSliceDocuments(
+  query: estypes.QueryDslQueryContainer,
+  slice: estypes.SlicedScroll
 ): Promise<Result<AgentMessageConsumptionAnalyticsData[], ElasticsearchError>> {
-  const allDocs: AgentMessageConsumptionAnalyticsData[] = [];
+  const sliceDocs: AgentMessageConsumptionAnalyticsData[] = [];
   let searchAfter: estypes.SortResults | undefined;
   let hitCount: number;
 
@@ -121,12 +133,9 @@ async function fetchAllConsumptionDocuments(
         query,
         {
           size: EXPORT_PAGE_SIZE,
-          sort: [
-            { completed_at: "asc" },
-            { agent_message_id: "asc" },
-            { consumption_key: "asc" },
-          ],
+          sort: CONSUMPTION_EXPORT_SORT,
           search_after: searchAfter,
+          slice,
         }
       );
 
@@ -137,13 +146,41 @@ async function fetchAllConsumptionDocuments(
     const { hits } = result.value.hits;
     for (const hit of hits) {
       if (hit._source) {
-        allDocs.push(hit._source);
+        sliceDocs.push(hit._source);
       }
     }
 
     hitCount = hits.length;
     searchAfter = hits[hits.length - 1]?.sort;
   } while (hitCount === EXPORT_PAGE_SIZE);
+
+  return new Ok(sliceDocs);
+}
+
+// One document per unit of billed credit consumption. Slices are fetched
+// concurrently, each paginating its own partition of the result set.
+async function fetchAllConsumptionDocuments(
+  query: estypes.QueryDslQueryContainer
+): Promise<Result<AgentMessageConsumptionAnalyticsData[], ElasticsearchError>> {
+  const sliceIds = Array.from({ length: EXPORT_SLICE_COUNT }, (_, id) => id);
+
+  const results = await concurrentExecutor(
+    sliceIds,
+    (id) =>
+      fetchConsumptionSliceDocuments(query, {
+        id: String(id),
+        max: EXPORT_SLICE_COUNT,
+      }),
+    { concurrency: EXPORT_SLICE_COUNT }
+  );
+
+  const allDocs: AgentMessageConsumptionAnalyticsData[] = [];
+  for (const result of results) {
+    if (result.isErr()) {
+      return result;
+    }
+    allDocs.push(...result.value);
+  }
 
   return new Ok(allDocs);
 }

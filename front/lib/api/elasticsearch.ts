@@ -272,6 +272,7 @@ export async function searchConsumptionAnalytics<
     from?: number;
     sort?: estypes.Sort;
     search_after?: estypes.SortResults;
+    slice?: estypes.SlicedScroll;
   }
 ): Promise<
   Result<estypes.SearchResponse<TDocument, TAggregations>, ElasticsearchError>
@@ -284,6 +285,7 @@ export async function searchConsumptionAnalytics<
     from: options?.from,
     sort: options?.sort,
     search_after: options?.search_after,
+    slice: options?.slice,
     // Never needed for aggregation-only queries (size: 0); excluded unconditionally
     // to keep the raw-lines export from pulling the large tokens payload.
     _source: { excludes: ["tokens"] },
