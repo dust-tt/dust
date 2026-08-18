@@ -1,5 +1,6 @@
 import {
   assertValidGrant,
+  GroupPermissions,
   grantTypesForVerb,
   ROLE_REGISTRY,
 } from "@app/lib/resources/group_permission_registry";
@@ -236,5 +237,35 @@ describe("ROLE_REGISTRY invariants", () => {
         expect(roleNames.has(grantType)).toBe(true);
       }
     }
+  });
+});
+
+describe("GroupPermissions.fromJSON", () => {
+  // read = 1 << 0, write = 1 << 1 (see VERB_BIT / GRANT_VERBS order).
+  it("reads the current resolved-mask shape", () => {
+    const perms = GroupPermissions.fromJSON({
+      grants: { agent: { 42: 0b11 } },
+    });
+    expect(perms.resolvedVerbsForResource("agent", 42)).toEqual([
+      "read",
+      "write",
+    ]);
+  });
+
+  it("reads the legacy per-group shape by OR-ing the group masks", () => {
+    // In-flight Temporal payloads serialized before group ids were folded away carry
+    // resourceId -> groupId -> mask; groups 7 and 9 union to read + write.
+    const perms = GroupPermissions.fromJSON({
+      grants: { agent: { 42: { 7: 0b01, 9: 0b10 } } },
+    });
+    expect(perms.resolvedVerbsForResource("agent", 42)).toEqual([
+      "read",
+      "write",
+    ]);
+  });
+
+  it("round-trips the current shape through toJSON", () => {
+    const json = { grants: { agent: { 42: 0b11 } } };
+    expect(GroupPermissions.fromJSON(json).toJSON()).toEqual(json);
   });
 });

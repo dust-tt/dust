@@ -60,7 +60,6 @@ import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
 import type {
   AccessControlList,
-  GroupGrant,
   WithAccessControl,
 } from "@app/types/resource_permissions";
 import { isDevelopment } from "@app/types/shared/env";
@@ -1260,7 +1259,7 @@ export class Authenticator {
 
     return this.hasPermissionForAcl(verb, {
       roles: [{ role: "admin", permissions: [verb] }],
-      groups: this.getGroupPermissions(resourceType, WHOLE_TYPE_RESOURCE_ID),
+      grantedVerbs: this.getGrantedVerbs(resourceType, WHOLE_TYPE_RESOURCE_ID),
       workspaceId: workspace.id,
     });
   }
@@ -1474,15 +1473,16 @@ export class Authenticator {
   }
 
   /**
-   * The caller's governance grants on `(resourceType, resourceId)`, as group→verb entries, folding
-   * in the type-wide (-1) grants. Caller-scoped (only the caller's groups). Resources fold this into
-   * their `AccessControlList`; pass `WHOLE_TYPE_RESOURCE_ID` for a workspace-wide capability.
+   * The verbs the caller holds on `(resourceType, resourceId)`, resolved from their governance
+   * grants (folding in the type-wide (-1) grants). Caller-scoped and pre-resolved — resources fold
+   * this into their `AccessControlList` as `grantedVerbs`, which the checker uses directly with no
+   * group-membership step. Pass `WHOLE_TYPE_RESOURCE_ID` for a workspace-wide capability.
    */
-  getGroupPermissions(
+  getGrantedVerbs(
     resourceType: ConcreteResourceType,
     resourceId: number
-  ): GroupGrant[] {
-    return this._permissions.forResource(resourceType, resourceId);
+  ): GrantVerb[] {
+    return this._permissions.resolvedVerbsForResource(resourceType, resourceId);
   }
 
   /**
@@ -1570,12 +1570,14 @@ export class Authenticator {
     return acls.every((acl) => this.hasPermissionForAcl(verb, acl));
   }
 
-  // Single-ACL check. Two paths (OR):
-  // 1. Role: the caller's workspace role grants `verb` (and the ACL is in the caller's workspace).
-  // 2. Group: the caller belongs to a listed group that grants `verb`.
-  // The group-membership check is kept even when the ACL's groups are already caller-scoped (built
-  // from `getGroupPermissions`): it lets the same checker also evaluate ACLs that list every group
-  // (e.g. legacy inline groups), filtering by membership at check time.
+  // Single-ACL check. The grant sources are additive (OR): the caller passes if any of them grants
+  // `verb`. An absent source contributes nothing, so an ACL with no matching source denies.
+  // - Role: the caller's workspace role grants `verb` (and the ACL is in the caller's workspace).
+  // - grantedVerbs: the caller's own governance verbs, already resolved — used directly, no
+  //   membership step (the caller-scoping is baked in when they are resolved).
+  // - groups: legacy group listing, filtered by the caller's membership here at check time. This is
+  //   what lets the same checker also evaluate ACLs that enumerate every group (e.g. the cross-space
+  //   conversation checks).
   private hasPermissionForAcl(
     verb: GrantVerb,
     acl: AccessControlList
@@ -1583,16 +1585,23 @@ export class Authenticator {
     // Role path: gated to the caller's workspace (a role only applies within its own workspace).
     const grantedByRole =
       this.getNonNullableWorkspace().id === acl.workspaceId &&
-      acl.roles.some(
+      (acl.roles ?? []).some(
         (r) => this.role() === r.role && r.permissions.includes(verb)
       );
     if (grantedByRole) {
       return true;
     }
 
-    // Group path: group membership is inherently workspace-scoped, so it needs no workspace gate.
+    // Governance path: the caller's verbs are pre-resolved, so no membership step is needed.
+    if ((acl.grantedVerbs ?? []).includes(verb)) {
+      return true;
+    }
+
+    // Legacy group path: group membership is inherently workspace-scoped, so it needs no gate.
     return this._groupModelIds.some((groupId) =>
-      acl.groups.some((g) => g.id === groupId && g.permissions.includes(verb))
+      (acl.groups ?? []).some(
+        (g) => g.id === groupId && g.permissions.includes(verb)
+      )
     );
   }
 

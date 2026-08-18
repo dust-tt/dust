@@ -2178,10 +2178,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * The skill's access-control list: the code role rules plus the groups holding a grant on it in
-   * `group_permissions` (written by `writeGroupPermissions` on every mutation of the editor-group
-   * association). The editor group is not read here — membership in it only matters through the
-   * grant it holds.
+   * The skill's access-control list: the code role rules plus the caller's own verbs resolved from
+   * its `group_permissions` grants (written by `writeGroupPermissions` on every mutation of the
+   * editor-group association). The editor group is not read here — membership in it only matters
+   * through the grant it holds.
    */
   getAccessControlLists(auth: Authenticator): AccessControlList[] {
     // Global skills carry no row, so there is no grant to look up (and their synthetic `id` of -1
@@ -2190,7 +2190,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return [
         {
           roles: GLOBAL_SKILL_ROLE_GRANTS,
-          groups: [],
           workspaceId: this.workspaceId,
         },
       ];
@@ -2199,7 +2198,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return [
       {
         roles: SKILL_ROLE_GRANTS,
-        groups: auth.getGroupPermissions("skill", this.id),
+        grantedVerbs: auth.getGrantedVerbs("skill", this.id),
         workspaceId: this.workspaceId,
       },
     ];

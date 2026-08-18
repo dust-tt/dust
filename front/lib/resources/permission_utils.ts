@@ -25,7 +25,7 @@ export function createSpaceIdToGroupsMap(
     // TODO: Refactor to avoid calling `getAccessControlLists` but still get the right groups.
     const permissions = space.getAccessControlLists(auth);
     const groupIds = permissions.flatMap((permission) =>
-      permission.groups.map((group) =>
+      (permission.groups ?? []).map((group) =>
         GroupResource.modelIdToSId({
           id: group.id,
           workspaceId,

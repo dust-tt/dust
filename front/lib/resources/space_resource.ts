@@ -1820,9 +1820,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   /**
-   * The space's access-control list built from governance data: the code role rules plus the groups
-   *  held in `group_permissions`. At the flip this becomes the served `getAccessControlLists(auth)`
-   *  and `legacySpaceGroupGrants` is deleted without touching it.
+   * The space's access-control list built from governance data: the code role rules plus the
+   * caller's own verbs resolved from `group_permissions`. At the flip this becomes the served
+   * `getAccessControlLists(auth)` and `legacySpaceGroupGrants` is deleted without touching it.
    *
    * Until then it is the shadow-compare candidate.
    */
@@ -1831,7 +1831,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       {
         workspaceId: this.workspaceId,
         roles: this.spaceRoleGrants(),
-        groups: auth.getGroupPermissions("space", this.id),
+        grantedVerbs: auth.getGrantedVerbs("space", this.id),
       },
     ];
   }

@@ -27,21 +27,31 @@ export type RoleGrant = {
 };
 
 /**
- * The access rules for a resource: the roles and groups that confer verbs, scoped to a workspace.
+ * The access rules for a resource: the additive grant sources that confer verbs, scoped to a
+ * workspace. A caller passes an ACL when ANY source grants the verb; a resource passes when the
+ * caller satisfies EVERY ACL it declares (see `Authenticator.hasPermission`). Every source is
+ * optional and an absent source contributes nothing, so an ACL with no matching source denies
+ * (fail-closed) — a missing field is intent, not a bug.
  *
- * A resource builds its own ACL (see each resource's `acl(auth)`) from role rules and/or the
- * caller's governance grants (`Authenticator.getGroupPermissions`). The Authenticator evaluates it
- * with `hasPermission`: a caller passes if their role grants the verb, or they belong to a listed
- * group that grants it. When the groups come from governance grants, the list is caller-scoped
- * (only the caller's groups) — an ACL is a check artifact, not a complete "who has access" listing.
+ * The three sources:
+ * - `roles`: the caller passes if their workspace role grants the verb (only within the ACL's
+ *   workspace).
+ * - `grantedVerbs`: the caller's own verbs on the resource, already resolved from their governance
+ *   grants (`Authenticator.getGrantedVerbs`). Caller-scoped and pre-filtered, so the checker uses it
+ *   directly with no group-membership step. This is the shape governance-sourced ACLs use.
+ * - `groups`: legacy group→verb listing. The checker filters it by the caller's group membership at
+ *   check time, so it also handles ACLs that enumerate every group (e.g. the cross-space
+ *   conversation checks). An ACL is a check artifact, not a complete "who has access" listing.
  *
  * @property roles - Role-based grants: a caller whose workspace role matches gets its verbs
- * @property groups - Group-based grants: a caller in a listed group gets its verbs
+ * @property groups - Legacy group-based grants, filtered by the caller's membership at check time
+ * @property grantedVerbs - The caller's pre-resolved governance verbs on the resource
  * @property workspaceId - The resource's workspace; checks only apply within the caller's workspace
  */
 export type AccessControlList = {
-  roles: RoleGrant[];
-  groups: GroupGrant[];
+  roles?: RoleGrant[];
+  groups?: GroupGrant[];
+  grantedVerbs?: GrantVerb[];
   workspaceId: ModelId;
 };
 
