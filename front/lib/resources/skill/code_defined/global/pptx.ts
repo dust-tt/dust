@@ -111,7 +111,7 @@ The renderer only has metric-compatible stand-ins for Calibri, Cambria, Arial, T
 
 \`pptx_inspect out.pptx --compare /files/conversation/template.pptx\`
 
-Clear every \`[!]\`: orphans (redo the deletes with \`pptx_slides\`), fonts dropped or imagery stripped (you rebuilt instead of editing: start again from the copy), layout collapse, density. Deliver on \`[QA: PASS]\`, every slide read back clean.
+Design fidelity + package integrity in one pass. Clear every \`[!]\`: fonts dropped or imagery stripped (you rebuilt instead of editing: start again from the copy), layout collapse, density, and under \`Package:\` anything that stops PowerPoint opening the file (stranded part, relationship pointing nowhere, duplicate shape id). Package faults mean you edited the zip by hand: redo those edits through \`pptx_slides\` and python-pptx. No template: \`--validate\` runs the package half alone. Deliver on \`[QA: PASS]\`, every slide read back clean.
 
 ## Defaults
 

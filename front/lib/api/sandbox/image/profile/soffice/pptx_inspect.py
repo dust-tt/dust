@@ -52,6 +52,7 @@ from pptx_typography import (
 from pptx_render_boxes import _annotate_boxes
 
 import pptx_grid
+import pptx_validate
 
 from pptx_audit import (
     BARE_MARGIN,
@@ -87,8 +88,8 @@ DEFAULT_MAX_SHAPES = 200
 
 USAGE = (
     "pptx_inspect <file> [--qa N | --slide N | --layouts | --text | --media | "
-    "--render] [--grid [--grid-cols N]] [--compare FILE] [--render-dir DIR] "
-    "[--max-shapes N] [--offset N]"
+    "--render | --validate] [--grid [--grid-cols N]] [--compare FILE] "
+    "[--render-dir DIR] [--max-shapes N] [--offset N]"
 )
 
 HELP_TEXT = (
@@ -97,6 +98,7 @@ HELP_TEXT = (
     "--slide N: shapes, box, ph, type, fit, [!] OVERSET/HIDDEN\n"
     "--layouts: placeholders + type; static = master text\n"
     "--compare F: vs template F, ends [QA: PASS/FAIL]\n"
+    "--validate: package integrity, does it open at all\n"
     "--grid: one image per grid; --grid-cols N: 2, max 4\n"
     "--text --media --render --render-dir --max-shapes --offset"
 )
@@ -1026,6 +1028,17 @@ def print_compare(file_path: str, source_path: str) -> str:
                 f"kept {kept}, dropped {dropped} exemplar shape(s)"
             )
 
+    # Package integrity, baselined against the template so its own faults are
+    # not reported as yours. Fidelity says nothing about whether the file opens.
+    invalid, inherited = pptx_validate.check_against(file_path, source_path)
+    if invalid or inherited:
+        lines.append("")
+        lines.append("Package:")
+        lines.extend(f"  [!] {problem}" for problem in invalid)
+        if inherited:
+            lines.append(f"  [i] {inherited} problem(s) already in the template")
+        blockers += len(invalid)
+
     lines.append("")
     if blockers:
         lines.append(
@@ -1541,6 +1554,7 @@ def main() -> int:
         default="/files/conversation",
     )
     parser.add_argument("--compare")
+    parser.add_argument("--validate", action="store_true")
     parser.add_argument("--max-shapes", type=int, default=DEFAULT_MAX_SHAPES)
     parser.add_argument("--offset", type=int, default=0)
     parser.add_argument("--help", "-h", action="store_true", dest="help_flag")
@@ -1580,7 +1594,9 @@ def main() -> int:
         f"{format_size(os.path.getsize(args.file))}]"
     )
 
-    if args.media:
+    if args.validate:
+        body = pptx_validate.report(args.file, args.compare)
+    elif args.media:
         body = print_media(args.file)
     elif args.compare is not None:
         body = print_compare(args.file, args.compare)
