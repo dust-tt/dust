@@ -86,7 +86,7 @@ export const ROLE_REGISTRY: Record<
   },
   group: {
     reader: { verbs: ["read"], levels: ["instance"] },
-    editor: { verbs: ["read", "write", "admin"], levels: ["instance"] },
+    admin: { verbs: ["read", "write", "admin"], levels: ["instance"] },
   },
 };
 
