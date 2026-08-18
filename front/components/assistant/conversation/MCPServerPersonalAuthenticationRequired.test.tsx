@@ -167,14 +167,10 @@ describe("MCPServerPersonalAuthenticationRequired", () => {
   it("distinguishes the requested action from the connection scope", () => {
     renderCard();
 
-    expect(
-      screen.getByText("Why the agent requested this connection")
-    ).toBeDefined();
+    expect(screen.getByText("Requested for:")).toBeDefined();
     expect(screen.getByText("Use GitHub tool")).toBeDefined();
     expect(
-      screen.getByText(
-        "Once connected, your account will be available for all GitHub actions, not only this request."
-      )
+      screen.getByText("Also available for all GitHub actions.")
     ).toBeDefined();
   });
 

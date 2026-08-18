@@ -158,15 +158,15 @@ export function PersonalAuthenticationCard({
         ) : (
           <>
             <div className="flex flex-col gap-1">
-              <div className="text-sm text-muted-foreground">
-                Why the agent requested this connection
+              <div className="text-base wrap-break-word">
+                <span className="text-muted-foreground">Requested for: </span>
+                {actionLabel}
               </div>
-              <div className="text-base wrap-break-word">{actionLabel}</div>
-            </div>
-            <div className="text-sm wrap-break-word text-muted-foreground">
-              {`Once connected, your account will be available for all ${
-                serverDisplayName ? `${serverDisplayName} ` : "related "
-              }actions, not only this request.`}
+              <div className="text-sm wrap-break-word text-muted-foreground">
+                {`Also available for all ${
+                  serverDisplayName ? `${serverDisplayName} ` : "related "
+                }actions.`}
+              </div>
             </div>
             {canCurrentUserRespond ? (
               <>
