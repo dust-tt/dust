@@ -300,8 +300,13 @@ export function UsageFilterPanel({
                   renderIcon={(option) => (
                     <UsageFilterOptionIcon option={option} />
                   )}
-                  isLoading={isFacetsLoading}
-                  isUpdating={isFacetsValidating}
+                  status={
+                    isFacetsLoading
+                      ? "loading"
+                      : isFacetsValidating
+                        ? "updating"
+                        : "idle"
+                  }
                   scrollContainer={contentScrollContainer}
                 />
               )}

@@ -27,6 +27,12 @@ function FilterOptionListSkeleton() {
   );
 }
 
+export type FilterOptionListStatus =
+  | "idle"
+  | "loading"
+  | "loading-more"
+  | "updating";
+
 interface FilterOptionCheckboxListProps<Option extends FilterOptionBase> {
   idPrefix: string;
   categoryLabel: string;
@@ -37,9 +43,7 @@ interface FilterOptionCheckboxListProps<Option extends FilterOptionBase> {
   selectAllLabel: string;
   hasSelectableOptions: boolean;
   renderIcon?: (option: Option) => ReactNode;
-  isLoadingMore?: boolean;
-  isLoading?: boolean;
-  isUpdating?: boolean;
+  status?: FilterOptionListStatus;
   scrollContainer: HTMLDivElement | null;
 }
 
@@ -53,11 +57,12 @@ export function FilterOptionCheckboxList<Option extends FilterOptionBase>({
   selectAllLabel,
   hasSelectableOptions,
   renderIcon,
-  isLoadingMore = false,
-  isLoading = false,
-  isUpdating = false,
+  status = "idle",
   scrollContainer,
 }: FilterOptionCheckboxListProps<Option>) {
+  const isLoading = status === "loading";
+  const isUpdating = status === "updating";
+  const isLoadingMore = status === "loading-more";
   // Reset on category/search/scope change by remounting this component with
   // a fresh `key` from the parent instead of tracking a reset key here.
   const [visibleCount, setVisibleCount] = useState(FILTER_PICKER_PAGE_SIZE);
