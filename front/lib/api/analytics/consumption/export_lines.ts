@@ -28,7 +28,7 @@ import AdmZip from "adm-zip";
 export const EXPORT_PAGE_SIZE = 10_000;
 // Fetches slices concurrently instead of paginating one page at a time.
 // Trades higher peak memory (one in-flight page per slice) for lower wall-clock time.
-export const EXPORT_SLICE_COUNT = 4;
+export const EXPORT_SLICE_COUNT = 3;
 // Long enough to cover a full export (all slices, fully paginated); refreshed on every
 // request so it only needs to outlive the gap between two consecutive page fetches.
 const EXPORT_PIT_KEEP_ALIVE = "5m";
