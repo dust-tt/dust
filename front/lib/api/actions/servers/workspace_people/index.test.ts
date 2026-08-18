@@ -105,14 +105,11 @@ describe("list_workspace_members", () => {
       const [content] = result.value;
       expect(content.type).toBe("text");
       if (content.type === "text") {
-        const parsed = JSON.parse(content.text);
-        expect(parsed.nextPageCursor).toBeNull();
-        const memberIds = parsed.members.map(
-          (m: { userId: string }) => m.userId
-        );
+        const members = JSON.parse(content.text);
+        const memberIds = members.map((m: { userId: string }) => m.userId);
         expect(memberIds).toContain(salesUser.sId);
         expect(memberIds).toContain(engineeringUser.sId);
-        const sales = parsed.members.find(
+        const sales = members.find(
           (m: { userId: string }) => m.userId === salesUser.sId
         );
         expect(sales.jobFunction.value).toBe("sales");
@@ -144,10 +141,8 @@ describe("list_workspace_members", () => {
       const [content] = result.value;
       expect(content.type).toBe("text");
       if (content.type === "text") {
-        const parsed = JSON.parse(content.text);
-        const memberIds = parsed.members.map(
-          (m: { userId: string }) => m.userId
-        );
+        const members = JSON.parse(content.text);
+        const memberIds = members.map((m: { userId: string }) => m.userId);
         expect(memberIds).toContain(salesUser.sId);
         expect(memberIds).not.toContain(engineeringUser.sId);
       }

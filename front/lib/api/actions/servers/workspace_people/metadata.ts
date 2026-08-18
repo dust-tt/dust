@@ -7,8 +7,7 @@ export const WORKSPACE_PEOPLE_SERVER_NAME = "workspace_people" as const;
 export const LIST_WORKSPACE_MEMBERS_TOOL_NAME =
   "list_workspace_members" as const;
 
-const DEFAULT_LIMIT = 50;
-const MAX_LIMIT = 100;
+export const MAX_MEMBERS = 100;
 
 export const WORKSPACE_PEOPLE_TOOLS_METADATA = [
   {
@@ -17,33 +16,19 @@ export const WORKSPACE_PEOPLE_TOOLS_METADATA = [
       "List active workspace members with their identity, workspace role, job function, " +
       "and user-managed workspace groups. " +
       "Filter by userIds to look up specific members, or by jobType to list all members " +
-      "with that job function. Exactly one filter must be provided. " +
-      "Results are paginated — use nextPageCursor from the previous response to fetch the next page.",
+      `with that job function (up to ${MAX_MEMBERS}). Exactly one filter must be provided.`,
     schema: {
       userIds: z
         .array(z.string())
         .min(1)
-        .max(MAX_LIMIT)
+        .max(MAX_MEMBERS)
         .optional()
         .describe("Stable IDs of specific active workspace members to look up."),
       jobType: z
         .enum(JOB_TYPES)
         .optional()
-        .describe("List all active members with this job function."),
-      limit: z
-        .number()
-        .int()
-        .min(1)
-        .max(MAX_LIMIT)
-        .optional()
         .describe(
-          `Maximum number of results to return. Defaults to ${DEFAULT_LIMIT}, max ${MAX_LIMIT}.`
-        ),
-      nextPageCursor: z
-        .string()
-        .optional()
-        .describe(
-          "Cursor for fetching the next page. Use the nextPageCursor from the previous response."
+          `List all active members with this job function (up to ${MAX_MEMBERS}).`
         ),
     },
     stake: "never_ask",
@@ -68,5 +53,3 @@ export const WORKSPACE_PEOPLE_SERVER = {
   },
   tools: WORKSPACE_PEOPLE_TOOLS_METADATA,
 } as const satisfies ServerMetadata;
-
-export { DEFAULT_LIMIT, MAX_LIMIT };

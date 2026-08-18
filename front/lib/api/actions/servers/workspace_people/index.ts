@@ -5,9 +5,8 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { ToolContext } from "@app/lib/actions/types";
 import {
-  DEFAULT_LIMIT,
   LIST_WORKSPACE_MEMBERS_TOOL_NAME,
-  MAX_LIMIT,
+  MAX_MEMBERS,
   WORKSPACE_PEOPLE_SERVER_NAME,
   WORKSPACE_PEOPLE_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/workspace_people/metadata";
@@ -30,27 +29,6 @@ type WorkspaceMember = {
   jobFunction: { value: JobType; label: string } | null;
   groups: string[];
 };
-
-type ListMembersResult = {
-  members: WorkspaceMember[];
-  nextPageCursor: string | null;
-};
-
-function encodeCursor(offset: number): string {
-  return Buffer.from(String(offset)).toString("base64");
-}
-
-function decodeCursor(cursor: string): number | null {
-  try {
-    const offset = parseInt(
-      Buffer.from(cursor, "base64").toString("utf-8"),
-      10
-    );
-    return Number.isFinite(offset) && offset >= 0 ? offset : null;
-  } catch {
-    return null;
-  }
-}
 
 async function buildMemberRows(
   auth: Authenticator,
@@ -99,7 +77,7 @@ async function buildMemberRows(
 async function listByUserIds(
   auth: Authenticator,
   userIds: string[]
-): Promise<Result<ListMembersResult, MCPError>> {
+): Promise<Result<WorkspaceMember[], MCPError>> {
   const uniqueUserIds = [...new Set(userIds)];
   const users = await UserResource.fetchByIds(uniqueUserIds);
   const userBySId = new Map(users.map((u) => [u.sId, u]));
@@ -135,20 +113,15 @@ async function listByUserIds(
     return u ? [u] : [];
   });
 
-  const members = await buildMemberRows(auth, orderedUsers, membershipByUserId);
-  return new Ok({ members, nextPageCursor: null });
+  return new Ok(await buildMemberRows(auth, orderedUsers, membershipByUserId));
 }
 
 async function listByJobType(
   auth: Authenticator,
-  jobType: JobType,
-  limit: number,
-  offset: number
-): Promise<Result<ListMembersResult, MCPError>> {
+  jobType: JobType
+): Promise<Result<WorkspaceMember[], MCPError>> {
   const workspace = auth.getNonNullableWorkspace();
 
-  // Fetch all active memberships then filter by job type client-side.
-  // Workspace membership lists are typically small enough that this is acceptable.
   const { memberships } = await MembershipResource.getActiveMemberships({
     workspace,
   });
@@ -161,31 +134,20 @@ async function listByJobType(
       allModelIds
     );
 
-  const matchingModelIds = allModelIds.filter(
-    (id) => jobTypesByUserId.get(id) === jobType
-  );
+  const matchingModelIds = allModelIds
+    .filter((id) => jobTypesByUserId.get(id) === jobType)
+    .slice(0, MAX_MEMBERS);
 
-  const pageModelIds = matchingModelIds.slice(offset, offset + limit);
-  const hasMore = offset + limit < matchingModelIds.length;
-
-  if (pageModelIds.length === 0) {
-    return new Ok({ members: [], nextPageCursor: null });
+  if (matchingModelIds.length === 0) {
+    return new Ok([]);
   }
 
-  const users = await UserResource.fetchByModelIds(pageModelIds);
-  const members = await buildMemberRows(auth, users, membershipByUserId);
-
-  return new Ok({
-    members,
-    nextPageCursor: hasMore ? encodeCursor(offset + limit) : null,
-  });
+  const users = await UserResource.fetchByModelIds(matchingModelIds);
+  return new Ok(await buildMemberRows(auth, users, membershipByUserId));
 }
 
 const handlers: ToolHandlers<typeof WORKSPACE_PEOPLE_TOOLS_METADATA> = {
-  list_workspace_members: async (
-    { userIds, jobType, limit, nextPageCursor },
-    { auth }
-  ) => {
+  list_workspace_members: async ({ userIds, jobType }, { auth }) => {
     if (!auth.isAdmin()) {
       return new Err(
         new MCPError(
@@ -203,24 +165,10 @@ const handlers: ToolHandlers<typeof WORKSPACE_PEOPLE_TOOLS_METADATA> = {
       return new Err(new MCPError("Provide either userIds or jobType."));
     }
 
-    if (userIds) {
-      const result = await listByUserIds(auth, userIds);
-      if (result.isErr()) {
-        return result;
-      }
-      return new Ok([
-        { type: "text" as const, text: JSON.stringify(result.value) },
-      ]);
-    }
+    const result = userIds
+      ? await listByUserIds(auth, userIds)
+      : await listByJobType(auth, jobType as JobType);
 
-    const resolvedLimit = Math.min(limit ?? DEFAULT_LIMIT, MAX_LIMIT);
-    const offset = nextPageCursor ? (decodeCursor(nextPageCursor) ?? 0) : 0;
-    const result = await listByJobType(
-      auth,
-      jobType as JobType,
-      resolvedLimit,
-      offset
-    );
     if (result.isErr()) {
       return result;
     }
