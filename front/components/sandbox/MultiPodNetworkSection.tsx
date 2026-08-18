@@ -105,20 +105,14 @@ export function MultiPodNetworkSection({
               <span className="font-mono text-sm text-foreground">
                 {domain}
               </span>
-              {scopeNames.length === totalScopes ? (
-                <span className="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
-                  All
+              {scopeNames.map((scopeName, index) => (
+                <span
+                  key={`${scopeName}-${index}`}
+                  className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800"
+                >
+                  {scopeName}
                 </span>
-              ) : (
-                scopeNames.map((scopeName, index) => (
-                  <span
-                    key={`${scopeName}-${index}`}
-                    className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800"
-                  >
-                    {scopeName}
-                  </span>
-                ))
-              )}
+              ))}
             </div>
           </div>
         ))}
