@@ -12,7 +12,9 @@ vi.mock("@app/lib/api/redis", () => ({
         if (cacheReadFailure.current) {
           throw cacheReadFailure.current;
         }
-        return Promise.resolve(keys.map((key) => inMemoryCache.get(key) ?? null));
+        return Promise.resolve(
+          keys.map((key) => inMemoryCache.get(key) ?? null)
+        );
       }),
       multi: vi.fn().mockImplementation(() => {
         const values = new Map<string, string>();

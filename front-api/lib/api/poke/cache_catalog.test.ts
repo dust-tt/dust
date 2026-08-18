@@ -10,12 +10,10 @@ describe("Poke cache catalog", () => {
     const workspace = getPokeCacheOperations("workspace_by_sid");
     const activeSeats = getPokeCacheOperations("workspace_active_seats");
 
-    expect(
-      group?.buildKey({ workspaceModelId: "42", groupModelId: "7" })
-    ).toBe("cacheWithRedis-group_by_model_id-v1:workspace:42:group:7");
-    expect(group?.keyPattern).toBe(
-      "cacheWithRedis-group_by_model_id-v1:*"
+    expect(group?.buildKey({ workspaceModelId: "42", groupModelId: "7" })).toBe(
+      "cacheWithRedis-group_by_model_id-v1:workspace:42:group:7"
     );
+    expect(group?.keyPattern).toBe("cacheWithRedis-group_by_model_id-v1:*");
     expect(workspace?.buildKey({ wId: "workspace-1" })).toBe(
       "cacheWithRedis-_fetchByIdUncached-workspace:v2:workspace-1"
     );
