@@ -174,11 +174,9 @@ export function SandboxScopeSelector({
         )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          label="Clear selection"
-          disabled={
-            !selection.includeWorkspace && selection.podIds.length === 0
-          }
-          onClick={() => onChange({ includeWorkspace: false, podIds: [] })}
+          label="Reset"
+          disabled={selection.includeWorkspace && selection.podIds.length === 0}
+          onClick={() => onChange({ includeWorkspace: true, podIds: [] })}
           onSelect={(event) => {
             event.preventDefault();
           }}
