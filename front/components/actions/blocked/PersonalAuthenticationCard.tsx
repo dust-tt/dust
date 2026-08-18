@@ -158,7 +158,7 @@ export function PersonalAuthenticationCard({
         ) : (
           <>
             <div className="flex flex-col gap-1">
-              <div className="text-faint text-base wrap-break-word">
+              <div className="text-base wrap-break-word text-muted-foreground">
                 Requested for: {actionLabel}
               </div>
               <div className="text-sm wrap-break-word text-muted-foreground">
