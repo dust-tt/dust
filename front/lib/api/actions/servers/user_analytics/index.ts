@@ -26,7 +26,7 @@ import {
 } from "@app/lib/api/assistant/observability/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type { Result } from "@app/types/shared/result";
+import { JOB_TYPE_LABELS } from "@app/types/job_type";
 import { Err, Ok } from "@app/types/shared/result";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 

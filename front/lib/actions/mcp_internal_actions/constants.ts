@@ -93,7 +93,6 @@ import { TOOLSETS_SERVER } from "@app/lib/api/actions/servers/toolsets/metadata"
 import { TRIGGERS_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/triggers_management/metadata";
 import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
 import { USER_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/user_analytics/metadata";
-import { WORKSPACE_PEOPLE_SERVER } from "@app/lib/api/actions/servers/workspace_people/metadata";
 import { USER_MEMORY_SERVER } from "@app/lib/api/actions/servers/user_memory/metadata";
 import { USER_MENTIONS_SERVER } from "@app/lib/api/actions/servers/user_mentions/metadata";
 import { VAL_TOWN_SERVER } from "@app/lib/api/actions/servers/val_town/metadata";
@@ -105,6 +104,7 @@ import {
 } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import { WORKDAY_SERVER } from "@app/lib/api/actions/servers/workday/metadata";
 import { WORKSPACE_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
+import { WORKSPACE_PEOPLE_SERVER } from "@app/lib/api/actions/servers/workspace_people/metadata";
 import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import type {
   InternalMCPServerDefinitionType,

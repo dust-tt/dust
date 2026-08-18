@@ -5,6 +5,7 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { ToolContext } from "@app/lib/actions/types";
 import {
+  GET_WORKSPACE_MEMBERS_CONTEXT_TOOL_NAME,
   WORKSPACE_PEOPLE_SERVER_NAME,
   WORKSPACE_PEOPLE_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/workspace_people/metadata";
@@ -142,6 +143,12 @@ function createServer(
   const server = makeInternalMCPServer(WORKSPACE_PEOPLE_SERVER_NAME);
 
   for (const tool of TOOLS) {
+    if (
+      tool.name === GET_WORKSPACE_MEMBERS_CONTEXT_TOOL_NAME &&
+      !auth.isAdmin()
+    ) {
+      continue;
+    }
     registerTool(auth, toolContext, server, tool, {
       monitoringName: WORKSPACE_PEOPLE_SERVER_NAME,
     });
