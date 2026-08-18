@@ -17,7 +17,7 @@ export function AutomationsOverview({
 
   if (isOverviewLoading) {
     return (
-      <div className="h-24 w-full animate-pulse rounded-xl bg-muted-background" />
+      <div className="h-24 w-full animate-pulse rounded-2xl bg-muted-background" />
     );
   }
 
@@ -25,17 +25,17 @@ export function AutomationsOverview({
     return null;
   }
 
-  const { credits, workspaceCredits, triggers } = overview;
+  const { automationCredits, workspaceTotalCredits, triggers } = overview;
   const disabledCount = triggers.total - triggers.enabled;
 
   return (
     <div className="flex items-stretch gap-6">
       <SummaryCard
         label="Credits spent"
-        value={formatCredits(credits)}
+        value={formatCredits(automationCredits)}
         hint={
-          workspaceCredits > 0
-            ? `${Math.round((credits / workspaceCredits) * 100)}% of workspace usage`
+          workspaceTotalCredits > 0
+            ? `${Math.round((automationCredits / workspaceTotalCredits) * 100)}% of workspace usage`
             : null
         }
       />

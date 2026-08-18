@@ -20,8 +20,8 @@ const OVERVIEW: GetAutomationsOverviewResponse = {
     startDate: "2026-07-01T00:00:00.000Z",
     endDate: "2026-08-01T00:00:00.000Z",
   },
-  credits: 8453,
-  workspaceCredits: 24000,
+  automationCredits: 8453,
+  workspaceTotalCredits: 24000,
   triggers: {
     enabled: 142,
     total: 152,

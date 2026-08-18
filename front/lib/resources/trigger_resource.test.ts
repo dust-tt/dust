@@ -413,8 +413,8 @@ describe("TriggerResource", () => {
     });
   });
 
-  describe("countByStatus", () => {
-    it("counts the workspace's triggers per status", async () => {
+  describe("countForWorkspace", () => {
+    it("counts the workspace's enabled triggers and its total", async () => {
       const mockCreateOrUpdateWorkflow = vi
         .spyOn(temporalClient, "createOrUpdateAgentSchedule")
         .mockResolvedValue(new Ok("workflow-id"));
@@ -437,11 +437,9 @@ describe("TriggerResource", () => {
         status: "downgraded",
       });
 
-      expect(await TriggerResource.countByStatus(authenticator)).toEqual({
+      expect(await TriggerResource.countForWorkspace(authenticator)).toEqual({
         enabled: 2,
-        disabled: 1,
-        relocating: 0,
-        downgraded: 1,
+        total: 4,
       });
 
       mockCreateOrUpdateWorkflow.mockRestore();
@@ -450,11 +448,9 @@ describe("TriggerResource", () => {
     it("counts zero for a workspace without triggers", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      expect(await TriggerResource.countByStatus(authenticator)).toEqual({
+      expect(await TriggerResource.countForWorkspace(authenticator)).toEqual({
         enabled: 0,
-        disabled: 0,
-        relocating: 0,
-        downgraded: 0,
+        total: 0,
       });
     });
   });

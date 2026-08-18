@@ -28,10 +28,7 @@ import type {
   TriggerType,
   WebhookConfig,
 } from "@app/types/assistant/triggers";
-import {
-  getTriggerStatusOwner,
-  isValidTriggerStatus,
-} from "@app/types/assistant/triggers";
+import { getTriggerStatusOwner } from "@app/types/assistant/triggers";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -268,28 +265,17 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return this.baseFetch(auth);
   }
 
-  static async countByStatus(
+  static async countForWorkspace(
     auth: Authenticator
-  ): Promise<Record<TriggerStatus, number>> {
-    const rows = await this.model.count({
-      where: { workspaceId: auth.getNonNullableWorkspace().id },
-      group: ["status"],
-    });
+  ): Promise<{ enabled: number; total: number }> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
 
-    const counts: Record<TriggerStatus, number> = {
-      enabled: 0,
-      disabled: 0,
-      relocating: 0,
-      downgraded: 0,
-    };
-    for (const row of rows) {
-      const { status } = row;
-      if (typeof status === "string" && isValidTriggerStatus(status)) {
-        counts[status] = row.count;
-      }
-    }
+    const [enabled, total] = await Promise.all([
+      this.model.count({ where: { workspaceId, status: "enabled" } }),
+      this.model.count({ where: { workspaceId } }),
+    ]);
 
-    return counts;
+    return { enabled, total };
   }
 
   static async listBySpace(

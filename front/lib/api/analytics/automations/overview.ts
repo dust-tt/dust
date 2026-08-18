@@ -15,10 +15,9 @@ import type { estypes } from "@elastic/elasticsearch";
 
 export type AutomationsOverview = {
   period: ConsumptionPeriod;
-  credits: number;
-  // Every credit the workspace spent over the period, automations included, so
-  // the automation share can be read against it.
-  workspaceCredits: number;
+  automationCredits: number;
+  // Automations included, so the automation share can be read against it.
+  workspaceTotalCredits: number;
   triggers: {
     enabled: number;
     total: number;
@@ -27,13 +26,14 @@ export type AutomationsOverview = {
 
 export type GetAutomationsOverviewResponse = AutomationsOverview;
 
-const CREDIT_AGG = "credit_micro";
-const AUTOMATION_AGG = "automations";
+const WORKSPACE_TOTAL_AGG = "workspace_credit_micro";
+const AUTOMATIONS_AGG = "automations";
+const AUTOMATION_CREDIT_AGG = "automation_credit_micro";
 
 type OverviewAggs = {
-  [CREDIT_AGG]?: estypes.AggregationsSumAggregate;
-  [AUTOMATION_AGG]?: {
-    [CREDIT_AGG]?: estypes.AggregationsSumAggregate;
+  [WORKSPACE_TOTAL_AGG]?: estypes.AggregationsSumAggregate;
+  [AUTOMATIONS_AGG]?: {
+    [AUTOMATION_CREDIT_AGG]?: estypes.AggregationsSumAggregate;
   };
 };
 
@@ -50,17 +50,17 @@ export async function fetchAutomationsOverview(
   const [searchResult, triggerCounts] = await Promise.all([
     searchConsumptionAnalytics<never, OverviewAggs>(query, {
       aggregations: {
-        [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
-        [AUTOMATION_AGG]: {
+        [WORKSPACE_TOTAL_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
+        [AUTOMATIONS_AGG]: {
           filter: { exists: { field: TRIGGER_ID_FIELD } },
           aggs: {
-            [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
+            [AUTOMATION_CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
           },
         },
       },
       size: 0,
     }),
-    TriggerResource.countByStatus(auth),
+    TriggerResource.countForWorkspace(auth),
   ]);
   if (searchResult.isErr()) {
     return searchResult;
@@ -70,18 +70,12 @@ export async function fetchAutomationsOverview(
 
   return new Ok({
     period,
-    credits: microCreditsToCredits(
-      aggregations?.[AUTOMATION_AGG]?.[CREDIT_AGG]?.value ?? 0
+    automationCredits: microCreditsToCredits(
+      aggregations?.[AUTOMATIONS_AGG]?.[AUTOMATION_CREDIT_AGG]?.value ?? 0
     ),
-    workspaceCredits: microCreditsToCredits(
-      aggregations?.[CREDIT_AGG]?.value ?? 0
+    workspaceTotalCredits: microCreditsToCredits(
+      aggregations?.[WORKSPACE_TOTAL_AGG]?.value ?? 0
     ),
-    triggers: {
-      enabled: triggerCounts.enabled,
-      total: Object.values(triggerCounts).reduce(
-        (sum, count) => sum + count,
-        0
-      ),
-    },
+    triggers: triggerCounts,
   });
 }
