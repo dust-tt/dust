@@ -68,13 +68,14 @@ beforeEach(() => {
 });
 
 function searchResponse(
-  docs: AgentMessageConsumptionAnalyticsData[]
+  docs: AgentMessageConsumptionAnalyticsData[],
+  pitId: string = PIT_ID
 ): estypes.SearchResponse<AgentMessageConsumptionAnalyticsData> {
   return {
     took: 0,
     timed_out: false,
     _shards: { failed: 0, successful: 1, total: 1 },
-    pit_id: PIT_ID,
+    pit_id: pitId,
     hits: {
       hits: docs.map((doc, index) => ({
         _index: "consumption_analytics",
@@ -475,5 +476,73 @@ describe("runConsumptionExportActivity", () => {
     const csv = zip.getEntry("lines.csv")?.getData().toString("utf-8") ?? "";
     const dataRows = csv.trim().split("\n").slice(1);
     expect(dataRows).toHaveLength(fullPageDocs.length + 1);
+  });
+
+  it("coordinates a single, latest PIT id across all slices and closes only that id", async () => {
+    const PIT_ID_V2 = "test-pit-id-v2";
+    const fullPageDocs = Array.from({ length: EXPORT_PAGE_SIZE }, (_, index) =>
+      docWithKeys(LLM_DOC, {
+        agentMessageId: `page1-${index}`,
+        consumptionKey: `run-usage:${index}`,
+        completedAt: "2026-08-01T00:00:00.000Z",
+      })
+    );
+    const lastPageDoc = docWithKeys(LLM_DOC, {
+      agentMessageId: "page2-0",
+      consumptionKey: "run-usage:last",
+      completedAt: "2026-08-01T00:00:01.000Z",
+    });
+
+    // Simulates ES refreshing the PIT id on the very first round: every slice's first
+    // request still targets the id from openPointInTime, but every response (including
+    // the empty ones from already-exhausted slices) carries the refreshed id forward.
+    mockedSearchConsumptionAnalytics.mockImplementation(
+      async (_query, options) => {
+        const isFirstSlice = options?.slice?.id === "0";
+        if (!isFirstSlice) {
+          return new Ok(searchResponse([], PIT_ID_V2));
+        }
+        return new Ok(
+          searchResponse(
+            options.search_after ? [lastPageDoc] : fullPageDocs,
+            PIT_ID_V2
+          )
+        );
+      }
+    );
+    mockLabels({});
+    const { authenticator } = await setup();
+
+    await runConsumptionExportActivity(authenticator.toJSON(), {
+      period: {
+        startDate: "2026-08-01T00:00:00.000Z",
+        endDate: "2026-08-02T00:00:00.000Z",
+      },
+      filter: {},
+      exportId: "consumption-export-test-run",
+    });
+
+    // Slice 0 needs a second round (search_after) since its first page was full; that
+    // round must use the refreshed PIT id rather than the original one.
+    const sliceZeroCalls = mockedSearchConsumptionAnalytics.mock.calls.filter(
+      ([, options]) => options?.slice?.id === "0"
+    );
+    expect(sliceZeroCalls).toHaveLength(2);
+    expect(sliceZeroCalls[0][1]?.pit?.id).toBe(PIT_ID);
+    expect(sliceZeroCalls[1][1]?.pit?.id).toBe(PIT_ID_V2);
+
+    // The other slices only need one round, and it must use the original PIT id since
+    // the refresh only surfaces once slice 0's first response comes back.
+    const otherSliceCalls = mockedSearchConsumptionAnalytics.mock.calls.filter(
+      ([, options]) => options?.slice?.id !== "0"
+    );
+    expect(otherSliceCalls.length).toBeGreaterThan(0);
+    for (const [, options] of otherSliceCalls) {
+      expect(options?.pit?.id).toBe(PIT_ID);
+    }
+
+    // The final close must target the latest coordinated id, not the one PIT was opened with.
+    expect(mockedClosePointInTime).toHaveBeenCalledTimes(1);
+    expect(mockedClosePointInTime).toHaveBeenCalledWith(PIT_ID_V2);
   });
 });

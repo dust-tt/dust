@@ -138,51 +138,6 @@ function compareConsumptionExportRows(
   );
 }
 
-// Fetches one slice of the sliced-search partition to completion, paginating
-// within the slice with search_after against the shared point-in-time.
-async function fetchConsumptionSliceDocuments(
-  query: estypes.QueryDslQueryContainer,
-  slice: estypes.SlicedScroll,
-  pitId: string
-): Promise<Result<AgentMessageConsumptionAnalyticsData[], ElasticsearchError>> {
-  const sliceDocs: AgentMessageConsumptionAnalyticsData[] = [];
-  let searchAfter: estypes.SortResults | undefined;
-  let currentPitId = pitId;
-  let hitCount: number;
-
-  do {
-    const result =
-      await searchConsumptionAnalytics<AgentMessageConsumptionAnalyticsData>(
-        query,
-        {
-          size: EXPORT_PAGE_SIZE,
-          sort: CONSUMPTION_EXPORT_SORT,
-          search_after: searchAfter,
-          slice,
-          pit: { id: currentPitId, keep_alive: EXPORT_PIT_KEEP_ALIVE },
-        }
-      );
-
-    if (result.isErr()) {
-      return result;
-    }
-
-    const { hits } = result.value.hits;
-    for (const hit of hits) {
-      if (hit._source) {
-        sliceDocs.push(hit._source);
-      }
-    }
-
-    // A pit search can return a refreshed pit_id; subsequent pages must use it.
-    currentPitId = result.value.pit_id ?? currentPitId;
-    hitCount = hits.length;
-    searchAfter = hits[hits.length - 1]?.sort;
-  } while (hitCount === EXPORT_PAGE_SIZE);
-
-  return new Ok(sliceDocs);
-}
-
 // One document per unit of billed credit consumption. Slices are fetched concurrently against
 // a shared point-in-time, so every slice/page sees the same snapshot of the index instead of
 // racing concurrent writes/refreshes (which could otherwise duplicate or drop rows).
@@ -196,29 +151,57 @@ async function fetchAllConsumptionDocuments(
   if (pitResult.isErr()) {
     return pitResult;
   }
-  const pitId = pitResult.value;
+  let currentPitId = pitResult.value;
 
   try {
     const sliceIds = Array.from({ length: EXPORT_SLICE_COUNT }, (_, id) => id);
-
-    const results = await concurrentExecutor(
-      sliceIds,
-      (id) =>
-        fetchConsumptionSliceDocuments(
-          query,
-          { id: String(id), max: EXPORT_SLICE_COUNT },
-          pitId
-        ),
-      { concurrency: EXPORT_SLICE_COUNT }
-    );
-
+    const searchAfterBySlice = new Map<number, estypes.SortResults>();
+    const exhaustedSlices = new Set<number>();
     const allDocs: AgentMessageConsumptionAnalyticsData[] = [];
-    for (const result of results) {
-      if (result.isErr()) {
-        return result;
-      }
-      for (const doc of result.value) {
-        allDocs.push(doc);
+
+    while (exhaustedSlices.size < sliceIds.length) {
+      const activeSliceIds = sliceIds.filter((id) => !exhaustedSlices.has(id));
+      const roundPitId = currentPitId;
+
+      const results = await concurrentExecutor(
+        activeSliceIds,
+        (id) =>
+          searchConsumptionAnalytics<AgentMessageConsumptionAnalyticsData>(
+            query,
+            {
+              size: EXPORT_PAGE_SIZE,
+              sort: CONSUMPTION_EXPORT_SORT,
+              search_after: searchAfterBySlice.get(id),
+              slice: { id: String(id), max: EXPORT_SLICE_COUNT },
+              pit: { id: roundPitId, keep_alive: EXPORT_PIT_KEEP_ALIVE },
+            }
+          ),
+        { concurrency: EXPORT_SLICE_COUNT }
+      );
+
+      for (let i = 0; i < activeSliceIds.length; i++) {
+        const result = results[i];
+        if (result.isErr()) {
+          return result;
+        }
+
+        const { hits } = result.value.hits;
+        for (const hit of hits) {
+          if (hit._source) {
+            allDocs.push(hit._source);
+          }
+        }
+
+        // A pit search can return a refreshed pit_id; every slice's next round must use it.
+        currentPitId = result.value.pit_id ?? currentPitId;
+
+        const sliceId = activeSliceIds[i];
+        const lastSort = hits[hits.length - 1]?.sort;
+        if (hits.length < EXPORT_PAGE_SIZE || !lastSort) {
+          exhaustedSlices.add(sliceId);
+        } else {
+          searchAfterBySlice.set(sliceId, lastSort);
+        }
       }
     }
 
@@ -227,7 +210,7 @@ async function fetchAllConsumptionDocuments(
 
     return new Ok(allDocs);
   } finally {
-    const closeResult = await closePointInTime(pitId);
+    const closeResult = await closePointInTime(currentPitId);
     if (closeResult.isErr()) {
       logger.error(
         { err: closeResult.error },
