@@ -1,4 +1,5 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import { splitConsumptionPeriodIntoBuckets } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -267,8 +268,13 @@ export async function launchConsumptionExportWorkflow(
       return new Ok({ status: "already_running", workflowId, period, filter });
     }
 
+    // Computed here rather than inside the workflow: the workflow bundle must stay free
+    // of heavy runtime imports, and `period.ts` transitively pulls in the Elasticsearch
+    // client (through Metronome) which the Temporal workflow sandbox can't bundle.
+    const buckets = splitConsumptionPeriodIntoBuckets(exportPeriod);
+
     await client.workflow.start(runConsumptionExportWorkflow, {
-      args: [authType, { period: exportPeriod, filter, exportId }],
+      args: [authType, { buckets, filter, exportId }],
       taskQueue: QUEUE_NAME,
       workflowId,
       memo: {

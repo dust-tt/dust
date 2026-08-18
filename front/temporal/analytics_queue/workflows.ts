@@ -1,5 +1,4 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import { splitConsumptionPeriodIntoBuckets } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as activities from "@app/temporal/analytics_queue/activities";
@@ -89,17 +88,17 @@ export async function storeAgentMessageConsumptionAttributionV3Workflow(
 export async function runConsumptionExportWorkflow(
   authType: AuthenticatorType,
   {
-    period,
+    buckets,
     filter,
     exportId,
   }: {
-    period: ConsumptionPeriod;
+    // Pre-split by the caller: `period.ts` transitively pulls in the Elasticsearch client
+    // (through Metronome), which the Temporal workflow bundler can't handle.
+    buckets: ConsumptionPeriod[];
     filter: ConsumptionScopeFilter;
     exportId: string;
   }
 ): Promise<void> {
-  const buckets = splitConsumptionPeriodIntoBuckets(period);
-
   for (const [bucketIndex, bucketPeriod] of buckets.entries()) {
     await runConsumptionExportBucketActivity(authType, {
       period: bucketPeriod,
