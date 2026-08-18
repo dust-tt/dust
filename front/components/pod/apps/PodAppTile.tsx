@@ -9,6 +9,7 @@ import {
   CardActionButton,
   Chip,
   Download01,
+  Edit04,
   GitBranch01,
   Spinner,
   Trash01,
@@ -22,6 +23,8 @@ interface PodAppTileProps {
   onOpenFrame: (frame: PodAppFrame) => void;
   /** Download this app as a portable archive. Available to every viewer with read access. */
   onDownload: () => Promise<void>;
+  /** Absent when the viewer cannot edit (no write access). */
+  onEdit?: () => void;
   /** Absent when the viewer cannot edit (no write access). */
   onClone?: () => void;
   /** Absent when the viewer cannot edit (no write access). */
@@ -55,6 +58,7 @@ export function PodAppTile({
   defaultIcon,
   onOpenFrame,
   onDownload,
+  onEdit,
   onClone,
   onDelete,
   isDeleting,
@@ -86,6 +90,14 @@ export function PodAppTile({
           <Spinner size="xs" />
         ) : (
           <div className="flex gap-1">
+            {onEdit && (
+              <CardActionButton
+                size="icon"
+                icon={Edit04}
+                tooltip="Ask an agent to modify this app"
+                onClick={onEdit}
+              />
+            )}
             <CardActionButton
               size="icon"
               icon={Download01}

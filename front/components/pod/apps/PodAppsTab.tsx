@@ -1,3 +1,4 @@
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { ClonePodAppDialog } from "@app/components/pod/apps/ClonePodAppDialog";
 import { DeletePodAppDialog } from "@app/components/pod/apps/DeletePodAppDialog";
 import { ImportPodAppDialog } from "@app/components/pod/apps/ImportPodAppDialog";
@@ -27,11 +28,13 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useMemo, useRef, useState } from "react";
 
 interface PodAppsTabProps {
   owner: WorkspaceType;
   pod: PodType;
+  /** Switch the Pod page to the Conversations tab, where the input bar lives. */
+  onNavigateToConversations: () => void;
 }
 
 /**
@@ -62,7 +65,11 @@ const DEFAULT_POD_APP_ICON = "ActionFrameIcon" satisfies CustomResourceIconType;
 
 // NavTabPillContent is a bare Radix Tabs.Content with no forceMount, so this only mounts while the
 // Apps tab is active — hence no `disabled` flag on the hook below.
-export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
+export function PodAppsTab({
+  owner,
+  pod,
+  onNavigateToConversations,
+}: PodAppsTabProps) {
   const { apps, isPodAppsLoading, isPodAppsError } = usePodApps({
     owner,
     podId: pod.sId,
@@ -73,6 +80,8 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
   const clonePodApp = useClonePodApp({ owner, podId: pod.sId });
   const importPodApp = useImportPodApp({ owner, podId: pod.sId });
   const deletePodApp = useDeletePodApp({ owner, podId: pod.sId });
+
+  const { setPendingInputText } = useContext(InputBarContext);
 
   const [framePreview, setFramePreview] = useState<PodAppFrame | null>(null);
   const [appPendingDeletion, setAppPendingDeletion] = useState<PodApp | null>(
@@ -166,6 +175,21 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
       );
     },
     [importPodApp, runCreation]
+  );
+
+  // Apps are modified conversationally: seed the new-conversation input bar with the app's
+  // identity, then land the user on the Conversations tab so they describe the change and send.
+  const onEdit = useCallback(
+    (app: PodApp) => {
+      setPendingInputText(
+        `I'd like to make changes to the app "${app.name}": `,
+        {
+          replace: true,
+        }
+      );
+      onNavigateToConversations();
+    },
+    [setPendingInputText, onNavigateToConversations]
   );
 
   const onDelete = useCallback(
@@ -277,6 +301,7 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
                         defaultIcon={DEFAULT_POD_APP_ICON}
                         onOpenFrame={setFramePreview}
                         onDownload={() => downloadPodApp(entry.app)}
+                        onEdit={canEdit ? () => onEdit(entry.app) : undefined}
                         onClone={
                           canEdit
                             ? () => setAppPendingClone(entry.app)
