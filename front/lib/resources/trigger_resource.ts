@@ -446,6 +446,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         metadata: {
           trigger_type: trigger.kind,
           agent_id: trigger.agentConfigurationId,
+          status: blob.status,
         },
       });
     }
@@ -887,6 +888,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       metadata: {
         trigger_type: this.kind,
         agent_id: this.agentConfigurationId,
+        status: "enabled",
       },
     });
 
@@ -958,6 +960,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         metadata: {
           trigger_type: this.kind,
           agent_id: this.agentConfigurationId,
+          status: targetStatus,
         },
       });
     }
