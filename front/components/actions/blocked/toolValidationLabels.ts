@@ -227,7 +227,7 @@ export function getToolValidationAlwaysAllowLabel(
           : JSON.stringify(value);
 
       return {
-        label: `${asDisplayName(arg)} is ${displayValue}`,
+        label: `“${asDisplayName(arg).toLowerCase()}” is ${displayValue}`,
         value: displayValue,
       };
     });
