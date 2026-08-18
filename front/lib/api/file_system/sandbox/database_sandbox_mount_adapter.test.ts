@@ -23,10 +23,7 @@ vi.mock(
 
 vi.mock("@app/lib/api/config", () => ({
   default: {
-    getDustAPIConfig: vi.fn(() => ({
-      url: "https://api.example.test",
-      nodeEnv: "test",
-    })),
+    getSandboxApiBaseUrl: vi.fn(() => "https://api.example.test"),
   },
 }));
 
