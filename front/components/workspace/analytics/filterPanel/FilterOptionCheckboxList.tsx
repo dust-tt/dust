@@ -2,12 +2,12 @@ import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { FILTER_PICKER_PAGE_SIZE } from "@app/components/workspace/analytics/filterPanel/constants";
 import { FilterAvailabilityStatus } from "@app/components/workspace/analytics/filterPanel/FilterAvailabilityStatus";
 import type { FilterOptionBase } from "@app/components/workspace/analytics/filterPanel/filterState";
-import { UsageFilterSection } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSection";
 import {
   Button,
   Checkbox,
   Label,
   LoadingBlock,
+  NavigationListLabel,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
@@ -39,12 +39,12 @@ interface FilterOptionCheckboxListProps<Option extends FilterOptionBase> {
   options: Option[];
   selectedIds: Set<string>;
   onToggleOption: (option: Option) => void;
-  onSelectAll: () => void;
-  selectAllLabel: string;
-  hasSelectableOptions: boolean;
+  onSelectAll?: () => void;
+  selectAllLabel?: string;
+  hasSelectableOptions?: boolean;
   renderIcon?: (option: Option) => ReactNode;
   status?: FilterOptionListStatus;
-  scrollContainer: HTMLDivElement | null;
+  scrollContainer?: HTMLDivElement | null;
 }
 
 export function FilterOptionCheckboxList<Option extends FilterOptionBase>({
@@ -58,7 +58,7 @@ export function FilterOptionCheckboxList<Option extends FilterOptionBase>({
   hasSelectableOptions,
   renderIcon,
   status = "idle",
-  scrollContainer,
+  scrollContainer = null,
 }: FilterOptionCheckboxListProps<Option>) {
   const isLoading = status === "loading";
   const isUpdating = status === "updating";
@@ -71,23 +71,27 @@ export function FilterOptionCheckboxList<Option extends FilterOptionBase>({
   const loadMore = () =>
     setVisibleCount((current) => current + FILTER_PICKER_PAGE_SIZE);
   return (
-    <UsageFilterSection
-      title={`All ${categoryLabel}`}
-      action={
-        <div className="flex items-center gap-2">
-          {isUpdating && (
-            <span className="text-xs text-muted-foreground">Updating…</span>
-          )}
-          <Button
-            label={selectAllLabel}
-            size="xmini"
-            variant="ghost-secondary"
-            onClick={onSelectAll}
-            disabled={!hasSelectableOptions || isUpdating}
-          />
-        </div>
-      }
-    >
+    <>
+      <NavigationListLabel
+        label={`All ${categoryLabel}`}
+        className="bg-transparent font-medium"
+        action={
+          <div className="flex items-center gap-2">
+            {isUpdating && (
+              <span className="text-xs text-muted-foreground">Updating…</span>
+            )}
+            {onSelectAll && (
+              <Button
+                label={selectAllLabel}
+                size="xmini"
+                variant="ghost-secondary"
+                onClick={onSelectAll}
+                disabled={!hasSelectableOptions || isUpdating}
+              />
+            )}
+          </div>
+        }
+      />
       <div
         aria-busy={isLoading || isUpdating}
         className="flex flex-col gap-0.5"
@@ -162,6 +166,6 @@ export function FilterOptionCheckboxList<Option extends FilterOptionBase>({
           </div>
         )}
       </div>
-    </UsageFilterSection>
+    </>
   );
 }

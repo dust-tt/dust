@@ -54,7 +54,6 @@ export function AutomationsFilterPanel({
     clearCategory,
     toggleOption,
     removeOption,
-    selectAllFiltered,
   } = useAutomationsFilter(filter);
   const [activeCategory, setActiveCategory] =
     useState<AutomationsFilterCategory>("agent");
@@ -124,12 +123,6 @@ export function AutomationsFilterPanel({
       new Set((draftFilter[activeCategory] ?? []).map((option) => option.id)),
     [draftFilter, activeCategory]
   );
-  const unselectedOptions = filteredOptions.filter(
-    (option) => !selectedIdsForActiveCategory.has(option.id)
-  );
-  const hasSelectableOptions =
-    activeCategory !== "member" && unselectedOptions.length > 0;
-
   const appliedSelectionCount = automationsFilterSelectionCount(filter);
   const categoriesWithSelection = useMemo(
     () =>
@@ -212,15 +205,10 @@ export function AutomationsFilterPanel({
               options={filteredOptions}
               selectedIds={selectedIdsForActiveCategory}
               onToggleOption={(option) => toggleOption(activeCategory, option)}
-              onSelectAll={() =>
-                selectAllFiltered(activeCategory, unselectedOptions)
-              }
-              selectAllLabel="Select all"
-              hasSelectableOptions={hasSelectableOptions}
               renderIcon={(option) => (
                 <AutomationsFilterOptionIcon option={option} />
               )}
-              isLoading={isOptionsLoading}
+              status={isOptionsLoading ? "loading" : "idle"}
             />
           </div>
           <FilterSelectionSummary<
