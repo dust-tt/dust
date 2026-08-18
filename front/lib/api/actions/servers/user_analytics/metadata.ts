@@ -6,32 +6,7 @@ import { z } from "zod";
 
 export const USER_ANALYTICS_SERVER_NAME = "user_analytics" as const;
 
-export const GET_WORKSPACE_MEMBERS_CONTEXT_TOOL_NAME =
-  "get_workspace_members_context" as const;
-
 export const USER_ANALYTICS_TOOLS_METADATA = [
-  {
-    name: GET_WORKSPACE_MEMBERS_CONTEXT_TOOL_NAME,
-    description:
-      "Get directory context for a batch of active workspace members: " +
-      "identity, workspace role, job function, and user-managed workspace groups.",
-    schema: {
-      userIds: z
-        .array(z.string())
-        .min(1)
-        .max(100)
-        .describe(
-          "Stable IDs of active workspace members to look up in one batch."
-        ),
-    },
-    stake: "never_ask",
-    toolCostCategory: "basic",
-    freeUsage: true,
-    displayLabels: {
-      running: "Fetching member contexts",
-      done: "Member contexts fetched",
-    },
-  },
   {
     name: "get_personal_usage",
     description:
@@ -86,7 +61,7 @@ export const USER_ANALYTICS_SERVER = {
     name: USER_ANALYTICS_SERVER_NAME,
     version: "1.0.0",
     description:
-      "Fetch workspace member context, personal usage stats, and anonymized workspace activity data.",
+      "Fetch personal usage stats and anonymized workspace activity data.",
     authorization: null,
     icon: "ActionPieChartIcon",
     documentationUrl: null,

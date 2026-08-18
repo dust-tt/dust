@@ -93,6 +93,7 @@ import { TOOLSETS_SERVER } from "@app/lib/api/actions/servers/toolsets/metadata"
 import { TRIGGERS_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/triggers_management/metadata";
 import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
 import { USER_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/user_analytics/metadata";
+import { WORKSPACE_PEOPLE_SERVER } from "@app/lib/api/actions/servers/workspace_people/metadata";
 import { USER_MEMORY_SERVER } from "@app/lib/api/actions/servers/user_memory/metadata";
 import { USER_MENTIONS_SERVER } from "@app/lib/api/actions/servers/user_mentions/metadata";
 import { VAL_TOWN_SERVER } from "@app/lib/api/actions/servers/val_town/metadata";
@@ -245,6 +246,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "plan_mode",
   "workspace_analytics",
   "activation_recommendations",
+  "workspace_people",
 ] as const;
 
 export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
@@ -1252,6 +1254,17 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: ACTIVATION_RECOMMENDATIONS_SERVER,
+  },
+  workspace_people: {
+    id: 1047,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: WORKSPACE_PEOPLE_SERVER,
   },
   agent_templates: {
     id: 1041,
