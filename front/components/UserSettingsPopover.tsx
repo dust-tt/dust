@@ -231,16 +231,16 @@ function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
 
   const { myUsage, nextCreditResetAt, isMyUsageLoading } = useMyUsage({
     workspaceId: owner.sId,
-    disabled: !isCreditBased,
+    disabled: !isCreditBased || !visible,
   });
   const { seatPlans } = useSeatPlan({
     workspaceId: owner.sId,
-    disabled: !isCreditBased,
+    disabled: !isCreditBased || !visible,
   });
 
   const { hasPendingUpgradeRequest } = useWorkspaceUsageStatus({
     owner,
-    disabled: isManager || !isCreditBased,
+    disabled: isManager || !isCreditBased || !visible,
   });
 
   const seatName =
