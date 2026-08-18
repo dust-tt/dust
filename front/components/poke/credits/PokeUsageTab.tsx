@@ -30,11 +30,38 @@ interface PokeUsageTabProps {
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticWarningReached: boolean;
   programmaticSpendLimitRateCapCount: number | null;
+  programmaticEsConsumedAwuCredits: number | null;
+  programmaticMetronomeConsumedAwuCredits: number | null;
   creditUsageConfig: PokeCreditUsageConfig | null;
   poolAlert: MetronomeAlertRef | null;
   programmaticAlerts: PokeProgrammaticAlerts;
   usageCapAlert: MetronomeAlertRef | null;
   defaultAlerts: DefaultMetronomeAlerts;
+}
+
+interface SpendCountersInlineProps {
+  esConsumedAwuCredits: number | null;
+  rateLimiterAwuCredits: number | null;
+  metronomeConsumedAwuCredits: number | null;
+}
+
+// The three spend figures for a cap dimension shown together to spot
+// divergence: ES = Elasticsearch-derived, RL = Redis rate-limiter counter (the
+// value enforcement reads), MT = Metronome-derived. Mirrors the
+// "Consumed (ES / RL / MT)" column in the members table.
+function SpendCountersInline({
+  esConsumedAwuCredits,
+  rateLimiterAwuCredits,
+  metronomeConsumedAwuCredits,
+}: SpendCountersInlineProps) {
+  const fmt = (value: number | null) =>
+    value !== null ? formatCredits(value) : "—";
+  return (
+    <span className="text-xs text-muted-foreground">
+      ES / RL / MT: {fmt(esConsumedAwuCredits)} / {fmt(rateLimiterAwuCredits)} /{" "}
+      {fmt(metronomeConsumedAwuCredits)}
+    </span>
+  );
 }
 
 type CreditStateChipColor = "success" | "warning" | "warning" | "info";
@@ -68,6 +95,8 @@ interface PokeCreditStatesCardProps {
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticWarningReached: boolean;
   programmaticSpendLimitRateCapCount: number | null;
+  programmaticEsConsumedAwuCredits: number | null;
+  programmaticMetronomeConsumedAwuCredits: number | null;
   poolAlert: MetronomeAlertRef | null;
   programmaticAlerts: PokeProgrammaticAlerts;
 }
@@ -78,6 +107,8 @@ function PokeCreditStatesCard({
   programmaticCreditState,
   programmaticWarningReached,
   programmaticSpendLimitRateCapCount,
+  programmaticEsConsumedAwuCredits,
+  programmaticMetronomeConsumedAwuCredits,
   poolAlert,
   programmaticAlerts,
 }: PokeCreditStatesCardProps) {
@@ -108,12 +139,13 @@ function PokeCreditStatesCard({
           {programmaticWarningReached && (
             <Chip size="xs" color="warning" label="near limit" />
           )}
-          <span className="text-xs text-muted-foreground">
-            rate limiter:{" "}
-            {programmaticSpendLimitRateCapCount !== null
-              ? `${formatCredits(programmaticSpendLimitRateCapCount)} credits`
-              : "—"}
-          </span>
+          <SpendCountersInline
+            esConsumedAwuCredits={programmaticEsConsumedAwuCredits}
+            rateLimiterAwuCredits={programmaticSpendLimitRateCapCount}
+            metronomeConsumedAwuCredits={
+              programmaticMetronomeConsumedAwuCredits
+            }
+          />
           <AlertChip alert={programmaticAlerts.cap} label="cap alert" />
           <AlertChip alert={programmaticAlerts.warning} label="warning (80%)" />
           <AlertChip alert={programmaticAlerts.low} label="low (-100)" />
@@ -292,6 +324,8 @@ export function PokeUsageTab({
   programmaticCreditState,
   programmaticWarningReached,
   programmaticSpendLimitRateCapCount,
+  programmaticEsConsumedAwuCredits,
+  programmaticMetronomeConsumedAwuCredits,
   creditUsageConfig,
   poolAlert,
   programmaticAlerts,
@@ -312,6 +346,10 @@ export function PokeUsageTab({
         programmaticCreditState={programmaticCreditState}
         programmaticWarningReached={programmaticWarningReached}
         programmaticSpendLimitRateCapCount={programmaticSpendLimitRateCapCount}
+        programmaticEsConsumedAwuCredits={programmaticEsConsumedAwuCredits}
+        programmaticMetronomeConsumedAwuCredits={
+          programmaticMetronomeConsumedAwuCredits
+        }
         poolAlert={poolAlert}
         programmaticAlerts={programmaticAlerts}
       />

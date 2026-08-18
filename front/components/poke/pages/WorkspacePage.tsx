@@ -144,6 +144,8 @@ export function WorkspacePage() {
     programmaticCreditState,
     programmaticWarningReached,
     programmaticSpendLimitRateCapCount,
+    programmaticEsConsumedAwuCredits,
+    programmaticMetronomeConsumedAwuCredits,
     seatPlan,
     stripeSubscription,
     stripeCustomerId,
@@ -373,6 +375,12 @@ export function WorkspacePage() {
                   programmaticWarningReached={programmaticWarningReached}
                   programmaticSpendLimitRateCapCount={
                     programmaticSpendLimitRateCapCount
+                  }
+                  programmaticEsConsumedAwuCredits={
+                    programmaticEsConsumedAwuCredits
+                  }
+                  programmaticMetronomeConsumedAwuCredits={
+                    programmaticMetronomeConsumedAwuCredits
                   }
                   creditUsageConfig={creditUsageConfig}
                   poolAlert={poolAlert}

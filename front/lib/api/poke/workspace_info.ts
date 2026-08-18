@@ -1,5 +1,6 @@
 import { makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace } from "@app/lib/api/assistant/rate_limits";
 import config from "@app/lib/api/config";
+import { getEsConsumedProgrammaticAwuCredits } from "@app/lib/api/credits/members_usage";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { getSeatPlan } from "@app/lib/api/credits/seat_plan";
 import { getWorkspacePlanLimitOverrides } from "@app/lib/api/plan_limit_overrides";
@@ -11,6 +12,7 @@ import type { DefaultMetronomeAlerts } from "@app/lib/metronome/alerts/default_a
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import { getCachedWorkspaceMetronomeAlerts } from "@app/lib/metronome/alerts/workspace_alerts";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
+import { fetchProgrammaticAwuSpend } from "@app/lib/metronome/programmatic_awu_usage";
 import { isWorkspaceProgrammaticWarningReached } from "@app/lib/metronome/user_block";
 import type { PlanLimitOverride } from "@app/lib/plans/plan_limit_overrides";
 import { getCustomerId, getStripeSubscription } from "@app/lib/plans/stripe";
@@ -90,10 +92,13 @@ export type PokeWorkspaceInfo = {
   defaultAlerts: DefaultMetronomeAlerts;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticWarningReached: boolean;
-  // Current value of the Redis fixed-window programmatic spend-cap counter for
-  // the contract billing cycle (the rate-limiter backup). Null when there is no
-  // billing period to bucket on or the read failed.
+  // Programmatic spend for the current billing cycle across the three sources,
+  // for debugging the rate-limiter backup: the Redis fixed-window counter (RL),
+  // the Elasticsearch-derived consumption (ES), and the Metronome-derived
+  // consumption (MT). Each null when it can't be resolved.
   programmaticSpendLimitRateCapCount: number | null;
+  programmaticEsConsumedAwuCredits: number | null;
+  programmaticMetronomeConsumedAwuCredits: number | null;
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
   stripeCustomerId: string | null;
   stripeSubscription: PokeStripeSubscriptionWire | null;
@@ -145,9 +150,11 @@ export async function getPokeWorkspaceInfo(
   const creditUsageConfig =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
 
-  // Current values of the Redis fixed-window spend-cap counters for the contract
-  // billing cycle (the rate-limiter backups), surfaced in Poke for debugging.
-  // Null when there is no billing period to bucket on or a read fails.
+  // Spend-cap dimensions for the contract billing cycle, surfaced in Poke for
+  // debugging: the Redis fixed-window rate-limiter counter (RL, the value
+  // enforcement reads), the Elasticsearch-derived consumption (ES), and the
+  // Metronome-derived consumption (MT). Each is null when it can't be resolved
+  // (no billing period, no Metronome customer, or a read failure).
   const spendLimitBounds = await resolveSpendLimitCycleBounds(owner);
   let programmaticSpendLimitRateCapCount: number | null = null;
   if (spendLimitBounds) {
@@ -157,6 +164,19 @@ export async function getPokeWorkspaceInfo(
     });
     programmaticSpendLimitRateCapCount = countResult.isOk()
       ? countResult.value
+      : null;
+  }
+  const programmaticEsConsumedAwuCredits = spendLimitBounds
+    ? await getEsConsumedProgrammaticAwuCredits(auth, {})
+    : null;
+  let programmaticMetronomeConsumedAwuCredits: number | null = null;
+  if (workspaceResource.metronomeCustomerId) {
+    const spendResult = await fetchProgrammaticAwuSpend({
+      workspaceId: owner.sId,
+      metronomeCustomerId: workspaceResource.metronomeCustomerId,
+    });
+    programmaticMetronomeConsumedAwuCredits = spendResult.isOk()
+      ? spendResult.value
       : null;
   }
 
@@ -266,6 +286,8 @@ export async function getPokeWorkspaceInfo(
       owner.sId
     ),
     programmaticSpendLimitRateCapCount,
+    programmaticEsConsumedAwuCredits,
+    programmaticMetronomeConsumedAwuCredits,
     stripeCustomerId,
     stripeSubscription: stripeSubscription
       ? {
