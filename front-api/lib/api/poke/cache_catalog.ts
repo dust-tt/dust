@@ -1,4 +1,5 @@
 import { workspaceActiveSeatsCacheOperations } from "@app/lib/api/workspace_seats/cache";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { CacheOperations } from "@app/lib/utils/cache_operations";
 import type { PokeCacheResourceDescriptor } from "@app/types/api/poke/cache";
@@ -10,6 +11,7 @@ import {
 
 const migratedCacheOperations = [
   WorkspaceResource.byIdCacheOperations,
+  SkillResource.displayMetadataCacheOperations,
   workspaceActiveSeatsCacheOperations,
 ];
 

@@ -180,13 +180,7 @@ async function listConsumptionFacetCatalogWithoutTracing(
     "skills",
     "skill",
     requestedDimension,
-    () =>
-      SkillResource.listByWorkspace(auth, {
-        status: "active",
-        withInstructions: false,
-        withTools: false,
-        withFileAttachments: false,
-      })
+    () => SkillResource.listDisplayMetadata(auth, { status: "active" })
   );
 
   return {

@@ -159,6 +159,68 @@ describe("SkillResource", () => {
     });
   });
 
+  describe("listDisplayMetadata", () => {
+    it("refreshes cached metadata after a skill update and archive", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Cached skill name",
+        userFacingDescription: "Cached skill description",
+      });
+
+      const initialMetadata = await SkillResource.listDisplayMetadata(
+        testContext.authenticator,
+        { status: "active" }
+      );
+      expect(initialMetadata).toContainEqual(
+        expect.objectContaining({
+          sId: skill.sId,
+          name: "Cached skill name",
+          userFacingDescription: "Cached skill description",
+        })
+      );
+
+      await skill.updateSkill(testContext.authenticator, {
+        name: "Updated skill name",
+        agentFacingDescription: skill.agentFacingDescription,
+        userFacingDescription: "Updated skill description",
+        instructions: skill.instructions,
+        icon: skill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: [],
+      });
+
+      const updatedMetadata = await SkillResource.listDisplayMetadata(
+        testContext.authenticator,
+        { sIds: [skill.sId] }
+      );
+      expect(updatedMetadata).toEqual([
+        expect.objectContaining({
+          sId: skill.sId,
+          name: "Updated skill name",
+          userFacingDescription: "Updated skill description",
+        }),
+      ]);
+
+      await skill.archive(testContext.authenticator);
+
+      const activeMetadata = await SkillResource.listDisplayMetadata(
+        testContext.authenticator,
+        { sIds: [skill.sId], status: "active" }
+      );
+      const archivedMetadata = await SkillResource.listDisplayMetadata(
+        testContext.authenticator,
+        { sIds: [skill.sId], status: "archived" }
+      );
+      expect(activeMetadata).toEqual([]);
+      expect(archivedMetadata).toEqual([
+        expect.objectContaining({
+          sId: skill.sId,
+          status: "archived",
+        }),
+      ]);
+    });
+  });
+
   describe("favorites", () => {
     it("stores one row per user and updates custom skill favorite counts", async () => {
       const skillA = await SkillFactory.create(testContext.authenticator, {
