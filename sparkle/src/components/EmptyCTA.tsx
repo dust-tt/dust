@@ -4,12 +4,13 @@ import * as React from "react";
 
 interface EmptyCTAProps extends React.HTMLAttributes<HTMLDivElement> {
   action: React.ReactNode;
+  title?: string;
   message?: string;
   styleProps?: React.CSSProperties;
 }
 
 const EmptyCTA = React.forwardRef<HTMLDivElement, EmptyCTAProps>(
-  ({ action, message, styleProps, className, ...props }, ref) => (
+  ({ action, title, message, styleProps, className, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
@@ -20,6 +21,13 @@ const EmptyCTA = React.forwardRef<HTMLDivElement, EmptyCTAProps>(
       style={styleProps}
       {...props}
     >
+      {title && (
+        <div
+          className={cn("text-center text-sm font-medium", "text-foreground")}
+        >
+          {title}
+        </div>
+      )}
       {message && (
         <div className={cn("text-center text-sm", "text-muted-foreground")}>
           {message}

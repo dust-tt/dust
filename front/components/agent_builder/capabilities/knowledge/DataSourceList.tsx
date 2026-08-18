@@ -350,6 +350,9 @@ export function DataSourceList({
           ? selectionState === "partial"
           : !hideCheckbox;
 
+        // Rows with no navigate target (e.g. a childless data source view, or a
+        // non-expandable leaf node) would otherwise be dead clicks — fall back to
+        // toggling selection, same as clicking the checkbox does.
         const handleRowClick = () => {
           if (item.onClick) {
             item.onClick();
