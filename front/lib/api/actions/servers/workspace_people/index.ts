@@ -33,24 +33,20 @@ type WorkspaceMember = {
 async function buildMemberRows(
   auth: Authenticator,
   users: UserResource[],
-  membershipByUserId: Map<number, MembershipResource>
+  membershipByUserId: Map<number, MembershipResource>,
+  jobTypesByUserId: Map<number, string>
 ): Promise<WorkspaceMember[]> {
   if (users.length === 0) {
     return [];
   }
   const workspace = auth.getNonNullableWorkspace();
   const userModelIds = users.map((u) => u.id);
-  const [jobTypesByUserId, groupNamesByUserId] = await Promise.all([
-    UserResource.fetchUserScopedMetadataValuesByUserModelIds(
-      "job_type",
-      userModelIds
-    ),
-    GroupResource.listGroupNamesByUserModelIdInWorkspace({
+  const groupNamesByUserId =
+    await GroupResource.listGroupNamesByUserModelIdInWorkspace({
       workspace,
       userModelIds,
       groupKinds: [...MANAGEABLE_GROUP_KINDS],
-    }),
-  ]);
+    });
 
   return users.flatMap((user) => {
     const membership = membershipByUserId.get(user.id);
@@ -113,7 +109,21 @@ async function listByUserIds(
     return u ? [u] : [];
   });
 
-  return new Ok(await buildMemberRows(auth, orderedUsers, membershipByUserId));
+  const userModelIds = orderedUsers.map((u) => u.id);
+  const jobTypesByUserId =
+    await UserResource.fetchUserScopedMetadataValuesByUserModelIds(
+      "job_type",
+      userModelIds
+    );
+
+  return new Ok(
+    await buildMemberRows(
+      auth,
+      orderedUsers,
+      membershipByUserId,
+      jobTypesByUserId
+    )
+  );
 }
 
 async function listByJobType(
@@ -143,7 +153,9 @@ async function listByJobType(
   }
 
   const users = await UserResource.fetchByModelIds(matchingModelIds);
-  return new Ok(await buildMemberRows(auth, users, membershipByUserId));
+  return new Ok(
+    await buildMemberRows(auth, users, membershipByUserId, jobTypesByUserId)
+  );
 }
 
 const handlers: ToolHandlers<typeof WORKSPACE_PEOPLE_TOOLS_METADATA> = {

@@ -23,7 +23,9 @@ export const WORKSPACE_PEOPLE_TOOLS_METADATA = [
         .min(1)
         .max(MAX_MEMBERS)
         .optional()
-        .describe("Stable IDs of specific active workspace members to look up."),
+        .describe(
+          "Stable IDs of specific active workspace members to look up."
+        ),
       jobType: z
         .enum(JOB_TYPES)
         .optional()
