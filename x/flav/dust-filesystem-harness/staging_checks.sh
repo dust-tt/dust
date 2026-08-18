@@ -2,10 +2,6 @@
 # Mounts the daemon several times over to check what startup does with the local
 # staging directory: a fresh one, one it already claimed, one left mid-claim by a
 # crash, and one that belongs to something else and must be left alone.
-#
-# The mid-claim case fails until the staging recovery change lands, because
-# startup refuses a directory holding the file a half-written marker leaves. That
-# failure is the bug, not a broken check.
 set -uo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"

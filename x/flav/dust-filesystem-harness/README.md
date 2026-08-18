@@ -52,9 +52,7 @@ file keeping its identity across a move between roots.
 
 `staging_checks.sh` mounts several times over to check what startup does with the
 local staging directory: a fresh one, one it already claimed, one left mid-claim
-by a crash, and one belonging to something else that must be left untouched. The
-mid-claim case reports a failure until the staging recovery change lands, since
-that is the bug it describes.
+by a crash, and one belonging to something else that must be left untouched.
 
 `time_probe.sh` prints the time a file reports after each step of a write, then
 checks that it stops moving once the file is saved. A time that settles late is
