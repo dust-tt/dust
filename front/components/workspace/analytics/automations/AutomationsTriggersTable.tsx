@@ -91,7 +91,7 @@ function RunningCell({ row }: { row: TriggerRowData }) {
   switch (row.displayStatus) {
     case "enabled":
     case "disabled":
-    case "disabled_by_admin":
+    case "disabled_by_manager":
       return (
         <SliderToggle
           selected={row.displayStatus === "enabled"}
@@ -418,11 +418,11 @@ export function AutomationsTriggersTable({
       });
       if (success) {
         // Anyone who can reach this page is a manager or admin, so the
-        // server always stores a disable from here as disabled_by_admin.
+        // server always stores a disable from here as disabled_by_manager.
         setStatusOverrides((overrides) => ({
           ...overrides,
           [trigger.triggerId]:
-            nextStatus === "disabled" ? "disabled_by_admin" : "enabled",
+            nextStatus === "disabled" ? "disabled_by_manager" : "enabled",
         }));
       }
       setPendingIds((ids) => {
