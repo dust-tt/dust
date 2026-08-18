@@ -47,9 +47,13 @@ interface TxState {
   busyMs: number;
   busyStartMs: number;
   idleLagMs: number;
+  idleStartMs: number;
   inFlightCount: number;
   lagAtIdleStartMs: number;
   lastQuerySql: string;
+  maxGapAfterSql: string;
+  maxGapLagMs: number;
+  maxGapMs: number;
   queries: string[];
 }
 
@@ -71,10 +75,19 @@ function rootTransaction(transaction: Transaction): Transaction {
 // moment it is issued makes those windows overlap, so busy time is their union.
 // Lag while a statement is in flight is already part of busyMs, so only the lag observed between
 // two statements is kept: that is the part that inflates the idle window.
+// The widest single gap and the statement that preceded it are kept as well, so a slow transaction
+// points at one phase of the code path instead of only reporting how much idle time it accumulated.
 function openBusyWindow(state: TxState, atMs: number): void {
   if (state.inFlightCount === 0) {
     state.busyStartMs = atMs;
-    state.idleLagMs += cumulativeLagMs - state.lagAtIdleStartMs;
+    const gapLagMs = cumulativeLagMs - state.lagAtIdleStartMs;
+    const gapMs = atMs - state.idleStartMs;
+    state.idleLagMs += gapLagMs;
+    if (gapMs > state.maxGapMs) {
+      state.maxGapMs = gapMs;
+      state.maxGapLagMs = gapLagMs;
+      state.maxGapAfterSql = state.lastQuerySql;
+    }
   }
   state.inFlightCount += 1;
 }
@@ -83,6 +96,7 @@ function closeBusyWindow(state: TxState, atMs: number): void {
   state.inFlightCount -= 1;
   if (state.inFlightCount === 0) {
     state.busyMs += atMs - state.busyStartMs;
+    state.idleStartMs = atMs;
     state.lagAtIdleStartMs = cumulativeLagMs;
   }
 }
@@ -112,9 +126,13 @@ function trackTx(
       busyMs: 0,
       busyStartMs: beginAtMs,
       idleLagMs: 0,
+      idleStartMs: beginAtMs,
       inFlightCount: 1,
       lagAtIdleStartMs: cumulativeLagMs,
-      lastQuerySql: "",
+      lastQuerySql: sqlString,
+      maxGapAfterSql: "",
+      maxGapLagMs: 0,
+      maxGapMs: 0,
       queries: [],
     };
     txStates.set(root, state);
@@ -143,10 +161,13 @@ function trackTx(
         logger.warn(
           {
             txId: root.id,
-            totalMs,
-            idleMs,
-            busyMs: state.busyMs,
-            lagMs,
+            totalMs: Math.round(totalMs),
+            idleMs: Math.round(idleMs),
+            busyMs: Math.round(state.busyMs),
+            lagMs: Math.round(lagMs),
+            maxGapMs: Math.round(state.maxGapMs),
+            maxGapLagMs: Math.round(state.maxGapLagMs),
+            maxGapAfterSql: state.maxGapAfterSql,
             outcome: isCommit ? "commit" : "rollback",
             lastQuerySql: state.lastQuerySql,
             queries: state.queries,
