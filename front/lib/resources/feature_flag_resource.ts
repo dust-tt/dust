@@ -5,10 +5,19 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { isWhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { RequestCachedQuery } from "@app/types/shared/utils/request_context";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
+
+// Feature flags are a stable snapshot for the request. Mutations become
+// visible on the next request.
+const listForWorkspaceQuery = new RequestCachedQuery<
+  ModelId,
+  FeatureFlagResource[]
+>();
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -29,13 +38,15 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
   static async listForWorkspace(
     workspace: WorkspaceResource | WorkspaceType | LightWorkspaceType
   ): Promise<FeatureFlagResource[]> {
-    const flags = await FeatureFlagModel.findAll({
-      where: { workspaceId: workspace.id },
-    });
+    return listForWorkspaceQuery.get(workspace.id, async () => {
+      const flags = await FeatureFlagModel.findAll({
+        where: { workspaceId: workspace.id },
+      });
 
-    return flags
-      .map((f) => new FeatureFlagResource(FeatureFlagModel, f.get()))
-      .filter((flag) => isWhitelistableFeature(flag.name));
+      return flags
+        .map((f) => new FeatureFlagResource(FeatureFlagModel, f.get()))
+        .filter((flag) => isWhitelistableFeature(flag.name));
+    });
   }
 
   static async isEnabledForWorkspace(
@@ -72,7 +83,6 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
         name,
       },
     });
-
     return count > 0;
   }
 
@@ -141,7 +151,6 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
       },
       transaction,
     });
-
     return new Ok(this.id);
   }
 }

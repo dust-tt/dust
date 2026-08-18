@@ -1,7 +1,7 @@
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { createHono } from "@front-api/lib/hono";
-import { skipRequestLog } from "@front-api/middlewares/request_logger";
+import { skipRequestLog } from "@front-api/middlewares/request_instrumentation";
 import type { Context } from "hono";
 import { proxy } from "hono/proxy";
 

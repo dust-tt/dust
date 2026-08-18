@@ -82,7 +82,6 @@ import type {
 import { isAdmin, isBuilder, isManager, isUser } from "@app/types/user";
 import assert from "assert";
 import { TokenExpiredError } from "jsonwebtoken";
-import memoizer from "lru-memoizer";
 import type { Transaction } from "sequelize";
 
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
@@ -1965,100 +1964,41 @@ export async function prodAPICredentialsForOwner(
   };
 }
 
-// Use memoizer's callback-based API so the LRU cache stores the resolved value, not a Promise.
-// memoizer.sync with an async load caches the Promise itself, which retains Node async context and
-// causes memory growth.
-
-// Global feature flags are shared across all workspaces and cached separately.
-const GLOBAL_FEATURE_FLAG_TTL_MS = 60000;
-const _getGlobalFeatureFlags = memoizer<
-  Record<string, never>,
-  GlobalFeatureFlagResource[]
->({
-  load: (_, callback) => {
-    GlobalFeatureFlagResource.listAll()
-      .then((flags) => callback(null, flags))
-      .catch((err: Error) => callback(err));
-  },
-
-  hash: () => "global_feature_flags",
-
-  max: 1,
-  ttl: GLOBAL_FEATURE_FLAG_TTL_MS,
-});
-
-function getGlobalFeatureFlags(): Promise<GlobalFeatureFlagResource[]> {
-  return new Promise((resolve, reject) => {
-    _getGlobalFeatureFlags({}, (err, result) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(result ?? []);
-      }
-    });
-  });
-}
-
-const _getFeatureFlags = memoizer<LightWorkspaceType, WhitelistableFeature[]>({
-  load: (workspace, callback) => {
-    if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
-      callback(null, [...WHITELISTABLE_FEATURES]);
-      return;
-    }
-
-    Promise.all([
-      FeatureFlagResource.listForWorkspace(workspace),
-      getGlobalFeatureFlags(),
-    ])
-      .then(([workspaceFlags, globalFlags]) => {
-        const workspaceFlagNames = new Set(
-          workspaceFlags.map((flag) => flag.name)
-        );
-
-        // Start with workspace-level flags (always take precedence).
-        const effectiveFlags = [...workspaceFlagNames];
-
-        // Add global flags that aren't already set at workspace level.
-        for (const globalFlag of globalFlags) {
-          const globalFlagName = globalFlag.name;
-          if (!isWhitelistableFeature(globalFlagName)) {
-            continue;
-          }
-
-          if (
-            !workspaceFlagNames.has(globalFlagName) &&
-            GlobalFeatureFlagResource.isInRollout(
-              workspace.id,
-              globalFlag.rolloutPercentage
-            )
-          ) {
-            effectiveFlags.push(globalFlagName);
-          }
-        }
-
-        callback(null, effectiveFlags);
-      })
-      .catch((err: Error) => callback(err));
-  },
-
-  hash: (workspace: LightWorkspaceType) => `feature_flags_${workspace.id}`,
-
-  max: 100,
-  ttl: 3000,
-});
-
-export function getFeatureFlagsForWorkspace(
+export async function getFeatureFlagsForWorkspace(
   workspace: LightWorkspaceType
 ): Promise<WhitelistableFeature[]> {
-  return new Promise((resolve, reject) => {
-    _getFeatureFlags(workspace, (err, result) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(result ?? []);
-      }
-    });
-  });
+  if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
+    return [...WHITELISTABLE_FEATURES];
+  }
+
+  const [workspaceFlags, globalFlags] = await Promise.all([
+    FeatureFlagResource.listForWorkspace(workspace),
+    GlobalFeatureFlagResource.listAll(),
+  ]);
+  const workspaceFlagNames = new Set(workspaceFlags.map((flag) => flag.name));
+
+  // Start with workspace-level flags (always take precedence).
+  const effectiveFlags = [...workspaceFlagNames];
+
+  // Add global flags that aren't already set at workspace level.
+  for (const globalFlag of globalFlags) {
+    const globalFlagName = globalFlag.name;
+    if (!isWhitelistableFeature(globalFlagName)) {
+      continue;
+    }
+
+    if (
+      !workspaceFlagNames.has(globalFlagName) &&
+      GlobalFeatureFlagResource.isInRollout(
+        workspace.id,
+        globalFlag.rolloutPercentage
+      )
+    ) {
+      effectiveFlags.push(globalFlagName);
+    }
+  }
+
+  return effectiveFlags;
 }
 
 export function getFeatureFlags(
@@ -2073,15 +2013,6 @@ export async function hasFeatureFlag(
 ): Promise<boolean> {
   const flags = await getFeatureFlags(auth);
   return flags.includes(flag);
-}
-
-export function invalidateFeatureFlagsCache(auth: Authenticator): void {
-  const workspace = auth.getNonNullableWorkspace();
-  _getFeatureFlags.del(workspace);
-}
-
-export function invalidateGlobalFeatureFlagsCache(): void {
-  _getGlobalFeatureFlags.del({});
 }
 
 export function getApiKeyNameFromHeaders(headers: {
