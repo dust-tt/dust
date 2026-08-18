@@ -163,9 +163,9 @@ export function PersonalAuthenticationCard({
                 {actionLabel}
               </div>
               <div className="text-sm wrap-break-word text-muted-foreground">
-                {`This connection applies to all ${
+                {`This connection will be used for ${
                   serverDisplayName ? `${serverDisplayName} ` : "related "
-                }actions.`}
+                }actions from now on.`}
               </div>
             </div>
             {canCurrentUserRespond ? (
