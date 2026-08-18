@@ -203,7 +203,7 @@ export function getToolValidationAlwaysAllowLabel(
   data: ToolValidationLabelData
 ): string {
   if (data.stake !== "medium") {
-    return `Allow every time any agent uses the “${asDisplayName(data.metadata.toolName)}” tool`;
+    return `Allow every time an agent uses the “${asDisplayName(data.metadata.toolName)}” tool`;
   }
   const toolOverride = getToolOverride(data.metadata);
   if (toolOverride?.alwaysAllowLabel) {
