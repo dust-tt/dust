@@ -128,16 +128,21 @@ export function ModelPickerContent({
             icon={TIER_ICON[tier.id]}
             label={`${tier.name}${isDefault ? " (Default)" : ""}`}
             endComponent={
-              isSelected ? (
-                <ModelPickerSelectionIndicator
-                  canRevert={canRevert}
-                  onRevert={onRevert}
-                />
-              ) : (
+              <div className="flex items-center gap-1.5">
                 <span className="whitespace-nowrap text-xs text-faint">
                   {getTierResolvedModelLabel(tier.id, streams)}
                 </span>
-              )
+                {isSelected ? (
+                  <ModelPickerSelectionIndicator
+                    canRevert={canRevert}
+                    onRevert={onRevert}
+                    size="xs"
+                  />
+                ) : (
+                  // Reserved slot, so the resolved model labels stay aligned
+                  <span aria-hidden className="h-4 w-4 shrink-0" />
+                )}
+              </div>
             }
             onClick={() => onSelectTier(tier.id)}
             onSelect={(e) => e.preventDefault()}
