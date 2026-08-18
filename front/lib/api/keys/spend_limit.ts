@@ -1,3 +1,5 @@
+import { makeApiKeySpendLimitAwuCreditsRateLimitKey } from "@app/lib/api/assistant/rate_limits";
+import { getEsConsumedAwuCreditsForApiKey } from "@app/lib/api/credits/members_usage";
 import {
   reconcileApiKey,
   reconcileWorkspaceApiKeyCreditStates,
@@ -8,8 +10,15 @@ import {
   upsertMetronomeApiKeyCapAlert,
 } from "@app/lib/metronome/alerts/api_key_caps";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
 import { revertOnSyncFailure } from "@app/lib/spend_limits/revert_on_sync_failure";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
+import {
+  addFixedWindowCount,
+  getFixedWindowCount,
+  setFixedWindowCount,
+} from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type {
   ApiKeySpendLimit,
@@ -319,4 +328,125 @@ export async function backfillApiKeyCreditCapsForWorkspace(
   });
 
   return { converted };
+}
+
+/**
+ * Reads the per-API-key spend-cap counter, lazily seeding it from Elasticsearch
+ * whenever it reads as 0 — a brand-new cycle (ES ≈ 0, a harmless no-op), the
+ * flag just enabled mid-cycle, or the key evicted under Redis memory pressure.
+ * ES is scoped to the current cycle and summed by `api_key_name`, so the seeded
+ * value is the correct cycle-to-date total in every case. A non-zero count is
+ * already live and used as-is with no ES read. Mirrors the per-user lazy seed
+ * in `lib/api/users/spend_limit.ts`.
+ *
+ * Returns the effective count, or `null` on a Redis read error (caller fails
+ * open). A seed write failure degrades to the ES value rather than throwing.
+ */
+async function readApiKeySpendLimitCountWithLazySeed(
+  auth: Authenticator,
+  {
+    apiKeyName,
+    redisKey,
+    bounds,
+  }: { apiKeyName: string; redisKey: string; bounds: FixedWindowBounds }
+): Promise<number | null> {
+  const countResult = await getFixedWindowCount({ key: redisKey, bounds });
+  if (countResult.isErr()) {
+    return null;
+  }
+  if (countResult.value > 0) {
+    return countResult.value;
+  }
+
+  const consumed = Math.max(
+    0,
+    Math.round(await getEsConsumedAwuCreditsForApiKey(auth, { apiKeyName }))
+  );
+  if (consumed > 0) {
+    await setFixedWindowCount({
+      key: redisKey,
+      bounds,
+      value: consumed,
+      logger,
+    });
+  }
+  return consumed;
+}
+
+/**
+ * Synchronous, Metronome-independent enforcement of the per-API-key spend cap,
+ * read at message-send time from the Redis fixed-window counter over the current
+ * contract billing cycle. The threshold is the key's admin-configured
+ * `monthlyCapAwuCredits`. Runs alongside the Metronome per-key cap
+ * (`isApiKeyCapped`) as a faster, independent backup. Returns `false` (does not
+ * block) when the key is gone, has no cap, the billing period can't be resolved,
+ * or on a Redis read error (fail-open).
+ */
+export async function isApiKeySpendLimitRateCapReached(
+  auth: Authenticator,
+  { keyModelId }: { keyModelId: number }
+): Promise<boolean> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const key = await KeyResource.fetchByWorkspaceAndId({
+    workspace,
+    id: keyModelId,
+  });
+  if (!key || key.monthlyCapAwuCredits === null) {
+    return false;
+  }
+  const threshold = key.monthlyCapAwuCredits;
+
+  const bounds = await resolveSpendLimitCycleBounds(workspace);
+  if (!bounds) {
+    return false;
+  }
+
+  const count = await readApiKeySpendLimitCountWithLazySeed(auth, {
+    apiKeyName: key.name,
+    redisKey: makeApiKeySpendLimitAwuCreditsRateLimitKey(key.id),
+    bounds,
+  });
+  if (count === null) {
+    logger.error(
+      { workspaceId: workspace.sId, keyName: key.name },
+      "[ApiKeySpendLimitRateCap] Failed to read fixed-window count; allowing message"
+    );
+    return false;
+  }
+
+  return count >= threshold;
+}
+
+/**
+ * Adds `incrementBy` AWU credits to the per-API-key fixed-window spend-cap
+ * counter for the current contract billing cycle. Records for every key (the
+ * cap is resolved at enforcement/read time, not here). `incrementBy` is the
+ * newly-accrued delta for a message (the caller diffs against the previously
+ * recorded amount so repeated finalizes don't over-count). No-op when the
+ * billing period can't be resolved.
+ */
+export async function recordApiKeySpendLimitUsage(
+  auth: Authenticator,
+  { keyModelId, incrementBy }: { keyModelId: number; incrementBy: number }
+): Promise<void> {
+  // Only whole positive credits are recordable (the counter is an integer
+  // INCRBY); skip anything else rather than letting it reach the counter.
+  if (!Number.isInteger(incrementBy) || incrementBy <= 0) {
+    return;
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+
+  const bounds = await resolveSpendLimitCycleBounds(workspace);
+  if (!bounds) {
+    return;
+  }
+
+  await addFixedWindowCount({
+    key: makeApiKeySpendLimitAwuCreditsRateLimitKey(keyModelId),
+    bounds,
+    incrementBy,
+    logger,
+  });
 }

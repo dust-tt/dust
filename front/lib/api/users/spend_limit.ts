@@ -23,12 +23,14 @@ import {
   upsertMetronomePerUserCapAlert,
   upsertMetronomePerUserWarningAlert,
 } from "@app/lib/metronome/alerts/spend_limits";
-import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { currentCalendarMonthCycleUtc } from "@app/lib/spend_limits/cycle";
+import {
+  currentCalendarMonthCycleUtc,
+  resolveSpendLimitCycleBounds,
+} from "@app/lib/spend_limits/cycle";
 import { revertOnSyncFailure } from "@app/lib/spend_limits/revert_on_sync_failure";
 import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
@@ -46,7 +48,6 @@ import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { LightWorkspaceType } from "@app/types/user";
 
 export const MIN_USER_SPEND_LIMIT_AWU_CREDITS = 0;
 export const MAX_USER_SPEND_LIMIT_AWU_CREDITS = 2_000_000;
@@ -490,30 +491,6 @@ export async function expireUserSpendLimitOverride(
   });
 
   return new Ok({ reverted: true, previousAwuCredits });
-}
-
-// Fixed-window bounds for the current Metronome contract billing cycle (the
-// window the per-user spend cap is bucketed on). `null` when no billing period
-// can be resolved — callers treat that as a no-op (fail-open, matching the rest
-// of the rate-limiter callers).
-async function resolveSpendLimitCycleBounds(
-  workspace: LightWorkspaceType
-): Promise<FixedWindowBounds | null> {
-  const periodResult = await getCachedMetronomeCurrentBillingPeriod(
-    workspace.sId
-  );
-  if (periodResult.isErr() || !periodResult.value) {
-    logger.warn(
-      {
-        workspaceId: workspace.sId,
-        err: periodResult.isErr() ? periodResult.error : undefined,
-      },
-      "[SpendLimitRateCap] Could not resolve contract billing period; skipping fixed-window cap"
-    );
-    return null;
-  }
-  const { cycleStart, cycleEnd } = periodResult.value;
-  return makeSpendLimitCycleWindowBounds(cycleStart, cycleEnd);
 }
 
 /**
