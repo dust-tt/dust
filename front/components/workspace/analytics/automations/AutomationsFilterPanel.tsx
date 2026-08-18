@@ -64,18 +64,26 @@ export function AutomationsFilterPanel({
   const { agentConfigurations, isAgentConfigurationsLoading } =
     useAgentConfigurations({
       workspaceId: owner.sId,
-      agentsGetView: isAgentCategoryActive ? "manage" : null,
+      agentsGetView: isAgentCategoryActive ? "analytics" : null,
       sort: "alphabetical",
     });
 
   const isMemberCategoryActive = isOpen && activeCategory === "member";
-  const { members, isLoading: isMembersLoading } = useSearchMembers({
+  const {
+    members,
+    totalMembersCount,
+    isLoading: isMembersLoading,
+  } = useSearchMembers({
     workspaceId: owner.sId,
     searchTerm: isMemberCategoryActive ? searchText : "",
     pageIndex: 0,
     pageSize: MEMBERS_PAGE_SIZE,
     disabled: !isMemberCategoryActive,
   });
+  // Members are fetched as a single fixed-size page (same pattern as
+  // AnalyticsFilterDropdown), so "Select all" can only be offered once that
+  // page covers every matching member.
+  const hasAllMatchingMembersLoaded = members.length >= totalMembersCount;
 
   const categoryOptions = useMemo<
     Record<AutomationsFilterCategory, AutomationsFilterOption[]>
@@ -127,6 +135,9 @@ export function AutomationsFilterPanel({
   const unselectedOptions = filteredOptions.filter(
     (option) => !selectedIdsForActiveCategory.has(option.id)
   );
+  const hasSelectableOptions =
+    unselectedOptions.length > 0 &&
+    (activeCategory !== "member" || hasAllMatchingMembersLoaded);
 
   const appliedSelectionCount = automationsFilterSelectionCount(filter);
   const categoriesWithSelection = useMemo(
@@ -214,7 +225,7 @@ export function AutomationsFilterPanel({
                 selectAllFiltered(activeCategory, unselectedOptions)
               }
               selectAllLabel="Select all"
-              hasSelectableOptions={unselectedOptions.length > 0}
+              hasSelectableOptions={hasSelectableOptions}
               renderIcon={(option) => (
                 <AutomationsFilterOptionIcon option={option} />
               )}
