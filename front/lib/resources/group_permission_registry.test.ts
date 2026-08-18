@@ -271,6 +271,39 @@ describe("GroupPermissions.fromJSON", () => {
   });
 });
 
+describe("GroupPermissions.resourceIdsWithVerb", () => {
+  // read = 1 << 0, write = 1 << 1, admin = 1 << 2 (see VERB_BIT / GRANT_VERBS order).
+  it("returns the instance ids holding the verb", () => {
+    const perms = GroupPermissions.fromJSON({
+      grants: { space: { 12: 0b011, 34: 0b001 } },
+    });
+    expect(perms.resourceIdsWithVerb("space", "read").sort()).toEqual([12, 34]);
+    expect(perms.resourceIdsWithVerb("space", "write")).toEqual([12]);
+  });
+
+  it("filters out ids that lack the verb", () => {
+    const perms = GroupPermissions.fromJSON({
+      grants: { space: { 12: 0b001, 34: 0b011 } },
+    });
+    expect(perms.resourceIdsWithVerb("space", "write")).toEqual([34]);
+    expect(perms.resourceIdsWithVerb("space", "admin")).toEqual([]);
+  });
+
+  it("excludes the type-wide (-1) entry", () => {
+    // A type-wide grant confers the verb on every id but names no concrete instance.
+    const perms = GroupPermissions.fromJSON({
+      grants: { agent: { [WHOLE_TYPE_RESOURCE_ID]: 0b1000, 42: 0b011 } },
+    });
+    expect(perms.resourceIdsWithVerb("agent", "read")).toEqual([42]);
+    expect(perms.resourceIdsWithVerb("agent", "create")).toEqual([]);
+  });
+
+  it("returns an empty array when the resource type has no grants", () => {
+    const perms = GroupPermissions.fromJSON({ grants: {} });
+    expect(perms.resourceIdsWithVerb("space", "read")).toEqual([]);
+  });
+});
+
 describe("GRANT_VERBS bit-position stability", () => {
   // Each verb is stored as bit `1 << its index in GRANT_VERBS` (see VERB_BIT), and those masks are
   // serialized into in-flight Temporal payloads. So the positions must stay stable: only append new
