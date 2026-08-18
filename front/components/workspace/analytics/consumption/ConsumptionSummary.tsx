@@ -40,8 +40,9 @@ export function ConsumptionSummary({
 
   if (isOverviewLoading) {
     return (
-      <div className="flex flex-col gap-6">
-        <div className="h-5 w-80 animate-pulse rounded bg-muted-background" />
+      <div className="flex items-stretch gap-6">
+        <div className="h-20 flex-1 animate-pulse rounded-xl bg-muted-background" />
+        <div className="h-20 flex-1 animate-pulse rounded-xl bg-muted-background" />
       </div>
     );
   }

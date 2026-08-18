@@ -1,3 +1,5 @@
+import { cn } from "@dust-tt/sparkle";
+
 interface SummaryCardProps {
   label: string;
   value: string;
@@ -6,7 +8,12 @@ interface SummaryCardProps {
 
 export function SummaryCard({ label, value, hint }: SummaryCardProps) {
   return (
-    <div className="flex flex-1 flex-col justify-center gap-1 rounded-xl border border-border bg-panel-background p-4">
+    <div
+      className={cn(
+        "flex flex-1 flex-col justify-center h-20 gap-1 rounded-xl",
+        "border border-border bg-panel-background p-4"
+      )}
+    >
       <span className="text-xs font-semibold text-muted-foreground">
         {label}
       </span>
