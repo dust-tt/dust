@@ -14,6 +14,7 @@ import {
   Button,
   Card,
   Check,
+  CheckDouble,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -21,7 +22,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  Infinity,
   PieChart01,
   XClose,
 } from "@dust-tt/sparkle";
@@ -262,16 +262,6 @@ export function ToolValidationCard({
               isLoading={submittingDecision === "rejected"}
               onClick={() => void handleValidation("rejected")}
             />
-            {canAlwaysAllow && (
-              <Button
-                label="Always allow"
-                variant="highlight-ghost"
-                icon={Infinity}
-                disabled={isSubmitting}
-                isLoading={submittingDecision === "always_approved"}
-                onClick={() => void handleValidation("always_approved")}
-              />
-            )}
             <Button
               label={approveOnceLabel}
               variant="highlight"
@@ -280,6 +270,16 @@ export function ToolValidationCard({
               isLoading={submittingDecision === "approved"}
               onClick={() => void handleValidation("approved")}
             />
+            {canAlwaysAllow && (
+              <Button
+                label="Always allow"
+                variant="highlight-ghost"
+                icon={CheckDouble}
+                disabled={isSubmitting}
+                isLoading={submittingDecision === "always_approved"}
+                onClick={() => void handleValidation("always_approved")}
+              />
+            )}
           </div>
         </div>
       )}

@@ -6,7 +6,7 @@ import {
   AttachmentChip,
   Button,
   Check,
-  Infinity,
+  CheckDouble,
   Paperclip,
   XClose,
 } from "@dust-tt/sparkle";
@@ -206,17 +206,6 @@ export function GmailSendMailValidation({
             onClick={() => void handleReject()}
           />
           <div className="flex-1" />
-          {alwaysAllowLabel && (
-            <Button
-              label="Always allow"
-              variant="highlight-ghost"
-              size="sm"
-              icon={Infinity}
-              isRounded
-              disabled={isSubmitting}
-              onClick={() => void onApprove("always_approved")}
-            />
-          )}
           <Button
             label={alwaysAllowLabel ? "Allow once" : "Allow"}
             variant="highlight"
@@ -227,6 +216,17 @@ export function GmailSendMailValidation({
             isPulsing={isPulsing}
             onClick={() => void onApprove("approved")}
           />
+          {alwaysAllowLabel && (
+            <Button
+              label="Always allow"
+              variant="highlight-ghost"
+              size="sm"
+              icon={CheckDouble}
+              isRounded
+              disabled={isSubmitting}
+              onClick={() => void onApprove("always_approved")}
+            />
+          )}
         </div>
       </div>
     </div>
