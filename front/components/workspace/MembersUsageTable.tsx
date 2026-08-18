@@ -24,8 +24,8 @@ import {
   formatUserModelTierInheritLabel,
   resolveModelTiersForUser,
 } from "@app/lib/client/model_tiers";
+import type { ModelsTierDefinition } from "@app/lib/model_tiers/allowed_tiers";
 import { getMaxTierName } from "@app/lib/model_tiers/tier_order";
-import type { ModelsTierDefinition } from "@app/lib/resources/models_tier_resource";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
 import type { MembershipSeatType } from "@app/types/memberships";
 import {

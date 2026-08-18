@@ -3,7 +3,10 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
+import {
+  listWorkspaceMaxAllowedTierName,
+  setWorkspaceMaxAllowedTierName,
+} from "@app/lib/model_tiers/allowed_tiers";
 import type { GetWorkspaceAllowedModelTiersResponseBody } from "@app/types/api/model_tiers";
 import { AllowedModelTierBodySchema } from "@app/types/api/model_tiers";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -22,8 +25,7 @@ app.get(
   async (ctx): HandlerResult<GetWorkspaceAllowedModelTiersResponseBody> => {
     const auth = ctx.get("auth");
 
-    const maxTierName =
-      await ModelsTierResource.listWorkspaceMaxAllowedTierName(auth);
+    const maxTierName = await listWorkspaceMaxAllowedTierName(auth);
 
     return ctx.json({ maxTierName });
   }
@@ -38,10 +40,7 @@ app.post(
     const auth = ctx.get("auth");
     const body = ctx.req.valid("json");
 
-    const result = await ModelsTierResource.setWorkspaceMaxAllowedTierName(
-      auth,
-      body.tierName
-    );
+    const result = await setWorkspaceMaxAllowedTierName(auth, body.tierName);
 
     if (result.isErr()) {
       return apiError(ctx, modelTierErrorToApiError(result.error));

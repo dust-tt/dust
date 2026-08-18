@@ -1,6 +1,6 @@
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { Authenticator } from "@app/lib/auth";
-import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
+import { setUserMaxAllowedTier } from "@app/lib/model_tiers/allowed_tiers";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -528,7 +528,7 @@ describe("getGlobalAgents Dust Auto default", () => {
 
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
-    await ModelsTierResource.setUserMaxAllowedTier(adminAuth, {
+    await setUserMaxAllowedTier(adminAuth, {
       userId: user.sId,
       tierName,
     });

@@ -8,11 +8,11 @@ import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { isFreeOrigin } from "@app/lib/credits/agent_message_billing";
+import { getTierForModel } from "@app/lib/model_tiers/allowed_tiers";
 import {
   getEnabledModelsForAuth,
   resolveStreamModel,
 } from "@app/lib/model_tiers/enabled_models";
-import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
@@ -46,10 +46,7 @@ async function resolveDowngradeTarget(
 
   for (const streamId of [AUTO_MODEL_ID, AUTO_FAST_MODEL_ID] as const) {
     const { model, reasoningEffort } = resolveStreamModel(models, streamId);
-    const tierName = ModelsTierResource.getTierForModel(
-      model.modelId,
-      reasoningEffort
-    );
+    const tierName = getTierForModel(model.modelId, reasoningEffort);
 
     if (tierName && tierName !== "premium") {
       return {
@@ -87,7 +84,7 @@ export async function applyPremiumModelFairUse(
   }
 
   const { resolvedModel } = resolution;
-  const tierName = ModelsTierResource.getTierForModel(
+  const tierName = getTierForModel(
     resolvedModel.modelId,
     resolvedModel.reasoningEffort
   );

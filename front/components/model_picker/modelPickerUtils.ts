@@ -267,7 +267,7 @@ interface LockPremiumOptions {
   lockPremiumEfforts?: boolean;
 }
 
-// Client-safe mirror of `ModelsTierResource.getTierForModel`
+// Client-safe mirror of `getTierForModel`
 export function getModelEffortTier(
   modelId: ModelIdType,
   effort: ReasoningEffort

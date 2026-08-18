@@ -4,7 +4,10 @@ import { STATIC_MODEL_TIERS } from "@app/lib/api/assistant/token_pricing/tiers";
 import { getAvailableModelsForWorkspace } from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
+import {
+  getTierForModel,
+  resolveAllowedTierNames,
+} from "@app/lib/model_tiers/allowed_tiers";
 import type {
   EnabledModelConfigurationType,
   ModelStreamResolutionsType,
@@ -58,7 +61,7 @@ function restrictModelConfigToAllowedTiers(
       continue;
     }
 
-    const tierName = ModelsTierResource.getTierForModel(model.modelId, effort);
+    const tierName = getTierForModel(model.modelId, effort);
     if (tierName && allowedTierNamesSet.has(tierName)) {
       supportedReasoningEfforts[effort] = true;
     }
@@ -93,8 +96,7 @@ export async function withModelSelectability(
     }));
   }
 
-  const { tiers: allowedTierNames } =
-    await ModelsTierResource.resolveAllowedTierNames(auth);
+  const { tiers: allowedTierNames } = await resolveAllowedTierNames(auth);
   const allowedTierNamesSet = new Set(allowedTierNames);
 
   return models.map((model) =>
@@ -112,7 +114,7 @@ export async function getEnabledModelsForAuth(
 export async function getDefaultStreamConfigForAuth(
   auth: Authenticator
 ): Promise<ModelConfigurationType> {
-  const { tiers } = await ModelsTierResource.resolveAllowedTierNames(auth);
+  const { tiers } = await resolveAllowedTierNames(auth);
 
   return tiers.includes("balanced")
     ? AUTO_MODEL_CONFIG

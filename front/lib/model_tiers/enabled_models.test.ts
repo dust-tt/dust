@@ -1,11 +1,11 @@
 import { Authenticator } from "@app/lib/auth";
+import { setUserMaxAllowedTier } from "@app/lib/model_tiers/allowed_tiers";
 import {
   getDefaultModelFromEnabledModels,
   getEnabledModelsForAuth,
   resolveStreamModel,
   withModelSelectability,
 } from "@app/lib/model_tiers/enabled_models";
-import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -44,7 +44,7 @@ describe("withModelSelectability", () => {
   async function userAuthForTierCap(tierName: "cost_efficient" | "balanced") {
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
-    await ModelsTierResource.setUserMaxAllowedTier(adminAuth, {
+    await setUserMaxAllowedTier(adminAuth, {
       userId: user.sId,
       tierName,
     });
@@ -216,7 +216,7 @@ describe("resolveStreamModel", () => {
   async function userAuthForTierCap(tierName: "cost_efficient" | "balanced") {
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
-    await ModelsTierResource.setUserMaxAllowedTier(adminAuth, {
+    await setUserMaxAllowedTier(adminAuth, {
       userId: user.sId,
       tierName,
     });
