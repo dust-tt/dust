@@ -522,6 +522,18 @@ const config = {
       "UNTRUSTED_EGRESS_PROXY_PORT"
     );
   },
+  getInClusterMCPHosts: (): string[] => {
+    const hosts = EnvironmentConfig.getOptionalEnvVariable(
+      "MCP_IN_CLUSTER_HOSTS"
+    );
+    if (!hosts) {
+      return [];
+    }
+    return hosts
+      .split(",")
+      .map((host) => host.trim().toLowerCase())
+      .filter((host) => host.length > 0);
+  },
   getElasticsearchConfig: (): {
     url: string;
     username: string;

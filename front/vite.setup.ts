@@ -264,7 +264,8 @@ vi.mock("@app/lib/api/sandbox", () => ({
 
 // Mock internal fetch (undici-based) so tests can intercept CoreAPI/OAuthAPI calls
 // without needing real network access. Tests override with vi.mocked(internalFetch).mockImplementation(...).
-vi.mock("@app/lib/api/internal_fetch", () => ({
+vi.mock("@app/lib/api/internal_fetch", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/api/internal_fetch")>()),
   internalFetch: vi.fn(),
 }));
 
