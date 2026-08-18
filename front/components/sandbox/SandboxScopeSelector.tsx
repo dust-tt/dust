@@ -117,6 +117,8 @@ export function SandboxScopeSelector({
             event.preventDefault();
           }}
         />
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel label="Pods" />
         <DropdownMenuItem
           label={allPodsSelected ? "Clear all Pods" : "Select all Pods"}
           disabled={pods.length === 0}
@@ -127,8 +129,6 @@ export function SandboxScopeSelector({
             })
           }
         />
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel label="Pods" />
         <DropdownMenuSearchbar
           autoFocus
           name="search-pods"
