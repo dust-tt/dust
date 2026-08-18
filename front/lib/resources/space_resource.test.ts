@@ -2377,6 +2377,7 @@ const KNOWN_SPACE_RELATED_MODELS = [
   "group_vaults",
   "mcp_server_view",
   "workspace_sandbox_env_var",
+  "pod_app_share",
   "sandbox_function",
   "sandbox_owner",
   "project_metadata",
