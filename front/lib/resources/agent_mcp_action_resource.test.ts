@@ -39,42 +39,50 @@ import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 const gcsStore = new Map<string, Buffer>();
 let gcsSaveFailureMarker: string | null = null;
 
-vi.mock("@app/lib/file_storage", () => ({
-  getPrivateUploadBucket: vi.fn(() => ({
-    file: vi.fn((path: string) => ({
-      copy: vi.fn().mockResolvedValue(undefined),
-      save: vi.fn(async (data: Buffer) => {
-        if (
-          gcsSaveFailureMarker &&
-          data.toString("utf-8").includes(gcsSaveFailureMarker)
-        ) {
-          throw new Error("Simulated GCS write failure");
-        }
-        gcsStore.set(path, data);
-      }),
-      download: vi.fn(async () => {
-        const buf = gcsStore.get(path);
-        if (!buf) {
-          throw new Error(`GCS file not found: ${path}`);
-        }
-        return [buf];
-      }),
-    })),
-    delete: vi.fn(async (path: string, opts?: { ignoreNotFound?: boolean }) => {
-      if (!gcsStore.has(path) && !opts?.ignoreNotFound) {
-        throw new Error(`GCS file not found: ${path}`);
-      }
-      gcsStore.delete(path);
-    }),
-    deleteByPrefix: vi.fn(async (prefix: string) => {
-      for (const path of [...gcsStore.keys()]) {
-        if (path.startsWith(prefix)) {
+vi.mock("@app/lib/file_storage", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("@app/lib/file_storage")>();
+
+  return {
+    ...original,
+    getPrivateUploadBucket: vi.fn(() => ({
+      file: vi.fn((path: string) => ({
+        copy: vi.fn().mockResolvedValue(undefined),
+        save: vi.fn(async (data: Buffer) => {
+          if (
+            gcsSaveFailureMarker &&
+            data.toString("utf-8").includes(gcsSaveFailureMarker)
+          ) {
+            throw new Error("Simulated GCS write failure");
+          }
+          gcsStore.set(path, data);
+        }),
+        download: vi.fn(async () => {
+          const buf = gcsStore.get(path);
+          if (!buf) {
+            throw new Error(`GCS file not found: ${path}`);
+          }
+          return [buf];
+        }),
+      })),
+      delete: vi.fn(
+        async (path: string, opts?: { ignoreNotFound?: boolean }) => {
+          if (!gcsStore.has(path) && !opts?.ignoreNotFound) {
+            throw new Error(`GCS file not found: ${path}`);
+          }
           gcsStore.delete(path);
         }
-      }
-    }),
-  })),
-}));
+      ),
+      deleteByPrefix: vi.fn(async (prefix: string) => {
+        for (const path of [...gcsStore.keys()]) {
+          if (path.startsWith(prefix)) {
+            gcsStore.delete(path);
+          }
+        }
+      }),
+    })),
+  };
+});
 
 // Bypass Redis caching, pass through to the underlying function.
 vi.mock("@app/lib/utils/cache", async (importOriginal) => {

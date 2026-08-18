@@ -34,9 +34,15 @@ vi.mock("@app/lib/api/sandbox/egress", () => ({
   mintEgressInvalidationJwt: mockMintEgressInvalidationJwt,
 }));
 
-vi.mock("@app/lib/file_storage", () => ({
-  getBucketInstance: mockGetBucketInstance,
-}));
+vi.mock("@app/lib/file_storage", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("@app/lib/file_storage")>();
+
+  return {
+    ...original,
+    getBucketInstance: mockGetBucketInstance,
+  };
+});
 
 import {
   addOwnerPolicyDomain,
