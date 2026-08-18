@@ -325,10 +325,10 @@ describe("Authenticator.refresh permission resolution", () => {
     // loop freezes it at workflow start and refreshes it on every step.
     const key = await KeyFactory.system(systemGroup);
     const { workspaceAuth } = await Authenticator.fromKey(key, workspace.sId);
-    expect(workspaceAuth.getGroupPermissions("agent", 42)).toEqual([]);
+    expect(workspaceAuth.getGrantedVerbs("agent", 42)).toEqual([]);
 
     // A grant lands on one of the key's groups AFTER the auth was built (mirrors a backfill or an
-    // updatePermissions write arriving mid-run).
+    // updatePermissions write arriving mid-run). `editor` on `agent` confers read + write.
     await GroupPermissionResource.grant(adminAuth, {
       group,
       grantType: "editor",
@@ -340,8 +340,9 @@ describe("Authenticator.refresh permission resolution", () => {
     // `_user`-gated body skipped user-less auths entirely, leaving the stale (empty) snapshot.
     await workspaceAuth.refresh();
 
-    expect(
-      workspaceAuth.getGroupPermissions("agent", 42).map((grant) => grant.id)
-    ).toEqual([group.id]);
+    expect([...workspaceAuth.getGrantedVerbs("agent", 42)].sort()).toEqual([
+      "read",
+      "write",
+    ]);
   });
 });

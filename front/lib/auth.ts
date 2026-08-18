@@ -392,12 +392,10 @@ export class Authenticator {
     // for every auth — including auths that have no user (API/system keys, internal auths), which
     // the `_user` gate above skips. The agent loop freezes a serialized (user-less) key auth at
     // workflow start and refreshes it per step (see `fromJsonWithRefrehedGroups`); without this it
-    // would keep a stale grant snapshot and deny access to resources granted mid-run. System keys
-    // scan the workspace grant set to avoid sending their whole group list to Postgres.
+    // would keep a stale grant snapshot and deny access to resources granted mid-run.
     this._permissions = await Authenticator.resolvePermissions({
       workspace: this._workspace,
       groupModelIds: this._groupModelIds,
-      scanWorkspacePermissions: this.isSystemKey(),
     });
   }
 
