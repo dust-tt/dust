@@ -20,7 +20,7 @@ export function AnalyticsAutomationsPage() {
   if (!isEnabled) {
     return (
       <Page.Vertical align="stretch" gap="xl">
-        <Page.Header title={<Page.H variant="h3">Automation</Page.H>} />
+        <Page.Header title={<Page.H variant="h3">Automations</Page.H>} />
         <div
           className={cn(
             "flex flex-col gap-2 rounded-xl border p-6",
@@ -41,7 +41,7 @@ export function AnalyticsAutomationsPage() {
         title={
           <div className="flex w-full flex-row justify-between gap-4">
             <div className="flex max-w-[700px] flex-col gap-1">
-              <Page.H variant="h3">Automation</Page.H>
+              <Page.H variant="h3">Automations</Page.H>
               <Page.P variant="secondary">
                 Everything that runs on its own: what it costs, how often, and
                 who set it up.
