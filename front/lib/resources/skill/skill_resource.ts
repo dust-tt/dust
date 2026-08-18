@@ -556,9 +556,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   private invalidateDisplayMetadataCache(
-    workspace: LightWorkspaceType,
+    auth: Authenticator,
     transaction?: Transaction
   ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
     return skillDisplayMetadataCache.invalidate(
       {
         workspaceId: workspace.sId,
@@ -699,7 +700,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       // association itself.
       await skillResource.writeGroupPermissions(auth, { transaction });
 
-      await skillResource.invalidateDisplayMetadataCache(owner, transaction);
+      await skillResource.invalidateDisplayMetadataCache(auth, transaction);
 
       return skillResource;
     });
@@ -3263,7 +3264,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         }
       }
 
-      await this.invalidateDisplayMetadataCache(workspace, transaction);
+      await this.invalidateDisplayMetadataCache(auth, transaction);
 
       return count;
     });
@@ -3276,8 +3277,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       this.canAdministrate(auth),
       "User is not authorized to restore this skill"
     );
-
-    const workspace = auth.getNonNullableWorkspace();
 
     const affectedCount = await withTransaction(async (transaction) => {
       const [count] = await this.update({ status: "active" }, transaction);
@@ -3311,7 +3310,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         }
       }
 
-      await this.invalidateDisplayMetadataCache(workspace, transaction);
+      await this.invalidateDisplayMetadataCache(auth, transaction);
 
       return count;
     });
@@ -3356,8 +3355,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
   ): Promise<void> {
     assert(this.canWrite(auth), "User is not authorized to update this skill");
-
-    const workspace = auth.getNonNullableWorkspace();
 
     const availabilityChanged =
       availability !== undefined && availability !== this.availability;
@@ -3460,7 +3457,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         { transaction }
       );
 
-      await this.invalidateDisplayMetadataCache(workspace, transaction);
+      await this.invalidateDisplayMetadataCache(auth, transaction);
     });
 
     if (fileAttachments) {
@@ -4141,7 +4138,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           transaction,
         });
 
-        await this.invalidateDisplayMetadataCache(workspace, transaction);
+        await this.invalidateDisplayMetadataCache(auth, transaction);
 
         return deletedCount;
       });
