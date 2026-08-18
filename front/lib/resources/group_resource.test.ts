@@ -117,6 +117,25 @@ describe("GroupResource", () => {
     inMemoryCache.clear();
   });
 
+  describe("fetchByModelIds", () => {
+    it("filters on group kind when asked", async () => {
+      const autoGroup = await GroupResource.makeNew({
+        name: "Auto Group",
+        workspaceId: workspace.id,
+        kind: "regular_auto",
+      });
+      const ids = [autoGroup.id, globalGroup.id, systemGroup.id];
+
+      const all = await GroupResource.fetchByModelIds(authenticator, ids);
+      expect(all.map((g) => g.id).sort()).toEqual([...ids].sort());
+
+      const autoOnly = await GroupResource.fetchByModelIds(authenticator, ids, {
+        groupKinds: ["regular_auto"],
+      });
+      expect(autoOnly.map((g) => g.id)).toEqual([autoGroup.id]);
+    });
+  });
+
   describe("dangerouslyListUserGroupsForAuth", () => {
     it("returns global group and explicit groups for a workspace member", async () => {
       const regularGroup = await GroupResource.makeNew({

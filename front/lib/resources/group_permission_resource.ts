@@ -210,11 +210,12 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }
 
     const groupIds = [...new Set(grants.map((grant) => grant.groupId))];
-    const groups = await GroupResource.fetchByModelIds(auth, groupIds, {
+    const autoGroups = await GroupResource.fetchByModelIds(auth, groupIds, {
+      groupKinds: ["regular_auto"],
       transaction,
     });
 
-    return groups.find((group) => group.kind === "regular_auto") ?? null;
+    return autoGroups[0] ?? null;
   }
 
   // The regular_auto groups backing user-level grants, keyed by grant (see `grantKey`) — the
@@ -250,14 +251,11 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }
 
     const groupIds = [...new Set(rows.map((row) => row.groupId))];
-    const groups = await GroupResource.fetchByModelIds(auth, groupIds, {
+    const autoGroups = await GroupResource.fetchByModelIds(auth, groupIds, {
+      groupKinds: ["regular_auto"],
       transaction,
     });
-    const autoGroupById = new Map(
-      groups
-        .filter((group) => group.kind === "regular_auto")
-        .map((group) => [group.id, group])
-    );
+    const autoGroupById = new Map(autoGroups.map((group) => [group.id, group]));
 
     for (const row of rows) {
       const group = autoGroupById.get(row.groupId);
