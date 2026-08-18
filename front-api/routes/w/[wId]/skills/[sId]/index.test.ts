@@ -778,11 +778,8 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
 
     const coEditor = await UserFactory.basic();
     await MembershipFactory.associate(workspace, coEditor, { role: "builder" });
-    const addRes = await skill.editorGroup?.dangerouslyAddMembers(
-      requestUserAuth,
-      { users: [coEditor.toJSON()] }
-    );
-    if (!addRes || addRes.isErr()) {
+    const addRes = await skill.addEditors(requestUserAuth, [coEditor]);
+    if (addRes.isErr()) {
       throw new Error("Failed to add the co-editor");
     }
 
@@ -827,11 +824,8 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
       userIds: [requestUser.sId, coEditor.sId],
     });
 
-    const addRes = await skill.editorGroup?.dangerouslyAddMembers(
-      requestUserAuth,
-      { users: [coEditor.toJSON()] }
-    );
-    if (!addRes || addRes.isErr()) {
+    const addRes = await skill.addEditors(requestUserAuth, [coEditor]);
+    if (addRes.isErr()) {
       throw new Error("Failed to add the co-editor");
     }
 

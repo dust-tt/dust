@@ -92,6 +92,7 @@ import type {
 import { isDefaultFromAvailability } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { GrantVerb } from "@app/types/group_permissions";
+import { grantKey } from "@app/types/group_permissions";
 import { SKILL_GROUP_PREFIX } from "@app/types/groups";
 import type {
   AccessControlList,
@@ -2602,7 +2603,23 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * Returns null when the skill has no editor group (global/system skills).
    */
   async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
-    return this.editorGroup?.getActiveMembers(auth) ?? null;
+    // Code-defined global/system skills have no editors at all.
+    if (this.globalSId) {
+      return null;
+    }
+
+    if (isLegacyAclsEnabled()) {
+      return (await this.editorGroup?.getActiveMembers(auth)) ?? null;
+    }
+
+    const grantGroup =
+      await GroupPermissionResource.findRegularAutoGroupForGrant(auth, {
+        grantType: SKILL_EDITOR_GRANT_TYPE,
+        resourceType: "skill",
+        resourceId: this.id,
+      });
+
+    return grantGroup ? grantGroup.getActiveMembers(auth) : [];
   }
 
   async upsertEditors(
@@ -3088,18 +3105,51 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       skills.map((s) => [s.sId, null])
     );
 
-    const skillsWithEditorGroups = skills.filter((s) => s.editorGroup !== null);
+    // Code-defined global/system skills have no editors — see `listEditors`.
+    const customSkills = skills.filter((s) => !s.globalSId);
 
-    if (skillsWithEditorGroups.length === 0) {
+    if (customSkills.length === 0) {
       return result;
     }
 
-    const editorGroups = removeNulls(
-      skillsWithEditorGroups.map((s) => s.editorGroup)
-    );
+    // Editors come from the per-user grants (one regular_auto group per skill). Only the kill
+    // switch reads the skill_editors group — see `listEditors`.
+    let groupBySkillModelId: Map<ModelId, GroupResource>;
+    if (isLegacyAclsEnabled()) {
+      groupBySkillModelId = new Map(
+        removeNulls(
+          customSkills.map((skill) =>
+            skill.editorGroup ? ([skill.id, skill.editorGroup] as const) : null
+          )
+        )
+      );
+    } else {
+      const editorGrantSpec = (skill: SkillResource) => ({
+        grantType: SKILL_EDITOR_GRANT_TYPE,
+        resourceType: "skill" as const,
+        resourceId: skill.id,
+      });
+
+      const groupByGrant =
+        await GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
+          grants: customSkills.map(editorGrantSpec),
+        });
+
+      groupBySkillModelId = new Map(
+        removeNulls(
+          customSkills.map((skill) => {
+            const group = groupByGrant.get(grantKey(editorGrantSpec(skill)));
+
+            return group ? ([skill.id, group] as const) : null;
+          })
+        )
+      );
+    }
 
     const membershipsByGroupId =
-      await GroupResource.getActiveMembershipsForGroups(auth, editorGroups);
+      await GroupResource.getActiveMembershipsForGroups(auth, [
+        ...groupBySkillModelId.values(),
+      ]);
 
     const allUserIds = [...new Set(Object.values(membershipsByGroupId).flat())];
 
@@ -3127,9 +3177,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         .map((u) => [u.id, u])
     );
 
-    for (const skill of skillsWithEditorGroups) {
-      const groupId = skill.editorGroup!.id;
-      const userIds = membershipsByGroupId[groupId] ?? [];
+    for (const skill of customSkills) {
+      const group = groupBySkillModelId.get(skill.id);
+      const userIds = group ? (membershipsByGroupId[group.id] ?? []) : [];
       const users = removeNulls(userIds.map((id) => userById.get(id) ?? null));
       result.set(skill.sId, users);
     }

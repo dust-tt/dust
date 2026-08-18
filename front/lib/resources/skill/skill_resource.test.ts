@@ -2906,6 +2906,11 @@ describe("SkillResource", () => {
   });
 
   describe("group_permissions as the source of truth", () => {
+    // The kill switch is a module mock: reset it per test so one flipping it cannot leak.
+    beforeEach(() => {
+      vi.mocked(isLegacyAclsEnabled).mockReturnValue(false);
+    });
+
     // A skill's editor group grants [read, write, admin] through its group_permissions row; a
     // "user" role grants only read, so write and admin flow purely through the grant.
     //
@@ -3005,6 +3010,27 @@ describe("SkillResource", () => {
         testContext.authenticator
       );
       expect(legacyMembers.map((m) => m.sId)).not.toContain(editor.sId);
+    });
+
+    it("lists editors from the per-user grants, and from the group under the kill switch", async () => {
+      const { skill, editor } = await setupSkillWithEditor(
+        "Editor Source Skill"
+      );
+
+      // Served from the grant group.
+      const fromGrants = await skill.listEditors(testContext.authenticator);
+      expect(fromGrants?.map((e) => e.sId)).toContain(editor.sId);
+
+      // Drop the grants: the new source is empty, the kill switch restores the group's members.
+      await GroupPermissionResource.deleteAllForResource(
+        testContext.authenticator,
+        { resourceType: "skill", resourceId: skill.id }
+      );
+      expect(await skill.listEditors(testContext.authenticator)).toEqual([]);
+
+      vi.mocked(isLegacyAclsEnabled).mockReturnValue(true);
+      const fromGroup = await skill.listEditors(testContext.authenticator);
+      expect(fromGroup?.map((e) => e.sId)).toContain(editor.sId);
     });
 
     it("falls back to the editor group when the use_legacy_acls kill switch is on", async () => {
