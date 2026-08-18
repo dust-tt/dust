@@ -1,4 +1,7 @@
-import { makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace } from "@app/lib/api/assistant/rate_limits";
+import {
+  makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace,
+  makeUsageCapSpendLimitAwuCreditsRateLimitKeyForWorkspace,
+} from "@app/lib/api/assistant/rate_limits";
 import config from "@app/lib/api/config";
 import { getEsConsumedProgrammaticAwuCredits } from "@app/lib/api/credits/members_usage";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
@@ -80,6 +83,10 @@ export type PokeWorkspaceInfo = {
   // this tells Poke which of them are overridden rather than plan-given.
   planLimitOverride: PlanLimitOverride | null;
   poolCreditState: WorkspacePoolCreditState;
+  // Current value of the Redis fixed-window workspace usage-cap counter for the
+  // contract billing cycle (the rate-limiter backup). Null when there is no
+  // billing period to bucket on or the read failed.
+  poolSpendLimitRateCapCount: number | null;
   seatPlan: SeatPlanResponseBody | null;
   // The Metronome alerts backing each credit dimension — id and current status —
   // for deep-linking and display from Poke. Null when not configured / not
@@ -157,13 +164,22 @@ export async function getPokeWorkspaceInfo(
   // (no billing period, no Metronome customer, or a read failure).
   const spendLimitBounds = await resolveSpendLimitCycleBounds(owner);
   let programmaticSpendLimitRateCapCount: number | null = null;
+  let poolSpendLimitRateCapCount: number | null = null;
   if (spendLimitBounds) {
-    const countResult = await getFixedWindowCount({
+    const programmaticCountResult = await getFixedWindowCount({
       key: makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace(owner),
       bounds: spendLimitBounds,
     });
-    programmaticSpendLimitRateCapCount = countResult.isOk()
-      ? countResult.value
+    programmaticSpendLimitRateCapCount = programmaticCountResult.isOk()
+      ? programmaticCountResult.value
+      : null;
+
+    const poolCountResult = await getFixedWindowCount({
+      key: makeUsageCapSpendLimitAwuCreditsRateLimitKeyForWorkspace(owner),
+      bounds: spendLimitBounds,
+    });
+    poolSpendLimitRateCapCount = poolCountResult.isOk()
+      ? poolCountResult.value
       : null;
   }
   const programmaticEsConsumedAwuCredits = spendLimitBounds
@@ -277,6 +293,7 @@ export async function getPokeWorkspaceInfo(
     pendingSubscription,
     planLimitOverride,
     poolCreditState: workspaceResource.poolCreditState,
+    poolSpendLimitRateCapCount,
     poolAlert,
     programmaticAlerts,
     usageCapAlert,

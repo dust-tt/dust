@@ -27,6 +27,7 @@ interface PokeUsageTabProps {
   subscription: SubscriptionType;
   stripeSubscription: PokeStripeSubscriptionWire | null;
   poolCreditState: WorkspacePoolCreditState;
+  poolSpendLimitRateCapCount: number | null;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticWarningReached: boolean;
   programmaticSpendLimitRateCapCount: number | null;
@@ -95,6 +96,7 @@ interface PokeCreditStatesCardProps {
   owner: WorkspaceType;
   creditUsageConfig: PokeCreditUsageConfig | null;
   poolCreditState: WorkspacePoolCreditState;
+  poolSpendLimitRateCapCount: number | null;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticWarningReached: boolean;
   programmaticSpendLimitRateCapCount: number | null;
@@ -108,6 +110,7 @@ function PokeCreditStatesCard({
   owner,
   creditUsageConfig,
   poolCreditState,
+  poolSpendLimitRateCapCount,
   programmaticCreditState,
   programmaticWarningReached,
   programmaticSpendLimitRateCapCount,
@@ -129,6 +132,12 @@ function PokeCreditStatesCard({
             color={creditStateChipColor(poolCreditState)}
             label={poolCreditState}
           />
+          <span className="text-xs text-muted-foreground">
+            rate limiter:{" "}
+            {poolSpendLimitRateCapCount !== null
+              ? `${formatCredits(poolSpendLimitRateCapCount)} credits`
+              : "—"}
+          </span>
           <AlertChip alert={poolAlert} label="balance alert" />
           <CreditStateLogsLink machine="pool" workspaceId={owner.sId} />
           <ReconcileCreditStateButton owner={owner} target="pool" />
@@ -331,6 +340,7 @@ export function PokeUsageTab({
   subscription,
   stripeSubscription,
   poolCreditState,
+  poolSpendLimitRateCapCount,
   programmaticCreditState,
   programmaticWarningReached,
   programmaticSpendLimitRateCapCount,
@@ -354,6 +364,7 @@ export function PokeUsageTab({
         owner={owner}
         creditUsageConfig={creditUsageConfig}
         poolCreditState={poolCreditState}
+        poolSpendLimitRateCapCount={poolSpendLimitRateCapCount}
         programmaticCreditState={programmaticCreditState}
         programmaticWarningReached={programmaticWarningReached}
         programmaticSpendLimitRateCapCount={programmaticSpendLimitRateCapCount}
