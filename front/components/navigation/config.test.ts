@@ -1,63 +1,11 @@
 import { subNavigationAdmin } from "@app/components/navigation/config";
+import { LightSubscriptionFactory } from "@app/tests/utils/LightSubscriptionFactory";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
-import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
 
-const PLAN: PlanType = {
-  code: "PRO_PLAN_SEAT_29",
-  name: "Pro",
-  limits: {
-    assistant: {
-      isSlackBotAllowed: true,
-      maxMessages: -1,
-      maxMessagesTimeframe: "lifetime",
-      maxAwuCredits: -1,
-      maxAwuCreditsTimeframe: "lifetime",
-      isDeepDiveAllowed: true,
-    },
-    connections: {
-      count: -1,
-      isConfluenceAllowed: true,
-      isSlackAllowed: true,
-      isNotionAllowed: true,
-      isGoogleDriveAllowed: true,
-      isGithubAllowed: true,
-      isIntercomAllowed: true,
-      isWebCrawlerAllowed: true,
-      isSalesforceAllowed: true,
-    },
-    dataSources: { count: -1, documents: { count: -1, sizeMb: -1 } },
-    users: {
-      maxUsers: -1,
-      maxFreeUsers: -1,
-      maxLifetimeFreeUsers: -1,
-      isSSOAllowed: true,
-      isSCIMAllowed: true,
-    },
-    vaults: { maxVaults: -1 },
-    capabilities: { images: { maxImagesPerWeek: -1 } },
-    canUseProduct: true,
-  },
-  trialPeriodDays: 0,
-  isByok: false,
-  isAuditLogsAllowed: true,
-  hasAdvancedModelAccess: true,
-};
-
-const SUBSCRIPTION: SubscriptionType = {
-  sId: "sub_test",
-  status: "active",
-  trialing: false,
-  stripeSubscriptionId: "sub_stripe_test",
-  metronomeContractId: null,
-  startDate: null,
-  endDate: null,
-  paymentFailingSince: null,
-  plan: PLAN,
-  requestCancelAt: null,
-};
+const SUBSCRIPTION = LightSubscriptionFactory.build();
 
 function ownerWithRole(role: MembershipRoleType): WorkspaceType {
   return LightWorkspaceFactory.build({ role });
