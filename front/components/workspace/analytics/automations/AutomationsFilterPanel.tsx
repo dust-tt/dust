@@ -58,6 +58,8 @@ export function AutomationsFilterPanel({
   const [activeCategory, setActiveCategory] =
     useState<AutomationsFilterCategory>("agent");
   const [searchText, setSearchText] = useState("");
+  const [contentScrollContainer, setContentScrollContainer] =
+    useState<HTMLDivElement | null>(null);
 
   const isAgentCategoryActive = isOpen && activeCategory === "agent";
   const { agentConfigurations, isAgentConfigurationsLoading } =
@@ -147,9 +149,21 @@ export function AutomationsFilterPanel({
     }
   };
 
+  const resetContentScroll = () => {
+    if (contentScrollContainer) {
+      contentScrollContainer.scrollTop = 0;
+    }
+  };
+
   const handleCategoryChange = (category: AutomationsFilterCategory) => {
     setActiveCategory(category);
     setSearchText("");
+    resetContentScroll();
+  };
+
+  const handleSearchChange = (search: string) => {
+    setSearchText(search);
+    resetContentScroll();
   };
 
   const activeCategorySelectionCount = draftFilter[activeCategory]?.length ?? 0;
@@ -195,21 +209,31 @@ export function AutomationsFilterPanel({
             <SearchInput
               name="automations-filter-search"
               value={searchText}
-              onChange={setSearchText}
+              onChange={handleSearchChange}
               placeholder={`Search ${AUTOMATIONS_FILTER_CATEGORY_LABEL[activeCategory].toLowerCase()}`}
             />
-            <FilterOptionCheckboxList
-              key={`${isOpen}|${activeCategory}|${searchText}`}
-              idPrefix={`automations-filter-option-${activeCategory}`}
-              categoryLabel={AUTOMATIONS_FILTER_CATEGORY_LABEL[activeCategory]}
-              options={filteredOptions}
-              selectedIds={selectedIdsForActiveCategory}
-              onToggleOption={(option) => toggleOption(activeCategory, option)}
-              renderIcon={(option) => (
-                <AutomationsFilterOptionIcon option={option} />
-              )}
-              status={isOptionsLoading ? "loading" : "idle"}
-            />
+            <div
+              ref={setContentScrollContainer}
+              className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto"
+            >
+              <FilterOptionCheckboxList
+                key={`${isOpen}|${activeCategory}|${searchText}`}
+                idPrefix={`automations-filter-option-${activeCategory}`}
+                categoryLabel={
+                  AUTOMATIONS_FILTER_CATEGORY_LABEL[activeCategory]
+                }
+                options={filteredOptions}
+                selectedIds={selectedIdsForActiveCategory}
+                onToggleOption={(option) =>
+                  toggleOption(activeCategory, option)
+                }
+                renderIcon={(option) => (
+                  <AutomationsFilterOptionIcon option={option} />
+                )}
+                status={isOptionsLoading ? "loading" : "idle"}
+                scrollContainer={contentScrollContainer}
+              />
+            </div>
           </div>
           <FilterSelectionSummary<
             AutomationsFilterCategory,
