@@ -11,7 +11,6 @@ import {
   InfoCircle,
   Page,
   Spinner,
-  Tooltip,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
@@ -111,22 +110,20 @@ export function MultiPodNetworkSection({
             >
               {domain}
             </pre>
-            <Tooltip
-              label={scopeNames.join(", ")}
-              trigger={
-                <Chip
-                  size="xs"
-                  color={
-                    scopeNames.length === totalScopes ? "success" : "primary"
-                  }
-                  label={
-                    scopeNames.length === totalScopes
-                      ? "All"
-                      : `${scopeNames.length} of ${totalScopes}`
-                  }
-                />
-              }
-            />
+            {scopeNames.length === totalScopes ? (
+              <Chip size="xs" color="success" label="All" />
+            ) : (
+              <div className="flex flex-wrap items-center justify-end gap-1">
+                {scopeNames.map((scopeName, index) => (
+                  <Chip
+                    key={`${scopeName}-${index}`}
+                    size="xs"
+                    color="primary"
+                    label={scopeName}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>
