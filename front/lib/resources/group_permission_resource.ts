@@ -178,7 +178,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   // Find the regular_auto group backing user-level grants for the given tuple. At most one exists
   // per (grantType, resourceType, resourceId): grantToUser and revokeFromUser serialize on the
   // grant-tuple advisory lock (getGrantLock), and grant() rejects a second regular_auto group.
-  private static async findRegularAutoGroupForGrant(
+  static async findRegularAutoGroupForGrant(
     auth: Authenticator,
     {
       grantType,
