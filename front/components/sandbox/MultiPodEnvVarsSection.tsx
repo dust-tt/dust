@@ -14,27 +14,23 @@ import type { PodType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  Chip,
   ContentMessage,
   InfoCircle,
-  ListGroup,
-  ListItem,
   Page,
   Plus,
   Spinner,
-  Tooltip,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
 interface MultiPodEnvVarsSectionProps {
   owner: LightWorkspaceType;
   selection: SandboxPodSelection;
-  // The pods `selection` resolves to, for names and counts.
+  // The pods `selection` resolves to, for names.
   selectedPods: PodType[];
   // All live pods, for the add dialog's Pod targeting.
   allPods: SandboxEnvVarPodOption[];
   // When true, the Workspace is one of the viewed scopes; workspace-only vars
-  // show as "Inherited". When false, they are hidden.
+  // are shown. When false, they are hidden.
   includeWorkspace: boolean;
 }
 
@@ -46,8 +42,8 @@ type VariableRow = {
   overriddenInPodNames: string[];
 };
 
-// Values are write-only and never compared; this view only shows where each
-// name is defined across the selected Pods.
+// Values are write-only and never compared; this view only shows which scopes
+// define each variable.
 export function MultiPodEnvVarsSection({
   owner,
   selection,
@@ -113,62 +109,6 @@ export function MultiPodEnvVarsSection({
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [envVars, podEnvVars, podNamesById, includeWorkspace]);
 
-  const totalPods = selectedPods.length;
-
-  const stateChipForRow = (row: VariableRow) => {
-    const podCount = row.overriddenInPodNames.length;
-    const podNames = row.overriddenInPodNames.join(", ");
-
-    if (row.hasWorkspaceVar) {
-      if (podCount === 0) {
-        return (
-          <Tooltip
-            label="Defined at the workspace level; all selected Pods inherit it."
-            trigger={<Chip size="xs" color="success" label="Inherited" />}
-          />
-        );
-      }
-      if (podCount === totalPods) {
-        return (
-          <Tooltip
-            label={`Overridden in ${podNames}`}
-            trigger={
-              <Chip size="xs" color="warning" label="Overridden in all Pods" />
-            }
-          />
-        );
-      }
-      return (
-        <Tooltip
-          label={`Overridden in ${podNames}; the other Pods inherit the workspace value.`}
-          trigger={
-            <Chip
-              size="xs"
-              color="warning"
-              label={`Mixed — overridden in ${podCount} of ${totalPods} Pods`}
-            />
-          }
-        />
-      );
-    }
-
-    if (podCount === totalPods) {
-      return <Chip size="xs" color="primary" label="Pod-only — all Pods" />;
-    }
-    return (
-      <Tooltip
-        label={`Defined in ${podNames}; missing in the other selected Pods.`}
-        trigger={
-          <Chip
-            size="xs"
-            color="primary"
-            label={`Pod-only — ${podCount} of ${totalPods} Pods`}
-          />
-        }
-      />
-    );
-  };
-
   const renderBody = () => {
     if (isSandboxEnvVarsLoading || isPodEnvVarsLoading) {
       return <Spinner />;
@@ -194,28 +134,43 @@ export function MultiPodEnvVarsSection({
     }
 
     return (
-      <ListGroup>
-        {rows.map((row) => (
-          <ListItem key={row.name} itemsAlignment="center">
-            <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <pre
+      <div className="flex w-full flex-col divide-y divide-separator">
+        {rows.map((row) => {
+          const scopeNames = [
+            ...(includeWorkspace && row.hasWorkspaceVar ? ["Workspace"] : []),
+            ...row.overriddenInPodNames,
+          ];
+          return (
+            <div key={row.name} className="flex items-center gap-3 py-3">
+              <div
                 title={row.name}
-                className="min-w-0 self-start overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2 text-sm text-foreground"
+                className="flex min-w-0 grow items-center gap-2 overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2"
               >
-                {row.name}
-              </pre>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <Chip
-                  size="xs"
-                  color={row.kind === "https_secret" ? "warning" : "info"}
-                  label={labelForKind(row.kind)}
-                />
-                {stateChipForRow(row)}
+                <span className="font-mono text-sm text-foreground">
+                  {row.name}
+                </span>
+                <span
+                  className={
+                    row.kind === "https_secret"
+                      ? "shrink-0 rounded-full bg-golden-100 px-2 py-0.5 text-xs font-medium text-golden-800"
+                      : "shrink-0 rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700"
+                  }
+                >
+                  {labelForKind(row.kind)}
+                </span>
+                {scopeNames.map((scopeName, index) => (
+                  <span
+                    key={`${scopeName}-${index}`}
+                    className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800"
+                  >
+                    {scopeName}
+                  </span>
+                ))}
               </div>
             </div>
-          </ListItem>
-        ))}
-      </ListGroup>
+          );
+        })}
+      </div>
     );
   };
 
@@ -238,7 +193,7 @@ export function MultiPodEnvVarsSection({
       <Page.Vertical align="stretch" gap="lg">
         <Page.SectionHeader
           title="Environment variables"
-          description={`Where each variable is defined across the selected scopes. Values are write-only and never shown or compared. To replace or delete a value, select a single Pod or the Workspace.`}
+          description="Which scopes define each variable. Values are write-only and never shown or compared."
         />
 
         <div className="flex justify-end">
