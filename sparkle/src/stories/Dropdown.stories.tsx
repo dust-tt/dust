@@ -1,6 +1,7 @@
 import { DropdownMenuCheckboxItemProps } from "@radix-ui/react-dropdown-menu";
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState } from "react";
+import { expect, waitFor, within } from "storybook/test";
 
 import { Spinner } from "@sparkle/components";
 import {
@@ -198,6 +199,68 @@ export const ComplexDropdown: Story = {
         </DropdownMenuContent>
       </DropdownMenu>
     );
+  },
+};
+
+export const SearchableSubmenuKeyboardNavigation: Story = {
+  render: () => {
+    const [search, setSearch] = useState("");
+
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger>Open menu</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger label="Capabilities" />
+            <DropdownMenuSubContent
+              dropdownHeaders={
+                <DropdownMenuSearchbar
+                  autoFocus
+                  name="search-capabilities"
+                  placeholder="Search capabilities"
+                  value={search}
+                  onChange={setSearch}
+                />
+              }
+            >
+              <DropdownMenuItem label="First capability" />
+              <DropdownMenuItem label="Second capability" />
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+          <DropdownMenuItem label="Root action" />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const trigger = canvas.getByRole("button", { name: "Open menu" });
+    trigger.focus();
+    await userEvent.keyboard("{Enter}");
+
+    const page = within(canvasElement.ownerDocument.body);
+    const submenuTrigger = page.getByRole("menuitem", {
+      name: "Capabilities",
+    });
+    await waitFor(() => expect(submenuTrigger).toHaveFocus());
+
+    await userEvent.keyboard("{ArrowRight}");
+    const searchInput = page.getByPlaceholderText("Search capabilities");
+    await waitFor(() => expect(searchInput).toHaveFocus());
+
+    await userEvent.keyboard("{ArrowDown}");
+    await expect(
+      page.getByRole("menuitem", { name: "First capability" })
+    ).toHaveFocus();
+
+    await userEvent.keyboard("{ArrowDown}");
+    await expect(
+      page.getByRole("menuitem", { name: "Second capability" })
+    ).toHaveFocus();
+
+    await userEvent.keyboard("{ArrowUp}");
+    await expect(
+      page.getByRole("menuitem", { name: "First capability" })
+    ).toHaveFocus();
   },
 };
 
