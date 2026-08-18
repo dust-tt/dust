@@ -22,7 +22,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  InfoCircle,
   PieChart01,
   XClose,
 } from "@dust-tt/sparkle";
@@ -248,41 +247,34 @@ export function ToolValidationCard({
       </div>
 
       {canCurrentUserRespond && (
-        <div className="flex flex-col gap-4 px-4 pb-3 pt-2">
-          {alwaysAllowScopeLabel && (
-            <div className="flex items-start gap-2 text-sm text-muted-foreground">
-              <InfoCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>{alwaysAllowScopeLabel}</span>
-            </div>
-          )}
-          <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2 px-4 pb-3 pt-2">
+          <Button
+            label="Decline"
+            variant="outline"
+            icon={XClose}
+            disabled={isSubmitting}
+            isLoading={submittingDecision === "rejected"}
+            onClick={() => void handleValidation("rejected")}
+          />
+          <Button
+            label={approveOnceLabel}
+            variant="highlight"
+            icon={Check}
+            disabled={isSubmitting}
+            isLoading={submittingDecision === "approved"}
+            onClick={() => void handleValidation("approved")}
+          />
+          {canAlwaysAllow && (
             <Button
-              label="Decline"
-              variant="outline"
-              icon={XClose}
-              disabled={isSubmitting}
-              isLoading={submittingDecision === "rejected"}
-              onClick={() => void handleValidation("rejected")}
-            />
-            <Button
-              label={approveOnceLabel}
+              label="Always allow"
               variant="highlight"
-              icon={Check}
+              icon={CheckDouble}
+              tooltip={alwaysAllowScopeLabel ?? undefined}
               disabled={isSubmitting}
-              isLoading={submittingDecision === "approved"}
-              onClick={() => void handleValidation("approved")}
+              isLoading={submittingDecision === "always_approved"}
+              onClick={() => void handleValidation("always_approved")}
             />
-            {canAlwaysAllow && (
-              <Button
-                label="Always allow"
-                variant="highlight"
-                icon={CheckDouble}
-                disabled={isSubmitting}
-                isLoading={submittingDecision === "always_approved"}
-                onClick={() => void handleValidation("always_approved")}
-              />
-            )}
-          </div>
+          )}
         </div>
       )}
     </Card>

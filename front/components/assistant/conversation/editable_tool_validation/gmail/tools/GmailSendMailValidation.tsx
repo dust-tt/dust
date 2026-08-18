@@ -7,7 +7,6 @@ import {
   Button,
   Check,
   CheckDouble,
-  InfoCircle,
   Paperclip,
   XClose,
 } from "@dust-tt/sparkle";
@@ -190,46 +189,41 @@ export function GmailSendMailValidation({
         </div>
       )}
 
-      <div className="flex flex-col gap-4 border-t border-border px-4 py-2.5">
-        {blockedAction.stake === "medium" && alwaysAllowLabel && (
-          <div className="flex items-start gap-2 text-xs text-muted-foreground">
-            <InfoCircle className="h-4 w-4 shrink-0" />
-            <span>{alwaysAllowLabel}</span>
-          </div>
-        )}
-        <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 border-t border-border px-4 py-2.5">
+        <Button
+          label="Decline"
+          variant="outline"
+          size="sm"
+          icon={XClose}
+          isRounded
+          disabled={isSubmitting}
+          onClick={() => void handleReject()}
+        />
+        <div className="flex-1" />
+        <Button
+          label={alwaysAllowLabel ? "Allow once" : "Allow"}
+          variant="highlight"
+          size="sm"
+          icon={Check}
+          isRounded
+          disabled={isSubmitting}
+          isPulsing={isPulsing}
+          onClick={() => void onApprove("approved")}
+        />
+        {alwaysAllowLabel && (
           <Button
-            label="Decline"
-            variant="outline"
-            size="sm"
-            icon={XClose}
-            isRounded
-            disabled={isSubmitting}
-            onClick={() => void handleReject()}
-          />
-          <div className="flex-1" />
-          <Button
-            label={alwaysAllowLabel ? "Allow once" : "Allow"}
+            label="Always allow"
             variant="highlight"
             size="sm"
-            icon={Check}
+            icon={CheckDouble}
+            tooltip={
+              blockedAction.stake === "medium" ? alwaysAllowLabel : undefined
+            }
             isRounded
             disabled={isSubmitting}
-            isPulsing={isPulsing}
-            onClick={() => void onApprove("approved")}
+            onClick={() => void onApprove("always_approved")}
           />
-          {alwaysAllowLabel && (
-            <Button
-              label="Always allow"
-              variant="highlight"
-              size="sm"
-              icon={CheckDouble}
-              isRounded
-              disabled={isSubmitting}
-              onClick={() => void onApprove("always_approved")}
-            />
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
