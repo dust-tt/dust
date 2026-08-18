@@ -748,6 +748,37 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
       expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
     });
 
+    it("rejects a token from another pod's frame in the same workspace", async () => {
+      const { workspace, sandboxFunction, adminAuth } =
+        await setupSandboxFunction({
+          addCallerToSpace: false,
+          slug: "tasklist__run",
+        });
+      // A shared frame in a different pod, same folder name: the capability only ever queries
+      // its own pod, so both address forms must miss.
+      const otherPod = await SpaceFactory.project(workspace);
+      const frameShareToken = await createSharedAppFrame(adminAuth, {
+        workspace,
+        space: otherPod,
+        folderName: "TaskList",
+      });
+
+      const bySId = await postInvocation({
+        workspaceId: workspace.sId,
+        functionIdOrSlug: sandboxFunction.sId,
+        frameShareToken,
+      });
+      expect(bySId.status).toBe(404);
+
+      const bySlug = await postInvocation({
+        workspaceId: workspace.sId,
+        functionIdOrSlug: `${sandboxFunction.space.sId}/${sandboxFunction.slug}`,
+        frameShareToken,
+      });
+      expect(bySlug.status).toBe(404);
+      expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+    });
+
     it("allows the frame's owner outside the pod on an invite-only frame without a grant", async () => {
       // The view path admits the owner without a grant; invocation mirrors it so that using an
       // app follows viewing its frame exactly.

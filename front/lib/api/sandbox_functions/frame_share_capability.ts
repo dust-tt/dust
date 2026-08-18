@@ -36,11 +36,11 @@ export async function resolveSandboxFunctionWithCapability(
     return null;
   }
 
-  return SandboxFunctionResource.fetchByIdOrSlug(
-    auth,
-    functionIdOrSlug,
-    capability
-  );
+  return SandboxFunctionResource.fetchInAppFolder(auth, {
+    podId: capability.podId,
+    appPrefix: capability.appPrefix,
+    idOrSlug: functionIdOrSlug,
+  });
 }
 
 /**

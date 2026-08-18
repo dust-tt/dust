@@ -30,7 +30,6 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { PodAppFunction } from "@app/types/api/pod_apps";
 import type {
-  FrameShareCapability,
   PostSandboxFunctionInvocationRequestBody,
   SandboxFunctionExecutionMode,
   SandboxFunctionInvocationOrigin,
@@ -307,14 +306,13 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     auth: Authenticator,
     {
       includeDeletedSpace,
-      capability,
       dangerouslyBypassSpacePermissionFilter = false,
       ...options
     }: ResourceFindOptions<SandboxFunctionModel> & {
       includeDeletedSpace?: boolean;
-      capability?: FrameShareCapability;
-      // Reserved for execution-side resolution (fetchByIdForExecution and the tool workflow),
-      // which verified an invocation row for the function first.
+      // Reserved for resolution paths whose authorization is established before the fetch:
+      // fetchByIdForExecution and the tool workflow (an invocation row), and fetchInAppFolder
+      // (a validated frame share capability, enforced by its own query constraints).
       dangerouslyBypassSpacePermissionFilter?: boolean;
     } = {}
   ): Promise<SandboxFunctionResource[]> {
@@ -346,15 +344,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         .map((space) => [space.id, space])
     );
 
-    // A validated frame share capability extends resolution to the functions of its own app in
-    // its own pod, without granting read on the space. Per-function userIdentity policies still
-    // apply at invocation time.
-    const capabilitySpace = capability
-      ? (spaces.find(
-          (space) => space.isProject() && space.sId === capability.podId
-        ) ?? null)
-      : null;
-
     const files = await FileResource.fetchByModelIdsWithAuth(
       auth,
       Array.from(
@@ -373,15 +362,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
     return sandboxFunctions.flatMap((sandboxFunction) => {
       const blob = sandboxFunction.get();
-      // Three prioritized gates: the caller's own access, then the app the capability grants,
-      // then the execution-side bypass (spacesById is only built for it).
-      const capabilityGrantsFunction =
-        capabilitySpace?.id === blob.spaceId &&
-        appPrefixFromSlug(blob.slug) === capability?.appPrefix;
       const space =
-        accessibleSpacesById.get(blob.spaceId) ??
-        (capabilityGrantsFunction ? capabilitySpace : undefined) ??
-        spacesById?.get(blob.spaceId);
+        accessibleSpacesById.get(blob.spaceId) ?? spacesById?.get(blob.spaceId);
       const file = filesById.get(blob.fileId);
       if (!space || !file) {
         return [];
@@ -393,8 +375,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
   static async fetchById(
     auth: Authenticator,
-    sandboxFunctionId: string,
-    capability?: FrameShareCapability
+    sandboxFunctionId: string
   ): Promise<SandboxFunctionResource | null> {
     if (!isResourceSId("sandbox_function", sandboxFunctionId)) {
       return null;
@@ -407,7 +388,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
     const [sandboxFunction] = await this.baseFetch(auth, {
       where: { id: sandboxFunctionModelId },
-      capability,
     });
 
     return sandboxFunction ?? null;
@@ -503,8 +483,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   static async fetchBySpaceAndSlug(
     auth: Authenticator,
     space: SpaceResource,
-    slug: string,
-    capability?: FrameShareCapability
+    slug: string
   ): Promise<SandboxFunctionResource | null> {
     if (!space.isProject()) {
       return null;
@@ -512,7 +491,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
     const [sandboxFunction] = await this.baseFetch(auth, {
       where: { spaceId: space.id, slug },
-      capability,
     });
 
     return sandboxFunction ?? null;
@@ -520,14 +498,9 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
   static async fetchByIdOrSlug(
     auth: Authenticator,
-    functionIdOrSlug: string,
-    capability?: FrameShareCapability
+    functionIdOrSlug: string
   ): Promise<SandboxFunctionResource | null> {
-    const sandboxFunction = await this.fetchById(
-      auth,
-      functionIdOrSlug,
-      capability
-    );
+    const sandboxFunction = await this.fetchById(auth, functionIdOrSlug);
     if (sandboxFunction) {
       return sandboxFunction;
     }
@@ -545,7 +518,65 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       return null;
     }
 
-    return this.fetchBySpaceAndSlug(auth, space, slug, capability);
+    return this.fetchBySpaceAndSlug(auth, space, slug);
+  }
+
+  /**
+   * Resolve a function through a frame share capability: returned iff it lives in the given
+   * pod's app folder, regardless of the caller's standing in the pod — the (podId, appPrefix)
+   * pair comes from a validated share token, and constraining the lookup to it IS the
+   * authorization. Accepts the same identifier forms as fetchByIdOrSlug; a slug form naming
+   * another pod misses, since the lookup only ever queries `podId`.
+   */
+  static async fetchInAppFolder(
+    auth: Authenticator,
+    {
+      podId,
+      appPrefix,
+      idOrSlug,
+    }: { podId: string; appPrefix: string; idOrSlug: string }
+  ): Promise<SandboxFunctionResource | null> {
+    const space = await SpaceResource.fetchById(auth, podId);
+    if (!space || !space.isProject()) {
+      return null;
+    }
+
+    let where:
+      | { id: ModelId; spaceId: ModelId }
+      | { spaceId: ModelId; slug: string };
+    if (isResourceSId("sandbox_function", idOrSlug)) {
+      // sId form, e.g. `sfn_x7GhK2p`.
+      const sandboxFunctionModelId = getResourceIdFromSId(idOrSlug);
+      if (sandboxFunctionModelId === null) {
+        return null;
+      }
+      where = { id: sandboxFunctionModelId, spaceId: space.id };
+    } else {
+      // Pod-qualified slug form, e.g. `spc_9fJq3Lm/tasklist__add-task`.
+      const [slugPodId, slug, ...rest] = idOrSlug.split("/");
+      if (
+        !slugPodId ||
+        !slug ||
+        rest.length > 0 ||
+        slugPodId !== podId ||
+        !isValidSandboxFunctionSlug(slug)
+      ) {
+        return null;
+      }
+      where = { spaceId: space.id, slug };
+    }
+
+    const [sandboxFunction] = await this.baseFetch(auth, {
+      where,
+      dangerouslyBypassSpacePermissionFilter: true,
+    });
+    if (!sandboxFunction) {
+      return null;
+    }
+
+    return appPrefixFromSlug(sandboxFunction.slug) === appPrefix
+      ? sandboxFunction
+      : null;
   }
 
   static async deleteAllForSpace(
