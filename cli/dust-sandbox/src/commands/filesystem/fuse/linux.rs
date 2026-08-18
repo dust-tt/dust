@@ -12,6 +12,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use fuser::{Errno, FileAttr, FileType, ReplyEmpty};
 
+use super::super::errno;
 use super::super::store::{Node, NodeKind};
 
 // Linux reports allocated space in fixed 512-byte units through st_blocks.
@@ -46,6 +47,9 @@ pub(super) fn file_attributes(node: &Node, uid: u32, gid: u32) -> FileAttr {
         perm: match node.kind {
             NodeKind::Directory => 0o777,
             NodeKind::File => 0o666 | (node.mode & 0o111),
+            // Linux follows a symbolic link before it checks permissions, so
+            // the bits shown here are the usual ones and control nothing.
+            NodeKind::Symlink => 0o777,
         },
         // A file has one directory entry. A directory also has its own `.`
         // entry, so Linux expects at least two links.
@@ -96,6 +100,8 @@ pub(super) fn executable_mode(kind: NodeKind, current: u16, requested: u32) -> i
     match kind {
         NodeKind::Directory if requested == 0o777 => Ok(current),
         NodeKind::Directory => Err(errno(libc::EOPNOTSUPP)),
+        // Linux applies chmod to the file a link points to, never to the link.
+        NodeKind::Symlink => Err(errno(libc::EOPNOTSUPP)),
         NodeKind::File => {
             let requested_non_executable = requested & !0o111;
             let stored_non_executable = current & !0o111;
@@ -135,6 +141,7 @@ pub(super) fn file_type(kind: NodeKind) -> FileType {
     match kind {
         NodeKind::File => FileType::RegularFile,
         NodeKind::Directory => FileType::Directory,
+        NodeKind::Symlink => FileType::Symlink,
     }
 }
 
@@ -155,10 +162,6 @@ pub(super) fn reply_ok_or_error(result: io::Result<()>, reply: ReplyEmpty) {
         Ok(()) => reply.ok(),
         Err(error) => reply.error(to_errno(error)),
     }
-}
-
-pub(super) fn errno(code: i32) -> io::Error {
-    io::Error::from_raw_os_error(code)
 }
 
 fn time_from_ms(value: i64) -> SystemTime {

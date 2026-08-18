@@ -128,7 +128,9 @@ impl FileSystemClient {
                 .http
                 .put(&upload.upload_url)
                 .timeout(CONTENT_TRANSFER_TIMEOUT)
-                .body(Body::new(attempt_file));
+                // Sending the length with the body keeps the request out of
+                // chunked encoding, which GCS rejects for a signed upload.
+                .body(Body::sized(attempt_file, size));
             // Front signs these headers with the upload URL. GCS rejects the
             // PUT if even one signed header is missing or has another value.
             for (name, value) in &upload.headers {

@@ -13,6 +13,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use fuser::INodeNo;
 
+use super::super::errno;
 use super::super::store::{Node, OpenedContent};
 
 pub(super) struct OpenFile {
@@ -282,10 +283,6 @@ impl HandleTable {
     fn state(&self) -> io::Result<MutexGuard<'_, HandleState>> {
         self.state.lock().map_err(|_| errno(libc::EIO))
     }
-}
-
-fn errno(code: i32) -> io::Error {
-    io::Error::from_raw_os_error(code)
 }
 
 #[cfg(test)]
