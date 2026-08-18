@@ -82,7 +82,6 @@ import type {
 import { isAdmin, isBuilder, isManager, isUser } from "@app/types/user";
 import assert from "assert";
 import { TokenExpiredError } from "jsonwebtoken";
-import memoizer from "lru-memoizer";
 import type { Transaction } from "sequelize";
 
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
@@ -372,7 +371,13 @@ export class Authenticator {
   }
 
   async refresh({ transaction }: { transaction?: Transaction } = {}) {
-    if (this._user && this._workspace) {
+    if (!this._workspace) {
+      return;
+    }
+
+    // Reload group memberships for user-backed auths. Key auths carry a fixed group set derived
+    // from the key (not from live membership), so their `_groupModelIds` are left as-is.
+    if (this._user) {
       this._groupModelIds = Authenticator.isMember(this._role)
         ? await GroupResource.dangerouslyListUserGroupsForAuth({
             user: this._user,
@@ -380,12 +385,20 @@ export class Authenticator {
             transaction,
           })
         : [];
-      // Group memberships changed, so capabilities may have changed too: re-resolve them.
-      this._permissions = await Authenticator.resolvePermissions({
-        workspace: this._workspace,
-        groupModelIds: this._groupModelIds,
-      });
     }
+
+    // Re-resolve grants from the current group set. Grants on those groups can change (backfill,
+    // updatePermissions, create_pod, ...) even when the membership set does not, so this must run
+    // for every auth — including auths that have no user (API/system keys, internal auths), which
+    // the `_user` gate above skips. The agent loop freezes a serialized (user-less) key auth at
+    // workflow start and refreshes it per step (see `fromJsonWithRefrehedGroups`); without this it
+    // would keep a stale grant snapshot and deny access to resources granted mid-run. System keys
+    // scan the workspace grant set to avoid sending their whole group list to Postgres.
+    this._permissions = await Authenticator.resolvePermissions({
+      workspace: this._workspace,
+      groupModelIds: this._groupModelIds,
+      scanWorkspacePermissions: this.isSystemKey(),
+    });
   }
 
   /**
@@ -1965,100 +1978,41 @@ export async function prodAPICredentialsForOwner(
   };
 }
 
-// Use memoizer's callback-based API so the LRU cache stores the resolved value, not a Promise.
-// memoizer.sync with an async load caches the Promise itself, which retains Node async context and
-// causes memory growth.
-
-// Global feature flags are shared across all workspaces and cached separately.
-const GLOBAL_FEATURE_FLAG_TTL_MS = 60000;
-const _getGlobalFeatureFlags = memoizer<
-  Record<string, never>,
-  GlobalFeatureFlagResource[]
->({
-  load: (_, callback) => {
-    GlobalFeatureFlagResource.listAll()
-      .then((flags) => callback(null, flags))
-      .catch((err: Error) => callback(err));
-  },
-
-  hash: () => "global_feature_flags",
-
-  max: 1,
-  ttl: GLOBAL_FEATURE_FLAG_TTL_MS,
-});
-
-function getGlobalFeatureFlags(): Promise<GlobalFeatureFlagResource[]> {
-  return new Promise((resolve, reject) => {
-    _getGlobalFeatureFlags({}, (err, result) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(result ?? []);
-      }
-    });
-  });
-}
-
-const _getFeatureFlags = memoizer<LightWorkspaceType, WhitelistableFeature[]>({
-  load: (workspace, callback) => {
-    if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
-      callback(null, [...WHITELISTABLE_FEATURES]);
-      return;
-    }
-
-    Promise.all([
-      FeatureFlagResource.listForWorkspace(workspace),
-      getGlobalFeatureFlags(),
-    ])
-      .then(([workspaceFlags, globalFlags]) => {
-        const workspaceFlagNames = new Set(
-          workspaceFlags.map((flag) => flag.name)
-        );
-
-        // Start with workspace-level flags (always take precedence).
-        const effectiveFlags = [...workspaceFlagNames];
-
-        // Add global flags that aren't already set at workspace level.
-        for (const globalFlag of globalFlags) {
-          const globalFlagName = globalFlag.name;
-          if (!isWhitelistableFeature(globalFlagName)) {
-            continue;
-          }
-
-          if (
-            !workspaceFlagNames.has(globalFlagName) &&
-            GlobalFeatureFlagResource.isInRollout(
-              workspace.id,
-              globalFlag.rolloutPercentage
-            )
-          ) {
-            effectiveFlags.push(globalFlagName);
-          }
-        }
-
-        callback(null, effectiveFlags);
-      })
-      .catch((err: Error) => callback(err));
-  },
-
-  hash: (workspace: LightWorkspaceType) => `feature_flags_${workspace.id}`,
-
-  max: 100,
-  ttl: 3000,
-});
-
-export function getFeatureFlagsForWorkspace(
+export async function getFeatureFlagsForWorkspace(
   workspace: LightWorkspaceType
 ): Promise<WhitelistableFeature[]> {
-  return new Promise((resolve, reject) => {
-    _getFeatureFlags(workspace, (err, result) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(result ?? []);
-      }
-    });
-  });
+  if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
+    return [...WHITELISTABLE_FEATURES];
+  }
+
+  const [workspaceFlags, globalFlags] = await Promise.all([
+    FeatureFlagResource.listForWorkspace(workspace),
+    GlobalFeatureFlagResource.listAll(),
+  ]);
+  const workspaceFlagNames = new Set(workspaceFlags.map((flag) => flag.name));
+
+  // Start with workspace-level flags (always take precedence).
+  const effectiveFlags = [...workspaceFlagNames];
+
+  // Add global flags that aren't already set at workspace level.
+  for (const globalFlag of globalFlags) {
+    const globalFlagName = globalFlag.name;
+    if (!isWhitelistableFeature(globalFlagName)) {
+      continue;
+    }
+
+    if (
+      !workspaceFlagNames.has(globalFlagName) &&
+      GlobalFeatureFlagResource.isInRollout(
+        workspace.id,
+        globalFlag.rolloutPercentage
+      )
+    ) {
+      effectiveFlags.push(globalFlagName);
+    }
+  }
+
+  return effectiveFlags;
 }
 
 export function getFeatureFlags(
@@ -2073,15 +2027,6 @@ export async function hasFeatureFlag(
 ): Promise<boolean> {
   const flags = await getFeatureFlags(auth);
   return flags.includes(flag);
-}
-
-export function invalidateFeatureFlagsCache(auth: Authenticator): void {
-  const workspace = auth.getNonNullableWorkspace();
-  _getFeatureFlags.del(workspace);
-}
-
-export function invalidateGlobalFeatureFlagsCache(): void {
-  _getGlobalFeatureFlags.del({});
 }
 
 export function getApiKeyNameFromHeaders(headers: {

@@ -14,7 +14,7 @@ import { upgradeRequestCreatedWorkflow } from "@app/lib/notifications/workflows/
 import { userAwuCapReachedWorkflow } from "@app/lib/notifications/workflows/user-awu-cap-reached";
 import logger from "@app/logger/logger";
 import { createHono } from "@front-api/lib/hono";
-import { skipRequestLog } from "@front-api/middlewares/request_logger";
+import { skipRequestLog } from "@front-api/middlewares/request_instrumentation";
 import type { ServeHandlerOptions } from "@novu/framework";
 import { Client, NovuRequestHandler } from "@novu/framework";
 

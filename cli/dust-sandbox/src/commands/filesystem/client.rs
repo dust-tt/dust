@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::{self, Read};
-use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::path::PathBuf;
 use std::sync::Mutex;
 
@@ -17,6 +17,7 @@ const MAX_HTTP_ATTEMPTS: usize = 3;
 const HTTP_BACKOFF_MS: [u64; MAX_HTTP_ATTEMPTS - 1] = [50, 200];
 const CONTENT_TRANSFER_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10 * 60);
 const MAX_ERROR_DETAIL_BYTES: u64 = 1024;
+const MAX_TOKEN_BYTES: u64 = 64 * 1024;
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -173,6 +174,15 @@ pub struct FileSystemClient {
 }
 
 impl FileSystemClient {
+    pub fn from_token_file(
+        api_url: &str,
+        workspace_id: &str,
+        token_file: PathBuf,
+    ) -> io::Result<Self> {
+        let token = read_token_file(&token_file)?;
+        Self::new(api_url, workspace_id, token, token_file)
+    }
+
     pub fn new(
         api_url: &str,
         workspace_id: &str,
@@ -361,15 +371,32 @@ fn sleep_before_retry(attempt: usize) {
 }
 
 fn read_token_file(path: &std::path::Path) -> io::Result<String> {
-    let mut file = OpenOptions::new()
+    let parent = path.parent().ok_or_else(|| errno(libc::EACCES))?;
+    let parent_metadata = std::fs::symlink_metadata(parent)?;
+    if !parent_metadata.file_type().is_dir()
+        || parent_metadata.uid() != unsafe { libc::geteuid() }
+        || parent_metadata.permissions().mode() & 0o022 != 0
+    {
+        return Err(errno(libc::EACCES));
+    }
+    let file = OpenOptions::new()
         .read(true)
         .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
         .open(path)?;
-    if file.metadata()?.permissions().mode() & 0o077 != 0 {
+    let metadata = file.metadata()?;
+    if !metadata.file_type().is_file()
+        || metadata.uid() != unsafe { libc::geteuid() }
+        || metadata.permissions().mode() & 0o077 != 0
+        || metadata.len() > MAX_TOKEN_BYTES
+    {
         return Err(errno(libc::EACCES));
     }
     let mut token = String::new();
-    file.read_to_string(&mut token)?;
+    let mut limited = file.take(MAX_TOKEN_BYTES + 1);
+    limited.read_to_string(&mut token)?;
+    if token.len() as u64 > MAX_TOKEN_BYTES {
+        return Err(errno(libc::EACCES));
+    }
     let token = token.trim().to_owned();
     if token.is_empty() {
         return Err(errno(libc::EACCES));
@@ -591,6 +618,28 @@ mod tests {
 
         let error = read_token_file(&link).expect_err("reject link");
         assert_eq!(error.raw_os_error(), Some(libc::ELOOP));
+    }
+
+    #[test]
+    fn token_file_requires_a_private_parent_and_regular_file() {
+        let directory = tempdir().expect("temporary directory");
+        let token = directory.path().join("token");
+        fs::create_dir(&token).expect("create token directory");
+        fs::set_permissions(&token, fs::Permissions::from_mode(0o600))
+            .expect("restrict token directory");
+        assert!(read_token_file(&token).is_err());
+
+        fs::remove_dir(&token).expect("remove token directory");
+        fs::write(&token, "secret").expect("write token");
+        fs::set_permissions(&token, fs::Permissions::from_mode(0o600)).expect("restrict token");
+        fs::set_permissions(directory.path(), fs::Permissions::from_mode(0o777))
+            .expect("make parent writable");
+        assert_eq!(
+            read_token_file(&token)
+                .expect_err("reject writable parent")
+                .raw_os_error(),
+            Some(libc::EACCES)
+        );
     }
 
     #[test]

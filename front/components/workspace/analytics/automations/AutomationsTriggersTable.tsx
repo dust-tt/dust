@@ -1,5 +1,11 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { getIcon } from "@app/components/resources/resources_icons";
+import { AutomationsFilterPanel } from "@app/components/workspace/analytics/automations/AutomationsFilterPanel";
+import { AutomationsFilterSummary } from "@app/components/workspace/analytics/automations/AutomationsFilterSummary";
+import type { TriggerRowData as BaseTriggerRowData } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
+import { AutomationsTriggersRowsTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
+import type { AutomationsFilter } from "@app/components/workspace/analytics/automationsFilter";
+import { toAutomationsTriggersFilter } from "@app/components/workspace/analytics/automationsFilter";
 import {
   AvatarNameCell,
   CreditsCell,
@@ -13,12 +19,17 @@ import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type { TriggerStatus } from "@app/types/assistant/triggers";
 import { getTriggerStatusOwner } from "@app/types/assistant/triggers";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
+  Button,
+  ChevronDown,
+  ChevronUp,
   Clock,
   DataTable,
   DataTableLoadingSkeleton,
   Icon,
+  Pagination,
   SliderToggle,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -28,12 +39,10 @@ import { useCallback, useContext, useMemo, useState } from "react";
 
 const TRIGGERS_PAGE_SIZE = 25;
 
-interface TriggerRowData extends AutomationTriggerRow {
+interface TriggerRowData extends BaseTriggerRowData {
   displayStatus: TriggerStatus;
   isStatusPending: boolean;
   onToggleStatus: () => void;
-  // onClick satisfies DataTable's row shape, which is otherwise a weak type.
-  onClick?: () => void;
 }
 
 function TypeCell({ trigger }: { trigger: AutomationTriggerRow }) {
@@ -188,108 +197,167 @@ function EditorCell({ editor }: { editor: AutomationTriggerRow["editor"] }) {
   );
 }
 
-const columns: ColumnDef<TriggerRowData>[] = [
-  {
-    id: "name",
-    accessorKey: "name",
-    header: "Name",
-    meta: { className: "w-56", headerAlign: "left" },
-    cell: (info) => (
-      <DataTable.CellContent className="w-full justify-start text-left">
-        <span className="truncate text-sm">{info.row.original.name}</span>
-      </DataTable.CellContent>
-    ),
-  },
-  {
-    id: "agent",
-    header: "Agent",
-    enableSorting: false,
-    meta: { className: "w-44", headerAlign: "left" },
-    cell: (info) => (
-      <DataTable.CellContent className="w-full justify-start">
-        <AgentCell agent={info.row.original.agent} />
-      </DataTable.CellContent>
-    ),
-  },
-  {
-    id: "editor",
-    header: "Editor",
-    enableSorting: false,
-    meta: { className: "w-16", headerAlign: "center" },
-    cell: (info) => (
-      <DataTable.CellContent className="w-full justify-center">
-        <EditorCell editor={info.row.original.editor} />
-      </DataTable.CellContent>
-    ),
-  },
-  {
-    id: "type",
-    header: "Type",
-    enableSorting: false,
-    meta: { headerAlign: "left" },
-    cell: (info) => (
-      <DataTable.CellContent className="w-full justify-start">
-        <TypeCell trigger={info.row.original} />
-      </DataTable.CellContent>
-    ),
-  },
-  {
-    id: "runCount",
-    accessorKey: "runCount",
-    header: "Runs",
-    meta: { className: "w-20", headerAlign: "right" },
-    cell: (info) => (
-      <DataTable.BasicCellContent
-        className="justify-end text-right tabular-nums"
-        label={info.row.original.runCount.toLocaleString()}
-      />
-    ),
-  },
-  {
-    id: "credits",
-    accessorKey: "credits",
-    header: "Credits",
-    meta: { className: "w-24", headerAlign: "right" },
-    cell: (info) => (
-      <DataTable.CellContent className="w-full justify-end text-right">
-        <CreditsCell credits={info.row.original.credits} />
-      </DataTable.CellContent>
-    ),
-  },
-  {
-    id: "status",
-    header: "Enabled",
-    enableSorting: false,
-    meta: { className: "w-24", headerAlign: "left" },
-    cell: (info) => (
-      <DataTable.CellContent className="w-full justify-start">
-        <RunningCell row={info.row.original} />
-      </DataTable.CellContent>
-    ),
-  },
-];
+function buildColumns({
+  expandedRowId,
+}: {
+  expandedRowId: string | null;
+}): ColumnDef<TriggerRowData>[] {
+  return [
+    {
+      id: "name",
+      accessorKey: "name",
+      header: "Name",
+      meta: { className: "w-56", headerAlign: "left" },
+      cell: (info) => (
+        <DataTable.CellContent className="w-full justify-start text-left">
+          <span className="truncate text-sm">{info.row.original.name}</span>
+        </DataTable.CellContent>
+      ),
+    },
+    {
+      id: "agent",
+      header: "Agent",
+      enableSorting: false,
+      meta: { className: "w-44", headerAlign: "left" },
+      cell: (info) => (
+        <DataTable.CellContent className="w-full justify-start">
+          <AgentCell agent={info.row.original.agent} />
+        </DataTable.CellContent>
+      ),
+    },
+    {
+      id: "editor",
+      header: "Editor",
+      enableSorting: false,
+      meta: { className: "w-16", headerAlign: "center" },
+      cell: (info) => (
+        <DataTable.CellContent className="w-full justify-center">
+          <EditorCell editor={info.row.original.editor} />
+        </DataTable.CellContent>
+      ),
+    },
+    {
+      id: "type",
+      header: "Type",
+      enableSorting: false,
+      meta: { headerAlign: "left" },
+      cell: (info) => (
+        <DataTable.CellContent className="w-full justify-start">
+          <TypeCell trigger={info.row.original} />
+        </DataTable.CellContent>
+      ),
+    },
+    {
+      id: "runCount",
+      accessorKey: "runCount",
+      header: "Runs",
+      meta: { className: "w-20", headerAlign: "right" },
+      cell: (info) => (
+        <DataTable.BasicCellContent
+          className="justify-end text-right tabular-nums"
+          label={info.row.original.runCount.toLocaleString()}
+        />
+      ),
+    },
+    {
+      id: "credits",
+      accessorKey: "credits",
+      header: "Credits",
+      meta: { className: "w-24", headerAlign: "right" },
+      cell: (info) => (
+        <DataTable.CellContent className="w-full justify-end text-right">
+          <CreditsCell credits={info.row.original.credits} />
+        </DataTable.CellContent>
+      ),
+    },
+    {
+      id: "status",
+      header: "Enabled",
+      enableSorting: false,
+      meta: { className: "w-24", headerAlign: "left" },
+      cell: (info) => (
+        <DataTable.CellContent className="w-full justify-start">
+          <RunningCell row={info.row.original} />
+        </DataTable.CellContent>
+      ),
+    },
+    {
+      id: "details",
+      header: "",
+      enableSorting: false,
+      meta: { className: "w-12", headerAlign: "right" },
+      cell: (info) => {
+        const row = info.row.original;
+        const isExpanded = expandedRowId === row.triggerId;
+        return (
+          <DataTable.CellContent className="w-full justify-end">
+            <Button
+              icon={isExpanded ? ChevronUp : ChevronDown}
+              variant="ghost-secondary"
+              size="xs"
+              aria-label={`${isExpanded ? "Collapse" : "Expand"} breakdown for ${row.name}`}
+              aria-expanded={isExpanded}
+              onClick={(event) => {
+                event.stopPropagation();
+                row.onClick();
+              }}
+            />
+          </DataTable.CellContent>
+        );
+      },
+    },
+  ];
+}
 
 interface AutomationsTriggersTableProps {
-  workspaceId: string;
+  owner: LightWorkspaceType;
   period: ConsumptionPeriodSelection;
+  filter: AutomationsFilter;
+  onFilterChange: (next: AutomationsFilter) => void;
 }
 
 export function AutomationsTriggersTable({
-  workspaceId,
+  owner,
   period,
+  filter,
+  onFilterChange,
 }: AutomationsTriggersTableProps) {
+  const workspaceId = owner.sId;
+  const triggersFilter = useMemo(
+    () => toAutomationsTriggersFilter(filter),
+    [filter]
+  );
+
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: TRIGGERS_PAGE_SIZE,
   });
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
-  const { triggers, totalCount, isTriggersLoading, isTriggersError } =
-    useAutomationsTriggers({
-      workspaceId,
-      period,
-      limit: pagination.pageSize,
-      offset: pagination.pageIndex * pagination.pageSize,
-    });
+  // A filter change invalidates the current page and any expanded row.
+  // Reset during render (https://react.dev/learn/you-might-not-need-an-effect)
+  // instead of an effect keyed on `filter`.
+  const [prevFilter, setPrevFilter] = useState(filter);
+  if (prevFilter !== filter) {
+    setPrevFilter(filter);
+    setPagination((current) => ({ ...current, pageIndex: 0 }));
+    setExpandedRowId(null);
+  }
+
+  const {
+    triggers,
+    totalCount,
+    medianRunCount,
+    medianCostPerRun,
+    isTriggersLoading,
+    isTriggersError,
+  } = useAutomationsTriggers({
+    workspaceId,
+    period,
+    filter: triggersFilter,
+    limit: pagination.pageSize,
+    offset: pagination.pageIndex * pagination.pageSize,
+  });
 
   const confirm = useContext(ConfirmContext);
   const updateTriggerStatus = useUpdateTriggerStatus({ workspaceId });
@@ -366,6 +434,10 @@ export function AutomationsTriggersTable({
           displayStatus,
           isStatusPending: pendingIds.has(trigger.triggerId),
           onToggleStatus: () => void handleToggle(trigger, displayStatus),
+          onClick: () =>
+            setExpandedRowId((current) =>
+              current === trigger.triggerId ? null : trigger.triggerId
+            ),
         };
       }),
     [triggers, statusOverrides, pendingIds, handleToggle]
@@ -373,13 +445,31 @@ export function AutomationsTriggersTable({
 
   return (
     <div className="rounded-lg border border-border bg-panel-background p-4">
+      <div className="mb-4 flex flex-col gap-2">
+        <div className="flex items-center justify-end">
+          <AutomationsFilterPanel
+            owner={owner}
+            filter={filter}
+            onFilterChange={onFilterChange}
+          />
+        </div>
+        <AutomationsFilterSummary
+          filter={filter}
+          onFilterChange={onFilterChange}
+        />
+      </div>
       <TriggersTableBody
         isLoading={isTriggersLoading}
         isError={!!isTriggersError}
         rows={rows}
         totalCount={totalCount}
+        medianRunCount={medianRunCount}
+        medianCostPerRun={medianCostPerRun}
         pagination={pagination}
         setPagination={setPagination}
+        workspaceId={workspaceId}
+        period={period}
+        expandedRowId={expandedRowId}
       />
     </div>
   );
@@ -390,8 +480,13 @@ interface TriggersTableBodyProps {
   isError: boolean;
   rows: TriggerRowData[];
   totalCount: number;
+  medianRunCount: number;
+  medianCostPerRun: number;
   pagination: PaginationState;
   setPagination: Dispatch<SetStateAction<PaginationState>>;
+  workspaceId: string;
+  period: ConsumptionPeriodSelection;
+  expandedRowId: string | null;
 }
 
 function TriggersTableBody({
@@ -399,9 +494,19 @@ function TriggersTableBody({
   isError,
   rows,
   totalCount,
+  medianRunCount,
+  medianCostPerRun,
   pagination,
   setPagination,
+  workspaceId,
+  period,
+  expandedRowId,
 }: TriggersTableBodyProps) {
+  const columns = useMemo(
+    () => buildColumns({ expandedRowId }),
+    [expandedRowId]
+  );
+
   if (isLoading) {
     return (
       <DataTableLoadingSkeleton showSelectionColumn={false} showTrailingCell />
@@ -425,15 +530,29 @@ function TriggersTableBody({
   }
 
   return (
-    <div className="overflow-x-auto">
-      <DataTable<TriggerRowData>
-        className="min-w-200"
-        data={rows}
-        columns={columns}
-        totalRowCount={totalCount}
-        pagination={pagination}
-        setPagination={setPagination}
-      />
+    <div>
+      <div className="overflow-x-auto">
+        <AutomationsTriggersRowsTable
+          data={rows}
+          columns={columns}
+          workspaceId={workspaceId}
+          period={period}
+          expandedRowId={expandedRowId}
+          medianRunCount={medianRunCount}
+          medianCostPerRun={medianCostPerRun}
+        />
+      </div>
+      {totalCount > pagination.pageSize && (
+        <div className="mt-2 p-1">
+          <Pagination
+            size="xs"
+            showDetails={false}
+            pagination={pagination}
+            setPagination={setPagination}
+            rowCount={totalCount}
+          />
+        </div>
+      )}
     </div>
   );
 }

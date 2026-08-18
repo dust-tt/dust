@@ -39,10 +39,7 @@ export const updateSkillEditorsPlugin = createPlugin({
       activeOnly: true,
     });
 
-    const editorGroup = resource.editorGroup;
-    const currentEditors = editorGroup
-      ? await editorGroup.getActiveMembers(auth)
-      : [];
+    const currentEditors = (await resource.listEditors(auth)) ?? [];
     const editorIds = new Set(currentEditors.map((editor) => editor.sId));
 
     return new Ok({
@@ -69,7 +66,7 @@ export const updateSkillEditorsPlugin = createPlugin({
     const selectedMemberIds = members || [];
 
     // Get current editors.
-    const currentEditors = await editorGroup.getActiveMembers(auth);
+    const currentEditors = (await resource.listEditors(auth)) ?? [];
     const currentEditorIds = new Set(
       currentEditors.map((editor) => editor.sId)
     );
@@ -98,14 +95,17 @@ export const updateSkillEditorsPlugin = createPlugin({
       userResources.map((user) => [user.sId, user.toJSON()])
     );
 
-    // Add new editors.
+    // Go through the resource rather than the group directly: it keeps the per-user grants in sync
+    // with the editor-group membership (see `SkillResource.writeEditorUserGrants`).
+    const userResourceMap = new Map(
+      userResources.map((user) => [user.sId, user])
+    );
+
     if (usersToAdd.length > 0) {
-      const usersToAddTypes = removeNulls(
-        usersToAdd.map((id) => userMap.get(id))
+      const addResult = await resource.upsertEditors(
+        auth,
+        removeNulls(usersToAdd.map((id) => userResourceMap.get(id)))
       );
-      const addResult = await editorGroup.dangerouslyAddMembers(auth, {
-        users: usersToAddTypes,
-      });
       if (addResult.isErr()) {
         return new Err(
           new Error(`Failed to add editors: ${addResult.error.message}`)
@@ -113,14 +113,11 @@ export const updateSkillEditorsPlugin = createPlugin({
       }
     }
 
-    // Remove editors.
     if (usersToRemove.length > 0) {
-      const usersToRemoveTypes = removeNulls(
-        usersToRemove.map((id) => userMap.get(id))
+      const removeResult = await resource.removeEditors(
+        auth,
+        removeNulls(usersToRemove.map((id) => userResourceMap.get(id)))
       );
-      const removeResult = await editorGroup.dangerouslyRemoveMembers(auth, {
-        users: usersToRemoveTypes,
-      });
       if (removeResult.isErr()) {
         return new Err(
           new Error(`Failed to remove editors: ${removeResult.error.message}`)

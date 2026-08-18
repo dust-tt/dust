@@ -53,20 +53,37 @@ function mockAggs({
   totalMicro,
   filtered = false,
 }: {
-  buckets: unknown[];
+  buckets: Array<Record<string, unknown> & { key: string }>;
   totalCount?: number;
   totalMicro: number;
   filtered?: boolean;
 }) {
-  const ranking = {
-    by_group: { buckets },
-    total_count: { value: totalCount },
-  };
-  vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
-    esResponse({
-      ...(filtered ? { ranking } : ranking),
-      total_credit_micro: { value: totalMicro },
-    })
+  vi.mocked(searchConsumptionAnalytics).mockImplementation(
+    async (_query, options) => {
+      const terms =
+        options?.aggregations?.by_group?.terms ??
+        options?.aggregations?.ranking?.aggs?.by_group?.terms;
+      const includedKeys = Array.isArray(terms?.include)
+        ? new Set(terms.include.map(String))
+        : null;
+      const excludedKeys = new Set(
+        Array.isArray(terms?.exclude) ? terms.exclude.map(String) : []
+      );
+      const ranking = {
+        by_group: {
+          buckets: buckets
+            .filter(({ key }) =>
+              includedKeys ? includedKeys.has(key) : !excludedKeys.has(key)
+            )
+            .slice(0, terms?.size),
+        },
+        total_count: { value: totalCount },
+      };
+      return esResponse({
+        ...(filtered ? { ranking } : ranking),
+        total_credit_micro: { value: totalMicro },
+      });
+    }
   );
 }
 
@@ -192,43 +209,24 @@ describe("consumption top rankings", () => {
     expect(options?.aggregations?.ranking).toBeUndefined();
   });
 
-  it("returns one ranked page with the total number of groups", async () => {
+  it("fetches only enough terms batches for the requested page", async () => {
     const { auth } = await setup();
-    mockLabels({ agent2: "Agent 2", agent3: "Agent 3" });
+    const buckets = Array.from({ length: 1_001 }, (_, index) => ({
+      key: `agent${index}`,
+      doc_count: 1,
+      credit_micro: { value: 1_001_000_000 - index * 1_000_000 },
+      messages: { value: 1 },
+    }));
+    mockLabels({ agent1000: "Agent 1000" });
     mockAggs({
-      buckets: [
-        {
-          key: "agent1",
-          doc_count: 1,
-          credit_micro: { value: 4_000_000 },
-          messages: { value: 1 },
-        },
-        {
-          key: "agent2",
-          doc_count: 1,
-          credit_micro: { value: 3_000_000 },
-          messages: { value: 1 },
-        },
-        {
-          key: "agent3",
-          doc_count: 1,
-          credit_micro: { value: 2_000_000 },
-          messages: { value: 1 },
-        },
-        {
-          key: "agent4",
-          doc_count: 1,
-          credit_micro: { value: 1_000_000 },
-          messages: { value: 1 },
-        },
-      ],
-      totalMicro: 10_000_000,
+      buckets,
+      totalMicro: 1_001_000_000,
     });
 
     const result = await fetchConsumptionTopAgents(auth, {
       period: PERIOD,
-      limit: 2,
-      offset: 1,
+      limit: 1,
+      offset: 1_000,
     });
 
     expect(result.isOk()).toBe(true);
@@ -236,15 +234,21 @@ describe("consumption top rankings", () => {
       return;
     }
     expect(result.value.agents.map((agent) => agent.agentId)).toEqual([
-      "agent2",
-      "agent3",
+      "agent1000",
     ]);
-    expect(result.value.hasMore).toBe(true);
-    expect(result.value.totalCount).toBe(4);
-    expect(rankingSearchCall()[1]?.aggregations?.by_group?.terms).toMatchObject(
-      {
-        size: 3,
-      }
+    expect(result.value.hasMore).toBe(false);
+    expect(result.value.totalCount).toBe(1_001);
+    const calls = vi.mocked(searchConsumptionAnalytics).mock.calls;
+    expect(calls).toHaveLength(3);
+    expect(calls[0]?.[1]?.aggregations?.by_group?.terms).toMatchObject({
+      size: 1_000,
+    });
+    expect(
+      calls[0]?.[1]?.aggregations?.by_group?.terms?.exclude
+    ).toBeUndefined();
+    expect(calls[1]?.[1]?.aggregations?.by_group?.terms?.size).toBe(1);
+    expect(calls[1]?.[1]?.aggregations?.by_group?.terms?.exclude).toHaveLength(
+      1_000
     );
   });
 

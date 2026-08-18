@@ -4,6 +4,7 @@ import {
   SANDBOX_FUNCTION_EXECUTION_MODES,
   SANDBOX_FUNCTION_SLUG_REGEX,
   SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX,
+  SANDBOX_FUNCTION_STAKES,
 } from "@app/types/api/sandbox_functions";
 import { z } from "zod";
 
@@ -89,6 +90,14 @@ export const SANDBOX_FUNCTIONS_TOOLS_METADATA = [
             "user for approval or authentication. Keep the functions a Frame calls on user " +
             "interaction or on a poll `fast`, and isolate `dsbx tools` calls in their own " +
             "`durable` functions."
+        ),
+      defaultStake: z
+        .enum(SANDBOX_FUNCTION_STAKES)
+        .describe(
+          "How much approval the function should require once it is shared as a tool, derived " +
+            "from what it does rather than from how it is called: `never_ask` for a read that " +
+            "changes nothing, `low` for anything that writes/deletes, and `high` only for something " +
+            "extremely dangerous."
         ),
       domains: z
         .array(z.string())

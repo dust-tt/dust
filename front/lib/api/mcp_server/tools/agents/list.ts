@@ -35,7 +35,7 @@ export function registerAgentsListTool(server: McpServer) {
         auth,
         agentsGetView: "list",
         variant: "extra_light",
-        omitInstructions: true,
+        omitHeavyAttributes: true,
       });
 
       const accessibleAgents = agents.filter((agent) => agent.canRead);

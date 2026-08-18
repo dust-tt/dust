@@ -5,7 +5,15 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { RequestCachedQuery } from "@app/types/shared/utils/request_context";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
+
+// Feature flags are a stable snapshot for the request. Mutations become
+// visible on the next request.
+const listAllQuery = new RequestCachedQuery<
+  "all",
+  GlobalFeatureFlagResource[]
+>();
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -23,11 +31,13 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
   }
 
   static async listAll(): Promise<GlobalFeatureFlagResource[]> {
-    const flags = await GlobalFeatureFlagModel.findAll();
+    return listAllQuery.get("all", async () => {
+      const flags = await GlobalFeatureFlagModel.findAll();
 
-    return flags.map(
-      (f) => new GlobalFeatureFlagResource(GlobalFeatureFlagModel, f.get())
-    );
+      return flags.map(
+        (f) => new GlobalFeatureFlagResource(GlobalFeatureFlagModel, f.get())
+      );
+    });
   }
 
   static async setRolloutPercentage(
@@ -55,7 +65,6 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
       where: { id: this.id },
       transaction,
     });
-
     return new Ok(this.id);
   }
 

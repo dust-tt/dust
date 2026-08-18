@@ -56,6 +56,7 @@ export type ConsumptionTopGroups = {
 const CREDIT_AGG = "credit_micro";
 const MESSAGES_AGG = "messages";
 const TOTAL_COUNT_AGG = "total_count";
+const RANKING_TERMS_PAGE_SIZE = 1_000;
 const MAX_ES_QUERY_CLAUSES = 1_024;
 const MAX_ES_TERMS_QUERY_VALUES = 65_536;
 
@@ -167,26 +168,25 @@ async function resolveConsumptionTopSearchFilter(
 
 function buildConsumptionTopAggregations({
   dimension,
-  limit,
-  offset,
+  bucketCount,
+  excludedKeys,
   searchFilter,
 }: {
   dimension: ConsumptionScopeDimension;
-  limit: number;
-  offset: number;
+  bucketCount: number;
+  excludedKeys: string[];
   searchFilter: estypes.QueryDslQueryContainer | null;
 }): Record<string, estypes.AggregationsAggregationContainer> {
   const unit = CONSUMPTION_DIMENSION_UNIT[dimension];
   const dimensionField = CONSUMPTION_DIMENSION_FIELDS[dimension];
 
-  // TODO(2026-08-14 aubin): Add pagination beyond the maximum bucket count.
-  const requestedBucketCount = offset + limit;
   const rankingAggregations = {
     by_group: {
       terms: {
         field: dimensionField,
-        size: requestedBucketCount,
+        size: bucketCount,
         order: { [CREDIT_AGG]: "desc" },
+        ...(excludedKeys.length > 0 ? { exclude: excludedKeys } : {}),
       },
       aggs: subAggs(unit),
     },
@@ -314,33 +314,56 @@ export async function fetchConsumptionTopGroups(
     filter,
   });
 
-  const aggregations = buildConsumptionTopAggregations({
-    dimension,
-    limit,
-    offset,
-    searchFilter,
-  });
+  const requestedBucketCount = offset + limit;
+  const rankedGroups: Omit<ConsumptionTopGroup, "previousCredits">[] = [];
+  let buckets: GroupBucket[];
+  let batchSize = 0;
+  let totalCount = 0;
+  let totalCredits = 0;
 
-  const result = await searchConsumptionAnalytics<never, TopAggs>(query, {
-    aggregations,
-    size: 0,
-  });
+  // Terms aggregations do not expose an after_key when ordered by a metric.
+  // Continue the credit-ranked result in bounded batches by excluding the keys
+  // already returned, and stop as soon as the requested page is available.
+  do {
+    batchSize = Math.min(
+      requestedBucketCount - rankedGroups.length,
+      RANKING_TERMS_PAGE_SIZE
+    );
+    const aggregations = buildConsumptionTopAggregations({
+      dimension,
+      bucketCount: batchSize,
+      excludedKeys: rankedGroups.map((group) => group.key),
+      searchFilter,
+    });
+    const result = await searchConsumptionAnalytics<never, TopAggs>(query, {
+      aggregations,
+      size: 0,
+    });
 
-  if (result.isErr()) {
-    return result;
-  }
+    if (result.isErr()) {
+      return result;
+    }
 
-  const ranking = searchFilter
-    ? result.value.aggregations?.ranking
-    : result.value.aggregations;
-  const rankedGroups = bucketsToArray<GroupBucket>(
-    ranking?.by_group?.buckets
-  ).map((bucket) => ({
-    key: String(bucket.key),
-    credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
-    count: countFromBucket(bucket, CONSUMPTION_DIMENSION_UNIT[dimension]),
-  }));
-  const totalCount = Math.round(ranking?.[TOTAL_COUNT_AGG]?.value ?? 0);
+    const ranking = searchFilter
+      ? result.value.aggregations?.ranking
+      : result.value.aggregations;
+    buckets = bucketsToArray<GroupBucket>(ranking?.by_group?.buckets);
+    rankedGroups.push(
+      ...buckets.map((bucket) => ({
+        key: String(bucket.key),
+        credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
+        count: countFromBucket(bucket, CONSUMPTION_DIMENSION_UNIT[dimension]),
+      }))
+    );
+    totalCredits = microCreditsToCredits(
+      result.value.aggregations?.total_credit_micro?.value ?? 0
+    );
+    totalCount = Math.round(ranking?.[TOTAL_COUNT_AGG]?.value ?? 0);
+  } while (
+    rankedGroups.length < requestedBucketCount &&
+    buckets.length === batchSize
+  );
+
   const pagedGroups = rankedGroups.slice(offset, offset + limit);
 
   const previousCreditsResult = await fetchConsumptionPreviousCredits(auth, {
@@ -374,9 +397,7 @@ export async function fetchConsumptionTopGroups(
     })),
     hasMore: totalCount > offset + limit,
     totalCount,
-    totalCredits: microCreditsToCredits(
-      result.value.aggregations?.total_credit_micro?.value ?? 0
-    ),
+    totalCredits,
   });
 }
 

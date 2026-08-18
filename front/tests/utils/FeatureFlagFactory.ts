@@ -1,5 +1,4 @@
 import type { Authenticator } from "@app/lib/auth";
-import { invalidateFeatureFlagsCache } from "@app/lib/auth";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
@@ -9,8 +8,5 @@ export class FeatureFlagFactory {
       auth.getNonNullableWorkspace(),
       featureName
     );
-
-    // Clear the memoizer cache so that the following calls see the updated feature flags.
-    invalidateFeatureFlagsCache(auth);
   }
 }

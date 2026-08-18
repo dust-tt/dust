@@ -31,8 +31,7 @@ vi.mock("@temporalio/activity", () => ({
 const PAST_THRESHOLD_MS = (PENDING_AGENTS_RETENTION_HOURS + 1) * 3600 * 1000;
 
 beforeEach(() => {
-  // Only fake Date — leave setImmediate/setTimeout real so lru-memoizer
-  // callbacks (used by getFeatureFlags) can fire.
+  // Only fake Date — leave setImmediate/setTimeout real for async work.
   vi.useFakeTimers({ toFake: ["Date"] });
 });
 

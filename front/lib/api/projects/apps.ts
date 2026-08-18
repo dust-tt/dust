@@ -778,8 +778,8 @@ export async function clonePodApp(
   }
 
   // Publish the copy's functions. The source path decides the prefix, so publishing from the copy's
-  // folder is what gives the clone its own functions; description and execution mode are carried over
-  // so the contract is identical.
+  // folder is what gives the clone its own functions; description, execution mode and default stake
+  // are carried over so the contract is identical.
   const publishedFunctionSlugs: string[] = [];
   for (const fn of source.functions) {
     const sourcePath = functionSourceByName.get(fn.name);
@@ -794,6 +794,7 @@ export async function clonePodApp(
       description: fn.description,
       path: sourcePath,
       executionMode: fn.executionMode,
+      defaultStake: fn.defaultStake,
     });
     if (publishResult.isErr()) {
       return new Err(

@@ -21,6 +21,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { PodAppManifest } from "@app/types/api/pod_app_archive";
 import { MAX_POD_APP_ARCHIVE_SIZE_BYTES } from "@app/types/api/pod_app_archive";
 import { MAX_POD_APP_NAME_LENGTH } from "@app/types/api/pod_apps";
+import { DEFAULT_SANDBOX_FUNCTION_STAKE } from "@app/types/api/sandbox_functions";
 import { frameContentType, sandboxFunctionContentType } from "@app/types/files";
 import type { PodFrameTab } from "@app/types/pod_frame_tab";
 import {
@@ -270,6 +271,56 @@ describe("POST /api/w/:wId/pods/:podId/apps/import", () => {
         path: `pod-${pod.sId}/TaskList/databases/tasks.db.ts`,
       })
     );
+  });
+
+  it("publishes with the default stake the manifest declares", async () => {
+    const { workspace, pod, auth } = await setupPod();
+    mockSandboxLeaves();
+
+    const manifest = taskListManifest();
+    const res = await importApp(
+      workspace.sId,
+      pod.sId,
+      buildArchive(
+        {
+          ...manifest,
+          functions: manifest.functions.map((fn) => ({
+            ...fn,
+            defaultStake: "never_ask" as const,
+          })),
+        },
+        taskListFiles()
+      )
+    );
+
+    expect(res.status).toBe(201);
+    const published = await SandboxFunctionResource.fetchBySpaceAndSlug(
+      auth,
+      pod,
+      "tasklist__add-task"
+    );
+    expect(published?.defaultStake).toBe("never_ask");
+  });
+
+  // An archive exported before stakes existed carries no `defaultStake`, and still imports: the
+  // field is optional at the same format version, so publish applies its own default.
+  it("publishes with the default stake when the manifest predates the field", async () => {
+    const { workspace, pod, auth } = await setupPod();
+    mockSandboxLeaves();
+
+    const res = await importApp(
+      workspace.sId,
+      pod.sId,
+      buildArchive(taskListManifest(), taskListFiles())
+    );
+
+    expect(res.status).toBe(201);
+    const published = await SandboxFunctionResource.fetchBySpaceAndSlug(
+      auth,
+      pod,
+      "tasklist__add-task"
+    );
+    expect(published?.defaultStake).toBe(DEFAULT_SANDBOX_FUNCTION_STAKE);
   });
 
   it("imports under the overriding name, deriving the prefix from it", async () => {

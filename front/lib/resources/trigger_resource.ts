@@ -24,6 +24,7 @@ import {
 import type {
   ScheduleConfig,
   TriggerExecutionMode,
+  TriggerKind,
   TriggerStatus,
   TriggerType,
   WebhookConfig,
@@ -265,6 +266,28 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return this.baseFetch(auth);
   }
 
+  static async countForWorkspace(
+    auth: Authenticator
+  ): Promise<{ enabled: number; total: number }> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const [enabled, total] = await Promise.all([
+      this.model.count({ where: { workspaceId, status: "enabled" } }),
+      this.model.count({ where: { workspaceId } }),
+    ]);
+
+    return { enabled, total };
+  }
+
+  static listByWorkspaceAndKinds(
+    auth: Authenticator,
+    kinds: TriggerKind[]
+  ): Promise<TriggerResource[]> {
+    return this.baseFetch(auth, {
+      where: { kind: { [Op.in]: kinds } },
+    });
+  }
+
   static async listBySpace(
     auth: Authenticator,
     spaceId: ModelId
@@ -446,6 +469,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         metadata: {
           trigger_type: trigger.kind,
           agent_id: trigger.agentConfigurationId,
+          status: blob.status,
         },
       });
     }
@@ -887,6 +911,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       metadata: {
         trigger_type: this.kind,
         agent_id: this.agentConfigurationId,
+        status: "enabled",
       },
     });
 
@@ -958,6 +983,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         metadata: {
           trigger_type: this.kind,
           agent_id: this.agentConfigurationId,
+          status: targetStatus,
         },
       });
     }

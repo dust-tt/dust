@@ -1,4 +1,6 @@
+import { AutomationsOverview } from "@app/components/workspace/analytics/automations/AutomationsOverview";
 import { AutomationsTriggersTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersTable";
+import type { AutomationsFilter } from "@app/components/workspace/analytics/automationsFilter";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
@@ -13,6 +15,7 @@ export function AnalyticsAutomationsPage() {
   const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
     DEFAULT_CONSUMPTION_PERIOD
   );
+  const [filter, setFilter] = useState<AutomationsFilter>({});
 
   if (!isEnabled) {
     return (
@@ -52,7 +55,13 @@ export function AnalyticsAutomationsPage() {
         }
       />
       <div className="flex flex-col gap-8 pb-8 pt-4">
-        <AutomationsTriggersTable workspaceId={owner.sId} period={period} />
+        <AutomationsOverview workspaceId={owner.sId} period={period} />
+        <AutomationsTriggersTable
+          owner={owner}
+          period={period}
+          filter={filter}
+          onFilterChange={setFilter}
+        />
       </div>
     </Page.Vertical>
   );

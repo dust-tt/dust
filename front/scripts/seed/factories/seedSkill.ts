@@ -83,7 +83,7 @@ async function addSkillEditors(
 
   // The owner is already in the group, and adding an existing member is an error.
   const activeMemberIds = new Set(
-    (await editorGroup.getActiveMembers(auth)).map((member) => member.sId)
+    ((await skill.listEditors(auth)) ?? []).map((member) => member.sId)
   );
   const usersToAdd = editors.filter(
     (editor) => !activeMemberIds.has(editor.sId)
