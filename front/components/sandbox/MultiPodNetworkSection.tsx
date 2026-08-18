@@ -3,6 +3,8 @@ import type { SandboxPodSelection } from "@app/lib/swr/sandbox";
 import {
   useBulkPodEgressPolicies,
   useBulkUpdateEgressDomain,
+  useDismissPodEgressRequestByPod,
+  useDismissWorkspaceEgressRequest,
   useWorkspaceEgressPolicy,
 } from "@app/lib/swr/sandbox";
 import { normalizeEgressPolicyDomain } from "@app/types/sandbox/egress_policy";
@@ -23,6 +25,7 @@ import {
   Plus,
   Spinner,
   Trash01,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -49,6 +52,14 @@ type DomainRow = {
   removableScopeCount: number;
 };
 
+// One agent-requested domain awaiting review, tied to the single scope it was
+// requested on — approve/reject act only on that origin.
+type PendingRequest = {
+  key: string;
+  domain: string;
+  scopeName: string;
+} & ({ scopeKind: "workspace" } | { scopeKind: "pod"; podId: string });
+
 // Bulk egress editor across the selected scopes (optionally the workspace
 // baseline, plus each selected Pod). Adding writes the domain to every selected
 // scope; removing a row clears it from the scopes that own it. Workspace
@@ -70,12 +81,17 @@ export function MultiPodNetworkSection({
   // domains are inherited by every Pod and shown as such.
   const {
     policy: workspacePolicy,
+    requestedDomains: workspaceRequestedDomains,
     isWorkspaceEgressPolicyLoading,
     isWorkspaceEgressPolicyError,
     mutateWorkspaceEgressPolicy,
   } = useWorkspaceEgressPolicy({ owner });
   const { bulkUpdateEgressDomain, isBulkUpdatingEgressDomain } =
     useBulkUpdateEgressDomain({ owner });
+  const { dismissWorkspaceEgressRequest, isDismissingRequest } =
+    useDismissWorkspaceEgressRequest({ owner });
+  const { dismissPodEgressRequest, isDismissingPodEgressRequest } =
+    useDismissPodEgressRequestByPod({ owner });
 
   const [domainInput, setDomainInput] = useState("");
   const [removeTarget, setRemoveTarget] = useState<DomainRow | null>(null);
@@ -96,6 +112,61 @@ export function MultiPodNetworkSection({
       ),
     [podPolicies]
   );
+  const podPolicyById = useMemo(
+    () => new Map(podPolicies.map(({ podId, policy }) => [podId, policy])),
+    [podPolicies]
+  );
+
+  // Agent-requested domains awaiting review, one row per originating scope
+  // (the workspace when selected, plus each selected Pod). A request already
+  // covered by that scope's allowlist is dropped.
+  const pendingRequests: PendingRequest[] = useMemo(() => {
+    const rows: PendingRequest[] = [];
+    if (includeWorkspace) {
+      for (const request of workspaceRequestedDomains) {
+        if (!workspaceDomains.has(request.domain)) {
+          rows.push({
+            key: `workspace:${request.domain}`,
+            domain: request.domain,
+            scopeName: "Workspace",
+            scopeKind: "workspace",
+          });
+        }
+      }
+    }
+    for (const pod of selectedPods) {
+      const owned = podOwnById.get(pod.sId);
+      for (const request of podPolicyById.get(pod.sId)?.requestedDomains ??
+        []) {
+        if (!owned?.has(request.domain)) {
+          rows.push({
+            key: `${pod.sId}:${request.domain}`,
+            domain: request.domain,
+            scopeName: pod.name,
+            scopeKind: "pod",
+            podId: pod.sId,
+          });
+        }
+      }
+    }
+    return rows.sort(
+      (a, b) =>
+        a.domain.localeCompare(b.domain) ||
+        a.scopeName.localeCompare(b.scopeName)
+    );
+  }, [
+    includeWorkspace,
+    workspaceRequestedDomains,
+    workspaceDomains,
+    selectedPods,
+    podOwnById,
+    podPolicyById,
+  ]);
+
+  const isRequestBusy =
+    isBulkUpdatingEgressDomain ||
+    isDismissingRequest ||
+    isDismissingPodEgressRequest;
 
   const domainRows: DomainRow[] = useMemo(() => {
     const domains = new Set<string>(workspaceDomains);
@@ -133,18 +204,31 @@ export function MultiPodNetworkSection({
     : null;
   const normalizedDomain =
     domainInputResult?.isOk() === true ? domainInputResult.value : null;
-  // Nothing to add when every editing scope already allows the domain.
+  // Adding writes to the workspace when it is selected (every Pod inherits the
+  // baseline, so there is no need to also write each Pod's file); otherwise it
+  // writes each selected Pod. Duplicate means the write target already allows
+  // it.
   const isDuplicate =
     normalizedDomain !== null &&
-    (!includeWorkspace || workspaceDomains.has(normalizedDomain)) &&
-    selectedPods.every((pod) => podOwnById.get(pod.sId)?.has(normalizedDomain));
+    (includeWorkspace
+      ? workspaceDomains.has(normalizedDomain)
+      : selectedPods.every((pod) =>
+          podOwnById.get(pod.sId)?.has(normalizedDomain)
+        ));
+  const addTargetLabel = includeWorkspace
+    ? "the Workspace, inherited by all Pods,"
+    : `the ${selectedPods.length} selected ${
+        selectedPods.length === 1 ? "Pod" : "Pods"
+      }`;
   const domainInputMessage =
     domainInputResult?.isErr() === true
       ? domainInputResult.error.message
       : isDuplicate
-        ? "This domain is already allowed in every selected scope."
+        ? includeWorkspace
+          ? "This domain is already allowed workspace-wide."
+          : "This domain is already allowed in every selected Pod."
         : normalizedDomain
-          ? `Will be added to the ${totalScopes} selected scopes as ${normalizedDomain}.`
+          ? `Will be added to ${addTargetLabel} as ${normalizedDomain}.`
           : "Use an exact domain such as api.openai.com or a wildcard such as *.mistral.ai.";
   const isDomainInputInvalid =
     domainInputResult?.isErr() === true || isDuplicate;
@@ -161,7 +245,9 @@ export function MultiPodNetworkSection({
     }
     const success = await bulkUpdateEgressDomain({
       includeWorkspace,
-      pods: selectedPods,
+      // A workspace-wide add is inherited by every Pod, so skip writing each
+      // Pod's own file; a Pod-only selection writes the selected Pods.
+      pods: includeWorkspace ? [] : selectedPods,
       operation: "add",
       domain: normalizedDomain,
     });
@@ -178,6 +264,33 @@ export function MultiPodNetworkSection({
       operation: "remove",
       domain,
     });
+    if (success) {
+      await revalidate();
+    }
+  };
+
+  // Approving adds the domain to the request's own scope (which then covers it
+  // for that scope); the pending row drops once the allowlist includes it.
+  const handleApproveRequest = async (request: PendingRequest) => {
+    const success = await bulkUpdateEgressDomain({
+      includeWorkspace: request.scopeKind === "workspace",
+      pods:
+        request.scopeKind === "pod"
+          ? selectedPods.filter((pod) => pod.sId === request.podId)
+          : [],
+      operation: "add",
+      domain: request.domain,
+    });
+    if (success) {
+      await revalidate();
+    }
+  };
+
+  const handleRejectRequest = async (request: PendingRequest) => {
+    const success =
+      request.scopeKind === "workspace"
+        ? await dismissWorkspaceEgressRequest(request.domain)
+        : await dismissPodEgressRequest(request.podId, request.domain);
     if (success) {
       await revalidate();
     }
@@ -219,7 +332,7 @@ export function MultiPodNetworkSection({
         </ContentMessage>
       );
     }
-    if (domainRows.length === 0) {
+    if (domainRows.length === 0 && pendingRequests.length === 0) {
       return (
         <ContentMessage variant="outline" size="lg">
           No domains are currently allowed in the selected scopes.
@@ -229,6 +342,45 @@ export function MultiPodNetworkSection({
 
     return (
       <div className="flex w-full flex-col divide-y divide-separator">
+        {pendingRequests.map((request) => (
+          <div key={request.key} className="flex items-center gap-3 py-3">
+            <div
+              title={request.domain}
+              className="flex min-w-0 grow items-center gap-2 overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2"
+            >
+              <span className="font-mono text-sm text-foreground">
+                {request.domain}
+              </span>
+              <Pill color="golden" label="Pending approval" />
+              <Pill
+                color={request.scopeKind === "workspace" ? "neutral" : "blue"}
+                label={request.scopeName}
+              />
+            </div>
+            <Button
+              variant="highlight"
+              size="mini"
+              label="Approve"
+              tooltip={`Add ${request.domain} to ${request.scopeName}`}
+              disabled={isRequestBusy}
+              onClick={() => {
+                void handleApproveRequest(request);
+              }}
+              className="shrink-0"
+            />
+            <Button
+              variant="ghost"
+              size="mini"
+              icon={XClose}
+              tooltip={`Reject ${request.domain} for ${request.scopeName}`}
+              disabled={isRequestBusy}
+              onClick={() => {
+                void handleRejectRequest(request);
+              }}
+              className="shrink-0"
+            />
+          </div>
+        ))}
         {domainRows.map((row) => (
           <div key={row.domain} className="flex items-center gap-3 py-3">
             <div
@@ -311,7 +463,7 @@ export function MultiPodNetworkSection({
       <Page.Vertical align="stretch" gap="lg">
         <Page.SectionHeader
           title="Allowed domains"
-          description={`Domains allowed across the ${totalScopes} selected scopes. Adding writes to every selected scope; Workspace domains are inherited by all Pods.`}
+          description={`Domains allowed across the ${totalScopes} selected scopes. Adding writes to the Workspace when it is selected (inherited by all Pods), otherwise to each selected Pod.`}
         />
         <form
           className="flex flex-col gap-3 sm:flex-row sm:items-start"

@@ -299,6 +299,60 @@ export function useBulkUpdateEgressDomain({
   };
 }
 
+// Rejects one agent-requested domain on a specific pod (its originating scope).
+// Parameterized by podId so the multi-scope view can reject across pods without
+// a hook bound per pod; the caller revalidates the bulk read on success.
+export function useDismissPodEgressRequestByPod({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+  const [isDismissing, setIsDismissing] = useState(false);
+
+  const dismissPodEgressRequest = async (
+    podId: string,
+    domain: string
+  ): Promise<boolean> => {
+    setIsDismissing(true);
+    try {
+      const response = await clientFetch(
+        `/api/w/${owner.sId}/spaces/${podId}/sandbox/egress-policy/requests/dismiss`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ domain }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await getErrorFromResponse(response);
+        sendNotification({
+          type: "error",
+          title: "Failed to reject domain request",
+          description: error.message,
+        });
+        return false;
+      }
+      return true;
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to reject domain request",
+        description: normalizeError(error).message,
+      });
+      return false;
+    } finally {
+      setIsDismissing(false);
+    }
+  };
+
+  return {
+    dismissPodEgressRequest,
+    isDismissingPodEgressRequest: isDismissing,
+  };
+}
+
 // Saves one env var to several pods in a single request (one independently
 // scoped row per pod). Pods are passed with their names so partial failures
 // can be reported readably.
