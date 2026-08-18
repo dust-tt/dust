@@ -206,9 +206,7 @@ export function GmailSendMailValidation({
             variant="outline"
             size="sm"
             icon={CheckDouble}
-            tooltip={
-              blockedAction.stake === "medium" ? alwaysAllowLabel : undefined
-            }
+            tooltip={alwaysAllowLabel}
             isRounded
             disabled={isSubmitting}
             onClick={() => void onApprove("always_approved")}

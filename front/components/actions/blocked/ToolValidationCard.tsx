@@ -254,11 +254,7 @@ export function ToolValidationCard({
               label="Always allow"
               variant="outline"
               icon={CheckDouble}
-              tooltip={
-                validationRequest.stake === "medium"
-                  ? getToolValidationAlwaysAllowLabel(validationRequest)
-                  : undefined
-              }
+              tooltip={getToolValidationAlwaysAllowLabel(validationRequest)}
               disabled={isSubmitting}
               isLoading={submittingDecision === "always_approved"}
               onClick={() => void handleValidation("always_approved")}
