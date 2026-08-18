@@ -10,7 +10,10 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import { isInteractiveContentType } from "@app/types/files";
+import {
+  isInteractiveContentType,
+  isWorkspaceVisibleShareScope,
+} from "@app/types/files";
 import type { PublicFrameResponseBodyType } from "@dust-tt/client";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -142,8 +145,7 @@ app.get(
 
       // For workspace_and_emails (and legacy "workspace"): workspace members are authorized directly.
       const isWorkspaceMemberWithAccess =
-        (shareScope === "workspace_and_emails" || shareScope === "workspace") &&
-        auth;
+        isWorkspaceVisibleShareScope(shareScope) && auth;
 
       if (!isFileOwner && !isWorkspaceMemberWithAccess) {
         // Resolve the verified email: prefer Dust session, fall back to external viewer cookie.
@@ -216,6 +218,13 @@ app.get(
       auth &&
       space.canAdministrate(auth)
     );
+    // The share token this viewer used is a workspace member's capability to invoke the frame's
+    // app's functions. For invite-only frames, a member only reaches this point with an active
+    // email grant (or as the frame's owner), which is the same rule the invocation gate applies.
+    const canInvokeViaShareCapability =
+      !!auth?.isUser() &&
+      (isWorkspaceVisibleShareScope(shareScope) ||
+        shareScope === "emails_only");
 
     // Generate access token for viz rendering.
     const accessToken = generateVizAccessToken({
@@ -247,9 +256,13 @@ app.get(
       isPodMember,
       isPodEditor,
       // Lets a shared Frame in an app folder resolve bare function references, exactly as it does
-      // when opened from the Pod. Withheld from viewers who cannot read the Pod, who cannot invoke
-      // its functions either.
-      framePath: canRead && auth ? file.toScopedPath(auth) : null,
+      // when opened from the Pod. Workspace members who may view the frame may invoke its app's
+      // functions, so they get the path even without pod read. External viewers cannot invoke
+      // and never receive it.
+      framePath:
+        auth && (canRead || canInvokeViaShareCapability)
+          ? file.toScopedPath(auth)
+          : null,
     });
   }
 );

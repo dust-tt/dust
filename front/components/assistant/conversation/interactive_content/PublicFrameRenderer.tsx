@@ -107,7 +107,7 @@ export function PublicFrameRenderer({
   );
   const viewer =
     publicUserIdentity && user && viewerWorkspace
-      ? { owner: viewerWorkspace, user }
+      ? { owner: viewerWorkspace, user, frameShareToken: shareToken }
       : null;
 
   if (

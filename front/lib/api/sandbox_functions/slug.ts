@@ -63,6 +63,19 @@ export function deriveAppPrefix({
 }
 
 /**
+ * The app prefix a published slug belongs to, or `null` for a function published from the pod
+ * root (bare slug, no app folder).
+ */
+export function appPrefixFromSlug(slug: string): string | null {
+  const separatorIndex = slug.indexOf(SANDBOX_FUNCTION_SLUG_SEPARATOR);
+  if (separatorIndex <= 0) {
+    return null;
+  }
+
+  return slug.slice(0, separatorIndex);
+}
+
+/**
  * The bare function name inside its app, i.e. the slug with its app prefix removed. Returns the whole
  * slug for a function published from the pod root, which has no prefix.
  *
