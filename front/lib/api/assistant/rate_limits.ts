@@ -85,6 +85,16 @@ export const makeFairUseAwuCreditsRateLimitKeyForUser = (
   return `workspace:${owner.id}:user:${user.id}:fair_use_awu_credit_count:${maxAwuCreditsTimeframe}`;
 };
 
+export const PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK = 25;
+export const PREMIUM_MODEL_MESSAGE_RATE_LIMIT_WINDOW_SECONDS = 7 * 24 * 60 * 60;
+
+export const makePremiumModelMessageRateLimitKeyForUser = (
+  workspace: LightWorkspaceType,
+  user: UserType
+) => {
+  return `workspace:${workspace.id}:user:${user.id}:premium_model_message_count`;
+};
+
 // Fixed-window counter backing the admin-configured per-user spend cap. Always
 // bucketed on the Metronome contract billing cycle (the fixed-window counter
 // appends the cycle-boundary label). Distinct from the rolling plan-level

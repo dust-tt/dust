@@ -342,6 +342,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable the per-user spend-cap backup: record per-user AWU usage into the Redis fixed-window counter and enforce it at message send (blocks with user_cap_reached). When off, usage is neither recorded nor enforced.",
     stage: "dust_only",
   },
+  enforce_premium_model_message_limit: {
+    description:
+      "Enforce the premium-model cap: block a message once the user has spent 25 premium-tier messages in the rolling week, on workspaces with a non-credit-priced (legacy) plan. Usage is counted regardless, so the flag only controls blocking.",
+    stage: "dust_only",
+  },
   editable_tool_inputs: {
     description:
       "Allow editing tool inputs before approving a tool call in the tool validation UI.",

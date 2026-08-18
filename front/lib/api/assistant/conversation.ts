@@ -34,6 +34,7 @@ import {
   batchRenderUserMessagesWithoutMentions,
 } from "@app/lib/api/assistant/messages";
 import { isProviderWhitelistedForAuth } from "@app/lib/api/assistant/models";
+import { checkPremiumModelMessageLimit } from "@app/lib/api/assistant/premium_model_limit";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
@@ -829,6 +830,17 @@ export async function postUserMessage(
       })
     : null;
 
+  if (user && modelResolution) {
+    const premiumModelLimitResult = await checkPremiumModelMessageLimit(auth, {
+      user,
+      resolvedModel: modelResolution.resolvedModel,
+      context,
+    });
+    if (premiumModelLimitResult.isErr()) {
+      return premiumModelLimitResult;
+    }
+  }
+
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages } = await withTransaction(async (t) => {
     // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
@@ -1237,6 +1249,17 @@ export async function editUserMessage(
         selection: message.requestedModel ?? undefined,
       })
     : null;
+
+  if (user && modelResolution) {
+    const premiumModelLimitResult = await checkPremiumModelMessageLimit(auth, {
+      user,
+      resolvedModel: modelResolution.resolvedModel,
+      context: message.context,
+    });
+    if (premiumModelLimitResult.isErr()) {
+      return premiumModelLimitResult;
+    }
+  }
 
   try {
     // In one big transaction create all Message, UserMessage, AgentMessage, and Mention rows.
@@ -1791,6 +1814,26 @@ export async function retryAgentMessage(
   });
   if (limitResult.isErr()) {
     return limitResult;
+  }
+
+  const user = auth.user();
+  if (user) {
+    const resolvedModel =
+      message.resolvedModel ??
+      (
+        await resolveModelForMentionedAgent(auth, {
+          configuration: message.configuration,
+        })
+      ).resolvedModel;
+
+    const premiumModelLimitResult = await checkPremiumModelMessageLimit(auth, {
+      user,
+      resolvedModel,
+      context: parentUserMessage.context,
+    });
+    if (premiumModelLimitResult.isErr()) {
+      return premiumModelLimitResult;
+    }
   }
 
   const retryAgentConfiguration = await getAgentConfiguration(auth, {
