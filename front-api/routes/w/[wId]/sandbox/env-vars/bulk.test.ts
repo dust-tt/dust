@@ -3,7 +3,10 @@ import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resour
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import type { PostSandboxEnvVarsBulkResponseBody } from "@app/types/api/sandbox/env_vars";
+import type {
+  DeleteSandboxEnvVarsBulkResponseBody,
+  PostSandboxEnvVarsBulkResponseBody,
+} from "@app/types/api/sandbox/env_vars";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -58,6 +61,28 @@ function postBulk(wId: string, body: unknown) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+function deleteBulk(wId: string, body: unknown) {
+  return honoApp.request(`/api/w/${wId}/sandbox/env-vars/bulk`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+async function seedEnvVar(
+  auth: Parameters<typeof SandboxEnvVarResource.upsert>[0],
+  scope: Parameters<typeof SandboxEnvVarResource.upsert>[1],
+  name: string
+) {
+  const upsert = await SandboxEnvVarResource.upsert(auth, scope, {
+    name,
+    value: "value",
+  });
+  if (upsert.isErr()) {
+    throw upsert.error;
+  }
 }
 
 describe("GET /api/w/:wId/sandbox/env-vars/bulk", () => {
@@ -383,5 +408,146 @@ describe("POST /api/w/:wId/sandbox/env-vars/bulk", () => {
     });
 
     expect(response.status).toBe(400);
+  });
+});
+
+describe("DELETE /api/w/:wId/sandbox/env-vars/bulk", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 403 when the computer_admin_pods flag is off", async () => {
+    const { workspace, podA } = await setupTest({
+      enableComputerAdminPods: false,
+    });
+
+    const response = await deleteBulk(workspace.sId, {
+      name: "DST_API_TOKEN",
+      kind: "config",
+      includeWorkspace: false,
+      podIds: [podA.sId],
+    });
+
+    expect(response.status).toBe(403);
+  });
+
+  it("deletes the variable from the workspace and each pod that defines it", async () => {
+    const { workspace, auth, podA, podB } = await setupTest();
+    const workspaceScope = {
+      kind: "workspace" as const,
+      workspace: auth.getNonNullableWorkspace(),
+    };
+    await seedEnvVar(auth, workspaceScope, "API_TOKEN");
+    await seedEnvVar(auth, { kind: "pod", pod: podA }, "API_TOKEN");
+    await seedEnvVar(auth, { kind: "pod", pod: podB }, "API_TOKEN");
+
+    const response = await deleteBulk(workspace.sId, {
+      name: "DST_API_TOKEN",
+      kind: "config",
+      includeWorkspace: true,
+      podIds: [podA.sId, podB.sId],
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      results: [
+        { scopeId: "workspace", success: true },
+        { scopeId: podA.sId, success: true },
+        { scopeId: podB.sId, success: true },
+      ],
+    });
+
+    for (const scope of [
+      workspaceScope,
+      { kind: "pod" as const, pod: podA },
+      { kind: "pod" as const, pod: podB },
+    ]) {
+      expect(
+        await SandboxEnvVarResource.listForScope(auth, scope)
+      ).toHaveLength(0);
+    }
+
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "sandbox_env_var.deleted" })
+    );
+  });
+
+  it("removes a pod override while leaving the workspace baseline intact", async () => {
+    const { workspace, auth, podA } = await setupTest();
+    const workspaceScope = {
+      kind: "workspace" as const,
+      workspace: auth.getNonNullableWorkspace(),
+    };
+    await seedEnvVar(auth, workspaceScope, "API_TOKEN");
+    await seedEnvVar(auth, { kind: "pod", pod: podA }, "API_TOKEN");
+
+    const response = await deleteBulk(workspace.sId, {
+      name: "DST_API_TOKEN",
+      kind: "config",
+      includeWorkspace: false,
+      podIds: [podA.sId],
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      results: [{ scopeId: podA.sId, success: true }],
+    });
+
+    expect(
+      await SandboxEnvVarResource.listForScope(auth, { kind: "pod", pod: podA })
+    ).toHaveLength(0);
+    expect(
+      await SandboxEnvVarResource.listForScope(auth, workspaceScope)
+    ).toHaveLength(1);
+  });
+
+  it("reports no-op success for scopes that do not define the name", async () => {
+    const { workspace, podA } = await setupTest();
+
+    const response = await deleteBulk(workspace.sId, {
+      name: "DST_MISSING",
+      kind: "config",
+      includeWorkspace: true,
+      podIds: [podA.sId],
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      results: [
+        { scopeId: "workspace", success: true },
+        { scopeId: podA.sId, success: true },
+      ],
+    });
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+  });
+
+  it("reports pod-not-found for unknown or non-project pods", async () => {
+    const { workspace, auth, podA } = await setupTest();
+    const regularSpace = await SpaceFactory.regular(workspace);
+    await seedEnvVar(auth, { kind: "pod", pod: podA }, "API_TOKEN");
+
+    const response = await deleteBulk(workspace.sId, {
+      name: "DST_API_TOKEN",
+      kind: "config",
+      includeWorkspace: false,
+      podIds: [podA.sId, "spc_unknown", regularSpace.sId],
+    });
+
+    expect(response.status).toBe(200);
+    const data =
+      (await response.json()) as DeleteSandboxEnvVarsBulkResponseBody;
+    expect(data.results).toEqual([
+      { scopeId: podA.sId, success: true },
+      {
+        scopeId: "spc_unknown",
+        success: false,
+        errorMessage: "Pod not found.",
+      },
+      {
+        scopeId: regularSpace.sId,
+        success: false,
+        errorMessage: "Pod not found.",
+      },
+    ]);
   });
 });

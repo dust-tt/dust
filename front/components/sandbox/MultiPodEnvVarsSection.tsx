@@ -7,6 +7,7 @@ import type {
 import { SandboxEnvVarFormDialog } from "@app/components/sandbox/SandboxEnvVarFormDialog";
 import type { SandboxPodSelection } from "@app/lib/swr/sandbox";
 import {
+  useBulkDeleteSandboxEnvVar,
   useBulkPodSandboxEnvVars,
   useSandboxEnvVars,
 } from "@app/lib/swr/sandbox";
@@ -16,10 +17,23 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   ContentMessage,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DotsHorizontal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   InfoCircle,
   Page,
+  PencilLine,
   Plus,
   Spinner,
+  Trash01,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -39,12 +53,12 @@ type VariableRow = {
   name: string;
   kind: SandboxEnvVarKind;
   hasWorkspaceVar: boolean;
-  // Names of selected pods carrying a pod-scoped row with this name.
-  overriddenInPodNames: string[];
+  // Selected pods carrying a pod-scoped row with this name.
+  overriddenInPods: { sId: string; name: string }[];
 };
 
-// Values are write-only and never compared; this view only shows which scopes
-// define each variable.
+// Values are write-only and never compared; this view shows which scopes
+// define each variable and edits it only in the scopes that already do.
 export function MultiPodEnvVarsSection({
   owner,
   selection,
@@ -54,19 +68,37 @@ export function MultiPodEnvVarsSection({
 }: MultiPodEnvVarsSectionProps) {
   const [dialogMode, setDialogMode] =
     useState<SandboxEnvVarFormDialogMode | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<VariableRow | null>(null);
 
-  const { envVars, isSandboxEnvVarsLoading, isSandboxEnvVarsError } =
-    useSandboxEnvVars({ owner });
+  const {
+    envVars,
+    isSandboxEnvVarsLoading,
+    isSandboxEnvVarsError,
+    mutateSandboxEnvVars,
+  } = useSandboxEnvVars({ owner });
   const {
     podEnvVars,
     isPodEnvVarsLoading,
     isPodEnvVarsError,
     mutatePodEnvVars,
   } = useBulkPodSandboxEnvVars({ owner, selection });
+  const { bulkDeleteSandboxEnvVar, isBulkDeletingSandboxEnvVar } =
+    useBulkDeleteSandboxEnvVar({ owner });
 
   const podNamesById = useMemo(
     () => new Map(selectedPods.map((pod) => [pod.sId, pod.name])),
     [selectedPods]
+  );
+
+  const workspaceEnvVarByName = useMemo(
+    () => new Map(envVars.map((envVar) => [envVar.name, envVar])),
+    [envVars]
+  );
+  // One representative pod row per name, for the kind/allowed-domains the
+  // override dialog prefills from.
+  const podEnvVarByName = useMemo(
+    () => new Map(podEnvVars.map((envVar) => [envVar.name, envVar])),
+    [podEnvVars]
   );
 
   const rows = useMemo(() => {
@@ -78,25 +110,28 @@ export function MultiPodEnvVarsSection({
         name: envVar.name,
         kind: envVar.kind,
         hasWorkspaceVar: true,
-        overriddenInPodNames: [],
+        overriddenInPods: [],
       });
     }
     for (const envVar of podEnvVars) {
       const podName = envVar.spaceId
         ? podNamesById.get(envVar.spaceId)
         : undefined;
-      if (!podName) {
+      if (!envVar.spaceId || !podName) {
         continue;
       }
       const row = rowsByName.get(envVar.name) ?? {
         name: envVar.name,
         kind: envVar.kind,
         hasWorkspaceVar: false,
-        overriddenInPodNames: [],
+        overriddenInPods: [],
       };
       rowsByName.set(row.name, {
         ...row,
-        overriddenInPodNames: [...row.overriddenInPodNames, podName],
+        overriddenInPods: [
+          ...row.overriddenInPods,
+          { sId: envVar.spaceId, name: podName },
+        ],
       });
     }
     return [...rowsByName.values()]
@@ -105,10 +140,59 @@ export function MultiPodEnvVarsSection({
         (row) =>
           includeWorkspace ||
           !row.hasWorkspaceVar ||
-          row.overriddenInPodNames.length > 0
+          row.overriddenInPods.length > 0
       )
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [envVars, podEnvVars, podNamesById, includeWorkspace]);
+
+  const revalidate = async () => {
+    await Promise.all([mutatePodEnvVars(), mutateSandboxEnvVars()]);
+  };
+
+  const podTargetingForMode = (mode: SandboxEnvVarFormDialogMode) => {
+    if (mode.kind === "create") {
+      return {
+        pods: allPods,
+        initialSelectedPodIds: selectedPods.map((pod) => pod.sId),
+      };
+    }
+    if (mode.kind === "override") {
+      const definingIds = podEnvVars
+        .filter((envVar) => envVar.name === mode.envVar.name)
+        .map((envVar) => envVar.spaceId)
+        .filter((sId): sId is string => sId !== null);
+      return {
+        pods: allPods.filter((pod) => definingIds.includes(pod.sId)),
+        initialSelectedPodIds: definingIds,
+      };
+    }
+    return undefined;
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) {
+      return;
+    }
+    const success = await bulkDeleteSandboxEnvVar({
+      name: deleteTarget.name,
+      kind: deleteTarget.kind,
+      includeWorkspace: includeWorkspace && deleteTarget.hasWorkspaceVar,
+      pods: deleteTarget.overriddenInPods,
+    });
+    setDeleteTarget(null);
+    if (success) {
+      await revalidate();
+    }
+  };
+
+  const deleteScopeSummary = deleteTarget
+    ? [
+        ...(includeWorkspace && deleteTarget.hasWorkspaceVar
+          ? ["the Workspace"]
+          : []),
+        ...deleteTarget.overriddenInPods.map((pod) => pod.name),
+      ].join(", ")
+    : "";
 
   const renderBody = () => {
     if (isSandboxEnvVarsLoading || isPodEnvVarsLoading) {
@@ -137,9 +221,15 @@ export function MultiPodEnvVarsSection({
     return (
       <div className="flex w-full flex-col divide-y divide-separator">
         {rows.map((row) => {
+          const workspaceEnvVar = workspaceEnvVarByName.get(row.name);
+          const podEnvVar = podEnvVarByName.get(row.name);
+          const canReplaceWorkspace =
+            includeWorkspace && row.hasWorkspaceVar && workspaceEnvVar;
+          const canReplacePods =
+            row.overriddenInPods.length > 0 && podEnvVar !== undefined;
           const scopeNames = [
             ...(includeWorkspace && row.hasWorkspaceVar ? ["Workspace"] : []),
-            ...row.overriddenInPodNames,
+            ...row.overriddenInPods.map((pod) => pod.name),
           ];
           return (
             <div key={row.name} className="flex items-center gap-3 py-3">
@@ -162,6 +252,50 @@ export function MultiPodEnvVarsSection({
                   />
                 ))}
               </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="mini"
+                    icon={DotsHorizontal}
+                    tooltip={`Edit ${row.name}`}
+                    className="shrink-0"
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {canReplaceWorkspace ? (
+                    <DropdownMenuItem
+                      label="Replace Workspace value"
+                      icon={PencilLine}
+                      onClick={() =>
+                        setDialogMode({
+                          kind: "replace",
+                          envVar: workspaceEnvVar,
+                        })
+                      }
+                    />
+                  ) : null}
+                  {canReplacePods ? (
+                    <DropdownMenuItem
+                      label={`Replace in ${
+                        row.overriddenInPods.length === 1
+                          ? "1 Pod"
+                          : `${row.overriddenInPods.length} Pods`
+                      }`}
+                      icon={PencilLine}
+                      onClick={() =>
+                        setDialogMode({ kind: "override", envVar: podEnvVar })
+                      }
+                    />
+                  ) : null}
+                  <DropdownMenuItem
+                    label="Delete"
+                    icon={Trash01}
+                    variant="warning"
+                    onClick={() => setDeleteTarget(row)}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           );
         })}
@@ -176,19 +310,51 @@ export function MultiPodEnvVarsSection({
           owner={owner}
           mode={dialogMode}
           onClose={() => setDialogMode(null)}
-          onSaved={() => void mutatePodEnvVars()}
+          onSaved={() => void revalidate()}
           existingEnvVars={[]}
-          podTargeting={{
-            pods: allPods,
-            initialSelectedPodIds: selectedPods.map((pod) => pod.sId),
-          }}
+          podTargeting={podTargetingForMode(dialogMode)}
         />
       ) : null}
+
+      <Dialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null);
+          }
+        }}
+      >
+        <DialogContent size="md" isAlertDialog>
+          <DialogHeader hideButton>
+            <DialogTitle>Delete environment variable</DialogTitle>
+            <DialogDescription>
+              {deleteTarget?.name} will be removed from {deleteScopeSummary}.
+              This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              disabled: isBulkDeletingSandboxEnvVar,
+            }}
+            rightButtonProps={{
+              label: "Delete",
+              variant: "warning",
+              disabled: isBulkDeletingSandboxEnvVar,
+              onClick: (event: React.MouseEvent) => {
+                event.preventDefault();
+                void handleConfirmDelete();
+              },
+            }}
+          />
+        </DialogContent>
+      </Dialog>
 
       <Page.Vertical align="stretch" gap="lg">
         <Page.SectionHeader
           title="Environment variables"
-          description="Which scopes define each variable. Values are write-only and never shown or compared."
+          description="Which scopes define each variable. Values are write-only and never shown or compared. Editing a variable only touches the scopes that already define it."
         />
 
         <div className="flex justify-end">

@@ -315,3 +315,85 @@ export async function bulkUpdateEgressDomain(
 
   return results;
 }
+
+// Deletes one env var (by suffix, the stored `name` column) from the selected
+// scopes: the workspace row and/or each pod's row. A scope that does not
+// define the name is a no-op success (idempotent removal). The resource's
+// delete emits the per-row sandbox_env_var.deleted event. Sequential for the
+// same reasons as the other bulk helpers.
+export async function deleteSandboxEnvVarForScopes(
+  auth: Authenticator,
+  {
+    name,
+    includeWorkspace,
+    podIds,
+    context,
+  }: {
+    name: string;
+    includeWorkspace: boolean;
+    podIds: string[];
+    context?: AuditLogContext;
+  }
+): Promise<ScopeMutationResult[]> {
+  const results: ScopeMutationResult[] = [];
+
+  if (includeWorkspace) {
+    const envVar = await SandboxEnvVarResource.fetchByName(
+      auth,
+      { kind: "workspace", workspace: auth.getNonNullableWorkspace() },
+      name
+    );
+    if (!envVar) {
+      results.push({ scopeId: SANDBOX_WORKSPACE_SCOPE_ID, success: true });
+    } else {
+      const deleted = await envVar.delete(auth, { context });
+      results.push(
+        deleted.isErr()
+          ? {
+              scopeId: SANDBOX_WORKSPACE_SCOPE_ID,
+              success: false,
+              errorMessage: deleted.error.message,
+            }
+          : { scopeId: SANDBOX_WORKSPACE_SCOPE_ID, success: true }
+      );
+    }
+  }
+
+  const spaces = await SpaceResource.fetchByIds(auth, podIds);
+  const spacesById = new Map(spaces.map((space) => [space.sId, space]));
+
+  for (const podId of podIds) {
+    const pod = spacesById.get(podId);
+    if (!pod || !pod.isProject()) {
+      results.push({
+        scopeId: podId,
+        success: false,
+        errorMessage: "Pod not found.",
+      });
+      continue;
+    }
+
+    const envVar = await SandboxEnvVarResource.fetchByName(
+      auth,
+      { kind: "pod", pod },
+      name
+    );
+    if (!envVar) {
+      results.push({ scopeId: podId, success: true });
+      continue;
+    }
+
+    const deleted = await envVar.delete(auth, { context });
+    results.push(
+      deleted.isErr()
+        ? {
+            scopeId: podId,
+            success: false,
+            errorMessage: deleted.error.message,
+          }
+        : { scopeId: podId, success: true }
+    );
+  }
+
+  return results;
+}

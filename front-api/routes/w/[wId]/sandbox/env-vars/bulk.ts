@@ -1,5 +1,6 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import {
+  deleteSandboxEnvVarForScopes,
   parseSandboxAdminPodSelection,
   resolveSandboxAdminPods,
   SandboxAdminPodSelectionQuerySchema,
@@ -12,6 +13,7 @@ import {
 } from "@app/lib/api/sandbox/env_vars";
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import type {
+  DeleteSandboxEnvVarsBulkResponseBody,
   GetSandboxEnvVarsBulkResponseBody,
   PostSandboxEnvVarsBulkResponseBody,
 } from "@app/types/api/sandbox/env_vars";
@@ -28,6 +30,13 @@ const PostSandboxEnvVarsBulkBodySchema = z.object({
   kind: z.enum(SANDBOX_ENV_VAR_KINDS).optional(),
   allowedDomains: z.array(z.string()).nullable().optional(),
   podIds: z.array(z.string()).min(1).max(100),
+});
+
+const DeleteSandboxEnvVarsBulkBodySchema = z.object({
+  name: z.string().min(1),
+  kind: z.enum(SANDBOX_ENV_VAR_KINDS),
+  includeWorkspace: z.boolean(),
+  podIds: z.array(z.string()).max(100),
 });
 
 // Mounted at /api/w/:wId/sandbox/env-vars/bulk. Multi-pod reads and writes for
@@ -124,6 +133,41 @@ app.post(
       value: body.value,
       kind,
       allowedDomains: normalizedDomains.value,
+      context: getAuditLogContext(auth),
+    });
+
+    return ctx.json({ results });
+  }
+);
+
+/** @ignoreswagger */
+app.delete(
+  "/",
+  validate("json", DeleteSandboxEnvVarsBulkBodySchema),
+  async (ctx): HandlerResult<DeleteSandboxEnvVarsBulkResponseBody> => {
+    const auth = ctx.get("auth");
+    const body = ctx.req.valid("json");
+
+    // Rows are stored under the suffix; accept the prefixed wire name and
+    // strip it, rejecting a prefix that disagrees with the kind.
+    const parsedName = parseSandboxEnvVarNameForKind({
+      kind: body.kind,
+      name: body.name,
+    });
+    if (parsedName.isErr()) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `name: ${parsedName.error}`,
+        },
+      });
+    }
+
+    const results = await deleteSandboxEnvVarForScopes(auth, {
+      name: parsedName.value,
+      includeWorkspace: body.includeWorkspace,
+      podIds: [...new Set(body.podIds)],
       context: getAuditLogContext(auth),
     });
 

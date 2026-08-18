@@ -15,6 +15,7 @@ import type {
 } from "@app/types/api/sandbox/egress_policy";
 import { SANDBOX_WORKSPACE_SCOPE_ID } from "@app/types/api/sandbox/egress_policy";
 import type {
+  DeleteSandboxEnvVarsBulkResponseBody,
   GetSandboxEnvVarsBulkResponseBody,
   GetSandboxEnvVarsResponseBody,
   PostSandboxEnvVarsBulkResponseBody,
@@ -374,6 +375,102 @@ export function useBulkUpsertSandboxEnvVar({
   return {
     bulkUpsertSandboxEnvVar,
     isBulkUpsertingSandboxEnvVar: isUpserting,
+  };
+}
+
+// Deletes one env var (by full name) from the selected scopes (optionally the
+// workspace, plus each pod) in a single request. Pods carry their name so
+// partial failures read back per scope. The caller revalidates on success.
+export function useBulkDeleteSandboxEnvVar({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const bulkDeleteSandboxEnvVar = async ({
+    name,
+    kind,
+    includeWorkspace,
+    pods,
+  }: {
+    name: string;
+    kind: SandboxEnvVarKind;
+    includeWorkspace: boolean;
+    pods: { sId: string; name: string }[];
+  }): Promise<boolean> => {
+    setIsDeleting(true);
+    try {
+      const response = await clientFetch(sandboxEnvVarsBulkUrl(owner.sId), {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          kind,
+          includeWorkspace,
+          podIds: pods.map((pod) => pod.sId),
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await getErrorFromResponse(response);
+        sendNotification({
+          type: "error",
+          title: "Failed to delete environment variable",
+          description: error.message,
+        });
+        return false;
+      }
+
+      const data: DeleteSandboxEnvVarsBulkResponseBody = await response.json();
+      const nameByScopeId = new Map<string, string>([
+        [SANDBOX_WORKSPACE_SCOPE_ID, "Workspace"],
+        ...pods.map((pod) => [pod.sId, pod.name] as const),
+      ]);
+      const failures = data.results.filter((result) => !result.success);
+      if (failures.length > 0) {
+        const okCount = data.results.length - failures.length;
+        sendNotification({
+          type: "error",
+          title: "Environment variable partially deleted",
+          description: `${name} was deleted from ${okCount} of ${data.results.length} scopes. Failed: ${failures
+            .map(
+              (failure) =>
+                `${nameByScopeId.get(failure.scopeId) ?? failure.scopeId}: ${
+                  failure.errorMessage ?? "unknown error"
+                }`
+            )
+            .join(" — ")}`,
+        });
+        return false;
+      }
+
+      sendNotification({
+        type: "success",
+        title: "Environment variable deleted",
+        description: `${name} was removed from ${
+          data.results.length === 1
+            ? "1 scope"
+            : `${data.results.length} scopes`
+        }.`,
+      });
+      return true;
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to delete environment variable",
+        description: normalizeError(error).message,
+      });
+      return false;
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return {
+    bulkDeleteSandboxEnvVar,
+    isBulkDeletingSandboxEnvVar: isDeleting,
   };
 }
 

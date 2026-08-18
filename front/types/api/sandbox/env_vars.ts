@@ -1,3 +1,4 @@
+import type { ScopeMutationResult } from "@app/lib/api/sandbox/admin_pods";
 import type { SandboxEnvVarType } from "@app/types/sandbox/env_var";
 
 export type GetSandboxEnvVarsResponseBody = {
@@ -25,4 +26,10 @@ export type PodSandboxEnvVarBulkResult = {
 
 export type PostSandboxEnvVarsBulkResponseBody = {
   results: PodSandboxEnvVarBulkResult[];
+};
+
+// Delete reports per scope (workspace and/or pods), unlike the pods-only
+// upsert, since a variable can be removed from the workspace baseline too.
+export type DeleteSandboxEnvVarsBulkResponseBody = {
+  results: ScopeMutationResult[];
 };
