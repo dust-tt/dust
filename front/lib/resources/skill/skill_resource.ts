@@ -143,19 +143,17 @@ type SkillReferenceTarget = {
   status: SkillStatus;
 };
 
-type SkillDisplayMetadataCacheEntry = {
-  id: ModelId;
-  icon: string | null;
-  name: string;
-  requestedSpaceIds: ModelId[];
-  userFacingDescription: string | null;
-};
-
-type SkillDisplayMetadata = Omit<
-  SkillDisplayMetadataCacheEntry,
-  "id" | "requestedSpaceIds"
+type SkillListActiveCacheEntry = Omit<
+  Attributes<SkillConfigurationModel>,
+  | "createdAt"
+  | "instructions"
+  | "instructionsHtml"
+  | "lastReinforcementAnalysisAt"
+  | "updatedAt"
 > & {
-  sId: string;
+  createdAt: string;
+  lastReinforcementAnalysisAt: string | null;
+  updatedAt: string;
 };
 
 type ReplaceSkillReferenceTagsOptions = {
@@ -300,49 +298,51 @@ const GLOBAL_SKILL_ROLE_GRANTS: RoleGrant[] = [
   { role: "builder", permissions: ["read"] },
 ];
 
-const SKILL_DISPLAY_METADATA_CACHE_ID = "skill_display_metadata_by_workspace";
-const SKILL_DISPLAY_METADATA_CACHE_KEY_VERSION = 1;
-const SKILL_DISPLAY_METADATA_CACHE_TTL_MS = 15 * 60 * 1000;
-const skillDisplayMetadataCacheKey = (workspaceId: string) =>
-  `v${SKILL_DISPLAY_METADATA_CACHE_KEY_VERSION}:${workspaceId}`;
+const SKILL_LIST_ACTIVE_CACHE_ID = "skill_list_active_by_workspace";
+const SKILL_LIST_ACTIVE_CACHE_KEY_VERSION = 1;
+const SKILL_LIST_ACTIVE_CACHE_TTL_MS = 15 * 60 * 1000;
+const skillListActiveCacheKey = (workspaceId: string) =>
+  `v${SKILL_LIST_ACTIVE_CACHE_KEY_VERSION}:${workspaceId}`;
 
-// Cache only database metadata. Space permissions and code-defined skill restrictions stay live.
-const skillDisplayMetadataCache = defineCache<
+const skillListActiveCache = defineCache<
   { workspaceId: string; workspaceModelId: ModelId },
-  SkillDisplayMetadataCacheEntry[]
+  SkillListActiveCacheEntry[]
 >({
-  id: SKILL_DISPLAY_METADATA_CACHE_ID,
-  key: ({ workspaceId }) => skillDisplayMetadataCacheKey(workspaceId),
+  id: SKILL_LIST_ACTIVE_CACHE_ID,
+  key: ({ workspaceId }) => skillListActiveCacheKey(workspaceId),
   load: async ({ workspaceModelId }) => {
     const skills = await SkillConfigurationModel.findAll({
-      attributes: [
-        "id",
-        "icon",
-        "name",
-        "requestedSpaceIds",
-        "userFacingDescription",
-      ],
+      attributes: { exclude: ["instructions", "instructionsHtml"] },
       where: { status: "active", workspaceId: workspaceModelId },
     });
 
-    return skills.map((skill) => ({
-      id: skill.id,
-      icon: skill.icon,
-      name: skill.name,
-      requestedSpaceIds: skill.requestedSpaceIds,
-      userFacingDescription: skill.userFacingDescription,
-    }));
+    return skills.map((skill) => {
+      const attributes = skill.get();
+      return {
+        ...omit(attributes, [
+          "createdAt",
+          "instructions",
+          "instructionsHtml",
+          "lastReinforcementAnalysisAt",
+          "updatedAt",
+        ]),
+        createdAt: attributes.createdAt.toISOString(),
+        lastReinforcementAnalysisAt:
+          attributes.lastReinforcementAnalysisAt?.toISOString() ?? null,
+        updatedAt: attributes.updatedAt.toISOString(),
+      };
+    });
   },
-  ttlMs: SKILL_DISPLAY_METADATA_CACHE_TTL_MS,
+  ttlMs: SKILL_LIST_ACTIVE_CACHE_TTL_MS,
 });
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
 
-  static readonly displayMetadataCacheOperations = defineCacheOperations({
-    id: SKILL_DISPLAY_METADATA_CACHE_ID,
-    label: "Skill display metadata (by workspace)",
+  static readonly listActiveCacheOperations = defineCacheOperations({
+    id: SKILL_LIST_ACTIVE_CACHE_ID,
+    label: "Active skills (by workspace)",
     inputSchema: z.object({ workspaceId: z.string().min(1) }),
     params: [
       {
@@ -354,12 +354,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     ],
     buildKey: ({ workspaceId }) =>
       buildCacheWithRedisKey(
-        SKILL_DISPLAY_METADATA_CACHE_ID,
-        skillDisplayMetadataCacheKey(workspaceId)
+        SKILL_LIST_ACTIVE_CACHE_ID,
+        skillListActiveCacheKey(workspaceId)
       ),
     keyPattern: buildCacheWithRedisKey(
-      SKILL_DISPLAY_METADATA_CACHE_ID,
-      skillDisplayMetadataCacheKey("*")
+      SKILL_LIST_ACTIVE_CACHE_ID,
+      skillListActiveCacheKey("*")
     ),
   });
 
@@ -526,41 +526,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
-  private static async filterBySpacePermissions<
-    T extends { requestedSpaceIds: ModelId[] },
-  >(auth: Authenticator, skills: T[], transaction?: Transaction): Promise<T[]> {
-    const uniqueRequestedSpaceIds = uniq(
-      skills.flatMap((skill) => skill.requestedSpaceIds)
-    );
-    const spaces =
-      uniqueRequestedSpaceIds.length > 0
-        ? await SpaceResource.fetchByModelIds(auth, uniqueRequestedSpaceIds, {
-            transaction,
-          })
-        : [];
-    const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
-    const foundSpaceIds = new Set(spaces.map((space) => space.id));
-
-    return skills.filter(
-      (skill) =>
-        skill.requestedSpaceIds.every((id) => foundSpaceIds.has(id)) &&
-        auth.hasPermissionForAcls(
-          "read",
-          createAccessControlListFromSpacesWithMap(
-            spaceIdToGroupsMap,
-            skill.requestedSpaceIds,
-            auth.getNonNullableWorkspace().id
-          )
-        )
-    );
-  }
-
-  private invalidateDisplayMetadataCache(
+  private invalidateListActiveCache(
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
-    return skillDisplayMetadataCache.invalidate(
+    return skillListActiveCache.invalidate(
       {
         workspaceId: workspace.sId,
         workspaceModelId: workspace.id,
@@ -569,39 +540,31 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
-  static async listDisplayMetadataByWorkspace(
+  private static async listActiveModelsByWorkspace(
     auth: Authenticator
-  ): Promise<SkillDisplayMetadata[]> {
+  ): Promise<SkillConfigurationModel[]> {
     const workspace = auth.getNonNullableWorkspace();
-    const customSkills = await this.filterBySpacePermissions(
-      auth,
-      await skillDisplayMetadataCache.get({
-        workspaceId: workspace.sId,
-        workspaceModelId: workspace.id,
-      })
-    );
-    const codeDefinedSkills = [
-      ...(await GlobalSkillsRegistry.findAll(auth, { status: "active" })),
-      ...(await SystemSkillsRegistry.findAll(auth, { status: "active" })),
-    ];
+    const cachedSkills = await skillListActiveCache.get({
+      workspaceId: workspace.sId,
+      workspaceModelId: workspace.id,
+    });
 
-    return [
-      ...customSkills.map((skill) => ({
-        sId: this.modelIdToSId({
-          id: skill.id,
-          workspaceId: workspace.id,
-        }),
-        icon: skill.icon,
-        name: skill.name,
-        userFacingDescription: skill.userFacingDescription,
-      })),
-      ...codeDefinedSkills.map((skill) => ({
-        sId: skill.sId,
-        icon: skill.icon,
-        name: skill.name,
-        userFacingDescription: skill.userFacingDescription,
-      })),
-    ];
+    return cachedSkills.map(
+      ({ createdAt, lastReinforcementAnalysisAt, updatedAt, ...attributes }) =>
+        this.model.build(
+          {
+            ...attributes,
+            createdAt: new Date(createdAt),
+            instructions: "",
+            instructionsHtml: null,
+            lastReinforcementAnalysisAt: lastReinforcementAnalysisAt
+              ? new Date(lastReinforcementAnalysisAt)
+              : null,
+            updatedAt: new Date(updatedAt),
+          },
+          { isNewRecord: false, raw: true }
+        )
+    );
   }
 
   static async makeNew(
@@ -700,7 +663,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       // association itself.
       await skillResource.writeGroupPermissions(auth, { transaction });
 
-      await skillResource.invalidateDisplayMetadataCache(auth, transaction);
+      await skillResource.invalidateListActiveCache(auth, transaction);
 
       return skillResource;
     });
@@ -805,6 +768,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     context: {
       agentLoopData?: AgentLoopExecutionData;
       effectiveSpaceIds?: string[];
+      preloadedCustomSkills?: SkillConfigurationModel[];
       transaction?: Transaction;
     } = {}
   ): Promise<SkillResource[]> {
@@ -812,6 +776,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const {
       agentLoopData,
       effectiveSpaceIds: providedEffectiveSpaceIds,
+      preloadedCustomSkills,
       transaction,
     } = context;
 
@@ -826,25 +791,49 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ...otherOptions
     } = options;
 
-    const customSkills = await this.model.findAll({
-      ...otherOptions,
-      ...(withInstructions
-        ? {}
-        : { attributes: { exclude: ["instructions", "instructionsHtml"] } }),
-      where: {
-        // Fetch active by default, unless explicitly overridden by the caller.
-        status: "active",
-        ...omit(where, "sId"),
-        workspaceId: workspace.id,
-      },
-      include: includes,
-      transaction,
-    });
+    const customSkills =
+      preloadedCustomSkills ??
+      (await this.model.findAll({
+        ...otherOptions,
+        ...(withInstructions
+          ? {}
+          : { attributes: { exclude: ["instructions", "instructionsHtml"] } }),
+        where: {
+          // Fetch active by default, unless explicitly overridden by the caller.
+          status: "active",
+          ...omit(where, "sId"),
+          workspaceId: workspace.id,
+        },
+        include: includes,
+        transaction,
+      }));
 
-    const allowedCustomSkills = await this.filterBySpacePermissions(
-      auth,
-      customSkills,
-      transaction
+    // Check if the user has access to skill requested spaces.
+    const uniqueRequestedSpaceIds = uniq(
+      customSkills.flatMap((c) => c.requestedSpaceIds)
+    );
+    const spaces =
+      uniqueRequestedSpaceIds.length > 0
+        ? await SpaceResource.fetchByModelIds(auth, uniqueRequestedSpaceIds, {
+            transaction,
+          })
+        : [];
+    const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
+    const foundSpaceIds = new Set(spaces.map((s) => s.id));
+
+    const validCustomSkills = customSkills.filter((skill) =>
+      skill.requestedSpaceIds.every((id) => foundSpaceIds.has(id))
+    );
+
+    const allowedCustomSkills = validCustomSkills.filter((skill) =>
+      auth.hasPermissionForAcls(
+        "read",
+        createAccessControlListFromSpacesWithMap(
+          spaceIdToGroupsMap,
+          skill.requestedSpaceIds,
+          auth.getNonNullableWorkspace().id
+        )
+      )
     );
     const allowedCustomSkillIds = allowedCustomSkills.map((skill) => skill.id);
 
@@ -1683,19 +1672,32 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       withFileAttachments?: boolean;
     } = {}
   ): Promise<SkillResource[]> {
-    const skills = await this.baseFetch(auth, {
-      where: {
-        status,
-        ...(availability !== undefined ? { availability } : {}),
-        ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
-        ...(reinforcementNotOff ? { reinforcement: { [Op.ne]: "off" } } : {}),
+    const preloadedCustomSkills =
+      status === "active" &&
+      limit === undefined &&
+      availability === undefined &&
+      updatedAfter === undefined &&
+      !reinforcementNotOff &&
+      !withInstructions
+        ? await this.listActiveModelsByWorkspace(auth)
+        : undefined;
+    const skills = await this.baseFetch(
+      auth,
+      {
+        where: {
+          status,
+          ...(availability !== undefined ? { availability } : {}),
+          ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
+          ...(reinforcementNotOff ? { reinforcement: { [Op.ne]: "off" } } : {}),
+        },
+        ...(limit ? { limit } : {}),
+        onlyCustom,
+        withInstructions,
+        withTools,
+        withFileAttachments,
       },
-      ...(limit ? { limit } : {}),
-      onlyCustom,
-      withInstructions,
-      withTools,
-      withFileAttachments,
-    });
+      { preloadedCustomSkills }
+    );
 
     if (globalSpaceOnly) {
       const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
@@ -3264,7 +3266,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         }
       }
 
-      await this.invalidateDisplayMetadataCache(auth, transaction);
+      await this.invalidateListActiveCache(auth, transaction);
 
       return count;
     });
@@ -3310,7 +3312,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         }
       }
 
-      await this.invalidateDisplayMetadataCache(auth, transaction);
+      await this.invalidateListActiveCache(auth, transaction);
 
       return count;
     });
@@ -3457,7 +3459,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         { transaction }
       );
 
-      await this.invalidateDisplayMetadataCache(auth, transaction);
+      await this.invalidateListActiveCache(auth, transaction);
     });
 
     if (fileAttachments) {
@@ -4138,7 +4140,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           transaction,
         });
 
-        await this.invalidateDisplayMetadataCache(auth, transaction);
+        await this.invalidateListActiveCache(auth, transaction);
 
         return deletedCount;
       });
@@ -4446,7 +4448,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where: { workspaceId },
     });
 
-    await skillDisplayMetadataCache.invalidate({
+    await skillListActiveCache.invalidate({
       workspaceId: workspace.sId,
       workspaceModelId: workspace.id,
     });

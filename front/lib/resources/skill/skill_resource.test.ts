@@ -157,20 +157,22 @@ describe("SkillResource", () => {
       expect(skill.instructions).toBe("");
       expect(skill.instructionsHtml).toBeNull();
     });
-  });
 
-  describe("listDisplayMetadataByWorkspace", () => {
-    it("refreshes cached metadata after a skill update and archive", async () => {
+    it("refreshes the cached active list after a skill update and archive", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Cached skill name",
         userFacingDescription: "Cached skill description",
       });
+      const listActiveSkills = () =>
+        SkillResource.listByWorkspace(testContext.authenticator, {
+          onlyCustom: true,
+          withInstructions: false,
+          withTools: false,
+          withFileAttachments: false,
+        });
 
-      const initialMetadata =
-        await SkillResource.listDisplayMetadataByWorkspace(
-          testContext.authenticator
-        );
-      expect(initialMetadata).toContainEqual(
+      const initialSkills = await listActiveSkills();
+      expect(initialSkills).toContainEqual(
         expect.objectContaining({
           sId: skill.sId,
           name: "Cached skill name",
@@ -189,11 +191,8 @@ describe("SkillResource", () => {
         requestedSpaceIds: [],
       });
 
-      const updatedMetadata =
-        await SkillResource.listDisplayMetadataByWorkspace(
-          testContext.authenticator
-        );
-      expect(updatedMetadata).toContainEqual(
+      const updatedSkills = await listActiveSkills();
+      expect(updatedSkills).toContainEqual(
         expect.objectContaining({
           sId: skill.sId,
           name: "Updated skill name",
@@ -203,10 +202,8 @@ describe("SkillResource", () => {
 
       await skill.archive(testContext.authenticator);
 
-      const activeMetadata = await SkillResource.listDisplayMetadataByWorkspace(
-        testContext.authenticator
-      );
-      expect(activeMetadata).not.toContainEqual(
+      const activeSkills = await listActiveSkills();
+      expect(activeSkills).not.toContainEqual(
         expect.objectContaining({ sId: skill.sId })
       );
     });

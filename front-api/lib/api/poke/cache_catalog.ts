@@ -11,7 +11,7 @@ import {
 
 const migratedCacheOperations = [
   WorkspaceResource.byIdCacheOperations,
-  SkillResource.displayMetadataCacheOperations,
+  SkillResource.listActiveCacheOperations,
   workspaceActiveSeatsCacheOperations,
 ];
 
