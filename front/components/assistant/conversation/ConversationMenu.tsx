@@ -58,6 +58,7 @@ import {
   Eye,
   EyeOff,
   GitBranch01,
+  Icon,
   Link01,
   LinkExternal01,
   MessageCircle01,
@@ -452,10 +453,18 @@ export function ConversationMenu({
           />
           <DropdownMenuItem
             label="Branch conversation"
+            description="Opens in a new tab"
             onClick={() => {
               void branchConversation();
             }}
             icon={GitBranch01}
+            endComponent={
+              <Icon
+                visual={LinkExternal01}
+                size="xs"
+                className="text-muted-foreground"
+              />
+            }
             disabled={isBranching}
           />
           <DropdownMenuSeparator />

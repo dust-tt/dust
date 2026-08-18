@@ -1,7 +1,7 @@
 import { useConversations } from "@app/hooks/conversations/useConversations";
 import { useSendNotification } from "@app/hooks/useNotification";
+import config from "@app/lib/api/config";
 import { clientFetch } from "@app/lib/egress/client";
-import { useAppRouter } from "@app/lib/platform";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { PostConversationForkResponseBody } from "@app/types/api/assistant/conversation/forks";
@@ -34,7 +34,6 @@ export function useBranchConversation({
   onConversationBranched?: () => Promise<void> | void;
 }) {
   const sendNotification = useSendNotification();
-  const router = useAppRouter();
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
     options: { disabled: true },
@@ -127,9 +126,21 @@ export function useBranchConversation({
         }
 
         void onConversationBranched?.();
-        await router.push(
-          getConversationRoute(owner.sId, responseBody.conversationId)
+        window.open(
+          getConversationRoute(
+            owner.sId,
+            responseBody.conversationId,
+            undefined,
+            config.getAppUrl()
+          ),
+          "_blank"
         );
+
+        sendNotification({
+          type: "success",
+          title: "Branch created",
+          description: "Opened in a new tab.",
+        });
 
         return true;
       } catch {
@@ -149,7 +160,6 @@ export function useBranchConversation({
       mutateConversations,
       onConversationBranched,
       owner.sId,
-      router,
       sendNotification,
     ]
   );

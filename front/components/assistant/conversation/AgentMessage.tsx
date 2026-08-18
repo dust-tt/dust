@@ -115,9 +115,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   GitBranch01,
+  Icon,
   InfoCircle,
   InteractiveImageGrid,
   Link01,
+  LinkExternal01,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -826,7 +828,15 @@ export function AgentMessage({
 
     dropdownItems.push({
       label: "Branch from here",
+      description: "Opens in a new tab",
       icon: GitBranch01,
+      endComponent: (
+        <Icon
+          visual={LinkExternal01}
+          size="xs"
+          className="text-muted-foreground"
+        />
+      ),
       onSelect: () => {
         void branchConversation(agentMessage.sId);
       },
