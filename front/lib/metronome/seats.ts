@@ -1822,6 +1822,30 @@ export async function syncSeatCount({
     for (const { sub, seatType } of seatSubscriptions) {
       const subscriptionId = sub.id!;
       const quantityMode = sub.quantity_management_mode ?? "QUANTITY_ONLY";
+      const subscriptionEndingBeforeMs = sub.ending_before
+        ? Date.parse(sub.ending_before)
+        : undefined;
+
+      const shouldSkipTimestamp = (tMs: number): boolean => {
+        if (
+          subscriptionEndingBeforeMs === undefined ||
+          tMs < subscriptionEndingBeforeMs
+        ) {
+          return false;
+        }
+        logger.info(
+          {
+            workspaceId: workspace.sId,
+            contractId,
+            subscriptionId,
+            seatType,
+            tMs,
+            endingBefore: sub.ending_before,
+          },
+          "[Metronome] Skipping seat reconciliation at or after subscription end"
+        );
+        return true;
+      };
 
       if (quantityMode === "SEAT_BASED") {
         // One reconcile per distinct effective moment. `desiredSIds` and the
@@ -1832,6 +1856,9 @@ export async function syncSeatCount({
         // membership unchanged therefore only moves the *unassigned* seats (the
         // floor top-up), since the assigned real users stay the same.
         for (const tMs of effectiveTimestampsMs) {
+          if (shouldSkipTimestamp(tMs)) {
+            continue;
+          }
           const isImmediateBase = tMs === baseMs && !startingAt;
           // Immediate base sync: let Metronome default to "now" for both the
           // write (`starting_at`) and the read (`covering_date`). Any other
@@ -1884,6 +1911,9 @@ export async function syncSeatCount({
         // unbilled.
         let lastQuantity: number | undefined;
         for (const tMs of effectiveTimestampsMs) {
+          if (shouldSkipTimestamp(tMs)) {
+            continue;
+          }
           const isImmediateBase = tMs === baseMs && !startingAt;
           const segmentStartingAt = isImmediateBase
             ? startingAt
