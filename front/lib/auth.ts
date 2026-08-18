@@ -371,7 +371,13 @@ export class Authenticator {
   }
 
   async refresh({ transaction }: { transaction?: Transaction } = {}) {
-    if (this._user && this._workspace) {
+    if (!this._workspace) {
+      return;
+    }
+
+    // Reload group memberships for user-backed auths. Key auths carry a fixed group set derived
+    // from the key (not from live membership), so their `_groupModelIds` are left as-is.
+    if (this._user) {
       this._groupModelIds = Authenticator.isMember(this._role)
         ? await GroupResource.dangerouslyListUserGroupsForAuth({
             user: this._user,
@@ -379,12 +385,20 @@ export class Authenticator {
             transaction,
           })
         : [];
-      // Group memberships changed, so capabilities may have changed too: re-resolve them.
-      this._permissions = await Authenticator.resolvePermissions({
-        workspace: this._workspace,
-        groupModelIds: this._groupModelIds,
-      });
     }
+
+    // Re-resolve grants from the current group set. Grants on those groups can change (backfill,
+    // updatePermissions, create_pod, ...) even when the membership set does not, so this must run
+    // for every auth — including auths that have no user (API/system keys, internal auths), which
+    // the `_user` gate above skips. The agent loop freezes a serialized (user-less) key auth at
+    // workflow start and refreshes it per step (see `fromJsonWithRefrehedGroups`); without this it
+    // would keep a stale grant snapshot and deny access to resources granted mid-run. System keys
+    // scan the workspace grant set to avoid sending their whole group list to Postgres.
+    this._permissions = await Authenticator.resolvePermissions({
+      workspace: this._workspace,
+      groupModelIds: this._groupModelIds,
+      scanWorkspacePermissions: this.isSystemKey(),
+    });
   }
 
   /**

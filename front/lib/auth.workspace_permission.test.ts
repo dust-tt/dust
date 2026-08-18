@@ -311,3 +311,37 @@ describe("Authenticator.fromKey permission resolution", () => {
     expect(workspaceAuth.getGrantedVerbs("agent", 99)).toEqual([]);
   });
 });
+
+describe("Authenticator.refresh permission resolution", () => {
+  it("re-resolves grants for a user-less (system key) auth", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const { systemGroup } = await GroupFactory.defaults(workspace);
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const group = await GroupFactory.regularManual(workspace, "eng");
+
+    // A system-key auth has no user; its grant snapshot is resolved once at build time. The agent
+    // loop freezes it at workflow start and refreshes it on every step.
+    const key = await KeyFactory.system(systemGroup);
+    const { workspaceAuth } = await Authenticator.fromKey(key, workspace.sId);
+    expect(workspaceAuth.getGroupPermissions("agent", 42)).toEqual([]);
+
+    // A grant lands on one of the key's groups AFTER the auth was built (mirrors a backfill or an
+    // updatePermissions write arriving mid-run).
+    await GroupPermissionResource.grant(adminAuth, {
+      group,
+      grantType: "editor",
+      resourceType: "agent",
+      resourceId: 42,
+    });
+
+    // refresh() must observe the new grant even though the auth has no user. Before the fix the
+    // `_user`-gated body skipped user-less auths entirely, leaving the stale (empty) snapshot.
+    await workspaceAuth.refresh();
+
+    expect(
+      workspaceAuth.getGroupPermissions("agent", 42).map((grant) => grant.id)
+    ).toEqual([group.id]);
+  });
+});
