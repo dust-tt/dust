@@ -50,10 +50,7 @@ import type {
   SkillDefinition,
 } from "@app/lib/resources/skill/code_defined/shared";
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
-import type {
-  SkillConfigurationFindOptions,
-  SkillHydrationOptions,
-} from "@app/lib/resources/skill/types";
+import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
@@ -1665,7 +1662,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async listByDataSourceViewIds(
     auth: Authenticator,
     dataSourceViewIds: ModelId[],
-    opts: SkillHydrationOptions = {}
+    {
+      withInstructions = true,
+      withTools = true,
+      withFileAttachments = true,
+    }: Pick<
+      SkillConfigurationFindOptions,
+      "withInstructions" | "withTools" | "withFileAttachments"
+    > = {}
   ): Promise<SkillResource[]> {
     if (dataSourceViewIds.length === 0) {
       return [];
@@ -1698,7 +1702,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         status: "active",
       },
       onlyCustom: true,
-      ...opts,
+      withInstructions,
+      withTools,
+      withFileAttachments,
     });
   }
 
@@ -1708,7 +1714,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async listByDataSourceIds(
     auth: Authenticator,
     dataSourceIds: ModelId[],
-    opts: SkillHydrationOptions = {}
+    {
+      withInstructions = true,
+      withTools = true,
+      withFileAttachments = true,
+    }: Pick<
+      SkillConfigurationFindOptions,
+      "withInstructions" | "withTools" | "withFileAttachments"
+    > = {}
   ): Promise<SkillResource[]> {
     if (dataSourceIds.length === 0) {
       return [];
@@ -1741,7 +1754,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         status: "active",
       },
       onlyCustom: true,
-      ...opts,
+      withInstructions,
+      withTools,
+      withFileAttachments,
     });
   }
 

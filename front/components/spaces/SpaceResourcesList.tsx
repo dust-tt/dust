@@ -1,3 +1,5 @@
+import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
+import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
 import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
@@ -8,7 +10,6 @@ import { EditSpaceStaticDatasourcesViews } from "@app/components/spaces/EditSpac
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
-import { useUsedByDetailsSheets } from "@app/components/spaces/useUsedByDetailsSheets";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { ViewFolderAPIModal } from "@app/components/ViewFolderAPIModal";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
@@ -281,10 +282,8 @@ export const SpaceResourcesList = ({
   activeSeats,
 }: SpaceResourcesListProps) => {
   const { isDark } = useTheme();
-  const { onAgentClick, onSkillClick, sheets } = useUsedByDetailsSheets(
-    owner,
-    user
-  );
+  const [agentId, setAgentId] = useState<string | null>(null);
+  const [skillId, setSkillId] = useState<string | null>(null);
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
   const [selectedDataSourceView, setSelectedDataSourceView] =
@@ -612,7 +611,18 @@ export const SpaceResourcesList = ({
 
   return (
     <>
-      {sheets}
+      <AgentDetailsSheet
+        owner={owner}
+        user={user}
+        agentId={agentId}
+        onClose={() => setAgentId(null)}
+      />
+      <SkillDetailsSheetById
+        owner={owner}
+        user={user}
+        skillId={skillId}
+        onClose={() => setSkillId(null)}
+      />
 
       {isEmpty && (
         <div
@@ -633,8 +643,8 @@ export const SpaceResourcesList = ({
           className="dd-privacy-mask"
           data={rows}
           columns={getTableColumns(
-            onAgentClick,
-            onSkillClick,
+            setAgentId,
+            setSkillId,
             isManagedCategory,
             isWebsite,
             space,
