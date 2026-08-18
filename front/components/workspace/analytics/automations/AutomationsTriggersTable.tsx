@@ -32,6 +32,9 @@ const TRIGGERS_PAGE_SIZE = 25;
 interface TriggerRowData extends AutomationTriggerRow {
   displayStatus: TriggerStatus;
   isStatusPending: boolean;
+  // Whether the current viewer (the trigger's editor, or an admin) can
+  // toggle this row — the status endpoint rejects anyone else with a 403.
+  canManage: boolean;
   onToggleStatus: () => void;
   // onClick satisfies DataTable's row shape, which is otherwise a weak type.
   onClick?: () => void;
@@ -84,6 +87,25 @@ function RunningCell({ row }: { row: TriggerRowData }) {
     case "enabled":
     case "disabled":
     case "disabled_by_admin":
+      if (!row.canManage) {
+        return (
+          <Tooltip
+            label={
+              row.displayStatus === "disabled_by_admin"
+                ? "Only an admin can re-enable this automation."
+                : `Only ${row.editor.name} or an admin can manage this automation.`
+            }
+            trigger={
+              <div>
+                <SliderToggle
+                  selected={row.displayStatus === "enabled"}
+                  disabled
+                />
+              </div>
+            }
+          />
+        );
+      }
       return (
         <SliderToggle
           selected={row.displayStatus === "enabled"}
@@ -292,7 +314,7 @@ export function AutomationsTriggersTable({
       offset: pagination.pageIndex * pagination.pageSize,
     });
 
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const confirm = useContext(ConfirmContext);
   const updateTriggerStatus = useUpdateTriggerStatus({ workspaceId });
 
@@ -369,14 +391,21 @@ export function AutomationsTriggersTable({
       triggers.map((trigger) => {
         const displayStatus =
           statusOverrides[trigger.triggerId] ?? trigger.status;
+        // Mirrors the status endpoint: the editor manages their own
+        // editor-owned status, an admin manages anything.
+        const canManage =
+          isAdmin ||
+          (getTriggerStatusOwner(displayStatus) === "editor" &&
+            trigger.editor.userId === user.sId);
         return {
           ...trigger,
           displayStatus,
           isStatusPending: pendingIds.has(trigger.triggerId),
+          canManage,
           onToggleStatus: () => void handleToggle(trigger, displayStatus),
         };
       }),
-    [triggers, statusOverrides, pendingIds, handleToggle]
+    [triggers, statusOverrides, pendingIds, handleToggle, isAdmin, user.sId]
   );
 
   return (

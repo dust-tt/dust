@@ -46,6 +46,7 @@ export type AutomationTriggerRow = {
     modelDisplayName: string | null;
   };
   editor: {
+    userId: string | null;
     name: string;
     email: string | null;
     pictureUrl: string | null;
@@ -162,28 +163,41 @@ type WebhookSourceLabel = {
   icon: InternalAllowedIconType | CustomResourceIconType;
 };
 
+type ResolvedWebhookSources = {
+  labels: Map<ModelId, WebhookSourceLabel>;
+  // Views that exist (possibly restricted) as opposed to deleted/missing —
+  // lets callers tell "restricted" and "gone" apart.
+  existingIds: Set<ModelId>;
+};
+
 async function resolveWebhookSources(
   auth: Authenticator,
   triggers: TriggerResource[]
-): Promise<Map<ModelId, WebhookSourceLabel>> {
+): Promise<ResolvedWebhookSources> {
   const webhookSourceViewModelIds = [
     ...new Set(removeNulls(triggers.map((t) => t.webhookSourceViewId))),
   ];
   if (webhookSourceViewModelIds.length === 0) {
-    return new Map();
+    return { labels: new Map(), existingIds: new Set() };
   }
 
-  const views = await WebhookSourcesViewResource.fetchByModelIds(
-    auth,
-    webhookSourceViewModelIds
-  );
+  const [views, existingIds] = await Promise.all([
+    WebhookSourcesViewResource.fetchByModelIds(auth, webhookSourceViewModelIds),
+    WebhookSourcesViewResource.existsByModelIds(
+      auth,
+      webhookSourceViewModelIds
+    ),
+  ]);
 
-  return new Map(
-    views.map((view) => [
-      view.id,
-      { name: view.name, icon: normalizeWebhookIcon(view.icon) },
-    ])
-  );
+  return {
+    labels: new Map(
+      views.map((view) => [
+        view.id,
+        { name: view.name, icon: normalizeWebhookIcon(view.icon) },
+      ])
+    ),
+    existingIds,
+  };
 }
 
 export async function fetchAutomationTriggers(
@@ -245,7 +259,7 @@ export async function fetchAutomationTriggers(
     const agentLabel = agentLabels.get(trigger.agentConfigurationId);
     const editor = editorsByModelId.get(trigger.editor);
     const webhookSource = trigger.webhookSourceViewId
-      ? webhookSources.get(trigger.webhookSourceViewId)
+      ? webhookSources.labels.get(trigger.webhookSourceViewId)
       : undefined;
     const triggerJSON = trigger.toJSON();
 
@@ -263,6 +277,7 @@ export async function fetchAutomationTriggers(
         modelDisplayName: agentLabel?.modelDisplayName ?? null,
       },
       editor: {
+        userId: editor?.sId ?? null,
         name: getUserDisplayName(editor),
         email: editor?.email ?? null,
         pictureUrl: editor?.imageUrl ?? null,
@@ -271,12 +286,13 @@ export async function fetchAutomationTriggers(
         ? describeScheduleConfig(triggerJSON.configuration)
         : null,
       webhookSourceName: webhookSource?.name ?? null,
-      // A webhook trigger always points at a view; if it didn't resolve, the
-      // caller lacks read access to the space that holds it.
+      // Restricted means the view still exists but the caller lacks read
+      // access to its space — as opposed to a deleted/missing view, which
+      // falls back to a generic "Webhook" label instead.
       webhookSourceRestricted:
-        trigger.kind === "webhook" &&
+        !webhookSource &&
         !!trigger.webhookSourceViewId &&
-        !webhookSource,
+        webhookSources.existingIds.has(trigger.webhookSourceViewId),
       webhookIcon: webhookSource?.icon ?? null,
       runCount,
       credits,
