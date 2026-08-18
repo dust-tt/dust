@@ -11,11 +11,13 @@ Classic failure: text boxes on blank canvas, imagery gone, Arial everywhere. Pla
 
 Loop: copy, inspect, pick mode, edit every slide, QA every slide, audit, deliver.
 
-## 1. Copy, then inspect
+## 1. Copy to /tmp, then inspect
 
-\`cp /files/conversation/template.pptx /files/conversation/output.pptx\`
+\`cp /files/conversation/template.pptx /tmp/deck.pptx\`
 
 Copy keeps masters, theme, media, embedded fonts. Blank \`Presentation()\` only if no deck at all.
+
+**Work in /tmp, copy back at the end.** \`/files/conversation\` is a network mount: every command that opens a deck there re-reads the whole file, tens of seconds on a big one, most of a slow run. Renders still publish to the conversation.
 
 \`\`\`bash
 pptx_inspect FILE                  # theme, fonts, words/slide, per-slide pic/chart/table
@@ -25,7 +27,7 @@ pptx_inspect FILE --slide 2,5,7-9  # shapes, boxes in inches, ph idx, vanchor, f
 pptx_inspect FILE --help           # every other flag
 \`\`\`
 
-Structure only from pptx_inspect: never markitdown, never a PDF render. Full \`/files/conversation/...\` paths. Patterns everywhere: one call, not one per slide. Legacy \`.ppt\`: convert first (\`soffice --headless --convert-to pptx\`). \`.potx\` = \`.pptx\`, keep its extension.
+Structure only from pptx_inspect: never markitdown, never a PDF render. Patterns everywhere: one call, not one per slide. Legacy \`.ppt\`: convert first (\`soffice --headless --convert-to pptx\`). \`.potx\` = \`.pptx\`, keep its extension.
 
 theme = your whole palette. fonts = what layouts resolve to, so \`theme-fallback\` text has left the template. words/slide max = density ceiling. pic/chart/table = slides carrying imagery worth cloning.
 
@@ -46,6 +48,8 @@ pptx_slides FILE --delete 14-16,20-24
 \`\`\`
 
 Every add, move, delete through \`pptx_slides\`: shares image parts, deep-clones charts; hand-edited \`sldId\`s strand orphan parts. Structure first, content after: duplicating later clones your edits. Never content on \`BLANK\`. Never an emoji or drawn rectangle in place of the template's icon or photo.
+
+**Clone slides, not layouts.** \`add_slide(layout)\` gives an empty frame: the template's photos and icons live on its slides, not its layouts, so a layout-built deck comes out image-free and fails §5. The overview's pic/chart/table counts say which slides carry them: duplicate those.
 
 Mode C: state audience, purpose, one palette, one title font, one body font, the outline; hold constant. Brand assets the user names: use them. Titles 36-44pt, body 14-16pt left-aligned.
 
@@ -109,9 +113,9 @@ The renderer only has metric-compatible stand-ins for Calibri, Cambria, Arial, T
 
 ## 5. Audit, then deliver
 
-\`pptx_inspect out.pptx --compare /files/conversation/template.pptx\`
+\`pptx_inspect /tmp/deck.pptx --compare /files/conversation/template.pptx\`
 
-Design fidelity + package integrity in one pass. Clear every \`[!]\`: fonts dropped or imagery stripped (you rebuilt instead of editing: start again from the copy), layout collapse, density, and under \`Package:\` anything that stops PowerPoint opening the file (stranded part, relationship pointing nowhere, duplicate shape id). Package faults mean you edited the zip by hand: redo those edits through \`pptx_slides\` and python-pptx. No template: \`--validate\` runs the package half alone. Deliver on \`[QA: PASS]\`, every slide read back clean.
+Design fidelity + package integrity in one pass. Copy the finished deck back to \`/files/conversation/\` once it passes. Clear every \`[!]\`: fonts dropped or imagery stripped (you rebuilt instead of editing: start again from the copy), layout collapse, density, and under \`Package:\` anything that stops PowerPoint opening the file (stranded part, relationship pointing nowhere, duplicate shape id). Package faults mean you edited the zip by hand: redo those edits through \`pptx_slides\` and python-pptx. No template: \`--validate\` runs the package half alone. Deliver on \`[QA: PASS]\`, every slide read back clean.
 
 ## Defaults
 
