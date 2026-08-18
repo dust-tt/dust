@@ -55,6 +55,22 @@ function TypeCell({ trigger }: { trigger: AutomationTriggerRow }) {
         />
       );
     case "webhook":
+      if (trigger.webhookSourceRestricted) {
+        return (
+          <Tooltip
+            label="This webhook lives in a space you don't have access to."
+            tooltipTriggerAsChild
+            trigger={
+              <div>
+                <TypeLabel
+                  visual={getIcon("ActionLockIcon")}
+                  label="Restricted webhook"
+                />
+              </div>
+            }
+          />
+        );
+      }
       return (
         <TypeLabel
           visual={getIcon(normalizeWebhookIcon(trigger.webhookIcon))}
@@ -73,10 +89,9 @@ function TypeCell({ trigger }: { trigger: AutomationTriggerRow }) {
 
 function RunningCell({ row }: { row: TriggerRowData }) {
   switch (row.displayStatus) {
-    // The page is admin-only, so an admin-locked trigger stays toggleable here.
     case "enabled":
     case "disabled":
-    case "disabled_by_admin":
+    case "disabled_by_manager":
       return (
         <SliderToggle
           selected={row.displayStatus === "enabled"}
@@ -385,7 +400,7 @@ export function AutomationsTriggersTable({
       if (nextStatus === "disabled") {
         const confirmed = await confirm({
           title: "Disable this automation?",
-          message: `"${trigger.name}" will stop running for ${trigger.editor.name}. Only an admin will be able to re-enable it.`,
+          message: `"${trigger.name}" will stop running for ${trigger.editor.name}. A manager or admin will be able to re-enable it.`,
           validateVariant: "warning",
           validateLabel: "Disable",
           cancelLabel: "Cancel",
@@ -402,12 +417,12 @@ export function AutomationsTriggersTable({
         status: nextStatus,
       });
       if (success) {
-        // This page is admin-only, so a disable is stored server-side as
-        // disabled_by_admin.
+        // Anyone who can reach this page is a manager or admin, so the
+        // server always stores a disable from here as disabled_by_manager.
         setStatusOverrides((overrides) => ({
           ...overrides,
           [trigger.triggerId]:
-            nextStatus === "disabled" ? "disabled_by_admin" : "enabled",
+            nextStatus === "disabled" ? "disabled_by_manager" : "enabled",
         }));
       }
       setPendingIds((ids) => {

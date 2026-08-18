@@ -7,7 +7,7 @@ type ChipColor = React.ComponentProps<typeof Chip>["color"];
 const STATUS_CHIP_COLORS: Record<TriggerStatus, ChipColor> = {
   enabled: "success",
   disabled: "primary",
-  disabled_by_admin: "warning",
+  disabled_by_manager: "warning",
   relocating: "info",
   downgraded: "warning",
 };
@@ -15,7 +15,7 @@ const STATUS_CHIP_COLORS: Record<TriggerStatus, ChipColor> = {
 export const TRIGGER_STATUS_LABELS: Record<TriggerStatus, string> = {
   enabled: "Enabled",
   disabled: "Disabled",
-  disabled_by_admin: "Disabled by admin",
+  disabled_by_manager: "Disabled by manager",
   relocating: "Relocating",
   downgraded: "Downgraded",
 };

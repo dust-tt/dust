@@ -75,7 +75,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/st
 
     expect(response.status).toBe(204);
     const updated = await TriggerResource.fetchById(editorAuth, trigger.sId);
-    expect(updated?.status).toBe("disabled_by_admin");
+    expect(updated?.status).toBe("disabled_by_manager");
   });
 
   it("stores a plain disabled status when the editor pauses their own trigger", async () => {
@@ -119,7 +119,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/st
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const trigger = await TriggerFactory.webhook(auth, {
       agentConfigurationId: agent.sId,
-      status: "disabled_by_admin",
+      status: "disabled_by_manager",
     });
 
     const response = await patchStatus(workspace, agent.sId, trigger.sId, {
@@ -128,7 +128,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/st
 
     expect(response.status).toBe(403);
     const updated = await TriggerResource.fetchById(auth, trigger.sId);
-    expect(updated?.status).toBe("disabled_by_admin");
+    expect(updated?.status).toBe("disabled_by_manager");
   });
 
   it("lets an admin re-enable an admin-locked trigger", async () => {
@@ -140,7 +140,87 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/st
     const agent = await AgentConfigurationFactory.createTestAgent(editorAuth);
     const trigger = await TriggerFactory.webhook(editorAuth, {
       agentConfigurationId: agent.sId,
-      status: "disabled_by_admin",
+      status: "disabled_by_manager",
+    });
+
+    const response = await patchStatus(workspace, agent.sId, trigger.sId, {
+      status: "enabled",
+    });
+
+    expect(response.status).toBe(204);
+    const updated = await TriggerResource.fetchById(editorAuth, trigger.sId);
+    expect(updated?.status).toBe("enabled");
+  });
+
+  it("lets a manager disable and re-enable a trigger they own", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "manager",
+    });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const trigger = await TriggerFactory.webhook(auth, {
+      agentConfigurationId: agent.sId,
+      status: "enabled",
+    });
+
+    const disableResponse = await patchStatus(
+      workspace,
+      agent.sId,
+      trigger.sId,
+      { status: "disabled" }
+    );
+    expect(disableResponse.status).toBe(204);
+    let updated = await TriggerResource.fetchById(auth, trigger.sId);
+    // Managers have the same standing as admins here, so even a manager's
+    // own trigger locks the same way an admin's action would.
+    expect(updated?.status).toBe("disabled_by_manager");
+
+    const enableResponse = await patchStatus(
+      workspace,
+      agent.sId,
+      trigger.sId,
+      { status: "enabled" }
+    );
+    expect(enableResponse.status).toBe(204);
+    updated = await TriggerResource.fetchById(auth, trigger.sId);
+    expect(updated?.status).toBe("enabled");
+  });
+
+  it("lets a manager disable and lock another member's trigger", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "manager",
+    });
+    const editorAuth = await createOtherEditorAuth(workspace);
+    const agent = await AgentConfigurationFactory.createTestAgent(editorAuth);
+    const trigger = await TriggerFactory.webhook(editorAuth, {
+      agentConfigurationId: agent.sId,
+      status: "enabled",
+    });
+
+    const response = await patchStatus(workspace, agent.sId, trigger.sId, {
+      status: "disabled",
+    });
+
+    expect(response.status).toBe(204);
+    const updated = await TriggerResource.fetchById(editorAuth, trigger.sId);
+    expect(updated?.status).toBe("disabled_by_manager");
+  });
+
+  it("lets a manager re-enable an admin-locked trigger", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "manager",
+    });
+    const editorAuth = await createOtherEditorAuth(workspace);
+    const agent = await AgentConfigurationFactory.createTestAgent(editorAuth);
+    const trigger = await TriggerFactory.webhook(editorAuth, {
+      agentConfigurationId: agent.sId,
+      status: "disabled_by_manager",
     });
 
     const response = await patchStatus(workspace, agent.sId, trigger.sId, {
@@ -249,7 +329,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/st
 
   it.each<{ body: unknown }>([
     { body: { status: "relocating" } },
-    { body: { status: "disabled_by_admin" } },
+    { body: { status: "disabled_by_manager" } },
   ])("rejects a status outside enabled/disabled ($body)", async ({ body }) => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "PATCH",

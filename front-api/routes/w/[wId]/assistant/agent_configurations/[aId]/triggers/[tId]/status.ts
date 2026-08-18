@@ -47,13 +47,13 @@ app.patch(
       });
     }
 
-    if (!auth.isAdmin() && trigger.editor !== auth.getNonNullableUser().id) {
+    if (!auth.isManager() && trigger.editor !== auth.getNonNullableUser().id) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
           message:
-            "Only admins or the editor of the trigger can change its status.",
+            "Only managers, admins, or the editor of the trigger can change its status.",
         },
       });
     }
@@ -87,7 +87,7 @@ app.patch(
       case "disabled":
         result = await trigger.disable(
           auth,
-          auth.isAdmin() ? "disabled_by_admin" : "disabled"
+          auth.isManager() ? "disabled_by_manager" : "disabled"
         );
         break;
       default:
