@@ -13,6 +13,7 @@ import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { SANDBOX_WORKSPACE_SCOPE_ID } from "@app/types/api/sandbox/egress_policy";
 import type { PodSandboxEnvVarBulkResult } from "@app/types/api/sandbox/env_vars";
 import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
 import type { SandboxEnvVarKind } from "@app/types/sandbox/env_var";
@@ -156,8 +157,6 @@ export type ScopeMutationResult = {
   errorMessage?: string;
 };
 
-const WORKSPACE_SCOPE_ID = "workspace";
-
 // Emits the same sandbox_egress_policy.updated event as the single-pod PUT
 // route. space_id carries the pod sId for pods and is omitted for the
 // workspace scope (same convention as sandbox_env_var.* events).
@@ -264,12 +263,12 @@ export async function bulkUpdateEgressDomain(
     const result = await applyWorkspace();
     if (result.isErr()) {
       results.push({
-        scopeId: WORKSPACE_SCOPE_ID,
+        scopeId: SANDBOX_WORKSPACE_SCOPE_ID,
         success: false,
         errorMessage: result.error.message,
       });
     } else {
-      results.push({ scopeId: WORKSPACE_SCOPE_ID, success: true });
+      results.push({ scopeId: SANDBOX_WORKSPACE_SCOPE_ID, success: true });
       if (result.value.changed) {
         emitEgressPolicyAudit(auth, {
           podId: null,

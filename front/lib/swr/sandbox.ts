@@ -10,8 +10,10 @@ import {
 import type {
   GetPodEgressPoliciesBulkResponseBody,
   GetWorkspaceEgressPolicyResponseBody,
+  PostBulkEgressPolicyResponseBody,
   PutWorkspaceEgressPolicyResponseBody,
 } from "@app/types/api/sandbox/egress_policy";
+import { SANDBOX_WORKSPACE_SCOPE_ID } from "@app/types/api/sandbox/egress_policy";
 import type {
   GetSandboxEnvVarsBulkResponseBody,
   GetSandboxEnvVarsResponseBody,
@@ -172,6 +174,114 @@ export function useBulkPodEgressPolicies({
     isPodPoliciesLoading: disabled || !selection ? false : isLoading,
     isPodPoliciesError: !!error,
     mutatePodPolicies: mutate,
+  };
+}
+
+// Adds or removes one egress domain across the selected scopes (optionally the
+// workspace baseline, plus each pod) in a single request. Pods carry their
+// name so partial failures read back per scope. The caller revalidates the
+// affected reads on success.
+export function useBulkUpdateEgressDomain({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const bulkUpdateEgressDomain = async ({
+    includeWorkspace,
+    pods,
+    operation,
+    domain,
+  }: {
+    includeWorkspace: boolean;
+    pods: { sId: string; name: string }[];
+    operation: "add" | "remove";
+    domain: string;
+  }): Promise<boolean> => {
+    setIsUpdating(true);
+    const failureTitle =
+      operation === "add" ? "Failed to add domain" : "Failed to remove domain";
+    try {
+      const response = await clientFetch(
+        `/api/w/${owner.sId}/sandbox/egress-policy/bulk`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            includeWorkspace,
+            podIds: pods.map((pod) => pod.sId),
+            operation: { operation, domain },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await getErrorFromResponse(response);
+        sendNotification({
+          type: "error",
+          title: failureTitle,
+          description: error.message,
+        });
+        return false;
+      }
+
+      const data: PostBulkEgressPolicyResponseBody = await response.json();
+      const nameByScopeId = new Map<string, string>([
+        [SANDBOX_WORKSPACE_SCOPE_ID, "Workspace"],
+        ...pods.map((pod) => [pod.sId, pod.name] as const),
+      ]);
+      const scopeLabel = (count: number) =>
+        count === 1 ? "1 scope" : `${count} scopes`;
+      const verb = operation === "add" ? "added to" : "removed from";
+
+      const failures = data.results.filter((result) => !result.success);
+      if (failures.length > 0) {
+        const okCount = data.results.length - failures.length;
+        sendNotification({
+          type: "error",
+          title:
+            operation === "add"
+              ? "Domain partially added"
+              : "Domain partially removed",
+          description: `${domain} was ${verb} ${okCount} of ${scopeLabel(
+            data.results.length
+          )}. Failed: ${failures
+            .map(
+              (failure) =>
+                `${nameByScopeId.get(failure.scopeId) ?? failure.scopeId}: ${
+                  failure.errorMessage ?? "unknown error"
+                }`
+            )
+            .join(" — ")}`,
+        });
+        return false;
+      }
+
+      sendNotification({
+        type: "success",
+        title: operation === "add" ? "Domain added" : "Domain removed",
+        description: `${domain} was ${verb} ${scopeLabel(
+          data.results.length
+        )}. Computer egress policy changes will be applied by the proxy cache shortly.`,
+      });
+      return true;
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: failureTitle,
+        description: normalizeError(error).message,
+      });
+      return false;
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  return {
+    bulkUpdateEgressDomain,
+    isBulkUpdatingEgressDomain: isUpdating,
   };
 }
 
