@@ -12,14 +12,17 @@ import type {
   SandboxFunctionExecutionMode,
   SandboxFunctionInvocationOrigin,
   SandboxFunctionInvocationStatus,
+  SandboxFunctionStake,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
 import {
   DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
+  DEFAULT_SANDBOX_FUNCTION_STAKE,
   isValidSandboxFunctionSlug,
   SANDBOX_FUNCTION_EXECUTION_MODES,
   SANDBOX_FUNCTION_INVOCATION_ORIGINS,
   SANDBOX_FUNCTION_INVOCATION_STATUSES,
+  SANDBOX_FUNCTION_STAKES,
   SANDBOX_FUNCTION_USER_IDENTITY_POLICIES,
 } from "@app/types/api/sandbox_functions";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -54,6 +57,9 @@ export class SandboxFunctionModel extends WorkspaceAwareModel<SandboxFunctionMod
   declare description: string;
   declare userIdentity: SandboxFunctionUserIdentityPolicy | null;
   declare executionMode: CreationOptional<SandboxFunctionExecutionMode>;
+  // The approval level a tool derived from this function starts at. A default, not a verdict: it is
+  // what the publisher declared, and an override can sit on top of it.
+  declare defaultStake: CreationOptional<SandboxFunctionStake>;
   // Sha256 hex of the published bundle. Stamped onto every invocation envelope so the in-sandbox
   // warm server can refuse to serve a bundle the publisher has since replaced. Null only for
   // functions last published before the column existed.
@@ -124,6 +130,14 @@ SandboxFunctionModel.init(
       defaultValue: DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
       validate: {
         isIn: [SANDBOX_FUNCTION_EXECUTION_MODES],
+      },
+    },
+    defaultStake: {
+      type: DataTypes.STRING(16),
+      allowNull: false,
+      defaultValue: DEFAULT_SANDBOX_FUNCTION_STAKE,
+      validate: {
+        isIn: [SANDBOX_FUNCTION_STAKES],
       },
     },
     bundleSha256: {

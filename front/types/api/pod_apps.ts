@@ -1,4 +1,7 @@
-import type { SandboxFunctionExecutionMode } from "@app/types/api/sandbox_functions";
+import type {
+  SandboxFunctionExecutionMode,
+  SandboxFunctionStake,
+} from "@app/types/api/sandbox_functions";
 import { z } from "zod";
 
 /**
@@ -30,6 +33,8 @@ export type PodAppFunction = {
   name: string;
   description: string;
   executionMode: SandboxFunctionExecutionMode;
+  /** The approval level a tool derived from this function starts at. */
+  defaultStake: SandboxFunctionStake;
 };
 
 export type PodAppDatabase = {
