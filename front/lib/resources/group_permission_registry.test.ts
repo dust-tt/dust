@@ -7,6 +7,7 @@ import {
 import {
   GRANT_TYPES,
   GRANT_VERBS,
+  type GrantVerb,
   WHOLE_TYPE_RESOURCE_ID,
 } from "@app/types/group_permissions";
 import { describe, expect, it } from "vitest";
@@ -267,5 +268,40 @@ describe("GroupPermissions.fromJSON", () => {
   it("round-trips the current shape through toJSON", () => {
     const json = { grants: { agent: { 42: 0b11 } } };
     expect(GroupPermissions.fromJSON(json).toJSON()).toEqual(json);
+  });
+});
+
+describe("GRANT_VERBS bit-position stability", () => {
+  // Each verb is stored as bit `1 << its index in GRANT_VERBS` (see VERB_BIT), and those masks are
+  // serialized into in-flight Temporal payloads. So the positions must stay stable: only append new
+  // verbs at the end — never reorder or remove an existing one, and never exceed 31 (JS bitwise
+  // operators are 32-bit, so `1 << 31` flips the sign bit and corrupts masks). These are the
+  // invariants documented on `GRANT_VERBS`; this test enforces them instead of trusting the comment.
+
+  // The verbs and their frozen bit positions. Append new verbs AFTER this list; do not edit it.
+  // Typed as `GrantVerb[]` so removing a verb from the union also fails to compile here.
+  const FROZEN_VERB_ORDER: GrantVerb[] = [
+    "read",
+    "write",
+    "admin",
+    "create",
+    "publish",
+    "invite",
+    "use",
+    "make_discoverable",
+  ];
+
+  it("keeps every existing verb at its original index (append-only)", () => {
+    FROZEN_VERB_ORDER.forEach((verb, index) => {
+      expect(GRANT_VERBS[index]).toBe(verb);
+    });
+  });
+
+  it("stays within the 31-verb bitmask limit", () => {
+    expect(GRANT_VERBS.length).toBeLessThanOrEqual(31);
+  });
+
+  it("has no duplicate verbs", () => {
+    expect(new Set(GRANT_VERBS).size).toBe(GRANT_VERBS.length);
   });
 });
