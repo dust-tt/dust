@@ -101,7 +101,7 @@ export function AnalyticsConsumptionPage() {
   }
 
   return (
-    <Page.Vertical align="stretch" gap="none">
+    <Page.Vertical align="stretch" gap="xl">
       <Page.Header
         title={
           <>
@@ -148,43 +148,32 @@ export function AnalyticsConsumptionPage() {
               </SafeSuspense>
             </m.div>
           </LazyMotion>
-          <ConsumptionAttributionTable
-            workspaceId={owner.sId}
-            period={period}
-            filter={scopeFilter}
-            onAddFilter={(selectedRow) => {
-              setFilter((current) =>
-                addUsageFilterFromAttributionRow(
-                  current,
-                  dimension,
-                  selectedRow
-                )
-              );
-            }}
-            onRemoveFilter={(selectedRow) => {
-              setFilter((current) =>
-                removeUsageFilterFromAttributionRow(
-                  current,
-                  dimension,
-                  selectedRow
-                )
-              );
-            }}
-            dimension={dimension}
-            onDimensionChange={handleDimensionChange}
-            onViewAll={(nextDimension, selectedRow) => {
-              setFilter((current) =>
-                setUsageFilterFromAttributionRow(
-                  current,
-                  dimension,
-                  selectedRow
-                )
-              );
-              handleDimensionChange(nextDimension);
-            }}
-          />
         </div>
       </div>
+
+      <ConsumptionAttributionTable
+        workspaceId={owner.sId}
+        period={period}
+        filter={scopeFilter}
+        onAddFilter={(selectedRow) => {
+          setFilter((current) =>
+            addUsageFilterFromAttributionRow(current, dimension, selectedRow)
+          );
+        }}
+        onRemoveFilter={(selectedRow) => {
+          setFilter((current) =>
+            removeUsageFilterFromAttributionRow(current, dimension, selectedRow)
+          );
+        }}
+        dimension={dimension}
+        onDimensionChange={handleDimensionChange}
+        onViewAll={(nextDimension, selectedRow) => {
+          setFilter((current) =>
+            setUsageFilterFromAttributionRow(current, dimension, selectedRow)
+          );
+          handleDimensionChange(nextDimension);
+        }}
+      />
     </Page.Vertical>
   );
 }
