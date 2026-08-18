@@ -83,7 +83,7 @@ async function getCoverageSnapshot(
       .filter((item) => item.itemType === "tool")
       .map((item) => [item.agentMCPActionId, item])
   );
-  const actionBySId = new Map(actions.map((action) => [action.sId, action]));
+  const actionById = new Map(actions.map((action) => [action.sId, action]));
   const dustRunIdByRunModelId = new Map(
     runs.map((run) => [run.id, run.dustRunId])
   );
