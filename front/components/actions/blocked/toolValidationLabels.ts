@@ -226,11 +226,19 @@ export function getToolValidationAlwaysAllowLabel(
           ? String(value)
           : JSON.stringify(value);
 
-      return `${asDisplayName(arg)} is ${displayValue}`;
+      return {
+        label: `${asDisplayName(arg)} is ${displayValue}`,
+        value: displayValue,
+      };
     });
-  return `Always allow ${data.metadata.agentName} to ${asDisplayName(data.metadata.toolName)}${
-    approvalScopes.length > 0
-      ? ` only when ${approvalScopes.join(" and ")}`
-      : ""
-  }`;
+
+  const [approvalScope] = approvalScopes;
+  let scopeLabel = "";
+  if (approvalScopes.length === 1 && approvalScope) {
+    scopeLabel = ` only for ${approvalScope.value}`;
+  } else if (approvalScopes.length > 1) {
+    scopeLabel = ` only when ${approvalScopes.map(({ label }) => label).join(" and ")}`;
+  }
+
+  return `Always allow ${data.metadata.agentName} to ${asDisplayName(data.metadata.toolName)}${scopeLabel}`;
 }

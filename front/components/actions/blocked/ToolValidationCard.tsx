@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  InfoCircle,
   PieChart01,
   XClose,
 } from "@dust-tt/sparkle";
@@ -247,10 +248,11 @@ export function ToolValidationCard({
       </div>
 
       {canCurrentUserRespond && (
-        <div className="flex flex-col gap-3 px-4 pb-3 pt-2">
+        <div className="flex flex-col gap-4 px-4 pb-3 pt-2">
           {alwaysAllowScopeLabel && (
-            <div className="text-sm text-muted-foreground">
-              {alwaysAllowScopeLabel}
+            <div className="flex items-start gap-2 text-sm text-muted-foreground">
+              <InfoCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{alwaysAllowScopeLabel}</span>
             </div>
           )}
           <div className="flex flex-wrap justify-end gap-2">
