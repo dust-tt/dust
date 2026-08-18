@@ -107,7 +107,7 @@ async function getCoverageSnapshot(
       return [];
     }
 
-    const dustRunId = action.stepContent.dustRunId;
+    const { dustRunId } = action.stepContent;
     if (!dustRunId) {
       return [];
     }
