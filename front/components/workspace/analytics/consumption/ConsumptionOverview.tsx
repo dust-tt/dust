@@ -19,7 +19,6 @@ export function ConsumptionOverview({
     return (
       <div className="flex flex-col gap-6">
         <div className="h-5 w-80 animate-pulse rounded bg-muted-background" />
-        <div className="h-32 w-full animate-pulse rounded-xl bg-muted-background" />
       </div>
     );
   }
