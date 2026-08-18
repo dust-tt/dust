@@ -31,11 +31,7 @@ import {
 } from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useQueryParams } from "@app/hooks/useQueryParams";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { SKILL_ICON } from "@app/lib/skill";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
@@ -75,15 +71,6 @@ export function ManageSkillsPage() {
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
-  const { hasFeature } = useFeatureFlags();
-  const hasSkillFavorites = hasFeature("skill_favorites");
-  const skillManagerTabs = useMemo(
-    () =>
-      SKILL_MANAGER_TABS.filter(
-        (tab) => tab.id !== "favorites" || hasSkillFavorites
-      ),
-    [hasSkillFavorites]
-  );
   const [selectedSkillOverride, setSelectedSkillOverride] = useState<
     GetSkillsWithRelationsResponseBody["skills"][number] | null
   >(null);
@@ -128,12 +115,12 @@ export function ManageSkillsPage() {
     if (
       selectedTab &&
       isValidTab(selectedTab) &&
-      skillManagerTabs.some((t) => t.id === selectedTab)
+      SKILL_MANAGER_TABS.some((t) => t.id === selectedTab)
     ) {
       return selectedTab;
     }
     return "active";
-  }, [selectedTab, skillManagerTabs]);
+  }, [selectedTab]);
 
   const canCreateSkill = hasPermission("create", "skill");
 
@@ -403,7 +390,7 @@ export function ManageSkillsPage() {
       <SkillDetailsSheet
         skill={selectedSkill}
         onClose={() => handleSkillSelect(null)}
-        onFavoriteChange={hasSkillFavorites ? handleFavoriteChange : undefined}
+        onFavoriteChange={handleFavoriteChange}
         user={user}
         owner={owner}
       />
@@ -490,7 +477,7 @@ export function ManageSkillsPage() {
           <div className="flex flex-col pt-3">
             <Tabs value={activeTab}>
               <TabsList>
-                {skillManagerTabs.map((tab) => (
+                {SKILL_MANAGER_TABS.map((tab) => (
                   <TabsTrigger
                     key={tab.id}
                     value={tab.id}

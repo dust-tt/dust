@@ -11,7 +11,6 @@ import {
   hasSharedMembership,
 } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { hasAll } from "@app/lib/matcher/operators/array";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
@@ -1824,13 +1823,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         agentLoopData,
         effectiveSpaceIds,
       });
-      const hasSkillFavorites = await hasFeatureFlag(auth, "skill_favorites");
-      if (hasSkillFavorites) {
-        favoriteSkills = await this.listFavoritesForCurrentUser(auth, {
-          agentLoopData,
-          effectiveSpaceIds,
-        });
-      }
+      favoriteSkills = await this.listFavoritesForCurrentUser(auth, {
+        agentLoopData,
+        effectiveSpaceIds,
+      });
     }
 
     const sortByName = (a: SkillResource, b: SkillResource) =>

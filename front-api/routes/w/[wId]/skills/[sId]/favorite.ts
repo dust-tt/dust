@@ -4,7 +4,6 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 import type { SuccessResponseBody } from "@front-api/routes/types";
 import type { Context, TypedResponse } from "hono";
 import { z } from "zod";
@@ -41,7 +40,6 @@ async function loadSkill(
 /** @ignoreswagger */
 app.post(
   "/",
-  withFeatureFlag("skill_favorites"),
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");
@@ -70,7 +68,6 @@ app.post(
 /** @ignoreswagger */
 app.delete(
   "/",
-  withFeatureFlag("skill_favorites"),
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<SuccessResponseBody> => {
     const auth = ctx.get("auth");

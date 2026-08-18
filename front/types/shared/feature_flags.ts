@@ -257,11 +257,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable the Plan Mode skill: agents maintain a live plan.md for genuinely multi-step tasks, with an optional human-approval checkpoint.",
     stage: "dust_only",
   },
-  skill_favorites: {
-    description:
-      "Enable user favorites for skills, including favorite controls and runtime skill availability.",
-    stage: "dust_only",
-  },
   allow_old_notion_mcp: {
     description:
       "Allow individual workspaces to keep using the old internal Notion MCP server alongside the official one",
