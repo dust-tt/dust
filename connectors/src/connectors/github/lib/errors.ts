@@ -120,3 +120,50 @@ export function isTransientNetworkError(error: unknown): boolean {
     error.message.toLowerCase().includes(msg.toLowerCase())
   );
 }
+
+const MAX_ERROR_CAUSE_DEPTH = 5;
+
+interface GithubErrorDetails {
+  errorCauses: string[];
+  errorCode: string | null;
+  errorMessage: string;
+  errorName: string;
+  githubRateLimitRemaining: string | number | null;
+  githubRequestId: string | number | null;
+  githubRetryAfter: string | number | null;
+  githubStatus: number | null;
+  isTransient: boolean;
+}
+
+function getErrorCode(error: Error): string | null {
+  return "code" in error && typeof error.code === "string" ? error.code : null;
+}
+
+export function describeGithubError(error: unknown): GithubErrorDetails {
+  const normalizedError = normalizeError(error);
+
+  const errorCauses: string[] = [];
+  let cause: unknown = normalizedError.cause;
+  while (cause instanceof Error && errorCauses.length < MAX_ERROR_CAUSE_DEPTH) {
+    const causeCode = getErrorCode(cause);
+    errorCauses.push(
+      `${cause.name}: ${cause.message}${causeCode ? ` (${causeCode})` : ""}`
+    );
+    cause = cause.cause;
+  }
+
+  const headers =
+    error instanceof RequestError ? error.response?.headers : undefined;
+
+  return {
+    errorCauses,
+    errorCode: getErrorCode(normalizedError),
+    errorMessage: normalizedError.message,
+    errorName: normalizedError.name,
+    githubRateLimitRemaining: headers?.["x-ratelimit-remaining"] ?? null,
+    githubRequestId: headers?.["x-github-request-id"] ?? null,
+    githubRetryAfter: headers?.["retry-after"] ?? null,
+    githubStatus: error instanceof RequestError ? error.status : null,
+    isTransient: isTransientNetworkError(error),
+  };
+}

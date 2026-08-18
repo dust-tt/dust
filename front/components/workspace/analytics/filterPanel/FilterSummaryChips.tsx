@@ -1,6 +1,12 @@
 import type { FilterSummary } from "@app/components/workspace/analytics/filterPanel/filterState";
 import { Button, Chip } from "@dust-tt/sparkle";
-import { AnimatePresence, m, useReducedMotion } from "framer-motion";
+import {
+  AnimatePresence,
+  domMax,
+  LazyMotion,
+  m,
+  useReducedMotion,
+} from "framer-motion";
 import { Fragment } from "react";
 
 function SummaryLabel({
@@ -38,61 +44,67 @@ export function FilterSummaryChips<Category extends string>({
     : { duration: 0.18, ease: "easeOut" as const };
 
   return (
-    <AnimatePresence initial={false}>
-      {summaries.length > 0 && (
-        <m.div
-          key="filter-summary-chips"
-          initial={
-            shouldReduceMotion ? false : { opacity: 0, scale: 0.98, y: -4 }
-          }
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={
-            shouldReduceMotion ? undefined : { opacity: 0, scale: 0.98, y: -4 }
-          }
-          transition={transition}
-          className="mt-2 origin-top"
-        >
-          <div className="flex flex-wrap items-center gap-2">
-            <AnimatePresence initial={false}>
-              {summaries.map((summary) => (
-                <m.div
-                  key={summary.category}
-                  layout={!shouldReduceMotion}
-                  initial={
-                    shouldReduceMotion ? false : { opacity: 0, scale: 0.96 }
-                  }
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={
-                    shouldReduceMotion ? undefined : { opacity: 0, scale: 0.96 }
-                  }
-                  transition={transition}
-                  className="max-w-full"
-                >
-                  <Chip
-                    size="xs"
-                    color="highlight"
+    <LazyMotion features={domMax}>
+      <AnimatePresence initial={false}>
+        {summaries.length > 0 && (
+          <m.div
+            key="filter-summary-chips"
+            initial={
+              shouldReduceMotion ? false : { opacity: 0, scale: 0.98, y: -4 }
+            }
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={
+              shouldReduceMotion
+                ? undefined
+                : { opacity: 0, scale: 0.98, y: -4 }
+            }
+            transition={transition}
+            className="mt-2 origin-top"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <AnimatePresence initial={false}>
+                {summaries.map((summary) => (
+                  <m.div
+                    key={summary.category}
+                    layout={!shouldReduceMotion}
+                    initial={
+                      shouldReduceMotion ? false : { opacity: 0, scale: 0.96 }
+                    }
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={
+                      shouldReduceMotion
+                        ? undefined
+                        : { opacity: 0, scale: 0.96 }
+                    }
+                    transition={transition}
                     className="max-w-full"
-                    onRemove={() => onClearCategory(summary.category)}
                   >
-                    <SummaryLabel
-                      categoryLabel={summary.categoryLabel}
-                      options={summary.options}
-                    />
-                  </Chip>
-                </m.div>
-              ))}
-            </AnimatePresence>
-            <m.div layout={!shouldReduceMotion} transition={transition}>
-              <Button
-                label="Clear all"
-                size="xs"
-                variant="ghost-secondary"
-                onClick={onClearAll}
-              />
-            </m.div>
-          </div>
-        </m.div>
-      )}
-    </AnimatePresence>
+                    <Chip
+                      size="xs"
+                      color="highlight"
+                      className="max-w-full"
+                      onRemove={() => onClearCategory(summary.category)}
+                    >
+                      <SummaryLabel
+                        categoryLabel={summary.categoryLabel}
+                        options={summary.options}
+                      />
+                    </Chip>
+                  </m.div>
+                ))}
+              </AnimatePresence>
+              <m.div layout={!shouldReduceMotion} transition={transition}>
+                <Button
+                  label="Clear all"
+                  size="xs"
+                  variant="ghost-secondary"
+                  onClick={onClearAll}
+                />
+              </m.div>
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
+    </LazyMotion>
   );
 }

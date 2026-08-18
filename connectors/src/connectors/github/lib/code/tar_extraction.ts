@@ -7,6 +7,7 @@ import {
   isSupportedFile,
 } from "@connectors/connectors/github/lib/code/supported_files";
 import {
+  describeGithubError,
   isGithubRequestErrorNotFound,
   isGithubRequestErrorRepositoryAccessBlocked,
   RepositoryAccessBlockedError,
@@ -217,6 +218,8 @@ export async function extractGitHubTarballToGCS(
   for (let attempt = 0; attempt < MAX_TARBALL_EXTRACTION_RETRIES; attempt++) {
     let filesUploaded = 0;
     let filesSkipped = 0;
+    let contentLength: number | null = null;
+    const downloadStartedAtMs = Date.now();
     const seenDirs = new Set<string>();
 
     // Create upload queue to limit concurrent GCS uploads.
@@ -364,7 +367,8 @@ export async function extractGitHubTarballToGCS(
         return new Err(streamResult.error);
       }
 
-      const { stream: tarballStream, contentLength } = streamResult.value;
+      const { stream: tarballStream } = streamResult.value;
+      contentLength = streamResult.value.contentLength;
 
       // Track bytes received for content-length validation.
       // Use Buffer.byteLength for strings to handle multi-byte characters correctly.
@@ -436,6 +440,19 @@ export async function extractGitHubTarballToGCS(
     } catch (error) {
       lastError = error;
 
+      const downloadContext = {
+        ...describeGithubError(error),
+        error,
+        bytesReceived,
+        contentLength,
+        downloadDurationMs: Date.now() - downloadStartedAtMs,
+        extractionAttempt: attempt,
+        filesUploaded,
+        maxExtractionAttempts: MAX_TARBALL_EXTRACTION_RETRIES,
+        missingBytes:
+          contentLength !== null ? contentLength - bytesReceived : null,
+      };
+
       // Check if this is a retryable error.
       if (
         isRetryableStreamError(error) &&
@@ -443,13 +460,7 @@ export async function extractGitHubTarballToGCS(
       ) {
         const delay = TARBALL_RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
         childLogger.warn(
-          {
-            error,
-            attempt,
-            maxAttempts: MAX_TARBALL_EXTRACTION_RETRIES,
-            bytesReceived,
-            delay,
-          },
+          { ...downloadContext, delay },
           "Retryable stream error during tarball extraction, will retry"
         );
         await setTimeoutAsync(delay);
@@ -458,12 +469,7 @@ export async function extractGitHubTarballToGCS(
 
       // Non-retryable error or max retries reached.
       childLogger.error(
-        {
-          error,
-          attempt,
-          maxAttempts: MAX_TARBALL_EXTRACTION_RETRIES,
-          bytesReceived,
-        },
+        downloadContext,
         "Non-retryable error or max retries reached during tarball extraction"
       );
       throw error;

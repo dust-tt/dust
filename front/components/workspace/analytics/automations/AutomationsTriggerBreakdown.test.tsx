@@ -29,6 +29,7 @@ const TRIGGER: AutomationTriggerRow = {
   editor: { name: "Nic Siegle", email: null, pictureUrl: null },
   scheduleDescription: "Every day at 9:00",
   webhookSourceName: null,
+  webhookSourceRestricted: false,
   webhookIcon: null,
   runCount: 0,
   credits: 0,

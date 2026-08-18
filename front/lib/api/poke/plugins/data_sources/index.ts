@@ -14,6 +14,7 @@ export * from "./notion_update_orphaned_resources_parents";
 export * from "./notion_url_sync";
 export * from "./operations";
 export * from "./remove_old_documents";
+export * from "./skip_github_repository";
 export * from "./skip_slack_channel";
 export * from "./slack_whitelist_bot";
 export * from "./toggle_restricted_space_agent_slack_access";
