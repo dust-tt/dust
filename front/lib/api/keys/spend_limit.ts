@@ -17,7 +17,7 @@ import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   addFixedWindowCount,
   getFixedWindowCount,
-  setFixedWindowCount,
+  seedFixedWindowCountIfAbsent,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type {
@@ -362,15 +362,16 @@ async function readApiKeySpendLimitCountWithLazySeed(
     0,
     Math.round(await getEsConsumedAwuCreditsForApiKey(auth, { apiKeyName }))
   );
-  if (consumed > 0) {
-    await setFixedWindowCount({
-      key: redisKey,
-      bounds,
-      value: consumed,
-      logger,
-    });
+  if (consumed <= 0) {
+    return 0;
   }
-  return consumed;
+  const seedResult = await seedFixedWindowCountIfAbsent({
+    key: redisKey,
+    bounds,
+    value: consumed,
+    logger,
+  });
+  return seedResult.isOk() ? seedResult.value : consumed;
 }
 
 /**

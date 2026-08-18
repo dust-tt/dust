@@ -374,6 +374,77 @@ export async function setFixedWindowCount({
 }
 
 /**
+ * Atomically seeds the fixed-window counter for `key` in the window identified
+ * by `bounds` to `value`, but only if it does not already exist, and returns the
+ * effective count afterwards (the seeded `value`, or the current value when a
+ * concurrent `addFixedWindowCount` already created it).
+ *
+ * Unlike `setFixedWindowCount`, this never overwrites a live counter: use it for
+ * lazy backfill on a read miss, where an `addFixedWindowCount` (INCRBY) landing
+ * while the seed value is being computed must not be clobbered (which would
+ * undercount usage). Returns a Result so callers can fall back on failure.
+ */
+export async function seedFixedWindowCountIfAbsent({
+  key,
+  bounds,
+  value,
+  logger,
+}: {
+  key: string;
+  bounds: FixedWindowBounds;
+  value: number;
+  logger: LoggerInterface;
+}): Promise<Result<number, Error>> {
+  if (!Number.isInteger(value) || value < 0) {
+    return new Err(new Error("value must be a non-negative integer."));
+  }
+
+  const redisKey = makeRateLimiterKey(`${key}:${bounds.label}`);
+  const expireAtMs = bounds.windowEndMs + FIXED_WINDOW_EXPIRE_GRACE_MS;
+
+  // Seed-if-absent + read-back in one atomic step: only SET (and set the expiry)
+  // when the key is missing, otherwise leave the concurrently-written value
+  // untouched. Returns the effective count either way.
+  const luaScript = `
+    local key = KEYS[1]
+    local value = tonumber(ARGV[1])
+    local expire_at_ms = tonumber(ARGV[2])
+
+    local existing = redis.call('GET', key)
+    if existing == false then
+      redis.call('SET', key, value)
+      redis.call('PEXPIREAT', key, expire_at_ms)
+      return value
+    end
+    return tonumber(existing)
+  `;
+
+  try {
+    const redis = await getRedisStreamClient({ origin: "rate_limiter" });
+    const effective = await redis.eval(luaScript, {
+      keys: [redisKey],
+      arguments: [value.toString(), expireAtMs.toString()],
+    });
+    const count = Number(effective);
+    if (!Number.isFinite(count)) {
+      return new Err(
+        new Error(`Non-numeric fixed-window count: ${String(effective)}`)
+      );
+    }
+    return new Ok(count);
+  } catch (e) {
+    getStatsDClient().increment("ratelimiter.error.count", 1, [
+      "operation:seed_fixed_window",
+    ]);
+    logger.error(
+      { key, label: bounds.label, value, error: e },
+      "seedFixedWindowCountIfAbsent error"
+    );
+    return new Err(normalizeError(e));
+  }
+}
+
+/**
  * Reads the current fixed-window count for `key` in the window identified by
  * `bounds`. Returns 0 when the window has no entries yet. Mirrors
  * `getRateLimiterCount` but for the boundary-bucketed counter written by

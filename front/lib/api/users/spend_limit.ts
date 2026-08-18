@@ -36,7 +36,7 @@ import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   addFixedWindowCount,
   getFixedWindowCount,
-  setFixedWindowCount,
+  seedFixedWindowCountIfAbsent,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type {
@@ -503,10 +503,12 @@ export async function expireUserSpendLimitOverride(
  * live (the first recorded delta bumps it above 0), so it's used as-is with no
  * ES read.
  *
- * Re-seeding on a 0 count is idempotent and cheap; `SET` (not `INCRBY`) makes
- * concurrent first-message seeds converge on the same value instead of doubling.
- * Recording (`recordUserSpendLimitUsage`) runs post-finalize, after this
- * send-time seed, so it accrues on top of the seeded value.
+ * The seed is applied with `seedFixedWindowCountIfAbsent` (atomic SET-if-absent,
+ * not a plain SET): if a concurrent `recordUserSpendLimitUsage` INCRBY lands
+ * while the ES value is being computed, the seed leaves that live value untouched
+ * rather than clobbering it, and returns the effective count. Recording runs
+ * post-finalize, after this send-time seed, so it accrues on top of the seeded
+ * value.
  *
  * Returns the effective count, or `null` on a Redis read error (caller fails
  * open). A seed write failure degrades to the ES value rather than throwing.
@@ -538,10 +540,16 @@ async function readSpendLimitCountWithLazySeed(
     0,
     Math.round(await getEsConsumedAwuCreditsForUser(auth, { user, cycle }))
   );
-  if (consumed > 0) {
-    await setFixedWindowCount({ key, bounds, value: consumed, logger });
+  if (consumed <= 0) {
+    return 0;
   }
-  return consumed;
+  const seedResult = await seedFixedWindowCountIfAbsent({
+    key,
+    bounds,
+    value: consumed,
+    logger,
+  });
+  return seedResult.isOk() ? seedResult.value : consumed;
 }
 
 /**

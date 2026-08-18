@@ -18,7 +18,7 @@ import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   addFixedWindowCount,
   getFixedWindowCount,
-  setFixedWindowCount,
+  seedFixedWindowCountIfAbsent,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -168,13 +168,13 @@ async function readProgrammaticSpendLimitCountWithLazySeed(
   if (consumed === null || consumed <= 0) {
     return 0;
   }
-  await setFixedWindowCount({
+  const seedResult = await seedFixedWindowCountIfAbsent({
     key: redisKey,
     bounds,
     value: consumed,
     logger,
   });
-  return consumed;
+  return seedResult.isOk() ? seedResult.value : consumed;
 }
 
 /**
