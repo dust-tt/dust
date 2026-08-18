@@ -50,15 +50,9 @@ app.post(
       return ctx.json({ success: true });
     }
 
-    // Execution-side resolution: a sandbox-token auth cannot carry the invoker's original grant
-    // (e.g. a frame share token). The id comes from signature-verified sandbox JWT claims minted
-    // at execution start, so the space filter is deliberately skipped.
     const sandboxFunction = await SandboxFunctionResource.fetchById(
       auth,
-      sandboxClaims.sandboxFunctionId,
-      {
-        dangerouslyBypassSpacePermissionFilter: true,
-      }
+      sandboxClaims.sandboxFunctionId
     );
     if (!sandboxFunction) {
       return apiError(ctx, {
