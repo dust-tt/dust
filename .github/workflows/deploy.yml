@@ -42,7 +42,7 @@ on:
       depot_region:
         description: "Depot region to use for building"
         required: true
-        default: "us"
+        default: "eu"
         type: choice
         options:
           - "us"
