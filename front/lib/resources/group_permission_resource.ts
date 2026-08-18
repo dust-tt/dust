@@ -9,11 +9,14 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   CapabilitySpec,
+  GrantKey,
+  GrantSpec,
   GrantType,
   GroupPermissionResourceType,
 } from "@app/types/group_permissions";
 import {
   capabilityKey,
+  grantKey,
   WHOLE_TYPE_RESOURCE_ID,
 } from "@app/types/group_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -207,11 +210,68 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }
 
     const groupIds = [...new Set(grants.map((grant) => grant.groupId))];
-    const groups = await GroupResource.fetchByModelIds(auth, groupIds, {
+    const autoGroups = await GroupResource.fetchByModelIds(auth, groupIds, {
+      groupKinds: ["regular_auto"],
       transaction,
     });
 
-    return groups.find((group) => group.kind === "regular_auto") ?? null;
+    return autoGroups[0] ?? null;
+  }
+
+  // The regular_auto groups backing user-level grants, keyed by grant (see `grantKey`) — the
+  // batched counterpart of `findRegularAutoGroupForGrant`.
+  static async findRegularAutoGroupsForGrants(
+    auth: Authenticator,
+    {
+      grants,
+      transaction,
+    }: {
+      grants: GrantSpec[];
+      transaction?: Transaction;
+    }
+  ): Promise<Map<GrantKey, GroupResource>> {
+    const result = new Map<GrantKey, GroupResource>();
+    if (grants.length === 0) {
+      return result;
+    }
+
+    const rows = await GroupPermissionModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        [Op.or]: grants.map(({ grantType, resourceType, resourceId }) => ({
+          grantType,
+          resourceType,
+          resourceId,
+        })),
+      },
+      transaction,
+    });
+    if (rows.length === 0) {
+      return result;
+    }
+
+    const groupIds = [...new Set(rows.map((row) => row.groupId))];
+    const autoGroups = await GroupResource.fetchByModelIds(auth, groupIds, {
+      groupKinds: ["regular_auto"],
+      transaction,
+    });
+    const autoGroupById = new Map(autoGroups.map((group) => [group.id, group]));
+
+    for (const row of rows) {
+      const group = autoGroupById.get(row.groupId);
+      if (group) {
+        result.set(
+          grantKey({
+            grantType: row.grantType,
+            resourceType: row.resourceType,
+            resourceId: row.resourceId,
+          }),
+          group
+        );
+      }
+    }
+
+    return result;
   }
 
   // Grant a user access to a resource by adding them to the regular_auto group that holds the

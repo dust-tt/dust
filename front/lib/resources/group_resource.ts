@@ -841,7 +841,10 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async fetchByModelIds(
     auth: Authenticator,
     ids: ModelId[],
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      groupKinds,
+      transaction,
+    }: { groupKinds?: GroupKind[]; transaction?: Transaction } = {}
   ) {
     return this.baseFetch(
       auth,
@@ -850,6 +853,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           id: {
             [Op.in]: ids,
           },
+          ...(groupKinds ? { kind: { [Op.in]: groupKinds } } : {}),
         },
       },
       transaction
