@@ -42,7 +42,7 @@ vi.mock("@app/lib/actions/mcp_helper", () => ({
 }));
 
 vi.mock("@app/components/resources/resources_icons", () => ({
-  getAvatarFromIcon: () => null,
+  getIcon: () => null,
 }));
 
 vi.mock("@app/components/oauth/PersonalAuthCredentialOverrides", () => ({
@@ -55,25 +55,13 @@ vi.mock("@app/types/oauth/lib", () => ({
 }));
 
 vi.mock("@dust-tt/sparkle", () => ({
-  ActionCardBlock: ({
-    title,
-    description,
-    actions,
-  }: {
-    title: string;
-    description?: React.ReactNode;
-    actions?: React.ReactNode;
-  }) => (
-    <div>
-      <div>{title}</div>
-      <div>{description}</div>
-      <div>{actions}</div>
-    </div>
-  ),
+  Avatar: () => null,
+  Card: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
   Button: ({ label, onClick }: { label: string; onClick?: () => void }) => (
     <button onClick={onClick}>{label}</button>
   ),
   Check: () => null,
+  Key01: () => null,
   XClose: () => null,
 }));
 
@@ -126,7 +114,9 @@ describe("SandboxFunctionPersonalAuthCard", () => {
       />
     );
 
-    expect(screen.getByText("Google Drive authentication")).toBeDefined();
+    expect(
+      screen.getByText("Connect your Google Drive account to agent?")
+    ).toBeDefined();
     // The viewer triggered the invocation, so they can resolve it themselves.
     expect(screen.getByText("Connect")).toBeDefined();
   });

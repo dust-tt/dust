@@ -59,7 +59,7 @@ vi.mock("@app/lib/api/assistant/conversation/can_current_user_respond", () => ({
 }));
 
 vi.mock("@app/components/resources/resources_icons", () => ({
-  getAvatarFromIcon: () => null,
+  getIcon: () => null,
 }));
 
 vi.mock("@app/components/oauth/PersonalAuthCredentialOverrides", () => ({
@@ -72,21 +72,8 @@ vi.mock("@app/types/oauth/lib", () => ({
 }));
 
 vi.mock("@dust-tt/sparkle", () => ({
-  ActionCardBlock: ({
-    title,
-    description,
-    actions,
-  }: {
-    title: string;
-    description?: React.ReactNode;
-    actions?: React.ReactNode;
-  }) => (
-    <div>
-      <div>{title}</div>
-      <div>{description}</div>
-      <div>{actions}</div>
-    </div>
-  ),
+  Avatar: () => null,
+  Card: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
   Button: ({
     label,
     onClick,
@@ -101,6 +88,7 @@ vi.mock("@dust-tt/sparkle", () => ({
     </button>
   ),
   Check: () => null,
+  Key01: () => null,
   XClose: () => null,
 }));
 
