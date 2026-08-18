@@ -1215,6 +1215,35 @@
  *             userId:
  *               type: string
  *               nullable: true
+ *         usage:
+ *           type: object
+ *           description: Present when the view was fetched with usage details (withDetails query param). Counts agents and skills that use this data source view.
+ *           properties:
+ *             count:
+ *               type: integer
+ *             agents:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   sId:
+ *                     type: string
+ *                   name:
+ *                     type: string
+ *                   pictureUrl:
+ *                     type: string
+ *             skills:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   sId:
+ *                     type: string
+ *                   name:
+ *                     type: string
+ *                   icon:
+ *                     type: string
+ *                     nullable: true
  *     PrivateDataSource:
  *       type: object
  *       description: A data source in the workspace.

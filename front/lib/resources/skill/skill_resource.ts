@@ -51,7 +51,10 @@ import type {
   SkillDefinition,
 } from "@app/lib/resources/skill/code_defined/shared";
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
-import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
+import type {
+  SkillConfigurationFindOptions,
+  SkillHydrationOptions,
+} from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
@@ -1638,7 +1641,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   static async listByDataSourceViewIds(
     auth: Authenticator,
-    dataSourceViewIds: ModelId[]
+    dataSourceViewIds: ModelId[],
+    opts: SkillHydrationOptions = {}
   ): Promise<SkillResource[]> {
     if (dataSourceViewIds.length === 0) {
       return [];
@@ -1671,6 +1675,50 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         status: "active",
       },
       onlyCustom: true,
+      ...opts,
+    });
+  }
+
+  /**
+   * List skills that use any of the given data source IDs.
+   */
+  static async listByDataSourceIds(
+    auth: Authenticator,
+    dataSourceIds: ModelId[],
+    opts: SkillHydrationOptions = {}
+  ): Promise<SkillResource[]> {
+    if (dataSourceIds.length === 0) {
+      return [];
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Query skill IDs that have any of the given data sources.
+    const skillConfigs = await SkillDataSourceConfigurationModel.findAll({
+      attributes: ["skillConfigurationId"],
+      where: {
+        workspaceId: workspace.id,
+        dataSourceId: {
+          [Op.in]: dataSourceIds,
+        },
+      },
+    });
+
+    if (skillConfigs.length === 0) {
+      return [];
+    }
+
+    const skillIds = uniq(skillConfigs.map((c) => c.skillConfigurationId));
+
+    return this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: skillIds,
+        },
+        status: "active",
+      },
+      onlyCustom: true,
+      ...opts,
     });
   }
 

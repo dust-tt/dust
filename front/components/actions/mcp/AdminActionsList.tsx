@@ -3,10 +3,9 @@ import {
   AddToolsDialog,
 } from "@app/components/actions/mcp/AddToolsDialog";
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
-import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
-import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
+import { useUsedByDetailsSheets } from "@app/components/spaces/useUsedByDetailsSheets";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import {
   getMcpServerDisplayName,
@@ -27,7 +26,10 @@ import {
 } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { SkillUsageType } from "@app/types/assistant/skill_configuration";
+import type {
+  AgentsAndSkillsUsageType,
+  AgentsUsageType,
+} from "@app/types/data_source";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
@@ -38,7 +40,7 @@ import { useMemo, useState } from "react";
 type RowData = {
   mcpServer: MCPServerType;
   mcpServerView?: MCPServerViewType;
-  usage: SkillUsageType | null;
+  usage: AgentsUsageType | AgentsAndSkillsUsageType | null;
   isConnected: boolean;
   account: string;
   spaces: SpaceType[];
@@ -112,8 +114,10 @@ export const AdminActionsList = ({
     owner,
   });
 
-  const [agentId, setAgentId] = useState<string | null>(null);
-  const [skillId, setSkillId] = useState<string | null>(null);
+  const { onAgentClick, onSkillClick, sheets } = useUsedByDetailsSheets(
+    owner,
+    user
+  );
 
   const { usage } = useMCPServersUsage({
     owner,
@@ -278,8 +282,8 @@ export const AdminActionsList = ({
           <div className="flex h-12 w-full items-center justify-center">
             <UsedByButton
               usage={info.row.original.usage}
-              onItemClick={setAgentId}
-              onSkillClick={setSkillId}
+              onItemClick={onAgentClick}
+              onSkillClick={onSkillClick}
             />
           </div>
         ),
@@ -378,22 +382,11 @@ export const AdminActionsList = ({
     );
 
     return columns;
-  }, []);
+  }, [onAgentClick, onSkillClick]);
 
   return (
     <>
-      <AgentDetailsSheet
-        owner={owner}
-        user={user}
-        agentId={agentId}
-        onClose={() => setAgentId(null)}
-      />
-      <SkillDetailsSheetById
-        owner={owner}
-        user={user}
-        skillId={skillId}
-        onClose={() => setSkillId(null)}
-      />
+      {sheets}
       <CreateMCPServerDialog
         isOpen={isCreateOpen}
         internalMCPServer={internalMCPServerToCreate}

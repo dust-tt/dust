@@ -1,3 +1,4 @@
+import type { UsedBySkillType } from "@app/types/assistant/skill_configuration";
 import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
 import type { ModelId } from "./shared/model_id";
 import type { Result } from "./shared/result";
@@ -69,6 +70,10 @@ export type DataSourceWithConnectorDetailsType = DataSourceType &
 export type AgentsUsageType = {
   count: number;
   agents: Array<{ sId: string; name: string; pictureUrl: string }>;
+};
+
+export type AgentsAndSkillsUsageType = AgentsUsageType & {
+  skills: UsedBySkillType[];
 };
 
 export function isDataSourceNameValid(name: string): Result<void, string> {

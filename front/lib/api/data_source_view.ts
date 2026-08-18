@@ -20,7 +20,7 @@ import { ContentNodesViewTypeCodec } from "@app/types/connectors/content_nodes";
 import type { CoreAPIContentNode } from "@app/types/core/content_node";
 import type { CoreAPIDatasourceViewFilter } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { AgentsUsageType } from "@app/types/data_source";
+import type { AgentsAndSkillsUsageType } from "@app/types/data_source";
 import type {
   DataSourceViewContentNode,
   DataSourceViewType,
@@ -335,14 +335,57 @@ export async function handlePatchDataSourceView(
   return new Ok(dataSourceView);
 }
 
+export async function handleDeleteDataSourceView(
+  auth: Authenticator,
+  dataSourceView: DataSourceViewResource,
+  { force }: { force: boolean }
+): Promise<
+  Result<
+    void,
+    Omit<DustError, "code"> & {
+      code: "unauthorized" | "in_use";
+    }
+  >
+> {
+  if (!dataSourceView.canAdministrate(auth)) {
+    return new Err({
+      name: "dust_error",
+      code: "unauthorized",
+      message: "Only users that are `admins` can administrate spaces.",
+    });
+  }
+
+  if (!force) {
+    const usageRes = await getDataSourceViewUsage({ auth, dataSourceView });
+    if (usageRes.isErr() || usageRes.value.count > 0) {
+      const names = usageRes.isOk()
+        ? [...usageRes.value.agents, ...usageRes.value.skills].map(
+            (u) => u.name
+          )
+        : [];
+      return new Err({
+        name: "dust_error",
+        code: "in_use",
+        message: usageRes.isOk()
+          ? `The data source view is in use by ${names.join(", ")} and cannot be deleted.`
+          : "The data source view is in use and cannot be deleted.",
+      });
+    }
+  }
+
+  await dataSourceView.delete(auth, { hardDelete: true });
+
+  return new Ok(undefined);
+}
+
 export type DataSourceViewWithUsage = DataSourceViewType & {
-  usage: AgentsUsageType | null;
+  usage: AgentsAndSkillsUsageType | null;
 };
 
 /**
- * Every data source view in the workspace, each enriched with its agent
- * usage. Usage fetches run concurrently with bounded parallelism. Used by
- * the poke admin UI.
+ * Every data source view in the workspace, each enriched with its agent and
+ * skill usage. Usage fetches run concurrently with bounded parallelism. Used
+ * by the poke admin UI.
  */
 export async function listDataSourceViewsWithUsage(
   auth: Authenticator

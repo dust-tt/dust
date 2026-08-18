@@ -37,3 +37,9 @@ export type SkillConfigurationFindOptions = (
   withInstructions?: boolean;
   withFileAttachments?: boolean;
 };
+
+// The hydration subset a caller can opt out of when it only needs a skill's identity.
+export type SkillHydrationOptions = Pick<
+  SkillConfigurationFindOptions,
+  "withInstructions" | "withTools" | "withFileAttachments"
+>;
