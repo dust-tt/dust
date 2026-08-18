@@ -119,6 +119,14 @@ export function SandboxScopeSelector({
         />
         <DropdownMenuSeparator />
         <DropdownMenuLabel label="Pods" />
+        <DropdownMenuSearchbar
+          autoFocus
+          name="search-pods"
+          placeholder="Search Pods"
+          value={searchText}
+          onChange={setSearchText}
+          disabled={isLoading}
+        />
         <DropdownMenuItem
           label={allPodsSelected ? "Clear all Pods" : "Select all Pods"}
           disabled={pods.length === 0}
@@ -128,14 +136,6 @@ export function SandboxScopeSelector({
               podIds: allPodsSelected ? [] : pods.map((pod) => pod.sId),
             })
           }
-        />
-        <DropdownMenuSearchbar
-          autoFocus
-          name="search-pods"
-          placeholder="Search Pods"
-          value={searchText}
-          onChange={setSearchText}
-          disabled={isLoading}
         />
         {isLoading ? (
           <DropdownMenuItem
