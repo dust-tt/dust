@@ -4,40 +4,54 @@ import { z } from "zod";
 
 export const WORKSPACE_PEOPLE_SERVER_NAME = "workspace_people" as const;
 
-export const GET_WORKSPACE_MEMBERS_CONTEXT_TOOL_NAME =
-  "get_workspace_members_context" as const;
+export const LIST_WORKSPACE_MEMBERS_TOOL_NAME =
+  "list_workspace_members" as const;
+
+const DEFAULT_LIMIT = 50;
+const MAX_LIMIT = 100;
 
 export const WORKSPACE_PEOPLE_TOOLS_METADATA = [
   {
-    name: GET_WORKSPACE_MEMBERS_CONTEXT_TOOL_NAME,
+    name: LIST_WORKSPACE_MEMBERS_TOOL_NAME,
     description:
-      "Get directory context for active workspace members: identity, workspace role, " +
-      "job function, and user-managed workspace groups. " +
-      "Filter by userIds to look up specific members, or by jobType to list all " +
-      "members with that job function. Exactly one filter must be provided. " +
-      "Returns up to 100 results.",
+      "List active workspace members with their identity, workspace role, job function, " +
+      "and user-managed workspace groups. " +
+      "Filter by userIds to look up specific members, or by jobType to list all members " +
+      "with that job function. Exactly one filter must be provided. " +
+      "Results are paginated — use nextPageCursor from the previous response to fetch the next page.",
     schema: {
       userIds: z
         .array(z.string())
         .min(1)
-        .max(100)
+        .max(MAX_LIMIT)
         .optional()
-        .describe(
-          "Stable IDs of specific active workspace members to look up."
-        ),
+        .describe("Stable IDs of specific active workspace members to look up."),
       jobType: z
         .enum(JOB_TYPES)
         .optional()
+        .describe("List all active members with this job function."),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(MAX_LIMIT)
+        .optional()
         .describe(
-          "Return all active members with this job function (up to 100)."
+          `Maximum number of results to return. Defaults to ${DEFAULT_LIMIT}, max ${MAX_LIMIT}.`
+        ),
+      nextPageCursor: z
+        .string()
+        .optional()
+        .describe(
+          "Cursor for fetching the next page. Use the nextPageCursor from the previous response."
         ),
     },
     stake: "never_ask",
     toolCostCategory: "basic",
     freeUsage: true,
     displayLabels: {
-      running: "Fetching member contexts",
-      done: "Member contexts fetched",
+      running: "Listing workspace members",
+      done: "Workspace members listed",
     },
   },
 ] as const;
@@ -47,10 +61,12 @@ export const WORKSPACE_PEOPLE_SERVER = {
     name: WORKSPACE_PEOPLE_SERVER_NAME,
     version: "1.0.0",
     description:
-      "Look up workspace members: identity, role, job function, and group membership.",
+      "List workspace members: identity, role, job function, and group membership.",
     authorization: null,
     icon: "ActionPieChartIcon",
     documentationUrl: null,
   },
   tools: WORKSPACE_PEOPLE_TOOLS_METADATA,
 } as const satisfies ServerMetadata;
+
+export { DEFAULT_LIMIT, MAX_LIMIT };

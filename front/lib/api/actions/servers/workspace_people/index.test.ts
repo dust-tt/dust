@@ -7,12 +7,12 @@ import { describe, expect, it } from "vitest";
 
 import { TOOLS } from ".";
 
-function getWorkspaceMembersContextTool() {
+function getListWorkspaceMembersTool() {
   const tool = TOOLS.find(
-    (candidate) => candidate.name === "get_workspace_members_context"
+    (candidate) => candidate.name === "list_workspace_members"
   );
   if (!tool) {
-    throw new Error("get_workspace_members_context tool not found");
+    throw new Error("list_workspace_members tool not found");
   }
   return tool;
 }
@@ -21,17 +21,10 @@ function createTestExtra(auth: Authenticator) {
   return {
     signal: new AbortController().signal,
     auth,
-  } as Parameters<
-    ReturnType<typeof getWorkspaceMembersContextTool>["handler"]
-  >[1];
+  } as Parameters<ReturnType<typeof getListWorkspaceMembersTool>["handler"]>[1];
 }
 
-describe("get_workspace_members_context", () => {
-  it("does not expose a separate single-member tool", () => {
-    const toolNames: string[] = TOOLS.map((tool) => tool.name);
-    expect(toolNames).not.toContain("get_workspace_member_context");
-  });
-
+describe("list_workspace_members", () => {
   it("rejects lookups from a non-admin", async () => {
     const { workspace, authenticator } = await createResourceTest({
       role: "user",
@@ -39,7 +32,7 @@ describe("get_workspace_members_context", () => {
     const targetUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, targetUser, { role: "user" });
 
-    const result = await getWorkspaceMembersContextTool().handler(
+    const result = await getListWorkspaceMembersTool().handler(
       { userIds: [targetUser.sId] },
       createTestExtra(authenticator)
     );
@@ -57,7 +50,7 @@ describe("get_workspace_members_context", () => {
     const targetUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, targetUser, { role: "user" });
 
-    const result = await getWorkspaceMembersContextTool().handler(
+    const result = await getListWorkspaceMembersTool().handler(
       { userIds: [targetUser.sId], jobType: "engineering" },
       createTestExtra(authenticator)
     );
@@ -71,7 +64,7 @@ describe("get_workspace_members_context", () => {
   it("rejects calls with neither userIds nor jobType", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
 
-    const result = await getWorkspaceMembersContextTool().handler(
+    const result = await getListWorkspaceMembersTool().handler(
       {},
       createTestExtra(authenticator)
     );
@@ -102,7 +95,7 @@ describe("get_workspace_members_context", () => {
     );
     await GroupFactory.withMembers(authenticator, group, [salesUser]);
 
-    const result = await getWorkspaceMembersContextTool().handler(
+    const result = await getListWorkspaceMembersTool().handler(
       { userIds: [salesUser.sId, engineeringUser.sId] },
       createTestExtra(authenticator)
     );
@@ -112,11 +105,18 @@ describe("get_workspace_members_context", () => {
       const [content] = result.value;
       expect(content.type).toBe("text");
       if (content.type === "text") {
-        expect(content.text).toContain(`"userId":"${salesUser.sId}"`);
-        expect(content.text).toContain('"value":"sales"');
-        expect(content.text).toContain('"groups":["Enterprise Sales"]');
-        expect(content.text).toContain(`"userId":"${engineeringUser.sId}"`);
-        expect(content.text).toContain('"value":"engineering"');
+        const parsed = JSON.parse(content.text);
+        expect(parsed.nextPageCursor).toBeNull();
+        const memberIds = parsed.members.map(
+          (m: { userId: string }) => m.userId
+        );
+        expect(memberIds).toContain(salesUser.sId);
+        expect(memberIds).toContain(engineeringUser.sId);
+        const sales = parsed.members.find(
+          (m: { userId: string }) => m.userId === salesUser.sId
+        );
+        expect(sales.jobFunction.value).toBe("sales");
+        expect(sales.groups).toContain("Enterprise Sales");
       }
     }
   });
@@ -134,7 +134,7 @@ describe("get_workspace_members_context", () => {
     await salesUser.setMetadata("job_type", "sales");
     await engineeringUser.setMetadata("job_type", "engineering");
 
-    const result = await getWorkspaceMembersContextTool().handler(
+    const result = await getListWorkspaceMembersTool().handler(
       { jobType: "sales" },
       createTestExtra(authenticator)
     );
@@ -144,8 +144,12 @@ describe("get_workspace_members_context", () => {
       const [content] = result.value;
       expect(content.type).toBe("text");
       if (content.type === "text") {
-        expect(content.text).toContain(`"userId":"${salesUser.sId}"`);
-        expect(content.text).not.toContain(`"userId":"${engineeringUser.sId}"`);
+        const parsed = JSON.parse(content.text);
+        const memberIds = parsed.members.map(
+          (m: { userId: string }) => m.userId
+        );
+        expect(memberIds).toContain(salesUser.sId);
+        expect(memberIds).not.toContain(engineeringUser.sId);
       }
     }
   });

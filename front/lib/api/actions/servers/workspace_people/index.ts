@@ -5,7 +5,9 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { ToolContext } from "@app/lib/actions/types";
 import {
-  GET_WORKSPACE_MEMBERS_CONTEXT_TOOL_NAME,
+  DEFAULT_LIMIT,
+  LIST_WORKSPACE_MEMBERS_TOOL_NAME,
+  MAX_LIMIT,
   WORKSPACE_PEOPLE_SERVER_NAME,
   WORKSPACE_PEOPLE_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/workspace_people/metadata";
@@ -20,51 +22,46 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-const MAX_RESULTS = 100;
-
-type WorkspaceMemberContext = {
-  user: UserResource;
+type WorkspaceMember = {
+  userId: string;
+  name: string;
+  email: string;
   role: MembershipResource["role"];
-  jobType: JobType | null;
-  groupNames: string[];
+  jobFunction: { value: JobType; label: string } | null;
+  groups: string[];
 };
 
-async function fetchByUserIds(
+type ListMembersResult = {
+  members: WorkspaceMember[];
+  nextPageCursor: string | null;
+};
+
+function encodeCursor(offset: number): string {
+  return Buffer.from(String(offset)).toString("base64");
+}
+
+function decodeCursor(cursor: string): number | null {
+  try {
+    const offset = parseInt(
+      Buffer.from(cursor, "base64").toString("utf-8"),
+      10
+    );
+    return Number.isFinite(offset) && offset >= 0 ? offset : null;
+  } catch {
+    return null;
+  }
+}
+
+async function buildMemberRows(
   auth: Authenticator,
-  userIds: string[]
-): Promise<Result<WorkspaceMemberContext[], MCPError>> {
-  const uniqueUserIds = [...new Set(userIds)];
-  const users = await UserResource.fetchByIds(uniqueUserIds);
-  const userBySId = new Map(users.map((user) => [user.sId, user]));
-  const missingUserIds = uniqueUserIds.filter(
-    (userId) => !userBySId.has(userId)
-  );
-  if (missingUserIds.length > 0) {
-    return new Err(
-      new MCPError(`Users not found: ${missingUserIds.join(", ")}.`)
-    );
+  users: UserResource[],
+  membershipByUserId: Map<number, MembershipResource>
+): Promise<WorkspaceMember[]> {
+  if (users.length === 0) {
+    return [];
   }
-
   const workspace = auth.getNonNullableWorkspace();
-  const { memberships } = await MembershipResource.getActiveMemberships({
-    workspace,
-    users,
-  });
-  const membershipByUserId = new Map(
-    memberships.map((membership) => [membership.userId, membership])
-  );
-  const inactiveUserIds = users
-    .filter((user) => !membershipByUserId.has(user.id))
-    .map((user) => user.sId);
-  if (inactiveUserIds.length > 0) {
-    return new Err(
-      new MCPError(
-        `Users are not active members of this workspace: ${inactiveUserIds.join(", ")}.`
-      )
-    );
-  }
-
-  const userModelIds = users.map((user) => user.id);
+  const userModelIds = users.map((u) => u.id);
   const [jobTypesByUserId, groupNamesByUserId] = await Promise.all([
     UserResource.fetchUserScopedMetadataValuesByUserModelIds(
       "job_type",
@@ -77,137 +74,158 @@ async function fetchByUserIds(
     }),
   ]);
 
-  return new Ok(
-    uniqueUserIds.flatMap((userId) => {
-      const user = userBySId.get(userId);
-      if (!user) {
-        return [];
-      }
-      const membership = membershipByUserId.get(user.id);
-      if (!membership) {
-        return [];
-      }
-      const jobTypeValue = jobTypesByUserId.get(user.id);
-      const jobType = isJobType(jobTypeValue) ? jobTypeValue : null;
-      return [
-        {
-          user,
-          role: membership.role,
-          jobType,
-          groupNames: groupNamesByUserId.get(user.id) ?? [],
-        },
-      ];
-    })
-  );
+  return users.flatMap((user) => {
+    const membership = membershipByUserId.get(user.id);
+    if (!membership) {
+      return [];
+    }
+    const jobTypeValue = jobTypesByUserId.get(user.id);
+    const jobType = isJobType(jobTypeValue) ? jobTypeValue : null;
+    return [
+      {
+        userId: user.sId,
+        name: user.fullName() || user.email,
+        email: user.email,
+        role: membership.role,
+        jobFunction: jobType
+          ? { value: jobType, label: JOB_TYPE_LABELS[jobType] }
+          : null,
+        groups: groupNamesByUserId.get(user.id) ?? [],
+      },
+    ];
+  });
 }
 
-async function fetchByJobType(
+async function listByUserIds(
   auth: Authenticator,
-  jobType: JobType
-): Promise<Result<WorkspaceMemberContext[], MCPError>> {
+  userIds: string[]
+): Promise<Result<ListMembersResult, MCPError>> {
+  const uniqueUserIds = [...new Set(userIds)];
+  const users = await UserResource.fetchByIds(uniqueUserIds);
+  const userBySId = new Map(users.map((u) => [u.sId, u]));
+
+  const missingUserIds = uniqueUserIds.filter((id) => !userBySId.has(id));
+  if (missingUserIds.length > 0) {
+    return new Err(
+      new MCPError(`Users not found: ${missingUserIds.join(", ")}.`)
+    );
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace,
+    users,
+  });
+  const membershipByUserId = new Map(memberships.map((m) => [m.userId, m]));
+
+  const inactiveUserIds = users
+    .filter((u) => !membershipByUserId.has(u.id))
+    .map((u) => u.sId);
+  if (inactiveUserIds.length > 0) {
+    return new Err(
+      new MCPError(
+        `Users are not active members of this workspace: ${inactiveUserIds.join(", ")}.`
+      )
+    );
+  }
+
+  // Preserve caller-supplied order.
+  const orderedUsers = uniqueUserIds.flatMap((id) => {
+    const u = userBySId.get(id);
+    return u ? [u] : [];
+  });
+
+  const members = await buildMemberRows(auth, orderedUsers, membershipByUserId);
+  return new Ok({ members, nextPageCursor: null });
+}
+
+async function listByJobType(
+  auth: Authenticator,
+  jobType: JobType,
+  limit: number,
+  offset: number
+): Promise<Result<ListMembersResult, MCPError>> {
   const workspace = auth.getNonNullableWorkspace();
 
-  // List all active members, then filter by job type client-side.
+  // Fetch all active memberships then filter by job type client-side.
+  // Workspace membership lists are typically small enough that this is acceptable.
   const { memberships } = await MembershipResource.getActiveMemberships({
     workspace,
   });
   const membershipByUserId = new Map(memberships.map((m) => [m.userId, m]));
 
-  const userModelIds = memberships.map((m) => m.userId);
+  const allModelIds = memberships.map((m) => m.userId);
   const jobTypesByUserId =
     await UserResource.fetchUserScopedMetadataValuesByUserModelIds(
       "job_type",
-      userModelIds
+      allModelIds
     );
 
-  const matchingModelIds = userModelIds
-    .filter((id) => jobTypesByUserId.get(id) === jobType)
-    .slice(0, MAX_RESULTS);
-
-  if (matchingModelIds.length === 0) {
-    return new Ok([]);
-  }
-
-  const [users, groupNamesByUserId] = await Promise.all([
-    UserResource.fetchByModelIds(matchingModelIds),
-    GroupResource.listGroupNamesByUserModelIdInWorkspace({
-      workspace,
-      userModelIds: matchingModelIds,
-      groupKinds: [...MANAGEABLE_GROUP_KINDS],
-    }),
-  ]);
-
-  return new Ok(
-    users.flatMap((user) => {
-      const membership = membershipByUserId.get(user.id);
-      if (!membership) {
-        return [];
-      }
-      return [
-        {
-          user,
-          role: membership.role,
-          jobType,
-          groupNames: groupNamesByUserId.get(user.id) ?? [],
-        },
-      ];
-    })
+  const matchingModelIds = allModelIds.filter(
+    (id) => jobTypesByUserId.get(id) === jobType
   );
-}
 
-async function fetchWorkspaceMemberContexts(
-  auth: Authenticator,
-  { userIds, jobType }: { userIds?: string[]; jobType?: JobType }
-): Promise<Result<WorkspaceMemberContext[], MCPError>> {
-  if (!auth.isAdmin()) {
-    return new Err(
-      new MCPError(
-        "Only workspace admins can retrieve other members' workspace context."
-      )
-    );
+  const pageModelIds = matchingModelIds.slice(offset, offset + limit);
+  const hasMore = offset + limit < matchingModelIds.length;
+
+  if (pageModelIds.length === 0) {
+    return new Ok({ members: [], nextPageCursor: null });
   }
 
-  if (userIds && jobType) {
-    return new Err(
-      new MCPError("Provide either userIds or jobType, not both.")
-    );
-  }
-  if (!userIds && !jobType) {
-    return new Err(new MCPError("Provide either userIds or jobType."));
-  }
+  const users = await UserResource.fetchByModelIds(pageModelIds);
+  const members = await buildMemberRows(auth, users, membershipByUserId);
 
-  if (userIds) {
-    return fetchByUserIds(auth, userIds);
-  }
-  return fetchByJobType(auth, jobType as JobType);
+  return new Ok({
+    members,
+    nextPageCursor: hasMore ? encodeCursor(offset + limit) : null,
+  });
 }
 
 const handlers: ToolHandlers<typeof WORKSPACE_PEOPLE_TOOLS_METADATA> = {
-  get_workspace_members_context: async ({ userIds, jobType }, { auth }) => {
-    const contextsResult = await fetchWorkspaceMemberContexts(auth, {
-      userIds,
-      jobType,
-    });
-    if (contextsResult.isErr()) {
-      return contextsResult;
+  list_workspace_members: async (
+    { userIds, jobType, limit, nextPageCursor },
+    { auth }
+  ) => {
+    if (!auth.isAdmin()) {
+      return new Err(
+        new MCPError(
+          "Only workspace admins can list other members' workspace context."
+        )
+      );
     }
 
+    if (userIds && jobType) {
+      return new Err(
+        new MCPError("Provide either userIds or jobType, not both.")
+      );
+    }
+    if (!userIds && !jobType) {
+      return new Err(new MCPError("Provide either userIds or jobType."));
+    }
+
+    if (userIds) {
+      const result = await listByUserIds(auth, userIds);
+      if (result.isErr()) {
+        return result;
+      }
+      return new Ok([
+        { type: "text" as const, text: JSON.stringify(result.value) },
+      ]);
+    }
+
+    const resolvedLimit = Math.min(limit ?? DEFAULT_LIMIT, MAX_LIMIT);
+    const offset = nextPageCursor ? (decodeCursor(nextPageCursor) ?? 0) : 0;
+    const result = await listByJobType(
+      auth,
+      jobType as JobType,
+      resolvedLimit,
+      offset
+    );
+    if (result.isErr()) {
+      return result;
+    }
     return new Ok([
-      {
-        type: "text" as const,
-        text: JSON.stringify(
-          contextsResult.value.map(({ user, role, jobType, groupNames }) => ({
-            userId: user.sId,
-            name: user.fullName() || user.email,
-            email: user.email,
-            role,
-            jobFunction: jobType
-              ? { value: jobType, label: JOB_TYPE_LABELS[jobType] }
-              : null,
-            groups: groupNames,
-          }))
-        ),
-      },
+      { type: "text" as const, text: JSON.stringify(result.value) },
     ]);
   },
 };
@@ -221,10 +239,7 @@ function createServer(
   const server = makeInternalMCPServer(WORKSPACE_PEOPLE_SERVER_NAME);
 
   for (const tool of TOOLS) {
-    if (
-      tool.name === GET_WORKSPACE_MEMBERS_CONTEXT_TOOL_NAME &&
-      !auth.isAdmin()
-    ) {
+    if (tool.name === LIST_WORKSPACE_MEMBERS_TOOL_NAME && !auth.isAdmin()) {
       continue;
     }
     registerTool(auth, toolContext, server, tool, {
