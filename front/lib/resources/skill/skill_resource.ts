@@ -3181,7 +3181,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         );
 
         // Suspend all editor group memberships for this skill.
-        // Editors los permissions on the skill and only admin can keep their "admin" permission to unarchive it.
+        // Editors lose permissions on the skill and only admin keep their "admin" permission to unarchive it.
         if (this.editorGroup) {
           await this.editorGroup.suspendMembers(auth, { transaction });
         }
