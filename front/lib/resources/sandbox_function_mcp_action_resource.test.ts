@@ -15,33 +15,41 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // In-memory GCS mock: writes persist content that reads can return.
 const gcsStore = new Map<string, Buffer>();
 
-vi.mock("@app/lib/file_storage", () => ({
-  getPrivateUploadBucket: vi.fn(() => ({
-    file: vi.fn((path: string) => ({
-      save: vi.fn(async (data: Buffer) => {
-        gcsStore.set(path, data);
-      }),
-      download: vi.fn(async () => {
-        const buf = gcsStore.get(path);
-        if (!buf) {
-          throw new Error(`GCS file not found: ${path}`);
+vi.mock("@app/lib/file_storage", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("@app/lib/file_storage")>();
+
+  return {
+    ...original,
+    getPrivateUploadBucket: vi.fn(() => ({
+      file: vi.fn((path: string) => ({
+        save: vi.fn(async (data: Buffer) => {
+          gcsStore.set(path, data);
+        }),
+        download: vi.fn(async () => {
+          const buf = gcsStore.get(path);
+          if (!buf) {
+            throw new Error(`GCS file not found: ${path}`);
+          }
+          return [buf];
+        }),
+      })),
+      delete: vi.fn(
+        async (path: string, opts?: { ignoreNotFound?: boolean }) => {
+          if (!gcsStore.has(path) && !opts?.ignoreNotFound) {
+            throw new Error(`GCS file not found: ${path}`);
+          }
+          gcsStore.delete(path);
         }
-        return [buf];
-      }),
+      ),
+      uploadBufferToBucket: vi.fn(
+        async ({ buffer, filePath }: { buffer: Buffer; filePath: string }) => {
+          gcsStore.set(filePath, buffer);
+        }
+      ),
     })),
-    delete: vi.fn(async (path: string, opts?: { ignoreNotFound?: boolean }) => {
-      if (!gcsStore.has(path) && !opts?.ignoreNotFound) {
-        throw new Error(`GCS file not found: ${path}`);
-      }
-      gcsStore.delete(path);
-    }),
-    uploadBufferToBucket: vi.fn(
-      async ({ buffer, filePath }: { buffer: Buffer; filePath: string }) => {
-        gcsStore.set(filePath, buffer);
-      }
-    ),
-  })),
-}));
+  };
+});
 
 const inputSchema: JSONSchema = {
   type: "object",
