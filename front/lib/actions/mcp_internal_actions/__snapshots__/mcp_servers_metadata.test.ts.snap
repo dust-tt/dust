@@ -2452,6 +2452,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "get_workspace_members_context": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
   },
   "user_memory": {
     "edit": {
@@ -3405,6 +3409,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "user_analytics": {
     "get_personal_usage": "never_ask",
     "get_workspace_activity": "never_ask",
+    "get_workspace_members_context": "never_ask",
   },
   "user_memory": {
     "edit": "never_ask",
