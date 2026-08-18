@@ -6,6 +6,7 @@ import {
   AttachmentChip,
   Button,
   Check,
+  Infinity,
   Paperclip,
   XClose,
 } from "@dust-tt/sparkle";
@@ -208,8 +209,9 @@ export function GmailSendMailValidation({
           {alwaysAllowLabel && (
             <Button
               label="Always allow"
-              variant="outline"
+              variant="highlight-ghost"
               size="sm"
+              icon={Infinity}
               isRounded
               disabled={isSubmitting}
               onClick={() => void onApprove("always_approved")}

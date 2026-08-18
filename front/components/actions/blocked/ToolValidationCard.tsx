@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  Infinity,
   PieChart01,
   XClose,
 } from "@dust-tt/sparkle";
@@ -264,7 +265,8 @@ export function ToolValidationCard({
             {canAlwaysAllow && (
               <Button
                 label="Always allow"
-                variant="outline"
+                variant="highlight-ghost"
+                icon={Infinity}
                 disabled={isSubmitting}
                 isLoading={submittingDecision === "always_approved"}
                 onClick={() => void handleValidation("always_approved")}
