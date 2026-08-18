@@ -10,7 +10,7 @@ export function SummaryCard({ label, value, hint }: SummaryCardProps) {
   return (
     <div
       className={cn(
-        "flex flex-1 flex-col justify-center h-20 gap-1 rounded-xl",
+        "flex flex-1 flex-col justify-center h-24 gap-1 rounded-xl",
         "border border-border bg-panel-background p-4"
       )}
     >
