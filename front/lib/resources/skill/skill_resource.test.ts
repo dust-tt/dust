@@ -7,7 +7,7 @@ import {
 } from "@app/lib/models/skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
-import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -1903,6 +1903,109 @@ describe("SkillResource", () => {
         []
       );
       expect(emptyArrayResult).toHaveLength(0);
+    });
+  });
+
+  describe("listByDataSourceIds", () => {
+    it("should return skills that use any of the given data source IDs", async () => {
+      const space = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(space, testContext.globalGroup);
+
+      const dsv1 = await DataSourceViewFactory.folder(
+        testContext.workspace,
+        space,
+        testContext.user
+      );
+      const dsv2 = await DataSourceViewFactory.folder(
+        testContext.workspace,
+        space,
+        testContext.user
+      );
+      const skill1 = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With DS1",
+        requestedSpaceIds: [space.id],
+      });
+
+      await createDataSourceConfiguration({
+        dataSourceView: dsv1,
+        parentsIn: ["node1"],
+        skillId: skill1.id,
+      });
+
+      // Create another skill without data source configuration
+      await SkillFactory.create(testContext.authenticator, {
+        name: "Skill Without DS",
+        requestedSpaceIds: [],
+      });
+
+      // Test that skills with ds1 are returned
+      const skillsWithDs1 = await SkillResource.listByDataSourceIds(
+        testContext.authenticator,
+        [dsv1.dataSource.id]
+      );
+      expect(skillsWithDs1).toHaveLength(1);
+      expect(skillsWithDs1[0].id).toBe(skill1.id);
+
+      // Test with an unused data source returns empty
+      const emptyResult = await SkillResource.listByDataSourceIds(
+        testContext.authenticator,
+        [dsv2.dataSource.id]
+      );
+      expect(emptyResult).toHaveLength(0);
+
+      // Test with empty array returns empty
+      const emptyArrayResult = await SkillResource.listByDataSourceIds(
+        testContext.authenticator,
+        []
+      );
+      expect(emptyArrayResult).toHaveLength(0);
+    });
+
+    it("should return skills configured through any view of the given data source", async () => {
+      const ownerSpace = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(ownerSpace, testContext.globalGroup);
+      const otherSpace = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(otherSpace, testContext.globalGroup);
+
+      const defaultView = await DataSourceViewFactory.folder(
+        testContext.workspace,
+        ownerSpace,
+        testContext.user
+      );
+      const sharedViewResult =
+        await DataSourceViewResource.createViewInSpaceFromDataSource(
+          testContext.authenticator,
+          otherSpace,
+          defaultView.dataSource,
+          ["node1"]
+        );
+      assert(sharedViewResult.isOk(), "shared view should be created");
+
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With Shared View",
+        requestedSpaceIds: [otherSpace.id],
+      });
+
+      await createDataSourceConfiguration({
+        dataSourceView: sharedViewResult.value,
+        parentsIn: ["node1"],
+        skillId: skill.id,
+      });
+
+      // The skill is not attached to the default view of the data source...
+      const skillsForDefaultView = await SkillResource.listByDataSourceViewIds(
+        testContext.authenticator,
+        [defaultView.id]
+      );
+      expect(skillsForDefaultView).toHaveLength(0);
+
+      // ...but it is still found when listing by the underlying data source.
+      const skillsForDataSource = await SkillResource.listByDataSourceIds(
+        testContext.authenticator,
+        [defaultView.dataSource.id]
+      );
+      expect(skillsForDataSource).toHaveLength(1);
+      expect(skillsForDataSource[0].id).toBe(skill.id);
     });
   });
 
