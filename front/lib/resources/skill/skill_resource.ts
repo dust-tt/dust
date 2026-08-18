@@ -61,6 +61,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
   extractUniqueSkillReferenceIds,
   parseSkillReferenceTag,
@@ -303,16 +304,16 @@ const skillListActiveCacheKey = (workspaceId: string) =>
   `${workspaceId}:v${SKILL_LIST_ACTIVE_CACHE_KEY_VERSION}`;
 
 // Keep the cached database snapshot small. Code-defined skills are read from their registries.
-const skillListActiveCache = defineCache<
-  { workspaceId: string; workspaceModelId: ModelId },
-  SkillListActiveCacheEntry[]
->({
+const skillListActiveCache = defineCache<string, SkillListActiveCacheEntry[]>({
   id: SKILL_LIST_ACTIVE_CACHE_ID,
-  key: ({ workspaceId }) => skillListActiveCacheKey(workspaceId),
-  load: async ({ workspaceModelId }) => {
+  key: skillListActiveCacheKey,
+  load: async (workspaceId) => {
+    const workspace = await WorkspaceResource.fetchById(workspaceId);
+    assert(workspace, `Workspace not found: ${workspaceId}`);
+
     const skills = await SkillConfigurationModel.findAll({
       attributes: ["id", "icon", "name", "userFacingDescription"],
-      where: { status: "active", workspaceId: workspaceModelId },
+      where: { status: "active", workspaceId: workspace.id },
     });
 
     return skills.map((skill) => ({
@@ -520,23 +521,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     transaction?: Transaction
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
-    return skillListActiveCache.invalidate(
-      {
-        workspaceId: workspace.sId,
-        workspaceModelId: workspace.id,
-      },
-      transaction
-    );
+    return skillListActiveCache.invalidate(workspace.sId, transaction);
   }
 
   static async listActiveMetadataByWorkspace(
     auth: Authenticator
   ): Promise<SkillListActiveEntry[]> {
     const workspace = auth.getNonNullableWorkspace();
-    const customSkills = await skillListActiveCache.get({
-      workspaceId: workspace.sId,
-      workspaceModelId: workspace.id,
-    });
+    const customSkills = await skillListActiveCache.get(workspace.sId);
     const codeDefinedSkills = [
       ...(await GlobalSkillsRegistry.findAll(auth, { status: "active" })),
       ...(await SystemSkillsRegistry.findAll(auth, { status: "active" })),
@@ -4425,10 +4417,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where: { workspaceId },
     });
 
-    await skillListActiveCache.invalidate({
-      workspaceId: workspace.sId,
-      workspaceModelId: workspace.id,
-    });
+    await skillListActiveCache.invalidate(workspace.sId);
   }
 
   private static replaceSkillReferenceTags(
