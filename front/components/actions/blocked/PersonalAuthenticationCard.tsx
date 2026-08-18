@@ -23,7 +23,6 @@ interface PersonalAuthenticationCardProps {
   // The viewer looking at the card. Passed in rather than read from `AuthContext` because shared
   // frames render this card outside of any AuthProvider.
   currentUser: UserType;
-  agentName: string;
   mcpServerId: string;
   owner: LightWorkspaceType;
   provider: OAuthProvider;
@@ -36,7 +35,6 @@ interface PersonalAuthenticationCardProps {
 export function PersonalAuthenticationCard({
   triggeringUser,
   currentUser,
-  agentName,
   mcpServerId,
   owner,
   provider,
@@ -137,7 +135,7 @@ export function PersonalAuthenticationCard({
 
   const title = isConnected
     ? "Connected successfully"
-    : `Connect your ${serverDisplayName ? `${serverDisplayName} ` : ""}account to ${agentName}?`;
+    : `Connect your ${serverDisplayName ? `${serverDisplayName} ` : ""}account?`;
 
   return (
     <Card

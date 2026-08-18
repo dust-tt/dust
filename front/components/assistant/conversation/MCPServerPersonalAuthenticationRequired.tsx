@@ -57,7 +57,6 @@ export function MCPServerPersonalAuthenticationRequired({
     <PersonalAuthenticationCard
       triggeringUser={triggeringUser}
       currentUser={user}
-      agentName={blockedAction.metadata.agentName}
       mcpServerId={mcpServerId}
       owner={owner}
       provider={provider}

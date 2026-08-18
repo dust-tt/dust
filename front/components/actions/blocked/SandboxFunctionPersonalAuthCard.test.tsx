@@ -115,7 +115,7 @@ describe("SandboxFunctionPersonalAuthCard", () => {
     );
 
     expect(
-      screen.getByText("Connect your Google Drive account to agent?")
+      screen.getByText("Connect your Google Drive account?")
     ).toBeDefined();
     // The viewer triggered the invocation, so they can resolve it themselves.
     expect(screen.getByText("Connect")).toBeDefined();
