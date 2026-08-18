@@ -1,7 +1,9 @@
+import { defineCachedResourceBatchLookup } from "@app/lib/api/resources/cached_resource_lookup";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
+import type { ResourceUpdateBlob } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -55,6 +57,7 @@ import type {
   WhereOptions,
 } from "sequelize";
 import { col, fn, Op, QueryTypes, UniqueConstraintError } from "sequelize";
+import { z } from "zod";
 
 export const ADMIN_GROUP_NAME = "dust-admins";
 export const BUILDER_GROUP_NAME = "dust-builders";
@@ -63,6 +66,8 @@ export const MANAGER_GROUP_NAME = "dust-managers";
 // syncBuilderGroupMembership). Distinct from BUILDER_GROUP_NAME: workspaces provisioning
 // builders via SCIM keep their "dust-builders" IdP group alongside this one.
 export const MANUAL_BUILDERS_GROUP_NAME = "Builders";
+
+const GROUP_BY_MODEL_ID_CACHE_KEY_VERSION = 1;
 
 /**
  * ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
@@ -78,16 +83,30 @@ export const MANUAL_BUILDERS_GROUP_NAME = "Builders";
  * ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
  */
 
-type CachedGroup = {
-  id: ModelId;
-  name: string;
-  kind: GroupKind;
-  workspaceId: ModelId;
-  workOSGroupId: string | null;
-  poolCapAwuCredits: number | null;
-  createdAt: number;
-  updatedAt: number;
-};
+const CachedGroupSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  kind: z.enum(GROUP_KINDS),
+  workspaceId: z.number(),
+  workOSGroupId: z.string().nullable(),
+  poolCapAwuCredits: z.number().nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+type CachedGroup = z.infer<typeof CachedGroupSchema>;
+
+const GroupCacheInputSchema = z.object({
+  workspaceModelId: z.coerce.number().int().positive(),
+  groupModelId: z.coerce.number().int().positive(),
+});
+type GroupCacheInput = z.infer<typeof GroupCacheInputSchema>;
+
+function groupCacheKey({
+  workspaceModelId,
+  groupModelId,
+}: GroupCacheInput): string {
+  return `workspace:${workspaceModelId}:group:${groupModelId}`;
+}
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -102,6 +121,19 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   constructor(model: ModelStatic<GroupModel>, blob: Attributes<GroupModel>) {
     super(GroupModel, blob);
+  }
+
+  private toCacheSnapshot(): CachedGroup {
+    return {
+      id: this.id,
+      name: this.name,
+      kind: this.kind,
+      workspaceId: this.workspaceId,
+      workOSGroupId: this.workOSGroupId,
+      poolCapAwuCredits: this.poolCapAwuCredits,
+      createdAt: this.createdAt.getTime(),
+      updatedAt: this.updatedAt.getTime(),
+    };
   }
 
   // Default group kinds for auth (excludes system groups).
@@ -359,6 +391,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       GroupResource.invalidateWorkspaceGroupsFromSystemKeyCache(
         workspaceModelId
       )
+    );
+    await GroupResource.byModelIdCache.invalidate(
+      {
+        workspaceModelId,
+        groupModelId: group.id,
+      },
+      transaction
     );
 
     // If memberIds are provided, create memberships
@@ -838,6 +877,80 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groupModels.map((b) => new this(this.model, b.get()));
   }
 
+  private static async fetchByModelIdsFromDatabase(
+    inputs: GroupCacheInput[],
+    transaction?: Transaction
+  ): Promise<GroupResource[]> {
+    if (inputs.length === 0) {
+      return [];
+    }
+
+    const workspaceModelId = inputs[0].workspaceModelId;
+    if (inputs.some((input) => input.workspaceModelId !== workspaceModelId)) {
+      throw new Error("Cannot fetch groups from multiple workspaces");
+    }
+
+    const requestedKeys = new Set(inputs.map(groupCacheKey));
+    const groupModels = await GroupModel.findAll({
+      where: {
+        workspaceId: workspaceModelId,
+        id: {
+          [Op.in]: [...new Set(inputs.map((input) => input.groupModelId))],
+        },
+      },
+      transaction,
+    });
+
+    return groupModels
+      .filter((group) =>
+        requestedKeys.has(
+          groupCacheKey({
+            workspaceModelId: group.workspaceId,
+            groupModelId: group.id,
+          })
+        )
+      )
+      .map((group) => new GroupResource(GroupModel, group.get()));
+  }
+
+  private static readonly byModelIdCache = defineCachedResourceBatchLookup({
+    id: "group_by_model_id",
+    version: GROUP_BY_MODEL_ID_CACHE_KEY_VERSION,
+    key: groupCacheKey,
+    loadManyFromDatabase: GroupResource.fetchByModelIdsFromDatabase,
+    inputFromResource: (group: GroupResource) => ({
+      workspaceModelId: group.workspaceId,
+      groupModelId: group.id,
+    }),
+    toSnapshot: (group: GroupResource) => group.toCacheSnapshot(),
+    parseSnapshot: (serializedSnapshot: string) => {
+      const parsedSnapshot: unknown = JSON.parse(serializedSnapshot);
+      return CachedGroupSchema.parse(parsedSnapshot);
+    },
+    fromSnapshot: GroupResource.fromCachedGroup,
+  });
+
+  static readonly byModelIdCacheOperations =
+    GroupResource.byModelIdCache.createCacheOperations({
+      label: "Group (by ModelId)",
+      inputSchema: GroupCacheInputSchema,
+      params: [
+        {
+          key: "workspaceModelId",
+          label: "Workspace ModelId",
+          type: "number",
+          placeholder: "e.g. 42",
+        },
+        {
+          key: "groupModelId",
+          label: "Group ModelId",
+          type: "number",
+          placeholder: "e.g. 7",
+        },
+      ],
+      toLookupInput: (input) => input,
+    });
+
   static async fetchByModelIds(
     auth: Authenticator,
     ids: ModelId[],
@@ -846,18 +959,15 @@ export class GroupResource extends BaseResource<GroupModel> {
       transaction,
     }: { groupKinds?: GroupKind[]; transaction?: Transaction } = {}
   ) {
-    return this.baseFetch(
-      auth,
-      {
-        where: {
-          id: {
-            [Op.in]: ids,
-          },
-          ...(groupKinds ? { kind: { [Op.in]: groupKinds } } : {}),
-        },
-      },
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    const groups = await GroupResource.byModelIdCache.fetchMany(
+      ids.map((groupModelId) => ({ workspaceModelId, groupModelId })),
       transaction
     );
+
+    return groupKinds
+      ? groups.filter((group) => groupKinds.includes(group.kind))
+      : groups;
   }
 
   static async fetchById(
@@ -2251,6 +2361,21 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   // Updates
 
+  protected override async update(
+    blob: ResourceUpdateBlob<GroupModel>,
+    transaction?: Transaction
+  ): Promise<[affectedCount: number]> {
+    const result = await super.update(blob, transaction);
+    await GroupResource.byModelIdCache.invalidate(
+      {
+        workspaceModelId: this.workspaceId,
+        groupModelId: this.id,
+      },
+      transaction
+    );
+    return result;
+  }
+
   async updateName(
     auth: Authenticator,
     newName: string
@@ -2547,6 +2672,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       const workspaceId = owner.id;
       invalidateCacheAfterCommit(transaction, () =>
         GroupResource.invalidateWorkspaceGroupsFromSystemKeyCache(workspaceId)
+      );
+      await GroupResource.byModelIdCache.invalidate(
+        {
+          workspaceModelId: workspaceId,
+          groupModelId: this.id,
+        },
+        transaction
       );
 
       return new Ok(undefined);

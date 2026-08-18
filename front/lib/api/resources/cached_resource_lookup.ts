@@ -1,3 +1,4 @@
+import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { JsonSerializable } from "@app/lib/utils/cache";
 import {
   batchInvalidateCacheWithRedis,
@@ -39,6 +40,18 @@ type CachedResourceLookupDefinition<Input, Snapshot, Resource> = {
   fromSnapshot: (
     snapshot: JsonSerializable<Snapshot>
   ) => Promise<Resource> | Resource;
+};
+
+type CachedResourceBatchLookupDefinition<Input, Snapshot, Resource> = Omit<
+  CachedResourceLookupDefinition<Input, Snapshot, Resource>,
+  "loadFromDatabase" | "readFromKeyFirst"
+> & {
+  loadManyFromDatabase: (
+    inputs: Input[],
+    transaction?: Transaction
+  ) => Promise<Resource[]>;
+  inputFromResource: (resource: Resource) => Input;
+  parseSnapshot: (serializedSnapshot: string) => JsonSerializable<Snapshot>;
 };
 
 export type CachedResourceLookup<Input, Resource> = {
@@ -92,6 +105,14 @@ type OperableCachedResourceList<Input, Resource> = CachedResourceList<
     toLookupInput: (input: OperationsInput) => Input;
   }) => CacheOperations;
 };
+
+type OperableCachedResourceBatchLookup<Input, Resource> =
+  OperableCachedResourceLookup<Input, Resource> & {
+    fetchMany: (
+      inputs: Input[],
+      transaction?: Transaction
+    ) => Promise<Resource[]>;
+  };
 
 // Marks database errors so they are not mistaken for Redis failures and retried by the database
 // fallback below.
@@ -244,5 +265,140 @@ export function defineCachedResourceList<Input, Snapshot, Resource>(
     invalidate: lookup.invalidate,
     invalidateMany: lookup.invalidateMany,
     createCacheOperations: lookup.createCacheOperations,
+  };
+}
+
+/**
+ * Batched counterpart of `defineCachedResourceLookup`. Each Resource keeps its own cache key,
+ * while cache misses are loaded from the database in one query.
+ */
+export function defineCachedResourceBatchLookup<Input, Snapshot, Resource>({
+  id,
+  version,
+  key,
+  loadManyFromDatabase,
+  inputFromResource,
+  toSnapshot,
+  fromSnapshot,
+  parseSnapshot,
+}: CachedResourceBatchLookupDefinition<
+  Input,
+  Snapshot,
+  Resource
+>): OperableCachedResourceBatchLookup<Input, Resource> {
+  const lookup = defineCachedResourceLookup({
+    id,
+    version,
+    key,
+    loadFromDatabase: async (input: Input, transaction?: Transaction) => {
+      const [resource] = await loadManyFromDatabase([input], transaction);
+      return resource ?? null;
+    },
+    toSnapshot,
+    fromSnapshot,
+  });
+  const cacheKey = (input: Input) =>
+    buildCacheWithRedisKey(id, `v${version}:${key(input)}`);
+
+  return {
+    ...lookup,
+    fetchMany: async (inputs, transaction) => {
+      if (inputs.length === 0) {
+        return [];
+      }
+
+      const uniqueInputsByKey = new Map(
+        inputs.map((input) => [cacheKey(input), input])
+      );
+      const uniqueInputs = [...uniqueInputsByKey.values()];
+
+      if (transaction) {
+        return loadManyFromDatabase(uniqueInputs, transaction);
+      }
+
+      try {
+        const redis = await getRedisCacheClient({ origin: "cache_with_redis" });
+        const serializedSnapshots = await redis.mGet([
+          ...uniqueInputsByKey.keys(),
+        ]);
+        const resourcesByKey = new Map<string, Resource>();
+        const missingInputs: Input[] = [];
+
+        for (const [index, input] of uniqueInputs.entries()) {
+          const serializedSnapshot = serializedSnapshots[index];
+          if (serializedSnapshot === null) {
+            missingInputs.push(input);
+            continue;
+          }
+          if (serializedSnapshot === undefined) {
+            throw new Error("Missing Redis result for Resource cache key");
+          }
+
+          resourcesByKey.set(
+            cacheKey(input),
+            await fromSnapshot(parseSnapshot(serializedSnapshot))
+          );
+        }
+
+        if (missingInputs.length > 0) {
+          let loadedResources: Resource[];
+          try {
+            loadedResources = await loadManyFromDatabase(missingInputs);
+          } catch (err) {
+            throw new ResourceDatabaseLoadError(err);
+          }
+
+          const missingKeys = new Set(missingInputs.map(cacheKey));
+          const snapshotsToCache: {
+            key: string;
+            snapshot: JsonSerializable<Snapshot>;
+          }[] = [];
+          for (const resource of loadedResources) {
+            const resourceKey = cacheKey(inputFromResource(resource));
+            if (!missingKeys.has(resourceKey)) {
+              continue;
+            }
+            resourcesByKey.set(resourceKey, resource);
+            snapshotsToCache.push({
+              key: resourceKey,
+              snapshot: toSnapshot(resource),
+            });
+          }
+
+          if (snapshotsToCache.length > 0) {
+            try {
+              const multi = redis.multi();
+              for (const { key: snapshotKey, snapshot } of snapshotsToCache) {
+                multi.set(snapshotKey, JSON.stringify(snapshot));
+              }
+              await multi.exec();
+            } catch (err) {
+              logger.warn(
+                { cacheId: id, err: normalizeError(err) },
+                "Resource cache write failed; returning database results"
+              );
+            }
+          }
+        }
+
+        const resources: Resource[] = [];
+        for (const input of uniqueInputs) {
+          const resource = resourcesByKey.get(cacheKey(input));
+          if (resource !== undefined) {
+            resources.push(resource);
+          }
+        }
+        return resources;
+      } catch (err) {
+        if (err instanceof ResourceDatabaseLoadError) {
+          throw err.cause;
+        }
+        logger.warn(
+          { cacheId: id, err: normalizeError(err) },
+          "Resource cache read failed; falling back to the database"
+        );
+        return loadManyFromDatabase(uniqueInputs);
+      }
+    },
   };
 }

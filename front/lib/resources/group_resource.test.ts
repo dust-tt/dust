@@ -3,10 +3,33 @@ import { getNamespace } from "@app/tests/utils/test_cls";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const inMemoryCache = vi.hoisted(() => new Map<string, string>());
+const cacheReadFailure = vi.hoisted(() => ({ current: null as Error | null }));
 
 vi.mock("@app/lib/api/redis", () => ({
   getRedisCacheClient: vi.fn().mockImplementation(() =>
     Promise.resolve({
+      mGet: vi.fn().mockImplementation((keys: string[]) => {
+        if (cacheReadFailure.current) {
+          throw cacheReadFailure.current;
+        }
+        return Promise.resolve(keys.map((key) => inMemoryCache.get(key) ?? null));
+      }),
+      multi: vi.fn().mockImplementation(() => {
+        const values = new Map<string, string>();
+        const multi = {
+          set: vi.fn().mockImplementation((key: string, value: string) => {
+            values.set(key, value);
+            return multi;
+          }),
+          exec: vi.fn().mockImplementation(() => {
+            for (const [key, value] of values) {
+              inMemoryCache.set(key, value);
+            }
+            return Promise.resolve([]);
+          }),
+        };
+        return multi;
+      }),
       del: vi.fn().mockImplementation((keyOrKeys: string | string[]) => {
         const keys = Array.isArray(keyOrKeys) ? keyOrKeys : [keyOrKeys];
         keys.forEach((key) => inMemoryCache.delete(key));
@@ -44,10 +67,11 @@ vi.mock("@app/lib/utils/cache", async (importOriginal) => {
       .mockImplementation(
         <T, Args extends unknown[]>(
           fn: CacheableFunction<JsonSerializable<T>, Args>,
-          resolver: (...args: Args) => string
+          resolver: (...args: Args) => string,
+          options?: { cacheId?: string }
         ) => {
           return async (...args: Args): Promise<void> => {
-            const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+            const key = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
             inMemoryCache.delete(key);
           };
         }
@@ -99,6 +123,16 @@ function getCacheKeyForWorkspaceGroupsFromSystemKey(
   return `cacheWithRedis-_listWorkspaceGroupsFromSystemKeyUncached-workspace-groups-from-system-key:${workspaceId}`;
 }
 
+function getCacheKeyForGroup(
+  workspaceModelId: number,
+  groupModelId: number
+): string {
+  return GroupResource.byModelIdCacheOperations.buildKey({
+    workspaceModelId: String(workspaceModelId),
+    groupModelId: String(groupModelId),
+  });
+}
+
 describe("GroupResource", () => {
   let workspace: LightWorkspaceType;
   let user: UserResource;
@@ -113,26 +147,100 @@ describe("GroupResource", () => {
     authenticator = testSetup.authenticator;
     globalGroup = testSetup.globalGroup;
     systemGroup = testSetup.systemGroup;
+    cacheReadFailure.current = null;
     // Clear cache after setup since Authenticator creation may populate it
     inMemoryCache.clear();
   });
 
   describe("fetchByModelIds", () => {
-    it("filters on group kind when asked", async () => {
+    it("caches each group while loading cache misses in one database query", async () => {
       const autoGroup = await GroupResource.makeNew({
         name: "Auto Group",
         workspaceId: workspace.id,
         kind: "regular_auto",
       });
       const ids = [autoGroup.id, globalGroup.id, systemGroup.id];
+      const findAllSpy = vi.spyOn(GroupModel, "findAll");
 
       const all = await GroupResource.fetchByModelIds(authenticator, ids);
       expect(all.map((g) => g.id).sort()).toEqual([...ids].sort());
+      expect(findAllSpy).toHaveBeenCalledTimes(1);
+      for (const groupModelId of ids) {
+        expect(
+          inMemoryCache.has(getCacheKeyForGroup(workspace.id, groupModelId))
+        ).toBe(true);
+      }
+
+      const cached = await GroupResource.fetchByModelIds(authenticator, ids);
+      expect(cached.map((g) => g.id).sort()).toEqual([...ids].sort());
+      expect(findAllSpy).toHaveBeenCalledTimes(1);
 
       const autoOnly = await GroupResource.fetchByModelIds(authenticator, ids, {
         groupKinds: ["regular_auto"],
       });
       expect(autoOnly.map((g) => g.id)).toEqual([autoGroup.id]);
+      expect(findAllSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("bypasses the cache in a transaction", async () => {
+      const transaction = getNamespace("test-namespace")?.get("transaction");
+      if (!transaction) {
+        throw new Error("Expected the test transaction to be available.");
+      }
+
+      const groups = await GroupResource.fetchByModelIds(
+        authenticator,
+        [globalGroup.id],
+        { transaction }
+      );
+
+      expect(groups.map((group) => group.id)).toEqual([globalGroup.id]);
+      expect(
+        inMemoryCache.has(getCacheKeyForGroup(workspace.id, globalGroup.id))
+      ).toBe(false);
+    });
+
+    it("falls back to the database when Redis is unavailable", async () => {
+      cacheReadFailure.current = new Error("Redis unavailable");
+
+      const groups = await GroupResource.fetchByModelIds(authenticator, [
+        globalGroup.id,
+      ]);
+
+      expect(groups.map((group) => group.id)).toEqual([globalGroup.id]);
+    });
+
+    it("invalidates cached groups after updates and deletion", async () => {
+      const group = await GroupResource.makeNew({
+        name: "Cached Group",
+        workspaceId: workspace.id,
+        kind: "regular_auto",
+      });
+      const cacheKey = getCacheKeyForGroup(workspace.id, group.id);
+
+      await GroupResource.fetchByModelIds(authenticator, [group.id]);
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
+
+      const updateResult = await group.updateName(
+        authenticator,
+        "Updated Cached Group"
+      );
+      expect(updateResult.isOk()).toBe(true);
+      expect(inMemoryCache.has(cacheKey)).toBe(false);
+
+      const [updatedGroup] = await GroupResource.fetchByModelIds(
+        authenticator,
+        [group.id]
+      );
+      expect(updatedGroup?.name).toBe("Updated Cached Group");
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
+
+      const deleteResult = await group.delete(authenticator);
+      expect(deleteResult.isOk()).toBe(true);
+      expect(inMemoryCache.has(cacheKey)).toBe(false);
+      await expect(
+        GroupResource.fetchByModelIds(authenticator, [group.id])
+      ).resolves.toEqual([]);
     });
   });
 

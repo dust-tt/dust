@@ -6,9 +6,16 @@ import { describe, expect, it } from "vitest";
 
 describe("Poke cache catalog", () => {
   it("uses owner-defined operations for migrated caches", () => {
+    const group = getPokeCacheOperations("group_by_model_id");
     const workspace = getPokeCacheOperations("workspace_by_sid");
     const activeSeats = getPokeCacheOperations("workspace_active_seats");
 
+    expect(
+      group?.buildKey({ workspaceModelId: "42", groupModelId: "7" })
+    ).toBe("cacheWithRedis-group_by_model_id-v1:workspace:42:group:7");
+    expect(group?.keyPattern).toBe(
+      "cacheWithRedis-group_by_model_id-v1:*"
+    );
     expect(workspace?.buildKey({ wId: "workspace-1" })).toBe(
       "cacheWithRedis-_fetchByIdUncached-workspace:v2:workspace-1"
     );
@@ -32,6 +39,7 @@ describe("Poke cache catalog", () => {
     const catalog = getPokeCacheCatalog();
     const ids = catalog.map((entry) => entry.id);
 
+    expect(ids.filter((id) => id === "group_by_model_id")).toHaveLength(1);
     expect(ids.filter((id) => id === "workspace_by_sid")).toHaveLength(1);
     expect(ids.filter((id) => id === "workspace_active_seats")).toHaveLength(1);
   });
