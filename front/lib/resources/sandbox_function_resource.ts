@@ -313,7 +313,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     }: ResourceFindOptions<SandboxFunctionModel> & {
       includeDeletedSpace?: boolean;
       capability?: FrameShareCapability;
-      // Reserved for execution-side resolution (fetchByIdForExecution and the tool workflow),
+      // Reserved for execution-side resolution (see fetchById's option of the same name),
       // which verified an invocation row for the function first.
       dangerouslyBypassSpacePermissionFilter?: boolean;
     } = {}
@@ -394,7 +394,17 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   static async fetchById(
     auth: Authenticator,
     sandboxFunctionId: string,
-    capability?: FrameShareCapability
+    {
+      capability,
+      dangerouslyBypassSpacePermissionFilter = false,
+    }: {
+      capability?: FrameShareCapability;
+      // Only for execution-side paths (temporal activities, sandbox-token callbacks): they
+      // re-resolve an already-authorized invocation's function under an auth that cannot carry
+      // the invoker's original grant, and their (function, invocation) ids come from
+      // server-minted inputs (workflow args, verified sandbox JWT claims), never user input.
+      dangerouslyBypassSpacePermissionFilter?: boolean;
+    } = {}
   ): Promise<SandboxFunctionResource | null> {
     if (!isResourceSId("sandbox_function", sandboxFunctionId)) {
       return null;
@@ -408,48 +418,9 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     const [sandboxFunction] = await this.baseFetch(auth, {
       where: { id: sandboxFunctionModelId },
       capability,
+      dangerouslyBypassSpacePermissionFilter,
     });
 
-    return sandboxFunction ?? null;
-  }
-
-  /**
-   * Gets the function if the invocation row exists
-   * In the context of a temporal activity or a sandbox callback, we don't have the original caller's
-   * grant (e.g. a frame share token) in the auth. Instead, we rely on the fact that the invocation row
-   * was created earlier when we did have the caller's grant. The presence of the invocation row
-   * is sufficient proof that the caller was authorized to invoke the function
-   */
-  static async fetchByIdForExecution(
-    auth: Authenticator,
-    {
-      sandboxFunctionId,
-      invocationId,
-    }: { sandboxFunctionId: string; invocationId: string }
-  ): Promise<SandboxFunctionResource | null> {
-    const sandboxFunctionModelId = getResourceIdFromSId(sandboxFunctionId);
-    const invocationModelId = getResourceIdFromSId(invocationId);
-    if (sandboxFunctionModelId === null || invocationModelId === null) {
-      return null;
-    }
-
-    // We don't need the invocation row itself, just its existence to prove that the caller was
-    // authorized to invoke the function
-    const invocation = await SandboxFunctionInvocationModel.findOne({
-      where: {
-        id: invocationModelId,
-        sandboxFunctionId: sandboxFunctionModelId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-    });
-    if (!invocation) {
-      return null;
-    }
-
-    const [sandboxFunction] = await this.baseFetch(auth, {
-      where: { id: sandboxFunctionModelId },
-      dangerouslyBypassSpacePermissionFilter: true,
-    });
     return sandboxFunction ?? null;
   }
 
@@ -526,11 +497,9 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     functionIdOrSlug: string,
     capability?: FrameShareCapability
   ): Promise<SandboxFunctionResource | null> {
-    const sandboxFunction = await this.fetchById(
-      auth,
-      functionIdOrSlug,
-      capability
-    );
+    const sandboxFunction = await this.fetchById(auth, functionIdOrSlug, {
+      capability,
+    });
     if (sandboxFunction) {
       return sandboxFunction;
     }
