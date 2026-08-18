@@ -70,7 +70,7 @@ export function PodAppTile({
 
   return (
     <Card
-      size="sm"
+      size="md"
       onClick={openableFrame ? () => onOpenFrame(openableFrame) : undefined}
       action={
         <div className="flex gap-1">
@@ -100,18 +100,30 @@ export function PodAppTile({
         </div>
       }
     >
-      <div className="flex min-w-0 grow items-center gap-3">
+      {/*
+        The icon row shares its band with the actions `Card` pins to the top-right corner, so the
+        name goes on the row below and gets the tile's full width rather than running under (or
+        truncating ahead of) the buttons.
+      */}
+      <div className="flex min-w-0 grow flex-col items-start gap-3">
         <ResourceAvatar
           icon={getIcon(appIcon(app, iconByFramePath, defaultIcon))}
           size="md"
           backgroundColor="bg-background dark:bg-background-night"
         />
-        <span className="truncate heading-base text-foreground dark:text-foreground-night">
-          {app.name}
-        </span>
-        {isDraft && (
-          <Chip size="xs" color="primary" label="Draft" className="shrink-0" />
-        )}
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate heading-base text-foreground dark:text-foreground-night">
+            {app.name}
+          </span>
+          {isDraft && (
+            <Chip
+              size="xs"
+              color="primary"
+              label="Draft"
+              className="shrink-0"
+            />
+          )}
+        </div>
       </div>
     </Card>
   );
