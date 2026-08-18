@@ -399,6 +399,16 @@ export function createTriggersManagementTools(
         return new Err(new MCPError("Trigger not found"));
       }
 
+      // An admin editor could otherwise clear a system-owned status
+      // (relocating/downgraded), losing the marker the restore jobs key on.
+      if (trigger.isSystemStatusTransitionTo("disabled")) {
+        return new Err(
+          new MCPError(
+            "This trigger's status is managed by Dust and cannot be changed."
+          )
+        );
+      }
+
       const triggerName = trigger.name;
       const result = await trigger.disable(auth);
 
