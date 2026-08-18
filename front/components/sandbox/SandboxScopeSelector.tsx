@@ -128,7 +128,7 @@ export function SandboxScopeSelector({
           disabled={isLoading}
         />
         <DropdownMenuItem
-          label={allPodsSelected ? "Clear all Pods" : "Select all Pods"}
+          label={allPodsSelected ? "Clear all" : "Select all"}
           disabled={pods.length === 0}
           onClick={() =>
             onChange({
