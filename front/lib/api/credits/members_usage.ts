@@ -15,10 +15,6 @@ import type {
 import {
   getCachedDefaultCapThresholdsBySeatType,
   getCachedPerUserCapAlertIds,
-  getMetronomeDefaultUserCapAlertForSeatType,
-  getMetronomeDefaultUserWarningAlertForSeatType,
-  listMetronomePerUserCapsForWorkspace,
-  listMetronomePerUserWarningAlertsForWorkspace,
 } from "@app/lib/metronome/alerts/spend_limits";
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import {
@@ -31,17 +27,11 @@ import {
   toFreeMetronomeUserId,
 } from "@app/lib/metronome/constants";
 import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
-import {
-  fetchPerUserAwuUsage,
-  getPerUserAwuUsage,
-} from "@app/lib/metronome/per_user_usage";
+import { getPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
 import type { SeatData } from "@app/lib/metronome/seats";
-import {
-  buildSeatDataByUserId,
-  getCachedSeatDataByUserId,
-} from "@app/lib/metronome/seats";
+import { getCachedSeatDataByUserId } from "@app/lib/metronome/seats";
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import { isUserAwuWarned } from "@app/lib/metronome/user_block";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
@@ -518,30 +508,6 @@ export async function getEsConsumedAwuCreditsForApiKey(
   return consumedByApiKeyName.get(apiKeyName) ?? 0;
 }
 
-async function fetchPerUserUsageCreditsForMembersTableUncached({
-  workspaceId,
-  metronomeCustomerId,
-  userIds,
-}: {
-  workspaceId: string;
-  metronomeCustomerId: string;
-  userIds: string[];
-}): Promise<Map<string, number>> {
-  const result = await fetchPerUserAwuUsage({
-    workspaceId,
-    metronomeCustomerId,
-    userIds,
-  });
-  if (result.isErr()) {
-    logger.warn(
-      { err: result.error, metronomeCustomerId },
-      "[MembersUsage] Failed to fetch per-user usage"
-    );
-    return new Map();
-  }
-  return result.value;
-}
-
 async function fetchPerUserUsageCreditsForMembersTable({
   workspaceId,
   metronomeCustomerId,
@@ -564,40 +530,17 @@ async function fetchPerUserUsageCreditsForMembersTable({
       userIds,
     });
   } catch (err) {
+    // No uncached fallback (see fetchSeatDataForMembersTable).
     logger.warn(
       { err: normalizeError(err), metronomeCustomerId },
-      "[MembersUsage] Failed to read cached per-user usage, falling back to uncached fetch"
-    );
-    return fetchPerUserUsageCreditsForMembersTableUncached({
-      workspaceId,
-      metronomeCustomerId,
-      userIds,
-    });
-  }
-}
-
-async function fetchSeatDataForMembersTableUncached({
-  metronomeCustomerId,
-  metronomeContractId,
-}: {
-  metronomeCustomerId: string;
-  metronomeContractId: string;
-}): Promise<Map<string, SeatData>> {
-  const seatDataResult = await buildSeatDataByUserId({
-    metronomeCustomerId,
-    contractId: metronomeContractId,
-  });
-  if (seatDataResult.isErr()) {
-    logger.warn(
-      { err: seatDataResult.error, metronomeCustomerId },
-      "[MembersUsage] Failed to build seat data, degrading to empty map"
+      "[MembersUsage] Failed to read cached per-user usage, degrading to empty map"
     );
     return new Map();
   }
-  return seatDataResult.value;
 }
 
-async function fetchSeatDataForMembersTable({
+/** Exported for testing. */
+export async function fetchSeatDataForMembersTable({
   metronomeCustomerId,
   metronomeContractId,
 }: {
@@ -608,23 +551,24 @@ async function fetchSeatDataForMembersTable({
     return new Map();
   }
   try {
-    return new Map(
-      Object.entries(
-        await getCachedSeatDataByUserId({
-          metronomeCustomerId,
-          contractId: metronomeContractId,
-        })
-      )
-    );
+    const seatData = await getCachedSeatDataByUserId({
+      metronomeCustomerId,
+      contractId: metronomeContractId,
+    });
+    // null: another process holds the fetch lock (skipIfLocked). Degrade
+    // rather than piling a duplicate Metronome fan-out on top.
+    if (!seatData) {
+      return new Map();
+    }
+    return new Map(Object.entries(seatData));
   } catch (err) {
+    // No uncached fallback: a failing loader means Metronome is already under
+    // pressure, and refetching would amplify it (see the 429 storm of 2026-08).
     logger.warn(
       { err: normalizeError(err), metronomeCustomerId },
-      "[MembersUsage] Failed to read cached seat data, falling back to uncached fetch"
+      "[MembersUsage] Failed to read cached seat data, degrading to empty map"
     );
-    return fetchSeatDataForMembersTableUncached({
-      metronomeCustomerId,
-      metronomeContractId,
-    });
+    return new Map();
   }
 }
 
@@ -709,85 +653,6 @@ async function fetchFreeSeatCreditsForMembersTable({
     );
   }
   return { freeBalanceByUserId, freeStartingByUserId };
-}
-
-async function fetchPerUserCapAlertIdsUncached({
-  metronomeCustomerId,
-  workspaceId,
-}: {
-  metronomeCustomerId: string;
-  workspaceId: string;
-}): Promise<Map<string, MetronomeCapAlertIds>> {
-  const [capsResult, warningsResult] = await Promise.all([
-    listMetronomePerUserCapsForWorkspace({ metronomeCustomerId, workspaceId }),
-    listMetronomePerUserWarningAlertsForWorkspace({
-      metronomeCustomerId,
-      workspaceId,
-    }),
-  ]);
-  if (capsResult.isErr()) {
-    logger.warn(
-      { err: capsResult.error, workspaceId },
-      "[MembersUsage] Failed to fetch per-user spend cap alerts"
-    );
-    return new Map();
-  }
-  const warnings = warningsResult.isErr() ? new Map() : warningsResult.value;
-
-  const caps = new Map<string, MetronomeCapAlertIds>();
-  for (const [userId, entry] of capsResult.value) {
-    caps.set(userId, {
-      alertId: entry.alert.id,
-      warningAlertId: warnings.get(userId)?.alert.id ?? null,
-    });
-  }
-
-  return caps;
-}
-
-async function fetchDefaultCapsBySeatTypeUncached({
-  metronomeCustomerId,
-  workspaceId,
-}: {
-  metronomeCustomerId: string;
-  workspaceId: string;
-}): Promise<
-  Partial<Record<NormalizedPoolLimitSeatType, MetronomeCapAlertInfo>>
-> {
-  const caps: Partial<
-    Record<NormalizedPoolLimitSeatType, MetronomeCapAlertInfo>
-  > = {};
-  for (const seatType of NORMALIZED_POOL_LIMIT_SEAT_TYPES) {
-    const [capResult, warningResult] = await Promise.all([
-      getMetronomeDefaultUserCapAlertForSeatType({
-        metronomeCustomerId,
-        workspaceId,
-        seatType,
-      }),
-      getMetronomeDefaultUserWarningAlertForSeatType({
-        metronomeCustomerId,
-        workspaceId,
-        seatType,
-      }),
-    ]);
-    if (capResult.isErr()) {
-      logger.warn(
-        { err: capResult.error, workspaceId, seatType },
-        "[MembersUsage] Failed to fetch default spend cap for seat type"
-      );
-      continue;
-    }
-    if (capResult.value) {
-      caps[seatType] = {
-        threshold: capResult.value.alert.threshold,
-        alertId: capResult.value.alert.id,
-        warningAlertId: warningResult.isOk()
-          ? (warningResult.value?.alert.id ?? null)
-          : null,
-      };
-    }
-  }
-  return caps;
 }
 
 /**
@@ -889,14 +754,12 @@ async function fetchPerUserCapAlertIds({
       )
     );
   } catch (err) {
+    // No uncached fallback (see fetchSeatDataForMembersTable).
     logger.warn(
       { err: normalizeError(err), workspaceId },
-      "[MembersUsage] Failed to read cached per-user spend cap alert ids, falling back to uncached fetch"
+      "[MembersUsage] Failed to read cached per-user spend cap alert ids, degrading to empty map"
     );
-    return fetchPerUserCapAlertIdsUncached({
-      metronomeCustomerId,
-      workspaceId,
-    });
+    return new Map();
   }
 }
 
@@ -915,14 +778,12 @@ async function fetchDefaultCapsBySeatType({
       workspaceId,
     });
   } catch (err) {
+    // No uncached fallback (see fetchSeatDataForMembersTable).
     logger.warn(
       { err: normalizeError(err), workspaceId },
-      "[MembersUsage] Failed to read cached default spend caps by seat type, falling back to uncached fetch"
+      "[MembersUsage] Failed to read cached default spend caps by seat type, degrading to empty result"
     );
-    return fetchDefaultCapsBySeatTypeUncached({
-      metronomeCustomerId,
-      workspaceId,
-    });
+    return {};
   }
 }
 

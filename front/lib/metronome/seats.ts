@@ -2302,6 +2302,10 @@ export type SeatData = {
   nextCreditResetAt: string | null;
 };
 
+// Seat data only feeds display surfaces that degrade gracefully, so failing
+// fast beats burning rate-limit budget on retries when Metronome is throttling.
+const SEAT_DATA_READ_MAX_RETRIES = 1;
+
 /**
  * Query Metronome for all SEAT_BASED subscriptions on the contract and return
  * a map of userId → { awuAllocation, billingFrequency }. Makes a single
@@ -2319,6 +2323,7 @@ export async function buildSeatDataByUserId({
   const contractResult = await getMetronomeContractById({
     metronomeCustomerId,
     metronomeContractId: contractId,
+    maxRetries: SEAT_DATA_READ_MAX_RETRIES,
   });
   if (contractResult.isErr()) {
     logger.warn(
@@ -2355,6 +2360,7 @@ export async function buildSeatDataByUserId({
         metronomeCustomerId,
         contractId,
         subscriptionId: sub.id,
+        maxRetries: SEAT_DATA_READ_MAX_RETRIES,
       });
       if (seatStateResult.isErr()) {
         logger.warn(
@@ -2426,10 +2432,19 @@ async function fetchSeatDataRecord(args: {
   return Object.fromEntries(seatDataResult.value);
 }
 
+// At most one Metronome fan-out in flight per contract fleet-wide: concurrent
+// misses on other processes get null (callers degrade) instead of each firing
+// their own contract + per-subscription seat reads. Best-effort past the
+// distributed lock's 5s TTL: a fan-out slower than that lets a second fetcher
+// start, so the bound is "a couple in flight", never a storm.
 export const getCachedSeatDataByUserId = cacheWithRedis(
   fetchSeatDataRecord,
   seatDataCacheResolver,
-  { ttlMs: SEAT_DATA_CACHE_TTL_MS }
+  {
+    ttlMs: SEAT_DATA_CACHE_TTL_MS,
+    useDistributedLock: true,
+    skipIfLocked: true,
+  }
 );
 
 const invalidateCachedSeatDataByUserId = bestEffortInvalidateCacheWithRedis(

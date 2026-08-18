@@ -1,7 +1,9 @@
+import { getMetronomeContractById } from "@app/lib/metronome/client";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import {
   classifySeatChange,
   computeSeatCreditTransfers,
+  getCachedSeatDataByUserId,
   getSeatCreditNameForSeatType,
   hasContractSeatSubscription,
   promoteNoneSeatTypesForContract,
@@ -14,11 +16,13 @@ import {
 } from "@app/lib/metronome/setup_common";
 import type { SeatLimit } from "@app/lib/resources/workspace_seat_limit_resource";
 import type { MembershipSeatType } from "@app/types/memberships";
+import { Err } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/metronome/client", () => ({
   getMetronomeContractById: vi.fn(),
+  getMetronomeSubscriptionSeatState: vi.fn(),
   updateSubscriptionQuantity: vi.fn(),
 }));
 
@@ -1101,5 +1105,49 @@ describe("computeSeatCreditTransfers", () => {
       remaining: 8000,
       consumed: 0,
     });
+  });
+});
+
+// Regression tests for the Metronome 429 storm of 2026-08: the seat-data cache
+// must dedupe fetches fleet-wide (distributed lock + skipIfLocked) and surface
+// loader failures instead of returning empty data. The lock/skip semantics of
+// cacheWithRedis itself are covered by lib/utils/cache.test.ts; vite.setup.ts
+// replaces cacheWithRedis with a passthrough here, so we pin the registration
+// options rather than the runtime behavior.
+describe("getCachedSeatDataByUserId", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("registers the seat-data cache with fleet-wide fetch dedup", async () => {
+    // Re-import so the module-level cacheWithRedis registration call is
+    // recorded on a fresh mock (earlier clearAllMocks wiped the original).
+    vi.resetModules();
+    const cache = await import("@app/lib/utils/cache");
+    await import("@app/lib/metronome/seats");
+
+    const registration = vi
+      .mocked(cache.cacheWithRedis)
+      .mock.calls.find((call) => call[0]?.name === "fetchSeatDataRecord");
+    // Coupled to the loader's function name: if this is undefined after a
+    // rename in seats.ts, update the string above (the dedup is likely fine).
+    expect(registration).toBeDefined();
+    expect(registration?.[2]).toMatchObject({
+      useDistributedLock: true,
+      skipIfLocked: true,
+    });
+  });
+
+  it("surfaces a loader failure to the caller instead of returning empty data", async () => {
+    vi.mocked(getMetronomeContractById).mockResolvedValue(
+      new Err(new Error("429 rate limit exceeded"))
+    );
+
+    await expect(
+      getCachedSeatDataByUserId({
+        metronomeCustomerId: "cust_err",
+        contractId: "contract_1",
+      })
+    ).rejects.toThrow("429");
   });
 });

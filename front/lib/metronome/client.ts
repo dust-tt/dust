@@ -1070,15 +1070,22 @@ export async function findMetronomeContractByUniquenessKey({
 export async function getMetronomeContractById({
   metronomeCustomerId,
   metronomeContractId,
+  maxRetries,
 }: {
   metronomeCustomerId: string;
   metronomeContractId: string;
+  // Overrides the client-level retry count (5). Degradable interactive reads
+  // should fail fast instead of amplifying rate-limit pressure.
+  maxRetries?: number;
 }): Promise<Result<ContractV2, Error>> {
   try {
-    const response = await getMetronomeClient().v2.contracts.retrieve({
-      customer_id: metronomeCustomerId,
-      contract_id: metronomeContractId,
-    });
+    const response = await getMetronomeClient().v2.contracts.retrieve(
+      {
+        customer_id: metronomeCustomerId,
+        contract_id: metronomeContractId,
+      },
+      maxRetries !== undefined ? { maxRetries } : undefined
+    );
 
     return new Ok(response.data);
   } catch (err) {
@@ -1389,6 +1396,7 @@ export async function getMetronomeSubscriptionSeatState({
   contractId,
   subscriptionId,
   coveringDate,
+  maxRetries,
 }: {
   metronomeCustomerId: string;
   contractId: string;
@@ -1396,6 +1404,9 @@ export async function getMetronomeSubscriptionSeatState({
   // Defaults to `now`. Pass a future date to read the assignments projected
   // at that point in time.
   coveringDate?: Date;
+  // Overrides the client-level retry count (5). Degradable interactive reads
+  // should fail fast instead of amplifying rate-limit pressure.
+  maxRetries?: number;
 }): Promise<Result<SubscriptionSeatState, Error>> {
   try {
     const response =
@@ -1408,6 +1419,7 @@ export async function getMetronomeSubscriptionSeatState({
             subscription_id: subscriptionId,
             covering_date: (coveringDate ?? new Date()).toISOString(),
           },
+          ...(maxRetries !== undefined ? { maxRetries } : {}),
         }
       );
     // History is returned ascending by starting_at; take the last entry to
