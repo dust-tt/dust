@@ -17,9 +17,7 @@ export function ConsumptionOverview({
 
   if (isOverviewLoading) {
     return (
-      <div className="flex flex-col gap-6">
-        <div className="h-5 w-80 animate-pulse rounded bg-muted-background" />
-      </div>
+      <div className="h-5 w-80 animate-pulse rounded bg-muted-background" />
     );
   }
 
@@ -38,19 +36,17 @@ export function ConsumptionOverview({
   ];
 
   return (
-    <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground">
-        {header.map((item, index) => (
-          <span key={item}>
-            {index > 0 && (
-              <span className="mx-2" aria-hidden="true">
-                |
-              </span>
-            )}
-            {item}
-          </span>
-        ))}
-      </p>
-    </div>
+    <p className="text-sm text-muted-foreground">
+      {header.map((item, index) => (
+        <span key={item}>
+          {index > 0 && (
+            <span className="mx-2" aria-hidden="true">
+              |
+            </span>
+          )}
+          {item}
+        </span>
+      ))}
+    </p>
   );
 }
