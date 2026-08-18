@@ -105,12 +105,15 @@ export function ConsumptionBurnUpChart({
   filter,
 }: ConsumptionBurnUpChartProps) {
   const { overview } = useConsumptionOverview({ workspaceId, period, filter });
-  // A cap only exists on a billing cycle. Gating on the selection rather than on
-  // the response alone keeps a previous cycle's cap — kept around by
-  // `keepPreviousData` while the new request lands — from drawing a target over
-  // a period that has none.
+  const isFiltered = Object.values(filter ?? {}).some(
+    (values) => values.length > 0
+  );
+  // A cap only exists on a billing cycle, when there's no filter. Gating on the
+  // selection rather than on the response alone keeps a previous cycle's cap —
+  // kept around by `keepPreviousData` while the new request lands — from drawing
+  // a target over a period that has none.
   const capCredits =
-    period.kind === "cycle"
+    period.kind === "cycle" && !isFiltered
       ? (overview?.creditUsage?.capCredits ?? null)
       : null;
 
