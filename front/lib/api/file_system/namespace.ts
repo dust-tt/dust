@@ -117,17 +117,24 @@ export async function applyFileSystemOperation(
         request
       );
 
-      return removedRes.isErr() ? removedRes : new Ok({});
+      return removedRes.isErr()
+        ? removedRes
+        : new Ok({ removedNodeId: removedRes.value });
     }
 
     case "rename": {
-      const nodeRes = await FileSystemMutationResource.renameNode(
+      const renamedRes = await FileSystemMutationResource.renameNode(
         auth,
         scope,
         request
       );
 
-      return nodeRes.isErr() ? nodeRes : new Ok({ node: nodeRes.value });
+      return renamedRes.isErr()
+        ? renamedRes
+        : new Ok({
+            node: renamedRes.value.node,
+            replacedNodeId: renamedRes.value.replacedNodeId,
+          });
     }
 
     case "getContent": {

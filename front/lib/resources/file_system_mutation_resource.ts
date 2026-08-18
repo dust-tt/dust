@@ -30,6 +30,7 @@ const CreateMutationResponseSchema = z.object({
   nodeId: z.number().int().positive(),
 });
 const RemoveMutationResponseSchema = z.object({
+  nodeId: z.number().int().positive(),
   parentId: z.number().int().positive(),
   name: z.string(),
   nodeKind: FileSystemNodeSchema.shape.kind,
@@ -38,11 +39,17 @@ const RemoveMutationResponseSchema = z.object({
 });
 const RenameMutationResponseSchema = z.object({
   node: FileSystemNodeSchema,
+  replacedNodeId: z.number().int().positive().nullable(),
   sourceParentId: z.number().int().positive(),
   sourceName: z.string(),
   destinationParentId: z.number().int().positive(),
   destinationName: z.string(),
 });
+
+interface RenameNodeResult {
+  node: FileSystemNodeType;
+  replacedNodeId: number | null;
+}
 
 const FILE_SYSTEM_NAMESPACE_LOCK_PREFIX = "file_system_namespace";
 
@@ -168,7 +175,7 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
   private async renamedNode(
     scope: FileSystemScope,
     request: RenameRequest
-  ): Promise<Result<FileSystemNodeType, FileSystemOperationError>> {
+  ): Promise<Result<RenameNodeResult, FileSystemOperationError>> {
     if (this.kind !== "rename") {
       return new Err(
         new FileSystemOperationError(
@@ -212,13 +219,16 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
 
     // Return the result saved by the first request. Fetching the node again
     // could return a later move, or nothing if another rename replaced it.
-    return new Ok(parsed.data.node);
+    return new Ok({
+      node: parsed.data.node,
+      replacedNodeId: parsed.data.replacedNodeId,
+    });
   }
 
   private async removedNode(
     scope: FileSystemScope,
     request: RemoveRequest
-  ): Promise<Result<undefined, FileSystemOperationError>> {
+  ): Promise<Result<number, FileSystemOperationError>> {
     if (this.kind !== "remove") {
       return new Err(
         new FileSystemOperationError(
@@ -266,7 +276,7 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
       );
     }
 
-    return new Ok(undefined);
+    return new Ok(parsed.data.nodeId);
   }
 
   static async createNode(
@@ -371,7 +381,7 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
     auth: Authenticator,
     scope: FileSystemScope,
     request: RenameRequest
-  ): Promise<Result<FileSystemNodeType, FileSystemOperationError>> {
+  ): Promise<Result<RenameNodeResult, FileSystemOperationError>> {
     const requestIdRes = this.validateRequestId(request.requestId);
     if (requestIdRes.isErr()) {
       return requestIdRes;
@@ -434,7 +444,11 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
       if (movedRes.isErr()) {
         return movedRes;
       }
-      const node = movedRes.value.toJSON();
+      const node = movedRes.value.node.toJSON();
+      const result = {
+        node,
+        replacedNodeId: movedRes.value.replacedNodeId,
+      };
 
       await this.model.create(
         {
@@ -444,6 +458,7 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
           kind: "rename",
           response: {
             node,
+            replacedNodeId: result.replacedNodeId,
             sourceParentId: request.sourceParentId,
             sourceName: request.sourceName,
             destinationParentId: request.destinationParentId,
@@ -453,7 +468,7 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
         { transaction }
       );
 
-      return new Ok(node);
+      return new Ok(result);
     });
   }
 
@@ -461,7 +476,7 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
     auth: Authenticator,
     scope: FileSystemScope,
     request: RemoveRequest
-  ): Promise<Result<undefined, FileSystemOperationError>> {
+  ): Promise<Result<number, FileSystemOperationError>> {
     const requestIdRes = this.validateRequestId(request.requestId);
     if (requestIdRes.isErr()) {
       return requestIdRes;
@@ -521,6 +536,7 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
             requestId: request.requestId,
             kind: "remove",
             response: {
+              nodeId: removedRes.value,
               parentId: request.parentId,
               name: request.name,
               nodeKind: request.kind,
@@ -531,7 +547,7 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
           { transaction }
         );
 
-        return new Ok(undefined);
+        return removedRes;
       });
     } catch (error) {
       if (error instanceof UniqueConstraintError) {
