@@ -1,15 +1,14 @@
+import { TriggerStatusChip } from "@app/components/triggers/TriggerStatusChip";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useDeleteTrigger, useUserTriggers } from "@app/lib/swr/agent_triggers";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import { getTriggerDescription } from "@app/lib/utils/trigger_description";
 import type { GetUserTriggersResponseBody } from "@app/types/api/assistant/configuration/triggers";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
-import type { TriggerStatus } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
-  Chip,
   DataTable,
   Dialog,
   DialogContainer,
@@ -28,15 +27,6 @@ import { useCallback, useMemo, useState } from "react";
 // `onClick` satisfies DataTable's row shape, which is otherwise a weak type.
 type UserTriggerRow = GetUserTriggersResponseBody["triggers"][number] & {
   onClick?: () => void;
-};
-
-type ChipColor = React.ComponentProps<typeof Chip>["color"];
-
-const STATUS_CHIP_COLORS: Record<TriggerStatus, ChipColor> = {
-  enabled: "success",
-  disabled: "primary",
-  relocating: "info",
-  downgraded: "warning",
 };
 
 interface UserTriggersTableProps {
@@ -150,14 +140,11 @@ export function UserTriggersTable({ owner }: UserTriggersTableProps) {
         header: "Status",
         cell: ({ row }) => (
           <DataTable.CellContent>
-            <Chip size="xs" color={STATUS_CHIP_COLORS[row.original.status]}>
-              {row.original.status.charAt(0).toUpperCase() +
-                row.original.status.slice(1)}
-            </Chip>
+            <TriggerStatusChip status={row.original.status} />
           </DataTable.CellContent>
         ),
         meta: {
-          className: "w-28",
+          className: "w-36",
         },
       },
       {

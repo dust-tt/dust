@@ -222,6 +222,34 @@ app.patch(
       }
 
       const validatedTrigger = triggerValidation.data;
+
+      const nextStatus = validatedTrigger.status ?? "enabled";
+      if (triggerToUpdate.isSystemStatusTransitionTo(nextStatus)) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "This trigger's status is managed by Dust and cannot be changed.",
+          },
+        });
+      }
+
+      const canUpdateStatus = triggerToUpdate.canUpdateStatusTo(
+        auth,
+        nextStatus
+      );
+      if (!canUpdateStatus) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "You don't have permission to change this trigger's status.",
+          },
+        });
+      }
+
       const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
         ? getResourceIdFromSId(validatedTrigger.webhookSourceViewId)
         : null;

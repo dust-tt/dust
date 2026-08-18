@@ -28,6 +28,7 @@ import type {
   TriggerType,
   WebhookConfig,
 } from "@app/types/assistant/triggers";
+import { getTriggerStatusOwner } from "@app/types/assistant/triggers";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -120,6 +121,27 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       id: this.id,
       workspaceId: this.workspaceId,
     });
+  }
+
+  canUpdateStatusTo(auth: Authenticator, to: TriggerStatus): boolean {
+    if (this.status === to) {
+      return true;
+    }
+    // Editor-owned statuses are open to the editor; anything else needs an
+    // admin (system transitions additionally never go through update(), see
+    // isSystemStatusTransitionTo).
+    return [this.status, to].every(
+      (s) => getTriggerStatusOwner(s) === "editor" || auth.isAdmin()
+    );
+  }
+
+  // The editing path never crosses system-owned statuses; only restore jobs
+  // do, via enable()/disable().
+  isSystemStatusTransitionTo(to: TriggerStatus): boolean {
+    return (
+      this.status !== to &&
+      [this.status, to].some((s) => getTriggerStatusOwner(s) === "system")
+    );
   }
 
   private static async baseFetch(
@@ -366,6 +388,26 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     ) {
       return new Err(
         new Error("Only the editor of the trigger can update the trigger")
+      );
+    }
+
+    if (
+      blob.status !== undefined &&
+      trigger.isSystemStatusTransitionTo(blob.status)
+    ) {
+      return new Err(
+        new Error(
+          "This trigger's status is managed by Dust and cannot be changed"
+        )
+      );
+    }
+
+    if (
+      blob.status !== undefined &&
+      !trigger.canUpdateStatusTo(auth, blob.status)
+    ) {
+      return new Err(
+        new Error("You don't have permission to change this trigger's status")
       );
     }
 
@@ -804,6 +846,12 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       return new Ok(undefined);
     }
 
+    if (!this.canUpdateStatusTo(auth, "enabled")) {
+      return new Err(
+        new Error("You don't have permission to change this trigger's status")
+      );
+    }
+
     const previousStatus = this.status;
 
     try {
@@ -864,6 +912,12 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     auth: Authenticator,
     targetStatus: Exclude<TriggerStatus, "enabled"> = "disabled"
   ): Promise<Result<undefined, Error>> {
+    if (!this.canUpdateStatusTo(auth, targetStatus)) {
+      return new Err(
+        new Error("You don't have permission to change this trigger's status")
+      );
+    }
+
     // Even when the status is already the target, we still reconcile the
     // Temporal workflow below: a previous disable may have flipped the status
     // but failed (or been interrupted) before removing the schedule, leaving an
