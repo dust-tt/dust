@@ -58,7 +58,7 @@ function SpendCountersInline({
     value !== null ? formatCredits(value) : "—";
   return (
     <span className="text-xs text-muted-foreground">
-      ES / RL / MT: {fmt(esConsumedAwuCredits)} / {fmt(rateLimiterAwuCredits)} /{" "}
+      ES {fmt(esConsumedAwuCredits)} / RL {fmt(rateLimiterAwuCredits)} / MT{" "}
       {fmt(metronomeConsumedAwuCredits)}
     </span>
   );
