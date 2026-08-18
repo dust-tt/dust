@@ -14,7 +14,10 @@ use fuser::{Errno, FileAttr, FileType, ReplyEmpty};
 
 use super::super::store::{Node, NodeKind};
 
-const BLOCK_SIZE: u32 = 4096;
+// Linux reports allocated space in fixed 512-byte units through st_blocks.
+const STAT_BLOCK_SIZE_BYTES: u64 = 512;
+// Linux exposes this as the preferred size for file I/O through st_blksize.
+const PREFERRED_IO_SIZE: u32 = 4096;
 
 pub(super) struct LocalStatfs {
     pub blocks: u64,
@@ -31,7 +34,7 @@ pub(super) fn file_attributes(node: &Node, uid: u32, gid: u32) -> FileAttr {
     FileAttr {
         ino: node.inode,
         size: node.size,
-        blocks: node.size.div_ceil(u64::from(BLOCK_SIZE)),
+        blocks: stat_blocks(node.size),
         atime: time_from_ms(node.modified_at_ms),
         mtime: time_from_ms(node.modified_at_ms),
         ctime: time_from_ms(node.modified_at_ms),
@@ -54,9 +57,13 @@ pub(super) fn file_attributes(node: &Node, uid: u32, gid: u32) -> FileAttr {
         uid,
         gid,
         rdev: 0,
-        blksize: BLOCK_SIZE,
+        blksize: PREFERRED_IO_SIZE,
         flags: 0,
     }
+}
+
+fn stat_blocks(size: u64) -> u64 {
+    size.div_ceil(STAT_BLOCK_SIZE_BYTES)
 }
 
 pub(super) fn local_statfs(path: &Path) -> io::Result<LocalStatfs> {
@@ -165,7 +172,9 @@ fn time_from_ms(value: i64) -> SystemTime {
 mod tests {
     use tempfile::tempdir;
 
-    use super::{executable_mode, local_statfs, validate_open_flags, validate_open_request};
+    use super::{
+        executable_mode, local_statfs, stat_blocks, validate_open_flags, validate_open_request,
+    };
     use crate::commands::filesystem::store::NodeKind;
 
     #[test]
@@ -175,6 +184,16 @@ mod tests {
         assert!(stats.blocks > 0);
         assert!(stats.block_size > 0);
         assert!(stats.name_length > 0);
+    }
+
+    #[test]
+    fn file_space_uses_linux_512_byte_blocks() {
+        assert_eq!(stat_blocks(0), 0);
+        assert_eq!(stat_blocks(1), 1);
+        assert_eq!(stat_blocks(512), 1);
+        assert_eq!(stat_blocks(513), 2);
+        assert_eq!(stat_blocks(4096), 8);
+        assert_eq!(stat_blocks(1024 * 1024), 2048);
     }
 
     #[test]
