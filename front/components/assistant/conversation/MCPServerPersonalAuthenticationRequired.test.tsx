@@ -119,6 +119,7 @@ function makeBlockedAction(): AgentLoopBlockedToolExecution & {
     metadata: {
       toolName: "tool",
       mcpServerName: "server",
+      displayLabel: "Use GitHub tool",
       agentName: "agent",
       mcpServerId: "mcp_1",
       mcpServerDisplayName: "GitHub",
@@ -161,6 +162,12 @@ describe("MCPServerPersonalAuthenticationRequired", () => {
     createPersonalConnectionMock.mockResolvedValue({ success: true });
     resolveAuthenticationMock.mockResolvedValue({ success: true });
     refreshBlockedActionsMock.mockResolvedValue(undefined);
+  });
+
+  it("shows what the blocked tool is trying to do", () => {
+    renderCard();
+
+    expect(screen.getByText("Use GitHub tool")).toBeDefined();
   });
 
   it("removes the completed action before refreshing blocked actions", async () => {

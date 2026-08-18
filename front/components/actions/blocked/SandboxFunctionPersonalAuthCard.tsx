@@ -3,6 +3,7 @@ import { PersonalAuthenticationCard } from "@app/components/actions/blocked/Pers
 import type { FrameViewer } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import type { SandboxFunctionToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { useResolveAuthentication } from "@app/lib/swr/tool_actions";
+import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
 interface SandboxFunctionPersonalAuthCardProps {
   // Every invocation blocked on this MCP server: one trip through the authentication flow resolves
@@ -18,7 +19,7 @@ export function SandboxFunctionPersonalAuthCard({
   viewer,
   onResolved,
 }: SandboxFunctionPersonalAuthCardProps) {
-  const [{ authError }] = events;
+  const [{ authError, metadata }] = events;
 
   const { resolveAuthentication, isResolving } = useResolveAuthentication({
     owner: viewer.owner,
@@ -49,6 +50,7 @@ export function SandboxFunctionPersonalAuthCard({
     <PersonalAuthenticationCard
       triggeringUser={viewer.user}
       currentUser={viewer.user}
+      actionLabel={metadata.displayLabel ?? asDisplayName(metadata.toolName)}
       mcpServerId={authError.mcpServerId}
       owner={viewer.owner}
       provider={authError.provider}

@@ -23,6 +23,7 @@ interface PersonalAuthenticationCardProps {
   // The viewer looking at the card. Passed in rather than read from `AuthContext` because shared
   // frames render this card outside of any AuthProvider.
   currentUser: UserType;
+  actionLabel: string;
   mcpServerId: string;
   owner: LightWorkspaceType;
   provider: OAuthProvider;
@@ -35,6 +36,7 @@ interface PersonalAuthenticationCardProps {
 export function PersonalAuthenticationCard({
   triggeringUser,
   currentUser,
+  actionLabel,
   mcpServerId,
   owner,
   provider,
@@ -153,38 +155,43 @@ export function PersonalAuthenticationCard({
           <div className="text-base">
             {`${serverDisplayName ?? "Your account"} is now connected.`}
           </div>
-        ) : canCurrentUserRespond ? (
+        ) : (
           <>
-            <div className="text-base wrap-break-word">
-              {`Connect your ${serverDisplayName ? `${serverDisplayName} ` : ""}account to continue.`}
-            </div>
-            {overridableInputs && mcpServer && (
-              <PersonalAuthCredentialOverrides
-                inputs={overridableInputs}
-                values={overriddenCredentials}
-                idPrefix={mcpServerId}
-                onChange={(key, value) =>
-                  setCredentialOverrides((prev) => ({
-                    ...prev,
-                    [key]: value,
-                  }))
-                }
-              />
-            )}
-            {connectionError && (
-              <div className="text-sm font-medium text-warning-800">
-                {connectionError}
+            <div className="text-base wrap-break-word">{actionLabel}</div>
+            {canCurrentUserRespond ? (
+              <>
+                <div className="text-sm wrap-break-word text-muted-foreground">
+                  {`Connect your ${serverDisplayName ? `${serverDisplayName} ` : ""}account to continue.`}
+                </div>
+                {overridableInputs && mcpServer && (
+                  <PersonalAuthCredentialOverrides
+                    inputs={overridableInputs}
+                    values={overriddenCredentials}
+                    idPrefix={mcpServerId}
+                    onChange={(key, value) =>
+                      setCredentialOverrides((prev) => ({
+                        ...prev,
+                        [key]: value,
+                      }))
+                    }
+                  />
+                )}
+                {connectionError && (
+                  <div className="text-sm font-medium text-warning-800">
+                    {connectionError}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-sm wrap-break-word text-muted-foreground">
+                Waiting for{" "}
+                <span className="font-semibold text-foreground">
+                  {triggeringUser?.fullName}
+                </span>{" "}
+                to connect their account.
               </div>
             )}
           </>
-        ) : (
-          <div className="text-sm wrap-break-word text-muted-foreground">
-            Waiting for{" "}
-            <span className="font-semibold text-foreground">
-              {triggeringUser?.fullName}
-            </span>{" "}
-            to connect their account.
-          </div>
         )}
       </div>
 

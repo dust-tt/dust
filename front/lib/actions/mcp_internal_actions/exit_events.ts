@@ -1,3 +1,4 @@
+import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   MCPApproveExecutionEvent,
   ToolAskUserQuestionEvent,
@@ -6,6 +7,7 @@ import type {
   ToolPausedEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
+import { getToolDisplayLabels } from "@app/lib/actions/tool_display_labels";
 import type { ToolContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { pauseSandboxBashForBlockedChild } from "@app/lib/api/sandbox/sandbox_child_block";
@@ -145,6 +147,15 @@ export async function getExitOrPauseEvents(
     }
     case "tool_personal_auth_required": {
       const { provider, scope } = exitOutputItem;
+      const displayLabels =
+        getToolDisplayLabels({
+          internalMCPServerName: getInternalMCPServerNameFromSId(
+            toolConfiguration.toolServerId
+          ),
+          mcpServerName: toolConfiguration.mcpServerName,
+          toolName: toolConfiguration.originalName,
+          inputs,
+        }) ?? toolConfiguration.displayLabels;
 
       const authErrorMessage =
         `The tool ${toolCallName} requires personal ` +
@@ -180,6 +191,7 @@ export async function getExitOrPauseEvents(
           metadata: {
             toolName: toolConfiguration.originalName,
             mcpServerName: toolConfiguration.mcpServerName,
+            displayLabel: displayLabels?.done,
             agentName: "agent",
             mcpServerDisplayName: toolConfiguration.mcpServerName,
             mcpServerId: toolConfiguration.toolServerId,

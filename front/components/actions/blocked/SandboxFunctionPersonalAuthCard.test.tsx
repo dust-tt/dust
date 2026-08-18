@@ -84,6 +84,7 @@ function makeEvent(
     metadata: {
       toolName: "get_worksheet",
       mcpServerName: "google_drive",
+      displayLabel: "Read worksheet",
       agentName: "agent",
       mcpServerDisplayName: "google_drive",
       mcpServerId: "ims_1",
@@ -117,6 +118,7 @@ describe("SandboxFunctionPersonalAuthCard", () => {
     expect(
       screen.getByText("Connect your Google Drive account?")
     ).toBeDefined();
+    expect(screen.getByText("Read worksheet")).toBeDefined();
     // The viewer triggered the invocation, so they can resolve it themselves.
     expect(screen.getByText("Connect")).toBeDefined();
   });
