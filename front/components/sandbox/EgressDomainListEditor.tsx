@@ -1,3 +1,4 @@
+import { Pill } from "@app/components/sandbox/Pill";
 import { normalizeEgressPolicyDomain } from "@app/types/sandbox/egress_policy";
 import {
   Button,
@@ -118,9 +119,7 @@ export function EgressDomainListEditor({
                 <span className="font-mono text-sm text-foreground">
                   {request.domain}
                 </span>
-                <span className="shrink-0 rounded-full bg-golden-100 px-2 py-0.5 text-xs font-medium text-golden-800">
-                  Pending approval
-                </span>
+                <Pill color="golden" label="Pending approval" />
               </div>
               <Button
                 variant="highlight"

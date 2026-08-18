@@ -1,3 +1,4 @@
+import { Pill } from "@app/components/sandbox/Pill";
 import type { SandboxPodSelection } from "@app/lib/swr/sandbox";
 import {
   useBulkPodEgressPolicies,
@@ -106,12 +107,11 @@ export function MultiPodNetworkSection({
                 {domain}
               </span>
               {scopeNames.map((scopeName, index) => (
-                <span
+                <Pill
                   key={`${scopeName}-${index}`}
-                  className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800"
-                >
-                  {scopeName}
-                </span>
+                  color="blue"
+                  label={scopeName}
+                />
               ))}
             </div>
           </div>

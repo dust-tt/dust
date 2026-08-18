@@ -1,4 +1,5 @@
 import { labelForKind } from "@app/components/sandbox/env_var_display";
+import { Pill } from "@app/components/sandbox/Pill";
 import type {
   SandboxEnvVarFormDialogMode,
   SandboxEnvVarPodOption,
@@ -149,22 +150,16 @@ export function MultiPodEnvVarsSection({
                 <span className="font-mono text-sm text-foreground">
                   {row.name}
                 </span>
-                <span
-                  className={
-                    row.kind === "https_secret"
-                      ? "shrink-0 rounded-full bg-golden-100 px-2 py-0.5 text-xs font-medium text-golden-800"
-                      : "shrink-0 rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700"
-                  }
-                >
-                  {labelForKind(row.kind)}
-                </span>
+                <Pill
+                  color={row.kind === "https_secret" ? "golden" : "neutral"}
+                  label={labelForKind(row.kind)}
+                />
                 {scopeNames.map((scopeName, index) => (
-                  <span
+                  <Pill
                     key={`${scopeName}-${index}`}
-                    className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800"
-                  >
-                    {scopeName}
-                  </span>
+                    color="blue"
+                    label={scopeName}
+                  />
                 ))}
               </div>
             </div>
