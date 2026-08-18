@@ -59,7 +59,7 @@ export type AccessControlList = {
  * A resource whose access is governed by one or more access-control lists. The caller passes when
  * they satisfy every ACL returned by `getAccessControlLists(auth)` (see
  * `Authenticator.hasPermission`). `auth` is passed so a resource can build its ACL from the caller's
- * governance grants (`auth.getGroupPermissions`) — e.g. the per-workspace flip.
+ * governance grants (`auth.getGrantedVerbs`) — e.g. the per-workspace flip.
  */
 export interface WithAccessControl {
   getAccessControlLists(auth: Authenticator): AccessControlList[];
