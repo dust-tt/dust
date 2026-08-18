@@ -119,7 +119,7 @@ function makeBlockedAction(): AgentLoopBlockedToolExecution & {
     metadata: {
       toolName: "tool",
       mcpServerName: "server",
-      displayLabel: "Use GitHub tool",
+      displayLabel: "Using GitHub tool",
       agentName: "agent",
       mcpServerId: "mcp_1",
       mcpServerDisplayName: "GitHub",
@@ -167,8 +167,7 @@ describe("MCPServerPersonalAuthenticationRequired", () => {
   it("distinguishes the requested action from the connection scope", () => {
     renderCard();
 
-    expect(screen.getByText("Requested for:")).toBeDefined();
-    expect(screen.getByText("Use GitHub tool")).toBeDefined();
+    expect(screen.getByText("Requested for: using GitHub tool")).toBeDefined();
     expect(
       screen.getByText("This connection will be used for GitHub from now on.")
     ).toBeDefined();

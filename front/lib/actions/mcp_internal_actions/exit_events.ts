@@ -191,7 +191,7 @@ export async function getExitOrPauseEvents(
           metadata: {
             toolName: toolConfiguration.originalName,
             mcpServerName: toolConfiguration.mcpServerName,
-            displayLabel: displayLabels?.done,
+            displayLabel: displayLabels?.running,
             agentName: "agent",
             mcpServerDisplayName: toolConfiguration.mcpServerName,
             mcpServerId: toolConfiguration.toolServerId,

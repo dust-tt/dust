@@ -89,7 +89,7 @@ describe("getExitOrPauseEvents", () => {
     expect(events[0]).toMatchObject({
       type: "tool_personal_auth_required",
       metadata: {
-        displayLabel: "Use custom tool",
+        displayLabel: "Using custom tool",
       },
     });
   });
