@@ -181,6 +181,13 @@ export type LaunchConsumptionExportOutcome =
       filter: ConsumptionScopeFilter;
     };
 
+function startOfUtcToday(): Date {
+  const now = new Date();
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  );
+}
+
 function endOfUtcToday(): Date {
   const now = new Date();
   return new Date(
@@ -188,16 +195,24 @@ function endOfUtcToday(): Date {
   );
 }
 
-// Caps an open-ended period (e.g. "this cycle") to today, so exports stay
-// cacheable within a day but refresh once new data can have accrued.
+// Normalizes any period whose end falls on or after today to a fixed end-of-day
+// boundary, so exports stay cacheable within a day but refresh once new data can
+// have accrued. This covers two distinct sources of instability: an open-ended
+// period (e.g. "this cycle") whose endDate is a future cycle boundary, and a
+// relative period (e.g. "last N days") whose endDate is `now.toISOString()`,
+// which is different on every call. Without this, the cache key (and the
+// Temporal workflow ID derived from it) would differ between the status check,
+// the start request, and every subsequent poll for the same logical export.
 export function resolveExportPeriod(
   period: ConsumptionPeriod
 ): ConsumptionPeriod {
+  const endMs = new Date(period.endDate).getTime();
   const endOfTodayMs = endOfUtcToday().getTime();
-  const endMs = Math.min(new Date(period.endDate).getTime(), endOfTodayMs);
+  const normalizedEndMs =
+    endMs >= startOfUtcToday().getTime() ? endOfTodayMs : endMs;
   return {
     startDate: period.startDate,
-    endDate: new Date(endMs).toISOString(),
+    endDate: new Date(normalizedEndMs).toISOString(),
   };
 }
 
