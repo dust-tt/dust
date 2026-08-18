@@ -36,6 +36,30 @@ function workspaceEgressPolicyUrl(workspaceId: string) {
   return `/api/w/${workspaceId}/sandbox/egress-policy`;
 }
 
+// Bulk sandbox writes report one ScopeMutationResult per scope
+// ("workspace" or a pod sId). These map those results back to display names
+// for the per-scope failure toasts, shared by the egress and env-var hooks.
+function scopeNameById(pods: { sId: string; name: string }[]) {
+  return new Map<string, string>([
+    [SANDBOX_WORKSPACE_SCOPE_ID, "Workspace"],
+    ...pods.map((pod) => [pod.sId, pod.name] as const),
+  ]);
+}
+
+function describeScopeFailures(
+  failures: { scopeId: string; errorMessage?: string }[],
+  nameByScopeId: Map<string, string>
+): string {
+  return failures
+    .map(
+      (failure) =>
+        `${nameByScopeId.get(failure.scopeId) ?? failure.scopeId}: ${
+          failure.errorMessage ?? "unknown error"
+        }`
+    )
+    .join(" — ");
+}
+
 // Workspace-scoped env vars live under /sandbox/env-vars; pod-scoped ones
 // under /spaces/:spaceId/sandbox/env-vars. Response shapes are identical.
 function sandboxEnvVarsUrl(workspaceId: string, spaceId?: string) {
@@ -229,10 +253,6 @@ export function useBulkUpdateEgressDomain({
       }
 
       const data: PostBulkEgressPolicyResponseBody = await response.json();
-      const nameByScopeId = new Map<string, string>([
-        [SANDBOX_WORKSPACE_SCOPE_ID, "Workspace"],
-        ...pods.map((pod) => [pod.sId, pod.name] as const),
-      ]);
       const scopeLabel = (count: number) =>
         count === 1 ? "1 scope" : `${count} scopes`;
       const verb = operation === "add" ? "added to" : "removed from";
@@ -248,14 +268,7 @@ export function useBulkUpdateEgressDomain({
               : "Domain partially removed",
           description: `${domain} was ${verb} ${okCount} of ${scopeLabel(
             data.results.length
-          )}. Failed: ${failures
-            .map(
-              (failure) =>
-                `${nameByScopeId.get(failure.scopeId) ?? failure.scopeId}: ${
-                  failure.errorMessage ?? "unknown error"
-                }`
-            )
-            .join(" — ")}`,
+          )}. Failed: ${describeScopeFailures(failures, scopeNameById(pods))}`,
         });
         return false;
       }
@@ -424,24 +437,18 @@ export function useBulkDeleteSandboxEnvVar({
       }
 
       const data: DeleteSandboxEnvVarsBulkResponseBody = await response.json();
-      const nameByScopeId = new Map<string, string>([
-        [SANDBOX_WORKSPACE_SCOPE_ID, "Workspace"],
-        ...pods.map((pod) => [pod.sId, pod.name] as const),
-      ]);
       const failures = data.results.filter((result) => !result.success);
       if (failures.length > 0) {
         const okCount = data.results.length - failures.length;
         sendNotification({
           type: "error",
           title: "Environment variable partially deleted",
-          description: `${name} was deleted from ${okCount} of ${data.results.length} scopes. Failed: ${failures
-            .map(
-              (failure) =>
-                `${nameByScopeId.get(failure.scopeId) ?? failure.scopeId}: ${
-                  failure.errorMessage ?? "unknown error"
-                }`
-            )
-            .join(" — ")}`,
+          description: `${name} was deleted from ${okCount} of ${
+            data.results.length
+          } scopes. Failed: ${describeScopeFailures(
+            failures,
+            scopeNameById(pods)
+          )}`,
         });
         return false;
       }

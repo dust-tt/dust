@@ -360,11 +360,19 @@ export async function deleteSandboxEnvVarForScopes(
   }
 
   const spaces = await SpaceResource.fetchByIds(auth, podIds);
-  const spacesById = new Map(spaces.map((space) => [space.sId, space]));
+  const podsById = new Map(
+    spaces.filter((space) => space.isProject()).map((pod) => [pod.sId, pod])
+  );
+  // One read for the name across every valid pod, then destroy per row (the
+  // resource emits the per-row audit event on delete).
+  const envVarByPodId = await SandboxEnvVarResource.fetchByNameForPods(
+    auth,
+    [...podsById.values()],
+    name
+  );
 
   for (const podId of podIds) {
-    const pod = spacesById.get(podId);
-    if (!pod || !pod.isProject()) {
+    if (!podsById.has(podId)) {
       results.push({
         scopeId: podId,
         success: false,
@@ -373,11 +381,7 @@ export async function deleteSandboxEnvVarForScopes(
       continue;
     }
 
-    const envVar = await SandboxEnvVarResource.fetchByName(
-      auth,
-      { kind: "pod", pod },
-      name
-    );
+    const envVar = envVarByPodId.get(podId);
     if (!envVar) {
       results.push({ scopeId: podId, success: true });
       continue;
