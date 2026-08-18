@@ -85,12 +85,12 @@ async function fetchGlobalAgentConfigurationForView(
     agentPrefix,
     agentsGetView,
     variant,
-    omitInstructions,
+    omitHeavyAttributes,
   }: {
     agentPrefix?: string;
     agentsGetView: AgentsGetViewType;
     variant: AgentFetchVariant;
-    omitInstructions?: boolean;
+    omitHeavyAttributes?: boolean;
   }
 ) {
   const globalAgentIdsToFetch = determineGlobalAgentIdsToFetch(agentsGetView);
@@ -100,7 +100,7 @@ async function fetchGlobalAgentConfigurationForView(
     variant
   );
   // Global agents have `instructions` baked in; strip when not needed.
-  const normalizedGlobalAgents = omitInstructions
+  const normalizedGlobalAgents = omitHeavyAttributes
     ? allGlobalAgents.map((a) => ({ ...a, instructions: null }))
     : allGlobalAgents;
   const matchingGlobalAgents = normalizedGlobalAgents.filter(
@@ -135,7 +135,6 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     limit,
     owner,
     sort,
-    omitInstructions,
     omitHeavyAttributes,
   }: {
     agentPrefix?: string;
@@ -144,7 +143,6 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     limit?: number;
     owner: WorkspaceType;
     sort?: SortStrategyType;
-    omitInstructions?: boolean;
     omitHeavyAttributes?: boolean;
   }
 ): Promise<AgentConfigurationModel[]> {
@@ -158,9 +156,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
 
   const attributesToExclude = omitHeavyAttributes
     ? HEAVY_AGENT_CONFIGURATION_ATTRIBUTES
-    : omitInstructions
-      ? (["instructions"] as const)
-      : [];
+    : [];
   const excludeAttributesFromSelect =
     attributesToExclude.length > 0
       ? { attributes: { exclude: [...new Set(attributesToExclude)] } }
@@ -312,7 +308,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
     sort,
     variant,
     dangerouslySkipPermissionFiltering,
-    omitInstructions,
     omitHeavyAttributes,
   }: {
     agentPrefix?: string;
@@ -321,7 +316,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
     sort?: SortStrategyType;
     variant: AgentFetchVariant;
     dangerouslySkipPermissionFiltering?: boolean;
-    omitInstructions?: boolean;
     omitHeavyAttributes?: boolean;
   }
 ) {
@@ -344,7 +338,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
       limit,
       owner,
       sort,
-      omitInstructions,
       omitHeavyAttributes,
     }
   );
@@ -376,14 +369,12 @@ type AgentConfigurationsForViewBaseArgs = {
 
 type FullAgentConfigurationsForViewArgs = AgentConfigurationsForViewBaseArgs & {
   variant: "full";
-  omitInstructions?: never;
   omitHeavyAttributes?: never;
 };
 
 type LightAgentConfigurationsForViewArgs =
   AgentConfigurationsForViewBaseArgs & {
     variant: Exclude<AgentFetchVariant, "full">;
-    omitInstructions?: boolean;
     omitHeavyAttributes?: boolean;
   };
 
@@ -401,7 +392,6 @@ export async function getAgentConfigurationsForView({
   limit,
   sort,
   dangerouslySkipPermissionFiltering,
-  omitInstructions,
   omitHeavyAttributes,
 }: FullAgentConfigurationsForViewArgs | LightAgentConfigurationsForViewArgs) {
   const owner = auth.workspace();
@@ -434,8 +424,6 @@ export async function getAgentConfigurationsForView({
     throw new Error(`'${agentsGetView}' view is specific to a user.`);
   }
 
-  const shouldOmitInstructions = omitInstructions || omitHeavyAttributes;
-
   const applySortAndLimit = makeApplySortAndLimit(sort, limit);
 
   if (agentsGetView === "global") {
@@ -443,7 +431,7 @@ export async function getAgentConfigurationsForView({
       agentPrefix,
       agentsGetView,
       variant,
-      omitInstructions: shouldOmitInstructions,
+      omitHeavyAttributes,
     });
 
     return applySortAndLimit(allGlobalAgents);
@@ -456,7 +444,7 @@ export async function getAgentConfigurationsForView({
       agentPrefix,
       agentsGetView,
       variant,
-      omitInstructions: shouldOmitInstructions,
+      omitHeavyAttributes,
     }),
     fetchWorkspaceAgentConfigurationsForView(auth, owner, {
       agentPrefix,
@@ -465,7 +453,6 @@ export async function getAgentConfigurationsForView({
       sort,
       variant,
       dangerouslySkipPermissionFiltering,
-      omitInstructions: shouldOmitInstructions,
       omitHeavyAttributes,
     }),
   ]);

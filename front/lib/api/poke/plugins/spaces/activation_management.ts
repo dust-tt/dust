@@ -412,7 +412,7 @@ export const activationManagementPlugin = createPlugin({
         auth,
         agentsGetView: "published",
         variant: "light",
-        omitInstructions: true,
+        omitHeavyAttributes: true,
       }),
       GroupResource.listAllWorkspaceGroups(auth, {
         groupKinds: [...MANAGEABLE_GROUP_KINDS],
