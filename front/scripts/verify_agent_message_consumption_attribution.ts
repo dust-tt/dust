@@ -113,7 +113,7 @@ async function getCoverageSnapshot(
     }
     const childInfo = action.stepContext.sandboxChildActionInfo;
     const parentAction = isSandboxChildActionInfo(childInfo)
-      ? actionBySId.get(childInfo.parentActionId)
+      ? actionById.get(childInfo.parentActionId)
       : undefined;
     const parentItem = parentAction
       ? toolItemByActionModelId.get(parentAction.id)
