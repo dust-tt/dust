@@ -1,7 +1,11 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { getIcon } from "@app/components/resources/resources_icons";
+import { AutomationsFilterPanel } from "@app/components/workspace/analytics/automations/AutomationsFilterPanel";
+import { AutomationsFilterSummary } from "@app/components/workspace/analytics/automations/AutomationsFilterSummary";
 import type { TriggerRowData as BaseTriggerRowData } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
 import { AutomationsTriggersRowsTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
+import type { AutomationsFilter } from "@app/components/workspace/analytics/automationsFilter";
+import { toAutomationsTriggersFilter } from "@app/components/workspace/analytics/automationsFilter";
 import {
   AvatarNameCell,
   CreditsCell,
@@ -9,13 +13,13 @@ import {
 } from "@app/components/workspace/analytics/creditsTableCells";
 import { useAutomationsTriggers } from "@app/hooks/useAutomationsTriggers";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import type { AutomationTriggersFilter } from "@app/lib/api/analytics/automations/schema";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import { useUpdateTriggerStatus } from "@app/lib/swr/agent_triggers";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type { TriggerStatus } from "@app/types/assistant/triggers";
 import { getTriggerStatusOwner } from "@app/types/assistant/triggers";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -291,21 +295,39 @@ function buildColumns({
 }
 
 interface AutomationsTriggersTableProps {
-  workspaceId: string;
+  owner: LightWorkspaceType;
   period: ConsumptionPeriodSelection;
-  filter?: AutomationTriggersFilter;
+  filter: AutomationsFilter;
+  onFilterChange: (next: AutomationsFilter) => void;
 }
 
 export function AutomationsTriggersTable({
-  workspaceId,
+  owner,
   period,
   filter,
+  onFilterChange,
 }: AutomationsTriggersTableProps) {
+  const workspaceId = owner.sId;
+  const triggersFilter = useMemo(
+    () => toAutomationsTriggersFilter(filter),
+    [filter]
+  );
+
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: TRIGGERS_PAGE_SIZE,
   });
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
+
+  // A filter change invalidates the current page and any expanded row.
+  // Reset during render (https://react.dev/learn/you-might-not-need-an-effect)
+  // instead of an effect keyed on `filter`.
+  const [prevFilter, setPrevFilter] = useState(filter);
+  if (prevFilter !== filter) {
+    setPrevFilter(filter);
+    setPagination((current) => ({ ...current, pageIndex: 0 }));
+    setExpandedRowId(null);
+  }
 
   const {
     triggers,
@@ -317,7 +339,7 @@ export function AutomationsTriggersTable({
   } = useAutomationsTriggers({
     workspaceId,
     period,
-    filter,
+    filter: triggersFilter,
     limit: pagination.pageSize,
     offset: pagination.pageIndex * pagination.pageSize,
   });
@@ -408,6 +430,19 @@ export function AutomationsTriggersTable({
 
   return (
     <div className="rounded-lg border border-border bg-panel-background p-4">
+      <div className="mb-4 flex flex-col gap-2">
+        <div className="flex items-center justify-end">
+          <AutomationsFilterPanel
+            owner={owner}
+            filter={filter}
+            onFilterChange={onFilterChange}
+          />
+        </div>
+        <AutomationsFilterSummary
+          filter={filter}
+          onFilterChange={onFilterChange}
+        />
+      </div>
       <TriggersTableBody
         isLoading={isTriggersLoading}
         isError={!!isTriggersError}

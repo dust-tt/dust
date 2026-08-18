@@ -1,15 +1,12 @@
-import { AutomationsFilterPanel } from "@app/components/workspace/analytics/automations/AutomationsFilterPanel";
-import { AutomationsFilterSummary } from "@app/components/workspace/analytics/automations/AutomationsFilterSummary";
 import { AutomationsOverview } from "@app/components/workspace/analytics/automations/AutomationsOverview";
 import { AutomationsTriggersTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersTable";
 import type { AutomationsFilter } from "@app/components/workspace/analytics/automationsFilter";
-import { toAutomationsTriggersFilter } from "@app/components/workspace/analytics/automationsFilter";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { cn, Page } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 export function AnalyticsAutomationsPage() {
   const owner = useWorkspace();
@@ -19,10 +16,6 @@ export function AnalyticsAutomationsPage() {
     DEFAULT_CONSUMPTION_PERIOD
   );
   const [filter, setFilter] = useState<AutomationsFilter>({});
-  const triggersFilter = useMemo(
-    () => toAutomationsTriggersFilter(filter),
-    [filter]
-  );
 
   if (!isEnabled) {
     return (
@@ -63,24 +56,11 @@ export function AnalyticsAutomationsPage() {
       />
       <div className="flex flex-col gap-8 pb-8 pt-4">
         <AutomationsOverview workspaceId={owner.sId} period={period} />
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-end">
-            <AutomationsFilterPanel
-              owner={owner}
-              filter={filter}
-              onFilterChange={setFilter}
-            />
-          </div>
-          <AutomationsFilterSummary
-            filter={filter}
-            onFilterChange={setFilter}
-          />
-        </div>
         <AutomationsTriggersTable
-          key={JSON.stringify(triggersFilter)}
-          workspaceId={owner.sId}
+          owner={owner}
           period={period}
-          filter={triggersFilter}
+          filter={filter}
+          onFilterChange={setFilter}
         />
       </div>
     </Page.Vertical>
