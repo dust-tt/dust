@@ -67,21 +67,25 @@ export async function resolveFrameShareCapability(
   }
 
   // Workspace-visible scopes carry the capability for every member. An invite-only frame
-  // carries it only for members holding an active email grant — the same check that gates
-  // viewing the frame — so revoking a grant revokes invocation with it.
+  // carries it for members holding an active email grant, or for the frame's owner — the same
+  // two ways the view path admits a member — so invocation access exactly follows view access,
+  // and revoking a grant revokes invocation with it.
   if (!isWorkspaceVisibleShareScope(shareScope)) {
     if (shareScope !== "emails_only") {
       return null;
     }
-    const email = auth.user()?.email;
-    const grant = email
-      ? await FileResource.getActiveGrantForEmail(workspace, {
-          email,
-          shareableFileId,
-        })
-      : null;
-    if (!grant) {
-      return null;
+    const user = auth.user();
+    const isFileOwner = user !== null && file.userId === user.id;
+    if (!isFileOwner) {
+      const grant = user?.email
+        ? await FileResource.getActiveGrantForEmail(workspace, {
+            email: user.email,
+            shareableFileId,
+          })
+        : null;
+      if (!grant) {
+        return null;
+      }
     }
   }
 

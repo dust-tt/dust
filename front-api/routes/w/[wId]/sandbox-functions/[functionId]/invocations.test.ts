@@ -8,6 +8,7 @@ import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_fu
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -170,15 +171,17 @@ async function createSharedAppFrame(
     folderName,
     scope = "workspace_and_emails",
     grantEmails,
+    owner = null,
   }: {
     workspace: { sId: string };
     space: { sId: string };
     folderName: string;
     scope?: FileShareScope;
     grantEmails?: string[];
+    owner?: UserResource | null;
   }
 ) {
-  const frameFile = await FileFactory.create(adminAuth, null, {
+  const frameFile = await FileFactory.create(adminAuth, owner, {
     contentType: frameContentType,
     fileName: `${folderName}.tsx`,
     fileSize: 100,
@@ -733,6 +736,32 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
         folderName: "TaskList",
         scope: "emails_only",
         grantEmails: [user.email],
+      });
+
+      const response = await postInvocation({
+        workspaceId: workspace.sId,
+        functionIdOrSlug: sandboxFunction.sId,
+        frameShareToken,
+      });
+
+      expect(response.status).toBe(201);
+      expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
+    });
+
+    it("allows the frame's owner outside the pod on an invite-only frame without a grant", async () => {
+      // The view path admits the owner without a grant; invocation mirrors it so that using an
+      // app follows viewing its frame exactly.
+      const { workspace, sandboxFunction, adminAuth, space, user } =
+        await setupSandboxFunction({
+          addCallerToSpace: false,
+          slug: "tasklist__run",
+        });
+      const frameShareToken = await createSharedAppFrame(adminAuth, {
+        workspace,
+        space,
+        folderName: "TaskList",
+        scope: "emails_only",
+        owner: user,
       });
 
       const response = await postInvocation({
