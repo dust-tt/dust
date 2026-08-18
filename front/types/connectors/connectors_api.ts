@@ -57,6 +57,7 @@ export const CONNECTORS_ERROR_TYPES = [
   "oauth_token_revoked",
   "workspace_quota_exceeded",
   "third_party_internal_error",
+  "transient_upstream_error",
   "webcrawling_error",
   "webcrawling_error_empty_content",
   "webcrawling_error_content_too_large",
