@@ -142,7 +142,9 @@ class Handler(BaseHTTPRequestHandler):
             return ok(self, {"node": node})
 
         if operation == "setExecutableBits":
-            node = NODES[request["nodeId"]]
+            node = NODES.get(request["nodeId"])
+            if node is None:
+                return error(self, "not_found")
             node["mode"] = (node["mode"] & ~0o111) | request["executableBits"]
             return ok(self, {"node": node})
 
@@ -153,7 +155,7 @@ class Handler(BaseHTTPRequestHandler):
             if any(other["parentId"] == node["id"] for other in NODES.values()):
                 return error(self, "not_empty")
             del NODES[node["id"]]
-            return ok(self, {})
+            return ok(self, {"removedNodeId": node["id"]})
 
         if operation == "rename":
             node = child_by_name(request["sourceParentId"], request["sourceName"])
@@ -162,14 +164,19 @@ class Handler(BaseHTTPRequestHandler):
             existing = child_by_name(
                 request["destinationParentId"], request["destinationName"]
             )
+            replaced_node_id = None
             if existing is not None:
+                replaced_node_id = existing["id"]
                 del NODES[existing["id"]]
             node["parentId"] = request["destinationParentId"]
             node["name"] = request["destinationName"]
-            return ok(self, {"node": node})
+            # Null rather than a missing field: the daemon tells the two apart.
+            return ok(self, {"node": node, "replacedNodeId": replaced_node_id})
 
         if operation == "getContent":
-            node = NODES[request["nodeId"]]
+            node = NODES.get(request["nodeId"])
+            if node is None:
+                return error(self, "not_found")
             url = None
             if node["blobId"] is not None:
                 url = f"{base}/blob/{node['blobId']}"
@@ -185,7 +192,9 @@ class Handler(BaseHTTPRequestHandler):
             )
 
         if operation == "prepareContentUpload":
-            node = NODES[request["nodeId"]]
+            node = NODES.get(request["nodeId"])
+            if node is None:
+                return error(self, "not_found")
             if node["blobId"] != request.get("expectedBlobId"):
                 return error(self, "stale")
             blob_id = f"blob-{NEXT_BLOB[0]}"
@@ -207,7 +216,9 @@ class Handler(BaseHTTPRequestHandler):
             )
 
         if operation == "commitContentUpload":
-            node = NODES[request["nodeId"]]
+            node = NODES.get(request["nodeId"])
+            if node is None:
+                return error(self, "not_found")
             if node["blobId"] != request.get("expectedBlobId"):
                 return error(self, "stale")
             stored = BLOBS.get(request["blobId"])
