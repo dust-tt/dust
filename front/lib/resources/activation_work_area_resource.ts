@@ -3,9 +3,11 @@ import type { ActivationWorkAreaStatus } from "@app/lib/models/activation/activa
 import { ActivationWorkAreaModel } from "@app/lib/models/activation/activation_work_area";
 import type { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -15,6 +17,14 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
+
+type NewUserActivationWorkArea = { title: string; description: string };
+
+type NewUserActivationWorkAreaAssignment = {
+  owner: UserResource;
+  activationPodModelId: ModelId;
+  workAreas: NewUserActivationWorkArea[];
+};
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ActivationWorkAreaResource
@@ -67,6 +77,84 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
     return new this(this.model, row.get());
   }
 
+  static async makeNewForUsers(
+    auth: Authenticator,
+    { assignments }: { assignments: NewUserActivationWorkAreaAssignment[] }
+  ): Promise<Result<ActivationWorkAreaResource[], Error>> {
+    if (!auth.isAdmin()) {
+      return new Err(
+        new Error(
+          "Only workspace admins can create work areas for another user."
+        )
+      );
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const owners = assignments.map((a) => a.owner);
+    const uniqueOwnerIds = new Set(owners.map((o) => o.id));
+    if (uniqueOwnerIds.size !== owners.length) {
+      return new Err(
+        new Error("Each user may appear in only one work-area assignment.")
+      );
+    }
+
+    const { memberships } = await MembershipResource.getActiveMemberships({
+      workspace,
+      users: owners,
+    });
+    const activeUserIds = new Set(memberships.map((m) => m.userId));
+    const inactiveOwners = owners.filter((o) => !activeUserIds.has(o.id));
+    if (inactiveOwners.length > 0) {
+      return new Err(
+        new Error(
+          "Users are not active members of this workspace: " +
+            `${inactiveOwners.map((o) => o.sId).join(", ")}.`
+        )
+      );
+    }
+
+    const rows = await this.model.bulkCreate(
+      assignments.flatMap(({ owner, activationPodModelId, workAreas }) =>
+        workAreas.map((workArea) => ({
+          workspaceId: workspace.id,
+          userId: owner.id,
+          status: "suggested" as const,
+          title: workArea.title,
+          description: workArea.description,
+          podId: activationPodModelId,
+        }))
+      )
+    );
+
+    return new Ok(rows.map((row) => new this(this.model, row.get())));
+  }
+
+  static async listByUsersAndStatus(
+    auth: Authenticator,
+    {
+      users,
+      status,
+    }: { users: UserResource[]; status?: ActivationWorkAreaStatus }
+  ): Promise<ActivationWorkAreaResource[]> {
+    if (users.length === 0) {
+      return [];
+    }
+
+    const rows = await this.model.findAll({
+      where: {
+        userId: users.map((u) => u.id),
+        workspaceId: auth.getNonNullableWorkspace().id,
+        ...(status !== undefined ? { status } : {}),
+      },
+      order: [
+        ["userId", "ASC"],
+        ["createdAt", "ASC"],
+      ],
+    });
+
+    return rows.map((row) => new this(this.model, row.get()));
+  }
+
   static async fetchById(
     auth: Authenticator,
     sId: string
@@ -95,12 +183,14 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
     {
       status,
       activationPodModelId,
+      user: targetUser,
     }: {
       status?: ActivationWorkAreaStatus;
       activationPodModelId?: ModelId;
+      user?: UserResource;
     }
   ): Promise<ActivationWorkAreaResource[]> {
-    const user = auth.getNonNullableUser();
+    const user = targetUser ?? auth.getNonNullableUser();
 
     const where: WhereOptions<ActivationWorkAreaModel> = {
       userId: user.id,

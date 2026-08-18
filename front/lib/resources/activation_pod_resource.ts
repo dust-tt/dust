@@ -131,6 +131,23 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
     return activationPod ?? null;
   }
 
+  // Fetches the most recent live Activation Pod for an arbitrary user (e.g.
+  // admin tools that look up pods on behalf of target users).
+  static async fetchByUserModelId(
+    auth: Authenticator,
+    userModelId: ModelId
+  ): Promise<ActivationPodResource | null> {
+    const activationPod = await this.model.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: userModelId,
+      },
+      include: this.unarchivedQuery.include,
+      order: [["createdAt", "DESC"]],
+    });
+    return activationPod ? new this(this.model, activationPod.get()) : null;
+  }
+
   // Batch variant of fetchBySpace, avoiding one query per pod (e.g. when the
   // scheduler processes many pods at once).
   static async fetchBySpaceModelIds(

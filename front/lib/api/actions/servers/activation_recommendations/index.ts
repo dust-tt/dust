@@ -18,16 +18,107 @@ import { ActivationWorkAreaResource } from "@app/lib/resources/activation_work_a
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { UserResource } from "@app/lib/resources/user_resource";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 type ToolExecutionMode = "auto" | "requires_approval" | "not_connected";
+
+type DelegatedWorkAreaTarget = {
+  user: UserResource;
+  membership: MembershipResource;
+};
+
+async function authorizeDelegatedWorkAreaTarget(
+  auth: Authenticator,
+  targetUser: UserResource
+): Promise<Result<MembershipResource, MCPError>> {
+  if (!auth.isAdmin()) {
+    return new Err(
+      new MCPError(
+        "Only workspace admins can manage work areas for another user."
+      )
+    );
+  }
+
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user: targetUser,
+      workspace: auth.getNonNullableWorkspace(),
+    });
+  if (!membership) {
+    return new Err(
+      new MCPError(
+        `User ${targetUser.sId} is not an active member of this workspace.`
+      )
+    );
+  }
+
+  return new Ok(membership);
+}
+
+async function resolveDelegatedWorkAreaTargets(
+  auth: Authenticator,
+  targetUserIds: string[]
+): Promise<Result<DelegatedWorkAreaTarget[], MCPError>> {
+  if (!auth.isAdmin()) {
+    return new Err(
+      new MCPError(
+        "Only workspace admins can manage work areas for another user."
+      )
+    );
+  }
+
+  const uniqueTargetUserIds = [...new Set(targetUserIds)];
+  const users = await UserResource.fetchByIds(uniqueTargetUserIds);
+  const userBySId = new Map(users.map((user) => [user.sId, user]));
+  const missingUserIds = uniqueTargetUserIds.filter(
+    (targetUserId) => !userBySId.has(targetUserId)
+  );
+  if (missingUserIds.length > 0) {
+    return new Err(
+      new MCPError(`Users not found: ${missingUserIds.join(", ")}.`)
+    );
+  }
+
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace: auth.getNonNullableWorkspace(),
+    users,
+  });
+  const membershipByUserId = new Map(
+    memberships.map((membership) => [membership.userId, membership])
+  );
+  const inactiveUserIds = users
+    .filter((user) => !membershipByUserId.has(user.id))
+    .map((user) => user.sId);
+  if (inactiveUserIds.length > 0) {
+    return new Err(
+      new MCPError(
+        inactiveUserIds.length === 1
+          ? `User ${inactiveUserIds[0]} is not an active member of this workspace.`
+          : `Users are not active members of this workspace: ${inactiveUserIds.join(", ")}.`
+      )
+    );
+  }
+
+  return new Ok(
+    uniqueTargetUserIds.flatMap((targetUserId) => {
+      const user = userBySId.get(targetUserId);
+      if (!user) {
+        return [];
+      }
+      const membership = membershipByUserId.get(user.id);
+      return membership ? [{ user, membership }] : [];
+    })
+  );
+}
 
 function connectionTypeForOAuthUseCase(
   oAuthUseCase: MCPOAuthUseCase
@@ -254,7 +345,10 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
       ]);
     },
 
-    list_work_areas: async ({ podId, status }, { auth, runContext }) => {
+    list_work_areas: async (
+      { podId, targetUserIds, status },
+      { auth, runContext }
+    ) => {
       const podSpaceId = isAgentLoopRunContext(runContext)
         ? runContext.conversation.spaceId
         : null;
@@ -272,42 +366,72 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
           )
         );
       }
-      if (pod.sId !== podId) {
+      if ((!podId && !targetUserIds) || (podId && targetUserIds)) {
         return new Err(
           new MCPError(
-            "podId must match the current Activation Pod conversation."
+            "Pass exactly one of podId or targetUserIds when listing work areas."
           )
         );
       }
 
-      const rows = await ActivationWorkAreaResource.listByUserAndStatus(auth, {
-        status,
-        activationPodModelId: activationPod.id,
-      });
-
-      if (rows.length === 0) {
-        return new Ok([
-          {
-            type: "text" as const,
-            text: "No work areas found.",
-          },
-        ]);
+      let users: UserResource[];
+      let rows: ActivationWorkAreaResource[];
+      if (targetUserIds) {
+        const targetsResult = await resolveDelegatedWorkAreaTargets(
+          auth,
+          targetUserIds
+        );
+        if (targetsResult.isErr()) {
+          return targetsResult;
+        }
+        users = targetsResult.value.map(({ user }) => user);
+        rows = await ActivationWorkAreaResource.listByUsersAndStatus(auth, {
+          users,
+          status,
+        });
+      } else {
+        if (pod.sId !== podId) {
+          return new Err(
+            new MCPError(
+              "podId must match the current Activation Pod conversation."
+            )
+          );
+        }
+        users = [auth.getNonNullableUser()];
+        rows = await ActivationWorkAreaResource.listByUserAndStatus(auth, {
+          status,
+          activationPodModelId: activationPod.id,
+        });
       }
 
-      const lines = rows.map((r, i) => {
-        const workArea = r.toJSON();
-        return `${i + 1}. [${workArea.status}] ${workArea.sId} — "${workArea.title}": ${workArea.description}`;
-      });
+      const workAreasByUserId = new Map<
+        number,
+        ReturnType<ActivationWorkAreaResource["toJSON"]>[]
+      >();
+      for (const row of rows) {
+        const existing = workAreasByUserId.get(row.userId);
+        if (existing) {
+          existing.push(row.toJSON());
+        } else {
+          workAreasByUserId.set(row.userId, [row.toJSON()]);
+        }
+      }
 
       return new Ok([
         {
           type: "text" as const,
-          text: `Work areas (${rows.length}):\n${lines.join("\n")}`,
+          text: JSON.stringify(
+            users.map((user) => ({
+              userId: user.sId,
+              name: user.fullName() || user.email,
+              workAreas: workAreasByUserId.get(user.id) ?? [],
+            }))
+          ),
         },
       ]);
     },
 
-    create_work_areas: async ({ workAreas }, { auth, runContext }) => {
+    create_work_areas: async ({ podId, assignments }, { auth, runContext }) => {
       const podSpaceId = isAgentLoopRunContext(runContext)
         ? runContext.conversation.spaceId
         : null;
@@ -326,25 +450,125 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
         );
       }
 
-      const created = await concurrentExecutor(
-        workAreas,
-        (item) =>
-          ActivationWorkAreaResource.makeNew(auth, {
-            title: item.title,
-            description: item.description,
-            podId: activationPod.id,
-          }),
-        { concurrency: 8 }
+      if (podId) {
+        if (
+          pod?.sId !== podId ||
+          assignments.length !== 1 ||
+          assignments[0]?.targetUserIds
+        ) {
+          return new Err(
+            new MCPError(
+              "Current-user creation requires the current podId and exactly one assignment without targetUserIds."
+            )
+          );
+        }
+
+        const [assignment] = assignments;
+        const created = await Promise.all(
+          assignment.workAreas.map((item) =>
+            ActivationWorkAreaResource.makeNew(auth, {
+              title: item.title,
+              description: item.description,
+              podId: activationPod.id,
+            })
+          )
+        );
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `Created ${created.length} work areas for the current Activation Pod.`,
+          },
+        ]);
+      }
+
+      if (assignments.some((assignment) => !assignment.targetUserIds)) {
+        return new Err(
+          new MCPError(
+            "Delegated creation requires targetUserIds on every assignment."
+          )
+        );
+      }
+      if (!auth.isAdmin()) {
+        return new Err(
+          new MCPError(
+            "Only workspace admins can create work areas for other users."
+          )
+        );
+      }
+
+      const targetUserIds = assignments.flatMap(
+        (assignment) => assignment.targetUserIds ?? []
+      );
+      const uniqueTargetUserIds = new Set(targetUserIds);
+      if (uniqueTargetUserIds.size !== targetUserIds.length) {
+        return new Err(
+          new MCPError(
+            "Each target user may appear in only one work-area assignment."
+          )
+        );
+      }
+
+      const targetsResult = await resolveDelegatedWorkAreaTargets(
+        auth,
+        targetUserIds
+      );
+      if (targetsResult.isErr()) {
+        return targetsResult;
+      }
+      const userBySId = new Map(
+        targetsResult.value.map(({ user }) => [user.sId, user])
       );
 
-      const lines = created.map(
-        (r) => `${r.sId} — "${r.title}" (status: suggested)`
+      // Work areas must be scoped to the target user's Learning Space. Error if
+      // a user does not have one yet — provisioning happens in a separate flow.
+      const activationPodByUserId = new Map<number, number>();
+      for (const { user } of targetsResult.value) {
+        const activationPod = await ActivationPodResource.fetchByUserModelId(
+          auth,
+          user.id
+        );
+        if (!activationPod) {
+          return new Err(
+            new MCPError(
+              `User ${user.sId} does not have a Learning Space yet. Provision one before creating work areas.`
+            )
+          );
+        }
+        activationPodByUserId.set(user.id, activationPod.id);
+      }
+
+      const perUserAssignments = assignments.flatMap((assignment) =>
+        (assignment.targetUserIds ?? []).flatMap((targetUserId) => {
+          const user = userBySId.get(targetUserId);
+          const activationPodModelId = user
+            ? activationPodByUserId.get(user.id)
+            : undefined;
+          return user && activationPodModelId !== undefined
+            ? [
+                {
+                  owner: user,
+                  activationPodModelId,
+                  workAreas: assignment.workAreas,
+                },
+              ]
+            : [];
+        })
       );
+
+      const createResult = await ActivationWorkAreaResource.makeNewForUsers(
+        auth,
+        { assignments: perUserAssignments }
+      );
+      if (createResult.isErr()) {
+        return new Err(new MCPError(createResult.error.message));
+      }
 
       return new Ok([
         {
           type: "text" as const,
-          text: `Created ${created.length} work areas:\n${lines.join("\n")}`,
+          text:
+            `Saved ${createResult.value.length} work areas independently for ` +
+            `${targetsResult.value.length} users across ${assignments.length} approved map(s).`,
         },
       ]);
     },
@@ -360,11 +584,19 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
       }
 
       if (row.userId !== auth.getNonNullableUser().id) {
-        return new Err(
-          new MCPError(
-            `Cannot update work area ${workAreaId}: not owned by the calling user.`
-          )
+        const [targetUser] = await UserResource.fetchByModelIds([row.userId]);
+        if (!targetUser) {
+          return new Err(
+            new MCPError(`Work area owner not found: ${workAreaId}.`)
+          );
+        }
+        const authorizationResult = await authorizeDelegatedWorkAreaTarget(
+          auth,
+          targetUser
         );
+        if (authorizationResult.isErr()) {
+          return authorizationResult;
+        }
       }
 
       const updateRes = await row.updateFields({
@@ -464,14 +696,18 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
     },
   };
 
+export const TOOLS = buildTools(
+  ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA,
+  handlers
+);
+
 function createServer(
   auth: Authenticator,
   toolContext?: ToolContext
 ): McpServer {
   const server = makeInternalMCPServer(ACTIVATION_RECOMMENDATIONS_SERVER_NAME);
 
-  const tools = buildTools(ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA, handlers);
-  for (const tool of tools) {
+  for (const tool of TOOLS) {
     registerTool(auth, toolContext, server, tool, {
       monitoringName: ACTIVATION_RECOMMENDATIONS_SERVER_NAME,
     });

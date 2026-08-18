@@ -5,6 +5,19 @@ import { z } from "zod";
 export const ACTIVATION_RECOMMENDATIONS_SERVER_NAME =
   "activation_recommendations" as const;
 
+const WORK_AREA_INPUT_SCHEMA = z.object({
+  title: z
+    .string()
+    .max(255)
+    .describe(
+      "Short name of the work area (e.g. 'Weekly pipeline reporting')."
+    ),
+  description: z
+    .string()
+    .max(512)
+    .describe("One sentence describing what the work area covers."),
+});
+
 export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
   {
     name: "create_recommendation",
@@ -182,13 +195,23 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
   {
     name: "list_work_areas",
     description:
-      "List work areas for the current Activation Pod. Returns each work area's id, " +
-      "title, description, and status.",
+      "List work areas for the current Activation Pod, or for a batch of active " +
+      "workspace members during admin-led work-area curation. Returns one entry " +
+      "per member with their work-area ids, titles, descriptions, and statuses.",
     schema: {
       podId: z
         .string()
+        .optional()
         .describe(
-          "The current Pod ID from the activation context. Always pass it to scope results to this Pod."
+          "The current Pod ID from the activation context. Use this for the current user's own work areas; otherwise pass targetUserIds."
+        ),
+      targetUserIds: z
+        .array(z.string())
+        .min(1)
+        .max(100)
+        .optional()
+        .describe(
+          "Stable IDs of active workspace members. Only workspace admins may use this during delegated work-area curation; otherwise pass podId."
         ),
       status: z
         .enum(["suggested", "dismissed"])
@@ -206,27 +229,41 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
   {
     name: "create_work_areas",
     description:
-      "Create one or more work areas for the current Activation Pod. Each is created " +
-      "with status 'suggested'. Returns the created work areas with their ids.",
+      "Create work-area maps in one call. For the current user, pass podId and " +
+      "one assignment without targetUserIds. During admin-led curation, omit " +
+      "podId and pass targetUserIds on every assignment; a shared assignment " +
+      "applies the same approved map to a cohort while storing independent rows.",
     schema: {
-      workAreas: z
+      podId: z
+        .string()
+        .optional()
+        .describe(
+          "The current Pod ID from the activation context. Pass only when creating the current user's own work areas."
+        ),
+      assignments: z
         .array(
           z.object({
-            title: z
-              .string()
-              .max(255)
+            targetUserIds: z
+              .array(z.string())
+              .min(1)
+              .optional()
               .describe(
-                "Short name of the work area (e.g. 'Weekly pipeline reporting')."
+                "Active workspace member IDs that share this exact approved map. Required for delegated admin curation and omitted for the current user's own Pod."
               ),
-            description: z
-              .string()
-              .max(512)
-              .describe("One sentence describing what the work area covers."),
+            workAreas: z
+              .array(WORK_AREA_INPUT_SCHEMA)
+              .min(1)
+              .max(10)
+              .describe(
+                "The approved work-area map to save independently for every target user in this assignment."
+              ),
           })
         )
         .min(1)
-        .max(10)
-        .describe("The work areas to create."),
+        .max(100)
+        .describe(
+          "Work-area maps to create. A user may appear in only one assignment."
+        ),
     },
     stake: "never_ask",
     toolCostCategory: "basic",
@@ -238,7 +275,10 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
   },
   {
     name: "update_work_area",
-    description: "Update a single work area's status, title, or description.",
+    description:
+      "Update a single work area's status, title, or description. Workspace " +
+      "admins may also update work areas belonging to another active member " +
+      "during delegated work-area curation.",
     schema: {
       workAreaId: z.string().describe("The id of the work area to update."),
       status: z
