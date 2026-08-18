@@ -87,7 +87,7 @@ app.patch(
       case "disabled":
         result = await trigger.disable(
           auth,
-          auth.isManager() ? "disabled_by_manager" : "disabled"
+          auth.isManager() ? "disabled_by_admin" : "disabled"
         );
         break;
       default:

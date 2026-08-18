@@ -269,7 +269,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers (spaceI
   });
 });
 
-describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers (disabled_by_manager)", () => {
+describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers (disabled_by_admin)", () => {
   async function createAdminLockedTrigger(
     workspace: { sId: string },
     aId: string
@@ -279,10 +279,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers (disabl
       workspace.sId
     );
     const resource = await TriggerResource.fetchById(adminAuth, trigger.sId);
-    const disableRes = await resource?.disable(
-      adminAuth,
-      "disabled_by_manager"
-    );
+    const disableRes = await resource?.disable(adminAuth, "disabled_by_admin");
     expect(disableRes?.isOk()).toBe(true);
     return trigger;
   }
@@ -305,7 +302,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers (disabl
 
     expect(response.status).toBe(403);
     const updated = await TriggerResource.fetchById(auth, trigger.sId);
-    expect(updated?.status).toBe("disabled_by_manager");
+    expect(updated?.status).toBe("disabled_by_admin");
   });
 
   it("rejects a non-admin editor re-enabling a relocating trigger", async () => {
@@ -466,7 +463,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers (disabl
           ...trigger,
           sId: trigger.sId,
           name: "renamed-trigger",
-          status: "disabled_by_manager",
+          status: "disabled_by_admin",
         },
       ],
     });
@@ -474,6 +471,6 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers (disabl
     expect(response.status).toBe(204);
     const updated = await TriggerResource.fetchById(auth, trigger.sId);
     expect(updated?.name).toBe("renamed-trigger");
-    expect(updated?.status).toBe("disabled_by_manager");
+    expect(updated?.status).toBe("disabled_by_admin");
   });
 });
