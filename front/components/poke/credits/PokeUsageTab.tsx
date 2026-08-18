@@ -28,6 +28,8 @@ interface PokeUsageTabProps {
   stripeSubscription: PokeStripeSubscriptionWire | null;
   poolCreditState: WorkspacePoolCreditState;
   poolSpendLimitRateCapCount: number | null;
+  poolEsConsumedAwuCredits: number | null;
+  poolMetronomeConsumedAwuCredits: number | null;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticWarningReached: boolean;
   programmaticSpendLimitRateCapCount: number | null;
@@ -97,6 +99,8 @@ interface PokeCreditStatesCardProps {
   creditUsageConfig: PokeCreditUsageConfig | null;
   poolCreditState: WorkspacePoolCreditState;
   poolSpendLimitRateCapCount: number | null;
+  poolEsConsumedAwuCredits: number | null;
+  poolMetronomeConsumedAwuCredits: number | null;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticWarningReached: boolean;
   programmaticSpendLimitRateCapCount: number | null;
@@ -111,6 +115,8 @@ function PokeCreditStatesCard({
   creditUsageConfig,
   poolCreditState,
   poolSpendLimitRateCapCount,
+  poolEsConsumedAwuCredits,
+  poolMetronomeConsumedAwuCredits,
   programmaticCreditState,
   programmaticWarningReached,
   programmaticSpendLimitRateCapCount,
@@ -132,12 +138,11 @@ function PokeCreditStatesCard({
             color={creditStateChipColor(poolCreditState)}
             label={poolCreditState}
           />
-          <span className="text-xs text-muted-foreground">
-            rate limiter:{" "}
-            {poolSpendLimitRateCapCount !== null
-              ? `${formatCredits(poolSpendLimitRateCapCount)} credits`
-              : "—"}
-          </span>
+          <SpendCountersInline
+            esConsumedAwuCredits={poolEsConsumedAwuCredits}
+            rateLimiterAwuCredits={poolSpendLimitRateCapCount}
+            metronomeConsumedAwuCredits={poolMetronomeConsumedAwuCredits}
+          />
           <AlertChip alert={poolAlert} label="balance alert" />
           <CreditStateLogsLink machine="pool" workspaceId={owner.sId} />
           <ReconcileCreditStateButton owner={owner} target="pool" />
@@ -341,6 +346,8 @@ export function PokeUsageTab({
   stripeSubscription,
   poolCreditState,
   poolSpendLimitRateCapCount,
+  poolEsConsumedAwuCredits,
+  poolMetronomeConsumedAwuCredits,
   programmaticCreditState,
   programmaticWarningReached,
   programmaticSpendLimitRateCapCount,
@@ -365,6 +372,8 @@ export function PokeUsageTab({
         creditUsageConfig={creditUsageConfig}
         poolCreditState={poolCreditState}
         poolSpendLimitRateCapCount={poolSpendLimitRateCapCount}
+        poolEsConsumedAwuCredits={poolEsConsumedAwuCredits}
+        poolMetronomeConsumedAwuCredits={poolMetronomeConsumedAwuCredits}
         programmaticCreditState={programmaticCreditState}
         programmaticWarningReached={programmaticWarningReached}
         programmaticSpendLimitRateCapCount={programmaticSpendLimitRateCapCount}

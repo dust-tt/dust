@@ -3,7 +3,11 @@ import {
   makeUsageCapSpendLimitAwuCreditsRateLimitKeyForWorkspace,
 } from "@app/lib/api/assistant/rate_limits";
 import config from "@app/lib/api/config";
-import { getEsConsumedProgrammaticAwuCredits } from "@app/lib/api/credits/members_usage";
+import { getAwuPoolSummary } from "@app/lib/api/credits/awu_pool_summary";
+import {
+  getEsConsumedProgrammaticAwuCredits,
+  getEsConsumedWorkspaceAwuCredits,
+} from "@app/lib/api/credits/members_usage";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { getSeatPlan } from "@app/lib/api/credits/seat_plan";
 import { getWorkspacePlanLimitOverrides } from "@app/lib/api/plan_limit_overrides";
@@ -83,10 +87,13 @@ export type PokeWorkspaceInfo = {
   // this tells Poke which of them are overridden rather than plan-given.
   planLimitOverride: PlanLimitOverride | null;
   poolCreditState: WorkspacePoolCreditState;
-  // Current value of the Redis fixed-window workspace usage-cap counter for the
-  // contract billing cycle (the rate-limiter backup). Null when there is no
-  // billing period to bucket on or the read failed.
+  // Workspace usage-cap (pool) spend for the current billing cycle across the
+  // three sources, for debugging the rate-limiter backup: the Redis fixed-window
+  // counter (RL), the Elasticsearch-derived consumption (ES), and the
+  // Metronome-derived consumption (MT). Each null when it can't be resolved.
   poolSpendLimitRateCapCount: number | null;
+  poolEsConsumedAwuCredits: number | null;
+  poolMetronomeConsumedAwuCredits: number | null;
   seatPlan: SeatPlanResponseBody | null;
   // The Metronome alerts backing each credit dimension — id and current status —
   // for deep-linking and display from Poke. Null when not configured / not
@@ -195,6 +202,23 @@ export async function getPokeWorkspaceInfo(
       ? spendResult.value
       : null;
   }
+  const poolEsConsumedAwuCredits = spendLimitBounds
+    ? await getEsConsumedWorkspaceAwuCredits(auth, {})
+    : null;
+  // Pool MT = credits drawn from the pool this cycle = active − remaining, from
+  // the Metronome ledger balances.
+  let poolMetronomeConsumedAwuCredits: number | null = null;
+  if (workspaceResource.metronomeCustomerId) {
+    const poolSummaryResult = await getAwuPoolSummary(auth);
+    if (poolSummaryResult.isOk()) {
+      const { totalActiveCredits, totalRemainingCredits } =
+        poolSummaryResult.value;
+      poolMetronomeConsumedAwuCredits = Math.max(
+        0,
+        Math.round(totalActiveCredits - totalRemainingCredits)
+      );
+    }
+  }
 
   // Resolve the Metronome alert ids backing each credit dimension so Poke can
   // deep-link to the dashboard. Best-effort: any failure degrades to null
@@ -294,6 +318,8 @@ export async function getPokeWorkspaceInfo(
     planLimitOverride,
     poolCreditState: workspaceResource.poolCreditState,
     poolSpendLimitRateCapCount,
+    poolEsConsumedAwuCredits,
+    poolMetronomeConsumedAwuCredits,
     poolAlert,
     programmaticAlerts,
     usageCapAlert,
