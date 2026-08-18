@@ -8,18 +8,23 @@
 
 use std::collections::HashSet;
 use std::fs::{self, File, OpenOptions};
-use std::io;
+use std::io::{self, Read, Write};
 use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use lru::LruCache;
+use tempfile::NamedTempFile;
 use tracing::warn;
 
 use super::{errno, is_writable, INodeNo, Node};
 
 const CONTENT_CACHE_ENTRY_CAPACITY: usize = 4096;
-const CONTENT_LOCK_STRIPES: usize = 64;
+// A cold open holds its stripe while content downloads. Keep enough stripes
+// that an unrelated file is very unlikely to share that wait.
+const CONTENT_LOCK_STRIPES: usize = 1024;
+const CACHE_MARKER: &str = ".dust-filesystem-cache-v1";
+const CACHE_MARKER_CONTENT: &[u8] = b"Dust filesystem staging directory\n";
 
 #[derive(Clone, Debug)]
 pub(super) struct CachedContent {
@@ -307,6 +312,13 @@ impl OpenedContent {
     pub fn is_writable(&self) -> bool {
         self.lease.writable
     }
+
+    // Keep the node returned to Linux aligned with the staged file bytes.
+    pub fn set_len(&mut self, size: u64) -> io::Result<()> {
+        self.file.set_len(size)?;
+        self.node.size = size;
+        Ok(())
+    }
 }
 
 impl Drop for ContentLease {
@@ -332,35 +344,96 @@ impl Drop for ContentLease {
 }
 
 pub(super) fn prepare_staging_directory(path: &Path) -> io::Result<()> {
-    let created = match fs::symlink_metadata(path) {
-        Ok(_) => false,
+    let parent = path.parent().ok_or_else(|| errno(libc::EINVAL))?;
+    let parent_metadata = fs::symlink_metadata(parent)?;
+    if !parent_metadata.file_type().is_dir()
+        || parent_metadata.uid() != unsafe { libc::geteuid() }
+        || parent_metadata.permissions().mode() & 0o022 != 0
+    {
+        return Err(errno(libc::EACCES));
+    }
+    match fs::symlink_metadata(path) {
+        Ok(_) => {}
         Err(error) if error.kind() == io::ErrorKind::NotFound => {
-            fs::create_dir_all(path)?;
+            fs::create_dir(path)?;
             fs::set_permissions(path, fs::Permissions::from_mode(0o700))?;
-            true
         }
         Err(error) => return Err(error),
-    };
+    }
     let metadata = fs::symlink_metadata(path)?;
     if !metadata.file_type().is_dir() {
         return Err(errno(libc::ENOTDIR));
     }
-    if metadata.uid() != unsafe { libc::geteuid() }
-        || (!created && metadata.permissions().mode() & 0o077 != 0)
-    {
+    if metadata.uid() != unsafe { libc::geteuid() } || metadata.permissions().mode() & 0o077 != 0 {
         return Err(errno(libc::EACCES));
     }
 
-    // The database and GCS are authoritative after a daemon crash. Removing
-    // old local files prevents unfinished bytes from looking committed.
-    for entry in fs::read_dir(path)? {
-        let entry = entry?;
-        let entry_type = fs::symlink_metadata(entry.path())?.file_type();
-        if entry_type.is_file() || entry_type.is_symlink() {
-            fs::remove_file(entry.path())?;
-        } else {
-            return Err(errno(libc::EIO));
+    let entries = fs::read_dir(path)?.collect::<Result<Vec<_>, _>>()?;
+    let mut marker_found = false;
+    let mut managed_files = Vec::new();
+    for entry in entries {
+        let name = entry.file_name();
+        let name = name.to_str().ok_or_else(|| errno(libc::EACCES))?;
+        if name == CACHE_MARKER {
+            validate_cache_marker(&entry.path())?;
+            marker_found = true;
+            continue;
         }
+        let entry_type = fs::symlink_metadata(entry.path())?.file_type();
+        let managed_name = name.strip_prefix("inode-").is_some_and(|suffix| {
+            !suffix.is_empty() && suffix.bytes().all(|byte| byte.is_ascii_digit())
+        }) || name.starts_with(".tmp");
+        if !managed_name || !(entry_type.is_file() || entry_type.is_symlink()) {
+            // Never clean an arbitrary private directory passed by mistake.
+            return Err(errno(libc::EACCES));
+        }
+        managed_files.push(entry.path());
+    }
+    if !marker_found {
+        if !managed_files.is_empty() {
+            return Err(errno(libc::EACCES));
+        }
+        write_cache_marker(path)?;
+    }
+    // The database and GCS are authoritative after a daemon crash. Only names
+    // created by this cache are removed; an unexpected name fails closed above.
+    for managed_file in managed_files {
+        fs::remove_file(managed_file)?;
+    }
+    Ok(())
+}
+
+fn write_cache_marker(path: &Path) -> io::Result<()> {
+    // Publish the marker only after its complete contents are on disk. A crash
+    // may leave a `.tmp` file, which startup already knows how to clean.
+    let mut marker = NamedTempFile::new_in(path)?;
+    marker
+        .as_file()
+        .set_permissions(fs::Permissions::from_mode(0o600))?;
+    marker.write_all(CACHE_MARKER_CONTENT)?;
+    marker.as_file().sync_data()?;
+    marker
+        .persist_noclobber(path.join(CACHE_MARKER))
+        .map_err(|error| error.error)?;
+    Ok(())
+}
+
+fn validate_cache_marker(path: &Path) -> io::Result<()> {
+    let mut marker = OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+        .open(path)?;
+    let metadata = marker.metadata()?;
+    if !metadata.file_type().is_file()
+        || metadata.uid() != unsafe { libc::geteuid() }
+        || metadata.permissions().mode() & 0o077 != 0
+    {
+        return Err(errno(libc::EACCES));
+    }
+    let mut content = Vec::new();
+    marker.read_to_end(&mut content)?;
+    if content != CACHE_MARKER_CONTENT {
+        return Err(errno(libc::EACCES));
     }
     Ok(())
 }
@@ -371,14 +444,11 @@ fn open_staged_file(path: &Path, flags: i32) -> io::Result<File> {
     options
         .read(true)
         .write(writable)
-        .append(flags & libc::O_APPEND != 0)
         // Cached content lives outside the FUSE tree. Never let an unexpected
         // local link turn a filesystem open into access to another host path.
-        .custom_flags(
-            flags & !(libc::O_ACCMODE | libc::O_CREAT | libc::O_EXCL)
-                | libc::O_NOFOLLOW
-                | libc::O_CLOEXEC,
-        );
+        // Flags such as O_TRUNC and O_SYNC belong to the remote file,
+        // not this private cache fd, and are handled or rejected by DustFuse.
+        .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC);
     options.open(path)
 }
 
@@ -391,7 +461,7 @@ mod tests {
     use tempfile::tempdir;
 
     use super::{
-        open_staged_file, prepare_staging_directory, CachedContent, ContentCache,
+        open_staged_file, prepare_staging_directory, CachedContent, ContentCache, CACHE_MARKER,
         CONTENT_CACHE_ENTRY_CAPACITY,
     };
     use crate::commands::filesystem::inode::INodeNo;
@@ -430,12 +500,17 @@ mod tests {
         let staging = directory.path().join("staging");
         fs::create_dir(&staging).expect("create staging");
         fs::set_permissions(&staging, fs::Permissions::from_mode(0o700)).expect("restrict staging");
+        prepare_staging_directory(&staging).expect("claim staging directory");
         fs::write(staging.join("inode-3"), b"stale").expect("write stale inode");
         fs::write(staging.join(".tmp-content"), b"partial").expect("write temporary file");
 
         prepare_staging_directory(&staging).expect("prepare staging");
 
-        assert_eq!(fs::read_dir(&staging).expect("list staging").count(), 0);
+        let names = fs::read_dir(&staging)
+            .expect("list staging")
+            .map(|entry| entry.expect("staging entry").file_name())
+            .collect::<Vec<_>>();
+        assert_eq!(names, vec![std::ffi::OsString::from(CACHE_MARKER)]);
     }
 
     #[test]
@@ -449,6 +524,24 @@ mod tests {
         let error = prepare_staging_directory(&staging).expect_err("reject staging link");
 
         assert_eq!(error.raw_os_error(), Some(libc::ENOTDIR));
+    }
+
+    #[test]
+    fn staging_startup_never_cleans_an_unmarked_private_directory() {
+        let directory = tempdir().expect("temporary directory");
+        let staging = directory.path().join("staging");
+        fs::create_dir(&staging).expect("create staging");
+        fs::set_permissions(&staging, fs::Permissions::from_mode(0o700)).expect("restrict staging");
+        let important = staging.join("important-key");
+        fs::write(&important, b"keep me").expect("write important file");
+
+        let error = prepare_staging_directory(&staging).expect_err("reject unrelated directory");
+
+        assert_eq!(error.raw_os_error(), Some(libc::EACCES));
+        assert_eq!(
+            fs::read(&important).expect("read important file"),
+            b"keep me"
+        );
     }
 
     #[test]
@@ -525,6 +618,53 @@ mod tests {
         let reservation = cache
             .reserve_open(inode, true)
             .expect("reserve writer after close");
+        drop(reservation);
+    }
+
+    #[test]
+    fn resizing_staged_content_updates_its_node_size() {
+        let directory = tempdir().expect("temporary directory");
+        let inode = INodeNo(3);
+        let path = directory.path().join("inode-3");
+        fs::write(&path, b"original").expect("write content");
+        let cache = ContentCache::new(1024);
+        cache
+            .insert(inode, CachedContent::new(Some("blob".to_owned()), path, 8))
+            .expect("insert content");
+        let reservation = cache.reserve_open(inode, true).expect("reserve writer");
+        let mut opened = reservation
+            .open(libc::O_RDWR, node(inode, "blob", 8))
+            .expect("open content");
+
+        opened.set_len(0).expect("truncate content");
+
+        assert_eq!(opened.file.metadata().expect("content metadata").len(), 0);
+        assert_eq!(opened.node.size, 0);
+    }
+
+    #[test]
+    fn discard_never_reuses_bytes_from_a_failed_commit() {
+        let directory = tempdir().expect("temporary directory");
+        let inode = INodeNo(3);
+        let path = directory.path().join("inode-3");
+        fs::write(&path, b"unpublished").expect("write staged bytes");
+        let cache = ContentCache::new(1024);
+        cache
+            .insert(
+                inode,
+                CachedContent::new(Some("committed-blob".to_owned()), path.clone(), 11),
+            )
+            .expect("insert content");
+
+        cache.discard(inode).expect("discard content");
+
+        assert!(!cache
+            .is_current(inode, Some("committed-blob"))
+            .expect("inspect cache"));
+        assert!(!path.exists());
+        let reservation = cache
+            .reserve_open(inode, true)
+            .expect("writer slot is reusable");
         drop(reservation);
     }
 

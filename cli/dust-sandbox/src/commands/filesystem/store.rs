@@ -56,8 +56,8 @@ pub struct FileStore {
     staging_dir: PathBuf,
     roots: Vec<Node>,
     content: ContentCache,
-    // Match the one-second FUSE attribute TTL so repeated opens and readdir
-    // stay local without extending the period in which another writer is hidden.
+    // This daemon cache and Linux's entry cache each last one second. Together,
+    // a change from another sandbox can take almost two seconds to become visible.
     metadata: Mutex<MetadataCache>,
 }
 
@@ -70,14 +70,13 @@ impl FileStore {
         staging_dir: &Path,
         api_url: &str,
         workspace_id: &str,
-        token: String,
         token_file: PathBuf,
         cache_capacity_bytes: u64,
     ) -> io::Result<Self> {
         // The sandbox mounts this below a root-owned runtime directory. The
         // checks here protect the final directory and rely on that trusted parent.
         prepare_staging_directory(staging_dir)?;
-        let client = FileSystemClient::new(api_url, workspace_id, token, token_file)?;
+        let client = FileSystemClient::from_token_file(api_url, workspace_id, token_file)?;
         let roots = client
             .initialize()?
             .into_iter()
@@ -328,7 +327,7 @@ impl FileStore {
     pub fn set_size(&self, inode: INodeNo, size: u64) -> io::Result<Node> {
         let mut opened = self.open_content(inode, libc::O_RDWR)?;
         let result = (|| {
-            opened.file.set_len(size)?;
+            opened.set_len(size)?;
             opened.file.sync_data()?;
             self.commit_content(&mut opened)
         })();
