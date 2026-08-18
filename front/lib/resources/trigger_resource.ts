@@ -128,9 +128,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     if (this.status === to) {
       return true;
     }
-    // Editor-owned statuses are open to the editor; anything else needs a
-    // manager or admin (system transitions additionally never go through
-    // update(), see isSystemStatusTransitionTo).
     return [this.status, to].every(
       (s) => getTriggerStatusOwner(s) === "editor" || auth.isManager()
     );
