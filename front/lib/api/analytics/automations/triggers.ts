@@ -105,13 +105,13 @@ function median(values: number[]): number {
 }
 
 /**
- * The period's triggers ranked by gross credits, highest first. Ranking and
- * paging both happen in Elasticsearch, so neither grows with the number of
- * triggers the workspace holds.
- *
- * Median run count / cost per run are derived from this same ranked set
- * (the top `offset + limit` triggers by credits), so they approximate the
- * workspace's typical trigger rather than covering every trigger ever run.
+ * The period's triggers ranked by gross credits, highest first. The
+ * underlying terms aggregation is capped at CARDINALITY_PRECISION_THRESHOLD
+ * buckets (the same approximation boundary used for the total trigger
+ * count below), so both the requested page and the median baseline are
+ * sliced/derived from that same, page-independent set — a trigger's stats
+ * always compare against the full active set, never just the triggers
+ * ranked ahead of it.
  */
 async function fetchTriggersRanking(
   auth: Authenticator,
@@ -146,7 +146,7 @@ async function fetchTriggersRanking(
       by_trigger: {
         terms: {
           field: TRIGGER_ID_FIELD,
-          size: offset + limit,
+          size: CARDINALITY_PRECISION_THRESHOLD,
           order: { [CREDIT_AGG]: "desc" },
         },
         aggs: {

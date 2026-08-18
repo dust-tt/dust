@@ -12,7 +12,7 @@ const RATIO_MORE_THRESHOLD = 1.5;
 const RATIO_LESS_THRESHOLD = 1 / RATIO_MORE_THRESHOLD;
 
 function ratioCaption(value: number, median: number): string {
-  if (median <= 0) {
+  if (value <= 0 || median <= 0) {
     return "no comparison available";
   }
   const ratio = value / median;
