@@ -26,7 +26,11 @@ import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/Usag
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import { useMembersSelection } from "@app/hooks/useMembersSelection";
-import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
+import {
+  cycleElapsedPercent,
+  DEFAULT_CONSUMPTION_PERIOD,
+  formatConsumptionDate,
+} from "@app/lib/analytics/consumption_period";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import {
@@ -158,30 +162,6 @@ function memberFromUpgradeRequest(
 }
 
 const DEFAULT_PAGE_SIZE = 25;
-
-function formatUsageDate(date: string | number): string {
-  return new Date(date).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-}
-
-function cycleElapsedPercentage({
-  startDate,
-  endDate,
-}: {
-  startDate: string;
-  endDate: string;
-}): number {
-  const startMs = new Date(startDate).getTime();
-  const endMs = new Date(endDate).getTime();
-  if (endMs <= startMs) {
-    return 0;
-  }
-  const elapsedRatio = (Date.now() - startMs) / (endMs - startMs);
-  return Math.round(Math.min(Math.max(elapsedRatio, 0), 1) * 100);
-}
 
 export function UsagePage() {
   const owner = useWorkspace();
@@ -860,7 +840,7 @@ export function UsagePage() {
         )
       : 0);
   const elapsedPercentage = consumptionOverview
-    ? cycleElapsedPercentage(consumptionOverview.period)
+    ? cycleElapsedPercent(consumptionOverview.period)
     : usedPercentage;
   const resetAt =
     creditUsage?.status.resetAt ??
@@ -1195,7 +1175,7 @@ export function UsagePage() {
                     <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
                       <span>{usedPercentage}% used</span>
                       {resetAt && (
-                        <span>Resets {formatUsageDate(resetAt)}</span>
+                        <span>Resets {formatConsumptionDate(resetAt)}</span>
                       )}
                     </div>
                     <div className="flex flex-col justify-between gap-4 border-t border-border pt-4 sm:flex-row sm:items-center">
@@ -1205,7 +1185,7 @@ export function UsagePage() {
                             At this rate, you&apos;re expected to consume your
                             full credits by{" "}
                             <span className="font-semibold">
-                              {formatUsageDate(resetAt)}
+                              {formatConsumptionDate(resetAt)}
                             </span>
                             .
                           </span>
