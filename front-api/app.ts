@@ -3,7 +3,7 @@ import { configureHonoRequestStorage } from "@front-api/lib/request_context";
 import { contextStorage } from "hono/context-storage";
 
 import { cors } from "./middlewares/cors";
-import { requestLogger } from "./middlewares/request_logger";
+import { requestInstrumentation } from "./middlewares/request_instrumentation";
 import { spaRedirect } from "./middlewares/spa_redirect";
 import { unhandledErrorHandler } from "./middlewares/utils";
 import preStopApp from "./routes/[preStopSecret]";
@@ -91,7 +91,7 @@ apiApp.route("/:preStopSecret", preStopApp);
 configureHonoRequestStorage();
 export const honoApp = createHono();
 honoApp.use(contextStorage());
-honoApp.use("*", requestLogger);
+honoApp.use("*", requestInstrumentation);
 honoApp.use("*", cors);
 honoApp.use("*", spaRedirect);
 

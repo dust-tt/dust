@@ -11,9 +11,9 @@ import {
 import { contextStorage } from "hono/context-storage";
 import { describe, expect, it } from "vitest";
 
-import { requestLogger } from "./request_logger";
+import { requestInstrumentation } from "./request_instrumentation";
 
-describe("requestLogger", () => {
+describe("requestInstrumentation", () => {
   it("owns the query cache on the Hono context for one request", async () => {
     const app = createHono<RequestStorageEnv>();
     const query = new RequestCachedQuery<"key", number>();
@@ -22,7 +22,7 @@ describe("requestLogger", () => {
 
     configureHonoRequestStorage();
     app.use(contextStorage());
-    app.use("*", requestLogger);
+    app.use("*", requestInstrumentation);
     app.get("/", async (c) => {
       const honoCache = c.get("queryCache");
       const isNewRequest = previousCache !== honoCache;

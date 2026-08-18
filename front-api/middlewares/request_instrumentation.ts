@@ -12,7 +12,7 @@ import { getClientIpFromContext } from "@front-api/lib/request";
 import { createMiddleware } from "hono/factory";
 import { routePath } from "hono/route";
 
-type RequestLoggerEnv = {
+type RequestInstrumentationEnv = {
   Variables: RequestStorage & {
     auth?: Authenticator;
     session?: SessionWithUser;
@@ -28,8 +28,9 @@ export type SkipRequestLogEnv = {
 };
 
 // Mark a route subtree as too noisy to log. Mount it (`app.use("*",
-// skipRequestLog)`) inside the route module that should opt out; requestLogger
-// reads the flag after the handler runs and drops the log line.
+// skipRequestLog)`) inside the route module that should opt out;
+// requestInstrumentation reads the flag after the handler runs and drops the
+// log line.
 export const skipRequestLog = createMiddleware<SkipRequestLogEnv>(
   async (c, next) => {
     c.set("skipRequestLog", true);
@@ -55,8 +56,8 @@ type RouteConcurrencyState = {
 // lifetime. Each route bucket is process-local.
 const routeConcurrencyStates = new Map<string, RouteConcurrencyState>();
 
-export const requestLogger = createMiddleware<RequestLoggerEnv>(
-  async (c, next) => {
+export const requestInstrumentation =
+  createMiddleware<RequestInstrumentationEnv>(async (c, next) => {
     // Mutable: `route` starts as the raw URL path and is updated to the matched
     // route pattern in the finally block (routePath is only set after routing).
     // Any unhandled rejection fired from the handler will see the updated value
@@ -176,5 +177,4 @@ export const requestLogger = createMiddleware<RequestLoggerEnv>(
         "Processed request"
       );
     }
-  }
-);
+  });

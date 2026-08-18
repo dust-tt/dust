@@ -83,7 +83,7 @@ export function apiError(
  * "Unhandled API Error" log and `api_errors.count` metric as the Next.js
  * service when a handler throws.
  *
- * Returns a 500 JSON envelope. The companion `requestLogger` middleware
+ * Returns a 500 JSON envelope. The companion `requestInstrumentation` middleware
  * deliberately does NOT emit `requests.count` / `requests.duration.distribution`
  * on the throw path (the throw propagates past its emit code), matching the
  * Next.js behavior where unhandled errors do not contribute to request
