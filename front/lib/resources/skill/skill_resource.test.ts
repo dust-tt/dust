@@ -2874,10 +2874,11 @@ describe("SkillResource", () => {
         resourceId: skill.id,
       };
       const grantGroupMembers = async () => {
-        const group = await GroupPermissionResource.findRegularAutoGroupForGrant(
-          testContext.authenticator,
-          grantSpec
-        );
+        const group =
+          await GroupPermissionResource.findRegularAutoGroupForGrant(
+            testContext.authenticator,
+            grantSpec
+          );
         if (!group) {
           return null;
         }
