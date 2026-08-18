@@ -163,7 +163,7 @@ export function PersonalAuthenticationCard({
                 {actionLabel}
               </div>
               <div className="text-sm wrap-break-word text-muted-foreground">
-                {`Connect once, use it for all ${
+                {`This connection applies to all ${
                   serverDisplayName ? `${serverDisplayName} ` : "related "
                 }actions.`}
               </div>
