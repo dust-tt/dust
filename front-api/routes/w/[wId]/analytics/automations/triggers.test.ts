@@ -156,6 +156,21 @@ describe("POST /api/w/:wId/analytics/automations/triggers", () => {
     );
   });
 
+  it("forwards a trimmed search", async () => {
+    vi.mocked(fetchAutomationTriggers).mockResolvedValue(new Ok(TRIGGERS));
+    const { workspace } = await setupTest();
+
+    const response = await postTriggersRequest(workspace.sId, {
+      search: "  competitor  ",
+    });
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetchAutomationTriggers)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ search: "competitor" })
+    );
+  });
+
   it("returns 400 on a negative offset", async () => {
     const { workspace } = await setupTest();
 

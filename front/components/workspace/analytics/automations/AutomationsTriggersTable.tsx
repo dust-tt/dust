@@ -12,6 +12,7 @@ import {
   EntityTooltipCard,
 } from "@app/components/workspace/analytics/creditsTableCells";
 import { useAutomationsTriggers } from "@app/hooks/useAutomationsTriggers";
+import { useDebounce } from "@app/hooks/useDebounce";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import { useUpdateTriggerStatus } from "@app/lib/swr/agent_triggers";
@@ -30,6 +31,7 @@ import {
   DataTableLoadingSkeleton,
   Icon,
   Pagination,
+  SearchInput,
   SliderToggle,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -37,6 +39,7 @@ import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import type { ComponentProps, Dispatch, SetStateAction } from "react";
 import { useCallback, useContext, useMemo, useState } from "react";
 
+const SEARCH_DEBOUNCE_DELAY_MS = 300;
 const TRIGGERS_PAGE_SIZE = 25;
 
 interface TriggerRowData extends BaseTriggerRowData {
@@ -338,18 +341,26 @@ export function AutomationsTriggersTable({
     [filter]
   );
 
+  const { inputValue, debouncedValue, setValue } = useDebounce("", {
+    delay: SEARCH_DEBOUNCE_DELAY_MS,
+  });
+
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: TRIGGERS_PAGE_SIZE,
   });
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
-  // A filter change invalidates the current page and any expanded row.
-  // Reset during render (https://react.dev/learn/you-might-not-need-an-effect)
-  // instead of an effect keyed on `filter`.
-  const [prevFilter, setPrevFilter] = useState(filter);
-  if (prevFilter !== filter) {
-    setPrevFilter(filter);
+  // A filter or search change invalidates the current page and any expanded
+  // row. Reset during render
+  // (https://react.dev/learn/you-might-not-need-an-effect) instead of an effect
+  // keyed on them.
+  const [prevQuery, setPrevQuery] = useState({
+    filter,
+    search: debouncedValue,
+  });
+  if (prevQuery.filter !== filter || prevQuery.search !== debouncedValue) {
+    setPrevQuery({ filter, search: debouncedValue });
     setPagination((current) => ({ ...current, pageIndex: 0 }));
     setExpandedRowId(null);
   }
@@ -364,6 +375,7 @@ export function AutomationsTriggersTable({
   } = useAutomationsTriggers({
     workspaceId,
     period,
+    search: debouncedValue,
     filter: triggersFilter,
     limit: pagination.pageSize,
     offset: pagination.pageIndex * pagination.pageSize,
@@ -456,7 +468,14 @@ export function AutomationsTriggersTable({
   return (
     <div className="rounded-lg border border-border bg-panel-background p-4">
       <div className="mb-4 flex flex-col gap-2">
-        <div className="flex items-center justify-end">
+        <div className="flex items-center gap-2">
+          <SearchInput
+            name="automations-triggers-search"
+            placeholder="Search…"
+            value={inputValue}
+            onChange={setValue}
+            className="flex-1"
+          />
           <AutomationsFilterPanel
             owner={owner}
             filter={filter}
@@ -471,6 +490,7 @@ export function AutomationsTriggersTable({
       <TriggersTableBody
         isLoading={isTriggersLoading}
         isError={!!isTriggersError}
+        search={debouncedValue}
         rows={rows}
         totalCount={totalCount}
         medianRunCount={medianRunCount}
@@ -488,6 +508,7 @@ export function AutomationsTriggersTable({
 interface TriggersTableBodyProps {
   isLoading: boolean;
   isError: boolean;
+  search: string;
   rows: TriggerRowData[];
   totalCount: number;
   medianRunCount: number;
@@ -502,6 +523,7 @@ interface TriggersTableBodyProps {
 function TriggersTableBody({
   isLoading,
   isError,
+  search,
   rows,
   totalCount,
   medianRunCount,
@@ -534,7 +556,9 @@ function TriggersTableBody({
   if (rows.length === 0) {
     return (
       <div className="text-sm text-muted-foreground">
-        No automation ran over this period.
+        {search.trim()
+          ? `No match for "${search.trim()}".`
+          : "No automation ran over this period."}
       </div>
     );
   }

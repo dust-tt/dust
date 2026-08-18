@@ -16,6 +16,7 @@ export function useAutomationsTriggers({
   period,
   limit,
   offset = 0,
+  search,
   filter,
   disabled,
 }: {
@@ -23,6 +24,7 @@ export function useAutomationsTriggers({
   period: ConsumptionPeriodSelection;
   limit: number;
   offset?: number;
+  search?: string;
   filter?: AutomationTriggersFilter;
   disabled?: boolean;
 }) {
@@ -33,6 +35,7 @@ export function useAutomationsTriggers({
       period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
     limit,
     offset,
+    search: search?.trim(),
     filter,
   };
 

@@ -107,21 +107,56 @@ function median(values: number[]): number {
     : sorted[mid];
 }
 
+type TriggerRestrictions = {
+  // Applied as a terms filter on the query, so it scopes the ranking and the
+  // median baseline alike. Null means no restriction.
+  kindIds: string[] | null;
+  // Applied to the ranked buckets instead, so a search narrows the rows
+  // without moving the median baseline. Null means no restriction.
+  searchIds: Set<string> | null;
+};
+
 /**
- * Trigger kind isn't indexed in the consumption Elasticsearch documents, so
- * a kind filter is resolved to a concrete set of trigger ids up front and
- * applied as a terms filter on TRIGGER_ID_FIELD. Returns null when no kind
- * filter is requested (no restriction).
+ * Neither trigger kind nor trigger name is indexed in the consumption
+ * Elasticsearch documents, so both restrictions are resolved to concrete sets
+ * of trigger ids up front, from one read of the workspace's triggers. Matching
+ * names in memory mirrors how the consumption ranking resolves its own search
+ * against the facet catalog (resolveConsumptionTopSearchFilter).
  */
-async function resolveTriggerIdsForKindFilter(
+async function resolveTriggerRestrictions(
   auth: Authenticator,
-  kinds: TriggerKind[] | undefined
-): Promise<string[] | null> {
-  if (!kinds || kinds.length === 0) {
-    return null;
+  {
+    kinds,
+    search,
+  }: {
+    kinds: TriggerKind[] | undefined;
+    search: string | undefined;
   }
-  const triggers = await TriggerResource.listByWorkspaceAndKinds(auth, kinds);
-  return triggers.map((trigger) => trigger.sId);
+): Promise<TriggerRestrictions> {
+  const kindSet = kinds?.length ? new Set(kinds) : null;
+  const normalizedSearch = search?.trim().toLowerCase();
+  if (!kindSet && !normalizedSearch) {
+    return { kindIds: null, searchIds: null };
+  }
+
+  const triggers = await TriggerResource.listByWorkspace(auth);
+
+  return {
+    kindIds: kindSet
+      ? triggers
+          .filter((trigger) => kindSet.has(trigger.kind))
+          .map((trigger) => trigger.sId)
+      : null,
+    searchIds: normalizedSearch
+      ? new Set(
+          triggers
+            .filter((trigger) =>
+              trigger.name.toLowerCase().includes(normalizedSearch)
+            )
+            .map((trigger) => trigger.sId)
+        )
+      : null,
+  };
 }
 
 /**
@@ -131,7 +166,7 @@ async function resolveTriggerIdsForKindFilter(
  * count below), so both the requested page and the median baseline are
  * sliced/derived from that same, page-independent set — a trigger's stats
  * always compare against the full active set, never just the triggers
- * ranked ahead of it.
+ * ranked ahead of it, nor just the ones a search matched.
  */
 async function fetchTriggersRanking(
   auth: Authenticator,
@@ -139,11 +174,13 @@ async function fetchTriggersRanking(
     period,
     limit,
     offset,
+    search,
     filter,
   }: {
     period: ConsumptionPeriod;
     limit: number;
     offset: number;
+    search?: string;
     filter?: AutomationTriggersFilter;
   }
 ): Promise<
@@ -165,10 +202,10 @@ async function fetchTriggersRanking(
     scopeFilter.users = filter.editorIds;
   }
 
-  const triggerIdsForKindFilter = await resolveTriggerIdsForKindFilter(
-    auth,
-    filter?.kinds
-  );
+  const { kindIds, searchIds } = await resolveTriggerRestrictions(auth, {
+    kinds: filter?.kinds,
+    search,
+  });
 
   const query = buildConsumptionScopeQuery({
     auth,
@@ -176,9 +213,7 @@ async function fetchTriggersRanking(
     endDate: period.endDate,
     filter: scopeFilter,
     extraFilters:
-      triggerIdsForKindFilter !== null
-        ? [{ terms: { [TRIGGER_ID_FIELD]: triggerIdsForKindFilter } }]
-        : [],
+      kindIds !== null ? [{ terms: { [TRIGGER_ID_FIELD]: kindIds } }] : [],
   });
 
   const result = await searchConsumptionAnalytics<never, TriggerAggs>(query, {
@@ -220,11 +255,19 @@ async function fetchTriggersRanking(
   // run cost" stat against, so the baseline only looks at the ones that did.
   const activeRanked = ranked.filter((r) => r.runCount > 0);
 
+  const searched =
+    searchIds !== null
+      ? ranked.filter((r) => searchIds.has(r.triggerId))
+      : ranked;
+
   return new Ok({
-    ranking: ranked.slice(offset, offset + limit),
-    totalCount: Math.round(
-      result.value.aggregations?.[TOTAL_COUNT_AGG]?.value ?? 0
-    ),
+    ranking: searched.slice(offset, offset + limit),
+    // The searched set is already fully materialized, so its length is exact
+    // where the unsearched count is the aggregation's approximation.
+    totalCount:
+      searchIds !== null
+        ? searched.length
+        : Math.round(result.value.aggregations?.[TOTAL_COUNT_AGG]?.value ?? 0),
     medianRunCount: median(activeRanked.map((r) => r.runCount)),
     medianCostPerRun: median(activeRanked.map((r) => r.credits / r.runCount)),
   });
@@ -278,11 +321,13 @@ export async function fetchAutomationTriggers(
     period,
     limit,
     offset,
+    search,
     filter,
   }: {
     period: ConsumptionPeriod;
     limit: number;
     offset: number;
+    search?: string;
     filter?: AutomationTriggersFilter;
   }
 ): Promise<Result<AutomationTriggers, ElasticsearchError>> {
@@ -290,6 +335,7 @@ export async function fetchAutomationTriggers(
     period,
     limit,
     offset,
+    search,
     filter,
   });
   if (rankingResult.isErr()) {
