@@ -36,6 +36,8 @@ const {
   startToCloseTimeout: "5 minutes",
 });
 
+const CONSUMPTION_EXPORT_BUCKET_CONCURRENCY = 8;
+
 export async function storeAgentAnalyticsWorkflow(
   authType: AuthenticatorType,
   {
@@ -100,13 +102,27 @@ export async function runConsumptionExportWorkflow(
 ): Promise<void> {
   const buckets = splitConsumptionPeriodIntoBuckets(period);
 
-  for (const [bucketIndex, bucketPeriod] of buckets.entries()) {
-    await runConsumptionExportBucketActivity(authType, {
-      period: bucketPeriod,
-      filter,
-      exportId,
-      bucketIndex,
-    });
+  // Each bucket writes to its own index-derived path and finalize reconstructs order from
+  // those indices, not from completion order, so buckets within a batch can run concurrently.
+  for (
+    let batchStart = 0;
+    batchStart < buckets.length;
+    batchStart += CONSUMPTION_EXPORT_BUCKET_CONCURRENCY
+  ) {
+    const batch = buckets.slice(
+      batchStart,
+      batchStart + CONSUMPTION_EXPORT_BUCKET_CONCURRENCY
+    );
+    await Promise.all(
+      batch.map((bucketPeriod, offset) =>
+        runConsumptionExportBucketActivity(authType, {
+          period: bucketPeriod,
+          filter,
+          exportId,
+          bucketIndex: batchStart + offset,
+        })
+      )
+    );
   }
 
   await finalizeConsumptionExportActivity(authType, {
