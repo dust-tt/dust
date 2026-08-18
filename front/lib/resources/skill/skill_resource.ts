@@ -302,7 +302,7 @@ const SKILL_LIST_ACTIVE_CACHE_ID = "skill_list_active_by_workspace";
 const SKILL_LIST_ACTIVE_CACHE_KEY_VERSION = 1;
 const SKILL_LIST_ACTIVE_CACHE_TTL_MS = 15 * 60 * 1000;
 const skillListActiveCacheKey = (workspaceId: string) =>
-  `v${SKILL_LIST_ACTIVE_CACHE_KEY_VERSION}:${workspaceId}`;
+  `${workspaceId}:v${SKILL_LIST_ACTIVE_CACHE_KEY_VERSION}`;
 
 const skillListActiveCache = defineCache<
   { workspaceId: string; workspaceModelId: ModelId },

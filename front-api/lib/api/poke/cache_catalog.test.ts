@@ -19,7 +19,7 @@ describe("Poke cache catalog", () => {
       "cacheWithRedis-_fetchByIdUncached-workspace:v2:*"
     );
     expect(activeSkills?.buildKey({ workspaceId: "workspace-1" })).toBe(
-      "cacheWithRedis-skill_list_active_by_workspace-v1:workspace-1"
+      "cacheWithRedis-skill_list_active_by_workspace-workspace-1:v1"
     );
     expect(activeSeats?.buildKey({ workspaceId: "workspace-1" })).toBe(
       "cacheWithRedis-_countActiveSeatsInWorkspaceUncached-count-active-seats-in-workspace:workspace-1"
