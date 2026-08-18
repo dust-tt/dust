@@ -11,6 +11,7 @@
   "metadata": {
     "trigger_type": "string",
     "agent_id": "string",
-    "actor_type": "string"
+    "actor_type": "string",
+    "status": "string"
   }
 }
