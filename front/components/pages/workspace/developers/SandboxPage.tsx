@@ -1,5 +1,6 @@
 import { EnvironmentSection } from "@app/components/pages/workspace/developers/sections/EnvironmentSection";
 import { NetworkSection } from "@app/components/pages/workspace/developers/sections/NetworkSection";
+import { AgentRequestedDomainsSetting } from "@app/components/sandbox/AgentRequestedDomainsSetting";
 import { MultiPodEnvVarsSection } from "@app/components/sandbox/MultiPodEnvVarsSection";
 import { MultiPodNetworkSection } from "@app/components/sandbox/MultiPodNetworkSection";
 import type { SandboxScopeSelection } from "@app/components/sandbox/SandboxScopeSelector";
@@ -102,23 +103,26 @@ export function SandboxPage() {
       );
     }
 
-    // Without Sandbox Functions there are no Pod settings to compare — just the
-    // editable workspace view.
-    if (!hasSandboxFunctions) {
-      return workspaceView;
-    }
-
     return (
       <>
-        <div className="flex">
-          <SandboxScopeSelector
-            pods={pods}
-            selection={selection}
-            onChange={setSelection}
-            isLoading={isPodsLoading}
-          />
-        </div>
-        {renderScopedContent()}
+        <AgentRequestedDomainsSetting />
+        {!hasSandboxFunctions ? (
+          // Without Sandbox Functions there are no Pod settings to compare —
+          // just the editable workspace view.
+          workspaceView
+        ) : (
+          <>
+            <div className="flex">
+              <SandboxScopeSelector
+                pods={pods}
+                selection={selection}
+                onChange={setSelection}
+                isLoading={isPodsLoading}
+              />
+            </div>
+            {renderScopedContent()}
+          </>
+        )}
       </>
     );
   };
