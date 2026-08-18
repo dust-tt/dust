@@ -197,12 +197,7 @@ function endOfUtcToday(): Date {
 
 // Normalizes any period whose end falls on or after today to a fixed end-of-day
 // boundary, so exports stay cacheable within a day but refresh once new data can
-// have accrued. This covers two distinct sources of instability: an open-ended
-// period (e.g. "this cycle") whose endDate is a future cycle boundary, and a
-// relative period (e.g. "last N days") whose endDate is `now.toISOString()`,
-// which is different on every call. Without this, the cache key (and the
-// Temporal workflow ID derived from it) would differ between the status check,
-// the start request, and every subsequent poll for the same logical export.
+// have accrued.
 export function resolveExportPeriod(
   period: ConsumptionPeriod
 ): ConsumptionPeriod {
