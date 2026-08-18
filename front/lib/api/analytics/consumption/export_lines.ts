@@ -7,10 +7,16 @@ import {
   rowsToCsv,
 } from "@app/lib/api/analytics/csv_utils";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
-import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
+import {
+  CONSUMPTION_ANALYTICS_ALIAS_NAME,
+  closePointInTime,
+  openPointInTime,
+  searchConsumptionAnalytics,
+} from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { microCreditsToCredits } from "@app/lib/credits/units";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/analytics";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -18,10 +24,14 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { estypes } from "@elastic/elasticsearch";
 import AdmZip from "adm-zip";
 
-const EXPORT_PAGE_SIZE = 10_000;
+// Exported for tests to exercise pagination/slicing boundaries without duplicating the values.
+export const EXPORT_PAGE_SIZE = 10_000;
 // Fetches slices concurrently instead of paginating one page at a time.
 // Trades higher peak memory (one in-flight page per slice) for lower wall-clock time.
-const EXPORT_SLICE_COUNT = 4;
+export const EXPORT_SLICE_COUNT = 4;
+// Long enough to cover a full export (all slices, fully paginated); refreshed on every
+// request so it only needs to outlive the gap between two consecutive page fetches.
+const EXPORT_PIT_KEEP_ALIVE = "5m";
 
 type ConsumptionLineExportRow = {
   completedAt: string;
@@ -117,14 +127,27 @@ const CONSUMPTION_EXPORT_SORT: estypes.Sort = [
   { consumption_key: "asc" },
 ];
 
+function compareConsumptionExportRows(
+  a: AgentMessageConsumptionAnalyticsData,
+  b: AgentMessageConsumptionAnalyticsData
+): number {
+  return (
+    a.completed_at.localeCompare(b.completed_at) ||
+    a.agent_message_id.localeCompare(b.agent_message_id) ||
+    a.consumption_key.localeCompare(b.consumption_key)
+  );
+}
+
 // Fetches one slice of the sliced-search partition to completion, paginating
-// within the slice with search_after.
+// within the slice with search_after against the shared point-in-time.
 async function fetchConsumptionSliceDocuments(
   query: estypes.QueryDslQueryContainer,
-  slice: estypes.SlicedScroll
+  slice: estypes.SlicedScroll,
+  pitId: string
 ): Promise<Result<AgentMessageConsumptionAnalyticsData[], ElasticsearchError>> {
   const sliceDocs: AgentMessageConsumptionAnalyticsData[] = [];
   let searchAfter: estypes.SortResults | undefined;
+  let currentPitId = pitId;
   let hitCount: number;
 
   do {
@@ -136,6 +159,7 @@ async function fetchConsumptionSliceDocuments(
           sort: CONSUMPTION_EXPORT_SORT,
           search_after: searchAfter,
           slice,
+          pit: { id: currentPitId, keep_alive: EXPORT_PIT_KEEP_ALIVE },
         }
       );
 
@@ -150,6 +174,8 @@ async function fetchConsumptionSliceDocuments(
       }
     }
 
+    // A pit search can return a refreshed pit_id; subsequent pages must use it.
+    currentPitId = result.value.pit_id ?? currentPitId;
     hitCount = hits.length;
     searchAfter = hits[hits.length - 1]?.sort;
   } while (hitCount === EXPORT_PAGE_SIZE);
@@ -157,32 +183,58 @@ async function fetchConsumptionSliceDocuments(
   return new Ok(sliceDocs);
 }
 
-// One document per unit of billed credit consumption. Slices are fetched
-// concurrently, each paginating its own partition of the result set.
+// One document per unit of billed credit consumption. Slices are fetched concurrently against
+// a shared point-in-time, so every slice/page sees the same snapshot of the index instead of
+// racing concurrent writes/refreshes (which could otherwise duplicate or drop rows).
 async function fetchAllConsumptionDocuments(
   query: estypes.QueryDslQueryContainer
 ): Promise<Result<AgentMessageConsumptionAnalyticsData[], ElasticsearchError>> {
-  const sliceIds = Array.from({ length: EXPORT_SLICE_COUNT }, (_, id) => id);
-
-  const results = await concurrentExecutor(
-    sliceIds,
-    (id) =>
-      fetchConsumptionSliceDocuments(query, {
-        id: String(id),
-        max: EXPORT_SLICE_COUNT,
-      }),
-    { concurrency: EXPORT_SLICE_COUNT }
+  const pitResult = await openPointInTime(
+    CONSUMPTION_ANALYTICS_ALIAS_NAME,
+    EXPORT_PIT_KEEP_ALIVE
   );
-
-  const allDocs: AgentMessageConsumptionAnalyticsData[] = [];
-  for (const result of results) {
-    if (result.isErr()) {
-      return result;
-    }
-    allDocs.push(...result.value);
+  if (pitResult.isErr()) {
+    return pitResult;
   }
+  const pitId = pitResult.value;
 
-  return new Ok(allDocs);
+  try {
+    const sliceIds = Array.from({ length: EXPORT_SLICE_COUNT }, (_, id) => id);
+
+    const results = await concurrentExecutor(
+      sliceIds,
+      (id) =>
+        fetchConsumptionSliceDocuments(
+          query,
+          { id: String(id), max: EXPORT_SLICE_COUNT },
+          pitId
+        ),
+      { concurrency: EXPORT_SLICE_COUNT }
+    );
+
+    const allDocs: AgentMessageConsumptionAnalyticsData[] = [];
+    for (const result of results) {
+      if (result.isErr()) {
+        return result;
+      }
+      for (const doc of result.value) {
+        allDocs.push(doc);
+      }
+    }
+
+    // Each slice is individually sorted; merge back into a single global order.
+    allDocs.sort(compareConsumptionExportRows);
+
+    return new Ok(allDocs);
+  } finally {
+    const closeResult = await closePointInTime(pitId);
+    if (closeResult.isErr()) {
+      logger.error(
+        { err: closeResult.error },
+        "[ConsumptionExport] Failed to close point-in-time."
+      );
+    }
+  }
 }
 
 async function buildConsumptionLineExportRows(

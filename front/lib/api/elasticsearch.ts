@@ -109,6 +109,29 @@ export async function withEs<T>(
   }
 }
 
+// Opens a point-in-time so a set of paginated/sliced searches (e.g. an export) all see the
+// same consistent snapshot of the index instead of racing concurrent writes/refreshes.
+export async function openPointInTime(
+  index: string,
+  keepAlive: string
+): Promise<Result<string, ElasticsearchError>> {
+  return withEs(async (client) => {
+    const response = await client.openPointInTime({
+      index,
+      keep_alive: keepAlive,
+    });
+    return response.id;
+  });
+}
+
+export async function closePointInTime(
+  id: string
+): Promise<Result<void, ElasticsearchError>> {
+  return withEs(async (client) => {
+    await client.closePointInTime({ id });
+  });
+}
+
 export async function getClient(): Promise<Client> {
   if (esClient) {
     return esClient;
@@ -273,12 +296,14 @@ export async function searchConsumptionAnalytics<
     sort?: estypes.Sort;
     search_after?: estypes.SortResults;
     slice?: estypes.SlicedScroll;
+    pit?: estypes.SearchPointInTimeReference;
   }
 ): Promise<
   Result<estypes.SearchResponse<TDocument, TAggregations>, ElasticsearchError>
 > {
   return esSearch<TDocument, TAggregations>({
-    index: CONSUMPTION_ANALYTICS_ALIAS_NAME,
+    // A pit target pins the shards/snapshot to search, so it replaces the index parameter.
+    index: options?.pit ? undefined : CONSUMPTION_ANALYTICS_ALIAS_NAME,
     query,
     aggs: options?.aggregations,
     size: options?.size,
@@ -286,6 +311,7 @@ export async function searchConsumptionAnalytics<
     sort: options?.sort,
     search_after: options?.search_after,
     slice: options?.slice,
+    pit: options?.pit,
     // Never needed for aggregation-only queries (size: 0); excluded unconditionally
     // to keep the raw-lines export from pulling the large tokens payload.
     _source: { excludes: ["tokens"] },

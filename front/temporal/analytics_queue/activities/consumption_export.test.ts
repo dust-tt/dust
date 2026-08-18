@@ -1,9 +1,15 @@
 // @vitest-environment node: adm-zip requires Node builtins (Buffer, zlib).
 // This directive makes them available in the test environment.
 
+import {
+  EXPORT_PAGE_SIZE,
+  EXPORT_SLICE_COUNT,
+} from "@app/lib/api/analytics/consumption/export_lines";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import {
+  closePointInTime,
   ElasticsearchError,
+  openPointInTime,
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import { notifyConsumptionExportReady } from "@app/lib/notifications/workflows/consumption-export-ready";
@@ -19,6 +25,7 @@ import type {
   AgentMessageConsumptionAnalyticsToolData,
 } from "@app/types/assistant/analytics";
 import { Err, Ok } from "@app/types/shared/result";
+import type { estypes } from "@elastic/elasticsearch";
 import AdmZip from "adm-zip";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -28,10 +35,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockedSearchConsumptionAnalytics = vi.mocked(
   searchConsumptionAnalytics<AgentMessageConsumptionAnalyticsData>
 );
+const mockedOpenPointInTime = vi.mocked(openPointInTime);
+const mockedClosePointInTime = vi.mocked(closePointInTime);
 
 vi.mock(import("@app/lib/api/elasticsearch"), async (orig) => {
   const mod = await orig();
-  return { ...mod, searchConsumptionAnalytics: vi.fn() };
+  return {
+    ...mod,
+    searchConsumptionAnalytics: vi.fn(),
+    openPointInTime: vi.fn(),
+    closePointInTime: vi.fn(),
+  };
 });
 vi.mock(import("@app/lib/api/analytics/consumption/labels"), async (orig) => {
   const mod = await orig();
@@ -45,9 +59,48 @@ vi.mock(
   }
 );
 
+const PIT_ID = "test-pit-id";
+
 beforeEach(() => {
   vi.mocked(notifyConsumptionExportReady).mockClear();
+  mockedOpenPointInTime.mockReset().mockResolvedValue(new Ok(PIT_ID));
+  mockedClosePointInTime.mockReset().mockResolvedValue(new Ok(undefined));
 });
+
+function searchResponse(
+  docs: AgentMessageConsumptionAnalyticsData[]
+): estypes.SearchResponse<AgentMessageConsumptionAnalyticsData> {
+  return {
+    took: 0,
+    timed_out: false,
+    _shards: { failed: 0, successful: 1, total: 1 },
+    pit_id: PIT_ID,
+    hits: {
+      hits: docs.map((doc, index) => ({
+        _index: "consumption_analytics",
+        _source: doc,
+        sort: [doc.completed_at, doc.agent_message_id, doc.consumption_key],
+        _id: `${doc.agent_message_id}-${doc.consumption_key}-${index}`,
+      })),
+    },
+  } as estypes.SearchResponse<AgentMessageConsumptionAnalyticsData>;
+}
+
+function docWithKeys(
+  base: AgentMessageConsumptionAnalyticsLlmData,
+  overrides: {
+    agentMessageId: string;
+    consumptionKey: string;
+    completedAt: string;
+  }
+): AgentMessageConsumptionAnalyticsLlmData {
+  return {
+    ...base,
+    agent_message_id: overrides.agentMessageId,
+    consumption_key: overrides.consumptionKey,
+    completed_at: overrides.completedAt,
+  };
+}
 
 const LLM_DOC: AgentMessageConsumptionAnalyticsLlmData = {
   workspace_id: "w1",
@@ -136,20 +189,14 @@ const TOOL_DOC: AgentMessageConsumptionAnalyticsToolData = {
   execution_time_ms: 250,
 };
 
+// Routes every document to slice 0 and returns empty pages for the other slices, mirroring
+// how a real ES sliced search partitions the result set (each doc belongs to exactly one slice).
 function mockDocs(docs: AgentMessageConsumptionAnalyticsData[]) {
-  mockedSearchConsumptionAnalytics.mockResolvedValue(
-    new Ok({
-      took: 0,
-      timed_out: false,
-      _shards: { failed: 0, successful: 1, total: 1 },
-      hits: {
-        hits: docs.map((doc) => ({
-          _index: "consumption_analytics",
-          _source: doc,
-          sort: [],
-        })),
-      },
-    })
+  mockedSearchConsumptionAnalytics.mockImplementation(
+    async (_query, options) => {
+      const isFirstSlice = options?.slice?.id === "0";
+      return new Ok(searchResponse(isFirstSlice ? docs : []));
+    }
   );
 }
 
@@ -259,5 +306,174 @@ describe("runConsumptionExportActivity", () => {
     );
     expect(saveCalls).toHaveLength(0);
     expect(notifyConsumptionExportReady).not.toHaveBeenCalled();
+  });
+
+  it("opens a single point-in-time, reuses it across every slice, and closes it once", async () => {
+    mockDocs([LLM_DOC]);
+    mockLabels({});
+    const { authenticator } = await setup();
+
+    await runConsumptionExportActivity(authenticator.toJSON(), {
+      period: {
+        startDate: "2026-08-01T00:00:00.000Z",
+        endDate: "2026-08-02T00:00:00.000Z",
+      },
+      filter: {},
+      exportId: "consumption-export-test-run",
+    });
+
+    expect(mockedOpenPointInTime).toHaveBeenCalledTimes(1);
+    expect(mockedClosePointInTime).toHaveBeenCalledTimes(1);
+    expect(mockedClosePointInTime).toHaveBeenCalledWith(PIT_ID);
+
+    const sliceIdsQueried = mockedSearchConsumptionAnalytics.mock.calls.map(
+      ([, options]) => options?.slice?.id
+    );
+    expect(new Set(sliceIdsQueried)).toEqual(
+      new Set(Array.from({ length: EXPORT_SLICE_COUNT }, (_, id) => String(id)))
+    );
+    for (const [, options] of mockedSearchConsumptionAnalytics.mock.calls) {
+      expect(options?.pit?.id).toBe(PIT_ID);
+    }
+  });
+
+  it("closes the point-in-time even when a slice fails", async () => {
+    mockedSearchConsumptionAnalytics.mockResolvedValue(
+      new Err(new ElasticsearchError("query_error", "boom"))
+    );
+    const { authenticator } = await setup();
+
+    await expect(
+      runConsumptionExportActivity(authenticator.toJSON(), {
+        period: {
+          startDate: "2026-08-01T00:00:00.000Z",
+          endDate: "2026-08-02T00:00:00.000Z",
+        },
+        filter: {},
+        exportId: "consumption-export-test-run",
+      })
+    ).rejects.toThrow();
+
+    expect(mockedClosePointInTime).toHaveBeenCalledTimes(1);
+    expect(mockedClosePointInTime).toHaveBeenCalledWith(PIT_ID);
+  });
+
+  it("partitions documents across slices without duplicating or dropping rows", async () => {
+    // Each slice owns a disjoint subset of documents, as a real ES sliced search would.
+    const docs = Array.from({ length: EXPORT_SLICE_COUNT * 3 }, (_, index) =>
+      docWithKeys(LLM_DOC, {
+        agentMessageId: `msg-${index}`,
+        consumptionKey: `run-usage:${index}`,
+        completedAt: `2026-08-01T00:00:${String(index).padStart(2, "0")}.000Z`,
+      })
+    );
+    mockedSearchConsumptionAnalytics.mockImplementation(
+      async (_query, options) => {
+        const sliceId = Number(options?.slice?.id ?? 0);
+        const sliceDocs = docs.filter(
+          (_doc, index) => index % EXPORT_SLICE_COUNT === sliceId
+        );
+        return new Ok(searchResponse(sliceDocs));
+      }
+    );
+    mockLabels({});
+    const { authenticator, workspace } = await setup();
+
+    await runConsumptionExportActivity(authenticator.toJSON(), {
+      period: {
+        startDate: "2026-08-01T00:00:00.000Z",
+        endDate: "2026-08-02T00:00:00.000Z",
+      },
+      filter: {},
+      exportId: "consumption-export-test-run",
+    });
+
+    const prefix = buildConsumptionExportGcsPrefix(workspace.sId);
+    const saveCalls = fileStorageMock.saveFileCalls.filter((call) =>
+      call.filePath.startsWith(prefix)
+    );
+    const content = saveCalls[0].content;
+    const zip = new AdmZip(
+      Buffer.isBuffer(content) ? content : Buffer.from(content)
+    );
+    const csv = zip.getEntry("lines.csv")?.getData().toString("utf-8") ?? "";
+    const dataRows = csv.trim().split("\n").slice(1);
+
+    expect(dataRows).toHaveLength(docs.length);
+    const agentMessageIdColumn = 3;
+    const rowAgentMessageIds = dataRows.map(
+      (row) => row.split(",")[agentMessageIdColumn]
+    );
+    for (const doc of docs) {
+      expect(
+        rowAgentMessageIds.filter((id) => id === doc.agent_message_id)
+      ).toHaveLength(1);
+    }
+
+    // Rows must come back in global completedAt order, not grouped by slice.
+    const completedAts = dataRows.map((row) => row.split(",")[0]);
+    expect(completedAts).toEqual([...completedAts].sort());
+  });
+
+  it("paginates within a slice using search_after until a short page ends it", async () => {
+    const fullPageDocs = Array.from({ length: EXPORT_PAGE_SIZE }, (_, index) =>
+      docWithKeys(LLM_DOC, {
+        agentMessageId: `page1-${index}`,
+        consumptionKey: `run-usage:${index}`,
+        completedAt: "2026-08-01T00:00:00.000Z",
+      })
+    );
+    const lastPageDoc = docWithKeys(LLM_DOC, {
+      agentMessageId: "page2-0",
+      consumptionKey: "run-usage:last",
+      completedAt: "2026-08-01T00:00:01.000Z",
+    });
+
+    mockedSearchConsumptionAnalytics.mockImplementation(
+      async (_query, options) => {
+        if (options?.slice?.id !== "0") {
+          return new Ok(searchResponse([]));
+        }
+        // The exporter paginates with search_after: the first call has none, the
+        // second must carry the sort tuple of the last row of the first page.
+        return new Ok(
+          searchResponse(options.search_after ? [lastPageDoc] : fullPageDocs)
+        );
+      }
+    );
+    mockLabels({});
+    const { authenticator, workspace } = await setup();
+
+    await runConsumptionExportActivity(authenticator.toJSON(), {
+      period: {
+        startDate: "2026-08-01T00:00:00.000Z",
+        endDate: "2026-08-02T00:00:00.000Z",
+      },
+      filter: {},
+      exportId: "consumption-export-test-run",
+    });
+
+    const sliceZeroCalls = mockedSearchConsumptionAnalytics.mock.calls.filter(
+      ([, options]) => options?.slice?.id === "0"
+    );
+    const lastDocOfFirstPage = fullPageDocs[fullPageDocs.length - 1];
+    expect(sliceZeroCalls).toHaveLength(2);
+    expect(sliceZeroCalls[1][1]?.search_after).toEqual([
+      lastDocOfFirstPage.completed_at,
+      lastDocOfFirstPage.agent_message_id,
+      lastDocOfFirstPage.consumption_key,
+    ]);
+
+    const prefix = buildConsumptionExportGcsPrefix(workspace.sId);
+    const saveCalls = fileStorageMock.saveFileCalls.filter((call) =>
+      call.filePath.startsWith(prefix)
+    );
+    const content = saveCalls[0].content;
+    const zip = new AdmZip(
+      Buffer.isBuffer(content) ? content : Buffer.from(content)
+    );
+    const csv = zip.getEntry("lines.csv")?.getData().toString("utf-8") ?? "";
+    const dataRows = csv.trim().split("\n").slice(1);
+    expect(dataRows).toHaveLength(fullPageDocs.length + 1);
   });
 });
