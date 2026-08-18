@@ -27,7 +27,6 @@ import { Op, Sequelize } from "sequelize";
 const HEAVY_AGENT_CONFIGURATION_ATTRIBUTES = [
   "instructions",
   "instructionsHtml",
-  "responseFormat",
 ] as const;
 
 const sortStrategies: Record<SortStrategyType, SortStrategy> = {
