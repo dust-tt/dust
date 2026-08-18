@@ -637,7 +637,7 @@ function PlanCard({
               })}
             </div>
             <p className="copy-xs mt-5 text-right text-primary-400">
-              Prices are excluding taxes.
+              excl. tax
             </p>
           </div>
         </>
