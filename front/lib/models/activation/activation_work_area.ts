@@ -8,22 +8,17 @@ import type { CreationOptional, ForeignKey } from "sequelize";
 export const ACTIVATION_WORK_AREA_STATUSES = [
   "suggested",
   "dismissed",
-  // Legacy values still present on existing rows. Treat as `suggested`.
-  "candidate",
-  "confirmed",
 ] as const;
 
 export type ActivationWorkAreaStatus =
   (typeof ACTIVATION_WORK_AREA_STATUSES)[number];
-
-export type PublicActivationWorkAreaStatus = "suggested" | "dismissed";
 
 export class ActivationWorkAreaModel extends WorkspaceAwareModel<ActivationWorkAreaModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare userId: ForeignKey<UserModel["id"]>;
-  declare podId: ForeignKey<ActivationPodModel["id"]> | null;
+  declare podId: ForeignKey<ActivationPodModel["id"]>;
 
   declare title: string;
   declare description: string;
@@ -75,9 +70,9 @@ UserModel.hasMany(ActivationWorkAreaModel, {
 });
 
 ActivationWorkAreaModel.belongsTo(ActivationPodModel, {
-  foreignKey: { name: "podId", allowNull: true },
+  foreignKey: { name: "podId", allowNull: false },
   onDelete: "RESTRICT",
 });
 ActivationPodModel.hasMany(ActivationWorkAreaModel, {
-  foreignKey: { name: "podId", allowNull: true },
+  foreignKey: { name: "podId", allowNull: false },
 });
