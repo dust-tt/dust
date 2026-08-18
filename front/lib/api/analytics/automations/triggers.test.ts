@@ -98,6 +98,86 @@ describe("fetchAutomationTriggers", () => {
     expect(page2.value.triggers[0].triggerId).toBe(lowCreditTrigger.sId);
   });
 
+  it("narrows the page to the search matches without moving the median baseline", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const agent =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const matchingTrigger = await TriggerFactory.schedule(authenticator, {
+      agentConfigurationId: agent.sId,
+      name: "Competitor watch",
+      configuration: { cron: "0 9 * * *", timezone: "UTC" },
+    });
+    const otherTrigger = await TriggerFactory.schedule(authenticator, {
+      agentConfigurationId: agent.sId,
+      name: "Inbound triage",
+      configuration: { cron: "0 9 * * *", timezone: "UTC" },
+    });
+
+    const buckets = [
+      bucket(matchingTrigger.sId, 100, 100_000_000),
+      bucket(otherTrigger.sId, 10, 100_000),
+    ];
+    mockRanking(buckets);
+    const unsearched = await fetchAutomationTriggers(authenticator, {
+      period: PERIOD,
+      limit: 10,
+      offset: 0,
+    });
+    mockRanking(buckets);
+    const searched = await fetchAutomationTriggers(authenticator, {
+      period: PERIOD,
+      limit: 10,
+      offset: 0,
+      search: "competitor",
+    });
+
+    expect(unsearched.isOk()).toBe(true);
+    expect(searched.isOk()).toBe(true);
+    if (!unsearched.isOk() || !searched.isOk()) {
+      return;
+    }
+
+    expect(searched.value.triggers.map((t) => t.triggerId)).toEqual([
+      matchingTrigger.sId,
+    ]);
+    // The cardinality aggregation would have reported 2 here.
+    expect(searched.value.totalCount).toBe(1);
+
+    // A search narrows the rows, not the population a row's stats compare
+    // against: the breakdown captions say "median across all triggers".
+    expect(searched.value.medianRunCount).toBe(unsearched.value.medianRunCount);
+    expect(searched.value.medianCostPerRun).toBe(
+      unsearched.value.medianCostPerRun
+    );
+    expect(searched.value.medianRunCount).toBe(55);
+  });
+
+  it("returns no rows when the search matches no trigger name", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const agent =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const trigger = await TriggerFactory.schedule(authenticator, {
+      agentConfigurationId: agent.sId,
+      name: "Competitor watch",
+      configuration: { cron: "0 9 * * *", timezone: "UTC" },
+    });
+
+    mockRanking([bucket(trigger.sId, 100, 100_000_000)]);
+    const result = await fetchAutomationTriggers(authenticator, {
+      period: PERIOD,
+      limit: 10,
+      offset: 0,
+      search: "nothing matches this",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.triggers).toEqual([]);
+    expect(result.value.totalCount).toBe(0);
+  });
+
   it("keeps a zero run-count trigger out of the median without dividing by zero", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const agent =

@@ -125,6 +125,26 @@ async function resolveTriggerIdsForKindFilter(
 }
 
 /**
+ * Trigger name isn't indexed in the consumption documents either, so a search
+ * resolves to trigger ids the same way a kind filter does. Unlike the kind
+ * filter it stays out of the query: the median baseline has to keep comparing a
+ * row against every trigger that ran, not just the ones that matched.
+ */
+async function resolveTriggerIdsForSearch(
+  auth: Authenticator,
+  search: string | undefined
+): Promise<Set<string> | null> {
+  if (!search) {
+    return null;
+  }
+  const triggers = await TriggerResource.listByWorkspaceAndNameSearch(
+    auth,
+    search
+  );
+  return new Set(triggers.map((trigger) => trigger.sId));
+}
+
+/**
  * The period's triggers ranked by gross credits, highest first. The
  * underlying terms aggregation is capped at CARDINALITY_PRECISION_THRESHOLD
  * buckets (the same approximation boundary used for the total trigger
@@ -139,11 +159,13 @@ async function fetchTriggersRanking(
     period,
     limit,
     offset,
+    search,
     filter,
   }: {
     period: ConsumptionPeriod;
     limit: number;
     offset: number;
+    search?: string;
     filter?: AutomationTriggersFilter;
   }
 ): Promise<
@@ -169,6 +191,7 @@ async function fetchTriggersRanking(
     auth,
     filter?.kinds
   );
+  const triggerIdsForSearch = await resolveTriggerIdsForSearch(auth, search);
 
   const query = buildConsumptionScopeQuery({
     auth,
@@ -219,12 +242,18 @@ async function fetchTriggersRanking(
   // Triggers that never ran have nothing to compare a "how often" or "per
   // run cost" stat against, so the baseline only looks at the ones that did.
   const activeRanked = ranked.filter((r) => r.runCount > 0);
+  const matched = triggerIdsForSearch
+    ? ranked.filter((r) => triggerIdsForSearch.has(r.triggerId))
+    : ranked;
 
   return new Ok({
-    ranking: ranked.slice(offset, offset + limit),
-    totalCount: Math.round(
-      result.value.aggregations?.[TOTAL_COUNT_AGG]?.value ?? 0
-    ),
+    ranking: matched.slice(offset, offset + limit),
+    // The cardinality aggregation counts the unsearched set, so a search takes
+    // its count from the matched ranking instead. That count is exact, since
+    // the ranking itself is unpaginated.
+    totalCount: triggerIdsForSearch
+      ? matched.length
+      : Math.round(result.value.aggregations?.[TOTAL_COUNT_AGG]?.value ?? 0),
     medianRunCount: median(activeRanked.map((r) => r.runCount)),
     medianCostPerRun: median(activeRanked.map((r) => r.credits / r.runCount)),
   });
@@ -278,11 +307,13 @@ export async function fetchAutomationTriggers(
     period,
     limit,
     offset,
+    search,
     filter,
   }: {
     period: ConsumptionPeriod;
     limit: number;
     offset: number;
+    search?: string;
     filter?: AutomationTriggersFilter;
   }
 ): Promise<Result<AutomationTriggers, ElasticsearchError>> {
@@ -290,6 +321,7 @@ export async function fetchAutomationTriggers(
     period,
     limit,
     offset,
+    search,
     filter,
   });
   if (rankingResult.isErr()) {

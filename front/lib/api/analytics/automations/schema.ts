@@ -27,6 +27,7 @@ export const AutomationTriggersBodySchema = ConsumptionPeriodSchema.extend({
     .max(100)
     .default(DEFAULT_AUTOMATION_TRIGGERS_LIMIT),
   offset: z.number().int().nonnegative().default(0),
+  search: z.string().trim().optional(),
   filter: AutomationTriggersFilterSchema.optional(),
 });
 

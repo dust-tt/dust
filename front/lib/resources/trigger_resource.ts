@@ -285,6 +285,15 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
   }
 
+  static listByWorkspaceAndNameSearch(
+    auth: Authenticator,
+    search: string
+  ): Promise<TriggerResource[]> {
+    return this.baseFetch(auth, {
+      where: { name: { [Op.iLike]: `%${search}%` } },
+    });
+  }
+
   static async listBySpace(
     auth: Authenticator,
     spaceId: ModelId
