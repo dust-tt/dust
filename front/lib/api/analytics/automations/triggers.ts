@@ -46,7 +46,6 @@ export type AutomationTriggerRow = {
     modelDisplayName: string | null;
   };
   editor: {
-    userId: string | null;
     name: string;
     email: string | null;
     pictureUrl: string | null;
@@ -277,7 +276,6 @@ export async function fetchAutomationTriggers(
         modelDisplayName: agentLabel?.modelDisplayName ?? null,
       },
       editor: {
-        userId: editor?.sId ?? null,
         name: getUserDisplayName(editor),
         email: editor?.email ?? null,
         pictureUrl: editor?.imageUrl ?? null,

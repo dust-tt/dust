@@ -15,7 +15,9 @@ const STATUS_CHIP_COLORS: Record<TriggerStatus, ChipColor> = {
 export const TRIGGER_STATUS_LABELS: Record<TriggerStatus, string> = {
   enabled: "Enabled",
   disabled: "Disabled",
-  disabled_by_admin: "Disabled by admin",
+  // Settable by a manager or an admin — "admin" in the status name is an
+  // internal detail, not the label a manager-locked trigger should show.
+  disabled_by_admin: "Locked",
   relocating: "Relocating",
   downgraded: "Downgraded",
 };

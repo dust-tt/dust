@@ -37,7 +37,6 @@ const TRIGGERS: GetAutomationTriggersResponse = {
         modelDisplayName: "Claude Opus 5",
       },
       editor: {
-        userId: "user1",
         name: "Nic Siegle",
         email: "nic@dust.tt",
         pictureUrl: null,
@@ -63,7 +62,6 @@ const TRIGGERS: GetAutomationTriggersResponse = {
         modelDisplayName: "Claude Opus 5",
       },
       editor: {
-        userId: "user2",
         name: "Adrien Simon",
         email: "adrien@dust.tt",
         pictureUrl: null,

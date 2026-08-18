@@ -175,9 +175,9 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/st
     );
     expect(disableResponse.status).toBe(204);
     let updated = await TriggerResource.fetchById(auth, trigger.sId);
-    // A manager acting on their own trigger is just an editor here, not an
-    // admin, so the status stays editor-owned.
-    expect(updated?.status).toBe("disabled");
+    // Managers have the same standing as admins here, so even a manager's
+    // own trigger locks the same way an admin's action would.
+    expect(updated?.status).toBe("disabled_by_admin");
 
     const enableResponse = await patchStatus(
       workspace,
@@ -190,7 +190,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/st
     expect(updated?.status).toBe("enabled");
   });
 
-  it("rejects a manager toggling another member's trigger", async () => {
+  it("lets a manager disable and lock another member's trigger", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "manager",
@@ -206,12 +206,12 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/st
       status: "disabled",
     });
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(204);
     const updated = await TriggerResource.fetchById(editorAuth, trigger.sId);
-    expect(updated?.status).toBe("enabled");
+    expect(updated?.status).toBe("disabled_by_admin");
   });
 
-  it("rejects a manager re-enabling an admin-locked trigger", async () => {
+  it("lets a manager re-enable an admin-locked trigger", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "manager",
@@ -227,9 +227,9 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers/:tId/st
       status: "enabled",
     });
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(204);
     const updated = await TriggerResource.fetchById(editorAuth, trigger.sId);
-    expect(updated?.status).toBe("disabled_by_admin");
+    expect(updated?.status).toBe("enabled");
   });
 
   it("rejects a member who is neither admin nor editor", async () => {

@@ -8,7 +8,6 @@ import {
 import { useAutomationsTriggers } from "@app/hooks/useAutomationsTriggers";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
-import { useAuth } from "@app/lib/auth/AuthContext";
 import { useUpdateTriggerStatus } from "@app/lib/swr/agent_triggers";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type { TriggerStatus } from "@app/types/assistant/triggers";
@@ -32,9 +31,6 @@ const TRIGGERS_PAGE_SIZE = 25;
 interface TriggerRowData extends AutomationTriggerRow {
   displayStatus: TriggerStatus;
   isStatusPending: boolean;
-  // Whether the current viewer (the trigger's editor, or an admin) can
-  // toggle this row — the status endpoint rejects anyone else with a 403.
-  canManage: boolean;
   onToggleStatus: () => void;
   // onClick satisfies DataTable's row shape, which is otherwise a weak type.
   onClick?: () => void;
@@ -87,25 +83,6 @@ function RunningCell({ row }: { row: TriggerRowData }) {
     case "enabled":
     case "disabled":
     case "disabled_by_admin":
-      if (!row.canManage) {
-        return (
-          <Tooltip
-            label={
-              row.displayStatus === "disabled_by_admin"
-                ? "Only an admin can re-enable this automation."
-                : `Only ${row.editor.name} or an admin can manage this automation.`
-            }
-            trigger={
-              <div>
-                <SliderToggle
-                  selected={row.displayStatus === "enabled"}
-                  disabled
-                />
-              </div>
-            }
-          />
-        );
-      }
       return (
         <SliderToggle
           selected={row.displayStatus === "enabled"}
@@ -314,7 +291,6 @@ export function AutomationsTriggersTable({
       offset: pagination.pageIndex * pagination.pageSize,
     });
 
-  const { user, isAdmin } = useAuth();
   const confirm = useContext(ConfirmContext);
   const updateTriggerStatus = useUpdateTriggerStatus({ workspaceId });
 
@@ -346,9 +322,7 @@ export function AutomationsTriggersTable({
       if (nextStatus === "disabled") {
         const confirmed = await confirm({
           title: "Disable this automation?",
-          message: isAdmin
-            ? `"${trigger.name}" will stop running for ${trigger.editor.name}. Only an admin will be able to re-enable it.`
-            : `"${trigger.name}" will stop running for ${trigger.editor.name}.`,
+          message: `"${trigger.name}" will stop running for ${trigger.editor.name}. A manager or admin will be able to re-enable it.`,
           validateVariant: "warning",
           validateLabel: "Disable",
           cancelLabel: "Cancel",
@@ -365,16 +339,12 @@ export function AutomationsTriggersTable({
         status: nextStatus,
       });
       if (success) {
-        // An admin's disable is stored server-side as disabled_by_admin; a
-        // manager disabling their own automation stays a plain disabled.
+        // Anyone who can reach this page is a manager or admin, so the
+        // server always stores a disable from here as disabled_by_admin.
         setStatusOverrides((overrides) => ({
           ...overrides,
           [trigger.triggerId]:
-            nextStatus === "disabled"
-              ? isAdmin
-                ? "disabled_by_admin"
-                : "disabled"
-              : "enabled",
+            nextStatus === "disabled" ? "disabled_by_admin" : "enabled",
         }));
       }
       setPendingIds((ids) => {
@@ -383,7 +353,7 @@ export function AutomationsTriggersTable({
         return next;
       });
     },
-    [confirm, isAdmin, updateTriggerStatus]
+    [confirm, updateTriggerStatus]
   );
 
   const rows: TriggerRowData[] = useMemo(
@@ -391,21 +361,14 @@ export function AutomationsTriggersTable({
       triggers.map((trigger) => {
         const displayStatus =
           statusOverrides[trigger.triggerId] ?? trigger.status;
-        // Mirrors the status endpoint: the editor manages their own
-        // editor-owned status, an admin manages anything.
-        const canManage =
-          isAdmin ||
-          (getTriggerStatusOwner(displayStatus) === "editor" &&
-            trigger.editor.userId === user.sId);
         return {
           ...trigger,
           displayStatus,
           isStatusPending: pendingIds.has(trigger.triggerId),
-          canManage,
           onToggleStatus: () => void handleToggle(trigger, displayStatus),
         };
       }),
-    [triggers, statusOverrides, pendingIds, handleToggle, isAdmin, user.sId]
+    [triggers, statusOverrides, pendingIds, handleToggle]
   );
 
   return (
