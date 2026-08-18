@@ -29,6 +29,12 @@ export type ConsumptionExportListItem = {
   sizeBytes: number;
 };
 
+// Response shape of `POST .../export-raw`: either a new generation was (re)triggered, or one
+// already existed for this exact period+filter and the caller can download it directly.
+export type StartConsumptionExportResponse =
+  | { isGenerating: true }
+  | { isGenerating: false; name: string };
+
 export async function listConsumptionExports(
   auth: Authenticator
 ): Promise<ConsumptionExportListItem[]> {

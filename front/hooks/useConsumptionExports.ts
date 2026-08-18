@@ -1,5 +1,8 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { ConsumptionExportListItem } from "@app/lib/api/analytics/consumption/export_jobs";
+import type {
+  ConsumptionExportListItem,
+  StartConsumptionExportResponse,
+} from "@app/lib/api/analytics/consumption/export_jobs";
 import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -77,6 +80,14 @@ export function useStartConsumptionExport({
           });
           return;
         }
+
+        const data: StartConsumptionExportResponse = await response.json();
+        if (!data.isGenerating) {
+          // Already generated for this exact period+filter: nothing was (re)triggered, so go
+          // straight to the download instead of showing a "generating" state for nothing.
+          window.location.href = `${url}/${data.name}/download`;
+        }
+
         await mutate([statusUrl, body, "POST"]);
       } finally {
         setIsStarting(false);

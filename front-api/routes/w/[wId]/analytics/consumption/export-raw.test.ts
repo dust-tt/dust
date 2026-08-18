@@ -191,6 +191,19 @@ describe("POST /api/w/:wId/analytics/consumption/export-raw", () => {
     expect(startWorkflowMock).toHaveBeenCalledTimes(1);
   });
 
+  it("returns the cached export's name instead of starting a new workflow when one already exists", async () => {
+    fileStorageMock.setFileExists(() => true);
+    const { workspace } = await setupTest({ role: "admin" });
+
+    const response = await postExportRawRequest(workspace.sId, {});
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.isGenerating).toBe(false);
+    expect(body.name).toMatch(/^[A-Za-z0-9_-]+\.csv$/);
+    expect(startWorkflowMock).not.toHaveBeenCalled();
+  });
+
   it("is refused to non-managers", async () => {
     const { workspace } = await setupTest({ role: "user" });
 
