@@ -186,13 +186,6 @@ export function ToolValidationCard({
     validationRequest.stake ?? ""
   );
   const approveLabel = toolOverride?.approveLabel ?? "Allow";
-  const approveOnceLabel = canAlwaysAllow
-    ? `${approveLabel} once`
-    : approveLabel;
-  const alwaysAllowScopeLabel =
-    validationRequest.stake === "medium"
-      ? getToolValidationAlwaysAllowLabel(validationRequest)
-      : null;
 
   return (
     <Card
@@ -261,14 +254,18 @@ export function ToolValidationCard({
               label="Always allow"
               variant="outline"
               icon={CheckDouble}
-              tooltip={alwaysAllowScopeLabel ?? undefined}
+              tooltip={
+                validationRequest.stake === "medium"
+                  ? getToolValidationAlwaysAllowLabel(validationRequest)
+                  : undefined
+              }
               disabled={isSubmitting}
               isLoading={submittingDecision === "always_approved"}
               onClick={() => void handleValidation("always_approved")}
             />
           )}
           <Button
-            label={approveOnceLabel}
+            label={canAlwaysAllow ? `${approveLabel} once` : approveLabel}
             variant="highlight"
             icon={Check}
             disabled={isSubmitting}
