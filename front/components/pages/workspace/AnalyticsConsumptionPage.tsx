@@ -2,6 +2,7 @@ import { CHART_HEIGHT } from "@app/components/charts/constants";
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import { ConsumptionOverview } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
+import { ConsumptionSummary } from "@app/components/workspace/analytics/consumption/ConsumptionSummary";
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { consumptionDimensionFromQueryParam } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
@@ -26,7 +27,6 @@ import {
   safeLazy,
 } from "@dust-tt/sparkle";
 import { domMax, LazyMotion, m, useReducedMotion } from "framer-motion";
-
 import { useMemo, useState } from "react";
 
 const canReload = () => !isNavigationLocked();
@@ -104,17 +104,21 @@ export function AnalyticsConsumptionPage() {
     <Page.Vertical align="stretch" gap="none">
       <Page.Header
         title={
-          <div className="flex w-full flex-row justify-between">
-            <Page.H variant="h3">Analytics</Page.H>
-            <ConsumptionPeriodSelector
-              period={period}
-              onPeriodChange={setPeriod}
-            />
-          </div>
+          <>
+            <div className="flex w-full flex-row justify-between">
+              <Page.H variant="h3">Analytics</Page.H>
+              <ConsumptionPeriodSelector
+                period={period}
+                onPeriodChange={setPeriod}
+              />
+            </div>
+            <ConsumptionOverview workspaceId={owner.sId} period={period} />
+          </>
         }
       />
-      <div className="flex flex-col gap-8 pb-8 pt-4">
-        <ConsumptionOverview workspaceId={owner.sId} period={period} />
+      <ConsumptionSummary workspaceId={owner.sId} period={period} />
+
+      <div className="flex flex-col gap-8">
         <div className="flex flex-col gap-4">
           <div className="sticky top-0 z-30 -mb-4 flex flex-col bg-panel-background pb-4 pt-4">
             <div className="flex items-center justify-between gap-4">
