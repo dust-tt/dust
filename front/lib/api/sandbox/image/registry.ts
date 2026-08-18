@@ -26,8 +26,8 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.11.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.84";
-const DSBX_CLI_VERSION = "0.1.50";
+const DUST_BASE_IMAGE_VERSION = "0.8.85";
+const DSBX_CLI_VERSION = "0.1.51";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
 // the stable identity used when creating the workload account.
@@ -863,6 +863,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     isDustTool: true,
   })
   .withCapability("gcsfuse")
+  .withCapability("dust_filesystem")
   .withResources({ vcpu: 2, memoryMb: 2048 })
   .withNetwork(PROXY_ONLY_NETWORK_POLICY)
   .setWorkdir("/home/agent")
