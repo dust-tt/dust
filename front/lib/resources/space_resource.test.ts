@@ -2434,7 +2434,9 @@ describe("SpaceResource group_permissions shadow-compare", () => {
   it("reaches parity once the grants are backfilled", async () => {
     const space = await setupRestrictedSpaceWithMember();
     await clearTableGrants(space);
-    await space.writeGroupPermissions(adminAuth);
+    await space.writeGroupPermissions(adminAuth, {
+      ...(await space.fetchAssociatedGroups()),
+    });
 
     // Build the auth AFTER the write so its GroupPermissions snapshot includes the grants.
     const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(

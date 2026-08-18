@@ -603,9 +603,15 @@ export async function createSpaceAndGroup(
       t
     );
 
+    // The space's member groups, accumulated as associations are added. Passed (alongside
+    // `editorGroups`) to `writeGroupPermissions` below so it does not rely on `this.groups`. The
+    // project viewer group (the global group) goes here, since only editors need to be told apart.
+    const memberGroups: GroupResource[] = [membersGroup];
+
     if (!isRestricted) {
       // Set the global group as viewer for non-restricted project spaces
       assert(globalGroup, "Global group must exist");
+      memberGroups.push(globalGroup);
       await GroupSpaceModel.create(
         {
           kind: space.isProject() ? "project_viewer" : "member",
@@ -681,6 +687,7 @@ export async function createSpaceAndGroup(
           }
 
           const selectedGroups = selectedGroupsResult.value;
+          memberGroups.push(...selectedGroups);
           for (const selectedGroup of selectedGroups) {
             await GroupSpaceMemberResource.makeNew(auth, {
               group: selectedGroup,
@@ -707,7 +714,11 @@ export async function createSpaceAndGroup(
     // Write group_permissions once all group associations are in place (#9478). `makeNew` already
     // wrote the initial member/editor groups; this captures any added afterwards (global viewer,
     // group-mode selections).
-    await space.writeGroupPermissions(auth, { transaction: t });
+    await space.writeGroupPermissions(auth, {
+      members: memberGroups,
+      editors: editorGroups,
+      transaction: t,
+    });
 
     return new Ok(space);
   });
