@@ -350,17 +350,21 @@ export function DataSourceList({
           ? selectionState === "partial"
           : !hideCheckbox;
 
+        const handleRowClick = () => {
+          if (item.onClick) {
+            item.onClick();
+            return;
+          }
+          if (shouldShowCheckbox) {
+            void handleSelectionChange(item, selectionState !== true);
+          }
+        };
+
         return (
           <Fragment key={item.id}>
             <div
               className="flex cursor-pointer items-center justify-between rounded-md p-3 hover:bg-muted/60"
-              onClick={() => {
-                if (item.onClick) {
-                  item.onClick();
-                } else if (shouldShowCheckbox) {
-                  void handleSelectionChange(item, selectionState !== true);
-                }
-              }}
+              onClick={handleRowClick}
             >
               <div className="flex min-w-0 flex-1 items-center gap-3">
                 {shouldShowCheckbox ? (
