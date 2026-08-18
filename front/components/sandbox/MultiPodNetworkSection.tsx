@@ -5,13 +5,7 @@ import {
 } from "@app/lib/swr/sandbox";
 import type { PodType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
-import {
-  Chip,
-  ContentMessage,
-  InfoCircle,
-  Page,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { ContentMessage, InfoCircle, Page, Spinner } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 interface MultiPodNetworkSectionProps {
@@ -104,26 +98,28 @@ export function MultiPodNetworkSection({
       <div className="flex w-full flex-col divide-y divide-separator">
         {domainRows.map(({ domain, scopeNames }) => (
           <div key={domain} className="flex items-center gap-3 py-3">
-            <pre
+            <div
               title={domain}
-              className="min-w-0 grow overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2 text-sm text-foreground"
+              className="flex min-w-0 grow items-center gap-2 overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2"
             >
-              {domain}
-            </pre>
-            {scopeNames.length === totalScopes ? (
-              <Chip size="xs" color="success" label="All" />
-            ) : (
-              <div className="flex flex-wrap items-center justify-end gap-1">
-                {scopeNames.map((scopeName, index) => (
-                  <Chip
+              <span className="font-mono text-sm text-foreground">
+                {domain}
+              </span>
+              {scopeNames.length === totalScopes ? (
+                <span className="shrink-0 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                  All
+                </span>
+              ) : (
+                scopeNames.map((scopeName, index) => (
+                  <span
                     key={`${scopeName}-${index}`}
-                    size="xs"
-                    color="primary"
-                    label={scopeName}
-                  />
-                ))}
-              </div>
-            )}
+                    className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800"
+                  >
+                    {scopeName}
+                  </span>
+                ))
+              )}
+            </div>
           </div>
         ))}
       </div>
