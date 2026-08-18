@@ -221,18 +221,19 @@ impl DustFuse {
         let _namespace = self.namespace_write()?;
         let node = self.lookup_node(parent, name)?;
         let _inode = self.inode_locks.lock(node.inode)?;
-        self.store.remove_file(parent, name)?;
+        // The lookup above only chooses which lock to take. Which node stops
+        // publishing is decided by the removal itself.
+        let removed_inode = self.store.remove_file(parent, name)?;
         // Do this only after Front confirms the removal. A failed removal must
         // leave a dirty open handle able to publish its bytes later.
-        self.mark_unlinked(node.inode)?;
-        self.clear_staged_attributes(node.inode)
+        self.mark_unlinked(removed_inode)?;
+        self.clear_staged_attributes(removed_inode)
     }
 
     fn remove_directory_node(&self, parent: INodeNo, name: &str) -> io::Result<()> {
         let _namespace = self.namespace_write()?;
-        let node = self.lookup_node(parent, name)?;
-        self.store.remove_directory(parent, name)?;
-        self.clear_staged_attributes(node.inode)
+        let removed_inode = self.store.remove_directory(parent, name)?;
+        self.clear_staged_attributes(removed_inode)
     }
 
     fn rename_node(
@@ -254,14 +255,15 @@ impl DustFuse {
         let _destination = destination_inode
             .map(|inode| self.inode_locks.lock(inode))
             .transpose()?;
-        let node = self.store.rename(parent, name, new_parent, new_name)?;
-        if let Some(destination_inode) = destination_inode {
-            // The old destination stays readable through existing descriptors,
+        let renamed = self.store.rename(parent, name, new_parent, new_name)?;
+        // As with a removal, the lookup above only chooses the lock.
+        if let Some(replaced_inode) = renamed.replaced_inode {
+            // The replaced node stays readable through existing descriptors,
             // but those descriptors must never replace the new path later.
-            self.mark_unlinked(destination_inode)?;
-            self.clear_staged_attributes(destination_inode)?;
+            self.mark_unlinked(replaced_inode)?;
+            self.clear_staged_attributes(replaced_inode)?;
         }
-        debug!(inode = node.inode.0, "renamed filesystem inode");
+        debug!(inode = renamed.node.inode.0, "renamed filesystem inode");
         Ok(())
     }
 

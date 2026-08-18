@@ -111,6 +111,12 @@ impl RootLink {
     }
 }
 
+// The node that now carries the new name, and the one the rename replaced.
+pub struct RenameOutcome {
+    pub node: Node,
+    pub replaced_inode: Option<INodeNo>,
+}
+
 pub struct FileStore {
     client: FileSystemClient,
     staging_dir: PathBuf,
@@ -258,7 +264,7 @@ impl FileStore {
         Ok(node)
     }
 
-    pub fn remove_file(&self, parent_inode: INodeNo, name: &str) -> io::Result<()> {
+    pub fn remove_file(&self, parent_inode: INodeNo, name: &str) -> io::Result<INodeNo> {
         let node = self.lookup(parent_inode, name)?;
         match node.kind {
             NodeKind::File => {}
@@ -270,7 +276,7 @@ impl FileStore {
         self.remove(parent_inode, name, node.inode, RemoteNodeKind::File)
     }
 
-    pub fn remove_directory(&self, parent_inode: INodeNo, name: &str) -> io::Result<()> {
+    pub fn remove_directory(&self, parent_inode: INodeNo, name: &str) -> io::Result<INodeNo> {
         let node = self.lookup(parent_inode, name)?;
         if node.kind != NodeKind::Directory {
             return Err(errno(libc::ENOTDIR));
@@ -278,26 +284,40 @@ impl FileStore {
         self.remove(parent_inode, name, node.inode, RemoteNodeKind::Directory)
     }
 
+    // Returns the node that lost this name. Another sandbox can move a different
+    // node onto the name between the caller's lookup and this removal, so Front's
+    // answer decides, not the inode the caller resolved.
     fn remove(
         &self,
         parent_inode: INodeNo,
         name: &str,
         inode: INodeNo,
         kind: RemoteNodeKind,
-    ) -> io::Result<()> {
+    ) -> io::Result<INodeNo> {
         if parent_inode == FUSE_ROOT_INODE {
             return Err(errno(libc::EPERM));
         }
-        self.client.remove(
+        let removed_node_id = self.client.remove(
             &Uuid::new_v4().to_string(),
             node_id_for_inode(parent_inode)?,
             name,
             kind,
         )?;
-        self.invalidate_node(inode)?;
+        let removed_inode = inode_for_node_id(removed_node_id)?;
+        if removed_inode != inode {
+            warn!(
+                expected_inode = inode.0,
+                removed_inode = removed_inode.0,
+                "another sandbox changed this name before it was removed"
+            );
+            // The node the caller resolved still exists under another name, so
+            // only its stale details go and its local content stays usable.
+            self.invalidate_node(inode)?;
+        }
+        self.invalidate_node(removed_inode)?;
         self.invalidate_directory(parent_inode)?;
-        self.forget_content_after_namespace_change(inode);
-        Ok(())
+        self.forget_content_after_namespace_change(removed_inode);
+        Ok(removed_inode)
     }
 
     fn forget_content_after_namespace_change(&self, inode: INodeNo) {
@@ -314,33 +334,39 @@ impl FileStore {
         name: &str,
         new_parent_inode: INodeNo,
         new_name: &str,
-    ) -> io::Result<Node> {
+    ) -> io::Result<RenameOutcome> {
         validate_name(name)?;
         validate_name(new_name)?;
         if parent_inode == FUSE_ROOT_INODE || new_parent_inode == FUSE_ROOT_INODE {
             return Err(errno(libc::EPERM));
         }
-        let replaced_inode = match self.lookup(new_parent_inode, new_name) {
-            Ok(destination) => Some(destination.inode),
-            Err(error) if error.raw_os_error() == Some(libc::ENOENT) => None,
-            Err(error) => return Err(error),
-        };
-        let node = Node::from_remote(self.client.rename(
+        let renamed = self.client.rename(
             &Uuid::new_v4().to_string(),
             node_id_for_inode(parent_inode)?,
             name,
             node_id_for_inode(new_parent_inode)?,
             new_name,
-        )?)?;
+        )?;
+        // Front names the node the rename replaced, so the destination needs no
+        // lookup of its own.
+        let replaced_inode = renamed
+            .replaced_node_id
+            .map(inode_for_node_id)
+            .transpose()?;
+        let node = Node::from_remote(renamed.node)?;
         self.invalidate_directory(parent_inode)?;
         self.invalidate_directory(new_parent_inode)?;
         self.cache_node(node.clone())?;
         if let Some(replaced_inode) = replaced_inode {
             if replaced_inode != node.inode {
+                self.invalidate_node(replaced_inode)?;
                 self.forget_content_after_namespace_change(replaced_inode);
             }
         }
-        Ok(node)
+        Ok(RenameOutcome {
+            node,
+            replaced_inode,
+        })
     }
 
     pub fn set_mode(&self, inode: INodeNo, mode: u16) -> io::Result<Node> {
@@ -951,6 +977,48 @@ mod tests {
             .expect_err("report the conflict to the caller");
 
         assert_eq!(error.raw_os_error(), Some(libc::ESTALE));
+        server.join().expect("server thread");
+    }
+
+    #[test]
+    fn the_node_front_reports_removing_wins_over_the_one_looked_up() {
+        // Front answers the lookup with node 7 and then reports removing node 9.
+        // That is what another sandbox moving a different node onto this name
+        // looks like from here, and the caller has to hear about node 9.
+        let listener = TcpListener::bind("127.0.0.1:0").expect("listen");
+        let address = listener.local_addr().expect("local address");
+        let server = std::thread::spawn(move || {
+            let bodies = [
+                r#"{"node":{"id":7,"parentId":2,"name":"file.txt","kind":"file","mode":420,"size":0,"contentType":null,"blobId":null,"createdAtMs":1,"modifiedAtMs":1}}"#,
+                r#"{"removedNodeId":9}"#,
+            ];
+            for body in bodies {
+                let (mut stream, _) = listener.accept().expect("accept request");
+                read_request(&mut stream);
+                write!(
+                    stream,
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                    body.len(),
+                    body
+                )
+                .expect("write response");
+            }
+        });
+
+        let directory = tempdir().expect("temporary directory");
+        let store = store(
+            directory.path(),
+            1024,
+            &format!("http://{address}"),
+            Vec::new(),
+        );
+
+        let removed = store
+            .remove_file(super::INodeNo(2), "file.txt")
+            .expect("remove the file");
+
+        assert_eq!(removed, inode_for_node_id(9).expect("removed inode"));
+        assert_ne!(removed, inode_for_node_id(7).expect("looked up inode"));
         server.join().expect("server thread");
     }
 }
