@@ -1,3 +1,4 @@
+import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { Authenticator } from "@app/lib/auth";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ActivationWorkAreaResource } from "@app/lib/resources/activation_work_area_resource";
@@ -28,17 +29,26 @@ function getListWorkAreasTool() {
   return tool;
 }
 
-function createTestExtra(auth: Authenticator, podId?: string) {
+function createTestExtra(
+  auth: Authenticator,
+  podId?: string
+): ToolHandlerExtra {
   return {
-    signal: new AbortController().signal,
     auth,
+    requestId: "activation-recommendations-work-area-test",
+    // @ts-expect-error Handlers only read conversation.spaceId from the agent-loop run context.
     runContext: podId
       ? {
           contextType: "agent_loop",
           conversation: { spaceId: podId },
         }
       : undefined,
-  } as Parameters<ReturnType<typeof getCreateWorkAreasTool>["handler"]>[1];
+    sendNotification: async () => {},
+    sendRequest: async () => {
+      throw new Error("Unexpected MCP request");
+    },
+    signal: new AbortController().signal,
+  };
 }
 
 async function createActivationPodForCaller(

@@ -23,6 +23,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -464,14 +465,15 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
         }
 
         const [assignment] = assignments;
-        const created = await Promise.all(
-          assignment.workAreas.map((item) =>
+        const created = await concurrentExecutor(
+          assignment.workAreas,
+          (item) =>
             ActivationWorkAreaResource.makeNew(auth, {
               title: item.title,
               description: item.description,
               podId: activationPod.id,
-            })
-          )
+            }),
+          { concurrency: 8 }
         );
         return new Ok([
           {
