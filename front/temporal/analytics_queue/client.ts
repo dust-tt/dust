@@ -190,7 +190,9 @@ function endOfUtcToday(): Date {
 
 // Caps an open-ended period (e.g. "this cycle") to today, so exports stay
 // cacheable within a day but refresh once new data can have accrued.
-function resolveExportPeriod(period: ConsumptionPeriod): ConsumptionPeriod {
+export function resolveExportPeriod(
+  period: ConsumptionPeriod
+): ConsumptionPeriod {
   const endOfTodayMs = endOfUtcToday().getTime();
   const endMs = Math.min(new Date(period.endDate).getTime(), endOfTodayMs);
   return {
@@ -199,7 +201,7 @@ function resolveExportPeriod(period: ConsumptionPeriod): ConsumptionPeriod {
   };
 }
 
-async function isConsumptionExportRunning(
+export async function isConsumptionExportRunning(
   handle: WorkflowHandle
 ): Promise<boolean> {
   try {

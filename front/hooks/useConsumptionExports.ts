@@ -4,28 +4,36 @@ import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/s
 import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { useCallback, useState } from "react";
-import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
 
 const GENERATING_POLL_INTERVAL_MS = 3_000;
 
-type GetConsumptionExportsResponse = {
+type GetConsumptionExportStatusResponse = {
   exports: ConsumptionExportListItem[];
+  exportId: string;
   isGenerating: boolean;
+  isReady: boolean;
 };
 
+// Status is scoped to `exportBody` (period+filter), matching the cache key the export
+// workflow itself uses: a workflow running for a different filter must not read as
+// "generating" here, and a stale export from a different filter must not read as "ready".
 export function useConsumptionExports({
   workspaceId,
+  exportBody,
   disabled,
 }: {
   workspaceId: string;
+  exportBody: ConsumptionExportBody;
   disabled?: boolean;
 }) {
-  const { fetcher } = useFetcher();
-  const url = `/api/w/${workspaceId}/analytics/consumption/export-raw`;
-  const exportsFetcher: Fetcher<GetConsumptionExportsResponse> = fetcher;
+  const { fetcherWithBody } = useFetcher();
+  const url = `/api/w/${workspaceId}/analytics/consumption/export-raw/status`;
 
-  const { data, error, mutate } = useSWRWithDefaults(url, exportsFetcher, {
+  const { data, error, mutate } = useSWRWithDefaults<
+    [string, ConsumptionExportBody, string],
+    GetConsumptionExportStatusResponse
+  >([url, exportBody, "POST"], fetcherWithBody, {
     disabled,
     refreshInterval: (latest) =>
       latest?.isGenerating ? GENERATING_POLL_INTERVAL_MS : 0,
@@ -34,6 +42,7 @@ export function useConsumptionExports({
   return {
     exports: data?.exports ?? [],
     isGenerating: data?.isGenerating ?? false,
+    isReady: data?.isReady ?? false,
     mutateConsumptionExports: mutate,
     isConsumptionExportsLoading: !error && !data && !disabled,
     isConsumptionExportsError: error,
@@ -49,6 +58,7 @@ export function useStartConsumptionExport({
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
   const url = `/api/w/${workspaceId}/analytics/consumption/export-raw`;
+  const statusUrl = `${url}/status`;
 
   const startConsumptionExport = useCallback(
     async (body: ConsumptionExportBody) => {
@@ -67,12 +77,12 @@ export function useStartConsumptionExport({
           });
           return;
         }
-        await mutate(url);
+        await mutate([statusUrl, body, "POST"]);
       } finally {
         setIsStarting(false);
       }
     },
-    [url, sendNotification, mutate]
+    [url, statusUrl, sendNotification, mutate]
   );
 
   return { isStarting, startConsumptionExport };

@@ -54,9 +54,10 @@ export function ConsumptionExportPanel({
   const {
     exports,
     isGenerating,
+    isReady,
     isConsumptionExportsLoading,
     isConsumptionExportsError,
-  } = useConsumptionExports({ workspaceId, disabled: !isOpen });
+  } = useConsumptionExports({ workspaceId, exportBody, disabled: !isOpen });
   const { isStarting, startConsumptionExport } = useStartConsumptionExport({
     workspaceId,
   });
@@ -69,11 +70,12 @@ export function ConsumptionExportPanel({
     }
   };
 
-  // Opening the panel with no past export and nothing already generating starts one
-  // automatically, so the user doesn't have to find a separate "generate" action. This
-  // only fires once per time the panel is opened: a workflow that failed or timed out
-  // also leaves exports empty with isGenerating false, so without this guard the effect
-  // would relaunch an expensive export indefinitely instead of surfacing the failure.
+  // Opening the panel with no export ready for the current period+filter and nothing
+  // already generating for it starts one automatically, so the user doesn't have to find
+  // a separate "generate" action. This only fires once per time the panel is opened: a
+  // workflow that failed or timed out also leaves isReady/isGenerating both false, so
+  // without this guard the effect would relaunch an expensive export indefinitely instead
+  // of surfacing the failure.
   useEffect(() => {
     if (
       isOpen &&
@@ -82,7 +84,7 @@ export function ConsumptionExportPanel({
       !isGenerating &&
       !isStarting &&
       !hasAttemptedAutoStart &&
-      exports.length === 0
+      !isReady
     ) {
       setHasAttemptedAutoStart(true);
       void startConsumptionExport(exportBody);
@@ -94,16 +96,13 @@ export function ConsumptionExportPanel({
     isGenerating,
     isStarting,
     hasAttemptedAutoStart,
-    exports.length,
+    isReady,
     exportBody,
     startConsumptionExport,
   ]);
 
   const hasAutoStartFailed =
-    hasAttemptedAutoStart &&
-    !isGenerating &&
-    !isStarting &&
-    exports.length === 0;
+    hasAttemptedAutoStart && !isGenerating && !isStarting && !isReady;
 
   return (
     <PopoverRoot open={isOpen} onOpenChange={handleOpenChange}>
