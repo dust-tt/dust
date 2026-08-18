@@ -91,6 +91,7 @@ function creditStateChipColor(
 
 interface PokeCreditStatesCardProps {
   owner: WorkspaceType;
+  creditUsageConfig: PokeCreditUsageConfig | null;
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticWarningReached: boolean;
@@ -103,6 +104,7 @@ interface PokeCreditStatesCardProps {
 
 function PokeCreditStatesCard({
   owner,
+  creditUsageConfig,
   poolCreditState,
   programmaticCreditState,
   programmaticWarningReached,
@@ -139,6 +141,12 @@ function PokeCreditStatesCard({
           {programmaticWarningReached && (
             <Chip size="xs" color="warning" label="near limit" />
           )}
+          <span className="text-xs text-muted-foreground">
+            cap:{" "}
+            {creditUsageConfig
+              ? `${formatCredits(creditUsageConfig.programmaticMonthlyCapAwuCredits)} credits`
+              : "—"}
+          </span>
           <SpendCountersInline
             esConsumedAwuCredits={programmaticEsConsumedAwuCredits}
             rateLimiterAwuCredits={programmaticSpendLimitRateCapCount}
@@ -342,6 +350,7 @@ export function PokeUsageTab({
     <div className="flex flex-col gap-4">
       <PokeCreditStatesCard
         owner={owner}
+        creditUsageConfig={creditUsageConfig}
         poolCreditState={poolCreditState}
         programmaticCreditState={programmaticCreditState}
         programmaticWarningReached={programmaticWarningReached}
