@@ -160,9 +160,6 @@ export function PersonalAuthenticationCard({
             <div className="text-base wrap-break-word">{actionLabel}</div>
             {canCurrentUserRespond ? (
               <>
-                <div className="text-sm wrap-break-word text-muted-foreground">
-                  {`Connect your ${serverDisplayName ? `${serverDisplayName} ` : ""}account to continue.`}
-                </div>
                 {overridableInputs && mcpServer && (
                   <PersonalAuthCredentialOverrides
                     inputs={overridableInputs}
