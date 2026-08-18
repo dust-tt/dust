@@ -33,11 +33,11 @@ export function buildConsumptionExportGcsPath(
 
 // Per-bucket CSV parts live here until the export is finalized into a single zip, then
 // get cleaned up.
-function buildConsumptionExportBucketPartsGcsPrefix(
+export function buildConsumptionExportBucketPartsGcsPrefix(
   workspaceId: string,
   exportId: string
 ): string {
-  return `${buildConsumptionExportGcsPrefix(workspaceId)}tmp/${exportId}/`;
+  return `w/${workspaceId}/consumption_exports_tmp/${exportId}/`;
 }
 
 function buildConsumptionExportBucketPartGcsPath(

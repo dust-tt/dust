@@ -262,7 +262,7 @@ async function buildConsumptionLineExportRows(
 
 // Fetches and formats the consumption lines for one period (typically a bucket of a
 // larger export) as CSV rows, without a header — callers assemble the final file by
-// prepending the shared header once, via `buildConsumptionLineExportCsvHeader`.
+// prepending the shared header.
 export async function fetchConsumptionExportBucketCsv(
   auth: Authenticator,
   {

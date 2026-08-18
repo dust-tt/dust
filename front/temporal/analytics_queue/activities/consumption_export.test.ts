@@ -1,6 +1,7 @@
 // @vitest-environment node: adm-zip requires Node builtins (Buffer, zlib).
 // This directive makes them available in the test environment.
 
+import { listConsumptionExports } from "@app/lib/api/analytics/consumption/export_jobs";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import {
   ElasticsearchError,
@@ -9,6 +10,7 @@ import {
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { notifyConsumptionExportReady } from "@app/lib/notifications/workflows/consumption-export-ready";
 import {
+  buildConsumptionExportBucketPartsGcsPrefix,
   buildConsumptionExportGcsPrefix,
   finalizeConsumptionExportActivity,
   runConsumptionExportBucketActivity,
@@ -202,15 +204,23 @@ describe("runConsumptionExportBucketActivity", () => {
       bucketIndex: 0,
     });
 
-    const prefix = buildConsumptionExportGcsPrefix(workspace.sId);
+    const tmpPrefix = buildConsumptionExportBucketPartsGcsPrefix(
+      workspace.sId,
+      "consumption-export-test-run"
+    );
     const saveCalls = fileStorageMock.saveFileCalls.filter((call) =>
-      call.filePath.startsWith(prefix)
+      call.filePath.startsWith(tmpPrefix)
     );
     expect(saveCalls).toHaveLength(1);
-    expect(saveCalls[0].filePath).toBe(
-      `${prefix}tmp/consumption-export-test-run/0.csv`
-    );
+    expect(saveCalls[0].filePath).toBe(`${tmpPrefix}0.csv`);
     expect(saveCalls[0].contentType).toBe("text/csv");
+
+    // A bucket part must never live under the prefix `listConsumptionExports` scans,
+    // or an in-progress (or abandoned-after-failure) export would show up as a broken,
+    // non-downloadable entry in the UI.
+    expect(
+      tmpPrefix.startsWith(buildConsumptionExportGcsPrefix(workspace.sId))
+    ).toBe(false);
 
     const csv = saveCalls[0].content.toString();
     expect(csv).not.toContain("completedAt,conversationId");
@@ -239,11 +249,33 @@ describe("runConsumptionExportBucketActivity", () => {
       })
     ).rejects.toThrow();
 
-    const prefix = buildConsumptionExportGcsPrefix(workspace.sId);
+    const tmpPrefix = buildConsumptionExportBucketPartsGcsPrefix(
+      workspace.sId,
+      "consumption-export-test-run"
+    );
     const saveCalls = fileStorageMock.saveFileCalls.filter((call) =>
-      call.filePath.startsWith(prefix)
+      call.filePath.startsWith(tmpPrefix)
     );
     expect(saveCalls).toHaveLength(0);
+  });
+
+  it("does not surface an in-progress or abandoned-after-failure bucket part as an export", async () => {
+    mockDocs([LLM_DOC]);
+    mockLabels({ agent1: "@dust", api: "API" });
+    const { authenticator } = await setup();
+
+    // Simulates a bucket having been fetched while the workflow is still running, or one
+    // left behind by a workflow that failed before its finalize step ran.
+    await runConsumptionExportBucketActivity(authenticator.toJSON(), {
+      period: PERIOD,
+      filter: {},
+      exportId: "in-progress-export",
+      bucketIndex: 0,
+    });
+
+    const items = await listConsumptionExports(authenticator);
+
+    expect(items).toEqual([]);
   });
 });
 
@@ -309,7 +341,10 @@ describe("finalizeConsumptionExportActivity", () => {
     expect(notifyConsumptionExportReady).toHaveBeenCalledTimes(1);
 
     // The temp parts are gone.
-    const tmpPrefix = `${prefix}tmp/${exportId}/`;
+    const tmpPrefix = buildConsumptionExportBucketPartsGcsPrefix(
+      workspace.sId,
+      exportId
+    );
     const writtenTmpPaths = fileStorageMock.saveFileCalls
       .filter((call) => call.filePath.startsWith(tmpPrefix))
       .map((call) => call.filePath);
