@@ -273,7 +273,7 @@ export function ToolValidationCard({
             {canAlwaysAllow && (
               <Button
                 label="Always allow"
-                variant="highlight-ghost"
+                variant="primary"
                 icon={CheckDouble}
                 disabled={isSubmitting}
                 isLoading={submittingDecision === "always_approved"}

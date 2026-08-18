@@ -219,7 +219,7 @@ export function GmailSendMailValidation({
           {alwaysAllowLabel && (
             <Button
               label="Always allow"
-              variant="highlight-ghost"
+              variant="primary"
               size="sm"
               icon={CheckDouble}
               isRounded
