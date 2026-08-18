@@ -211,6 +211,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable Pod Function invocation endpoints",
     stage: "dust_only",
   },
+  computer_admin_pods: {
+    description:
+      "Multi-Pod scope selector and Pod editing on the Computer admin page",
+    stage: "dust_only",
+  },
   run_tools_from_prompt: {
     description: "Enable /run command to directly call tools without LLM",
     stage: "dust_only",

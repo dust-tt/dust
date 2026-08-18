@@ -17,14 +17,13 @@ import { validate } from "@front-api/middlewares/validator";
 import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 import { z } from "zod";
 
-// Mounted at /api/w/:wId/sandbox/egress-policy/bulk. Read-only multi-pod view
-// for the central Computer admin page's network comparison. The parent sub-app
-// applies the workspace-admin + Computer gates; the multi-pod comparison is
-// additionally gated on sandbox_functions (it reads pod settings, which are
-// sandbox_functions-only). Pod policy mutations stay on the single-pod route.
+// Mounted at /api/w/:wId/sandbox/egress-policy/bulk. Multi-pod read (GET) and
+// add/remove write (POST) for the central Computer admin page. The parent
+// sub-app applies the workspace-admin + Computer gates; the multi-Pod feature
+// is gated on the computer_admin_pods flag.
 const app = workspaceApp();
 
-app.use("*", withFeatureFlag("sandbox_functions"));
+app.use("*", withFeatureFlag("computer_admin_pods"));
 
 const PostBulkEgressPolicyBodySchema = z.object({
   includeWorkspace: z.boolean(),

@@ -31,17 +31,17 @@ vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
 
 async function setupTest({
   role = "admin",
-  enableSandboxFunctions = true,
+  enableComputerAdminPods = true,
 }: {
   role?: MembershipRoleType;
-  enableSandboxFunctions?: boolean;
+  enableComputerAdminPods?: boolean;
 } = {}) {
   const { workspace, auth, user, ...rest } = await createPrivateApiMockRequest({
     role,
   });
 
-  if (enableSandboxFunctions) {
-    await FeatureFlagFactory.basic(auth, "sandbox_functions");
+  if (enableComputerAdminPods) {
+    await FeatureFlagFactory.basic(auth, "computer_admin_pods");
   }
 
   const podA = await SpaceFactory.project(workspace, user.id);
@@ -202,7 +202,7 @@ describe("POST /api/w/:wId/sandbox/egress-policy/bulk", () => {
 
   it("returns 403 when sandbox_functions is disabled", async () => {
     const { workspace, podA } = await setupTest({
-      enableSandboxFunctions: false,
+      enableComputerAdminPods: false,
     });
 
     const response = await postBulk(workspace.sId, {

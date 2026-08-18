@@ -13,12 +13,8 @@ import { useMemo, useState } from "react";
 
 export function SandboxPage() {
   const owner = useWorkspace();
-  const {
-    isAdmin,
-    isComputerEnabled,
-    hasSandboxFunctions,
-    canAdministrateComputer,
-  } = useComputerAdminAccess();
+  const { isAdmin, isComputerEnabled, canAdministratePods } =
+    useComputerAdminAccess();
   const [selection, setSelection] = useState<SandboxScopeSelection>({
     includeWorkspace: true,
     podIds: [],
@@ -26,7 +22,7 @@ export function SandboxPage() {
 
   const { pods, isPodsLoading } = usePodsAsAdmin({
     workspaceId: owner.sId,
-    disabled: !canAdministrateComputer || !hasSandboxFunctions,
+    disabled: !canAdministratePods,
   });
 
   const podOptions = useMemo(
@@ -39,6 +35,9 @@ export function SandboxPage() {
     return pods.filter((pod) => set.has(pod.sId));
   }, [selection.podIds, pods]);
 
+  const scopeCount = (selection.includeWorkspace ? 1 : 0) + selectedPods.length;
+  const isBulkEdit = scopeCount > 1;
+
   const workspaceView = (
     <>
       <NetworkSection />
@@ -47,18 +46,17 @@ export function SandboxPage() {
   );
 
   const renderScopedContent = () => {
-    const scopeCount =
-      (selection.includeWorkspace ? 1 : 0) + selectedPods.length;
     if (scopeCount === 0) {
       return (
         <ContentMessage variant="info" icon={InfoCircle} size="lg">
-          Select the Workspace or one or more Pods to view.
+          Select the Workspace or one or more Pods to view and edit Computer
+          settings.
         </ContentMessage>
       );
     }
 
     // A single scope (the workspace) is the editable view; any combination is
-    // a read-only comparison.
+    // a read-only comparison for now.
     if (selection.includeWorkspace && selectedPods.length === 0) {
       return workspaceView;
     }
@@ -94,7 +92,6 @@ export function SandboxPage() {
         </ContentMessage>
       );
     }
-
     if (!isComputerEnabled) {
       return (
         <ContentMessage variant="info" icon={InfoCircle} size="lg">
@@ -106,33 +103,39 @@ export function SandboxPage() {
     return (
       <>
         <AgentRequestedDomainsSetting />
-        {!hasSandboxFunctions ? (
-          // Without Sandbox Functions there are no Pod settings to compare —
-          // just the editable workspace view.
-          workspaceView
-        ) : (
-          <>
-            <div className="flex">
-              <SandboxScopeSelector
-                pods={pods}
-                selection={selection}
-                onChange={setSelection}
-                isLoading={isPodsLoading}
-              />
-            </div>
-            {renderScopedContent()}
-          </>
-        )}
+        {canAdministratePods ? renderScopedContent() : workspaceView}
       </>
     );
   };
 
   return (
     <Page.Vertical gap="xl" align="stretch">
-      <Page.Header
-        title="Computer"
-        description="Configure workspace and Pod network access and environment variables for the Computer."
-      />
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-4">
+          <div className="heading-2xl text-foreground">Computer</div>
+          {canAdministratePods ? (
+            <SandboxScopeSelector
+              pods={pods}
+              selection={selection}
+              onChange={setSelection}
+              isLoading={isPodsLoading}
+            />
+          ) : null}
+        </div>
+        <div className="text-sm text-muted-foreground">
+          Configure workspace and Pod network access and environment variables
+          for the Computer.
+        </div>
+        {canAdministratePods && isBulkEdit ? (
+          <div className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">
+              {scopeCount} scopes selected.
+            </span>{" "}
+            Changes below apply to the selected scopes unless marked
+            Workspace-wide.
+          </div>
+        ) : null}
+      </div>
       {renderBody()}
     </Page.Vertical>
   );

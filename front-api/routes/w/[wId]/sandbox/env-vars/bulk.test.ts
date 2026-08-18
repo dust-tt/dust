@@ -25,18 +25,18 @@ vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
 async function setupTest({
   role = "admin",
   disableComputerFeature = false,
-  enableSandboxFunctions = true,
+  enableComputerAdminPods = true,
 }: {
   role?: MembershipRoleType;
   disableComputerFeature?: boolean;
-  enableSandboxFunctions?: boolean;
+  enableComputerAdminPods?: boolean;
 } = {}) {
   const { workspace, auth, user, ...rest } = await createPrivateApiMockRequest({
     role,
   });
 
-  if (enableSandboxFunctions) {
-    await FeatureFlagFactory.basic(auth, "sandbox_functions");
+  if (enableComputerAdminPods) {
+    await FeatureFlagFactory.basic(auth, "computer_admin_pods");
   }
   if (disableComputerFeature) {
     await FeatureFlagFactory.basic(auth, "disable_computer_feature");

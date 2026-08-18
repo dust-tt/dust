@@ -10,15 +10,16 @@ export function useComputerAdminAccess() {
   const { isAdmin } = useAuth();
   const { featureFlags } = useFeatureFlags();
   const isComputerEnabled = isComputerFeatureEnabled(featureFlags);
-  // Pod settings and the multi-pod comparison are sandbox_functions-gated on
-  // top of Computer (matching the pod sandbox routes). Workspace-level
-  // settings need only canAdministrateComputer.
-  const hasSandboxFunctions = featureFlags.includes("sandbox_functions");
+  const canAdministrateComputer = isAdmin && isComputerEnabled;
+  // The multi-Pod scope selector and Pod editing on the Computer admin page
+  // sit behind their own flag, on top of Computer admin access.
+  const canAdministratePods =
+    canAdministrateComputer && featureFlags.includes("computer_admin_pods");
 
   return {
     isAdmin,
     isComputerEnabled,
-    hasSandboxFunctions,
-    canAdministrateComputer: isAdmin && isComputerEnabled,
+    canAdministrateComputer,
+    canAdministratePods,
   };
 }

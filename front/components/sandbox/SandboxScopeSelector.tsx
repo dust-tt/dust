@@ -27,15 +27,22 @@ function labelForSelection(
   selection: SandboxScopeSelection,
   pods: PodType[]
 ): string {
+  const allPodsSelected =
+    pods.length > 0 && selection.podIds.length === pods.length;
+  if (selection.includeWorkspace && allPodsSelected) {
+    return "All scopes";
+  }
+
   const parts: string[] = [];
   if (selection.includeWorkspace) {
     parts.push("Workspace");
   }
-  if (selection.podIds.length > 0) {
+  if (selection.podIds.length === 1) {
+    const pod = pods.find((candidate) => candidate.sId === selection.podIds[0]);
+    parts.push(pod?.name ?? "1 Pod");
+  } else if (selection.podIds.length > 1) {
     parts.push(
-      pods.length > 0 && selection.podIds.length === pods.length
-        ? "all Pods"
-        : `${selection.podIds.length} Pod${selection.podIds.length === 1 ? "" : "s"}`
+      allPodsSelected ? "all Pods" : `${selection.podIds.length} Pods`
     );
   }
   return parts.length === 0 ? "Select scope" : parts.join(" + ");
@@ -166,6 +173,17 @@ export function SandboxScopeSelector({
             />
           ))
         )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          label="Clear selection"
+          disabled={
+            !selection.includeWorkspace && selection.podIds.length === 0
+          }
+          onClick={() => onChange({ includeWorkspace: false, podIds: [] })}
+          onSelect={(event) => {
+            event.preventDefault();
+          }}
+        />
       </DropdownMenuContent>
     </DropdownMenu>
   );
