@@ -145,7 +145,7 @@ export class DatabaseSandboxMountAdapter implements SandboxMountAdapter {
       }
     }
 
-    const apiUrl = config.getDustAPIConfig().url;
+    const apiUrl = config.getSandboxApiBaseUrl();
     const workspaceId = auth.getNonNullableWorkspace().sId;
     // systemd restarts the supervisor itself. The Rust supervisor separately
     // restarts a crashed FUSE child and detaches its stale mount before retrying.
