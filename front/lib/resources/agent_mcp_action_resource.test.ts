@@ -398,6 +398,45 @@ describe("listBlockedActionsForConversation", () => {
     );
     expect(reloadedAction?.status).toBe("blocked_validation_required");
   });
+
+  it("does not rewind a final action through a stale sandbox parent resource", async () => {
+    const agentMessage = await AgentMessageModel.create({
+      conversationId: conversation.id,
+      workspaceId: workspace.id,
+      agentConfigurationId: "test-agent",
+      agentConfigurationVersion: 0,
+      status: "created",
+      skipToolsValidation: false,
+    });
+    const { action } = await createBlockedAction({
+      agentMessageModelId: agentMessage.id,
+    });
+    await action.updateStatus("running");
+
+    const staleParent = await AgentMCPActionResource.fetchById(
+      auth,
+      action.sId
+    );
+    const currentParent = await AgentMCPActionResource.fetchById(
+      auth,
+      action.sId
+    );
+    if (!staleParent || !currentParent) {
+      throw new Error("Expected both sandbox parent resources to exist.");
+    }
+    expect(staleParent.status).toBe("running");
+    expect(currentParent.status).toBe("running");
+    await currentParent.updateStatus("succeeded");
+
+    await expect(staleParent.blockForSandboxChild(auth)).rejects.toThrow(
+      "cannot transition from succeeded to blocked_child_action_input_required"
+    );
+    const reloadedParent = await AgentMCPActionResource.fetchById(
+      auth,
+      action.sId
+    );
+    expect(reloadedParent?.status).toBe("succeeded");
+  });
 });
 
 describe("Output items with GCS storage", () => {

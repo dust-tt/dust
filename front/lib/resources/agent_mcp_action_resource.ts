@@ -1544,6 +1544,41 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   }
 
   /**
+   * Atomically blocks a running sandbox parent. Multiple children may block concurrently, so the
+   * target status is idempotent. Every other source status is an invariant violation: in
+   * particular, a late sandbox child must never rewind a final parent into a resumable state.
+   */
+  async blockForSandboxChild(auth: Authenticator): Promise<void> {
+    await withTransaction(async (transaction) => {
+      const action = await AgentMCPActionModel.findOne({
+        attributes: ["id", "status"],
+        where: {
+          id: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      assert(action, `Sandbox parent action ${this.sId} no longer exists.`);
+
+      if (action.status === "blocked_child_action_input_required") {
+        return;
+      }
+      assert(
+        action.status === "running",
+        `Sandbox parent action ${this.sId} cannot transition from ${action.status} to blocked_child_action_input_required.`
+      );
+
+      await action.update(
+        { status: "blocked_child_action_input_required" },
+        { transaction }
+      );
+    });
+
+    Object.assign(this, { status: "blocked_child_action_input_required" });
+  }
+
+  /**
    * Updates only if the action still has the expected status. Combined with the invariant that
    * blocked actions are denied in the same transaction as their message's terminal status update
    * (see updateAgentMessageWithFinalStatus), a blocked-status transition implies resumability.
