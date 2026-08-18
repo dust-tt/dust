@@ -45,7 +45,7 @@ export function TriggerStatusToggle({
             label={
               statusOwner === "system"
                 ? "This trigger's status is managed by Dust."
-                : "Only a manager can re-enable this trigger."
+                : "Only a manager or an admin can re-enable this trigger."
             }
             trigger={<div>{toggle}</div>}
           />
