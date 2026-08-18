@@ -1,8 +1,13 @@
+import { FilterCategoryNav } from "@app/components/workspace/analytics/filterPanel/FilterCategoryNav";
+import { FilterFooter } from "@app/components/workspace/analytics/filterPanel/FilterFooter";
+import { FilterOptionCheckboxList } from "@app/components/workspace/analytics/filterPanel/FilterOptionCheckboxList";
+import { FilterSelectionSummary } from "@app/components/workspace/analytics/filterPanel/FilterSelectionSummary";
 import type {
   UsageFilter,
   UsageFilterAgentScope,
   UsageFilterCategory,
   UsageFilterGroup,
+  UsageFilterOption,
 } from "@app/components/workspace/analytics/usageFilter";
 import {
   toConsumptionScopeFilter,
@@ -12,13 +17,10 @@ import {
   usageFilterSelectionCount,
 } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
-import { UsageFilterCategoryNav } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterCategoryNav";
-import { UsageFilterFooter } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterFooter";
 import { UsageFilterMemberGroupsControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterMemberGroupsControls";
 import { UsageFilterModelComplexityControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterModelComplexityControls";
-import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
+import { UsageFilterOptionIcon } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionIcon";
 import { UsageFilterSection } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSection";
-import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
 import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
@@ -162,6 +164,13 @@ export function UsageFilterPanel({
       ),
     [draftFilter]
   );
+  const categorySelectionCounts = useMemo(() => {
+    const counts: Partial<Record<UsageFilterCategory, number>> = {};
+    for (const category of USAGE_FILTER_CATEGORIES) {
+      counts[category] = draftFilter[category]?.length ?? 0;
+    }
+    return counts;
+  }, [draftFilter]);
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
@@ -205,9 +214,10 @@ export function UsageFilterPanel({
       </PopoverTrigger>
       <PopoverContent fullWidth align="end" className="w-auto rounded-2xl p-0">
         <div className="flex h-96 flex-row divide-x divide-border">
-          <UsageFilterCategoryNav
+          <FilterCategoryNav
             categories={USAGE_FILTER_CATEGORIES}
-            draftFilter={draftFilter}
+            categoryLabels={USAGE_FILTER_CATEGORY_LABEL}
+            selectionCounts={categorySelectionCounts}
             activeCategory={activeCategory}
             onCategoryChange={handleCategoryChange}
           />
@@ -273,9 +283,9 @@ export function UsageFilterPanel({
                   Failed to load filters.
                 </div>
               ) : (
-                <UsageFilterOptionCheckboxList
+                <FilterOptionCheckboxList
                   key={optionListKey}
-                  category={activeCategory}
+                  idPrefix={`usage-filter-option-${activeCategory}`}
                   categoryLabel={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
                   options={filteredOptions}
                   selectedIds={selectedIdsForActiveCategory}
@@ -287,21 +297,31 @@ export function UsageFilterPanel({
                   }
                   selectAllLabel="Select all"
                   hasSelectableOptions={unselectedEnabledOptions.length > 0}
-                  isLoading={isFacetsLoading}
-                  isUpdating={isFacetsValidating}
+                  renderIcon={(option) => (
+                    <UsageFilterOptionIcon option={option} />
+                  )}
+                  status={
+                    isFacetsLoading
+                      ? "loading"
+                      : isFacetsValidating
+                        ? "updating"
+                        : "idle"
+                  }
                   scrollContainer={contentScrollContainer}
                 />
               )}
             </div>
           </div>
-          <UsageFilterSelectionSummary
+          <FilterSelectionSummary<UsageFilterCategory, UsageFilterOption>
             categoriesWithSelection={categoriesWithSelection}
-            draftFilter={draftFilter}
+            categoryLabels={USAGE_FILTER_CATEGORY_LABEL}
+            filter={draftFilter}
             onClearCategory={clearCategory}
             onRemoveOption={removeOption}
+            renderIcon={(option) => <UsageFilterOptionIcon option={option} />}
           />
         </div>
-        <UsageFilterFooter
+        <FilterFooter
           onClearAll={clearAllCategories}
           onCancel={() => setIsOpen(false)}
           onApply={() => {

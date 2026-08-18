@@ -1,11 +1,7 @@
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
-import type {
-  UsageFilterCategory,
-  UsageFilterOption,
-} from "@app/components/workspace/analytics/usageFilter";
-import { FILTER_PICKER_PAGE_SIZE } from "@app/components/workspace/analytics/usageFilterPanel/constants";
-import { UsageFilterAvailabilityStatus } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAvailabilityStatus";
-import { UsageFilterOptionIcon } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionIcon";
+import { FILTER_PICKER_PAGE_SIZE } from "@app/components/workspace/analytics/filterPanel/constants";
+import { FilterAvailabilityStatus } from "@app/components/workspace/analytics/filterPanel/FilterAvailabilityStatus";
+import type { FilterOptionBase } from "@app/components/workspace/analytics/filterPanel/filterState";
 import { UsageFilterSection } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSection";
 import {
   Button,
@@ -14,9 +10,10 @@ import {
   LoadingBlock,
   Spinner,
 } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 import { useState } from "react";
 
-function UsageFilterOptionListSkeleton() {
+function FilterOptionListSkeleton() {
   return (
     <div aria-hidden="true" className="flex flex-col gap-0.5">
       {["w-24", "w-32", "w-20", "w-36", "w-28", "w-24"].map((width, index) => (
@@ -30,23 +27,28 @@ function UsageFilterOptionListSkeleton() {
   );
 }
 
-interface UsageFilterOptionCheckboxListProps {
-  category: UsageFilterCategory;
+export type FilterOptionListStatus =
+  | "idle"
+  | "loading"
+  | "loading-more"
+  | "updating";
+
+interface FilterOptionCheckboxListProps<Option extends FilterOptionBase> {
+  idPrefix: string;
   categoryLabel: string;
-  options: UsageFilterOption[];
+  options: Option[];
   selectedIds: Set<string>;
-  onToggleOption: (option: UsageFilterOption) => void;
+  onToggleOption: (option: Option) => void;
   onSelectAll: () => void;
   selectAllLabel: string;
   hasSelectableOptions: boolean;
-  isLoadingMore?: boolean;
-  isLoading?: boolean;
-  isUpdating?: boolean;
+  renderIcon?: (option: Option) => ReactNode;
+  status?: FilterOptionListStatus;
   scrollContainer: HTMLDivElement | null;
 }
 
-export function UsageFilterOptionCheckboxList({
-  category,
+export function FilterOptionCheckboxList<Option extends FilterOptionBase>({
+  idPrefix,
   categoryLabel,
   options,
   selectedIds,
@@ -54,11 +56,13 @@ export function UsageFilterOptionCheckboxList({
   onSelectAll,
   selectAllLabel,
   hasSelectableOptions,
-  isLoadingMore = false,
-  isLoading = false,
-  isUpdating = false,
+  renderIcon,
+  status = "idle",
   scrollContainer,
-}: UsageFilterOptionCheckboxListProps) {
+}: FilterOptionCheckboxListProps<Option>) {
+  const isLoading = status === "loading";
+  const isUpdating = status === "updating";
+  const isLoadingMore = status === "loading-more";
   // Reset on category/search/scope change by remounting this component with
   // a fresh `key` from the parent instead of tracking a reset key here.
   const [visibleCount, setVisibleCount] = useState(FILTER_PICKER_PAGE_SIZE);
@@ -89,13 +93,13 @@ export function UsageFilterOptionCheckboxList({
         className="flex flex-col gap-0.5"
       >
         {isLoading && options.length === 0 ? (
-          <UsageFilterOptionListSkeleton />
+          <FilterOptionListSkeleton />
         ) : displayedOptions.length > 0 ? (
           <>
             {displayedOptions.map((option) => {
               const checked = selectedIds.has(option.id);
               const disabled = option.disabled && !checked;
-              const checkboxId = `usage-filter-option-${category}-${option.id}`;
+              const checkboxId = `${idPrefix}-${option.id}`;
               const availabilityDescriptionId = option.disabled
                 ? `${checkboxId}-availability`
                 : undefined;
@@ -118,7 +122,7 @@ export function UsageFilterOptionCheckboxList({
                       }
                     }}
                   />
-                  <UsageFilterOptionIcon option={option} />
+                  {renderIcon?.(option)}
                   <Label
                     htmlFor={checkboxId}
                     className={
@@ -130,9 +134,7 @@ export function UsageFilterOptionCheckboxList({
                     <span className="block truncate">{option.name}</span>
                   </Label>
                   {option.disabled && (
-                    <UsageFilterAvailabilityStatus
-                      id={availabilityDescriptionId}
-                    />
+                    <FilterAvailabilityStatus id={availabilityDescriptionId} />
                   )}
                 </div>
               );

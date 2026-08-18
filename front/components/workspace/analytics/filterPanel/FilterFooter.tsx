@@ -1,16 +1,16 @@
 import { Button } from "@dust-tt/sparkle";
 
-interface UsageFilterFooterProps {
+interface FilterFooterProps {
   onClearAll: () => void;
   onCancel: () => void;
   onApply: () => void;
 }
 
-export function UsageFilterFooter({
+export function FilterFooter({
   onClearAll,
   onCancel,
   onApply,
-}: UsageFilterFooterProps) {
+}: FilterFooterProps) {
   return (
     <div className="flex items-center justify-between border-t border-border p-2">
       <Button
