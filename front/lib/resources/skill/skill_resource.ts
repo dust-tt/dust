@@ -148,11 +148,10 @@ type SkillDisplayMetadataCacheEntry = {
   icon: string | null;
   name: string;
   requestedSpaceIds: ModelId[];
-  status: SkillStatus;
   userFacingDescription: string | null;
 };
 
-export type SkillDisplayMetadata = Omit<
+type SkillDisplayMetadata = Omit<
   SkillDisplayMetadataCacheEntry,
   "id" | "requestedSpaceIds"
 > & {
@@ -321,10 +320,9 @@ const skillDisplayMetadataCache = defineCache<
         "icon",
         "name",
         "requestedSpaceIds",
-        "status",
         "userFacingDescription",
       ],
-      where: { workspaceId: workspaceModelId },
+      where: { status: "active", workspaceId: workspaceModelId },
     });
 
     return skills.map((skill) => ({
@@ -332,7 +330,6 @@ const skillDisplayMetadataCache = defineCache<
       icon: skill.icon,
       name: skill.name,
       requestedSpaceIds: skill.requestedSpaceIds,
-      status: skill.status,
       userFacingDescription: skill.userFacingDescription,
     }));
   },
@@ -558,7 +555,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
-  private static invalidateDisplayMetadataCache(
+  private invalidateDisplayMetadataCache(
     workspace: LightWorkspaceType,
     transaction?: Transaction
   ): Promise<void> {
@@ -571,84 +568,36 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
-  static async listDisplayMetadata(
-    auth: Authenticator,
-    {
-      sIds,
-      status,
-    }: {
-      sIds?: string[];
-      status?: SkillStatus | SkillStatus[];
-    } = {}
+  static async listDisplayMetadataByWorkspace(
+    auth: Authenticator
   ): Promise<SkillDisplayMetadata[]> {
-    if (sIds?.length === 0) {
-      return [];
-    }
-
     const workspace = auth.getNonNullableWorkspace();
-    const customSkillModelIds = sIds
-      ? new Set(
-          removeNulls(
-            sIds.map((skillId) =>
-              isResourceSId("skill", skillId)
-                ? getResourceIdFromSId(skillId)
-                : null
-            )
-          )
-        )
-      : null;
-    const globalSkillIds = sIds
-      ? sIds.filter((skillId) => !isResourceSId("skill", skillId))
-      : undefined;
-    const statuses = status
-      ? new Set(Array.isArray(status) ? status : [status])
-      : null;
-
-    const customSkills =
-      customSkillModelIds?.size === 0
-        ? []
-        : await this.filterBySpacePermissions(
-            auth,
-            (
-              await skillDisplayMetadataCache.get({
-                workspaceId: workspace.sId,
-                workspaceModelId: workspace.id,
-              })
-            ).filter(
-              (skill) =>
-                (!customSkillModelIds || customSkillModelIds.has(skill.id)) &&
-                (!statuses || statuses.has(skill.status))
-            )
-          );
-
-    const codeDefinedWhere = {
-      ...(globalSkillIds ? { sId: globalSkillIds } : {}),
-      ...(status ? { status } : {}),
-    };
-    const codeDefinedSkills =
-      globalSkillIds?.length === 0
-        ? []
-        : [
-            ...(await GlobalSkillsRegistry.findAll(auth, codeDefinedWhere)),
-            ...(await SystemSkillsRegistry.findAll(auth, codeDefinedWhere)),
-          ];
+    const customSkills = await this.filterBySpacePermissions(
+      auth,
+      await skillDisplayMetadataCache.get({
+        workspaceId: workspace.sId,
+        workspaceModelId: workspace.id,
+      })
+    );
+    const codeDefinedSkills = [
+      ...(await GlobalSkillsRegistry.findAll(auth, { status: "active" })),
+      ...(await SystemSkillsRegistry.findAll(auth, { status: "active" })),
+    ];
 
     return [
       ...customSkills.map((skill) => ({
-        sId: SkillResource.modelIdToSId({
+        sId: this.modelIdToSId({
           id: skill.id,
           workspaceId: workspace.id,
         }),
         icon: skill.icon,
         name: skill.name,
-        status: skill.status,
         userFacingDescription: skill.userFacingDescription,
       })),
       ...codeDefinedSkills.map((skill) => ({
         sId: skill.sId,
         icon: skill.icon,
         name: skill.name,
-        status: "active" as const,
         userFacingDescription: skill.userFacingDescription,
       })),
     ];
@@ -750,7 +699,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       // association itself.
       await skillResource.writeGroupPermissions(auth, { transaction });
 
-      await this.invalidateDisplayMetadataCache(owner, transaction);
+      await skillResource.invalidateDisplayMetadataCache(owner, transaction);
 
       return skillResource;
     });
@@ -3314,10 +3263,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         }
       }
 
-      await SkillResource.invalidateDisplayMetadataCache(
-        workspace,
-        transaction
-      );
+      await this.invalidateDisplayMetadataCache(workspace, transaction);
 
       return count;
     });
@@ -3365,10 +3311,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         }
       }
 
-      await SkillResource.invalidateDisplayMetadataCache(
-        workspace,
-        transaction
-      );
+      await this.invalidateDisplayMetadataCache(workspace, transaction);
 
       return count;
     });
@@ -3517,10 +3460,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         { transaction }
       );
 
-      await SkillResource.invalidateDisplayMetadataCache(
-        workspace,
-        transaction
-      );
+      await this.invalidateDisplayMetadataCache(workspace, transaction);
     });
 
     if (fileAttachments) {
@@ -4201,10 +4141,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           transaction,
         });
 
-        await SkillResource.invalidateDisplayMetadataCache(
-          workspace,
-          transaction
-        );
+        await this.invalidateDisplayMetadataCache(workspace, transaction);
 
         return deletedCount;
       });
@@ -4512,7 +4449,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where: { workspaceId },
     });
 
-    await this.invalidateDisplayMetadataCache(workspace);
+    await skillDisplayMetadataCache.invalidate({
+      workspaceId: workspace.sId,
+      workspaceModelId: workspace.id,
+    });
   }
 
   private static replaceSkillReferenceTags(

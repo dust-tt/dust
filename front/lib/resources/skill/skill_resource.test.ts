@@ -159,17 +159,17 @@ describe("SkillResource", () => {
     });
   });
 
-  describe("listDisplayMetadata", () => {
+  describe("listDisplayMetadataByWorkspace", () => {
     it("refreshes cached metadata after a skill update and archive", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Cached skill name",
         userFacingDescription: "Cached skill description",
       });
 
-      const initialMetadata = await SkillResource.listDisplayMetadata(
-        testContext.authenticator,
-        { status: "active" }
-      );
+      const initialMetadata =
+        await SkillResource.listDisplayMetadataByWorkspace(
+          testContext.authenticator
+        );
       expect(initialMetadata).toContainEqual(
         expect.objectContaining({
           sId: skill.sId,
@@ -189,35 +189,26 @@ describe("SkillResource", () => {
         requestedSpaceIds: [],
       });
 
-      const updatedMetadata = await SkillResource.listDisplayMetadata(
-        testContext.authenticator,
-        { sIds: [skill.sId] }
-      );
-      expect(updatedMetadata).toEqual([
+      const updatedMetadata =
+        await SkillResource.listDisplayMetadataByWorkspace(
+          testContext.authenticator
+        );
+      expect(updatedMetadata).toContainEqual(
         expect.objectContaining({
           sId: skill.sId,
           name: "Updated skill name",
           userFacingDescription: "Updated skill description",
-        }),
-      ]);
+        })
+      );
 
       await skill.archive(testContext.authenticator);
 
-      const activeMetadata = await SkillResource.listDisplayMetadata(
-        testContext.authenticator,
-        { sIds: [skill.sId], status: "active" }
+      const activeMetadata = await SkillResource.listDisplayMetadataByWorkspace(
+        testContext.authenticator
       );
-      const archivedMetadata = await SkillResource.listDisplayMetadata(
-        testContext.authenticator,
-        { sIds: [skill.sId], status: "archived" }
+      expect(activeMetadata).not.toContainEqual(
+        expect.objectContaining({ sId: skill.sId })
       );
-      expect(activeMetadata).toEqual([]);
-      expect(archivedMetadata).toEqual([
-        expect.objectContaining({
-          sId: skill.sId,
-          status: "archived",
-        }),
-      ]);
     });
   });
 

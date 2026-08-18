@@ -141,9 +141,10 @@ export async function resolveDimensionLabels(
     }
 
     case "skill": {
-      const skills = await SkillResource.listDisplayMetadata(auth, {
-        sIds: keys,
-        status: ["active", "archived", "suggested"],
+      const skills = await SkillResource.fetchByIds(auth, keys, {
+        withInstructions: false,
+        withTools: false,
+        withFileAttachments: false,
       });
       const skillsById = new Map(skills.map((skill) => [skill.sId, skill]));
       return new Map(
