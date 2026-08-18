@@ -1,20 +1,22 @@
 import "@dust-tt/sparkle/styles/allotment.css";
 
 import {
-  ClockRewind,
+  ArrowNarrowLeft,
   Avatar,
   Bar,
   BarChart01,
+  Beaker02,
   Bold01,
-  Zap,
   BookOpen01,
   Button,
-  Checkbox,
   Check,
+  Checkbox,
+  CheckDone01,
   Chip,
+  ClockRewind,
   CodeSquare01,
-  LayoutAlt02,
-  Sidekick,
+  DiffBlock,
+  DoubleQuotes,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -29,16 +31,15 @@ import {
   Icon,
   Input,
   Italic01,
+  LayoutAlt02,
   Link01,
-  CheckDone01,
+  List,
   ListGroup,
   ListItem,
   ListItemSection,
-  List,
   Lock01,
-  DiffBlock,
+  LogIn01,
   Markdown,
-  DoubleQuotes,
   Separator,
   Server03,
   Sheet,
@@ -48,21 +49,19 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  LogIn01,
-  ArrowNarrowLeft,
-  SpaceClosed as SpaceCloseIcon,
+  Sidekick,
+  SpaceClosed,
   SpaceOpen,
-  Folder,
+  Stars02,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
   Tag01,
-  Beaker02,
   Tool02,
   Users01,
   XClose,
-  Stars02,
+  Zap,
 } from "@dust-tt/sparkle";
 import { Allotment } from "allotment";
 import {
@@ -79,6 +78,16 @@ import { customColors } from "@dust-tt/sparkle/lib/colors";
 
 import { DiffChange } from "@dust-tt/sparkle";
 
+import { ActionCardBlock } from "@dust-tt/sparkle";
+import {
+  getRandomAgents,
+  mockInstructionCases,
+  mockSidekickConversationItems,
+  mockSpaces,
+  mockSuggestionChanges,
+  mockUsers,
+} from "../data";
+import { actionCardDirective } from "./actionCardDirective";
 import { InputBar } from "./InputBar";
 import { InviteUsersScreen } from "./InviteUsersScreen";
 import {
@@ -88,16 +97,6 @@ import {
   NewConversationUserMessage,
 } from "./NewConversationMessages";
 import { RichTextArea, type RichTextAreaHandle } from "./RichTextArea";
-import {
-  getRandomAgents,
-  mockSidekickConversationItems,
-  mockInstructionCases,
-  mockSpaces,
-  mockSuggestionChanges,
-  mockUsers,
-} from "../data";
-import { ActionCardBlock } from "@dust-tt/sparkle";
-import { actionCardDirective } from "./actionCardDirective";
 
 const getRandomSubset = <T,>(items: T[], count: number) => {
   const shuffled = [...items].sort(() => 0.5 - Math.random());
@@ -180,7 +179,7 @@ function MetadataRow({
   const descriptionClasses = [descriptionClassName].filter(Boolean).join(" ");
 
   return (
-    <div className="flex items-center gap-2 border-t border-border py-2">
+    <div className="flex items-center gap-2 border-t border py-2">
       <div className="w-[80px] text-sm text-muted-foreground">{label}</div>
       {action}
       {description ? (
@@ -717,7 +716,7 @@ export function AgentBuilderView({
           <Allotment.Pane
             minSize={360}
             preferredSize={60}
-            className="flex h-full flex-col overflow-hidden border-r border-border"
+            className="flex h-full flex-col overflow-hidden border-r border"
           >
             <div className="flex h-full flex-col">
               <Bar
@@ -917,7 +916,7 @@ export function AgentBuilderView({
                         size="sm"
                         variant="outline"
                         label="Manage"
-                        icon={Folder}
+                        icon={SpaceClosed}
                         onClick={() => setIsSpacesSheetOpen(true)}
                       />
                       {[...selectedSpaces]
@@ -931,7 +930,7 @@ export function AgentBuilderView({
                           return (
                             <Chip
                               key={space.id}
-                              icon={isRestricted ? SpaceCloseIcon : SpaceOpen}
+                              icon={isRestricted ? SpaceClosed : SpaceOpen}
                               size="sm"
                               color={isRestricted ? "rose" : "primary"}
                               label={space.name}
@@ -944,7 +943,7 @@ export function AgentBuilderView({
                         return (
                           <Chip
                             key={project.id}
-                            icon={isRestricted ? SpaceCloseIcon : SpaceOpen}
+                            icon={isRestricted ? SpaceClosed : SpaceOpen}
                             size="sm"
                             color={isRestricted ? "rose" : "primary"}
                             label={project.name}
@@ -1047,7 +1046,7 @@ export function AgentBuilderView({
                         className="mb-2"
                       />
                     </div>
-                    <div className="flex items-center gap-2 border-t border-border py-2">
+                    <div className="flex items-center gap-2 border-t border py-2">
                       <div className="w-[80px] text-sm text-muted-foreground">
                         Description
                       </div>
@@ -1559,7 +1558,7 @@ export function AgentBuilderView({
                         <Icon
                           visual={
                             isRestrictedSpace(space.id)
-                              ? SpaceCloseIcon
+                              ? SpaceClosed
                               : SpaceOpen
                           }
                           size="sm"
@@ -1603,7 +1602,7 @@ export function AgentBuilderView({
                         <Icon
                           visual={
                             isRestrictedSpace(space.id)
-                              ? SpaceCloseIcon
+                              ? SpaceClosed
                               : SpaceOpen
                           }
                           size="sm"
