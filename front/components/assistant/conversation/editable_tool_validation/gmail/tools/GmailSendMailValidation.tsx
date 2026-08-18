@@ -208,7 +208,7 @@ export function GmailSendMailValidation({
           <div className="flex-1" />
           <Button
             label={alwaysAllowLabel ? "Allow once" : "Allow"}
-            variant={alwaysAllowLabel ? "highlight-ghost" : "highlight"}
+            variant="highlight"
             size="sm"
             icon={Check}
             isRounded

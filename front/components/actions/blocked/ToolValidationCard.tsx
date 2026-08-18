@@ -264,7 +264,7 @@ export function ToolValidationCard({
             />
             <Button
               label={approveOnceLabel}
-              variant={canAlwaysAllow ? "highlight-ghost" : "highlight"}
+              variant="highlight"
               icon={Check}
               disabled={isSubmitting}
               isLoading={submittingDecision === "approved"}
