@@ -94,7 +94,29 @@ struct UploadResponse {
 }
 
 #[derive(Debug, Deserialize)]
-struct EmptyResponse {}
+#[serde(rename_all = "camelCase")]
+struct RemoveResponse {
+    // Nothing else tells the daemon which node lost its name, so a response
+    // without this is invalid.
+    removed_node_id: u64,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RenameResponse {
+    #[serde(deserialize_with = "deserialize_required_option")]
+    node: Option<RemoteNode>,
+    // Front must send null when the destination name was free. A missing field is
+    // an invalid response, not a rename that replaced nothing.
+    #[serde(deserialize_with = "deserialize_required_option")]
+    replaced_node_id: Option<u64>,
+}
+
+#[derive(Debug)]
+pub struct RenamedNode {
+    pub node: RemoteNode,
+    pub replaced_node_id: Option<u64>,
+}
 
 fn deserialize_required_option<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
 where
