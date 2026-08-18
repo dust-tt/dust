@@ -170,9 +170,7 @@ describe("MCPServerPersonalAuthenticationRequired", () => {
     expect(screen.getByText("Requested for:")).toBeDefined();
     expect(screen.getByText("Use GitHub tool")).toBeDefined();
     expect(
-      screen.getByText(
-        "This connection will be used for GitHub actions from now on."
-      )
+      screen.getByText("This connection will be used for GitHub from now on.")
     ).toBeDefined();
   });
 
