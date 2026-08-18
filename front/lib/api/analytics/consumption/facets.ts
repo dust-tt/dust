@@ -252,14 +252,19 @@ async function resolveFacets(
         disabled: documentCount === 0,
       };
     })
-    .sort((left, right) => left.label.localeCompare(right.label));
+    .sort(
+      (left, right) =>
+        Number(left.disabled) - Number(right.disabled) ||
+        left.label.localeCompare(right.label)
+    );
 }
 
 /**
  * Lists current and historical consumption facets, marking whether each can
  * return a document in the selected context. Each facet applies all active
  * filters except its own dimension, so choosing one value never hides its
- * siblings.
+ * siblings. Available facets come first, with each availability group sorted
+ * alphabetically by label.
  */
 async function fetchConsumptionFacetsWithoutTracing(
   auth: Authenticator,

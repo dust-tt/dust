@@ -371,7 +371,7 @@ export function ConsumptionChart({
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold text-foreground">Consumption</h2>
-        <ButtonsSwitchList value={mode} size="sm">
+        <ButtonsSwitchList value={mode} size="xs">
           <ButtonsSwitch
             value="daily"
             label="Daily"
