@@ -7,6 +7,7 @@ import {
   DANGEROUSLY_UNBOUNDED_TEXT,
   DataTypes,
   literal,
+  Op,
 } from "@app/lib/resources/storage/data_types";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
@@ -113,6 +114,12 @@ ConversationModel.init(
         fields: ["workspaceId", "spaceId"],
       },
       { fields: ["spaceId"], concurrently: true },
+      {
+        name: "conversations_trigger_id",
+        fields: ["triggerId"],
+        where: { triggerId: { [Op.ne]: null } },
+        concurrently: true,
+      },
       {
         fields: ["workspaceId", "createdAt"],
         name: "conversations_workspace_id_created_at_idx",
