@@ -2,7 +2,13 @@ import type { EditableToolValidationComponentProps } from "@app/components/assis
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { GmailSendMailInput } from "@app/lib/api/actions/servers/gmail/types";
 import { isGmailSendMailInput } from "@app/lib/api/actions/servers/gmail/types";
-import { AttachmentChip, Button, Paperclip, Trash01 } from "@dust-tt/sparkle";
+import {
+  AttachmentChip,
+  Button,
+  Check,
+  Paperclip,
+  XClose,
+} from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo } from "react";
 import { useForm } from "react-hook-form";
@@ -190,12 +196,12 @@ export function GmailSendMailValidation({
         )}
         <div className="flex items-center gap-3 px-4 py-2.5">
           <Button
-            tooltip="Discard"
-            variant="ghost"
-            size="icon"
-            icon={Trash01}
+            label="Decline"
+            variant="outline"
+            size="sm"
+            icon={XClose}
+            isRounded
             disabled={isSubmitting}
-            isPulsing={isPulsing}
             onClick={() => void handleReject()}
           />
           <div className="flex-1" />
@@ -210,9 +216,10 @@ export function GmailSendMailValidation({
             />
           )}
           <Button
-            label={alwaysAllowLabel ? "Send once" : "Send"}
+            label={alwaysAllowLabel ? "Allow once" : "Allow"}
             variant="highlight"
             size="sm"
+            icon={Check}
             isRounded
             disabled={isSubmitting}
             isPulsing={isPulsing}
