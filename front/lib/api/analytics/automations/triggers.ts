@@ -186,9 +186,7 @@ async function fetchTriggersRanking(
       result.value.aggregations?.[TOTAL_COUNT_AGG]?.value ?? 0
     ),
     medianRunCount: median(activeRanked.map((r) => r.runCount)),
-    medianCostPerRun: median(
-      activeRanked.map((r) => r.credits / r.runCount)
-    ),
+    medianCostPerRun: median(activeRanked.map((r) => r.credits / r.runCount)),
   });
 }
 
