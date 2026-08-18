@@ -22,6 +22,8 @@ const TRIGGERS: GetAutomationTriggersResponse = {
     endDate: "2026-08-01T00:00:00.000Z",
   },
   totalCount: 2,
+  medianRunCount: 366,
+  medianCostPerRun: 3.4,
   triggers: [
     {
       triggerId: "trg1",

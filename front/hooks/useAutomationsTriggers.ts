@@ -38,6 +38,8 @@ export function useAutomationsTriggers({
   return {
     triggers: data?.triggers ?? emptyArray<AutomationTriggerRow>(),
     totalCount: data?.totalCount ?? 0,
+    medianRunCount: data?.medianRunCount ?? 0,
+    medianCostPerRun: data?.medianCostPerRun ?? 0,
     isTriggersLoading: !error && isLoading,
     isTriggersError: error,
     isTriggersValidating: isValidating,

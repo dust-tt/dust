@@ -63,6 +63,11 @@ export type AutomationTriggers = {
   // CARDINALITY_PRECISION_THRESHOLD.
   totalCount: number;
   triggers: AutomationTriggerRow[];
+  // Median run count / cost per run across the ranked triggers that ran at
+  // least once over the period, so a single row's breakdown can say how it
+  // compares to the rest of the workspace's automations.
+  medianRunCount: number;
+  medianCostPerRun: number;
 };
 
 export type GetAutomationTriggersResponse = AutomationTriggers;
@@ -88,10 +93,25 @@ type RankedTrigger = {
   credits: number;
 };
 
+function median(values: number[]): number {
+  if (values.length === 0) {
+    return 0;
+  }
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[mid - 1] + sorted[mid]) / 2
+    : sorted[mid];
+}
+
 /**
- * The period's triggers ranked by gross credits, highest first. Ranking and
- * paging both happen in Elasticsearch, so neither grows with the number of
- * triggers the workspace holds.
+ * The period's triggers ranked by gross credits, highest first. The
+ * underlying terms aggregation is capped at CARDINALITY_PRECISION_THRESHOLD
+ * buckets (the same approximation boundary used for the total trigger
+ * count below), so both the requested page and the median baseline are
+ * sliced/derived from that same, page-independent set — a trigger's stats
+ * always compare against the full active set, never just the triggers
+ * ranked ahead of it.
  */
 async function fetchTriggersRanking(
   auth: Authenticator,
@@ -105,7 +125,15 @@ async function fetchTriggersRanking(
     offset: number;
   }
 ): Promise<
-  Result<{ ranking: RankedTrigger[]; totalCount: number }, ElasticsearchError>
+  Result<
+    {
+      ranking: RankedTrigger[];
+      totalCount: number;
+      medianRunCount: number;
+      medianCostPerRun: number;
+    },
+    ElasticsearchError
+  >
 > {
   const query = buildConsumptionScopeQuery({
     auth,
@@ -118,7 +146,7 @@ async function fetchTriggersRanking(
       by_trigger: {
         terms: {
           field: TRIGGER_ID_FIELD,
-          size: offset + limit,
+          size: CARDINALITY_PRECISION_THRESHOLD,
           order: { [CREDIT_AGG]: "desc" },
         },
         aggs: {
@@ -143,16 +171,22 @@ async function fetchTriggersRanking(
   const buckets = bucketsToArray<TriggerBucket>(
     result.value.aggregations?.by_trigger?.buckets
   );
+  const ranked = buckets.map((bucket) => ({
+    triggerId: String(bucket.key),
+    runCount: Math.round(bucket[RUNS_AGG]?.value ?? 0),
+    credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
+  }));
+  // Triggers that never ran have nothing to compare a "how often" or "per
+  // run cost" stat against, so the baseline only looks at the ones that did.
+  const activeRanked = ranked.filter((r) => r.runCount > 0);
 
   return new Ok({
-    ranking: buckets.slice(offset, offset + limit).map((bucket) => ({
-      triggerId: String(bucket.key),
-      runCount: Math.round(bucket[RUNS_AGG]?.value ?? 0),
-      credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
-    })),
+    ranking: ranked.slice(offset, offset + limit),
     totalCount: Math.round(
       result.value.aggregations?.[TOTAL_COUNT_AGG]?.value ?? 0
     ),
+    medianRunCount: median(activeRanked.map((r) => r.runCount)),
+    medianCostPerRun: median(activeRanked.map((r) => r.credits / r.runCount)),
   });
 }
 
@@ -205,7 +239,8 @@ export async function fetchAutomationTriggers(
   if (rankingResult.isErr()) {
     return rankingResult;
   }
-  const { ranking, totalCount } = rankingResult.value;
+  const { ranking, totalCount, medianRunCount, medianCostPerRun } =
+    rankingResult.value;
 
   const triggers = await TriggerResource.fetchByIds(
     auth,
@@ -280,5 +315,7 @@ export async function fetchAutomationTriggers(
     period,
     totalCount,
     triggers: rows,
+    medianRunCount,
+    medianCostPerRun,
   });
 }
