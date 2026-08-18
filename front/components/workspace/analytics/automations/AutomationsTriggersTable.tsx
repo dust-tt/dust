@@ -399,7 +399,7 @@ export function AutomationsTriggersTable({
             ),
         };
       }),
-    [triggers, statusOverrides, pendingIds, handleToggle, setExpandedRowId]
+    [triggers, statusOverrides, pendingIds, handleToggle]
   );
 
   return (
