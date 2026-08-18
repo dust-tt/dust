@@ -136,6 +136,9 @@ export function SandboxScopeSelector({
               podIds: allPodsSelected ? [] : pods.map((pod) => pod.sId),
             })
           }
+          onSelect={(event) => {
+            event.preventDefault();
+          }}
         />
         {isLoading ? (
           <DropdownMenuItem
