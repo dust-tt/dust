@@ -73,15 +73,42 @@ function selectRunUsagesNeedingEvidence({
   return usages.filter((usage) => {
     const dustRunId = dustRunIdByRunModelId.get(usage.runModelId);
     const runActions = (dustRunId && actionsByDustRunId.get(dustRunId)) || [];
+    const runActionById = new Map(
+      runActions.map((action) => [action.sId, action])
+    );
     const modelItemTypes = modelItemTypesByRunUsageModelId.get(
       usage.runUsageModelId
     );
-    const hasMissingActionItem = runActions.some(
-      (action) => !toolItemByActionModelId.has(action.id)
-    );
+    const hasUnexpectedMissingActionItem = runActions.some((action) => {
+      if (toolItemByActionModelId.has(action.id)) {
+        return false;
+      }
+
+      const childInfo = action.stepContext.sandboxChildActionInfo;
+      if (!isSandboxChildActionInfo(childInfo)) {
+        return true;
+      }
+
+      const parentAction = runActionById.get(childInfo.parentActionId);
+      if (!parentAction) {
+        return true;
+      }
+      const parentItem = toolItemByActionModelId.get(parentAction.id);
+
+      // A sandbox bash can create another child after an earlier attribution pass while its own
+      // tool item is still pending. The child is direct-charge-only, so adding its zero-footprint
+      // pending row cannot change the run's already-stored model-token partition. Require the
+      // durable parent relationship and the exact same producing run before accepting this gap.
+      return !(
+        parentItem?.completedAt === null &&
+        parentItem.runUsageId === usage.runUsageModelId &&
+        parentAction.stepContent.id === action.stepContent.id &&
+        parentAction.stepContent.dustRunId === dustRunId
+      );
+    });
     assert(
       !runUsageModelIdsWithEvidence.has(usage.runUsageModelId) ||
-        !hasMissingActionItem,
+        !hasUnexpectedMissingActionItem,
       "An attributed run usage is missing tool evidence"
     );
 

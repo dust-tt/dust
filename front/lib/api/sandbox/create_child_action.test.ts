@@ -21,20 +21,36 @@ vi.mock(
   }
 );
 
+vi.mock(import("@app/lib/api/provider_credentials"), () => ({
+  getLlmCredentials: vi.fn(),
+}));
+
+vi.mock(import("@app/lib/tokenization"), () => ({
+  tokenCountForTexts: vi.fn(),
+}));
+
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
+import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { createSandboxChildAction } from "@app/lib/api/sandbox/create_child_action";
 import { Authenticator } from "@app/lib/auth";
+import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { tokenCountForTexts } from "@app/lib/tokenization";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { launchSandboxChildToolWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -43,16 +59,19 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { RunFactory } from "@app/tests/utils/RunFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
   ConversationType,
 } from "@app/types/assistant/conversation";
+import { Ok } from "@app/types/shared/result";
 import { slugify } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 
-const TOOL_NAME = "tool";
+const TOOL_NAME = "get-available-tables";
+const SECOND_TOOL_NAME = "get-audience-fields";
 
 describe("createSandboxChildAction", () => {
   let workspace: WorkspaceType;
@@ -66,6 +85,10 @@ describe("createSandboxChildAction", () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    vi.mocked(getLlmCredentials).mockResolvedValue({} as never);
+    vi.mocked(tokenCountForTexts).mockImplementation(
+      async (texts) => new Ok(texts.map(() => 2))
+    );
 
     const setup = await createResourceTest({ role: "admin" });
     workspace = setup.workspace;
@@ -76,6 +99,11 @@ describe("createSandboxChildAction", () => {
         {
           name: TOOL_NAME,
           description: "Tool description",
+          inputSchema: undefined,
+        },
+        {
+          name: SECOND_TOOL_NAME,
+          description: "Second tool description",
           inputSchema: undefined,
         },
       ],
@@ -174,7 +202,10 @@ describe("createSandboxChildAction", () => {
 
   async function callChildTool(
     rawInputs: Record<string, unknown> = { objectName: "Contact" },
-    { serverViewId = view.sId }: { serverViewId?: string } = {}
+    {
+      serverViewId = view.sId,
+      toolName = TOOL_NAME,
+    }: { serverViewId?: string; toolName?: string } = {}
   ) {
     return createSandboxChildAction(auth, {
       parentActionId,
@@ -183,18 +214,21 @@ describe("createSandboxChildAction", () => {
       conversationId: conversation.sId,
       agentMessageId: agentMessage.sId,
       serverViewId,
-      toolName: TOOL_NAME,
+      toolName,
       rawInputs,
     });
   }
 
   async function setToolPermission(
     permission: "medium" | "never_ask",
-    { enabled = true }: { enabled?: boolean } = {}
+    {
+      enabled = true,
+      toolName = TOOL_NAME,
+    }: { enabled?: boolean; toolName?: string } = {}
   ) {
     await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(auth, {
       serverSId: serverId,
-      toolName: TOOL_NAME,
+      toolName,
       permission,
       enabled,
     });
@@ -247,6 +281,113 @@ describe("createSandboxChildAction", () => {
         }),
       })
     );
+  });
+
+  it("attributes a second sandbox child created after an earlier distinct child was attributed and errored", async () => {
+    await setToolPermission("never_ask");
+    await setToolPermission("medium", { toolName: SECOND_TOOL_NAME });
+
+    const parentAction = await AgentMCPActionResource.fetchById(
+      auth,
+      parentActionId
+    );
+    if (!parentAction) {
+      throw new Error("Expected the parent action to exist.");
+    }
+
+    const { run } = await RunFactory.createWithUsage(auth);
+    await Promise.all([
+      AgentMessageModel.update(
+        { runIds: [run.dustRunId] },
+        {
+          where: {
+            id: agentMessage.agentMessageId,
+            workspaceId: workspace.id,
+          },
+        }
+      ),
+      AgentStepContentModel.update(
+        { dustRunId: run.dustRunId },
+        {
+          where: {
+            id: parentAction.stepContent.id,
+            workspaceId: workspace.id,
+          },
+        }
+      ),
+      ConversationResource.updateAgentMessageCostCredits(auth, {
+        agentMessageModelId: agentMessage.agentMessageId,
+        costCredits: 10,
+      }),
+    ]);
+
+    const firstCall = await callChildTool({ source: "table" });
+    if (firstCall.isErr()) {
+      throw firstCall.error;
+    }
+    const firstChild = await AgentMCPActionResource.fetchById(
+      auth,
+      firstCall.value.actionId
+    );
+    if (!firstChild) {
+      throw new Error("Expected the first child action to exist.");
+    }
+    expect(firstChild.toolConfiguration.originalName).toBe(TOOL_NAME);
+
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId: agentMessage.sId,
+      conversationId: conversation.sId,
+    });
+
+    await firstChild.updateStatus("errored");
+
+    const secondCall = await callChildTool(
+      { audience: "contacts" },
+      { toolName: SECOND_TOOL_NAME }
+    );
+    if (secondCall.isErr()) {
+      throw secondCall.error;
+    }
+    const secondChild = await AgentMCPActionResource.fetchById(
+      auth,
+      secondCall.value.actionId
+    );
+    if (!secondChild) {
+      throw new Error("Expected the second child action to exist.");
+    }
+    expect(secondChild.toolConfiguration.originalName).toBe(SECOND_TOOL_NAME);
+
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId: agentMessage.sId,
+      conversationId: conversation.sId,
+    });
+
+    const toolItems = (
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [agentMessage.agentMessageId],
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      )
+    ).filter((item) => item.itemType === "tool");
+    const toolItemByActionId = new Map(
+      toolItems.map((item) => [item.agentMCPActionId, item])
+    );
+
+    expect(toolItems).toHaveLength(3);
+    expect(toolItemByActionId.get(parentAction.id)?.completedAt).toBeNull();
+    expect(toolItemByActionId.get(firstChild.id)).toMatchObject({
+      completedAt: expect.any(Date),
+      inputTokensCount: 0,
+      outputTokensCount: 0,
+    });
+    expect(toolItemByActionId.get(secondChild.id)).toMatchObject({
+      completedAt: null,
+      directCreditAmountMicro: null,
+      inputTokensCount: null,
+      outputTokensCount: 0,
+    });
   });
 
   it("auto-approves medium-stake tools when a direct-call approval exists", async () => {
