@@ -1,7 +1,8 @@
+import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
+import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
-import { useUsedByDetailsSheets } from "@app/components/spaces/useUsedByDetailsSheets";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils_ui";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -108,10 +109,8 @@ export const SpaceCategoriesList = ({
   const canAdministrateApps = hasPermission("admin", "dust_app");
   const { setIsSearchDisabled } = React.useContext(SpaceSearchContext);
 
-  const { onAgentClick, onSkillClick, sheets } = useUsedByDetailsSheets(
-    owner,
-    user
-  );
+  const [agentId, setAgentId] = React.useState<string | null>(null);
+  const [skillId, setSkillId] = React.useState<string | null>(null);
 
   const rows: RowData[] = spaceInfo
     ? removeNulls(
@@ -207,7 +206,18 @@ export const SpaceCategoriesList = ({
 
   return (
     <>
-      {sheets}
+      <AgentDetailsSheet
+        owner={owner}
+        user={user}
+        agentId={agentId}
+        onClose={() => setAgentId(null)}
+      />
+      <SkillDetailsSheetById
+        owner={owner}
+        user={user}
+        skillId={skillId}
+        onClose={() => setSkillId(null)}
+      />
       {isEmpty && (
         <div
           className={cn(
@@ -222,7 +232,7 @@ export const SpaceCategoriesList = ({
       {rows.length > 0 && (
         <DataTable
           data={rows}
-          columns={getTableColumns(onAgentClick, onSkillClick)}
+          columns={getTableColumns(setAgentId, setSkillId)}
           className="pb-4"
           columnsBreakpoints={{
             usage: "md",

@@ -3,9 +3,10 @@ import {
   AddToolsDialog,
 } from "@app/components/actions/mcp/AddToolsDialog";
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
+import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
+import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
-import { useUsedByDetailsSheets } from "@app/components/spaces/useUsedByDetailsSheets";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import {
   getMcpServerDisplayName,
@@ -114,10 +115,8 @@ export const AdminActionsList = ({
     owner,
   });
 
-  const { onAgentClick, onSkillClick, sheets } = useUsedByDetailsSheets(
-    owner,
-    user
-  );
+  const [agentId, setAgentId] = useState<string | null>(null);
+  const [skillId, setSkillId] = useState<string | null>(null);
 
   const { usage } = useMCPServersUsage({
     owner,
@@ -282,8 +281,8 @@ export const AdminActionsList = ({
           <div className="flex h-12 w-full items-center justify-center">
             <UsedByButton
               usage={info.row.original.usage}
-              onItemClick={onAgentClick}
-              onSkillClick={onSkillClick}
+              onItemClick={setAgentId}
+              onSkillClick={setSkillId}
             />
           </div>
         ),
@@ -382,11 +381,22 @@ export const AdminActionsList = ({
     );
 
     return columns;
-  }, [onAgentClick, onSkillClick]);
+  }, []);
 
   return (
     <>
-      {sheets}
+      <AgentDetailsSheet
+        owner={owner}
+        user={user}
+        agentId={agentId}
+        onClose={() => setAgentId(null)}
+      />
+      <SkillDetailsSheetById
+        owner={owner}
+        user={user}
+        skillId={skillId}
+        onClose={() => setSkillId(null)}
+      />
       <CreateMCPServerDialog
         isOpen={isCreateOpen}
         internalMCPServer={internalMCPServerToCreate}
