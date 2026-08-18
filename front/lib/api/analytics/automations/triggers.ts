@@ -52,6 +52,7 @@ export type AutomationTriggerRow = {
   };
   scheduleDescription: string | null;
   webhookSourceName: string | null;
+  webhookSourceRestricted: boolean;
   webhookIcon: InternalAllowedIconType | CustomResourceIconType | null;
   runCount: number;
   credits: number;
@@ -270,6 +271,12 @@ export async function fetchAutomationTriggers(
         ? describeScheduleConfig(triggerJSON.configuration)
         : null,
       webhookSourceName: webhookSource?.name ?? null,
+      // A webhook trigger always points at a view; if it didn't resolve, the
+      // caller lacks read access to the space that holds it.
+      webhookSourceRestricted:
+        trigger.kind === "webhook" &&
+        !!trigger.webhookSourceViewId &&
+        !webhookSource,
       webhookIcon: webhookSource?.icon ?? null,
       runCount,
       credits,

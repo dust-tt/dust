@@ -8,6 +8,7 @@ import {
 import { useAutomationsTriggers } from "@app/hooks/useAutomationsTriggers";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useUpdateTriggerStatus } from "@app/lib/swr/agent_triggers";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type { TriggerStatus } from "@app/types/assistant/triggers";
@@ -46,6 +47,22 @@ function TypeCell({ trigger }: { trigger: AutomationTriggerRow }) {
         />
       );
     case "webhook":
+      if (trigger.webhookSourceRestricted) {
+        return (
+          <Tooltip
+            label="This webhook lives in a space you don't have access to."
+            tooltipTriggerAsChild
+            trigger={
+              <div>
+                <TypeLabel
+                  visual={getIcon("ActionLockIcon")}
+                  label="Restricted webhook"
+                />
+              </div>
+            }
+          />
+        );
+      }
       return (
         <TypeLabel
           visual={getIcon(normalizeWebhookIcon(trigger.webhookIcon))}
@@ -64,7 +81,6 @@ function TypeCell({ trigger }: { trigger: AutomationTriggerRow }) {
 
 function RunningCell({ row }: { row: TriggerRowData }) {
   switch (row.displayStatus) {
-    // The page is admin-only, so an admin-locked trigger stays toggleable here.
     case "enabled":
     case "disabled":
     case "disabled_by_admin":
@@ -276,6 +292,7 @@ export function AutomationsTriggersTable({
       offset: pagination.pageIndex * pagination.pageSize,
     });
 
+  const { isAdmin } = useAuth();
   const confirm = useContext(ConfirmContext);
   const updateTriggerStatus = useUpdateTriggerStatus({ workspaceId });
 
@@ -307,7 +324,9 @@ export function AutomationsTriggersTable({
       if (nextStatus === "disabled") {
         const confirmed = await confirm({
           title: "Disable this automation?",
-          message: `"${trigger.name}" will stop running for ${trigger.editor.name}. Only an admin will be able to re-enable it.`,
+          message: isAdmin
+            ? `"${trigger.name}" will stop running for ${trigger.editor.name}. Only an admin will be able to re-enable it.`
+            : `"${trigger.name}" will stop running for ${trigger.editor.name}.`,
           validateVariant: "warning",
           validateLabel: "Disable",
           cancelLabel: "Cancel",
@@ -324,12 +343,16 @@ export function AutomationsTriggersTable({
         status: nextStatus,
       });
       if (success) {
-        // This page is admin-only, so a disable is stored server-side as
-        // disabled_by_admin.
+        // An admin's disable is stored server-side as disabled_by_admin; a
+        // manager disabling their own automation stays a plain disabled.
         setStatusOverrides((overrides) => ({
           ...overrides,
           [trigger.triggerId]:
-            nextStatus === "disabled" ? "disabled_by_admin" : "enabled",
+            nextStatus === "disabled"
+              ? isAdmin
+                ? "disabled_by_admin"
+                : "disabled"
+              : "enabled",
         }));
       }
       setPendingIds((ids) => {
@@ -338,7 +361,7 @@ export function AutomationsTriggersTable({
         return next;
       });
     },
-    [confirm, updateTriggerStatus]
+    [confirm, isAdmin, updateTriggerStatus]
   );
 
   const rows: TriggerRowData[] = useMemo(

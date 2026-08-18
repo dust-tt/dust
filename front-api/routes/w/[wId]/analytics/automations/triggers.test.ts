@@ -43,6 +43,7 @@ const TRIGGERS: GetAutomationTriggersResponse = {
       },
       scheduleDescription: "Every day at 9:00",
       webhookSourceName: null,
+      webhookSourceRestricted: false,
       webhookIcon: null,
       runCount: 720,
       credits: 2448,
@@ -67,6 +68,7 @@ const TRIGGERS: GetAutomationTriggersResponse = {
       },
       scheduleDescription: null,
       webhookSourceName: "Gmail",
+      webhookSourceRestricted: false,
       webhookIcon: "ActionFlagIcon",
       runCount: 12,
       credits: 48,
@@ -91,13 +93,30 @@ function postTriggersRequest(wId: string, body: Record<string, unknown> = {}) {
 }
 
 describe("POST /api/w/:wId/analytics/automations/triggers", () => {
-  it("returns 403 for managers", async () => {
-    const { workspace } = await setupTest({ role: "manager" });
+  it("returns 403 for regular users", async () => {
+    const { workspace } = await setupTest({ role: "user" });
 
     const response = await postTriggersRequest(workspace.sId);
 
     expect(response.status).toBe(403);
     expect(vi.mocked(fetchAutomationTriggers)).not.toHaveBeenCalled();
+  });
+
+  it("returns the triggers for managers, defaulting to the current cycle", async () => {
+    vi.mocked(fetchAutomationTriggers).mockResolvedValue(new Ok(TRIGGERS));
+    const { workspace } = await setupTest({ role: "manager" });
+
+    const response = await postTriggersRequest(workspace.sId);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(TRIGGERS);
+    expect(vi.mocked(fetchAutomationTriggers)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        limit: DEFAULT_AUTOMATION_TRIGGERS_LIMIT,
+        offset: 0,
+      })
+    );
   });
 
   it("returns the triggers for admins, defaulting to the current cycle", async () => {

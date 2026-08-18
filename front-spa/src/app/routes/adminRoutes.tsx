@@ -122,6 +122,10 @@ export const adminRoutes: RouteObject[] = [
         path: "analytics/consumption",
         element: <AnalyticsConsumptionPage />,
       },
+      {
+        path: "analytics/automations",
+        element: <AnalyticsAutomationsPage />,
+      },
       { path: "usage", element: <UsagePage /> },
       { path: "governance", element: <GovernancePage /> },
       // Legacy Workspace Settings page, merged into Settings & Governance.
@@ -132,10 +136,6 @@ export const adminRoutes: RouteObject[] = [
     // Admin-only areas.
     element: <RequireRoleLayout requiredRole="admin" />,
     children: [
-      {
-        path: "analytics/automations",
-        element: <AnalyticsAutomationsPage />,
-      },
       { path: "model-providers", element: <ModelProvidersPage /> },
       { path: "branding", element: <WorkspaceBrandingPage /> },
       { path: "developers/api-keys", element: <APIKeysPage /> },
