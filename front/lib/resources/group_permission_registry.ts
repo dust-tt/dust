@@ -84,6 +84,10 @@ export const ROLE_REGISTRY: Record<
   dust_app: {
     admin: { verbs: ["admin"], levels: ["type"] },
   },
+  group: {
+    reader: { verbs: ["read"], levels: ["instance"] },
+    editor: { verbs: ["read", "write", "admin"], levels: ["instance"] },
+  },
 };
 
 interface GrantSpec {
