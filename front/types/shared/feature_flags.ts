@@ -1,4 +1,9 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  dust_filesystem: {
+    description:
+      "Allow fresh Pods and standalone conversations to use the database-backed filesystem",
+    stage: "dust_only",
+  },
   allow_sso: {
     description:
       "Allow this workspace to configure SSO, independently of the plan's isSSOAllowed flag. Enable on demand for Business plan workspaces.",

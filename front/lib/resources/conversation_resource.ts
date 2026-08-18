@@ -4592,6 +4592,30 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(undefined);
   }
 
+  /** Copies the filesystem choice to a fresh standalone child conversation. */
+  static async inheritDatabaseFileSystem(
+    auth: Authenticator,
+    sId: string
+  ): Promise<Result<undefined, Error>> {
+    const conversation = await this.fetchById(auth, sId);
+    if (!conversation) {
+      return new Err(new ConversationError("conversation_not_found"));
+    }
+    if (conversation.spaceId !== null) {
+      return new Err(
+        new Error("Pod conversations inherit their Pod filesystem.")
+      );
+    }
+
+    await conversation.update({
+      metadata: {
+        ...conversation.metadata,
+        useDatabaseFileSystem: true,
+      },
+    });
+    return new Ok(undefined);
+  }
+
   static async fetchMCPServerViews(
     auth: Authenticator,
     conversation: ConversationWithoutContentType | ConversationResource,

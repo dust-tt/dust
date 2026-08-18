@@ -17,8 +17,14 @@
  */
 
 import config from "@app/lib/api/config";
+import { DatabaseFileSystemBackend } from "@app/lib/api/file_system/backends/database_file_system_backend";
 import type { FileSystemBackend } from "@app/lib/api/file_system/backends/file_system_backend";
 import { GCSFileSystemBackend } from "@app/lib/api/file_system/backends/gcs_file_system_backend";
+import type { FileSystemStorageMode } from "@app/lib/api/file_system/storage_mode";
+import {
+  fileSystemStorageModeForPod,
+  fileSystemStorageModeForStandaloneConversation,
+} from "@app/lib/api/file_system/storage_mode";
 import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import type { Authenticator } from "@app/lib/auth";
 import fileStorageConfig from "@app/lib/file_storage/config";
@@ -221,8 +227,25 @@ export class DustFileSystem {
     private readonly auth: Authenticator,
     private readonly mounts: ReadonlyArray<FileSystemMount>,
     private readonly backend: FileSystemBackend,
+    private readonly storageMode: FileSystemStorageMode,
     private readonly sandboxOnlyMounts: ReadonlyArray<SandboxOnlyMount> = []
   ) {}
+
+  private static createBackend(
+    auth: Authenticator,
+    mounts: ReadonlyArray<FileSystemMount>,
+    storageMode: FileSystemStorageMode,
+    sandboxOnlyMounts: ReadonlyArray<SandboxOnlyMount> = []
+  ): FileSystemBackend {
+    if (storageMode === "database") {
+      return new DatabaseFileSystemBackend(auth, mounts, sandboxOnlyMounts);
+    }
+
+    return new GCSFileSystemBackend(
+      auth.getNonNullableWorkspace().sId,
+      fileStorageConfig.getGcsPrivateUploadsBucket()
+    );
+  }
 
   // --------------------------------------------------------------------------
   // Factories
@@ -243,7 +266,6 @@ export class DustFileSystem {
     // TODO(FILE SYSTEM MIGRATION): Ideally, we accept ConversationResource directly.
     conversations: ConversationWithoutContentType[]
   ): Promise<Result<DustFileSystem, DustFileSystemError>> {
-    const owner = auth.getNonNullableWorkspace();
     const mounts: FileSystemMount[] = [];
 
     // Legacy mount points are only meaningful for sandbox use, which is always single-conversation.
@@ -256,11 +278,13 @@ export class DustFileSystem {
     // Collect unique pod space IDs, then batch-fetch to avoid N+1 queries.
     const podConversations = conversations.filter(isPodConversation);
     const uniqueSpaceIds = [...new Set(podConversations.map((c) => c.spaceId))];
+    const spaces =
+      uniqueSpaceIds.length > 0
+        ? await SpaceResource.fetchByIds(auth, uniqueSpaceIds)
+        : [];
+    const spaceById = new Map(spaces.map((space) => [space.sId, space]));
 
     if (uniqueSpaceIds.length > 0) {
-      const spaces = await SpaceResource.fetchByIds(auth, uniqueSpaceIds);
-      const spaceById = new Map(spaces.map((s) => [s.sId, s]));
-
       for (const spaceId of uniqueSpaceIds) {
         const space = spaceById.get(spaceId);
         if (space) {
@@ -269,12 +293,37 @@ export class DustFileSystem {
       }
     }
 
-    const backend = new GCSFileSystemBackend(
-      owner.sId,
-      fileStorageConfig.getGcsPrivateUploadsBucket()
-    );
+    const storageModes = new Set<FileSystemStorageMode>();
+    for (const conversation of conversations) {
+      const pod = isPodConversation(conversation)
+        ? spaceById.get(conversation.spaceId)
+        : null;
+      if (isPodConversation(conversation) && !pod) {
+        return new Err(
+          new DustFileSystemError(
+            "not_found",
+            `Pod not found: ${conversation.spaceId}`
+          )
+        );
+      }
+      storageModes.add(
+        pod
+          ? fileSystemStorageModeForPod(pod)
+          : fileSystemStorageModeForStandaloneConversation(conversation)
+      );
+    }
+    if (storageModes.size > 1) {
+      return new Err(
+        new DustFileSystemError(
+          "internal",
+          "One filesystem cannot mix GCS roots and database-backed roots."
+        )
+      );
+    }
+    const storageMode = storageModes.values().next().value ?? "gcs";
+    const backend = DustFileSystem.createBackend(auth, mounts, storageMode);
 
-    return new Ok(new DustFileSystem(auth, mounts, backend));
+    return new Ok(new DustFileSystem(auth, mounts, backend, storageMode));
   }
 
   /**
@@ -309,16 +358,17 @@ export class DustFileSystem {
       );
     }
 
-    const owner = auth.getNonNullableWorkspace();
     const mount = createPodMount(auth, space, { includeLegacy: false });
-
-    const backend = new GCSFileSystemBackend(
-      owner.sId,
-      fileStorageConfig.getGcsPrivateUploadsBucket()
+    const storageMode = fileSystemStorageModeForPod(space);
+    const backend = DustFileSystem.createBackend(
+      auth,
+      [mount],
+      storageMode,
+      sandboxOnlyMounts
     );
 
     return new Ok(
-      new DustFileSystem(auth, [mount], backend, sandboxOnlyMounts)
+      new DustFileSystem(auth, [mount], backend, storageMode, sandboxOnlyMounts)
     );
   }
 
@@ -349,13 +399,16 @@ export class DustFileSystem {
 
     const mount = createPodMount(auth, space, { includeLegacy: false });
 
-    const backend = new GCSFileSystemBackend(
-      owner.sId,
-      fileStorageConfig.getGcsPrivateUploadsBucket()
+    const storageMode = fileSystemStorageModeForPod(space);
+    const backend = DustFileSystem.createBackend(
+      auth,
+      [mount],
+      storageMode,
+      sandboxOnlyMounts
     );
 
     return new Ok(
-      new DustFileSystem(auth, [mount], backend, sandboxOnlyMounts)
+      new DustFileSystem(auth, [mount], backend, storageMode, sandboxOnlyMounts)
     );
   }
 
@@ -386,7 +439,7 @@ export class DustFileSystem {
     );
 
     return new Ok(
-      new DustFileSystem(auth, [createUserMount(user.sId)], backend)
+      new DustFileSystem(auth, [createUserMount(user.sId)], backend, "gcs")
     );
   }
 
@@ -462,8 +515,12 @@ export class DustFileSystem {
       (podId) => !hasMount(mounts, `${SCOPED_PREFIX_POD}${podId}`)
     );
 
+    const additionalSpaces =
+      podIdsToFetch.length > 0
+        ? await SpaceResource.fetchByIds(auth, podIdsToFetch)
+        : [];
     if (podIdsToFetch.length > 0) {
-      const spaces = await SpaceResource.fetchByIds(auth, podIdsToFetch);
+      const spaces = additionalSpaces;
       const spaceById = new Map(spaces.map((s) => [s.sId, s]));
 
       for (const podId of podIdsToFetch) {
@@ -487,13 +544,23 @@ export class DustFileSystem {
       return fsResult;
     }
 
-    const owner = auth.getNonNullableWorkspace();
-    const backend = new GCSFileSystemBackend(
-      owner.sId,
-      fileStorageConfig.getGcsPrivateUploadsBucket()
+    const addedModes = new Set(
+      additionalSpaces.map((space) => fileSystemStorageModeForPod(space))
     );
+    addedModes.add(fsResult.value.storageMode);
+    if (addedModes.size > 1) {
+      return new Err(
+        new DustFileSystemError(
+          "invalid_path",
+          "One agent loop cannot mount GCS roots and database-backed roots together."
+        )
+      );
+    }
 
-    return new Ok(new DustFileSystem(auth, mounts, backend));
+    const storageMode = fsResult.value.storageMode;
+    const backend = DustFileSystem.createBackend(auth, mounts, storageMode);
+
+    return new Ok(new DustFileSystem(auth, mounts, backend, storageMode));
   }
 
   /**
@@ -980,13 +1047,7 @@ export class DustFileSystem {
     return new Ok({ dest, ...moveResult.value });
   }
 
-  /**
-   * Move `src` to `dest` (copy then delete source).
-   *
-   * GCS has no atomic rename so this is copy-then-delete. When the source deletion fails
-   * after a successful copy, returns `Ok({ sourceDeletionFailed: true })` rather than
-   * `Err` because the destination is already the authoritative copy.
-   */
+  /** Move `src` to `dest` using the selected backend. */
   async move({
     src,
     dest,
@@ -1003,41 +1064,10 @@ export class DustFileSystem {
       return resolvedDest;
     }
 
-    const destExists = await this.backend.exists(resolvedDest.value.path);
-    if (destExists.isErr()) {
-      return destExists;
-    }
-    if (destExists.value) {
-      return new Err(
-        new DustFileSystemError(
-          "already_exists",
-          "File name already exists in the destination directory."
-        )
-      );
-    }
-
-    const copyResult = await this.backend.copy({
+    return this.backend.move({
       src: resolvedSrc.value.path,
       dest: resolvedDest.value.path,
     });
-    if (copyResult.isErr()) {
-      return copyResult;
-    }
-
-    const deleteResult = await this.backend.delete(resolvedSrc.value.path);
-    if (deleteResult.isErr()) {
-      logger.error(
-        {
-          err: deleteResult.error,
-          src: resolvedSrc.value.path,
-          dest: resolvedDest.value.path,
-        },
-        "DustFileSystem.move: source delete failed after successful copy"
-      );
-      return new Ok({ sourceDeletionFailed: true });
-    }
-
-    return new Ok({ sourceDeletionFailed: false });
   }
 
   async getDownloadUrl(

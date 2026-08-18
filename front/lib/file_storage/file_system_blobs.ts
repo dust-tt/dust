@@ -13,7 +13,7 @@ const IDENTITY_CONTENT_ENCODING = "identity";
 export const FILE_SYSTEM_CONTENT_URL_EXPIRATION_MS =
   2 * DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS;
 
-function objectPath(
+export function fileSystemBlobPath(
   auth: Authenticator,
   nodeId: number,
   blobId: string
@@ -28,7 +28,7 @@ export async function getFileSystemBlobDownloadUrl(
   blobId: string
 ): Promise<string> {
   return getPrivateUploadBucket().getSignedUrl(
-    objectPath(auth, nodeId, blobId),
+    fileSystemBlobPath(auth, nodeId, blobId),
     { expirationDelayMs: FILE_SYSTEM_CONTENT_URL_EXPIRATION_MS }
   );
 }
@@ -52,7 +52,7 @@ export async function prepareFileSystemBlobUpload(
     [GCS_CREATE_ONLY_HEADER]: GCS_CREATE_ONLY_VALUE,
   };
   const uploadUrl = await getPrivateUploadBucket().getSignedUploadUrl(
-    objectPath(auth, nodeId, blobId),
+    fileSystemBlobPath(auth, nodeId, blobId),
     {
       contentType,
       expirationDelayMs: FILE_SYSTEM_CONTENT_URL_EXPIRATION_MS,
@@ -79,7 +79,7 @@ export async function getFileSystemBlobMetadata(
   contentDisposition: string | undefined;
 }> {
   const [metadata] = await getPrivateUploadBucket()
-    .file(objectPath(auth, nodeId, blobId))
+    .file(fileSystemBlobPath(auth, nodeId, blobId))
     .getMetadata();
 
   return {

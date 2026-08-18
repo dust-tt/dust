@@ -19,6 +19,7 @@ import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/cont
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -131,5 +132,86 @@ describe("POST /api/w/:wId/assistant/conversations", () => {
         (item: { type: string }) => item.type === "agent_message"
       )
     ).toBe(true);
+  });
+
+  it("requires the database filesystem flag for a standalone conversation", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/assistant/conversations`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: null,
+          visibility: "unlisted",
+          spaceId: null,
+          message: null,
+          contentFragments: [],
+          metadata: { useDatabaseFileSystem: true },
+        }),
+      }
+    );
+
+    expect(response.status).toBe(403);
+  });
+
+  it("creates an opted-in standalone conversation when the flag is enabled", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    await FeatureFlagFactory.basic(auth, "dust_filesystem");
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/assistant/conversations`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Database filesystem",
+          visibility: "unlisted",
+          spaceId: null,
+          message: null,
+          contentFragments: [],
+          metadata: { useDatabaseFileSystem: true },
+        }),
+      }
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.conversation.metadata).toMatchObject({
+      useDatabaseFileSystem: true,
+    });
+  });
+
+  it("does not let a Pod conversation select its filesystem", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    await FeatureFlagFactory.basic(auth, "dust_filesystem");
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/assistant/conversations`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: null,
+          visibility: "unlisted",
+          spaceId: "vlt_testPod",
+          message: null,
+          contentFragments: [],
+          metadata: { useDatabaseFileSystem: true },
+        }),
+      }
+    );
+
+    expect(response.status).toBe(400);
   });
 });

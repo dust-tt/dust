@@ -14,7 +14,8 @@ export interface SandboxMountAdapter {
    * server, create mount directories, run the mount tool for each target, and create
    * backward-compat symlinks.
    *
-   * Returns `Ok(undefined)` when the image does not support the required capability.
+   * Each adapter decides how to handle an older sandbox image. The database adapter
+   * returns an error because an opted-in root must never fall back to GCS.
    */
   setup(
     auth: Authenticator,

@@ -593,6 +593,43 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     }
   }
 
+  async move({
+    src,
+    dest,
+  }: {
+    src: string;
+    dest: string;
+  }): Promise<Result<{ sourceDeletionFailed: boolean }, DustFileSystemError>> {
+    const destExists = await this.exists(dest);
+    if (destExists.isErr()) {
+      return destExists;
+    }
+    if (destExists.value) {
+      return new Err(
+        new DustFileSystemError(
+          "already_exists",
+          "File name already exists in the destination directory."
+        )
+      );
+    }
+
+    const copyResult = await this.copy({ src, dest });
+    if (copyResult.isErr()) {
+      return copyResult;
+    }
+
+    const deleteResult = await this.delete(src);
+    if (deleteResult.isErr()) {
+      logger.error(
+        { err: deleteResult.error, src, dest },
+        "GCS move left the source after copying the destination"
+      );
+      return new Ok({ sourceDeletionFailed: true });
+    }
+
+    return new Ok({ sourceDeletionFailed: false });
+  }
+
   async getDownloadUrl(
     scopedPath: string,
     opts?: { expiresInMs?: number; fileName?: string }

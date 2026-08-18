@@ -100,6 +100,15 @@ export interface FileSystemBackend {
     dest: string;
   }): Promise<Result<void, DustFileSystemError>>;
 
+  /** Move one entry while preserving the backend's native identity rules. */
+  move({
+    src,
+    dest,
+  }: {
+    src: string;
+    dest: string;
+  }): Promise<Result<{ sourceDeletionFailed: boolean }, DustFileSystemError>>;
+
   /**
    * Returns a short-lived signed URL for unauthenticated download.
    * `fileName` overrides the Content-Disposition filename hint.
