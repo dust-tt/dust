@@ -49,12 +49,12 @@ describe("getActivationNewConversationEmailSubject", () => {
       getActivationNewConversationEmailSubject(
         "  Prepare the weekly\ncustomer review  "
       )
-    ).toBe("[Dust] Recommendation For You: Prepare the weekly customer review");
+    ).toBe("[Dust] Try this next: Prepare the weekly customer review");
   });
 
   test("falls back when no recommendation name is available", () => {
     expect(getActivationNewConversationEmailSubject(null)).toBe(
-      "[Dust] Recommendation For You: A recommendation for you"
+      "[Dust] Try this next: A recommendation for you"
     );
   });
 });

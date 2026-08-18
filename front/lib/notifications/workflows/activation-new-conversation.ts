@@ -32,7 +32,7 @@ export function getActivationNewConversationEmailSubject(
   recommendationName: string | null
 ): string {
   const normalizedName = recommendationName?.replace(/\s+/g, " ").trim();
-  return `[Dust] Recommendation For You: ${
+  return `[Dust] Try this next: ${
     normalizedName || ACTIVATION_NEW_CONVERSATION_EMAIL_SUBJECT_FALLBACK
   }`;
 }
