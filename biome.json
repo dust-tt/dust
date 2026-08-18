@@ -27,7 +27,6 @@
       "!!**/package-lock.json",
       "!!**/__snapshots__",
       "!!**/.git",
-      "!!**/.worktrees/**",
       "!!cli/dust-sandbox/functions-runner/runner.js"
     ]
   },
