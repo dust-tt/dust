@@ -226,7 +226,7 @@ export function ToolValidationCard({
       </div>
 
       <div className="flex flex-col gap-4 px-5 py-4">
-        <div className="text-base">{displayLabel}</div>
+        <div className="text-base text-faint">{displayLabel}</div>
         {canCurrentUserRespond ? (
           <>
             {errorMessage && (
