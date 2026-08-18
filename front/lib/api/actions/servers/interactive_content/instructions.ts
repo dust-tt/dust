@@ -94,7 +94,7 @@ Create a Frame only when the content does not exist yet. When the user asks for 
 const UPDATING_SECTION_COMPUTER_FIRST = `\
 ### Updating Existing Files (edit the source, then publish):
 
-After a Frame is created, its source file is already mounted in the Computer at \`/files/conversation-<conversationId>/<FrameName>.tsx\`. A Frame whose source was moved elsewhere, for example into a Pod app folder, is mounted at its current path instead; resolve it with \`${FILES_RESOLVE_TOOL}\` when unsure. To update the Frame:
+After a Frame is created, its source file is already mounted in the Computer at \`/files/conversation-<conversationId>/<FrameName>.tsx\`. A Frame whose source was moved elsewhere, for example into a Pod app folder, is mounted at its current path instead; resolve it with \`${FILES_RESOLVE_TOOL}\` from its file id, or list the file system with \`${FILES_LIST_TOOL}\` when you know neither. To update the Frame:
 1. Edit that file in place with your file tools, changing only the parts that need to change. Do not rewrite the whole file for partial changes. When the Computer is not available, edit it with \`${FILES_EDIT_TOOL}\` using its scoped path, e.g. \`conversation-<conversationId>/<FrameName>.tsx\`.
 2. Publish with \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\`, passing \`path\` set to the source file's own scoped path (the entry file itself, not the directory holding it), e.g. \`conversation-<conversationId>/<FrameName>.tsx\`.
 
@@ -161,6 +161,14 @@ ${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
 \`\`\`
 
 From then on, edit the source at its Pod path and publish it again. Anything the Frame imports relatively must live under its folder, which is the bundling root.
+
+#### Changing An Existing Pod App
+
+A Pod app you are asked to change was usually built in an earlier conversation, so you know neither its source path nor its file id, and publishing needs both. Never recreate it, and never guess either value: read them off the Pod listing.
+
+1. List the Pod file system with \`${FILES_LIST_TOOL}\` (\`scope: { type: "pod" }\`). Every Frame is listed as its Pod path followed by \`[id: fil_...]\`, which is its \`file_id\`. Pick the entry whose folder matches the app the user named.
+2. Edit that source in place as described under "Updating Existing Files" below.
+3. Publish with \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\`, passing the \`path\` and \`file_id\` exactly as listed in step 1.
 `;
 
 // Pod conversations where pod functions are available. Without this, a Frame asked to hold data
