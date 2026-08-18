@@ -43,34 +43,43 @@ export default function EbookGtmLandingPage() {
       <HomeRevealStyles />
 
       <div className="mx-auto w-full max-w-[1280px] px-6 py-12 lg:px-10 lg:py-20">
-        <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-16">
-          {/* Left column — Content */}
-          <div className="flex min-w-0 flex-col gap-10">
-            <div className="flex flex-col gap-5">
-              <HomeReveal>
-                <HomeEyebrow label="Free ebook" />
-              </HomeReveal>
-              <HomeReveal delay={60}>
-                <h1
-                  className="m-0 text-balance text-[clamp(36px,4vw,60px)] font-semibold leading-[95%] tracking-[-0.03em] text-foreground"
-                  style={{ fontFamily: "var(--font-sans, inherit)" }}
-                >
-                  The AI-First GTM
-                  <br />
-                  Playbook
-                </h1>
-              </HomeReveal>
-              <HomeReveal delay={120}>
-                <p className="copy-lg max-w-[520px] text-pretty leading-[1.55] text-muted-foreground">
-                  Best practices and customer stories from Sales, Growth, GTM
-                  Engineering, and Revenue Operations teams using Dust.
-                </p>
-              </HomeReveal>
-              <HomeReveal delay={160} className="mt-2">
-                <HomeTrustedMarqueeCompact />
-              </HomeReveal>
-            </div>
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-x-16 lg:gap-y-0">
+          {/* Heading — title & subtitle (stays on top at every breakpoint) */}
+          <div className="order-1 flex min-w-0 flex-col gap-5 lg:col-start-1 lg:row-start-1">
+            <HomeReveal>
+              <HomeEyebrow label="Free ebook" />
+            </HomeReveal>
+            <HomeReveal delay={60}>
+              <h1
+                className="m-0 text-balance text-[clamp(36px,4vw,60px)] font-semibold leading-[95%] tracking-[-0.03em] text-foreground"
+                style={{ fontFamily: "var(--font-sans, inherit)" }}
+              >
+                The AI-First GTM
+                <br />
+                Playbook
+              </h1>
+            </HomeReveal>
+            <HomeReveal delay={120}>
+              <p className="copy-lg max-w-[520px] text-pretty leading-[1.55] text-muted-foreground">
+                Best practices and customer stories from Sales, Growth, GTM
+                Engineering, and Revenue Operations teams using Dust.
+              </p>
+            </HomeReveal>
+            <HomeReveal delay={160} className="mt-2">
+              <HomeTrustedMarqueeCompact />
+            </HomeReveal>
+          </div>
 
+          {/* Form — below the title on mobile, right column on desktop */}
+          <div className="order-2 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:self-start lg:sticky lg:top-8">
+            <EbookForm
+              ebookTitle="The AI-First GTM Playbook"
+              downloadEbookKey="ai-first-gtm-playbook"
+            />
+          </div>
+
+          {/* Remaining content — cover + what you'll learn */}
+          <div className="order-3 flex min-w-0 flex-col gap-10 lg:col-start-1 lg:row-start-2 lg:mt-10">
             {/* Ebook cover */}
             <HomeReveal delay={160} variant="photo">
               <div className="relative w-full max-w-[420px] overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/5">
@@ -105,14 +114,6 @@ export default function EbookGtmLandingPage() {
                 </ul>
               </div>
             </HomeReveal>
-          </div>
-
-          {/* Right column — Form */}
-          <div className="lg:sticky lg:top-8 lg:self-start">
-            <EbookForm
-              ebookTitle="The AI-First GTM Playbook"
-              downloadEbookKey="ai-first-gtm-playbook"
-            />
           </div>
         </div>
       </div>
