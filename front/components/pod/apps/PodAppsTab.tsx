@@ -1,11 +1,22 @@
 import { ClonePodAppDialog } from "@app/components/pod/apps/ClonePodAppDialog";
 import { DeletePodAppDialog } from "@app/components/pod/apps/DeletePodAppDialog";
 import { ImportPodAppDialog } from "@app/components/pod/apps/ImportPodAppDialog";
+import { PendingPodAppTile } from "@app/components/pod/apps/PendingPodAppTile";
+import { PodAppImportReportDialog } from "@app/components/pod/apps/PodAppImportReportDialog";
 import { PodAppTile } from "@app/components/pod/apps/PodAppTile";
 import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
 import type { CustomResourceIconType } from "@app/components/resources/resources_icon_names";
-import { useDownloadPodApp, usePodApps } from "@app/lib/swr/pods";
+import {
+  useClonePodApp,
+  useDeletePodApp,
+  useDownloadPodApp,
+  useImportPodApp,
+  usePodApps,
+} from "@app/lib/swr/pods";
+import type { PodAppImportSummary } from "@app/types/api/pod_app_archive";
 import type { PodApp, PodAppFrame } from "@app/types/api/pod_apps";
+import { normalizeAppPrefix } from "@app/types/api/pod_function_reference";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -16,12 +27,34 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 interface PodAppsTabProps {
   owner: WorkspaceType;
   pod: PodType;
 }
+
+/**
+ * An app being created by a clone or an import. Both rebuild every function on the Pod's Computer,
+ * so they run long after their dialog is gone and need a tile of their own in the meantime.
+ */
+interface PendingPodAppCreation {
+  id: number;
+  kind: "clone" | "import";
+  name: string;
+  /** Null for an import that lets the archive name the app: the prefix is only known server-side. */
+  prefix: string | null;
+}
+
+/** A tile on the grid: an app that exists, or one still being created. */
+type PodAppGridEntry =
+  | { kind: "app"; key: string; name: string; app: PodApp }
+  | {
+      kind: "pending";
+      key: string;
+      name: string;
+      creation: PendingPodAppCreation;
+    };
 
 // Not DEFAULT_POD_FRAME_TAB_ICON (a gauge that reads as a clock at tile size): an app is a Frame,
 // so the fallback is the Frame glyph.
@@ -37,6 +70,9 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
 
   const canEdit = pod.isEditor && !pod.archivedAt;
   const downloadPodApp = useDownloadPodApp({ owner, podId: pod.sId });
+  const clonePodApp = useClonePodApp({ owner, podId: pod.sId });
+  const importPodApp = useImportPodApp({ owner, podId: pod.sId });
+  const deletePodApp = useDeletePodApp({ owner, podId: pod.sId });
 
   const [framePreview, setFramePreview] = useState<PodAppFrame | null>(null);
   const [appPendingDeletion, setAppPendingDeletion] = useState<PodApp | null>(
@@ -44,6 +80,16 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
   );
   const [appPendingClone, setAppPendingClone] = useState<PodApp | null>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [importReport, setImportReport] = useState<PodAppImportSummary | null>(
+    null
+  );
+
+  // Clones and imports are long enough to overlap, so each in-flight one gets its own tile.
+  const [pendingCreations, setPendingCreations] = useState<
+    PendingPodAppCreation[]
+  >([]);
+  const [deletingPrefixes, setDeletingPrefixes] = useState<string[]>([]);
+  const nextPendingCreationIdRef = useRef(0);
 
   const iconByFramePath = useMemo(
     () =>
@@ -51,6 +97,87 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
         (pod.frameTabs ?? []).map((tab) => [tab.path, tab.icon])
       ),
     [pod.frameTabs]
+  );
+
+  const deletingPrefixSet = useMemo(
+    () => new Set(deletingPrefixes),
+    [deletingPrefixes]
+  );
+
+  // Names taken by an existing app or by a creation still running, so two concurrent clones cannot
+  // both claim the same prefix.
+  const existingPrefixes = useMemo(
+    () => [
+      ...apps.map((app) => app.prefix),
+      ...pendingCreations.flatMap((creation) =>
+        creation.prefix ? [creation.prefix] : []
+      ),
+    ],
+    [apps, pendingCreations]
+  );
+
+  const runCreation = useCallback(
+    async (
+      creation: Omit<PendingPodAppCreation, "id">,
+      run: () => Promise<void>
+    ) => {
+      const id = nextPendingCreationIdRef.current++;
+      setPendingCreations((creations) => [...creations, { ...creation, id }]);
+      await run();
+      setPendingCreations((creations) =>
+        creations.filter((candidate) => candidate.id !== id)
+      );
+    },
+    []
+  );
+
+  const onClone = useCallback(
+    async (app: PodApp, name: string) => {
+      setAppPendingClone(null);
+      await runCreation(
+        { kind: "clone", name, prefix: normalizeAppPrefix(name) },
+        async () => {
+          await clonePodApp(app, name);
+        }
+      );
+    },
+    [clonePodApp, runCreation]
+  );
+
+  const onImport = useCallback(
+    async (file: File, name: string | undefined) => {
+      setIsImportOpen(false);
+      await runCreation(
+        {
+          kind: "import",
+          name: name ?? file.name,
+          prefix: name ? normalizeAppPrefix(name) : null,
+        },
+        async () => {
+          const result = await importPodApp(file, name);
+          if (
+            result.isOk() &&
+            (result.value.warnings.length > 0 ||
+              result.value.skipped.length > 0)
+          ) {
+            setImportReport(result.value);
+          }
+        }
+      );
+    },
+    [importPodApp, runCreation]
+  );
+
+  const onDelete = useCallback(
+    async (app: PodApp) => {
+      setAppPendingDeletion(null);
+      setDeletingPrefixes((prefixes) => [...prefixes, app.prefix]);
+      await deletePodApp(app);
+      setDeletingPrefixes((prefixes) =>
+        prefixes.filter((prefix) => prefix !== app.prefix)
+      );
+    },
+    [deletePodApp]
   );
 
   const importButton = canEdit && (
@@ -68,12 +195,28 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
     (app) => app.collidingFolderNames.length > 0
   );
 
-  // Computed as a variable (rather than returned from separate early-return branches) so
-  // `ImportPodAppDialog` below always sits at the same position in the returned tree. If it were
-  // rendered inside each branch instead, a mutation that flips `apps.length` between 0 and >0
-  // mid-import (the first-ever import into an empty pod) would swap which branch renders and React
-  // would unmount/remount the dialog, wiping its local state (the post-import warnings report)
-  // exactly on that path.
+  // Sorted by name like `listPodApps` does, so a pending tile already sits where its app will land
+  // and the grid does not reshuffle when the real tile replaces it. An import that lets the archive
+  // name the app is ordered on its file name, so that one can still move.
+  const gridEntries = useMemo(() => {
+    const entries: PodAppGridEntry[] = [
+      ...apps.map((app) => ({
+        kind: "app" as const,
+        key: app.prefix,
+        name: app.name,
+        app,
+      })),
+      ...pendingCreations.map((creation) => ({
+        kind: "pending" as const,
+        key: `pending-${creation.id}`,
+        name: creation.name,
+        creation,
+      })),
+    ];
+
+    return entries.sort((a, b) => a.name.localeCompare(b.name));
+  }, [apps, pendingCreations]);
+
   let body: ReactNode;
   if (isPodAppsLoading) {
     body = (
@@ -90,7 +233,7 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
         </ContentMessage>
       </div>
     );
-  } else if (apps.length === 0) {
+  } else if (apps.length === 0 && pendingCreations.length === 0) {
     body = (
       <div className="flex h-full w-full flex-col gap-4 px-6 py-8">
         {importButton}
@@ -123,46 +266,46 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
             ))}
 
             <CardGrid>
-              {apps.map((app) => (
-                <PodAppTile
-                  key={app.prefix}
-                  app={app}
-                  iconByFramePath={iconByFramePath}
-                  defaultIcon={DEFAULT_POD_APP_ICON}
-                  onOpenFrame={setFramePreview}
-                  onDownload={() => downloadPodApp(app)}
-                  onClone={canEdit ? () => setAppPendingClone(app) : undefined}
-                  onDelete={
-                    canEdit ? () => setAppPendingDeletion(app) : undefined
-                  }
-                />
-              ))}
+              {gridEntries.map((entry) => {
+                switch (entry.kind) {
+                  case "app":
+                    return (
+                      <PodAppTile
+                        key={entry.key}
+                        app={entry.app}
+                        iconByFramePath={iconByFramePath}
+                        defaultIcon={DEFAULT_POD_APP_ICON}
+                        onOpenFrame={setFramePreview}
+                        onDownload={() => downloadPodApp(entry.app)}
+                        onClone={
+                          canEdit
+                            ? () => setAppPendingClone(entry.app)
+                            : undefined
+                        }
+                        onDelete={
+                          canEdit
+                            ? () => setAppPendingDeletion(entry.app)
+                            : undefined
+                        }
+                        isDeleting={deletingPrefixSet.has(entry.app.prefix)}
+                      />
+                    );
+                  case "pending":
+                    return (
+                      <PendingPodAppTile
+                        key={entry.key}
+                        name={entry.name}
+                        kind={entry.creation.kind}
+                      />
+                    );
+                  default:
+                    assertNeverAndIgnore(entry);
+                    return null;
+                }
+              })}
             </CardGrid>
           </div>
         </ScrollArea>
-
-        {appPendingClone && (
-          <ClonePodAppDialog
-            key={`clone-${appPendingClone.prefix}`}
-            owner={owner}
-            podId={pod.sId}
-            app={appPendingClone}
-            existingPrefixes={apps.map((candidate) => candidate.prefix)}
-            isOpen
-            onClose={() => setAppPendingClone(null)}
-          />
-        )}
-
-        {appPendingDeletion && (
-          <DeletePodAppDialog
-            key={appPendingDeletion.prefix}
-            owner={owner}
-            podId={pod.sId}
-            app={appPendingDeletion}
-            isOpen
-            onClose={() => setAppPendingDeletion(null)}
-          />
-        )}
 
         <PodFrameSheet
           owner={owner}
@@ -183,16 +326,42 @@ export function PodAppsTab({ owner, pod }: PodAppsTabProps) {
     );
   }
 
+  // The dialogs sit outside `body` so a mutation that flips which branch renders (the first import
+  // into an empty Pod, the deletion of the last app) cannot unmount them mid-edit.
   return (
     <>
       {body}
+      {appPendingClone && (
+        <ClonePodAppDialog
+          key={`clone-${appPendingClone.prefix}`}
+          app={appPendingClone}
+          existingPrefixes={existingPrefixes}
+          isOpen
+          onClose={() => setAppPendingClone(null)}
+          onSubmit={(name) => void onClone(appPendingClone, name)}
+        />
+      )}
+      {appPendingDeletion && (
+        <DeletePodAppDialog
+          key={appPendingDeletion.prefix}
+          app={appPendingDeletion}
+          isOpen
+          onClose={() => setAppPendingDeletion(null)}
+          onSubmit={() => void onDelete(appPendingDeletion)}
+        />
+      )}
       {isImportOpen && (
         <ImportPodAppDialog
-          owner={owner}
-          podId={pod.sId}
-          existingPrefixes={apps.map((candidate) => candidate.prefix)}
+          existingPrefixes={existingPrefixes}
           isOpen
           onClose={() => setIsImportOpen(false)}
+          onSubmit={(file, name) => void onImport(file, name)}
+        />
+      )}
+      {importReport && (
+        <PodAppImportReportDialog
+          report={importReport}
+          onClose={() => setImportReport(null)}
         />
       )}
     </>

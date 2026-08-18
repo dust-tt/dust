@@ -10,6 +10,7 @@ import {
   Chip,
   Download01,
   GitBranch01,
+  Spinner,
   Trash01,
 } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
@@ -25,6 +26,8 @@ interface PodAppTileProps {
   onClone?: () => void;
   /** Absent when the viewer cannot edit (no write access). */
   onDelete?: () => void;
+  /** Deletion is in flight: the tile stays put, inert, until the app is actually gone. */
+  isDeleting: boolean;
 }
 
 /**
@@ -54,6 +57,7 @@ export function PodAppTile({
   onDownload,
   onClone,
   onDelete,
+  isDeleting,
 }: PodAppTileProps) {
   // The tile surfaces a single Frame — the app's first — as apps almost always have exactly one.
   const frame = app.frames[0] ?? null;
@@ -71,33 +75,42 @@ export function PodAppTile({
   return (
     <Card
       size="md"
-      onClick={openableFrame ? () => onOpenFrame(openableFrame) : undefined}
+      className={isDeleting ? "opacity-50" : undefined}
+      onClick={
+        openableFrame && !isDeleting
+          ? () => onOpenFrame(openableFrame)
+          : undefined
+      }
       action={
-        <div className="flex gap-1">
-          <CardActionButton
-            size="icon"
-            icon={Download01}
-            tooltip="Download this app as a portable archive"
-            onClick={() => void handleDownload()}
-            isLoading={isDownloading}
-          />
-          {onClone && (
+        isDeleting ? (
+          <Spinner size="xs" />
+        ) : (
+          <div className="flex gap-1">
             <CardActionButton
               size="icon"
-              icon={GitBranch01}
-              tooltip="Clone this app into a new folder, with empty databases"
-              onClick={onClone}
+              icon={Download01}
+              tooltip="Download this app as a portable archive"
+              onClick={() => void handleDownload()}
+              isLoading={isDownloading}
             />
-          )}
-          {onDelete && (
-            <CardActionButton
-              size="icon"
-              icon={Trash01}
-              tooltip="Delete this app and everything it owns"
-              onClick={onDelete}
-            />
-          )}
-        </div>
+            {onClone && (
+              <CardActionButton
+                size="icon"
+                icon={GitBranch01}
+                tooltip="Clone this app into a new folder, with empty databases"
+                onClick={onClone}
+              />
+            )}
+            {onDelete && (
+              <CardActionButton
+                size="icon"
+                icon={Trash01}
+                tooltip="Delete this app and everything it owns"
+                onClick={onDelete}
+              />
+            )}
+          </div>
+        )
       }
     >
       {/*
@@ -111,17 +124,24 @@ export function PodAppTile({
           size="md"
           backgroundColor="bg-background dark:bg-background-night"
         />
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate heading-base text-foreground dark:text-foreground-night">
-            {app.name}
-          </span>
-          {isDraft && (
-            <Chip
-              size="xs"
-              color="primary"
-              label="Draft"
-              className="shrink-0"
-            />
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="truncate heading-base text-foreground dark:text-foreground-night">
+              {app.name}
+            </span>
+            {isDraft && !isDeleting && (
+              <Chip
+                size="xs"
+                color="primary"
+                label="Draft"
+                className="shrink-0"
+              />
+            )}
+          </div>
+          {isDeleting && (
+            <span className="copy-xs text-muted-foreground dark:text-muted-foreground-night">
+              Deleting…
+            </span>
           )}
         </div>
       </div>
