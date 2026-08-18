@@ -93,11 +93,11 @@ const PARTIAL_BAR_OPACITY = "opacity-40";
 
 const CONSUMPTION_CHART_COLORS = [
   "text-blue-900",
-  "text-blue-800",
   "text-blue-700",
-  "text-blue-600",
   "text-blue-500",
-  "text-blue-400",
+  "text-blue-300",
+  "text-blue-100",
+  "text-blue-50",
 ] as const;
 
 // Request the top five categories, leaving the sixth shade available when the
