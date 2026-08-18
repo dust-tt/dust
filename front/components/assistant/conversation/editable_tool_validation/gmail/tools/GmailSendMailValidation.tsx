@@ -200,20 +200,10 @@ export function GmailSendMailValidation({
           onClick={() => void handleReject()}
         />
         <div className="flex-1" />
-        <Button
-          label={alwaysAllowLabel ? "Allow once" : "Allow"}
-          variant="highlight"
-          size="sm"
-          icon={Check}
-          isRounded
-          disabled={isSubmitting}
-          isPulsing={isPulsing}
-          onClick={() => void onApprove("approved")}
-        />
         {alwaysAllowLabel && (
           <Button
             label="Always allow"
-            variant="highlight"
+            variant="outline"
             size="sm"
             icon={CheckDouble}
             tooltip={
@@ -224,6 +214,16 @@ export function GmailSendMailValidation({
             onClick={() => void onApprove("always_approved")}
           />
         )}
+        <Button
+          label={alwaysAllowLabel ? "Allow once" : "Allow"}
+          variant="highlight"
+          size="sm"
+          icon={Check}
+          isRounded
+          disabled={isSubmitting}
+          isPulsing={isPulsing}
+          onClick={() => void onApprove("approved")}
+        />
       </div>
     </div>
   );
