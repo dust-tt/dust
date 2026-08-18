@@ -1497,6 +1497,19 @@ export class Authenticator {
   }
 
   /**
+   * The instance ids of `resourceType` the caller may `verb`, resolved from their governance grants.
+   * The enumeration counterpart of `getGrantedVerbs` — "which resources may I act on" rather than
+   * "what may I do on this one" — for reverse lookups such as the projects a caller belongs to. See
+   * `GroupPermissions.resourceIdsWithVerb`; the type-wide (-1) grant is excluded there.
+   */
+  getResourceIdsWithVerb(
+    resourceType: ConcreteResourceType,
+    verb: GrantVerb
+  ): ModelId[] {
+    return this._permissions.resourceIdsWithVerb(resourceType, verb);
+  }
+
+  /**
    * Shadow-compare (#9479) for the group_permissions rollout: while the `group_permissions_shadow`
    * flag is on for the workspace, compare two composed decisions for the same check — the served
    * `legacyAcls` and the `candidateAcls` (the same roles routed through the group_permissions

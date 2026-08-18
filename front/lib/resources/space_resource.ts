@@ -24,7 +24,6 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import type { GrantVerb } from "@app/types/group_permissions";
 import type { GroupKind, GroupType } from "@app/types/groups";
@@ -46,7 +45,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { GroupSpaceKind, SpaceKind, SpaceType } from "@app/types/space";
 import assert from "assert";
-import uniq from "lodash/uniq";
 import type {
   Attributes,
   CreationAttributes,
@@ -417,40 +415,22 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   static async listWorkspacePodsAsMember(auth: Authenticator) {
-    // Fast path, lookup to pods spaces, we lookup the vault ids of the pods spaces and fetch the spaces by model ids.
-    const raw = await GroupSpaceModel.findAll({
-      attributes: ["vaultId"],
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        kind: { [Op.in]: ["member", "project_editor"] },
-        groupId: { [Op.in]: auth.groupModelIds() },
-      },
-    });
+    // Project (pod) spaces the caller belongs to are those on which they hold `write`: the workspace
+    // global group is attached to unrestricted projects as a `reader` viewer, so a `write` grant
+    // marks an actual member (an editor or member group), not every workspace member. Selecting by
+    // `write` and `kind: "project"` reproduces the former `group_vaults` member/editor lookup, so
+    // the previous safety re-filter is redundant.
+    const podSpaceModelIds = auth.getResourceIdsWithVerb("space", "write");
+    if (podSpaceModelIds.length === 0) {
+      return [];
+    }
 
-    const podVaultIds = uniq(raw.map((v) => v.vaultId));
-
-    // Then we fetch the spaces by model ids.
-    const allSpaces = await this.baseFetch(auth, {
+    return this.baseFetch(auth, {
       where: {
-        id: { [Op.in]: podVaultIds },
+        id: { [Op.in]: podSpaceModelIds },
         kind: "project",
       },
     });
-
-    // To be on the safe side.
-    const filteredSpaces = allSpaces.filter((s) => s.isMember(auth));
-    if (filteredSpaces.length !== allSpaces.length) {
-      logger.error(
-        {
-          spaceNotMember: allSpaces
-            .filter((s) => !s.isMember(auth))
-            .map((s) => s.sId),
-        },
-        "The user is not a member of some pod spaces. Action: check how we get the podVaultIds"
-      );
-    }
-
-    return filteredSpaces;
   }
 
   static async listProjectSpaces(
@@ -1735,9 +1715,29 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    */
 
   isMember(auth: Authenticator): boolean {
-    return this.isMemberByGroupPredicate((groupModelId) =>
-      auth.hasGroupByModelId(groupModelId)
-    );
+    // Read membership from the caller's resolved space grants rather than raw group membership. The
+    // grants written by `spaceGroupRoles` mirror `isMemberByGroupPredicate` exactly, per kind:
+    switch (this.kind) {
+      // The workspace-wide space: every member belongs to it.
+      case "global":
+        return true;
+      // System groups manage connections and the conversations space is not a membership space; the
+      // group predicate returns false for both regardless of grants.
+      case "system":
+      case "conversations":
+        return false;
+      // Regular spaces: open spaces grant every member `reader`, restricted spaces grant their
+      // groups `member` — either way membership means holding `read`.
+      case "regular":
+        return auth.getGrantedVerbs("space", this.id).includes("read");
+      // Projects: the workspace global group is attached to unrestricted projects as a `reader`
+      // viewer, so membership is `write` — held by editors (`admin`) and members (`member`) but not
+      // by the global viewer grant.
+      case "project":
+        return auth.getGrantedVerbs("space", this.id).includes("write");
+      default:
+        assertNever(this.kind);
+    }
   }
 
   /**
