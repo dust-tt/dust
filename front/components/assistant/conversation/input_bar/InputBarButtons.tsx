@@ -319,6 +319,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             attachedNodes={attachedNodes}
             conversation={conversation}
             spaceId={spaceId}
+            conversationPodSpaceId={conversationPodSpaceId}
             selectedSpaceIds={selectedSpaceIds}
             onSelectedSpaceIdsChange={onSelectedSpaceIdsChange}
             spaces={spaces}

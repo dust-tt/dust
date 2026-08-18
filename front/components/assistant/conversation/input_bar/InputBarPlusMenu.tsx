@@ -57,6 +57,7 @@ interface InputBarPlusMenuProps {
   attachedNodes: DataSourceViewContentNode[];
   conversation?: ConversationWithoutContentType;
   spaceId?: string;
+  conversationPodSpaceId?: string;
   selectedSpaceIds: string[];
   onSelectedSpaceIdsChange: (spaceIds: string[]) => void;
   spaces?: SelectableConversationSpaceType[];
@@ -84,6 +85,7 @@ export function InputBarPlusMenu({
   attachedNodes,
   conversation,
   spaceId,
+  conversationPodSpaceId,
   selectedSpaceIds,
   onSelectedSpaceIdsChange,
   spaces,
@@ -129,6 +131,7 @@ export function InputBarPlusMenu({
       type={isMobile ? "dropdown" : "subdropdown"}
       owner={owner}
       user={user}
+      conversationPodSpaceId={conversationPodSpaceId}
       selectedMCPServerViews={selectedMCPServerViews}
       onSelect={onMCPServerViewSelect}
       onSkillSelect={onSkillSelect}
