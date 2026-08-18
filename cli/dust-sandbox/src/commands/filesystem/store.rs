@@ -327,7 +327,7 @@ impl FileStore {
     pub fn set_size(&self, inode: INodeNo, size: u64) -> io::Result<Node> {
         let mut opened = self.open_content(inode, libc::O_RDWR)?;
         let result = (|| {
-            opened.file.set_len(size)?;
+            opened.set_len(size)?;
             opened.file.sync_data()?;
             self.commit_content(&mut opened)
         })();

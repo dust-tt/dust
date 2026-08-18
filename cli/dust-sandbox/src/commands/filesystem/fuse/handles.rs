@@ -62,8 +62,7 @@ impl OpenFile {
     }
 
     pub fn truncate(&mut self, size: u64) -> io::Result<()> {
-        self.content.file.set_len(size)?;
-        self.content.node.size = size;
+        self.content.set_len(size)?;
         self.dirty = true;
         self.defer_truncate_commit = false;
         Ok(())

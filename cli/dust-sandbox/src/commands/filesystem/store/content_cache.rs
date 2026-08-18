@@ -312,6 +312,13 @@ impl OpenedContent {
     pub fn is_writable(&self) -> bool {
         self.lease.writable
     }
+
+    // Keep the node returned to Linux aligned with the staged file bytes.
+    pub fn set_len(&mut self, size: u64) -> io::Result<()> {
+        self.file.set_len(size)?;
+        self.node.size = size;
+        Ok(())
+    }
 }
 
 impl Drop for ContentLease {
@@ -612,6 +619,27 @@ mod tests {
             .reserve_open(inode, true)
             .expect("reserve writer after close");
         drop(reservation);
+    }
+
+    #[test]
+    fn resizing_staged_content_updates_its_node_size() {
+        let directory = tempdir().expect("temporary directory");
+        let inode = INodeNo(3);
+        let path = directory.path().join("inode-3");
+        fs::write(&path, b"original").expect("write content");
+        let cache = ContentCache::new(1024);
+        cache
+            .insert(inode, CachedContent::new(Some("blob".to_owned()), path, 8))
+            .expect("insert content");
+        let reservation = cache.reserve_open(inode, true).expect("reserve writer");
+        let mut opened = reservation
+            .open(libc::O_RDWR, node(inode, "blob", 8))
+            .expect("open content");
+
+        opened.set_len(0).expect("truncate content");
+
+        assert_eq!(opened.file.metadata().expect("content metadata").len(), 0);
+        assert_eq!(opened.node.size, 0);
     }
 
     #[test]

@@ -324,11 +324,11 @@ impl DustFuse {
         // A local open therefore either installs its handle before unlink marks
         // it, or starts after the node was removed and fails cleanly.
         let _inode = self.inode_locks.lock(inode)?;
-        let opened = self.store.open_content(inode, flags)?;
+        let mut opened = self.store.open_content(inode, flags)?;
         let dirty = writable && flags & libc::O_TRUNC != 0;
         let result = (|| {
             if dirty {
-                opened.file.set_len(0)?;
+                opened.set_len(0)?;
                 self.stage_attributes(inode, 0)?;
             }
             let handle = self.handles.insert_file(OpenFile::new(opened, dirty))?;
