@@ -1,13 +1,33 @@
-import { writeOwnerPolicy } from "@app/lib/api/sandbox/egress_policy";
+import {
+  writeOwnerPolicy,
+  writeWorkspacePolicy,
+} from "@app/lib/api/sandbox/egress_policy";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import type { GetPodEgressPoliciesBulkResponseBody } from "@app/types/api/sandbox/egress_policy";
+import type {
+  GetPodEgressPoliciesBulkResponseBody,
+  PostBulkEgressPolicyResponseBody,
+} from "@app/types/api/sandbox/egress_policy";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockEmitAuditLogEvent } = vi.hoisted(() => ({
+  mockEmitAuditLogEvent: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/audit/workos_audit")>();
+
+  return {
+    ...actual,
+    emitAuditLogEvent: mockEmitAuditLogEvent,
+  };
+});
 
 async function setupTest({
   role = "admin",
@@ -32,6 +52,30 @@ async function setupTest({
 
 function getBulk(wId: string, query: string) {
   return honoApp.request(`/api/w/${wId}/sandbox/egress-policy/bulk?${query}`);
+}
+
+function postBulk(wId: string, body: unknown) {
+  return honoApp.request(`/api/w/${wId}/sandbox/egress-policy/bulk`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+function workspacePolicyPath(wId: string) {
+  return `w/${wId}/sandbox-egress-policy.json`;
+}
+
+function podPolicyPath(wId: string, podId: string) {
+  return `w/${wId}/sandboxes/${podId}.json`;
+}
+
+function allowedDomainsAt(path: string): string[] {
+  const stored = fileStorageMock.getObject(path);
+  if (stored === undefined) {
+    return [];
+  }
+  return JSON.parse(stored).allowedDomains ?? [];
 }
 
 describe("GET /api/w/:wId/sandbox/egress-policy/bulk", () => {
@@ -132,5 +176,177 @@ describe("GET /api/w/:wId/sandbox/egress-policy/bulk", () => {
 
     const neitherResponse = await getBulk(workspace.sId, "");
     expect(neitherResponse.status).toBe(400);
+  });
+});
+
+describe("POST /api/w/:wId/sandbox/egress-policy/bulk", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    fileStorageMock.setFetchFileContentNotFound(() => true);
+  });
+
+  it("returns 403 for non-admin users", async () => {
+    const { workspace, podA } = await setupTest({ role: "user" });
+
+    const response = await postBulk(workspace.sId, {
+      includeWorkspace: false,
+      podIds: [podA.sId],
+      operation: { operation: "add", domain: "api.github.com" },
+    });
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      error: { type: "workspace_auth_error" },
+    });
+  });
+
+  it("returns 403 when sandbox_functions is disabled", async () => {
+    const { workspace, podA } = await setupTest({
+      enableSandboxFunctions: false,
+    });
+
+    const response = await postBulk(workspace.sId, {
+      includeWorkspace: false,
+      podIds: [podA.sId],
+      operation: { operation: "add", domain: "api.github.com" },
+    });
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      error: { type: "feature_flag_not_found" },
+    });
+  });
+
+  it("returns 400 for an empty domain", async () => {
+    const { workspace, podA } = await setupTest();
+
+    const response = await postBulk(workspace.sId, {
+      includeWorkspace: false,
+      podIds: [podA.sId],
+      operation: { operation: "add", domain: "" },
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: { type: "invalid_request_error" },
+    });
+  });
+
+  it("adds a domain to the workspace and every selected pod", async () => {
+    const { workspace, podA, podB } = await setupTest();
+
+    const response = await postBulk(workspace.sId, {
+      includeWorkspace: true,
+      podIds: [podA.sId, podB.sId],
+      operation: { operation: "add", domain: "api.github.com" },
+    });
+
+    expect(response.status).toBe(200);
+    const data = (await response.json()) as PostBulkEgressPolicyResponseBody;
+    expect(data.results).toEqual([
+      { scopeId: "workspace", success: true },
+      { scopeId: podA.sId, success: true },
+      { scopeId: podB.sId, success: true },
+    ]);
+
+    // The GCS policy files carry the new domain.
+    expect(allowedDomainsAt(workspacePolicyPath(workspace.sId))).toEqual([
+      "api.github.com",
+    ]);
+    expect(allowedDomainsAt(podPolicyPath(workspace.sId, podA.sId))).toEqual([
+      "api.github.com",
+    ]);
+    expect(allowedDomainsAt(podPolicyPath(workspace.sId, podB.sId))).toEqual([
+      "api.github.com",
+    ]);
+
+    // One audit event per changed scope: pods carry their space_id, the
+    // workspace omits it.
+    for (const pod of [podA, podB]) {
+      expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "sandbox_egress_policy.updated",
+          metadata: expect.objectContaining({
+            space_id: pod.sId,
+            allowed_domains: "api.github.com",
+          }),
+        })
+      );
+    }
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "sandbox_egress_policy.updated",
+        metadata: expect.not.objectContaining({ space_id: expect.anything() }),
+      })
+    );
+  });
+
+  it("removes a domain from the workspace and every selected pod", async () => {
+    const { workspace, auth, podA, podB } = await setupTest();
+
+    const seedWorkspace = await writeWorkspacePolicy(auth, {
+      policy: { allowedDomains: ["api.github.com", "example.com"] },
+    });
+    if (seedWorkspace.isErr()) {
+      throw seedWorkspace.error;
+    }
+    for (const pod of [podA, podB]) {
+      const seed = await writeOwnerPolicy(auth, {
+        ownerId: pod.sId,
+        policy: { allowedDomains: ["api.github.com", "example.com"] },
+      });
+      if (seed.isErr()) {
+        throw seed.error;
+      }
+    }
+
+    const response = await postBulk(workspace.sId, {
+      includeWorkspace: true,
+      podIds: [podA.sId, podB.sId],
+      operation: { operation: "remove", domain: "api.github.com" },
+    });
+
+    expect(response.status).toBe(200);
+    const data = (await response.json()) as PostBulkEgressPolicyResponseBody;
+    expect(data.results).toEqual([
+      { scopeId: "workspace", success: true },
+      { scopeId: podA.sId, success: true },
+      { scopeId: podB.sId, success: true },
+    ]);
+
+    expect(allowedDomainsAt(workspacePolicyPath(workspace.sId))).toEqual([
+      "example.com",
+    ]);
+    expect(allowedDomainsAt(podPolicyPath(workspace.sId, podA.sId))).toEqual([
+      "example.com",
+    ]);
+    expect(allowedDomainsAt(podPolicyPath(workspace.sId, podB.sId))).toEqual([
+      "example.com",
+    ]);
+  });
+
+  it("reports per-scope failures for unknown pods and still applies the rest", async () => {
+    const { workspace, podA } = await setupTest();
+
+    const response = await postBulk(workspace.sId, {
+      includeWorkspace: false,
+      podIds: [podA.sId, "spc_unknown"],
+      operation: { operation: "add", domain: "api.github.com" },
+    });
+
+    expect(response.status).toBe(200);
+    const data = (await response.json()) as PostBulkEgressPolicyResponseBody;
+    expect(data.results).toEqual([
+      { scopeId: podA.sId, success: true },
+      {
+        scopeId: "spc_unknown",
+        success: false,
+        errorMessage: "Pod not found.",
+      },
+    ]);
+
+    expect(allowedDomainsAt(podPolicyPath(workspace.sId, podA.sId))).toEqual([
+      "api.github.com",
+    ]);
   });
 });

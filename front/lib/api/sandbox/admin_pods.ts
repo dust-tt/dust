@@ -1,9 +1,20 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+} from "@app/lib/api/audit/workos_audit";
 import { listNonArchivedProjectSpacesAsAdmin } from "@app/lib/api/projects/list";
+import {
+  addOwnerPolicyDomain,
+  addWorkspacePolicyDomain,
+  removeOwnerPolicyDomain,
+  removeWorkspacePolicyDomain,
+} from "@app/lib/api/sandbox/egress_policy";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { PodSandboxEnvVarBulkResult } from "@app/types/api/sandbox/env_vars";
+import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
 import type { SandboxEnvVarKind } from "@app/types/sandbox/env_var";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -127,6 +138,180 @@ export async function upsertSandboxEnvVarForPods(
     }
 
     results.push({ podId, success: true, created: result.value.created });
+  }
+
+  return results;
+}
+
+// One egress-domain add/remove applied across the workspace policy and/or a
+// set of pod policies for the central Computer admin page. scopeId is
+// "workspace" for the workspace scope or a pod sId.
+export type BulkEgressOperation =
+  | { operation: "add"; domain: string }
+  | { operation: "remove"; domain: string };
+
+export type ScopeMutationResult = {
+  scopeId: string;
+  success: boolean;
+  errorMessage?: string;
+};
+
+const WORKSPACE_SCOPE_ID = "workspace";
+
+// Emits the same sandbox_egress_policy.updated event as the single-pod PUT
+// route. space_id carries the pod sId for pods and is omitted for the
+// workspace scope (same convention as sandbox_env_var.* events).
+function emitEgressPolicyAudit(
+  auth: Authenticator,
+  {
+    podId,
+    policy,
+    context,
+  }: { podId: string | null; policy: EgressPolicy; context?: AuditLogContext }
+): void {
+  const workspace = auth.getNonNullableWorkspace();
+  void emitAuditLogEvent({
+    auth,
+    action: "sandbox_egress_policy.updated",
+    targets: [
+      buildAuditLogTarget("workspace", workspace),
+      {
+        type: "sandbox_egress_policy",
+        id: podId ?? workspace.sId,
+        name: podId ? "Pod sandbox egress policy" : "Sandbox egress policy",
+      },
+    ],
+    context,
+    metadata: {
+      allowed_domain_count: String(policy.allowedDomains.length),
+      allowed_domains: policy.allowedDomains.join(","),
+      ...(podId ? { space_id: podId } : {}),
+    },
+  });
+}
+
+// Applies one egress-domain add/remove to each selected scope independently,
+// reusing the same per-scope helpers (and audit event) the single-scope routes
+// use. Sequential on purpose — the route schema bounds podIds at 100 and
+// parallel writes would only pressure the connection pool and GCS.
+export async function bulkUpdateEgressDomain(
+  auth: Authenticator,
+  {
+    includeWorkspace,
+    podIds,
+    operation,
+    context,
+  }: {
+    includeWorkspace: boolean;
+    podIds: string[];
+    operation: BulkEgressOperation;
+    context?: AuditLogContext;
+  }
+): Promise<ScopeMutationResult[]> {
+  const { domain } = operation;
+
+  // Normalize both scopes' distinct add/remove return shapes into a single
+  // { policy, changed } outcome so callers audit uniformly.
+  async function applyWorkspace(): Promise<
+    Result<{ policy: EgressPolicy; changed: boolean }, Error>
+  > {
+    if (operation.operation === "add") {
+      const r = await addWorkspacePolicyDomain(auth, { domain });
+      if (r.isErr()) {
+        return r;
+      }
+      return new Ok({
+        policy: r.value.policy,
+        changed: r.value.addedDomain !== null,
+      });
+    }
+    const r = await removeWorkspacePolicyDomain(auth, { domain });
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok({
+      policy: r.value.policy,
+      changed: r.value.removedDomain !== null,
+    });
+  }
+
+  async function applyPod(
+    ownerId: string
+  ): Promise<Result<{ policy: EgressPolicy; changed: boolean }, Error>> {
+    if (operation.operation === "add") {
+      const r = await addOwnerPolicyDomain(auth, { ownerId, domain });
+      if (r.isErr()) {
+        return r;
+      }
+      return new Ok({
+        policy: r.value.policy,
+        changed: r.value.addedDomain !== null,
+      });
+    }
+    const r = await removeOwnerPolicyDomain(auth, { ownerId, domain });
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok({
+      policy: r.value.policy,
+      changed: r.value.removedDomain !== null,
+    });
+  }
+
+  const results: ScopeMutationResult[] = [];
+
+  if (includeWorkspace) {
+    const result = await applyWorkspace();
+    if (result.isErr()) {
+      results.push({
+        scopeId: WORKSPACE_SCOPE_ID,
+        success: false,
+        errorMessage: result.error.message,
+      });
+    } else {
+      results.push({ scopeId: WORKSPACE_SCOPE_ID, success: true });
+      if (result.value.changed) {
+        emitEgressPolicyAudit(auth, {
+          podId: null,
+          policy: result.value.policy,
+          context,
+        });
+      }
+    }
+  }
+
+  const spaces = await SpaceResource.fetchByIds(auth, podIds);
+  const spacesById = new Map(spaces.map((space) => [space.sId, space]));
+
+  for (const podId of podIds) {
+    const pod = spacesById.get(podId);
+    if (!pod || !pod.isProject()) {
+      results.push({
+        scopeId: podId,
+        success: false,
+        errorMessage: "Pod not found.",
+      });
+      continue;
+    }
+
+    const result = await applyPod(podId);
+    if (result.isErr()) {
+      results.push({
+        scopeId: podId,
+        success: false,
+        errorMessage: result.error.message,
+      });
+      continue;
+    }
+
+    results.push({ scopeId: podId, success: true });
+    if (result.value.changed) {
+      emitEgressPolicyAudit(auth, {
+        podId,
+        policy: result.value.policy,
+        context,
+      });
+    }
   }
 
   return results;
