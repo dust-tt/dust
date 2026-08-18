@@ -18,13 +18,13 @@ export function TriggerStatusToggle({
   const {
     field: { value: status, onChange: setStatus },
   } = useController({ control, name });
-  const { isAdmin } = useAuth();
+  const { isManager } = useAuth();
 
   const isEnabled = status === "enabled";
   const statusOwner = getTriggerStatusOwner(status);
-  // Non-admins cannot flip an admin lock; nobody edits system-owned statuses.
+  // Non-managers cannot flip a manager lock; nobody edits system-owned statuses.
   const isStatusLocked =
-    statusOwner === "system" || (statusOwner === "admin" && !isAdmin);
+    statusOwner === "system" || (statusOwner === "admin" && !isManager);
   const statusLabel = TRIGGER_STATUS_LABELS[status];
 
   const toggle = (
@@ -45,7 +45,7 @@ export function TriggerStatusToggle({
             label={
               statusOwner === "system"
                 ? "This trigger's status is managed by Dust."
-                : "Only an admin can re-enable this trigger."
+                : "Only a manager can re-enable this trigger."
             }
             trigger={<div>{toggle}</div>}
           />

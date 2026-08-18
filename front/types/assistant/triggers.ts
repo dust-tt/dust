@@ -72,7 +72,7 @@ export type TriggerExecutionMode = "fair_use" | "programmatic";
 export const TRIGGER_STATUSES = [
   "enabled",
   "disabled",
-  "disabled_by_admin",
+  "disabled_by_manager",
   "relocating",
   "downgraded",
 ] as const;
@@ -93,7 +93,7 @@ export function getTriggerStatusOwner(
     case "enabled":
     case "disabled":
       return "editor";
-    case "disabled_by_admin":
+    case "disabled_by_manager":
       return "admin";
     case "relocating":
     case "downgraded":
