@@ -5,6 +5,11 @@ import { vi } from "vitest";
 interface WriteStreamCall {
   filePath: string;
   contentType: string | undefined;
+  // Resolves once the stream returned to the caller has finished (or errored),
+  // with everything written to it. The stream is put in flowing mode immediately
+  // (a real GCS write stream doesn't buffer indefinitely either), so callers don't
+  // need to consume it themselves to avoid stalling on backpressure.
+  content: Promise<Buffer>;
 }
 
 interface SaveFileCall {
@@ -266,11 +271,23 @@ class FileStorageMock {
       createWriteStream: vi
         .fn()
         .mockImplementation((opts?: { contentType?: string }) => {
+          const stream = new PassThrough();
+          const chunks: Buffer[] = [];
+          const content = new Promise<Buffer>((resolve, reject) => {
+            stream.on("data", (chunk: Buffer) => chunks.push(chunk));
+            stream.on("end", () => resolve(Buffer.concat(chunks)));
+            stream.on("error", reject);
+          });
+          // Tests that don't care about the written bytes (e.g. an error path that
+          // aborts the stream) shouldn't trigger an unhandled rejection warning just
+          // because nothing awaited `content`.
+          content.catch(() => {});
           this._writeStreamCalls.push({
             filePath: filePath ?? "unknown",
             contentType: opts?.contentType,
+            content,
           });
-          return new PassThrough();
+          return stream;
         }),
       delete: vi.fn().mockImplementation(() => {
         this._objectStore.delete(filePath ?? "unknown");

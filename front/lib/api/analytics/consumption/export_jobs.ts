@@ -20,8 +20,8 @@ import { Err, Ok } from "@app/types/shared/result";
 
 const DOWNLOAD_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000;
 
-// exportId.zip, matching the naming built by `buildConsumptionExportGcsPath`.
-const EXPORT_FILE_NAME_REGEX = /^[A-Za-z0-9_-]+\.zip$/;
+// exportId.csv.gz, matching the naming built by `buildConsumptionExportGcsPath`.
+const EXPORT_FILE_NAME_REGEX = /^[A-Za-z0-9_-]+\.csv\.gz$/;
 
 export type ConsumptionExportListItem = {
   name: string;
@@ -65,7 +65,7 @@ export async function getConsumptionExportDownloadUrl(
 
   const downloadUrl = await bucket.getSignedUrl(path, {
     expirationDelayMs: DOWNLOAD_URL_EXPIRATION_DELAY_MS,
-    promptSaveAs: `dust_consumption_lines_export_${workspaceId}.zip`,
+    promptSaveAs: `dust_consumption_lines_export_${workspaceId}.csv.gz`,
   });
 
   return new Ok(downloadUrl);

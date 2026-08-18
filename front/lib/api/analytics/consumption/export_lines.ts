@@ -1,10 +1,18 @@
+import { once } from "node:events";
+import type { Writable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import zlib from "node:zlib";
+import type { DimensionLabel } from "@app/lib/api/analytics/consumption/labels";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type {
+  ConsumptionScopeDimension,
+  ConsumptionScopeFilter,
+} from "@app/lib/api/analytics/consumption/scope";
 import { buildConsumptionScopeQuery } from "@app/lib/api/analytics/consumption/scope";
 import {
   roundToTwoDecimals,
-  rowsToCsv,
+  sanitizeCsvCell,
 } from "@app/lib/api/analytics/csv_utils";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
@@ -22,7 +30,8 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { estypes } from "@elastic/elasticsearch";
-import AdmZip from "adm-zip";
+import type { Stringifier } from "csv-stringify";
+import { stringify } from "csv-stringify";
 
 // Exported for tests to exercise pagination/slicing boundaries without duplicating the values.
 export const EXPORT_PAGE_SIZE = 10_000;
@@ -127,101 +136,59 @@ const CONSUMPTION_EXPORT_SORT: estypes.Sort = [
   { consumption_key: "asc" },
 ];
 
-function compareConsumptionExportRows(
-  a: AgentMessageConsumptionAnalyticsData,
-  b: AgentMessageConsumptionAnalyticsData
-): number {
-  return (
-    a.completed_at.localeCompare(b.completed_at) ||
-    a.agent_message_id.localeCompare(b.agent_message_id) ||
-    a.consumption_key.localeCompare(b.consumption_key)
-  );
-}
+// Caches resolved labels across pages so concurrent slices don't each re-resolve the
+// same recurring agent/user/tool/etc. ids, while still never needing the full document
+// set in memory to dedupe ids upfront.
+class ConsumptionLabelCache {
+  private readonly cachesByDimension = new Map<
+    ConsumptionScopeDimension,
+    Map<string, DimensionLabel>
+  >();
 
-// One document per unit of billed credit consumption. Slices are fetched concurrently against
-// a shared point-in-time, so every slice/page sees the same snapshot of the index instead of
-// racing concurrent writes/refreshes (which could otherwise duplicate or drop rows).
-async function fetchAllConsumptionDocuments(
-  query: estypes.QueryDslQueryContainer
-): Promise<Result<AgentMessageConsumptionAnalyticsData[], ElasticsearchError>> {
-  const pitResult = await openPointInTime(
-    CONSUMPTION_ANALYTICS_ALIAS_NAME,
-    EXPORT_PIT_KEEP_ALIVE
-  );
-  if (pitResult.isErr()) {
-    return pitResult;
-  }
-  let currentPitId = pitResult.value;
+  async resolve(
+    auth: Authenticator,
+    dimension: ConsumptionScopeDimension,
+    keys: string[]
+  ): Promise<Map<string, DimensionLabel>> {
+    let cache = this.cachesByDimension.get(dimension);
+    if (!cache) {
+      cache = new Map();
+      this.cachesByDimension.set(dimension, cache);
+    }
 
-  try {
-    const sliceIds = Array.from({ length: EXPORT_SLICE_COUNT }, (_, id) => id);
-    const searchAfterBySlice = new Map<number, estypes.SortResults>();
-    const exhaustedSlices = new Set<number>();
-    const allDocs: AgentMessageConsumptionAnalyticsData[] = [];
-
-    while (exhaustedSlices.size < sliceIds.length) {
-      const activeSliceIds = sliceIds.filter((id) => !exhaustedSlices.has(id));
-      const roundPitId = currentPitId;
-
-      const results = await concurrentExecutor(
-        activeSliceIds,
-        (id) =>
-          searchConsumptionAnalytics<AgentMessageConsumptionAnalyticsData>(
-            query,
-            {
-              size: EXPORT_PAGE_SIZE,
-              sort: CONSUMPTION_EXPORT_SORT,
-              search_after: searchAfterBySlice.get(id),
-              slice: { id: String(id), max: EXPORT_SLICE_COUNT },
-              pit: { id: roundPitId, keep_alive: EXPORT_PIT_KEEP_ALIVE },
-            }
-          ),
-        { concurrency: EXPORT_SLICE_COUNT }
+    const missingKeys = [...new Set(keys)].filter((key) => !cache?.has(key));
+    if (missingKeys.length > 0) {
+      const resolved = await resolveDimensionLabels(
+        auth,
+        dimension,
+        missingKeys
       );
-
-      for (let i = 0; i < activeSliceIds.length; i++) {
-        const result = results[i];
-        if (result.isErr()) {
-          return result;
-        }
-
-        const { hits } = result.value.hits;
-        for (const hit of hits) {
-          if (hit._source) {
-            allDocs.push(hit._source);
-          }
-        }
-
-        // A pit search can return a refreshed pit_id; every slice's next round must use it.
-        currentPitId = result.value.pit_id ?? currentPitId;
-
-        const sliceId = activeSliceIds[i];
-        const lastSort = hits[hits.length - 1]?.sort;
-        if (hits.length < EXPORT_PAGE_SIZE || !lastSort) {
-          exhaustedSlices.add(sliceId);
-        } else {
-          searchAfterBySlice.set(sliceId, lastSort);
-        }
+      for (const [key, label] of resolved) {
+        cache.set(key, label);
       }
     }
 
-    // Each slice is individually sorted; merge back into a single global order.
-    allDocs.sort(compareConsumptionExportRows);
+    return cache;
+  }
+}
 
-    return new Ok(allDocs);
-  } finally {
-    const closeResult = await closePointInTime(currentPitId);
-    if (closeResult.isErr()) {
-      logger.error(
-        { err: closeResult.error },
-        "[ConsumptionExport] Failed to close point-in-time."
-      );
+// Waits for the stringifier's internal buffer to drain before writing more, so a slow
+// downstream (gzip + GCS upload) applies backpressure to the ES fetch loops instead of
+// having them buffer unboundedly many pages in memory.
+async function writeCsvRows(
+  stringifier: Stringifier,
+  rows: (string | number)[][]
+): Promise<void> {
+  for (const row of rows) {
+    if (!stringifier.write(row)) {
+      await once(stringifier, "drain");
     }
   }
 }
 
-async function buildConsumptionLineExportRows(
+async function buildConsumptionLineExportRowsForPage(
   auth: Authenticator,
+  labelCache: ConsumptionLabelCache,
   docs: AgentMessageConsumptionAnalyticsData[]
 ): Promise<ConsumptionLineExportRow[]> {
   const [
@@ -233,27 +200,41 @@ async function buildConsumptionLineExportRows(
     groupLabels,
     sourceLabels,
   ] = await Promise.all([
-    resolveDimensionLabels(auth, "agent", [
-      ...new Set(docs.map((doc) => doc.agent.id)),
-    ]),
-    resolveDimensionLabels(auth, "user", [
-      ...new Set(removeNulls(docs.map((doc) => doc.user?.id))),
-    ]),
-    resolveDimensionLabels(auth, "model", [
-      ...new Set(removeNulls(docs.map((doc) => doc.model?.model_id))),
-    ]),
-    resolveDimensionLabels(auth, "tool", [
-      ...new Set(removeNulls(docs.map((doc) => doc.tool?.server_name))),
-    ]),
-    resolveDimensionLabels(auth, "skill", [
-      ...new Set(docs.flatMap((doc) => doc.tool?.attributed_skill_ids ?? [])),
-    ]),
-    resolveDimensionLabels(auth, "group", [
-      ...new Set(docs.flatMap((doc) => doc.user?.group_ids ?? [])),
-    ]),
-    resolveDimensionLabels(auth, "source", [
-      ...new Set(removeNulls(docs.map((doc) => doc.context_origin))),
-    ]),
+    labelCache.resolve(
+      auth,
+      "agent",
+      docs.map((doc) => doc.agent.id)
+    ),
+    labelCache.resolve(
+      auth,
+      "user",
+      removeNulls(docs.map((doc) => doc.user?.id))
+    ),
+    labelCache.resolve(
+      auth,
+      "model",
+      removeNulls(docs.map((doc) => doc.model?.model_id))
+    ),
+    labelCache.resolve(
+      auth,
+      "tool",
+      removeNulls(docs.map((doc) => doc.tool?.server_name))
+    ),
+    labelCache.resolve(
+      auth,
+      "skill",
+      docs.flatMap((doc) => doc.tool?.attributed_skill_ids ?? [])
+    ),
+    labelCache.resolve(
+      auth,
+      "group",
+      docs.flatMap((doc) => doc.user?.group_ids ?? [])
+    ),
+    labelCache.resolve(
+      auth,
+      "source",
+      removeNulls(docs.map((doc) => doc.context_origin))
+    ),
   ]);
 
   return docs.map((doc) => {
@@ -333,8 +314,25 @@ async function buildConsumptionLineExportRows(
   });
 }
 
-// Exports every raw consumption under zipped csv format
-export async function fetchConsumptionLinesExportZip(
+function consumptionLineExportRowToCsvValues(
+  row: ConsumptionLineExportRow
+): (string | number)[] {
+  return CONSUMPTION_LINE_EXPORT_HEADERS.map((header) =>
+    sanitizeCsvCell(row[header])
+  );
+}
+
+// Exports every raw consumption line as a gzip-compressed CSV stream, written directly to
+// `destination`. Slices are fetched concurrently against a shared point-in-time, so every
+// slice/page sees the same snapshot of the index instead of racing concurrent writes/refreshes
+// (which could otherwise duplicate or drop rows), and streamed to `destination` as soon as each
+// page is built, so memory usage stays bounded by the number of in-flight pages
+// (EXPORT_SLICE_COUNT) rather than growing with the size of the export.
+//
+// Elasticsearch requires every request of a sliced PIT search to use the same PIT id, so pages
+// are fetched in lockstep rounds: one page per still-active slice per round, all against the
+// same PIT id, with the id advanced to the latest value returned before the next round starts.
+export async function streamConsumptionLinesExportCsvGz(
   auth: Authenticator,
   {
     period,
@@ -342,8 +340,9 @@ export async function fetchConsumptionLinesExportZip(
   }: {
     period: ConsumptionPeriod;
     filter?: ConsumptionScopeFilter;
-  }
-): Promise<Result<Buffer, ElasticsearchError>> {
+  },
+  destination: Writable
+): Promise<Result<undefined, ElasticsearchError>> {
   const query = buildConsumptionScopeQuery({
     auth,
     startDate: period.startDate,
@@ -351,18 +350,96 @@ export async function fetchConsumptionLinesExportZip(
     filter,
   });
 
-  const docsResult = await fetchAllConsumptionDocuments(query);
-  if (docsResult.isErr()) {
-    return docsResult;
-  }
+  const stringifier = stringify({ header: false });
+  stringifier.write(CONSUMPTION_LINE_EXPORT_HEADERS);
 
-  const rows = await buildConsumptionLineExportRows(auth, docsResult.value);
+  const uploadDone = pipeline(stringifier, zlib.createGzip(), destination);
 
-  const zip = new AdmZip();
-  zip.addFile(
-    "lines.csv",
-    Buffer.from(rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, rows), "utf-8")
+  const pitResult = await openPointInTime(
+    CONSUMPTION_ANALYTICS_ALIAS_NAME,
+    EXPORT_PIT_KEEP_ALIVE
   );
+  if (pitResult.isErr()) {
+    stringifier.destroy(pitResult.error);
+    await uploadDone.catch(() => {});
+    return pitResult;
+  }
+  let currentPitId = pitResult.value;
 
-  return new Ok(zip.toBuffer());
+  try {
+    const labelCache = new ConsumptionLabelCache();
+    const sliceIds = Array.from({ length: EXPORT_SLICE_COUNT }, (_, id) => id);
+    const searchAfterBySlice = new Map<number, estypes.SortResults>();
+    const exhaustedSlices = new Set<number>();
+
+    while (exhaustedSlices.size < sliceIds.length) {
+      const activeSliceIds = sliceIds.filter((id) => !exhaustedSlices.has(id));
+      const roundPitId = currentPitId;
+
+      const results = await concurrentExecutor(
+        activeSliceIds,
+        (id) =>
+          searchConsumptionAnalytics<AgentMessageConsumptionAnalyticsData>(
+            query,
+            {
+              size: EXPORT_PAGE_SIZE,
+              sort: CONSUMPTION_EXPORT_SORT,
+              search_after: searchAfterBySlice.get(id),
+              slice: { id: String(id), max: EXPORT_SLICE_COUNT },
+              pit: { id: roundPitId, keep_alive: EXPORT_PIT_KEEP_ALIVE },
+            }
+          ),
+        { concurrency: EXPORT_SLICE_COUNT }
+      );
+
+      for (let i = 0; i < activeSliceIds.length; i++) {
+        const result = results[i];
+        if (result.isErr()) {
+          // Abort the pipeline instead of calling stringifier.end(): the upload must not
+          // complete with a truncated file that looks like a full export.
+          stringifier.destroy(result.error);
+          await uploadDone.catch(() => {});
+          return result;
+        }
+
+        const { hits } = result.value.hits;
+        const docs = removeNulls(hits.map((hit) => hit._source ?? null));
+        if (docs.length > 0) {
+          const rows = await buildConsumptionLineExportRowsForPage(
+            auth,
+            labelCache,
+            docs
+          );
+          await writeCsvRows(
+            stringifier,
+            rows.map(consumptionLineExportRowToCsvValues)
+          );
+        }
+
+        // A pit search can return a refreshed pit_id; every slice's next round must use it.
+        currentPitId = result.value.pit_id ?? currentPitId;
+
+        const sliceId = activeSliceIds[i];
+        const lastSort = hits[hits.length - 1]?.sort;
+        if (hits.length < EXPORT_PAGE_SIZE || !lastSort) {
+          exhaustedSlices.add(sliceId);
+        } else {
+          searchAfterBySlice.set(sliceId, lastSort);
+        }
+      }
+    }
+
+    stringifier.end();
+    await uploadDone;
+
+    return new Ok(undefined);
+  } finally {
+    const closeResult = await closePointInTime(currentPitId);
+    if (closeResult.isErr()) {
+      logger.error(
+        { err: closeResult.error },
+        "[ConsumptionExport] Failed to close point-in-time."
+      );
+    }
+  }
 }

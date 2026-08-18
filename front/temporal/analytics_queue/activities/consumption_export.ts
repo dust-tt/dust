@@ -1,4 +1,4 @@
-import { fetchConsumptionLinesExportZip } from "@app/lib/api/analytics/consumption/export_lines";
+import { streamConsumptionLinesExportCsvGz } from "@app/lib/api/analytics/consumption/export_lines";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type {
   ConsumptionScopeFilter,
@@ -19,7 +19,7 @@ export function buildConsumptionExportGcsPath(
   workspaceId: string,
   exportId: string
 ): string {
-  return `${buildConsumptionExportGcsPrefix(workspaceId)}${exportId}.zip`;
+  return `${buildConsumptionExportGcsPrefix(workspaceId)}${exportId}.csv.gz`;
 }
 
 export function makeConsumptionExportWorkflowIdPrefix({
@@ -88,7 +88,17 @@ export async function runConsumptionExportActivity(
   const auth = await Authenticator.fromJSON(authType);
   const workspaceId = auth.getNonNullableWorkspace().sId;
 
-  const result = await fetchConsumptionLinesExportZip(auth, { period, filter });
+  const gcsPath = buildConsumptionExportGcsPath(workspaceId, exportId);
+  const destination = getPrivateUploadBucket().file(gcsPath).createWriteStream({
+    contentType: "application/gzip",
+    resumable: false,
+  });
+
+  const result = await streamConsumptionLinesExportCsvGz(
+    auth,
+    { period, filter },
+    destination
+  );
   if (result.isErr()) {
     logger.error(
       { workspaceId, err: result.error },
@@ -96,12 +106,6 @@ export async function runConsumptionExportActivity(
     );
     throw result.error;
   }
-
-  const gcsPath = buildConsumptionExportGcsPath(workspaceId, exportId);
-
-  await getPrivateUploadBucket()
-    .file(gcsPath)
-    .save(result.value, { contentType: "application/zip", resumable: false });
 
   notifyConsumptionExportReady(auth, exportId);
 }

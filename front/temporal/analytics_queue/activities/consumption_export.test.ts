@@ -1,6 +1,7 @@
-// @vitest-environment node: adm-zip requires Node builtins (Buffer, zlib).
+// @vitest-environment node: zlib gunzip requires Node builtins (Buffer, zlib).
 // This directive makes them available in the test environment.
 
+import zlib from "node:zlib";
 import {
   EXPORT_PAGE_SIZE,
   EXPORT_SLICE_COUNT,
@@ -26,7 +27,6 @@ import type {
 } from "@app/types/assistant/analytics";
 import { Err, Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
-import AdmZip from "adm-zip";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Instantiation expression: pins the mock to the concrete TDocument the exporter
@@ -190,15 +190,18 @@ const TOOL_DOC: AgentMessageConsumptionAnalyticsToolData = {
   execution_time_ms: 250,
 };
 
-// Routes every document to slice 0 and returns empty pages for the other slices, mirroring
-// how a real ES sliced search partitions the result set (each doc belongs to exactly one slice).
+// Partitions `docs` across whatever slice count/id the caller requests, so the
+// concurrent per-slice fetches (mirroring the real ES `slice` param) never see the
+// same document twice.
 function mockDocs(docs: AgentMessageConsumptionAnalyticsData[]) {
-  mockedSearchConsumptionAnalytics.mockImplementation(
-    async (_query, options) => {
-      const isFirstSlice = options?.slice?.id === "0";
-      return new Ok(searchResponse(isFirstSlice ? docs : []));
-    }
-  );
+  mockedSearchConsumptionAnalytics.mockImplementation(async (_q, options) => {
+    const slice = options?.slice;
+    const partition = slice
+      ? docs.filter((_doc, index) => index % slice.max === Number(slice.id))
+      : docs;
+
+    return new Ok(searchResponse(partition));
+  });
 }
 
 function mockLabels(labels: Record<string, string>) {
@@ -223,7 +226,7 @@ async function setup() {
 }
 
 describe("runConsumptionExportActivity", () => {
-  it("uploads the CSV export to GCS under the workspace prefix", async () => {
+  it("streams the gzip-compressed CSV export to GCS under the workspace prefix", async () => {
     mockDocs([LLM_DOC, TOOL_DOC]);
     mockLabels({
       agent1: "@dust",
@@ -246,27 +249,18 @@ describe("runConsumptionExportActivity", () => {
     });
 
     const prefix = buildConsumptionExportGcsPrefix(workspace.sId);
-    const saveCalls = fileStorageMock.saveFileCalls.filter((call) =>
+    const writeCalls = fileStorageMock.writeStreamCalls.filter((call) =>
       call.filePath.startsWith(prefix)
     );
-    expect(saveCalls).toHaveLength(1);
-    expect(saveCalls[0].filePath).toBe(
-      `${prefix}consumption-export-test-run.zip`
+    expect(writeCalls).toHaveLength(1);
+    expect(writeCalls[0].filePath).toBe(
+      `${prefix}consumption-export-test-run.csv.gz`
     );
-    expect(saveCalls[0].contentType).toBe("application/zip");
+    expect(writeCalls[0].contentType).toBe("application/gzip");
 
-    // Read back the exact buffer passed to `.save()` rather than round-tripping through the
-    // mock's in-memory object store, which stores content as a UTF-8 string and would corrupt
-    // this binary zip.
-    const content = saveCalls[0].content;
-    const zip = new AdmZip(
-      Buffer.isBuffer(content) ? content : Buffer.from(content)
-    );
-    expect(zip.getEntries().map((entry) => entry.entryName)).toEqual([
-      "lines.csv",
-    ]);
+    const gzipped = await writeCalls[0].content;
+    const csv = zlib.gunzipSync(gzipped).toString("utf-8");
 
-    const csv = zip.getEntry("lines.csv")?.getData().toString("utf-8");
     expect(csv).toContain(
       "completedAt,conversationId,spaceId,agentMessageId,consumptionType,agentId,agentName"
     );
@@ -284,11 +278,11 @@ describe("runConsumptionExportActivity", () => {
     expect(notifyConsumptionExportReady).toHaveBeenCalledTimes(1);
   });
 
-  it("throws and uploads nothing when the search fails", async () => {
+  it("throws and does not notify when the search fails", async () => {
     mockedSearchConsumptionAnalytics.mockResolvedValue(
       new Err(new ElasticsearchError("query_error", "boom"))
     );
-    const { authenticator, workspace } = await setup();
+    const { authenticator } = await setup();
 
     await expect(
       runConsumptionExportActivity(authenticator.toJSON(), {
@@ -301,11 +295,6 @@ describe("runConsumptionExportActivity", () => {
       })
     ).rejects.toThrow();
 
-    const prefix = buildConsumptionExportGcsPrefix(workspace.sId);
-    const saveCalls = fileStorageMock.saveFileCalls.filter((call) =>
-      call.filePath.startsWith(prefix)
-    );
-    expect(saveCalls).toHaveLength(0);
     expect(notifyConsumptionExportReady).not.toHaveBeenCalled();
   });
 
@@ -390,14 +379,11 @@ describe("runConsumptionExportActivity", () => {
     });
 
     const prefix = buildConsumptionExportGcsPrefix(workspace.sId);
-    const saveCalls = fileStorageMock.saveFileCalls.filter((call) =>
+    const writeCalls = fileStorageMock.writeStreamCalls.filter((call) =>
       call.filePath.startsWith(prefix)
     );
-    const content = saveCalls[0].content;
-    const zip = new AdmZip(
-      Buffer.isBuffer(content) ? content : Buffer.from(content)
-    );
-    const csv = zip.getEntry("lines.csv")?.getData().toString("utf-8") ?? "";
+    const gzipped = await writeCalls[0].content;
+    const csv = zlib.gunzipSync(gzipped).toString("utf-8");
     const dataRows = csv.trim().split("\n").slice(1);
 
     expect(dataRows).toHaveLength(docs.length);
@@ -410,10 +396,6 @@ describe("runConsumptionExportActivity", () => {
         rowAgentMessageIds.filter((id) => id === doc.agent_message_id)
       ).toHaveLength(1);
     }
-
-    // Rows must come back in global completedAt order, not grouped by slice.
-    const completedAts = dataRows.map((row) => row.split(",")[0]);
-    expect(completedAts).toEqual([...completedAts].sort());
   });
 
   it("paginates within a slice using search_after until a short page ends it", async () => {
@@ -466,14 +448,11 @@ describe("runConsumptionExportActivity", () => {
     ]);
 
     const prefix = buildConsumptionExportGcsPrefix(workspace.sId);
-    const saveCalls = fileStorageMock.saveFileCalls.filter((call) =>
+    const writeCalls = fileStorageMock.writeStreamCalls.filter((call) =>
       call.filePath.startsWith(prefix)
     );
-    const content = saveCalls[0].content;
-    const zip = new AdmZip(
-      Buffer.isBuffer(content) ? content : Buffer.from(content)
-    );
-    const csv = zip.getEntry("lines.csv")?.getData().toString("utf-8") ?? "";
+    const gzipped = await writeCalls[0].content;
+    const csv = zlib.gunzipSync(gzipped).toString("utf-8");
     const dataRows = csv.trim().split("\n").slice(1);
     expect(dataRows).toHaveLength(fullPageDocs.length + 1);
   });
