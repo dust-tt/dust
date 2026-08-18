@@ -292,13 +292,13 @@ describe("UserAnswerRequired", () => {
     const betaOption = screen.getByRole("button", { name: /Beta/i });
 
     await waitFor(() => expect(keyboardContainer).toHaveFocus());
-    expect(alphaOption).toHaveClass("bg-primary-100");
-    expect(betaOption).not.toHaveClass("bg-primary-100");
+    expect(alphaOption).toHaveClass("bg-hover");
+    expect(betaOption).not.toHaveClass("bg-hover");
 
     fireEvent.keyDown(keyboardContainer, { key: "ArrowDown" });
 
-    expect(betaOption).toHaveClass("bg-primary-100");
-    expect(alphaOption).not.toHaveClass("bg-primary-100");
+    expect(betaOption).toHaveClass("bg-hover");
+    expect(alphaOption).not.toHaveClass("bg-hover");
   });
 
   it("hides the cursor during keyboard navigation and restores it on mouse movement", async () => {
@@ -528,13 +528,13 @@ describe("UserAnswerRequired", () => {
     );
 
     await waitFor(() => expect(keyboardContainer).toHaveFocus());
-    expect(alphaOption).toHaveClass("bg-primary-100");
+    expect(alphaOption).toHaveClass("bg-hover");
 
     await user.keyboard("h");
 
     expect(customInput).toHaveFocus();
     expect(customInput).toHaveValue("h");
-    expect(alphaOption).not.toHaveClass("bg-primary-100");
+    expect(alphaOption).not.toHaveClass("bg-hover");
 
     await user.type(customInput, "ello");
     fireEvent.keyDown(customInput, { key: "Enter", metaKey: true });
@@ -600,8 +600,8 @@ describe("UserAnswerRequired", () => {
     fireEvent.keyDown(customInput, { key: "Backspace" });
 
     expect(keyboardContainer).toHaveFocus();
-    expect(betaOption).toHaveClass("bg-primary-100");
-    expect(alphaOption).not.toHaveClass("bg-primary-100");
+    expect(betaOption).toHaveClass("bg-hover");
+    expect(alphaOption).not.toHaveClass("bg-hover");
   });
 
   it("submits the current multi-select choices when Cmd+Enter is pressed on a focused option", async () => {
