@@ -1,9 +1,10 @@
-import { Hono } from "hono";
-import { contextStorage } from "hono/context-storage";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
-import type { RequestStorageEnv } from "./request_context";
-import { RequestCachedQuery, RequestQueryCache } from "./request_context";
+import {
+  RequestCachedQuery,
+  RequestQueryCache,
+  setRequestStorageResolver,
+} from "./request_context";
 
 const requestContext = {
   method: "GET",
@@ -12,33 +13,33 @@ const requestContext = {
 };
 
 describe("RequestCachedQuery", () => {
+  afterEach(() => {
+    setRequestStorageResolver(null);
+  });
+
   it("deduplicates within a request and reloads on the next request", async () => {
     const query = new RequestCachedQuery<string, { load: number }>();
     let loadCount = 0;
     const load = async () => ({ load: ++loadCount });
-    const app = new Hono<RequestStorageEnv>();
+    let queryCache = new RequestQueryCache();
 
-    app.use(contextStorage());
-    app.use(async (c, next) => {
-      c.set("requestContext", requestContext);
-      c.set("queryCache", new RequestQueryCache());
-      return next();
-    });
-    app.get("/", async (c) => {
-      const first = query.get("key", load);
-      const second = query.get("key", load);
+    setRequestStorageResolver(() => ({ queryCache, requestContext }));
 
-      expect(second).toBe(first);
-      const firstValue = await first;
+    const first = query.get("key", load);
+    const second = query.get("key", load);
+    expect(second).toBe(first);
+    await expect(first).resolves.toEqual({ load: 1 });
 
-      return c.json({ firstValue });
-    });
+    queryCache = new RequestQueryCache();
+    await expect(query.get("key", load)).resolves.toEqual({ load: 2 });
+  });
 
-    await expect((await app.request("/")).json()).resolves.toEqual({
-      firstValue: { load: 1 },
-    });
-    await expect((await app.request("/")).json()).resolves.toEqual({
-      firstValue: { load: 2 },
-    });
+  it("does not cache when no request storage adapter is installed", async () => {
+    const query = new RequestCachedQuery<string, number>();
+    let loadCount = 0;
+    const load = async () => ++loadCount;
+
+    await expect(query.get("key", load)).resolves.toBe(1);
+    await expect(query.get("key", load)).resolves.toBe(2);
   });
 });

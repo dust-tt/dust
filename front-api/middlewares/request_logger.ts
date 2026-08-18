@@ -6,14 +6,14 @@ import tracer from "@app/logger/tracer";
 import {
   type RequestContext,
   RequestQueryCache,
-  type RequestStorageEnv,
+  type RequestStorage,
 } from "@app/types/shared/utils/request_context";
 import { getClientIpFromContext } from "@front-api/lib/request";
 import { createMiddleware } from "hono/factory";
 import { routePath } from "hono/route";
 
 type RequestLoggerEnv = {
-  Variables: RequestStorageEnv["Variables"] & {
+  Variables: RequestStorage & {
     auth?: Authenticator;
     session?: SessionWithUser;
     streaming?: boolean;

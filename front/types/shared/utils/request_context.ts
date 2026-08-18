@@ -1,19 +1,39 @@
-import { tryGetContext } from "hono/context-storage";
-
 export type RequestContext = {
   method: string;
   route: string;
   url: string;
 };
 
+export type RequestStorage = {
+  queryCache: RequestQueryCache;
+  requestContext: RequestContext;
+};
+
+type RequestStorageResolver = () => RequestStorage | undefined;
+
+let requestStorageResolver: RequestStorageResolver | null = null;
+
 /**
- * Memoizes the first result for each key for the lifetime of a Hono request.
+ * Installs the request storage adapter owned by the application runtime.
+ */
+export function setRequestStorageResolver(
+  resolver: RequestStorageResolver | null
+): void {
+  requestStorageResolver = resolver;
+}
+
+function getRequestStorage(): RequestStorage | undefined {
+  return requestStorageResolver?.();
+}
+
+/**
+ * Memoizes the first result for each key for the lifetime of a request.
  */
 export class RequestCachedQuery<Key, Value> {
   readonly cacheId = Symbol();
 
   get(key: Key, query: () => Promise<Value>): Promise<Value> {
-    const cache = getRequestQueryCache();
+    const cache = getRequestStorage()?.queryCache;
     return cache ? cache.get(this, key, query) : query();
   }
 }
@@ -48,17 +68,6 @@ export class RequestQueryCache {
   }
 }
 
-export type RequestStorageEnv = {
-  Variables: {
-    queryCache: RequestQueryCache;
-    requestContext: RequestContext;
-  };
-};
-
 export function getRequestContext(): RequestContext | undefined {
-  return tryGetContext<RequestStorageEnv>()?.get("requestContext");
-}
-
-export function getRequestQueryCache(): RequestQueryCache | undefined {
-  return tryGetContext<RequestStorageEnv>()?.get("queryCache");
+  return getRequestStorage()?.requestContext;
 }

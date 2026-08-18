@@ -1,4 +1,5 @@
 import { createHono } from "@front-api/lib/hono";
+import { configureHonoRequestStorage } from "@front-api/lib/request_context";
 import { contextStorage } from "hono/context-storage";
 
 import { cors } from "./middlewares/cors";
@@ -87,6 +88,7 @@ apiApp.route("/v1/w/:wId", publicWorkspaceApp);
 // above.
 apiApp.route("/:preStopSecret", preStopApp);
 
+configureHonoRequestStorage();
 export const honoApp = createHono();
 honoApp.use(contextStorage());
 honoApp.use("*", requestLogger);

@@ -5,14 +5,15 @@ import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
-import type { RequestStorageEnv } from "@app/types/shared/utils/request_context";
-import { RequestQueryCache } from "@app/types/shared/utils/request_context";
-import { Hono } from "hono";
-import { contextStorage } from "hono/context-storage";
+import {
+  RequestQueryCache,
+  setRequestStorageResolver,
+} from "@app/types/shared/utils/request_context";
 import { afterEach, describe, expect, it } from "vitest";
 
 describe("getFeatureFlags with global flags", () => {
   afterEach(async () => {
+    setRequestStorageResolver(null);
     await GlobalFeatureFlagModel.destroy({ where: {} });
   });
 
@@ -171,44 +172,29 @@ describe("getFeatureFlags with global flags", () => {
 
   it("keeps a stable resource snapshot until the next request", async () => {
     const workspace = await WorkspaceFactory.basic();
-    const app = new Hono<RequestStorageEnv>();
     const requestContext = {
       method: "GET",
       route: "/test",
       url: "/test",
     };
+    let queryCache = new RequestQueryCache();
+    setRequestStorageResolver(() => ({ queryCache, requestContext }));
 
-    app.use(contextStorage());
-    app.use(async (c, next) => {
-      c.set("requestContext", requestContext);
-      c.set("queryCache", new RequestQueryCache());
-      return next();
-    });
-    app.get("/read-write", async (c) => {
-      const first = await FeatureFlagResource.listForWorkspace(workspace);
-      const second = await FeatureFlagResource.listForWorkspace(workspace);
-      expect(second).toBe(first);
+    const first = await FeatureFlagResource.listForWorkspace(workspace);
+    const second = await FeatureFlagResource.listForWorkspace(workspace);
+    expect(second).toBe(first);
 
-      await FeatureFlagResource.enable(workspace, "deepseek_feature");
+    await FeatureFlagResource.enable(workspace, "deepseek_feature");
 
-      const afterMutation =
-        await FeatureFlagResource.listForWorkspace(workspace);
-      expect(afterMutation).toBe(first);
-      expect(afterMutation.map((flag) => flag.name)).not.toContain(
-        "deepseek_feature"
-      );
+    const afterMutation = await FeatureFlagResource.listForWorkspace(workspace);
+    expect(afterMutation).toBe(first);
+    expect(afterMutation.map((flag) => flag.name)).not.toContain(
+      "deepseek_feature"
+    );
 
-      return c.body(null);
-    });
-    app.get("/read", async (c) => {
-      const flags = await FeatureFlagResource.listForWorkspace(workspace);
-      expect(flags.map((flag) => flag.name)).toContain("deepseek_feature");
-
-      return c.body(null);
-    });
-
-    expect((await app.request("/read-write")).status).toBe(200);
-    expect((await app.request("/read")).status).toBe(200);
+    queryCache = new RequestQueryCache();
+    const flags = await FeatureFlagResource.listForWorkspace(workspace);
+    expect(flags.map((flag) => flag.name)).toContain("deepseek_feature");
   });
 });
 
