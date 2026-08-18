@@ -1,7 +1,10 @@
 import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_period";
-import type { AutomationTriggersBody } from "@app/lib/api/analytics/automations/schema";
+import type {
+  AutomationTriggersBody,
+  AutomationTriggersFilter,
+} from "@app/lib/api/analytics/automations/schema";
 import type {
   AutomationTriggerRow,
   GetAutomationTriggersResponse,
@@ -13,12 +16,14 @@ export function useAutomationsTriggers({
   period,
   limit,
   offset = 0,
+  filter,
   disabled,
 }: {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   limit: number;
   offset?: number;
+  filter?: AutomationTriggersFilter;
   disabled?: boolean;
 }) {
   const url = `/api/w/${workspaceId}/analytics/automations/triggers`;
@@ -28,6 +33,7 @@ export function useAutomationsTriggers({
       period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
     limit,
     offset,
+    filter,
   };
 
   const { data, error, isLoading, isValidating } = useConsumptionQuery<

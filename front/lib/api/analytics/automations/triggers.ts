@@ -2,7 +2,9 @@ import type {
   CustomResourceIconType,
   InternalAllowedIconType,
 } from "@app/components/resources/resources_icon_names";
+import type { AutomationTriggersFilter } from "@app/lib/api/analytics/automations/schema";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import {
   buildConsumptionScopeQuery,
   CARDINALITY_PRECISION_THRESHOLD,
@@ -105,6 +107,23 @@ function median(values: number[]): number {
 }
 
 /**
+ * Trigger kind isn't indexed in the consumption Elasticsearch documents, so
+ * a kind filter is resolved to a concrete set of trigger ids up front and
+ * applied as a terms filter on TRIGGER_ID_FIELD. Returns null when no kind
+ * filter is requested (no restriction).
+ */
+async function resolveTriggerIdsForKindFilter(
+  auth: Authenticator,
+  kinds: TriggerKind[] | undefined
+): Promise<string[] | null> {
+  if (!kinds || kinds.length === 0) {
+    return null;
+  }
+  const triggers = await TriggerResource.listByWorkspaceAndKinds(auth, kinds);
+  return triggers.map((trigger) => trigger.sId);
+}
+
+/**
  * The period's triggers ranked by gross credits, highest first. The
  * underlying terms aggregation is capped at CARDINALITY_PRECISION_THRESHOLD
  * buckets (the same approximation boundary used for the total trigger
@@ -119,10 +138,12 @@ async function fetchTriggersRanking(
     period,
     limit,
     offset,
+    filter,
   }: {
     period: ConsumptionPeriod;
     limit: number;
     offset: number;
+    filter?: AutomationTriggersFilter;
   }
 ): Promise<
   Result<
@@ -135,10 +156,28 @@ async function fetchTriggersRanking(
     ElasticsearchError
   >
 > {
+  const scopeFilter: ConsumptionScopeFilter = {};
+  if (filter?.agentIds?.length) {
+    scopeFilter.agents = filter.agentIds;
+  }
+  if (filter?.editorIds?.length) {
+    scopeFilter.users = filter.editorIds;
+  }
+
+  const triggerIdsForKindFilter = await resolveTriggerIdsForKindFilter(
+    auth,
+    filter?.kinds
+  );
+
   const query = buildConsumptionScopeQuery({
     auth,
     startDate: period.startDate,
     endDate: period.endDate,
+    filter: scopeFilter,
+    extraFilters:
+      triggerIdsForKindFilter !== null
+        ? [{ terms: { [TRIGGER_ID_FIELD]: triggerIdsForKindFilter } }]
+        : [],
   });
 
   const result = await searchConsumptionAnalytics<never, TriggerAggs>(query, {
@@ -225,16 +264,19 @@ export async function fetchAutomationTriggers(
     period,
     limit,
     offset,
+    filter,
   }: {
     period: ConsumptionPeriod;
     limit: number;
     offset: number;
+    filter?: AutomationTriggersFilter;
   }
 ): Promise<Result<AutomationTriggers, ElasticsearchError>> {
   const rankingResult = await fetchTriggersRanking(auth, {
     period,
     limit,
     offset,
+    filter,
   });
   if (rankingResult.isErr()) {
     return rankingResult;
