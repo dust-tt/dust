@@ -16,10 +16,7 @@ import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import {
-  createAccessControlListFromSpacesWithMap,
-  createSpaceIdToGroupsMap,
-} from "@app/lib/resources/permission_utils";
+import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -1142,18 +1139,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         )
       );
 
-    // Create space-to-groups mapping once for efficient permission checks.
-    const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
-
     const spaceBasedAccessible = validConversations.filter((c) =>
-      auth.hasPermissionForAcls(
-        "read",
-        createAccessControlListFromSpacesWithMap(
-          spaceIdToGroupsMap,
-          c.requestedSpaceIds,
-          auth.getNonNullableWorkspace().id
-        )
-      )
+      canReadRequestedSpaces(auth, spaceIdToSpaceMap, c.requestedSpaceIds)
     );
 
     if (spaceBasedAccessible.length === 0) {
@@ -1263,16 +1250,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       auth,
       conversation.requestedSpaceIds
     );
+    const spaceById = new Map(spaces.map((s) => [s.id, s]));
 
-    const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
-
-    return auth.hasPermissionForAcls(
-      "read",
-      createAccessControlListFromSpacesWithMap(
-        spaceIdToGroupsMap,
-        conversation.requestedSpaceIds,
-        auth.getNonNullableWorkspace().id
-      )
+    return canReadRequestedSpaces(
+      auth,
+      spaceById,
+      conversation.requestedSpaceIds
     );
   }
 

@@ -39,10 +39,7 @@ import { GroupPermissionResource } from "@app/lib/resources/group_permission_res
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import {
-  createAccessControlListFromSpacesWithMap,
-  createSpaceIdToGroupsMap,
-} from "@app/lib/resources/permission_utils";
+import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type {
@@ -716,22 +713,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             transaction,
           })
         : [];
-    const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
-    const foundSpaceIds = new Set(spaces.map((s) => s.id));
+    const spaceById = new Map(spaces.map((s) => [s.id, s]));
 
-    const validCustomSkills = customSkills.filter((skill) =>
-      skill.requestedSpaceIds.every((id) => foundSpaceIds.has(id))
-    );
-
-    const allowedCustomSkills = validCustomSkills.filter((skill) =>
-      auth.hasPermissionForAcls(
-        "read",
-        createAccessControlListFromSpacesWithMap(
-          spaceIdToGroupsMap,
-          skill.requestedSpaceIds,
-          auth.getNonNullableWorkspace().id
-        )
-      )
+    // A missing/deleted requested space is treated as not readable (see `canReadRequestedSpaces`),
+    // so skills referencing one are dropped here too.
+    const allowedCustomSkills = customSkills.filter((skill) =>
+      canReadRequestedSpaces(auth, spaceById, skill.requestedSpaceIds)
     );
     const allowedCustomSkillIds = allowedCustomSkills.map((skill) => skill.id);
 

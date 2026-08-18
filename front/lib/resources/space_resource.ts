@@ -1,4 +1,5 @@
 import { isDatabaseFileSystemPodName } from "@app/lib/api/file_system/storage_mode";
+import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/projects";
@@ -1833,24 +1834,23 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       {
         workspaceId: this.workspaceId,
         roles: this.spaceRoleGrants(),
-        groups: this.legacySpaceGroupGrants(),
+        // The caller's own verbs on this space, resolved from `group_permissions` (kept in sync by
+        // `writeGroupPermissions`). The per-kind role rules above are unchanged.
+        grantedVerbs: auth.getGrantedVerbs("space", this.id),
       },
     ];
   }
 
-  /**
-   * The space's access-control list built from governance data: the code role rules plus the
-   * caller's own verbs resolved from `group_permissions`. At the flip this becomes the served
-   * `getAccessControlLists(auth)` and `legacySpaceGroupGrants` is deleted without touching it.
-   *
-   * Until then it is the shadow-compare candidate.
-   */
-  governanceAcls(auth: Authenticator): AccessControlList[] {
+  // The pre-migration inline-group ACL: the code role rules plus the space's `group_vaults`
+  // associations listed inline, filtered by the caller's membership at check time. Served only when
+  // the `use_legacy_acls` kill switch is on (see `hasSpacePermission`). Remove with the switch once
+  // the table is trusted.
+  private legacyAcls(): AccessControlList[] {
     return [
       {
         workspaceId: this.workspaceId,
         roles: this.spaceRoleGrants(),
-        grantedVerbs: auth.getGrantedVerbs("space", this.id),
+        groups: this.legacySpaceGroupGrants(),
       },
     ];
   }
@@ -2168,46 +2168,27 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   canAdministrate(auth: Authenticator) {
-    const perms = this.getAccessControlLists(auth);
-    this.shadowCompareSpacePermission(auth, perms, "admin");
-    return auth.hasPermissionForAcls("admin", perms);
+    return this.hasSpacePermission(auth, "admin");
   }
 
   canWrite(auth: Authenticator) {
-    const perms = this.getAccessControlLists(auth);
-    this.shadowCompareSpacePermission(auth, perms, "write");
-    return auth.hasPermissionForAcls("write", perms);
+    return this.hasSpacePermission(auth, "write");
   }
 
   canRead(auth: Authenticator) {
-    const perms = this.getAccessControlLists(auth);
-    this.shadowCompareSpacePermission(auth, perms, "read");
-    return auth.hasPermissionForAcls("read", perms);
+    return this.hasSpacePermission(auth, "read");
   }
 
-  // Shadow-compare: while the `group_permissions_shadow` flag is on for the workspace, check
-  // whether the governance ACL yields the same decision as the legacy inline-group ACL. Legacy is
-  // the served `getAccessControlLists(auth)` (groups from the `group_vaults` associations); the
-  // candidate is `governanceAcls`, built independently from the table. Delegates the flag lookup +
-  // compare + log to the Authenticator as fire-and-forget — never changes the served result.
-  private shadowCompareSpacePermission(
-    auth: Authenticator,
-    legacyAcls: AccessControlList[],
-    permission: GrantVerb
-  ): void {
-    auth.shadowComparePermission(
-      permission,
-      legacyAcls,
-      this.governanceAcls(auth),
-      {
-        resource: "space",
-        spaceId: this.sId,
-        permission,
-        workspaceId: this.workspaceId,
-        // Null for non-user callers (API keys, internal auth).
-        userId: auth.user()?.sId ?? null,
-      }
-    );
+  // Serves the decision from `group_permissions` (see `getAccessControlLists`), unless the
+  // `use_legacy_acls` kill switch is on — then it falls back to the pre-migration inline-group ACL,
+  // where the space's groups are listed inline and membership decides. Remove the fallback (and the
+  // switch) once the table is trusted.
+  private hasSpacePermission(auth: Authenticator, verb: GrantVerb): boolean {
+    if (isLegacyAclsEnabled()) {
+      return auth.hasPermissionForAcls(verb, this.legacyAcls());
+    }
+
+    return auth.hasPermission(verb, this);
   }
 
   canReadOrAdministrate(auth: Authenticator) {

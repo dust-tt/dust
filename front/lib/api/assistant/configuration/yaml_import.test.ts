@@ -30,6 +30,13 @@ async function createPatchableAgent({
 
   const space = await SpaceFactory.regular(workspace);
   await GroupSpaceFactory.associate(space, globalGroup);
+  // `GroupSpaceFactory.associate` writes only the legacy group_vaults row; materialize the space's
+  // group_permissions from it (as the mutation paths do) and refresh the auth's snapshot, since
+  // space access is served from the table.
+  await space.writeGroupPermissions(auth, {
+    ...(await space.fetchAssociatedGroups()),
+  });
+  await auth.refresh();
 
   const tag = await TagFactory.create(workspace, { name: "yaml-import-test" });
   const template = await TemplateFactory.published();
