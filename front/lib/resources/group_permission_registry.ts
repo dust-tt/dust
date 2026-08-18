@@ -368,6 +368,35 @@ export class GroupPermissions {
     return maskToVerbs(mask);
   }
 
+  // The concrete instance ids of `resourceType` on which the caller holds `verb` — the reverse of
+  // resolvedVerbsForResource, for callers that enumerate what they may act on ("which spaces am I a
+  // member of") rather than checking one id. Excludes the type-wide (-1) entry: a type-wide grant
+  // confers the verb on every id of the type and names no concrete instance, so callers that must
+  // also account for type-wide access should consult toWorkspacePermissions separately.
+  resourceIdsWithVerb(
+    resourceType: ConcreteResourceType,
+    verb: GrantVerb
+  ): number[] {
+    const byId = this.grants.get(resourceType);
+    if (!byId) {
+      return [];
+    }
+    const bit = VERB_BIT.get(verb) ?? 0;
+    if (bit === 0) {
+      return [];
+    }
+    const resourceIds: number[] = [];
+    for (const [resourceId, mask] of byId) {
+      if (resourceId === WHOLE_TYPE_RESOURCE_ID) {
+        continue;
+      }
+      if ((mask & bit) !== 0) {
+        resourceIds.push(resourceId);
+      }
+    }
+    return resourceIds;
+  }
+
   // The type-wide (-1) verbs the caller's grants confer per resource type — the flat record for the
   // auth context / Workspace & Governance page. Grants only; admin-by-default is layered on by the
   // Authenticator (see `getWorkspacePermissions`).
