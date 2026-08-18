@@ -6,6 +6,7 @@ import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { grantKey } from "@app/types/group_permissions";
 import { isString } from "@app/types/shared/utils/general";
 import type { QueryOptions } from "sequelize";
 import type { AbstractQuery } from "sequelize/types/dialects/abstract/query";
@@ -743,6 +744,119 @@ describe("GroupPermissionResource", () => {
       ]);
       expect(await group.isMember(user1)).toBe(false);
       expect(await group.isMember(user2)).toBe(true);
+    });
+  });
+
+  describe("findRegularAutoGroupForGrant / findRegularAutoGroupsForGrants", () => {
+    async function grantToNewUser(spec: {
+      grantType: "reader" | "member";
+      resourceType: "space";
+      resourceId: number;
+    }) {
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+      const result = await GroupPermissionResource.grantToUser(auth, {
+        user: user.toJSON(),
+        ...spec,
+      });
+      expect(result.isOk()).toBe(true);
+    }
+
+    const readerOnSpace = (resourceId: number) => ({
+      grantType: "reader" as const,
+      resourceType: "space" as const,
+      resourceId,
+    });
+
+    it("finds the backing group of a tuple, and null when there is none", async () => {
+      await grantToNewUser(readerOnSpace(42));
+
+      const found = await GroupPermissionResource.findRegularAutoGroupForGrant(
+        auth,
+        readerOnSpace(42)
+      );
+      expect(found?.kind).toBe("regular_auto");
+
+      // Same resource, a grant type nobody was granted.
+      expect(
+        await GroupPermissionResource.findRegularAutoGroupForGrant(auth, {
+          ...readerOnSpace(42),
+          grantType: "member",
+        })
+      ).toBeNull();
+
+      // Same grant type, a resource nobody was granted.
+      expect(
+        await GroupPermissionResource.findRegularAutoGroupForGrant(
+          auth,
+          readerOnSpace(43)
+        )
+      ).toBeNull();
+    });
+
+    it("ignores grants held by groups that are not regular_auto", async () => {
+      // groupA is regular_auto but holds this tuple through grant(), not grantToUser: still the
+      // backing group. groupB is manual, so it must never be returned.
+      await GroupPermissionResource.grant(auth, {
+        group: groupB,
+        ...readerOnSpace(50),
+      });
+
+      expect(
+        await GroupPermissionResource.findRegularAutoGroupForGrant(
+          auth,
+          readerOnSpace(50)
+        )
+      ).toBeNull();
+    });
+
+    it("batches lookups, keyed by grant", async () => {
+      await grantToNewUser(readerOnSpace(60));
+      await grantToNewUser({ ...readerOnSpace(61), grantType: "member" });
+
+      const found =
+        await GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
+          grants: [
+            readerOnSpace(60),
+            { ...readerOnSpace(61), grantType: "member" },
+            // Not granted: absent from the result rather than mapped to null.
+            readerOnSpace(62),
+          ],
+        });
+
+      expect(found.size).toBe(2);
+      expect(found.get(grantKey(readerOnSpace(60)))?.kind).toBe("regular_auto");
+      expect(
+        found.get(grantKey({ ...readerOnSpace(61), grantType: "member" }))?.kind
+      ).toBe("regular_auto");
+      expect(found.get(grantKey(readerOnSpace(62)))).toBeUndefined();
+    });
+
+    it("keeps two grant types on the same resource apart", async () => {
+      await grantToNewUser(readerOnSpace(70));
+      await grantToNewUser({ ...readerOnSpace(70), grantType: "member" });
+
+      const found =
+        await GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
+          grants: [
+            readerOnSpace(70),
+            { ...readerOnSpace(70), grantType: "member" },
+          ],
+        });
+
+      // One entry per grant, and each tuple has its own backing group.
+      expect(found.size).toBe(2);
+      expect(found.get(grantKey(readerOnSpace(70)))?.id).not.toBe(
+        found.get(grantKey({ ...readerOnSpace(70), grantType: "member" }))?.id
+      );
+    });
+
+    it("returns an empty map for no grants", async () => {
+      const found =
+        await GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
+          grants: [],
+        });
+      expect(found.size).toBe(0);
     });
   });
 
