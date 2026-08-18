@@ -181,6 +181,13 @@ export type LaunchConsumptionExportOutcome =
       filter: ConsumptionScopeFilter;
     };
 
+function startOfUtcToday(): Date {
+  const now = new Date();
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  );
+}
+
 function endOfUtcToday(): Date {
   const now = new Date();
   return new Date(
@@ -188,18 +195,23 @@ function endOfUtcToday(): Date {
   );
 }
 
-// Caps an open-ended period (e.g. "this cycle") to today, so exports stay
-// cacheable within a day but refresh once new data can have accrued.
-function resolveExportPeriod(period: ConsumptionPeriod): ConsumptionPeriod {
+// Normalizes any period whose end falls on or after today to a fixed end-of-day
+// boundary, so exports stay cacheable within a day but refresh once new data can
+// have accrued.
+export function resolveExportPeriod(
+  period: ConsumptionPeriod
+): ConsumptionPeriod {
+  const endMs = new Date(period.endDate).getTime();
   const endOfTodayMs = endOfUtcToday().getTime();
-  const endMs = Math.min(new Date(period.endDate).getTime(), endOfTodayMs);
+  const normalizedEndMs =
+    endMs >= startOfUtcToday().getTime() ? endOfTodayMs : endMs;
   return {
     startDate: period.startDate,
-    endDate: new Date(endMs).toISOString(),
+    endDate: new Date(normalizedEndMs).toISOString(),
   };
 }
 
-async function isConsumptionExportRunning(
+export async function isConsumptionExportRunning(
   handle: WorkflowHandle
 ): Promise<boolean> {
   try {

@@ -4,11 +4,17 @@ import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import {
+  buildConsumptionExportCacheKey,
+  buildConsumptionExportGcsPath,
   buildConsumptionExportGcsPrefix,
-  makeConsumptionExportWorkflowIdPrefix,
+  makeConsumptionExportWorkflowId,
 } from "@app/temporal/analytics_queue/activities/consumption_export";
 import type { LaunchConsumptionExportOutcome } from "@app/temporal/analytics_queue/client";
-import { launchConsumptionExportWorkflow } from "@app/temporal/analytics_queue/client";
+import {
+  isConsumptionExportRunning,
+  launchConsumptionExportWorkflow,
+  resolveExportPeriod,
+} from "@app/temporal/analytics_queue/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -65,19 +71,43 @@ export async function getConsumptionExportDownloadUrl(
   return new Ok(downloadUrl);
 }
 
-export async function isConsumptionExportGenerating(
-  auth: Authenticator
-): Promise<boolean> {
-  const workspaceId = auth.getNonNullableWorkspace().sId;
-  const client = await getTemporalClientForFrontNamespace();
+export type ConsumptionExportStatus = {
+  exportId: string;
+  isGenerating: boolean;
+  isReady: boolean;
+};
 
-  // Export for this workspace is matched by prefix.
-  const query = `WorkflowId STARTS_WITH "${makeConsumptionExportWorkflowIdPrefix({ workspaceId })}" AND ExecutionStatus="Running"`;
-  for await (const _workflow of client.workflow.list({ query })) {
-    return true;
+// Scoped to the exact period+filter combination (same cache key the export workflow
+// itself uses), unlike a workspace-wide check: a workflow running for one filter must
+// not be mistaken for one running for another.
+export async function getConsumptionExportStatus(
+  auth: Authenticator,
+  {
+    period,
+    filter,
+  }: {
+    period: ConsumptionPeriod;
+    filter?: ConsumptionScopeFilter;
   }
+): Promise<ConsumptionExportStatus> {
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const exportPeriod = resolveExportPeriod(period);
+  const exportId = buildConsumptionExportCacheKey({
+    period: exportPeriod,
+    filter: filter ?? {},
+  });
 
-  return false;
+  const client = await getTemporalClientForFrontNamespace();
+  const workflowId = makeConsumptionExportWorkflowId({ workspaceId, exportId });
+
+  const [isGenerating, [isReady]] = await Promise.all([
+    isConsumptionExportRunning(client.workflow.getHandle(workflowId)),
+    getPrivateUploadBucket()
+      .file(buildConsumptionExportGcsPath(workspaceId, exportId))
+      .exists(),
+  ]);
+
+  return { exportId, isGenerating, isReady };
 }
 
 export async function startConsumptionExport(

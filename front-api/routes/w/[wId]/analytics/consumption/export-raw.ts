@@ -1,6 +1,6 @@
 import {
   getConsumptionExportDownloadUrl,
-  isConsumptionExportGenerating,
+  getConsumptionExportStatus,
   listConsumptionExports,
   startConsumptionExport,
 } from "@app/lib/api/analytics/consumption/export_jobs";
@@ -22,17 +22,29 @@ const DownloadParamsSchema = z.object({
   name: z.string(),
 });
 
+// POST (not GET) so the filter travels in the JSON body, consistent with every other
+// consumption endpoint: it scopes isGenerating/isReady to this exact period+filter
+// combination instead of any export running for the workspace.
 /** @ignoreswagger */
-app.get("/", ensureIsManager(), async (ctx) => {
-  const auth = ctx.get("auth");
+app.post(
+  "/status",
+  ensureIsManager(),
+  validate("json", ConsumptionExportBodySchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { filter, ...periodQuery } = ctx.req.valid("json");
+    const periodInput = toConsumptionPeriodInput(periodQuery);
 
-  const [exports, isGenerating] = await Promise.all([
-    listConsumptionExports(auth),
-    isConsumptionExportGenerating(auth),
-  ]);
+    const period = await resolveConsumptionPeriod(auth, periodInput);
 
-  return ctx.json({ exports, isGenerating });
-});
+    const [exports, status] = await Promise.all([
+      listConsumptionExports(auth),
+      getConsumptionExportStatus(auth, { period, filter }),
+    ]);
+
+    return ctx.json({ exports, ...status });
+  }
+);
 
 /** @ignoreswagger */
 app.post(
