@@ -50,6 +50,38 @@ describe("get_workspace_members_context", () => {
     }
   });
 
+  it("rejects calls with both userIds and jobType", async () => {
+    const { workspace, authenticator } = await createResourceTest({
+      role: "admin",
+    });
+    const targetUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, targetUser, { role: "user" });
+
+    const result = await getWorkspaceMembersContextTool().handler(
+      { userIds: [targetUser.sId], jobType: "engineering" },
+      createTestExtra(authenticator)
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("not both");
+    }
+  });
+
+  it("rejects calls with neither userIds nor jobType", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+
+    const result = await getWorkspaceMembersContextTool().handler(
+      {},
+      createTestExtra(authenticator)
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("either");
+    }
+  });
+
   it("returns role, job function, and groups for a member batch", async () => {
     const { workspace, authenticator } = await createResourceTest({
       role: "admin",
@@ -85,6 +117,35 @@ describe("get_workspace_members_context", () => {
         expect(content.text).toContain('"groups":["Enterprise Sales"]');
         expect(content.text).toContain(`"userId":"${engineeringUser.sId}"`);
         expect(content.text).toContain('"value":"engineering"');
+      }
+    }
+  });
+
+  it("returns only members matching a jobType filter", async () => {
+    const { workspace, authenticator } = await createResourceTest({
+      role: "admin",
+    });
+    const salesUser = await UserFactory.basic();
+    const engineeringUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, salesUser, { role: "user" });
+    await MembershipFactory.associate(workspace, engineeringUser, {
+      role: "user",
+    });
+    await salesUser.setMetadata("job_type", "sales");
+    await engineeringUser.setMetadata("job_type", "engineering");
+
+    const result = await getWorkspaceMembersContextTool().handler(
+      { jobType: "sales" },
+      createTestExtra(authenticator)
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const [content] = result.value;
+      expect(content.type).toBe("text");
+      if (content.type === "text") {
+        expect(content.text).toContain(`"userId":"${salesUser.sId}"`);
+        expect(content.text).not.toContain(`"userId":"${engineeringUser.sId}"`);
       }
     }
   });

@@ -20,6 +20,8 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+const MAX_RESULTS = 100;
+
 type WorkspaceMemberContext = {
   user: UserResource;
   role: MembershipResource["role"];
@@ -27,18 +29,10 @@ type WorkspaceMemberContext = {
   groupNames: string[];
 };
 
-async function fetchWorkspaceMemberContexts(
+async function fetchByUserIds(
   auth: Authenticator,
   userIds: string[]
 ): Promise<Result<WorkspaceMemberContext[], MCPError>> {
-  if (!auth.isAdmin()) {
-    return new Err(
-      new MCPError(
-        "Only workspace admins can retrieve other members' workspace context."
-      )
-    );
-  }
-
   const uniqueUserIds = [...new Set(userIds)];
   const users = await UserResource.fetchByIds(uniqueUserIds);
   const userBySId = new Map(users.map((user) => [user.sId, user]));
@@ -107,9 +101,93 @@ async function fetchWorkspaceMemberContexts(
   );
 }
 
+async function fetchByJobType(
+  auth: Authenticator,
+  jobType: JobType
+): Promise<Result<WorkspaceMemberContext[], MCPError>> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  // List all active members, then filter by job type client-side.
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace,
+  });
+  const membershipByUserId = new Map(memberships.map((m) => [m.userId, m]));
+
+  const userModelIds = memberships.map((m) => m.userId);
+  const jobTypesByUserId =
+    await UserResource.fetchUserScopedMetadataValuesByUserModelIds(
+      "job_type",
+      userModelIds
+    );
+
+  const matchingModelIds = userModelIds
+    .filter((id) => jobTypesByUserId.get(id) === jobType)
+    .slice(0, MAX_RESULTS);
+
+  if (matchingModelIds.length === 0) {
+    return new Ok([]);
+  }
+
+  const [users, groupNamesByUserId] = await Promise.all([
+    UserResource.fetchByModelIds(matchingModelIds),
+    GroupResource.listGroupNamesByUserModelIdInWorkspace({
+      workspace,
+      userModelIds: matchingModelIds,
+      groupKinds: [...MANAGEABLE_GROUP_KINDS],
+    }),
+  ]);
+
+  return new Ok(
+    users.flatMap((user) => {
+      const membership = membershipByUserId.get(user.id);
+      if (!membership) {
+        return [];
+      }
+      return [
+        {
+          user,
+          role: membership.role,
+          jobType,
+          groupNames: groupNamesByUserId.get(user.id) ?? [],
+        },
+      ];
+    })
+  );
+}
+
+async function fetchWorkspaceMemberContexts(
+  auth: Authenticator,
+  { userIds, jobType }: { userIds?: string[]; jobType?: JobType }
+): Promise<Result<WorkspaceMemberContext[], MCPError>> {
+  if (!auth.isAdmin()) {
+    return new Err(
+      new MCPError(
+        "Only workspace admins can retrieve other members' workspace context."
+      )
+    );
+  }
+
+  if (userIds && jobType) {
+    return new Err(
+      new MCPError("Provide either userIds or jobType, not both.")
+    );
+  }
+  if (!userIds && !jobType) {
+    return new Err(new MCPError("Provide either userIds or jobType."));
+  }
+
+  if (userIds) {
+    return fetchByUserIds(auth, userIds);
+  }
+  return fetchByJobType(auth, jobType as JobType);
+}
+
 const handlers: ToolHandlers<typeof WORKSPACE_PEOPLE_TOOLS_METADATA> = {
-  get_workspace_members_context: async ({ userIds }, { auth }) => {
-    const contextsResult = await fetchWorkspaceMemberContexts(auth, userIds);
+  get_workspace_members_context: async ({ userIds, jobType }, { auth }) => {
+    const contextsResult = await fetchWorkspaceMemberContexts(auth, {
+      userIds,
+      jobType,
+    });
     if (contextsResult.isErr()) {
       return contextsResult;
     }
