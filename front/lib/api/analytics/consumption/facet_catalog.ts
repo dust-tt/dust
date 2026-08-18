@@ -158,7 +158,7 @@ async function listConsumptionFacetCatalogWithoutTracing(
         auth,
         agentsGetView: "analytics",
         variant: "extra_light",
-        omitInstructions: true,
+        omitHeavyAttributes: true,
       })
   );
   const models = await traceFacetCatalogLoad(

@@ -212,7 +212,7 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
     limit,
     sort,
     // Stripped to stay under Next.js' 4MB API response limit.
-    omitInstructions: true,
+    omitHeavyAttributes: true,
   });
   if (withUsage === "true") {
     const mentionCounts = await runOnRedis(
