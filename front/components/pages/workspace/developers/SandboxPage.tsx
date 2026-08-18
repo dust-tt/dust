@@ -55,8 +55,8 @@ export function SandboxPage() {
       );
     }
 
-    // A single scope (the workspace) is the editable view; any combination is
-    // a read-only comparison for now.
+    // The workspace on its own uses the single-scope editor; any Pod in the
+    // selection switches to the multi-scope editor.
     if (selection.includeWorkspace && selectedPods.length === 0) {
       return workspaceView;
     }
@@ -131,8 +131,8 @@ export function SandboxPage() {
             <span className="font-medium text-foreground">
               {scopeCount} scopes selected.
             </span>{" "}
-            Changes below apply to the selected scopes unless marked
-            Workspace-wide.
+            Edits below apply to every selected scope. Workspace domains and
+            variables are inherited by all Pods.
           </div>
         ) : null}
       </div>

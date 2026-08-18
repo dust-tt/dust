@@ -15,9 +15,8 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-// The scopes shown together on the central Computer admin page: the workspace
-// baseline and/or any Pods. Workspace-only renders the editable view; any
-// other combination renders a read-only comparison.
+// The scopes edited together on the central Computer admin page: the workspace
+// baseline and/or any Pods. Every selected scope is a write target.
 export type SandboxScopeSelection = {
   includeWorkspace: boolean;
   podIds: string[];

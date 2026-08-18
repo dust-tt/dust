@@ -200,7 +200,7 @@ describe("POST /api/w/:wId/sandbox/egress-policy/bulk", () => {
     });
   });
 
-  it("returns 403 when sandbox_functions is disabled", async () => {
+  it("returns 403 when computer_admin_pods is disabled", async () => {
     const { workspace, podA } = await setupTest({
       enableComputerAdminPods: false,
     });
@@ -348,5 +348,71 @@ describe("POST /api/w/:wId/sandbox/egress-policy/bulk", () => {
     expect(allowedDomainsAt(podPolicyPath(workspace.sId, podA.sId))).toEqual([
       "api.github.com",
     ]);
+  });
+
+  it("leaves the workspace policy untouched when includeWorkspace is false", async () => {
+    const { workspace, podA } = await setupTest();
+
+    const response = await postBulk(workspace.sId, {
+      includeWorkspace: false,
+      podIds: [podA.sId],
+      operation: { operation: "add", domain: "api.github.com" },
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      results: [{ scopeId: podA.sId, success: true }],
+    });
+    // The workspace file is never written, so it stays absent.
+    expect(allowedDomainsAt(workspacePolicyPath(workspace.sId))).toEqual([]);
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.not.objectContaining({ space_id: expect.anything() }),
+      })
+    );
+  });
+
+  it("is a no-op when adding a domain already present, skipping the audit", async () => {
+    const { workspace, auth, podA } = await setupTest();
+
+    const seed = await writeOwnerPolicy(auth, {
+      ownerId: podA.sId,
+      policy: { allowedDomains: ["api.github.com"] },
+    });
+    if (seed.isErr()) {
+      throw seed.error;
+    }
+
+    const response = await postBulk(workspace.sId, {
+      includeWorkspace: false,
+      podIds: [podA.sId],
+      operation: { operation: "add", domain: "api.github.com" },
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      results: [{ scopeId: podA.sId, success: true }],
+    });
+    // Still a single entry, and no audit event for an unchanged policy.
+    expect(allowedDomainsAt(podPolicyPath(workspace.sId, podA.sId))).toEqual([
+      "api.github.com",
+    ]);
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+  });
+
+  it("is a no-op when removing a domain that is absent", async () => {
+    const { workspace, podA } = await setupTest();
+
+    const response = await postBulk(workspace.sId, {
+      includeWorkspace: false,
+      podIds: [podA.sId],
+      operation: { operation: "remove", domain: "api.github.com" },
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      results: [{ scopeId: podA.sId, success: true }],
+    });
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
   });
 });
