@@ -12,9 +12,9 @@ export function useComputerAdminAccess() {
   const isComputerEnabled = isComputerFeatureEnabled(featureFlags);
   const canAdministrateComputer = isAdmin && isComputerEnabled;
   // The multi-Pod scope selector and Pod editing on the Computer admin page
-  // sit behind their own flag, on top of Computer admin access.
+  // ride the Pod Functions flag, on top of Computer admin access.
   const canAdministratePods =
-    canAdministrateComputer && featureFlags.includes("computer_admin_pods");
+    canAdministrateComputer && featureFlags.includes("sandbox_functions");
 
   return {
     isAdmin,

@@ -42,10 +42,11 @@ const DeleteSandboxEnvVarsBulkBodySchema = z.object({
 // Mounted at /api/w/:wId/sandbox/env-vars/bulk. Multi-pod reads and writes for
 // the central Computer admin page. The parent sub-app applies the
 // workspace-admin + Computer gates; the multi-Pod feature is gated on the
-// computer_admin_pods flag. Values are never returned (write-only invariant).
+// Pod Functions (sandbox_functions) flag. Values are never returned
+// (write-only invariant).
 const app = workspaceApp();
 
-app.use("*", withFeatureFlag("computer_admin_pods"));
+app.use("*", withFeatureFlag("sandbox_functions"));
 
 /** @ignoreswagger */
 app.get(

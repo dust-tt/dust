@@ -745,7 +745,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "claude_fable_5_feature"
-  | "computer_admin_pods"
   | "databricks_tool"
   | "deepseek_feature"
   | "dev_mcp_actions"

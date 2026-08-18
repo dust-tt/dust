@@ -28,18 +28,18 @@ vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
 async function setupTest({
   role = "admin",
   disableComputerFeature = false,
-  enableComputerAdminPods = true,
+  enableSandboxFunctions = true,
 }: {
   role?: MembershipRoleType;
   disableComputerFeature?: boolean;
-  enableComputerAdminPods?: boolean;
+  enableSandboxFunctions?: boolean;
 } = {}) {
   const { workspace, auth, user, ...rest } = await createPrivateApiMockRequest({
     role,
   });
 
-  if (enableComputerAdminPods) {
-    await FeatureFlagFactory.basic(auth, "computer_admin_pods");
+  if (enableSandboxFunctions) {
+    await FeatureFlagFactory.basic(auth, "sandbox_functions");
   }
   if (disableComputerFeature) {
     await FeatureFlagFactory.basic(auth, "disable_computer_feature");
@@ -416,9 +416,9 @@ describe("DELETE /api/w/:wId/sandbox/env-vars/bulk", () => {
     vi.clearAllMocks();
   });
 
-  it("returns 403 when the computer_admin_pods flag is off", async () => {
+  it("returns 403 when the sandbox_functions flag is off", async () => {
     const { workspace, podA } = await setupTest({
-      enableComputerAdminPods: false,
+      enableSandboxFunctions: false,
     });
 
     const response = await deleteBulk(workspace.sId, {

@@ -20,10 +20,10 @@ import { z } from "zod";
 // Mounted at /api/w/:wId/sandbox/egress-policy/bulk. Multi-pod read (GET) and
 // add/remove write (POST) for the central Computer admin page. The parent
 // sub-app applies the workspace-admin + Computer gates; the multi-Pod feature
-// is gated on the computer_admin_pods flag.
+// is gated on the Pod Functions (sandbox_functions) flag.
 const app = workspaceApp();
 
-app.use("*", withFeatureFlag("computer_admin_pods"));
+app.use("*", withFeatureFlag("sandbox_functions"));
 
 const PostBulkEgressPolicyBodySchema = z.object({
   includeWorkspace: z.boolean(),
