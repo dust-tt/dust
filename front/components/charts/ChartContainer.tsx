@@ -1,4 +1,7 @@
-import type { LegendItem } from "@app/components/charts/ChartLegend";
+import type {
+  ChartLegendAlignment,
+  LegendItem,
+} from "@app/components/charts/ChartLegend";
 import { ChartLegend } from "@app/components/charts/ChartLegend";
 import { CHART_HEIGHT } from "@app/components/charts/constants";
 import {
@@ -28,6 +31,7 @@ interface ChartContainerProps {
   height?: number;
   description?: string;
   legendItems?: LegendItem[];
+  legendAlignment?: ChartLegendAlignment;
   isAllowFullScreen?: boolean;
   showHeaderDivider?: boolean;
 }
@@ -44,6 +48,7 @@ export function ChartContainer({
   height,
   description,
   legendItems,
+  legendAlignment,
   isAllowFullScreen,
   showHeaderDivider,
 }: ChartContainerProps) {
@@ -104,7 +109,9 @@ export function ChartContainer({
               {children}
             </ResponsiveContainer>
             {bottomControls}
-            {legendItems && <ChartLegend items={legendItems} />}
+            {legendItems && (
+              <ChartLegend items={legendItems} alignment={legendAlignment} />
+            )}
           </>
         )}
       </div>
@@ -134,7 +141,12 @@ export function ChartContainer({
                     {children}
                   </ResponsiveContainer>
                   {bottomControls}
-                  {legendItems && <ChartLegend items={legendItems} />}
+                  {legendItems && (
+                    <ChartLegend
+                      items={legendItems}
+                      alignment={legendAlignment}
+                    />
+                  )}
                 </div>
               </div>
             </SheetContainer>

@@ -358,34 +358,33 @@ function buildColumns({
       id: "filter",
       header: "",
       enableSorting: false,
-      meta: { className: "w-12", headerAlign: "right" },
+      meta: { className: "w-12 p-0", headerAlign: "right" },
       cell: (info) => {
         const row = info.row.original;
         const isFilterSelected = selectedIdSet.has(row.id);
         return (
-          <DataTable.CellContent className="w-full justify-end">
-            <Button
-              icon={isFilterSelected ? XCircle : FilterFunnel01}
-              variant="ghost-secondary"
-              size="xs"
-              tooltip={
-                isFilterSelected ? "Remove from filters" : "Add to filters"
+          <Button
+            icon={isFilterSelected ? XCircle : FilterFunnel01}
+            variant="ghost-secondary"
+            size="xs"
+            className="h-12 w-full rounded-none"
+            tooltip={
+              isFilterSelected ? "Remove from filters" : "Add to filters"
+            }
+            aria-label={
+              isFilterSelected
+                ? `Remove ${row.name} from filters`
+                : `Add ${row.name} to filters`
+            }
+            onClick={(event) => {
+              event.stopPropagation();
+              if (isFilterSelected) {
+                row.onRemoveFilter();
+              } else {
+                row.onAddFilter();
               }
-              aria-label={
-                isFilterSelected
-                  ? `Remove ${row.name} from filters`
-                  : `Add ${row.name} to filters`
-              }
-              onClick={(event) => {
-                event.stopPropagation();
-                if (isFilterSelected) {
-                  row.onRemoveFilter();
-                } else {
-                  row.onAddFilter();
-                }
-              }}
-            />
-          </DataTable.CellContent>
+            }}
+          />
         );
       },
     },

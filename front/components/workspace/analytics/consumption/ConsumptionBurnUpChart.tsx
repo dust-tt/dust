@@ -179,6 +179,7 @@ export function ConsumptionBurnUpChart({
       }
       height={CHART_HEIGHT}
       legendItems={legendItems}
+      legendAlignment="center"
       showHeaderDivider
     >
       <LineChart data={chartData} margin={{ ...CHART_MARGIN, top: 24 }}>

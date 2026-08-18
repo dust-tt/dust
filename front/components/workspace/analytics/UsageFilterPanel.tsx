@@ -17,6 +17,7 @@ import { UsageFilterFooter } from "@app/components/workspace/analytics/usageFilt
 import { UsageFilterMemberGroupsControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterMemberGroupsControls";
 import { UsageFilterModelComplexityControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterModelComplexityControls";
 import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
+import { UsageFilterSection } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSection";
 import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
 import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
@@ -29,7 +30,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   FilterFunnel01,
-  NavigationListLabel,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -70,6 +70,8 @@ export function UsageFilterPanel({
   const [activeTier, setActiveTier] =
     useState<ModelsTierName>(DEFAULT_MODEL_TIER);
   const [searchText, setSearchText] = useState("");
+  const [contentScrollContainer, setContentScrollContainer] =
+    useState<HTMLDivElement | null>(null);
   const selectedGroups = useToggleSelectionList<UsageFilterGroup>();
 
   const draftScopeFilter = useMemo(
@@ -170,9 +172,21 @@ export function UsageFilterPanel({
     }
   };
 
+  const resetContentScroll = () => {
+    if (contentScrollContainer) {
+      contentScrollContainer.scrollTop = 0;
+    }
+  };
+
   const handleCategoryChange = (category: UsageFilterCategory) => {
     setActiveCategory(category);
     setSearchText("");
+    resetContentScroll();
+  };
+
+  const handleSearchChange = (search: string) => {
+    setSearchText(search);
+    resetContentScroll();
   };
 
   const activeCategorySelectionCount = draftFilter[activeCategory]?.length ?? 0;
@@ -197,10 +211,9 @@ export function UsageFilterPanel({
             activeCategory={activeCategory}
             onCategoryChange={handleCategoryChange}
           />
-          <div className="flex h-full w-72 flex-col gap-2 p-2">
-            <NavigationListLabel
-              label={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
-              className="bg-transparent pt-1.5 pb-0 font-medium"
+          <div className="flex h-full w-80 flex-col gap-2 p-2">
+            <UsageFilterSection
+              title={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
               action={
                 <Button
                   label="Clear"
@@ -213,60 +226,73 @@ export function UsageFilterPanel({
                   }
                 />
               }
-            />
-            <SearchInput
-              name="usage-filter-search"
-              value={searchText}
-              onChange={setSearchText}
-              placeholder={`Search ${USAGE_FILTER_CATEGORY_LABEL[activeCategory].toLowerCase()}`}
-            />
-            {activeCategory === "member" && (
-              <UsageFilterMemberGroupsControls
-                groups={groups}
-                selectedGroups={selectedGroups.items}
-                onAddGroup={selectedGroups.add}
-                onRemoveGroup={selectedGroups.remove}
+            >
+              <SearchInput
+                name="usage-filter-search"
+                value={searchText}
+                onChange={handleSearchChange}
+                placeholder={`Search ${USAGE_FILTER_CATEGORY_LABEL[activeCategory].toLowerCase()}`}
               />
-            )}
-            {activeCategory === "model" && (
-              <UsageFilterModelComplexityControls
-                moreModelsCatalog={categoryOptions.model}
-                selectedModelIds={selectedIdsForActiveCategory}
-                onToggleModel={(model) => toggleOption("model", model)}
-                activeTier={activeTier}
-                onTierChange={setActiveTier}
-              />
-            )}
-            {activeCategory === "agent" && (
-              <UsageFilterAgentScopeControls
-                scopes={USAGE_FILTER_AGENT_SCOPES}
-                activeScope={activeScope}
-                onScopeChange={setActiveScope}
-              />
-            )}
-            {isFacetsError ? (
-              <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
-                Failed to load filters.
-              </div>
-            ) : (
-              <UsageFilterOptionCheckboxList
-                key={optionListKey}
-                category={activeCategory}
-                categoryLabel={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
-                options={filteredOptions}
-                selectedIds={selectedIdsForActiveCategory}
-                onToggleOption={(option) =>
-                  toggleOption(activeCategory, option)
-                }
-                onSelectAll={() =>
-                  selectAllFiltered(activeCategory, unselectedEnabledOptions)
-                }
-                selectAllLabel="Select all"
-                hasSelectableOptions={unselectedEnabledOptions.length > 0}
-                isLoading={isFacetsLoading}
-                isUpdating={isFacetsValidating}
-              />
-            )}
+            </UsageFilterSection>
+            <div
+              ref={setContentScrollContainer}
+              className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto"
+            >
+              {activeCategory === "member" && (
+                <UsageFilterMemberGroupsControls
+                  groups={groups}
+                  selectedGroups={selectedGroups.items}
+                  onAddGroup={selectedGroups.add}
+                  onRemoveGroup={selectedGroups.remove}
+                />
+              )}
+              {activeCategory === "model" && (
+                <UsageFilterModelComplexityControls
+                  moreModelsCatalog={categoryOptions.model}
+                  selectedModelIds={selectedIdsForActiveCategory}
+                  onToggleModel={(model) => toggleOption("model", model)}
+                  activeTier={activeTier}
+                  onTierChange={(tier) => {
+                    setActiveTier(tier);
+                    resetContentScroll();
+                  }}
+                />
+              )}
+              {activeCategory === "agent" && (
+                <UsageFilterAgentScopeControls
+                  scopes={USAGE_FILTER_AGENT_SCOPES}
+                  activeScope={activeScope}
+                  onScopeChange={(scope) => {
+                    setActiveScope(scope);
+                    resetContentScroll();
+                  }}
+                />
+              )}
+              {isFacetsError ? (
+                <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
+                  Failed to load filters.
+                </div>
+              ) : (
+                <UsageFilterOptionCheckboxList
+                  key={optionListKey}
+                  category={activeCategory}
+                  categoryLabel={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
+                  options={filteredOptions}
+                  selectedIds={selectedIdsForActiveCategory}
+                  onToggleOption={(option) =>
+                    toggleOption(activeCategory, option)
+                  }
+                  onSelectAll={() =>
+                    selectAllFiltered(activeCategory, unselectedEnabledOptions)
+                  }
+                  selectAllLabel="Select all"
+                  hasSelectableOptions={unselectedEnabledOptions.length > 0}
+                  isLoading={isFacetsLoading}
+                  isUpdating={isFacetsValidating}
+                  scrollContainer={contentScrollContainer}
+                />
+              )}
+            </div>
           </div>
           <UsageFilterSelectionSummary
             categoriesWithSelection={categoriesWithSelection}
