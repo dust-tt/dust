@@ -118,7 +118,9 @@ describe("SandboxFunctionPersonalAuthCard", () => {
     expect(
       screen.getByText("Connect your Google Drive account?")
     ).toBeDefined();
-    expect(screen.getByText("Requested for: reading worksheet")).toBeDefined();
+    expect(
+      screen.getByText("Will be used for: reading worksheet")
+    ).toBeDefined();
     expect(
       screen.getByText(
         "This connection will be used for Google Drive from now on."

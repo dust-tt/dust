@@ -161,7 +161,7 @@ export function PersonalAuthenticationCard({
           <>
             <div className="flex flex-col gap-1">
               <div className="text-base wrap-break-word text-muted-foreground">
-                Requested for: {sentenceActionLabel}
+                Will be used for: {sentenceActionLabel}
               </div>
               <div className="text-sm wrap-break-word text-muted-foreground">
                 {`This connection will be used for ${serverDisplayName ?? "this service"} from now on.`}
