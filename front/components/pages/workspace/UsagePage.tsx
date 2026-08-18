@@ -12,6 +12,7 @@ import {
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
+import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
 import { MembersSelectionBanner } from "@app/components/workspace/MembersSelectionBanner";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
@@ -33,10 +34,7 @@ import {
   useFeatureFlags,
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
-import {
-  formatCredits,
-  getCreditUsageDisplayTarget,
-} from "@app/lib/client/credits";
+import { formatCredits } from "@app/lib/client/credits";
 import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
 import { INHERIT_MODEL_TIER } from "@app/lib/client/model_tier_options";
 import {
@@ -205,6 +203,7 @@ export function UsagePage() {
   const [seatTypeFilter, setSeatTypeFilter] = useState<
     MembershipSeatType | "none" | null
   >(null);
+  const [groupFilter, setGroupFilter] = useState<string | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -229,6 +228,11 @@ export function UsagePage() {
     },
     []
   );
+
+  const handleSetGroupFilter = useCallback((next: string | null) => {
+    setGroupFilter(next);
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, []);
 
   // Name/email search is also applied server-side before pagination, so reset
   // to the first page whenever the search term changes.
@@ -505,12 +509,16 @@ export function UsagePage() {
     orderColumn: membersOrderColumn,
     orderDirection: membersOrderDirection,
     seatType: seatTypeFilter ?? undefined,
+    groupId: groupFilter ?? undefined,
   });
 
   const { groups } = useGroups({
     owner,
     kinds: [...CAP_ELIGIBLE_GROUP_KINDS],
   });
+  const selectedGroupName =
+    groups.find((g) => g.sId === groupFilter)?.name ?? null;
+
   const { tiers: modelTiersCatalog } = useModelTiers({
     owner,
     disabled: !modelsPickerEnabled,
@@ -564,16 +572,16 @@ export function UsagePage() {
     return map;
   }, [groups]);
 
-  // Cross-page selection for batch actions on the members table. Resets when
-  // the active filter changes because the "all matching" set is then stale.
+  // Cross-page selection for batch actions on the members table. Resets when the
+  // filter identity changes (the "all matching" set is no longer the same).
   const pageItemIds = useMemo(
-    () => membersUsage.map((member) => member.sId),
+    () => membersUsage.map((m) => m.sId),
     [membersUsage]
   );
   const selection = useMembersSelection({
     pageItemIds,
     totalCount: totalMembersUsage,
-    resetKey: `${searchTerm}|${seatTypeFilter ?? ""}`,
+    resetKey: `${searchTerm}|${seatTypeFilter ?? ""}|${groupFilter ?? ""}`,
   });
   const { clearSelection } = selection;
 
@@ -598,11 +606,16 @@ export function UsagePage() {
     setIsBulkChangeSeatOpen(true);
   }, []);
 
+  // Selected members visible on the current page, for the bulk seat modal's
+  // avatar row (with an "all across pages" selection this is the visible
+  // subset only).
   const selectedVisibleMembers = useMemo(
-    () => membersUsage.filter((member) => selection.rowSelection[member.sId]),
+    () => membersUsage.filter((m) => selection.rowSelection[m.sId]),
     [membersUsage, selection.rowSelection]
   );
 
+  // Translate the cross-page selection into the descriptor the bulk member
+  // endpoints expect: explicit ids, or the current filter minus exclusions.
   const buildBulkSelectionBody = useCallback((): BulkMemberSelectionBody => {
     const descriptor = selection.descriptor();
     return descriptor.mode === "ids"
@@ -611,11 +624,12 @@ export function UsagePage() {
           mode: "all" as const,
           filter: {
             seatType: seatTypeFilter ?? undefined,
+            groupId: groupFilter ?? undefined,
             search: searchTerm.trim() || undefined,
           },
           excludeUserIds: descriptor.excludeUserIds,
         };
-  }, [selection, seatTypeFilter, searchTerm]);
+  }, [selection, seatTypeFilter, groupFilter, searchTerm]);
 
   const onRemoveSeat = useCallback(
     async (member: MemberUsageType) => {
@@ -655,10 +669,16 @@ export function UsagePage() {
   );
 
   const handleSeatMutationSaved = useCallback(() => {
+    // Seat mutations can move a member in or out of the currently filtered set
+    // (for example with the seat filter), which makes the cross-page selection
+    // stale.
     clearSelection();
     handleApproveOnModalSaved();
   }, [handleApproveOnModalSaved, clearSelection]);
 
+  // Rows to spin while a bulk update runs — the request returns once the bulk
+  // workflow has completed. For an "all matching" selection only the current
+  // page is visible, so spin its non-excluded rows.
   const getBulkPendingMemberIds = useCallback((): string[] => {
     const descriptor = selection.descriptor();
     return descriptor.mode === "ids"
@@ -671,8 +691,8 @@ export function UsagePage() {
       limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number }
     ): Promise<boolean> => {
       const pendingMemberIds = getBulkPendingMemberIds();
-      setTotalAllowedUsagePendingMemberIds((previous) => {
-        const next = new Set(previous);
+      setTotalAllowedUsagePendingMemberIds((prev) => {
+        const next = new Set(prev);
         pendingMemberIds.forEach((id) => next.add(id));
         return next;
       });
@@ -689,8 +709,8 @@ export function UsagePage() {
         selection.clearSelection();
         return true;
       } finally {
-        setTotalAllowedUsagePendingMemberIds((previous) => {
-          const next = new Set(previous);
+        setTotalAllowedUsagePendingMemberIds((prev) => {
+          const next = new Set(prev);
           pendingMemberIds.forEach((id) => next.delete(id));
           return next;
         });
@@ -724,8 +744,8 @@ export function UsagePage() {
       hasDeferredChanges: boolean;
     }): Promise<boolean> => {
       const pendingMemberIds = getBulkPendingMemberIds();
-      setSeatChangePendingMemberIds((previous) => {
-        const next = new Set(previous);
+      setSeatChangePendingMemberIds((prev) => {
+        const next = new Set(prev);
         pendingMemberIds.forEach((id) => next.add(id));
         return next;
       });
@@ -741,11 +761,13 @@ export function UsagePage() {
           return false;
         }
 
+        // Seat mutations can move members in or out of the currently filtered
+        // set, which makes the cross-page selection stale.
         selection.clearSelection();
         return true;
       } finally {
-        setSeatChangePendingMemberIds((previous) => {
-          const next = new Set(previous);
+        setSeatChangePendingMemberIds((prev) => {
+          const next = new Set(prev);
           pendingMemberIds.forEach((id) => next.delete(id));
           return next;
         });
@@ -817,9 +839,12 @@ export function UsagePage() {
     totalActiveCredits - totalRemainingCredits
   );
   const creditUsage = consumptionOverview?.creditUsage ?? null;
-  const creditUsageDisplayTarget = creditUsage
-    ? getCreditUsageDisplayTarget(creditUsage.status.target)
-    : null;
+  const creditUsageDisplayTarget =
+    creditUsage?.status.target === "on_target"
+      ? "on_target"
+      : creditUsage
+        ? "off_target"
+        : null;
   const totalConsumedCredits =
     consumptionOverview?.totalCredits ??
     (isReadOnly ? periodSpendCredits : poolConsumedCredits);
@@ -865,13 +890,13 @@ export function UsagePage() {
   ) : null;
 
   const searchAndInviteRow = (
-    <div className="flex flex-col gap-2 sm:flex-row">
+    <div className="flex flex-row gap-2">
       <SearchInput
-        placeholder="Search a user"
+        placeholder="Search members"
         value={searchTerm}
         name="search"
         onChange={handleSetSearchTerm}
-        className="min-w-0 flex-1 [&>div>div]:border-border [&>div>div]:bg-muted-background [&_svg]:h-4 [&_svg]:w-4 [&_svg]:text-foreground"
+        className="w-full"
       />
       {isManualInvitationsEnabled && (
         <InviteEmailButtonWithModal
@@ -890,16 +915,15 @@ export function UsagePage() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="ghost-secondary"
+          variant="outline"
           label={
             seatTypeFilter === "none"
               ? "No seat"
               : seatTypeFilter
                 ? seatTypeDisplayName(seatTypeFilter)
-                : "User type"
+                : "All seats"
           }
           size="sm"
-          className="border border-border bg-background"
           isSelect
         />
       </DropdownMenuTrigger>
@@ -937,6 +961,32 @@ export function UsagePage() {
     </DropdownMenu>
   );
 
+  const groupsFilterDropdown = groups.length > 0 && (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          label={selectedGroupName ?? "All groups"}
+          size="sm"
+          isSelect
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          label="All groups"
+          onClick={() => handleSetGroupFilter(null)}
+        />
+        {groups.map((group) => (
+          <DropdownMenuItem
+            key={group.sId}
+            label={group.name}
+            onClick={() => handleSetGroupFilter(group.sId)}
+          />
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   const membersTable = (
     <MembersUsageTable
       members={membersUsage}
@@ -966,7 +1016,6 @@ export function UsagePage() {
       sorting={sorting}
       setSorting={handleSetSorting}
       showGroupsColumn={groups.length > 0}
-      compact
       enableSelection={!isReadOnly}
       rowSelection={selection.rowSelection}
       onRowSelectionChange={selection.onRowSelectionChange}
@@ -1167,42 +1216,39 @@ export function UsagePage() {
             <Page.Vertical gap="sm" align="stretch">
               {searchAndInviteRow}
               <div className="flex flex-col gap-2">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-row items-center justify-between gap-2">
                   <ButtonsSwitchList
-                    size="sm"
+                    size="xs"
                     defaultValue="members"
-                    className="w-fit [&]:border-transparent [&]:bg-muted-background/50"
                     onValueChange={(v: string) =>
                       setMembersTab(v === "requests" ? "requests" : "members")
                     }
                   >
-                    <ButtonsSwitch
-                      value="members"
-                      label="Members"
-                      className="after:hidden aria-selected:border-border aria-selected:from-background aria-selected:to-background aria-selected:text-foreground aria-selected:shadow-none"
-                    />
+                    <ButtonsSwitch value="members" label="Members" />
                     <ButtonsSwitch
                       value="requests"
-                      label="Request"
-                      className="after:hidden aria-selected:border-border aria-selected:from-background aria-selected:to-background aria-selected:text-foreground aria-selected:shadow-none"
-                      iconRight={
-                        filteredUpgradeRequests.length > 0 ? (
-                          <span
-                            aria-hidden="true"
-                            className="flex h-4 min-w-4 items-center justify-center rounded-full bg-highlight-500 px-1 text-[10px] leading-none text-white"
-                          >
-                            {filteredUpgradeRequests.length}
-                          </span>
-                        ) : undefined
-                      }
-                      aria-label={
+                      label="Requests"
+                      isCounter
+                      counterValue={
                         filteredUpgradeRequests.length > 0
-                          ? `Request, ${filteredUpgradeRequests.length} pending`
-                          : "Request"
+                          ? String(filteredUpgradeRequests.length)
+                          : undefined
                       }
                     />
                   </ButtonsSwitchList>
-                  {membersTab === "members" && seatFilterDropdown}
+                  {membersTab === "members" && (
+                    <div className="flex flex-row items-center gap-2">
+                      {groupsFilterDropdown}
+                      {modelsPickerEnabled && groupFilter && (
+                        <GroupModelTierPickerDropdown
+                          owner={owner}
+                          groupId={groupFilter}
+                          readOnly={isReadOnly}
+                        />
+                      )}
+                      {seatFilterDropdown}
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col gap-2 pt-2">
                   {membersTab === "members" ? (
@@ -1225,7 +1271,6 @@ export function UsagePage() {
               </div>
             </Page.Vertical>
           </TabsContent>
-
           <TabsContent value="groups">
             <GroupsUsageTable
               owner={owner}
