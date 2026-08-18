@@ -1,3 +1,4 @@
+import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -8,6 +9,10 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { emptyWorkspacePermissions } from "@app/types/group_permissions";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/permissions/legacy_acls", () => ({
+  isLegacyAclsEnabled: vi.fn(() => false),
+}));
 
 const CAPABILITY = { grantType: "create", resourceType: "agent" } as const;
 const RESOURCE_TYPE = "agent";
@@ -344,5 +349,61 @@ describe("Authenticator.refresh permission resolution", () => {
       "read",
       "write",
     ]);
+  });
+});
+
+describe("Authenticator permissions under the use_legacy_acls kill switch", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.mocked(isLegacyAclsEnabled).mockReturnValue(false);
+  });
+
+  it("resolves no grant at construction but still answers capability checks", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    await GroupFactory.defaults(workspace);
+
+    const admin = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, admin, { role: "admin" });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      admin.sId,
+      workspace.sId
+    );
+
+    const group = await GroupFactory.regularAuto(workspace, "eng");
+    await GroupPermissionResource.grantTypeWide(adminAuth, {
+      group,
+      ...CAPABILITY,
+    });
+    await GroupPermissionResource.grant(adminAuth, {
+      group,
+      grantType: "editor",
+      resourceType: "agent",
+      resourceId: 42,
+    });
+
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+    await GroupFactory.withMembers(adminAuth, group, [user]);
+
+    vi.mocked(isLegacyAclsEnabled).mockReturnValue(true);
+    const listForGroups = vi.spyOn(GroupPermissionResource, "listForGroups");
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    // Building the auth reads no grant, so the instance grant is not served either.
+    expect(listForGroups).not.toHaveBeenCalled();
+    expect(auth.getGrantedVerbs("agent", 42)).toEqual([]);
+
+    // The workspace capabilities have no legacy path: they load their type-wide grants on
+    // demand, once for the whole authenticator.
+    expect(await auth.hasWorkspacePermission(VERB, RESOURCE_TYPE)).toBe(true);
+    expect(await auth.getWorkspacePermissions()).toEqual({
+      ...emptyWorkspacePermissions(),
+      agent: ["create"],
+    });
+    expect(listForGroups).toHaveBeenCalledTimes(1);
   });
 });

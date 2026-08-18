@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import type {
   SandboxExecTokenPayload,
@@ -150,6 +151,7 @@ export class Authenticator {
   _clientIp?: string;
   // Governance grants the caller holds, resolved by the factory (see `resolvePermissions`)
   _permissions: GroupPermissions;
+  private _capabilityGrants: GroupPermissions | null = null;
 
   // Should only be called from the static methods below.
   constructor({
@@ -397,6 +399,7 @@ export class Authenticator {
       workspace: this._workspace,
       groupModelIds: this._groupModelIds,
     });
+    this._capabilityGrants = null;
   }
 
   /**
@@ -1268,9 +1271,14 @@ export class Authenticator {
       return false;
     }
 
+    const grants = await this.capabilityGrants();
+
     return this.hasPermissionForAcl(verb, {
       roles: [{ role: "admin", permissions: [verb] }],
-      grantedVerbs: this.getGrantedVerbs(resourceType, WHOLE_TYPE_RESOURCE_ID),
+      grantedVerbs: grants.resolvedVerbsForResource(
+        resourceType,
+        WHOLE_TYPE_RESOURCE_ID
+      ),
       workspaceId: workspace.id,
     });
   }
@@ -1284,7 +1292,36 @@ export class Authenticator {
     if (this.isAdmin()) {
       return allWorkspacePermissions();
     }
-    return this._permissions.toWorkspacePermissions();
+    const grants = await this.capabilityGrants();
+
+    return grants.toWorkspacePermissions();
+  }
+
+  /**
+   * The grants the workspace-capability checks read: the set resolved at construction, except
+   * while the kill switch is on, where it is empty and the type-wide grants are loaded here
+   * instead, on the few paths that ask. Memoized: a skill import asks twice per skill.
+   */
+  private async capabilityGrants(): Promise<GroupPermissions> {
+    if (!isLegacyAclsEnabled()) {
+      return this._permissions;
+    }
+
+    if (!this._workspace) {
+      return GroupPermissions.empty();
+    }
+
+    this._capabilityGrants ??= GroupPermissions.fromGrants(
+      await GroupPermissionResource.listForGroups(
+        renderLightWorkspaceType({ workspace: this._workspace }),
+        {
+          groupModelIds: this._groupModelIds,
+          resourceId: WHOLE_TYPE_RESOURCE_ID,
+        }
+      )
+    );
+
+    return this._capabilityGrants;
   }
 
   /**
@@ -1293,6 +1330,10 @@ export class Authenticator {
    * is layered on by `hasWorkspacePermission` / `getWorkspacePermissions`, so being an admin does
    * NOT confer access to a specific instance unless a grant grants it. Cheap for callers with no
    * groups (no query).
+   *
+   * Resolves to nothing while the `use_legacy_acls` kill switch is on: every check served from
+   * grants then has a legacy path, except the workspace capabilities, which load their own grants
+   * (see `capabilityGrants`).
    */
   static async resolvePermissions({
     workspace,
@@ -1301,7 +1342,7 @@ export class Authenticator {
     workspace?: WorkspaceResource | null;
     groupModelIds: ModelId[];
   }): Promise<GroupPermissions> {
-    if (!workspace) {
+    if (!workspace || isLegacyAclsEnabled()) {
       return GroupPermissions.empty();
     }
 
@@ -1511,6 +1552,11 @@ export class Authenticator {
     candidateAcls: AccessControlList[],
     context: Record<string, string | number | boolean | null>
   ): void {
+    // The candidate reads grants the kill switch leaves unresolved, so every check would mismatch.
+    if (isLegacyAclsEnabled()) {
+      return;
+    }
+
     void this.runShadowComparePermission(
       verb,
       legacyAcls,
