@@ -121,7 +121,7 @@ describe("SandboxFunctionPersonalAuthCard", () => {
     expect(screen.getByText("Requested for:")).toBeDefined();
     expect(screen.getByText("Read worksheet")).toBeDefined();
     expect(
-      screen.getByText("Also available for all Google Drive actions.")
+      screen.getByText("Connect once, use it for all Google Drive actions.")
     ).toBeDefined();
     // The viewer triggered the invocation, so they can resolve it themselves.
     expect(screen.getByText("Connect")).toBeDefined();
