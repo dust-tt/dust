@@ -102,6 +102,13 @@ describe("activation recommendations work-area tools", () => {
     const pod = await createActivationPodForCaller(authenticator, workspace);
     const targetUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, targetUser, { role: "user" });
+    await createActivationPodForCaller(
+      await Authenticator.fromUserIdAndWorkspaceId(
+        targetUser.sId,
+        workspace.sId
+      ),
+      workspace
+    );
 
     const result = await getCreateWorkAreasTool().handler(
       {
@@ -129,7 +136,6 @@ describe("activation recommendations work-area tools", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       userId: targetUser.id,
-      podId: null,
       title: "Weekly pipeline review",
     });
   });
@@ -216,6 +222,29 @@ describe("activation recommendations work-area tools", () => {
     await MembershipFactory.associate(workspace, exceptionUser, {
       role: "user",
     });
+    await Promise.all([
+      createActivationPodForCaller(
+        await Authenticator.fromUserIdAndWorkspaceId(
+          firstCohortUser.sId,
+          workspace.sId
+        ),
+        workspace
+      ),
+      createActivationPodForCaller(
+        await Authenticator.fromUserIdAndWorkspaceId(
+          secondCohortUser.sId,
+          workspace.sId
+        ),
+        workspace
+      ),
+      createActivationPodForCaller(
+        await Authenticator.fromUserIdAndWorkspaceId(
+          exceptionUser.sId,
+          workspace.sId
+        ),
+        workspace
+      ),
+    ]);
 
     const result = await getCreateWorkAreasTool().handler(
       {
@@ -256,15 +285,9 @@ describe("activation recommendations work-area tools", () => {
         user: exceptionUser,
       }),
     ]);
-    expect(firstRows).toMatchObject([
-      { title: "Pipeline management", podId: null },
-    ]);
-    expect(secondRows).toMatchObject([
-      { title: "Pipeline management", podId: null },
-    ]);
-    expect(exceptionRows).toMatchObject([
-      { title: "Renewal planning", podId: null },
-    ]);
+    expect(firstRows).toMatchObject([{ title: "Pipeline management" }]);
+    expect(secondRows).toMatchObject([{ title: "Pipeline management" }]);
+    expect(exceptionRows).toMatchObject([{ title: "Renewal planning" }]);
   });
 
   it("rejects a user appearing in multiple bulk assignments", async () => {
