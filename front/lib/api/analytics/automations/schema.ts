@@ -3,6 +3,12 @@ import { z } from "zod";
 
 export const DEFAULT_AUTOMATION_TRIGGERS_LIMIT = 25;
 
+export const AutomationsOverviewBodySchema = ConsumptionPeriodSchema;
+
+export type AutomationsOverviewBody = z.infer<
+  typeof AutomationsOverviewBodySchema
+>;
+
 export const AutomationTriggersBodySchema = ConsumptionPeriodSchema.extend({
   limit: z
     .number()

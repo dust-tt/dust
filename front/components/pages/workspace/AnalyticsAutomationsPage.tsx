@@ -1,3 +1,4 @@
+import { AutomationsOverview } from "@app/components/workspace/analytics/automations/AutomationsOverview";
 import { AutomationsTriggersTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersTable";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
@@ -52,6 +53,7 @@ export function AnalyticsAutomationsPage() {
         }
       />
       <div className="flex flex-col gap-8 pb-8 pt-4">
+        <AutomationsOverview workspaceId={owner.sId} period={period} />
         <AutomationsTriggersTable workspaceId={owner.sId} period={period} />
       </div>
     </Page.Vertical>
