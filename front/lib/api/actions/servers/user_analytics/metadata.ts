@@ -13,10 +13,8 @@ export const USER_ANALYTICS_TOOLS_METADATA = [
   {
     name: GET_WORKSPACE_MEMBERS_CONTEXT_TOOL_NAME,
     description:
-      "Get admin-visible directory context for a batch of active workspace " +
-      "members: identity, workspace role, job function, and user-managed " +
-      "workspace groups. This does not return private activity or connected-source " +
-      "data. Only workspace admins may use this tool.",
+      "Get directory context for a batch of active workspace members: " +
+      "identity, workspace role, job function, and user-managed workspace groups.",
     schema: {
       userIds: z
         .array(z.string())
