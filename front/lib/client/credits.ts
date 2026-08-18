@@ -1,3 +1,4 @@
+import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
 import type { MaxAwuCreditsTimeframeType } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -7,6 +8,23 @@ import { pluralize } from "@app/types/shared/utils/string_utils";
 // conversation cost menu entries.
 export function formatCredits(credits: number): string {
   return credits.toLocaleString("en-US", { maximumFractionDigits: 1 });
+}
+
+export type CreditUsageDisplayTarget = "on_target" | "off_target";
+
+export function getCreditUsageDisplayTarget(
+  target: CreditUsageTarget
+): CreditUsageDisplayTarget {
+  switch (target) {
+    case "on_target":
+      return "on_target";
+    case "elevated":
+    case "critical":
+      return "off_target";
+    default:
+      assertNeverAndIgnore(target);
+      return "off_target";
+  }
 }
 
 export function formatCreditValue(credits: number): string {
