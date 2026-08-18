@@ -2865,6 +2865,44 @@ describe("SkillResource", () => {
       expect(skill.canAdministrate(editorAuth)).toBe(false);
     });
 
+    it("dual-writes editor changes to the per-user grant group", async () => {
+      const { skill, editor } = await setupSkillWithEditor("Dual Write Skill");
+
+      const grantSpec = {
+        grantType: "editor" as const,
+        resourceType: "skill" as const,
+        resourceId: skill.id,
+      };
+      const grantGroupMembers = async () => {
+        const group = await GroupPermissionResource.findRegularAutoGroupForGrant(
+          testContext.authenticator,
+          grantSpec
+        );
+        if (!group) {
+          return null;
+        }
+        const members = await group.getActiveMembers(testContext.authenticator);
+        return members.map((m) => m.sId);
+      };
+
+      // upsertEditors granted the editor, and makeNew granted the creator.
+      expect(await grantGroupMembers()).toContain(editor.sId);
+      expect(await grantGroupMembers()).toContain(testContext.user.sId);
+
+      const removeResult = await skill.removeEditors(
+        testContext.authenticator,
+        [editor]
+      );
+      expect(removeResult.isOk()).toBe(true);
+
+      // Both sides drop the editor.
+      expect(await grantGroupMembers()).not.toContain(editor.sId);
+      const legacyMembers = await skill.editorGroup!.getActiveMembers(
+        testContext.authenticator
+      );
+      expect(legacyMembers.map((m) => m.sId)).not.toContain(editor.sId);
+    });
+
     it("falls back to the editor group when the use_legacy_acls kill switch is on", async () => {
       const { skill, buildEditorAuth } = await setupSkillWithEditor(
         "Legacy Switch Skill"
