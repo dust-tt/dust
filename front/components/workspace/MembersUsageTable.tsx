@@ -37,6 +37,7 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Clock,
+  CoinsStacked01,
   createSelectionColumn,
   DataTable,
   Icon,
@@ -384,7 +385,7 @@ export function AwuUsageBar({
 
   return (
     <div className="flex w-full flex-col gap-1">
-      <div className="flex justify-between text-xs tabular-nums text-foreground">
+      <div className="flex justify-between text-xs text-foreground">
         <span>
           {isFreeWithBalance
             ? formatCredits(Math.min(lifetimeConsumed! + overage, allowance))
@@ -485,25 +486,32 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
 };
 
 function buildConsumedAwuCreditsColumn(
-  creditsResetAt: string | null
+  creditsResetAt: string | null,
+  compact: boolean
 ): ColumnDef<RowData, string> {
   return {
     id: "consumedAwuCredits" as const,
-    header: () => (
-      <div className="flex flex-col">
-        <span>Credits usage this month</span>
-        {creditsResetAt && (
-          <span className="text-xs font-normal text-muted-foreground">
-            Limits reset on{" "}
-            {new Date(creditsResetAt).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              timeZone: "UTC",
-            })}
-          </span>
-        )}
-      </div>
-    ),
+    header: () =>
+      compact ? (
+        <span className="flex items-center gap-1 normal-case">
+          <CoinsStacked01 className="h-3 w-3" />
+          Credit usage
+        </span>
+      ) : (
+        <div className="flex flex-col">
+          <span>Credits usage this month</span>
+          {creditsResetAt && (
+            <span className="text-xs font-normal text-muted-foreground">
+              Limits reset on{" "}
+              {new Date(creditsResetAt).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                timeZone: "UTC",
+              })}
+            </span>
+          )}
+        </div>
+      ),
     accessorFn: (row) => row.consumedAwuCredits.toString(),
     cell: (info: Info) => (
       <div className="w-full pr-3">
@@ -581,11 +589,13 @@ function buildColumns({
   showGroupsColumn,
   showModelTiersColumn,
   creditsResetAt,
+  compact,
 }: {
   enableSelection: boolean;
   showGroupsColumn: boolean;
   showModelTiersColumn: boolean;
   creditsResetAt: string | null;
+  compact: boolean;
 }): ColumnDef<RowData, string>[] {
   return [
     ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
@@ -594,7 +604,7 @@ function buildColumns({
     ...(showModelTiersColumn ? [modelTiersColumn] : []),
     seatTypeColumn,
     {
-      ...buildConsumedAwuCreditsColumn(creditsResetAt),
+      ...buildConsumedAwuCreditsColumn(creditsResetAt, compact),
       meta: { className: "w-64" },
     },
     actionsColumn,
@@ -636,6 +646,7 @@ interface MembersUsageTableProps {
   sorting: SortingState;
   setSorting: (sorting: SortingState) => void;
   showGroupsColumn?: boolean;
+  compact?: boolean;
   enableSelection?: boolean;
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: (selection: RowSelectionState) => void;
@@ -669,6 +680,7 @@ export function MembersUsageTable({
   sorting,
   setSorting,
   showGroupsColumn = false,
+  compact = false,
   enableSelection = false,
   rowSelection,
   onRowSelectionChange,
@@ -815,8 +827,15 @@ export function MembersUsageTable({
         showGroupsColumn,
         showModelTiersColumn,
         creditsResetAt,
+        compact,
       }),
-    [enableSelection, showGroupsColumn, showModelTiersColumn, creditsResetAt]
+    [
+      enableSelection,
+      showGroupsColumn,
+      showModelTiersColumn,
+      creditsResetAt,
+      compact,
+    ]
   );
 
   if (isLoading) {
@@ -841,8 +860,17 @@ export function MembersUsageTable({
         <DataTable
           data={rows}
           columns={columns}
-          pagination={pagination}
-          setPagination={setPagination}
+          className={
+            compact
+              ? "[&_th]:h-10 [&_td]:h-[52px] [&_tbody_td:first-child_.text-foreground>div>div:first-child]:font-medium"
+              : undefined
+          }
+          pagination={
+            totalRowCount > pagination.pageSize ? pagination : undefined
+          }
+          setPagination={
+            totalRowCount > pagination.pageSize ? setPagination : undefined
+          }
           totalRowCount={totalRowCount}
           sorting={sorting}
           setSorting={setSorting}

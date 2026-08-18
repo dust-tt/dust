@@ -12,7 +12,6 @@ import {
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
-import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
 import { MembersSelectionBanner } from "@app/components/workspace/MembersSelectionBanner";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
@@ -24,7 +23,9 @@ import { ModelTiersSettingsCard } from "@app/components/workspace/usage/ModelTie
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
+import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import { useMembersSelection } from "@app/hooks/useMembersSelection";
+import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import {
@@ -32,7 +33,10 @@ import {
   useFeatureFlags,
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
-import { formatCredits } from "@app/lib/client/credits";
+import {
+  formatCredits,
+  getCreditUsageDisplayTarget,
+} from "@app/lib/client/credits";
 import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
 import { INHERIT_MODEL_TIER } from "@app/lib/client/model_tier_options";
 import {
@@ -42,7 +46,6 @@ import {
 import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
 import {
   isCreditPricedFreePlan,
-  isEnterprisePlanPrefix,
   isFreePlan,
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
@@ -102,12 +105,14 @@ import {
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
+  Chip,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Icon,
+  LinkExternal01,
   Page,
   SearchInput,
   Spinner,
@@ -155,6 +160,30 @@ function memberFromUpgradeRequest(
 
 const DEFAULT_PAGE_SIZE = 25;
 
+function formatUsageDate(date: string | number): string {
+  return new Date(date).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function cycleElapsedPercentage({
+  startDate,
+  endDate,
+}: {
+  startDate: string;
+  endDate: string;
+}): number {
+  const startMs = new Date(startDate).getTime();
+  const endMs = new Date(endDate).getTime();
+  if (endMs <= startMs) {
+    return 0;
+  }
+  const elapsedRatio = (Date.now() - startMs) / (endMs - startMs);
+  return Math.round(Math.min(Math.max(elapsedRatio, 0), 1) * 100);
+}
+
 export function UsagePage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
@@ -176,7 +205,6 @@ export function UsagePage() {
   const [seatTypeFilter, setSeatTypeFilter] = useState<
     MembershipSeatType | "none" | null
   >(null);
-  const [groupFilter, setGroupFilter] = useState<string | null>(null);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -201,11 +229,6 @@ export function UsagePage() {
     },
     []
   );
-
-  const handleSetGroupFilter = useCallback((next: string | null) => {
-    setGroupFilter(next);
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-  }, []);
 
   // Name/email search is also applied server-side before pagination, so reset
   // to the first page whenever the search term changes.
@@ -413,6 +436,13 @@ export function UsagePage() {
   } = useAwuPoolSummary({
     workspaceId: owner.sId,
   });
+  const isAnalyticsConsumptionEnabled =
+    isWorkspaceAdmin && hasFeature("enable_analytics_consumption");
+  const { overview: consumptionOverview } = useConsumptionOverview({
+    workspaceId: owner.sId,
+    period: DEFAULT_CONSUMPTION_PERIOD,
+    disabled: !canViewUsage || !isAnalyticsConsumptionEnabled,
+  });
 
   const { awuPurchaseInfo, isAwuPurchaseInfoLoading, isAwuPurchaseInfoError } =
     useAwuPurchaseInfo({
@@ -475,16 +505,12 @@ export function UsagePage() {
     orderColumn: membersOrderColumn,
     orderDirection: membersOrderDirection,
     seatType: seatTypeFilter ?? undefined,
-    groupId: groupFilter ?? undefined,
   });
 
   const { groups } = useGroups({
     owner,
     kinds: [...CAP_ELIGIBLE_GROUP_KINDS],
   });
-  const selectedGroupName =
-    groups.find((g) => g.sId === groupFilter)?.name ?? null;
-
   const { tiers: modelTiersCatalog } = useModelTiers({
     owner,
     disabled: !modelsPickerEnabled,
@@ -538,16 +564,16 @@ export function UsagePage() {
     return map;
   }, [groups]);
 
-  // Cross-page selection for batch actions on the members table. Resets when the
-  // filter identity changes (the "all matching" set is no longer the same).
+  // Cross-page selection for batch actions on the members table. Resets when
+  // the active filter changes because the "all matching" set is then stale.
   const pageItemIds = useMemo(
-    () => membersUsage.map((m) => m.sId),
+    () => membersUsage.map((member) => member.sId),
     [membersUsage]
   );
   const selection = useMembersSelection({
     pageItemIds,
     totalCount: totalMembersUsage,
-    resetKey: `${searchTerm}|${seatTypeFilter ?? ""}|${groupFilter ?? ""}`,
+    resetKey: `${searchTerm}|${seatTypeFilter ?? ""}`,
   });
   const { clearSelection } = selection;
 
@@ -572,16 +598,11 @@ export function UsagePage() {
     setIsBulkChangeSeatOpen(true);
   }, []);
 
-  // Selected members visible on the current page, for the bulk seat modal's
-  // avatar row (with an "all across pages" selection this is the visible
-  // subset only).
   const selectedVisibleMembers = useMemo(
-    () => membersUsage.filter((m) => selection.rowSelection[m.sId]),
+    () => membersUsage.filter((member) => selection.rowSelection[member.sId]),
     [membersUsage, selection.rowSelection]
   );
 
-  // Translate the cross-page selection into the descriptor the bulk member
-  // endpoints expect: explicit ids, or the current filter minus exclusions.
   const buildBulkSelectionBody = useCallback((): BulkMemberSelectionBody => {
     const descriptor = selection.descriptor();
     return descriptor.mode === "ids"
@@ -590,12 +611,11 @@ export function UsagePage() {
           mode: "all" as const,
           filter: {
             seatType: seatTypeFilter ?? undefined,
-            groupId: groupFilter ?? undefined,
             search: searchTerm.trim() || undefined,
           },
           excludeUserIds: descriptor.excludeUserIds,
         };
-  }, [selection, seatTypeFilter, groupFilter, searchTerm]);
+  }, [selection, seatTypeFilter, searchTerm]);
 
   const onRemoveSeat = useCallback(
     async (member: MemberUsageType) => {
@@ -635,16 +655,10 @@ export function UsagePage() {
   );
 
   const handleSeatMutationSaved = useCallback(() => {
-    // Seat mutations can move a member in or out of the currently filtered set
-    // (for example with the seat filter), which makes the cross-page selection
-    // stale.
     clearSelection();
     handleApproveOnModalSaved();
   }, [handleApproveOnModalSaved, clearSelection]);
 
-  // Rows to spin while a bulk update runs — the request returns once the bulk
-  // workflow has completed. For an "all matching" selection only the current
-  // page is visible, so spin its non-excluded rows.
   const getBulkPendingMemberIds = useCallback((): string[] => {
     const descriptor = selection.descriptor();
     return descriptor.mode === "ids"
@@ -657,8 +671,8 @@ export function UsagePage() {
       limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number }
     ): Promise<boolean> => {
       const pendingMemberIds = getBulkPendingMemberIds();
-      setTotalAllowedUsagePendingMemberIds((prev) => {
-        const next = new Set(prev);
+      setTotalAllowedUsagePendingMemberIds((previous) => {
+        const next = new Set(previous);
         pendingMemberIds.forEach((id) => next.add(id));
         return next;
       });
@@ -675,8 +689,8 @@ export function UsagePage() {
         selection.clearSelection();
         return true;
       } finally {
-        setTotalAllowedUsagePendingMemberIds((prev) => {
-          const next = new Set(prev);
+        setTotalAllowedUsagePendingMemberIds((previous) => {
+          const next = new Set(previous);
           pendingMemberIds.forEach((id) => next.delete(id));
           return next;
         });
@@ -710,8 +724,8 @@ export function UsagePage() {
       hasDeferredChanges: boolean;
     }): Promise<boolean> => {
       const pendingMemberIds = getBulkPendingMemberIds();
-      setSeatChangePendingMemberIds((prev) => {
-        const next = new Set(prev);
+      setSeatChangePendingMemberIds((previous) => {
+        const next = new Set(previous);
         pendingMemberIds.forEach((id) => next.add(id));
         return next;
       });
@@ -727,13 +741,11 @@ export function UsagePage() {
           return false;
         }
 
-        // Seat mutations can move members in or out of the currently filtered
-        // set, which makes the cross-page selection stale.
         selection.clearSelection();
         return true;
       } finally {
-        setSeatChangePendingMemberIds((prev) => {
-          const next = new Set(prev);
+        setSeatChangePendingMemberIds((previous) => {
+          const next = new Set(previous);
           pendingMemberIds.forEach((id) => next.delete(id));
           return next;
         });
@@ -779,7 +791,6 @@ export function UsagePage() {
   const { usageSettings } = useUsageSettings({ workspaceId: owner.sId });
 
   const plan = subscription.plan;
-  const isEnterprise = isEnterprisePlanPrefix(plan.code);
   const isFreePlanWorkspace = isFreePlan(plan.code);
 
   const isManualInvitationsEnabled =
@@ -801,29 +812,66 @@ export function UsagePage() {
     [plan, subscription.paymentFailingSince, hasAvailableSeats]
   );
 
-  const totalConsumedCredits = Math.max(
+  const poolConsumedCredits = Math.max(
     0,
     totalActiveCredits - totalRemainingCredits
   );
-  const initialTotalCredits = totalActiveCredits;
+  const creditUsage = consumptionOverview?.creditUsage ?? null;
+  const creditUsageDisplayTarget = creditUsage
+    ? getCreditUsageDisplayTarget(creditUsage.status.target)
+    : null;
+  const totalConsumedCredits =
+    consumptionOverview?.totalCredits ??
+    (isReadOnly ? periodSpendCredits : poolConsumedCredits);
+  const initialTotalCredits = creditUsage?.capCredits ?? totalActiveCredits;
   const hasPool = totalActiveCredits > 0;
+  const usedPercentage =
+    creditUsage?.status.usedPercentage ??
+    (initialTotalCredits > 0
+      ? Math.round(
+          Math.min(totalConsumedCredits / initialTotalCredits, 1) * 100
+        )
+      : 0);
+  const elapsedPercentage = consumptionOverview
+    ? cycleElapsedPercentage(consumptionOverview.period)
+    : usedPercentage;
+  const resetAt =
+    creditUsage?.status.resetAt ??
+    creditsResetAt ??
+    consumptionOverview?.period.endDate ??
+    null;
+  const showTopUpButton = isWorkspaceAdmin;
+  const canTopUp = showTopUpButton && !isReadOnly && usageSettings.topUpEnabled;
 
   if (!canViewUsage) {
     return null;
   }
 
   const showPoolSection =
-    !isAwuPoolSummaryLoading &&
-    (!!isAwuPoolSummaryError || hasPool || isReadOnly);
+    isAwuPoolSummaryLoading ||
+    !!isAwuPoolSummaryError ||
+    hasPool ||
+    isReadOnly ||
+    showTopUpButton;
+  const topUpButton = showTopUpButton ? (
+    <Button
+      label="Top up"
+      icon={ArrowUp}
+      size="sm"
+      variant="outline"
+      disabled={!canTopUp}
+      onClick={() => setShowBuyCreditDialog(true)}
+    />
+  ) : null;
 
   const searchAndInviteRow = (
-    <div className="flex flex-row gap-2">
+    <div className="flex flex-col gap-2 sm:flex-row">
       <SearchInput
-        placeholder="Search members"
+        placeholder="Search a user"
         value={searchTerm}
         name="search"
         onChange={handleSetSearchTerm}
-        className="w-full"
+        className="min-w-0 flex-1 [&>div>div]:border-border [&>div>div]:bg-muted-background [&_svg]:h-4 [&_svg]:w-4 [&_svg]:text-foreground"
       />
       {isManualInvitationsEnabled && (
         <InviteEmailButtonWithModal
@@ -842,15 +890,16 @@ export function UsagePage() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost-secondary"
           label={
             seatTypeFilter === "none"
               ? "No seat"
               : seatTypeFilter
                 ? seatTypeDisplayName(seatTypeFilter)
-                : "All seats"
+                : "User type"
           }
           size="sm"
+          className="border border-border bg-background"
           isSelect
         />
       </DropdownMenuTrigger>
@@ -888,32 +937,6 @@ export function UsagePage() {
     </DropdownMenu>
   );
 
-  const groupsFilterDropdown = groups.length > 0 && (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          label={selectedGroupName ?? "All groups"}
-          size="sm"
-          isSelect
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          label="All groups"
-          onClick={() => handleSetGroupFilter(null)}
-        />
-        {groups.map((group) => (
-          <DropdownMenuItem
-            key={group.sId}
-            label={group.name}
-            onClick={() => handleSetGroupFilter(group.sId)}
-          />
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-
   const membersTable = (
     <MembersUsageTable
       members={membersUsage}
@@ -943,6 +966,7 @@ export function UsagePage() {
       sorting={sorting}
       setSorting={handleSetSorting}
       showGroupsColumn={groups.length > 0}
+      compact
       enableSelection={!isReadOnly}
       rowSelection={selection.rowSelection}
       onRowSelectionChange={selection.onRowSelectionChange}
@@ -983,19 +1007,24 @@ export function UsagePage() {
         currentTotalPoolCredits={totalActiveCredits}
       />
 
-      <div className="flex flex-col items-stretch gap-10 pb-20">
-        <div className="flex items-center justify-between">
-          <Page.Header title="Usage" />
-          {!isReadOnly && usageSettings.topUpEnabled && isWorkspaceAdmin && (
-            <Button
-              label="Top up"
-              icon={ArrowUp}
-              size="sm"
-              variant="outline"
-              onClick={() => setShowBuyCreditDialog(true)}
-            />
-          )}
-        </div>
+      <div className="flex flex-col items-stretch gap-8 pb-20">
+        <Page.Header
+          title={
+            <div className="flex w-full items-center justify-between gap-4">
+              <Page.H variant="h3">Usage</Page.H>
+              {isAnalyticsConsumptionEnabled && (
+                <Button
+                  label="Breakdown in analytics"
+                  iconRight={LinkExternal01}
+                  size="xs"
+                  variant="highlight-ghost"
+                  href={`/w/${owner.sId}/analytics/consumption`}
+                />
+              )}
+            </div>
+          }
+          description="Control credit consumption across your workspace."
+        />
 
         {!isReadOnly && isCreditPricedFreePlan(subscription.plan.code) && (
           <FreePlanUpgradeSection
@@ -1011,70 +1040,114 @@ export function UsagePage() {
         )}
 
         {showPoolSection && (
-          <Page.Vertical gap="xs" align="stretch">
-            <Page.H variant="h4">Workspace credit pool</Page.H>
+          <Page.Vertical gap="none" align="stretch">
+            <Page.H variant="h6">Credit Pool</Page.H>
+            <div className="flex flex-col gap-2 pt-4">
+              {isAwuPoolSummaryError && !consumptionOverview && (
+                <ContentMessage
+                  title="Failed to load Workspace Credit Pool"
+                  icon={AlertCircle}
+                  variant="warning"
+                >
+                  An error occurred while loading your Workspace Credit Pool
+                  data. Please refresh the page or contact support if the issue
+                  persists.
+                </ContentMessage>
+              )}
 
-            {isAwuPoolSummaryError && (
-              <ContentMessage
-                title="Failed to load Workspace Credits Pool"
-                icon={AlertCircle}
-                variant="warning"
-              >
-                An error occurred while loading your Workspace Credits Pool
-                data. Please refresh the page or contact support if the issue
-                persists.
-              </ContentMessage>
-            )}
-
-            {isAwuPoolSummaryLoading && (
-              <div className="flex justify-center py-8">
-                <Spinner />
-              </div>
-            )}
-
-            {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
-              <>
-                <div className="flex items-baseline gap-1">
-                  <span className="heading-mono-4xl text-foreground">
-                    {formatCredits(totalConsumedCredits)}
-                  </span>
-                  <span className="copy-sm text-muted-foreground">
-                    /{formatCredits(initialTotalCredits)}
-                  </span>
+              {isAwuPoolSummaryLoading && !consumptionOverview && (
+                <div className="flex justify-center py-8">
+                  <Spinner />
                 </div>
-                {hasPool && (
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted-foreground/20">
-                    <div
-                      className="h-full rounded-full bg-foreground/80 transition-all"
-                      style={{
-                        width: `${Math.min(100, initialTotalCredits > 0 ? (totalConsumedCredits / initialTotalCredits) * 100 : 0)}%`,
-                      }}
-                    />
-                  </div>
+              )}
+              {(isAwuPoolSummaryLoading || isAwuPoolSummaryError) &&
+                !consumptionOverview &&
+                topUpButton && (
+                  <div className="flex justify-end">{topUpButton}</div>
                 )}
-                <div className="flex items-center gap-2">
-                  {isReadOnly ? (
-                    <span className="copy-sm text-muted-foreground">
-                      {formatCredits(periodSpendCredits)} credits spent this
-                      period
-                    </span>
-                  ) : (
-                    <>
-                      {overageCredits !== null && overageCredits > 0 && (
-                        <span className="copy-sm text-muted-foreground">
-                          {formatCredits(overageCredits)} overage credits
+
+              {(!isAwuPoolSummaryLoading || consumptionOverview) &&
+                (!isAwuPoolSummaryError || consumptionOverview) && (
+                  <>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-baseline gap-1">
+                        <span className="heading-2xl text-foreground">
+                          {formatCredits(totalConsumedCredits)}
                         </span>
-                      )}
-                      {isEnterprise && (
                         <span className="copy-sm text-muted-foreground">
-                          Contact your Dust sales representative to buy credits
+                          /{formatCredits(initialTotalCredits)} credits
                         </span>
+                      </div>
+                      {creditUsage && (
+                        <Chip
+                          size="mini"
+                          color={
+                            creditUsageDisplayTarget === "on_target"
+                              ? "highlight"
+                              : "warning"
+                          }
+                          label={
+                            creditUsageDisplayTarget === "on_target"
+                              ? "On target"
+                              : "Off target"
+                          }
+                        />
                       )}
-                    </>
-                  )}
-                </div>
-              </>
-            )}
+                    </div>
+                    <div
+                      className="relative h-2 w-full overflow-hidden rounded-sm bg-muted-foreground/15"
+                      role="progressbar"
+                      aria-label="Workspace credit usage"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={usedPercentage}
+                    >
+                      <div
+                        className={`absolute inset-y-0 left-0 ${
+                          creditUsageDisplayTarget === "off_target"
+                            ? "bg-warning-100"
+                            : "bg-highlight-100"
+                        }`}
+                        style={{ width: `${elapsedPercentage}%` }}
+                      />
+                      <div
+                        className={`absolute inset-y-0 left-0 ${
+                          creditUsageDisplayTarget === "off_target"
+                            ? "bg-warning-500"
+                            : "bg-highlight-500"
+                        }`}
+                        style={{ width: `${usedPercentage}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
+                      <span>{usedPercentage}% used</span>
+                      {resetAt && (
+                        <span>Resets {formatUsageDate(resetAt)}</span>
+                      )}
+                    </div>
+                    <div className="flex flex-col justify-between gap-4 border-t border-border pt-4 sm:flex-row sm:items-center">
+                      <div className="flex min-w-0 flex-col gap-1 text-sm text-foreground">
+                        {resetAt ? (
+                          <span>
+                            At this rate, you&apos;re expected to consume your
+                            full credits by{" "}
+                            <span className="font-semibold">
+                              {formatUsageDate(resetAt)}
+                            </span>
+                            .
+                          </span>
+                        ) : null}
+                        {overageCredits !== null && overageCredits > 0 && (
+                          <span className="text-muted-foreground">
+                            {formatCredits(overageCredits)} overage credits
+                          </span>
+                        )}
+                      </div>
+                      {topUpButton}
+                    </div>
+                  </>
+                )}
+            </div>
           </Page.Vertical>
         )}
 
@@ -1094,39 +1167,42 @@ export function UsagePage() {
             <Page.Vertical gap="sm" align="stretch">
               {searchAndInviteRow}
               <div className="flex flex-col gap-2">
-                <div className="flex flex-row items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <ButtonsSwitchList
-                    size="xs"
+                    size="sm"
                     defaultValue="members"
+                    className="w-fit [&]:border-transparent [&]:bg-muted-background/50"
                     onValueChange={(v: string) =>
                       setMembersTab(v === "requests" ? "requests" : "members")
                     }
                   >
-                    <ButtonsSwitch value="members" label="Members" />
+                    <ButtonsSwitch
+                      value="members"
+                      label="Members"
+                      className="after:hidden aria-selected:border-border aria-selected:from-background aria-selected:to-background aria-selected:text-foreground aria-selected:shadow-none"
+                    />
                     <ButtonsSwitch
                       value="requests"
-                      label="Requests"
-                      isCounter
-                      counterValue={
+                      label="Request"
+                      className="after:hidden aria-selected:border-border aria-selected:from-background aria-selected:to-background aria-selected:text-foreground aria-selected:shadow-none"
+                      iconRight={
+                        filteredUpgradeRequests.length > 0 ? (
+                          <span
+                            aria-hidden="true"
+                            className="flex h-4 min-w-4 items-center justify-center rounded-full bg-highlight-500 px-1 text-[10px] leading-none text-white"
+                          >
+                            {filteredUpgradeRequests.length}
+                          </span>
+                        ) : undefined
+                      }
+                      aria-label={
                         filteredUpgradeRequests.length > 0
-                          ? String(filteredUpgradeRequests.length)
-                          : undefined
+                          ? `Request, ${filteredUpgradeRequests.length} pending`
+                          : "Request"
                       }
                     />
                   </ButtonsSwitchList>
-                  {membersTab === "members" && (
-                    <div className="flex flex-row items-center gap-2">
-                      {groupsFilterDropdown}
-                      {modelsPickerEnabled && groupFilter && (
-                        <GroupModelTierPickerDropdown
-                          owner={owner}
-                          groupId={groupFilter}
-                          readOnly={isReadOnly}
-                        />
-                      )}
-                      {seatFilterDropdown}
-                    </div>
-                  )}
+                  {membersTab === "members" && seatFilterDropdown}
                 </div>
                 <div className="flex flex-col gap-2 pt-2">
                   {membersTab === "members" ? (
@@ -1149,6 +1225,7 @@ export function UsagePage() {
               </div>
             </Page.Vertical>
           </TabsContent>
+
           <TabsContent value="groups">
             <GroupsUsageTable
               owner={owner}
