@@ -75,6 +75,14 @@ GroupPermissionModel.init(
         name: "group_permissions_ws_rtype_rid",
         fields: ["workspaceId", "resourceType", "resourceId"],
       },
+      // Auth direction: resolvePermissions loads all grants for the caller's groups
+      // (workspaceId + groupId = ANY). Without this index the planner falls back to a BitmapAnd
+      // that scans every grant row of the workspace on each call.
+      {
+        name: "group_permissions_ws_group",
+        fields: ["workspaceId", "groupId"],
+        concurrently: true,
+      },
     ],
   }
 );
