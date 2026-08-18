@@ -123,7 +123,7 @@ export const adminRoutes: RouteObject[] = [
         element: <AnalyticsConsumptionPage />,
       },
       {
-        path: "analytics/automations",
+        path: "automations",
         element: <AnalyticsAutomationsPage />,
       },
       { path: "usage", element: <UsagePage /> },

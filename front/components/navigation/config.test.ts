@@ -66,13 +66,13 @@ function ownerWithRole(role: MembershipRoleType): WorkspaceType {
 function automationNavItem(owner: WorkspaceType) {
   const nav = subNavigationAdmin({
     owner,
-    currentRoute: "/w/ws_1/analytics/automations",
+    currentRoute: "/w/ws_1/automations",
     featureFlags: ["enable_analytics_automations"],
     subscription: SUBSCRIPTION,
     hasPermission: () => false,
   });
   const section = nav.find((s) => s.id === "api");
-  return section?.menus.find((menu) => menu.id === "analytics_automations");
+  return section?.menus.find((menu) => menu.id === "automations");
 }
 
 describe("subNavigationAdmin automation entry", () => {

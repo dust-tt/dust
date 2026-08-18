@@ -131,17 +131,27 @@ function TypeLabel({
   label: string;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <Icon visual={visual} size="xs" className="text-muted-foreground" />
-      <span className="truncate text-sm">{label}</span>
-    </div>
+    <Tooltip
+      label={label}
+      tooltipTriggerAsChild
+      trigger={
+        <div className="flex min-w-0 items-center gap-2">
+          <Icon visual={visual} size="xs" className="text-muted-foreground" />
+          <span className="truncate text-sm">{label}</span>
+        </div>
+      }
+    />
   );
 }
 
 function AgentCell({ agent }: { agent: AutomationTriggerRow["agent"] }) {
   const content = (
     <div className="min-w-0">
-      <AvatarNameCell name={agent.name} imageUrl={agent.pictureUrl} />
+      <AvatarNameCell
+        name={agent.name}
+        imageUrl={agent.pictureUrl}
+        size="xxs"
+      />
     </div>
   );
 
@@ -207,7 +217,7 @@ function buildColumns({
       id: "name",
       accessorKey: "name",
       header: "Name",
-      meta: { className: "w-56", headerAlign: "left" },
+      meta: { className: "w-48", headerAlign: "left" },
       cell: (info) => (
         <DataTable.CellContent className="w-full justify-start text-left">
           <span className="truncate text-sm">{info.row.original.name}</span>
@@ -272,11 +282,11 @@ function buildColumns({
     },
     {
       id: "status",
-      header: "Enabled",
+      header: "",
       enableSorting: false,
-      meta: { className: "w-24", headerAlign: "left" },
+      meta: { className: "w-24" },
       cell: (info) => (
-        <DataTable.CellContent className="w-full justify-start">
+        <DataTable.CellContent className="w-full justify-center">
           <RunningCell row={info.row.original} />
         </DataTable.CellContent>
       ),
@@ -285,7 +295,7 @@ function buildColumns({
       id: "details",
       header: "",
       enableSorting: false,
-      meta: { className: "w-12", headerAlign: "right" },
+      meta: { className: "w-12" },
       cell: (info) => {
         const row = info.row.original;
         const isExpanded = expandedRowId === row.triggerId;

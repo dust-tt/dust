@@ -121,12 +121,15 @@ HELP_TEXT = (
     "                    pattern like 2,5,7-9). Per shape: kind, position, size,\n"
     "                    text, formatting, placeholder type, and a text-fit\n"
     "                    estimate (holds~Nch@Spt / ~Nch/line@Spt), with a [!] TEXT\n"
-    "                    OVERSET flag when text won't fit. Inspect every slide you\n"
-    "                    plan to edit in one call rather than one call each.\n"
+    "                    OVERSET flag when text won't fit and [!] HIDDEN when the\n"
+    "                    shape never renders. Inspect every slide you plan to edit\n"
+    "                    in one call rather than one call each.\n"
     "  --layouts         List slide masters and their layouts with placeholder slots,\n"
     "                    including each placeholder's resolved default typeface,\n"
     "                    size, weight, color, and alignment (from layout / master /\n"
-    "                    theme inheritance).\n"
+    "                    theme inheritance). 'static' lines are master/layout text\n"
+    "                    shapes: they render on every inheriting slide and cannot be\n"
+    "                    edited slide-side.\n"
     "  --text            Extract readable text per slide (preserves slide/shape boundaries).\n"
     "  --media           List embedded media (images, audio, video) with file sizes.\n"
     "  --render          Rasterize slide(s) to a plain JPEG (no overlay), published\n"
@@ -261,6 +264,14 @@ def count_shapes_by_kind(shapes: Iterable[BaseShape]) -> dict:
     return counts
 
 
+def shape_is_hidden(shape: BaseShape) -> bool:
+    """True when PowerPoint hides the shape from every render."""
+    for el in shape._element.iter():
+        if el.tag.endswith("}cNvPr"):
+            return el.get("hidden") in ("1", "true")
+    return False
+
+
 def describe_shape(
     shape: BaseShape,
     *,
@@ -325,6 +336,8 @@ def describe_shape(
                 parts.append(f"vanchor={va_name.lower()}")
             elif not ph:
                 parts.append("vanchor=top")
+    if shape_is_hidden(shape):
+        parts.append("[!] HIDDEN (never renders; clear hidden=\"1\" to use it)")
     for marker in _shape_warning_markers(
         shape, ph, ctx, cover_candidates, all_boxes
     ):
@@ -698,6 +711,22 @@ def _text_extent_boxes(file_path: str, slide: Slide) -> Dict[int, Tuple[int, int
     return out
 
 
+def _static_text_lines(shapes: Iterable[BaseShape], indent: str) -> List[str]:
+    """Master/layout text shapes every inheriting slide renders."""
+    lines: List[str] = []
+    for shape in shapes:
+        if shape.is_placeholder or not shape.has_text_frame:
+            continue
+        text = flatten_text(shape.text_frame.text).strip()
+        if not text:
+            continue
+        lines.append(
+            f"{indent}static  #{shape.shape_id}  {pad(format_box(shape), 24)}"
+            f'  "{ellipsize(text, 60)}"'
+        )
+    return lines
+
+
 def print_layouts(prs: PresentationType, file_path: str) -> str:
     lines = [f"[Masters: {len(prs.slide_masters)}]"]
     try:
@@ -712,12 +741,20 @@ def print_layouts(prs: PresentationType, file_path: str) -> str:
                 f"# Master {mi}: {master_name}  layouts: {
                     len(master.slide_layouts)}"
             )
+            master_static = _static_text_lines(master.shapes, "  ")
+            if master_static:
+                lines.append(
+                    "  [inherited text - renders on every slide using this "
+                    "master, editable only on the master itself:]"
+                )
+                lines.extend(master_static)
             for layout in master.slide_layouts:
                 placeholders = list(layout.placeholders)
                 lines.append(
                     f"- {pad(layout.name or '?', 28)
                          } placeholders: {len(placeholders)}"
                 )
+                lines.extend(_static_text_lines(layout.shapes, "    "))
 
                 layout_path = _layout_part_path(layout)
                 layout_xml = master_xml = theme_xml = None
@@ -739,6 +776,8 @@ def print_layouts(prs: PresentationType, file_path: str) -> str:
                     idx_str = str(idx) if idx is not None else "?"
                     box = format_box(ph)
                     head = f"    [{idx_str}] {pad(ph_name, 14)} {pad(box, 24)}"
+                    if shape_is_hidden(ph):
+                        head = f'{head}  [!] HIDDEN (never renders; clear hidden="1" to use it)'
                     if layout_xml is not None:
                         defaults = resolve_placeholder_defaults(
                             layout_xml,

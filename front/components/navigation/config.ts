@@ -98,7 +98,7 @@ type SubNavigationAdminId =
   | "sandbox"
   | "analytics"
   | "analytics_consumption"
-  | "analytics_automations"
+  | "automations"
   | "credits_usage"
   | "usage"
   | "self_improving_skills";
@@ -111,7 +111,7 @@ const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   model_providers: ["/w/[wId]/model-providers"],
   analytics: ["/w/[wId]/analytics"],
   analytics_consumption: ["/w/[wId]/analytics/consumption"],
-  analytics_automations: ["/w/[wId]/analytics/automations"],
+  automations: ["/w/[wId]/automations"],
   subscription: ["/w/[wId]/subscription"],
   billing: ["/w/[wId]/billing"],
   api_keys: ["/w/[wId]/developers/api-keys"],
@@ -231,7 +231,7 @@ export const getTopNavigationTabs = (
           "/w/[wId]/billing",
           "/w/[wId]/analytics",
           "/w/[wId]/analytics/consumption",
-          "/w/[wId]/analytics/automations",
+          "/w/[wId]/automations",
           "/w/[wId]/actions",
           "/w/[wId]/developers/credits-usage",
           "/w/[wId]/developers/providers",
@@ -409,11 +409,11 @@ export const subNavigationAdmin = ({
       ...(featureFlags.includes("enable_analytics_automations")
         ? [
             {
-              id: "analytics_automations" as const,
-              label: "Automation",
+              id: "automations" as const,
+              label: "Automations",
               icon: Clock,
-              href: `/w/${owner.sId}/analytics/automations`,
-              current: isCurrent("analytics_automations"),
+              href: `/w/${owner.sId}/automations`,
+              current: isCurrent("automations"),
               disabled: !hasManagerRole,
             },
           ]
