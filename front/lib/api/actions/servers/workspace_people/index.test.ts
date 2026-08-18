@@ -43,7 +43,7 @@ describe("list_workspace_members", () => {
     }
   });
 
-  it("rejects calls with both userIds and jobType", async () => {
+  it("rejects calls with more than one filter", async () => {
     const { workspace, authenticator } = await createResourceTest({
       role: "admin",
     });
@@ -57,11 +57,11 @@ describe("list_workspace_members", () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain("not both");
+      expect(result.error.message).toContain("exactly one");
     }
   });
 
-  it("rejects calls with neither userIds nor jobType", async () => {
+  it("rejects calls with no filter", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
 
     const result = await getListWorkspaceMembersTool().handler(
@@ -71,7 +71,7 @@ describe("list_workspace_members", () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain("either");
+      expect(result.error.message).toContain("exactly one");
     }
   });
 
@@ -145,6 +145,35 @@ describe("list_workspace_members", () => {
         const memberIds = members.map((m: { userId: string }) => m.userId);
         expect(memberIds).toContain(salesUser.sId);
         expect(memberIds).not.toContain(engineeringUser.sId);
+      }
+    }
+  });
+
+  it("returns only members belonging to a groupId filter", async () => {
+    const { workspace, authenticator } = await createResourceTest({
+      role: "admin",
+    });
+    const groupUser = await UserFactory.basic();
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, groupUser, { role: "user" });
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+    const group = await GroupFactory.regularManual(workspace, "Sales Team");
+    await GroupFactory.withMembers(authenticator, group, [groupUser]);
+
+    const result = await getListWorkspaceMembersTool().handler(
+      { groupId: group.sId },
+      createTestExtra(authenticator)
+    );
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const [content] = result.value;
+      expect(content.type).toBe("text");
+      if (content.type === "text") {
+        const members = JSON.parse(content.text);
+        const memberIds = members.map((m: { userId: string }) => m.userId);
+        expect(memberIds).toContain(groupUser.sId);
+        expect(memberIds).not.toContain(otherUser.sId);
       }
     }
   });

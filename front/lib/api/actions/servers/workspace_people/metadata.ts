@@ -15,8 +15,9 @@ export const WORKSPACE_PEOPLE_TOOLS_METADATA = [
     description:
       "List active workspace members with their identity, workspace role, job function, " +
       "and user-managed workspace groups. " +
-      "Filter by userIds to look up specific members, or by jobType to list all members " +
-      `with that job function (up to ${MAX_MEMBERS}). Exactly one filter must be provided.`,
+      "Filter by userIds to look up specific members, by jobType to list all members " +
+      "with that job function, or by groupId to list all members of a workspace group " +
+      `(up to ${MAX_MEMBERS}). Exactly one filter must be provided.`,
     schema: {
       userIds: z
         .array(z.string())
@@ -31,6 +32,12 @@ export const WORKSPACE_PEOPLE_TOOLS_METADATA = [
         .optional()
         .describe(
           `List all active members with this job function (up to ${MAX_MEMBERS}).`
+        ),
+      groupId: z
+        .string()
+        .optional()
+        .describe(
+          `List all active members of this workspace group (up to ${MAX_MEMBERS}).`
         ),
     },
     stake: "never_ask",

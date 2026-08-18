@@ -158,8 +158,49 @@ async function listByJobType(
   );
 }
 
+async function listByGroupId(
+  auth: Authenticator,
+  groupId: string
+): Promise<Result<WorkspaceMember[], MCPError>> {
+  const groupRes = await GroupResource.fetchById(auth, groupId);
+  if (groupRes.isErr()) {
+    return new Err(new MCPError(`Group not found: ${groupId}.`));
+  }
+  const group = groupRes.value;
+
+  const membersByGroupId = await GroupResource.getActiveMembershipsForGroups(
+    auth,
+    [group]
+  );
+  const groupMemberModelIds = (membersByGroupId[group.id] ?? []).slice(
+    0,
+    MAX_MEMBERS
+  );
+
+  if (groupMemberModelIds.length === 0) {
+    return new Ok([]);
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const users = await UserResource.fetchByModelIds(groupMemberModelIds);
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace,
+    users,
+  });
+  const membershipByUserId = new Map(memberships.map((m) => [m.userId, m]));
+  const jobTypesByUserId =
+    await UserResource.fetchUserScopedMetadataValuesByUserModelIds(
+      "job_type",
+      groupMemberModelIds
+    );
+
+  return new Ok(
+    await buildMemberRows(auth, users, membershipByUserId, jobTypesByUserId)
+  );
+}
+
 const handlers: ToolHandlers<typeof WORKSPACE_PEOPLE_TOOLS_METADATA> = {
-  list_workspace_members: async ({ userIds, jobType }, { auth }) => {
+  list_workspace_members: async ({ userIds, jobType, groupId }, { auth }) => {
     if (!auth.isAdmin()) {
       return new Err(
         new MCPError(
@@ -168,18 +209,23 @@ const handlers: ToolHandlers<typeof WORKSPACE_PEOPLE_TOOLS_METADATA> = {
       );
     }
 
-    if (userIds && jobType) {
+    const filterCount = [userIds, jobType, groupId].filter(Boolean).length;
+    if (filterCount > 1) {
       return new Err(
-        new MCPError("Provide either userIds or jobType, not both.")
+        new MCPError("Provide exactly one of userIds, jobType, or groupId.")
       );
     }
-    if (!userIds && !jobType) {
-      return new Err(new MCPError("Provide either userIds or jobType."));
+    if (filterCount === 0) {
+      return new Err(
+        new MCPError("Provide exactly one of userIds, jobType, or groupId.")
+      );
     }
 
     const result = userIds
       ? await listByUserIds(auth, userIds)
-      : await listByJobType(auth, jobType as JobType);
+      : jobType
+        ? await listByJobType(auth, jobType as JobType)
+        : await listByGroupId(auth, groupId as string);
 
     if (result.isErr()) {
       return result;
