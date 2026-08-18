@@ -110,8 +110,7 @@ export function SandboxPage() {
 
     return (
       <>
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-foreground">View</span>
+        <div className="flex">
           <SandboxScopeSelector
             pods={pods}
             selection={selection}
