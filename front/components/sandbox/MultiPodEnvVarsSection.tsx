@@ -33,6 +33,9 @@ interface MultiPodEnvVarsSectionProps {
   selectedPods: PodType[];
   // All live pods, for the add dialog's Pod targeting.
   allPods: SandboxEnvVarPodOption[];
+  // When true, the Workspace is one of the viewed scopes; workspace-only vars
+  // show as "Inherited". When false, they are hidden.
+  includeWorkspace: boolean;
 }
 
 type VariableRow = {
@@ -50,6 +53,7 @@ export function MultiPodEnvVarsSection({
   selection,
   selectedPods,
   allPods,
+  includeWorkspace,
 }: MultiPodEnvVarsSectionProps) {
   const [dialogMode, setDialogMode] =
     useState<SandboxEnvVarFormDialogMode | null>(null);
@@ -98,10 +102,16 @@ export function MultiPodEnvVarsSection({
         overriddenInPodNames: [...row.overriddenInPodNames, podName],
       });
     }
-    return [...rowsByName.values()].sort((a, b) =>
-      a.name.localeCompare(b.name)
-    );
-  }, [envVars, podEnvVars, podNamesById]);
+    return [...rowsByName.values()]
+      .filter(
+        // Hide workspace-only rows when the Workspace is not a viewed scope.
+        (row) =>
+          includeWorkspace ||
+          !row.hasWorkspaceVar ||
+          row.overriddenInPodNames.length > 0
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [envVars, podEnvVars, podNamesById, includeWorkspace]);
 
   const totalPods = selectedPods.length;
 
@@ -228,7 +238,7 @@ export function MultiPodEnvVarsSection({
       <Page.Vertical align="stretch" gap="lg">
         <Page.SectionHeader
           title="Environment variables"
-          description={`Where each variable is defined across the ${totalPods} selected Pods. Values are write-only and never shown or compared. To replace or delete a value, select a single Pod or switch to the Workspace view.`}
+          description={`Where each variable is defined across the selected scopes. Values are write-only and never shown or compared. To replace or delete a value, select a single Pod or the Workspace.`}
         />
 
         <div className="flex justify-end">

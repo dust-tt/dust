@@ -1,5 +1,8 @@
 import type { SandboxPodSelection } from "@app/lib/swr/sandbox";
-import { useBulkPodEgressPolicies } from "@app/lib/swr/sandbox";
+import {
+  useBulkPodEgressPolicies,
+  useWorkspaceEgressPolicy,
+} from "@app/lib/swr/sandbox";
 import type { PodType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -17,49 +20,68 @@ interface MultiPodNetworkSectionProps {
   selection: SandboxPodSelection;
   // The pods `selection` resolves to, for names and counts.
   selectedPods: PodType[];
+  // When true, fold the workspace allowlist in as an extra "Workspace" scope.
+  includeWorkspace: boolean;
 }
 
-// Read-only comparison of Pod-specific egress allowlists across the selected
-// Pods. Editing stays in the workspace and single-Pod views; multi-Pod
-// network mutations are deliberately out of scope for now.
+// Read-only comparison of egress allowlists across the selected scopes
+// (optionally the Workspace, plus each selected Pod). Editing stays in the
+// workspace and single-Pod views; multi-Pod network mutations are
+// deliberately out of scope for now.
 export function MultiPodNetworkSection({
   owner,
   selection,
   selectedPods,
+  includeWorkspace,
 }: MultiPodNetworkSectionProps) {
   const { podPolicies, isPodPoliciesLoading, isPodPoliciesError } =
     useBulkPodEgressPolicies({ owner, selection });
+  const {
+    policy: workspacePolicy,
+    isWorkspaceEgressPolicyLoading,
+    isWorkspaceEgressPolicyError,
+  } = useWorkspaceEgressPolicy({ owner, disabled: !includeWorkspace });
 
   const podNamesById = useMemo(
     () => new Map(selectedPods.map((pod) => [pod.sId, pod.name])),
     [selectedPods]
   );
 
-  // domain -> names of selected pods allowing it, sorted by domain.
+  const totalScopes = (includeWorkspace ? 1 : 0) + selectedPods.length;
+
+  // domain -> names of selected scopes allowing it, sorted by domain.
   const domainRows = useMemo(() => {
-    const podNamesByDomain = new Map<string, string[]>();
+    const scopeNamesByDomain = new Map<string, string[]>();
+    const addScope = (domain: string, scopeName: string) => {
+      scopeNamesByDomain.set(domain, [
+        ...(scopeNamesByDomain.get(domain) ?? []),
+        scopeName,
+      ]);
+    };
+    if (includeWorkspace) {
+      for (const domain of workspacePolicy.allowedDomains) {
+        addScope(domain, "Workspace");
+      }
+    }
     for (const { podId, policy } of podPolicies) {
       const podName = podNamesById.get(podId);
       if (!podName) {
         continue;
       }
       for (const domain of policy.allowedDomains) {
-        podNamesByDomain.set(domain, [
-          ...(podNamesByDomain.get(domain) ?? []),
-          podName,
-        ]);
+        addScope(domain, podName);
       }
     }
-    return [...podNamesByDomain.entries()]
-      .map(([domain, podNames]) => ({ domain, podNames }))
+    return [...scopeNamesByDomain.entries()]
+      .map(([domain, scopeNames]) => ({ domain, scopeNames }))
       .sort((a, b) => a.domain.localeCompare(b.domain));
-  }, [podPolicies, podNamesById]);
+  }, [podPolicies, podNamesById, includeWorkspace, workspacePolicy]);
 
   const renderBody = () => {
-    if (isPodPoliciesLoading) {
+    if (isPodPoliciesLoading || isWorkspaceEgressPolicyLoading) {
       return <Spinner />;
     }
-    if (isPodPoliciesError) {
+    if (isPodPoliciesError || isWorkspaceEgressPolicyError) {
       return (
         <ContentMessage
           variant="warning"
@@ -74,14 +96,14 @@ export function MultiPodNetworkSection({
     if (domainRows.length === 0) {
       return (
         <ContentMessage variant="outline" size="lg">
-          No Pod-specific domains are currently allowed in the selected Pods.
+          No domains are currently allowed in the selected scopes.
         </ContentMessage>
       );
     }
 
     return (
       <div className="flex w-full flex-col divide-y divide-separator">
-        {domainRows.map(({ domain, podNames }) => (
+        {domainRows.map(({ domain, scopeNames }) => (
           <div key={domain} className="flex items-center gap-3 py-3">
             <pre
               title={domain}
@@ -90,19 +112,17 @@ export function MultiPodNetworkSection({
               {domain}
             </pre>
             <Tooltip
-              label={podNames.join(", ")}
+              label={scopeNames.join(", ")}
               trigger={
                 <Chip
                   size="xs"
                   color={
-                    podNames.length === selectedPods.length
-                      ? "success"
-                      : "primary"
+                    scopeNames.length === totalScopes ? "success" : "primary"
                   }
                   label={
-                    podNames.length === selectedPods.length
-                      ? "All Pods"
-                      : `${podNames.length} of ${selectedPods.length} Pods`
+                    scopeNames.length === totalScopes
+                      ? "All"
+                      : `${scopeNames.length} of ${totalScopes}`
                   }
                 />
               }
@@ -117,7 +137,7 @@ export function MultiPodNetworkSection({
     <Page.Vertical align="stretch" gap="lg">
       <Page.SectionHeader
         title="Allowed domains"
-        description={`Pod-specific domains across the ${selectedPods.length} selected Pods, on top of the workspace allowlist. To add or remove a domain, select a single Pod; to change the workspace allowlist, switch to the Workspace view.`}
+        description={`Domains allowed across the ${totalScopes} selected scopes. To add or remove a domain, select a single Pod or the Workspace.`}
       />
       {renderBody()}
     </Page.Vertical>

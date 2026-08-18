@@ -2,7 +2,8 @@ import { EnvironmentSection } from "@app/components/pages/workspace/developers/s
 import { NetworkSection } from "@app/components/pages/workspace/developers/sections/NetworkSection";
 import { MultiPodEnvVarsSection } from "@app/components/sandbox/MultiPodEnvVarsSection";
 import { MultiPodNetworkSection } from "@app/components/sandbox/MultiPodNetworkSection";
-import { PodComparisonPicker } from "@app/components/sandbox/PodComparisonPicker";
+import type { SandboxScopeSelection } from "@app/components/sandbox/SandboxScopeSelector";
+import { SandboxScopeSelector } from "@app/components/sandbox/SandboxScopeSelector";
 import { useComputerAdminAccess } from "@app/hooks/useComputerAdminAccess";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { usePodsAsAdmin } from "@app/lib/swr/spaces";
@@ -17,11 +18,14 @@ export function SandboxPage() {
     hasSandboxFunctions,
     canAdministrateComputer,
   } = useComputerAdminAccess();
-  const [comparedPodIds, setComparedPodIds] = useState<string[]>([]);
+  const [selection, setSelection] = useState<SandboxScopeSelection>({
+    includeWorkspace: true,
+    podIds: [],
+  });
 
   const { pods, isPodsLoading } = usePodsAsAdmin({
     workspaceId: owner.sId,
-    disabled: !canAdministrateComputer,
+    disabled: !canAdministrateComputer || !hasSandboxFunctions,
   });
 
   const podOptions = useMemo(
@@ -30,59 +34,53 @@ export function SandboxPage() {
   );
 
   const selectedPods = useMemo(() => {
-    const set = new Set(comparedPodIds);
+    const set = new Set(selection.podIds);
     return pods.filter((pod) => set.has(pod.sId));
-  }, [comparedPodIds, pods]);
+  }, [selection.podIds, pods]);
 
-  const renderPodsSection = () => {
-    if (!hasSandboxFunctions) {
+  const workspaceView = (
+    <>
+      <NetworkSection />
+      <EnvironmentSection targetablePods={podOptions} />
+    </>
+  );
+
+  const renderScopedContent = () => {
+    const scopeCount =
+      (selection.includeWorkspace ? 1 : 0) + selectedPods.length;
+    if (scopeCount === 0) {
       return (
         <ContentMessage variant="info" icon={InfoCircle} size="lg">
-          Pod-level Computer settings require Sandbox Functions, which is not
-          enabled for this workspace.
+          Select the Workspace or one or more Pods to view.
         </ContentMessage>
       );
     }
 
-    const selection = {
+    // A single scope (the workspace) is the editable view; any combination is
+    // a read-only comparison.
+    if (selection.includeWorkspace && selectedPods.length === 0) {
+      return workspaceView;
+    }
+
+    const podSelection = {
       kind: "pods" as const,
       podIds: selectedPods.map((pod) => pod.sId),
     };
-
     return (
       <>
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-foreground">
-            Compare Pods
-          </span>
-          <PodComparisonPicker
-            pods={pods}
-            selectedPodIds={comparedPodIds}
-            onChange={setComparedPodIds}
-            isLoading={isPodsLoading}
-          />
-        </div>
-        {selectedPods.length === 0 ? (
-          <ContentMessage variant="info" icon={InfoCircle} size="lg">
-            {pods.length === 0
-              ? "There are no Pods in this workspace yet."
-              : "Select Pods to compare their network and environment settings against the workspace baseline."}
-          </ContentMessage>
-        ) : (
-          <>
-            <MultiPodNetworkSection
-              owner={owner}
-              selection={selection}
-              selectedPods={selectedPods}
-            />
-            <MultiPodEnvVarsSection
-              owner={owner}
-              selection={selection}
-              selectedPods={selectedPods}
-              allPods={podOptions}
-            />
-          </>
-        )}
+        <MultiPodNetworkSection
+          owner={owner}
+          includeWorkspace={selection.includeWorkspace}
+          selection={podSelection}
+          selectedPods={selectedPods}
+        />
+        <MultiPodEnvVarsSection
+          owner={owner}
+          includeWorkspace={selection.includeWorkspace}
+          selection={podSelection}
+          selectedPods={selectedPods}
+          allPods={podOptions}
+        />
       </>
     );
   };
@@ -104,17 +102,24 @@ export function SandboxPage() {
       );
     }
 
+    // Without Sandbox Functions there are no Pod settings to compare — just the
+    // editable workspace view.
+    if (!hasSandboxFunctions) {
+      return workspaceView;
+    }
+
     return (
       <>
-        <div className="flex flex-col gap-4">
-          <div className="heading-lg">Workspace</div>
-          <NetworkSection />
-          <EnvironmentSection targetablePods={podOptions} />
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-foreground">View</span>
+          <SandboxScopeSelector
+            pods={pods}
+            selection={selection}
+            onChange={setSelection}
+            isLoading={isPodsLoading}
+          />
         </div>
-        <div className="flex flex-col gap-4">
-          <div className="heading-lg">Pods</div>
-          {renderPodsSection()}
-        </div>
+        {renderScopedContent()}
       </>
     );
   };
