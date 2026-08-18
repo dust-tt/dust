@@ -306,20 +306,9 @@ const nativeInputValueSetter =
 
 const SEARCHABLE_MENU_ITEM_SELECTOR =
   '[role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"]';
-const OPEN_SEARCHABLE_MENU_ITEM_SELECTOR = [
-  '[data-radix-menu-content][data-state=open] [role="menuitem"]',
-  '[data-radix-menu-content][data-state=open] [role="menuitemcheckbox"]',
-  '[data-radix-menu-content][data-state=open] [role="menuitemradio"]',
-].join(", ");
 
 function getFirstDropdownMenuItem(container: ParentNode): HTMLElement | null {
   return container.querySelector<HTMLElement>(SEARCHABLE_MENU_ITEM_SELECTOR);
-}
-
-function getFirstOpenDropdownMenuItem(): HTMLElement | null {
-  return document.querySelector<HTMLElement>(
-    OPEN_SEARCHABLE_MENU_ITEM_SELECTOR
-  );
 }
 
 function getDropdownSearchInput(
@@ -904,16 +893,21 @@ const DropdownMenuSearchbar = React.forwardRef<
       e.stopPropagation();
       onKeyDown?.(e);
       if (!e.defaultPrevented) {
+        const menuContent = e.currentTarget.closest(
+          "[data-radix-menu-content]"
+        );
+        const firstItem = menuContent
+          ? getFirstDropdownMenuItem(menuContent)
+          : null;
+
         if (e.key === "Enter") {
           e.preventDefault();
-          const firstItem = getFirstOpenDropdownMenuItem();
           if (firstItem instanceof HTMLElement) {
             firstItem.click();
           }
         }
         if (e.key === "Tab" || e.key === "ArrowDown") {
           e.preventDefault();
-          const firstItem = getFirstOpenDropdownMenuItem();
           if (firstItem instanceof HTMLElement) {
             firstItem.focus();
           }
