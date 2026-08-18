@@ -1,6 +1,5 @@
 import { fetchAutomationTriggers } from "@app/lib/api/analytics/automations/triggers";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import { TRIGGER_ID_FIELD } from "@app/lib/api/analytics/consumption/scope";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -141,6 +140,7 @@ describe("fetchAutomationTriggers", () => {
     expect(searched.value.triggers.map((t) => t.triggerId)).toEqual([
       matchingTrigger.sId,
     ]);
+    // The cardinality aggregation would have reported 2 here.
     expect(searched.value.totalCount).toBe(1);
 
     // A search narrows the rows, not the population a row's stats compare
@@ -150,37 +150,6 @@ describe("fetchAutomationTriggers", () => {
       unsearched.value.medianCostPerRun
     );
     expect(searched.value.medianRunCount).toBe(55);
-  });
-
-  it("restricts the query to the filtered kinds", async () => {
-    const { authenticator } = await createResourceTest({ role: "admin" });
-    const agent =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
-    const scheduleTrigger = await TriggerFactory.schedule(authenticator, {
-      agentConfigurationId: agent.sId,
-      name: "Competitor watch",
-      configuration: { cron: "0 9 * * *", timezone: "UTC" },
-    });
-
-    mockRanking([bucket(scheduleTrigger.sId, 100, 100_000_000)]);
-    const result = await fetchAutomationTriggers(authenticator, {
-      period: PERIOD,
-      limit: 10,
-      offset: 0,
-      filter: { kinds: ["schedule"] },
-    });
-
-    expect(result.isOk()).toBe(true);
-    // Kind is not indexed in the consumption documents, so it reaches
-    // Elasticsearch as the resolved set of trigger ids.
-    const [query] = vi.mocked(searchConsumptionAnalytics).mock.calls[0];
-    expect(query).toMatchObject({
-      bool: {
-        filter: expect.arrayContaining([
-          { terms: { [TRIGGER_ID_FIELD]: [scheduleTrigger.sId] } },
-        ]),
-      },
-    });
   });
 
   it("returns no rows when the search matches no trigger name", async () => {

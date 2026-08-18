@@ -341,20 +341,20 @@ export function AutomationsTriggersTable({
     [filter]
   );
 
-  const { inputValue, debouncedValue, setValue } = useDebounce("", {
-    delay: SEARCH_DEBOUNCE_DELAY_MS,
-  });
-
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: TRIGGERS_PAGE_SIZE,
   });
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
+  const { inputValue, debouncedValue, setValue } = useDebounce("", {
+    delay: SEARCH_DEBOUNCE_DELAY_MS,
+  });
+
   // A filter or search change invalidates the current page and any expanded
   // row. Reset during render
-  // (https://react.dev/learn/you-might-not-need-an-effect) instead of an effect
-  // keyed on them.
+  // (https://react.dev/learn/you-might-not-need-an-effect) instead of an
+  // effect keyed on the query.
   const [prevQuery, setPrevQuery] = useState({
     filter,
     search: debouncedValue,
