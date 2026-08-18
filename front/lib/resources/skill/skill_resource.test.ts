@@ -157,19 +157,16 @@ describe("SkillResource", () => {
       expect(skill.instructions).toBe("");
       expect(skill.instructionsHtml).toBeNull();
     });
+  });
 
+  describe("listActiveMetadataByWorkspace", () => {
     it("refreshes the cached active list after a skill update and archive", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Cached skill name",
         userFacingDescription: "Cached skill description",
       });
       const listActiveSkills = () =>
-        SkillResource.listByWorkspace(testContext.authenticator, {
-          onlyCustom: true,
-          withInstructions: false,
-          withTools: false,
-          withFileAttachments: false,
-        });
+        SkillResource.listActiveMetadataByWorkspace(testContext.authenticator);
 
       const initialSkills = await listActiveSkills();
       expect(initialSkills).toContainEqual(

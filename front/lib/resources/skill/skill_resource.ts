@@ -143,17 +143,15 @@ type SkillReferenceTarget = {
   status: SkillStatus;
 };
 
-type SkillListActiveCacheEntry = Omit<
-  Attributes<SkillConfigurationModel>,
-  | "createdAt"
-  | "instructions"
-  | "instructionsHtml"
-  | "lastReinforcementAnalysisAt"
-  | "updatedAt"
-> & {
-  createdAt: string;
-  lastReinforcementAnalysisAt: string | null;
-  updatedAt: string;
+type SkillListActiveCacheEntry = {
+  id: ModelId;
+  icon: string | null;
+  name: string;
+  userFacingDescription: string | null;
+};
+
+type SkillListActiveEntry = Omit<SkillListActiveCacheEntry, "id"> & {
+  sId: string;
 };
 
 type ReplaceSkillReferenceTagsOptions = {
@@ -304,6 +302,7 @@ const SKILL_LIST_ACTIVE_CACHE_TTL_MS = 15 * 60 * 1000;
 const skillListActiveCacheKey = (workspaceId: string) =>
   `${workspaceId}:v${SKILL_LIST_ACTIVE_CACHE_KEY_VERSION}`;
 
+// Keep the cached database snapshot small. Code-defined skills are read from their registries.
 const skillListActiveCache = defineCache<
   { workspaceId: string; workspaceModelId: ModelId },
   SkillListActiveCacheEntry[]
@@ -312,26 +311,16 @@ const skillListActiveCache = defineCache<
   key: ({ workspaceId }) => skillListActiveCacheKey(workspaceId),
   load: async ({ workspaceModelId }) => {
     const skills = await SkillConfigurationModel.findAll({
-      attributes: { exclude: ["instructions", "instructionsHtml"] },
+      attributes: ["id", "icon", "name", "userFacingDescription"],
       where: { status: "active", workspaceId: workspaceModelId },
     });
 
-    return skills.map((skill) => {
-      const attributes = skill.get();
-      return {
-        ...omit(attributes, [
-          "createdAt",
-          "instructions",
-          "instructionsHtml",
-          "lastReinforcementAnalysisAt",
-          "updatedAt",
-        ]),
-        createdAt: attributes.createdAt.toISOString(),
-        lastReinforcementAnalysisAt:
-          attributes.lastReinforcementAnalysisAt?.toISOString() ?? null,
-        updatedAt: attributes.updatedAt.toISOString(),
-      };
-    });
+    return skills.map((skill) => ({
+      id: skill.id,
+      icon: skill.icon,
+      name: skill.name,
+      userFacingDescription: skill.userFacingDescription,
+    }));
   },
   ttlMs: SKILL_LIST_ACTIVE_CACHE_TTL_MS,
 });
@@ -540,31 +529,36 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
-  private static async listActiveModelsByWorkspace(
+  static async listActiveMetadataByWorkspace(
     auth: Authenticator
-  ): Promise<SkillConfigurationModel[]> {
+  ): Promise<SkillListActiveEntry[]> {
     const workspace = auth.getNonNullableWorkspace();
-    const cachedSkills = await skillListActiveCache.get({
+    const customSkills = await skillListActiveCache.get({
       workspaceId: workspace.sId,
       workspaceModelId: workspace.id,
     });
+    const codeDefinedSkills = [
+      ...(await GlobalSkillsRegistry.findAll(auth, { status: "active" })),
+      ...(await SystemSkillsRegistry.findAll(auth, { status: "active" })),
+    ];
 
-    return cachedSkills.map(
-      ({ createdAt, lastReinforcementAnalysisAt, updatedAt, ...attributes }) =>
-        this.model.build(
-          {
-            ...attributes,
-            createdAt: new Date(createdAt),
-            instructions: "",
-            instructionsHtml: null,
-            lastReinforcementAnalysisAt: lastReinforcementAnalysisAt
-              ? new Date(lastReinforcementAnalysisAt)
-              : null,
-            updatedAt: new Date(updatedAt),
-          },
-          { isNewRecord: false, raw: true }
-        )
-    );
+    return [
+      ...customSkills.map((skill) => ({
+        sId: this.modelIdToSId({
+          id: skill.id,
+          workspaceId: workspace.id,
+        }),
+        icon: skill.icon,
+        name: skill.name,
+        userFacingDescription: skill.userFacingDescription,
+      })),
+      ...codeDefinedSkills.map((skill) => ({
+        sId: skill.sId,
+        icon: skill.icon,
+        name: skill.name,
+        userFacingDescription: skill.userFacingDescription,
+      })),
+    ];
   }
 
   static async makeNew(
@@ -768,7 +762,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     context: {
       agentLoopData?: AgentLoopExecutionData;
       effectiveSpaceIds?: string[];
-      preloadedCustomSkills?: SkillConfigurationModel[];
       transaction?: Transaction;
     } = {}
   ): Promise<SkillResource[]> {
@@ -776,7 +769,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const {
       agentLoopData,
       effectiveSpaceIds: providedEffectiveSpaceIds,
-      preloadedCustomSkills,
       transaction,
     } = context;
 
@@ -791,22 +783,20 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ...otherOptions
     } = options;
 
-    const customSkills =
-      preloadedCustomSkills ??
-      (await this.model.findAll({
-        ...otherOptions,
-        ...(withInstructions
-          ? {}
-          : { attributes: { exclude: ["instructions", "instructionsHtml"] } }),
-        where: {
-          // Fetch active by default, unless explicitly overridden by the caller.
-          status: "active",
-          ...omit(where, "sId"),
-          workspaceId: workspace.id,
-        },
-        include: includes,
-        transaction,
-      }));
+    const customSkills = await this.model.findAll({
+      ...otherOptions,
+      ...(withInstructions
+        ? {}
+        : { attributes: { exclude: ["instructions", "instructionsHtml"] } }),
+      where: {
+        // Fetch active by default, unless explicitly overridden by the caller.
+        status: "active",
+        ...omit(where, "sId"),
+        workspaceId: workspace.id,
+      },
+      include: includes,
+      transaction,
+    });
 
     // Check if the user has access to skill requested spaces.
     const uniqueRequestedSpaceIds = uniq(
@@ -1672,32 +1662,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       withFileAttachments?: boolean;
     } = {}
   ): Promise<SkillResource[]> {
-    const preloadedCustomSkills =
-      status === "active" &&
-      limit === undefined &&
-      availability === undefined &&
-      updatedAfter === undefined &&
-      !reinforcementNotOff &&
-      !withInstructions
-        ? await this.listActiveModelsByWorkspace(auth)
-        : undefined;
-    const skills = await this.baseFetch(
-      auth,
-      {
-        where: {
-          status,
-          ...(availability !== undefined ? { availability } : {}),
-          ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
-          ...(reinforcementNotOff ? { reinforcement: { [Op.ne]: "off" } } : {}),
-        },
-        ...(limit ? { limit } : {}),
-        onlyCustom,
-        withInstructions,
-        withTools,
-        withFileAttachments,
+    const skills = await this.baseFetch(auth, {
+      where: {
+        status,
+        ...(availability !== undefined ? { availability } : {}),
+        ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
+        ...(reinforcementNotOff ? { reinforcement: { [Op.ne]: "off" } } : {}),
       },
-      { preloadedCustomSkills }
-    );
+      ...(limit ? { limit } : {}),
+      onlyCustom,
+      withInstructions,
+      withTools,
+      withFileAttachments,
+    });
 
     if (globalSpaceOnly) {
       const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
