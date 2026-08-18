@@ -8,9 +8,9 @@ import {
   TarballNotFoundError,
 } from "@connectors/connectors/github/lib/code/tar_extraction";
 import {
+  describeGithubError,
   isBadCredentials,
   isGithubRequestErrorNotFound,
-  isTransientNetworkError,
   RepositoryAccessBlockedError,
 } from "@connectors/connectors/github/lib/errors";
 import { getOctokit } from "@connectors/connectors/github/lib/github_api";
@@ -34,6 +34,7 @@ import {
   GithubCodeRepositoryModel,
   GithubConnectorStateModel,
 } from "@connectors/lib/models/github";
+import { syncFailed } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -48,6 +49,8 @@ const PARALLEL_FILE_UPLOADS = 128;
 const PARALLEL_DIRECTORY_UPLOADS = 64;
 
 const GITHUB_TARBALL_DOWNLOAD_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes.
+
+const ATTEMPTS_BEFORE_REPORTING_SYNC_FAILURE = 20;
 
 export async function githubExtractToGcsActivity({
   connectorId,
@@ -70,10 +73,13 @@ export async function githubExtractToGcsActivity({
     throw new Error(`Connector ${connectorId} not found`);
   }
 
+  const activityAttempt = Context.current().info.attempt;
+
   const logger = getActivityLogger(connector, {
     repoName,
     repoLogin,
     repoId,
+    activityAttempt,
     activityType: "githubExtractToGcsActivity",
   });
 
@@ -121,13 +127,26 @@ export async function githubExtractToGcsActivity({
     return null;
   }
 
-  logger.info("Setting up tarball stream provider for extraction");
+  const repoSizeKb = repoInfo.size;
+
+  logger.info(
+    { repoSizeKb },
+    "Setting up tarball stream provider for extraction"
+  );
+
+  let tarballFetchCount = 0;
+  let tarballContentLengthBytes: number | null = null;
 
   // Create a stream provider that can fetch a fresh tarball stream on each attempt.
   // This is necessary because streams can only be consumed once, so retries need fresh streams.
   const tarballStreamProvider: TarballStreamProvider = {
     getStream: async () => {
-      logger.info("Fetching GitHub repository tarball");
+      tarballFetchCount += 1;
+
+      logger.info(
+        { repoSizeKb, tarballFetchCount },
+        "Fetching GitHub repository tarball"
+      );
 
       const octokit = await getOctokit(connector);
 
@@ -148,9 +167,10 @@ export async function githubExtractToGcsActivity({
         // Extract content-length from headers if available.
         const headers = response.headers;
         const contentLength = headers["content-length"] ?? null;
+        tarballContentLengthBytes = contentLength;
 
         logger.info(
-          { contentLength },
+          { contentLength, repoSizeKb, tarballFetchCount },
           "Tarball stream obtained from GitHub API"
         );
 
@@ -184,12 +204,15 @@ export async function githubExtractToGcsActivity({
           });
         }
 
-        if (isTransientNetworkError(error)) {
-          logger.warn(
-            { err: error, repoLogin, repoName, repoId },
-            "Transient network error fetching tarball, will be retried."
-          );
-        }
+        logger.error(
+          {
+            ...describeGithubError(error),
+            err: error,
+            repoSizeKb,
+            tarballFetchCount,
+          },
+          "Failed to fetch GitHub repository tarball, will be retried."
+        );
 
         throw error;
       }
@@ -198,7 +221,7 @@ export async function githubExtractToGcsActivity({
 
   logger.info("Extracting GitHub repository tarball to GCS");
 
-  const MAX_ATTEMPTS_BEFORE_SKIP = 20;
+  const extractionStartedAtMs = Date.now();
 
   let extractResult;
   try {
@@ -211,25 +234,25 @@ export async function githubExtractToGcsActivity({
       logger
     );
   } catch (error) {
-    const attempt = Context.current().info.attempt;
+    const isPersistentFailure =
+      activityAttempt >= ATTEMPTS_BEFORE_REPORTING_SYNC_FAILURE;
 
-    if (isTransientNetworkError(error) && attempt >= MAX_ATTEMPTS_BEFORE_SKIP) {
-      logger.error(
-        { err: error, attempt },
-        "Persistent transient error after max attempts: marking repository as skipped."
-      );
+    logger.error(
+      {
+        ...describeGithubError(error),
+        err: error,
+        defaultBranch: repoInfo.default_branch,
+        extractionDurationMs: Date.now() - extractionStartedAtMs,
+        isPersistentFailure,
+        repoSizeKb,
+        tarballContentLengthBytes,
+        tarballFetchCount,
+      },
+      "Failed to extract GitHub repository tarball to GCS"
+    );
 
-      await GithubCodeRepositoryModel.update(
-        { skipReason: "persistent_download_failure" },
-        {
-          where: {
-            connectorId: connector.id,
-            repoId: repoId.toString(),
-          },
-        }
-      );
-
-      return null;
+    if (isPersistentFailure) {
+      await syncFailed(connectorId, "transient_upstream_error");
     }
 
     throw error;
