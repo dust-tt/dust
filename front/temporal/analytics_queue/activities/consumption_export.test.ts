@@ -1,6 +1,3 @@
-// @vitest-environment node: adm-zip requires Node builtins (Buffer, zlib).
-// This directive makes them available in the test environment.
-
 import { listConsumptionExports } from "@app/lib/api/analytics/consumption/export_jobs";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import {
@@ -23,7 +20,6 @@ import type {
   AgentMessageConsumptionAnalyticsToolData,
 } from "@app/types/assistant/analytics";
 import { Err, Ok } from "@app/types/shared/result";
-import AdmZip from "adm-zip";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Instantiation expression: pins the mock to the concrete TDocument the exporter
@@ -280,7 +276,7 @@ describe("runConsumptionExportBucketActivity", () => {
 });
 
 describe("finalizeConsumptionExportActivity", () => {
-  it("merges the bucket parts into a single zip, notifies, and cleans up the temp parts", async () => {
+  it("composes the bucket parts into a single CSV, notifies, and cleans up the temp parts", async () => {
     mockLabels({
       agent1: "@dust",
       user1: "Alice",
@@ -317,30 +313,22 @@ describe("finalizeConsumptionExportActivity", () => {
 
     const prefix = buildConsumptionExportGcsPrefix(workspace.sId);
     const finalSaveCalls = fileStorageMock.saveFileCalls.filter(
-      (call) => call.filePath === `${prefix}${exportId}.zip`
+      (call) => call.filePath === `${prefix}${exportId}.csv`
     );
     expect(finalSaveCalls).toHaveLength(1);
-    expect(finalSaveCalls[0].contentType).toBe("application/zip");
+    expect(finalSaveCalls[0].contentType).toBe("text/csv");
 
-    const content = finalSaveCalls[0].content;
-    const zip = new AdmZip(
-      Buffer.isBuffer(content) ? content : Buffer.from(content)
-    );
-    expect(zip.getEntries().map((entry) => entry.entryName)).toEqual([
-      "lines.csv",
-    ]);
-
-    const csv = zip.getEntry("lines.csv")?.getData().toString("utf-8");
+    const csv = finalSaveCalls[0].content.toString();
     // Header appears exactly once, ahead of both buckets' rows, in bucket order.
-    expect(csv?.indexOf("completedAt,conversationId")).toBe(0);
-    const llmIndex = csv?.indexOf(",llm,");
-    const toolIndex = csv?.indexOf(",tool,");
+    expect(csv.indexOf("completedAt,conversationId")).toBe(0);
+    const llmIndex = csv.indexOf(",llm,");
+    const toolIndex = csv.indexOf(",tool,");
     expect(llmIndex).toBeGreaterThan(0);
-    expect(toolIndex).toBeGreaterThan(llmIndex ?? -1);
+    expect(toolIndex).toBeGreaterThan(llmIndex);
 
     expect(notifyConsumptionExportReady).toHaveBeenCalledTimes(1);
 
-    // The temp parts are gone.
+    // The temp parts (and the header part written for the compose) are gone.
     const tmpPrefix = buildConsumptionExportBucketPartsGcsPrefix(
       workspace.sId,
       exportId
@@ -365,16 +353,43 @@ describe("finalizeConsumptionExportActivity", () => {
 
     const prefix = buildConsumptionExportGcsPrefix(workspace.sId);
     const finalSaveCalls = fileStorageMock.saveFileCalls.filter(
-      (call) => call.filePath === `${prefix}empty-export.zip`
+      (call) => call.filePath === `${prefix}empty-export.csv`
     );
     expect(finalSaveCalls).toHaveLength(1);
 
-    const content = finalSaveCalls[0].content;
-    const zip = new AdmZip(
-      Buffer.isBuffer(content) ? content : Buffer.from(content)
-    );
-    const csv = zip.getEntry("lines.csv")?.getData().toString("utf-8");
+    const csv = finalSaveCalls[0].content.toString();
     expect(csv).toContain("completedAt,conversationId");
     expect(notifyConsumptionExportReady).toHaveBeenCalledTimes(1);
+  });
+
+  it("composes more than GCS_COMPOSE_MAX_SOURCES parts across multiple stages", async () => {
+    const { authenticator, workspace } = await setup();
+    const authType = authenticator.toJSON();
+    const exportId = "many-buckets-export";
+    const bucketCount = 40; // > GCS_COMPOSE_MAX_SOURCES (32) + the header part.
+
+    for (let bucketIndex = 0; bucketIndex < bucketCount; bucketIndex++) {
+      mockDocs([]);
+      await runConsumptionExportBucketActivity(authType, {
+        period: PERIOD,
+        filter: {},
+        exportId,
+        bucketIndex,
+      });
+    }
+
+    await finalizeConsumptionExportActivity(authType, {
+      exportId,
+      bucketCount,
+    });
+
+    const prefix = buildConsumptionExportGcsPrefix(workspace.sId);
+    const finalSaveCalls = fileStorageMock.saveFileCalls.filter(
+      (call) => call.filePath === `${prefix}${exportId}.csv`
+    );
+    expect(finalSaveCalls).toHaveLength(1);
+    expect(finalSaveCalls[0].content.toString()).toContain(
+      "completedAt,conversationId"
+    );
   });
 });

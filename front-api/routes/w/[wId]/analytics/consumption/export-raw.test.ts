@@ -89,14 +89,14 @@ describe("POST /api/w/:wId/analytics/consumption/export-raw/status", () => {
       }
       return [
         {
-          name: `${prefix}1000.zip`,
+          name: `${prefix}1000.csv`,
           metadata: {
             timeCreated: "2026-08-01T00:00:00.000Z",
             size: "100",
           },
         },
         {
-          name: `${prefix}2000.zip`,
+          name: `${prefix}2000.csv`,
           metadata: {
             timeCreated: "2026-08-02T00:00:00.000Z",
             size: "200",
@@ -112,12 +112,12 @@ describe("POST /api/w/:wId/analytics/consumption/export-raw/status", () => {
     expect(body.isGenerating).toBe(false);
     expect(body.exports).toEqual([
       {
-        name: "2000.zip",
+        name: "2000.csv",
         createdAt: "2026-08-02T00:00:00.000Z",
         sizeBytes: 200,
       },
       {
-        name: "1000.zip",
+        name: "1000.csv",
         createdAt: "2026-08-01T00:00:00.000Z",
         sizeBytes: 100,
       },
@@ -154,7 +154,7 @@ describe("GET /api/w/:wId/analytics/consumption/export-raw/:name/download", () =
   it("redirects to a freshly signed download url", async () => {
     const { workspace } = await setupTest();
 
-    const response = await getDownloadRequest(workspace.sId, "2000.zip");
+    const response = await getDownloadRequest(workspace.sId, "2000.csv");
 
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe("https://signed-url.test");
@@ -165,7 +165,7 @@ describe("GET /api/w/:wId/analytics/consumption/export-raw/:name/download", () =
 
     const response = await getDownloadRequest(
       workspace.sId,
-      "..%2f..%2fother-workspace%2f2000.zip"
+      "..%2f..%2fother-workspace%2f2000.csv"
     );
 
     expect(response.status).toBe(404);
@@ -174,7 +174,7 @@ describe("GET /api/w/:wId/analytics/consumption/export-raw/:name/download", () =
   it("is refused to non-managers", async () => {
     const { workspace } = await setupTest({ role: "user" });
 
-    const response = await getDownloadRequest(workspace.sId, "2000.zip");
+    const response = await getDownloadRequest(workspace.sId, "2000.csv");
 
     expect(response.status).toBe(403);
   });

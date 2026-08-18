@@ -9,16 +9,14 @@ import type {
 } from "@app/lib/api/analytics/consumption/scope";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import type { FileStorage } from "@app/lib/file_storage";
+import {
+  GCS_COMPOSE_MAX_SOURCES,
+  getPrivateUploadBucket,
+} from "@app/lib/file_storage";
 import { notifyConsumptionExportReady } from "@app/lib/notifications/workflows/consumption-export-ready";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import AdmZip from "adm-zip";
 import { createHash } from "crypto";
-
-// Bounds how many bucket CSV parts are downloaded from GCS at once when finalizing an
-// export; parts are large in count (one per 6-hour bucket) but individually small.
-const CONSUMPTION_EXPORT_BUCKET_PARTS_CONCURRENCY = 8;
 
 export function buildConsumptionExportGcsPrefix(workspaceId: string): string {
   return `w/${workspaceId}/consumption_exports/`;
@@ -28,10 +26,10 @@ export function buildConsumptionExportGcsPath(
   workspaceId: string,
   exportId: string
 ): string {
-  return `${buildConsumptionExportGcsPrefix(workspaceId)}${exportId}.zip`;
+  return `${buildConsumptionExportGcsPrefix(workspaceId)}${exportId}.csv`;
 }
 
-// Per-bucket CSV parts live here until the export is finalized into a single zip, then
+// Per-bucket CSV parts live here until the export is finalized into a single file, then
 // get cleaned up.
 export function buildConsumptionExportBucketPartsGcsPrefix(
   workspaceId: string,
@@ -145,8 +143,37 @@ export async function runConsumptionExportBucketActivity(
     });
 }
 
-// Merges every bucket CSV part into the final zip, uploads it, notifies the requester,
-// then cleans up the temporary parts.
+// Concatenates `sourcePaths` into `destinationPath` via server-side GCS compose: no bytes
+// pass through this process. GCS caps a single compose call at GCS_COMPOSE_MAX_SOURCES, so
+// sources beyond that are folded down through intermediate objects (under `tmpPrefix`,
+// cleaned up by the caller) a round at a time until what's left fits in one call.
+async function composeInStages(
+  bucket: FileStorage,
+  sourcePaths: string[],
+  destinationPath: string,
+  tmpPrefix: string
+): Promise<void> {
+  let paths = sourcePaths;
+  let round = 0;
+  while (paths.length > GCS_COMPOSE_MAX_SOURCES) {
+    const nextPaths: string[] = [];
+    for (let i = 0; i < paths.length; i += GCS_COMPOSE_MAX_SOURCES) {
+      const chunk = paths.slice(i, i + GCS_COMPOSE_MAX_SOURCES);
+      const intermediatePath = `${tmpPrefix}stage-${round}-${nextPaths.length}.csv`;
+      await bucket.composeFiles(chunk, intermediatePath);
+      nextPaths.push(intermediatePath);
+    }
+    paths = nextPaths;
+    round++;
+  }
+
+  await bucket.composeFiles(paths, destinationPath);
+}
+
+// Composes the header and every bucket CSV part into the final export, notifies the
+// requester, then cleans up the temporary parts. Composing (rather than downloading every
+// part and re-uploading the concatenation) means the export's data never passes through
+// this activity at all — only object names do.
 export async function finalizeConsumptionExportActivity(
   authType: AuthenticatorType,
   {
@@ -161,35 +188,39 @@ export async function finalizeConsumptionExportActivity(
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const bucket = getPrivateUploadBucket();
 
-  // Bucket indices are read back in order so rows stay sorted by their bucket's time
+  const tmpPrefix = buildConsumptionExportBucketPartsGcsPrefix(
+    workspaceId,
+    exportId
+  );
+  const headerPath = `${tmpPrefix}header.csv`;
+  await bucket
+    .file(headerPath)
+    .save(Buffer.from(buildConsumptionLineExportCsvHeader(), "utf-8"), {
+      contentType: "text/csv",
+      resumable: false,
+    });
+
+  // Bucket indices are composed in order so rows stay sorted by their bucket's time
   // window, matching the ordering the single-shot pagination used to produce.
-  const parts = await concurrentExecutor(
-    Array.from({ length: bucketCount }, (_, bucketIndex) => bucketIndex),
-    async (bucketIndex) => {
-      const gcsPath = buildConsumptionExportBucketPartGcsPath(
+  const bucketPartPaths = Array.from(
+    { length: bucketCount },
+    (_, bucketIndex) =>
+      buildConsumptionExportBucketPartGcsPath(
         workspaceId,
         exportId,
         bucketIndex
-      );
-      const [content] = await bucket.file(gcsPath).download();
-      return content.toString("utf-8");
-    },
-    { concurrency: CONSUMPTION_EXPORT_BUCKET_PARTS_CONCURRENCY }
+      )
   );
 
-  const csv = buildConsumptionLineExportCsvHeader() + parts.join("");
-
-  const zip = new AdmZip();
-  zip.addFile("lines.csv", Buffer.from(csv, "utf-8"));
-
   const gcsPath = buildConsumptionExportGcsPath(workspaceId, exportId);
-  await bucket
-    .file(gcsPath)
-    .save(zip.toBuffer(), { contentType: "application/zip", resumable: false });
+  await composeInStages(
+    bucket,
+    [headerPath, ...bucketPartPaths],
+    gcsPath,
+    tmpPrefix
+  );
 
   notifyConsumptionExportReady(auth, exportId);
 
-  await bucket.deleteByPrefix(
-    buildConsumptionExportBucketPartsGcsPrefix(workspaceId, exportId)
-  );
+  await bucket.deleteByPrefix(tmpPrefix);
 }
