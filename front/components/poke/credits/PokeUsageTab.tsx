@@ -29,6 +29,7 @@ interface PokeUsageTabProps {
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticWarningReached: boolean;
+  programmaticSpendLimitRateCapCount: number | null;
   creditUsageConfig: PokeCreditUsageConfig | null;
   poolAlert: MetronomeAlertRef | null;
   programmaticAlerts: PokeProgrammaticAlerts;
@@ -66,6 +67,7 @@ interface PokeCreditStatesCardProps {
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticWarningReached: boolean;
+  programmaticSpendLimitRateCapCount: number | null;
   poolAlert: MetronomeAlertRef | null;
   programmaticAlerts: PokeProgrammaticAlerts;
 }
@@ -75,6 +77,7 @@ function PokeCreditStatesCard({
   poolCreditState,
   programmaticCreditState,
   programmaticWarningReached,
+  programmaticSpendLimitRateCapCount,
   poolAlert,
   programmaticAlerts,
 }: PokeCreditStatesCardProps) {
@@ -105,6 +108,12 @@ function PokeCreditStatesCard({
           {programmaticWarningReached && (
             <Chip size="xs" color="warning" label="near limit" />
           )}
+          <span className="text-xs text-muted-foreground">
+            rate limiter:{" "}
+            {programmaticSpendLimitRateCapCount !== null
+              ? `${formatCredits(programmaticSpendLimitRateCapCount)} credits`
+              : "—"}
+          </span>
           <AlertChip alert={programmaticAlerts.cap} label="cap alert" />
           <AlertChip alert={programmaticAlerts.warning} label="warning (80%)" />
           <AlertChip alert={programmaticAlerts.low} label="low (-100)" />
@@ -282,6 +291,7 @@ export function PokeUsageTab({
   poolCreditState,
   programmaticCreditState,
   programmaticWarningReached,
+  programmaticSpendLimitRateCapCount,
   creditUsageConfig,
   poolAlert,
   programmaticAlerts,
@@ -301,6 +311,7 @@ export function PokeUsageTab({
         poolCreditState={poolCreditState}
         programmaticCreditState={programmaticCreditState}
         programmaticWarningReached={programmaticWarningReached}
+        programmaticSpendLimitRateCapCount={programmaticSpendLimitRateCapCount}
         poolAlert={poolAlert}
         programmaticAlerts={programmaticAlerts}
       />

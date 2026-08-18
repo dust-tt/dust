@@ -1,3 +1,4 @@
+import { makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace } from "@app/lib/api/assistant/rate_limits";
 import config from "@app/lib/api/config";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { getSeatPlan } from "@app/lib/api/credits/seat_plan";
@@ -19,6 +20,8 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
+import { getFixedWindowCount } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type {
   WorkspacePoolCreditState,
@@ -87,6 +90,10 @@ export type PokeWorkspaceInfo = {
   defaultAlerts: DefaultMetronomeAlerts;
   programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticWarningReached: boolean;
+  // Current value of the Redis fixed-window programmatic spend-cap counter for
+  // the contract billing cycle (the rate-limiter backup). Null when there is no
+  // billing period to bucket on or the read failed.
+  programmaticSpendLimitRateCapCount: number | null;
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
   stripeCustomerId: string | null;
   stripeSubscription: PokeStripeSubscriptionWire | null;
@@ -137,6 +144,21 @@ export async function getPokeWorkspaceInfo(
 
   const creditUsageConfig =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+
+  // Current values of the Redis fixed-window spend-cap counters for the contract
+  // billing cycle (the rate-limiter backups), surfaced in Poke for debugging.
+  // Null when there is no billing period to bucket on or a read fails.
+  const spendLimitBounds = await resolveSpendLimitCycleBounds(owner);
+  let programmaticSpendLimitRateCapCount: number | null = null;
+  if (spendLimitBounds) {
+    const countResult = await getFixedWindowCount({
+      key: makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace(owner),
+      bounds: spendLimitBounds,
+    });
+    programmaticSpendLimitRateCapCount = countResult.isOk()
+      ? countResult.value
+      : null;
+  }
 
   // Resolve the Metronome alert ids backing each credit dimension so Poke can
   // deep-link to the dashboard. Best-effort: any failure degrades to null
@@ -243,6 +265,7 @@ export async function getPokeWorkspaceInfo(
     programmaticWarningReached: await isWorkspaceProgrammaticWarningReached(
       owner.sId
     ),
+    programmaticSpendLimitRateCapCount,
     stripeCustomerId,
     stripeSubscription: stripeSubscription
       ? {
