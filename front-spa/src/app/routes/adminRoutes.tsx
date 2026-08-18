@@ -133,7 +133,7 @@ export const adminRoutes: RouteObject[] = [
     element: <RequireRoleLayout requiredRole="admin" />,
     children: [
       {
-        path: "analytics/automations",
+        path: "automations",
         element: <AnalyticsAutomationsPage />,
       },
       { path: "model-providers", element: <ModelProvidersPage /> },

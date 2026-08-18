@@ -8,7 +8,7 @@ import {
   ProgressBar,
   Tooltip,
 } from "@dust-tt/sparkle";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 
 function EmptyCell() {
   return <span className="text-xs text-muted-foreground">—</span>;
@@ -18,19 +18,21 @@ interface AvatarNameCellProps {
   name: string;
   imageUrl: string | null;
   isRounded?: boolean;
+  size?: ComponentProps<typeof Avatar>["size"];
 }
 
 export function AvatarNameCell({
   name,
   imageUrl,
   isRounded,
+  size = "xs",
 }: AvatarNameCellProps) {
   return (
     <div className="flex items-center gap-2">
       <Avatar
         name={name}
         visual={imageUrl ?? undefined}
-        size="xs"
+        size={size}
         isRounded={isRounded}
       />
       <span className="truncate text-sm">{name}</span>
