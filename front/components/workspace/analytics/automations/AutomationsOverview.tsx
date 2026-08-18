@@ -17,7 +17,7 @@ export function AutomationsOverview({
 
   if (isOverviewLoading) {
     return (
-      <div className="h-24 w-full animate-pulse rounded-2xl bg-muted-background" />
+      <div className="h-24 w-full animate-pulse rounded-xl bg-muted-background" />
     );
   }
 
