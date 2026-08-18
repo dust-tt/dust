@@ -50,9 +50,12 @@ app.post(
       return ctx.json({ success: true });
     }
 
-    const sandboxFunction = await SandboxFunctionResource.fetchById(
+    const sandboxFunction = await SandboxFunctionResource.fetchByIdForExecution(
       auth,
-      sandboxClaims.sandboxFunctionId
+      {
+        sandboxFunctionId: sandboxClaims.sandboxFunctionId,
+        invocationId: sandboxClaims.invocationId,
+      }
     );
     if (!sandboxFunction) {
       return apiError(ctx, {

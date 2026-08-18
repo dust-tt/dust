@@ -313,7 +313,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     }: ResourceFindOptions<SandboxFunctionModel> & {
       includeDeletedSpace?: boolean;
       capability?: FrameShareCapability;
-      // Reserved for execution-side resolution (see fetchById's option of the same name),
+      // Reserved for execution-side resolution (fetchByIdForExecution and the tool workflow),
       // which verified an invocation row for the function first.
       dangerouslyBypassSpacePermissionFilter?: boolean;
     } = {}
@@ -394,17 +394,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   static async fetchById(
     auth: Authenticator,
     sandboxFunctionId: string,
-    {
-      capability,
-      dangerouslyBypassSpacePermissionFilter = false,
-    }: {
-      capability?: FrameShareCapability;
-      // Only for execution-side paths (temporal activities, sandbox-token callbacks): they
-      // re-resolve an already-authorized invocation's function under an auth that cannot carry
-      // the invoker's original grant, and their (function, invocation) ids come from
-      // server-minted inputs (workflow args, verified sandbox JWT claims), never user input.
-      dangerouslyBypassSpacePermissionFilter?: boolean;
-    } = {}
+    capability?: FrameShareCapability
   ): Promise<SandboxFunctionResource | null> {
     if (!isResourceSId("sandbox_function", sandboxFunctionId)) {
       return null;
@@ -418,10 +408,46 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     const [sandboxFunction] = await this.baseFetch(auth, {
       where: { id: sandboxFunctionModelId },
       capability,
-      dangerouslyBypassSpacePermissionFilter,
     });
 
     return sandboxFunction ?? null;
+  }
+
+  /**
+   * Gets the function if a matching invocation exists.
+   * In the context of a temporal activity or a sandbox callback, we don't have the original
+   * caller's grant (e.g. a frame share token) in the auth, so the space permission filter is
+   * deliberately skipped. The invocation ties the pair together; callers are trusted because
+   * their (function, invocation) ids come from server-minted inputs — workflow args or verified
+   * sandbox JWT claims — never from user input.
+   */
+  static async fetchByIdForExecution(
+    auth: Authenticator,
+    {
+      sandboxFunctionId,
+      invocationId,
+    }: { sandboxFunctionId: string; invocationId: string }
+  ): Promise<SandboxFunctionResource | null> {
+    const sandboxFunctionModelId = getResourceIdFromSId(sandboxFunctionId);
+    if (sandboxFunctionModelId === null) {
+      return null;
+    }
+
+    const [sandboxFunction] = await this.baseFetch(auth, {
+      where: { id: sandboxFunctionModelId },
+      dangerouslyBypassSpacePermissionFilter: true,
+    });
+    if (!sandboxFunction) {
+      return null;
+    }
+
+    // We don't need the invocation itself, just its existence.
+    const invocation = await SandboxFunctionInvocationResource.fetchById(auth, {
+      sandboxFunction,
+      invocationId,
+      access: "system",
+    });
+    return invocation ? sandboxFunction : null;
   }
 
   // Lives here rather than on SandboxFunctionMCPActionResource: that resource can only type-import
@@ -497,9 +523,11 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     functionIdOrSlug: string,
     capability?: FrameShareCapability
   ): Promise<SandboxFunctionResource | null> {
-    const sandboxFunction = await this.fetchById(auth, functionIdOrSlug, {
-      capability,
-    });
+    const sandboxFunction = await this.fetchById(
+      auth,
+      functionIdOrSlug,
+      capability
+    );
     if (sandboxFunction) {
       return sandboxFunction;
     }

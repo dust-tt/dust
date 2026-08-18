@@ -19,11 +19,11 @@ export async function markSandboxFunctionInvocationFailedActivity(
   // Execution-side resolution: the serialized auth cannot carry the invoker's original grant
   // (e.g. a frame share token). The ids come from workflow args our own launch code minted after
   // the caller-facing gates passed, so the space filter is deliberately skipped.
-  const sandboxFunction = await SandboxFunctionResource.fetchById(
+  const sandboxFunction = await SandboxFunctionResource.fetchByIdForExecution(
     auth,
-    sandboxFunctionId,
     {
-      dangerouslyBypassSpacePermissionFilter: true,
+      sandboxFunctionId,
+      invocationId,
     }
   );
   if (!sandboxFunction) {

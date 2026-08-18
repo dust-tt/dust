@@ -25,11 +25,11 @@ export async function selfHealSandboxFunctionExecutionMode(
   // Execution-side resolution: a sandbox-token auth cannot carry the invoker's original grant
   // (e.g. a frame share token). The id comes from signature-verified sandbox JWT claims minted
   // at execution start, so the space filter is deliberately skipped.
-  const sandboxFunction = await SandboxFunctionResource.fetchById(
+  const sandboxFunction = await SandboxFunctionResource.fetchByIdForExecution(
     auth,
-    sandboxFunctionId,
     {
-      dangerouslyBypassSpacePermissionFilter: true,
+      sandboxFunctionId,
+      invocationId,
     }
   );
   if (!sandboxFunction) {
