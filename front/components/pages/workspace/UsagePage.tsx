@@ -44,6 +44,7 @@ import {
 import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
 import {
   isCreditPricedFreePlan,
+  isEnterprisePlanPrefix,
   isFreePlan,
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
@@ -813,6 +814,7 @@ export function UsagePage() {
   const { usageSettings } = useUsageSettings({ workspaceId: owner.sId });
 
   const plan = subscription.plan;
+  const isEnterprise = isEnterprisePlanPrefix(plan.code);
   const isFreePlanWorkspace = isFreePlan(plan.code);
 
   const isManualInvitationsEnabled =
@@ -872,12 +874,15 @@ export function UsagePage() {
     return null;
   }
 
-  const showPoolSection =
+  const showRedesignedPoolSection =
     isAwuPoolSummaryLoading ||
     !!isAwuPoolSummaryError ||
     hasPool ||
     isReadOnly ||
     showTopUpButton;
+  const showLegacyPoolSection =
+    !isAwuPoolSummaryLoading &&
+    (!!isAwuPoolSummaryError || hasPool || isReadOnly);
   const topUpButton = showTopUpButton ? (
     <Button
       label="Top up"
@@ -1056,12 +1061,18 @@ export function UsagePage() {
         currentTotalPoolCredits={totalActiveCredits}
       />
 
-      <div className="flex flex-col items-stretch gap-8 pb-20">
-        <Page.Header
-          title={
-            <div className="flex w-full items-center justify-between gap-4">
-              <Page.H variant="h3">Usage</Page.H>
-              {isAnalyticsConsumptionEnabled && (
+      <div
+        className={
+          isAnalyticsConsumptionEnabled
+            ? "flex flex-col items-stretch gap-8 pb-20"
+            : "flex flex-col items-stretch gap-10 pb-20"
+        }
+      >
+        {isAnalyticsConsumptionEnabled ? (
+          <Page.Header
+            title={
+              <div className="flex w-full items-center justify-between gap-4">
+                <Page.H variant="h3">Usage</Page.H>
                 <Button
                   label="Breakdown in analytics"
                   iconRight={LinkExternal01}
@@ -1069,11 +1080,24 @@ export function UsagePage() {
                   variant="highlight-ghost"
                   href={`/w/${owner.sId}/analytics/consumption`}
                 />
-              )}
-            </div>
-          }
-          description="Control credit consumption across your workspace."
-        />
+              </div>
+            }
+            description="Control credit consumption across your workspace."
+          />
+        ) : (
+          <div className="flex items-center justify-between">
+            <Page.Header title="Usage" />
+            {!isReadOnly && usageSettings.topUpEnabled && isWorkspaceAdmin && (
+              <Button
+                label="Top up"
+                icon={ArrowUp}
+                size="sm"
+                variant="outline"
+                onClick={() => setShowBuyCreditDialog(true)}
+              />
+            )}
+          </div>
+        )}
 
         {!isReadOnly && isCreditPricedFreePlan(subscription.plan.code) && (
           <FreePlanUpgradeSection
@@ -1088,7 +1112,7 @@ export function UsagePage() {
           />
         )}
 
-        {showPoolSection && (
+        {isAnalyticsConsumptionEnabled && showRedesignedPoolSection && (
           <Page.Vertical gap="none" align="stretch">
             <Page.H variant="h6">Credit Pool</Page.H>
             <div className="flex flex-col gap-2 pt-4">
@@ -1197,6 +1221,74 @@ export function UsagePage() {
                   </>
                 )}
             </div>
+          </Page.Vertical>
+        )}
+
+        {!isAnalyticsConsumptionEnabled && showLegacyPoolSection && (
+          <Page.Vertical gap="xs" align="stretch">
+            <Page.H variant="h4">Workspace credit pool</Page.H>
+
+            {isAwuPoolSummaryError && (
+              <ContentMessage
+                title="Failed to load Workspace Credits Pool"
+                icon={AlertCircle}
+                variant="warning"
+              >
+                An error occurred while loading your Workspace Credits Pool
+                data. Please refresh the page or contact support if the issue
+                persists.
+              </ContentMessage>
+            )}
+
+            {isAwuPoolSummaryLoading && (
+              <div className="flex justify-center py-8">
+                <Spinner />
+              </div>
+            )}
+
+            {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
+              <>
+                <div className="flex items-baseline gap-1">
+                  <span className="heading-mono-4xl text-foreground">
+                    {formatCredits(totalConsumedCredits)}
+                  </span>
+                  <span className="copy-sm text-muted-foreground">
+                    /{formatCredits(initialTotalCredits)}
+                  </span>
+                </div>
+                {hasPool && (
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted-foreground/20">
+                    <div
+                      className="h-full rounded-full bg-foreground/80 transition-all"
+                      style={{
+                        width: `${Math.min(100, initialTotalCredits > 0 ? (totalConsumedCredits / initialTotalCredits) * 100 : 0)}%`,
+                      }}
+                    />
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  {isReadOnly ? (
+                    <span className="copy-sm text-muted-foreground">
+                      {formatCredits(periodSpendCredits)} credits spent this
+                      period
+                    </span>
+                  ) : (
+                    <>
+                      {overageCredits !== null && overageCredits > 0 && (
+                        <span className="copy-sm text-muted-foreground">
+                          {formatCredits(overageCredits)} overage credits
+                        </span>
+                      )}
+                      {isEnterprise && (
+                        <span className="copy-sm text-muted-foreground">
+                          Contact your Dust sales representative to buy credits
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
+              </>
+            )}
           </Page.Vertical>
         )}
 
