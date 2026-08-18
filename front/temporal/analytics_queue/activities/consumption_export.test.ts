@@ -6,10 +6,12 @@ import {
   ElasticsearchError,
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { notifyConsumptionExportReady } from "@app/lib/notifications/workflows/consumption-export-ready";
 import {
   buildConsumptionExportGcsPrefix,
-  runConsumptionExportActivity,
+  finalizeConsumptionExportActivity,
+  runConsumptionExportBucketActivity,
 } from "@app/temporal/analytics_queue/activities/consumption_export";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -137,7 +139,7 @@ const TOOL_DOC: AgentMessageConsumptionAnalyticsToolData = {
 };
 
 function mockDocs(docs: AgentMessageConsumptionAnalyticsData[]) {
-  mockedSearchConsumptionAnalytics.mockResolvedValue(
+  mockedSearchConsumptionAnalytics.mockResolvedValueOnce(
     new Ok({
       took: 0,
       timed_out: false,
@@ -174,8 +176,13 @@ async function setup() {
   return { authenticator, workspace };
 }
 
-describe("runConsumptionExportActivity", () => {
-  it("uploads the CSV export to GCS under the workspace prefix", async () => {
+const PERIOD = {
+  startDate: "2026-08-01T00:00:00.000Z",
+  endDate: "2026-08-01T06:00:00.000Z",
+};
+
+describe("runConsumptionExportBucketActivity", () => {
+  it("uploads the bucket's rows as a headerless CSV part", async () => {
     mockDocs([LLM_DOC, TOOL_DOC]);
     mockLabels({
       agent1: "@dust",
@@ -188,13 +195,11 @@ describe("runConsumptionExportActivity", () => {
     });
     const { authenticator, workspace } = await setup();
 
-    await runConsumptionExportActivity(authenticator.toJSON(), {
-      period: {
-        startDate: "2026-08-01T00:00:00.000Z",
-        endDate: "2026-08-02T00:00:00.000Z",
-      },
+    await runConsumptionExportBucketActivity(authenticator.toJSON(), {
+      period: PERIOD,
       filter: {},
       exportId: "consumption-export-test-run",
+      bucketIndex: 0,
     });
 
     const prefix = buildConsumptionExportGcsPrefix(workspace.sId);
@@ -203,53 +208,34 @@ describe("runConsumptionExportActivity", () => {
     );
     expect(saveCalls).toHaveLength(1);
     expect(saveCalls[0].filePath).toBe(
-      `${prefix}consumption-export-test-run.zip`
+      `${prefix}tmp/consumption-export-test-run/0.csv`
     );
-    expect(saveCalls[0].contentType).toBe("application/zip");
+    expect(saveCalls[0].contentType).toBe("text/csv");
 
-    // Read back the exact buffer passed to `.save()` rather than round-tripping through the
-    // mock's in-memory object store, which stores content as a UTF-8 string and would corrupt
-    // this binary zip.
-    const content = saveCalls[0].content;
-    const zip = new AdmZip(
-      Buffer.isBuffer(content) ? content : Buffer.from(content)
-    );
-    expect(zip.getEntries().map((entry) => entry.entryName)).toEqual([
-      "lines.csv",
-    ]);
-
-    const csv = zip.getEntry("lines.csv")?.getData().toString("utf-8");
-    expect(csv).toContain(
-      "completedAt,conversationId,spaceId,agentMessageId,consumptionType,agentId,agentName"
-    );
+    const csv = saveCalls[0].content.toString();
+    expect(csv).not.toContain("completedAt,conversationId");
     expect(csv).toContain(
       "2026-08-01T00:00:00.000Z,conv1,space1,msg1,llm,agent1,'@dust"
     );
-    expect(csv).toContain("claude-sonnet-5,Claude Sonnet 5");
-    expect(csv).toContain("user1,Alice,group1,Engineering");
     expect(csv).toContain(
       "2026-08-01T00:00:00.000Z,conv1,space1,msg1,tool,agent1,'@dust"
     );
-    expect(csv).toContain("search,server1,Search Tool");
-    expect(csv).toContain("skill1,Research");
 
-    expect(notifyConsumptionExportReady).toHaveBeenCalledTimes(1);
+    expect(notifyConsumptionExportReady).not.toHaveBeenCalled();
   });
 
   it("throws and uploads nothing when the search fails", async () => {
-    mockedSearchConsumptionAnalytics.mockResolvedValue(
+    mockedSearchConsumptionAnalytics.mockResolvedValueOnce(
       new Err(new ElasticsearchError("query_error", "boom"))
     );
     const { authenticator, workspace } = await setup();
 
     await expect(
-      runConsumptionExportActivity(authenticator.toJSON(), {
-        period: {
-          startDate: "2026-08-01T00:00:00.000Z",
-          endDate: "2026-08-02T00:00:00.000Z",
-        },
+      runConsumptionExportBucketActivity(authenticator.toJSON(), {
+        period: PERIOD,
         filter: {},
         exportId: "consumption-export-test-run",
+        bucketIndex: 0,
       })
     ).rejects.toThrow();
 
@@ -258,6 +244,102 @@ describe("runConsumptionExportActivity", () => {
       call.filePath.startsWith(prefix)
     );
     expect(saveCalls).toHaveLength(0);
-    expect(notifyConsumptionExportReady).not.toHaveBeenCalled();
+  });
+});
+
+describe("finalizeConsumptionExportActivity", () => {
+  it("merges the bucket parts into a single zip, notifies, and cleans up the temp parts", async () => {
+    mockLabels({
+      agent1: "@dust",
+      user1: "Alice",
+      group1: "Engineering",
+      "claude-sonnet-5": "Claude Sonnet 5",
+      server1: "Search Tool",
+      skill1: "Research",
+      api: "API",
+    });
+    const { authenticator, workspace } = await setup();
+    const authType = authenticator.toJSON();
+    const exportId = "consumption-export-test-run";
+
+    mockDocs([LLM_DOC]);
+    await runConsumptionExportBucketActivity(authType, {
+      period: PERIOD,
+      filter: {},
+      exportId,
+      bucketIndex: 0,
+    });
+
+    mockDocs([TOOL_DOC]);
+    await runConsumptionExportBucketActivity(authType, {
+      period: PERIOD,
+      filter: {},
+      exportId,
+      bucketIndex: 1,
+    });
+
+    await finalizeConsumptionExportActivity(authType, {
+      exportId,
+      bucketCount: 2,
+    });
+
+    const prefix = buildConsumptionExportGcsPrefix(workspace.sId);
+    const finalSaveCalls = fileStorageMock.saveFileCalls.filter(
+      (call) => call.filePath === `${prefix}${exportId}.zip`
+    );
+    expect(finalSaveCalls).toHaveLength(1);
+    expect(finalSaveCalls[0].contentType).toBe("application/zip");
+
+    const content = finalSaveCalls[0].content;
+    const zip = new AdmZip(
+      Buffer.isBuffer(content) ? content : Buffer.from(content)
+    );
+    expect(zip.getEntries().map((entry) => entry.entryName)).toEqual([
+      "lines.csv",
+    ]);
+
+    const csv = zip.getEntry("lines.csv")?.getData().toString("utf-8");
+    // Header appears exactly once, ahead of both buckets' rows, in bucket order.
+    expect(csv?.indexOf("completedAt,conversationId")).toBe(0);
+    const llmIndex = csv?.indexOf(",llm,");
+    const toolIndex = csv?.indexOf(",tool,");
+    expect(llmIndex).toBeGreaterThan(0);
+    expect(toolIndex).toBeGreaterThan(llmIndex ?? -1);
+
+    expect(notifyConsumptionExportReady).toHaveBeenCalledTimes(1);
+
+    // The temp parts are gone.
+    const tmpPrefix = `${prefix}tmp/${exportId}/`;
+    const writtenTmpPaths = fileStorageMock.saveFileCalls
+      .filter((call) => call.filePath.startsWith(tmpPrefix))
+      .map((call) => call.filePath);
+    expect(writtenTmpPaths.length).toBeGreaterThan(0); // sanity: parts were written
+    for (const path of writtenTmpPaths) {
+      const [content] = await getPrivateUploadBucket().file(path).download();
+      expect(content.toString()).toBe("");
+    }
+  });
+
+  it("produces a header-only CSV when there are no buckets", async () => {
+    const { authenticator, workspace } = await setup();
+
+    await finalizeConsumptionExportActivity(authenticator.toJSON(), {
+      exportId: "empty-export",
+      bucketCount: 0,
+    });
+
+    const prefix = buildConsumptionExportGcsPrefix(workspace.sId);
+    const finalSaveCalls = fileStorageMock.saveFileCalls.filter(
+      (call) => call.filePath === `${prefix}empty-export.zip`
+    );
+    expect(finalSaveCalls).toHaveLength(1);
+
+    const content = finalSaveCalls[0].content;
+    const zip = new AdmZip(
+      Buffer.isBuffer(content) ? content : Buffer.from(content)
+    );
+    const csv = zip.getEntry("lines.csv")?.getData().toString("utf-8");
+    expect(csv).toContain("completedAt,conversationId");
+    expect(notifyConsumptionExportReady).toHaveBeenCalledTimes(1);
   });
 });

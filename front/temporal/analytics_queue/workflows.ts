@@ -1,4 +1,5 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import { splitConsumptionPeriodIntoBuckets } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as activities from "@app/temporal/analytics_queue/activities";
@@ -28,7 +29,10 @@ const {
   startToCloseTimeout: "5 minutes",
 });
 
-const { runConsumptionExportActivity } = proxyActivities<typeof activities>({
+const {
+  runConsumptionExportBucketActivity,
+  finalizeConsumptionExportActivity,
+} = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
 
@@ -94,9 +98,19 @@ export async function runConsumptionExportWorkflow(
     exportId: string;
   }
 ): Promise<void> {
-  await runConsumptionExportActivity(authType, {
-    period,
-    filter,
+  const buckets = splitConsumptionPeriodIntoBuckets(period);
+
+  for (const [bucketIndex, bucketPeriod] of buckets.entries()) {
+    await runConsumptionExportBucketActivity(authType, {
+      period: bucketPeriod,
+      filter,
+      exportId,
+      bucketIndex,
+    });
+  }
+
+  await finalizeConsumptionExportActivity(authType, {
     exportId,
+    bucketCount: buckets.length,
   });
 }

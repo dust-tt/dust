@@ -1,4 +1,7 @@
-import { fetchConsumptionLinesExportZip } from "@app/lib/api/analytics/consumption/export_lines";
+import {
+  buildConsumptionLineExportCsvHeader,
+  fetchConsumptionExportBucketCsv,
+} from "@app/lib/api/analytics/consumption/export_lines";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type {
   ConsumptionScopeFilter,
@@ -8,8 +11,14 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { notifyConsumptionExportReady } from "@app/lib/notifications/workflows/consumption-export-ready";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import AdmZip from "adm-zip";
 import { createHash } from "crypto";
+
+// Bounds how many bucket CSV parts are downloaded from GCS at once when finalizing an
+// export; parts are large in count (one per 6-hour bucket) but individually small.
+const CONSUMPTION_EXPORT_BUCKET_PARTS_CONCURRENCY = 8;
 
 export function buildConsumptionExportGcsPrefix(workspaceId: string): string {
   return `w/${workspaceId}/consumption_exports/`;
@@ -20,6 +29,23 @@ export function buildConsumptionExportGcsPath(
   exportId: string
 ): string {
   return `${buildConsumptionExportGcsPrefix(workspaceId)}${exportId}.zip`;
+}
+
+// Per-bucket CSV parts live here until the export is finalized into a single zip, then
+// get cleaned up.
+function buildConsumptionExportBucketPartsGcsPrefix(
+  workspaceId: string,
+  exportId: string
+): string {
+  return `${buildConsumptionExportGcsPrefix(workspaceId)}tmp/${exportId}/`;
+}
+
+function buildConsumptionExportBucketPartGcsPath(
+  workspaceId: string,
+  exportId: string,
+  bucketIndex: number
+): string {
+  return `${buildConsumptionExportBucketPartsGcsPrefix(workspaceId, exportId)}${bucketIndex}.csv`;
 }
 
 export function makeConsumptionExportWorkflowIdPrefix({
@@ -73,35 +99,97 @@ export function buildConsumptionExportCacheKey({
   return createHash("sha256").update(payload).digest("hex");
 }
 
-export async function runConsumptionExportActivity(
+// Fetches and writes a single 6-hour bucket of the export as a CSV part on GCS. Splitting
+// the export this way, rather than one activity paginating over the whole period, bounds
+// how much each activity has to fetch and lets a failed bucket retry independently.
+export async function runConsumptionExportBucketActivity(
   authType: AuthenticatorType,
   {
     period,
     filter,
     exportId,
+    bucketIndex,
   }: {
     period: ConsumptionPeriod;
     filter: ConsumptionScopeFilter;
     exportId: string;
+    bucketIndex: number;
   }
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
   const workspaceId = auth.getNonNullableWorkspace().sId;
 
-  const result = await fetchConsumptionLinesExportZip(auth, { period, filter });
+  const result = await fetchConsumptionExportBucketCsv(auth, {
+    period,
+    filter,
+  });
   if (result.isErr()) {
     logger.error(
-      { workspaceId, err: result.error },
-      "[ConsumptionExport] Failed to build consumption lines export."
+      { workspaceId, exportId, bucketIndex, err: result.error },
+      "[ConsumptionExport] Failed to fetch consumption lines for bucket."
     );
     throw result.error;
   }
 
-  const gcsPath = buildConsumptionExportGcsPath(workspaceId, exportId);
+  const gcsPath = buildConsumptionExportBucketPartGcsPath(
+    workspaceId,
+    exportId,
+    bucketIndex
+  );
 
   await getPrivateUploadBucket()
     .file(gcsPath)
-    .save(result.value, { contentType: "application/zip", resumable: false });
+    .save(Buffer.from(result.value, "utf-8"), {
+      contentType: "text/csv",
+      resumable: false,
+    });
+}
+
+// Merges every bucket CSV part into the final zip, uploads it, notifies the requester,
+// then cleans up the temporary parts.
+export async function finalizeConsumptionExportActivity(
+  authType: AuthenticatorType,
+  {
+    exportId,
+    bucketCount,
+  }: {
+    exportId: string;
+    bucketCount: number;
+  }
+): Promise<void> {
+  const auth = await Authenticator.fromJSON(authType);
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const bucket = getPrivateUploadBucket();
+
+  // Bucket indices are read back in order so rows stay sorted by their bucket's time
+  // window, matching the ordering the single-shot pagination used to produce.
+  const parts = await concurrentExecutor(
+    Array.from({ length: bucketCount }, (_, bucketIndex) => bucketIndex),
+    async (bucketIndex) => {
+      const gcsPath = buildConsumptionExportBucketPartGcsPath(
+        workspaceId,
+        exportId,
+        bucketIndex
+      );
+      const [content] = await bucket.file(gcsPath).download();
+      return content.toString("utf-8");
+    },
+    { concurrency: CONSUMPTION_EXPORT_BUCKET_PARTS_CONCURRENCY }
+  );
+
+  const csv = buildConsumptionLineExportCsvHeader() + parts.join("");
+
+  const zip = new AdmZip();
+  zip.addFile("lines.csv", Buffer.from(csv, "utf-8"));
+
+  const gcsPath = buildConsumptionExportGcsPath(workspaceId, exportId);
+  await bucket
+    .file(gcsPath)
+    .save(zip.toBuffer(), { contentType: "application/zip", resumable: false });
 
   notifyConsumptionExportReady(auth, exportId);
+
+  await bucket.deleteByPrefix(
+    buildConsumptionExportBucketPartsGcsPrefix(workspaceId, exportId)
+  );
 }

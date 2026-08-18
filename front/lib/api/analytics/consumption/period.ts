@@ -92,6 +92,33 @@ export function previousConsumptionPeriod(
   };
 }
 
+const CONSUMPTION_EXPORT_BUCKET_HOURS = 6;
+
+// Splits a period into fixed-size UTC windows so a raw data export can fetch and process
+// each window with its own Temporal activity, rather than one activity paginating over
+// the whole period.
+export function splitConsumptionPeriodIntoBuckets(
+  period: ConsumptionPeriod
+): ConsumptionPeriod[] {
+  const end = moment.utc(period.endDate);
+
+  const buckets: ConsumptionPeriod[] = [];
+  let bucketStart = moment.utc(period.startDate);
+  while (bucketStart.isBefore(end)) {
+    const bucketEnd = moment.min(
+      bucketStart.clone().add(CONSUMPTION_EXPORT_BUCKET_HOURS, "hours"),
+      end
+    );
+    buckets.push({
+      startDate: bucketStart.toISOString(),
+      endDate: bucketEnd.toISOString(),
+    });
+    bucketStart = bucketEnd;
+  }
+
+  return buckets;
+}
+
 export async function resolveConsumptionPeriod(
   auth: Authenticator,
   input: ConsumptionPeriodInput
