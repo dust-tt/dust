@@ -522,22 +522,25 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
       );
 
       // Work areas must be scoped to the target user's Learning Space. Error if
-      // a user does not have one yet — provisioning happens in a separate flow.
-      const activationPodByUserId = new Map<number, number>();
-      for (const { user } of targetsResult.value) {
-        const activationPod = await ActivationPodResource.fetchByUserModelId(
-          auth,
-          user.id
+      // any user does not have one yet — provisioning happens in a separate flow.
+      const podByUserId = await ActivationPodResource.fetchByUserModelIds(
+        auth,
+        targetsResult.value.map(({ user }) => user.id)
+      );
+      const missingPodUsers = targetsResult.value.filter(
+        ({ user }) => !podByUserId.has(user.id)
+      );
+      if (missingPodUsers.length > 0) {
+        const ids = missingPodUsers.map(({ user }) => user.sId).join(", ");
+        return new Err(
+          new MCPError(
+            `${missingPodUsers.length === 1 ? `User ${ids} does` : `Users ${ids} do`} not have a Learning Space yet. Provision one before creating work areas.`
+          )
         );
-        if (!activationPod) {
-          return new Err(
-            new MCPError(
-              `User ${user.sId} does not have a Learning Space yet. Provision one before creating work areas.`
-            )
-          );
-        }
-        activationPodByUserId.set(user.id, activationPod.id);
       }
+      const activationPodByUserId = new Map(
+        [...podByUserId.entries()].map(([userId, pod]) => [userId, pod.id])
+      );
 
       const perUserAssignments = assignments.flatMap((assignment) =>
         (assignment.targetUserIds ?? []).flatMap((targetUserId) => {

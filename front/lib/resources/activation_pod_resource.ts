@@ -148,6 +148,33 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
     return activationPod ? new this(this.model, activationPod.get()) : null;
   }
 
+  // Batch variant of fetchByUserModelId: one query for all users, returns the
+  // most-recent live pod per user (or no entry when none exists).
+  static async fetchByUserModelIds(
+    auth: Authenticator,
+    userModelIds: ModelId[]
+  ): Promise<Map<ModelId, ActivationPodResource>> {
+    if (userModelIds.length === 0) {
+      return new Map();
+    }
+    const rows = await this.model.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: userModelIds,
+      },
+      include: this.unarchivedQuery.include,
+      order: [["createdAt", "DESC"]],
+    });
+    const podByUserId = new Map<ModelId, ActivationPodResource>();
+    for (const row of rows) {
+      const pod = new this(this.model, row.get());
+      if (!podByUserId.has(pod.userId)) {
+        podByUserId.set(pod.userId, pod);
+      }
+    }
+    return podByUserId;
+  }
+
   // Batch variant of fetchBySpace, avoiding one query per pod (e.g. when the
   // scheduler processes many pods at once).
   static async fetchBySpaceModelIds(
