@@ -58,7 +58,6 @@ const WORKSPACE_FULLY_BLOCKED_ERROR_MESSAGE =
 const INVALID_WORKSPACE_KILL_SWITCH_METADATA_ERROR_PREFIX =
   "Invalid workspace kill switch metadata:";
 const WORKSPACE_CACHE_KEY_VERSION = 3;
-const WORKSPACE_CACHE_TTL_MS = 15 * 60 * 1000;
 
 export type WorkspaceConversationKillSwitchValue = {
   conversationIds: string[];
@@ -197,7 +196,6 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   private static readonly byIdCache = defineCachedResourceLookup({
     id: "workspace_by_sid",
     version: WORKSPACE_CACHE_KEY_VERSION,
-    ttlMs: WORKSPACE_CACHE_TTL_MS,
     key: (workspaceId: string) => workspaceId,
     readFromKeyFirst: {
       cacheId: "_fetchByIdUncached",
