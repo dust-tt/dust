@@ -27,6 +27,8 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+const DEFAULT_ICON = PieChart01;
+
 // Display data needed to render a tool validation card, for both agent-loop and sandbox-function
 // blocked tool executions.
 type ToolValidationRequest = Pick<
@@ -176,12 +178,12 @@ export function ToolValidationCard({
   const {
     metadata: { agentName, mcpServerName },
   } = validationRequest;
+
   const approvalTitle = `Allow ${agentName} to use ${asDisplayName(mcpServerName)}?`;
   const displayLabel =
     validationRequest.metadata.displayLabel ??
     asDisplayName(validationRequest.metadata.toolName);
-  const hasDetails =
-    canCurrentUserRespond && Object.keys(validationRequest.inputs).length > 0;
+
   const canAlwaysAllow = ["low", "medium"].includes(
     validationRequest.stake ?? ""
   );
@@ -191,56 +193,54 @@ export function ToolValidationCard({
     <Card
       variant="secondary"
       containerClassName="w-full max-w-xl"
-      className="flex-col p-0 shadow"
+      className="flex flex-col shadow gap-4"
       isPulsing={isPulsing}
     >
-      <div className="flex items-center justify-between gap-3 px-5 pt-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <Avatar icon={icon ?? PieChart01} size="sm" />
-          <div className="heading-base min-w-0 wrap-break-word">
-            {approvalTitle}
-          </div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Avatar icon={icon ?? DEFAULT_ICON} size="sm" />
+          <div className="heading-base min-w-0">{approvalTitle}</div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {approvalProgress && <ApprovalProgress {...approvalProgress} />}
-          {hasDetails && (
-            <ToolValidationDetailsDialog
-              validationRequest={validationRequest}
-              approvalTitle={approvalTitle}
-              displayLabel={displayLabel}
-              icon={icon ?? PieChart01}
-              currentUser={currentUser}
-              owner={owner}
-              conversationId={conversationId}
-              isSubmitting={isSubmitting}
-            />
-          )}
+          {canCurrentUserRespond &&
+            Object.keys(validationRequest.inputs).length > 0 && (
+              <ToolValidationDetailsDialog
+                validationRequest={validationRequest}
+                approvalTitle={approvalTitle}
+                displayLabel={displayLabel}
+                icon={icon ?? DEFAULT_ICON}
+                currentUser={currentUser}
+                owner={owner}
+                conversationId={conversationId}
+                isSubmitting={isSubmitting}
+              />
+            )}
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 px-5 py-4">
-        <div className="text-base text-muted-foreground">{displayLabel}</div>
-        {canCurrentUserRespond ? (
-          <>
-            {errorMessage && (
-              <div className="text-sm font-medium text-warning-800">
-                {errorMessage}
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="text-sm wrap-break-word text-muted-foreground">
-            Waiting for{" "}
-            <span className="font-semibold text-foreground">
-              {triggeringUser?.fullName}
-            </span>{" "}
-            to confirm.
-          </div>
-        )}
-      </div>
+      <div className="text-base text-muted-foreground">{displayLabel}</div>
+
+      {canCurrentUserRespond ? (
+        <>
+          {errorMessage && (
+            <div className="text-sm font-medium text-warning-800">
+              {errorMessage}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="text-sm text-muted-foreground">
+          Waiting for{" "}
+          <span className="font-semibold text-foreground">
+            {triggeringUser?.fullName}
+          </span>{" "}
+          to confirm.
+        </div>
+      )}
 
       {canCurrentUserRespond && (
-        <div className="flex flex-wrap justify-end gap-2 px-4 pb-3 pt-2">
+        <div className="flex flex-wrap justify-end gap-3">
           <Button
             label="Decline"
             variant="outline"
