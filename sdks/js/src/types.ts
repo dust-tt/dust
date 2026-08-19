@@ -762,6 +762,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_internal_global_agents"
   | "fireworks_new_model_feature"
   | "google_sheets_tool"
+  | "gpt_5_6_terra_long_context"
   | "group_permissions_shadow"
   | "http_client_tool"
   | "index_private_slack_channel"
