@@ -186,25 +186,40 @@ function buildColumns({
       meta: { className: "h-16 w-48", headerAlign: "left" },
       cell: (info) => {
         const spaces = info.row.original.spaces;
-        const spacesLabel = spaces.join(", ") || "No spaces";
-        const content = (
-          <div
-            className="flex min-w-0 items-center gap-2 rounded outline-hidden focus-visible:ring-2 focus-visible:ring-highlight-300"
-            tabIndex={spaces.length > 0 ? 0 : undefined}
-          >
-            <Icon visual={Building07} size="sm" className="shrink-0" />
-            <span className="truncate">{spacesLabel}</span>
-          </div>
-        );
+        const [firstSpace, ...remainingSpaces] = spaces;
 
-        return spaces.length > 0 ? (
-          <Tooltip
-            label={spacesLabel}
-            tooltipTriggerAsChild
-            trigger={content}
-          />
-        ) : (
-          content
+        return (
+          <div className="flex min-w-0 items-center gap-2">
+            <Icon visual={Building07} size="sm" className="shrink-0" />
+            <span className="min-w-0 truncate">
+              {firstSpace ?? "No spaces"}
+            </span>
+            {remainingSpaces.length > 0 && (
+              <Tooltip
+                label={
+                  <div className="flex flex-col">
+                    {remainingSpaces.map((space, index) => (
+                      <span key={`${space}-${index}`}>{space}</span>
+                    ))}
+                  </div>
+                }
+                tooltipTriggerAsChild
+                trigger={
+                  <span
+                    className="shrink-0 rounded outline-hidden focus-visible:ring-2 focus-visible:ring-highlight-300"
+                    tabIndex={0}
+                    aria-label={`${remainingSpaces.length} more spaces`}
+                  >
+                    <Chip
+                      size="mini"
+                      color="primary"
+                      label={`+${remainingSpaces.length}`}
+                    />
+                  </span>
+                }
+              />
+            )}
+          </div>
         );
       },
     },
