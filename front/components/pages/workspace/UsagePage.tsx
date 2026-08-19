@@ -119,7 +119,6 @@ import {
   LoadingBlock,
   Page,
   SearchInput,
-  Spinner,
   Tabs,
   TabsContent,
   TabsList,
@@ -1270,7 +1269,7 @@ export function UsagePage() {
 
         {!isAnalyticsConsumptionEnabled &&
         !isAwuPoolSummaryLoading &&
-        (!!isAwuPoolSummaryError || hasPool || isReadOnly) ? (
+        (isAwuPoolSummaryError || hasPool || isReadOnly) ? (
           <Page.Vertical gap="xs" align="stretch">
             <Page.H variant="h4">Workspace credit pool</Page.H>
 
@@ -1286,13 +1285,7 @@ export function UsagePage() {
               </ContentMessage>
             )}
 
-            {isAwuPoolSummaryLoading && (
-              <div className="flex justify-center py-8">
-                <Spinner />
-              </div>
-            )}
-
-            {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
+            {!isAwuPoolSummaryError && (
               <>
                 <div className="flex items-baseline gap-1">
                   <span className="heading-mono-4xl text-foreground">
