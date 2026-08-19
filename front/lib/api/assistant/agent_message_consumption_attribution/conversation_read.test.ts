@@ -135,7 +135,7 @@ describe("getConversationConsumption", () => {
         agentWorkCredits: 5,
         tools: [
           {
-            label: "Test Tool",
+            label: "Test tool",
             callCount: 1,
             attributedCredits: 5,
             directCredits: 3,

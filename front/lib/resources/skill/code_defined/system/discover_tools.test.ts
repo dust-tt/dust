@@ -43,9 +43,9 @@ describe("buildDiscoverToolsInstructions", () => {
 
       const result = buildDiscoverToolsInstructions(toolsets);
 
-      const alphaIndex = result.indexOf("Alpha Tool");
-      const middleIndex = result.indexOf("Middle Tool");
-      const zebraIndex = result.indexOf("Zebra Tool");
+      const alphaIndex = result.indexOf("Alpha tool");
+      const middleIndex = result.indexOf("Middle tool");
+      const zebraIndex = result.indexOf("Zebra tool");
 
       expect(alphaIndex).toBeLessThan(middleIndex);
       expect(middleIndex).toBeLessThan(zebraIndex);
@@ -135,7 +135,7 @@ describe("buildDiscoverToolsInstructions", () => {
 
       const result = buildDiscoverToolsInstructions([toolset]);
 
-      expect(result).toContain("**Test Tool**");
+      expect(result).toContain("**Test tool**");
       expect(result).toContain(`(toolsetId: \`${toolset.sId}\`)`);
       expect(result).toContain("A test description");
     });
