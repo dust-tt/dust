@@ -1,6 +1,7 @@
 import { ANALYTICS_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 
 import type { Authenticator } from "@app/lib/auth";
+import { USAGE_TYPE_USER } from "@app/lib/metronome/constants";
 import {
   AgentMessageModel,
   MessageModel,
@@ -421,7 +422,8 @@ describe("storeAgentAnalyticsActivity - reasoning tokens", () => {
         reasoningTokens: 200,
         totalTokens: 1_300,
       },
-      GPT_5_MINI_MODEL_CONFIG.modelId
+      GPT_5_MINI_MODEL_CONFIG.modelId,
+      { usageType: USAGE_TYPE_USER }
     );
     await AgentMessageModel.update(
       { runIds: [run.dustRunId] },

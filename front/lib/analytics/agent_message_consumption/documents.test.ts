@@ -117,10 +117,6 @@ async function setupSettledMessage({
       },
     }
   );
-  await RunResource.setUsageTypeForRuns(auth, {
-    runs: [run],
-    usageType: USAGE_TYPE_USER,
-  });
 
   return {
     agent,

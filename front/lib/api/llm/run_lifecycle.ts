@@ -18,7 +18,7 @@ interface LLMRunLifecycleParameters {
   modelId: ModelIdType;
   providerId: ModelProviderIdType;
   region: Region | null;
-  usageType?: UsageType;
+  usageType: UsageType;
 }
 
 /**
@@ -67,7 +67,6 @@ export class LLMRunLifecycle {
       this.parameters.modelId,
       {
         inferenceRegion: this.parameters.inferenceRegion,
-        usageType: this.parameters.usageType,
       }
     );
   }
@@ -76,8 +75,7 @@ export class LLMRunLifecycle {
     await this.run.finalizePendingRunUsage(
       this.auth,
       this.runUsageModelId,
-      usages,
-      { usageType: this.parameters.usageType }
+      usages
     );
   }
 

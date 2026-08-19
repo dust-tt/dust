@@ -259,11 +259,10 @@ export async function computeAndStoreAgentMessageCredits(
     dustRunIds: [...new Set(runIds ?? [])],
   });
 
-  // Persist the billing usage type on the run usages so free/user/programmatic
-  // consumption can be queried directly (e.g. free-usage monitoring). Reuses the
-  // same origin-based classification as the Metronome events.
+  // Repair legacy run usages that predate creation-time classification. New
+  // rows are already classified and this fallback never overwrites them.
   const messageOrigin = triggeringUserMessageOrigin ?? "web";
-  await RunResource.setUsageTypeForRuns(auth, {
+  await RunResource.setUsageTypeForRunsIfMissing(auth, {
     runs,
     usageType: getUsageType(
       isProgrammaticUsage(auth, { userMessageOrigin: messageOrigin }),

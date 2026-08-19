@@ -7,6 +7,11 @@ import { DustOpenAIGptFiveDotFiveEuropeOpenAIResponsesBatch } from "@app/lib/llm
 import { DustNoopNoopGlobalNoopStream } from "@app/lib/llms/stream/endpoints/noop_noop_global_noop";
 import { DustOpenAIGptFiveDotFiveEuropeOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_five_eu_openai_responses";
 import { DustOpenAIGptFiveDotFiveGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_five_global_openai_responses";
+import {
+  USAGE_TYPE_FREE,
+  USAGE_TYPE_PROGRAMMATIC,
+  USAGE_TYPE_USER,
+} from "@app/lib/metronome/constants";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -85,7 +90,9 @@ function makeNoopLLM(
   return llm;
 }
 
-function makeLifecycleParameters() {
+function makeLifecycleParameters(): Parameters<
+  typeof LLMRunLifecycle.start
+>[1] {
   return {
     dustRunId: createLLMTraceId(generateRandomModelSId()),
     inferenceProvider: "openai-responses",
@@ -93,6 +100,7 @@ function makeLifecycleParameters() {
     modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
     providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
     region: "us" as const,
+    usageType: USAGE_TYPE_USER,
   };
 }
 
@@ -118,6 +126,7 @@ describe("LLMRunLifecycle", () => {
         isBatch: false,
         region: "us",
         usageState: "pending",
+        usageType: USAGE_TYPE_USER,
       },
     ]);
 
@@ -150,6 +159,7 @@ describe("LLMRunLifecycle", () => {
         promptTokens: 120,
         completionTokens: 30,
         usageState: "reported",
+        usageType: USAGE_TYPE_USER,
       },
     ]);
     expect(await run.listRunUsages(auth)).toHaveLength(1);
@@ -251,6 +261,7 @@ describe("non-batch LLM run persistence", () => {
     const llm = makeNoopLLM(auth, DustNoopNoopGlobalNoopStream, {
       operationType: "agent_conversation",
       conversationId: generateRandomModelSId(),
+      userMessageOrigin: "web",
       workspaceId: auth.getNonNullableWorkspace().sId,
     });
 
@@ -270,6 +281,33 @@ describe("non-batch LLM run persistence", () => {
       1,
       expect.any(Array)
     );
+  });
+
+  it.each([
+    { origin: "web" as const, usageType: USAGE_TYPE_USER },
+    { origin: "api" as const, usageType: USAGE_TYPE_PROGRAMMATIC },
+  ])("classifies $origin agent usage as $usageType when creating the run", async ({
+    origin,
+    usageType,
+  }) => {
+    const { authenticator: auth } = await createResourceTest({});
+    const llm = makeNoopLLM(auth, DustNoopNoopGlobalNoopStream, {
+      operationType: "agent_conversation",
+      userMessageOrigin: origin,
+    });
+
+    for await (const _event of llm.stream(
+      makeStreamParameters("consume $1.25")
+    )) {
+      // Consume the stream fully so the noop request completes.
+    }
+
+    const run = await RunResource.fetchByDustRunId(auth, {
+      dustRunId: llm.getTraceId(),
+    });
+    expect(await run?.listRunUsageAttempts(auth)).toMatchObject([
+      { usageState: "reported", usageType },
+    ]);
   });
 
   it("finalizes usage from the provider stream", async () => {
@@ -319,7 +357,7 @@ describe("non-batch LLM run persistence", () => {
         costMicroUsd: 1_250_000,
         isBatch: false,
         usageState: "reported",
-        usageType: "free",
+        usageType: USAGE_TYPE_FREE,
       },
     ]);
   });
