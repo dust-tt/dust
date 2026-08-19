@@ -1,5 +1,6 @@
 import { GPT_5_6_TERRA_CONFIG_SCHEMA } from "@app/lib/model_constructors/providers/openai/models/gpt_five_dot_six_terra";
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
+import type { Model } from "@app/lib/model_constructors/types/models";
 import {
   GPT_5_6_TERRA,
   GPT_5_6_TERRA_LONG_CONTEXT,
@@ -19,7 +20,8 @@ export function WithOpenAIGptFiveDotSixTerraLongContextConfig<
   abstract class OpenAIGptFiveDotSixTerraLongContext extends Base {
     // Keep a distinct Dust model ID while sending the provider's model ID.
     static readonly model = GPT_5_6_TERRA_LONG_CONTEXT;
-    static readonly providerModel = GPT_5_6_TERRA;
+    modelToHostModel = (modelId: Model): string =>
+      modelId === GPT_5_6_TERRA_LONG_CONTEXT ? GPT_5_6_TERRA : modelId;
 
     static readonly configSchema: z.ZodType<InputConfig> =
       GPT_5_6_TERRA_CONFIG_SCHEMA;
