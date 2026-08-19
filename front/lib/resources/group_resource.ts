@@ -2554,25 +2554,23 @@ export class GroupResource extends BaseResource<GroupModel> {
   // Permissions
 
   /**
-   * Returns the requested permissions for this resource.
+   * We are migrating away from a group storing permissions for itself (the
+   * self-referential `groups: [{ id: this.id }]` entry): editor groups should
+   * derive access from their parent resource via `group_permissions`. Until that
+   * lands the branches below are mixed:
+   * - regular_manual / provisioned / regular_auto / global / system: role-only,
+   *   membership grants nothing. Admins get read/write/admin everywhere;
+   *   managers get read/write/admin on regular_manual and read on provisioned.
+   * - agent_editors / skill_editors / space_editors: still self-referential
+   *   (legacy) — members get full access through this ACL.
    *
-   * Configures two types of access:
-   * 1. Group-based: The group's members get read access
-   * 2. Role-based: Workspace admins get read and write access
+   * NOTE: as a result, group info for the role-only kinds (regular_manual,
+   * provisioned, regular_auto, global, system) is only exposed to admins and
+   * managers — a member cannot read a group they belong to. Exposing it to
+   * non-admin/manager users would require updating the logic.
    *
-   * For agent_editors and skill_editors groups, the permissions are:
-   * 1. Group-based: The group's members get full access
-   * 2. Role-based: Workspace admins get read and admin access. All users can
-   *    read "agent_editors" and "skill_editors" groups.
-   *    Admin do not have write access, they can however add themselves to
-   *    groups to gain it.
-   *
-   * CAUTION: if / when editing, note that for role permissions, permissions are
-   * NOT inherited, i.e., if you set a permission for role "user", an "admin"
-   * will NOT have it
-   *
-   * @returns Array of AccessControlList objects defining the default access
-   * configuration
+   * CAUTION: role permissions are NOT inherited — a permission set for "user" is
+   * not implied for "admin".
    */
   getAccessControlLists(auth: Authenticator): AccessControlList[] {
     if (this.kind === "agent_editors" || this.kind === "skill_editors") {
@@ -2622,12 +2620,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     if (this.isRegularManual()) {
       return [
         {
-          groups: [
-            {
-              id: this.id,
-              permissions: ["read"],
-            },
-          ],
           roles: [
             { role: "admin", permissions: ["read", "write", "admin"] },
             { role: "manager", permissions: ["read", "write", "admin"] },
@@ -2642,12 +2634,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     if (this.isProvisioned()) {
       return [
         {
-          groups: [
-            {
-              id: this.id,
-              permissions: ["read"],
-            },
-          ],
           roles: [
             { role: "admin", permissions: ["read", "write", "admin"] },
             { role: "manager", permissions: ["read"] },
@@ -2659,12 +2645,6 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     return [
       {
-        groups: [
-          {
-            id: this.id,
-            permissions: ["read"],
-          },
-        ],
         roles: [{ role: "admin", permissions: ["read", "write", "admin"] }],
         workspaceId: this.workspaceId,
       },
