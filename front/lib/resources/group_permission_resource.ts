@@ -1,3 +1,4 @@
+import type { PokeGroupPermissionType } from "@app/lib/api/poke/group_permissions";
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -789,6 +790,44 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     return rows.map((row) => new this(GroupPermissionModel, row.get()));
   }
 
+  // Every grant that applies to one resource instance: its own rows plus the type-wide (-1) rows
+  // that apply to every instance of the type. Op.in dedupes when resourceId is itself -1.
+  static async listForResource(
+    auth: Authenticator,
+    {
+      resourceType,
+      resourceId,
+    }: {
+      resourceType: GroupPermissionResourceType;
+      resourceId: number;
+    }
+  ): Promise<GroupPermissionResource[]> {
+    const rows = await GroupPermissionModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        resourceType,
+        resourceId: { [Op.in]: [resourceId, WHOLE_TYPE_RESOURCE_ID] },
+      },
+    });
+
+    return rows.map((row) => new this(GroupPermissionModel, row.get()));
+  }
+
+  // Every grant held by one group, across resource types and instances.
+  static async listForGroup(
+    auth: Authenticator,
+    group: GroupResource
+  ): Promise<GroupPermissionResource[]> {
+    const rows = await GroupPermissionModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        groupId: group.id,
+      },
+    });
+
+    return rows.map((row) => new this(GroupPermissionModel, row.get()));
+  }
+
   static async deleteByModelIds(
     auth: Authenticator,
     ids: ModelId[]
@@ -1165,6 +1204,18 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         transaction: t,
       });
     }, transaction);
+  }
+
+  // Poke-only serialization. Takes the already-resolved group so the row can carry the group's
+  // display name / link target without this resource fetching it.
+  toPokeJSON(group: GroupResource): PokeGroupPermissionType {
+    const { sId, name, kind } = group.toJSON();
+    return {
+      grantType: this.grantType,
+      resourceType: this.resourceType,
+      resourceId: this.resourceId,
+      group: { sId, name, kind },
+    };
   }
 
   async delete(

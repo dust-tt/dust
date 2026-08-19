@@ -1,4 +1,5 @@
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
+import { GroupPermissionsDataTable } from "@app/components/poke/group_permissions/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
 import { MembersDataTable } from "@app/components/poke/members/table";
 import { ProjectPage } from "@app/components/poke/pages/ProjectPage";
@@ -81,6 +82,11 @@ export function SpacePage() {
           />
           <DataSourceViewsDataTable owner={owner} spaceId={space.sId} />
           <MCPServerViewsDataTable owner={owner} spaceId={space.sId} />
+          <GroupPermissionsDataTable
+            owner={owner}
+            resourceType="space"
+            resourceId={space.id}
+          />
         </div>
       </div>
     </>
