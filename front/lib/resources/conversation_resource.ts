@@ -1242,23 +1242,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return participationCount > 0;
   }
 
-  private static async isConversationReadableFromRequestedSpaces(
-    auth: Authenticator,
-    conversation: ConversationModel
-  ): Promise<boolean> {
-    const spaces = await SpaceResource.fetchByModelIds(
-      auth,
-      conversation.requestedSpaceIds
-    );
-    const spaceById = new Map(spaces.map((s) => [s.id, s]));
-
-    return canReadRequestedSpaces(
-      auth,
-      spaceById,
-      conversation.requestedSpaceIds
-    );
-  }
-
   static async canAccess(
     auth: Authenticator,
     sId: string
@@ -1287,17 +1270,23 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         : "conversation_access_restricted";
     }
 
-    try {
-      if (
-        !(await this.isConversationReadableFromRequestedSpaces(
-          auth,
-          conversation
-        ))
-      ) {
-        return "conversation_access_restricted";
-      }
-    } catch (_error) {
+    // Private conversations: the viewer must read every requested space (conjunctive ACL). A
+    // requested space missing from the fetch — deleted, or belonging to another workspace — means
+    // the conversation can no longer be located, not merely that access is restricted.
+    const spaces = await SpaceResource.fetchByModelIds(
+      auth,
+      conversation.requestedSpaceIds
+    );
+    const spaceById = new Map(spaces.map((s) => [s.id, s]));
+
+    if (conversation.requestedSpaceIds.some((id) => !spaceById.has(id))) {
       return "conversation_not_found";
+    }
+
+    if (
+      !canReadRequestedSpaces(auth, spaceById, conversation.requestedSpaceIds)
+    ) {
+      return "conversation_access_restricted";
     }
 
     if (
