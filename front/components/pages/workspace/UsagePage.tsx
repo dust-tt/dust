@@ -192,7 +192,7 @@ function CreditPoolProgressBar({
     >
       {clampedUsedPercentage > 0 && (
         <div
-          className={`h-full rounded-sm ${
+          className={`h-full rounded-xs ${
             target === "off_target" ? "bg-warning-500" : "bg-highlight-500"
           }`}
           style={{ flexBasis: 0, flexGrow: clampedUsedPercentage }}
@@ -200,7 +200,7 @@ function CreditPoolProgressBar({
       )}
       {projectedRemainderPercentage > 0 && (
         <div
-          className={`h-full rounded-sm ${
+          className={`h-full rounded-xs ${
             target === "off_target" ? "bg-warning-100" : "bg-highlight-100"
           }`}
           style={{ flexBasis: 0, flexGrow: projectedRemainderPercentage }}
@@ -208,7 +208,7 @@ function CreditPoolProgressBar({
       )}
       {unusedPercentage > 0 && (
         <div
-          className="h-full rounded-sm bg-muted-foreground/15"
+          className="h-full rounded-xs bg-muted-foreground/15"
           style={{ flexBasis: 0, flexGrow: unusedPercentage }}
         />
       )}
