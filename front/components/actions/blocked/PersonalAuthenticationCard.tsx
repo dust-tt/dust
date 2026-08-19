@@ -49,7 +49,6 @@ export function PersonalAuthenticationCard({
 
   const { createPersonalConnection } = useCreatePersonalConnection(owner);
 
-  const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [overriddenCredentials, setCredentialOverrides] = useState<
@@ -84,44 +83,36 @@ export function PersonalAuthenticationCard({
     setIsConnecting(true);
     setConnectionError(null);
 
-    try {
-      const result = await createPersonalConnection({
-        mcpServerId: mcpServer.sId,
-        mcpServerDisplayName: getMcpServerDisplayName(mcpServer),
-        authorization: mcpServer.authorization,
-        provider,
-        useCase: "personal_actions",
-        scope,
-        overriddenCredentials:
-          Object.keys(overriddenCredentials).length > 0
-            ? overriddenCredentials
-            : undefined,
-      });
+    const result = await createPersonalConnection({
+      mcpServerId: mcpServer.sId,
+      mcpServerDisplayName: getMcpServerDisplayName(mcpServer),
+      authorization: mcpServer.authorization,
+      provider,
+      useCase: "personal_actions",
+      scope,
+      overriddenCredentials:
+        Object.keys(overriddenCredentials).length > 0
+          ? overriddenCredentials
+          : undefined,
+    });
 
-      if (!result.success) {
-        setIsConnected(false);
-        if (result.error) {
-          setConnectionError(result.error);
-        }
-        return;
+    if (!result.success) {
+      if (result.error) {
+        setConnectionError(result.error);
       }
+      return;
+    }
 
-      // The user declined while the connection attempt was still in flight: the
-      // action was already denied, so do not resolve it as completed.
-      if (cancelledRef.current) {
-        return;
-      }
+    // The user declined while the connection attempt was still in flight: the
+    // action was already denied, so do not resolve it as completed.
+    if (cancelledRef.current) {
+      return;
+    }
 
-      const completed = await onResolve("completed");
+    const completed = await onResolve("completed");
 
-      if (!completed) {
-        setIsConnected(false);
-        return;
-      }
-
-      setIsConnected(true);
-    } finally {
-      setIsConnecting(false);
+    if (!completed) {
+      return;
     }
   };
 
@@ -133,8 +124,6 @@ export function PersonalAuthenticationCard({
     await onResolve("denied");
   };
 
-  const title = isConnected ? "Connected successfully" : "Connect account";
-
   return (
     <Card
       variant="secondary"
@@ -143,57 +132,49 @@ export function PersonalAuthenticationCard({
     >
       <div className="flex items-center gap-3 px-5 pt-4">
         <Avatar icon={icon} size="sm" />
-        <div className="heading-base min-w-0">{title}</div>
+        <div className="heading-base min-w-0">Connect account</div>
       </div>
 
       <div className="flex flex-col gap-4 wrap-break-word px-5 py-4">
-        {isConnected ? (
-          <div className="text-base">
-            {`${serverDisplayName ?? "Your account"} is now connected.`}
-          </div>
-        ) : (
+        <div className="text-base text-muted-foreground">
+          {`Dust needs access to ${serverDisplayName ?? "this service"} to complete this action.`}
+        </div>
+        <div className="text-base text-muted-foreground">
+          {`Once connected, ${serverDisplayName ?? "this service"} will remain connected for future requests.`}
+        </div>
+        {canCurrentUserRespond ? (
           <>
-            <div className="text-base text-muted-foreground">
-              {`Dust needs access to ${serverDisplayName ?? "this service"} to complete this action.`}
-            </div>
-            <div className="text-base text-muted-foreground">
-              {`Once connected, ${serverDisplayName ?? "this service"} will remain connected for future requests.`}
-            </div>
-            {canCurrentUserRespond ? (
-              <>
-                {overridableInputs && mcpServer && (
-                  <PersonalAuthCredentialOverrides
-                    inputs={overridableInputs}
-                    values={overriddenCredentials}
-                    idPrefix={mcpServerId}
-                    onChange={(key, value) =>
-                      setCredentialOverrides((prev) => ({
-                        ...prev,
-                        [key]: value,
-                      }))
-                    }
-                  />
-                )}
-                {connectionError && (
-                  <div className="text-sm font-medium text-warning-800">
-                    {connectionError}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-sm text-muted-foreground">
-                Waiting for{" "}
-                <span className="font-semibold text-foreground">
-                  {triggeringUser?.fullName}
-                </span>{" "}
-                to connect their account.
+            {overridableInputs && mcpServer && (
+              <PersonalAuthCredentialOverrides
+                inputs={overridableInputs}
+                values={overriddenCredentials}
+                idPrefix={mcpServerId}
+                onChange={(key, value) =>
+                  setCredentialOverrides((prev) => ({
+                    ...prev,
+                    [key]: value,
+                  }))
+                }
+              />
+            )}
+            {connectionError && (
+              <div className="text-sm font-medium text-warning-800">
+                {connectionError}
               </div>
             )}
           </>
+        ) : (
+          <div className="text-sm text-muted-foreground">
+            Waiting for{" "}
+            <span className="font-semibold text-foreground">
+              {triggeringUser?.fullName}
+            </span>{" "}
+            to connect their account.
+          </div>
         )}
       </div>
 
-      {canCurrentUserRespond && !isConnected && mcpServer && (
+      {canCurrentUserRespond && mcpServer && (
         <div className="flex justify-end gap-2 px-4 pb-3 pt-2">
           <Button
             variant="outline"
