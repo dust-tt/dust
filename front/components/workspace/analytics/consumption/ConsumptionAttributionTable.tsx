@@ -467,9 +467,6 @@ function AttributionRows({
   };
 
   const activeSort = sorting[0];
-  // Every sortable column rides a server-side ranking (see
-  // ATTRIBUTION_SERVER_SORT_BY_COLUMN_ID); the lookup is only there to
-  // narrow the column id's plain string type.
   const serverSortBy: ConsumptionTopSortBy | undefined = activeSort?.id
     ? ATTRIBUTION_SERVER_SORT_BY_COLUMN_ID[activeSort.id]
     : undefined;

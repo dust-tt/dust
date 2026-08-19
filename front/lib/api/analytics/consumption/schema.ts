@@ -50,8 +50,6 @@ export const ConsumptionTopBodySchema = ConsumptionBodySchema.extend({
     .transform((limit) => limit ?? DEFAULT_CONSUMPTION_TOP_LIMIT),
   offset: z.number().int().nonnegative().default(0),
   search: z.string().trim().optional(),
-  // Which metric to rank by; see the comment on CONSUMPTION_TOP_SORT_BY for
-  // how each one is ranked.
   sortBy: z.enum(CONSUMPTION_TOP_SORT_BY).optional().default("credits"),
   sortOrder: z.enum(CONSUMPTION_TOP_SORT_ORDER).optional().default("desc"),
 });
