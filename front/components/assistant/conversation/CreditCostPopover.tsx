@@ -98,8 +98,10 @@ export function CreditCostPopover({
     });
 
   const ownCredits = consumption?.billedCredits ?? credits ?? 0;
-  const childCredits = subAgentCredits ?? 0;
-  const totalCredits = ownCredits + childCredits;
+  const childCredits =
+    consumption?.subAgentBilledCredits ?? subAgentCredits ?? 0;
+  const totalCredits =
+    consumption?.totalBilledCredits ?? ownCredits + childCredits;
   const details = consumption?.details;
 
   if (totalCredits <= 0) {

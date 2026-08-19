@@ -9,7 +9,8 @@ import { RunFactory } from "@app/tests/utils/RunFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
-const BILLED_CREDITS = 7;
+const BILLED_CREDITS = 20;
+const SUB_AGENT_BILLED_CREDITS = 282;
 const PREVIOUS_ATTRIBUTION_VERSION =
   AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION - 1;
 
@@ -49,7 +50,14 @@ async function setupMessage() {
     costCredits: BILLED_CREDITS,
   });
 
-  return { auth, workspace, conversation, agentMessage, runUsageModelId };
+  return {
+    auth,
+    workspace,
+    conversation,
+    agentConfiguration,
+    agentMessage,
+    runUsageModelId,
+  };
 }
 
 function getConsumption({
@@ -81,6 +89,54 @@ describe("GET /api/w/:wId/assistant/conversations/:cId/messages/:mId/consumption
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       billedCredits: BILLED_CREDITS,
+      subAgentBilledCredits: 0,
+      totalBilledCredits: BILLED_CREDITS,
+      details: null,
+    });
+  });
+
+  it("includes credits billed by recursively spawned sub-agents", async () => {
+    const { auth, workspace, conversation, agentConfiguration, agentMessage } =
+      await setupMessage();
+    await FeatureFlagFactory.basic(auth, "conversation_consumption_details");
+
+    const childConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfiguration.sId,
+      messagesCreatedAt: [],
+    });
+    const { messageRow: childUserMessage } =
+      await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation: childConversation,
+        content: "Run a sub-agent",
+        agenticMessageType: "run_agent",
+        agenticOriginMessageId: agentMessage.sId,
+      });
+    const { agentMessage: childAgentMessage } =
+      await ConversationFactory.createAgentMessage(auth, {
+        workspace,
+        conversation: childConversation,
+        agentConfig: agentConfiguration,
+        parentMessageModelId: childUserMessage.id,
+        rank: 1,
+      });
+    await ConversationResource.updateAgentMessageCostCredits(auth, {
+      agentMessageModelId: childAgentMessage.agentMessageId,
+      costCredits: SUB_AGENT_BILLED_CREDITS,
+    });
+
+    const response = await getConsumption({
+      workspaceId: workspace.sId,
+      conversationId: conversation.sId,
+      messageId: agentMessage.sId,
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      billedCredits: BILLED_CREDITS,
+      subAgentBilledCredits: SUB_AGENT_BILLED_CREDITS,
+      totalBilledCredits: BILLED_CREDITS + SUB_AGENT_BILLED_CREDITS,
       details: null,
     });
   });
