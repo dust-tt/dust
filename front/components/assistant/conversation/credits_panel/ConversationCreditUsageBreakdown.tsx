@@ -180,13 +180,12 @@ function AgentBreakdown({ agent }: AgentBreakdownProps) {
             name={agent.name}
             visual={agent.pictureUrl ?? undefined}
             size="xs"
-            isRounded
           />
           <h3 className="truncate text-base font-medium text-foreground">
             {agent.name}
           </h3>
         </div>
-        <span className="shrink-0 text-xs text-muted-foreground">
+        <span className="shrink-0 text-base text-muted-foreground">
           {formatCreditValue(agent.billedCredits)}
         </span>
       </div>
