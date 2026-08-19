@@ -221,7 +221,11 @@ export function PodPageContent({
         <PodFilesTab owner={owner} pod={podInfo} />
       </NavTabPillContent>
       <NavTabPillContent value="apps">
-        <PodAppsTab owner={owner} pod={podInfo} />
+        <PodAppsTab
+          owner={owner}
+          pod={podInfo}
+          onNavigateToConversations={() => onTabChange("conversations")}
+        />
       </NavTabPillContent>
       {podInfo.isAdminControlled && (
         <NavTabPillContent value="connected_data">
