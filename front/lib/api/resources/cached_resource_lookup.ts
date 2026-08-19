@@ -28,7 +28,6 @@ type ReadFromKeyFirstDefinition<Input> = CacheKeyDefinition<Input> & {
 type CachedResourceLookupDefinition<Input, Snapshot, Resource> = {
   id: string;
   version: number;
-  ttlMs: number;
   key: (input: Input) => string;
   readFromKeyFirst?: ReadFromKeyFirstDefinition<Input>;
   loadFromDatabase: (
@@ -71,7 +70,6 @@ class ResourceDatabaseLoadError {
 export function defineCachedResourceLookup<Input, Snapshot, Resource>({
   id,
   version,
-  ttlMs,
   key,
   readFromKeyFirst,
   loadFromDatabase,
@@ -113,7 +111,6 @@ export function defineCachedResourceLookup<Input, Snapshot, Resource>({
     {
       cacheId: id,
       cacheNullValues: false,
-      ttlMs,
       readFromKeyFirst: readFromKeyFirstOptions,
     }
   );
