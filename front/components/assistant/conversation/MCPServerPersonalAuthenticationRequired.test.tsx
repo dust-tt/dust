@@ -2,7 +2,6 @@ import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import type { LightWorkspaceType } from "@app/types/user";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MCPServerPersonalAuthenticationRequired } from "./MCPServerPersonalAuthenticationRequired";
@@ -69,27 +68,6 @@ vi.mock("@app/components/oauth/PersonalAuthCredentialOverrides", () => ({
 
 vi.mock("@app/types/oauth/lib", () => ({
   getOverridablePersonalAuthInputs: () => null,
-}));
-
-vi.mock("@dust-tt/sparkle", () => ({
-  Avatar: () => null,
-  Card: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-  Button: ({
-    label,
-    onClick,
-    disabled,
-  }: {
-    label: string;
-    onClick?: () => void;
-    disabled?: boolean;
-  }) => (
-    <button type="button" onClick={onClick} disabled={disabled}>
-      {label}
-    </button>
-  ),
-  Check: () => null,
-  Key01: () => null,
-  XClose: () => null,
 }));
 
 const owner: LightWorkspaceType = {

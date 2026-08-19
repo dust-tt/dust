@@ -1,4 +1,4 @@
-import { ToolValidationCard } from "@app/components/actions/blocked/ToolValidationCard";
+import { ToolValidationCardContainer } from "@app/components/actions/blocked/ToolValidationCardContainer";
 import type { FrameViewer } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { SandboxFunctionMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
@@ -47,7 +47,7 @@ export function SandboxFunctionToolApprovalCard({
   };
 
   return (
-    <ToolValidationCard
+    <ToolValidationCardContainer
       validationRequest={event}
       triggeringUser={viewer.user}
       currentUser={viewer.user}

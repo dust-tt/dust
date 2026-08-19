@@ -1,5 +1,5 @@
-import type { PersonalAuthResolutionOutcome } from "@app/components/actions/blocked/PersonalAuthenticationCard";
-import { PersonalAuthenticationCard } from "@app/components/actions/blocked/PersonalAuthenticationCard";
+import type { PersonalAuthResolutionOutcome } from "@app/components/actions/blocked/PersonalAuthenticationCardContainer";
+import { PersonalAuthenticationCardContainer } from "@app/components/actions/blocked/PersonalAuthenticationCardContainer";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import { useAuth } from "@app/lib/auth/AuthContext";
@@ -54,7 +54,7 @@ export function MCPServerPersonalAuthenticationRequired({
   };
 
   return (
-    <PersonalAuthenticationCard
+    <PersonalAuthenticationCardContainer
       triggeringUser={triggeringUser}
       currentUser={user}
       mcpServerId={mcpServerId}

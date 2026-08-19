@@ -1,5 +1,5 @@
-import type { PersonalAuthResolutionOutcome } from "@app/components/actions/blocked/PersonalAuthenticationCard";
-import { PersonalAuthenticationCard } from "@app/components/actions/blocked/PersonalAuthenticationCard";
+import type { PersonalAuthResolutionOutcome } from "@app/components/actions/blocked/PersonalAuthenticationCardContainer";
+import { PersonalAuthenticationCardContainer } from "@app/components/actions/blocked/PersonalAuthenticationCardContainer";
 import type { FrameViewer } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import type { SandboxFunctionToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { useResolveAuthentication } from "@app/lib/swr/tool_actions";
@@ -47,7 +47,7 @@ export function SandboxFunctionPersonalAuthCard({
   };
 
   return (
-    <PersonalAuthenticationCard
+    <PersonalAuthenticationCardContainer
       triggeringUser={viewer.user}
       currentUser={viewer.user}
       mcpServerId={authError.mcpServerId}

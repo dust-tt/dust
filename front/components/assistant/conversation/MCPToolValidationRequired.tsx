@@ -1,4 +1,4 @@
-import { ToolValidationCard } from "@app/components/actions/blocked/ToolValidationCard";
+import { ToolValidationCardContainer } from "@app/components/actions/blocked/ToolValidationCardContainer";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import {
   EditableToolValidation,
@@ -141,7 +141,7 @@ export function MCPToolValidationRequired({
   }
 
   return (
-    <ToolValidationCard
+    <ToolValidationCardContainer
       validationRequest={blockedAction}
       approvalProgress={approvalProgress}
       triggeringUser={triggeringUser}

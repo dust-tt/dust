@@ -2,7 +2,6 @@ import type { SandboxFunctionToolPersonalAuthRequiredEvent } from "@app/lib/acti
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SandboxFunctionPersonalAuthCard } from "./SandboxFunctionPersonalAuthCard";
@@ -52,17 +51,6 @@ vi.mock("@app/components/oauth/PersonalAuthCredentialOverrides", () => ({
 
 vi.mock("@app/types/oauth/lib", () => ({
   getOverridablePersonalAuthInputs: () => null,
-}));
-
-vi.mock("@dust-tt/sparkle", () => ({
-  Avatar: () => null,
-  Card: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-  Button: ({ label, onClick }: { label: string; onClick?: () => void }) => (
-    <button onClick={onClick}>{label}</button>
-  ),
-  Check: () => null,
-  Key01: () => null,
-  XClose: () => null,
 }));
 
 const viewer = {
