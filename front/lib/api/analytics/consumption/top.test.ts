@@ -759,43 +759,54 @@ describe("consumption top rankings", () => {
     });
   });
 
-  it("ranks message-unit dimensions by a scripted avg-per-message metric when sortBy is avgCredits", async () => {
+  it("ranks message-unit dimensions by average credits in memory when sortBy is avgCredits", async () => {
     const { auth } = await setup();
-    mockLabels({ agent1: "@dust" });
+    mockLabels({ agent1: "Agent 1", agent2: "Agent 2" });
     mockAggs({
+      // agent1 has more gross credits but a lower per-message average than
+      // agent2 — Elasticsearch cannot order by that ratio, so the query
+      // below orders by gross credits and the response must be re-ranked
+      // by average in memory to put agent2 first.
       buckets: [
         {
           key: "agent1",
-          doc_count: 2,
+          doc_count: 4,
+          credit_micro: { value: 4_000_000 },
+          messages: { value: 4 },
+        },
+        {
+          key: "agent2",
+          doc_count: 1,
           credit_micro: { value: 3_000_000 },
-          messages: { value: 2 },
-          avg_credit_per_message: { value: 1.5 },
+          messages: { value: 1 },
         },
       ],
-      totalMicro: 3_000_000,
+      totalMicro: 7_000_000,
     });
 
     const result = await fetchConsumptionTopAgents(auth, {
       period: PERIOD,
       limit: 10,
       sortBy: "avgCredits",
-      sortOrder: "asc",
+      sortOrder: "desc",
     });
 
     expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.agents.map((agent) => agent.agentId)).toEqual([
+      "agent2",
+      "agent1",
+    ]);
 
     const [, options] = rankingSearchCall();
     expect(options?.aggregations?.by_group?.terms).toMatchObject({
-      order: { avg_credit_per_message: "asc" },
+      order: { credit_micro: "desc" },
     });
     expect(
       options?.aggregations?.by_group?.aggs?.avg_credit_per_message
-    ).toMatchObject({
-      scripted_metric: expect.objectContaining({
-        map_script: expect.any(String),
-        reduce_script: expect.any(String),
-      }),
-    });
+    ).toBeUndefined();
   });
 
   it("ranks invocation-unit dimensions by a plain avg metric when sortBy is avgCredits", async () => {
