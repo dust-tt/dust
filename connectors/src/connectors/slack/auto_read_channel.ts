@@ -34,11 +34,13 @@ export async function autoReadChannel(
   const connector = connectors.find((c) => c.type === provider);
 
   if (!connector) {
-    return new Err(
-      new Error(
-        `Connector not found for teamId ${teamId} and provider ${provider}`
-      )
+    // Expected on shared channels and Enterprise Grid orgs: the channel's
+    // context team may have no connector at all. Nothing to auto-read.
+    logger.info(
+      { teamId, slackChannelId, provider },
+      "Ignoring channel: no connector for team"
     );
+    return new Ok(false);
   }
 
   const slackConfiguration = slackConfigurations.find(
