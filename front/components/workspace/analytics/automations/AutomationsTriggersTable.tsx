@@ -265,18 +265,6 @@ function buildColumns({
       ),
     },
     {
-      id: "runCount",
-      accessorKey: "runCount",
-      header: "Runs",
-      meta: { className: "w-20", headerAlign: "right" },
-      cell: (info) => (
-        <DataTable.BasicCellContent
-          className="justify-end text-right tabular-nums"
-          label={info.row.original.runCount.toLocaleString()}
-        />
-      ),
-    },
-    {
       id: "credits",
       accessorKey: "credits",
       header: "Credits",
@@ -289,7 +277,7 @@ function buildColumns({
     },
     {
       id: "status",
-      header: "",
+      header: "Enabled",
       enableSorting: false,
       meta: { className: "w-24" },
       cell: (info) => (

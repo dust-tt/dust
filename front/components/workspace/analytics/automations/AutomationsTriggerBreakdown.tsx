@@ -106,7 +106,7 @@ function CreditDestinationBlock({
 
   return (
     <StatBlock
-      label="Where the credits go"
+      label="What model is used"
       primaryText={
         <span className="font-semibold text-foreground">
           {creditDestination.name}
