@@ -54,7 +54,11 @@ export const Segmented: Story = {
   render: () => (
     <ProgressBar
       className="h-2 w-48 bg-background"
-      fillClassName={["bg-highlight-500", "bg-highlight-100", "bg-gray-50"]}
+      fillClassName={[
+        "bg-highlight-500",
+        "bg-highlight-100",
+        "bg-muted-background",
+      ]}
       percentages={[35, 20, 45]}
       radius="xs"
     />

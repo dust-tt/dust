@@ -191,7 +191,7 @@ function CreditPoolProgressBar({
       fillClassName={[
         target === "off_target" ? "bg-warning-500" : "bg-highlight-500",
         target === "off_target" ? "bg-warning-100" : "bg-highlight-100",
-        "bg-gray-50",
+        "bg-muted-background",
       ]}
       percentages={[
         clampedUsedPercentage,
