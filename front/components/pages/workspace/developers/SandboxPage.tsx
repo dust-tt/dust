@@ -36,7 +36,6 @@ export function SandboxPage() {
   }, [selection.podIds, pods]);
 
   const scopeCount = (selection.includeWorkspace ? 1 : 0) + selectedPods.length;
-  const isBulkEdit = scopeCount > 1;
 
   const workspaceView = (
     <>
@@ -103,7 +102,33 @@ export function SandboxPage() {
     return (
       <>
         <AgentRequestedDomainsSetting />
-        {canAdministratePods ? renderScopedContent() : workspaceView}
+        {canAdministratePods ? (
+          <div className="flex flex-col gap-6">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex min-w-0 flex-col">
+                <div className="heading-xl text-foreground">
+                  Scope-specific settings
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Network access and environment variables for the selected
+                  scopes. Edits apply to each selected scope; Workspace settings
+                  are inherited by all Pods.
+                </div>
+              </div>
+              <div className="shrink-0">
+                <SandboxScopeSelector
+                  pods={pods}
+                  selection={selection}
+                  onChange={setSelection}
+                  isLoading={isPodsLoading}
+                />
+              </div>
+            </div>
+            {renderScopedContent()}
+          </div>
+        ) : (
+          workspaceView
+        )}
       </>
     );
   };
@@ -111,30 +136,11 @@ export function SandboxPage() {
   return (
     <Page.Vertical gap="xl" align="stretch">
       <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-4">
-          <div className="heading-2xl text-foreground">Computer</div>
-          {canAdministratePods ? (
-            <SandboxScopeSelector
-              pods={pods}
-              selection={selection}
-              onChange={setSelection}
-              isLoading={isPodsLoading}
-            />
-          ) : null}
-        </div>
+        <div className="heading-2xl text-foreground">Computer</div>
         <div className="text-sm text-muted-foreground">
           Configure workspace and Pod network access and environment variables
           for the Computer.
         </div>
-        {canAdministratePods && isBulkEdit ? (
-          <div className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">
-              {scopeCount} scopes selected.
-            </span>{" "}
-            Edits below apply to every selected scope. Workspace domains and
-            variables are inherited by all Pods.
-          </div>
-        ) : null}
       </div>
       {renderBody()}
     </Page.Vertical>

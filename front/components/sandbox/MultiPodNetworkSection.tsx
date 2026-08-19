@@ -1,4 +1,5 @@
 import { Pill } from "@app/components/sandbox/Pill";
+import { getSpaceIcon } from "@app/lib/spaces";
 import type { SandboxPodSelection } from "@app/lib/swr/sandbox";
 import {
   useBulkPodEgressPolicies,
@@ -11,6 +12,7 @@ import { normalizeEgressPolicyDomain } from "@app/types/sandbox/egress_policy";
 import type { PodType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  Building04,
   Button,
   ContentMessage,
   Dialog,
@@ -44,7 +46,7 @@ interface MultiPodNetworkSectionProps {
 type DomainRow = {
   domain: string;
   inWorkspace: boolean;
-  ownedByPods: string[];
+  ownedByPods: PodType[];
   // Scopes this row can actually be removed from with the current selection:
   // the workspace (only when it's in the selection) plus any owning Pod. Zero
   // means the row is inherited-only here and removal must happen at the
@@ -58,7 +60,7 @@ type PendingRequest = {
   key: string;
   domain: string;
   scopeName: string;
-} & ({ scopeKind: "workspace" } | { scopeKind: "pod"; podId: string });
+} & ({ scopeKind: "workspace" } | { scopeKind: "pod"; pod: PodType });
 
 // Bulk egress editor across the selected scopes (optionally the workspace
 // baseline, plus each selected Pod). Adding writes the domain to every selected
@@ -95,8 +97,6 @@ export function MultiPodNetworkSection({
 
   const [domainInput, setDomainInput] = useState("");
   const [removeTarget, setRemoveTarget] = useState<DomainRow | null>(null);
-
-  const totalScopes = (includeWorkspace ? 1 : 0) + selectedPods.length;
 
   const workspaceDomains = useMemo(
     () => new Set(workspacePolicy.allowedDomains),
@@ -144,7 +144,7 @@ export function MultiPodNetworkSection({
             domain: request.domain,
             scopeName: pod.name,
             scopeKind: "pod",
-            podId: pod.sId,
+            pod,
           });
         }
       }
@@ -178,9 +178,9 @@ export function MultiPodNetworkSection({
     return [...domains]
       .map((domain) => {
         const inWorkspace = workspaceDomains.has(domain);
-        const ownedByPods = selectedPods
-          .filter((pod) => podOwnById.get(pod.sId)?.has(domain))
-          .map((pod) => pod.name);
+        const ownedByPods = selectedPods.filter((pod) =>
+          podOwnById.get(pod.sId)?.has(domain)
+        );
         return {
           domain,
           inWorkspace,
@@ -274,10 +274,7 @@ export function MultiPodNetworkSection({
   const handleApproveRequest = async (request: PendingRequest) => {
     const success = await bulkUpdateEgressDomain({
       includeWorkspace: request.scopeKind === "workspace",
-      pods:
-        request.scopeKind === "pod"
-          ? selectedPods.filter((pod) => pod.sId === request.podId)
-          : [],
+      pods: request.scopeKind === "pod" ? [request.pod] : [],
       operation: "add",
       domain: request.domain,
     });
@@ -290,7 +287,7 @@ export function MultiPodNetworkSection({
     const success =
       request.scopeKind === "workspace"
         ? await dismissWorkspaceEgressRequest(request.domain)
-        : await dismissPodEgressRequest(request.podId, request.domain);
+        : await dismissPodEgressRequest(request.pod.sId, request.domain);
     if (success) {
       await revalidate();
     }
@@ -352,10 +349,15 @@ export function MultiPodNetworkSection({
                 {request.domain}
               </span>
               <Pill color="golden" label="Pending approval" />
-              <Pill
-                color={request.scopeKind === "workspace" ? "neutral" : "blue"}
-                label={request.scopeName}
-              />
+              {request.scopeKind === "workspace" ? (
+                <Pill color="blue" label="Workspace" icon={Building04} />
+              ) : (
+                <Pill
+                  color="blue"
+                  label={request.pod.name}
+                  icon={getSpaceIcon(request.pod)}
+                />
+              )}
             </div>
             <Button
               variant="highlight"
@@ -391,10 +393,15 @@ export function MultiPodNetworkSection({
                 {row.domain}
               </span>
               {row.inWorkspace ? (
-                <Pill color="neutral" label="Workspace" />
+                <Pill color="blue" label="Workspace" icon={Building04} />
               ) : null}
-              {row.ownedByPods.map((podName) => (
-                <Pill key={podName} color="blue" label={podName} />
+              {row.ownedByPods.map((pod) => (
+                <Pill
+                  key={pod.sId}
+                  color="blue"
+                  label={pod.name}
+                  icon={getSpaceIcon(pod)}
+                />
               ))}
             </div>
             <Button
@@ -436,7 +443,9 @@ export function MultiPodNetworkSection({
               Pod and running Computer. Removing it here drops it from the
               Workspace
               {removeTarget && removeTarget.ownedByPods.length > 0
-                ? ` and ${removeTarget.ownedByPods.join(", ")}`
+                ? ` and ${removeTarget.ownedByPods
+                    .map((pod) => pod.name)
+                    .join(", ")}`
                 : ""}
               . This cannot be undone.
             </DialogDescription>
@@ -461,10 +470,14 @@ export function MultiPodNetworkSection({
       </Dialog>
 
       <Page.Vertical align="stretch" gap="lg">
-        <Page.SectionHeader
-          title="Allowed domains"
-          description={`Domains allowed across the ${totalScopes} selected scopes. Adding writes to the Workspace when it is selected (inherited by all Pods), otherwise to each selected Pod.`}
-        />
+        <div className="flex flex-col gap-1">
+          <div className="heading-base text-foreground">Allowed domains</div>
+          <div className="text-sm text-muted-foreground">
+            Domains allowed across the selected scopes. Adding writes to the
+            Workspace when it is selected (inherited by all Pods), otherwise to
+            each selected Pod.
+          </div>
+        </div>
         <form
           className="flex flex-col gap-3 sm:flex-row sm:items-start"
           onSubmit={(event) => {

@@ -1,3 +1,5 @@
+import type { ComponentType, SVGProps } from "react";
+
 type PillColor = "blue" | "golden" | "neutral";
 
 // Small rounded status pill, shared by the egress request rows and the
@@ -11,13 +13,15 @@ const PILL_CLASSES: Record<PillColor, string> = {
 interface PillProps {
   color: PillColor;
   label: string;
+  icon?: ComponentType<SVGProps<SVGSVGElement>>;
 }
 
-export function Pill({ color, label }: PillProps) {
+export function Pill({ color, label, icon: Icon }: PillProps) {
   return (
     <span
-      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${PILL_CLASSES[color]}`}
+      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${PILL_CLASSES[color]}`}
     >
+      {Icon ? <Icon className="h-3 w-3" /> : null}
       {label}
     </span>
   );

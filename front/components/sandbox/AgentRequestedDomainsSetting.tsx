@@ -80,14 +80,15 @@ export function AgentRequestedDomainsSetting() {
 
       <div className="flex items-center justify-between gap-4 border-y border-border py-4">
         <div className="flex min-w-0 flex-col">
-          <div className="heading-sm text-foreground">
+          <div className="heading-xl text-foreground">
             Agent-requested domains
           </div>
           <div className="text-sm text-muted-foreground">
-            Allow agents using the Computer to ask for additional domains, one
-            approval per domain, during the conversation. When disabled, agents
-            cannot request new domains and should only rely on the domains
-            listed below.
+            Applies to every Computer in this workspace, across all Pods. Allow
+            agents to ask for additional domains, one approval per domain,
+            during the conversation. When disabled, agents cannot request new
+            domains and rely only on the allowed domains configured per scope
+            below.
           </div>
         </div>
         <SliderToggle

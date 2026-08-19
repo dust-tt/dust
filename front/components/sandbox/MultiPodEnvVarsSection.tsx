@@ -5,6 +5,7 @@ import type {
   SandboxEnvVarPodOption,
 } from "@app/components/sandbox/SandboxEnvVarFormDialog";
 import { SandboxEnvVarFormDialog } from "@app/components/sandbox/SandboxEnvVarFormDialog";
+import { getSpaceIcon } from "@app/lib/spaces";
 import type { SandboxPodSelection } from "@app/lib/swr/sandbox";
 import {
   useBulkDeleteSandboxEnvVar,
@@ -15,6 +16,7 @@ import type { SandboxEnvVarKind } from "@app/types/sandbox/env_var";
 import type { PodType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  Building04,
   Button,
   ContentMessage,
   Dialog,
@@ -87,6 +89,10 @@ export function MultiPodEnvVarsSection({
 
   const podNamesById = useMemo(
     () => new Map(selectedPods.map((pod) => [pod.sId, pod.name])),
+    [selectedPods]
+  );
+  const podById = useMemo(
+    () => new Map(selectedPods.map((pod) => [pod.sId, pod])),
     [selectedPods]
   );
 
@@ -227,9 +233,18 @@ export function MultiPodEnvVarsSection({
             includeWorkspace && row.hasWorkspaceVar && workspaceEnvVar;
           const canReplacePods =
             row.overriddenInPods.length > 0 && podEnvVar !== undefined;
-          const scopeNames = [
-            ...(includeWorkspace && row.hasWorkspaceVar ? ["Workspace"] : []),
-            ...row.overriddenInPods.map((pod) => pod.name),
+          const scopePills = [
+            ...(includeWorkspace && row.hasWorkspaceVar
+              ? [{ key: "workspace", label: "Workspace", icon: Building04 }]
+              : []),
+            ...row.overriddenInPods.map((pod) => {
+              const fullPod = podById.get(pod.sId);
+              return {
+                key: pod.sId,
+                label: pod.name,
+                icon: fullPod ? getSpaceIcon(fullPod) : undefined,
+              };
+            }),
           ];
           return (
             <div key={row.name} className="flex items-center gap-3 py-3">
@@ -244,11 +259,12 @@ export function MultiPodEnvVarsSection({
                   color={row.kind === "https_secret" ? "golden" : "neutral"}
                   label={labelForKind(row.kind)}
                 />
-                {scopeNames.map((scopeName, index) => (
+                {scopePills.map((pill) => (
                   <Pill
-                    key={`${scopeName}-${index}`}
+                    key={pill.key}
                     color="blue"
-                    label={scopeName}
+                    label={pill.label}
+                    icon={pill.icon}
                   />
                 ))}
               </div>
@@ -352,10 +368,16 @@ export function MultiPodEnvVarsSection({
       </Dialog>
 
       <Page.Vertical align="stretch" gap="lg">
-        <Page.SectionHeader
-          title="Environment variables"
-          description="Which scopes define each variable. Values are write-only and never shown or compared. Editing a variable only touches the scopes that already define it."
-        />
+        <div className="flex flex-col gap-1">
+          <div className="heading-base text-foreground">
+            Environment variables
+          </div>
+          <div className="text-sm text-muted-foreground">
+            Which scopes define each variable. Values are write-only and never
+            shown or compared. Editing a variable only touches the scopes that
+            already define it.
+          </div>
+        </div>
 
         <div className="flex justify-end">
           <Button
