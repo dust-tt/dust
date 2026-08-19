@@ -425,7 +425,11 @@ export function UsagePage() {
   const isAnalyticsConsumptionEnabled =
     isWorkspaceAdmin && hasFeature("enable_analytics_consumption");
 
-  const { overview: consumptionOverview } = useConsumptionOverview({
+  const {
+    overview: consumptionOverview,
+    isOverviewLoading,
+    isOverviewError,
+  } = useConsumptionOverview({
     workspaceId: owner.sId,
     period: DEFAULT_CONSUMPTION_PERIOD,
     disabled: !canViewUsage || !isAnalyticsConsumptionEnabled,
@@ -1087,11 +1091,11 @@ export function UsagePage() {
         )}
 
         {isAnalyticsConsumptionEnabled &&
-        (isAwuPoolSummaryLoading || !!isAwuPoolSummaryError || hasPool) ? (
+        (!consumptionOverview || !!creditUsage || hasPool) ? (
           <Page.Vertical gap="none" align="stretch">
             <Page.H variant="h6">Credit Pool</Page.H>
             <div className="flex flex-col gap-2 pt-4">
-              {isAwuPoolSummaryError && !consumptionOverview && (
+              {isOverviewError && !consumptionOverview && (
                 <ContentMessage
                   title="Failed to load Workspace Credit Pool"
                   icon={AlertCircle}
@@ -1103,19 +1107,17 @@ export function UsagePage() {
                 </ContentMessage>
               )}
 
-              {isAwuPoolSummaryLoading && !consumptionOverview && (
+              {isOverviewLoading && (
                 <div className="flex justify-center py-8">
                   <Spinner />
                 </div>
               )}
-              {(isAwuPoolSummaryLoading || isAwuPoolSummaryError) &&
-                !consumptionOverview &&
-                topUpButton && (
-                  <div className="flex justify-end">{topUpButton}</div>
-                )}
+              {!consumptionOverview && topUpButton && (
+                <div className="flex justify-end">{topUpButton}</div>
+              )}
 
-              {(!isAwuPoolSummaryLoading || consumptionOverview) &&
-                (!isAwuPoolSummaryError || consumptionOverview) && (
+              {consumptionOverview !== null &&
+                (creditUsage !== null || hasPool) && (
                   <>
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex items-baseline gap-1">
@@ -1204,7 +1206,7 @@ export function UsagePage() {
           <Page.Vertical gap="xs" align="stretch">
             <Page.H variant="h4">Workspace credit pool</Page.H>
 
-            {isAwuPoolSummaryError && (
+            {isAwuPoolSummaryError ? (
               <ContentMessage
                 title="Failed to load Workspace Credits Pool"
                 icon={AlertCircle}
@@ -1214,15 +1216,11 @@ export function UsagePage() {
                 data. Please refresh the page or contact support if the issue
                 persists.
               </ContentMessage>
-            )}
-
-            {isAwuPoolSummaryLoading && (
+            ) : isAwuPoolSummaryLoading ? (
               <div className="flex justify-center py-8">
                 <Spinner />
               </div>
-            )}
-
-            {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
+            ) : (
               <>
                 <div className="flex items-baseline gap-1">
                   <span className="heading-mono-4xl text-foreground">
