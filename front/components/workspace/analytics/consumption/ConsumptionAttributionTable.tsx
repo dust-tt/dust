@@ -345,10 +345,9 @@ function buildColumns({
     },
     {
       id: "vsPrev",
-      // Rows already arrive from the server in vs-prev order when that's the
-      // active sort (see ATTRIBUTION_SERVER_SORT_BY_COLUMN_ID); this accessor
-      // just keeps the table's own client-side sort consistent with it,
-      // including sinking "no prior data" rows the same way the server does.
+      // Sinks "no prior data" rows the same way the server's vs-prev sort
+      // does, so client-side sort stays consistent when the server has
+      // already sorted this way.
       accessorFn: (row) =>
         growthPercent(row.credits, row.previousCredits) ??
         Number.NEGATIVE_INFINITY,
