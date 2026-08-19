@@ -18,7 +18,7 @@ import {
 } from "@app/lib/metronome/alerts/spend_limits";
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import {
-  listCustomerPerUserCreditBalances,
+  getCachedCustomerPerUserCreditBalances,
   listMetronomeSeatBalances,
 } from "@app/lib/metronome/client";
 import {
@@ -634,7 +634,7 @@ async function fetchFreeSeatCreditsForMembersTable({
   if (!metronomeCustomerId) {
     return { freeBalanceByUserId, freeStartingByUserId };
   }
-  const perUserCreditBalances = await listCustomerPerUserCreditBalances({
+  const perUserCreditBalances = await getCachedCustomerPerUserCreditBalances({
     metronomeCustomerId,
     contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
   });
@@ -1192,7 +1192,7 @@ export async function getMemberUsage({
   let freeSeatBalanceAwu: number | null = null;
   let freeSeatAllowanceAwu: number | null = null;
   if (membership.seatType === "free" && metronomeCustomerId) {
-    const balances = await listCustomerPerUserCreditBalances({
+    const balances = await getCachedCustomerPerUserCreditBalances({
       metronomeCustomerId,
       contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
     });
