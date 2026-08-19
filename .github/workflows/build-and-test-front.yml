@@ -21,7 +21,7 @@ jobs:
       matrix:
         shardIndex: [ 1, 2, 3 ]
         shardTotal: [ 3 ]
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     services:
       redis:
         image: redis:7.2.5
@@ -69,7 +69,7 @@ jobs:
           group_suite: true
           check_name: Tests Report (Shard ${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
   tsgo:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Setup Node Dependencies
@@ -85,7 +85,7 @@ jobs:
           FRONT_DATABASE_URI: "postgres://fake:fake@localhost:5432/fake"
         run: npm run build:temporal-bundles
   lint:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Setup Node Dependencies
