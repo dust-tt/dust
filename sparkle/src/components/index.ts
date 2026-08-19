@@ -224,6 +224,24 @@ export {
   NavTabPillList,
   NavTabPillTrigger,
 } from "./NavTabPill";
+export type {
+  NewButtonIconType,
+  NewButtonProps,
+  NewButtonSizeType,
+  NewButtonVariantType,
+} from "./NewButton";
+export {
+  NEW_BUTTON_SIZES,
+  NEW_BUTTON_VARIANTS,
+  NewButton,
+  newButtonVariants,
+} from "./NewButton";
+export type { NewInputProps, NewInputSizeType } from "./NewInput";
+export { NEW_INPUT_SIZES, NewInput } from "./NewInput";
+export type { NewInputWithSaveProps } from "./NewInputWithSave";
+export { NewInputWithSave } from "./NewInputWithSave";
+export type { NewFlexSplitButtonProps } from "./NewSplitButton";
+export { NewFlexSplitButton } from "./NewSplitButton";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
 export { NotificationButton } from "./NotificationButton";
