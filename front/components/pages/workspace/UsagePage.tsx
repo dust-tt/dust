@@ -116,6 +116,7 @@ import {
   DropdownMenuTrigger,
   Icon,
   LinkExternal01,
+  LoadingBlock,
   Page,
   SearchInput,
   Spinner,
@@ -1164,8 +1165,23 @@ export function UsagePage() {
                   persists.
                 </ContentMessage>
               ) : isOverviewLoading ? (
-                <div className="flex justify-center py-8">
-                  <Spinner />
+                <div
+                  aria-label="Loading Credit Pool"
+                  className="flex flex-col gap-2"
+                  role="status"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-1">
+                      <LoadingBlock className="h-7 w-32" />
+                      <LoadingBlock className="h-4 w-36" />
+                    </div>
+                    <LoadingBlock className="h-5 w-16 rounded-full" />
+                  </div>
+                  <LoadingBlock className="h-2 w-full rounded-xs" />
+                  <div className="flex items-center justify-between gap-4">
+                    <LoadingBlock className="h-4 w-12" />
+                    <LoadingBlock className="h-4 w-20" />
+                  </div>
                 </div>
               ) : consumptionOverview !== null &&
                 (creditUsage !== null || hasPool) ? (
