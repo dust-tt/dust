@@ -2,10 +2,11 @@ import {
   archiveAgentConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration/agent";
+import type { AgentPageBound } from "@app/lib/api/assistant/inactivity/fetch_inactive_agents";
+import { fetchInactiveAgents } from "@app/lib/api/assistant/inactivity/fetch_inactive_agents";
 import type {
   AgentArchivalExclusionReason,
   AgentInactivityPolicyError,
-  AgentInactivitySnapshot,
   AgentTriggerSnapshot,
 } from "@app/lib/api/assistant/inactivity/policy";
 import {
@@ -20,33 +21,24 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 /**
- * Archives a workspace's inactive agents: resolve the threshold into a cutoff, load the agents,
- * judge each one against the rules in `policy.ts`, and archive those that are eligible.
+ * Archives a workspace's inactive agents. Both the manual endpoints and the nightly Temporal activity
+ * enter here, so the rules cannot drift between them; the population still differs, since every read
+ * is permission-filtered.
  *
- * The manual endpoints and the nightly Temporal activity both enter here, so the rules cannot drift
- * between them. The population can: every read is permission-filtered, so a manual run only ever
- * considers the agents its caller can see, where the nightly run sees the whole workspace.
+ * The page's facts are re-read before it is judged, which closes the window in which an agent can be
+ * restored, archived by someone else, or given a schedule. A retry is safe for a different reason: it
+ * re-runs the fetch, and an agent the first attempt archived is no longer active, so it is not a
+ * candidate again.
  *
- * The rules are applied against state re-read for the page rather than against what the fetch
- * loaded, because the two do not answer the same question: the fetch finds candidates, the re-read
- * goes through `getAgentConfigurations` and is therefore permission-filtered. That is also what
- * makes a Temporal retry safe — replaying the same input re-reads an agent the first attempt
- * archived, sees `archived`, and skips it instead of emitting a second `agent.archived` audit event.
- *
- * Archiving itself stays the existing `archiveAgentConfiguration` primitive, which owns the side
- * effects (trigger disabling, wake-up cancellation, editor group suspension, audit event).
+ * Archiving stays `archiveAgentConfiguration`, which owns the side effects.
  */
 
-/**
- * Why an agent this operation looked at was not archived: the rules' own exclusions, plus the two
- * outcomes only the mutation path can produce and that the rules therefore never see.
- */
+/** The rules' exclusions, plus the two outcomes only the mutation path can produce. */
 export type AgentArchivalSkipReason =
   | AgentArchivalExclusionReason
-  // The configuration disappeared, or is not visible to this actor, between the fetch and the
-  // re-read.
+  // Gone, or not visible to this actor, since the fetch.
   | "agent_not_found"
-  // The archival update matched no row: someone else archived the agent in the meantime.
+  // The update matched no row: someone else archived it first.
   | "archive_raced";
 
 export interface AgentArchivalSkip {
@@ -57,6 +49,8 @@ export interface AgentArchivalSkip {
 export interface InactiveAgentsArchivalInput {
   thresholdDays: number;
   evaluatedAt: Date;
+  // Which slice to walk, not what to decide. The caller owns the loop.
+  page: AgentPageBound;
 }
 
 export interface InactiveAgentsArchival {
@@ -64,6 +58,8 @@ export interface InactiveAgentsArchival {
   cutoffAt: Date;
   archivedAgentIds: string[];
   skipped: AgentArchivalSkip[];
+  // Paging, not outcome: null once the workspace is exhausted.
+  nextCursor: string | null;
 }
 
 export type InactiveAgentsArchivalResult = Result<
@@ -88,10 +84,7 @@ function countSkipsByReason(skipped: AgentArchivalSkip[]): SkipCountsByReason {
   return counts;
 }
 
-/**
- * Re-reads the whole page's facts in two batched queries, before any agent of it is judged. An
- * agent missing from the returned map is one this actor cannot currently read.
- */
+/** Two batched queries for the whole page. A missing agent is one this actor cannot read. */
 async function fetchArchivalFacts(
   auth: Authenticator,
   agentIds: string[]
@@ -132,7 +125,7 @@ async function fetchArchivalFacts(
  */
 export async function archiveInactiveWorkspaceAgents(
   auth: Authenticator,
-  { thresholdDays, evaluatedAt }: InactiveAgentsArchivalInput
+  { thresholdDays, evaluatedAt, page }: InactiveAgentsArchivalInput
 ): Promise<InactiveAgentsArchivalResult> {
   const workspace = auth.getNonNullableWorkspace();
 
@@ -150,17 +143,10 @@ export async function archiveInactiveWorkspaceAgents(
   }
   const cutoffAt = cutoffRes.value;
 
-  // TODO(2026-08-19 INACTIVE_AGENT_ARCHIVAL): load the workspace's candidate agents and, for each,
-  // when it was last mentioned. Deferred until the mentions query exists; the page bound (cursor,
-  // limit) becomes an input of this use case then, and `nextCursor` part of its result, so the
-  // caller keeps owning the loop. Status and triggers do not need to come back with it —
-  // `fetchArchivalFacts` is the authority on those, since it is the permission-filtered read.
-  //
-  // Read from the `mentions` table, not from `agentMentionsCount` in `agent_usage.ts`: its Redis
-  // cache only goes back 30 days, which is shorter than the thresholds this feature exists for, and
-  // the Elasticsearch index behind it is best-effort. Neither is a basis for a destructive decision.
-  // const { agents, nextCursor } = await fetchInactiveAgents(auth, { cutoffAt, cursor, limit });
-  const agents: AgentInactivitySnapshot[] = [];
+  const { agents, nextCursor } = await fetchInactiveAgents(auth, {
+    cutoffAt,
+    page,
+  });
 
   const factsByAgentId = await fetchArchivalFacts(
     auth,
@@ -168,8 +154,7 @@ export async function archiveInactiveWorkspaceAgents(
   );
 
   const archivedAgentIds: string[] = [];
-  // Skips are not logged per agent: they are the common case, and one line per agent per night
-  // would drown the archivals. The run summary below carries the counts by reason.
+  // Counted in the run summary, not logged per agent: skips are the common case.
   const skipped: AgentArchivalSkip[] = [];
 
   for (const agent of agents) {
@@ -191,13 +176,7 @@ export async function archiveInactiveWorkspaceAgents(
       continue;
     }
 
-    // The decision comes from the page's re-read, so the window before this mutation is the page's
-    // processing time: an agent mentioned or restored during it is archived anyway, and has to be
-    // restored by hand. Closing that window properly means a compare-and-set in
-    // `archiveAgentConfiguration` — an `expectedStatus` narrowing its `where` clause, which would
-    // make the mutation itself refuse an agent that stopped being active. Deliberately not done:
-    // it moves a business rule out of `policy.ts` and into a SQL predicate, and the exposure is one
-    // reversible archival on a page that takes seconds. Revisit if pages get long.
+    // Not a compare-and-set: an agent restored since the re-read is archived anyway. Reversible.
     const archived = await archiveAgentConfiguration(auth, agentId);
     if (!archived) {
       skipped.push({ agentId, reason: "archive_raced" });
@@ -226,9 +205,16 @@ export async function archiveInactiveWorkspaceAgents(
       archivedCount: archivedAgentIds.length,
       skippedCount: skipped.length,
       skippedCountByReason: countSkipsByReason(skipped),
+      hasMore: nextCursor !== null,
     },
     "Finished archiving inactive agents"
   );
 
-  return new Ok({ evaluatedAt, cutoffAt, archivedAgentIds, skipped });
+  return new Ok({
+    evaluatedAt,
+    cutoffAt,
+    archivedAgentIds,
+    skipped,
+    nextCursor,
+  });
 }
