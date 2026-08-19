@@ -894,7 +894,7 @@ const DropdownMenuSearchbar = React.forwardRef<
       onKeyDown?.(e);
       if (!e.defaultPrevented) {
         const menuContent = e.currentTarget.closest(
-          "[data-radix-menu-content]"
+          '[data-radix-menu-content][data-state="open"]'
         );
         const firstItem = menuContent
           ? getFirstDropdownMenuItem(menuContent)
