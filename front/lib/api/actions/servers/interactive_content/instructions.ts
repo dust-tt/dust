@@ -147,7 +147,7 @@ Give each Frame its own folder on the Pod file system, named after the Frame, an
     MyApp.tsx
 \`\`\`
 
-\`${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` creates the Frame's source in the current conversation, so move it into its folder before publishing. Use \`${FILES_MOVE_TOOL}\` (copying does not work on Frame files), then publish it from its Pod path:
+\`${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` creates the Frame's source in the current conversation, so move it into its folder before publishing. Use \`${FILES_MOVE_TOOL}\` — never \`mv\` or \`cp\` in the Computer, and never a copy: only \`${FILES_MOVE_TOOL}\` carries the Frame's file record along with its bytes — then publish it from its Pod path:
 
 \`\`\`
 ${FILES_MOVE_TOOL}({
