@@ -1134,7 +1134,7 @@ export function UsagePage() {
         !isOverviewError &&
         (!consumptionOverview || !!creditUsage || hasPool) ? (
           <Page.Vertical gap="none" align="stretch">
-            <Page.H variant="h6">Credit Pool</Page.H>
+            <h2 className="heading-sm text-foreground">Credit Pool</h2>
             <div className="flex flex-col gap-2 pt-4">
               {isOverviewLoading && (
                 <div className="flex justify-center py-8">
