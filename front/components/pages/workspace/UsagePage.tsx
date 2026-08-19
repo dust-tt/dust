@@ -1154,17 +1154,7 @@ export function UsagePage() {
           <Page.Vertical gap="none" align="stretch">
             <h2 className="heading-sm text-foreground">Credit Pool</h2>
             <div className="flex flex-col gap-2 pt-4">
-              {isOverviewError ? (
-                <ContentMessage
-                  title="Failed to load Workspace Credit Pool"
-                  icon={AlertCircle}
-                  variant="warning"
-                >
-                  An error occurred while loading your Workspace Credit Pool
-                  data. Please refresh the page or contact support if the issue
-                  persists.
-                </ContentMessage>
-              ) : isOverviewLoading ? (
+              {isOverviewLoading ? (
                 <div
                   aria-label="Loading Credit Pool"
                   className="flex flex-col gap-2"
@@ -1183,6 +1173,16 @@ export function UsagePage() {
                     <LoadingBlock className="h-4 w-20" />
                   </div>
                 </div>
+              ) : isOverviewError ? (
+                <ContentMessage
+                  title="Failed to load Workspace Credit Pool"
+                  icon={AlertCircle}
+                  variant="warning"
+                >
+                  An error occurred while loading your Workspace Credit Pool
+                  data. Please refresh the page or contact support if the issue
+                  persists.
+                </ContentMessage>
               ) : consumptionOverview !== null &&
                 (creditUsage !== null || hasPool) ? (
                 <>
