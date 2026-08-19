@@ -24,7 +24,13 @@ import { ModelTiersSettingsCard } from "@app/components/workspace/usage/ModelTie
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
+import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import { useMembersSelection } from "@app/hooks/useMembersSelection";
+import {
+  cycleElapsedPercent,
+  DEFAULT_CONSUMPTION_PERIOD,
+  formatConsumptionDate,
+} from "@app/lib/analytics/consumption_period";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import {
@@ -102,12 +108,15 @@ import {
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
+  Chip,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Icon,
+  LinkExternal01,
+  LoadingBlock,
   Page,
   SearchInput,
   Spinner,
@@ -151,6 +160,61 @@ function memberFromUpgradeRequest(
     creditState: "capped",
     nearLimit: false,
   };
+}
+
+interface CreditPoolProgressBarProps {
+  projectedPercentage: number;
+  target: "on_target" | "off_target" | null;
+  usedPercentage: number;
+}
+
+function CreditPoolProgressBar({
+  projectedPercentage,
+  target,
+  usedPercentage,
+}: CreditPoolProgressBarProps) {
+  const clampedUsedPercentage = Math.min(Math.max(usedPercentage, 0), 100);
+  const clampedProjectedPercentage = Math.min(
+    Math.max(projectedPercentage, clampedUsedPercentage),
+    100
+  );
+  const projectedRemainderPercentage =
+    clampedProjectedPercentage - clampedUsedPercentage;
+  const unusedPercentage = 100 - clampedProjectedPercentage;
+
+  return (
+    <div
+      className="flex h-2 w-full gap-0.5 bg-background"
+      role="progressbar"
+      aria-label="Workspace credit usage"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={clampedUsedPercentage}
+    >
+      {clampedUsedPercentage > 0 && (
+        <div
+          className={`h-full rounded-xs ${
+            target === "off_target" ? "bg-warning-500" : "bg-highlight-500"
+          }`}
+          style={{ flexBasis: 0, flexGrow: clampedUsedPercentage }}
+        />
+      )}
+      {projectedRemainderPercentage > 0 && (
+        <div
+          className={`h-full rounded-xs ${
+            target === "off_target" ? "bg-warning-100" : "bg-highlight-100"
+          }`}
+          style={{ flexBasis: 0, flexGrow: projectedRemainderPercentage }}
+        />
+      )}
+      {unusedPercentage > 0 && (
+        <div
+          className="h-full rounded-xs bg-gray-50"
+          style={{ flexBasis: 0, flexGrow: unusedPercentage }}
+        />
+      )}
+    </div>
+  );
 }
 
 const DEFAULT_PAGE_SIZE = 25;
@@ -412,6 +476,19 @@ export function UsagePage() {
     mutateAwuPoolSummary,
   } = useAwuPoolSummary({
     workspaceId: owner.sId,
+  });
+
+  const isAnalyticsConsumptionEnabled =
+    isWorkspaceAdmin && hasFeature("enable_analytics_consumption");
+
+  const {
+    overview: consumptionOverview,
+    isOverviewLoading,
+    isOverviewError,
+  } = useConsumptionOverview({
+    workspaceId: owner.sId,
+    period: DEFAULT_CONSUMPTION_PERIOD,
+    disabled: !canViewUsage || !isAnalyticsConsumptionEnabled,
   });
 
   const { awuPurchaseInfo, isAwuPurchaseInfoLoading, isAwuPurchaseInfoError } =
@@ -801,20 +878,59 @@ export function UsagePage() {
     [plan, subscription.paymentFailingSince, hasAvailableSeats]
   );
 
-  const totalConsumedCredits = Math.max(
+  const poolConsumedCredits = Math.max(
     0,
     totalActiveCredits - totalRemainingCredits
   );
-  const initialTotalCredits = totalActiveCredits;
+
+  const creditUsage = consumptionOverview?.creditUsage ?? null;
+  const creditUsageDisplayTarget =
+    creditUsage &&
+    (creditUsage.status.target === "on_target" ? "on_target" : "off_target");
+
+  const totalConsumedCredits =
+    consumptionOverview?.totalCredits ??
+    (isReadOnly ? periodSpendCredits : poolConsumedCredits);
+
+  const initialTotalCredits = creditUsage?.capCredits ?? totalActiveCredits;
   const hasPool = totalActiveCredits > 0;
+
+  const usedPercentage =
+    creditUsage?.status.usedPercentage ??
+    (initialTotalCredits > 0
+      ? Math.round(
+          Math.min(totalConsumedCredits / initialTotalCredits, 1) * 100
+        )
+      : 0);
+
+  const cycleElapsedPercentage = consumptionOverview
+    ? cycleElapsedPercent(consumptionOverview.period)
+    : 0;
+  const projectedPercentage =
+    cycleElapsedPercentage > 0
+      ? Math.min((usedPercentage / cycleElapsedPercentage) * 100, 100)
+      : usedPercentage;
+
+  const resetAt =
+    creditUsage?.status.resetAt ??
+    creditsResetAt ??
+    consumptionOverview?.period.endDate ??
+    null;
 
   if (!canViewUsage) {
     return null;
   }
 
-  const showPoolSection =
-    !isAwuPoolSummaryLoading &&
-    (!!isAwuPoolSummaryError || hasPool || isReadOnly);
+  const topUpButton = isWorkspaceAdmin ? (
+    <Button
+      label="Top up"
+      icon={ArrowUp}
+      size="sm"
+      variant="outline"
+      disabled={isReadOnly || !usageSettings.topUpEnabled}
+      onClick={() => setShowBuyCreditDialog(true)}
+    />
+  ) : null;
 
   const searchAndInviteRow = (
     <div className="flex flex-row gap-2">
@@ -983,19 +1099,43 @@ export function UsagePage() {
         currentTotalPoolCredits={totalActiveCredits}
       />
 
-      <div className="flex flex-col items-stretch gap-10 pb-20">
-        <div className="flex items-center justify-between">
-          <Page.Header title="Usage" />
-          {!isReadOnly && usageSettings.topUpEnabled && isWorkspaceAdmin && (
-            <Button
-              label="Top up"
-              icon={ArrowUp}
-              size="sm"
-              variant="outline"
-              onClick={() => setShowBuyCreditDialog(true)}
-            />
-          )}
-        </div>
+      <div
+        className={
+          isAnalyticsConsumptionEnabled
+            ? "flex flex-col items-stretch gap-8 pb-20"
+            : "flex flex-col items-stretch gap-10 pb-20"
+        }
+      >
+        {isAnalyticsConsumptionEnabled ? (
+          <Page.Header
+            title={
+              <div className="flex w-full items-center justify-between gap-4">
+                <Page.H variant="h3">Usage</Page.H>
+                <Button
+                  label="Breakdown in analytics"
+                  iconRight={LinkExternal01}
+                  size="xs"
+                  variant="highlight-ghost"
+                  href={`/w/${owner.sId}/analytics/consumption`}
+                />
+              </div>
+            }
+            description="Control credit consumption across your workspace."
+          />
+        ) : (
+          <div className="flex items-center justify-between">
+            <Page.Header title="Usage" />
+            {!isReadOnly && usageSettings.topUpEnabled && isWorkspaceAdmin && (
+              <Button
+                label="Top up"
+                icon={ArrowUp}
+                size="sm"
+                variant="outline"
+                onClick={() => setShowBuyCreditDialog(true)}
+              />
+            )}
+          </div>
+        )}
 
         {!isReadOnly && isCreditPricedFreePlan(subscription.plan.code) && (
           <FreePlanUpgradeSection
@@ -1010,11 +1150,121 @@ export function UsagePage() {
           />
         )}
 
-        {showPoolSection && (
+        {isAnalyticsConsumptionEnabled ? (
+          <Page.Vertical gap="none" align="stretch">
+            <h2 className="heading-sm text-foreground">Credit Pool</h2>
+            <div className="flex flex-col gap-2 pt-4">
+              {isOverviewLoading ? (
+                <div
+                  aria-label="Loading Credit Pool"
+                  className="flex flex-col gap-2"
+                  role="status"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-1">
+                      <LoadingBlock className="h-7.5 w-32" />
+                      <LoadingBlock className="h-4 w-36" />
+                    </div>
+                    <LoadingBlock className="h-5 w-16 rounded-full" />
+                  </div>
+                  <LoadingBlock className="h-2 w-full rounded-xs" />
+                  <div className="flex items-center justify-between gap-4">
+                    <LoadingBlock className="h-5 w-12" />
+                    <LoadingBlock className="h-5 w-20" />
+                  </div>
+                </div>
+              ) : isOverviewError ? (
+                <ContentMessage
+                  title="Failed to load Workspace Credit Pool"
+                  icon={AlertCircle}
+                  variant="warning"
+                >
+                  An error occurred while loading your Workspace Credit Pool
+                  data. Please refresh the page or contact support if the issue
+                  persists.
+                </ContentMessage>
+              ) : consumptionOverview !== null &&
+                (creditUsage !== null || hasPool) ? (
+                <>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-baseline gap-1">
+                      <span className="heading-2xl text-foreground">
+                        {formatCredits(totalConsumedCredits)}
+                      </span>
+                      <span className="copy-sm text-muted-foreground">
+                        /{formatCredits(initialTotalCredits)} credits
+                      </span>
+                    </div>
+                    {creditUsage && (
+                      <Chip
+                        size="mini"
+                        color={
+                          creditUsageDisplayTarget === "on_target"
+                            ? "highlight"
+                            : "warning"
+                        }
+                        label={
+                          creditUsageDisplayTarget === "on_target"
+                            ? "On target"
+                            : "Off target"
+                        }
+                      />
+                    )}
+                  </div>
+                  <CreditPoolProgressBar
+                    projectedPercentage={projectedPercentage}
+                    target={creditUsageDisplayTarget}
+                    usedPercentage={usedPercentage}
+                  />
+                  <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
+                    <span>{usedPercentage}% used</span>
+                    {resetAt && (
+                      <span>Resets {formatConsumptionDate(resetAt)}</span>
+                    )}
+                  </div>
+                </>
+              ) : null}
+              <div className="mt-2 flex flex-col justify-between gap-4 border-t border-border pt-4 sm:flex-row sm:items-center">
+                <div className="flex min-w-0 flex-1 flex-col gap-1 text-sm text-foreground">
+                  {!isOverviewError &&
+                    consumptionOverview !== null &&
+                    (creditUsage !== null || hasPool) && (
+                      <>
+                        {creditUsageDisplayTarget === "on_target" ? (
+                          <span>
+                            At your current rate, you have enough credits to
+                            finish the cycle.
+                          </span>
+                        ) : resetAt ? (
+                          <span>
+                            At this rate, you&apos;re expected to consume your
+                            full credits by{" "}
+                            <span className="font-semibold">
+                              {formatConsumptionDate(resetAt)}
+                            </span>
+                            .
+                          </span>
+                        ) : null}
+                        {overageCredits !== null && overageCredits > 0 && (
+                          <span className="text-muted-foreground">
+                            {formatCredits(overageCredits)} overage credits
+                          </span>
+                        )}
+                      </>
+                    )}
+                </div>
+                {topUpButton}
+              </div>
+            </div>
+          </Page.Vertical>
+        ) : null}
+
+        {!isAnalyticsConsumptionEnabled &&
+        (isAwuPoolSummaryLoading || !!isAwuPoolSummaryError || hasPool) ? (
           <Page.Vertical gap="xs" align="stretch">
             <Page.H variant="h4">Workspace credit pool</Page.H>
 
-            {isAwuPoolSummaryError && (
+            {isAwuPoolSummaryError ? (
               <ContentMessage
                 title="Failed to load Workspace Credits Pool"
                 icon={AlertCircle}
@@ -1024,15 +1274,11 @@ export function UsagePage() {
                 data. Please refresh the page or contact support if the issue
                 persists.
               </ContentMessage>
-            )}
-
-            {isAwuPoolSummaryLoading && (
+            ) : isAwuPoolSummaryLoading ? (
               <div className="flex justify-center py-8">
                 <Spinner />
               </div>
-            )}
-
-            {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
+            ) : (
               <>
                 <div className="flex items-baseline gap-1">
                   <span className="heading-mono-4xl text-foreground">
@@ -1076,7 +1322,7 @@ export function UsagePage() {
               </>
             )}
           </Page.Vertical>
-        )}
+        ) : null}
 
         <Tabs defaultValue="members">
           <TabsList className="mb-4">

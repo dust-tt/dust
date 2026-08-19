@@ -1,3 +1,4 @@
+import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_SCOPE_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 
@@ -30,6 +31,17 @@ export function formatConsumptionDate(date: string | number): string {
     day: "numeric",
     timeZone: "UTC",
   });
+}
+
+// The counterpart the used share of the cap is read against.
+export function cycleElapsedPercent({
+  startDate,
+  endDate,
+}: ConsumptionPeriod): number {
+  const startMs = new Date(startDate).getTime();
+  const endMs = new Date(endDate).getTime();
+  const elapsedRatio = (Date.now() - startMs) / (endMs - startMs);
+  return Math.round(Math.min(Math.max(elapsedRatio, 0), 1) * 100);
 }
 
 // The endpoints bucket the whole period, so the tail of a series is the part of
