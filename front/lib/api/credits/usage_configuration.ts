@@ -185,18 +185,18 @@ async function readWorkspaceSpendLimitCountWithLazySeed(
     return countResult.value;
   }
 
-  const consumed = Math.max(
-    0,
-    Math.round(await getEsConsumedWorkspaceAwuCredits(auth, {}))
-  );
-  if (consumed > 0) {
-    await setFixedWindowCount({
-      key: redisKey,
-      bounds,
-      value: consumed,
-      logger,
-    });
+  const consumed = await getEsConsumedWorkspaceAwuCredits(auth, {});
+  // `null` means the ES read failed (or no cycle) — treat as unknown and skip
+  // the seed rather than writing 0 (fail-open read).
+  if (consumed === null || consumed <= 0) {
+    return 0;
   }
+  await setFixedWindowCount({
+    key: redisKey,
+    bounds,
+    value: consumed,
+    logger,
+  });
   return consumed;
 }
 

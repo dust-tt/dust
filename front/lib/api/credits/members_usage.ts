@@ -579,18 +579,20 @@ export async function getEsConsumedProgrammaticAwuCredits(
  * programmatic). Free-seat usage is excluded (`must_not is_free_seat`): it draws
  * from the free-seat credit type, a separate Metronome credit type the PAYG
  * usage cap (`usageCapCredits`) does not measure. Used to lazily seed / resync
- * the workspace usage-cap counter. Returns 0 on no usage or an analytics read
- * failure.
+ * the workspace usage-cap counter. Returns the consumption, or `null` when it
+ * can't be determined (no billing cycle, or the analytics read failed) —
+ * callers must treat `null` as "unknown", never as 0, so a transient ES outage
+ * doesn't erase a live counter on resync.
  */
 export async function getEsConsumedWorkspaceAwuCredits(
   auth: Authenticator,
   { cycle }: { cycle?: BillingCycle }
-): Promise<number> {
+): Promise<number | null> {
   const workspace = auth.getNonNullableWorkspace();
 
   const resolvedCycle = cycle ?? (await resolveMetronomeCycle(workspace));
   if (!resolvedCycle) {
-    return 0;
+    return null;
   }
   const { cycleStart, cycleEnd } = resolvedCycle;
 
@@ -627,7 +629,7 @@ export async function getEsConsumedWorkspaceAwuCredits(
       { err: result.error, workspaceId: workspace.sId },
       "[MembersUsage] Failed to read workspace consumed credits from analytics index"
     );
-    return 0;
+    return null;
   }
 
   return Math.max(
@@ -1293,6 +1295,15 @@ export async function resyncWorkspaceSpendLimitCounterFromEsUsage(
   );
 
   const consumed = await getEsConsumedWorkspaceAwuCredits(auth, { cycle });
+  if (consumed === null) {
+    // The Elasticsearch read failed: skip the SET so a transient outage can't
+    // overwrite a valid live counter with 0 and disable the backup cap.
+    return new Err(
+      new Error(
+        "Failed to read workspace pool consumption from Elasticsearch; skipped resync to avoid erasing the counter."
+      )
+    );
+  }
   const setResult = await setFixedWindowCount({
     key: makeUsageCapSpendLimitAwuCreditsRateLimitKeyForWorkspace(workspace),
     bounds,
