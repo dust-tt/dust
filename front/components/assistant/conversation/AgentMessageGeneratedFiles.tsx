@@ -124,6 +124,7 @@ export function AgentMessageInteractiveContentGeneratedFiles({
   return (
     <div className="flex flex-col text-sm">
       <button
+        type="button"
         className="self-start text-muted-foreground hover:text-foreground transition-colors duration-200 flex gap-1 items-center"
         onClick={() => setIsCollapsed((c) => !c)}
       >
