@@ -172,40 +172,45 @@ function CreditPoolProgressBar({
   target,
   usedPercentage,
 }: CreditPoolProgressBarProps) {
-  const projectedRemainderPercentage = Math.max(
-    projectedPercentage - usedPercentage,
-    0
+  const clampedUsedPercentage = Math.min(Math.max(usedPercentage, 0), 100);
+  const clampedProjectedPercentage = Math.min(
+    Math.max(projectedPercentage, clampedUsedPercentage),
+    100
   );
+  const projectedRemainderPercentage =
+    clampedProjectedPercentage - clampedUsedPercentage;
+  const unusedPercentage = 100 - clampedProjectedPercentage;
 
   return (
     <div
-      className="relative h-2 w-full overflow-hidden rounded-sm bg-muted-foreground/15"
+      className="flex h-2 w-full gap-0.5 bg-background"
       role="progressbar"
       aria-label="Workspace credit usage"
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-valuenow={usedPercentage}
+      aria-valuenow={clampedUsedPercentage}
     >
-      <div
-        className={`absolute inset-y-0 left-0 ${
-          target === "off_target" ? "bg-warning-500" : "bg-highlight-500"
-        }`}
-        style={{ width: `${usedPercentage}%` }}
-      />
+      {clampedUsedPercentage > 0 && (
+        <div
+          className={`h-full rounded-sm ${
+            target === "off_target" ? "bg-warning-500" : "bg-highlight-500"
+          }`}
+          style={{ flexBasis: 0, flexGrow: clampedUsedPercentage }}
+        />
+      )}
       {projectedRemainderPercentage > 0 && (
         <div
-          className="absolute inset-y-0 overflow-hidden"
-          style={{
-            left: `${usedPercentage}%`,
-            width: `${projectedRemainderPercentage}%`,
-          }}
-        >
-          <div
-            className={`h-full w-full translate-x-0.5 ${
-              target === "off_target" ? "bg-warning-100" : "bg-highlight-100"
-            }`}
-          />
-        </div>
+          className={`h-full rounded-sm ${
+            target === "off_target" ? "bg-warning-100" : "bg-highlight-100"
+          }`}
+          style={{ flexBasis: 0, flexGrow: projectedRemainderPercentage }}
+        />
+      )}
+      {unusedPercentage > 0 && (
+        <div
+          className="h-full rounded-sm bg-muted-foreground/15"
+          style={{ flexBasis: 0, flexGrow: unusedPercentage }}
+        />
       )}
     </div>
   );
