@@ -1,8 +1,11 @@
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import type { MessageStreamEvent } from "@app/lib/api/assistant/pubsub";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { honoApp } from "@front-api/app";
 import {
@@ -110,5 +113,72 @@ describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/even
     expect(response.status).toBe(200);
     const payloads = parseSseDataPayloads(await response.text());
     expect(payloads.map((p) => JSON.parse(p).data.text)).toEqual(["hello"]);
+  });
+
+  it("redacts user_memory tool output for a non-owner participant", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest();
+
+    const owner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, owner, { role: "user" });
+    const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      owner.sId,
+      workspace.sId
+    );
+
+    const conversation = await ConversationFactory.create(ownerAuth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+    const agentMessageSId = await getMessageSIdByRank(
+      auth,
+      conversation.sId,
+      1
+    );
+
+    const MEMORY_TEXT = "SECRET: user lives in Paris";
+    const action = {
+      id: 1,
+      sId: "act_1",
+      createdAt: 0,
+      updatedAt: 0,
+      agentMessageId: 1,
+      internalMCPServerName: "user_memory",
+      toolName: "read",
+      mcpServerId: "srv",
+      functionCallName: "read",
+      functionCallId: "call_1",
+      params: {},
+      citationsAllocated: 0,
+      status: "succeeded",
+      step: 0,
+      executionDurationMs: null,
+      displayLabels: null,
+      generatedFiles: [],
+      output: [{ type: "text", text: MEMORY_TEXT }],
+      citations: null,
+    } satisfies AgentMCPActionWithOutputType;
+
+    const event: MessageStreamEvent = {
+      eventId: "evt",
+      data: {
+        type: "agent_action_success",
+        created: 0,
+        configurationId: "dust",
+        messageId: "msg",
+        action,
+        step: 0,
+      },
+    };
+    vi.mocked(getMessagesEvents).mockImplementation(asyncIteratorFrom([event]));
+
+    const response = await getMessageEvents(
+      workspace.sId,
+      conversation.sId,
+      agentMessageSId
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    expect(body).not.toContain(MEMORY_TEXT);
   });
 });
