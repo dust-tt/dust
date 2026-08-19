@@ -1825,7 +1825,15 @@ describe("SpaceResource", () => {
         { members: [regularGroup, globalGroup] }
       );
 
-      const spaces = await SpaceResource.listWorkspaceSpacesAsMember(userAuth);
+      // Membership reads from the caller's grants, resolved once at auth construction, so rebuild
+      // the auth after the space (and its grants) exist — same as space authorization (`canRead`).
+      const refreshedUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        userAuth.getNonNullableUser().sId,
+        workspace.sId
+      );
+
+      const spaces =
+        await SpaceResource.listWorkspaceSpacesAsMember(refreshedUserAuth);
       expect(spaces.some((s) => s.id === openSpace.id)).toBe(true);
     });
 
