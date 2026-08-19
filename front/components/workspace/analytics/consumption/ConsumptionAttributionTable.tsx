@@ -78,7 +78,10 @@ const DEFAULT_ATTRIBUTION_SORTING: SortingState = [
   { id: "credits", desc: true },
 ];
 
-const ATTRIBUTION_SERVER_SORTABLE_COLUMN_ID = "credits";
+const ATTRIBUTION_SERVER_SORTABLE_COLUMN_IDS = new Set([
+  "credits",
+  "costShare",
+]);
 
 type AttributionTransitionDirection = -1 | 0 | 1;
 
@@ -291,6 +294,10 @@ function buildColumns({
     },
     {
       id: "costShare",
+      // Same denominator (totalCredits) for every row, so ranking by cost
+      // share is the same order as ranking by credits — reuse that accessor
+      // instead of introducing a separate ranking.
+      accessorFn: (row) => (totalCredits > 0 ? row.credits / totalCredits : 0),
       header: "Consumption share",
       meta: { sizeRatio: 20, headerAlign: "left" },
       cell: (info) => (
@@ -444,11 +451,14 @@ function AttributionRows({
   };
 
   const activeSort = sorting[0];
-  // Ranking is always by credits: only forward asc/desc when that's actually
-  // the sorted column, so sorting by anything else keeps fetching pages in
-  // the default credits-desc order and reorders them locally instead.
+  // Ranking is always by credits: only forward asc/desc when the sorted
+  // column actually rides that ranking, so sorting by anything else keeps
+  // fetching pages in the default credits-desc order and reorders them
+  // locally instead.
   const sortOrder =
-    activeSort?.id === ATTRIBUTION_SERVER_SORTABLE_COLUMN_ID && !activeSort.desc
+    activeSort?.id &&
+    ATTRIBUTION_SERVER_SORTABLE_COLUMN_IDS.has(activeSort.id) &&
+    !activeSort.desc
       ? "asc"
       : "desc";
 
