@@ -360,6 +360,7 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
       period: { startDate: expect.any(String), endDate: expect.any(String) },
       search: undefined,
       filter: undefined,
+      sortOrder: "desc",
     });
   });
 
