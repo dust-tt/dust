@@ -1273,7 +1273,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   public async updateOAuthUseCase(
     auth: Authenticator,
-    oAuthUseCase: MCPOAuthUseCase
+    oAuthUseCase: MCPOAuthUseCase,
+    // Set on activation with the scope the admin just authorized. Personal connections read their
+    // scope from the view, so this is what bounds members to the admin's consent.
+    oauthScope?: string
   ): Promise<Result<number, DustError<"unauthorized">>> {
     if (!this.canAdministrate(auth)) {
       return new Err(
@@ -1283,9 +1286,23 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
     const [affectedCount] = await this.update({
       oAuthUseCase,
+      ...(oauthScope !== undefined ? { oauthScope } : {}),
       editedAt: new Date(),
       editedByUserId: auth.getNonNullableUser().id,
     });
+    return new Ok(affectedCount);
+  }
+
+  public async clearOAuthScope(
+    auth: Authenticator
+  ): Promise<Result<number, DustError<"unauthorized">>> {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError("unauthorized", "Not allowed to clear OAuth scope.")
+      );
+    }
+
+    const [affectedCount] = await this.update({ oauthScope: null });
     return new Ok(affectedCount);
   }
 
