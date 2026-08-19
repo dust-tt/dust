@@ -7,6 +7,7 @@ import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/action
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
@@ -15,7 +16,6 @@ import {
   AGENT_LOOP_SUBAGENT_HARD_CAP,
   checkCostAndSubagentsThresholds,
 } from "@app/temporal/agent_loop/activities/cost_threshold_warnings";
-import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import {
   MODEL_ACTIVITY_HEARTBEAT_INTERVAL_MS,
   RUN_MODEL_ACTIVITY_TIMEOUT_SAFETY_MARGIN_MS,
