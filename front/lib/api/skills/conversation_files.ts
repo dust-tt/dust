@@ -3,7 +3,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type { Readable } from "stream";
 
 // A skill file ready to be written into a conversation, regardless of whether it
@@ -73,10 +73,15 @@ export async function loadSkillFilesToConversation(
     throw new Error("Conversation mount not found.");
   }
 
+  const expectedPaths = files.map(
+    (file) =>
+      `${conversationMount.scopedPrefix}/skills/${skill.name}/${file.fileName}`
+  );
+
   const loadedPaths: string[] = [];
 
-  for (const file of files) {
-    const scopedPath = `${conversationMount.scopedPrefix}/skills/${skill.name}/${file.fileName}`;
+  for (const [index, file] of files.entries()) {
+    const scopedPath = expectedPaths[index];
 
     const writeResult = await fileSystem.write(
       scopedPath,
@@ -84,7 +89,12 @@ export async function loadSkillFilesToConversation(
       file.contentType
     );
     if (writeResult.isErr()) {
-      return writeResult;
+      const missingPaths = expectedPaths.slice(index);
+      return new Err(
+        new Error(
+          `Failed to write skill file(s): ${missingPaths.join(", ")} (${writeResult.error.message})`
+        )
+      );
     }
 
     loadedPaths.push(scopedPath);
