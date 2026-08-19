@@ -19,8 +19,8 @@ jobs:
     name: Test Shard ${{ matrix.shardIndex }} of ${{ matrix.shardTotal }}
     strategy:
       matrix:
-        shardIndex: [ 1, 2, 3 ]
-        shardTotal: [ 3 ]
+        shardIndex: [ 1, 2, 3, 4, 5, 6 ]
+        shardTotal: [ 6 ]
     runs-on: ubuntu-latest
     services:
       redis:
