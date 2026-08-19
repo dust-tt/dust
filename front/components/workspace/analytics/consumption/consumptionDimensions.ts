@@ -23,8 +23,8 @@ interface ConsumptionDimensionConfig {
   avgLabel: string;
 }
 
-const MESSAGE_AVG_LABEL = "Cost / message";
-const INVOCATION_AVG_LABEL = "Cost / invocation";
+const MESSAGE_AVG_LABEL = "Consumption / message";
+const INVOCATION_AVG_LABEL = "Consumption / invocation";
 
 export const CONSUMPTION_DIMENSION_CONFIG: Record<
   ConsumptionDimension,

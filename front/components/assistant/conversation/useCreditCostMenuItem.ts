@@ -31,7 +31,7 @@ export function useCreditCostMenuItem({
       : "");
 
   return {
-    label: "Credit cost",
+    label: "Message consumption",
     endComponent: formatCredits(totalCredits),
     tooltip,
     className: CREDIT_COST_ITEM_CLASS_NAME,
