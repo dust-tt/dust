@@ -3,6 +3,7 @@ import type {
   BatchStatus,
 } from "@app/lib/model_constructors/batch/endpoint";
 import { BatchEndpoint } from "@app/lib/model_constructors/batch/endpoint";
+import { openAIReasoningSummaryForModel } from "@app/lib/model_constructors/providers/openai/reasoning_summary";
 import { WithOpenAIResponsesInputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/input";
 import { WithOpenAIResponsesOutputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/output";
 import { responseToEvents } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
@@ -10,6 +11,7 @@ import type { Credentials } from "@app/lib/model_constructors/types/credentials"
 import { OPENAI_RESPONSES_HOST } from "@app/lib/model_constructors/types/hosts";
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
 import { OPENAI_LAB } from "@app/lib/model_constructors/types/labs";
+import type { Model } from "@app/lib/model_constructors/types/models";
 import type { NonDeltaResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -66,6 +68,10 @@ export abstract class OpenAIResponsesBatch extends WithOpenAIResponsesInputConve
   constructor({ OPENAI_API_KEY }: Credentials) {
     super();
     this.apiKey = OPENAI_API_KEY;
+  }
+
+  protected override reasoningSummaryForModel(model: Model) {
+    return openAIReasoningSummaryForModel(model);
   }
 
   // Lazy: `baseUrl` is an abstract field, only set after subclass initializers run.
