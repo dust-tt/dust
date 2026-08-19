@@ -21,7 +21,10 @@ import {
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type {
+  ConsumptionScopeFilter,
+  ConsumptionTopSortBy,
+} from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import { formatCredits } from "@app/lib/client/credits";
 import { getSkillAvatarIcon } from "@app/lib/skill";
@@ -78,10 +81,13 @@ const DEFAULT_ATTRIBUTION_SORTING: SortingState = [
   { id: "credits", desc: true },
 ];
 
-const ATTRIBUTION_SERVER_SORTABLE_COLUMN_IDS = new Set([
-  "credits",
-  "costShare",
-]);
+const ATTRIBUTION_SERVER_SORT_BY_COLUMN_ID: Partial<
+  Record<string, ConsumptionTopSortBy>
+> = {
+  credits: "credits",
+  costShare: "credits",
+  avgCredits: "avgCredits",
+};
 
 type AttributionTransitionDirection = -1 | 0 | 1;
 
@@ -454,16 +460,15 @@ function AttributionRows({
   };
 
   const activeSort = sorting[0];
-  // Ranking is always by credits: only forward asc/desc when the sorted
-  // column actually rides that ranking, so sorting by anything else keeps
-  // fetching pages in the default credits-desc order and reorders them
-  // locally instead.
-  const sortOrder =
-    activeSort?.id &&
-    ATTRIBUTION_SERVER_SORTABLE_COLUMN_IDS.has(activeSort.id) &&
-    !activeSort.desc
-      ? "asc"
-      : "desc";
+  // Only forward the sort to the server when the sorted column actually
+  // rides a server-side ranking; sorting by anything else keeps fetching
+  // pages in the default credits-desc order and reorders them locally
+  // instead.
+  const serverSortBy: ConsumptionTopSortBy | undefined = activeSort?.id
+    ? ATTRIBUTION_SERVER_SORT_BY_COLUMN_ID[activeSort.id]
+    : undefined;
+  const sortBy = serverSortBy ?? "credits";
+  const sortOrder = serverSortBy && !activeSort.desc ? "asc" : "desc";
 
   const {
     rows,
@@ -480,6 +485,7 @@ function AttributionRows({
     offset: pagination.pageIndex * pagination.pageSize,
     search,
     filter,
+    sortBy,
     sortOrder,
   });
   const cappedRowCount = Math.min(totalCount, ATTRIBUTION_MAX_ROW_COUNT);

@@ -95,6 +95,27 @@ export const CONSUMPTION_TOP_SORT_ORDER = ["asc", "desc"] as const;
 export type ConsumptionTopSortOrder =
   (typeof CONSUMPTION_TOP_SORT_ORDER)[number];
 
+// A terms aggregation cannot order its buckets by a pipeline aggregation
+// (confirmed against a live cluster: "is a pipeline aggregation and cannot
+// be used to sort the buckets"), so a ratio like avg credits per unit can't be
+// ranked with a bucket_script the way gross credits is. Two metrics avoid
+// that:
+// - "credits" orders by the sum(credit_micro) metric directly. Cost share is
+//   credits divided by the same totalCredits for every row, so it rides this
+//   same ranking (see ATTRIBUTION_SERVER_SORTABLE_COLUMN_IDS in
+//   ConsumptionAttributionTable.tsx).
+// - "avgCredits" orders by average credits per unit. For "invocation"
+//   dimensions (tool, skill) that unit is the document itself, so a plain
+//   avg(credit_micro) metric already equals credits-per-invocation. For
+//   "message" dimensions it isn't: several documents (one per LLM run, one
+//   per tool action) can share a message, so the average needs a
+//   scripted_metric to divide the summed credits by the count of *distinct*
+//   message ids in the bucket — the "real complexity" previously left for a
+//   follow-up. See AVG_CREDIT_PER_MESSAGE_AGG in top.ts.
+export const CONSUMPTION_TOP_SORT_BY = ["credits", "avgCredits"] as const;
+
+export type ConsumptionTopSortBy = (typeof CONSUMPTION_TOP_SORT_BY)[number];
+
 export const CONSUMPTION_METRICS = ["credit_micro"] as const;
 
 export type ConsumptionMetric = (typeof CONSUMPTION_METRICS)[number];

@@ -5,6 +5,7 @@ import { previousConsumptionPeriod } from "@app/lib/api/analytics/consumption/pe
 import type {
   ConsumptionScopeDimension,
   ConsumptionScopeFilter,
+  ConsumptionTopSortBy,
   ConsumptionTopSortOrder,
   ConsumptionTopUnit,
 } from "@app/lib/api/analytics/consumption/scope";
@@ -57,24 +58,80 @@ export type ConsumptionTopGroups = {
 const CREDIT_AGG = "credit_micro";
 const MESSAGES_AGG = "messages";
 const TOTAL_COUNT_AGG = "total_count";
+// Ranks "invocation" dimensions by avg credits: one document is one
+// invocation there, so a plain avg metric already equals credits per unit.
+const AVG_CREDIT_PER_INVOCATION_AGG = "avg_credit_per_invocation";
+// Ranks "message" dimensions by avg credits. Several documents (one per LLM
+// run, one per tool action) can share a message, so a plain avg(credit_micro)
+// would average per-document slices instead of per-message totals. A
+// scripted_metric divides the bucket's summed credits by its count of
+// *distinct* message ids instead, giving a genuine single-value metric a
+// terms aggregation can order by (a bucket_script, the alternative, is a
+// pipeline aggregation and terms cannot order by those).
+const AVG_CREDIT_PER_MESSAGE_AGG = "avg_credit_per_message";
 const RANKING_TERMS_PAGE_SIZE = 1_000;
 const MAX_ES_QUERY_CLAUSES = 1_024;
 const MAX_ES_TERMS_QUERY_VALUES = 65_536;
+
+const AVG_CREDIT_PER_MESSAGE_SCRIPT: estypes.AggregationsScriptedMetricAggregation =
+  {
+    init_script: "state.creditMicro = 0L; state.messageIds = new HashSet();",
+    map_script:
+      "state.creditMicro += doc['credit_micro'].value; " +
+      "state.messageIds.add(doc['agent_message_id'].value);",
+    combine_script: "return [state.creditMicro, state.messageIds];",
+    reduce_script:
+      "long creditMicro = 0L; Set messageIds = new HashSet(); " +
+      "for (s in states) { creditMicro += s[0]; messageIds.addAll(s[1]); } " +
+      "return messageIds.isEmpty() ? 0.0 : (double) creditMicro / messageIds.size();",
+  };
 
 type GroupBucket = {
   key: string;
   doc_count: number;
   [CREDIT_AGG]?: estypes.AggregationsSumAggregate;
   [MESSAGES_AGG]?: estypes.AggregationsCardinalityAggregate;
+  [AVG_CREDIT_PER_INVOCATION_AGG]?: estypes.AggregationsAvgAggregate;
+  [AVG_CREDIT_PER_MESSAGE_AGG]?: estypes.AggregationsScriptedMetricAggregate;
 };
 
-function subAggs(unit: ConsumptionTopUnit) {
+// The avg-credit-per-unit sub-aggregation is only worth computing when the
+// ranking actually orders by it — a scripted_metric in particular runs a
+// painless script over every document in every bucket.
+function subAggs(unit: ConsumptionTopUnit, sortBy: ConsumptionTopSortBy) {
   return {
     [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
     ...(unit === "message"
       ? { [MESSAGES_AGG]: { cardinality: { field: AGENT_MESSAGE_ID_FIELD } } }
       : {}),
+    ...(sortBy === "avgCredits"
+      ? unit === "message"
+        ? {
+            [AVG_CREDIT_PER_MESSAGE_AGG]: {
+              scripted_metric: AVG_CREDIT_PER_MESSAGE_SCRIPT,
+            },
+          }
+        : {
+            [AVG_CREDIT_PER_INVOCATION_AGG]: {
+              avg: { field: CREDIT_MICRO_FIELD },
+            },
+          }
+      : {}),
   };
+}
+
+// The sub-aggregation a terms aggregation orders its buckets by for a given
+// ranking metric and unit.
+function orderAggName(
+  sortBy: ConsumptionTopSortBy,
+  unit: ConsumptionTopUnit
+): string {
+  if (sortBy === "credits") {
+    return CREDIT_AGG;
+  }
+  return unit === "message"
+    ? AVG_CREDIT_PER_MESSAGE_AGG
+    : AVG_CREDIT_PER_INVOCATION_AGG;
 }
 
 type RankingAggs = {
@@ -172,12 +229,14 @@ function buildConsumptionTopAggregations({
   bucketCount,
   excludedKeys,
   searchFilter,
+  sortBy,
   sortOrder,
 }: {
   dimension: ConsumptionScopeDimension;
   bucketCount: number;
   excludedKeys: string[];
   searchFilter: estypes.QueryDslQueryContainer | null;
+  sortBy: ConsumptionTopSortBy;
   sortOrder: ConsumptionTopSortOrder;
 }): Record<string, estypes.AggregationsAggregationContainer> {
   const unit = CONSUMPTION_DIMENSION_UNIT[dimension];
@@ -188,10 +247,10 @@ function buildConsumptionTopAggregations({
       terms: {
         field: dimensionField,
         size: bucketCount,
-        order: { [CREDIT_AGG]: sortOrder },
+        order: { [orderAggName(sortBy, unit)]: sortOrder },
         ...(excludedKeys.length > 0 ? { exclude: excludedKeys } : {}),
       },
-      aggs: subAggs(unit),
+      aggs: subAggs(unit, sortBy),
     },
     [TOTAL_COUNT_AGG]: {
       cardinality: {
@@ -296,6 +355,7 @@ export async function fetchConsumptionTopGroups(
     offset = 0,
     search,
     filter,
+    sortBy = "credits",
     sortOrder = "desc",
   }: {
     dimension: ConsumptionScopeDimension;
@@ -304,6 +364,7 @@ export async function fetchConsumptionTopGroups(
     offset?: number;
     search?: string;
     filter?: ConsumptionScopeFilter;
+    sortBy?: ConsumptionTopSortBy;
     sortOrder?: ConsumptionTopSortOrder;
   }
 ): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
@@ -339,6 +400,7 @@ export async function fetchConsumptionTopGroups(
       bucketCount: batchSize,
       excludedKeys: rankedGroups.map((group) => group.key),
       searchFilter,
+      sortBy,
       sortOrder,
     });
     const result = await searchConsumptionAnalytics<never, TopAggs>(query, {

@@ -8,6 +8,7 @@ import {
 import type { ConsumptionTopBody } from "@app/lib/api/analytics/consumption/schema";
 import type {
   ConsumptionScopeFilter,
+  ConsumptionTopSortBy,
   ConsumptionTopSortOrder,
 } from "@app/lib/api/analytics/consumption/scope";
 import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/consumption/top_agents";
@@ -184,6 +185,7 @@ export function useConsumptionTop({
   offset = 0,
   search,
   filter,
+  sortBy = "credits",
   sortOrder = "desc",
   disabled,
 }: {
@@ -194,6 +196,7 @@ export function useConsumptionTop({
   offset?: number;
   search?: string;
   filter?: ConsumptionScopeFilter;
+  sortBy?: ConsumptionTopSortBy;
   sortOrder?: ConsumptionTopSortOrder;
   disabled?: boolean;
 }) {
@@ -206,6 +209,7 @@ export function useConsumptionTop({
     limit,
     offset,
     search: search?.trim(),
+    sortBy,
     sortOrder,
   };
 

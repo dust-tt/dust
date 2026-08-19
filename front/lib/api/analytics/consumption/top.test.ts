@@ -758,4 +758,90 @@ describe("consumption top rankings", () => {
       order: { credit_micro: "asc" },
     });
   });
+
+  it("ranks message-unit dimensions by a scripted avg-per-message metric when sortBy is avgCredits", async () => {
+    const { auth } = await setup();
+    mockLabels({ agent1: "@dust" });
+    mockAggs({
+      buckets: [
+        {
+          key: "agent1",
+          doc_count: 2,
+          credit_micro: { value: 3_000_000 },
+          messages: { value: 2 },
+          avg_credit_per_message: { value: 1.5 },
+        },
+      ],
+      totalMicro: 3_000_000,
+    });
+
+    const result = await fetchConsumptionTopAgents(auth, {
+      period: PERIOD,
+      limit: 10,
+      sortBy: "avgCredits",
+      sortOrder: "asc",
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    const [, options] = rankingSearchCall();
+    expect(options?.aggregations?.by_group?.terms).toMatchObject({
+      order: { avg_credit_per_message: "asc" },
+    });
+    expect(
+      options?.aggregations?.by_group?.aggs?.avg_credit_per_message
+    ).toMatchObject({
+      scripted_metric: expect.objectContaining({
+        map_script: expect.any(String),
+        reduce_script: expect.any(String),
+      }),
+    });
+  });
+
+  it("ranks invocation-unit dimensions by a plain avg metric when sortBy is avgCredits", async () => {
+    const { auth } = await setup();
+    vi.mocked(resolveDimensionLabels).mockResolvedValue(
+      new Map([
+        [
+          "web_search_browse",
+          {
+            name: "Web Search & Browse",
+            pictureUrl: null,
+            description: null,
+            icon: "Globe01Icon",
+          },
+        ],
+      ])
+    );
+    mockAggs({
+      buckets: [
+        {
+          key: "web_search_browse",
+          doc_count: 4,
+          credit_micro: { value: 2_000_000 },
+          avg_credit_per_invocation: { value: 500_000 },
+        },
+      ],
+      totalMicro: 2_000_000,
+    });
+
+    const result = await fetchConsumptionTopTools(auth, {
+      period: PERIOD,
+      limit: 10,
+      sortBy: "avgCredits",
+      sortOrder: "desc",
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    const [, options] = rankingSearchCall();
+    expect(options?.aggregations?.by_group?.terms).toMatchObject({
+      order: { avg_credit_per_invocation: "desc" },
+    });
+    expect(
+      options?.aggregations?.by_group?.aggs?.avg_credit_per_invocation
+    ).toMatchObject({
+      avg: { field: "credit_micro" },
+    });
+  });
 });
