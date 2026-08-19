@@ -1,3 +1,4 @@
+import { AutomationsApiKeysTable } from "@app/components/workspace/analytics/automations/AutomationsApiKeysTable";
 import { AutomationsOverview } from "@app/components/workspace/analytics/automations/AutomationsOverview";
 import { AutomationsTriggersTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersTable";
 import type { AutomationsFilter } from "@app/components/workspace/analytics/automationsFilter";
@@ -5,8 +6,14 @@ import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/c
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
-import { cn, Page } from "@dust-tt/sparkle";
+import { cn, Page, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import { useState } from "react";
+
+type AutomationsView = "triggers" | "api_keys";
+
+function isAutomationsView(value: string): value is AutomationsView {
+  return value === "triggers" || value === "api_keys";
+}
 
 export function AnalyticsAutomationsPage() {
   const owner = useWorkspace();
@@ -16,6 +23,7 @@ export function AnalyticsAutomationsPage() {
     DEFAULT_CONSUMPTION_PERIOD
   );
   const [filter, setFilter] = useState<AutomationsFilter>({});
+  const [view, setView] = useState<AutomationsView>("triggers");
 
   if (!isEnabled) {
     return (
@@ -56,12 +64,31 @@ export function AnalyticsAutomationsPage() {
       />
       <div className="flex flex-col gap-8 pb-8 pt-4">
         <AutomationsOverview workspaceId={owner.sId} period={period} />
-        <AutomationsTriggersTable
-          owner={owner}
-          period={period}
-          filter={filter}
-          onFilterChange={setFilter}
-        />
+        <div className="flex flex-col gap-3">
+          <Tabs
+            value={view}
+            onValueChange={(value) => {
+              if (isAutomationsView(value)) {
+                setView(value);
+              }
+            }}
+          >
+            <TabsList border>
+              <TabsTrigger value="triggers" label="Triggers" />
+              <TabsTrigger value="api_keys" label="API keys" />
+            </TabsList>
+          </Tabs>
+          {view === "triggers" ? (
+            <AutomationsTriggersTable
+              owner={owner}
+              period={period}
+              filter={filter}
+              onFilterChange={setFilter}
+            />
+          ) : (
+            <AutomationsApiKeysTable workspaceId={owner.sId} period={period} />
+          )}
+        </div>
       </div>
     </Page.Vertical>
   );

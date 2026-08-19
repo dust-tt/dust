@@ -2,7 +2,11 @@ import { getModelLogoByModelId } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import {
+  ArrowNarrowDownRight,
+  ArrowNarrowUpRight,
   Avatar,
+  cn,
+  DataTable,
   DustLogoSquare,
   Icon,
   ProgressBar,
@@ -96,6 +100,48 @@ export function CostShareCell({ share }: { share: number }) {
       <span className="w-8 text-right text-xs text-muted-foreground tabular-nums">
         {percentage}%
       </span>
+    </div>
+  );
+}
+
+interface CreditsGrowthCellProps {
+  credits: number;
+  previousCredits: number | null;
+}
+
+export function CreditsGrowthCell({
+  credits,
+  previousCredits,
+}: CreditsGrowthCellProps) {
+  const growth =
+    previousCredits && previousCredits > 0
+      ? ((credits - previousCredits) / previousCredits) * 100
+      : null;
+
+  if (growth === null) {
+    return (
+      <DataTable.CellContent className="w-full justify-end text-right">
+        <Tooltip
+          label="Not enough data to compute"
+          tooltipTriggerAsChild
+          trigger={<span className="text-sm text-muted-foreground">--</span>}
+        />
+      </DataTable.CellContent>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex w-full items-center justify-end gap-1 text-right text-sm tabular-nums",
+        growth > 100 ? "text-highlight-600" : "text-muted-foreground"
+      )}
+    >
+      <Icon
+        visual={growth >= 0 ? ArrowNarrowUpRight : ArrowNarrowDownRight}
+        size="xs"
+      />
+      <span>{Math.round(Math.abs(growth))}%</span>
     </div>
   );
 }

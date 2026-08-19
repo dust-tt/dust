@@ -9,6 +9,7 @@ import { ConsumptionExportPanel } from "@app/components/workspace/analytics/cons
 import {
   AvatarNameCell,
   CostShareCell,
+  CreditsGrowthCell,
   EntityTooltipCard,
 } from "@app/components/workspace/analytics/creditsTableCells";
 import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
@@ -26,13 +27,10 @@ import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consum
 import { formatCredits } from "@app/lib/client/credits";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import {
-  ArrowNarrowDownRight,
-  ArrowNarrowUpRight,
   Avatar,
   Button,
   ChevronDown,
   ChevronUp,
-  cn,
   DataTable,
   DustLogoSquare,
   FilterFunnel01,
@@ -142,54 +140,6 @@ function AttributionTooltipCard({
       modelId={dimension === "agent" ? row.modelId : null}
       modelDisplayName={dimension === "agent" ? row.modelDisplayName : null}
     />
-  );
-}
-
-// Growth is undefined (not just zero) with no prior credits to grow from, so
-// callers must distinguish that case from an actual percentage.
-function growthPercent(
-  currentCredits: number,
-  previousCredits: number | null
-): number | null {
-  return previousCredits && previousCredits > 0
-    ? ((currentCredits - previousCredits) / previousCredits) * 100
-    : null;
-}
-
-function VsPrevCell({
-  credits,
-  previousCredits,
-}: {
-  credits: number;
-  previousCredits: number | null;
-}) {
-  const growth = growthPercent(credits, previousCredits);
-
-  if (growth === null) {
-    return (
-      <DataTable.CellContent className="w-full justify-end text-right">
-        <Tooltip
-          label="Not enough data to compute"
-          tooltipTriggerAsChild
-          trigger={<span className="text-sm text-muted-foreground">--</span>}
-        />
-      </DataTable.CellContent>
-    );
-  }
-
-  return (
-    <div
-      className={cn(
-        "flex w-full items-center justify-end gap-1 text-right text-sm tabular-nums",
-        growth > 100 ? "text-highlight-600" : "text-muted-foreground"
-      )}
-    >
-      <Icon
-        visual={growth >= 0 ? ArrowNarrowUpRight : ArrowNarrowDownRight}
-        size="xs"
-      />
-      <span>{Math.round(Math.abs(growth))}%</span>
-    </div>
   );
 }
 
@@ -323,7 +273,7 @@ function buildColumns({
       header: "vs prev",
       meta: { sizeRatio: 18, headerAlign: "right" },
       cell: (info) => (
-        <VsPrevCell
+        <CreditsGrowthCell
           credits={info.row.original.credits}
           previousCredits={info.row.original.previousCredits}
         />

@@ -1,11 +1,7 @@
 import type { ConsumptionBreakdownDimension } from "@app/lib/api/analytics/consumption/timeseries";
 
-export type ConsumptionDimension = ConsumptionBreakdownDimension;
-
-export const DEFAULT_CONSUMPTION_DIMENSION: ConsumptionDimension = "agent";
-
 // Tab order, left to right.
-export const CONSUMPTION_DIMENSIONS: ConsumptionDimension[] = [
+export const CONSUMPTION_DIMENSIONS = [
   "agent",
   "user",
   "group",
@@ -13,8 +9,11 @@ export const CONSUMPTION_DIMENSIONS: ConsumptionDimension[] = [
   "tool",
   "skill",
   "source",
-  "api_key",
-];
+] as const satisfies readonly ConsumptionBreakdownDimension[];
+
+export type ConsumptionDimension = (typeof CONSUMPTION_DIMENSIONS)[number];
+
+export const DEFAULT_CONSUMPTION_DIMENSION: ConsumptionDimension = "agent";
 
 interface ConsumptionDimensionConfig {
   label: string;
@@ -69,12 +68,6 @@ export const CONSUMPTION_DIMENSION_CONFIG: Record<
   source: {
     label: "Sources",
     breakdownLabel: "source",
-    hasAvatar: false,
-    avgLabel: MESSAGE_AVG_LABEL,
-  },
-  api_key: {
-    label: "API keys",
-    breakdownLabel: "API key",
     hasAvatar: false,
     avgLabel: MESSAGE_AVG_LABEL,
   },

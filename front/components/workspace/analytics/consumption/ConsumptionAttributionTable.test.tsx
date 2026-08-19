@@ -9,7 +9,6 @@ import {
   within,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -57,29 +56,6 @@ vi.mock(
 );
 
 const period = { kind: "days", days: 30 } as const;
-
-function ControlledAttributionTable({
-  onDimensionChange,
-}: {
-  onDimensionChange: (dimension: ConsumptionDimension) => void;
-}) {
-  const [dimension, setDimension] = useState<ConsumptionDimension>("source");
-
-  return (
-    <ConsumptionAttributionTable
-      workspaceId="workspace-id"
-      period={period}
-      dimension={dimension}
-      onDimensionChange={(nextDimension) => {
-        onDimensionChange(nextDimension);
-        setDimension(nextDimension);
-      }}
-      onAddFilter={vi.fn()}
-      onRemoveFilter={vi.fn()}
-      onViewAll={vi.fn()}
-    />
-  );
-}
 
 describe("ConsumptionAttributionTable", () => {
   beforeEach(() => {
@@ -247,54 +223,6 @@ describe("ConsumptionAttributionTable", () => {
         expect.objectContaining({ search: "Agent 080", offset: 0, limit: 25 })
       );
     });
-  });
-
-  it("selects the API key dimension with a pointer", () => {
-    const onDimensionChange = vi.fn();
-    mockUseConsumptionTop.mockReturnValue({
-      rows: [],
-      totalCredits: 0,
-      isTopLoading: false,
-      isTopError: undefined,
-    });
-
-    render(
-      <ControlledAttributionTable onDimensionChange={onDimensionChange} />
-    );
-
-    const apiKeysTab = screen.getByRole("tab", { name: "API keys" });
-    fireEvent.pointerDown(apiKeysTab);
-    fireEvent.mouseDown(apiKeysTab, { button: 0, ctrlKey: false });
-
-    expect(onDimensionChange).toHaveBeenCalledWith("api_key");
-    expect(apiKeysTab).toHaveAttribute("aria-selected", "true");
-    expect(mockUseConsumptionTop).toHaveBeenLastCalledWith(
-      expect.objectContaining({ dimension: "api_key" })
-    );
-  });
-
-  it("selects the API key dimension with the keyboard", () => {
-    const onDimensionChange = vi.fn();
-    mockUseConsumptionTop.mockReturnValue({
-      rows: [],
-      totalCredits: 0,
-      isTopLoading: false,
-      isTopError: undefined,
-    });
-
-    render(
-      <ControlledAttributionTable onDimensionChange={onDimensionChange} />
-    );
-
-    const apiKeysTab = screen.getByRole("tab", { name: "API keys" });
-    fireEvent.focus(apiKeysTab);
-    fireEvent.keyDown(apiKeysTab, { key: "Enter" });
-
-    expect(onDimensionChange).toHaveBeenCalledWith("api_key");
-    expect(apiKeysTab).toHaveAttribute("aria-selected", "true");
-    expect(mockUseConsumptionTop).toHaveBeenLastCalledWith(
-      expect.objectContaining({ dimension: "api_key" })
-    );
   });
 
   it("resets expanded rows when switching dimensions", async () => {

@@ -8,12 +8,12 @@ import { describe, expect, it } from "vitest";
 describe("consumption dimension URL state", () => {
   it("reads valid dimensions and falls back to agents", () => {
     expect(consumptionDimensionFromQueryParam("user")).toBe("user");
-    expect(consumptionDimensionFromQueryParam("api_key")).toBe("api_key");
+    expect(consumptionDimensionFromQueryParam("api_key")).toBe("agent");
     expect(consumptionDimensionFromQueryParam("invalid")).toBe("agent");
     expect(consumptionDimensionFromQueryParam(undefined)).toBe("agent");
   });
 
-  it("registers the API key attribution tab", () => {
+  it("registers the consumption attribution tabs", () => {
     expect(CONSUMPTION_DIMENSIONS).toEqual([
       "agent",
       "user",
@@ -22,8 +22,7 @@ describe("consumption dimension URL state", () => {
       "tool",
       "skill",
       "source",
-      "api_key",
     ]);
-    expect(CONSUMPTION_DIMENSION_CONFIG.api_key.label).toBe("API keys");
+    expect(CONSUMPTION_DIMENSION_CONFIG.agent.label).toBe("Agents");
   });
 });
