@@ -295,8 +295,7 @@ function buildColumns({
     {
       id: "costShare",
       // Same denominator (totalCredits) for every row, so ranking by cost
-      // share is the same order as ranking by credits — reuse that accessor
-      // instead of introducing a separate ranking.
+      // share is the same order as ranking by credits
       accessorFn: (row) => (totalCredits > 0 ? row.credits / totalCredits : 0),
       header: "Consumption share",
       meta: { sizeRatio: 20, headerAlign: "left" },
