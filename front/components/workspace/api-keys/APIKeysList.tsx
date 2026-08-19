@@ -22,6 +22,7 @@ import {
   FilterFunnel01,
   Icon,
   SearchInput,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
@@ -183,14 +184,29 @@ function buildColumns({
       header: "Spaces",
       enableSorting: false,
       meta: { className: "h-16 w-48", headerAlign: "left" },
-      cell: (info) => (
-        <DataTable.CellContent className="gap-2">
-          <Icon visual={Building07} size="sm" />
-          <span className="truncate">
-            {info.row.original.spaces.join(", ") || "No spaces"}
-          </span>
-        </DataTable.CellContent>
-      ),
+      cell: (info) => {
+        const spaces = info.row.original.spaces;
+        const spacesLabel = spaces.join(", ") || "No spaces";
+        const content = (
+          <div
+            className="flex min-w-0 items-center gap-2 rounded outline-hidden focus-visible:ring-2 focus-visible:ring-highlight-300"
+            tabIndex={spaces.length > 0 ? 0 : undefined}
+          >
+            <Icon visual={Building07} size="sm" className="shrink-0" />
+            <span className="truncate">{spacesLabel}</span>
+          </div>
+        );
+
+        return spaces.length > 0 ? (
+          <Tooltip
+            label={spacesLabel}
+            tooltipTriggerAsChild
+            trigger={content}
+          />
+        ) : (
+          content
+        );
+      },
     },
     {
       id: "monthlyCap",
