@@ -118,6 +118,7 @@ import {
   LinkExternal01,
   LoadingBlock,
   Page,
+  ProgressBar,
   SearchInput,
   Spinner,
   Tabs,
@@ -183,37 +184,28 @@ function CreditPoolProgressBar({
   const unusedPercentage = 100 - clampedProjectedPercentage;
 
   return (
-    <div
-      className="flex h-2 w-full gap-0.5 bg-background"
-      role="progressbar"
+    <ProgressBar
       aria-label="Workspace credit usage"
-      aria-valuemin={0}
-      aria-valuemax={100}
       aria-valuenow={clampedUsedPercentage}
-    >
-      {clampedUsedPercentage > 0 && (
-        <div
-          className={`h-full rounded-xs ${
-            target === "off_target" ? "bg-warning-500" : "bg-highlight-500"
-          }`}
-          style={{ flexBasis: 0, flexGrow: clampedUsedPercentage }}
-        />
-      )}
-      {projectedRemainderPercentage > 0 && (
-        <div
-          className={`h-full rounded-xs ${
-            target === "off_target" ? "bg-warning-100" : "bg-highlight-100"
-          }`}
-          style={{ flexBasis: 0, flexGrow: projectedRemainderPercentage }}
-        />
-      )}
-      {unusedPercentage > 0 && (
-        <div
-          className="h-full rounded-xs bg-gray-50"
-          style={{ flexBasis: 0, flexGrow: unusedPercentage }}
-        />
-      )}
-    </div>
+      className="h-2 w-full bg-background"
+      values={[
+        {
+          value: clampedUsedPercentage,
+          className:
+            target === "off_target" ? "bg-warning-500" : "bg-highlight-500",
+        },
+        {
+          value: projectedRemainderPercentage,
+          className:
+            target === "off_target" ? "bg-warning-100" : "bg-highlight-100",
+        },
+        {
+          value: unusedPercentage,
+          className: "bg-muted-background",
+        },
+      ]}
+      radius="xs"
+    />
   );
 }
 
