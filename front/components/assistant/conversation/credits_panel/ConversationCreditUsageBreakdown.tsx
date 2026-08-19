@@ -187,7 +187,7 @@ function AgentBreakdown({ agent }: AgentBreakdownProps) {
     <section className="space-y-4">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <div className="flex min-w-0 items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-1">
+          <div className="flex min-w-0 items-center gap-2">
             <CollapsibleTrigger
               aria-label={`${isOpen ? "Collapse" : "Expand"} credit details for ${agent.name}`}
               className="size-11 shrink-0 justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-ring"
