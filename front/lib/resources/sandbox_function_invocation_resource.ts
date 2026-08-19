@@ -222,7 +222,7 @@ function dustAPIBaseUrlForSandbox(): string {
 function buildSandboxFunctionRunCommand(slug: string): string {
   // dsbx resolves `function run <slug>` as `${DUST_FUNCTIONS_DIR}/<slug>.ts`, which is the
   // read-only mount of the pod's published bundles. Results always come back on the exec's own
-  // stdout rather than through the in-sandbox HTTP callback.
+  // stdout.
   return `${DSBX_BIN_PATH} function run --result-delivery stdout -- ${shellEscape(slug)}`;
 }
 
@@ -461,7 +461,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         : error;
 
     // Only the caller that flips `created` owns the outcome. Guards the
-    // double-delivery window (worker stdout + late HTTP callback).
+    // double-delivery window (an inline run and the invocation workflow both settling).
     const claimed = await this.casStatus({
       from: "created",
       to: "errored",
@@ -973,8 +973,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     const inline = sandboxFunction.executionMode === "fast";
     // Deferring is only safe because no other process reads the blob during execution, which
     // holds because every run is started with `--result-delivery stdout`: the result comes back
-    // on the exec's own stdout rather than through a callback route that would fetch the
-    // invocation, and its blob, mid-execution.
+    // on the exec's own stdout, so nothing fetches the invocation, and its blob, mid-execution.
     const invocation = await this.makeNew(
       auth,
       {
@@ -1118,8 +1117,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   ): Promise<SandboxFunctionInvocationResource[]> {
     const { where, ...rest } = options ?? {};
     // User-facing reads expose the caller's invocations, or every invocation to a Pod
-    // administrator. Execution and callback paths use the explicit system access after validating
-    // their server-owned invocation token or workflow input.
+    // administrator. Execution paths use the explicit system access after validating their
+    // server-owned invocation token or workflow input.
     let viewerModelId: ModelId | undefined;
     switch (access) {
       case "viewer": {
