@@ -1,7 +1,6 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type {
   ConsumptionScopeFilter,
-  ConsumptionTopSortBy,
   ConsumptionTopSortOrder,
 } from "@app/lib/api/analytics/consumption/scope";
 import {
@@ -48,7 +47,6 @@ export async function fetchConsumptionTopModels(
     offset = 0,
     search,
     filter,
-    sortBy,
     sortOrder,
   }: {
     period: ConsumptionPeriod;
@@ -56,7 +54,6 @@ export async function fetchConsumptionTopModels(
     offset?: number;
     search?: string;
     filter?: ConsumptionScopeFilter;
-    sortBy?: ConsumptionTopSortBy;
     sortOrder?: ConsumptionTopSortOrder;
   }
 ): Promise<Result<ConsumptionTopModels, ElasticsearchError>> {
@@ -67,7 +64,6 @@ export async function fetchConsumptionTopModels(
     offset,
     search,
     filter,
-    sortBy,
     sortOrder,
   });
   if (result.isErr()) {

@@ -21,10 +21,7 @@ import {
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
-import type {
-  ConsumptionScopeFilter,
-  ConsumptionTopSortBy,
-} from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import { formatCredits } from "@app/lib/client/credits";
 import { getSkillAvatarIcon } from "@app/lib/skill";
@@ -81,17 +78,13 @@ const DEFAULT_ATTRIBUTION_SORTING: SortingState = [
   { id: "credits", desc: true },
 ];
 
-// Only these columns are ranked server-side (see fetchConsumptionTopGroups):
-// sorting by any other column (currently just name) still reorders the
-// current page locally, since the underlying value isn't rankable in
-// Elasticsearch without a larger indexing change.
-const ATTRIBUTION_SERVER_SORT_BY: Partial<
-  Record<string, ConsumptionTopSortBy>
-> = {
-  credits: "credits",
-  avgCredits: "avgCredits",
-  vsPrev: "vsPrev",
-};
+// Only the credits column is ranked server-side (see
+// fetchConsumptionTopGroups): Elasticsearch's terms aggregation can only
+// order by a genuine metric, not a ratio like avgCredits or vs-prev growth,
+// which would need a bucket_script — terms cannot order by a pipeline
+// aggregation. Sorting by any other column still reorders whatever page is
+// currently loaded, not the full dataset.
+const ATTRIBUTION_SERVER_SORTABLE_COLUMN_ID = "credits";
 
 type AttributionTransitionDirection = -1 | 0 | 1;
 
@@ -457,10 +450,13 @@ function AttributionRows({
   };
 
   const activeSort = sorting[0];
-  const sortBy = activeSort
-    ? ATTRIBUTION_SERVER_SORT_BY[activeSort.id]
-    : undefined;
-  const sortOrder = activeSort?.desc ? "desc" : "asc";
+  // Ranking is always by credits: only forward asc/desc when that's actually
+  // the sorted column, so sorting by anything else keeps fetching pages in
+  // the default credits-desc order and reorders them locally instead.
+  const sortOrder =
+    activeSort?.id === ATTRIBUTION_SERVER_SORTABLE_COLUMN_ID && !activeSort.desc
+      ? "asc"
+      : "desc";
 
   const {
     rows,
@@ -477,7 +473,6 @@ function AttributionRows({
     offset: pagination.pageIndex * pagination.pageSize,
     search,
     filter,
-    sortBy,
     sortOrder,
   });
   const cappedRowCount = Math.min(totalCount, ATTRIBUTION_MAX_ROW_COUNT);
