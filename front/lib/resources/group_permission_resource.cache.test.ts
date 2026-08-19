@@ -1,3 +1,4 @@
+import { getRedisCacheClient } from "@app/lib/api/redis";
 import { Authenticator } from "@app/lib/auth";
 import type { GroupGrant } from "@app/lib/resources/group_permission_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -114,8 +115,38 @@ describe("group permissions cache", () => {
     expect(grants).toEqual([]);
   });
 
+  it("caches the absence of a group that does not exist in the database", async () => {
+    const missingGroupModelId = 987654321;
+
+    const first = await GroupPermissionResource.listForGroups(
+      auth.getNonNullableWorkspace(),
+      { groupModelIds: [missingGroupModelId] }
+    );
+    expect(first).toEqual([]);
+
+    // The field is written as an empty list, so the absence itself is a hit.
+    const redis = await getRedisCacheClient({
+      origin: "group_permissions_cache",
+    });
+    const cached = await redis.hmGet(
+      GroupPermissionResource.cacheOperations.buildKey({
+        workspaceModelId: String(auth.getNonNullableWorkspace().id),
+      }),
+      [String(missingGroupModelId)]
+    );
+    expect(cached).toEqual(["[]"]);
+
+    const stopCounting = countGroupPermissionQueries("cache-absent-group");
+    const second = await GroupPermissionResource.listForGroups(
+      auth.getNonNullableWorkspace(),
+      { groupModelIds: [missingGroupModelId] }
+    );
+
+    expect(stopCounting()).toBe(0);
+    expect(second).toEqual([]);
+  });
+
   it("queries only the groups it has not cached yet", async () => {
-    // Granting warms groupA's field; groupC is never written nor read before the assertion.
     await GroupPermissionResource.grant(auth, {
       group: groupA,
       grantType: "reader",
@@ -123,6 +154,12 @@ describe("group permissions cache", () => {
       resourceId: 1,
     });
     const groupC = await GroupFactory.regularManual(workspace, "C");
+
+    // Reading caches groupA; groupC is never read before the assertion.
+    await GroupPermissionResource.listForGroups(
+      auth.getNonNullableWorkspace(),
+      { groupModelIds: [groupA.id] }
+    );
 
     let boundGroupModelIds: unknown;
     const captureQueryHook = "cache-partial-hit";
@@ -185,7 +222,7 @@ describe("group permissions cache", () => {
     ]);
   });
 
-  it("overwrites the snapshot when a grant is added", async () => {
+  it("invalidates the cached grants when a grant is added", async () => {
     await GroupPermissionResource.listForGroups(
       auth.getNonNullableWorkspace(),
       { groupModelIds: [groupA.id] }
@@ -204,11 +241,11 @@ describe("group permissions cache", () => {
       { groupModelIds: [groupA.id] }
     );
 
-    expect(stopCounting()).toBe(0);
+    expect(stopCounting()).toBe(1);
     expect(grants.map((grant) => grant.resourceId)).toEqual([7]);
   });
 
-  it("overwrites the snapshot when a grant is revoked", async () => {
+  it("invalidates the cached grants when a grant is revoked", async () => {
     await GroupPermissionResource.grant(auth, {
       group: groupA,
       grantType: "reader",
@@ -233,11 +270,11 @@ describe("group permissions cache", () => {
       { groupModelIds: [groupA.id] }
     );
 
-    expect(stopCounting()).toBe(0);
+    expect(stopCounting()).toBe(1);
     expect(grants).toEqual([]);
   });
 
-  it("overwrites the snapshot when a type-wide capability is disabled", async () => {
+  it("invalidates the cached grants when a capability is disabled", async () => {
     await GroupPermissionResource.grantTypeWide(auth, {
       group: groupB,
       grantType: "create",
@@ -259,7 +296,7 @@ describe("group permissions cache", () => {
       { groupModelIds: [groupB.id] }
     );
 
-    expect(stopCounting()).toBe(0);
+    expect(stopCounting()).toBe(1);
     expect(grants).toEqual([]);
   });
 

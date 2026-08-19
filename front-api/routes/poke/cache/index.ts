@@ -7,6 +7,7 @@ import type {
   RedisCacheResult,
 } from "@app/types/api/poke/cache";
 import { isString } from "@app/types/shared/utils/general";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { getPokeCacheOperations } from "@front-api/lib/api/poke/cache_catalog";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -120,11 +121,9 @@ function resolveCacheKey(
 }
 
 function decodeCacheValue(rawValue: string): unknown {
-  try {
-    return JSON.parse(rawValue);
-  } catch {
-    return rawValue;
-  }
+  const parsed = safeParseJSON(rawValue);
+
+  return parsed.isOk() ? parsed.value : rawValue;
 }
 
 /** @ignoreswagger */
