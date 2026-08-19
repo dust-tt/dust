@@ -421,8 +421,10 @@ export function UsagePage() {
   } = useAwuPoolSummary({
     workspaceId: owner.sId,
   });
+
   const isAnalyticsConsumptionEnabled =
     isWorkspaceAdmin && hasFeature("enable_analytics_consumption");
+
   const { overview: consumptionOverview } = useConsumptionOverview({
     workspaceId: owner.sId,
     period: DEFAULT_CONSUMPTION_PERIOD,
@@ -820,6 +822,7 @@ export function UsagePage() {
     0,
     totalActiveCredits - totalRemainingCredits
   );
+
   const creditUsage = consumptionOverview?.creditUsage ?? null;
   const creditUsageDisplayTarget =
     creditUsage?.status.target === "on_target"
@@ -827,11 +830,14 @@ export function UsagePage() {
       : creditUsage
         ? "off_target"
         : null;
+
   const totalConsumedCredits =
     consumptionOverview?.totalCredits ??
     (isReadOnly ? periodSpendCredits : poolConsumedCredits);
+
   const initialTotalCredits = creditUsage?.capCredits ?? totalActiveCredits;
   const hasPool = totalActiveCredits > 0;
+
   const usedPercentage =
     creditUsage?.status.usedPercentage ??
     (initialTotalCredits > 0
@@ -839,16 +845,16 @@ export function UsagePage() {
           Math.min(totalConsumedCredits / initialTotalCredits, 1) * 100
         )
       : 0);
+
   const elapsedPercentage = consumptionOverview
     ? cycleElapsedPercent(consumptionOverview.period)
     : usedPercentage;
+
   const resetAt =
     creditUsage?.status.resetAt ??
     creditsResetAt ??
     consumptionOverview?.period.endDate ??
     null;
-  const showTopUpButton = isWorkspaceAdmin;
-  const canTopUp = showTopUpButton && !isReadOnly && usageSettings.topUpEnabled;
 
   if (!canViewUsage) {
     return null;
@@ -859,17 +865,17 @@ export function UsagePage() {
     !!isAwuPoolSummaryError ||
     hasPool ||
     isReadOnly ||
-    showTopUpButton;
+    isWorkspaceAdmin;
   const showLegacyPoolSection =
     !isAwuPoolSummaryLoading &&
     (!!isAwuPoolSummaryError || hasPool || isReadOnly);
-  const topUpButton = showTopUpButton ? (
+  const topUpButton = isWorkspaceAdmin ? (
     <Button
       label="Top up"
       icon={ArrowUp}
       size="sm"
       variant="outline"
-      disabled={!canTopUp}
+      disabled={!isWorkspaceAdmin || isReadOnly || !usageSettings.topUpEnabled}
       onClick={() => setShowBuyCreditDialog(true)}
     />
   ) : null;
