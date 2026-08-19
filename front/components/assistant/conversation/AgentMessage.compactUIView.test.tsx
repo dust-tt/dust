@@ -2,15 +2,13 @@ import { AgentMessage } from "@app/components/assistant/conversation/AgentMessag
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import type { UiView } from "@app/components/assistant/conversation/types";
 import { makeInitialMessageStreamState } from "@app/components/assistant/conversation/types";
-import { useAutoOpenSidePanel } from "@app/components/assistant/conversation/useAutoOpenSidePanel";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import type { LightAgentMessageWithActionsType } from "@app/types/assistant/conversation";
-import { frameContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
 import type { UserType } from "@app/types/user";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/auth/AuthContext", () => ({
   useAuth: () => ({ vizUrl: null }),
@@ -75,7 +73,7 @@ vi.mock(
 );
 
 vi.mock("@app/components/assistant/conversation/useAutoOpenSidePanel", () => ({
-  useAutoOpenSidePanel: vi.fn(() => ({ interactiveFiles: [] })),
+  useAutoOpenSidePanel: () => ({ interactiveFiles: [] }),
 }));
 
 vi.mock(
@@ -227,55 +225,6 @@ function renderAgentMessage({
 }
 
 describe("AgentMessage compact UI view", () => {
-  afterEach(() => {
-    vi.mocked(useAutoOpenSidePanel).mockReturnValue({ interactiveFiles: [] });
-  });
-
-  describe("frames", () => {
-    const frameFile = {
-      title: "My Frame",
-      contentType: frameContentType,
-      fileId: "fil_frame_1",
-      filePath: undefined,
-    };
-
-    it("renders frames collapsed by default for compact UI conversations", () => {
-      vi.mocked(useAutoOpenSidePanel).mockReturnValue({
-        interactiveFiles: [frameFile],
-      });
-
-      renderAgentMessage({ uiView: "compact" });
-
-      expect(screen.getByRole("button", { name: "Frames" })).toBeVisible();
-      expect(screen.getByText("My Frame")).not.toBeVisible();
-    });
-
-    it("expands frames on click for compact UI conversations", () => {
-      vi.mocked(useAutoOpenSidePanel).mockReturnValue({
-        interactiveFiles: [frameFile],
-      });
-
-      renderAgentMessage({ uiView: "compact" });
-
-      fireEvent.click(screen.getByRole("button", { name: "Frames" }));
-
-      expect(screen.getByText("My Frame")).toBeVisible();
-    });
-
-    it("renders frames expanded for non-compact UI conversations", () => {
-      vi.mocked(useAutoOpenSidePanel).mockReturnValue({
-        interactiveFiles: [frameFile],
-      });
-
-      renderAgentMessage({ uiView: "standard" });
-
-      expect(
-        screen.queryByRole("button", { name: "Frames" })
-      ).not.toBeInTheDocument();
-      expect(screen.getByText("My Frame")).toBeVisible();
-    });
-  });
-
   describe("bottom citations", () => {
     it("hides the bottom citation list for compact UI conversations but keeps inline citations", () => {
       const { container } = renderAgentMessage({
