@@ -1,6 +1,7 @@
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   FILES_EDIT_ACTION_NAME,
+  FILES_LIST_ACTION_NAME,
   FILES_SERVER_NAME,
 } from "@app/lib/api/actions/servers/files/metadata";
 import {
@@ -23,11 +24,16 @@ const FILES_FIRST_MARKER =
 
 // Markers unique to each Pod-only section.
 const POD_APP_MARKER = "### Frames In A Pod";
+const POD_APP_UPDATE_MARKER = "#### Changing An Existing Pod Frame";
 const POD_STORAGE_MARKER = "### Where The Frame's Data Lives";
 
 const FILES_EDIT_TOOL = getPrefixedToolName(
   FILES_SERVER_NAME,
   FILES_EDIT_ACTION_NAME
+);
+const FILES_LIST_TOOL = getPrefixedToolName(
+  FILES_SERVER_NAME,
+  FILES_LIST_ACTION_NAME
 );
 
 function agentLoopDataWithUseFileSystem(
@@ -130,6 +136,19 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("pod-<podId>/MyApp/MyApp.tsx");
     expect(instructions).toContain(POD_STORAGE_MARKER);
     expect(instructions).toContain(`\`${POD_FUNCTIONS_SKILL_NAME}\` skill`);
+  });
+
+  it("teaches how to find an existing Pod app's path and file id", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    const instructions = await framesSkill.fetchInstructions(auth, {
+      spaceIds: [],
+      agentLoopData: agentLoopDataInPod("vlt_abc123"),
+    });
+
+    expect(instructions).toContain(POD_APP_UPDATE_MARKER);
+    expect(instructions).toContain(FILES_LIST_TOOL);
+    expect(instructions).toContain("[id: fil_...]");
   });
 
   it("omits the storage decision when pod functions are unavailable", async () => {
