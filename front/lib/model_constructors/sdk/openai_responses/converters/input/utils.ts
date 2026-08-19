@@ -32,6 +32,8 @@ import type {
 } from "openai/resources/responses/responses";
 import type { Reasoning as OpenAIReasoning } from "openai/resources/shared";
 
+export type OpenAIReasoningSummary = NonNullable<OpenAIReasoning["summary"]>;
+
 type PromptCacheBreakpoint =
   | {
       prompt_cache_breakpoint: NonNullable<
@@ -368,15 +370,16 @@ export function outputFormatToResponseFormat(
 }
 
 export function reasoningToOpenAIResponsesReasoning(
-  reasoning: Reasoning | undefined
+  reasoning: Reasoning | undefined,
+  summary: OpenAIReasoningSummary = "auto"
 ): OpenAIReasoning | undefined {
   if (!reasoning) {
     return undefined;
   }
 
   if (reasoning.effort === "maximal") {
-    return { effort: "max", summary: "auto" };
+    return { effort: "max", summary };
   }
 
-  return { effort: reasoning.effort, summary: "auto" };
+  return { effort: reasoning.effort, summary };
 }

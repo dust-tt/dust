@@ -1,6 +1,9 @@
 import type { Client } from "@app/lib/model_constructors/client";
 import { includesOpenAIToolSearchTool } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/tool_search";
-import type { MessageItemConverters } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
+import type {
+  MessageItemConverters,
+  OpenAIReasoningSummary,
+} from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
 import {
   assistantProviderPassthroughMessageToInputItems,
   assistantReasoningMessageToInputItems,
@@ -52,6 +55,10 @@ export function WithOpenAIResponsesInputConverter<
       assistantProviderPassthroughMessageToInputItems;
     modelToHostModel = (modelId: Model): string => modelId;
 
+    protected reasoningSummaryForModel(_model: Model): OpenAIReasoningSummary {
+      return "auto";
+    }
+
     conversationToInput(
       conversation: Payload["conversation"]
     ): ResponseInputItem[] {
@@ -81,7 +88,10 @@ export function WithOpenAIResponsesInputConverter<
         toolSearchEnabled,
       } = config;
 
-      const reasoningConfig = reasoningToOpenAIResponsesReasoning(reasoning);
+      const reasoningConfig = reasoningToOpenAIResponsesReasoning(
+        reasoning,
+        this.reasoningSummaryForModel(this.constructor.model)
+      );
       const openAITools = toolSpecsToOpenAITools(tools, {
         forceTool,
         toolSearchEnabled: toolSearchEnabled ?? false,

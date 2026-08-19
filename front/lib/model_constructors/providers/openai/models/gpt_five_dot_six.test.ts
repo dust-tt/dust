@@ -1,6 +1,7 @@
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { DustOpenAIGptFiveDotSixTerraLongContextGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_six_terra_long_context_global_openai_responses";
 import { isEndpointAvailable } from "@app/lib/llms/stream/utils/is_endpoint_available";
+import { OpenAIGptFiveDotSixLunaGlobalOpenAIResponsesBatch } from "@app/lib/model_constructors/batch/endpoints/openai_gpt_five_dot_six_luna_global_openai_responses";
 import { OpenAIGptFiveDotSixLunaEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_luna_eu_openai_responses";
 import { OpenAIGptFiveDotSixLunaGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_luna_global_openai_responses";
 import { OpenAIGptFiveDotSixSolEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_sol_eu_openai_responses";
@@ -88,6 +89,25 @@ describe("GPT 5.6 model configurations", () => {
     expect(GPT_5_6_TERRA_LONG_CONTEXT_MODEL_CONFIG.contextSize).toBe(1_050_000);
     expect(payload.model).toBe("gpt-5.6-terra");
     expect(payload.max_output_tokens).toBe(128_000);
+  });
+
+  it("requests concise reasoning summaries for streaming and batch", () => {
+    const config =
+      OpenAIGptFiveDotSixLunaGlobalOpenAIResponsesStream.configSchema.parse({});
+    const payload = { conversation: { system: [], messages: [] } };
+    const stream = new OpenAIGptFiveDotSixLunaGlobalOpenAIResponsesStream({
+      OPENAI_API_KEY: "test",
+    });
+    const batch = new OpenAIGptFiveDotSixLunaGlobalOpenAIResponsesBatch({
+      OPENAI_API_KEY: "test",
+    });
+
+    expect(stream.buildRequestPayload(payload, config).reasoning?.summary).toBe(
+      "concise"
+    );
+    expect(batch.buildRequestPayload(payload, config).reasoning?.summary).toBe(
+      "concise"
+    );
   });
 
   it("gates the Terra long-context endpoint behind its feature flag", () => {
