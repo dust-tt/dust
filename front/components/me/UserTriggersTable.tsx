@@ -52,22 +52,6 @@ const USER_TRIGGER_SKELETON_ROWS: UserTriggerSkeletonRow[] = Array.from(
   })
 );
 
-const USER_TRIGGER_NAME_SKELETON_WIDTHS = [
-  "w-28",
-  "w-36",
-  "w-24",
-  "w-40",
-  "w-32",
-];
-
-const USER_TRIGGER_DESCRIPTION_SKELETON_WIDTHS = [
-  "w-64",
-  "w-52",
-  "w-72",
-  "w-60",
-  "w-56",
-];
-
 const USER_TRIGGER_SKELETON_COLUMNS: ColumnDef<UserTriggerSkeletonRow>[] = [
   {
     accessorKey: "agentName",
@@ -92,12 +76,12 @@ const USER_TRIGGER_SKELETON_COLUMNS: ColumnDef<UserTriggerSkeletonRow>[] = [
         <div className="flex min-w-0 flex-col py-3">
           <div className="flex h-5 items-center">
             <LoadingBlock
-              className={`h-4 max-w-full ${USER_TRIGGER_NAME_SKELETON_WIDTHS[row.index]}`}
+              className={`h-4 max-w-full ${["w-28", "w-36", "w-24", "w-40", "w-32"][row.index]}`}
             />
           </div>
           <div className="flex h-5 items-center">
             <LoadingBlock
-              className={`h-4 max-w-full ${USER_TRIGGER_DESCRIPTION_SKELETON_WIDTHS[row.index]}`}
+              className={`h-4 max-w-full ${["w-64", "w-52", "w-72", "w-60", "w-56"][row.index]}`}
             />
           </div>
         </div>

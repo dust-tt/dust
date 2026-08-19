@@ -66,16 +66,6 @@ const USER_TOOL_SKELETON_ROWS: UserToolSkeletonRow[] = Array.from(
   })
 );
 
-const USER_TOOL_NAME_SKELETON_WIDTHS = ["w-28", "w-36", "w-24", "w-32", "w-40"];
-
-const USER_TOOL_DESCRIPTION_SKELETON_WIDTHS = [
-  "w-64",
-  "w-52",
-  "w-72",
-  "w-60",
-  "w-56",
-];
-
 const USER_TOOL_SKELETON_COLUMNS: ColumnDef<UserToolSkeletonRow>[] = [
   {
     accessorKey: "name",
@@ -89,7 +79,7 @@ const USER_TOOL_SKELETON_COLUMNS: ColumnDef<UserToolSkeletonRow>[] = [
               <LoadingBlock
                 className={classNames(
                   "h-4 max-w-full",
-                  USER_TOOL_NAME_SKELETON_WIDTHS[row.index]
+                  ["w-28", "w-36", "w-24", "w-32", "w-40"][row.index]
                 )}
               />
             </div>
@@ -97,7 +87,7 @@ const USER_TOOL_SKELETON_COLUMNS: ColumnDef<UserToolSkeletonRow>[] = [
               <LoadingBlock
                 className={classNames(
                   "h-4 max-w-full",
-                  USER_TOOL_DESCRIPTION_SKELETON_WIDTHS[row.index]
+                  ["w-64", "w-52", "w-72", "w-60", "w-56"][row.index]
                 )}
               />
             </div>
