@@ -36,26 +36,24 @@ const progressBarFillVariants = cva("h-full", {
   },
 });
 
-interface ProgressBarSegment {
-  percentage: number;
-  className?: string;
-}
-
 export type ProgressBarProps = Omit<
   React.HTMLAttributes<HTMLDivElement>,
   "children"
 > &
   VariantProps<typeof progressBarVariants> &
   (
-    | { percentage: number; segments?: never }
-    | { percentage?: never; segments: ProgressBarSegment[] }
+    | { percentage: number; values?: never }
+    | {
+        percentage?: never;
+        values: Array<{ value: number; className?: string }>;
+      }
   );
 
 export const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
   (
     {
       percentage,
-      segments,
+      values,
       radius = "full",
       variant = "default",
       className,
@@ -63,22 +61,32 @@ export const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
     },
     ref
   ) => {
-    const isSegmented = segments !== undefined;
-    const values: ProgressBarSegment[] =
-      segments ?? (percentage === undefined ? [] : [{ percentage }]);
-    const clampedSegments = values.map((segment) => ({
-      ...segment,
-      percentage: Math.min(100, Math.max(0, segment.percentage)),
-    }));
+    const isSegmented = values !== undefined;
+    const nonNegativeValues =
+      values?.map((item) => ({
+        ...item,
+        value: Math.max(0, item.value),
+      })) ?? [];
+    const totalValue = nonNegativeValues.reduce(
+      (total, item) => total + item.value,
+      0
+    );
+    const normalizedValues = isSegmented
+      ? nonNegativeValues.map((item) => ({
+          percentage: totalValue > 0 ? (item.value / totalValue) * 100 : 0,
+          className: item.className,
+        }))
+      : [
+          {
+            percentage: Math.min(100, Math.max(0, percentage ?? 0)),
+            className: undefined,
+          },
+        ];
     const valueNow = isSegmented
-      ? Math.min(
-          100,
-          clampedSegments.reduce(
-            (total, segment) => total + segment.percentage,
-            0
-          )
-        )
-      : clampedSegments[0]?.percentage;
+      ? totalValue > 0
+        ? 100
+        : 0
+      : normalizedValues[0]?.percentage;
 
     return (
       <div
@@ -94,7 +102,7 @@ export const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
         )}
         {...props}
       >
-        {clampedSegments.map((segment, index) =>
+        {normalizedValues.map((segment, index) =>
           !isSegmented || segment.percentage > 0 ? (
             <div
               key={index}
