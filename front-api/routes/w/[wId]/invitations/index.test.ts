@@ -2,6 +2,8 @@ import { Authenticator } from "@app/lib/auth";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipInvitationFactory } from "@app/tests/utils/MembershipInvitationFactory";
+import { PlanFactory } from "@app/tests/utils/PlanFactory";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import sgMail from "@sendgrid/mail";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -261,5 +263,64 @@ describe("POST /api/w/:wId/invitations", () => {
       await MembershipInvitationResource.getPendingInvitations(adminAuth);
     expect(invitations).toHaveLength(0);
     expect(sgSendMock).not.toHaveBeenCalled();
+  });
+
+  it("does not count an expired pending invitation against the plan seat limit", async () => {
+    // 1 seat for the admin created below + 1 seat that the expired invitation
+    // must free up for the new invite to succeed.
+    const plan = await PlanFactory.enterprise("ENT_INVITE_SEAT_EXPIRED_TEST", {
+      maxUsersInWorkspace: 2,
+    });
+    const planWorkspace = await WorkspaceFactory.fromPlan(plan);
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+      workspace: planWorkspace,
+    });
+
+    const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+    await MembershipInvitationFactory.create(workspace, {
+      inviteEmail: "expired@example.com",
+      status: "pending",
+      createdAt: eightDaysAgo,
+    });
+
+    const response = await honoApp.request(invitationsUrl(workspace.sId), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify([{ email: "new-user@example.com", role: "user" }]),
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.every((r: { success: boolean }) => r.success)).toBe(true);
+  });
+
+  it("still counts a fresh pending invitation against the plan seat limit", async () => {
+    // Same 2-seat setup as above: 1 for the admin, 1 already held by the
+    // fresh (non-expired) pending invitation, leaving none for a new invite.
+    const plan = await PlanFactory.enterprise("ENT_INVITE_SEAT_FRESH_TEST", {
+      maxUsersInWorkspace: 2,
+    });
+    const planWorkspace = await WorkspaceFactory.fromPlan(plan);
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+      workspace: planWorkspace,
+    });
+
+    await MembershipInvitationFactory.create(workspace, {
+      inviteEmail: "fresh@example.com",
+      status: "pending",
+    });
+
+    const response = await honoApp.request(invitationsUrl(workspace.sId), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify([{ email: "new-user@example.com", role: "user" }]),
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe("plan_limit_error");
   });
 });
