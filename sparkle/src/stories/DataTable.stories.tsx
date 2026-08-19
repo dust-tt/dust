@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
   DropdownMenu,
+  Icon,
   Input,
   ScrollableDataTable,
 } from "@sparkle/components/";
@@ -25,7 +26,11 @@ import {
   createSelectionColumn,
   MenuItem,
 } from "@sparkle/components/DataTable";
-import { Folder } from "@sparkle/icons/v2-stroke";
+import {
+  Folder,
+  PuzzlePiece01,
+  PuzzlePiece01Filled,
+} from "@sparkle/icons/v2-stroke";
 
 const meta = {
   title: "Data Display/DataTable",
@@ -849,6 +854,73 @@ export const DataTableWithRowSelectionExample = () => {
             {JSON.stringify(rowSelection, null, 2)}
           </pre>
           <p className="mt-2 text-sm">
+            Selected {Object.keys(rowSelection).length} of {data.length} rows
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const DataTableWithSkillSelectionExample = () => {
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [data] = useState<Data[]>(() => createData(0, 10));
+  const [filter, setFilter] = useState("");
+
+  const columnsWithSelection: ColumnDef<Data>[] = useMemo(
+    () => [
+      createSelectionColumn<Data>({
+        renderIndicator: (indicator) => (
+          <button
+            type="button"
+            aria-pressed={indicator.checked === true}
+            onClick={() => indicator.onChange(indicator.checked !== true)}
+            className="flex items-center justify-center"
+          >
+            <Icon
+              visual={
+                indicator.checked === false
+                  ? PuzzlePiece01
+                  : PuzzlePiece01Filled
+              }
+              size="sm"
+              className="text-foreground dark:text-foreground-night"
+            />
+          </button>
+        ),
+      }),
+      ...columns,
+    ],
+    []
+  );
+
+  return (
+    <div className="flex w-full max-w-4xl flex-col gap-6">
+      <h3 className="text-lg font-medium">
+        DataTable with Skill Selection (puzzle piece)
+      </h3>
+
+      <div className="flex flex-col gap-4">
+        <Input
+          name="filter"
+          placeholder="Filter"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+
+        <DataTable
+          data={data}
+          filter={filter}
+          filterColumn="name"
+          columns={columnsWithSelection}
+          rowSelection={rowSelection}
+          setRowSelection={setRowSelection}
+          enableRowSelection={true}
+          getRowId={(row) => row.name}
+        />
+
+        <div className="rounded-md border bg-muted/50 p-2">
+          <p className="text-sm">
             Selected {Object.keys(rowSelection).length} of {data.length} rows
           </p>
         </div>

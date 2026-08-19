@@ -1371,27 +1371,52 @@ DataTable.Caption = function Caption({
   );
 };
 
-interface SelectionColumnOptions {
+export type SelectionColumnIndicatorProps<TData> =
+  | {
+      kind: "select-all";
+      checked: boolean | "partial";
+      onChange: (checked: boolean) => void;
+    }
+  | {
+      kind: "select-row";
+      row: Row<TData>;
+      checked: boolean;
+      disabled: boolean;
+      onChange: (checked: boolean) => void;
+    };
+
+interface SelectionColumnOptions<TData> {
   hideSelectAll?: boolean;
+  renderIndicator?: (props: SelectionColumnIndicatorProps<TData>) => ReactNode;
 }
 
 export function createSelectionColumn<TData>({
   hideSelectAll = false,
-}: SelectionColumnOptions = {}): ColumnDef<TData> {
+  renderIndicator,
+}: SelectionColumnOptions<TData> = {}): ColumnDef<TData> {
   return {
     id: "select",
     enableSorting: false,
     enableHiding: false,
-    header: ({ table }) =>
-      !hideSelectAll ? (
+    header: ({ table }) => {
+      if (hideSelectAll) {
+        return null;
+      }
+      const checked = table.getIsAllRowsSelected()
+        ? true
+        : table.getIsSomeRowsSelected()
+          ? "partial"
+          : false;
+      if (renderIndicator) {
+        return renderIndicator({
+          kind: "select-all",
+          checked,
+          onChange: (state) => table.toggleAllRowsSelected(state),
+        });
+      }
+      return (
         <Checkbox
-          checked={
-            table.getIsAllRowsSelected()
-              ? true
-              : table.getIsSomeRowsSelected()
-                ? "partial"
-                : false
-          }
+          checked={checked}
           onCheckedChange={(state) => {
             if (state === "indeterminate") {
               return;
@@ -1399,19 +1424,30 @@ export function createSelectionColumn<TData>({
             table.toggleAllRowsSelected(state);
           }}
         />
-      ) : null,
+      );
+    },
     cell: ({ row }) => (
       <div className="flex h-full w-full items-center">
-        <Checkbox
-          checked={row.getIsSelected()}
-          disabled={!row.getCanSelect()}
-          onCheckedChange={(state) => {
-            if (state === "indeterminate") {
-              return;
-            }
-            row.toggleSelected(state);
-          }}
-        />
+        {renderIndicator ? (
+          renderIndicator({
+            kind: "select-row",
+            row,
+            checked: row.getIsSelected(),
+            disabled: !row.getCanSelect(),
+            onChange: (state) => row.toggleSelected(state),
+          })
+        ) : (
+          <Checkbox
+            checked={row.getIsSelected()}
+            disabled={!row.getCanSelect()}
+            onCheckedChange={(state) => {
+              if (state === "indeterminate") {
+                return;
+              }
+              row.toggleSelected(state);
+            }}
+          />
+        )}
       </div>
     ),
     meta: {
