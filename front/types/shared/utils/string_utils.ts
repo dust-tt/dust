@@ -115,6 +115,7 @@ const SPECIAL_CASES = {
   github: "GitHub",
   hubspot: "HubSpot",
   mcp: "MCP",
+  id: "ID",
 };
 
 // Create a single regex pattern for all special cases
