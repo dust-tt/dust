@@ -1186,7 +1186,11 @@ export function UsagePage() {
                     </div>
                     <div className="flex flex-col justify-between gap-4 border-t border-border pt-4 sm:flex-row sm:items-center">
                       <div className="flex min-w-0 flex-col gap-1 text-sm text-foreground">
-                        {resetAt ? (
+                        {creditUsageDisplayTarget === "on_target" ? (
+                          <span>
+                            Your credit usage is on track for this cycle.
+                          </span>
+                        ) : resetAt ? (
                           <span>
                             At this rate, you&apos;re expected to consume your
                             full credits by{" "}
