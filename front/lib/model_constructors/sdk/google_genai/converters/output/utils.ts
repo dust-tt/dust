@@ -436,13 +436,19 @@ export async function* rawOutputToEvents(
   let hasYieldedResponseId = false;
   let usage: GenerateContentResponseUsageMetadata | undefined;
   let stopReason: string | null = null;
+  // The shared LLM stream stops at the first terminal event. Hold errors until
+  // any final provider usage has been emitted and persisted.
+  let terminalError: ErrorEvent | null = null;
 
   while (true) {
     let result: IteratorResult<GenerateContentResponse>;
     try {
       result = await stream.next();
     } catch (err) {
-      yield converters.streamErrorToErrorEvent(metadata, err);
+      if (usage) {
+        yield converters.usageToTokenUsageEvent(metadata, usage);
+      }
+      yield terminalError ?? converters.streamErrorToErrorEvent(metadata, err);
       return;
     }
     if (result.done) {
@@ -484,9 +490,8 @@ export async function* rawOutputToEvents(
         candidate.finishReason
       );
       if (errorEvent) {
-        // Terminal failure: surface the error and stop without a success event.
-        yield errorEvent;
-        return;
+        terminalError ??= errorEvent;
+        continue;
       }
       // Successful finish: flush any pending text/reasoning before the success.
       for (const event of flushAccumulated(
@@ -500,7 +505,13 @@ export async function* rawOutputToEvents(
     }
   }
 
-  yield converters.usageToTokenUsageEvent(metadata, usage);
+  if (usage) {
+    yield converters.usageToTokenUsageEvent(metadata, usage);
+  }
+  if (terminalError) {
+    yield terminalError;
+    return;
+  }
   // Gemini 3 returns a single turn-level thought signature (emitted on a
   // trailing part with the STOP finish reason). The final text has no message
   // slot to carry it and the turn may not include any reasoning, so carry it on

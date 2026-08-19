@@ -1,6 +1,13 @@
-import { usageToTokenUsageEvent } from "@app/lib/model_constructors/sdk/google_genai/converters/output/utils";
+import { createAsyncGenerator } from "@app/lib/api/llm/utils";
+import * as converters from "@app/lib/model_constructors/sdk/google_genai/converters/output/utils";
+import {
+  rawOutputToEvents,
+  usageToTokenUsageEvent,
+} from "@app/lib/model_constructors/sdk/google_genai/converters/output/utils";
+import { expectStreamEventContract } from "@app/lib/model_constructors/test/stream_event_contract";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type { GenerateContentResponseUsageMetadata } from "@google/genai";
+import { FinishReason, GenerateContentResponse } from "@google/genai";
 import { describe, expect, it } from "vitest";
 
 const metadata: EndpointMetadata = {
@@ -31,6 +38,54 @@ describe("usageToTokenUsageEvent", () => {
         reasoning: 312,
       },
       metadata,
+    });
+  });
+});
+
+describe("rawOutputToEvents", () => {
+  it("emits terminal response usage before a finish-reason error", async () => {
+    const usage: GenerateContentResponseUsageMetadata = {
+      promptTokenCount: 25,
+      candidatesTokenCount: 36,
+      totalTokenCount: 61,
+    };
+    const response = Object.assign(new GenerateContentResponse(), {
+      candidates: [{ finishReason: FinishReason.MAX_TOKENS }],
+      usageMetadata: usage,
+    });
+
+    const events = [];
+    for await (const event of rawOutputToEvents(
+      createAsyncGenerator([response]),
+      metadata,
+      converters
+    )) {
+      events.push(event);
+    }
+
+    expectStreamEventContract(events, {
+      terminalType: "error",
+      usageExpected: true,
+    });
+  });
+
+  it("does not synthesize zero usage when the provider omits it", async () => {
+    const response = Object.assign(new GenerateContentResponse(), {
+      candidates: [{ finishReason: FinishReason.STOP }],
+    });
+
+    const events = [];
+    for await (const event of rawOutputToEvents(
+      createAsyncGenerator([response]),
+      metadata,
+      converters
+    )) {
+      events.push(event);
+    }
+
+    expectStreamEventContract(events, {
+      terminalType: "success",
+      usageExpected: false,
     });
   });
 });

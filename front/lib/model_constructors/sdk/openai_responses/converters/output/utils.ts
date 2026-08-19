@@ -483,6 +483,9 @@ export async function* rawOutputToEvents(
   const aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[] = [];
   let usage: ResponseUsage | null = null;
   let stopReason: string | null = null;
+  // The shared LLM stream stops at the first terminal event. Hold errors until
+  // any final provider usage has been emitted and persisted.
+  let terminalError: ErrorEvent | null = null;
 
   while (true) {
     let result: IteratorResult<ResponseStreamEvent>;
@@ -491,7 +494,10 @@ export async function* rawOutputToEvents(
     } catch (err) {
       // Everything leaving the endpoint is an event: map any SDK error to a
       // unified error event and terminate rather than throwing.
-      yield converters.streamErrorToErrorEvent(metadata, err);
+      if (usage !== null) {
+        yield converters.usageToTokenUsageEvent(metadata, usage);
+      }
+      yield terminalError ?? converters.streamErrorToErrorEvent(metadata, err);
       return;
     }
     if (result.done) {
@@ -547,12 +553,24 @@ export async function* rawOutputToEvents(
         stopReason = event.response.status ?? null;
         break;
       case "response.failed":
+        if (event.response.usage) {
+          yield converters.usageToTokenUsageEvent(
+            metadata,
+            event.response.usage
+          );
+        }
         yield converters.streamErrorToErrorEvent(
           metadata,
           event.response.error
         );
         return;
       case "response.incomplete":
+        if (event.response.usage) {
+          yield converters.usageToTokenUsageEvent(
+            metadata,
+            event.response.usage
+          );
+        }
         yield buildErrorEvent({
           metadata,
           type: "stop_error",
@@ -622,6 +640,10 @@ export async function* rawOutputToEvents(
     }
 
     for (const outputEvent of outputEvents) {
+      if (outputEvent.type === "error") {
+        terminalError ??= outputEvent;
+        continue;
+      }
       if (
         outputEvent.type === "text" ||
         outputEvent.type === "reasoning" ||
@@ -635,6 +657,11 @@ export async function* rawOutputToEvents(
 
   if (usage !== null) {
     yield converters.usageToTokenUsageEvent(metadata, usage);
+  }
+
+  if (terminalError) {
+    yield terminalError;
+    return;
   }
 
   yield {

@@ -271,7 +271,8 @@ export abstract class LLM<
           continue;
         }
 
-        const { tokenUsage, ...rest } = buffer.currentOutput;
+        const output = buffer.currentOutput;
+        const { tokenUsage, ...rest } = output;
 
         // Logging before it gets stopped and retried downstream
         if (currentEvent.type === "error") {
@@ -291,6 +292,11 @@ export abstract class LLM<
               region: this.metadata.region,
               context: this.context,
               traceId: this.traceId,
+              hasUsage: output.tokenUsage !== undefined,
+              hasPartialOutput:
+                (output.content?.length ?? 0) > 0 ||
+                (output.reasoning?.length ?? 0) > 0 ||
+                (output.toolCalls?.length ?? 0) > 0,
             },
             "LLM Error"
           );

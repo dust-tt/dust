@@ -39,6 +39,7 @@ import {
   textDeltaToTextDeltaEvent,
   toolUseBlockStartToToolCallStartedEvent,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/utils";
+import { expectStreamEventContract } from "@app/lib/model_constructors/test/stream_event_contract";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import { describe, expect, it, vi } from "vitest";
@@ -1230,6 +1231,28 @@ describe("rawOutputToEvents", () => {
     });
   });
 
+  it("emits usage before a terminal stop error", async () => {
+    const events = await collect(
+      rawOutputToEvents(
+        streamOf([
+          {
+            type: "message_delta",
+            delta: { stop_reason: "max_tokens", stop_sequence: null },
+            usage: tokenUsage,
+          } as BetaRawMessageStreamEvent,
+          { type: "message_stop" } as BetaRawMessageStreamEvent,
+        ]),
+        metadata,
+        realConverters
+      )
+    );
+
+    expectStreamEventContract(events, {
+      terminalType: "error",
+      usageExpected: true,
+    });
+  });
+
   it("splits cache creation by TTL using the cache_creation breakdown from message_start", async () => {
     // Anthropic only emits the per-TTL split on message_start; the trailing
     // message_delta usage carries the flat cache_creation_input_tokens. The
@@ -1339,6 +1362,30 @@ describe("rawOutputToEvents", () => {
     );
     expect(events.map((e) => e.type)).toEqual(["response_id", "error"]);
     expect(events[1]).toMatchObject({ content: { type: "rate_limit_error" } });
+  });
+
+  it("preserves the latest reported usage when the stream fails afterward", async () => {
+    const events = await collect(
+      rawOutputToEvents(
+        streamOf(
+          [
+            {
+              type: "message_delta",
+              delta: { stop_reason: "end_turn", stop_sequence: null },
+              usage: tokenUsage,
+            } as BetaRawMessageStreamEvent,
+          ],
+          new APIError(500, {}, "stream interrupted", undefined, null)
+        ),
+        metadata,
+        realConverters
+      )
+    );
+
+    expectStreamEventContract(events, {
+      terminalType: "error",
+      usageExpected: true,
+    });
   });
 
   it("recovers an in-progress tool call when invalid tool JSON aborts the stream", async () => {

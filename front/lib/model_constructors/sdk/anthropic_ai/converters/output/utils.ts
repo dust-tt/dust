@@ -953,6 +953,9 @@ export async function* rawOutputToEvents(
   let blockState: BlockState | null = null;
   let tokenUsage: BetaMessageDeltaUsage | null = null;
   let stopReason: string | null = null;
+  // The shared LLM stream stops at the first terminal event. Hold errors until
+  // any final provider usage has been emitted and persisted.
+  let terminalError: ErrorEvent | null = null;
   const toolSearchQueriesByToolUseId = new Map<string, string | undefined>();
   // The per-TTL cache-creation breakdown is only emitted on `message_start`;
   // capture it so the trailing `message_delta` usage can be split by TTL.
@@ -987,7 +990,14 @@ export async function* rawOutputToEvents(
       }
       // Everything leaving the endpoint is an event: map any other SDK error to
       // a unified error event and terminate the stream rather than throwing.
-      yield converters.streamErrorToErrorEvent(metadata, err);
+      if (tokenUsage !== null) {
+        yield converters.messageDeltaUsageToTokenUsageEvent(
+          metadata,
+          tokenUsage,
+          cacheCreation
+        );
+      }
+      yield terminalError ?? converters.streamErrorToErrorEvent(metadata, err);
       return;
     }
     if (result.done) {
@@ -1080,6 +1090,10 @@ export async function* rawOutputToEvents(
     }
 
     for (const outputEvent of outputEvents) {
+      if (outputEvent.type === "error") {
+        terminalError ??= outputEvent;
+        continue;
+      }
       if (
         outputEvent.type === "text" ||
         outputEvent.type === "reasoning" ||
@@ -1097,6 +1111,11 @@ export async function* rawOutputToEvents(
       tokenUsage,
       cacheCreation
     );
+  }
+
+  if (terminalError) {
+    yield terminalError;
+    return;
   }
 
   yield {

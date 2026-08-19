@@ -187,13 +187,19 @@ export async function* rawOutputToEvents(
   let hasYieldedResponseId = false;
   let usage: ChatCompletionChunk["usage"];
   let stopReason: string | null = null;
+  // The shared LLM stream stops at the first terminal event. Hold errors until
+  // any final provider usage has been emitted and persisted.
+  let terminalError: ErrorEvent | null = null;
 
   while (true) {
     let result: IteratorResult<ChatCompletionChunk>;
     try {
       result = await stream.next();
     } catch (err) {
-      yield streamErrorToErrorEvent(metadata, err);
+      if (usage) {
+        yield usageToTokenUsageEvent(metadata, usage);
+      }
+      yield terminalError ?? streamErrorToErrorEvent(metadata, err);
       return;
     }
     if (result.done) {
@@ -297,19 +303,19 @@ export async function* rawOutputToEvents(
         break;
       }
       case "length":
-        yield buildErrorEvent({
+        terminalError ??= buildErrorEvent({
           metadata,
           type: "stop_error",
           message: "The maximum response length was reached.",
         });
-        return;
+        break;
       case "content_filter":
-        yield buildErrorEvent({
+        terminalError ??= buildErrorEvent({
           metadata,
           type: "refusal_error",
           message: "The response was filtered by the content policy.",
         });
-        return;
+        break;
       case "function_call":
         // Legacy function calls are surfaced through tool_calls deltas.
         break;
@@ -320,7 +326,13 @@ export async function* rawOutputToEvents(
     }
   }
 
-  yield usageToTokenUsageEvent(metadata, usage);
+  if (usage) {
+    yield usageToTokenUsageEvent(metadata, usage);
+  }
+  if (terminalError) {
+    yield terminalError;
+    return;
+  }
   yield {
     type: "success",
     content: { aggregated, ...(stopReason ? { stopReason } : {}) },
