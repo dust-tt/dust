@@ -96,8 +96,7 @@ export type ConsumptionTopSortOrder =
   (typeof CONSUMPTION_TOP_SORT_ORDER)[number];
 
 // A terms aggregation cannot order its buckets by a pipeline aggregation
-// (confirmed against a live cluster: "is a pipeline aggregation and cannot
-// be used to sort the buckets"), so a ratio like avg credits per unit can't be
+// so a ratio like avg credits per unit can't be
 // ranked with a bucket_script the way gross credits is. Two metrics avoid
 // that:
 // - "credits" orders by the sum(credit_micro) metric directly. Cost share is

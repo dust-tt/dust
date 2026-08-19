@@ -74,10 +74,7 @@ type GroupBucket = {
   [AVG_CREDIT_PER_INVOCATION_AGG]?: estypes.AggregationsAvgAggregate;
 };
 
-// The avg-credit-per-unit sub-aggregation is only worth computing when the
-// ranking actually orders by it. "message" dimensions rank by average in
-// memory (see `fetchConsumptionTopGroups`) from the credits/messages sums
-// already computed here, so no extra sub-aggregation is needed for them.
+// Only worth computing when the ranking actually orders by it.
 function subAggs(unit: ConsumptionTopUnit, sortBy: ConsumptionTopSortBy) {
   return {
     [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
