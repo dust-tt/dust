@@ -5,7 +5,7 @@ import type {
 import { triggerStatusSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import {
   DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT,
-  STORED_TRIGGER_EXECUTION_MODES,
+  TRIGGER_EXECUTION_MODES,
 } from "@app/types/assistant/triggers";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
@@ -25,7 +25,7 @@ export const WebhookFormSchema = z.object({
   includePayload: z.boolean().default(false),
   naturalDescription: z.string().optional(),
   executionPerDayLimitOverride: z.number(),
-  executionMode: z.enum(STORED_TRIGGER_EXECUTION_MODES).default("fair_use"),
+  executionMode: z.enum(TRIGGER_EXECUTION_MODES).default("user_pool"),
   spaceId: z.string().nullable(),
 });
 
@@ -57,7 +57,7 @@ export function getWebhookFormDefaultValues({
     executionPerDayLimitOverride:
       trigger?.executionPerDayLimitOverride ??
       DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT,
-    executionMode: trigger?.executionMode ?? "fair_use",
+    executionMode: trigger?.executionMode ?? "user_pool",
     spaceId: trigger?.spaceId ?? null,
   };
 }

@@ -26,7 +26,6 @@ import type {
   UserMessageContext,
 } from "@app/types/assistant/conversation";
 import type { TriggerType } from "@app/types/assistant/triggers";
-import { getTriggerExecutionMode } from "@app/types/assistant/triggers";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -79,8 +78,7 @@ async function createConversationForAgentConfiguration({
     email: auth.getNonNullableUser().email,
     profilePictureUrl: null,
     origin:
-      trigger.kind === "webhook" &&
-      getTriggerExecutionMode(trigger.executionMode) === "workspace_pool"
+      trigger.executionMode === "workspace_pool"
         ? "triggered_programmatic"
         : "triggered",
     lastTriggerRunAt: lastRunAt?.getTime() ?? null,

@@ -70,41 +70,6 @@ export const DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT = 42;
 export const TRIGGER_EXECUTION_MODES = ["user_pool", "workspace_pool"] as const;
 export type TriggerExecutionMode = (typeof TRIGGER_EXECUTION_MODES)[number];
 
-// Still stored in the database and returned by the API until the pool rename
-// has rolled out. Read through `getTriggerExecutionMode`, never by comparison.
-export const LEGACY_TRIGGER_EXECUTION_MODES = [
-  "fair_use",
-  "programmatic",
-] as const;
-export type LegacyTriggerExecutionMode =
-  (typeof LEGACY_TRIGGER_EXECUTION_MODES)[number];
-
-export type StoredTriggerExecutionMode =
-  | TriggerExecutionMode
-  | LegacyTriggerExecutionMode;
-
-export const STORED_TRIGGER_EXECUTION_MODES = [
-  ...TRIGGER_EXECUTION_MODES,
-  ...LEGACY_TRIGGER_EXECUTION_MODES,
-] as const;
-
-export function getTriggerExecutionMode(
-  mode: StoredTriggerExecutionMode | null
-): TriggerExecutionMode {
-  switch (mode) {
-    case "workspace_pool":
-    case "programmatic":
-      return "workspace_pool";
-    case "user_pool":
-    case "fair_use":
-    case null:
-      return "user_pool";
-    default:
-      assertNeverAndIgnore(mode);
-      return "user_pool";
-  }
-}
-
 export const TRIGGER_STATUSES = [
   "enabled",
   "disabled",
@@ -196,6 +161,7 @@ const TriggerBaseSchema = z.object({
   naturalLanguageDescription: z.string().nullable(),
   origin: z.enum(["user", "agent", "system"]),
   spaceId: z.string().nullable(),
+  executionMode: z.enum(TRIGGER_EXECUTION_MODES),
 });
 
 export const FullTriggerSchema = z.discriminatedUnion("kind", [
@@ -208,7 +174,6 @@ export const FullTriggerSchema = z.discriminatedUnion("kind", [
     configuration: WebhookConfigSchema,
     executionPerDayLimitOverride: z.number().nullable(),
     webhookSourceViewId: z.string().nullable(),
-    executionMode: z.enum(STORED_TRIGGER_EXECUTION_MODES).nullable(),
   }),
 ]);
 
@@ -223,7 +188,6 @@ export function isValidTriggerKind(kind: string): kind is TriggerKind {
 export type WebhookTriggerType = TriggerType & {
   kind: "webhook";
   webhookSourceViewId: string;
-  executionMode: StoredTriggerExecutionMode | null;
   executionPerDayLimitOverride: number | null;
 };
 

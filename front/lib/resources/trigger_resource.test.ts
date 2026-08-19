@@ -43,6 +43,7 @@ describe("TriggerResource", () => {
           timezone: "UTC",
         },
         origin: "user",
+        executionMode: "user_pool",
       });
 
       const trigger2Result = await TriggerResource.makeNew(authenticator, {
@@ -59,6 +60,7 @@ describe("TriggerResource", () => {
           timezone: "UTC",
         },
         origin: "user",
+        executionMode: "user_pool",
       });
 
       const trigger3Result = await TriggerResource.makeNew(authenticator, {
@@ -75,6 +77,7 @@ describe("TriggerResource", () => {
           timezone: "UTC",
         },
         origin: "user",
+        executionMode: "user_pool",
       });
 
       expect(trigger1Result.isOk()).toBe(true);
@@ -194,6 +197,7 @@ describe("TriggerResource", () => {
             timezone: "UTC",
           },
           origin: "user",
+          executionMode: "user_pool",
         }
       );
 
@@ -213,6 +217,7 @@ describe("TriggerResource", () => {
             timezone: "UTC",
           },
           origin: "user",
+          executionMode: "user_pool",
         }
       );
 
@@ -232,6 +237,7 @@ describe("TriggerResource", () => {
             timezone: "UTC",
           },
           origin: "user",
+          executionMode: "user_pool",
         }
       );
 
@@ -328,6 +334,7 @@ describe("TriggerResource", () => {
           timezone: "UTC",
         },
         origin: "user",
+        executionMode: "user_pool",
       });
       expect(triggerResult.isOk()).toBe(true);
       if (triggerResult.isErr()) {
@@ -388,6 +395,7 @@ describe("TriggerResource", () => {
           timezone: "UTC",
         },
         origin: "user",
+        executionMode: "user_pool",
       });
       expect(triggerResult.isOk()).toBe(true);
       if (triggerResult.isErr()) {

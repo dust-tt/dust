@@ -909,6 +909,7 @@ describe("updateAgentConfigurationsScope", () => {
       configuration: { includePayload: true },
       webhookSourceViewId: null,
       origin: "user",
+      executionMode: "user_pool",
     });
     expect(editorTriggerRes.isOk()).toBe(true);
     const editorTrigger = editorTriggerRes.isOk()
@@ -927,6 +928,7 @@ describe("updateAgentConfigurationsScope", () => {
       configuration: { includePayload: true },
       webhookSourceViewId: null,
       origin: "user",
+      executionMode: "user_pool",
     });
     expect(nonEditorTriggerRes.isOk()).toBe(true);
     const nonEditorTrigger = nonEditorTriggerRes.isOk()
