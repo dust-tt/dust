@@ -491,7 +491,7 @@ export function AutomationsTriggersTable({
             filter={filter}
             onFilterChange={onFilterChange}
           />
-          <CsvDownloadButton {...csvDownload} />
+          <CsvDownloadButton {...csvDownload} size="sm" />
         </div>
         <AutomationsFilterSummary
           filter={filter}
