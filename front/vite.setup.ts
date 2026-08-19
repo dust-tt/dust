@@ -20,15 +20,28 @@ function attachHashCommands(
   client: Record<string, unknown>,
   hashStore: Map<string, Map<string, string>>
 ) {
-  const hSet = vi.fn(async (key: string, field: string, value: string) => {
-    let hash = hashStore.get(key);
-    if (!hash) {
-      hash = new Map();
-      hashStore.set(key, hash);
+  // Mirrors node-redis: hSet takes either (key, field, value) or (key, fieldsObject).
+  const hSet = vi.fn(
+    async (
+      key: string,
+      fieldOrFields: string | Record<string, string>,
+      value?: string
+    ) => {
+      let hash = hashStore.get(key);
+      if (!hash) {
+        hash = new Map();
+        hashStore.set(key, hash);
+      }
+      if (typeof fieldOrFields === "string") {
+        hash.set(fieldOrFields, value ?? "");
+        return 1;
+      }
+      for (const [field, fieldValue] of Object.entries(fieldOrFields)) {
+        hash.set(field, fieldValue);
+      }
+      return Object.keys(fieldOrFields).length;
     }
-    hash.set(field, value);
-    return 1;
-  });
+  );
   const hGetAll = vi.fn(async (key: string) => {
     const hash = hashStore.get(key);
     if (!hash) {
@@ -36,13 +49,58 @@ function attachHashCommands(
     }
     return Object.fromEntries(hash);
   });
+  const hSetNX = vi.fn(async (key: string, field: string, value: string) => {
+    let hash = hashStore.get(key);
+    if (!hash) {
+      hash = new Map();
+      hashStore.set(key, hash);
+    }
+    if (hash.has(field)) {
+      return 0;
+    }
+    hash.set(field, value);
+    return 1;
+  });
+  const hmGet = vi.fn(async (key: string, fields: string[]) => {
+    const hash = hashStore.get(key);
+    return fields.map((field) => hash?.get(field) ?? null);
+  });
+  const hDel = vi.fn(async (key: string, fields: string | string[]) => {
+    const hash = hashStore.get(key);
+    if (!hash) {
+      return 0;
+    }
+    const toDelete = Array.isArray(fields) ? fields : [fields];
+    return toDelete.filter((field) => hash.delete(field)).length;
+  });
   const pExpire = vi.fn(async (_key: string, _ms: number) => true);
+  const type = vi.fn(async (key: string) => {
+    if (hashStore.has(key)) {
+      return "hash";
+    }
+    return redisStore.has(key) ? "string" : "none";
+  });
 
   const multi = vi.fn(() => {
     const ops: Array<() => Promise<unknown>> = [];
     const multiClient = {
-      hSet: (key: string, field: string, value: string) => {
-        ops.push(() => hSet(key, field, value));
+      del: (key: string) => {
+        ops.push(async () => {
+          redisStore.delete(key);
+          hashStore.delete(key);
+        });
+        return multiClient;
+      },
+      hSet: (
+        key: string,
+        fieldOrFields: string | Record<string, string>,
+        value?: string
+      ) => {
+        ops.push(() => hSet(key, fieldOrFields, value));
+        return multiClient;
+      },
+      hSetNX: (key: string, field: string, value: string) => {
+        ops.push(() => hSetNX(key, field, value));
         return multiClient;
       },
       hGetAll: (key: string) => {
@@ -53,12 +111,27 @@ function attachHashCommands(
         ops.push(() => pExpire(key, ms));
         return multiClient;
       },
-      exec: async () => Promise.all(ops.map((op) => op())),
+      exec: async () => {
+        const results: unknown[] = [];
+        for (const op of ops) {
+          results.push(await op());
+        }
+        return results;
+      },
     };
     return multiClient;
   });
 
-  Object.assign(client, { hSet, hGetAll, pExpire, multi });
+  Object.assign(client, {
+    hSet,
+    hSetNX,
+    hGetAll,
+    hmGet,
+    hDel,
+    pExpire,
+    type,
+    multi,
+  });
 }
 
 function createStatefulMockRedisClient() {
@@ -180,13 +253,14 @@ const mockRunOnRedisImpl = async (
   return fn(statefulRedisClient);
 };
 
-// runOnRedisCache: fresh client per call (isolated hash store).
+// runOnRedisCache: same shared client as getRedisCacheClient, as in production.
 const mockRunOnRedisCacheImpl = async (
   opts: unknown,
-  fn: (client: ReturnType<typeof createMockRedisClient>) => Promise<unknown>
+  fn: (
+    client: ReturnType<typeof createStatefulMockRedisClient>
+  ) => Promise<unknown>
 ) => {
-  const mockRedisClient = createMockRedisClient();
-  return fn(mockRedisClient);
+  return fn(sharedCacheRedisClient);
 };
 
 vi.mock("@app/lib/api/redis", () => ({

@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import type { GroupGrant } from "@app/lib/resources/group_permission_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -176,6 +177,18 @@ describe("GroupPermissionResource", () => {
   });
 
   describe("listForGroups", () => {
+    // Grants are cached per group, so flush the workspace to exercise the database read.
+    async function flushGrantCache() {
+      const redis = await getRedisCacheClient({
+        origin: "group_permissions_cache",
+      });
+      await redis.del(
+        GroupPermissionResource.cacheOperations.buildKey({
+          workspaceModelId: String(auth.getNonNullableWorkspace().id),
+        })
+      );
+    }
+
     it("filters in Postgres through one bound bigint array", async () => {
       await GroupPermissionResource.grant(auth, {
         group: groupA,
@@ -190,6 +203,8 @@ describe("GroupPermissionResource", () => {
         resourceId: 2,
       });
 
+      await flushGrantCache();
+
       let capturedQuery: { sql: string; bind: unknown } | undefined;
       const captureQueryHook = "capture-bound-group-permission-query";
       const captureQuery = (options: QueryOptions, query: AbstractQuery) => {
@@ -200,7 +215,7 @@ describe("GroupPermissionResource", () => {
       };
       frontSequelize.addHook("afterQuery", captureQueryHook, captureQuery);
 
-      let grants: GroupPermissionResource[];
+      let grants: GroupGrant[];
       try {
         grants = await GroupPermissionResource.listForGroups(
           auth.getNonNullableWorkspace(),
@@ -237,6 +252,8 @@ describe("GroupPermissionResource", () => {
         groupB.id,
         ...Array.from({ length: 8_192 }, (_, index) => 1_000_000 + index),
       ];
+      await flushGrantCache();
+
       let capturedQuery: { sql: string; bind: unknown } | undefined;
       const captureQueryHook = "capture-large-group-permission-query";
       const captureQuery = (options: QueryOptions, query: AbstractQuery) => {
@@ -247,7 +264,7 @@ describe("GroupPermissionResource", () => {
       };
       frontSequelize.addHook("afterQuery", captureQueryHook, captureQuery);
 
-      let grants: GroupPermissionResource[];
+      let grants: GroupGrant[];
       try {
         grants = await GroupPermissionResource.listForGroups(
           auth.getNonNullableWorkspace(),

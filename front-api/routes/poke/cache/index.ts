@@ -118,6 +118,14 @@ function resolveCacheKey(
   };
 }
 
+function decodeCacheValue(rawValue: string): unknown {
+  try {
+    return JSON.parse(rawValue);
+  } catch {
+    return rawValue;
+  }
+}
+
 /** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetPokeCacheResponseBody> => {
   const r = resolveCacheKey(ctx);
@@ -130,21 +138,27 @@ app.get("/", async (ctx): HandlerResult<GetPokeCacheResponseBody> => {
     runFn: typeof runOnRedisCache
   ): Promise<RedisCacheResult> => {
     return runFn({ origin: "poke_cache_lookup" }, async (client) => {
-      const [rawValue, ttl] = await Promise.all([
-        client.get(cacheKey),
-        client.ttl(cacheKey),
-      ]);
+      const keyType = await client.type(cacheKey);
+      const ttl = await client.ttl(cacheKey);
 
-      let parsed: unknown | null = null;
-      if (rawValue !== null) {
-        try {
-          parsed = JSON.parse(rawValue);
-        } catch {
-          parsed = rawValue;
-        }
+      if (keyType === "hash") {
+        const fields = await client.hGetAll(cacheKey);
+        const value = Object.fromEntries(
+          Object.entries(fields).map(([field, rawValue]) => [
+            field,
+            decodeCacheValue(rawValue),
+          ])
+        );
+
+        return { value, ttlSeconds: ttl };
       }
 
-      return { value: parsed, ttlSeconds: ttl };
+      const rawValue = await client.get(cacheKey);
+
+      return {
+        value: rawValue === null ? null : decodeCacheValue(rawValue),
+        ttlSeconds: ttl,
+      };
     });
   };
 

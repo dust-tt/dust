@@ -1,4 +1,5 @@
 import { workspaceActiveSeatsCacheOperations } from "@app/lib/api/workspace_seats/cache";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { CacheOperations } from "@app/lib/utils/cache_operations";
 import type { PokeCacheResourceDescriptor } from "@app/types/api/poke/cache";
@@ -9,6 +10,7 @@ import {
 } from "@app/types/shared/cache_resource_registry";
 
 const migratedCacheOperations = [
+  GroupPermissionResource.cacheOperations,
   WorkspaceResource.byIdCacheOperations,
   workspaceActiveSeatsCacheOperations,
 ];
