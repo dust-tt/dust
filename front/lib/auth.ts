@@ -27,9 +27,10 @@ import {
 } from "@app/lib/resources/group_permission_registry";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import type { KeyAuthType } from "@app/lib/resources/key_resource";
+import type { KeyAuthType, SystemKey } from "@app/lib/resources/key_resource";
 import {
   DEFAULT_SYSTEM_KEY_NAME,
+  isSystemKey,
   KeyResource,
   SECRET_KEY_PREFIX,
 } from "@app/lib/resources/key_resource";
@@ -974,33 +975,33 @@ export class Authenticator {
       : [];
     const keyGroupModelIds = allGroups.map((g) => g.id);
 
-    // `resolvePermissions` reads the key's grants from the key itself, so it only holds for the
-    // key's own workspace and its own groups: `requestedGroupIds` replaces those groups (the Slack
-    // bot acting as a user), and the target workspace below may not be the key's.
-    const permissionsKey = requestedGroupIds ? undefined : key;
+    // `requestedGroupIds` replaces the key's own groups (the Slack bot acting as a user), so the
+    // resolution goes through those groups instead of the key.
+    const systemKey = !requestedGroupIds && isSystemKey(key) ? key : null;
 
     let permissions: GroupPermissions;
     let keyPermissions: GroupPermissions;
     if (isKeyWorkspace) {
       // Same workspace and same groups: both Authenticators share one resolution rather than
       // running the same query twice. Safe to share the instance, GroupPermissions is immutable.
-      permissions = await this.resolvePermissions({
-        workspace,
-        groupModelIds: workspaceGroupModelIds,
-        key: permissionsKey,
-      });
+      permissions = await this.resolvePermissions(
+        systemKey
+          ? { workspace, systemKey }
+          : { workspace, groupModelIds: workspaceGroupModelIds }
+      );
       keyPermissions = permissions;
     } else {
       [permissions, keyPermissions] = await Promise.all([
+        // The target workspace is not the key's, so the key says nothing about it.
         this.resolvePermissions({
           workspace,
           groupModelIds: workspaceGroupModelIds,
         }),
-        this.resolvePermissions({
-          workspace: keyWorkspace,
-          groupModelIds: keyGroupModelIds,
-          key: permissionsKey,
-        }),
+        this.resolvePermissions(
+          systemKey
+            ? { workspace: keyWorkspace, systemKey }
+            : { workspace: keyWorkspace, groupModelIds: keyGroupModelIds }
+        ),
       ]);
     }
 
@@ -1301,20 +1302,22 @@ export class Authenticator {
    * NOT confer access to a specific instance unless a grant grants it. Cheap for callers with no
    * groups (no query).
    */
-  static async resolvePermissions({
-    workspace,
-    groupModelIds,
-    key,
-  }: {
-    workspace?: WorkspaceResource | null;
-    groupModelIds: ModelId[];
-    key?: Pick<KeyAuthType, "isSystem"> | null;
-  }): Promise<GroupPermissions> {
+  static async resolvePermissions(
+    // Groups or a system key, never both: a system key is attached to every group of its
+    // workspace, so its grants are the wildcard and reading them back would scan the workspace's
+    // whole `group_permissions` slice. A system key narrowed to a group subset must resolve from
+    // those groups, so the two inputs are mutually exclusive rather than a rule to remember.
+    params: { workspace?: WorkspaceResource | null } & (
+      | { groupModelIds: ModelId[]; systemKey?: never }
+      | { systemKey: SystemKey; groupModelIds?: never }
+    )
+  ): Promise<GroupPermissions> {
+    const { workspace } = params;
     if (!workspace) {
       return GroupPermissions.empty();
     }
 
-    if (key?.isSystem) {
+    if (params.systemKey) {
       return GroupPermissions.fromGrants([
         {
           grantType: "*",
@@ -1326,7 +1329,7 @@ export class Authenticator {
 
     const lightWorkspace = renderLightWorkspaceType({ workspace });
     const grants = await GroupPermissionResource.listForGroups(lightWorkspace, {
-      groupModelIds,
+      groupModelIds: params.groupModelIds,
     });
 
     return GroupPermissions.fromGrants(grants);
