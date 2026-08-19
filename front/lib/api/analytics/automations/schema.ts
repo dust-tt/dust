@@ -29,6 +29,9 @@ export const AutomationTriggersBodySchema = ConsumptionPeriodSchema.extend({
   offset: z.number().int().nonnegative().default(0),
   search: z.string().trim().optional(),
   filter: AutomationTriggersFilterSchema.optional(),
+  // csv ignores limit/offset and returns every trigger matching the period,
+  // search and filter, up to the same ranking cap used for the page view.
+  format: z.enum(["json", "csv"]).optional().default("json"),
 });
 
 export type AutomationTriggersBody = z.infer<
