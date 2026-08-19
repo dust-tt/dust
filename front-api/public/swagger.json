@@ -896,6 +896,7 @@
                       "handle",
                       "description",
                       "scope",
+                      "avatar_url",
                       "max_steps_per_run",
                       "visualization_enabled"
                     ],
@@ -5780,9 +5781,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Table"
+                  "type": "object",
+                  "properties": {
+                    "tables": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Table"
+                      }
+                    }
                   }
                 }
               }
@@ -5882,7 +5888,12 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Table"
+                  "type": "object",
+                  "properties": {
+                    "table": {
+                      "$ref": "#/components/schemas/Table"
+                    }
+                  }
                 }
               }
             }

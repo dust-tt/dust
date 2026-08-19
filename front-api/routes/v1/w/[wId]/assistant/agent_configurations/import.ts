@@ -38,6 +38,7 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
  *                   - handle
  *                   - description
  *                   - scope
+ *                   - avatar_url
  *                   - max_steps_per_run
  *                   - visualization_enabled
  *                 properties:
