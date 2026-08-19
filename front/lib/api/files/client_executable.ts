@@ -1,3 +1,4 @@
+import { DustFileSystem } from "@app/lib/api/file_system";
 import type { ValidationWarning } from "@app/lib/api/files/content_validation";
 import {
   validateTailwindCode,
@@ -18,6 +19,7 @@ import { executeWithLock } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
+import { SCOPED_PREFIX_CONVERSATION } from "@app/types/file_system";
 import type { InteractiveContentFileContentType } from "@app/types/files";
 import {
   INTERACTIVE_CONTENT_FILE_FORMATS,
@@ -131,6 +133,24 @@ export async function createClientExecutableFile(
         lastEditedByAgentConfigurationId: createdByAgentConfigurationId,
       },
     });
+
+    // The Frame's live source lives in the file system, so create the node now
+    // and bind the file to it. The id is what publish and live edits resolve
+    // through later, which is what keeps working when the source is moved.
+    const fsResult = await DustFileSystem.fromScopedPath(
+      auth,
+      `${SCOPED_PREFIX_CONVERSATION}-${conversationId}`
+    );
+    if (fsResult.isOk()) {
+      const written = await fsResult.value.write(
+        `${SCOPED_PREFIX_CONVERSATION}-${conversationId}/${fileResource.fileName}`,
+        content,
+        mimeType
+      );
+      if (written.isOk() && written.value.nodeId !== null) {
+        await fileResource.bindToFileSystemNode(written.value.nodeId);
+      }
+    }
 
     // Upload content directly.
     const uploadResult = await uploadFrameContent(auth, fileResource, content);

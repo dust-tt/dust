@@ -68,8 +68,8 @@ export async function editFrameTextAtSource(
     editedByAgentConfigurationId?: string;
   }
 ): Promise<Result<{ warnings: ValidationWarning[] }, EditFrameTextError>> {
-  const root = file.useCaseMetadata?.frameBundleRootPath;
-  if (!file.isInteractiveContent || !root) {
+  const storedRoot = file.useCaseMetadata?.frameBundleRootPath;
+  if (!file.isInteractiveContent || !storedRoot) {
     return new Err(
       new EditFrameTextError(
         "not_published",
@@ -89,8 +89,7 @@ export async function editFrameTextAtSource(
   }
 
   try {
-    const rootScopedPath = root.replace(/\/+$/, "");
-    const scopedPath = `${rootScopedPath}/${location.relPath}`;
+    let rootScopedPath = storedRoot.replace(/\/+$/, "");
 
     const fsResult = await DustFileSystem.fromScopedPath(auth, rootScopedPath);
     if (fsResult.isErr()) {
@@ -99,6 +98,20 @@ export async function editFrameTextAtSource(
       );
     }
     const dustFs = fsResult.value;
+
+    // The stored path is where the root was at publish time. When the Frame
+    // carries a node id, that id is authoritative: it follows the directory
+    // through moves and renames, and the path is only a fallback for Frames
+    // published before ids were recorded.
+    const rootNodeId = file.useCaseMetadata?.frameBundleRootNodeId;
+    if (rootNodeId !== undefined) {
+      const currentRoot = await dustFs.pathForNodeId(rootNodeId);
+      if (currentRoot.isOk() && currentRoot.value !== null) {
+        rootScopedPath = currentRoot.value;
+      }
+    }
+
+    const scopedPath = `${rootScopedPath}/${location.relPath}`;
 
     const bufferResult = await dustFs.readBuffer(scopedPath);
     if (bufferResult.isErr()) {

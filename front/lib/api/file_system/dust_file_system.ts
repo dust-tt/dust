@@ -947,6 +947,32 @@ export class DustFileSystem {
    * When `content` is a `Readable`, the data is streamed to storage without buffering it in
    * memory; the stream is consumed (or destroyed on error) by the backend.
    */
+  async nodeIdForPath(
+    scopedPath: string
+  ): Promise<Result<number | null, DustFileSystemError>> {
+    const resolved = this.requireReadMount(scopedPath);
+    if (resolved.isErr()) {
+      return resolved;
+    }
+    return this.backend.nodeIdForPath(scopedPath);
+  }
+
+  async pathForNodeId(
+    nodeId: number
+  ): Promise<Result<string | null, DustFileSystemError>> {
+    const path = await this.backend.pathForNodeId(nodeId);
+    if (path.isErr() || path.value === null) {
+      return path;
+    }
+    // The mount check runs on the resolved path: the id may name a node in a
+    // root this caller cannot read.
+    const resolved = this.requireReadMount(path.value);
+    if (resolved.isErr()) {
+      return resolved;
+    }
+    return path;
+  }
+
   async write(
     scopedPath: string,
     content: Buffer | string | Readable,

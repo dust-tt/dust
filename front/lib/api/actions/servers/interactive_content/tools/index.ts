@@ -411,11 +411,15 @@ export async function createInteractiveContentTools(
         );
       }
 
+      // Null on mounts without nodes (GCS), where the path stays the only handle.
+      const rootNodeId = await fsResult.value.nodeIdForPath(root);
+
       const result = await publishFrame(auth, {
         file,
         reader: createMountFrameSourceReader(fsResult.value, root),
         entryRelPath,
         rootScopedPath: root,
+        rootNodeId: rootNodeId.isOk() ? rootNodeId.value : null,
         publishedByAgentConfigurationId: agentConfiguration?.sId,
       });
       if (result.isErr()) {

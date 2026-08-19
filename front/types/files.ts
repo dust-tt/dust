@@ -55,6 +55,10 @@ export type FileUseCaseMetadata = {
   // only). Set when the frame has been published: its presence means a built bundle exists
   // (stored as the processed version) and records where to re-read sources on republish.
   frameBundleRootPath?: string;
+  // File system node holding the Frame's build root, as of the last publish. The
+  // id follows the directory through every move and rename, unlike the path
+  // above, which is kept as a fallback for Frames published before this existed.
+  frameBundleRootNodeId?: number;
   // Scoped path of the Frame's entry file, relative to frameBundleRootPath, as of the last
   // successful publish. The model names the entry's full path directly when publishing (see the
   // publish tool), so fileName has no guaranteed relationship to it: this is the only durable

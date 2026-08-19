@@ -435,6 +435,28 @@ export class FileResource extends BaseResource<FileModel> {
     return files.map((f) => new this(this.model, f.get()));
   }
 
+  // Files bound to Dust file system nodes, used when nodes are removed or
+  // replaced to find the files that must be dealt with first. Removing a node
+  // while one of these still points at it fails on the foreign key.
+  static async fetchByFileSystemNodeIds(
+    auth: Authenticator,
+    fileSystemNodeIds: number[]
+  ): Promise<FileResource[]> {
+    if (fileSystemNodeIds.length === 0) {
+      return [];
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+    const files = await this.model.findAll({
+      where: {
+        workspaceId: owner.id,
+        fileSystemNodeId: { [Op.in]: fileSystemNodeIds },
+      },
+    });
+
+    return files.map((f) => new this(this.model, f.get()));
+  }
+
   static async deleteAllForWorkspace(auth: Authenticator) {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
@@ -1470,6 +1492,12 @@ export class FileResource extends BaseResource<FileModel> {
       fileName: sanitizeFileSystemName(newFileName),
       mountFilePath: newMountFilePath,
     });
+  }
+
+  // Binds this file to the Dust file system node holding its live source. The
+  // node id survives every move and rename, unlike the mount path.
+  bindToFileSystemNode(fileSystemNodeId: number) {
+    return this.update({ fileSystemNodeId });
   }
 
   updateMount({

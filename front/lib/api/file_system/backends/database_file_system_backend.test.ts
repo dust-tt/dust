@@ -8,6 +8,7 @@ import { FileSystemMutationResource } from "@app/lib/resources/file_system_mutat
 import { FileSystemNodeResource } from "@app/lib/resources/file_system_node_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -144,6 +145,106 @@ describe("DatabaseFileSystemBackend", () => {
       rootId: pod.sId,
       name: "report.txt",
     });
+  });
+
+  it("resolves a stored node id to wherever the file lives now", async () => {
+    const { conversation, dustFileSystem, pod } = await databaseFileSystem();
+    fileStorageMock.setFileMetadata(() => ({
+      size: "5",
+      contentType: "text/plain",
+      contentEncoding: "identity",
+    }));
+    const written = await dustFileSystem.write(
+      `conversation-${conversation.sId}/report.txt`,
+      "hello",
+      "text/plain"
+    );
+    assert(written.isOk() && written.value.nodeId !== null);
+    const { nodeId } = written.value;
+
+    // This is what a feature stores, and what it holds after the file moves.
+    expect(
+      await dustFileSystem.nodeIdForPath(
+        `conversation-${conversation.sId}/report.txt`
+      )
+    ).toEqual(expect.objectContaining({ value: nodeId }));
+
+    const moved = await dustFileSystem.move({
+      src: `conversation-${conversation.sId}/report.txt`,
+      dest: `pod-${pod.sId}/moved.txt`,
+    });
+    assert(moved.isOk());
+
+    const current = await dustFileSystem.pathForNodeId(nodeId);
+    expect(current).toEqual(
+      expect.objectContaining({ value: `pod-${pod.sId}/moved.txt` })
+    );
+  });
+
+  it("refuses to delete a node while a file is still bound to it", async () => {
+    const { auth, conversation, dustFileSystem } = await databaseFileSystem();
+    fileStorageMock.setFileMetadata(() => ({
+      size: "5",
+      contentType: "text/plain",
+      contentEncoding: "identity",
+    }));
+    const path = `conversation-${conversation.sId}/report.txt`;
+    const written = await dustFileSystem.write(path, "hello", "text/plain");
+    assert(written.isOk() && written.value.nodeId !== null);
+    const file = await FileFactory.create(auth, auth.getNonNullableUser(), {
+      contentType: "text/plain",
+      fileName: "report.txt",
+      fileSize: 5,
+      // Not "ready": deleting a ready file also clears its stored content, which
+      // this test has no reason to exercise.
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+    await file.bindToFileSystemNode(written.value.nodeId);
+
+    // The binding makes the ordering the database's business: the file has to be
+    // dealt with first, rather than losing its pointer without anyone noticing.
+    const blocked = await dustFileSystem.delete(path);
+
+    assert(blocked.isErr());
+  });
+
+  it("deletes a node once the file bound to it is gone", async () => {
+    const { auth, conversation, dustFileSystem } = await databaseFileSystem();
+    fileStorageMock.setFileMetadata(() => ({
+      size: "5",
+      contentType: "text/plain",
+      contentEncoding: "identity",
+    }));
+    const path = `conversation-${conversation.sId}/report.txt`;
+    const written = await dustFileSystem.write(path, "hello", "text/plain");
+    assert(written.isOk() && written.value.nodeId !== null);
+    const file = await FileFactory.create(auth, auth.getNonNullableUser(), {
+      contentType: "text/plain",
+      fileName: "report.txt",
+      fileSize: 5,
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+    });
+    await file.bindToFileSystemNode(written.value.nodeId);
+
+    const deleted = await file.delete(auth);
+    assert(deleted.isOk());
+
+    expect((await dustFileSystem.delete(path)).isOk()).toBe(true);
+  });
+
+  it("reports not_found for a path with nothing on it", async () => {
+    const { conversation, dustFileSystem } = await databaseFileSystem();
+
+    const missing = await dustFileSystem.nodeIdForPath(
+      `conversation-${conversation.sId}/absent.txt`
+    );
+
+    assert(missing.isErr());
+    expect(missing.error.code).toBe("not_found");
   });
 
   it("preserves the inode while moving a file from a conversation to its Pod", async () => {

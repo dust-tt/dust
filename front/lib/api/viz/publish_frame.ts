@@ -71,12 +71,16 @@ export async function publishFrame(
     reader,
     entryRelPath,
     rootScopedPath,
+    rootNodeId,
     publishedByAgentConfigurationId,
   }: {
     file: FileResource;
     reader: FrameSourceReader;
     entryRelPath: string;
     rootScopedPath: string;
+    // Identity of the build root, when the mount has nodes. Live edits resolve
+    // through it so a moved Frame keeps rebuilding.
+    rootNodeId?: number | null;
     publishedByAgentConfigurationId?: string;
   }
 ): Promise<Result<{ warnings: ValidationWarning[] }, PublishFrameError>> {
@@ -191,6 +195,9 @@ export async function publishFrame(
       await file.setUseCaseMetadata(auth, {
         ...(file.useCaseMetadata ?? {}),
         frameBundleRootPath: rootScopedPath,
+        ...(rootNodeId !== null && rootNodeId !== undefined
+          ? { frameBundleRootNodeId: rootNodeId }
+          : {}),
         frameEntryRelPath: entryRelPath,
         ...(publishedByAgentConfigurationId
           ? {
