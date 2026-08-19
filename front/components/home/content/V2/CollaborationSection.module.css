@@ -1,0 +1,72 @@
+/* Cursor movement paths */
+@keyframes cursor-sarah {
+  0% { transform: translate(0, 0); }
+  15% { transform: translate(40px, 20px); }
+  30% { transform: translate(10px, 60px); }
+  50% { transform: translate(60px, 30px); }
+  70% { transform: translate(20px, -10px); }
+  85% { transform: translate(50px, 50px); }
+  100% { transform: translate(0, 0); }
+}
+@keyframes cursor-marcus {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(30px, -15px); }
+  40% { transform: translate(70px, 10px); }
+  60% { transform: translate(40px, 40px); }
+  80% { transform: translate(-10px, 20px); }
+  100% { transform: translate(0, 0); }
+}
+@keyframes cursor-priya {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-20px, -30px); }
+  50% { transform: translate(30px, -10px); }
+  75% { transform: translate(-10px, 20px); }
+  100% { transform: translate(0, 0); }
+}
+
+.cursorSarah { animation: cursor-sarah 12s ease-in-out infinite; }
+.cursorMarcus { animation: cursor-marcus 10s ease-in-out infinite; }
+.cursorPriya { animation: cursor-priya 14s ease-in-out infinite; }
+
+/* Message appear animation */
+@keyframes msg-appear {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.msgAppear {
+  opacity: 0;
+  animation: msg-appear 0.6s ease-out forwards;
+}
+
+/* Handoff pulse */
+@keyframes handoff-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+.handoffPulse { animation: handoff-pulse 2s ease-in-out infinite 4.6s; }
+
+/* Live ping */
+@keyframes live-ping {
+  0% { transform: scale(1); opacity: 1; }
+  75% { transform: scale(2.5); opacity: 0; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+.livePing { position: relative; }
+.livePing::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #34d399;
+  animation: live-ping 2s ease-out infinite;
+}
+
+/* Canvas replay loop */
+@keyframes canvas-loop {
+  0% { opacity: 0; }
+  4% { opacity: 1; }
+  85% { opacity: 1; }
+  95% { opacity: 0; }
+  100% { opacity: 0; }
+}
+.canvasLoop { animation: canvas-loop 16s ease-in-out infinite; }
