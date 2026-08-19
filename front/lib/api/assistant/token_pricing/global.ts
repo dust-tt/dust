@@ -375,11 +375,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 0.28,
     cache_read_input_tokens: 0.028,
   },
-  // https://fireworks.ai/models/fireworks/deepseek-v4-pro
+  // Verified 2026-08-19:
+  // https://docs.fireworks.ai/serverless/pricing
   "accounts/fireworks/models/deepseek-v4-pro": {
     input: 1.74,
     output: 3.48,
-    cache_read_input_tokens: 0.14,
+    cache_read_input_tokens: 0.145,
   },
   // https://fireworks.ai/models/fireworks/kimi-k2-instruct-0905
   "accounts/fireworks/models/kimi-k2-instruct-0905": {

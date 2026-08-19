@@ -10,6 +10,10 @@ export function WithDustDeepSeekDeepSeekV4ProConfig<
     static readonly displayName = "DeepSeek V4 Pro (Fireworks)";
     static readonly description =
       "DeepSeek's V4 Pro Mixture-of-Experts model with frontier reasoning, advanced coding, and 1M context (served via Fireworks).";
+    // Preserve the existing Dust product caps while the constructor exposes
+    // Fireworks' native 1040k context and DeepSeek's native 384k output.
+    static readonly contextSize = 1_000_000;
+    static readonly maxOutputTokens = 64_000;
     static readonly byok = false;
 
     // Nest the legacy model config under a single `modelConfig` static (see

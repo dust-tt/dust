@@ -2,8 +2,11 @@ import { fireworksConfigSchema } from "@app/lib/model_constructors/providers/fir
 import { DEEPSEEK_V4_PRO } from "@app/lib/model_constructors/types/models";
 import { z } from "zod";
 
-const CONTEXT_SIZE = 1_000_000;
-const MAX_OUTPUT_TOKENS = 64_000;
+// Verified 2026-08-19: https://fireworks.ai/models/fireworks/deepseek-v4-pro
+// (1040k context) and https://api-docs.deepseek.com/quick_start/pricing
+// (384k maximum output).
+const CONTEXT_SIZE = 1_040_000;
+const MAX_OUTPUT_TOKENS = 384_000;
 
 // DeepSeek documents exactly three states: thinking disabled
 // (`thinking: {type: "disabled"}`), effort `high` (the default) and effort
@@ -13,7 +16,7 @@ const MAX_OUTPUT_TOKENS = 64_000;
 // silently rewrite the caller's choice. We expose the three real states only;
 // our `maximal` is DeepSeek's `max`.
 //
-// Confirmed live through Fireworks on 2026-07-27 with the widest
+// Confirmed live through Fireworks on 2026-08-19 with the widest
 // `inputConfigSchema`: `none` returns no reasoning content at all, high and max
 // both reason, and the gateway rejects only `minimal`.
 //
@@ -38,8 +41,9 @@ export function WithDeepSeekDeepSeekV4ProConfig<
 
     static readonly configSchema = configSchema;
 
-    static readonly contextSize = CONTEXT_SIZE;
-    static readonly maxOutputTokens = MAX_OUTPUT_TOKENS;
+    // `number`, not the literal, so the Dust layer can cap them.
+    static readonly contextSize: number = CONTEXT_SIZE;
+    static readonly maxOutputTokens: number = MAX_OUTPUT_TOKENS;
   }
 
   return DeepSeekDeepSeekV4Pro;
