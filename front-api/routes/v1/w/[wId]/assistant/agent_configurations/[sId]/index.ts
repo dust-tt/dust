@@ -12,7 +12,7 @@ import type {
 } from "@dust-tt/client";
 import { PatchAgentConfigurationRequestSchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -317,7 +317,7 @@ app.get(
 
 app.patch(
   "/",
-  ensureIsBuilder(),
+  ensureIsAdmin(),
   validate("param", AgentConfigurationParamSchema),
   validate("json", PatchAgentConfigurationRequestSchema),
   async (ctx): HandlerResult<GetOrPatchAgentConfigurationResponseType> => {
@@ -389,7 +389,7 @@ app.patch(
 
 app.delete(
   "/",
-  ensureIsBuilder(),
+  ensureIsAdmin(),
   validate("param", AgentConfigurationParamSchema),
   async (ctx): HandlerResult<DeleteAgentConfigurationResponseType> => {
     const auth = ctx.get("auth");
