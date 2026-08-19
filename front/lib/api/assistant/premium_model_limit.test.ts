@@ -6,17 +6,11 @@ import type {
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
 import type { ResolvedRequestedModel } from "@app/types/assistant/models/types";
-import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const {
-  mockGetFeatureFlags,
-  mockGetRateLimiterCount,
-  mockAddRateLimiterCount,
-} = vi.hoisted(() => ({
+const { mockGetFeatureFlags, mockRateLimiter } = vi.hoisted(() => ({
   mockGetFeatureFlags: vi.fn(),
-  mockGetRateLimiterCount: vi.fn(),
-  mockAddRateLimiterCount: vi.fn(),
+  mockRateLimiter: vi.fn(),
 }));
 
 vi.mock("@app/lib/auth", () => ({
@@ -24,8 +18,7 @@ vi.mock("@app/lib/auth", () => ({
 }));
 
 vi.mock("@app/lib/utils/rate_limiter", () => ({
-  getRateLimiterCount: mockGetRateLimiterCount,
-  addRateLimiterCount: mockAddRateLimiterCount,
+  rateLimiter: mockRateLimiter,
 }));
 
 const PREMIUM_MODEL: ResolvedRequestedModel = {
@@ -42,6 +35,7 @@ const BALANCED_MODEL: ResolvedRequestedModel = {
 
 const EXPECTED_KEY = "workspace:42:user:7:premium_model_message_count";
 const EXPECTED_WINDOW_SECONDS = 7 * 24 * 60 * 60;
+const EXPECTED_LIMIT = 25;
 
 // Minimal stand-in for the Authenticator class exposing only the members the gate reads. A class
 // instance can't be constructed structurally, so a single `as unknown as` is the standard test-mock
@@ -89,29 +83,24 @@ describe("checkPremiumModelMessageLimit", () => {
     mockGetFeatureFlags.mockResolvedValue([
       "enforce_premium_model_message_limit",
     ]);
-    mockGetRateLimiterCount.mockResolvedValue(new Ok(0));
-    mockAddRateLimiterCount.mockResolvedValue(undefined);
+    mockRateLimiter.mockResolvedValue(1);
   });
 
-  it("records a premium message under the weekly limit", async () => {
+  it("consumes one unit atomically for a premium message under the weekly limit", async () => {
     const result = await callGate(makeAuth());
 
     expect(result.isOk()).toBe(true);
-    expect(mockGetRateLimiterCount).toHaveBeenCalledWith({
-      key: EXPECTED_KEY,
-      timeframeSeconds: EXPECTED_WINDOW_SECONDS,
-    });
-    expect(mockAddRateLimiterCount).toHaveBeenCalledWith(
+    expect(mockRateLimiter).toHaveBeenCalledWith(
       expect.objectContaining({
         key: EXPECTED_KEY,
+        maxPerTimeframe: EXPECTED_LIMIT,
         timeframeSeconds: EXPECTED_WINDOW_SECONDS,
-        incrementBy: 1,
       })
     );
   });
 
-  it("blocks and stops recording once the limit is reached and the flag is on", async () => {
-    mockGetRateLimiterCount.mockResolvedValue(new Ok(25));
+  it("blocks once the limit is reached and the flag is on", async () => {
+    mockRateLimiter.mockResolvedValue(0);
 
     const result = await callGate(makeAuth());
 
@@ -120,26 +109,15 @@ describe("checkPremiumModelMessageLimit", () => {
       expect(result.error.status_code).toBe(429);
       expect(result.error.api_error.type).toBe("rate_limit_error");
     }
-    expect(mockAddRateLimiterCount).not.toHaveBeenCalled();
   });
 
-  it("keeps recording past the limit when the flag is off", async () => {
+  it("allows past the limit when the flag is off", async () => {
     mockGetFeatureFlags.mockResolvedValue([]);
-    mockGetRateLimiterCount.mockResolvedValue(new Ok(60));
+    mockRateLimiter.mockResolvedValue(0);
 
     const result = await callGate(makeAuth());
 
     expect(result.isOk()).toBe(true);
-    expect(mockAddRateLimiterCount).toHaveBeenCalledTimes(1);
-  });
-
-  it("allows and records when the count cannot be read", async () => {
-    mockGetRateLimiterCount.mockResolvedValue(new Err(new Error("redis down")));
-
-    const result = await callGate(makeAuth());
-
-    expect(result.isOk()).toBe(true);
-    expect(mockAddRateLimiterCount).toHaveBeenCalledTimes(1);
   });
 
   it("does not count non-premium models", async () => {
@@ -148,29 +126,27 @@ describe("checkPremiumModelMessageLimit", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(mockGetRateLimiterCount).not.toHaveBeenCalled();
-    expect(mockAddRateLimiterCount).not.toHaveBeenCalled();
+    expect(mockRateLimiter).not.toHaveBeenCalled();
   });
 
   it("does not count credit-priced plans", async () => {
     const result = await callGate(makeAuth({ planCode: "CP_PRO" }));
 
     expect(result.isOk()).toBe(true);
-    expect(mockGetRateLimiterCount).not.toHaveBeenCalled();
-    expect(mockAddRateLimiterCount).not.toHaveBeenCalled();
+    expect(mockRateLimiter).not.toHaveBeenCalled();
   });
 
   it("counts trigger and wakeup runs as fair use", async () => {
     for (const origin of ["triggered", "wakeup"] as const) {
       vi.clearAllMocks();
-      mockGetRateLimiterCount.mockResolvedValue(new Ok(0));
+      mockRateLimiter.mockResolvedValue(1);
 
       const result = await callGate(makeAuth({ authMethod: "internal" }), {
         origin,
       });
 
       expect(result.isOk()).toBe(true);
-      expect(mockAddRateLimiterCount).toHaveBeenCalledTimes(1);
+      expect(mockRateLimiter).toHaveBeenCalledTimes(1);
     }
   });
 
@@ -183,8 +159,7 @@ describe("checkPremiumModelMessageLimit", () => {
       });
 
       expect(result.isOk()).toBe(true);
-      expect(mockGetRateLimiterCount).not.toHaveBeenCalled();
-      expect(mockAddRateLimiterCount).not.toHaveBeenCalled();
+      expect(mockRateLimiter).not.toHaveBeenCalled();
     }
   });
 
@@ -194,8 +169,7 @@ describe("checkPremiumModelMessageLimit", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(mockGetRateLimiterCount).not.toHaveBeenCalled();
-    expect(mockAddRateLimiterCount).not.toHaveBeenCalled();
+    expect(mockRateLimiter).not.toHaveBeenCalled();
   });
 
   it("counts system-key sub-agent runs that inherit an interactive origin", async () => {
@@ -204,14 +178,13 @@ describe("checkPremiumModelMessageLimit", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(mockAddRateLimiterCount).toHaveBeenCalledTimes(1);
+    expect(mockRateLimiter).toHaveBeenCalledTimes(1);
   });
 
   it("does not count free origins", async () => {
     const result = await callGate(makeAuth(), { origin: "agent_sidekick" });
 
     expect(result.isOk()).toBe(true);
-    expect(mockGetRateLimiterCount).not.toHaveBeenCalled();
-    expect(mockAddRateLimiterCount).not.toHaveBeenCalled();
+    expect(mockRateLimiter).not.toHaveBeenCalled();
   });
 });
