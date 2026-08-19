@@ -17,7 +17,6 @@ import {
   buildModelSelection,
   buildTierSelection,
   getInitialEffort,
-  getModelEffortTier,
   getModelTier,
   getModelWithReasoningEffortLabel,
   getTierLockReason,
@@ -27,6 +26,7 @@ import {
 } from "@app/components/model_picker/modelPickerUtils";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { getTierForModel } from "@app/lib/api/assistant/token_pricing/tiers";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { useModels } from "@app/lib/swr/models";
@@ -290,7 +290,7 @@ export function ModelPicker({
     const { model } = shown.display;
     if (
       lockPremiumEfforts &&
-      getModelEffortTier(model.modelId, effort) === "premium"
+      getTierForModel(model.modelId, effort) === "premium"
     ) {
       return;
     }

@@ -1,8 +1,6 @@
+import { getTierForModel } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  getTierForModel,
-  resolveAllowedTierNames,
-} from "@app/lib/model_tiers/allowed_tiers";
+import { resolveAllowedTierNames } from "@app/lib/model_tiers/allowed_tiers";
 import type {
   AgentConfigurationScope,
   GenericErrorContent,

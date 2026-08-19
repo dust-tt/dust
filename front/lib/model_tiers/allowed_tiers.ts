@@ -1,12 +1,8 @@
-import type {
-  ModelsTierDefinition,
-  ModelsTierName,
-  ModelTierSelection,
-} from "@app/lib/api/assistant/token_pricing/tiers";
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import {
+  getTier,
   MODELS_TIER_NAMES,
   MODELS_TIERS,
-  STATIC_MODEL_TIERS,
 } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -27,7 +23,6 @@ import type {
   GroupAllowedModelTiersType,
   UserAllowedModelTiersType,
 } from "@app/types/api/model_tiers";
-import { isStaticModelId } from "@app/types/assistant/models/models";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -60,31 +55,6 @@ interface ModelsTierGroupGrantSpec {
   group: GroupResource;
   tierName: ModelsTierName;
   transaction?: Transaction;
-}
-
-export function listTiers(): readonly ModelsTierDefinition[] {
-  return MODELS_TIERS;
-}
-
-export function getTier(name: ModelsTierName): ModelsTierDefinition | null {
-  return MODELS_TIERS.find((tier) => tier.name === name) ?? null;
-}
-
-export function getTierForSelection(
-  selection: ModelTierSelection
-): ModelsTierName | null {
-  return getTierForModel(selection.modelId, selection.reasoningEffort);
-}
-
-export function getTierForModel(
-  modelId: ModelTierSelection["modelId"],
-  reasoningEffort: ModelTierSelection["reasoningEffort"]
-): ModelsTierName | null {
-  // includes models added at runtime on GCP (EAPs)
-  if (!isStaticModelId(modelId)) {
-    return "premium";
-  }
-  return STATIC_MODEL_TIERS[modelId][reasoningEffort] ?? null;
 }
 
 function assertIsAdmin(auth: Authenticator): void {

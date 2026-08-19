@@ -6,9 +6,9 @@ import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumpti
 import { SOURCE_ORIGIN_LABELS } from "@app/lib/api/analytics/source_labels";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
+import { getTierForModel } from "@app/lib/api/assistant/token_pricing/tiers";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { getTierForModel } from "@app/lib/model_tiers/allowed_tiers";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";

@@ -1,7 +1,6 @@
-import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import {
+  getTierForModel,
   STATIC_MODEL_SUPPORTED_REASONING_EFFORTS,
-  STATIC_MODEL_TIERS,
 } from "@app/lib/api/assistant/token_pricing/tiers";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type {
@@ -267,17 +266,6 @@ interface LockPremiumOptions {
   lockPremiumEfforts?: boolean;
 }
 
-// Client-safe mirror of `getTierForModel`
-export function getModelEffortTier(
-  modelId: ModelIdType,
-  effort: ReasoningEffort
-): ModelsTierName | null {
-  if (!isStaticModelId(modelId)) {
-    return "premium";
-  }
-  return STATIC_MODEL_TIERS[modelId][effort] ?? null;
-}
-
 function modelSupportsEffortStatically(
   modelId: ModelIdType,
   effort: ReasoningEffort
@@ -312,7 +300,7 @@ export function getEffortStops(
     }
     if (
       lockPremiumEfforts &&
-      getModelEffortTier(enabledModel.modelId, effort) === "premium"
+      getTierForModel(enabledModel.modelId, effort) === "premium"
     ) {
       return { effort, locked: true, lockedReason: "premium" };
     }
@@ -366,7 +354,7 @@ export function isPremiumModel(
   if (supportedSlider.length > 0) {
     return supportedSlider.every((stop) => stop.lockedReason === "premium");
   }
-  return getModelEffortTier(enabledModel.modelId, "none") === "premium";
+  return getTierForModel(enabledModel.modelId, "none") === "premium";
 }
 
 export type ModelLockReason = "premium" | "model_tier";

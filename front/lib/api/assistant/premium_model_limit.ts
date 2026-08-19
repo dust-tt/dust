@@ -4,11 +4,11 @@ import {
   PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK,
   PREMIUM_MODEL_MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
 } from "@app/lib/api/assistant/rate_limits";
+import { getTierForModel } from "@app/lib/api/assistant/token_pricing/tiers";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { isFreeOrigin } from "@app/lib/credits/agent_message_billing";
-import { getTierForModel } from "@app/lib/model_tiers/allowed_tiers";
 import {
   getEnabledModelsForAuth,
   resolveStreamModel,

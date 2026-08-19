@@ -1,12 +1,10 @@
 import {
+  getTierForModel,
+  getTierForSelection,
   MODELS_TIERS,
   STATIC_MODEL_SUPPORTED_REASONING_EFFORTS,
   STATIC_MODEL_TIERS,
 } from "@app/lib/api/assistant/token_pricing/tiers";
-import {
-  getTierForModel,
-  getTierForSelection,
-} from "@app/lib/model_tiers/allowed_tiers";
 import {
   CLAUDE_FABLE_5_MODEL_ID,
   CLAUDE_OPUS_4_8_MODEL_ID,
