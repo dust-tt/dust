@@ -229,6 +229,7 @@ function buildColumns({
       id: "name",
       accessorKey: "name",
       header: "Name",
+      enableSorting: false,
       meta: { sizeRatio: 32, headerAlign: "left" },
       cell: (info) => {
         const row = info.row.original;
@@ -298,6 +299,7 @@ function buildColumns({
       // share is the same order as ranking by credits
       accessorFn: (row) => (totalCredits > 0 ? row.credits / totalCredits : 0),
       header: "Consumption share",
+      enableSorting: true,
       meta: { sizeRatio: 20, headerAlign: "left" },
       cell: (info) => (
         <DataTable.CellContent className="w-full justify-start">
@@ -325,6 +327,7 @@ function buildColumns({
       id: "avgCredits",
       accessorKey: "avgCredits",
       header: avgLabel,
+      enableSorting: false,
       meta: { sizeRatio: 22, headerAlign: "right" },
       cell: (info) => (
         <DataTable.BasicCellContent
@@ -336,6 +339,7 @@ function buildColumns({
     {
       id: "vsPrev",
       header: "vs prev",
+      enableSorting: false,
       meta: { sizeRatio: 18, headerAlign: "right" },
       cell: (info) => (
         <VsPrevCell
