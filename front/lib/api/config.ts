@@ -11,6 +11,14 @@ export function setBaseUrlResolver(fn: (() => string) | null): void {
   baseUrlResolver = fn;
 }
 
+function publicApiBaseUrl(): string {
+  // Using process.env here to make sure the function is usable on the client side.
+  if (!process.env.NEXT_PUBLIC_DUST_API_URL) {
+    throw new Error("NEXT_PUBLIC_DUST_API_URL is not set");
+  }
+  return process.env.NEXT_PUBLIC_DUST_API_URL;
+}
+
 // Returns the resolver's URL if set, or empty string.
 // Used by clientFetch to decide whether to rewrite relative URLs (SPA cross-origin only).
 export function getBaseUrl(): string {
@@ -61,18 +69,27 @@ const config = {
     // We override the NEXT_PUBLIC_DUST_API_URL in `front-internal` to ensure that the
     // uploadUrl returned by the file API points to the `http://front-internal-service` and not our
     // public API URL.
-    let override = EnvironmentConfig.getOptionalEnvVariable(
+    const override = EnvironmentConfig.getOptionalEnvVariable(
       "DUST_INTERNAL_API_URL"
     );
     if (override) {
       return override;
     }
 
-    // Using process.env here to make sure the function is usable on the client side.
-    if (!process.env.NEXT_PUBLIC_DUST_API_URL) {
-      throw new Error("NEXT_PUBLIC_DUST_API_URL is not set");
+    return publicApiBaseUrl();
+  },
+
+  // The URL a sandbox uses to reach us. Sandboxes run outside our cluster, so
+  // this stays the public URL: getApiBaseUrl prefers the internal service
+  // address wherever DUST_INTERNAL_API_URL is set, and nothing in a sandbox can
+  // reach that. Every sandbox-facing caller must use this one.
+  getSandboxApiBaseUrl: (): string => {
+    const developmentHostName = config.getSandboxDevFrontHostName();
+    if (isDevelopment() && developmentHostName) {
+      return `https://${developmentHostName}`;
     }
-    return process.env.NEXT_PUBLIC_DUST_API_URL;
+
+    return publicApiBaseUrl();
   },
 
   getStaticWebsiteUrl: (): string => {
@@ -522,6 +539,18 @@ const config = {
       "UNTRUSTED_EGRESS_PROXY_PORT"
     );
   },
+  getInClusterMCPHosts: (): string[] => {
+    const hosts = EnvironmentConfig.getOptionalEnvVariable(
+      "MCP_IN_CLUSTER_HOSTS"
+    );
+    if (!hosts) {
+      return [];
+    }
+    return hosts
+      .split(",")
+      .map((host) => host.trim().toLowerCase())
+      .filter((host) => host.length > 0);
+  },
   getElasticsearchConfig: (): {
     url: string;
     username: string;
@@ -614,8 +643,8 @@ const config = {
       domain: EnvironmentConfig.getOptionalEnvVariable("E2B_DOMAIN"),
     };
   },
-  getDatadogApiKey: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable("DD_API_KEY");
+  getSandboxDatadogApiKey: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("SANDBOX_DD_API_KEY");
   },
   getSandboxDevFrontHostName: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(

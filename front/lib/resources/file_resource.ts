@@ -8,17 +8,6 @@ import {
   sanitizeFileSystemName,
 } from "@app/lib/api/file_system";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import type { FrameScopedPathContext } from "@app/lib/api/files/mount_path";
-import {
-  disambiguateFileName,
-  getConversationFilePath,
-  getConversationFilesBasePath,
-  getPodFilesBasePath,
-  getPodSandboxFunctionsBasePath,
-  isLegacyScopedPath,
-  makeProcessedMountFileName,
-  resolveCanonicalScopedPath,
-} from "@app/lib/api/files/mount_path";
 import {
   getProcessedContentType,
   hasProcessedVersion,
@@ -85,6 +74,17 @@ import {
   isInteractiveContentType,
   isSandboxFunctionContentType,
 } from "@app/types/files";
+import type { FrameScopedPathContext } from "@app/types/mount_path";
+import {
+  disambiguateFileName,
+  getConversationFilePath,
+  getConversationFilesBasePath,
+  getPodFilesBasePath,
+  getPodSandboxFunctionsBasePath,
+  isLegacyScopedPath,
+  makeProcessedMountFileName,
+  resolveCanonicalScopedPath,
+} from "@app/types/mount_path";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

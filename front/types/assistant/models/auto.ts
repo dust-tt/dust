@@ -6,18 +6,14 @@ import {
 import {
   GEMINI_3_1_FLASH_LITE_MODEL_ID,
   GEMINI_3_1_PRO_MODEL_ID,
-  GEMINI_3_6_FLASH_MODEL_ID,
+  GEMINI_3_7_FLASH_MODEL_ID,
 } from "./google_ai_studio";
 import {
   MISTRAL_LARGE_MODEL_ID,
   MISTRAL_MEDIUM_3_5_MODEL_ID,
   MISTRAL_SMALL_MODEL_ID,
 } from "./mistral";
-import {
-  GPT_5_5_MODEL_ID,
-  GPT_5_6_LUNA_MODEL_ID,
-  GPT_5_6_SOL_MODEL_ID,
-} from "./openai";
+import { GPT_5_6_LUNA_MODEL_ID, GPT_5_6_SOL_MODEL_ID } from "./openai";
 import type {
   ModelConfigurationType,
   ModelProviderIdType,
@@ -47,7 +43,7 @@ export function isModelStreamId(modelId: string): modelId is ModelStreamIdType {
 // at. Ordered by preference — the router picks the first candidate available to
 // the workspace. Efforts default to each model's own default; they are only
 // overridden when a stream deliberately wants a different effort (e.g. `light`
-// for the Fast stream, `high` for the Complex stream).
+// for the Basic stream, `high` for the Premium stream).
 export interface ModelStreamCandidate {
   providerId: ModelProviderIdType;
   modelId: string;
@@ -57,8 +53,8 @@ export interface ModelStreamCandidate {
 export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
   {
     // Plain `auto` spans the whole preferred catalog at each model's default
-    // reasoning effort. The last candidate (Sonnet at `light`) is the
-    // cost-effective floor so tier-capped users still resolve within the stream.
+    // reasoning effort. The last candidate (Sonnet at `light`) is the Basic-tier
+    // floor so tier-capped users still resolve within the stream.
     [AUTO_MODEL_ID]: [
       {
         providerId: "openai",
@@ -68,11 +64,6 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       {
         providerId: "anthropic",
         modelId: CLAUDE_SONNET_4_6_MODEL_ID,
-        reasoningEffort: "medium",
-      },
-      {
-        providerId: "openai",
-        modelId: GPT_5_5_MODEL_ID,
         reasoningEffort: "medium",
       },
       {
@@ -98,7 +89,7 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       {
         providerId: "xai",
         modelId: GROK_4_6_MODEL_ID,
-        reasoningEffort: "high",
+        reasoningEffort: "medium",
       },
       {
         providerId: "xai",
@@ -124,7 +115,7 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       },
       {
         providerId: "google_ai_studio",
-        modelId: GEMINI_3_6_FLASH_MODEL_ID,
+        modelId: GEMINI_3_7_FLASH_MODEL_ID,
         reasoningEffort: "light",
       },
       {
@@ -167,7 +158,7 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
         modelId: MISTRAL_LARGE_MODEL_ID,
         reasoningEffort: "none",
       },
-      // Cost-effective floor
+      // Basic-tier floor
       {
         providerId: "anthropic",
         modelId: CLAUDE_SONNET_4_6_MODEL_ID,
@@ -226,12 +217,12 @@ export const AUTO_MODEL_CONFIG: ModelConfigurationType = makeMetaModelConfig(
 
 export const AUTO_FAST_MODEL_CONFIG: ModelConfigurationType =
   makeMetaModelConfig(AUTO_FAST_MODEL_ID, {
-    displayName: "Fast",
+    displayName: "Basic",
     description: "Quick, low cost",
   });
 
 export const AUTO_COMPLEX_MODEL_CONFIG: ModelConfigurationType =
   makeMetaModelConfig(AUTO_COMPLEX_MODEL_ID, {
-    displayName: "Complex",
+    displayName: "Premium",
     description: "Slower, most capable",
   });

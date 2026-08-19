@@ -1,4 +1,5 @@
 import { SelfImprovingSkillsConversationDataTable } from "@app/components/poke/conversation/self_improving_skills_table";
+import { GroupPermissionsDataTable } from "@app/components/poke/group_permissions/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { SkillSuggestionDataTable } from "@app/components/poke/skill_suggestions/table";
 import { SkillOverviewTable } from "@app/components/poke/skills/SkillOverviewTable";
@@ -90,6 +91,11 @@ export function SkillDetailsPage() {
               resourceType: "skills",
               workspace: owner,
             }}
+          />
+          <GroupPermissionsDataTable
+            owner={owner}
+            resourceType="skill"
+            resourceId={skill.id}
           />
         </div>
       </div>

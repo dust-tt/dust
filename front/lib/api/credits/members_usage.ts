@@ -1,9 +1,12 @@
 import {
+  makeApiKeySpendLimitAwuCreditsRateLimitKey,
+  makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace,
   makeSpendLimitAwuCreditsRateLimitKeyForUser,
   makeSpendLimitCycleWindowBounds,
 } from "@app/lib/api/assistant/rate_limits";
 import { computeCreditUsageStatus } from "@app/lib/api/credits/usage_status";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
+import { getProgrammaticUsageFilterClause } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
 import type { BillingCycle } from "@app/lib/client/subscription";
 import { listPerUserCreditBalanceAlertsForWorkspace } from "@app/lib/metronome/alerts/per_user_credit_balance";
@@ -14,14 +17,10 @@ import type {
 import {
   getCachedDefaultCapThresholdsBySeatType,
   getCachedPerUserCapAlertIds,
-  getMetronomeDefaultUserCapAlertForSeatType,
-  getMetronomeDefaultUserWarningAlertForSeatType,
-  listMetronomePerUserCapsForWorkspace,
-  listMetronomePerUserWarningAlertsForWorkspace,
 } from "@app/lib/metronome/alerts/spend_limits";
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import {
-  listCustomerPerUserCreditBalances,
+  getCachedCustomerPerUserCreditBalances,
   listMetronomeSeatBalances,
 } from "@app/lib/metronome/client";
 import {
@@ -30,21 +29,16 @@ import {
   toFreeMetronomeUserId,
 } from "@app/lib/metronome/constants";
 import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
-import {
-  fetchPerUserAwuUsage,
-  getPerUserAwuUsage,
-} from "@app/lib/metronome/per_user_usage";
+import { getPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
 import type { SeatData } from "@app/lib/metronome/seats";
-import {
-  buildSeatDataByUserId,
-  getCachedSeatDataByUserId,
-} from "@app/lib/metronome/seats";
+import { getCachedSeatDataByUserId } from "@app/lib/metronome/seats";
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import { isUserAwuWarned } from "@app/lib/metronome/user_block";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { spendLimitCycleOverrideForAuth } from "@app/lib/spend_limits/cycle";
@@ -413,28 +407,169 @@ export async function getEsConsumedAwuCreditsForUser(
   return consumedByUserId.get(user.sId) ?? 0;
 }
 
-async function fetchPerUserUsageCreditsForMembersTableUncached({
-  workspaceId,
-  metronomeCustomerId,
-  userIds,
+type ApiKeyConsumedCreditsBucket = {
+  key: string;
+  credits?: estypes.AggregationsSumAggregate;
+};
+
+type ApiKeyConsumedCreditsAggs = {
+  by_api_key_name?: estypes.AggregationsMultiBucketAggregateBase<ApiKeyConsumedCreditsBucket>;
+};
+
+/**
+ * Elasticsearch-derived AWU consumption for the current billing cycle, summed
+ * per `api_key_name` — the same dimension the Metronome per-API-key cap alert
+ * aggregates spend on. Used to lazily seed / resync the per-API-key spend-cap
+ * counter. Returns an empty map on no usage or an analytics read failure.
+ */
+async function fetchConsumedAwuCreditsByApiKeyName({
+  workspace,
+  apiKeyNames,
+  cycle,
 }: {
-  workspaceId: string;
-  metronomeCustomerId: string;
-  userIds: string[];
+  workspace: LightWorkspaceType;
+  apiKeyNames: string[];
+  cycle?: BillingCycle;
 }): Promise<Map<string, number>> {
-  const result = await fetchPerUserAwuUsage({
-    workspaceId,
-    metronomeCustomerId,
-    userIds,
-  });
+  if (apiKeyNames.length === 0) {
+    return new Map();
+  }
+
+  const resolvedCycle = cycle ?? (await resolveMetronomeCycle(workspace));
+  if (!resolvedCycle) {
+    return new Map();
+  }
+  const { cycleStart, cycleEnd } = resolvedCycle;
+
+  const result = await searchAnalytics<never, ApiKeyConsumedCreditsAggs>(
+    {
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          { terms: { api_key_name: apiKeyNames } },
+          {
+            range: {
+              timestamp: {
+                gte: cycleStart.toISOString(),
+                lte: cycleEnd.toISOString(),
+              },
+            },
+          },
+        ],
+      },
+    },
+    {
+      aggregations: {
+        by_api_key_name: {
+          terms: {
+            field: "api_key_name",
+            size: Math.max(1, apiKeyNames.length),
+          },
+          aggs: { credits: { sum: { field: "cost.billable_awu" } } },
+        },
+      },
+      size: 0,
+    }
+  );
   if (result.isErr()) {
     logger.warn(
-      { err: result.error, metronomeCustomerId },
-      "[MembersUsage] Failed to fetch per-user usage"
+      { err: result.error, workspaceId: workspace.sId },
+      "[MembersUsage] Failed to read per-API-key consumed credits from analytics index"
     );
     return new Map();
   }
-  return result.value;
+
+  const consumedByApiKeyName = new Map<string, number>();
+  for (const bucket of bucketsToArray<ApiKeyConsumedCreditsBucket>(
+    result.value.aggregations?.by_api_key_name?.buckets
+  )) {
+    consumedByApiKeyName.set(
+      String(bucket.key),
+      Math.round(bucket.credits?.value ?? 0)
+    );
+  }
+  return consumedByApiKeyName;
+}
+
+/**
+ * A single API key's Elasticsearch-derived AWU consumption for the current
+ * billing cycle, scoped by `api_key_name`. Used to lazily seed the per-API-key
+ * spend-cap counter on a Redis miss. Returns 0 when there is no usage or the
+ * analytics read fails.
+ */
+export async function getEsConsumedAwuCreditsForApiKey(
+  auth: Authenticator,
+  { apiKeyName, cycle }: { apiKeyName: string; cycle?: BillingCycle }
+): Promise<number> {
+  const workspace = auth.getNonNullableWorkspace();
+  const consumedByApiKeyName = await fetchConsumedAwuCreditsByApiKeyName({
+    workspace,
+    apiKeyNames: [apiKeyName],
+    cycle,
+  });
+  return consumedByApiKeyName.get(apiKeyName) ?? 0;
+}
+
+/**
+ * The workspace's Elasticsearch-derived *programmatic* AWU consumption for the
+ * current billing cycle. `usage_type` is not a stored analytics field, so
+ * programmatic usage is identified with `getProgrammaticUsageFilterClause`
+ * (auth_method=api_key / no or programmatic context_origin) — the same split the
+ * analytics dashboards use. Used to lazily seed / resync the programmatic
+ * spend-cap counter. Returns the consumption, or `null` when it can't be
+ * determined (no billing cycle, or the analytics read failed) — callers must
+ * treat `null` as "unknown", never as 0, so a transient ES outage doesn't erase
+ * a live counter on resync.
+ */
+export async function getEsConsumedProgrammaticAwuCredits(
+  auth: Authenticator,
+  { cycle }: { cycle?: BillingCycle }
+): Promise<number | null> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const resolvedCycle = cycle ?? (await resolveMetronomeCycle(workspace));
+  if (!resolvedCycle) {
+    return null;
+  }
+  const { cycleStart, cycleEnd } = resolvedCycle;
+
+  const result = await searchAnalytics<
+    never,
+    { credits?: estypes.AggregationsSumAggregate }
+  >(
+    {
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          getProgrammaticUsageFilterClause(),
+          {
+            range: {
+              timestamp: {
+                gte: cycleStart.toISOString(),
+                lte: cycleEnd.toISOString(),
+              },
+            },
+          },
+        ],
+      },
+    },
+    {
+      aggregations: { credits: { sum: { field: "cost.billable_awu" } } },
+      size: 0,
+    }
+  );
+  if (result.isErr()) {
+    logger.warn(
+      { err: result.error, workspaceId: workspace.sId },
+      "[MembersUsage] Failed to read programmatic consumed credits from analytics index"
+    );
+    return null;
+  }
+
+  return Math.max(
+    0,
+    Math.round(result.value.aggregations?.credits?.value ?? 0)
+  );
 }
 
 async function fetchPerUserUsageCreditsForMembersTable({
@@ -459,40 +594,17 @@ async function fetchPerUserUsageCreditsForMembersTable({
       userIds,
     });
   } catch (err) {
+    // No uncached fallback (see fetchSeatDataForMembersTable).
     logger.warn(
       { err: normalizeError(err), metronomeCustomerId },
-      "[MembersUsage] Failed to read cached per-user usage, falling back to uncached fetch"
-    );
-    return fetchPerUserUsageCreditsForMembersTableUncached({
-      workspaceId,
-      metronomeCustomerId,
-      userIds,
-    });
-  }
-}
-
-async function fetchSeatDataForMembersTableUncached({
-  metronomeCustomerId,
-  metronomeContractId,
-}: {
-  metronomeCustomerId: string;
-  metronomeContractId: string;
-}): Promise<Map<string, SeatData>> {
-  const seatDataResult = await buildSeatDataByUserId({
-    metronomeCustomerId,
-    contractId: metronomeContractId,
-  });
-  if (seatDataResult.isErr()) {
-    logger.warn(
-      { err: seatDataResult.error, metronomeCustomerId },
-      "[MembersUsage] Failed to build seat data, degrading to empty map"
+      "[MembersUsage] Failed to read cached per-user usage, degrading to empty map"
     );
     return new Map();
   }
-  return seatDataResult.value;
 }
 
-async function fetchSeatDataForMembersTable({
+/** Exported for testing. */
+export async function fetchSeatDataForMembersTable({
   metronomeCustomerId,
   metronomeContractId,
 }: {
@@ -503,23 +615,24 @@ async function fetchSeatDataForMembersTable({
     return new Map();
   }
   try {
-    return new Map(
-      Object.entries(
-        await getCachedSeatDataByUserId({
-          metronomeCustomerId,
-          contractId: metronomeContractId,
-        })
-      )
-    );
+    const seatData = await getCachedSeatDataByUserId({
+      metronomeCustomerId,
+      contractId: metronomeContractId,
+    });
+    // null: another process holds the fetch lock (skipIfLocked). Degrade
+    // rather than piling a duplicate Metronome fan-out on top.
+    if (!seatData) {
+      return new Map();
+    }
+    return new Map(Object.entries(seatData));
   } catch (err) {
+    // No uncached fallback: a failing loader means Metronome is already under
+    // pressure, and refetching would amplify it (see the 429 storm of 2026-08).
     logger.warn(
       { err: normalizeError(err), metronomeCustomerId },
-      "[MembersUsage] Failed to read cached seat data, falling back to uncached fetch"
+      "[MembersUsage] Failed to read cached seat data, degrading to empty map"
     );
-    return fetchSeatDataForMembersTableUncached({
-      metronomeCustomerId,
-      metronomeContractId,
-    });
+    return new Map();
   }
 }
 
@@ -585,7 +698,7 @@ async function fetchFreeSeatCreditsForMembersTable({
   if (!metronomeCustomerId) {
     return { freeBalanceByUserId, freeStartingByUserId };
   }
-  const perUserCreditBalances = await listCustomerPerUserCreditBalances({
+  const perUserCreditBalances = await getCachedCustomerPerUserCreditBalances({
     metronomeCustomerId,
     contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
   });
@@ -604,85 +717,6 @@ async function fetchFreeSeatCreditsForMembersTable({
     );
   }
   return { freeBalanceByUserId, freeStartingByUserId };
-}
-
-async function fetchPerUserCapAlertIdsUncached({
-  metronomeCustomerId,
-  workspaceId,
-}: {
-  metronomeCustomerId: string;
-  workspaceId: string;
-}): Promise<Map<string, MetronomeCapAlertIds>> {
-  const [capsResult, warningsResult] = await Promise.all([
-    listMetronomePerUserCapsForWorkspace({ metronomeCustomerId, workspaceId }),
-    listMetronomePerUserWarningAlertsForWorkspace({
-      metronomeCustomerId,
-      workspaceId,
-    }),
-  ]);
-  if (capsResult.isErr()) {
-    logger.warn(
-      { err: capsResult.error, workspaceId },
-      "[MembersUsage] Failed to fetch per-user spend cap alerts"
-    );
-    return new Map();
-  }
-  const warnings = warningsResult.isErr() ? new Map() : warningsResult.value;
-
-  const caps = new Map<string, MetronomeCapAlertIds>();
-  for (const [userId, entry] of capsResult.value) {
-    caps.set(userId, {
-      alertId: entry.alert.id,
-      warningAlertId: warnings.get(userId)?.alert.id ?? null,
-    });
-  }
-
-  return caps;
-}
-
-async function fetchDefaultCapsBySeatTypeUncached({
-  metronomeCustomerId,
-  workspaceId,
-}: {
-  metronomeCustomerId: string;
-  workspaceId: string;
-}): Promise<
-  Partial<Record<NormalizedPoolLimitSeatType, MetronomeCapAlertInfo>>
-> {
-  const caps: Partial<
-    Record<NormalizedPoolLimitSeatType, MetronomeCapAlertInfo>
-  > = {};
-  for (const seatType of NORMALIZED_POOL_LIMIT_SEAT_TYPES) {
-    const [capResult, warningResult] = await Promise.all([
-      getMetronomeDefaultUserCapAlertForSeatType({
-        metronomeCustomerId,
-        workspaceId,
-        seatType,
-      }),
-      getMetronomeDefaultUserWarningAlertForSeatType({
-        metronomeCustomerId,
-        workspaceId,
-        seatType,
-      }),
-    ]);
-    if (capResult.isErr()) {
-      logger.warn(
-        { err: capResult.error, workspaceId, seatType },
-        "[MembersUsage] Failed to fetch default spend cap for seat type"
-      );
-      continue;
-    }
-    if (capResult.value) {
-      caps[seatType] = {
-        threshold: capResult.value.alert.threshold,
-        alertId: capResult.value.alert.id,
-        warningAlertId: warningResult.isOk()
-          ? (warningResult.value?.alert.id ?? null)
-          : null,
-      };
-    }
-  }
-  return caps;
 }
 
 /**
@@ -784,14 +818,12 @@ async function fetchPerUserCapAlertIds({
       )
     );
   } catch (err) {
+    // No uncached fallback (see fetchSeatDataForMembersTable).
     logger.warn(
       { err: normalizeError(err), workspaceId },
-      "[MembersUsage] Failed to read cached per-user spend cap alert ids, falling back to uncached fetch"
+      "[MembersUsage] Failed to read cached per-user spend cap alert ids, degrading to empty map"
     );
-    return fetchPerUserCapAlertIdsUncached({
-      metronomeCustomerId,
-      workspaceId,
-    });
+    return new Map();
   }
 }
 
@@ -810,14 +842,12 @@ async function fetchDefaultCapsBySeatType({
       workspaceId,
     });
   } catch (err) {
+    // No uncached fallback (see fetchSeatDataForMembersTable).
     logger.warn(
       { err: normalizeError(err), workspaceId },
-      "[MembersUsage] Failed to read cached default spend caps by seat type, falling back to uncached fetch"
+      "[MembersUsage] Failed to read cached default spend caps by seat type, degrading to empty result"
     );
-    return fetchDefaultCapsBySeatTypeUncached({
-      metronomeCustomerId,
-      workspaceId,
-    });
+    return {};
   }
 }
 
@@ -1062,6 +1092,115 @@ export async function resyncSpendLimitCountersFromEsUsage(
   return new Ok({ updatedUserCount: results.filter(Boolean).length });
 }
 
+/**
+ * Backfill/repair the per-API-key spend-cap counters for a workspace from
+ * Elasticsearch, overwriting each capped key's counter (SET) so it matches ES.
+ * Use after enabling the cap or to repair drift (the counter otherwise only
+ * accrues from live messages and starts at 0 mid-cycle). Only keys with a
+ * configured `monthlyCapAwuCredits` are seeded. Returns the number of keys
+ * whose counter was written.
+ */
+export async function resyncApiKeySpendLimitCountersFromEsUsage(
+  auth: Authenticator
+): Promise<Result<{ updatedKeyCount: number }, Error>> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const cycle = await resolveMetronomeCycle(workspace);
+  if (!cycle) {
+    return new Err(
+      new Error("No active Metronome billing period to resync against.")
+    );
+  }
+  const bounds = makeSpendLimitCycleWindowBounds(
+    cycle.cycleStart,
+    cycle.cycleEnd
+  );
+
+  const keys = await KeyResource.listNonSystemKeysByWorkspace(workspace);
+  // The cap is per-name (Metronome aggregates spend by `api_key_name`; names
+  // are unique among active keys), so only active, capped keys are seeded.
+  const cappedKeys = keys.filter(
+    (key) => key.isActive && key.monthlyCapAwuCredits !== null
+  );
+  if (cappedKeys.length === 0) {
+    return new Ok({ updatedKeyCount: 0 });
+  }
+
+  const consumedByApiKeyName = await fetchConsumedAwuCreditsByApiKeyName({
+    workspace,
+    apiKeyNames: cappedKeys.map((key) => key.name),
+    cycle,
+  });
+
+  const results = await concurrentExecutor(
+    cappedKeys,
+    async (key) => {
+      const consumed = consumedByApiKeyName.get(key.name) ?? 0;
+      const setResult = await setFixedWindowCount({
+        key: makeApiKeySpendLimitAwuCreditsRateLimitKey(key.id),
+        bounds,
+        value: Math.max(0, Math.round(consumed)),
+        logger,
+      });
+      return setResult.isOk();
+    },
+    { concurrency: 8 }
+  );
+
+  return new Ok({ updatedKeyCount: results.filter(Boolean).length });
+}
+
+/**
+ * Backfill/repair the workspace programmatic spend-cap counter from
+ * Elasticsearch, overwriting it (SET) with the programmatic AWU consumption for
+ * the current cycle. No-op (not seeded) when there is no positive programmatic
+ * cap — that case defers to the programmatic credit-state machine, not the
+ * counter.
+ */
+export async function resyncProgrammaticSpendLimitCounterFromEsUsage(
+  auth: Authenticator
+): Promise<Result<{ programmaticCounterSeeded: boolean }, Error>> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  const cap = config?.programmaticMonthlyCapAwuCredits ?? 0;
+  if (cap <= 0) {
+    return new Ok({ programmaticCounterSeeded: false });
+  }
+
+  const cycle = await resolveMetronomeCycle(workspace);
+  if (!cycle) {
+    return new Err(
+      new Error("No active Metronome billing period to resync against.")
+    );
+  }
+  const bounds = makeSpendLimitCycleWindowBounds(
+    cycle.cycleStart,
+    cycle.cycleEnd
+  );
+
+  const consumed = await getEsConsumedProgrammaticAwuCredits(auth, { cycle });
+  if (consumed === null) {
+    // The Elasticsearch read failed: skip the SET so a transient outage can't
+    // overwrite a valid live counter with 0 and disable the backup cap.
+    return new Err(
+      new Error(
+        "Failed to read programmatic consumption from Elasticsearch; skipped resync to avoid erasing the counter."
+      )
+    );
+  }
+  const setResult = await setFixedWindowCount({
+    key: makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace(
+      workspace
+    ),
+    bounds,
+    value: Math.max(0, Math.round(consumed)),
+    logger,
+  });
+  return new Ok({ programmaticCounterSeeded: setResult.isOk() });
+}
+
 export type GetMemberUsageResponseBody = {
   member: MemberUsageType | null;
   // Optional for backward compatibility with clients deployed before target
@@ -1168,7 +1307,7 @@ export async function getMemberUsage({
   let freeSeatBalanceAwu: number | null = null;
   let freeSeatAllowanceAwu: number | null = null;
   if (membership.seatType === "free" && metronomeCustomerId) {
-    const balances = await listCustomerPerUserCreditBalances({
+    const balances = await getCachedCustomerPerUserCreditBalances({
       metronomeCustomerId,
       contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
     });

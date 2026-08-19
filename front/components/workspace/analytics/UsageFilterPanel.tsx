@@ -1,42 +1,45 @@
+import { FilterCategoryNav } from "@app/components/workspace/analytics/filterPanel/FilterCategoryNav";
+import { FilterFooter } from "@app/components/workspace/analytics/filterPanel/FilterFooter";
+import { FilterOptionCheckboxList } from "@app/components/workspace/analytics/filterPanel/FilterOptionCheckboxList";
+import { FilterSelectionSummary } from "@app/components/workspace/analytics/filterPanel/FilterSelectionSummary";
 import type {
   UsageFilter,
   UsageFilterAgentScope,
   UsageFilterCategory,
   UsageFilterGroup,
-  UsageModelTier,
+  UsageFilterOption,
 } from "@app/components/workspace/analytics/usageFilter";
 import {
   toConsumptionScopeFilter,
   USAGE_FILTER_AGENT_SCOPES,
   USAGE_FILTER_CATEGORIES,
   USAGE_FILTER_CATEGORY_LABEL,
-  USAGE_MODEL_TIERS,
   usageFilterSelectionCount,
 } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
-import { UsageFilterCategoryNav } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterCategoryNav";
-import { UsageFilterFooter } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterFooter";
 import { UsageFilterMemberGroupsControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterMemberGroupsControls";
 import { UsageFilterModelComplexityControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterModelComplexityControls";
-import { UsageFilterOptionCheckboxList } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionCheckboxList";
-import { UsageFilterSelectionSummary } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSelectionSummary";
+import { UsageFilterOptionIcon } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterOptionIcon";
+import { UsageFilterSection } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterSection";
 import { useUsageFilter } from "@app/components/workspace/analytics/useUsageFilter";
 import { useConsumptionFacets } from "@app/hooks/useConsumptionFacets";
 import { useToggleSelectionList } from "@app/hooks/useToggleSelectionList";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import { useGroups } from "@app/lib/swr/groups";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  BarChart05,
   Button,
-  NavigationListLabel,
+  FilterFunnel01,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
   SearchInput,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
+
+const DEFAULT_MODEL_TIER: ModelsTierName = "balanced";
 
 interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
@@ -66,10 +69,11 @@ export function UsageFilterPanel({
   const [activeCategory, setActiveCategory] =
     useState<UsageFilterCategory>("agent");
   const [activeScope, setActiveScope] = useState<UsageFilterAgentScope>("all");
-  const [activeTier, setActiveTier] = useState<UsageModelTier>(
-    USAGE_MODEL_TIERS[0]
-  );
+  const [activeTier, setActiveTier] =
+    useState<ModelsTierName>(DEFAULT_MODEL_TIER);
   const [searchText, setSearchText] = useState("");
+  const [contentScrollContainer, setContentScrollContainer] =
+    useState<HTMLDivElement | null>(null);
   const selectedGroups = useToggleSelectionList<UsageFilterGroup>();
 
   const draftScopeFilter = useMemo(
@@ -160,6 +164,13 @@ export function UsageFilterPanel({
       ),
     [draftFilter]
   );
+  const categorySelectionCounts = useMemo(() => {
+    const counts: Partial<Record<UsageFilterCategory, number>> = {};
+    for (const category of USAGE_FILTER_CATEGORIES) {
+      counts[category] = draftFilter[category]?.length ?? 0;
+    }
+    return counts;
+  }, [draftFilter]);
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
@@ -170,9 +181,21 @@ export function UsageFilterPanel({
     }
   };
 
+  const resetContentScroll = () => {
+    if (contentScrollContainer) {
+      contentScrollContainer.scrollTop = 0;
+    }
+  };
+
   const handleCategoryChange = (category: UsageFilterCategory) => {
     setActiveCategory(category);
     setSearchText("");
+    resetContentScroll();
+  };
+
+  const handleSearchChange = (search: string) => {
+    setSearchText(search);
+    resetContentScroll();
   };
 
   const activeCategorySelectionCount = draftFilter[activeCategory]?.length ?? 0;
@@ -181,7 +204,7 @@ export function UsageFilterPanel({
     <PopoverRoot open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
-          icon={BarChart05}
+          icon={FilterFunnel01}
           label="Filters"
           size="sm"
           variant="outline"
@@ -191,16 +214,16 @@ export function UsageFilterPanel({
       </PopoverTrigger>
       <PopoverContent fullWidth align="end" className="w-auto rounded-2xl p-0">
         <div className="flex h-96 flex-row divide-x divide-border">
-          <UsageFilterCategoryNav
+          <FilterCategoryNav
             categories={USAGE_FILTER_CATEGORIES}
-            draftFilter={draftFilter}
+            categoryLabels={USAGE_FILTER_CATEGORY_LABEL}
+            selectionCounts={categorySelectionCounts}
             activeCategory={activeCategory}
             onCategoryChange={handleCategoryChange}
           />
-          <div className="flex h-full w-72 flex-col gap-2 p-2">
-            <NavigationListLabel
-              label={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
-              className="bg-transparent pt-1.5 pb-0 font-medium"
+          <div className="flex h-full w-80 flex-col gap-2 p-2">
+            <UsageFilterSection
+              title={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
               action={
                 <Button
                   label="Clear"
@@ -213,69 +236,92 @@ export function UsageFilterPanel({
                   }
                 />
               }
-            />
-            <SearchInput
-              name="usage-filter-search"
-              value={searchText}
-              onChange={setSearchText}
-              placeholder={`Search ${USAGE_FILTER_CATEGORY_LABEL[activeCategory].toLowerCase()}`}
-            />
-            {activeCategory === "member" && (
-              <UsageFilterMemberGroupsControls
-                groups={groups}
-                selectedGroups={selectedGroups.items}
-                onAddGroup={selectedGroups.add}
-                onRemoveGroup={selectedGroups.remove}
+            >
+              <SearchInput
+                name="usage-filter-search"
+                value={searchText}
+                onChange={handleSearchChange}
+                placeholder={`Search ${USAGE_FILTER_CATEGORY_LABEL[activeCategory].toLowerCase()}`}
               />
-            )}
-            {activeCategory === "model" && (
-              <UsageFilterModelComplexityControls
-                moreModelsCatalog={categoryOptions.model}
-                selectedModelIds={selectedIdsForActiveCategory}
-                onToggleModel={(model) => toggleOption("model", model)}
-                activeTier={activeTier}
-                onTierChange={setActiveTier}
-              />
-            )}
-            {activeCategory === "agent" && (
-              <UsageFilterAgentScopeControls
-                scopes={USAGE_FILTER_AGENT_SCOPES}
-                activeScope={activeScope}
-                onScopeChange={setActiveScope}
-              />
-            )}
-            {isFacetsError ? (
-              <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
-                Failed to load filters.
-              </div>
-            ) : (
-              <UsageFilterOptionCheckboxList
-                key={optionListKey}
-                category={activeCategory}
-                categoryLabel={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
-                options={filteredOptions}
-                selectedIds={selectedIdsForActiveCategory}
-                onToggleOption={(option) =>
-                  toggleOption(activeCategory, option)
-                }
-                onSelectAll={() =>
-                  selectAllFiltered(activeCategory, unselectedEnabledOptions)
-                }
-                selectAllLabel="Select all"
-                hasSelectableOptions={unselectedEnabledOptions.length > 0}
-                isLoading={isFacetsLoading}
-                isUpdating={isFacetsValidating}
-              />
-            )}
+            </UsageFilterSection>
+            <div
+              ref={setContentScrollContainer}
+              className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto"
+            >
+              {activeCategory === "member" && (
+                <UsageFilterMemberGroupsControls
+                  groups={groups}
+                  selectedGroups={selectedGroups.items}
+                  onAddGroup={selectedGroups.add}
+                  onRemoveGroup={selectedGroups.remove}
+                />
+              )}
+              {activeCategory === "model" && (
+                <UsageFilterModelComplexityControls
+                  moreModelsCatalog={categoryOptions.model}
+                  selectedModelIds={selectedIdsForActiveCategory}
+                  onToggleModel={(model) => toggleOption("model", model)}
+                  activeTier={activeTier}
+                  onTierChange={(tier) => {
+                    setActiveTier(tier);
+                    resetContentScroll();
+                  }}
+                />
+              )}
+              {activeCategory === "agent" && (
+                <UsageFilterAgentScopeControls
+                  scopes={USAGE_FILTER_AGENT_SCOPES}
+                  activeScope={activeScope}
+                  onScopeChange={(scope) => {
+                    setActiveScope(scope);
+                    resetContentScroll();
+                  }}
+                />
+              )}
+              {isFacetsError ? (
+                <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
+                  Failed to load filters.
+                </div>
+              ) : (
+                <FilterOptionCheckboxList
+                  key={optionListKey}
+                  idPrefix={`usage-filter-option-${activeCategory}`}
+                  categoryLabel={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
+                  options={filteredOptions}
+                  selectedIds={selectedIdsForActiveCategory}
+                  onToggleOption={(option) =>
+                    toggleOption(activeCategory, option)
+                  }
+                  onSelectAll={() =>
+                    selectAllFiltered(activeCategory, unselectedEnabledOptions)
+                  }
+                  selectAllLabel="Select all"
+                  hasSelectableOptions={unselectedEnabledOptions.length > 0}
+                  renderIcon={(option) => (
+                    <UsageFilterOptionIcon option={option} />
+                  )}
+                  status={
+                    isFacetsLoading
+                      ? "loading"
+                      : isFacetsValidating
+                        ? "updating"
+                        : "idle"
+                  }
+                  scrollContainer={contentScrollContainer}
+                />
+              )}
+            </div>
           </div>
-          <UsageFilterSelectionSummary
+          <FilterSelectionSummary<UsageFilterCategory, UsageFilterOption>
             categoriesWithSelection={categoriesWithSelection}
-            draftFilter={draftFilter}
+            categoryLabels={USAGE_FILTER_CATEGORY_LABEL}
+            filter={draftFilter}
             onClearCategory={clearCategory}
             onRemoveOption={removeOption}
+            renderIcon={(option) => <UsageFilterOptionIcon option={option} />}
           />
         </div>
-        <UsageFilterFooter
+        <FilterFooter
           onClearAll={clearAllCategories}
           onCancel={() => setIsOpen(false)}
           onApply={() => {

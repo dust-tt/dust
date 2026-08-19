@@ -38,6 +38,7 @@ function makeDocument(): AgentMessageConsumptionAnalyticsData {
     consumption_key: "run-usage:1",
     consumption_type: "llm",
     context_origin: "web",
+    normalized_origin: "web",
     conversation_id: "conversation_1",
     credit_micro: 1_000_000,
     execution_time_ms: null,

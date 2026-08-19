@@ -9,6 +9,10 @@ import {
   SEAT_TYPE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import {
+  bestEffortInvalidateCacheWithRedis,
+  cacheWithRedis,
+} from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import type { MembershipSeatType } from "@app/types/memberships";
@@ -1070,15 +1074,22 @@ export async function findMetronomeContractByUniquenessKey({
 export async function getMetronomeContractById({
   metronomeCustomerId,
   metronomeContractId,
+  maxRetries,
 }: {
   metronomeCustomerId: string;
   metronomeContractId: string;
+  // Overrides the client-level retry count (5). Degradable interactive reads
+  // should fail fast instead of amplifying rate-limit pressure.
+  maxRetries?: number;
 }): Promise<Result<ContractV2, Error>> {
   try {
-    const response = await getMetronomeClient().v2.contracts.retrieve({
-      customer_id: metronomeCustomerId,
-      contract_id: metronomeContractId,
-    });
+    const response = await getMetronomeClient().v2.contracts.retrieve(
+      {
+        customer_id: metronomeCustomerId,
+        contract_id: metronomeContractId,
+      },
+      maxRetries !== undefined ? { maxRetries } : undefined
+    );
 
     return new Ok(response.data);
   } catch (err) {
@@ -1389,6 +1400,7 @@ export async function getMetronomeSubscriptionSeatState({
   contractId,
   subscriptionId,
   coveringDate,
+  maxRetries,
 }: {
   metronomeCustomerId: string;
   contractId: string;
@@ -1396,6 +1408,9 @@ export async function getMetronomeSubscriptionSeatState({
   // Defaults to `now`. Pass a future date to read the assignments projected
   // at that point in time.
   coveringDate?: Date;
+  // Overrides the client-level retry count (5). Degradable interactive reads
+  // should fail fast instead of amplifying rate-limit pressure.
+  maxRetries?: number;
 }): Promise<Result<SubscriptionSeatState, Error>> {
   try {
     const response =
@@ -1408,6 +1423,7 @@ export async function getMetronomeSubscriptionSeatState({
             subscription_id: subscriptionId,
             covering_date: (coveringDate ?? new Date()).toISOString(),
           },
+          ...(maxRetries !== undefined ? { maxRetries } : {}),
         }
       );
     // History is returned ascending by starting_at; take the last entry to
@@ -2789,6 +2805,116 @@ export async function listCustomerPerUserCreditBalances({
     metronomeCustomerId,
     contractCreditType,
     includeBalances: true,
+  });
+}
+
+// Long TTL: the cache is invalidated from the Metronome webhook whenever a
+// credit is created / a segment starts / an amount is edited, so the TTL is only
+// a fallback for missed events rather than the primary freshness bound.
+const PER_USER_CREDIT_BALANCES_CACHE_TTL_MS = 60 * 60 * 1000;
+
+const perUserCreditBalancesCacheResolver = ({
+  metronomeCustomerId,
+  contractCreditType,
+}: {
+  metronomeCustomerId: string;
+  contractCreditType: ContractCreditType;
+}) => `${metronomeCustomerId}-${contractCreditType}`;
+
+async function fetchPerUserCreditBalancesRecord(args: {
+  metronomeCustomerId: string;
+  contractCreditType: ContractCreditType;
+}): Promise<
+  Record<
+    string,
+    { creditIds: string[]; balanceAwu: number; startingBalanceAwu: number }
+  >
+> {
+  const result = await listCustomerPerUserCreditBalances(args);
+  // Throw at the cache boundary so a transient fetch failure is not cached.
+  if (result.isErr()) {
+    throw result.error;
+  }
+  return Object.fromEntries(result.value);
+}
+
+// At most one `credits.list` fan-out in flight per (customer, credit type)
+// fleet-wide: concurrent misses on other processes get null (callers degrade)
+// instead of each firing their own read. Mirrors `getCachedSeatDataByUserId`.
+const getCachedPerUserCreditBalancesRecord = cacheWithRedis(
+  fetchPerUserCreditBalancesRecord,
+  perUserCreditBalancesCacheResolver,
+  {
+    ttlMs: PER_USER_CREDIT_BALANCES_CACHE_TTL_MS,
+    useDistributedLock: true,
+    skipIfLocked: true,
+  }
+);
+
+const invalidatePerUserCreditBalancesRecord =
+  bestEffortInvalidateCacheWithRedis(
+    fetchPerUserCreditBalancesRecord,
+    perUserCreditBalancesCacheResolver,
+    "per-user credit balances"
+  );
+
+/**
+ * Cached variant of `listCustomerPerUserCreditBalances`. Same shape, backed by a
+ * Redis cache keyed by (customer, credit type). Use this on read-heavy
+ * surfaces (members usage table, per-member usage) so repeated views don't each
+ * hit Metronome's `credits.list` endpoint. The cache is invalidated from the
+ * Metronome webhook when a credit is created or a segment starts (see
+ * `invalidateCachedCustomerPerUserCreditBalances`). Degrades to an empty map
+ * when another process holds the fetch lock, so callers must tolerate a
+ * transiently-missing balance (they already fall back to the seat-type
+ * constant).
+ */
+export async function getCachedCustomerPerUserCreditBalances({
+  metronomeCustomerId,
+  contractCreditType,
+}: {
+  metronomeCustomerId: string;
+  contractCreditType: ContractCreditType;
+}): Promise<
+  Result<
+    Map<
+      string,
+      { creditIds: string[]; balanceAwu: number; startingBalanceAwu: number }
+    >,
+    Error
+  >
+> {
+  try {
+    const record = await getCachedPerUserCreditBalancesRecord({
+      metronomeCustomerId,
+      contractCreditType,
+    });
+    // null: another process holds the fetch lock (skipIfLocked). Degrade rather
+    // than piling a duplicate Metronome fan-out on top.
+    if (record === null) {
+      return new Ok(new Map());
+    }
+    return new Ok(new Map(Object.entries(record)));
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
+/**
+ * Invalidate the cached per-user credit balances for a customer. Best-effort:
+ * logs and swallows on failure. Called from the Metronome webhook when a credit
+ * is added or a segment starts so the next read reflects the new balance.
+ */
+export async function invalidateCachedCustomerPerUserCreditBalances({
+  metronomeCustomerId,
+  contractCreditType,
+}: {
+  metronomeCustomerId: string;
+  contractCreditType: ContractCreditType;
+}): Promise<void> {
+  await invalidatePerUserCreditBalancesRecord({
+    metronomeCustomerId,
+    contractCreditType,
   });
 }
 

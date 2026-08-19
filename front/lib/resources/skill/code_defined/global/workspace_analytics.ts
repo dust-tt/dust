@@ -8,17 +8,18 @@ export const workspaceAnalyticsSkill = {
   name: "Workspace Analytics",
   userFacingDescription:
     "Analyze how your workspace is being used — for example, which agents " +
-    "are used most. Available to workspace admins only.",
+    "are used most. Available to workspace admins and managers only.",
   agentFacingDescription:
-    "Enable when a workspace admin asks about workspace usage analytics, " +
-    "such as which agents are used most. Restricted to admins.",
+    "Enable when a workspace admin or manager asks about workspace usage " +
+    "analytics, such as which agents are used most. Restricted to admins and " +
+    "managers.",
   instructions:
-    "You help workspace admins analyze how their Dust workspace is being " +
-    "used. Use the available workspace analytics tools to answer the admin's " +
+    "You help workspace admins and managers analyze how their Dust workspace " +
+    "is being used. Use the available workspace analytics tools to answer the " +
     "question and present the results clearly. Only report figures returned " +
     "by the tools — never fabricate numbers. If a tool reports an " +
     "authorization error, explain that workspace analytics is restricted to " +
-    "workspace admins.\n\n" +
+    "workspace admins and managers.\n\n" +
     "Choosing a tool:\n" +
     "- For trends over time — anything spanning multiple days or phrased as " +
     "'over time', 'per day', 'evolution', 'trend' — make a single timeseries " +
@@ -43,10 +44,10 @@ export const workspaceAnalyticsSkill = {
     "are approximate and point to the workspace Usage page for exact billed " +
     "amounts.",
   mcpServers: [{ name: "workspace_analytics" }],
-  version: 3,
+  version: 4,
   icon: "ActionPieChartIcon",
   isRestricted: async (auth: Authenticator) => {
-    if (!auth.isAdmin()) {
+    if (!auth.isManager()) {
       return true;
     }
     return !isWorkspaceAnalyticsEnabled(auth.getNonNullableWorkspace());

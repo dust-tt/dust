@@ -1,5 +1,6 @@
 export const GPT_5_6_SOL = "gpt-5.6-sol" as const;
 export const GPT_5_6_TERRA = "gpt-5.6-terra" as const;
+export const GPT_5_6_TERRA_LONG_CONTEXT = "gpt-5.6-terra-long-context" as const;
 export const GPT_5_6_LUNA = "gpt-5.6-luna" as const;
 export const GPT_5_5 = "gpt-5.5" as const;
 export const GPT_5_4 = "gpt-5.4" as const;
@@ -23,6 +24,7 @@ export const CLAUDE_HAIKU_4_5 = "claude-haiku-4-5-20251001" as const;
 export const GEMINI_3_1_PRO = "gemini-3.1-pro-preview" as const;
 export const GEMINI_3_5_FLASH = "gemini-3.5-flash" as const;
 export const GEMINI_3_6_FLASH = "gemini-3.6-flash" as const;
+export const GEMINI_3_7_FLASH = "gemini-3.7-flash" as const;
 export const GEMINI_3_1_FLASH_LITE = "gemini-3.1-flash-lite" as const;
 export const GEMINI_3_5_FLASH_LITE = "gemini-3.5-flash-lite" as const;
 
@@ -41,6 +43,7 @@ export const KIMI_K3 = "kimi-k3" as const;
 export const MINIMAX_M2P5 = "minimax-m2p5" as const;
 export const GLM_5 = "glm-5" as const;
 export const GLM_5P2 = "glm-5p2" as const;
+export const INKLING = "inkling" as const;
 
 export const GROK_4_5 = "grok-4.5" as const;
 export const GROK_4_6 = "grok-4.6" as const;
@@ -53,6 +56,7 @@ export const NOOP_MODEL = "noop" as const;
 export const MODELS = [
   GPT_5_6_SOL,
   GPT_5_6_TERRA,
+  GPT_5_6_TERRA_LONG_CONTEXT,
   GPT_5_6_LUNA,
   GPT_5_5,
   GPT_5_4,
@@ -74,6 +78,7 @@ export const MODELS = [
   GEMINI_3_1_PRO,
   GEMINI_3_5_FLASH,
   GEMINI_3_6_FLASH,
+  GEMINI_3_7_FLASH,
   GEMINI_3_1_FLASH_LITE,
   GEMINI_3_5_FLASH_LITE,
   MISTRAL_LARGE,
@@ -90,6 +95,7 @@ export const MODELS = [
   MINIMAX_M2P5,
   GLM_5,
   GLM_5P2,
+  INKLING,
   GROK_4_5,
   GROK_4_6,
   NOOP_MODEL,

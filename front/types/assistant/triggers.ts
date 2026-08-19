@@ -1,3 +1,4 @@
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { z } from "zod";
 
 export type CronScheduleConfig = {
@@ -66,11 +67,13 @@ export type TriggerConfigurationType = ScheduleConfig | WebhookConfig;
 
 export const DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT = 42;
 
-export type TriggerExecutionMode = "fair_use" | "programmatic";
+export const TRIGGER_EXECUTION_MODES = ["user_pool", "workspace_pool"] as const;
+export type TriggerExecutionMode = (typeof TRIGGER_EXECUTION_MODES)[number];
 
 export const TRIGGER_STATUSES = [
   "enabled",
   "disabled",
+  "disabled_by_manager",
   "relocating",
   "downgraded",
 ] as const;
@@ -78,6 +81,30 @@ export type TriggerStatus = (typeof TRIGGER_STATUSES)[number];
 
 export function isValidTriggerStatus(status: string): status is TriggerStatus {
   return (TRIGGER_STATUSES as readonly string[]).includes(status);
+}
+
+// Who may set or clear a status: the trigger's editor, only an admin, or only
+// Dust's bulk jobs (workspace relocation, plan downgrade).
+export type TriggerStatusOwner = "editor" | "admin" | "system";
+
+export function getTriggerStatusOwner(
+  status: TriggerStatus
+): TriggerStatusOwner {
+  switch (status) {
+    case "enabled":
+    case "disabled":
+      return "editor";
+    case "disabled_by_manager":
+      return "admin";
+    case "relocating":
+    case "downgraded":
+      return "system";
+    default:
+      // Called from client components: a status shipped server-first must not
+      // crash old clients. Unknown statuses are treated as locked.
+      assertNeverAndIgnore(status);
+      return "system";
+  }
 }
 
 export const WEBHOOK_REQUEST_TRIGGER_STATUSES = [
@@ -134,6 +161,7 @@ const TriggerBaseSchema = z.object({
   naturalLanguageDescription: z.string().nullable(),
   origin: z.enum(["user", "agent", "system"]),
   spaceId: z.string().nullable(),
+  executionMode: z.enum(TRIGGER_EXECUTION_MODES),
 });
 
 export const FullTriggerSchema = z.discriminatedUnion("kind", [
@@ -146,7 +174,6 @@ export const FullTriggerSchema = z.discriminatedUnion("kind", [
     configuration: WebhookConfigSchema,
     executionPerDayLimitOverride: z.number().nullable(),
     webhookSourceViewId: z.string().nullable(),
-    executionMode: z.enum(["fair_use", "programmatic"]).nullable(),
   }),
 ]);
 
@@ -161,7 +188,6 @@ export function isValidTriggerKind(kind: string): kind is TriggerKind {
 export type WebhookTriggerType = TriggerType & {
   kind: "webhook";
   webhookSourceViewId: string;
-  executionMode: TriggerExecutionMode | null;
   executionPerDayLimitOverride: number | null;
 };
 

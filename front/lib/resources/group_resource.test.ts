@@ -79,6 +79,7 @@ import {
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -116,6 +117,25 @@ describe("GroupResource", () => {
     inMemoryCache.clear();
   });
 
+  describe("fetchByModelIds", () => {
+    it("filters on group kind when asked", async () => {
+      const autoGroup = await GroupResource.makeNew({
+        name: "Auto Group",
+        workspaceId: workspace.id,
+        kind: "regular_auto",
+      });
+      const ids = [autoGroup.id, globalGroup.id, systemGroup.id];
+
+      const all = await GroupResource.fetchByModelIds(authenticator, ids);
+      expect(all.map((g) => g.id).sort()).toEqual([...ids].sort());
+
+      const autoOnly = await GroupResource.fetchByModelIds(authenticator, ids, {
+        groupKinds: ["regular_auto"],
+      });
+      expect(autoOnly.map((g) => g.id)).toEqual([autoGroup.id]);
+    });
+  });
+
   describe("dangerouslyListUserGroupsForAuth", () => {
     it("returns global group and explicit groups for a workspace member", async () => {
       const regularGroup = await GroupResource.makeNew({
@@ -150,6 +170,17 @@ describe("GroupResource", () => {
     });
 
     it("throws when global group is missing", async () => {
+      // The global group now holds group_permissions rows (space grants); clear them first so the
+      // group can be deleted (group_permissions.groupId FK is ON DELETE RESTRICT).
+      const globalGroups = await GroupModel.findAll({
+        where: { workspaceId: workspace.id, kind: "global" },
+      });
+      await GroupPermissionModel.destroy({
+        where: {
+          workspaceId: workspace.id,
+          groupId: globalGroups.map((g) => g.id),
+        },
+      });
       await GroupModel.destroy({
         where: { workspaceId: workspace.id, kind: "global" },
       });

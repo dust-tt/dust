@@ -1,4 +1,7 @@
-import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import {
+  previousConsumptionPeriod,
+  resolveConsumptionPeriod,
+} from "@app/lib/api/analytics/consumption/period";
 import { Authenticator } from "@app/lib/auth";
 import type * as contracts from "@app/lib/metronome/contracts";
 import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
@@ -114,6 +117,43 @@ describe("resolveConsumptionPeriod", () => {
     expect(period).toEqual({
       startDate: "2026-07-01T00:00:00.000Z",
       endDate: "2026-08-01T00:00:00.000Z",
+    });
+  });
+});
+
+describe("previousConsumptionPeriod", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(NOW_MS));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("shifts a fully elapsed period (e.g. a 'last N days' window) back by its exact duration", () => {
+    const previousPeriod = previousConsumptionPeriod({
+      startDate: "2026-07-07T00:00:00.000Z",
+      endDate: "2026-07-13T09:30:00.000Z",
+    });
+
+    expect(previousPeriod).toEqual({
+      startDate: "2026-06-30T14:30:00.000Z",
+      endDate: "2026-07-07T00:00:00.000Z",
+    });
+  });
+
+  it("caps the duration to now for a cycle that has not ended yet, comparing elapsed days against the same number of days in the previous cycle", () => {
+    // The current cycle runs Jul 1 -> Aug 1, but "now" (Jul 13, 9:30) is only
+    // 12.4 days in: the previous window must be 12.4 days too, not a full month.
+    const previousPeriod = previousConsumptionPeriod({
+      startDate: "2026-07-01T00:00:00.000Z",
+      endDate: "2026-08-01T00:00:00.000Z",
+    });
+
+    expect(previousPeriod).toEqual({
+      startDate: "2026-06-18T14:30:00.000Z",
+      endDate: "2026-07-01T00:00:00.000Z",
     });
   });
 });

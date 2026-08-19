@@ -66,7 +66,12 @@ export function getProviderDisplayName(
  * MODEL MAKERS IDS
  */
 
-export const MODEL_MAKER_ONLY_IDS = ["zai", "moonshot", "minimax"] as const;
+export const MODEL_MAKER_ONLY_IDS = [
+  "zai",
+  "moonshot",
+  "minimax",
+  "thinking_machines",
+] as const;
 
 export const MODEL_MAKER_IDS = [
   ...MODEL_PROVIDER_IDS,
@@ -87,6 +92,8 @@ export function getModelMakerDisplayName(makerId: ModelMakerIdType): string {
       return "Moonshot AI";
     case "minimax":
       return "MiniMax";
+    case "thinking_machines":
+      return "Thinking Machines Lab";
     default:
       return getProviderDisplayName(makerId);
   }

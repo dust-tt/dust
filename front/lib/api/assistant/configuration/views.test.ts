@@ -27,8 +27,12 @@ async function listAgentIdsForAnalytics(auth: Authenticator) {
   return agents.map((agent) => agent.sId);
 }
 
+const REPORTING_ROLES = ["admin", "manager"] as const;
+
 describe("getAgentConfigurationsForView, 'analytics' view", () => {
-  it("lists private agents of other users for admins", async () => {
+  it.each(
+    REPORTING_ROLES
+  )("lists private agents of other users for %ss", async (role) => {
     const { workspace, authenticator: editorAuth } = await createResourceTest({
       role: "user",
     });
@@ -36,14 +40,12 @@ describe("getAgentConfigurationsForView, 'analytics' view", () => {
       editorAuth,
       { name: "Secret agent", scope: "hidden" }
     );
-    const adminAuth = await authenticatorForNewMember(workspace, "admin");
+    const auth = await authenticatorForNewMember(workspace, role);
 
-    expect(await listAgentIdsForAnalytics(adminAuth)).toContain(
-      privateAgent.sId
-    );
+    expect(await listAgentIdsForAnalytics(auth)).toContain(privateAgent.sId);
   });
 
-  it("hides private agents of other users below the admin role", async () => {
+  it("hides private agents of other users below the manager role", async () => {
     const { workspace, authenticator: editorAuth } = await createResourceTest({
       role: "user",
     });
@@ -55,14 +57,16 @@ describe("getAgentConfigurationsForView, 'analytics' view", () => {
       editorAuth,
       { name: "Shared agent", scope: "visible" }
     );
-    const managerAuth = await authenticatorForNewMember(workspace, "manager");
+    const memberAuth = await authenticatorForNewMember(workspace, "user");
 
-    const agentIds = await listAgentIdsForAnalytics(managerAuth);
+    const agentIds = await listAgentIdsForAnalytics(memberAuth);
     expect(agentIds).toContain(sharedAgent.sId);
     expect(agentIds).not.toContain(privateAgent.sId);
   });
 
-  it("lists agents built on spaces the admin is not a member of", async () => {
+  it.each(
+    REPORTING_ROLES
+  )("lists agents built on spaces the %s is not a member of", async (role) => {
     const { workspace, authenticator: editorAuth } = await createResourceTest({
       role: "user",
     });
@@ -74,20 +78,20 @@ describe("getAgentConfigurationsForView, 'analytics' view", () => {
       scope: "visible",
       requestedSpaceIds: [space.id],
     });
-    const adminAuth = await authenticatorForNewMember(workspace, "admin");
+    const auth = await authenticatorForNewMember(workspace, role);
 
-    expect(await listAgentIdsForAnalytics(adminAuth)).toContain(agent.sId);
-    // The admin is not a member of the space, so every other view still hides
-    // the agent: only the analytics view opens it up.
-    const listedForAdmin = await getAgentConfigurationsForView({
-      auth: adminAuth,
+    expect(await listAgentIdsForAnalytics(auth)).toContain(agent.sId);
+    // The caller is not a member of the space, so every other view still
+    // hides the agent: only the analytics view opens it up.
+    const listedForAll = await getAgentConfigurationsForView({
+      auth,
       agentsGetView: "all",
       variant: "light",
     });
-    expect(listedForAdmin.map((a) => a.sId)).not.toContain(agent.sId);
+    expect(listedForAll.map((a) => a.sId)).not.toContain(agent.sId);
   });
 
-  it("hides agents built on unreadable spaces below the admin role", async () => {
+  it("hides agents built on unreadable spaces below the manager role", async () => {
     const { workspace, authenticator: editorAuth } = await createResourceTest({
       role: "user",
     });
@@ -99,11 +103,9 @@ describe("getAgentConfigurationsForView, 'analytics' view", () => {
       scope: "visible",
       requestedSpaceIds: [space.id],
     });
-    const managerAuth = await authenticatorForNewMember(workspace, "manager");
+    const memberAuth = await authenticatorForNewMember(workspace, "user");
 
-    expect(await listAgentIdsForAnalytics(managerAuth)).not.toContain(
-      agent.sId
-    );
+    expect(await listAgentIdsForAnalytics(memberAuth)).not.toContain(agent.sId);
   });
 
   it("returns the 'all' set to a plain member instead of throwing", async () => {

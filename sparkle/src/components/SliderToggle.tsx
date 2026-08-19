@@ -1,11 +1,15 @@
 import { cn } from "@sparkle/lib/utils";
-import React, { type MouseEventHandler } from "react";
+import React, { type ComponentType, type MouseEventHandler } from "react";
 
 type SliderToggleProps = {
   onClick?: MouseEventHandler<HTMLElement>;
   className?: string;
   disabled?: boolean;
   selected?: boolean;
+  icon?: ComponentType<{ className?: string }>;
+  // Mutes the active track color, e.g. to signal a setting that is on but
+  // restricted (paired with `icon`) rather than a plain active toggle.
+  faded?: boolean;
 };
 
 const baseClasses = cn(
@@ -28,6 +32,7 @@ const hoverDarkenClasses = cn(
 const stateClasses = {
   idle: cn("bg-slider-toggle-bg-idle", hoverDarkenClasses),
   selected: cn("bg-highlight-400", hoverDarkenClasses),
+  selectedFaded: cn("bg-highlight-400/50", hoverDarkenClasses),
   disabled: cn(
     "bg-primary-200",
     "hover:bg-primary-200",
@@ -41,9 +46,15 @@ export function SliderToggle({
   disabled = false,
   className = "",
   selected = false,
+  icon: Icon,
+  faded = false,
 }: SliderToggleProps) {
   const combinedStateClasses = cn(
-    selected ? stateClasses.selected : stateClasses.idle,
+    selected
+      ? faded
+        ? stateClasses.selectedFaded
+        : stateClasses.selected
+      : stateClasses.idle,
     disabled ? stateClasses.disabled : ""
   );
 
@@ -65,6 +76,7 @@ export function SliderToggle({
         id="cursor"
         className={cn(
           "h-4 w-4 transform rounded-full bg-white drop-shadow",
+          "flex items-center justify-center",
           // Width shares the translate's timing: the hover stretch and the
           // slide must animate together so the knob stays edge-anchored.
           // (v4 translate-x-* sets the standalone `translate` property, so it
@@ -83,7 +95,11 @@ export function SliderToggle({
               ? "group-hover/slider:w-[18px] group-hover/slider:translate-x-[12px] group-active/slider:w-4 group-active/slider:translate-x-[14px]"
               : "group-hover/slider:w-[18px] group-active/slider:w-4")
         )}
-      />
+      >
+        {Icon && (
+          <Icon className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
+        )}
+      </div>
     </div>
   );
 

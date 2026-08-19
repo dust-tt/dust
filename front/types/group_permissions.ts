@@ -153,6 +153,22 @@ export function capabilityKey({
   return `${grantType}:${resourceType}`;
 }
 
+// A grant tuple: a capability plus the resource instance it applies to.
+export type GrantSpec = CapabilitySpec & { resourceId: number };
+
+// Stable string key for a grant tuple — `capabilityKey` plus the resource instance.
+export type GrantKey = `${CapabilityKey}:${number}`;
+
+// The single source of truth for the grant-key format; used to key grant-indexed maps, where a
+// capability alone would collide across resources (and a resource id alone across capabilities).
+export function grantKey({
+  grantType,
+  resourceType,
+  resourceId,
+}: GrantSpec): GrantKey {
+  return `${capabilityKey({ grantType, resourceType })}:${resourceId}`;
+}
+
 /**
  * Catalog of the governance capabilities the Settings & Governance page manages, grouped by the
  * section they belong to.

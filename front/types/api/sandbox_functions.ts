@@ -1,3 +1,4 @@
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type {
   SandboxFunctionMCPApproveExecutionEvent,
   SandboxFunctionToolPersonalAuthRequiredEvent,
@@ -18,7 +19,7 @@ export const SANDBOX_FUNCTION_USER_IDENTITY_POLICIES = [
   "optional",
   "workspace_user_required",
   "interactive_workspace_user_required",
-  "pod_editor_required",
+  "pod_member_required",
 ] as const;
 
 export type SandboxFunctionUserIdentityPolicy =
@@ -44,6 +45,55 @@ export type SandboxFunctionExecutionMode =
 // durable: the mode that can do everything. Backs both the column default and the publish default.
 export const DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE: SandboxFunctionExecutionMode =
   "durable";
+
+// How much a caller has to approve before a published function runs, for the day a function is
+// shared as an MCP tool: `never_ask` runs unattended, `low` asks once and can be always-approved,
+// `high` asks on every call.
+//
+// A subset of MCP_TOOL_STAKE_LEVELS, kept assignable to it so sharing a function needs no
+// translation. `medium` is excluded on purpose: it only means anything paired with
+// `argumentsRequiringApproval` (which argument values scope the approval), and a published function
+// has no way to declare those, so a `medium` function would silently approve on an empty argument
+// set.
+export const SANDBOX_FUNCTION_STAKES = [
+  "never_ask",
+  "low",
+  "high",
+] as const satisfies readonly MCPToolStakeLevelType[];
+
+export type SandboxFunctionStake = (typeof SANDBOX_FUNCTION_STAKES)[number];
+
+// Functions published before stakes existed, and publishes that do not state one, ask once. It is
+// the only safe guess for a function nothing has classified: `never_ask` would run an unreviewed
+// write unattended, and `high` would nag on a read. Backs both the column default and the publish
+// default.
+export const DEFAULT_SANDBOX_FUNCTION_STAKE: SandboxFunctionStake = "low";
+
+/**
+ * Header a frame host attaches to invocation requests to present the frame's share token. The
+ * server grants invocation of the frame's app's functions to workspace members who may view the
+ * frame (the token suffices for workspace-visible scopes; invite-only frames also require an
+ * active email grant). Lives here (not with the server-side resolver) because the client
+ * attaches it too.
+ */
+export const FRAME_SHARE_TOKEN_HEADER = "x-dust-frame-share-token";
+
+/** Request-header fragment carrying the frame share token, empty when there is none. */
+export function frameShareTokenHeader(token?: string): Record<string, string> {
+  return token ? { [FRAME_SHARE_TOKEN_HEADER]: token } : {};
+}
+
+/**
+ * What a validated frame share token authorizes: invoking the published functions of its own app
+ * folder in its own pod. Derived server-side by `resolveFrameShareCapability`; grants function
+ * resolution only, never reads or writes on the pod.
+ */
+export type FrameShareCapability = {
+  /** sId of the pod the shared frame lives in. */
+  podId: string;
+  /** Normalized prefix of the frame's app folder — the namespace of the slugs it authorizes. */
+  appPrefix: string;
+};
 
 export const SANDBOX_FUNCTION_INVOCATION_ORIGINS = [
   "interactive_session",

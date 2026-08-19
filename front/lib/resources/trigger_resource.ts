@@ -24,10 +24,12 @@ import {
 import type {
   ScheduleConfig,
   TriggerExecutionMode,
+  TriggerKind,
   TriggerStatus,
   TriggerType,
   WebhookConfig,
 } from "@app/types/assistant/triggers";
+import { getTriggerStatusOwner } from "@app/types/assistant/triggers";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -120,6 +122,24 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       id: this.id,
       workspaceId: this.workspaceId,
     });
+  }
+
+  canUpdateStatusTo(auth: Authenticator, to: TriggerStatus): boolean {
+    if (this.status === to) {
+      return true;
+    }
+    return [this.status, to].every(
+      (s) => getTriggerStatusOwner(s) === "editor" || auth.isManager()
+    );
+  }
+
+  // The editing path never crosses system-owned statuses; only restore jobs
+  // do, via enable()/disable().
+  isSystemStatusTransitionTo(to: TriggerStatus): boolean {
+    return (
+      this.status !== to &&
+      [this.status, to].some((s) => getTriggerStatusOwner(s) === "system")
+    );
   }
 
   private static async baseFetch(
@@ -241,6 +261,37 @@ export class TriggerResource extends BaseResource<TriggerModel> {
 
   static listByWorkspace(auth: Authenticator) {
     return this.baseFetch(auth);
+  }
+
+  static async countForWorkspace(
+    auth: Authenticator
+  ): Promise<{ enabled: number; total: number }> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const [enabled, total] = await Promise.all([
+      this.model.count({ where: { workspaceId, status: "enabled" } }),
+      this.model.count({ where: { workspaceId } }),
+    ]);
+
+    return { enabled, total };
+  }
+
+  static listByWorkspaceAndKinds(
+    auth: Authenticator,
+    kinds: TriggerKind[]
+  ): Promise<TriggerResource[]> {
+    return this.baseFetch(auth, {
+      where: { kind: { [Op.in]: kinds } },
+    });
+  }
+
+  static listByWorkspaceAndNameSearch(
+    auth: Authenticator,
+    search: string
+  ): Promise<TriggerResource[]> {
+    return this.baseFetch(auth, {
+      where: { name: { [Op.iLike]: `%${search}%` } },
+    });
   }
 
   static async listBySpace(
@@ -369,6 +420,26 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       );
     }
 
+    if (
+      blob.status !== undefined &&
+      trigger.isSystemStatusTransitionTo(blob.status)
+    ) {
+      return new Err(
+        new Error(
+          "This trigger's status is managed by Dust and cannot be changed"
+        )
+      );
+    }
+
+    if (
+      blob.status !== undefined &&
+      !trigger.canUpdateStatusTo(auth, blob.status)
+    ) {
+      return new Err(
+        new Error("You don't have permission to change this trigger's status")
+      );
+    }
+
     const previousStatus = trigger.status;
 
     await trigger.update(blob, transaction);
@@ -404,6 +475,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         metadata: {
           trigger_type: trigger.kind,
           agent_id: trigger.agentConfigurationId,
+          status: blob.status,
         },
       });
     }
@@ -804,6 +876,12 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       return new Ok(undefined);
     }
 
+    if (!this.canUpdateStatusTo(auth, "enabled")) {
+      return new Err(
+        new Error("You don't have permission to change this trigger's status")
+      );
+    }
+
     const previousStatus = this.status;
 
     try {
@@ -839,6 +917,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       metadata: {
         trigger_type: this.kind,
         agent_id: this.agentConfigurationId,
+        status: "enabled",
       },
     });
 
@@ -864,6 +943,12 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     auth: Authenticator,
     targetStatus: Exclude<TriggerStatus, "enabled"> = "disabled"
   ): Promise<Result<undefined, Error>> {
+    if (!this.canUpdateStatusTo(auth, targetStatus)) {
+      return new Err(
+        new Error("You don't have permission to change this trigger's status")
+      );
+    }
+
     // Even when the status is already the target, we still reconcile the
     // Temporal workflow below: a previous disable may have flipped the status
     // but failed (or been interrupted) before removing the schedule, leaving an
@@ -904,6 +989,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         metadata: {
           trigger_type: this.kind,
           agent_id: this.agentConfigurationId,
+          status: targetStatus,
         },
       });
     }
@@ -967,7 +1053,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
    */
   async updateWebhookSettings(
     executionPerDayLimitOverride: number | null,
-    executionMode: TriggerExecutionMode | null
+    executionMode: TriggerExecutionMode
   ): Promise<Result<undefined, Error>> {
     if (this.kind !== "webhook") {
       return new Err(
@@ -1011,6 +1097,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       naturalLanguageDescription: this.naturalLanguageDescription,
       createdAt: this.createdAt.getTime(),
       origin: this.origin,
+      executionMode: this.executionMode,
       spaceId: this.spaceId
         ? SpaceResource.modelIdToSId({
             id: this.spaceId,
@@ -1025,7 +1112,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         kind: "webhook" as const,
         configuration: this.configuration as WebhookConfig,
         executionPerDayLimitOverride: this.executionPerDayLimitOverride,
-        executionMode: this.executionMode,
         webhookSourceViewId: this.webhookSourceViewId
           ? makeSId("webhook_sources_view", {
               id: this.webhookSourceViewId,

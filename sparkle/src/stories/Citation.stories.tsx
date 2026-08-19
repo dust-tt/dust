@@ -24,6 +24,7 @@ import {
 
 const meta = {
   title: "Product/Conversation/Citation",
+  tags: ["a11y-issues"],
   component: Citation,
   parameters: {
     docs: {

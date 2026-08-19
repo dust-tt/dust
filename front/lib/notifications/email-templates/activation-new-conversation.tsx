@@ -205,7 +205,7 @@ const ActivationNewConversationEmailTemplate = ({
             borderRadius: "6px",
           }}
         >
-          Start building
+          {action.label}
         </a>
       </p>
     </EmailLayout>

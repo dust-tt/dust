@@ -68,6 +68,30 @@ async function resolveCycleBounds(
   };
 }
 
+// The current period's endDate can be in the future (a billing cycle isn't
+// over yet), while consumption data obviously never is. Capping the duration
+// to now means we compare like for like: e.g. the first 10 days of this
+// cycle against the first 10 days of the previous one, rather than 10 days
+// against a full billing cycle.
+export function previousConsumptionPeriod(
+  currentPeriod: ConsumptionPeriod
+): ConsumptionPeriod {
+  const startMs = moment.utc(currentPeriod.startDate).valueOf();
+  const endMs = Math.min(
+    moment.utc(currentPeriod.endDate).valueOf(),
+    Date.now()
+  );
+  const durationMs = endMs - startMs;
+
+  return {
+    startDate: moment
+      .utc(currentPeriod.startDate)
+      .subtract(durationMs, "milliseconds")
+      .toISOString(),
+    endDate: currentPeriod.startDate,
+  };
+}
+
 export async function resolveConsumptionPeriod(
   auth: Authenticator,
   input: ConsumptionPeriodInput

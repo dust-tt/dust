@@ -17,6 +17,10 @@ import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RunFactory } from "@app/tests/utils/RunFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { MISTRAL_SMALL_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
+import { GPT_5_4_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import type { ModelIdType } from "@app/types/assistant/models/types";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -40,16 +44,14 @@ const TOKENS_PER_FOOTPRINT = 2;
 async function setupSettledMessageWithUsage({
   runCount = 1,
   restrictedConversation = false,
+  modelId,
 }: {
   runCount?: number;
   restrictedConversation?: boolean;
+  modelId?: ModelIdType;
 } = {}) {
-  const {
-    authenticator,
-    globalSpace,
-    user,
-    workspace,
-  } = await createResourceTest({ role: "admin" });
+  const { authenticator, globalSpace, user, workspace } =
+    await createResourceTest({ role: "admin" });
 
   let auth = authenticator;
   const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
@@ -76,6 +78,7 @@ async function setupSettledMessageWithUsage({
       inputTokens: INPUT_TOKENS_COUNT,
       outputTokens: OUTPUT_TOKENS_COUNT,
       reasoningTokens: REASONING_TOKENS_COUNT,
+      modelId,
     });
     runs.push(run);
   }
@@ -175,12 +178,8 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
   });
 
   it("writes attribution for a project conversation hidden from the workflow auth", async () => {
-    const {
-      workspace,
-      conversationId,
-      agentMessageId,
-      agentMessageModelId,
-    } = await setupSettledMessageWithUsage({ restrictedConversation: true });
+    const { workspace, conversationId, agentMessageId, agentMessageModelId } =
+      await setupSettledMessageWithUsage({ restrictedConversation: true });
     const workflowAuth = await Authenticator.internalBuilderForWorkspace(
       workspace.sId
     );
@@ -546,7 +545,23 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
     );
   });
 
-  it("attributes enabled skill instructions and tool definitions to the tool input", async () => {
+  it.each([
+    {
+      caseName: "omits deferred tool definitions for Anthropic tool search",
+      modelId: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
+      includesToolDefinitions: false,
+    },
+    {
+      caseName: "omits deferred tool definitions for OpenAI tool search",
+      modelId: GPT_5_4_MODEL_CONFIG.modelId,
+      includesToolDefinitions: false,
+    },
+    {
+      caseName: "includes tool definitions when tool search is disabled",
+      modelId: MISTRAL_SMALL_MODEL_CONFIG.modelId,
+      includesToolDefinitions: true,
+    },
+  ])("$caseName", async ({ modelId, includesToolDefinitions }) => {
     const {
       auth,
       globalSpace,
@@ -556,7 +571,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
       conversationId,
       agentMessageId,
       agentMessageModelId,
-    } = await setupSettledMessageWithUsage();
+    } = await setupSettledMessageWithUsage({ modelId });
 
     const internalServer = await InternalMCPServerInMemoryResource.makeNew(
       auth,
@@ -605,9 +620,12 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
     expect(inputTexts[0]).toContain(
       "<dust_system>\n<Measured Skill>\nFollow the enabled skill instructions."
     );
-    expect(inputTexts[0]).toContain(
-      '"name":"common_utilities__set_conversation_title"'
-    );
+    const toolDefinition = '"name":"common_utilities__set_conversation_title"';
+    if (includesToolDefinitions) {
+      expect(inputTexts[0]).toContain(toolDefinition);
+    } else {
+      expect(inputTexts[0]).not.toContain(toolDefinition);
+    }
 
     const items =
       await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(

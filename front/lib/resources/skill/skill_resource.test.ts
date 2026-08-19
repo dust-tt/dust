@@ -1,4 +1,5 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
@@ -7,7 +8,7 @@ import {
 } from "@app/lib/models/skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
-import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -16,6 +17,7 @@ import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/glob
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { serializeSkillTag } from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -33,6 +35,10 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/permissions/legacy_acls", () => ({
+  isLegacyAclsEnabled: vi.fn(() => false),
+}));
 
 describe("SkillResource", () => {
   let testContext: Awaited<ReturnType<typeof createResourceTest>>;
@@ -1904,6 +1910,109 @@ describe("SkillResource", () => {
     });
   });
 
+  describe("listByDataSourceIds", () => {
+    it("should return skills that use any of the given data source IDs", async () => {
+      const space = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(space, testContext.globalGroup);
+
+      const dsv1 = await DataSourceViewFactory.folder(
+        testContext.workspace,
+        space,
+        testContext.user
+      );
+      const dsv2 = await DataSourceViewFactory.folder(
+        testContext.workspace,
+        space,
+        testContext.user
+      );
+      const skill1 = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With DS1",
+        requestedSpaceIds: [space.id],
+      });
+
+      await createDataSourceConfiguration({
+        dataSourceView: dsv1,
+        parentsIn: ["node1"],
+        skillId: skill1.id,
+      });
+
+      // Create another skill without data source configuration
+      await SkillFactory.create(testContext.authenticator, {
+        name: "Skill Without DS",
+        requestedSpaceIds: [],
+      });
+
+      // Test that skills with ds1 are returned
+      const skillsWithDs1 = await SkillResource.listByDataSourceIds(
+        testContext.authenticator,
+        [dsv1.dataSource.id]
+      );
+      expect(skillsWithDs1).toHaveLength(1);
+      expect(skillsWithDs1[0].id).toBe(skill1.id);
+
+      // Test with an unused data source returns empty
+      const emptyResult = await SkillResource.listByDataSourceIds(
+        testContext.authenticator,
+        [dsv2.dataSource.id]
+      );
+      expect(emptyResult).toHaveLength(0);
+
+      // Test with empty array returns empty
+      const emptyArrayResult = await SkillResource.listByDataSourceIds(
+        testContext.authenticator,
+        []
+      );
+      expect(emptyArrayResult).toHaveLength(0);
+    });
+
+    it("should return skills configured through any view of the given data source", async () => {
+      const ownerSpace = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(ownerSpace, testContext.globalGroup);
+      const otherSpace = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(otherSpace, testContext.globalGroup);
+
+      const defaultView = await DataSourceViewFactory.folder(
+        testContext.workspace,
+        ownerSpace,
+        testContext.user
+      );
+      const sharedViewResult =
+        await DataSourceViewResource.createViewInSpaceFromDataSource(
+          testContext.authenticator,
+          otherSpace,
+          defaultView.dataSource,
+          ["node1"]
+        );
+      assert(sharedViewResult.isOk(), "shared view should be created");
+
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With Shared View",
+        requestedSpaceIds: [otherSpace.id],
+      });
+
+      await createDataSourceConfiguration({
+        dataSourceView: sharedViewResult.value,
+        parentsIn: ["node1"],
+        skillId: skill.id,
+      });
+
+      // The skill is not attached to the default view of the data source...
+      const skillsForDefaultView = await SkillResource.listByDataSourceViewIds(
+        testContext.authenticator,
+        [defaultView.id]
+      );
+      expect(skillsForDefaultView).toHaveLength(0);
+
+      // ...but it is still found when listing by the underlying data source.
+      const skillsForDataSource = await SkillResource.listByDataSourceIds(
+        testContext.authenticator,
+        [defaultView.dataSource.id]
+      );
+      expect(skillsForDataSource).toHaveLength(1);
+      expect(skillsForDataSource[0].id).toBe(skill.id);
+    });
+  });
+
   describe("batchFetchChildSkills", () => {
     it("should not hydrate MCP server views for returned child skills", async () => {
       const server = await RemoteMCPServerFactory.create(testContext.workspace);
@@ -1945,6 +2054,43 @@ describe("SkillResource", () => {
   });
 
   describe("fetchByIds", () => {
+    it("skips heavy hydration when it is not requested", async () => {
+      const server = await RemoteMCPServerFactory.create(testContext.workspace);
+      const serverView = await MCPServerViewFactory.create(
+        testContext.workspace,
+        server.sId,
+        testContext.globalSpace
+      );
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Lightweight Skill",
+        instructions: "Large instructions",
+        userFacingDescription: "Description needed for the label",
+        mcpServerViews: [serverView],
+      });
+      const fetchByModelIdsSpy = vi.spyOn(
+        MCPServerViewResource,
+        "fetchByModelIds"
+      );
+
+      const [fetchedSkill] = await SkillResource.fetchByIds(
+        testContext.authenticator,
+        [skill.sId],
+        {
+          withInstructions: false,
+          withTools: false,
+          withFileAttachments: false,
+        }
+      );
+
+      expect(fetchedSkill).toMatchObject({
+        name: "Lightweight Skill",
+        userFacingDescription: "Description needed for the label",
+        instructions: "",
+      });
+      expect(fetchedSkill.mcpServerViews).toEqual([]);
+      expect(fetchByModelIdsSpy).not.toHaveBeenCalled();
+    });
+
     it("filters code-defined skills disabled for the current agent loop", async () => {
       const agent = await AgentConfigurationFactory.createTestAgent(
         testContext.authenticator,
@@ -2756,6 +2902,153 @@ describe("SkillResource", () => {
         []
       );
       expect(editedByMap.size).toBe(0);
+    });
+  });
+
+  describe("group_permissions as the source of truth", () => {
+    // A skill's editor group grants [read, write, admin] through its group_permissions row; a
+    // "user" role grants only read, so write and admin flow purely through the grant.
+    //
+    // Returns a `buildEditorAuth` thunk rather than a ready authenticator: an Authenticator
+    // snapshots its grants at construction, so callers must build it AFTER any grant mutation.
+    async function setupSkillWithEditor(name: string): Promise<{
+      skill: SkillResource;
+      editor: UserResource;
+      buildEditorAuth: () => Promise<Authenticator>;
+    }> {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name,
+      });
+
+      const editor = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, editor, {
+        role: "user",
+      });
+      const upsert = await skill.upsertEditors(testContext.authenticator, [
+        editor,
+      ]);
+      expect(upsert.isOk()).toBe(true);
+
+      return {
+        skill,
+        editor,
+        buildEditorAuth: () =>
+          Authenticator.fromUserIdAndWorkspaceId(
+            editor.sId,
+            testContext.workspace.sId
+          ),
+      };
+    }
+
+    it("grants write and admin to an editor through the table", async () => {
+      const { skill, buildEditorAuth } =
+        await setupSkillWithEditor("Governed Skill");
+      const editorAuth = await buildEditorAuth();
+
+      expect(skill.canWrite(editorAuth)).toBe(true);
+      expect(skill.canAdministrate(editorAuth)).toBe(true);
+    });
+
+    it("denies an editor whose grant is missing, despite group membership", async () => {
+      // The decision now comes from group_permissions alone: dropping the row revokes access even
+      // though the user is still a member of the editor group.
+      const { skill, editor, buildEditorAuth } =
+        await setupSkillWithEditor("Ungranted Skill");
+      await GroupPermissionResource.deleteAllForResource(
+        testContext.authenticator,
+        { resourceType: "skill", resourceId: skill.id }
+      );
+
+      const editorAuth = await buildEditorAuth();
+
+      // Membership is untouched — only the grant is gone.
+      const members = await skill.editorGroup!.getActiveMembers(editorAuth);
+      expect(members.map((m) => m.sId)).toContain(editor.sId);
+      expect(skill.canWrite(editorAuth)).toBe(false);
+      expect(skill.canAdministrate(editorAuth)).toBe(false);
+    });
+
+    it("dual-writes editor changes to the per-user grant group", async () => {
+      const { skill, editor } = await setupSkillWithEditor("Dual Write Skill");
+
+      const grantSpec = {
+        grantType: "editor" as const,
+        resourceType: "skill" as const,
+        resourceId: skill.id,
+      };
+      const grantGroupMembers = async () => {
+        const group =
+          await GroupPermissionResource.findRegularAutoGroupForGrant(
+            testContext.authenticator,
+            grantSpec
+          );
+        if (!group) {
+          return null;
+        }
+        const members = await group.getActiveMembers(testContext.authenticator);
+        return members.map((m) => m.sId);
+      };
+
+      // upsertEditors granted the editor, and makeNew granted the creator.
+      expect(await grantGroupMembers()).toContain(editor.sId);
+      expect(await grantGroupMembers()).toContain(testContext.user.sId);
+
+      const removeResult = await skill.removeEditors(
+        testContext.authenticator,
+        [editor]
+      );
+      expect(removeResult.isOk()).toBe(true);
+
+      // Both sides drop the editor.
+      expect(await grantGroupMembers()).not.toContain(editor.sId);
+      const legacyMembers = await skill.editorGroup!.getActiveMembers(
+        testContext.authenticator
+      );
+      expect(legacyMembers.map((m) => m.sId)).not.toContain(editor.sId);
+    });
+
+    it("falls back to the editor group when the use_legacy_acls kill switch is on", async () => {
+      const { skill, buildEditorAuth } = await setupSkillWithEditor(
+        "Legacy Switch Skill"
+      );
+      await GroupPermissionResource.deleteAllForResource(
+        testContext.authenticator,
+        { resourceType: "skill", resourceId: skill.id }
+      );
+      const editorAuth = await buildEditorAuth();
+
+      // No grant row: the table-backed path denies.
+      expect(skill.canWrite(editorAuth)).toBe(false);
+
+      // The kill-switch restores the pre-migration decision, taken from group membership.
+      vi.mocked(isLegacyAclsEnabled).mockReturnValue(true);
+      expect(skill.canWrite(editorAuth)).toBe(true);
+      expect(skill.canAdministrate(editorAuth)).toBe(true);
+    });
+
+    it("keeps a non-editor out, and lets a workspace admin administrate but not write", async () => {
+      const { skill } = await setupSkillWithEditor("Role Rules Skill");
+
+      const authFor = async (role: "user" | "admin") => {
+        const user = await UserFactory.basic();
+        await MembershipFactory.associate(testContext.workspace, user, {
+          role,
+        });
+        return Authenticator.fromUserIdAndWorkspaceId(
+          user.sId,
+          testContext.workspace.sId
+        );
+      };
+
+      const otherAuth = await authFor("user");
+      expect(skill.canWrite(otherAuth)).toBe(false);
+      expect(skill.canAdministrate(otherAuth)).toBe(false);
+
+      // An admin who is not an editor: the role rules grant admin (manage the editor list) but
+      // never write — editing the skill itself stays with its editors.
+      const adminAuth = await authFor("admin");
+      expect(skill.canAdministrate(adminAuth)).toBe(true);
+      expect(skill.canWrite(adminAuth)).toBe(false);
     });
   });
 });

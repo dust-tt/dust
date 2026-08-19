@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 import { useArgs } from "storybook/preview-api";
 
-import { Button, SliderToggle } from "../index_with_tw_base";
+import { Button, Lock01, SliderToggle } from "../index_with_tw_base";
 
 const meta = {
   title: "Forms & Inputs/SliderToggle",
@@ -18,7 +18,9 @@ const meta = {
 **Guidelines**
 - Use **selected** as the source of truth and update it from the toggle handler.
 - For an option that is part of a form submitted later, or that needs an inline label and description, prefer **Checkbox**.
-- Pair with **SettingsList.Row** to align toggles with their title and description.`,
+- Pair with **SettingsList.Row** to align toggles with their title and description.
+- Pass **icon** to show a small icon inside the knob, e.g. a lock icon to signal the setting is restricted.
+- Pass **faded** with **selected** to mute the active track color, e.g. for a setting that is on but restricted.`,
       },
     },
   },
@@ -69,5 +71,13 @@ export const SliderExample = () => (
     <InteractiveSliderToggle selected />
     <InteractiveSliderToggle disabled />
     <InteractiveSliderToggle selected disabled />
+  </div>
+);
+
+export const SliderWithIcon = () => (
+  <div className="flex items-center gap-2">
+    <SliderToggle icon={Lock01} selected={false} disabled />
+    <SliderToggle icon={Lock01} selected disabled />
+    <SliderToggle icon={Lock01} selected faded />
   </div>
 );

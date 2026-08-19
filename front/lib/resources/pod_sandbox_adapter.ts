@@ -108,9 +108,15 @@ export class PodSandboxAdapter {
           if (imageResult.isErr()) {
             return imageResult;
           }
-          const fsResult = await DustFileSystem.forPod(auth, pod, {
-            sandboxOnlyMounts: podSandboxOnlyMounts(pod),
-          });
+          // Provisioning variant: the refresh may run under an invoker authorized
+          // only through app sharing, who cannot read the Pod.
+          const fsResult = await DustFileSystem.forPodSandboxProvisioning(
+            auth,
+            pod,
+            {
+              sandboxOnlyMounts: podSandboxOnlyMounts(pod),
+            }
+          );
           if (fsResult.isErr()) {
             return fsResult;
           }

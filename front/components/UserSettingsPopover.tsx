@@ -1,6 +1,7 @@
 import { UsageUpgradeButton } from "@app/components/credits/UsageUpgradeButton";
 import { MarkdownEditor } from "@app/components/editor/MarkdownEditor";
 import {
+  ForYouNotificationPreferences,
   NotificationPreferences,
   useNotificationPreferencesForm,
 } from "@app/components/me/NotificationPreferences";
@@ -9,8 +10,6 @@ import {
   SoundNotificationPreferences,
   useSoundNotificationPreferencesForm,
 } from "@app/components/me/SoundNotificationPreferences";
-import { UserToolsTable } from "@app/components/me/UserToolsTable";
-import { UserTriggersTable } from "@app/components/me/UserTriggersTable";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { MyAwuUsageFromAnalyticsChart } from "@app/components/workspace/AwuUsageFromAnalyticsChart";
@@ -22,6 +21,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { useAppRouter } from "@app/lib/platform";
+import { useActivationPod } from "@app/lib/swr/activation";
 import {
   useMyTopConversations,
   useMyUsage,
@@ -70,19 +70,16 @@ import {
   Page,
   Separator,
   Settings01,
-  ShapesPlus,
   SliderToggle,
   Spinner,
   Stars02,
   Sun,
   Tabs,
-  TabsContent,
   TabsList,
   TabsTrigger,
   Tooltip,
   User01,
   XClose,
-  Zap,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ExternalLinkIcon } from "lucide-react";
@@ -97,7 +94,6 @@ type SettingsSection =
   | "customization"
   | "notifications"
   | "memory"
-  | "tools"
   | "invitations";
 
 interface UserSettingsPopoverProps {
@@ -235,16 +231,16 @@ function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
 
   const { myUsage, nextCreditResetAt, isMyUsageLoading } = useMyUsage({
     workspaceId: owner.sId,
-    disabled: !isCreditBased,
+    disabled: !isCreditBased || !visible,
   });
   const { seatPlans } = useSeatPlan({
     workspaceId: owner.sId,
-    disabled: !isCreditBased,
+    disabled: !isCreditBased || !visible,
   });
 
   const { hasPendingUpgradeRequest } = useWorkspaceUsageStatus({
     owner,
-    disabled: isManager || !isCreditBased,
+    disabled: isManager || !isCreditBased || !visible,
   });
 
   const seatName =
@@ -669,14 +665,22 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const showNotificationPreferences = Boolean(user?.subscriberHash);
+  const { activationPodId, isActivationPodLoading } = useActivationPod({
+    workspaceId: owner.sId,
+    disabled: !showNotificationPreferences,
+  });
+  const displayForYouOption = activationPodId !== null;
   const notif = useNotificationPreferencesForm({
     owner,
     disabled: !showNotificationPreferences,
+    displayForYouOption,
   });
 
   const isDirty = sound.isDirty || notif.isDirty;
   const isLoading =
-    sound.isLoading || (showNotificationPreferences && notif.isLoading);
+    sound.isLoading ||
+    (showNotificationPreferences &&
+      (notif.isLoading || isActivationPodLoading));
 
   const handleSave = async () => {
     setIsSubmitting(true);
@@ -746,29 +750,19 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
               )}
             </div>
           )}
+          {showNotificationPreferences &&
+            displayForYouOption &&
+            notif.status !== "error" && (
+              <div className="flex flex-col gap-4">
+                <Page.SectionHeader
+                  title="For you"
+                  description="Recommendation emails from your learning space"
+                />
+                <ForYouNotificationPreferences control={notif.control} />
+              </div>
+            )}
         </>
       )}
-    </SectionContent>
-  );
-}
-
-// ─── Tools & Triggers ─────────────────────────────────────────────────────────
-
-function ToolsSection({ owner }: { owner: WorkspaceType }) {
-  return (
-    <SectionContent title="Tools and Triggers">
-      <Tabs defaultValue="tools">
-        <TabsList border>
-          <TabsTrigger value="tools" label="Tools" icon={Zap} />
-          <TabsTrigger value="triggers" label="Triggers" icon={Bell01} />
-        </TabsList>
-        <TabsContent value="tools">
-          <UserToolsTable owner={owner} />
-        </TabsContent>
-        <TabsContent value="triggers">
-          <UserTriggersTable owner={owner} />
-        </TabsContent>
-      </Tabs>
     </SectionContent>
   );
 }
@@ -923,7 +917,6 @@ const NAV_ITEMS: Array<{
   { section: "customization", icon: Settings01, label: "Customization" },
   { section: "memory", icon: Brain, label: "Memory" },
   { section: "notifications", icon: Bell01, label: "Notifications" },
-  { section: "tools", icon: ShapesPlus, label: "Tools and Triggers" },
   { section: "invitations", icon: Mail01, label: "Invitations" },
 ];
 
@@ -1039,7 +1032,6 @@ export function UserSettingsPopover({
               <NotificationsSection owner={owner} />
             )}
             {activeSection === "memory" && <MemorySection owner={owner} />}
-            {activeSection === "tools" && <ToolsSection owner={owner} />}
             {activeSection === "invitations" && (
               <InvitationsSection
                 invitations={pendingInvitations}

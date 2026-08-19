@@ -1,6 +1,11 @@
+import { makeSpendLimitCycleWindowBounds } from "@app/lib/api/assistant/rate_limits";
 import type { Authenticator } from "@app/lib/auth";
 import type { BillingCycle } from "@app/lib/client/subscription";
+import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
+import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
+import logger from "@app/logger/logger";
 import { isCreditPricedPlan } from "@app/types/plan";
+import type { LightWorkspaceType } from "@app/types/user";
 
 /**
  * The UTC calendar month containing `now`, used as the per-user spend-cap cycle
@@ -39,4 +44,29 @@ export function spendLimitCycleOverrideForAuth(
   }
 
   return currentCalendarMonthCycleUtc();
+}
+
+// Fixed-window bounds for the current Metronome contract billing cycle (the
+// window the pool-level spend caps are bucketed on). `null` when no billing
+// period can be resolved — callers treat that as a no-op (fail-open, matching
+// the rest of the rate-limiter callers). Shared by the per-user, per-API-key,
+// programmatic and workspace spend-cap backups.
+export async function resolveSpendLimitCycleBounds(
+  workspace: LightWorkspaceType
+): Promise<FixedWindowBounds | null> {
+  const periodResult = await getCachedMetronomeCurrentBillingPeriod(
+    workspace.sId
+  );
+  if (periodResult.isErr() || !periodResult.value) {
+    logger.warn(
+      {
+        workspaceId: workspace.sId,
+        err: periodResult.isErr() ? periodResult.error : undefined,
+      },
+      "[SpendLimitRateCap] Could not resolve contract billing period; skipping fixed-window cap"
+    );
+    return null;
+  }
+  const { cycleStart, cycleEnd } = periodResult.value;
+  return makeSpendLimitCycleWindowBounds(cycleStart, cycleEnd);
 }

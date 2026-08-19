@@ -6,26 +6,26 @@ import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
-interface WorkerInfo {
-  name: string;
+interface BundleInfo {
+  workerNames: WorkerName[];
   workflowsPath: string;
 }
 
-function discoverWorkers(): WorkerInfo[] {
-  // Workers sharing a workflows directory (the agent-loop pools) share one bundle, keyed by
-  // the first worker name — their Worker.create calls all load the agent_loop bundle.
-  const seenPaths = new Set<string>();
-  const workers: WorkerInfo[] = [];
+function discoverBundles(): BundleInfo[] {
+  // Workers sharing a workflows directory (the agent-loop pools) run the same workflow code:
+  // bundle it once and write the result under each of their names.
+  const bundles = new Map<string, BundleInfo>();
   for (const workerName of ALL_WORKERS) {
     const name = workerName as WorkerName;
     const workflowsPath = getWorkerWorkflowsPath(name);
-    if (seenPaths.has(workflowsPath)) {
-      continue;
+    const bundle = bundles.get(workflowsPath);
+    if (bundle) {
+      bundle.workerNames.push(name);
+    } else {
+      bundles.set(workflowsPath, { workerNames: [name], workflowsPath });
     }
-    seenPaths.add(workflowsPath);
-    workers.push({ name, workflowsPath });
   }
-  return workers;
+  return [...bundles.values()];
 }
 
 function getWorkerWorkflowsPath(workerName: WorkerName): string {
@@ -43,7 +43,6 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
   switch (workerName) {
     case "activation_scheduler":
       return path.join(baseDir, "temporal/activation_scheduler");
-    case "agent_loop":
     case "agent_loop_batch":
     case "agent_loop_interactive":
     case "agent_loop_programmatic":
@@ -109,19 +108,19 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
 }
 
 async function buildBundles() {
-  const workers = discoverWorkers();
+  const bundles = discoverBundles();
   const bundleDir = path.join(__dirname, "../../dist/temporal-bundles");
 
   await mkdir(bundleDir, { recursive: true });
 
   console.log(
-    `Found ${workers.length} workers:`,
-    workers.map((w) => w.name).join(", ")
+    `Found ${bundles.length} bundles:`,
+    bundles.map((b) => b.workerNames.join("/")).join(", ")
   );
 
   await Promise.all(
-    workers.map(async ({ name, workflowsPath }) => {
-      console.log(`Bundling ${name}...`);
+    bundles.map(async ({ workerNames, workflowsPath }) => {
+      console.log(`Bundling ${workerNames.join("/")}...`);
 
       const { code } = await bundleWorkflowCode({
         workflowsPath: require.resolve(workflowsPath),
@@ -133,14 +132,14 @@ async function buildBundles() {
         },
       });
 
-      const bundlePath = path.join(bundleDir, `${name}.bundle.js`);
-      await writeFile(bundlePath, code);
-
-      console.log(`✓ ${name}`);
+      for (const name of workerNames) {
+        await writeFile(path.join(bundleDir, `${name}.bundle.js`), code);
+        console.log(`✓ ${name}`);
+      }
     })
   );
 
-  console.log(`\n✓ Built ${workers.length} bundles`);
+  console.log(`\n✓ Built ${bundles.length} bundles`);
 }
 
 if (require.main === module) {

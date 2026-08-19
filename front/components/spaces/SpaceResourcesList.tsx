@@ -1,4 +1,5 @@
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
+import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
 import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
@@ -91,7 +92,8 @@ const hasConfigureSlackConnectionQuery = (
   query.configureConnection === "slack";
 
 function getTableColumns(
-  setAssistantSId: (a: string | null) => void,
+  onAgentClick: (id: string | null) => void,
+  onSkillClick: (id: string | null) => void,
   isManaged: boolean,
   isWebsite: boolean,
   space: SpaceType,
@@ -144,7 +146,8 @@ function getTableColumns(
       <DataTable.CellContent>
         <UsedByButton
           usage={info.row.original.dataSourceView.usage}
-          onItemClick={setAssistantSId}
+          onItemClick={onAgentClick}
+          onSkillClick={onSkillClick}
         />
       </DataTable.CellContent>
     ),
@@ -279,7 +282,8 @@ export const SpaceResourcesList = ({
   activeSeats,
 }: SpaceResourcesListProps) => {
   const { isDark } = useTheme();
-  const [assistantSId, setAssistantSId] = useState<string | null>(null);
+  const [agentId, setAgentId] = useState<string | null>(null);
+  const [skillId, setSkillId] = useState<string | null>(null);
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
   const [selectedDataSourceView, setSelectedDataSourceView] =
@@ -610,8 +614,14 @@ export const SpaceResourcesList = ({
       <AgentDetailsSheet
         owner={owner}
         user={user}
-        agentId={assistantSId}
-        onClose={() => setAssistantSId(null)}
+        agentId={agentId}
+        onClose={() => setAgentId(null)}
+      />
+      <SkillDetailsSheetById
+        owner={owner}
+        user={user}
+        skillId={skillId}
+        onClose={() => setSkillId(null)}
       />
 
       {isEmpty && (
@@ -633,7 +643,8 @@ export const SpaceResourcesList = ({
           className="dd-privacy-mask"
           data={rows}
           columns={getTableColumns(
-            setAssistantSId,
+            setAgentId,
+            setSkillId,
             isManagedCategory,
             isWebsite,
             space,

@@ -13,6 +13,7 @@ export const CONSUMPTION_DIMENSIONS: ConsumptionDimension[] = [
   "tool",
   "skill",
   "source",
+  "api_key",
 ];
 
 interface ConsumptionDimensionConfig {
@@ -22,8 +23,8 @@ interface ConsumptionDimensionConfig {
   avgLabel: string;
 }
 
-const MESSAGE_AVG_LABEL = "Cost / message";
-const INVOCATION_AVG_LABEL = "Cost / invocation";
+const MESSAGE_AVG_LABEL = "Credits / message";
+const INVOCATION_AVG_LABEL = "Credits / invocation";
 
 export const CONSUMPTION_DIMENSION_CONFIG: Record<
   ConsumptionDimension,
@@ -50,24 +51,30 @@ export const CONSUMPTION_DIMENSION_CONFIG: Record<
   model: {
     label: "Models",
     breakdownLabel: "model",
-    hasAvatar: false,
+    hasAvatar: true,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   tool: {
     label: "Tools",
     breakdownLabel: "tool",
-    hasAvatar: false,
+    hasAvatar: true,
     avgLabel: INVOCATION_AVG_LABEL,
   },
   skill: {
     label: "Skills",
     breakdownLabel: "skill",
-    hasAvatar: false,
+    hasAvatar: true,
     avgLabel: INVOCATION_AVG_LABEL,
   },
   source: {
     label: "Sources",
     breakdownLabel: "source",
+    hasAvatar: false,
+    avgLabel: MESSAGE_AVG_LABEL,
+  },
+  api_key: {
+    label: "API keys",
+    breakdownLabel: "API key",
     hasAvatar: false,
     avgLabel: MESSAGE_AVG_LABEL,
   },

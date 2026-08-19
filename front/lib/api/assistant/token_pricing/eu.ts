@@ -1,58 +1,100 @@
 import type { PricingEntry } from "@app/lib/api/assistant/token_pricing/global";
+import { MODEL_PRICING } from "@app/lib/api/assistant/token_pricing/global";
+import {
+  CLAUDE_4_5_HAIKU_20251001_MODEL_ID,
+  CLAUDE_4_5_OPUS_20251101_MODEL_ID,
+  CLAUDE_4_5_SONNET_20250929_MODEL_ID,
+  CLAUDE_OPUS_4_6_MODEL_ID,
+  CLAUDE_OPUS_4_7_MODEL_ID,
+  CLAUDE_OPUS_4_8_MODEL_ID,
+  CLAUDE_SONNET_4_6_MODEL_ID,
+  CLAUDE_SONNET_5_MODEL_ID,
+} from "@app/types/assistant/models/anthropic";
+import type { StaticModelIdType } from "@app/types/assistant/models/models";
+import {
+  GPT_5_4_MINI_MODEL_ID,
+  GPT_5_4_MODEL_ID,
+  GPT_5_4_NANO_MODEL_ID,
+  GPT_5_5_MODEL_ID,
+  GPT_5_6_LUNA_MODEL_ID,
+  GPT_5_6_SOL_MODEL_ID,
+  GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID,
+  GPT_5_6_TERRA_MODEL_ID,
+} from "@app/types/assistant/models/openai";
 
-// EU-hosted pricing overrides for Anthropic models served via Google Vertex AI in EU.
-// Anthropic charges a 10% surcharge on Vertex AI EU inference.
-// Only models currently routable via Vertex in EU are listed here.
-// https://www.anthropic.com/pricing
+// Regional and multi-region endpoints charge a 10% premium over global endpoints.
+// Anthropic: Claude 4.5 and later models served through Vertex AI in EU.
+// OpenAI: models whose pricing pages specify the data-residency uplift.
+// Verified 2026-08-13:
+// https://platform.claude.com/docs/en/build-with-claude/claude-on-vertex-ai
+// https://openai.com/api/pricing/
+const EU_PRICING_MULTIPLIER = 1.1;
 
-export const EU_MODEL_PRICING: Partial<Record<string, PricingEntry>> = {
-  "claude-sonnet-4-5-20250929": {
-    input: 3.3,
-    output: 16.5,
-    cache_creation_input_tokens: 4.125,
-    long_cache_creation_input_tokens: 6.6,
-    cache_read_input_tokens: 0.33,
-  },
-  "claude-sonnet-4-6": {
-    input: 3.3,
-    output: 16.5,
-    cache_creation_input_tokens: 4.125,
-    long_cache_creation_input_tokens: 6.6,
-    cache_read_input_tokens: 0.33,
-  },
-  "claude-opus-4-5-20251101": {
-    input: 5.5,
-    output: 27.5,
-    cache_creation_input_tokens: 6.875,
-    long_cache_creation_input_tokens: 11.0,
-    cache_read_input_tokens: 0.55,
-  },
-  "claude-opus-4-6": {
-    input: 5.5,
-    output: 27.5,
-    cache_creation_input_tokens: 6.875,
-    long_cache_creation_input_tokens: 11.0,
-    cache_read_input_tokens: 0.55,
-  },
-  "claude-opus-4-7": {
-    input: 5.5,
-    output: 27.5,
-    cache_creation_input_tokens: 6.875,
-    long_cache_creation_input_tokens: 11.0,
-    cache_read_input_tokens: 0.55,
-  },
-  "claude-opus-4-8": {
-    input: 5.5,
-    output: 27.5,
-    cache_creation_input_tokens: 6.875,
-    long_cache_creation_input_tokens: 11.0,
-    cache_read_input_tokens: 0.55,
-  },
-  "claude-haiku-4-5-20251001": {
-    input: 1.1,
-    output: 5.5,
-    cache_creation_input_tokens: 1.375,
-    long_cache_creation_input_tokens: 2.2,
-    cache_read_input_tokens: 0.11,
-  },
-};
+export const EU_UPLIFT_MODEL_IDS = [
+  CLAUDE_4_5_SONNET_20250929_MODEL_ID,
+  CLAUDE_SONNET_4_6_MODEL_ID,
+  CLAUDE_SONNET_5_MODEL_ID,
+  CLAUDE_4_5_OPUS_20251101_MODEL_ID,
+  CLAUDE_OPUS_4_6_MODEL_ID,
+  CLAUDE_OPUS_4_7_MODEL_ID,
+  CLAUDE_OPUS_4_8_MODEL_ID,
+  CLAUDE_4_5_HAIKU_20251001_MODEL_ID,
+  GPT_5_4_MODEL_ID,
+  GPT_5_4_MINI_MODEL_ID,
+  GPT_5_4_NANO_MODEL_ID,
+  GPT_5_5_MODEL_ID,
+  GPT_5_6_SOL_MODEL_ID,
+  GPT_5_6_TERRA_MODEL_ID,
+  GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID,
+  GPT_5_6_LUNA_MODEL_ID,
+] as const satisfies readonly StaticModelIdType[];
+
+function applyRegionalUplift(pricing: PricingEntry): PricingEntry {
+  return {
+    input: pricing.input * EU_PRICING_MULTIPLIER,
+    output: pricing.output * EU_PRICING_MULTIPLIER,
+    ...(pricing.cache_creation_input_tokens !== undefined && {
+      cache_creation_input_tokens:
+        pricing.cache_creation_input_tokens * EU_PRICING_MULTIPLIER,
+    }),
+    ...(pricing.long_cache_creation_input_tokens !== undefined && {
+      long_cache_creation_input_tokens:
+        pricing.long_cache_creation_input_tokens * EU_PRICING_MULTIPLIER,
+    }),
+    ...(pricing.cache_read_input_tokens !== undefined && {
+      cache_read_input_tokens:
+        pricing.cache_read_input_tokens * EU_PRICING_MULTIPLIER,
+    }),
+    ...(pricing.long_context && {
+      long_context: {
+        prompt_token_threshold: pricing.long_context.prompt_token_threshold,
+        input: pricing.long_context.input * EU_PRICING_MULTIPLIER,
+        output: pricing.long_context.output * EU_PRICING_MULTIPLIER,
+        ...(pricing.long_context.cache_creation_input_tokens !== undefined && {
+          cache_creation_input_tokens:
+            pricing.long_context.cache_creation_input_tokens *
+            EU_PRICING_MULTIPLIER,
+        }),
+        ...(pricing.long_context.long_cache_creation_input_tokens !==
+          undefined && {
+          long_cache_creation_input_tokens:
+            pricing.long_context.long_cache_creation_input_tokens *
+            EU_PRICING_MULTIPLIER,
+        }),
+        ...(pricing.long_context.cache_read_input_tokens !== undefined && {
+          cache_read_input_tokens:
+            pricing.long_context.cache_read_input_tokens *
+            EU_PRICING_MULTIPLIER,
+        }),
+      },
+    }),
+  };
+}
+
+export const EU_MODEL_PRICING: Partial<Record<string, PricingEntry>> =
+  Object.fromEntries(
+    EU_UPLIFT_MODEL_IDS.map((modelId) => [
+      modelId,
+      applyRegionalUplift(MODEL_PRICING[modelId]),
+    ])
+  );

@@ -161,6 +161,30 @@ inserted_group_permissions AS (
   RETURNING id
 ),
 
+-- Step 5e: Seed instance-level space group_permissions for the default spaces. Mirrors
+-- SpaceResource.writeGroupPermissions / spaceGroupRoles (front/lib/resources/space_resource.ts),
+-- which real space provisioning runs but this raw-SQL seed bypasses. Without these rows, space
+-- access resolves to nothing once use_legacy_acls is off (the default post-migration). Keep in sync
+-- with spaceGroupRoles: system space => system group 'member'; global and conversations spaces =>
+-- global group 'reader'.
+inserted_space_group_permissions AS (
+  INSERT INTO group_permissions (
+    "workspaceId", "groupId", "grantType", "resourceType", "resourceId", "createdAt", "updatedAt"
+  )
+  SELECT sg."workspaceId", sg.id, 'member', 'space', ss.id, NOW(), NOW()
+  FROM inserted_system_group sg
+  CROSS JOIN inserted_system_space ss
+  UNION ALL
+  SELECT gg."workspaceId", gg.id, 'reader', 'space', gs.id, NOW(), NOW()
+  FROM inserted_global_group gg
+  CROSS JOIN inserted_global_space gs
+  UNION ALL
+  SELECT gg."workspaceId", gg.id, 'reader', 'space', cs.id, NOW(), NOW()
+  FROM inserted_global_group gg
+  CROSS JOIN inserted_conversations_space cs
+  RETURNING id
+),
+
 -- Step 6: Create membership
 inserted_membership AS (
   INSERT INTO memberships ("workspaceId", "userId", role, origin, "startAt", "endAt", "firstUsedAt", "createdAt", "updatedAt")

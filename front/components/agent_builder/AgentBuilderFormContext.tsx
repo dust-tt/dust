@@ -5,7 +5,10 @@ import {
 } from "@app/components/shared/tools_picker/types";
 import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration";
-import { TRIGGER_STATUSES } from "@app/types/assistant/triggers";
+import {
+  TRIGGER_EXECUTION_MODES,
+  TRIGGER_STATUSES,
+} from "@app/types/assistant/triggers";
 import { editorUserSchema } from "@app/types/editors";
 import { WEBHOOK_PROVIDERS } from "@app/types/triggers/webhooks";
 import { createContext } from "react";
@@ -35,6 +38,7 @@ const agentSettingsSchema = z.object({
       slackChannelId: z.string(),
       slackChannelName: z.string(),
       autoRespondWithoutMention: z.boolean().optional(),
+      autoRespondWithoutMentionSkipThreadReplies: z.boolean().optional(),
     })
   ),
   tags: z.array(tagSchema),
@@ -81,7 +85,7 @@ const webhookTriggerSchema = z.object({
   webhookSourceViewId: z.string().nullable().optional(),
   editorName: z.string().optional(),
   executionPerDayLimitOverride: z.number().nullable(),
-  executionMode: z.enum(["fair_use", "programmatic"]).nullable(),
+  executionMode: z.enum(TRIGGER_EXECUTION_MODES),
   spaceId: z.string().nullable().optional(),
 });
 

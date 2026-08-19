@@ -157,14 +157,26 @@ export function isGlobalAgentId(sId: string): sId is GLOBAL_AGENTS_SID {
 // users, so usage they generate should be attributed to the parent agent that
 // spawned them rather than to the helper itself. Other sub-agents (real user
 // agents invoked via run_agent / agent_handover) keep their own attribution.
-const HIDDEN_HELPER_SUB_AGENT_SIDS: ReadonlySet<string> = new Set<string>([
+const HIDDEN_HELPER_SUB_AGENT_ID_SET: ReadonlySet<string> = new Set<string>([
   GLOBAL_AGENTS_SID.DUST_TASK,
   GLOBAL_AGENTS_SID.DUST_PLANNING,
   GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY,
 ]);
 
 export function isHiddenHelperSubAgentId(sId: string): boolean {
-  return HIDDEN_HELPER_SUB_AGENT_SIDS.has(sId);
+  return HIDDEN_HELPER_SUB_AGENT_ID_SET.has(sId);
+}
+
+export function getAgentUsageAttributedId({
+  agentId,
+  parentAgentId,
+}: {
+  agentId: string;
+  parentAgentId: string | null | undefined;
+}): string {
+  return isHiddenHelperSubAgentId(agentId) && parentAgentId
+    ? parentAgentId
+    : agentId;
 }
 
 // If you want to show feedback buttons for global agents, add sId here.

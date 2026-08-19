@@ -5,6 +5,8 @@ interface ModelPickerSelectionIndicatorProps {
   // agent default). When false, a plain, non-interactive check is shown.
   canRevert: boolean;
   onRevert: () => void;
+  // "xs" is used on rows where the check sits next to the resolved model label
+  size?: "xs" | "sm";
 }
 
 // The trailing marker on the active row: a check that turns into a clickable X
@@ -12,9 +14,12 @@ interface ModelPickerSelectionIndicatorProps {
 export function ModelPickerSelectionIndicator({
   canRevert,
   onRevert,
+  size = "sm",
 }: ModelPickerSelectionIndicatorProps) {
   if (!canRevert) {
-    return <Icon visual={Check} size="sm" className="text-muted-foreground" />;
+    return (
+      <Icon visual={Check} size={size} className="text-muted-foreground" />
+    );
   }
 
   return (
@@ -27,10 +32,14 @@ export function ModelPickerSelectionIndicator({
         onRevert();
       }}
     >
-      <Icon visual={Check} size="sm" className="group-hover/indicator:hidden" />
+      <Icon
+        visual={Check}
+        size={size}
+        className="group-hover/indicator:hidden"
+      />
       <Icon
         visual={X}
-        size="sm"
+        size={size}
         className="hidden group-hover/indicator:block"
       />
     </button>

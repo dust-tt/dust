@@ -29,10 +29,7 @@ import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import {
-  createAccessControlListFromSpacesWithMap,
-  createSpaceIdToGroupsMap,
-} from "@app/lib/resources/permission_utils";
+import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -253,27 +250,33 @@ async function fetchLatestWorkspaceAgentModels(
   if (workspaceAgentIds.length === 0) {
     return [];
   }
-  // Use window function for optimal performance - single query, single pass
+
+  // Agent sIds are globally unique (every agent starts at version 0, and
+  // (sId, version) is unique). Resolve the latest model id through that index
+  // first, then enforce workspace isolation while loading the model row. This
+  // avoids sorting every historical version of heavily edited agents.
   const query = `
-    SELECT *
+    SELECT agent_configuration.*
     FROM (
-      SELECT *,
-              ROW_NUMBER() OVER (
-                PARTITION BY "sId"
-                ORDER BY version DESC
-              ) as rn
+      SELECT DISTINCT unnest($agentIds::text[]) AS "sId"
+    ) requested_agent
+    JOIN LATERAL (
+      SELECT id
       FROM agent_configurations
-      WHERE "workspaceId" = :workspaceId
-        AND "sId" IN (:agentIds)
-    ) ranked_agents
-    WHERE rn = 1
-    ORDER BY version DESC
+      WHERE "sId" = requested_agent."sId"
+      ORDER BY version DESC
+      LIMIT 1
+    ) latest_agent ON true
+    JOIN agent_configurations AS agent_configuration
+      ON agent_configuration.id = latest_agent.id
+      AND agent_configuration."workspaceId" = $workspaceId
+    ORDER BY agent_configuration.version DESC
   `;
 
   return (
     (await AgentConfigurationModel.sequelize?.query(query, {
       type: QueryTypes.SELECT,
-      replacements: {
+      bind: {
         workspaceId: auth.getNonNullableWorkspace().id,
         agentIds: workspaceAgentIds,
       },
@@ -403,6 +406,7 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
 
 type AgentLabel = {
   sId: string;
+  authorModelId: ModelId;
   name: string;
   pictureUrl: string | null;
   model: AgentModelConfigurationType;
@@ -425,6 +429,7 @@ export async function getAgentLabelsByIds(
   return agentModels.map((agent) => ({
     sId: agent.sId,
     name: agent.name,
+    authorModelId: agent.authorId,
     pictureUrl: agent.pictureUrl,
     model: getModelForAgentConfiguration(agent),
   }));
@@ -1768,25 +1773,12 @@ export async function filterAgentsByRequestedSpaces(
   );
 
   const spaces = await SpaceResource.fetchByModelIds(auth, uniqSpaceIds);
-  const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
+  const spaceById = new Map(spaces.map((s) => [s.id, s]));
 
-  // Filter out agents that reference missing/deleted spaces.
-  // When a space is deleted, mcp actions are removed, and requestedSpaceIds are updated.
-  const foundSpaceIds = new Set(spaces.map((s) => s.id));
-  const validAgents = agents.filter((c) =>
-    c.requestedSpaceIds.every((id) => foundSpaceIds.has(id))
+  // Keep only agents whose every requested space is readable. A missing/deleted space is treated
+  // as not readable (see `canReadRequestedSpaces`), so agents referencing one are dropped here too —
+  // when a space is deleted its mcp actions are removed and `requestedSpaceIds` updated.
+  return agents.filter((agent) =>
+    canReadRequestedSpaces(auth, spaceById, agent.requestedSpaceIds)
   );
-
-  const allowedBySpaceIds = validAgents.filter((agent) =>
-    auth.hasPermissionForAcls(
-      "read",
-      createAccessControlListFromSpacesWithMap(
-        spaceIdToGroupsMap,
-        agent.requestedSpaceIds,
-        auth.getNonNullableWorkspace().id
-      )
-    )
-  );
-
-  return allowedBySpaceIds;
 }

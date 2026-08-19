@@ -6,15 +6,18 @@ const inMemoryCache = vi.hoisted(() => new Map<string, string>());
 const deletedKeys = vi.hoisted(() => [] as string[]);
 
 vi.mock("@app/lib/utils/cache", () => ({
+  buildCacheWithRedisKey: (cacheId: string, resolverKey: string) =>
+    `cacheWithRedis-${cacheId}-${resolverKey}`,
   cacheWithRedis: vi
     .fn()
     .mockImplementation(
       <T, Args extends unknown[]>(
         fn: CacheableFunction<JsonSerializable<T>, Args>,
-        resolver: (...args: Args) => string
+        resolver: (...args: Args) => string,
+        options?: { cacheId?: string }
       ) => {
         return async (...args: Args): Promise<JsonSerializable<T>> => {
-          const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+          const key = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
           const cached = inMemoryCache.get(key);
           if (cached) {
             return JSON.parse(cached) as JsonSerializable<T>;
@@ -30,10 +33,11 @@ vi.mock("@app/lib/utils/cache", () => ({
     .mockImplementation(
       <T, Args extends unknown[]>(
         fn: CacheableFunction<JsonSerializable<T>, Args>,
-        resolver: (...args: Args) => string
+        resolver: (...args: Args) => string,
+        options?: { cacheId?: string }
       ) => {
         return async (...args: Args): Promise<void> => {
-          const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+          const key = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
           inMemoryCache.delete(key);
           deletedKeys.push(key);
         };
@@ -78,6 +82,7 @@ vi.mock("@app/lib/utils/cache", () => ({
     ),
 }));
 
+import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -108,17 +113,17 @@ describe("MembershipResource", () => {
         const cacheKey = getCacheKeyForWorkspace(workspace.sId);
 
         expect(inMemoryCache.has(cacheKey)).toBe(false);
-        await MembershipResource.countActiveSeatsInWorkspace(workspace.sId);
+        await countActiveSeatsForWorkspace(workspace.sId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
       });
 
       it("serves from cache on second call", async () => {
         const cacheKey = getCacheKeyForWorkspace(workspace.sId);
 
-        await MembershipResource.countActiveSeatsInWorkspace(workspace.sId);
+        await countActiveSeatsForWorkspace(workspace.sId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
 
-        await MembershipResource.countActiveSeatsInWorkspace(workspace.sId);
+        await countActiveSeatsForWorkspace(workspace.sId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
       });
     });
@@ -132,7 +137,7 @@ describe("MembershipResource", () => {
         });
 
         const cacheKey = getCacheKeyForWorkspace(workspace.sId);
-        await MembershipResource.countActiveSeatsInWorkspace(workspace.sId);
+        await countActiveSeatsForWorkspace(workspace.sId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
 
         await membership.markFirstUse();
@@ -149,7 +154,7 @@ describe("MembershipResource", () => {
         });
 
         const cacheKey = getCacheKeyForWorkspace(workspace.sId);
-        await MembershipResource.countActiveSeatsInWorkspace(workspace.sId);
+        await countActiveSeatsForWorkspace(workspace.sId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
 
         await membership.delete(authenticator, {});
@@ -161,7 +166,7 @@ describe("MembershipResource", () => {
     describe("deleteAllForWorkspace()", () => {
       it("invalidates cache for the workspace", async () => {
         const cacheKey = getCacheKeyForWorkspace(workspace.sId);
-        await MembershipResource.countActiveSeatsInWorkspace(workspace.sId);
+        await countActiveSeatsForWorkspace(workspace.sId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
 
         await MembershipResource.deleteAllForWorkspace(authenticator);
@@ -173,7 +178,7 @@ describe("MembershipResource", () => {
     describe("createMembership()", () => {
       it("invalidates cache when new membership created", async () => {
         const cacheKey = getCacheKeyForWorkspace(workspace.sId);
-        await MembershipResource.countActiveSeatsInWorkspace(workspace.sId);
+        await countActiveSeatsForWorkspace(workspace.sId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
 
         const newUser = await UserFactory.basic();
@@ -195,7 +200,7 @@ describe("MembershipResource", () => {
         });
 
         const cacheKey = getCacheKeyForWorkspace(workspace.sId);
-        await MembershipResource.countActiveSeatsInWorkspace(workspace.sId);
+        await countActiveSeatsForWorkspace(workspace.sId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
 
         await MembershipResource.revokeMembership({
@@ -215,7 +220,7 @@ describe("MembershipResource", () => {
         });
 
         const cacheKey = getCacheKeyForWorkspace(workspace.sId);
-        await MembershipResource.countActiveSeatsInWorkspace(workspace.sId);
+        await countActiveSeatsForWorkspace(workspace.sId);
         expect(inMemoryCache.has(cacheKey)).toBe(true);
 
         await MembershipResource.updateMembershipRole({
@@ -600,17 +605,13 @@ describe("MembershipResource", () => {
           origin: "invited",
         });
 
-        const count = await MembershipResource.countActiveSeatsInWorkspace(
-          workspace.sId
-        );
+        const count = await countActiveSeatsForWorkspace(workspace.sId);
 
         expect(count).toBe(1);
       });
 
       it("should return 0 for empty workspace", async () => {
-        const count = await MembershipResource.countActiveSeatsInWorkspace(
-          workspace.sId
-        );
+        const count = await countActiveSeatsForWorkspace(workspace.sId);
         expect(count).toBe(0);
       });
     });
@@ -629,7 +630,7 @@ describe("MembershipResource", () => {
         });
 
         const roleCacheKey = `cacheWithRedis-_getActiveRoleForUserInWorkspaceUncached-role:user:${user.id}:workspace:${workspace.id}`;
-        const seatsCacheKey = `cacheWithRedis-_countActiveSeatsInWorkspaceUncached-count-active-seats-in-workspace:${workspace.sId}`;
+        const seatsCacheKey = getCacheKeyForWorkspace(workspace.sId);
 
         expect(deletedKeys).toContain(roleCacheKey);
         expect(deletedKeys).toContain(seatsCacheKey);
@@ -651,7 +652,7 @@ describe("MembershipResource", () => {
         });
 
         const roleCacheKey = `cacheWithRedis-_getActiveRoleForUserInWorkspaceUncached-role:user:${user.id}:workspace:${workspace.id}`;
-        const seatsCacheKey = `cacheWithRedis-_countActiveSeatsInWorkspaceUncached-count-active-seats-in-workspace:${workspace.sId}`;
+        const seatsCacheKey = getCacheKeyForWorkspace(workspace.sId);
 
         expect(deletedKeys).toContain(roleCacheKey);
         expect(deletedKeys).toContain(seatsCacheKey);
@@ -675,7 +676,7 @@ describe("MembershipResource", () => {
           });
         await membership?.markFirstUse();
 
-        const seatsCacheKey = `cacheWithRedis-_countActiveSeatsInWorkspaceUncached-count-active-seats-in-workspace:${workspace.sId}`;
+        const seatsCacheKey = getCacheKeyForWorkspace(workspace.sId);
 
         expect(deletedKeys).toContain(seatsCacheKey);
       });
@@ -692,7 +693,7 @@ describe("MembershipResource", () => {
 
         await MembershipResource.deleteAllForWorkspace(auth);
 
-        const seatsCacheKey = `cacheWithRedis-_countActiveSeatsInWorkspaceUncached-count-active-seats-in-workspace:${workspace.sId}`;
+        const seatsCacheKey = getCacheKeyForWorkspace(workspace.sId);
 
         expect(deletedKeys).toContain(seatsCacheKey);
       });
@@ -712,7 +713,7 @@ describe("MembershipResource", () => {
         await membership.delete(auth, {});
 
         const roleCacheKey = `cacheWithRedis-_getActiveRoleForUserInWorkspaceUncached-role:user:${user.id}:workspace:${workspace.id}`;
-        const seatsCacheKey = `cacheWithRedis-_countActiveSeatsInWorkspaceUncached-count-active-seats-in-workspace:${workspace.sId}`;
+        const seatsCacheKey = getCacheKeyForWorkspace(workspace.sId);
 
         expect(deletedKeys).toContain(roleCacheKey);
         expect(deletedKeys).toContain(seatsCacheKey);
@@ -882,7 +883,7 @@ describe("MembershipResource", () => {
         workspace: lightWorkspace,
       });
 
-      const seatsCacheKey = `cacheWithRedis-_countActiveSeatsInWorkspaceUncached-count-active-seats-in-workspace:${workspace.sId}`;
+      const seatsCacheKey = getCacheKeyForWorkspace(workspace.sId);
       expect(deletedKeys).toContain(seatsCacheKey);
     });
   });

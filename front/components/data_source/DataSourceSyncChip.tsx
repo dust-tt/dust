@@ -44,6 +44,17 @@ export default function ConnectorSyncingChip({
             trigger={<Chip color="warning">Synchronization failed</Chip>}
           />
         );
+      case "transient_upstream_error":
+        return (
+          <Tooltip
+            label={
+              `We are having trouble retrieving your data from ${CONNECTOR_CONFIGURATIONS[connector.type].name}. ` +
+              "Synchronization will resume automatically once the issue is resolved."
+            }
+            className="max-w-md"
+            trigger={<Chip color="warning">Synchronization delayed</Chip>}
+          />
+        );
       case "webcrawling_error_content_too_large":
         return (
           <Tooltip

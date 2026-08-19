@@ -15,6 +15,13 @@ const AnalyticsConsumptionPage = withSuspense(
     ),
   "AnalyticsConsumptionPage"
 );
+const AnalyticsAutomationsPage = withSuspense(
+  () =>
+    import(
+      "@dust-tt/front/components/pages/workspace/AnalyticsAutomationsPage"
+    ),
+  "AnalyticsAutomationsPage"
+);
 const APIKeysPage = withSuspense(
   () =>
     import("@dust-tt/front/components/pages/workspace/developers/APIKeysPage"),
@@ -114,6 +121,10 @@ export const adminRoutes: RouteObject[] = [
       {
         path: "analytics/consumption",
         element: <AnalyticsConsumptionPage />,
+      },
+      {
+        path: "automations",
+        element: <AnalyticsAutomationsPage />,
       },
       { path: "usage", element: <UsagePage /> },
       { path: "governance", element: <GovernancePage /> },

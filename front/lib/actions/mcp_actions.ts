@@ -13,6 +13,7 @@ import {
   DEFAULT_MCP_REQUEST_TIMEOUT_MS,
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
+  MCP_LIST_TOOLS_TIMEOUT_MS,
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
 import type {
@@ -65,6 +66,7 @@ import {
   makeToolInterruptionError,
   shouldRetryToolInterruption,
 } from "@app/lib/actions/tool_interruptions";
+import { applyToolSourceLoadingPolicy } from "@app/lib/actions/tool_loading";
 import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type {
   AgentLoopListToolsContext,
@@ -131,6 +133,9 @@ const MCP_NOTIFICATION_EVENT_NAME = "mcp-notification";
 const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
 const MCP_TOOL_ERROR_EVENT_NAME = "TOOL_ERROR" as const;
 const MCP_TOOL_HEARTBEAT_EVENT_NAME = "TOOL_HEARTBEAT" as const;
+// Threshold above which a tools/list duration is logged, to build the latency
+// distribution behind the MCP_LIST_TOOLS_TIMEOUT_MS cap.
+const SLOW_MCP_TOOLS_LIST_THRESHOLD_MS = 5_000;
 const TOOL_EXECUTION_CANCELLED_MESSAGE = "The tool execution was cancelled.";
 const TOOL_EXECUTION_INTERRUPTED_MESSAGE =
   "A tool was interrupted before Dust could confirm the result. Please check whether it completed, then retry.";
@@ -1291,8 +1296,7 @@ export async function tryListMCPTools(
         }
 
         processedTools.push({
-          ...toolConfig,
-          ...(isFromSkillServer ? { eager: undefined } : {}),
+          ...applyToolSourceLoadingPolicy(toolConfig, { isFromSkillServer }),
           originalName: toolConfig.name,
           mcpServerName: action.name,
           name: toolName,
@@ -1322,7 +1326,9 @@ async function listToolsForClientSideMCPServer(
 
   // Fetch all tools, handling pagination if supported by the MCP server.
   do {
-    const { tools, nextCursor } = await mcpClient.listTools();
+    const { tools, nextCursor } = await mcpClient.listTools(undefined, {
+      timeout: MCP_LIST_TOOLS_TIMEOUT_MS,
+    });
 
     nextPageCursor = nextCursor;
     const dustMetaByTool = new Map(
@@ -1364,7 +1370,9 @@ export async function listToolsForServerSideMCPServer(
 
   // Fetch all tools, handling pagination if supported by the MCP server.
   do {
-    const { tools, nextCursor } = await mcpClient.listTools();
+    const { tools, nextCursor } = await mcpClient.listTools(undefined, {
+      timeout: MCP_LIST_TOOLS_TIMEOUT_MS,
+    });
     nextPageCursor = nextCursor;
     allToolsRaw = [
       ...allToolsRaw,
@@ -1536,6 +1544,7 @@ async function listMCPServerToolsAndServerInstructions(
 
     const serverInstructions = mcpClient.getInstructions();
 
+    const listStartMs = Date.now();
     let toolsRes: Result<MCPToolConfigurationType[], Error>;
     if (isConnectViaClientSideMCPServer(connectionParams)) {
       assert(
@@ -1553,6 +1562,23 @@ async function listMCPServerToolsAndServerInstructions(
         connectionParams,
         mcpClient,
         config
+      );
+    }
+
+    // Listing normally completes in well under a second: log the slow tail so the
+    // MCP_LIST_TOOLS_TIMEOUT_MS cap can be tuned on real latency data.
+    const listDurationMs = Date.now() - listStartMs;
+    if (listDurationMs > SLOW_MCP_TOOLS_LIST_THRESHOLD_MS) {
+      logger.info(
+        {
+          workspaceId: owner.sId,
+          conversationId: agentLoopListToolsContext.conversation.sId,
+          messageId: agentLoopListToolsContext.agentMessage.sId,
+          mcpServerName: config.name,
+          durationMs: listDurationMs,
+          success: toolsRes.isOk(),
+        },
+        "Slow MCP tools listing"
       );
     }
 

@@ -7,10 +7,12 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
+import type { UsedBySkillType } from "@app/types/assistant/skill_configuration";
 import type {
-  AgentsUsageType,
+  AgentsAndSkillsUsageType,
   ConnectorProvider,
 } from "@app/types/data_source";
 import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
@@ -28,7 +30,12 @@ import { Op, Sequelize } from "sequelize";
 // If it is a problem, let's add caching
 const DISABLE_QUERIES = false;
 
-export type DataSourcesUsageByAgent = Record<ModelId, AgentsUsageType | null>;
+export type DataSourcesUsage = Record<ModelId, AgentsAndSkillsUsageType | null>;
+
+type AgentOnlyUsage = {
+  count: number;
+  agents: { sId: string; name: string; pictureUrl: string }[];
+};
 
 const AGENT_CONFIG_PATH =
   '"agent_mcp_server_configuration->agent_configuration"';
@@ -49,13 +56,123 @@ const agentAggregates: ProjectionAlias[] = (
   alias,
 ]);
 
+// Usage only needs each skill's identity, so skip the rest of the hydration.
+const SKILL_USAGE_HYDRATION = {
+  withInstructions: false,
+  withTools: false,
+  withFileAttachments: false,
+} as const;
+
+/**
+ * Buckets skills by the knowledge id they attached, dropping skills the current user may not
+ * see. Skills are fetched scoped to `requestedIds`, but each one carries all of its
+ * configurations, so ids we did not ask about are skipped here.
+ */
+function groupSkillsByKnowledgeId(
+  auth: Authenticator,
+  skills: SkillResource[],
+  requestedIds: ModelId[],
+  knowledgeIdsOf: (skill: SkillResource) => ModelId[]
+): Map<ModelId, UsedBySkillType[]> {
+  const visibleSkills = auth.isAdmin()
+    ? skills
+    : skills.filter(
+        (skill) => skill.availability !== "editors" || skill.canWrite(auth)
+      );
+
+  const requested = new Set(requestedIds);
+  const skillsById = new Map<ModelId, UsedBySkillType[]>();
+
+  for (const skill of visibleSkills) {
+    const usedBySkill: UsedBySkillType = {
+      sId: skill.sId,
+      name: skill.name,
+      icon: skill.icon,
+    };
+    for (const id of new Set(knowledgeIdsOf(skill))) {
+      if (!requested.has(id)) {
+        continue;
+      }
+      const usedBySkills = skillsById.get(id) ?? [];
+      usedBySkills.push(usedBySkill);
+      skillsById.set(id, usedBySkills);
+    }
+  }
+
+  for (const usedBySkills of skillsById.values()) {
+    usedBySkills.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  return skillsById;
+}
+
+/**
+ * Skills can attach a data source view directly as "knowledge" (independently of any
+ * MCP server/tool configuration). Mirrors `fetchSkillsByMCPServer` in `agent_actions.ts`,
+ * but reads `skill.dataSourceConfigurations` instead of `skill.mcpServerViews`.
+ */
+async function fetchSkillsByDataSourceViewIds(
+  auth: Authenticator,
+  dataSourceViewIds: ModelId[]
+): Promise<Map<ModelId, UsedBySkillType[]>> {
+  const skills = await SkillResource.listByDataSourceViewIds(
+    auth,
+    dataSourceViewIds,
+    SKILL_USAGE_HYDRATION
+  );
+
+  return groupSkillsByKnowledgeId(auth, skills, dataSourceViewIds, (skill) =>
+    skill.dataSourceConfigurations.map((c) => c.dataSourceViewId)
+  );
+}
+
+async function fetchSkillsByDataSourceIds(
+  auth: Authenticator,
+  dataSourceIds: ModelId[]
+): Promise<Map<ModelId, UsedBySkillType[]>> {
+  const skills = await SkillResource.listByDataSourceIds(
+    auth,
+    dataSourceIds,
+    SKILL_USAGE_HYDRATION
+  );
+
+  return groupSkillsByKnowledgeId(auth, skills, dataSourceIds, (skill) =>
+    skill.dataSourceConfigurations.map((c) => c.dataSourceId)
+  );
+}
+
+/**
+ * Folds a skills-by-id map into an agent-only usage map, bumping `.count` for any id that
+ * gains skills.
+ */
+function mergeSkillsIntoUsage(
+  agentOnly: Record<ModelId, AgentOnlyUsage>,
+  skillsById: Map<ModelId, UsedBySkillType[]>
+): DataSourcesUsage {
+  const result: DataSourcesUsage = {};
+  for (const key of Object.keys(agentOnly)) {
+    const id = Number(key);
+    result[id] = { ...agentOnly[id], skills: [] };
+  }
+  for (const [id, skills] of skillsById) {
+    const usage = result[id];
+    if (usage) {
+      usage.skills = skills;
+      usage.count += skills.length;
+    } else {
+      result[id] = { count: skills.length, agents: [], skills };
+    }
+  }
+  return result;
+}
+
 export async function getDataSourceViewsUsageByModelIds({
   auth,
   dataSourceViewModelIds,
 }: {
   auth: Authenticator;
   dataSourceViewModelIds: ModelId[];
-}): Promise<DataSourcesUsageByAgent> {
+}): Promise<DataSourcesUsage> {
   const owner = auth.workspace();
 
   // This condition is critical it checks that we can identify the workspace and that the current
@@ -74,25 +191,28 @@ export async function getDataSourceViewsUsageByModelIds({
     return {};
   }
 
-  // Step 1 & 2: fetch the config links from both sources.
-  const [dataSourceConfigLinks, tableConfigLinks] = await Promise.all([
-    AgentDataSourceConfigurationModel.findAll({
-      raw: true,
-      attributes: ["dataSourceViewId", "mcpServerConfigurationId"],
-      where: {
-        workspaceId: owner.id,
-        dataSourceViewId: { [Op.in]: uniqueDataSourceViewModelIds },
-      },
-    }),
-    AgentTablesQueryConfigurationTableModel.findAll({
-      raw: true,
-      attributes: ["dataSourceViewId", "mcpServerConfigurationId"],
-      where: {
-        workspaceId: owner.id,
-        dataSourceViewId: { [Op.in]: uniqueDataSourceViewModelIds },
-      },
-    }),
-  ]);
+  // Step 1 & 2: fetch the config links from both sources, plus skill usage — nothing here
+  // depends on anything else, so fetch them all together instead of sequentially.
+  const [dataSourceConfigLinks, tableConfigLinks, skillsByDataSourceViewId] =
+    await Promise.all([
+      AgentDataSourceConfigurationModel.findAll({
+        raw: true,
+        attributes: ["dataSourceViewId", "mcpServerConfigurationId"],
+        where: {
+          workspaceId: owner.id,
+          dataSourceViewId: { [Op.in]: uniqueDataSourceViewModelIds },
+        },
+      }),
+      AgentTablesQueryConfigurationTableModel.findAll({
+        raw: true,
+        attributes: ["dataSourceViewId", "mcpServerConfigurationId"],
+        where: {
+          workspaceId: owner.id,
+          dataSourceViewId: { [Op.in]: uniqueDataSourceViewModelIds },
+        },
+      }),
+      fetchSkillsByDataSourceViewIds(auth, uniqueDataSourceViewModelIds),
+    ]);
 
   // Step 3: fetch the MCP server configuration -> agent configuration mappings
   // once for both sources.
@@ -205,7 +325,7 @@ export async function getDataSourceViewsUsageByModelIds({
     tableAgents.map((agent) => [agent.id, agent])
   );
 
-  const result: DataSourcesUsageByAgent = {};
+  const result: Record<ModelId, AgentOnlyUsage> = {};
 
   const pushAgentForDataSourceView = ({
     dataSourceViewId,
@@ -271,7 +391,7 @@ export async function getDataSourceViewsUsageByModelIds({
     }
   });
 
-  return result;
+  return mergeSkillsIntoUsage(result, skillsByDataSourceViewId);
 }
 
 export async function getDataSourcesUsageByCategory({
@@ -280,7 +400,7 @@ export async function getDataSourcesUsageByCategory({
 }: {
   auth: Authenticator;
   category: DataSourceViewCategory;
-}): Promise<DataSourcesUsageByAgent> {
+}): Promise<DataSourcesUsage> {
   const owner = auth.workspace();
 
   // This condition is critical it checks that we can identify the workspace and that the current
@@ -306,122 +426,141 @@ export async function getDataSourcesUsageByCategory({
     };
   }
 
-  const res = (await Promise.all([
-    AgentDataSourceConfigurationModel.findAll({
+  // The skills lookup is keyed by data source id, so resolve this category's ids first. Same
+  // `workspaceId` + `connectorProvider` predicate as the joins below.
+  const categoryDataSourceModelIds = (
+    await DataSourceModel.findAll({
       raw: true,
-      group: ["dataSource.id"],
+      attributes: ["id"],
       where: {
         workspaceId: owner.id,
+        connectorProvider,
       },
-      attributes: [
-        [Sequelize.col("dataSource.id"), "dataSourceId"],
-        ...agentAggregates,
-      ],
-      include: [
-        {
-          model: DataSourceModel,
-          as: "dataSource",
-          attributes: [],
-          required: true,
-          where: {
-            connectorProvider: connectorProvider,
-          },
+    })
+  ).map((ds) => ds.id);
+
+  const [dataSourceConfigRows, tableConfigRows, skillsByDataSourceId] =
+    await Promise.all([
+      AgentDataSourceConfigurationModel.findAll({
+        raw: true,
+        group: ["dataSource.id"],
+        where: {
+          workspaceId: owner.id,
         },
-        {
-          model: AgentMCPServerConfigurationModel,
-          as: "agent_mcp_server_configuration",
-          attributes: [],
-          required: true,
-          include: [
-            {
-              model: AgentConfigurationModel,
-              as: "agent_configuration",
-              attributes: [],
-              required: true,
-              where: {
-                status: "active",
-                workspaceId: owner.id,
-              },
+        attributes: [
+          [Sequelize.col("dataSource.id"), "dataSourceId"],
+          ...agentAggregates,
+        ],
+        include: [
+          {
+            model: DataSourceModel,
+            as: "dataSource",
+            attributes: [],
+            required: true,
+            where: {
+              connectorProvider: connectorProvider,
             },
-          ],
-        },
-      ],
-    }),
-    AgentTablesQueryConfigurationTableModel.findAll({
-      raw: true,
-      group: ["dataSource.id"],
-      where: {
-        workspaceId: owner.id,
-      },
-      attributes: [
-        [Sequelize.col("dataSource.id"), "dataSourceId"],
-        ...agentAggregates,
-      ],
-      include: [
-        {
-          model: DataSourceModel,
-          as: "dataSource",
-          attributes: [],
-          required: true,
-          where: {
-            connectorProvider: connectorProvider,
           },
-        },
-        {
-          model: AgentMCPServerConfigurationModel,
-          as: "agent_mcp_server_configuration",
-          attributes: [],
-          required: true,
-          include: [
-            {
-              model: AgentConfigurationModel,
-              as: "agent_configuration",
-              attributes: [],
-              required: true,
-              where: {
-                status: "active",
-                workspaceId: owner.id,
+          {
+            model: AgentMCPServerConfigurationModel,
+            as: "agent_mcp_server_configuration",
+            attributes: [],
+            required: true,
+            include: [
+              {
+                model: AgentConfigurationModel,
+                as: "agent_configuration",
+                attributes: [],
+                required: true,
+                where: {
+                  status: "active",
+                  workspaceId: owner.id,
+                },
               },
-            },
-          ],
+            ],
+          },
+        ],
+      }),
+      AgentTablesQueryConfigurationTableModel.findAll({
+        raw: true,
+        group: ["dataSource.id"],
+        where: {
+          workspaceId: owner.id,
         },
-      ],
-    }),
-  ])) as unknown as {
-    dataSourceId: ModelId;
-    names: string[];
-    sIds: string[];
-    pictureUrls: string[];
-  }[][];
+        attributes: [
+          [Sequelize.col("dataSource.id"), "dataSourceId"],
+          ...agentAggregates,
+        ],
+        include: [
+          {
+            model: DataSourceModel,
+            as: "dataSource",
+            attributes: [],
+            required: true,
+            where: {
+              connectorProvider: connectorProvider,
+            },
+          },
+          {
+            model: AgentMCPServerConfigurationModel,
+            as: "agent_mcp_server_configuration",
+            attributes: [],
+            required: true,
+            include: [
+              {
+                model: AgentConfigurationModel,
+                as: "agent_configuration",
+                attributes: [],
+                required: true,
+                where: {
+                  status: "active",
+                  workspaceId: owner.id,
+                },
+              },
+            ],
+          },
+        ],
+      }),
+      fetchSkillsByDataSourceIds(auth, categoryDataSourceModelIds),
+    ] as const);
 
-  const result = res.flat().reduce<DataSourcesUsageByAgent>((acc, dsConfig) => {
-    let usage = acc[dsConfig.dataSourceId];
+  const result = (
+    [dataSourceConfigRows, tableConfigRows] as unknown as {
+      dataSourceId: ModelId;
+      names: string[];
+      sIds: string[];
+      pictureUrls: string[];
+    }[][]
+  )
+    .flat()
+    .reduce<Record<ModelId, AgentOnlyUsage>>((acc, dsConfig) => {
+      let usage = acc[dsConfig.dataSourceId];
 
-    if (!usage) {
-      usage = {
-        count: 0,
-        agents: [],
-      };
-      acc[dsConfig.dataSourceId] = usage;
-    }
+      if (!usage) {
+        usage = {
+          count: 0,
+          agents: [],
+        };
+        acc[dsConfig.dataSourceId] = usage;
+      }
 
-    const newAgents = dsConfig.sIds
-      .map((sId, index) => ({
-        sId,
-        name: dsConfig.names[index],
-        pictureUrl: dsConfig.pictureUrls[index],
-      }))
-      .filter(
-        (agent) =>
-          agent.sId &&
-          agent.sId.length > 0 &&
-          agent.name &&
-          agent.name.length > 0
-      );
+      const newAgents = dsConfig.sIds
+        .map((sId, index) => ({
+          sId,
+          name: dsConfig.names[index],
+          pictureUrl: dsConfig.pictureUrls[index],
+        }))
+        .filter(
+          (agent) =>
+            agent.sId &&
+            agent.sId.length > 0 &&
+            agent.name &&
+            agent.name.length > 0
+        );
 
-    usage.agents.push(...newAgents);
-    return acc;
-  }, {});
+      usage.agents.push(...newAgents);
+      return acc;
+    }, {});
 
   Object.values(result).forEach((usage) => {
     if (usage) {
@@ -430,7 +569,7 @@ export async function getDataSourcesUsageByCategory({
     }
   });
 
-  return result;
+  return mergeSkillsIntoUsage(result, skillsByDataSourceId);
 }
 
 export async function getDataSourceUsage({
@@ -439,7 +578,7 @@ export async function getDataSourceUsage({
 }: {
   auth: Authenticator;
   dataSource: DataSourceResource;
-}): Promise<Result<AgentsUsageType, Error>> {
+}): Promise<Result<AgentsAndSkillsUsageType, Error>> {
   const owner = auth.workspace();
 
   // This condition is critical it checks that we can identify the workspace and that the current
@@ -450,72 +589,77 @@ export async function getDataSourceUsage({
   }
 
   if (DISABLE_QUERIES) {
-    return new Ok({ count: 0, agents: [] });
+    return new Ok({ count: 0, agents: [], skills: [] });
   }
 
-  const res = (await Promise.all([
-    AgentDataSourceConfigurationModel.findOne({
-      raw: true,
-      attributes: [...agentAggregates],
-      where: {
-        workspaceId: owner.id,
-        dataSourceId: dataSource.id,
-      },
-      include: [
-        {
-          model: AgentMCPServerConfigurationModel,
-          as: "agent_mcp_server_configuration",
-          attributes: [],
-          required: true,
-          include: [
-            {
-              model: AgentConfigurationModel,
-              as: "agent_configuration",
-              attributes: [],
-              required: true,
-              where: {
-                status: "active",
-                workspaceId: owner.id,
-              },
-            },
-          ],
+  const [dataSourceConfigRow, tableConfigRow, skillsByDataSourceId] =
+    await Promise.all([
+      AgentDataSourceConfigurationModel.findOne({
+        raw: true,
+        attributes: [...agentAggregates],
+        where: {
+          workspaceId: owner.id,
+          dataSourceId: dataSource.id,
         },
-      ],
-    }),
-    AgentTablesQueryConfigurationTableModel.findOne({
-      raw: true,
-      attributes: [...agentAggregates],
-      where: {
-        workspaceId: owner.id,
-        dataSourceId: dataSource.id,
-      },
-      include: [
-        {
-          model: AgentMCPServerConfigurationModel,
-          as: "agent_mcp_server_configuration",
-          attributes: [],
-          required: true,
-          include: [
-            {
-              model: AgentConfigurationModel,
-              as: "agent_configuration",
-              attributes: [],
-              required: true,
-              where: {
-                status: "active",
-                workspaceId: owner.id,
+        include: [
+          {
+            model: AgentMCPServerConfigurationModel,
+            as: "agent_mcp_server_configuration",
+            attributes: [],
+            required: true,
+            include: [
+              {
+                model: AgentConfigurationModel,
+                as: "agent_configuration",
+                attributes: [],
+                required: true,
+                where: {
+                  status: "active",
+                  workspaceId: owner.id,
+                },
               },
-            },
-          ],
+            ],
+          },
+        ],
+      }),
+      AgentTablesQueryConfigurationTableModel.findOne({
+        raw: true,
+        attributes: [...agentAggregates],
+        where: {
+          workspaceId: owner.id,
+          dataSourceId: dataSource.id,
         },
-      ],
-    }),
-  ])) as unknown as
+        include: [
+          {
+            model: AgentMCPServerConfigurationModel,
+            as: "agent_mcp_server_configuration",
+            attributes: [],
+            required: true,
+            include: [
+              {
+                model: AgentConfigurationModel,
+                as: "agent_configuration",
+                attributes: [],
+                required: true,
+                where: {
+                  status: "active",
+                  workspaceId: owner.id,
+                },
+              },
+            ],
+          },
+        ],
+      }),
+      fetchSkillsByDataSourceIds(auth, [dataSource.id]),
+    ]);
+
+  const skills = skillsByDataSourceId.get(dataSource.id) ?? [];
+  const res = [dataSourceConfigRow, tableConfigRow] as unknown as
     | { names: string[]; sIds: string[]; pictureUrls: string[] }[]
     | null;
 
   if (!res) {
-    return new Ok({ count: 0, agents: [] });
+    return new Ok({ count: skills.length, agents: [], skills });
   } else {
     const agents = res
       .filter((r) => r && Array.isArray(r.sIds) && Array.isArray(r.names))
@@ -537,8 +681,9 @@ export async function getDataSourceUsage({
     const sortedAgents = sortBy(uniqBy(agents, "sId"), "name");
 
     return new Ok({
-      count: sortedAgents.length,
+      count: sortedAgents.length + skills.length,
       agents: sortedAgents,
+      skills,
     });
   }
 }
@@ -549,7 +694,7 @@ export async function getDataSourceViewUsage({
 }: {
   auth: Authenticator;
   dataSourceView: DataSourceViewResource;
-}): Promise<Result<AgentsUsageType, Error>> {
+}): Promise<Result<AgentsAndSkillsUsageType, Error>> {
   const owner = auth.workspace();
 
   // This condition is critical it checks that we can identify the workspace and that the current
@@ -560,72 +705,77 @@ export async function getDataSourceViewUsage({
   }
 
   if (DISABLE_QUERIES) {
-    return new Ok({ count: 0, agents: [] });
+    return new Ok({ count: 0, agents: [], skills: [] });
   }
 
-  const res = (await Promise.all([
-    AgentDataSourceConfigurationModel.findOne({
-      raw: true,
-      attributes: [...agentAggregates],
-      where: {
-        workspaceId: owner.id,
-        dataSourceViewId: dataSourceView.id,
-      },
-      include: [
-        {
-          model: AgentMCPServerConfigurationModel,
-          as: "agent_mcp_server_configuration",
-          attributes: [],
-          required: true,
-          include: [
-            {
-              model: AgentConfigurationModel,
-              as: "agent_configuration",
-              attributes: [],
-              required: true,
-              where: {
-                status: "active",
-                workspaceId: owner.id,
-              },
-            },
-          ],
+  const [dataSourceConfigRow, tableConfigRow, skillsByDataSourceViewId] =
+    await Promise.all([
+      AgentDataSourceConfigurationModel.findOne({
+        raw: true,
+        attributes: [...agentAggregates],
+        where: {
+          workspaceId: owner.id,
+          dataSourceViewId: dataSourceView.id,
         },
-      ],
-    }),
-    AgentTablesQueryConfigurationTableModel.findOne({
-      raw: true,
-      attributes: [...agentAggregates],
-      where: {
-        workspaceId: owner.id,
-        dataSourceViewId: dataSourceView.id,
-      },
-      include: [
-        {
-          model: AgentMCPServerConfigurationModel,
-          as: "agent_mcp_server_configuration",
-          attributes: [],
-          required: true,
-          include: [
-            {
-              model: AgentConfigurationModel,
-              as: "agent_configuration",
-              attributes: [],
-              required: true,
-              where: {
-                status: "active",
-                workspaceId: owner.id,
+        include: [
+          {
+            model: AgentMCPServerConfigurationModel,
+            as: "agent_mcp_server_configuration",
+            attributes: [],
+            required: true,
+            include: [
+              {
+                model: AgentConfigurationModel,
+                as: "agent_configuration",
+                attributes: [],
+                required: true,
+                where: {
+                  status: "active",
+                  workspaceId: owner.id,
+                },
               },
-            },
-          ],
+            ],
+          },
+        ],
+      }),
+      AgentTablesQueryConfigurationTableModel.findOne({
+        raw: true,
+        attributes: [...agentAggregates],
+        where: {
+          workspaceId: owner.id,
+          dataSourceViewId: dataSourceView.id,
         },
-      ],
-    }),
-  ])) as unknown as
+        include: [
+          {
+            model: AgentMCPServerConfigurationModel,
+            as: "agent_mcp_server_configuration",
+            attributes: [],
+            required: true,
+            include: [
+              {
+                model: AgentConfigurationModel,
+                as: "agent_configuration",
+                attributes: [],
+                required: true,
+                where: {
+                  status: "active",
+                  workspaceId: owner.id,
+                },
+              },
+            ],
+          },
+        ],
+      }),
+      fetchSkillsByDataSourceViewIds(auth, [dataSourceView.id]),
+    ]);
+
+  const skills = skillsByDataSourceViewId.get(dataSourceView.id) ?? [];
+  const res = [dataSourceConfigRow, tableConfigRow] as unknown as
     | { names: string[]; sIds: string[]; pictureUrls: string[] }[]
     | null;
 
   if (!res) {
-    return new Ok({ count: 0, agents: [] });
+    return new Ok({ count: skills.length, agents: [], skills });
   } else {
     const agents = res
       .filter((r) => r && Array.isArray(r.sIds) && Array.isArray(r.names))
@@ -647,8 +797,9 @@ export async function getDataSourceViewUsage({
     const sortedAgents = sortBy(uniqBy(agents, "sId"), "name");
 
     return new Ok({
-      count: sortedAgents.length,
+      count: sortedAgents.length + skills.length,
       agents: sortedAgents,
+      skills,
     });
   }
 }

@@ -8,7 +8,7 @@ export function SandboxFunctionUnpublishValidationDetails({
   input,
 }: SandboxFunctionUnpublishValidationDetailsProps) {
   return (
-    <div className="flex flex-col gap-2 py-2 pl-7">
+    <div className="flex flex-col gap-2 py-2">
       <p className="heading-base wrap-break-word text-foreground">
         {input.slug}
       </p>

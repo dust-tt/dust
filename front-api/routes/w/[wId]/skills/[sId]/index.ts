@@ -411,9 +411,7 @@ app.patch(
 
     // Adding a restricted space can lock out editors that are already on the skill. `updateSkill`
     // also makes the caller an editor, so they are part of the set to validate.
-    const editors = skill.editorGroup
-      ? await skill.editorGroup.getActiveMembers(auth)
-      : [];
+    const editors = (await skill.listEditors(auth)) ?? [];
     const requestedSpaces = await SpaceResource.fetchByModelIds(
       auth,
       requestedSpaceIds

@@ -130,7 +130,7 @@ export function formatAsDisplayName(name: string): string {
       SPECIAL_CASES_PATTERN,
       (match) => SPECIAL_CASES[match as keyof typeof SPECIAL_CASES]
     )
-    .replace(/\b\w/g, (char) => char.toUpperCase());
+    .replace(/\b\w/, (char) => char.toUpperCase());
 }
 
 export function asDisplayToolName(name?: string | null) {

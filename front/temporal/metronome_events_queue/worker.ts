@@ -23,7 +23,11 @@ export async function runMetronomeEventsWorker() {
     }),
     activities,
     taskQueue: QUEUE_NAME,
-    maxConcurrentActivityTaskExecutions: 16,
+    // Each activity fans out into many Metronome contract-endpoint calls (seat
+    // sync, credit reconcile). Keep concurrency low so a burst of webhooks
+    // (e.g. a migration cohort activating on the hour) spreads over time
+    // instead of saturating Metronome's rate limit.
+    maxConcurrentActivityTaskExecutions: 4,
     connection,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
     namespace,

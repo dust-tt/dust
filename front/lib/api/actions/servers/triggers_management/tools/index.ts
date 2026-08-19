@@ -221,7 +221,7 @@ export function createTriggersManagementTools(
           editor: user.id,
           webhookSourceViewId: null,
           executionPerDayLimitOverride: null,
-          executionMode: "fair_use",
+          executionMode: "user_pool",
           origin: "agent",
           spaceId,
         });
@@ -397,6 +397,16 @@ export function createTriggersManagementTools(
       const trigger = triggersResult.value.find((t) => t.sId === triggerId);
       if (!trigger) {
         return new Err(new MCPError("Trigger not found"));
+      }
+
+      // An admin editor could otherwise clear a system-owned status
+      // (relocating/downgraded), losing the marker the restore jobs key on.
+      if (trigger.isSystemStatusTransitionTo("disabled")) {
+        return new Err(
+          new MCPError(
+            "This trigger's status is managed by Dust and cannot be changed."
+          )
+        );
       }
 
       const triggerName = trigger.name;
@@ -594,7 +604,7 @@ export function createTriggersManagementTools(
           webhookSourceViewId: view.id,
           executionPerDayLimitOverride:
             DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT,
-          executionMode: "fair_use",
+          executionMode: "user_pool",
           origin: "agent",
           spaceId,
         });

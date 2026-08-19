@@ -1,20 +1,42 @@
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import { editorVariants } from "@app/components/editor/editorStyles";
+import {
+  isSkillSlashCommand,
+  isToolSlashCommand,
+  SELECT_SKILL_SLASH_COMMAND_ACTION,
+  SELECT_TOOL_SLASH_COMMAND_ACTION,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import { buildCapabilitySlashCommandItems } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandItems";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import {
+  SkillInstructionsEditorContent,
+  useSkillInstructionsEditor,
+} from "@app/components/editor/SkillInstructionsEditor";
+import {
+  getMcpServerViewDisplayName,
+  isToolWithKnowledge,
+} from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { PokeMCPServerViewListItemType } from "@app/lib/api/poke/mcp_server_views";
+import { postProcessMarkdown } from "@app/lib/editor/skill_instructions_preprocessing";
 import {
   SKILL_INSTRUCTIONS_LABEL,
   SKILL_INVOCATION_LABEL,
 } from "@app/lib/skills/labels";
+import { extractToolTags } from "@app/lib/tools/format";
 import { usePokeMCPServerViews } from "@app/poke/swr/mcp_server_views";
-import { useCreatePokeSkillSuggestion } from "@app/poke/swr/skills";
+import {
+  useCreatePokeSkillSuggestion,
+  usePokeSkills,
+} from "@app/poke/swr/skills";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionIcons,
   Button,
-  Chip,
+  cn,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -33,7 +55,9 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import type { Editor } from "@tiptap/core";
+import type { Transaction } from "@tiptap/pm/state";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const DEFAULT_ICON: keyof typeof ActionIcons = "ActionListCheckIcon";
 
@@ -60,27 +84,98 @@ export function CreateSkillSuggestionSheet({
   const [agentFacingDescription, setAgentFacingDescription] = useState("");
   const [instructions, setInstructions] = useState("");
   const [icon, setIcon] = useState<string | null>(null);
-  const [selectedMCPServerViews, setSelectedMCPServerViews] = useState<
-    MCPServerViewType[]
-  >([]);
-  const [mcpSearchText, setMCPSearchText] = useState("");
+  const [capabilitySearchText, setCapabilitySearchText] = useState("");
 
-  const { data: allMCPServerViews, isLoading: isMCPServerViewsLoading } =
-    usePokeMCPServerViews({ owner, disabled: !show, globalSpaceOnly: true });
-
-  // Filter to match the skill builder behavior:
-  // - Only "manual" and "auto" availability
-  // - Only views that don't require configuration
-  const noConfigMCPServerViews = useMemo(() => {
-    return allMCPServerViews.filter((view) => {
-      const { availability } = view.server;
-      if (availability !== "manual" && availability !== "auto") {
-        return false;
-      }
-      const { noRequirement } = getMCPServerRequirements(view);
-      return noRequirement;
+  const { data: skills, isLoading: isSkillsLoading } = usePokeSkills({
+    owner,
+    disabled: !show,
+  });
+  const { data: mcpServerViews, isLoading: isMCPServerViewsLoading } =
+    usePokeMCPServerViews({
+      owner,
+      disabled: !show,
+      globalSpaceOnly: true,
     });
-  }, [allMCPServerViews]);
+
+  const activeSkills = useMemo(
+    () => skills.filter((skill) => skill.status === "active"),
+    [skills]
+  );
+
+  const selectableMCPServerViews = useMemo(() => {
+    const serverViewCountByServerId = new Map<string, number>();
+    for (const view of mcpServerViews) {
+      serverViewCountByServerId.set(
+        view.server.sId,
+        (serverViewCountByServerId.get(view.server.sId) ?? 0) + 1
+      );
+    }
+
+    return mcpServerViews
+      .filter((view) => {
+        const { availability } = view.server;
+        return (
+          (availability === "manual" || availability === "auto") &&
+          !isToolWithKnowledge(view) &&
+          getMCPServerRequirements(view).noRequirement
+        );
+      })
+      .map((view) => ({
+        ...view,
+        label:
+          (serverViewCountByServerId.get(view.server.sId) ?? 0) > 1
+            ? `${getMcpServerViewDisplayName(view)} (${view.space.name})`
+            : getMcpServerViewDisplayName(view),
+      }));
+  }, [mcpServerViews]);
+
+  const capabilityItems = useMemo(
+    () =>
+      buildCapabilitySlashCommandItems({
+        query: capabilitySearchText,
+        skills: activeSkills,
+        tools: selectableMCPServerViews,
+      }),
+    [activeSkills, capabilitySearchText, selectableMCPServerViews]
+  );
+  const skillItems = capabilityItems.filter(
+    (item) => item.action === SELECT_SKILL_SLASH_COMMAND_ACTION
+  );
+  const toolItems = capabilityItems.filter(
+    (item) => item.action === SELECT_TOOL_SLASH_COMMAND_ACTION
+  );
+  const isCapabilitiesLoading = isSkillsLoading || isMCPServerViewsLoading;
+
+  const handleInstructionsUpdate = useCallback(
+    ({ editor, transaction }: { editor: Editor; transaction: Transaction }) => {
+      if (transaction.docChanged) {
+        setInstructions(postProcessMarkdown(editor.getMarkdown()).trim());
+      }
+    },
+    []
+  );
+
+  const { editor } = useSkillInstructionsEditor({
+    content: "",
+    enableSlashCommands: false,
+    isReadOnly: false,
+    onUpdate: handleInstructionsUpdate,
+  });
+
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
+    editor.setOptions({
+      editorProps: {
+        attributes: {
+          "aria-label": SKILL_INSTRUCTIONS_LABEL,
+          class: cn(editorVariants(), "min-h-48 max-h-[50vh]"),
+        },
+      },
+    });
+  }, [editor]);
 
   const resetForm = () => {
     setName("");
@@ -88,8 +183,8 @@ export function CreateSkillSuggestionSheet({
     setAgentFacingDescription("");
     setInstructions("");
     setIcon(null);
-    setSelectedMCPServerViews([]);
-    setMCPSearchText("");
+    setCapabilitySearchText("");
+    editor?.commands.clearContent();
   };
 
   const handleClose = () => {
@@ -102,25 +197,56 @@ export function CreateSkillSuggestionSheet({
     onSuccess: handleClose,
   });
 
-  const filteredMcpServerViews = useMemo(() => {
-    return noConfigMCPServerViews.filter((view) =>
-      getMcpServerViewDisplayName(view)
-        .toLowerCase()
-        .includes(mcpSearchText.toLowerCase())
-    );
-  }, [noConfigMCPServerViews, mcpSearchText]);
-
   const handleSubmit = async () => {
+    const serializedInstructions = editor
+      ? postProcessMarkdown(editor.getMarkdown()).trim()
+      : instructions.trim();
+
     setIsSubmitting(true);
     await createSkillSuggestion({
       name: name.trim(),
       userFacingDescription: userFacingDescription.trim(),
       agentFacingDescription: agentFacingDescription.trim(),
-      instructions: instructions.trim(),
+      instructions: serializedInstructions,
       icon: icon ?? null,
-      mcpServerViewIds: selectedMCPServerViews.map((v) => v.sId),
+      mcpServerViewIds: [
+        ...new Set(
+          extractToolTags(serializedInstructions).map((tag) => tag.id)
+        ),
+      ],
     });
     setIsSubmitting(false);
+  };
+
+  const handleInsertCapability = (item: SlashCommand) => {
+    if (!editor || editor.isDestroyed) {
+      return;
+    }
+
+    if (isSkillSlashCommand(item)) {
+      editor
+        .chain()
+        .focus()
+        .insertSkillNode({
+          skillId: item.data.skill.sId,
+          skillIcon: item.data.skill.icon,
+          skillName: item.data.skill.name,
+        })
+        .run();
+      return;
+    }
+
+    if (isToolSlashCommand<PokeMCPServerViewListItemType>(item)) {
+      editor
+        .chain()
+        .focus()
+        .insertToolNode({
+          mcpServerViewId: item.data.tool.id,
+          toolIcon: item.data.tool.icon,
+          toolName: item.data.tool.name,
+        })
+        .run();
+    }
   };
 
   const selectedIconName = isValidIcon(icon) ? icon : DEFAULT_ICON;
@@ -203,19 +329,8 @@ export function CreateSkillSuggestionSheet({
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="instructions">{SKILL_INSTRUCTIONS_LABEL}</Label>
-              <TextArea
-                id="instructions"
-                value={instructions}
-                onChange={(e) => setInstructions(e.target.value)}
-                minRows={8}
-                placeholder="What does this skill do? How should it behave?"
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <Label>MCP Servers</Label>
+                <Label>{SKILL_INSTRUCTIONS_LABEL}</Label>
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -224,69 +339,85 @@ export function CreateSkillSuggestionSheet({
                       label="Add"
                       isSelect
                       size="xs"
+                      disabled={!editor || isCapabilitiesLoading}
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     className="w-80"
-                    onAnimationEnd={() => setMCPSearchText("")}
+                    onAnimationEnd={() => setCapabilitySearchText("")}
                   >
                     <DropdownMenuSearchbar
                       autoFocus
-                      placeholder="Search MCP servers..."
-                      name="mcp-search"
-                      value={mcpSearchText}
-                      onChange={setMCPSearchText}
+                      placeholder="Search tools and skills..."
+                      name="capability-search"
+                      value={capabilitySearchText}
+                      onChange={setCapabilitySearchText}
                     />
-                    <DropdownMenuSeparator />
-                    <div className="max-h-60 overflow-auto">
-                      {isMCPServerViewsLoading ? (
+                    <DropdownMenuSeparator className="my-0" />
+                    <div className="max-h-72 overflow-auto">
+                      {isCapabilitiesLoading ? (
                         <div className="flex items-center justify-center py-4">
                           <Spinner size="sm" />
                         </div>
+                      ) : capabilityItems.length === 0 ? (
+                        <div className="p-3 text-center text-sm text-muted-foreground">
+                          No tools or skills found.
+                        </div>
                       ) : (
-                        filteredMcpServerViews.map((view) => (
-                          <DropdownMenuCheckboxItem
-                            key={view.sId}
-                            label={getMcpServerViewDisplayName(view)}
-                            checked={selectedMCPServerViews.some(
-                              (v) => v.sId === view.sId
-                            )}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSelectedMCPServerViews((prev) => [
-                                  ...prev,
-                                  view,
-                                ]);
-                              } else {
-                                setSelectedMCPServerViews((prev) =>
-                                  prev.filter((v) => v.sId !== view.sId)
-                                );
-                              }
-                            }}
-                            onSelect={(e) => e.preventDefault()}
-                          />
-                        ))
+                        <>
+                          {skillItems.length > 0 && (
+                            <>
+                              <DropdownMenuLabel
+                                label="Skills"
+                                className="py-1 pl-3"
+                              />
+                              {skillItems.map((item) => (
+                                <DropdownMenuItem
+                                  key={item.id}
+                                  className="pl-3"
+                                  label={item.label}
+                                  description={item.description}
+                                  icon={item.icon}
+                                  truncateText
+                                  onSelect={() => handleInsertCapability(item)}
+                                />
+                              ))}
+                            </>
+                          )}
+                          {skillItems.length > 0 && toolItems.length > 0 && (
+                            <DropdownMenuSeparator className="my-0" />
+                          )}
+                          {toolItems.length > 0 && (
+                            <>
+                              <DropdownMenuLabel
+                                label="Tools"
+                                className="py-1 pl-3"
+                              />
+                              {toolItems.map((item) => (
+                                <DropdownMenuItem
+                                  key={item.id}
+                                  className="pl-3"
+                                  label={item.label}
+                                  description={item.description}
+                                  icon={item.icon}
+                                  truncateText
+                                  onSelect={() => handleInsertCapability(item)}
+                                />
+                              ))}
+                            </>
+                          )}
+                        </>
                       )}
                     </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              {selectedMCPServerViews.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {selectedMCPServerViews.map((view) => (
-                    <Chip
-                      key={view.sId}
-                      label={getMcpServerViewDisplayName(view)}
-                      size="xs"
-                      onRemove={() =>
-                        setSelectedMCPServerViews((prev) =>
-                          prev.filter((v) => v.sId !== view.sId)
-                        )
-                      }
-                    />
-                  ))}
-                </div>
-              )}
+              <div className="group relative overflow-hidden rounded-xl p-px">
+                <SkillInstructionsEditorContent
+                  editor={editor}
+                  isReadOnly={false}
+                />
+              </div>
             </div>
 
             <div className="flex justify-end gap-2">
@@ -305,7 +436,8 @@ export function CreateSkillSuggestionSheet({
                   !name.trim() ||
                   !userFacingDescription.trim() ||
                   !agentFacingDescription.trim() ||
-                  !instructions.trim()
+                  !instructions.trim() ||
+                  !editor
                 }
               />
             </div>

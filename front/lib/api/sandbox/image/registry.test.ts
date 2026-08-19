@@ -91,11 +91,26 @@ function getCommandPath(command: string): string {
 }
 
 describe("sandbox image registry", () => {
-  test("pins the current dust-base image tag", () => {
+  test("pins the current dust-base and sbx bedrock image tags", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.81",
+      tag: "0.8.86",
     });
+    expect(getDustBaseImage().baseImage).toEqual({
+      type: "docker",
+      imageRef: "dust-sbx-bedrock:1.11.0",
+    });
+    expect(getDustBaseImage().hasCapability("dust_filesystem")).toBe(true);
+  });
+
+  test("loads Fluent Bit credentials from a root-only runtime file", () => {
+    const serviceUnit = getCopiedContent(
+      getCopyOperations(getDustBaseImageOperations()),
+      "/etc/systemd/system/fluent-bit.service"
+    );
+
+    expect(serviceUnit).toContain("EnvironmentFile=/run/dust/fluent-bit.env");
+    expect(serviceUnit).not.toContain("Environment=DD_API_KEY");
   });
 
   test("creates the dormant proxied user and shared-path permissions", () => {
@@ -267,6 +282,10 @@ describe("sandbox image registry", () => {
       copyOperations,
       "/etc/dbus-1/system.d/dust-resolve1.conf"
     );
+    const systemd1Policy = getCopiedContent(
+      copyOperations,
+      "/etc/dbus-1/system.d/dust-systemd1.conf"
+    );
     const resolvedIpcDropIn = getCopiedContent(
       copyOperations,
       "/etc/systemd/system/systemd-resolved.service.d/dust-ipc.conf"
@@ -325,6 +344,14 @@ describe("sandbox image registry", () => {
     expect(
       resolve1Policy.match(
         /<deny send_destination="org\.freedesktop\.resolve1"\/>/g
+      )
+    ).toHaveLength(2);
+    for (const user of ["agent", "agent-proxied"]) {
+      expect(systemd1Policy).toContain(`<policy user="${user}">`);
+    }
+    expect(
+      systemd1Policy.match(
+        /<deny send_destination="org\.freedesktop\.systemd1"\/>/g
       )
     ).toHaveLength(2);
     expect(resolvedIpcDropIn).toContain("[Service]");
@@ -457,7 +484,7 @@ describe("sandbox image registry", () => {
     expect(runCommands).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.48/dsbx-linux-x86_64"
+          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.51/dsbx-linux-x86_64"
         ),
         expect.stringContaining(
           "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx"
@@ -646,7 +673,7 @@ describe("sandbox image registry", () => {
         expect.objectContaining({ name: "drizzle-orm", version: "0.45.2" }),
         expect.objectContaining({ name: "drizzle-kit", version: "0.31.10" }),
         expect.objectContaining({ name: "@libsql/client", version: "0.17.4" }),
-        expect.objectContaining({ name: "@dust/pod", version: "0.2.0" }),
+        expect.objectContaining({ name: "@dust/pod", version: "0.3.0" }),
       ])
     );
   });

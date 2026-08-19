@@ -1,3 +1,4 @@
+import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -38,7 +39,7 @@ export const deleteDataSourcePlugin = createPlugin({
 
     const viewsUsageByAgentsRes = await concurrentExecutor(
       dataSourceViews,
-      (view) => view.getUsagesByAgents(auth),
+      (view) => getDataSourceViewUsage({ auth, dataSourceView: view }),
       { concurrency: 5 }
     );
 

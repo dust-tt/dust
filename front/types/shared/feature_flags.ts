@@ -1,4 +1,9 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  dust_filesystem: {
+    description:
+      "Allow fresh Pods and standalone conversations to use the database-backed filesystem",
+    stage: "dust_only",
+  },
   allow_sso: {
     description:
       "Allow this workspace to configure SSO, independently of the plan's isSSOAllowed flag. Enable on demand for Business plan workspaces.",
@@ -28,11 +33,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Opt into Anthropic prompt-cache diagnostics to report cache-miss reasons on agent-loop steps",
     stage: "dust_only",
   },
-  agent_loop_qos_routing: {
-    description:
-      "Route agent loop workflows to per-surface QoS task queues (schedules/interactive/programmatic/batch) instead of the single default queue. Requires the per-queue worker deployments to be running.",
-    stage: "rolling_out",
-  },
   use_vertex_for_supported_models: {
     description:
       "Route LLM calls through Vertex AI when supported instead of the direct provider's API",
@@ -54,6 +54,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   dust_agent_gpt_5_6_luna_default: {
     description:
       "Use GPT 5.6 Luna (high reasoning) as the default model for the @dust agent",
+    stage: "on_demand",
+  },
+  gpt_5_6_terra_long_context: {
+    description: "Access to GPT 5.6 Terra with its full context window",
     stage: "on_demand",
   },
   dust_agent_sonnet_5_default: {
@@ -160,6 +164,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to the new consumption-based Analytics dashboard, built alongside the current one while it is brought to parity.",
     stage: "dust_only",
   },
+  enable_analytics_automations: {
+    description:
+      "Access to the Automation analytics page, breaking down what triggers and programmatic runs cost.",
+    stage: "dust_only",
+  },
   xai_feature: {
     description: "Access to xAI models in the agent builder",
     stage: "on_demand",
@@ -167,11 +176,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   noop_model_feature: {
     description: "Access to noop model in the agent builder",
     stage: "dust_only",
-  },
-  slack_enhanced_default_agent: {
-    description:
-      "Enhanced default agent feature for Slack channels - auto-respond to all messages in channel",
-    stage: "on_demand",
   },
   slack_message_splitting: {
     description:
@@ -190,6 +194,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "NetSuite MCP tool for querying records and interacting with your NetSuite account",
     stage: "on_demand",
+  },
+  dust_internal_dangerous_in_cluster_mcp_servers: {
+    description:
+      "EXPERIMENTAL FEATURE. DUST INTERNAL ONLY. Allow remote MCP servers pointing at hosts on the MCP_IN_CLUSTER_HOSTS allowlist, reached in-cluster instead of through the untrusted egress proxy.",
+    stage: "dust_only",
   },
   discord_bot: {
     description:
@@ -327,6 +336,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Allow adding frames from the pod file system as custom tabs (title, icon, order) on the pod.",
     stage: "dust_only",
   },
+  pod_applications: {
+    description:
+      "Enable the Pod Apps UI: browse, import, clone, export and delete the apps published on a Pod.",
+    stage: "dust_only",
+  },
   group_permissions_shadow: {
     description:
       "Admin Governance: evaluate the new group_permissions checks alongside the legacy ones and log mismatches (shadow mode). Serves the legacy result; safe to toggle.",
@@ -344,7 +358,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   enforce_user_spend_limit_rate_cap: {
     description:
-      "Enable the per-user spend-cap backup: record per-user AWU usage into the Redis fixed-window counter and enforce it at message send (blocks with user_cap_reached). When off, usage is neither recorded nor enforced.",
+      "Enable the Redis fixed-window spend-cap backups (per-user, per-API-key, programmatic, and workspace usage cap): record AWU usage into the counters and enforce them at message send. When off, usage is neither recorded nor enforced.",
+    stage: "dust_only",
+  },
+  enforce_premium_model_message_limit: {
+    description:
+      "Enforce the premium-model cap: block a message once the user has spent 25 premium-tier messages in the rolling week, on workspaces with a non-credit-priced (legacy) plan. Usage is counted regardless, so the flag only controls blocking.",
     stage: "dust_only",
   },
   editable_tool_inputs: {

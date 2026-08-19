@@ -165,7 +165,13 @@ async function loadAnalyticsUser({
 
 export async function loadAgentMessageConsumptionAnalyticsInput(
   auth: Authenticator,
-  { agentMessageId }: { agentMessageId: string }
+  {
+    agentMessageId,
+    preloadedActions,
+  }: {
+    agentMessageId: string;
+    preloadedActions?: AgentMCPActionResource[];
+  }
 ): Promise<AgentMessageConsumptionAnalyticsInput | null> {
   const workspace = auth.getNonNullableWorkspace();
   const context =
@@ -174,9 +180,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
       { agentMessageId }
     );
   if (!context) {
-    throw new Error(
-      "Agent message, conversation, or triggering user message not found"
-    );
+    return null;
   }
 
   const { agentMessage, conversation, triggeringUserMessage } = context;
@@ -224,9 +228,11 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
       agentMessageModelIds: [agentMessage.agentMessageModelId],
       maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
     });
-  const actions = await AgentMCPActionResource.listByAgentMessageIds(auth, [
-    agentMessage.agentMessageModelId,
-  ]);
+  const actions =
+    preloadedActions ??
+    (await AgentMCPActionResource.listByAgentMessageIds(auth, [
+      agentMessage.agentMessageModelId,
+    ]));
   const actionsWithOutputs =
     await AgentMCPActionResource.enrichActionsWithOutputItems(auth, {
       actions,

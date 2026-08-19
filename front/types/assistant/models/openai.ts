@@ -20,6 +20,8 @@ export const GPT_5_4_MODEL_ID = "gpt-5.4" as const;
 export const GPT_5_5_MODEL_ID = "gpt-5.5" as const;
 export const GPT_5_6_SOL_MODEL_ID = "gpt-5.6-sol" as const;
 export const GPT_5_6_TERRA_MODEL_ID = "gpt-5.6-terra" as const;
+export const GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID =
+  "gpt-5.6-terra-long-context" as const;
 export const GPT_5_6_LUNA_MODEL_ID = "gpt-5.6-luna" as const;
 export const GPT_5_4_MINI_MODEL_ID = "gpt-5.4-mini" as const;
 export const GPT_5_4_NANO_MODEL_ID = "gpt-5.4-nano" as const;
@@ -265,6 +267,9 @@ INCORRECT examples (what you must NEVER do):
 - Never: {"query": "caf\\u00e9 fran\\u00e7ais"}
 - Never: {"query": "na\\u00efvet\\u00e9"}
 The tools expect properly formed JSON with actual UTF-8 characters, not escape sequences.`;
+// Validated against OpenAI's input-token count API on 2026-08-13: for the incident payload,
+// GPT-5.6 Sol reported 20,473 input tokens while o200k_base counted 20,467 content tokens.
+// https://developers.openai.com/api/docs/guides/token-counting
 export const GPT_5_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: GPT_5_MODEL_ID,
@@ -293,7 +298,7 @@ export const GPT_5_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
-  tokenizer: { type: "tiktoken", base: "r50k_base" },
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": true,
@@ -325,7 +330,7 @@ export const GPT_5_1_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
-  tokenizer: { type: "tiktoken", base: "r50k_base" },
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": true,
@@ -358,7 +363,7 @@ export const GPT_5_2_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
-  tokenizer: { type: "tiktoken", base: "r50k_base" },
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": true,
@@ -392,7 +397,7 @@ export const GPT_5_4_MODEL_CONFIG: ModelConfigurationType = {
   supportsToolSearch: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
-  tokenizer: { type: "tiktoken", base: "r50k_base" },
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": true,
@@ -426,7 +431,7 @@ export const GPT_5_5_MODEL_CONFIG: ModelConfigurationType = {
   supportsToolSearch: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
-  tokenizer: { type: "tiktoken", base: "r50k_base" },
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": true,
@@ -468,7 +473,7 @@ export const GPT_5_6_SOL_MODEL_CONFIG: ModelConfigurationType = {
   },
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
-  tokenizer: { type: "tiktoken", base: "r50k_base" },
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": true,
@@ -505,7 +510,47 @@ export const GPT_5_6_TERRA_MODEL_CONFIG: ModelConfigurationType = {
   supportsToolSearch: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
-  tokenizer: { type: "tiktoken", base: "r50k_base" },
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": true,
+  },
+};
+// Verified 2026-08-19: https://developers.openai.com/api/docs/models/gpt-5.6-terra
+// OpenAI exposes a 1,050,000-token context window and 128,000 max output tokens.
+export const GPT_5_6_TERRA_LONG_CONTEXT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID,
+  displayName: "GPT 5.6 Terra (long context)",
+  contextSize: 1_050_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "OpenAI's GPT 5.6 Terra model with extended context window (up to 1M tokens).",
+  shortDescription:
+    "GPT 5.6 Terra with extended context window (up to 1M tokens).",
+  isLegacy: false,
+  isLatest: false,
+  generationTokensCount: 128_000,
+  supportsVision: true,
+  supportedReasoningEfforts: {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  supportsBatchProcessing: true,
+  supportsToolSearch: true,
+  availableIfOneOf: {
+    featureFlag: "gpt_5_6_terra_long_context",
+  },
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": true,
@@ -542,7 +587,7 @@ export const GPT_5_6_LUNA_MODEL_CONFIG: ModelConfigurationType = {
   supportsToolSearch: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
-  tokenizer: { type: "tiktoken", base: "r50k_base" },
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": true,
@@ -577,7 +622,7 @@ export const GPT_5_4_MINI_MODEL_CONFIG: ModelConfigurationType = {
   supportsToolSearch: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
-  tokenizer: { type: "tiktoken", base: "r50k_base" },
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": true,
@@ -611,7 +656,7 @@ export const GPT_5_4_NANO_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
-  tokenizer: { type: "tiktoken", base: "r50k_base" },
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": true,
@@ -644,7 +689,7 @@ export const GPT_5_MINI_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
-  tokenizer: { type: "tiktoken", base: "r50k_base" },
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": true,
@@ -676,7 +721,7 @@ export const GPT_5_NANO_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
-  tokenizer: { type: "tiktoken", base: "r50k_base" },
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": true,

@@ -16,7 +16,7 @@ import type {
 } from "@app/lib/api/analytics/consumption/timeseries";
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import { ButtonsSwitch, ButtonsSwitchList, cn } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -27,27 +27,81 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import type { Props as RechartsLabelProps } from "recharts/types/component/Label";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 import { ConsumptionBurnUpChart } from "./ConsumptionBurnUpChart";
 import type { ConsumptionDimension } from "./consumptionDimensions";
+
+const TODAY_PARTIAL_LABEL = "Today (partial)";
+
+// Renders the reference line's label as a pill with the same fill as the
+// line itself, since the default text-only label has no background.
+interface TodayPartialLabelProps {
+  viewBox?: RechartsLabelProps["viewBox"];
+}
+
+function TodayPartialLabel({ viewBox }: TodayPartialLabelProps) {
+  const textRef = useRef<SVGTextElement>(null);
+  const [textWidth, setTextWidth] = useState(0);
+
+  useLayoutEffect(() => {
+    if (textRef.current) {
+      setTextWidth(textRef.current.getComputedTextLength());
+    }
+  }, []);
+
+  if (!viewBox || !("x" in viewBox)) {
+    return null;
+  }
+
+  const { x = 0, y = 0 } = viewBox;
+  const paddingX = 6;
+  const paddingY = 6;
+  const fontSize = 11;
+  const rectWidth = textWidth + paddingX * 2;
+  const rectHeight = fontSize + paddingY * 2;
+  const rectY = y - rectHeight + 16;
+
+  return (
+    <g>
+      {textWidth > 0 && (
+        <rect
+          x={x - rectWidth / 2}
+          y={rectY}
+          width={rectWidth}
+          height={rectHeight}
+          rx={4}
+          className="fill-muted-foreground"
+        />
+      )}
+      <text
+        ref={textRef}
+        x={x}
+        y={rectY + rectHeight / 2}
+        textAnchor="middle"
+        dominantBaseline="central"
+        className="fill-background text-xs"
+      >
+        {TODAY_PARTIAL_LABEL}
+      </text>
+    </g>
+  );
+}
 
 // The bucket in progress (if mapped to today) is drawn faded across every series.
 const PARTIAL_BAR_OPACITY = "opacity-40";
 
 const CONSUMPTION_CHART_COLORS = [
   "text-blue-900",
-  "text-blue-800",
   "text-blue-700",
-  "text-blue-600",
   "text-blue-500",
-  "text-blue-400",
   "text-blue-300",
-  "text-blue-200",
   "text-blue-100",
   "text-blue-50",
 ] as const;
 
-// Reserve the final color for the optional "Others" series.
+// Request the top five categories, leaving the sixth shade available when the
+// endpoint adds an aggregate "Others" category.
 const CONSUMPTION_CHART_BREAKDOWN_COUNT = CONSUMPTION_CHART_COLORS.length - 1;
 
 function getConsumptionChartColor(index: number): string {
@@ -152,19 +206,36 @@ function ConsumptionDailyChart({
     });
 
   const groups = useMemo(() => timeseries?.groups ?? [], [timeseries]);
+  const chartData = useMemo(() => timeseries?.points ?? [], [timeseries]);
 
-  // Colors are assigned darkest-to-lightest by rank, so the biggest consumer
-  // keeps the strongest color as long as it stays on top.
+  const orderedGroups = useMemo(() => {
+    const totalByGroupKey = new Map<string, number>();
+    for (const datum of chartData) {
+      for (const [groupKey, credits] of Object.entries(datum.values)) {
+        totalByGroupKey.set(
+          groupKey,
+          (totalByGroupKey.get(groupKey) ?? 0) + credits
+        );
+      }
+    }
+
+    return [...groups].sort(
+      (a, b) =>
+        (totalByGroupKey.get(b.groupKey) ?? 0) -
+        (totalByGroupKey.get(a.groupKey) ?? 0)
+    );
+  }, [chartData, groups]);
+
+  // Colors are assigned darkest-to-lightest by total consumption, including
+  // the aggregate "Others" category.
   const colorByGroupKey = useMemo(() => {
     return new Map(
-      groups.map((group, index) => [
+      orderedGroups.map((group, index) => [
         group.groupKey,
         getConsumptionChartColor(index),
       ])
     );
-  }, [groups]);
-
-  const chartData = useMemo(() => timeseries?.points ?? [], [timeseries]);
+  }, [orderedGroups]);
 
   const partialTimestamp = useMemo(
     () => findPartialTimestamp(chartData),
@@ -175,15 +246,15 @@ function ConsumptionDailyChart({
     (props: TooltipContentProps<number, string>) => (
       <ConsumptionDailyTooltip
         {...props}
-        groups={groups}
+        groups={orderedGroups}
         colorByGroupKey={colorByGroupKey}
         partialTimestamp={partialTimestamp}
       />
     ),
-    [groups, colorByGroupKey, partialTimestamp]
+    [orderedGroups, colorByGroupKey, partialTimestamp]
   );
 
-  const legendItems: LegendItem[] = groups.map((group) => ({
+  const legendItems: LegendItem[] = orderedGroups.map((group) => ({
     key: group.groupKey,
     label: group.name,
     colorClassName: colorByGroupKey.get(group.groupKey) ?? "",
@@ -195,7 +266,7 @@ function ConsumptionDailyChart({
 
   return (
     <ChartContainer
-      title="Daily credits"
+      title="Daily consumption"
       isLoading={isTimeseriesLoading}
       errorMessage={
         isTimeseriesError ? "Failed to load consumption." : undefined
@@ -207,12 +278,18 @@ function ConsumptionDailyChart({
       }
       height={CHART_HEIGHT}
       legendItems={legendItems}
+      legendAlignment="center"
+      showHeaderDivider
     >
       <BarChart data={chartData} margin={{ ...CHART_MARGIN, top: 24 }}>
-        <CartesianGrid vertical={false} className="stroke-border" />
+        <CartesianGrid
+          vertical={false}
+          strokeDasharray="4 4"
+          className="stroke-border"
+        />
         <XAxis
           dataKey="timestamp"
-          className="text-xs text-muted-foreground"
+          className="text-xs text-faint"
           tickLine={false}
           axisLine={false}
           tickMargin={8}
@@ -222,7 +299,7 @@ function ConsumptionDailyChart({
           }
         />
         <YAxis
-          className="text-xs text-muted-foreground"
+          className="text-xs text-faint"
           tickLine={false}
           axisLine={false}
           tickMargin={8}
@@ -236,34 +313,40 @@ function ConsumptionDailyChart({
         {partialTimestamp !== undefined && (
           <ReferenceLine
             x={partialTimestamp}
-            stroke="hsl(var(--primary))"
+            stroke="var(--color-primary)"
             strokeDasharray="5 5"
-            label={{ value: "Today (partial)", position: "top", fontSize: 11 }}
+            label={{ position: "top", content: TodayPartialLabel }}
             ifOverflow="extendDomain"
           />
         )}
-        {groups.map((group) => (
-          <Bar
-            key={group.groupKey}
-            dataKey={(datum: ConsumptionTimeseriesPoint) =>
-              datum.values[group.groupKey] ?? 0
-            }
-            name={group.name}
-            stackId="credits"
-            isAnimationActive={false}
-          >
-            {chartData.map((datum) => (
-              <Cell
-                key={datum.timestamp}
-                fill="currentColor"
-                className={cn(
-                  colorByGroupKey.get(group.groupKey),
-                  datum.timestamp === partialTimestamp && PARTIAL_BAR_OPACITY
-                )}
-              />
-            ))}
-          </Bar>
-        ))}
+        {orderedGroups.map((group, rank) => {
+          const colorClassName = getConsumptionChartColor(rank);
+
+          return (
+            <Bar
+              // Recharts keeps each mounted Bar in its original stack slot, so
+              // identify bars by color rank rather than the group occupying it.
+              key={colorClassName}
+              dataKey={(datum: ConsumptionTimeseriesPoint) =>
+                datum.values[group.groupKey] ?? 0
+              }
+              name={group.name}
+              stackId="credits"
+              isAnimationActive={false}
+            >
+              {chartData.map((datum) => (
+                <Cell
+                  key={datum.timestamp}
+                  fill="currentColor"
+                  className={cn(
+                    colorClassName,
+                    datum.timestamp === partialTimestamp && PARTIAL_BAR_OPACITY
+                  )}
+                />
+              ))}
+            </Bar>
+          );
+        })}
       </BarChart>
     </ChartContainer>
   );
@@ -288,7 +371,7 @@ export function ConsumptionChart({
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold text-foreground">Consumption</h2>
-        <ButtonsSwitchList value={mode} size="sm">
+        <ButtonsSwitchList value={mode} size="xs">
           <ButtonsSwitch
             value="daily"
             label="Daily"

@@ -44,10 +44,8 @@ export function TrialPage() {
         <div className="flex h-full flex-col justify-center">
           <Page.Horizontal>
             <Page.Vertical sizing="grow" gap="lg">
-              <Page.Header
-                title="Get started for free"
-                icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
-              />
+              <DustLogoSquare className="-ml-11 h-10 w-32" />
+              <Page.Header title="Get started for free" />
               <p className="-mt-4 text-muted-foreground">
                 No credit card required · No time limit
               </p>
@@ -89,10 +87,8 @@ export function TrialPage() {
       <div className="flex h-full flex-col justify-center">
         <Page.Horizontal>
           <Page.Vertical sizing="grow" gap="lg">
-            <Page.Header
-              title="Start your free trial"
-              icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
-            />
+            <DustLogoSquare className="-ml-11 h-10 w-32" />
+            <Page.Header title="Start your free trial" />
             <p className="-mt-4 text-muted-foreground">
               No credit card required
             </p>

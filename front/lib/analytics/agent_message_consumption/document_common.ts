@@ -2,6 +2,7 @@ import type {
   BilledRunUsage,
   ConsumptionAnalyticsMessageMetadata,
 } from "@app/lib/analytics/agent_message_consumption/load";
+import { normalizeOrigin } from "@app/lib/api/analytics/source_labels";
 import type { MessageConsumptionAllocation } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import type { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import type { RunUsageWithRunKeyType } from "@app/lib/resources/run_resource";
@@ -24,6 +25,7 @@ type AgentMessageConsumptionAnalyticsDocumentMetadata = Pick<
   | "context_origin"
   | "conversation_id"
   | "message_version"
+  | "normalized_origin"
   | "run_usage_id"
   | "space_id"
   | "step_index"
@@ -74,6 +76,7 @@ export function makeBaseDocument(
     context_origin: metadata.contextOrigin,
     conversation_id: metadata.conversationId,
     message_version: metadata.messageVersion.toString(),
+    normalized_origin: normalizeOrigin(metadata.contextOrigin),
     run_usage_id: runUsageModelId.toString(),
     space_id: metadata.spaceId,
     step_index: stepIndex,

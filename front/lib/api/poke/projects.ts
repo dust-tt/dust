@@ -6,6 +6,7 @@ import type {
   SandboxFunctionInvocationOrigin,
   SandboxFunctionInvocationStatus,
   SandboxFunctionMCPActionType,
+  SandboxFunctionStake,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
 import type { PodMetadataType } from "@app/types/project_metadata";
@@ -71,6 +72,7 @@ export type PokePodFunctionDetails = PokePodFunction & {
   fileId: string;
   userIdentity: SandboxFunctionUserIdentityPolicy | null;
   executionMode: SandboxFunctionExecutionMode;
+  defaultStake: SandboxFunctionStake;
   inputSchema: JSONSchema;
   outputSchema: JSONSchema;
 };

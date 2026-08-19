@@ -12,6 +12,8 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { SandboxFunctionStake } from "@app/types/api/sandbox_functions";
+import { DEFAULT_SANDBOX_FUNCTION_STAKE } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -498,6 +500,71 @@ describe("SandboxFunctionResource", () => {
     );
     expect(fetched?.userIdentity).toBe("workspace_user_required");
     expect(fetched?.description).toBe("First.");
+  });
+
+  it("defaults the stake, stores a declared one, and restates it on re-publish", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const space = await SpaceFactory.project(workspace);
+
+    const makeFunction = async (
+      fileName: string,
+      slug: string,
+      defaultStake?: SandboxFunctionStake
+    ) => {
+      const file = await FileFactory.create(authenticator, null, {
+        contentType: sandboxFunctionContentType,
+        fileName,
+        fileSize: 100,
+        status: "created",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: space.sId },
+      });
+
+      return SandboxFunctionResource.makeNew(authenticator, {
+        space,
+        file,
+        slug,
+        description: "First.",
+        defaultStake,
+        inputSchema,
+        outputSchema,
+      });
+    };
+
+    const unstated = await makeFunction("unstated.ts", "unstated");
+    expect(unstated.defaultStake).toBe(DEFAULT_SANDBOX_FUNCTION_STAKE);
+
+    const declared = await makeFunction("declared.ts", "declared", "never_ask");
+    expect(declared.defaultStake).toBe("never_ask");
+
+    const raised = await declared.updateContent(authenticator, {
+      bundleCode: "v2",
+      description: "Second.",
+      defaultStake: "high",
+      inputSchema,
+      outputSchema,
+    });
+    expect(raised.isOk()).toBe(true);
+    expect(
+      (await SandboxFunctionResource.fetchById(authenticator, declared.sId))
+        ?.defaultStake
+    ).toBe("high");
+
+    // Restated, not carried forward: a re-publish that names no stake falls back to the default
+    // rather than keeping the `high` above, the same rule the execution mode follows.
+    const unstatedRepublish = await declared.updateContent(authenticator, {
+      bundleCode: "v3",
+      description: "Third.",
+      inputSchema,
+      outputSchema,
+    });
+    expect(unstatedRepublish.isOk()).toBe(true);
+    expect(
+      (await SandboxFunctionResource.fetchById(authenticator, declared.sId))
+        ?.defaultStake
+    ).toBe(DEFAULT_SANDBOX_FUNCTION_STAKE);
   });
 
   it("deletes all sandbox functions for a space", async () => {

@@ -1,9 +1,9 @@
+import { normalizeAppPrefix } from "@app/types/api/pod_function_reference";
+import { SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX } from "@app/types/api/sandbox_functions";
 import {
   parseCanonicalScopedPath,
   resolveCanonicalScopedPath,
-} from "@app/lib/api/files/mount_path";
-import { normalizeAppPrefix } from "@app/types/api/pod_function_reference";
-import { SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX } from "@app/types/api/sandbox_functions";
+} from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -60,6 +60,19 @@ export function deriveAppPrefix({
   }
 
   return new Ok(prefix);
+}
+
+/**
+ * The app prefix a published slug belongs to, or `null` for a function published from the pod
+ * root (bare slug, no app folder).
+ */
+export function appPrefixFromSlug(slug: string): string | null {
+  const separatorIndex = slug.indexOf(SANDBOX_FUNCTION_SLUG_SEPARATOR);
+  if (separatorIndex <= 0) {
+    return null;
+  }
+
+  return slug.slice(0, separatorIndex);
 }
 
 /**

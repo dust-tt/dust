@@ -1,10 +1,17 @@
+import { getRedisCacheClient } from "@app/lib/api/redis";
 import { Authenticator } from "@app/lib/auth";
+import type { GroupGrant } from "@app/lib/resources/group_permission_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { grantKey } from "@app/types/group_permissions";
+import { isString } from "@app/types/shared/utils/general";
+import type { QueryOptions } from "sequelize";
+import type { AbstractQuery } from "sequelize/types/dialects/abstract/query";
 import { beforeEach, describe, expect, it } from "vitest";
 
 describe("GroupPermissionResource", () => {
@@ -167,6 +174,247 @@ describe("GroupPermissionResource", () => {
         }
       );
       expect(grants).toEqual([]);
+    });
+  });
+
+  describe("listForGroups", () => {
+    // Grants are cached per group, so flush the workspace to exercise the database read.
+    async function flushGrantCache() {
+      const redis = await getRedisCacheClient({
+        origin: "group_permissions_cache",
+      });
+      await redis.del(
+        GroupPermissionResource.cacheOperations.buildKey({
+          workspaceModelId: String(auth.getNonNullableWorkspace().id),
+        })
+      );
+    }
+
+    it("filters in Postgres through one bound bigint array", async () => {
+      await GroupPermissionResource.grant(auth, {
+        group: groupA,
+        grantType: "reader",
+        resourceType: "space",
+        resourceId: 1,
+      });
+      await GroupPermissionResource.grant(auth, {
+        group: groupB,
+        grantType: "reader",
+        resourceType: "space",
+        resourceId: 2,
+      });
+
+      await flushGrantCache();
+
+      let capturedQuery: { sql: string; bind: unknown } | undefined;
+      const captureQueryHook = "capture-bound-group-permission-query";
+      const captureQuery = (options: QueryOptions, query: AbstractQuery) => {
+        const sql = Reflect.get(query, "sql");
+        if (isString(sql) && sql.includes('FROM "group_permissions"')) {
+          capturedQuery = { sql, bind: options.bind };
+        }
+      };
+      frontSequelize.addHook("afterQuery", captureQueryHook, captureQuery);
+
+      let grants: GroupGrant[];
+      try {
+        grants = await GroupPermissionResource.listForGroups(
+          auth.getNonNullableWorkspace(),
+          { groupModelIds: [groupA.id] }
+        );
+      } finally {
+        frontSequelize.removeHook("afterQuery", captureQueryHook);
+      }
+
+      expect(grants.map((grant) => grant.groupId)).toEqual([groupA.id]);
+      expect(capturedQuery?.sql).toContain(
+        '"group_permissions"."groupId" = ANY ($1::bigint[])'
+      );
+      expect(capturedQuery?.sql).not.toContain('"groupId" IN (');
+      expect(capturedQuery?.bind).toEqual({ groupModelIds: [groupA.id] });
+    });
+
+    it("keeps a large group set in one bind and applies optional filters", async () => {
+      await GroupPermissionResource.grant(auth, {
+        group: groupA,
+        grantType: "reader",
+        resourceType: "space",
+        resourceId: 1,
+      });
+      await GroupPermissionResource.grant(auth, {
+        group: groupB,
+        grantType: "member",
+        resourceType: "space",
+        resourceId: 2,
+      });
+
+      const groupModelIds = [
+        groupA.id,
+        groupB.id,
+        ...Array.from({ length: 8_192 }, (_, index) => 1_000_000 + index),
+      ];
+      await flushGrantCache();
+
+      let capturedQuery: { sql: string; bind: unknown } | undefined;
+      const captureQueryHook = "capture-large-group-permission-query";
+      const captureQuery = (options: QueryOptions, query: AbstractQuery) => {
+        const sql = Reflect.get(query, "sql");
+        if (isString(sql) && sql.includes('FROM "group_permissions"')) {
+          capturedQuery = { sql, bind: options.bind };
+        }
+      };
+      frontSequelize.addHook("afterQuery", captureQueryHook, captureQuery);
+
+      let grants: GroupGrant[];
+      try {
+        grants = await GroupPermissionResource.listForGroups(
+          auth.getNonNullableWorkspace(),
+          {
+            groupModelIds,
+            grantType: "member",
+            resourceType: "space",
+            resourceId: 2,
+          }
+        );
+      } finally {
+        frontSequelize.removeHook("afterQuery", captureQueryHook);
+      }
+
+      expect(grants.map((grant) => grant.groupId)).toEqual([groupB.id]);
+      expect(capturedQuery?.sql).toContain(
+        '"group_permissions"."groupId" = ANY ($1::bigint[])'
+      );
+      expect(capturedQuery?.sql).not.toContain('"groupId" IN (');
+      expect(capturedQuery?.bind).toEqual({ groupModelIds });
+    });
+  });
+
+  describe("listForResource", () => {
+    it("returns the resource's own grants plus the type-wide (-1) grants, and nothing else", async () => {
+      // Instance grant on agent 7.
+      await GroupPermissionResource.grant(auth, {
+        group: groupB,
+        grantType: "editor",
+        resourceType: "agent",
+        resourceId: 7,
+      });
+      // Type-wide grant on the whole agent type.
+      await GroupPermissionResource.grantTypeWide(auth, {
+        group: groupA,
+        grantType: "create",
+        resourceType: "agent",
+      });
+      // Another instance of the same type, and a different resource type: both excluded.
+      await GroupPermissionResource.grant(auth, {
+        group: groupB,
+        grantType: "editor",
+        resourceType: "agent",
+        resourceId: 8,
+      });
+      await GroupPermissionResource.grant(auth, {
+        group: groupB,
+        grantType: "reader",
+        resourceType: "space",
+        resourceId: 7,
+      });
+
+      const grants = await GroupPermissionResource.listForResource(auth, {
+        resourceType: "agent",
+        resourceId: 7,
+      });
+
+      expect(grants).toHaveLength(2);
+      expect(grants.every((g) => g.resourceType === "agent")).toBe(true);
+      expect(new Set(grants.map((g) => g.resourceId))).toEqual(
+        new Set([7, -1])
+      );
+    });
+
+    it("does not duplicate the type-wide rows when resourceId is itself -1 (Op.in dedupe)", async () => {
+      // A single type-wide (-1) grant. Querying with resourceId = -1 builds an Op.in of [-1, -1],
+      // so the row must come back exactly once rather than twice.
+      await GroupPermissionResource.grantTypeWide(auth, {
+        group: groupA,
+        grantType: "create",
+        resourceType: "agent",
+      });
+
+      const grants = await GroupPermissionResource.listForResource(auth, {
+        resourceType: "agent",
+        resourceId: -1,
+      });
+
+      expect(grants).toHaveLength(1);
+      expect(grants[0].resourceId).toBe(-1);
+      expect(grants[0].grantType).toBe("create");
+    });
+
+    it("is scoped to the authenticated workspace", async () => {
+      const otherWorkspace = await WorkspaceFactory.basic();
+      await GroupFactory.defaults(otherWorkspace);
+      const otherGroup = await GroupFactory.regularManual(
+        otherWorkspace,
+        "other"
+      );
+      const otherAuth = await Authenticator.internalAdminForWorkspace(
+        otherWorkspace.sId
+      );
+      await GroupPermissionResource.grant(otherAuth, {
+        group: otherGroup,
+        grantType: "editor",
+        resourceType: "agent",
+        resourceId: 7,
+      });
+
+      expect(
+        await GroupPermissionResource.listForResource(auth, {
+          resourceType: "agent",
+          resourceId: 7,
+        })
+      ).toHaveLength(0);
+    });
+  });
+
+  describe("listForGroup", () => {
+    it("returns every grant held by the group across resource types and instances", async () => {
+      await GroupPermissionResource.grant(auth, {
+        group: groupB,
+        grantType: "reader",
+        resourceType: "space",
+        resourceId: 1,
+      });
+      await GroupPermissionResource.grant(auth, {
+        group: groupB,
+        grantType: "editor",
+        resourceType: "agent",
+        resourceId: 2,
+      });
+      await GroupPermissionResource.grantTypeWide(auth, {
+        group: groupB,
+        grantType: "create",
+        resourceType: "skill",
+      });
+      // A grant on another group must be excluded.
+      await GroupPermissionResource.grant(auth, {
+        group: groupA,
+        grantType: "reader",
+        resourceType: "space",
+        resourceId: 3,
+      });
+
+      const grants = await GroupPermissionResource.listForGroup(auth, groupB);
+
+      expect(grants).toHaveLength(3);
+      expect(grants.every((g) => g.groupId === groupB.id)).toBe(true);
+      expect(new Set(grants.map((g) => g.resourceType))).toEqual(
+        new Set(["space", "agent", "skill"])
+      );
+    });
+
+    it("returns [] for a group with no grants", async () => {
+      expect(await GroupPermissionResource.listForGroup(auth, groupB)).toEqual(
+        []
+      );
     });
   });
 
@@ -643,6 +891,119 @@ describe("GroupPermissionResource", () => {
       ]);
       expect(await group.isMember(user1)).toBe(false);
       expect(await group.isMember(user2)).toBe(true);
+    });
+  });
+
+  describe("findRegularAutoGroupForGrant / findRegularAutoGroupsForGrants", () => {
+    async function grantToNewUser(spec: {
+      grantType: "reader" | "member";
+      resourceType: "space";
+      resourceId: number;
+    }) {
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+      const result = await GroupPermissionResource.grantToUser(auth, {
+        user: user.toJSON(),
+        ...spec,
+      });
+      expect(result.isOk()).toBe(true);
+    }
+
+    const readerOnSpace = (resourceId: number) => ({
+      grantType: "reader" as const,
+      resourceType: "space" as const,
+      resourceId,
+    });
+
+    it("finds the backing group of a tuple, and null when there is none", async () => {
+      await grantToNewUser(readerOnSpace(42));
+
+      const found = await GroupPermissionResource.findRegularAutoGroupForGrant(
+        auth,
+        readerOnSpace(42)
+      );
+      expect(found?.kind).toBe("regular_auto");
+
+      // Same resource, a grant type nobody was granted.
+      expect(
+        await GroupPermissionResource.findRegularAutoGroupForGrant(auth, {
+          ...readerOnSpace(42),
+          grantType: "member",
+        })
+      ).toBeNull();
+
+      // Same grant type, a resource nobody was granted.
+      expect(
+        await GroupPermissionResource.findRegularAutoGroupForGrant(
+          auth,
+          readerOnSpace(43)
+        )
+      ).toBeNull();
+    });
+
+    it("ignores grants held by groups that are not regular_auto", async () => {
+      // groupA is regular_auto but holds this tuple through grant(), not grantToUser: still the
+      // backing group. groupB is manual, so it must never be returned.
+      await GroupPermissionResource.grant(auth, {
+        group: groupB,
+        ...readerOnSpace(50),
+      });
+
+      expect(
+        await GroupPermissionResource.findRegularAutoGroupForGrant(
+          auth,
+          readerOnSpace(50)
+        )
+      ).toBeNull();
+    });
+
+    it("batches lookups, keyed by grant", async () => {
+      await grantToNewUser(readerOnSpace(60));
+      await grantToNewUser({ ...readerOnSpace(61), grantType: "member" });
+
+      const found =
+        await GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
+          grants: [
+            readerOnSpace(60),
+            { ...readerOnSpace(61), grantType: "member" },
+            // Not granted: absent from the result rather than mapped to null.
+            readerOnSpace(62),
+          ],
+        });
+
+      expect(found.size).toBe(2);
+      expect(found.get(grantKey(readerOnSpace(60)))?.kind).toBe("regular_auto");
+      expect(
+        found.get(grantKey({ ...readerOnSpace(61), grantType: "member" }))?.kind
+      ).toBe("regular_auto");
+      expect(found.get(grantKey(readerOnSpace(62)))).toBeUndefined();
+    });
+
+    it("keeps two grant types on the same resource apart", async () => {
+      await grantToNewUser(readerOnSpace(70));
+      await grantToNewUser({ ...readerOnSpace(70), grantType: "member" });
+
+      const found =
+        await GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
+          grants: [
+            readerOnSpace(70),
+            { ...readerOnSpace(70), grantType: "member" },
+          ],
+        });
+
+      // One entry per grant, and each tuple has its own backing group.
+      expect(found.size).toBe(2);
+      expect(found.get(grantKey(readerOnSpace(70)))?.id).not.toBe(
+        found.get(grantKey({ ...readerOnSpace(70), grantType: "member" }))?.id
+      );
+    });
+
+    it("returns an empty map for no grants", async () => {
+      const found =
+        await GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
+          grants: [],
+        });
+      expect(found.size).toBe(0);
     });
   });
 

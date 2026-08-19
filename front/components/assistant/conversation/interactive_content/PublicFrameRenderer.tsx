@@ -32,7 +32,11 @@ interface PublicFrameViewer extends WorkspaceUserIdentity {
 export function getPublicFrameUserIdentity(
   user: PublicFrameViewer | null,
   isAuthenticatedMember: boolean,
-  workspaceId: string
+  workspaceId: string,
+  // Standing of the viewer in the Pod hosting the Frame, resolved server-side by the public frame
+  // endpoint. Display-only: invocations are re-authorized server-side.
+  isPodMember = false,
+  isPodEditor = false
 ): ScopedWorkspaceUserIdentity | undefined {
   if (
     !isAuthenticatedMember ||
@@ -44,6 +48,8 @@ export function getPublicFrameUserIdentity(
 
   return {
     workspaceId,
+    isPodMember,
+    isPodEditor,
     user: {
       sId: user.sId,
       firstName: user.firstName,
@@ -71,6 +77,8 @@ export function PublicFrameRenderer({
     error,
     accessToken,
     isAuthenticatedMember,
+    isPodMember,
+    isPodEditor,
     framePath,
   } = usePublicFrame({
     shareToken,
@@ -88,7 +96,9 @@ export function PublicFrameRenderer({
   const publicUserIdentity = getPublicFrameUserIdentity(
     user,
     isAuthenticatedMember,
-    workspaceId
+    workspaceId,
+    isPodMember,
+    isPodEditor
   );
   // The shared frame has no AuthProvider, so the viewer context the blocked-action cards need is
   // built from the workspace the viewer is a member of.
@@ -97,7 +107,7 @@ export function PublicFrameRenderer({
   );
   const viewer =
     publicUserIdentity && user && viewerWorkspace
-      ? { owner: viewerWorkspace, user }
+      ? { owner: viewerWorkspace, user, frameShareToken: shareToken }
       : null;
 
   if (

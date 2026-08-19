@@ -117,6 +117,7 @@ import {
 import { isProviderWhitelistedForAuth } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { getDefaultStreamConfigForAuth } from "@app/lib/model_tiers/enabled_models";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type {
@@ -130,7 +131,10 @@ import {
   isGlobalAgentId,
 } from "@app/types/assistant/assistant";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import type {
+  ModelConfigurationType,
+  ModelProviderIdType,
+} from "@app/types/assistant/models/types";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
@@ -146,7 +150,7 @@ function getGlobalAgent({
   hasSandbox,
   globalAgentContext,
   excludeProviders,
-  preferAutoDefaultModel,
+  autoDefaultModelConfig,
   preferGpt56LunaDefaultModel,
   preferSonnet5DefaultModel,
   featureFlags,
@@ -161,7 +165,7 @@ function getGlobalAgent({
   hasSandbox: boolean;
   globalAgentContext?: GlobalAgentContext;
   excludeProviders: ReadonlySet<ModelProviderIdType>;
-  preferAutoDefaultModel: boolean;
+  autoDefaultModelConfig: ModelConfigurationType | null;
   preferGpt56LunaDefaultModel: boolean;
   preferSonnet5DefaultModel: boolean;
   featureFlags: WhitelistableFeature[];
@@ -383,7 +387,7 @@ function getGlobalAgent({
         featureFlags,
         globalAgentContext,
         excludeProviders,
-        preferAutoDefaultModel,
+        autoDefaultModelConfig,
         preferGpt56LunaDefaultModel,
         preferSonnet5DefaultModel,
       });
@@ -1200,6 +1204,10 @@ export async function getGlobalAgents(
       ? await buildSidekickContext(auth, agentsIdsToFetch)
       : null;
 
+  const autoDefaultModelConfig = flags.includes("models_picker")
+    ? await getDefaultStreamConfigForAuth(auth)
+    : null;
+
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
   const agentCandidates = agentsIdsToFetch.map((sId) =>
@@ -1214,7 +1222,7 @@ export async function getGlobalAgents(
       hasSandbox: isComputerFeatureEnabled(flags),
       globalAgentContext: options?.globalAgentContext,
       excludeProviders,
-      preferAutoDefaultModel: flags.includes("models_picker"),
+      autoDefaultModelConfig,
       preferGpt56LunaDefaultModel: flags.includes(
         "dust_agent_gpt_5_6_luna_default"
       ),

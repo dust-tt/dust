@@ -7,6 +7,7 @@ import type {
 } from "@app/lib/api/sandbox/access_tokens";
 import {
   isSandboxExecTokenPayload,
+  isSandboxFileSystemTokenPayload,
   isSandboxFunctionInvocationTokenPayload,
   SANDBOX_TOKEN_PREFIX,
 } from "@app/lib/api/sandbox/access_tokens";
@@ -18,7 +19,10 @@ import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
-import type { GroupPermissionsJSON } from "@app/lib/resources/group_permission_registry";
+import type {
+  GroupPermissionsJSON,
+  ResourcesWithVerb,
+} from "@app/lib/resources/group_permission_registry";
 import {
   allWorkspacePermissions,
   GroupPermissions,
@@ -26,9 +30,10 @@ import {
 } from "@app/lib/resources/group_permission_registry";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import type { KeyAuthType } from "@app/lib/resources/key_resource";
+import type { KeyAuthType, SystemKey } from "@app/lib/resources/key_resource";
 import {
   DEFAULT_SYSTEM_KEY_NAME,
+  isSystemKey,
   KeyResource,
   SECRET_KEY_PREFIX,
 } from "@app/lib/resources/key_resource";
@@ -59,7 +64,6 @@ import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
 import type {
   AccessControlList,
-  GroupGrant,
   WithAccessControl,
 } from "@app/types/resource_permissions";
 import { isDevelopment } from "@app/types/shared/env";
@@ -71,6 +75,7 @@ import {
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { decodeUtf8HeaderValue } from "@app/types/shared/utils/http_headers";
 import type {
@@ -81,7 +86,6 @@ import type {
 import { isAdmin, isBuilder, isManager, isUser } from "@app/types/user";
 import assert from "assert";
 import { TokenExpiredError } from "jsonwebtoken";
-import memoizer from "lru-memoizer";
 import type { Transaction } from "sequelize";
 
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
@@ -371,7 +375,13 @@ export class Authenticator {
   }
 
   async refresh({ transaction }: { transaction?: Transaction } = {}) {
-    if (this._user && this._workspace) {
+    if (!this._workspace) {
+      return;
+    }
+
+    // Reload group memberships for user-backed auths. Key auths carry a fixed group set derived
+    // from the key (not from live membership), so their `_groupModelIds` are left as-is.
+    if (this._user) {
       this._groupModelIds = Authenticator.isMember(this._role)
         ? await GroupResource.dangerouslyListUserGroupsForAuth({
             user: this._user,
@@ -379,12 +389,18 @@ export class Authenticator {
             transaction,
           })
         : [];
-      // Group memberships changed, so capabilities may have changed too: re-resolve them.
-      this._permissions = await Authenticator.resolvePermissions({
-        workspace: this._workspace,
-        groupModelIds: this._groupModelIds,
-      });
     }
+
+    // Re-resolve grants from the current group set. Grants on those groups can change (backfill,
+    // updatePermissions, create_pod, ...) even when the membership set does not, so this must run
+    // for every auth — including auths that have no user (API/system keys, internal auths), which
+    // the `_user` gate above skips. The agent loop freezes a serialized (user-less) key auth at
+    // workflow start and refreshes it per step (see `fromJsonWithRefrehedGroups`); without this it
+    // would keep a stale grant snapshot and deny access to resources granted mid-run.
+    this._permissions = await Authenticator.resolvePermissions({
+      workspace: this._workspace,
+      groupModelIds: this._groupModelIds,
+    });
   }
 
   /**
@@ -658,6 +674,11 @@ export class Authenticator {
         return new Err(groupModelIdsRes.error);
       }
       groupModelIdSets.push(groupModelIdsRes.value);
+    }
+    if (isSandboxFileSystemTokenPayload(claims)) {
+      // This token kind is accepted only by the filesystem route. File access
+      // comes from its signed conversation and Pod roots, not workspace groups.
+      groupModelIdSets.push([]);
     }
     if (groupModelIdSets.length === 0) {
       return new Err({
@@ -957,26 +978,33 @@ export class Authenticator {
       : [];
     const keyGroupModelIds = allGroups.map((g) => g.id);
 
+    // `requestedGroupIds` replaces the key's own groups (the Slack bot acting as a user), so the
+    // resolution goes through those groups instead of the key.
+    const systemKey = !requestedGroupIds && isSystemKey(key) ? key : null;
+
     let permissions: GroupPermissions;
     let keyPermissions: GroupPermissions;
     if (isKeyWorkspace) {
       // Same workspace and same groups: both Authenticators share one resolution rather than
       // running the same query twice. Safe to share the instance, GroupPermissions is immutable.
-      permissions = await this.resolvePermissions({
-        workspace,
-        groupModelIds: workspaceGroupModelIds,
-      });
+      permissions = await this.resolvePermissions(
+        systemKey
+          ? { workspace, systemKey }
+          : { workspace, groupModelIds: workspaceGroupModelIds }
+      );
       keyPermissions = permissions;
     } else {
       [permissions, keyPermissions] = await Promise.all([
+        // The target workspace is not the key's, so the key says nothing about it.
         this.resolvePermissions({
           workspace,
           groupModelIds: workspaceGroupModelIds,
         }),
-        this.resolvePermissions({
-          workspace: keyWorkspace,
-          groupModelIds: keyGroupModelIds,
-        }),
+        this.resolvePermissions(
+          systemKey
+            ? { workspace: keyWorkspace, systemKey }
+            : { workspace: keyWorkspace, groupModelIds: keyGroupModelIds }
+        ),
       ]);
     }
 
@@ -1253,7 +1281,7 @@ export class Authenticator {
 
     return this.hasPermissionForAcl(verb, {
       roles: [{ role: "admin", permissions: [verb] }],
-      groups: this.getGroupPermissions(resourceType, WHOLE_TYPE_RESOURCE_ID),
+      grantedVerbs: this.getGrantedVerbs(resourceType, WHOLE_TYPE_RESOURCE_ID),
       workspaceId: workspace.id,
     });
   }
@@ -1277,21 +1305,35 @@ export class Authenticator {
    * NOT confer access to a specific instance unless a grant grants it. Cheap for callers with no
    * groups (no query).
    */
-  static async resolvePermissions({
-    workspace,
-    groupModelIds,
-  }: {
-    workspace?: WorkspaceResource | null;
-    groupModelIds: ModelId[];
-  }): Promise<GroupPermissions> {
+  static async resolvePermissions(
+    // Groups or a system key, never both: a system key is attached to every group of its
+    // workspace, so its grants are the wildcard and reading them back would scan the workspace's
+    // whole `group_permissions` slice. A system key narrowed to a group subset must resolve from
+    // those groups, so the two inputs are mutually exclusive rather than a rule to remember.
+    params: { workspace?: WorkspaceResource | null } & (
+      | { groupModelIds: ModelId[]; systemKey?: never }
+      | { systemKey: SystemKey; groupModelIds?: never }
+    )
+  ): Promise<GroupPermissions> {
+    const { workspace } = params;
     if (!workspace) {
       return GroupPermissions.empty();
     }
 
-    const grants = await GroupPermissionResource.listForGroups(
-      renderLightWorkspaceType({ workspace }),
-      { groupModelIds }
-    );
+    if (params.systemKey) {
+      return GroupPermissions.fromGrants([
+        {
+          grantType: "*",
+          resourceType: "*",
+          resourceId: WHOLE_TYPE_RESOURCE_ID,
+        },
+      ]);
+    }
+
+    const lightWorkspace = renderLightWorkspaceType({ workspace });
+    const grants = await GroupPermissionResource.listForGroups(lightWorkspace, {
+      groupModelIds: params.groupModelIds,
+    });
 
     return GroupPermissions.fromGrants(grants);
   }
@@ -1467,15 +1509,89 @@ export class Authenticator {
   }
 
   /**
-   * The caller's governance grants on `(resourceType, resourceId)`, as group→verb entries, folding
-   * in the type-wide (-1) grants. Caller-scoped (only the caller's groups). Resources fold this into
-   * their `AccessControlList`; pass `WHOLE_TYPE_RESOURCE_ID` for a workspace-wide capability.
+   * The verbs the caller holds on `(resourceType, resourceId)`, resolved from their governance
+   * grants (folding in the type-wide (-1) grants). Caller-scoped and pre-resolved — resources fold
+   * this into their `AccessControlList` as `grantedVerbs`, which the checker uses directly with no
+   * group-membership step. Pass `WHOLE_TYPE_RESOURCE_ID` for a workspace-wide capability.
    */
-  getGroupPermissions(
+  getGrantedVerbs(
     resourceType: ConcreteResourceType,
     resourceId: number
-  ): GroupGrant[] {
-    return this._permissions.forResource(resourceType, resourceId);
+  ): GrantVerb[] {
+    return this._permissions.resolvedVerbsForResource(resourceType, resourceId);
+  }
+
+  /**
+   * The instances of `resourceType` the caller may `verb`, resolved from their governance grants.
+   * The enumeration counterpart of `getGrantedVerbs` — "which resources may I act on" rather than
+   * "what may I do on this one" — for reverse lookups such as the projects a caller belongs to.
+   * Returns `{ kind: "all" }` when a type-wide grant confers the verb on every instance, which a
+   * system key holds on every type (see `resolvePermissions`).
+   */
+  getResourceIdsWithVerb(
+    resourceType: ConcreteResourceType,
+    verb: GrantVerb
+  ): ResourcesWithVerb {
+    return this._permissions.resourceIdsWithVerb(resourceType, verb);
+  }
+
+  /**
+   * Shadow-compare (#9479) for the group_permissions rollout: while the `group_permissions_shadow`
+   * flag is on for the workspace, compare two composed decisions for the same check — the served
+   * `legacyAcls` and the `candidateAcls` (the same roles routed through the group_permissions
+   * table) — and log mismatches so a Datadog monitor can confirm parity before the flip (#9480).
+   * The caller builds both shapes. Fire-and-forget: never changes the served result and swallows its
+   * own failures. (Inlined rather than reusing `lib/api/permissions/shadow` to avoid an auth <->
+   * shadow import cycle.)
+   */
+  shadowComparePermission(
+    verb: GrantVerb,
+    legacyAcls: AccessControlList[],
+    candidateAcls: AccessControlList[],
+    context: Record<string, string | number | boolean | null>
+  ): void {
+    void this.runShadowComparePermission(
+      verb,
+      legacyAcls,
+      candidateAcls,
+      context
+    );
+  }
+
+  private async runShadowComparePermission(
+    verb: GrantVerb,
+    legacyAcls: AccessControlList[],
+    candidateAcls: AccessControlList[],
+    context: Record<string, string | number | boolean | null>
+  ): Promise<void> {
+    try {
+      const flags = await getFeatureFlags(this);
+      if (!flags.includes("group_permissions_shadow")) {
+        return;
+      }
+
+      const legacyResult = this.hasPermissionForAcls(verb, legacyAcls);
+      const candidateResult = this.hasPermissionForAcls(verb, candidateAcls);
+
+      // The literal message is the Datadog monitor key — keep it stable.
+      if (legacyResult !== candidateResult) {
+        logger.warn(
+          {
+            ...context,
+            legacyResult,
+            candidateResult,
+            legacyAcls,
+            candidateAcls,
+          },
+          "group_permissions_shadow_mismatch"
+        );
+      }
+    } catch (err) {
+      logger.error(
+        { ...context, err: normalizeError(err) },
+        "group_permissions_shadow_error"
+      );
+    }
   }
 
   /**
@@ -1504,12 +1620,14 @@ export class Authenticator {
     return acls.every((acl) => this.hasPermissionForAcl(verb, acl));
   }
 
-  // Single-ACL check. Two paths (OR):
-  // 1. Role: the caller's workspace role grants `verb` (and the ACL is in the caller's workspace).
-  // 2. Group: the caller belongs to a listed group that grants `verb`.
-  // The group-membership check is kept even when the ACL's groups are already caller-scoped (built
-  // from `getGroupPermissions`): it lets the same checker also evaluate ACLs that list every group
-  // (e.g. legacy inline groups), filtering by membership at check time.
+  // Single-ACL check. The grant sources are additive (OR): the caller passes if any of them grants
+  // `verb`. An absent source contributes nothing, so an ACL with no matching source denies.
+  // - Role: the caller's workspace role grants `verb` (and the ACL is in the caller's workspace).
+  // - grantedVerbs: the caller's own governance verbs, already resolved — used directly, no
+  //   membership step (the caller-scoping is baked in when they are resolved).
+  // - groups: legacy group listing, filtered by the caller's membership here at check time. This is
+  //   what lets the same checker also evaluate ACLs that enumerate every group (e.g. the cross-space
+  //   conversation checks).
   private hasPermissionForAcl(
     verb: GrantVerb,
     acl: AccessControlList
@@ -1517,16 +1635,23 @@ export class Authenticator {
     // Role path: gated to the caller's workspace (a role only applies within its own workspace).
     const grantedByRole =
       this.getNonNullableWorkspace().id === acl.workspaceId &&
-      acl.roles.some(
+      (acl.roles ?? []).some(
         (r) => this.role() === r.role && r.permissions.includes(verb)
       );
     if (grantedByRole) {
       return true;
     }
 
-    // Group path: group membership is inherently workspace-scoped, so it needs no workspace gate.
+    // Governance path: the caller's verbs are pre-resolved, so no membership step is needed.
+    if ((acl.grantedVerbs ?? []).includes(verb)) {
+      return true;
+    }
+
+    // Legacy group path: group membership is inherently workspace-scoped, so it needs no gate.
     return this._groupModelIds.some((groupId) =>
-      acl.groups.some((g) => g.id === groupId && g.permissions.includes(verb))
+      (acl.groups ?? []).some(
+        (g) => g.id === groupId && g.permissions.includes(verb)
+      )
     );
   }
 
@@ -1890,100 +2015,41 @@ export async function prodAPICredentialsForOwner(
   };
 }
 
-// Use memoizer's callback-based API so the LRU cache stores the resolved value, not a Promise.
-// memoizer.sync with an async load caches the Promise itself, which retains Node async context and
-// causes memory growth.
-
-// Global feature flags are shared across all workspaces and cached separately.
-const GLOBAL_FEATURE_FLAG_TTL_MS = 60000;
-const _getGlobalFeatureFlags = memoizer<
-  Record<string, never>,
-  GlobalFeatureFlagResource[]
->({
-  load: (_, callback) => {
-    GlobalFeatureFlagResource.listAll()
-      .then((flags) => callback(null, flags))
-      .catch((err: Error) => callback(err));
-  },
-
-  hash: () => "global_feature_flags",
-
-  max: 1,
-  ttl: GLOBAL_FEATURE_FLAG_TTL_MS,
-});
-
-function getGlobalFeatureFlags(): Promise<GlobalFeatureFlagResource[]> {
-  return new Promise((resolve, reject) => {
-    _getGlobalFeatureFlags({}, (err, result) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(result ?? []);
-      }
-    });
-  });
-}
-
-const _getFeatureFlags = memoizer<LightWorkspaceType, WhitelistableFeature[]>({
-  load: (workspace, callback) => {
-    if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
-      callback(null, [...WHITELISTABLE_FEATURES]);
-      return;
-    }
-
-    Promise.all([
-      FeatureFlagResource.listForWorkspace(workspace),
-      getGlobalFeatureFlags(),
-    ])
-      .then(([workspaceFlags, globalFlags]) => {
-        const workspaceFlagNames = new Set(
-          workspaceFlags.map((flag) => flag.name)
-        );
-
-        // Start with workspace-level flags (always take precedence).
-        const effectiveFlags = [...workspaceFlagNames];
-
-        // Add global flags that aren't already set at workspace level.
-        for (const globalFlag of globalFlags) {
-          const globalFlagName = globalFlag.name;
-          if (!isWhitelistableFeature(globalFlagName)) {
-            continue;
-          }
-
-          if (
-            !workspaceFlagNames.has(globalFlagName) &&
-            GlobalFeatureFlagResource.isInRollout(
-              workspace.id,
-              globalFlag.rolloutPercentage
-            )
-          ) {
-            effectiveFlags.push(globalFlagName);
-          }
-        }
-
-        callback(null, effectiveFlags);
-      })
-      .catch((err: Error) => callback(err));
-  },
-
-  hash: (workspace: LightWorkspaceType) => `feature_flags_${workspace.id}`,
-
-  max: 100,
-  ttl: 3000,
-});
-
-export function getFeatureFlagsForWorkspace(
+export async function getFeatureFlagsForWorkspace(
   workspace: LightWorkspaceType
 ): Promise<WhitelistableFeature[]> {
-  return new Promise((resolve, reject) => {
-    _getFeatureFlags(workspace, (err, result) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(result ?? []);
-      }
-    });
-  });
+  if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
+    return [...WHITELISTABLE_FEATURES];
+  }
+
+  const [workspaceFlags, globalFlags] = await Promise.all([
+    FeatureFlagResource.listForWorkspace(workspace),
+    GlobalFeatureFlagResource.listAll(),
+  ]);
+  const workspaceFlagNames = new Set(workspaceFlags.map((flag) => flag.name));
+
+  // Start with workspace-level flags (always take precedence).
+  const effectiveFlags = [...workspaceFlagNames];
+
+  // Add global flags that aren't already set at workspace level.
+  for (const globalFlag of globalFlags) {
+    const globalFlagName = globalFlag.name;
+    if (!isWhitelistableFeature(globalFlagName)) {
+      continue;
+    }
+
+    if (
+      !workspaceFlagNames.has(globalFlagName) &&
+      GlobalFeatureFlagResource.isInRollout(
+        workspace.id,
+        globalFlag.rolloutPercentage
+      )
+    ) {
+      effectiveFlags.push(globalFlagName);
+    }
+  }
+
+  return effectiveFlags;
 }
 
 export function getFeatureFlags(
@@ -1998,15 +2064,6 @@ export async function hasFeatureFlag(
 ): Promise<boolean> {
   const flags = await getFeatureFlags(auth);
   return flags.includes(flag);
-}
-
-export function invalidateFeatureFlagsCache(auth: Authenticator): void {
-  const workspace = auth.getNonNullableWorkspace();
-  _getFeatureFlags.del(workspace);
-}
-
-export function invalidateGlobalFeatureFlagsCache(): void {
-  _getGlobalFeatureFlags.del({});
 }
 
 export function getApiKeyNameFromHeaders(headers: {

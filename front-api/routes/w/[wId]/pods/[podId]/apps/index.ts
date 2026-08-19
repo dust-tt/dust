@@ -1,3 +1,4 @@
+import { exportPodApp } from "@app/lib/api/projects/app_archive";
 import {
   clonePodApp,
   deletePodApp,
@@ -17,10 +18,26 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 import { withSpace } from "@front-api/middlewares/with_space";
+
+import importRoute from "./import";
 
 // Mounted under /api/w/:wId/pods/:podId/apps.
 const app = workspaceApp();
+
+// Pod Apps sit on top of Pod Functions, so both flags are required — same gate as the Apps tab.
+app.use(
+  "*",
+  withFeatureFlag("sandbox_functions", {
+    message: "Sandbox Functions are not enabled for this workspace.",
+  }),
+  withFeatureFlag("pod_applications", {
+    message: "Pod Apps are not enabled for this workspace.",
+  })
+);
+
+app.route("/import", importRoute);
 
 /** @ignoreswagger */
 app.get(
@@ -42,6 +59,63 @@ app.get(
     }
 
     return ctx.json({ apps: appsResult.value });
+  }
+);
+
+/** @ignoreswagger */
+app.get(
+  "/:prefix/export",
+  validate("param", DeletePodAppParamsSchema),
+  withSpace({ requireCanRead: true, routeParam: "podId" }),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const { prefix } = ctx.req.valid("param");
+
+    const exportResult = await exportPodApp(auth, space, prefix);
+    if (exportResult.isErr()) {
+      switch (exportResult.error.code) {
+        case "not_found":
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: {
+              type: "space_not_found",
+              message: exportResult.error.message,
+            },
+          });
+        case "not_a_pod":
+        case "colliding_folders":
+        case "too_large":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: exportResult.error.message,
+            },
+          });
+        case "internal":
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: exportResult.error.message,
+            },
+          });
+        default:
+          assertNever(exportResult.error.code);
+      }
+    }
+
+    const { fileName, content } = exportResult.value;
+
+    // Raw Response, matching the conversation file download route: the body is binary, not JSON.
+    return new Response(new Uint8Array(content), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": `attachment; filename="${fileName}"`,
+      },
+    });
   }
 );
 

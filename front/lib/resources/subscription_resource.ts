@@ -1,6 +1,7 @@
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
+import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
@@ -932,9 +933,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       await WorkspacePlanLimitOverrideResource.fetchByWorkspace({ workspace })
     );
     if (maxUsersInWorkspace !== -1) {
-      const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
-        workspace.sId
-      );
+      const activeSeats = await countActiveSeatsForWorkspace(workspace.sId);
       if (activeSeats > maxUsersInWorkspace) {
         throw new Error(
           `Cannot subscribe to plan ${planCode}: new plan has less users allowed than currently in workspace.`

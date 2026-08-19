@@ -1,5 +1,13 @@
 import { ModelPickerContent } from "@app/components/model_picker/ModelPickerContent";
 import type {
+  ModelPickerSelectTrigger,
+  ModelPickerSurface,
+} from "@app/components/model_picker/modelPickerTracking";
+import {
+  trackModelPickerOpen,
+  trackModelPickerSelect,
+} from "@app/components/model_picker/modelPickerTracking";
+import type {
   MakerGroup,
   ModelTierId,
   Selection,
@@ -11,14 +19,15 @@ import {
   getModelEffortTier,
   getModelTier,
   getModelWithReasoningEffortLabel,
+  getTierLockReason,
   isPremiumModel,
   isSameSelection,
-  isTierLocked,
   resolveShownSelection,
 } from "@app/components/model_picker/modelPickerUtils";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useClientType } from "@app/lib/context/clientType";
 import { useModels } from "@app/lib/swr/models";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
@@ -72,6 +81,12 @@ export interface ModelPickerProps {
   ) => void;
   // Lets keyboard `/` Pick model commit through the same path as the button picker.
   commitApiRef?: MutableRefObject<((selection: Selection) => void) | null>;
+  // Lets components outside the input bar (e.g. the sidebar banner) open the menu.
+  openApiRef?: MutableRefObject<(() => void) | null>;
+  // When set, emits `assistant:model_picker:*` analytics tagged with this
+  // surface. Consumers that don't pass it (e.g. the agent builder) are not
+  // tracked.
+  trackingSurface?: ModelPickerSurface;
 }
 
 export function ModelPicker({
@@ -89,8 +104,11 @@ export function ModelPicker({
   stickyModelOverride,
   setStickyModelOverride,
   commitApiRef,
+  openApiRef,
+  trackingSurface,
 }: ModelPickerProps) {
   const { hasFeature } = useFeatureFlags();
+  const clientType = useClientType();
   const hasModelsPicker = hasFeature("models_picker");
   const { subscription } = useAuth();
   const canSelectPremiumModels =
@@ -112,7 +130,7 @@ export function ModelPicker({
 
   const [userOverride, setUserOverride] = useState<Selection | null>(null);
 
-  const { models } = useModels({
+  const { models, streams } = useModels({
     owner,
     disabled: !hasModelsPicker,
   });
@@ -161,6 +179,13 @@ export function ModelPicker({
     [models]
   );
 
+  // Meta-models backing the tier rows: their `isSelectable` tells whether the
+  // member's model-tier cap allows the stream at all.
+  const streamModels = useMemo(
+    () => models.filter((model) => isModelStreamId(model.modelId)),
+    [models]
+  );
+
   // Group models by maker, preserving first-seen order of both makers and
   // models within each maker.
   const makerGroups = useMemo<MakerGroup[]>(() => {
@@ -180,7 +205,15 @@ export function ModelPicker({
     }));
   }, [allModels]);
 
-  const commit = (selection: Selection) => {
+  const commit = (
+    selection: Selection,
+    // What the user did to reach this selection. Defaults from the selection
+    // shape so the keyboard `/` pick path (which calls `commit` directly via
+    // `commitApiRef`) is still tracked with a sensible trigger.
+    trigger: ModelPickerSelectTrigger = selection.display.kind === "tier"
+      ? "tier"
+      : "model"
+  ) => {
     if (isSameSelection(selection.display, agentDefault.display)) {
       // Exactly the agent default: keep no override so we defer to the agent's
       // own config (toSend undefined).
@@ -190,10 +223,36 @@ export function ModelPicker({
     }
     setUserOverride(selection);
     onSelectionChange?.(selection.toSend);
+
+    if (trackingSurface) {
+      trackModelPickerSelect({
+        surface: trackingSurface,
+        clientType,
+        display: selection.display,
+        trigger,
+      });
+    }
   };
 
   if (commitApiRef) {
     commitApiRef.current = commit;
+  }
+
+  // Opening from the button and opening programmatically (sidebar banner) must
+  // reset the menu's transient state and emit the same `open` event, so both go
+  // through here rather than touching `setIsOpen` directly.
+  const openMenu = () => {
+    setIsOpen(true);
+    setSearch("");
+    setMoreModelsExpanded(false);
+    setExpandedMaker(null);
+    if (trackingSurface) {
+      trackModelPickerOpen({ surface: trackingSurface, clientType });
+    }
+  };
+
+  if (openApiRef) {
+    openApiRef.current = openMenu;
   }
 
   // Picking a concrete model (or nudging its effort slider) must keep the menu
@@ -208,13 +267,16 @@ export function ModelPicker({
     Date.now() - lastModelInteractionAtMsRef.current < 300;
 
   const onSelectTier = (tierId: ModelTierId) => {
-    if (isTierLocked(tierId, { lockPremiumEfforts })) {
+    if (getTierLockReason(tierId, { lockPremiumEfforts, streamModels })) {
       return;
     }
-    commit({
-      display: { kind: "tier", tierId },
-      toSend: buildTierSelection(tierId),
-    });
+    commit(
+      {
+        display: { kind: "tier", tierId },
+        toSend: buildTierSelection(tierId),
+      },
+      "tier"
+    );
   };
 
   const onSelectModel = (model: ModelConfigurationType) => {
@@ -223,10 +285,13 @@ export function ModelPicker({
     }
     lastModelInteractionAtMsRef.current = Date.now();
     const effort = getInitialEffort(model, { lockPremiumEfforts });
-    commit({
-      display: { kind: "model", model, effort },
-      toSend: buildModelSelection(model, effort),
-    });
+    commit(
+      {
+        display: { kind: "model", model, effort },
+        toSend: buildModelSelection(model, effort),
+      },
+      "model"
+    );
   };
 
   const onChangeEffort = (effort: ReasoningEffort) => {
@@ -241,16 +306,28 @@ export function ModelPicker({
     ) {
       return;
     }
-    commit({
-      display: { kind: "model", model, effort },
-      toSend: buildModelSelection(model, effort),
-    });
+    commit(
+      {
+        display: { kind: "model", model, effort },
+        toSend: buildModelSelection(model, effort),
+      },
+      "reasoning_effort"
+    );
   };
 
   const onRevert = () => {
     setUserOverride(agentDefault);
     setStickyModelOverride?.(undefined);
     onSelectionChange?.(undefined);
+
+    if (trackingSurface) {
+      trackModelPickerSelect({
+        surface: trackingSurface,
+        clientType,
+        display: agentDefault.display,
+        trigger: "revert",
+      });
+    }
   };
 
   if (!hasModelsPicker) {
@@ -277,11 +354,10 @@ export function ModelPicker({
         if (!open && shouldBlockDismiss()) {
           return;
         }
-        setIsOpen(open);
         if (open) {
-          setSearch("");
-          setMoreModelsExpanded(false);
-          setExpandedMaker(null);
+          openMenu();
+        } else {
+          setIsOpen(false);
         }
       }}
     >
@@ -292,7 +368,7 @@ export function ModelPicker({
           size={buttonSize}
           icon={buttonIcon}
           label={showLabel ? label : undefined}
-          tooltip={showLabel ? undefined : label}
+          tooltip={showLabel ? undefined : `Model picker: ${label}`}
           disabled={disabled}
         />
       </DropdownMenuTrigger>
@@ -305,6 +381,8 @@ export function ModelPicker({
         lockPremiumEfforts={lockPremiumEfforts}
         makerGroups={makerGroups}
         allModels={allModels}
+        streamModels={streamModels}
+        streams={streams}
         search={search}
         onSearchChange={setSearch}
         moreModelsExpanded={moreModelsExpanded}

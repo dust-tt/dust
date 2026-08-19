@@ -16,7 +16,7 @@ export function SandboxFunctionPublishValidationDetails({
   const sourceFileName = input.path.split("/").pop() || input.path;
 
   return (
-    <div className="flex flex-col gap-3 py-2 pl-7 sm:flex-row">
+    <div className="flex flex-col gap-3 py-2 sm:flex-row">
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <p className="heading-base wrap-break-word text-foreground">
           {input.slug}

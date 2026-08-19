@@ -5,6 +5,7 @@ import { InputWithSave } from "../index_with_tw_base";
 
 const meta = {
   title: "Forms & Inputs/InputWithSave",
+  tags: ["a11y-issues"],
   component: InputWithSave,
   parameters: {
     layout: "padded",

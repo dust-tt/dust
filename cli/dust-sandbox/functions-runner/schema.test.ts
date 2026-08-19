@@ -51,9 +51,9 @@ describe("getFunctionSchema", () => {
     await expect(getFunctionSchema(fx("nope.ts"))).rejects.toThrow();
   });
 
-  test("accepts the pod_editor_required user identity policy", async () => {
-    const s = await getFunctionSchema(fx("pod-editor.ts"));
-    expect(s.userIdentity).toBe("pod_editor_required");
+  test("accepts the pod_member_required user identity policy", async () => {
+    const s = await getFunctionSchema(fx("pod-member.ts"));
+    expect(s.userIdentity).toBe("pod_member_required");
   });
 
   test("rejects an unknown user identity policy", async () => {

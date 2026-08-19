@@ -1,11 +1,6 @@
 name: Sandbox Image Registry
 
 on:
-  workflow_call:
-    outputs:
-      images-built:
-        description: "Number of images built"
-        value: ${{ jobs.summary.outputs.built-count }}
   workflow_dispatch:
     inputs:
       rebuild:
@@ -19,7 +14,17 @@ permissions:
   id-token: write
 
 jobs:
+  check-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if the run is from main branch
+        if: ${{ github.ref != 'refs/heads/main' }}
+        run: |
+          echo "Error: sandbox images can only be built from the main branch"
+          exit 1
+
   check-and-build:
+    needs: [ check-branch ]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -142,8 +147,6 @@ jobs:
     needs: [ check-and-build ]
     if: always() && needs['check-and-build'].result == 'success'
     runs-on: ubuntu-latest
-    outputs:
-      built-count: ${{ steps.count.outputs.built }}
     steps:
       - name: Download check results (eu)
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -171,11 +174,6 @@ jobs:
             echo "missing-summary=$SUMMARY"
             echo "planned-builds=$COUNT"
           } >> "$GITHUB_OUTPUT"
-          if [ "$HAS" == "true" ]; then
-            echo "built=$COUNT" >> "$GITHUB_OUTPUT"
-          else
-            echo "built=0" >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Summary
         run: |

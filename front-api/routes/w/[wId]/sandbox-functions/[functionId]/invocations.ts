@@ -1,13 +1,14 @@
 import { MCP_VALIDATION_OUTPUTS } from "@app/lib/actions/constants";
 import { awaitSandboxFunctionInvocationOutcome } from "@app/lib/api/sandbox_functions/await_invocation";
 import { isSandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
+import { resolveSandboxFunctionWithCapability } from "@app/lib/api/sandbox_functions/frame_share_capability";
 import { resolveSandboxFunctionActionAuthentication } from "@app/lib/api/sandbox_functions/resolve_authentication";
 import { validateSandboxFunctionAction } from "@app/lib/api/sandbox_functions/validate_action";
-import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   PostSandboxFunctionInvocationResponseBody,
 } from "@app/types/api/sandbox_functions";
+import { FRAME_SHARE_TOKEN_HEADER } from "@app/types/api/sandbox_functions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { redirectToSse } from "@front-api/lib/api/sse/redirect";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -107,9 +108,10 @@ app.post(
     const body: PostSandboxFunctionInvocationRequestBody =
       ctx.req.valid("json");
 
-    const sandboxFunction = await SandboxFunctionResource.fetchByIdOrSlug(
+    const sandboxFunction = await resolveSandboxFunctionWithCapability(
       auth,
-      functionIdOrSlug
+      functionIdOrSlug,
+      ctx.req.header(FRAME_SHARE_TOKEN_HEADER)
     );
     if (!sandboxFunction) {
       return apiError(ctx, {
@@ -177,9 +179,10 @@ app.post(
     const { functionIdOrSlug, invocationId, actionId } = ctx.req.valid("param");
     const { approved } = ctx.req.valid("json");
 
-    const sandboxFunction = await SandboxFunctionResource.fetchByIdOrSlug(
+    const sandboxFunction = await resolveSandboxFunctionWithCapability(
       auth,
-      functionIdOrSlug
+      functionIdOrSlug,
+      ctx.req.header(FRAME_SHARE_TOKEN_HEADER)
     );
     if (!sandboxFunction) {
       return apiError(ctx, {
@@ -244,9 +247,10 @@ app.post(
     const { functionIdOrSlug, invocationId, actionId } = ctx.req.valid("param");
     const { outcome } = ctx.req.valid("json");
 
-    const sandboxFunction = await SandboxFunctionResource.fetchByIdOrSlug(
+    const sandboxFunction = await resolveSandboxFunctionWithCapability(
       auth,
-      functionIdOrSlug
+      functionIdOrSlug,
+      ctx.req.header(FRAME_SHARE_TOKEN_HEADER)
     );
     if (!sandboxFunction) {
       return apiError(ctx, {

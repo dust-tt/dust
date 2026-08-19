@@ -68,6 +68,7 @@ describe("createDataSourceAndConnectorForProject", () => {
 
     // Create a project space for testing
     projectSpace = await SpaceResource.makeNew(
+      internalAdminAuth,
       {
         name: "Test Project Space",
         kind: "project",

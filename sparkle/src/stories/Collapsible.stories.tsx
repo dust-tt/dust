@@ -10,6 +10,7 @@ import {
 
 const meta = {
   title: "Layout/Collapsible",
+  tags: ["a11y-issues"],
   component: Collapsible,
   parameters: {
     docs: {

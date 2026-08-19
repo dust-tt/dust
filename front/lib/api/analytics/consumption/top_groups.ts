@@ -1,9 +1,11 @@
-import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type {
+  ConsumptionScopeFilter,
+  ConsumptionTopSortOrder,
+} from "@app/lib/api/analytics/consumption/scope";
 import {
-  avgCreditsPerUnit,
   fetchConsumptionTopGroups as fetchConsumptionTopGroupBuckets,
+  resolveConsumptionGroupLabels,
 } from "@app/lib/api/analytics/consumption/top";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
@@ -21,6 +23,7 @@ export type ConsumptionTopGroupRow = {
   groupId: string;
   name: string;
   credits: number;
+  previousCredits: number | null;
   messageCount: number;
   avgCreditsPerMessage: number;
 };
@@ -28,6 +31,8 @@ export type ConsumptionTopGroupRow = {
 export type ConsumptionTopGroups = {
   period: ConsumptionPeriod;
   totalCredits: number;
+  hasMore: boolean;
+  totalCount: number;
   // Highest credits first.
   groups: ConsumptionTopGroupRow[];
 };
@@ -39,40 +44,47 @@ export async function fetchConsumptionTopGroups(
   {
     period,
     limit,
+    offset = 0,
+    search,
     filter,
+    sortOrder,
   }: {
     period: ConsumptionPeriod;
     limit: number;
+    offset?: number;
+    search?: string;
     filter?: ConsumptionScopeFilter;
+    sortOrder?: ConsumptionTopSortOrder;
   }
 ): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
   const result = await fetchConsumptionTopGroupBuckets(auth, {
     dimension: "group",
-    unit: "message",
     period,
     limit,
+    offset,
+    search,
     filter,
+    sortOrder,
   });
   if (result.isErr()) {
     return result;
   }
-  const { groups, totalCredits } = result.value;
+  const { groups, hasMore, totalCount, totalCredits } = result.value;
 
-  const labels = await resolveDimensionLabels(
-    auth,
-    "group",
-    groups.map((group) => group.key)
-  );
+  const rows = await resolveConsumptionGroupLabels(auth, "group", groups);
 
   return new Ok({
     period,
     totalCredits,
-    groups: groups.map((group) => ({
-      groupId: group.key,
-      name: labels.get(group.key)?.name ?? group.key,
-      credits: group.credits,
-      messageCount: group.count,
-      avgCreditsPerMessage: avgCreditsPerUnit(group.credits, group.count),
+    hasMore,
+    totalCount,
+    groups: rows.map((row) => ({
+      groupId: row.key,
+      name: row.name,
+      credits: row.credits,
+      previousCredits: row.previousCredits,
+      messageCount: row.count,
+      avgCreditsPerMessage: row.avgCredits,
     })),
   });
 }

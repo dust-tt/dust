@@ -1,6 +1,8 @@
 import { SANDBOX_FUNCTIONS_TOOLS_METADATA } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { publishHandler } from "@app/lib/api/actions/servers/sandbox_functions/tools/publish";
 import { buildSandboxFunctionOnSandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
+import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   makeExtra,
   setupProjectConversation,
@@ -48,6 +50,7 @@ const outputSchema: JSONSchema = {
 beforeEach(() => {
   vi.clearAllMocks();
   fileStorageMock.reset();
+  fileStorageMock.setFetchFileContentNotFound(() => true);
   vi.mocked(buildSandboxFunctionOnSandbox).mockResolvedValue(
     new Ok({
       bundleCode: "export default {};",
@@ -57,6 +60,11 @@ beforeEach(() => {
     })
   );
 });
+
+function firstText(content: Array<{ type: string; text?: string }>): string {
+  const first = content[0];
+  return first.type === "text" ? (first.text ?? "") : "";
+}
 
 describe("publishHandler", () => {
   it("reports the app-prefixed slug and the reference a Frame needs", async () => {
@@ -68,6 +76,7 @@ describe("publishHandler", () => {
         description: "Add a task.",
         path: `pod-${projectId}/TaskList/functions/add-task.ts`,
         executionMode: "fast",
+        defaultStake: "low",
       },
       makeExtra(auth, conversation)
     );
@@ -81,6 +90,106 @@ describe("publishHandler", () => {
         text: `Published pod function "tasklist__add-task". Frames call it by reference "${projectId}/tasklist__add-task".`,
       },
     ]);
+  });
+
+  it("records declared domains as Pod requests, even for an admin publisher", async () => {
+    const { auth, conversation, projectId } =
+      await setupProjectConversation("admin");
+
+    const result = await publishHandler(
+      {
+        slug: "charge",
+        description: "Charge a card.",
+        path: `pod-${projectId}/Billing/functions/charge.ts`,
+        executionMode: "fast",
+        defaultStake: "low",
+        domains: ["API.Stripe.COM", "*.stripe.com"],
+      },
+      makeExtra(auth, conversation)
+    );
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(firstText(result.value)).toContain("Requested for the Pod");
+
+    const policyPath = `w/${auth.getNonNullableWorkspace().sId}/sandboxes/${projectId}.json`;
+    const policy = JSON.parse(fileStorageMock.getObject(policyPath) ?? "{}");
+    expect(policy.allowedDomains).toEqual([]);
+    expect(
+      policy.requestedDomains.map((r: { domain: string }) => r.domain)
+    ).toEqual(["api.stripe.com", "*.stripe.com"]);
+  });
+
+  it("publishes with no domain note when no domains are declared", async () => {
+    const { auth, conversation, projectId } =
+      await setupProjectConversation("admin");
+
+    const result = await publishHandler(
+      {
+        slug: "greet",
+        description: "Greet.",
+        path: `pod-${projectId}/App/functions/greet.ts`,
+        executionMode: "fast",
+        defaultStake: "low",
+      },
+      makeExtra(auth, conversation)
+    );
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(firstText(result.value)).not.toContain("Pod allowlist");
+    expect(firstText(result.value)).not.toContain("Requested");
+  });
+
+  it("persists the declared default stake", async () => {
+    const { auth, conversation, projectId } = await setupProjectConversation();
+    const pod = await SpaceResource.fetchById(auth, projectId);
+    if (!pod) {
+      throw new Error("pod not found");
+    }
+
+    const result = await publishHandler(
+      {
+        slug: "read-task",
+        description: "Read a task.",
+        path: `pod-${projectId}/TaskList/functions/read-task.ts`,
+        executionMode: "fast",
+        defaultStake: "never_ask",
+      },
+      makeExtra(auth, conversation)
+    );
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    expect(
+      (
+        await SandboxFunctionResource.fetchBySpaceAndSlug(
+          auth,
+          pod,
+          "tasklist__read-task"
+        )
+      )?.defaultStake
+    ).toBe("never_ask");
+  });
+
+  it("requires a default stake on every publish", () => {
+    const metadata = SANDBOX_FUNCTIONS_TOOLS_METADATA.find(
+      (tool) => tool.name === "publish"
+    );
+
+    expect(metadata).toBeDefined();
+    expect(metadata?.schema.defaultStake.safeParse(undefined).success).toBe(
+      false
+    );
+    expect(metadata?.schema.defaultStake.safeParse("medium").success).toBe(
+      false
+    );
+    expect(metadata?.schema.defaultStake.safeParse("never_ask").success).toBe(
+      true
+    );
   });
 
   it("accepts a bare function name but not one that already carries a prefix", () => {

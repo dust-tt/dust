@@ -42,7 +42,7 @@ vi.mock("@app/lib/actions/mcp_helper", () => ({
 }));
 
 vi.mock("@app/components/resources/resources_icons", () => ({
-  getAvatarFromIcon: () => null,
+  getIcon: () => null,
 }));
 
 vi.mock("@app/components/oauth/PersonalAuthCredentialOverrides", () => ({
@@ -55,25 +55,13 @@ vi.mock("@app/types/oauth/lib", () => ({
 }));
 
 vi.mock("@dust-tt/sparkle", () => ({
-  ActionCardBlock: ({
-    title,
-    description,
-    actions,
-  }: {
-    title: string;
-    description?: React.ReactNode;
-    actions?: React.ReactNode;
-  }) => (
-    <div>
-      <div>{title}</div>
-      <div>{description}</div>
-      <div>{actions}</div>
-    </div>
-  ),
+  Avatar: () => null,
+  Card: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
   Button: ({ label, onClick }: { label: string; onClick?: () => void }) => (
     <button onClick={onClick}>{label}</button>
   ),
   Check: () => null,
+  Key01: () => null,
   XClose: () => null,
 }));
 
@@ -126,9 +114,20 @@ describe("SandboxFunctionPersonalAuthCard", () => {
       />
     );
 
-    expect(screen.getByText("Google Drive authentication")).toBeDefined();
+    expect(screen.getByText("Connect account")).toBeDefined();
+    expect(
+      screen.getByText(
+        "Dust needs access to Google Drive to complete this action."
+      )
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        "Once connected, Google Drive will remain connected for future requests."
+      )
+    ).toBeDefined();
     // The viewer triggered the invocation, so they can resolve it themselves.
-    expect(screen.getByText("Connect")).toBeDefined();
+    expect(screen.getByText("Decline")).toBeDefined();
+    expect(screen.getByText("Connect Google Drive")).toBeDefined();
   });
 
   it("resolves every invocation waiting on the connection with a single card", async () => {
@@ -141,7 +140,7 @@ describe("SandboxFunctionPersonalAuthCard", () => {
       />
     );
 
-    await userEvent.click(screen.getByText("Connect"));
+    await userEvent.click(screen.getByText("Connect Google Drive"));
 
     expect(createPersonalConnectionMock).toHaveBeenCalledTimes(1);
     expect(resolveAuthenticationMock).toHaveBeenCalledTimes(2);

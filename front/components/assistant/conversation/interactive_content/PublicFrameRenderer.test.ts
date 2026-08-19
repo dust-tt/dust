@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
     viewer: unknown;
   } | null,
   isAuthenticatedMember: true,
+  isPodEditor: false,
+  isPodMember: false,
   isUserLoading: true,
   user: null as typeof user | null,
 }));
@@ -45,6 +47,8 @@ vi.mock("@app/lib/swr/frames", () => ({
     error: null,
     accessToken: "token",
     isAuthenticatedMember: mocks.isAuthenticatedMember,
+    isPodMember: mocks.isPodMember,
+    isPodEditor: mocks.isPodEditor,
   }),
 }));
 
@@ -72,6 +76,8 @@ afterEach(() => {
   cleanup();
   mocks.iframeProps = null;
   mocks.isAuthenticatedMember = true;
+  mocks.isPodEditor = false;
+  mocks.isPodMember = false;
   mocks.isUserLoading = true;
   mocks.user = null;
 });
@@ -80,6 +86,8 @@ describe("getPublicFrameUserIdentity", () => {
   it("scopes a server-confirmed member to the Frame workspace", () => {
     expect(getPublicFrameUserIdentity(user, true, "w_current")).toEqual({
       workspaceId: "w_current",
+      isPodMember: false,
+      isPodEditor: false,
       user: {
         sId: "usr_123",
         firstName: "Ada",
@@ -87,6 +95,15 @@ describe("getPublicFrameUserIdentity", () => {
         fullName: "Ada Lovelace",
         image: null,
       },
+    });
+  });
+
+  it("forwards the viewer's pod standing", () => {
+    expect(
+      getPublicFrameUserIdentity(user, true, "w_current", true, true)
+    ).toMatchObject({
+      isPodMember: true,
+      isPodEditor: true,
     });
   });
 
@@ -123,6 +140,7 @@ describe("PublicFrameRenderer", () => {
   it("enables function calls with the matching member identity", () => {
     mocks.isUserLoading = false;
     mocks.user = user;
+    mocks.isPodMember = true;
 
     render(
       createElement(PublicFrameRenderer, {
@@ -138,6 +156,8 @@ describe("PublicFrameRenderer", () => {
       canInvokeFunctions: true,
       scopedUserIdentity: {
         workspaceId: "w_current",
+        isPodMember: true,
+        isPodEditor: false,
         user: expect.objectContaining({ sId: "usr_123" }),
       },
       // Blocked-action cards run without an AuthProvider on a shared frame, so they get the

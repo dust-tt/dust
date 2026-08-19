@@ -294,6 +294,29 @@ export class FileStorage {
     return signedUrl.toString();
   }
 
+  async getSignedUploadUrl(
+    filename: string,
+    {
+      contentType,
+      expirationDelayMs,
+      extensionHeaders,
+    }: {
+      contentType: string;
+      expirationDelayMs: number;
+      extensionHeaders?: Record<string, string>;
+    }
+  ): Promise<string> {
+    const [signedUrl] = await this.file(filename).getSignedUrl({
+      version: "v4",
+      action: "write",
+      expires: Date.now() + expirationDelayMs,
+      contentType,
+      extensionHeaders,
+    });
+
+    return signedUrl;
+  }
+
   file(filename: string) {
     return this.bucket.file(filename);
   }
@@ -526,7 +549,33 @@ export class FileStorage {
   async deleteByPrefix(prefix: string): Promise<void> {
     await this.bucket.deleteFiles({ prefix });
   }
+
+  /**
+   * Concatenates `sourcePaths` (in order) into `destinationPath`, entirely server-side: no
+   * bytes are downloaded to or uploaded from this process. GCS caps a single compose call
+   * at `GCS_COMPOSE_MAX_SOURCES` source objects; callers with more sources than that must
+   * batch across multiple calls themselves (e.g. composing into intermediate objects first).
+   *
+   * Not retried by the SDK's built-in autoRetry (no precondition is set), so retried at the
+   * application level instead: since the same sources produce the same destination bytes,
+   * retrying from scratch is safe.
+   */
+  async composeFiles(
+    sourcePaths: string[],
+    destinationPath: string
+  ): Promise<void> {
+    await withRetryOnTransientGCSError(
+      () => this.bucket.combine(sourcePaths, this.file(destinationPath)),
+      {
+        operationName: "file compose",
+        logContext: { destinationPath, sourceCount: sourcePaths.length },
+      }
+    );
+  }
 }
+
+// GCS hard limit: https://cloud.google.com/storage/docs/json_api/v1/objects/compose
+export const GCS_COMPOSE_MAX_SOURCES = 32;
 
 const bucketInstances = new Map();
 

@@ -1,9 +1,11 @@
 import { GREP_MATCHES_MAX } from "@app/lib/api/actions/servers/files/metadata";
+import {
+  collectGrepMatches,
+  compileGrepPattern,
+} from "@app/lib/api/actions/servers/files/tools/grep_regex";
 import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
 import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import * as readline from "readline";
 import { z } from "zod";
 import { mcpError, mcpJsonResponse } from "../response";
 import { getDustFileSystemForScope, validatePathMatchesScope } from "./context";
@@ -66,14 +68,13 @@ export function registerFilesGrepTool(server: McpServer) {
         });
       }
 
-      let regex: RegExp;
-      try {
-        regex = new RegExp(pattern, "m");
-      } catch (err) {
+      const regexResult = compileGrepPattern(pattern);
+      if (regexResult.isErr()) {
         return mcpError(
-          `Invalid regular expression: \`${pattern}\`. Error: ${normalizeError(err).message}`
+          `Unsupported or invalid regular expression. Error: ${regexResult.error.message}`
         );
       }
+      const regex = regexResult.value;
 
       const readResult = await dustFs.read(path);
       if (readResult.isErr()) {
@@ -83,44 +84,27 @@ export function registerFilesGrepTool(server: McpServer) {
         return mcpError(`File not found: \`${path}\`.`);
       }
 
-      const matches: string[] = [];
-      let lineNumber = 0;
-      let capped = false;
-
-      const rl = readline.createInterface({
-        input: readResult.value,
-        crlfDelay: Infinity,
+      const grepResult = await collectGrepMatches(readResult.value, regex, {
+        formatMatch: (line, lineNumber) => `${lineNumber}: ${line}`,
+        maxMatches: GREP_MATCHES_MAX,
       });
-
-      try {
-        for await (const line of rl) {
-          lineNumber++;
-
-          if (regex.test(line)) {
-            matches.push(`${lineNumber}: ${line}`);
-
-            if (matches.length >= GREP_MATCHES_MAX) {
-              capped = true;
-              rl.close();
-              break;
-            }
-          }
-        }
-      } catch (err) {
+      if (grepResult.isErr()) {
         return mcpError(
-          `Failed to read file \`${path}\`: ${normalizeError(err).message}`
+          `Failed to search file \`${path}\`: ${grepResult.error.message}`
         );
       }
 
+      const { matches, capped } = grepResult.value;
+
       if (matches.length === 0) {
         return mcpJsonResponse({
-          text: `No lines matched \`${pattern}\` in \`${path}\`.`,
+          text: `No lines matched the pattern in \`${path}\`.`,
         });
       }
 
       let text = matches.join("\n");
       if (capped) {
-        text += `\n\n[Showing first ${GREP_MATCHES_MAX} matches. Refine your pattern or use \`files_cat\` with a line offset to read a specific section.]`;
+        text += `\n\n[Showing ${matches.length} matching line${matches.length === 1 ? "" : "s"} within the output limit. Refine your pattern or use \`files_cat\` with a line offset to read a specific section.]`;
       } else {
         text += `\n\n[${matches.length} match${matches.length === 1 ? "" : "es"} found]`;
       }

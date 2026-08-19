@@ -3,6 +3,7 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import * as temporalClient from "@app/temporal/triggers/schedule_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
 
@@ -42,6 +43,7 @@ describe("TriggerResource", () => {
           timezone: "UTC",
         },
         origin: "user",
+        executionMode: "user_pool",
       });
 
       const trigger2Result = await TriggerResource.makeNew(authenticator, {
@@ -58,6 +60,7 @@ describe("TriggerResource", () => {
           timezone: "UTC",
         },
         origin: "user",
+        executionMode: "user_pool",
       });
 
       const trigger3Result = await TriggerResource.makeNew(authenticator, {
@@ -74,6 +77,7 @@ describe("TriggerResource", () => {
           timezone: "UTC",
         },
         origin: "user",
+        executionMode: "user_pool",
       });
 
       expect(trigger1Result.isOk()).toBe(true);
@@ -193,6 +197,7 @@ describe("TriggerResource", () => {
             timezone: "UTC",
           },
           origin: "user",
+          executionMode: "user_pool",
         }
       );
 
@@ -212,6 +217,7 @@ describe("TriggerResource", () => {
             timezone: "UTC",
           },
           origin: "user",
+          executionMode: "user_pool",
         }
       );
 
@@ -231,6 +237,7 @@ describe("TriggerResource", () => {
             timezone: "UTC",
           },
           origin: "user",
+          executionMode: "user_pool",
         }
       );
 
@@ -327,6 +334,7 @@ describe("TriggerResource", () => {
           timezone: "UTC",
         },
         origin: "user",
+        executionMode: "user_pool",
       });
       expect(triggerResult.isOk()).toBe(true);
       if (triggerResult.isErr()) {
@@ -387,6 +395,7 @@ describe("TriggerResource", () => {
           timezone: "UTC",
         },
         origin: "user",
+        executionMode: "user_pool",
       });
       expect(triggerResult.isOk()).toBe(true);
       if (triggerResult.isErr()) {
@@ -409,6 +418,48 @@ describe("TriggerResource", () => {
 
       mockCreateOrUpdateWorkflow.mockRestore();
       mockDeleteWorkflow.mockRestore();
+    });
+  });
+
+  describe("countForWorkspace", () => {
+    it("counts the workspace's enabled triggers and its total", async () => {
+      const mockCreateOrUpdateWorkflow = vi
+        .spyOn(temporalClient, "createOrUpdateAgentSchedule")
+        .mockResolvedValue(new Ok("workflow-id"));
+
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Test Agent" }
+      );
+
+      for (const status of ["enabled", "enabled", "disabled"] as const) {
+        await TriggerFactory.schedule(authenticator, {
+          agentConfigurationId: agentConfig.sId,
+          status,
+          configuration: { cron: "0 9 * * 1", timezone: "UTC" },
+        });
+      }
+      await TriggerFactory.webhook(authenticator, {
+        agentConfigurationId: agentConfig.sId,
+        status: "downgraded",
+      });
+
+      expect(await TriggerResource.countForWorkspace(authenticator)).toEqual({
+        enabled: 2,
+        total: 4,
+      });
+
+      mockCreateOrUpdateWorkflow.mockRestore();
+    });
+
+    it("counts zero for a workspace without triggers", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      expect(await TriggerResource.countForWorkspace(authenticator)).toEqual({
+        enabled: 0,
+        total: 0,
+      });
     });
   });
 });

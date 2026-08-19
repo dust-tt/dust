@@ -212,12 +212,12 @@ export function HomeTrustedSection() {
   const logos = useLogoSet();
   const marqueeLogos = [...logos, ...logos];
   return (
-    <section className="flex w-full items-center justify-center bg-linear-to-b from-background via-blue-50/40 to-blue-100/60 pb-20 pt-12">
+    <section className="flex w-full items-center justify-center bg-background pb-20 pt-12">
       <style dangerouslySetInnerHTML={{ __html: MARQUEE_CSS }} />
       <div className="mx-auto flex w-full max-w-[1280px] flex-col items-center justify-center gap-12 text-center">
         <HomeReveal>
           <h2 className="m-0 text-balance px-6 text-center text-xl font-semibold tracking-[-0.02em] text-foreground md:text-2xl">
-            Trusted among AI Operators
+            Trusted by teams
             <br />
             at <span className="text-blue-500">3,000+</span> global
             organizations

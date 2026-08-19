@@ -2,6 +2,7 @@ import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
 
 export type GetWorkspaceEgressPolicyResponseBody = {
   policy: EgressPolicy;
+  requestedDomains?: { domain: string; requestedAtMs: number }[];
 };
 
 export type PutWorkspaceEgressPolicyResponseBody = {
@@ -10,6 +11,7 @@ export type PutWorkspaceEgressPolicyResponseBody = {
 
 export type GetPodEgressPolicyResponseBody = {
   policy: EgressPolicy;
+  requestedDomains?: { domain: string; requestedAtMs: number }[];
 };
 
 export type PutPodEgressPolicyResponseBody = {

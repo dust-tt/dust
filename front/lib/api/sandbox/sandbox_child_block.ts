@@ -50,13 +50,10 @@ export async function pauseSandboxBashForBlockedChild(
     return;
   }
 
-  // Flip the action status BEFORE pausing the sandbox provider. If the
-  // provider pause then fails, the bash exec inside the sandbox is still
-  // synchronously blocked on the dust-call awaiting the child response —
-  // so when the child resolves, resolveSandboxChildBlock observes the
-  // parent as blocked, relaunches in resume mode, and the running bash
-  // reconnects via execId. DB-first is the self-converging shape.
-  await parentAction.updateStatus("blocked_child_action_input_required");
+  // DB-first keeps the pause self-converging if the provider call fails. The resource owns the
+  // atomic lifecycle check: running parents become blocked, concurrent siblings are idempotent,
+  // and a stale child attempting to rewind a final parent fails loudly.
+  await parentAction.blockForSandboxChild(auth);
 
   const pauseResult = await ConversationSandboxAdapter.pauseSandboxForApproval(
     auth,
@@ -194,7 +191,22 @@ export async function resolveSandboxChildBlock(
   // we log loudly below — the inverse order would risk launching against a
   // parent still marked `blocked_child_action_input_required`, which the
   // resume path treats as "still paused" and would no-op.
-  await parentAction.updateStatus("ready_allowed_explicitly");
+  const [updatedCount] = await parentAction.updateStatusFromExpected(auth, {
+    status: "ready_allowed_explicitly",
+    expectedStatus: "blocked_child_action_input_required",
+  });
+  if (updatedCount !== 1) {
+    logger.info(
+      {
+        actionId: action.sId,
+        parentActionId,
+        conversationId: agentLoopArgs.conversationId,
+        workspaceId,
+      },
+      "Sandbox parent advanced while resolving child — skipping relaunch"
+    );
+    return;
+  }
 
   const launchResult = await launchAgentLoopWorkflow({
     auth,

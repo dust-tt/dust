@@ -4,19 +4,18 @@ import React from "react";
 import {
   Avatar,
   Button,
-  MessageCircle01,
   CloudArrowLeftRight,
   ContextItem,
   Folder,
   Globe01,
   Icon,
   Page,
-  Rocket02,
 } from "../index_with_tw_base";
 import { MessageChatSquare } from "@sparkle/icons/v2-stroke";
 
 const meta = {
   title: "Layout/Page",
+  tags: ["a11y-issues"],
   component: Page,
   parameters: {
     docs: {
@@ -39,11 +38,7 @@ export default meta;
 export const PageSimpleExample = () => {
   return (
     <Page>
-      <Page.Header
-        title="Title"
-        description="Description"
-        icon={MessageCircle01}
-      />
+      <Page.Header title="Title" description="Description" />
       <Page.P>
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod
         a massa quis lacinia. Donec euismod nisl eget nunc Lorem ipsum dolor sit
@@ -66,7 +61,6 @@ export const QIGExample = () => {
   return (
     <Page>
       <Page.Header
-        icon={Rocket02}
         title={
           <>
             Get Started: <br />
@@ -210,11 +204,7 @@ export const QIGExample = () => {
 export const PageExample = () => {
   return (
     <Page>
-      <Page.Header
-        title="Title"
-        description="Description"
-        icon={MessageCircle01}
-      />
+      <Page.Header title="Title" description="Description" />
       <Page.P>
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod
         a massa quis lacinia. Donec euismod nisl eget nunc Lorem ipsum dolor sit
@@ -343,7 +333,7 @@ export const AssistantBuilder = () => {
 export const HelpExample = () => {
   return (
     <Page>
-      <Page.Header title="Welcome to Agent" icon={MessageCircle01} />
+      <Page.Header title="Welcome to Agent" />
       <Page.Layout direction="vertical" gap="xs" align="left">
         <Page.SectionHeader title="Getting started?" />
         <Page.P variant="secondary">

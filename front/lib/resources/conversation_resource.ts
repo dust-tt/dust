@@ -16,10 +16,7 @@ import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import {
-  createAccessControlListFromSpacesWithMap,
-  createSpaceIdToGroupsMap,
-} from "@app/lib/resources/permission_utils";
+import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -1142,18 +1139,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         )
       );
 
-    // Create space-to-groups mapping once for efficient permission checks.
-    const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
-
     const spaceBasedAccessible = validConversations.filter((c) =>
-      auth.hasPermissionForAcls(
-        "read",
-        createAccessControlListFromSpacesWithMap(
-          spaceIdToGroupsMap,
-          c.requestedSpaceIds,
-          auth.getNonNullableWorkspace().id
-        )
-      )
+      canReadRequestedSpaces(auth, spaceIdToSpaceMap, c.requestedSpaceIds)
     );
 
     if (spaceBasedAccessible.length === 0) {
@@ -1255,27 +1242,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return participationCount > 0;
   }
 
-  private static async isConversationReadableFromRequestedSpaces(
-    auth: Authenticator,
-    conversation: ConversationModel
-  ): Promise<boolean> {
-    const spaces = await SpaceResource.fetchByModelIds(
-      auth,
-      conversation.requestedSpaceIds
-    );
-
-    const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
-
-    return auth.hasPermissionForAcls(
-      "read",
-      createAccessControlListFromSpacesWithMap(
-        spaceIdToGroupsMap,
-        conversation.requestedSpaceIds,
-        auth.getNonNullableWorkspace().id
-      )
-    );
-  }
-
   static async canAccess(
     auth: Authenticator,
     sId: string
@@ -1304,17 +1270,23 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         : "conversation_access_restricted";
     }
 
-    try {
-      if (
-        !(await this.isConversationReadableFromRequestedSpaces(
-          auth,
-          conversation
-        ))
-      ) {
-        return "conversation_access_restricted";
-      }
-    } catch (_error) {
+    // Private conversations: the viewer must read every requested space (conjunctive ACL). A
+    // requested space missing from the fetch — deleted, or belonging to another workspace — means
+    // the conversation can no longer be located, not merely that access is restricted.
+    const spaces = await SpaceResource.fetchByModelIds(
+      auth,
+      conversation.requestedSpaceIds
+    );
+    const spaceById = new Map(spaces.map((s) => [s.id, s]));
+
+    if (conversation.requestedSpaceIds.some((id) => !spaceById.has(id))) {
       return "conversation_not_found";
+    }
+
+    if (
+      !canReadRequestedSpaces(auth, spaceById, conversation.requestedSpaceIds)
+    ) {
+      return "conversation_access_restricted";
     }
 
     if (
@@ -4589,6 +4561,30 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     await conversation.update({ metadata }, transaction);
 
+    return new Ok(undefined);
+  }
+
+  /** Copies the filesystem choice to a fresh standalone child conversation. */
+  static async inheritDatabaseFileSystem(
+    auth: Authenticator,
+    sId: string
+  ): Promise<Result<undefined, Error>> {
+    const conversation = await this.fetchById(auth, sId);
+    if (!conversation) {
+      return new Err(new ConversationError("conversation_not_found"));
+    }
+    if (conversation.spaceId !== null) {
+      return new Err(
+        new Error("Pod conversations inherit their Pod filesystem.")
+      );
+    }
+
+    await conversation.update({
+      metadata: {
+        ...conversation.metadata,
+        useDatabaseFileSystem: true,
+      },
+    });
     return new Ok(undefined);
   }
 

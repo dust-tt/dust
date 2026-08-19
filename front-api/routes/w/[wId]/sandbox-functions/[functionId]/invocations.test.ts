@@ -2,15 +2,19 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { Authenticator } from "@app/lib/auth";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";
@@ -20,7 +24,8 @@ import type {
   SandboxFunctionInvocationEvent,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
-import { sandboxFunctionContentType } from "@app/types/files";
+import type { FileShareScope } from "@app/types/files";
+import { frameContentType, sandboxFunctionContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -97,14 +102,14 @@ afterEach(() => {
 
 async function setupSandboxFunction({
   addCallerToSpace = true,
-  addCallerToEditors = false,
   withSandboxFunctionsFeatureFlag = true,
   userIdentity = "optional",
+  slug = "run-function",
 }: {
   addCallerToSpace?: boolean;
-  addCallerToEditors?: boolean;
   withSandboxFunctionsFeatureFlag?: boolean;
   userIdentity?: SandboxFunctionUserIdentityPolicy;
+  slug?: string;
 } = {}) {
   const { workspace, auth: adminAuth } = await createPrivateApiMockRequest({
     role: "admin",
@@ -124,7 +129,7 @@ async function setupSandboxFunction({
   const sandboxFunction = await SandboxFunctionResource.makeNew(adminAuth, {
     space,
     file,
-    slug: "run-function",
+    slug,
     description: "Run the function.",
     userIdentity,
     inputSchema,
@@ -148,26 +153,52 @@ async function setupSandboxFunction({
     });
     expect(addMemberResult.isOk()).toBe(true);
   }
-  if (addCallerToEditors) {
-    const [editorGroup] = await space.fetchGroupResources(adminAuth, {
-      groupReferences: space.groups.filter(
-        (group) => group.groupKind === "space_editors"
-      ),
-    });
-    if (!editorGroup) {
-      throw new Error("Expected the project editor group to exist.");
-    }
-    const addEditorResult = await editorGroup.dangerouslyAddMember(adminAuth, {
-      user: user.toJSON(),
-    });
-    expect(addEditorResult.isOk()).toBe(true);
-  }
   const callerAuth = await Authenticator.fromUserIdAndWorkspaceId(
     user.sId,
     workspace.sId
   );
 
-  return { workspace, sandboxFunction, adminAuth, callerAuth, space };
+  return { workspace, sandboxFunction, adminAuth, callerAuth, space, user };
+}
+
+// Creates a Pod app frame in `folderName` shared with the given scope, returning its share token —
+// the capability under test.
+async function createSharedAppFrame(
+  adminAuth: Authenticator,
+  {
+    workspace,
+    space,
+    folderName,
+    scope = "workspace_and_emails",
+    grantEmails,
+    owner = null,
+  }: {
+    workspace: { sId: string };
+    space: { sId: string };
+    folderName: string;
+    scope?: FileShareScope;
+    grantEmails?: string[];
+    owner?: UserResource | null;
+  }
+) {
+  const frameFile = await FileFactory.create(adminAuth, owner, {
+    contentType: frameContentType,
+    fileName: `${folderName}.tsx`,
+    fileSize: 100,
+    status: "ready",
+    useCase: "project_context",
+    useCaseMetadata: { spaceId: space.sId },
+    mountFilePath: `w/${workspace.sId}/pods/${space.sId}/files/${folderName}/${folderName}.tsx`,
+  });
+  await frameFile.setShareScope(adminAuth, scope);
+  if (grantEmails && grantEmails.length > 0) {
+    await frameFile.addSharingGrants(adminAuth, { emails: grantEmails });
+  }
+  const shareInfo = await frameFile.getShareInfo();
+  if (!shareInfo) {
+    throw new Error("Expected the frame share to exist.");
+  }
+  return shareInfo.shareUrl.split("/").at(-1)!;
 }
 
 // Builds a blocked action awaiting validation, the state spolu's creation gate produces for
@@ -284,10 +315,12 @@ function postInvocation({
   workspaceId,
   functionIdOrSlug,
   body = {},
+  frameShareToken,
 }: {
   workspaceId: string;
   functionIdOrSlug: string;
   body?: unknown;
+  frameShareToken?: string;
 }) {
   const encodedFunctionIdOrSlug = encodeURIComponent(functionIdOrSlug);
 
@@ -295,7 +328,12 @@ function postInvocation({
     `/api/w/${workspaceId}/sandbox-functions/${encodedFunctionIdOrSlug}/invocations`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(frameShareToken
+          ? { "x-dust-frame-share-token": frameShareToken }
+          : {}),
+      },
       body: JSON.stringify(body),
     }
   );
@@ -495,12 +533,9 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
     expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
   });
 
-  it("allows a pod editor to invoke a pod-editor-required function", async () => {
-    // Editors are not in the member group ("a user cannot be both a member and an editor").
+  it("allows a pod member to invoke a pod-member-required function", async () => {
     const { workspace, sandboxFunction } = await setupSandboxFunction({
-      userIdentity: "pod_editor_required",
-      addCallerToSpace: false,
-      addCallerToEditors: true,
+      userIdentity: "pod_member_required",
     });
 
     const response = await postInvocation({
@@ -512,10 +547,20 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
     expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
   });
 
-  it("denies a pod member who is not an editor on a pod-editor-required function", async () => {
-    const { workspace, sandboxFunction } = await setupSandboxFunction({
-      userIdentity: "pod_editor_required",
-    });
+  it("denies a workspace member outside an open pod on a pod-member-required function", async () => {
+    const { workspace, sandboxFunction, space, adminAuth } =
+      await setupSandboxFunction({
+        userIdentity: "pod_member_required",
+        addCallerToSpace: false,
+      });
+    // Open the pod so the caller clears the read gate and the policy itself denies (a restricted
+    // pod would 404 at fetch before the policy runs).
+    const globalGroupResult =
+      await GroupResource.fetchWorkspaceGlobalGroup(adminAuth);
+    expect(globalGroupResult.isOk()).toBe(true);
+    if (globalGroupResult.isOk()) {
+      await GroupSpaceFactory.associate(space, globalGroupResult.value);
+    }
 
     const response = await postInvocation({
       workspaceId: workspace.sId,
@@ -610,6 +655,225 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
     expect(response.status).toBe(404);
     expect(await response.json()).toMatchObject({
       error: { type: "sandbox_function_not_found" },
+    });
+  });
+
+  describe("frame share token capability", () => {
+    it("allows a workspace member outside the pod with the app frame's share token", async () => {
+      const { workspace, sandboxFunction, adminAuth, space } =
+        await setupSandboxFunction({
+          addCallerToSpace: false,
+          slug: "tasklist__run",
+        });
+      const frameShareToken = await createSharedAppFrame(adminAuth, {
+        workspace,
+        space,
+        folderName: "TaskList",
+      });
+
+      const response = await postInvocation({
+        workspaceId: workspace.sId,
+        functionIdOrSlug: sandboxFunction.sId,
+        frameShareToken,
+      });
+
+      expect(response.status).toBe(201);
+      expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
+    });
+
+    it("resolves by pod id and slug with the app frame's share token", async () => {
+      const { workspace, sandboxFunction, adminAuth, space } =
+        await setupSandboxFunction({
+          addCallerToSpace: false,
+          slug: "tasklist__run",
+        });
+      const frameShareToken = await createSharedAppFrame(adminAuth, {
+        workspace,
+        space,
+        folderName: "TaskList",
+      });
+
+      const response = await postInvocation({
+        workspaceId: workspace.sId,
+        functionIdOrSlug: `${space.sId}/${sandboxFunction.slug}`,
+        frameShareToken,
+      });
+
+      expect(response.status).toBe(201);
+    });
+
+    it("rejects a token from another app's frame in the same pod", async () => {
+      const { workspace, sandboxFunction, adminAuth, space } =
+        await setupSandboxFunction({
+          addCallerToSpace: false,
+          slug: "tasklist__run",
+        });
+      const frameShareToken = await createSharedAppFrame(adminAuth, {
+        workspace,
+        space,
+        folderName: "OtherApp",
+      });
+
+      const response = await postInvocation({
+        workspaceId: workspace.sId,
+        functionIdOrSlug: sandboxFunction.sId,
+        frameShareToken,
+      });
+
+      expect(response.status).toBe(404);
+      expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+    });
+
+    it("allows a workspace member with an email grant on an invite-only frame", async () => {
+      const { workspace, sandboxFunction, adminAuth, space, user } =
+        await setupSandboxFunction({
+          addCallerToSpace: false,
+          slug: "tasklist__run",
+        });
+      const frameShareToken = await createSharedAppFrame(adminAuth, {
+        workspace,
+        space,
+        folderName: "TaskList",
+        scope: "emails_only",
+        grantEmails: [user.email],
+      });
+
+      const response = await postInvocation({
+        workspaceId: workspace.sId,
+        functionIdOrSlug: sandboxFunction.sId,
+        frameShareToken,
+      });
+
+      expect(response.status).toBe(201);
+      expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
+    });
+
+    it("rejects a token from another pod's frame in the same workspace", async () => {
+      const { workspace, sandboxFunction, adminAuth } =
+        await setupSandboxFunction({
+          addCallerToSpace: false,
+          slug: "tasklist__run",
+        });
+      // A shared frame in a different pod, same folder name: the capability only ever queries
+      // its own pod, so both address forms must miss.
+      const otherPod = await SpaceFactory.project(workspace);
+      const frameShareToken = await createSharedAppFrame(adminAuth, {
+        workspace,
+        space: otherPod,
+        folderName: "TaskList",
+      });
+
+      const bySId = await postInvocation({
+        workspaceId: workspace.sId,
+        functionIdOrSlug: sandboxFunction.sId,
+        frameShareToken,
+      });
+      expect(bySId.status).toBe(404);
+
+      const bySlug = await postInvocation({
+        workspaceId: workspace.sId,
+        functionIdOrSlug: `${sandboxFunction.space.sId}/${sandboxFunction.slug}`,
+        frameShareToken,
+      });
+      expect(bySlug.status).toBe(404);
+      expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+    });
+
+    it("allows the frame's owner outside the pod on an invite-only frame without a grant", async () => {
+      // The view path admits the owner without a grant; invocation mirrors it so that using an
+      // app follows viewing its frame exactly.
+      const { workspace, sandboxFunction, adminAuth, space, user } =
+        await setupSandboxFunction({
+          addCallerToSpace: false,
+          slug: "tasklist__run",
+        });
+      const frameShareToken = await createSharedAppFrame(adminAuth, {
+        workspace,
+        space,
+        folderName: "TaskList",
+        scope: "emails_only",
+        owner: user,
+      });
+
+      const response = await postInvocation({
+        workspaceId: workspace.sId,
+        functionIdOrSlug: sandboxFunction.sId,
+        frameShareToken,
+      });
+
+      expect(response.status).toBe(201);
+      expect(launchSandboxFunctionInvocationWorkflow).toHaveBeenCalledOnce();
+    });
+
+    it("rejects an invite-only token when the caller has no email grant", async () => {
+      const { workspace, sandboxFunction, adminAuth, space } =
+        await setupSandboxFunction({
+          addCallerToSpace: false,
+          slug: "tasklist__run",
+        });
+      const frameShareToken = await createSharedAppFrame(adminAuth, {
+        workspace,
+        space,
+        folderName: "TaskList",
+        scope: "emails_only",
+      });
+
+      const response = await postInvocation({
+        workspaceId: workspace.sId,
+        functionIdOrSlug: sandboxFunction.sId,
+        frameShareToken,
+      });
+
+      expect(response.status).toBe(404);
+      expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+    });
+
+    it("rejects a token from another workspace", async () => {
+      const { workspace, sandboxFunction } = await setupSandboxFunction({
+        addCallerToSpace: false,
+        slug: "tasklist__run",
+      });
+      // A pod app frame with the same folder name, but in a different workspace. Built without
+      // createPrivateApiMockRequest so the caller's session mock stays on the first workspace.
+      const otherCtx = await createResourceTest({ role: "admin" });
+      const otherSpace = await SpaceFactory.project(otherCtx.workspace);
+      const foreignToken = await createSharedAppFrame(otherCtx.authenticator, {
+        workspace: otherCtx.workspace,
+        space: otherSpace,
+        folderName: "TaskList",
+      });
+
+      const response = await postInvocation({
+        workspaceId: workspace.sId,
+        functionIdOrSlug: sandboxFunction.sId,
+        frameShareToken: foreignToken,
+      });
+
+      expect(response.status).toBe(404);
+      expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
+    });
+
+    it("still applies the pod-member-required policy with a valid token", async () => {
+      const { workspace, sandboxFunction, adminAuth, space } =
+        await setupSandboxFunction({
+          addCallerToSpace: false,
+          slug: "tasklist__run",
+          userIdentity: "pod_member_required",
+        });
+      const frameShareToken = await createSharedAppFrame(adminAuth, {
+        workspace,
+        space,
+        folderName: "TaskList",
+      });
+
+      const response = await postInvocation({
+        workspaceId: workspace.sId,
+        functionIdOrSlug: sandboxFunction.sId,
+        frameShareToken,
+      });
+
+      expect(response.status).toBe(401);
+      expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
     });
   });
 

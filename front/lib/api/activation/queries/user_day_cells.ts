@@ -8,6 +8,7 @@ import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversati
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
+import chunk from "lodash/chunk";
 
 // ---------------------------------------------------------------------------
 // Elasticsearch query: per-(user, day) activity facts.
@@ -24,9 +25,10 @@ const DAILY_ACTIVE_USER_ORIGINS = USER_USAGE_ORIGINS.filter(
   (origin) => origin !== "triggered"
 );
 
-// Hard cap on users per call. The composite page size is sized so that the
-// entire (user × day) grid fits in a single page for a capped user set, making
-// the pagination loop complete by construction (see below).
+// Hard cap on users per Elasticsearch call. Larger sets are fetched in
+// sequential batches. The composite page size is sized so that the entire
+// (user × day) grid fits in a single page for a capped user set, making the
+// pagination loop complete by construction (see below).
 const ELASTICSEARCH_MAX_USERS_PER_CALL = 100;
 // Upper bound on distinct day-buckets a single user can produce over any
 // trailing window of up to ~one month.
@@ -79,12 +81,10 @@ function bucketToFact(bucket: CompositeDayBucket): UserDayFact {
 
 /**
  * Fetches per-(user, day) activity facts for the given users over
- * [windowStart, windowEnd), keyed by user sId. One composite Elasticsearch
- * aggregation per call (not per user).
- *
- * Fails (rather than returning partial data) if the user set exceeds the cap or
- * if pagination does not exhaust — a partial result would silently under-count
- * activity and cause false "not activated" verdicts.
+ * [windowStart, windowEnd), keyed by user sId. Elasticsearch composite
+ * aggregations are capped at ELASTICSEARCH_MAX_USERS_PER_CALL so the
+ * (user × day) grid fits in a single page; larger sets are fetched in
+ * batches and merged.
  */
 export async function fetchUserDayCells({
   workspaceId,
@@ -103,15 +103,39 @@ export async function fetchUserDayCells({
   if (uniqueUserIds.length === 0) {
     return new Ok(factsByUser);
   }
-  if (uniqueUserIds.length > ELASTICSEARCH_MAX_USERS_PER_CALL) {
-    return new Err(
-      new Error(
-        `activation evaluation supports at most ${ELASTICSEARCH_MAX_USERS_PER_CALL} ` +
-          `users per call, got ${uniqueUserIds.length}`
-      )
-    );
+
+  const batches = chunk(uniqueUserIds, ELASTICSEARCH_MAX_USERS_PER_CALL);
+  for (const batch of batches) {
+    const batchResult = await fetchUserDayCellsBatch({
+      workspaceId,
+      userIds: batch,
+      windowStart,
+      windowEnd,
+    });
+    if (batchResult.isErr()) {
+      return batchResult;
+    }
+    for (const [userId, facts] of batchResult.value) {
+      factsByUser.set(userId, facts);
+    }
   }
-  for (const userId of uniqueUserIds) {
+
+  return new Ok(factsByUser);
+}
+
+async function fetchUserDayCellsBatch({
+  workspaceId,
+  userIds,
+  windowStart,
+  windowEnd,
+}: {
+  workspaceId: string;
+  userIds: string[];
+  windowStart: Date;
+  windowEnd: Date;
+}): Promise<Result<Map<string, UserDayFact[]>, Error>> {
+  const factsByUser = new Map<string, UserDayFact[]>();
+  for (const userId of userIds) {
     factsByUser.set(userId, []);
   }
 
@@ -122,7 +146,7 @@ export async function fetchUserDayCells({
         // never search documents from another workspace.
         buildAgentAnalyticsBaseQuery({
           workspaceId,
-          userIds: uniqueUserIds,
+          userIds,
           // Include only known human/user origins rather than excluding
           // programmatic ones with a costly must_not clause.
           contextOrigin: USER_USAGE_ORIGINS,

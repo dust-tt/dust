@@ -42,6 +42,7 @@ export type KnownModelLLMId =
   | "gpt-5.5"
   | "gpt-5.6-sol"
   | "gpt-5.6-terra"
+  | "gpt-5.6-terra-long-context"
   | "gpt-5.6-luna"
   | "gpt-5.4-mini"
   | "gpt-5.4-nano"
@@ -87,6 +88,7 @@ export type KnownModelLLMId =
   | "gemini-3.5-flash"
   | "gemini-3.5-flash-lite"
   | "gemini-3.6-flash"
+  | "gemini-3.7-flash"
   | "deepseek-chat" // deepseek api
   | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/deepseek-v4-pro" // fireworks
@@ -99,6 +101,7 @@ export type KnownModelLLMId =
   | "accounts/fireworks/models/minimax-m2p5" // fireworks
   | "accounts/fireworks/models/glm-5" // fireworks
   | "accounts/fireworks/models/glm-5p2" // fireworks
+  | "accounts/fireworks/models/inkling" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
   | "grok-4.5" // xAI
@@ -739,7 +742,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
   | "anthropic_cache_diagnostics"
-  | "agent_loop_qos_routing"
   | "audit_logs"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
@@ -755,9 +757,12 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dummy_feature_for_flag_testing"
   | "dust_agent_gpt_5_6_luna_default"
   | "dust_agent_sonnet_5_default"
+  | "dust_filesystem"
+  | "dust_internal_dangerous_in_cluster_mcp_servers"
   | "dust_internal_global_agents"
   | "fireworks_new_model_feature"
   | "google_sheets_tool"
+  | "gpt_5_6_terra_long_context"
   | "group_permissions_shadow"
   | "http_client_tool"
   | "index_private_slack_channel"
@@ -778,6 +783,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "legacy_billing"
   | "plan_mode"
   | "pod_frame_tabs"
+  | "pod_applications"
   | "skill_favorites"
   | "poke_mcp"
   | "restricted_spaces_in_input_bar"
@@ -788,12 +794,12 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "servicenow_tool"
   | "shopify_tool"
   | "show_debug_tools"
-  | "slack_enhanced_default_agent"
   | "slack_message_splitting"
   | "run_tools_from_prompt"
   | "usage_data_api"
   | "usage_page_read_only"
   | "enable_analytics_consumption"
+  | "enable_analytics_automations"
   | "pricing_groups"
   | "workspace_analytics"
   | "xai_feature"
@@ -811,6 +817,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "user_memory"
   | "similar_agents_check"
   | "enforce_user_spend_limit_rate_cap"
+  | "enforce_premium_model_message_limit"
   | "editable_tool_inputs"
   | "skip_free_usage_rate_limit"
 >();
@@ -3207,6 +3214,11 @@ export const PublicFrameResponseBodySchema = z.object({
   // functions by bare name. Only sent to a viewer who can read the Pod: nobody else can invoke a pod
   // function anyway, so there is no reason to hand out the Pod's layout.
   framePath: z.string().nullable().optional(),
+  // Standing of the authenticated viewer in the Pod hosting the Frame, so the share page can
+  // thread the same identity bits pod hosts do. Display-only: invocations re-authorize
+  // server-side. Absent means false.
+  isPodMember: z.boolean().optional(),
+  isPodEditor: z.boolean().optional(),
 });
 
 export type PublicFrameResponseBodyType = z.infer<

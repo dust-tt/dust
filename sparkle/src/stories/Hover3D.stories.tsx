@@ -7,6 +7,7 @@ import { Div3D, GithubLogo, Hover3D, Icon } from "../index_with_tw_base";
 
 const meta = {
   title: "Effects & Motion/Hover3D",
+  tags: ["a11y-issues"],
   component: Hover3D,
   parameters: {
     docs: {

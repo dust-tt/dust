@@ -48,7 +48,7 @@ export const PickModelSubMenuDropdown = forwardRef<
     const lockPremiumEfforts = !isCreditPricedPlan(subscription.plan);
     const { isDark } = useTheme();
 
-    const { models, isModelsLoading } = useModels({
+    const { models, streams, isModelsLoading } = useModels({
       owner,
       disabled: !hasModelsPicker,
     });
@@ -65,8 +65,9 @@ export const PickModelSubMenuDropdown = forwardRef<
           lockPremiumEfforts,
           models,
           query,
+          streams,
         }),
-      [getModelIcon, lockPremiumEfforts, models, query]
+      [getModelIcon, lockPremiumEfforts, models, query, streams]
     );
 
     const handleSelect = (item: SlashCommand) => {

@@ -8,7 +8,7 @@ const { dns } = interceptors;
 // - dns: caches DNS resolutions to avoid repeated dns.lookup() calls that saturate the
 //   libuv thread pool and drive up event loop utilisation.
 // - retry: retries on transient network errors; only fires on idempotent methods for 5xx.
-const _internalAgent = new Agent({
+export const internalAgent = new Agent({
   keepAliveTimeout: 30_000,
   keepAliveMaxTimeout: 600_000,
 }).compose(
@@ -24,5 +24,5 @@ export function internalFetch(
 ): Promise<globalThis.Response> {
   // @ts-expect-error - globalThis.RequestInit and undici.RequestInit are structurally
   // compatible at runtime; the mismatch is only that DOM RequestInit lacks `dispatcher`.
-  return undiciFetch(url, { ...(init ?? {}), dispatcher: _internalAgent });
+  return undiciFetch(url, { ...(init ?? {}), dispatcher: internalAgent });
 }

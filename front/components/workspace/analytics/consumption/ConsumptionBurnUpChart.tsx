@@ -105,12 +105,15 @@ export function ConsumptionBurnUpChart({
   filter,
 }: ConsumptionBurnUpChartProps) {
   const { overview } = useConsumptionOverview({ workspaceId, period, filter });
-  // A cap only exists on a billing cycle. Gating on the selection rather than on
-  // the response alone keeps a previous cycle's cap — kept around by
-  // `keepPreviousData` while the new request lands — from drawing a target over
-  // a period that has none.
+  const isFiltered = Object.values(filter ?? {}).some(
+    (values) => values.length > 0
+  );
+  // A cap only exists on a billing cycle, when there's no filter. Gating on the
+  // selection rather than on the response alone keeps a previous cycle's cap —
+  // kept around by `keepPreviousData` while the new request lands — from drawing
+  // a target over a period that has none.
   const capCredits =
-    period.kind === "cycle"
+    period.kind === "cycle" && !isFiltered
       ? (overview?.creditUsage?.capCredits ?? null)
       : null;
 
@@ -167,7 +170,7 @@ export function ConsumptionBurnUpChart({
 
   return (
     <ChartContainer
-      title="Cumulative credits"
+      title="Cumulative consumption"
       isLoading={isTimeseriesLoading}
       errorMessage={
         isTimeseriesError ? "Failed to load consumption." : undefined
@@ -179,12 +182,18 @@ export function ConsumptionBurnUpChart({
       }
       height={CHART_HEIGHT}
       legendItems={legendItems}
+      legendAlignment="center"
+      showHeaderDivider
     >
       <LineChart data={chartData} margin={{ ...CHART_MARGIN, top: 24 }}>
-        <CartesianGrid vertical={false} className="stroke-border" />
+        <CartesianGrid
+          vertical={false}
+          strokeDasharray="4 4"
+          className="stroke-border"
+        />
         <XAxis
           dataKey="timestamp"
-          className="text-xs text-muted-foreground"
+          className="text-xs text-faint"
           tickLine={false}
           axisLine={false}
           tickMargin={8}
@@ -194,13 +203,14 @@ export function ConsumptionBurnUpChart({
           }
         />
         <YAxis
-          className="text-xs text-muted-foreground"
+          className="text-xs text-faint"
           tickLine={false}
           axisLine={false}
           tickMargin={8}
           tickFormatter={formatCreditsCompact}
         />
         <Tooltip
+          cursor={false}
           content={ConsumptionBurnUpTooltip}
           wrapperStyle={{ outline: "none", zIndex: 50 }}
         />

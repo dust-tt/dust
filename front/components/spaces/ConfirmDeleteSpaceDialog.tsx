@@ -38,9 +38,20 @@ export function ConfirmDeleteSpaceDialog({
         ),
       ]
     : [];
+  const uniqueSkillNames = spaceInfoByCategory
+    ? [
+        ...new Set(
+          Object.values(spaceInfoByCategory)
+            .flatMap((category) => category.usage.skills)
+            .map((skill) => skill.name)
+            .filter((name) => name && name.length > 0)
+        ),
+      ]
+    : [];
 
   const spaceName = `${getSpaceName(space)}`;
   const hasAgents = uniqueAgentNames.length > 0;
+  const hasSkills = uniqueSkillNames.length > 0;
 
   return (
     <Dialog>
@@ -69,8 +80,16 @@ export function ConfirmDeleteSpaceDialog({
                 <ContentMessage
                   variant="warning"
                   // TODO: change to show names of public agents and then number of unpublished agents
-                  title={`${uniqueAgentNames.length} agent${uniqueAgentNames.length === 1 ? "" : "s"} 
-                    use${uniqueAgentNames.length === 1 ? "s" : ""} tools that depend on this space 
+                  title={`${uniqueAgentNames.length} agent${uniqueAgentNames.length === 1 ? "" : "s"}
+                    use${uniqueAgentNames.length === 1 ? "s" : ""} tools that depend on this space
+                    and will be impacted by its deletion`}
+                />
+              )}
+              {hasSkills && (
+                <ContentMessage
+                  variant="warning"
+                  title={`${uniqueSkillNames.length} skill${uniqueSkillNames.length === 1 ? "" : "s"}
+                    depend${uniqueSkillNames.length === 1 ? "s" : ""} on this space
                     and will be impacted by its deletion`}
                 />
               )}

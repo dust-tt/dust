@@ -1,4 +1,4 @@
-import type { DataSourcesUsageByAgent } from "@app/lib/api/agent_data_sources";
+import type { DataSourcesUsage } from "@app/lib/api/agent_data_sources";
 import {
   getDataSourcesUsageByCategory,
   getDataSourceViewsUsageByModelIds,
@@ -167,7 +167,7 @@ app.get(
       });
     }
 
-    let usages: DataSourcesUsageByAgent = {};
+    let usages: DataSourcesUsage = {};
     if (space.isSystem()) {
       // In system spaces, reflect usage by data sources themselves (across all
       // spaces), then remap onto this space's views.
@@ -200,7 +200,11 @@ app.get(
                 fetchConnectorError: false,
                 fetchConnectorErrorMessage: null,
               },
-              usage: usages[dataSourceView.id] ?? { count: 0, agents: [] },
+              usage: usages[dataSourceView.id] ?? {
+                count: 0,
+                agents: [],
+                skills: [],
+              },
             };
           }
 
@@ -209,7 +213,11 @@ app.get(
           return {
             ...dataSourceView,
             dataSource: augmentedDataSource,
-            usage: usages[dataSourceView.id] ?? { count: 0, agents: [] },
+            usage: usages[dataSourceView.id] ?? {
+              count: 0,
+              agents: [],
+              skills: [],
+            },
           };
         })
       );

@@ -15,6 +15,7 @@ import {
   BarChart01,
   Brackets,
   Brain,
+  Clock,
   CreditCard01,
   File04,
   Fingerprint04,
@@ -97,6 +98,7 @@ type SubNavigationAdminId =
   | "sandbox"
   | "analytics"
   | "analytics_consumption"
+  | "automations"
   | "credits_usage"
   | "usage"
   | "self_improving_skills";
@@ -109,6 +111,7 @@ const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   model_providers: ["/w/[wId]/model-providers"],
   analytics: ["/w/[wId]/analytics"],
   analytics_consumption: ["/w/[wId]/analytics/consumption"],
+  automations: ["/w/[wId]/automations"],
   subscription: ["/w/[wId]/subscription"],
   billing: ["/w/[wId]/billing"],
   api_keys: ["/w/[wId]/developers/api-keys"],
@@ -228,6 +231,7 @@ export const getTopNavigationTabs = (
           "/w/[wId]/billing",
           "/w/[wId]/analytics",
           "/w/[wId]/analytics/consumption",
+          "/w/[wId]/automations",
           "/w/[wId]/actions",
           "/w/[wId]/developers/credits-usage",
           "/w/[wId]/developers/providers",
@@ -354,7 +358,7 @@ export const subNavigationAdmin = ({
               icon: BarChart01,
               href: `/w/${owner.sId}/analytics/consumption`,
               current: isCurrent("analytics_consumption"),
-              disabled: !hasAdminRole,
+              disabled: !hasManagerRole,
             },
           ]
         : []),
@@ -380,7 +384,7 @@ export const subNavigationAdmin = ({
 
   nav.push({
     id: "api",
-    label: "API & Programmatic",
+    label: "Programmatic Usage",
     menus: [
       {
         id: "api_keys",
@@ -395,13 +399,25 @@ export const subNavigationAdmin = ({
         : [
             {
               id: "credits_usage" as const,
-              label: "Programmatic Usage",
+              label: "Credits Usage",
               icon: Zap,
               href: `/w/${owner.sId}/developers/credits-usage`,
               current: isCurrent("credits_usage"),
               disabled: !hasAdminRole,
             },
           ]),
+      ...(featureFlags.includes("enable_analytics_automations")
+        ? [
+            {
+              id: "automations" as const,
+              label: "Automations",
+              icon: Clock,
+              href: `/w/${owner.sId}/automations`,
+              current: isCurrent("automations"),
+              disabled: !hasManagerRole,
+            },
+          ]
+        : []),
     ],
   });
 

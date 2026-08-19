@@ -12,7 +12,7 @@ const {
   mockLoggerWarn,
   mockLoggerChild,
   mockForConversation,
-  mockForPod,
+  mockForPodSandboxProvisioning,
   mockSetupSandboxMount,
   mockRefreshSandboxMount,
   mockPrepareSandboxEgressBeforeMount,
@@ -31,7 +31,7 @@ const {
     mockLoggerWarn: vi.fn(),
     mockLoggerChild: vi.fn(),
     mockForConversation: vi.fn(),
-    mockForPod: vi.fn(),
+    mockForPodSandboxProvisioning: vi.fn(),
     mockSetupSandboxMount,
     mockRefreshSandboxMount,
     mockPrepareSandboxEgressBeforeMount: vi.fn(),
@@ -59,7 +59,7 @@ vi.mock("@app/lib/api/sandbox/egress", () => ({
 vi.mock("@app/lib/api/file_system/dust_file_system", () => ({
   DustFileSystem: {
     forConversation: mockForConversation,
-    forPod: mockForPod,
+    forPodSandboxProvisioning: mockForPodSandboxProvisioning,
   },
 }));
 
@@ -189,7 +189,7 @@ describe("ensureConversationSandboxReady", () => {
     mockGetSandboxImage.mockReturnValue(new Ok(image));
     mockStartTelemetry.mockResolvedValue(new Ok(undefined));
     mockForConversation.mockResolvedValue(new Ok(mockFs));
-    mockForPod.mockResolvedValue(new Ok(mockFs));
+    mockForPodSandboxProvisioning.mockResolvedValue(new Ok(mockFs));
     mockSetupSandboxMount.mockResolvedValue(new Ok(undefined));
     mockRefreshSandboxMount.mockResolvedValue(new Ok(undefined));
     mockSetupPodStateOnColdStart.mockResolvedValue(new Ok(undefined));
@@ -440,7 +440,7 @@ describe("ensureConversationSandboxReady", () => {
     // The pod's published bundles are mounted read-only under a pod-scoped
     // path; the litestream replica prefix is mounted rw for the in-sandbox
     // daemon.
-    expect(mockForPod).toHaveBeenCalledWith(auth, pod, {
+    expect(mockForPodSandboxProvisioning).toHaveBeenCalledWith(auth, pod, {
       sandboxOnlyMounts: [
         {
           kind: "pod_sandbox_functions",

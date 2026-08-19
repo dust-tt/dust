@@ -34,6 +34,7 @@ import {
   batchRenderUserMessagesWithoutMentions,
 } from "@app/lib/api/assistant/messages";
 import { isProviderWhitelistedForAuth } from "@app/lib/api/assistant/models";
+import { checkPremiumModelMessageLimit } from "@app/lib/api/assistant/premium_model_limit";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
@@ -49,6 +50,7 @@ import {
   makeProgrammaticUsageRateLimitKeyForWorkspace,
   makeSidekickMessageRateLimitKeyForWorkspaceActor,
   SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY,
+  SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_ENTERPRISE,
   SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_WINDOW_SECONDS,
 } from "@app/lib/api/assistant/rate_limits";
 import {
@@ -63,7 +65,9 @@ import {
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
+import { isProgrammaticSpendLimitRateCapReached } from "@app/lib/api/credits/programmatic_usage_limit";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
+import { isApiKeySpendLimitRateCapReached } from "@app/lib/api/keys/spend_limit";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
 import {
   checkProgrammaticUsageLimits,
@@ -75,6 +79,7 @@ import {
   isNonCreditPricedUserSpendLimitReached,
   isUserSpendLimitRateCapReached,
 } from "@app/lib/api/users/spend_limit";
+import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { isModelAvailable } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -103,6 +108,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { notifyNewProjectConversation } from "@app/lib/notifications/triggers/project-new-conversation";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
+import { isEnterpriseOrDust } from "@app/lib/plans/plan_codes";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
@@ -110,12 +116,10 @@ import type { RunningAgentMessageContext } from "@app/lib/resources/conversation
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
-
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
@@ -828,6 +832,17 @@ export async function postUserMessage(
       })
     : null;
 
+  if (user && modelResolution) {
+    const premiumModelLimitResult = await checkPremiumModelMessageLimit(auth, {
+      user,
+      resolvedModel: modelResolution.resolvedModel,
+      context,
+    });
+    if (premiumModelLimitResult.isErr()) {
+      return premiumModelLimitResult;
+    }
+  }
+
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages } = await withTransaction(async (t) => {
     // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
@@ -1236,6 +1251,17 @@ export async function editUserMessage(
         selection: message.requestedModel ?? undefined,
       })
     : null;
+
+  if (user && modelResolution) {
+    const premiumModelLimitResult = await checkPremiumModelMessageLimit(auth, {
+      user,
+      resolvedModel: modelResolution.resolvedModel,
+      context: message.context,
+    });
+    if (premiumModelLimitResult.isErr()) {
+      return premiumModelLimitResult;
+    }
+  }
 
   try {
     // In one big transaction create all Message, UserMessage, AgentMessage, and Mention rows.
@@ -1790,6 +1816,26 @@ export async function retryAgentMessage(
   });
   if (limitResult.isErr()) {
     return limitResult;
+  }
+
+  const user = auth.user();
+  if (user) {
+    const resolvedModel =
+      message.resolvedModel ??
+      (
+        await resolveModelForMentionedAgent(auth, {
+          configuration: message.configuration,
+        })
+      ).resolvedModel;
+
+    const premiumModelLimitResult = await checkPremiumModelMessageLimit(auth, {
+      user,
+      resolvedModel,
+      context: parentUserMessage.context,
+    });
+    if (premiumModelLimitResult.isErr()) {
+      return premiumModelLimitResult;
+    }
   }
 
   const retryAgentConfiguration = await getAgentConfiguration(auth, {
@@ -2465,12 +2511,15 @@ export async function checkMessagesLimit(
       });
     }
 
+    const sidekickDailyLimit = isEnterpriseOrDust(auth.plan())
+      ? SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_ENTERPRISE
+      : SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY;
     const remaining = await rateLimiter({
       key: makeSidekickMessageRateLimitKeyForWorkspaceActor(
         auth.getNonNullableWorkspace(),
         getMessageRateLimitActor(auth)
       ),
-      maxPerTimeframe: SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY,
+      maxPerTimeframe: sidekickDailyLimit,
       timeframeSeconds:
         SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_WINDOW_SECONDS,
       logger,
@@ -2480,8 +2529,7 @@ export async function checkMessagesLimit(
         status_code: 429,
         api_error: {
           type: "rate_limit_error",
-          message:
-            "You have reached the sidekick usage limit. Please try again later.",
+          message: `You have reached the sidekick usage limit (${sidekickDailyLimit} messages per 24h). Please try again later.`,
         },
       });
     }
@@ -2599,21 +2647,43 @@ export async function checkMessagesLimit(
 
     // Programmatic monthly cap: block programmatic calls when the cap is reached.
     if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
+      // The Redis fixed-window backups are flag-gated while we validate the
+      // counters; usage is recorded regardless (in credit_cost), so the flag
+      // only controls blocking.
+      const featureFlags = await getFeatureFlags(auth);
+      const spendCapEnabled = featureFlags.includes(
+        "enforce_user_spend_limit_rate_cap"
+      );
+
       // Per-API-key credit cap: block when this key's credit state is "capped"
-      // (driven by the Metronome per-key cap alert / reconcile).
+      // (driven by the Metronome per-key cap alert / reconcile), or when the
+      // Redis fixed-window backup reports the cap reached.
       const key = auth.key();
-      if (key && (await isApiKeyCapped(owner.sId, key.id))) {
-        return new Err({
-          status_code: 429,
-          api_error: {
-            type: "rate_limit_error",
-            message:
-              "This API key has reached its credit spend limit. Please increase the limit in the Developers > API Keys section of the Dust dashboard.",
-          },
-        });
+      if (key) {
+        const capReached =
+          (await isApiKeyCapped(owner.sId, key.id)) ||
+          (spendCapEnabled &&
+            (await isApiKeySpendLimitRateCapReached(auth, {
+              keyModelId: key.id,
+            })));
+        if (capReached) {
+          return new Err({
+            status_code: 429,
+            api_error: {
+              type: "rate_limit_error",
+              message:
+                "This API key has reached its credit spend limit. Please increase the limit in the Developers > API Keys section of the Dust dashboard.",
+            },
+          });
+        }
       }
 
-      const programmaticBlocked = await isProgrammaticApiBlocked(owner.sId);
+      // Workspace programmatic monthly cap: the Metronome-driven state
+      // (`isProgrammaticApiBlocked`) OR the Redis fixed-window backup.
+      const programmaticBlocked =
+        (await isProgrammaticApiBlocked(owner.sId)) ||
+        (spendCapEnabled &&
+          (await isProgrammaticSpendLimitRateCapReached(auth)));
       if (programmaticBlocked) {
         return new Err({
           status_code: 429,
@@ -2999,9 +3069,7 @@ async function isMessagesLimitReached(
   }
 
   // Checking rate limit
-  const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
-    owner.sId
-  );
+  const activeSeats = await countActiveSeatsForWorkspace(owner.sId);
 
   const userMessagesLimit = 10 * activeSeats;
   const remainingMessages = await rateLimiter({

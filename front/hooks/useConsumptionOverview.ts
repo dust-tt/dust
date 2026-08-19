@@ -1,9 +1,11 @@
 import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import { normalizedConsumptionFilter } from "@app/lib/analytics/consumption_period";
+import {
+  DEFAULT_CONSUMPTION_PERIOD_DAYS,
+  normalizedConsumptionFilter,
+} from "@app/lib/analytics/consumption_period";
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import type { ConsumptionBody } from "@app/lib/api/analytics/consumption/schema";
-import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/api/analytics/consumption/schema";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 
 export function useConsumptionOverview({
@@ -25,14 +27,14 @@ export function useConsumptionOverview({
     filter: normalizedConsumptionFilter(filter),
   };
 
-  const { data, error, isValidating } = useConsumptionQuery<
+  const { data, error, isLoading, isValidating } = useConsumptionQuery<
     ConsumptionBody,
     GetConsumptionOverviewResponse
   >({ url, body, disabled });
 
   return {
     overview: data ?? null,
-    isOverviewLoading: !error && !data && !disabled,
+    isOverviewLoading: isLoading,
     isOverviewError: error,
     isOverviewValidating: isValidating,
   };

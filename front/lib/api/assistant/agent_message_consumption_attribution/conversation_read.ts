@@ -7,6 +7,7 @@ import type { ConversationConsumptionMessageFacts } from "@app/lib/resources/age
 import { AgentMessageConsumptionItemResource as ConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import { getAgentUsageAttributedId } from "@app/types/assistant/assistant";
 import { isTerminalAgentMessageStatus } from "@app/types/assistant/conversation";
 import type {
   ConversationConsumptionAgentDetails,
@@ -87,9 +88,10 @@ function aggregateMessageDetails(
 
 /**
  * Aggregates the latest stable bill and newest complete attribution available for each message
- * belonging directly to a conversation. In-progress messages are ignored until they reach a
- * terminal state. If any completed billed message lacks a complete attribution, the stable total
- * remains available while the detailed breakdown is withheld.
+ * belonging to a conversation and its recursively spawned `run_agent` conversations. In-progress
+ * messages are ignored until they reach a terminal state. If any completed billed message lacks a
+ * complete attribution, the stable total remains available while the detailed breakdown is
+ * withheld.
  */
 export async function getConversationConsumption(
   auth: Authenticator,
@@ -145,7 +147,10 @@ export async function getConversationConsumption(
   }
   const detailsByAgentId = new Map<string, typeof completeMessageDetails>();
   for (const entry of completeMessageDetails) {
-    const agentId = entry.message.agentConfigurationId;
+    const agentId = getAgentUsageAttributedId({
+      agentId: entry.message.agentConfigurationId,
+      parentAgentId: entry.message.parentAgentConfigurationId,
+    });
     const agentDetails = detailsByAgentId.get(agentId) ?? [];
     agentDetails.push(entry);
     detailsByAgentId.set(agentId, agentDetails);
@@ -157,24 +162,30 @@ export async function getConversationConsumption(
   const agents: ConversationConsumptionAgentDetails[] = [
     ...detailsByAgentId.entries(),
   ]
-    .map(([agentId, entries]) => {
+    .flatMap(([agentId, entries]) => {
+      const label = agentLabels.get(agentId);
+      if (!label) {
+        return [];
+      }
+
       const aggregate = aggregateMessageDetails(
         entries.map(({ details }) => details)
       );
-      const label = agentLabels.get(agentId);
 
-      return {
-        agentId,
-        name: label?.name ?? "Unknown agent",
-        pictureUrl: label?.pictureUrl ?? null,
-        billedCredits: entries.reduce(
-          (total, { message }) => total + (message.billedCredits ?? 0),
-          0
-        ),
-        agentWorkCredits: aggregate.agentWorkCredits,
-        tools: aggregate.tools,
-        models: aggregate.models,
-      };
+      return [
+        {
+          agentId,
+          name: label.name,
+          pictureUrl: label.pictureUrl,
+          billedCredits: entries.reduce(
+            (total, { message }) => total + (message.billedCredits ?? 0),
+            0
+          ),
+          agentWorkCredits: aggregate.agentWorkCredits,
+          tools: aggregate.tools,
+          models: aggregate.models,
+        },
+      ];
     })
     .sort((left, right) => right.billedCredits - left.billedCredits);
 

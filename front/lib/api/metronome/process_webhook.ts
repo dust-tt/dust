@@ -47,6 +47,7 @@ import {
   getMetronomeCommit,
   getMetronomeContractById,
   getMetronomeCredit,
+  invalidateCachedCustomerPerUserCreditBalances,
   listMetronomeContracts,
   setMetronomeCommitCustomFields,
   setMetronomeContractCreditCustomFields,
@@ -54,6 +55,7 @@ import {
 import {
   CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
   CONTRACT_CREDIT_TYPE_EXCESS,
+  CONTRACT_CREDIT_TYPE_FREE_SEAT,
   CONTRACT_CREDIT_TYPE_POOL,
   fromFreeMetronomeUserId,
   getCreditTypeAwuId,
@@ -1336,6 +1338,13 @@ export async function processMetronomeWebhook({
         break;
       }
 
+      // A new AWU credit changes free-seat per-user balances — drop the cached
+      // read so the members/usage views reflect the grant on their next load.
+      await invalidateCachedCustomerPerUserCreditBalances({
+        metronomeCustomerId,
+        contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
+      });
+
       // A credit granted at contract-switch time (see `stepContractEdits`) is
       // added to the already-active contract *after* `contract.start` fired, so
       // that handler's reconcile ran before the credit existed. Metronome only
@@ -1536,6 +1545,13 @@ export async function processMetronomeWebhook({
       ) {
         break;
       }
+
+      // A segment start / amount edit changes free-seat per-user balances — drop
+      // the cached read so the members/usage views reflect it on their next load.
+      await invalidateCachedCustomerPerUserCreditBalances({
+        metronomeCustomerId,
+        contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
+      });
 
       if (isSeatAwuCredit(credit)) {
         // Per-seat (INDIVIDUAL) AWU credit: a seat segment starting (a seat

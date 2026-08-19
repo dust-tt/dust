@@ -23,6 +23,7 @@ type CreateMCPServerConnectionFn = (
 
 interface UpdateMCPServerViewParams {
   oAuthUseCase: NonNullable<MCPServerOAuthFormValues["useCase"]>;
+  oauthScope?: string;
 }
 
 // Returns true on success, false on error (error handling is done internally via notifications).
@@ -85,10 +86,13 @@ export async function submitConnectMCPServerDialogForm({
     provider: authorization.provider,
   });
 
-  // Step 3: Update the oAuthUseCase for the MCP server view.
+  // Step 3: Update the oAuthUseCase for the MCP server view, pinning the scope this connection was
+  // authorized for. Personal connections read their scope from the view, so this bounds members to
+  // what the admin just consented to instead of letting them follow the server metadata as it grows.
   // Error handling for this step is done internally by the hook via notifications.
   await updateServerView({
     oAuthUseCase: values.useCase,
+    ...(scope ? { oauthScope: scope } : {}),
   });
 
   return new Ok(null);

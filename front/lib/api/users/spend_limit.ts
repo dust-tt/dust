@@ -23,18 +23,19 @@ import {
   upsertMetronomePerUserCapAlert,
   upsertMetronomePerUserWarningAlert,
 } from "@app/lib/metronome/alerts/spend_limits";
-import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { currentCalendarMonthCycleUtc } from "@app/lib/spend_limits/cycle";
+import {
+  currentCalendarMonthCycleUtc,
+  resolveSpendLimitCycleBounds,
+} from "@app/lib/spend_limits/cycle";
 import { revertOnSyncFailure } from "@app/lib/spend_limits/revert_on_sync_failure";
 import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   addFixedWindowCount,
-  getFixedWindowCount,
-  setFixedWindowCount,
+  readFixedWindowCountWithLazySeed,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type {
@@ -46,7 +47,6 @@ import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { LightWorkspaceType } from "@app/types/user";
 
 export const MIN_USER_SPEND_LIMIT_AWU_CREDITS = 0;
 export const MAX_USER_SPEND_LIMIT_AWU_CREDITS = 2_000_000;
@@ -492,30 +492,6 @@ export async function expireUserSpendLimitOverride(
   return new Ok({ reverted: true, previousAwuCredits });
 }
 
-// Fixed-window bounds for the current Metronome contract billing cycle (the
-// window the per-user spend cap is bucketed on). `null` when no billing period
-// can be resolved — callers treat that as a no-op (fail-open, matching the rest
-// of the rate-limiter callers).
-async function resolveSpendLimitCycleBounds(
-  workspace: LightWorkspaceType
-): Promise<FixedWindowBounds | null> {
-  const periodResult = await getCachedMetronomeCurrentBillingPeriod(
-    workspace.sId
-  );
-  if (periodResult.isErr() || !periodResult.value) {
-    logger.warn(
-      {
-        workspaceId: workspace.sId,
-        err: periodResult.isErr() ? periodResult.error : undefined,
-      },
-      "[SpendLimitRateCap] Could not resolve contract billing period; skipping fixed-window cap"
-    );
-    return null;
-  }
-  const { cycleStart, cycleEnd } = periodResult.value;
-  return makeSpendLimitCycleWindowBounds(cycleStart, cycleEnd);
-}
-
 /**
  * Reads the per-user spend-cap counter, lazily seeding it from Elasticsearch
  * whenever it reads as 0. A 0 count means the counter is absent — a brand-new
@@ -526,10 +502,12 @@ async function resolveSpendLimitCycleBounds(
  * live (the first recorded delta bumps it above 0), so it's used as-is with no
  * ES read.
  *
- * Re-seeding on a 0 count is idempotent and cheap; `SET` (not `INCRBY`) makes
- * concurrent first-message seeds converge on the same value instead of doubling.
- * Recording (`recordUserSpendLimitUsage`) runs post-finalize, after this
- * send-time seed, so it accrues on top of the seeded value.
+ * The seed is applied with `seedFixedWindowCountIfAbsent` (atomic SET-if-absent,
+ * not a plain SET): if a concurrent `recordUserSpendLimitUsage` INCRBY lands
+ * while the ES value is being computed, the seed leaves that live value untouched
+ * rather than clobbering it, and returns the effective count. Recording runs
+ * post-finalize, after this send-time seed, so it accrues on top of the seeded
+ * value.
  *
  * Returns the effective count, or `null` on a Redis read error (caller fails
  * open). A seed write failure degrades to the ES value rather than throwing.
@@ -549,22 +527,12 @@ async function readSpendLimitCountWithLazySeed(
     cycle?: BillingCycle;
   }
 ): Promise<number | null> {
-  const countResult = await getFixedWindowCount({ key, bounds });
-  if (countResult.isErr()) {
-    return null;
-  }
-  if (countResult.value > 0) {
-    return countResult.value;
-  }
-
-  const consumed = Math.max(
-    0,
-    Math.round(await getEsConsumedAwuCreditsForUser(auth, { user, cycle }))
-  );
-  if (consumed > 0) {
-    await setFixedWindowCount({ key, bounds, value: consumed, logger });
-  }
-  return consumed;
+  return readFixedWindowCountWithLazySeed({
+    key,
+    bounds,
+    logger,
+    fetchSeedValue: () => getEsConsumedAwuCreditsForUser(auth, { user, cycle }),
+  });
 }
 
 /**

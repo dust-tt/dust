@@ -1,5 +1,6 @@
 import { upsertAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/store";
 import { listConsumptionFacetCatalog } from "@app/lib/api/analytics/consumption/facet_catalog";
+import { normalizeOrigin } from "@app/lib/api/analytics/source_labels";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import {
   CONSUMPTION_ANALYTICS_ALIAS_NAME,
@@ -47,7 +48,6 @@ const MS_PER_HOUR = 60 * 60 * 1000;
 const LLM_CREDIT_RANGE = { min: 0.2, max: 8 };
 const TOOL_DIRECT_CREDIT_RANGE = { min: 0.01, max: 0.4 };
 const TOOL_MODEL_CREDIT_RANGE = { min: 0.01, max: 0.2 };
-const TRIGGER_COUNT = 3;
 const MAX_LLM_STEPS = 3;
 const MAX_TOOL_CALLS = 3;
 // Share of messages that delegate to a sub-agent.
@@ -57,13 +57,16 @@ const SUB_AGENT_RATE = 0.15;
 const FIRST_HOUR_UTC = 7;
 const LAST_HOUR_UTC = 20;
 
+// Automations are a third of the workspace's consumption, so the Automation
+// page has a ranking with a head and a tail rather than a handful of rows.
 const ORIGIN_WEIGHTS: { origin: UserMessageOrigin; weight: number }[] = [
-  { origin: "web", weight: 60 },
-  { origin: "slack", weight: 15 },
-  { origin: "api", weight: 8 },
-  { origin: "extension", weight: 6 },
-  { origin: "cli_programmatic", weight: 4 },
-  { origin: "triggered", weight: 4 },
+  { origin: "web", weight: 40 },
+  { origin: "triggered", weight: 22 },
+  { origin: "slack", weight: 12 },
+  { origin: "triggered_programmatic", weight: 8 },
+  { origin: "api", weight: 7 },
+  { origin: "extension", weight: 5 },
+  { origin: "cli_programmatic", weight: 3 },
   { origin: "gsheet", weight: 2 },
   { origin: "email", weight: 1 },
 ];
@@ -82,6 +85,7 @@ const TRIGGERED_ORIGINS: UserMessageOrigin[] = [
 export interface SeedConsumptionAnalyticsOptions {
   daysBack?: number;
   messagesPerDay?: number;
+  triggerIds?: string[];
 }
 
 // Deterministic PRNG (mulberry32): the same workspace always gets the same
@@ -150,10 +154,12 @@ type ConsumptionPools = {
   models: ModelConfigurationType[];
   toolServerNames: string[];
   skillIds: string[];
+  triggerIds: string[];
 };
 
 async function loadConsumptionPools(
-  ctx: SeedContext
+  ctx: SeedContext,
+  triggerIds: string[]
 ): Promise<ConsumptionPools> {
   const { auth } = ctx;
 
@@ -188,6 +194,7 @@ async function loadConsumptionPools(
     ),
     toolServerNames: catalog.tool.map((entry) => entry.value),
     skillIds: catalog.skill.map((entry) => entry.value),
+    triggerIds,
   };
 }
 
@@ -200,6 +207,7 @@ type SeedMessage = {
   model: ModelConfigurationType;
   origin: UserMessageOrigin;
   toolCallCount: number;
+  triggerId: string | null;
   user: AgentMessageConsumptionAnalyticsUser;
 };
 
@@ -245,11 +253,18 @@ function planDayMessages(
     );
     const agentId = pickByRank(random, pools.agentIds);
     const conversationId = seedId("seedconv", index);
+    const origin = pickOrigin(random);
+    // The trigger lives on the conversation, so every message of a triggered
+    // run carries the same one.
     const shared = {
       completedAt: new Date(completedAtMs),
       conversationId,
       model: pickByRank(random, pools.models),
-      origin: pickOrigin(random),
+      origin,
+      triggerId:
+        TRIGGERED_ORIGINS.includes(origin) && pools.triggerIds.length > 0
+          ? pickByRank(random, pools.triggerIds)
+          : null,
       user: pickByRank(random, pools.users),
     };
 
@@ -289,6 +304,7 @@ type SeedConsumptionBaseFields = Pick<
   | "execution_time_ms"
   | "message_version"
   | "model"
+  | "normalized_origin"
   | "run_usage_id"
   | "space_id"
   | "status"
@@ -327,13 +343,12 @@ function makeBaseFields(
       reasoning_effort: message.model.defaultReasoningEffort,
       resolution_method: "agent",
     },
+    normalized_origin: normalizeOrigin(message.origin),
     run_usage_id: consumptionKey,
     space_id: null,
     status: "succeeded",
     step_index: stepIndex,
-    trigger_id: TRIGGERED_ORIGINS.includes(message.origin)
-      ? seedId("seedtrigger", randomInt(random, 0, TRIGGER_COUNT - 1))
-      : null,
+    trigger_id: message.triggerId,
     usage_type: isProgrammatic ? "programmatic" : "user",
     user: message.user,
     workspace_id: workspaceId,
@@ -520,11 +535,12 @@ export async function seedConsumptionAnalytics(
   {
     daysBack = DEFAULT_DAYS_BACK,
     messagesPerDay = DEFAULT_MESSAGES_PER_DAY,
+    triggerIds = [],
   }: SeedConsumptionAnalyticsOptions = {}
 ): Promise<void> {
   const { workspace, execute, logger } = ctx;
 
-  const pools = await loadConsumptionPools(ctx);
+  const pools = await loadConsumptionPools(ctx, triggerIds);
   if (
     pools.agentIds.length === 0 ||
     pools.users.length === 0 ||
@@ -537,6 +553,11 @@ export async function seedConsumptionAnalytics(
   if (pools.toolServerNames.length === 0) {
     logger.warn(
       "No MCP server in the workspace: the Tools and Skills tabs will be empty."
+    );
+  }
+  if (pools.triggerIds.length === 0) {
+    logger.warn(
+      "No trigger passed in: the triggered consumption will carry no trigger."
     );
   }
 
@@ -591,6 +612,7 @@ export async function seedConsumptionAnalytics(
       skillCount: pools.skillIds.length,
       toolCount: pools.toolServerNames.length,
       totalCredits,
+      triggerCount: pools.triggerIds.length,
     },
     "Indexed consumption documents"
   );

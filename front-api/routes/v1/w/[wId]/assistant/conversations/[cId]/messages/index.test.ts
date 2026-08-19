@@ -18,7 +18,8 @@ function postMessage(
   workspace: { sId: string },
   conversationId: string,
   key: { secret: string },
-  body: unknown
+  body: unknown,
+  extraHeaders: Record<string, string> = {}
 ) {
   return honoApp.request(
     `/api/v1/w/${workspace.sId}/assistant/conversations/${conversationId}/messages`,
@@ -27,6 +28,7 @@ function postMessage(
       headers: {
         authorization: `Bearer ${key.secret}`,
         "Content-Type": "application/json",
+        ...extraHeaders,
       },
       body: JSON.stringify(body),
     }
@@ -204,5 +206,77 @@ describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.message.requestedModel).toEqual(modelSelection);
+  });
+
+  it("rebuilds the posting user from x-api-user-email on a system key", async () => {
+    const { workspace, key } = await createPublicApiMockRequest({
+      method: "POST",
+      systemKey: true,
+    });
+
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "admin" });
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const conversation = await ConversationFactory.create(userAuth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const response = await postMessage(
+      workspace,
+      conversation.sId,
+      key,
+      {
+        content: "Hello",
+        mentions: [],
+        // No `context.email`: the only path to an attributed user is the header
+        // exchange, so this asserts the auth rebuild and not email attribution.
+        context: {
+          username: "sub-agent",
+          timezone: "Europe/Paris",
+          origin: "api",
+        },
+      },
+      { "x-api-user-email": user.email }
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.message.user?.sId).toBe(user.sId);
+  });
+
+  it("leaves the posting user unattributed without x-api-user-email", async () => {
+    const { workspace, key } = await createPublicApiMockRequest({
+      method: "POST",
+      systemKey: true,
+    });
+
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "admin" });
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const conversation = await ConversationFactory.create(userAuth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const response = await postMessage(workspace, conversation.sId, key, {
+      content: "Hello",
+      mentions: [],
+      context: {
+        username: "sub-agent",
+        timezone: "Europe/Paris",
+        origin: "api",
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.message.user).toBeNull();
   });
 });

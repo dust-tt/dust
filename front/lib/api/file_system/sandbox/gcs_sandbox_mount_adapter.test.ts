@@ -92,7 +92,7 @@ function createPodSandboxAdapter(): GCSSandboxMountAdapter {
 }
 
 describe("buildMountCommand", () => {
-  test("workload profile mounts as root with allow_other and permissive modes", () => {
+  test("workload profile disables caches for shared mutable files", () => {
     const command = renderRootCommand(
       buildMountCommand({ bucket: "bucket-x", target: workloadTarget() })
     );
@@ -103,13 +103,15 @@ describe("buildMountCommand", () => {
     expect(command).toContain("-o allow_other");
     expect(command).toContain("--file-mode=666");
     expect(command).toContain("--dir-mode=777");
-    expect(command).toContain("--kernel-list-cache-ttl-secs=60");
+    expect(command).toContain("--kernel-list-cache-ttl-secs=0");
+    expect(command).toContain("--metadata-cache-ttl-secs=0");
+    expect(command).toContain("--metadata-cache-negative-ttl-secs=0");
     expect(command).toContain("--only-dir w/ws1/pods/spc1/files");
     expect(command).toContain("--enable-hns=false");
     expect(command).toContain("bucket-x /files/pod-spc1");
   });
 
-  test("pod function profile disables list caching for newly published functions", () => {
+  test("pod function profile disables caches for newly published functions", () => {
     const command = renderRootCommand(
       buildMountCommand({
         bucket: "bucket-x",
@@ -126,6 +128,8 @@ describe("buildMountCommand", () => {
 
     expect(command).toContain("-o allow_other,ro");
     expect(command).toContain("--kernel-list-cache-ttl-secs=0");
+    expect(command).toContain("--metadata-cache-ttl-secs=0");
+    expect(command).toContain("--metadata-cache-negative-ttl-secs=0");
     expect(command).toContain("--token-url http://127.0.0.1:987/token/mount-1");
   });
 
@@ -151,6 +155,8 @@ describe("buildMountCommand", () => {
     expect(command).not.toContain("allow_other");
     // Restore must never see a cached LTX listing.
     expect(command).toContain("--kernel-list-cache-ttl-secs=0");
+    expect(command).toContain("--metadata-cache-ttl-secs=0");
+    expect(command).toContain("--metadata-cache-negative-ttl-secs=0");
     expect(command).toContain("--file-mode=600");
     expect(command).toContain("--dir-mode=700");
     expect(command).toContain("--only-dir w/ws1/pods/spc1/state");
@@ -218,8 +224,14 @@ describe("pod sandbox mount wiring", () => {
         command.includes("/sandbox-functions/pods/spc1")
     );
 
-    expect(podFilesCommand).toContain("--kernel-list-cache-ttl-secs=60");
+    expect(podFilesCommand).toContain("--kernel-list-cache-ttl-secs=0");
+    expect(podFilesCommand).toContain("--metadata-cache-ttl-secs=0");
+    expect(podFilesCommand).toContain("--metadata-cache-negative-ttl-secs=0");
     expect(podFunctionsCommand).toContain("--kernel-list-cache-ttl-secs=0");
+    expect(podFunctionsCommand).toContain("--metadata-cache-ttl-secs=0");
+    expect(podFunctionsCommand).toContain(
+      "--metadata-cache-negative-ttl-secs=0"
+    );
   });
 });
 

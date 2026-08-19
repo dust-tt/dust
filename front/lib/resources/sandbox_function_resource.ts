@@ -3,7 +3,10 @@ import type {
   PokePodFunctionDetails,
 } from "@app/lib/api/poke/projects";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
-import { sandboxFunctionNameFromSlug } from "@app/lib/api/sandbox_functions/slug";
+import {
+  appPrefixFromSlug,
+  sandboxFunctionNameFromSlug,
+} from "@app/lib/api/sandbox_functions/slug";
 import { authorizeSandboxFunctionInvocation } from "@app/lib/api/sandbox_functions/workspace_user";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
@@ -30,17 +33,19 @@ import type {
   PostSandboxFunctionInvocationRequestBody,
   SandboxFunctionExecutionMode,
   SandboxFunctionInvocationOrigin,
+  SandboxFunctionStake,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
 import {
   DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
+  DEFAULT_SANDBOX_FUNCTION_STAKE,
   isValidSandboxFunctionSlug,
 } from "@app/types/api/sandbox_functions";
 import { sandboxFunctionContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import { createHash } from "crypto";
@@ -77,12 +82,20 @@ function userIdentityPolicyStrength(
       return 1;
     case "interactive_workspace_user_required":
       return 2;
-    case "pod_editor_required":
-      // Strictest audience: editors only. Ranking it above the session-bound policy means a
-      // publish moving to it always commits the policy before exposing the new bundle.
+    case "pod_member_required":
+      // The pod-scoped audience ranks above the workspace-wide, session-bound policy: a publish
+      // moving to it always commits the policy before exposing the new bundle.
       return 3;
     default:
-      return assertNever(policy);
+      // The stored policy can be a value this revision does not know: one from a newer revision
+      // in a mixed-version deploy, or a retired policy (e.g. `pod_editor_required`). Rank it
+      // strictest so the republish never loosens it early and simply overwrites it with the
+      // upload; invoking it is denied regardless (see authorizeSandboxFunctionInvocation).
+      // `assertNeverAndIgnore` (not `assertNever`) is deliberate although this is server code:
+      // republish is the only path that rewrites a stored policy, so throwing here would make a
+      // function carrying a retired policy permanently unrepairable.
+      assertNeverAndIgnore(policy);
+      return Number.POSITIVE_INFINITY;
   }
 }
 
@@ -131,6 +144,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       description,
       userIdentity = "optional",
       executionMode = DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
+      defaultStake = DEFAULT_SANDBOX_FUNCTION_STAKE,
       bundleSha256 = null,
       inputSchema,
       outputSchema,
@@ -141,6 +155,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       description: string;
       userIdentity?: SandboxFunctionUserIdentityPolicy;
       executionMode?: SandboxFunctionExecutionMode;
+      defaultStake?: SandboxFunctionStake;
       bundleSha256?: string | null;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
@@ -182,6 +197,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         description,
         userIdentity,
         executionMode,
+        defaultStake,
         bundleSha256,
         inputSchema,
         outputSchema,
@@ -205,6 +221,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       description,
       userIdentity = this.userIdentity ?? "optional",
       executionMode = DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
+      defaultStake = DEFAULT_SANDBOX_FUNCTION_STAKE,
       inputSchema,
       outputSchema,
     }: {
@@ -212,6 +229,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       description: string;
       userIdentity?: SandboxFunctionUserIdentityPolicy;
       executionMode?: SandboxFunctionExecutionMode;
+      defaultStake?: SandboxFunctionStake;
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
     }
@@ -251,10 +269,17 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
           // It moves after the upload, and unlike the user identity policy there is no window to
           // guard: whichever mode is in effect while the upload lands, a fast bundle running as
           // durable is harmless and a durable bundle running as fast just fails its tool calls.
+          //
+          // The default stake is restated on the same terms, and for the same reason: a function
+          // that grew a destructive path must not keep the `never_ask` it earned while it was a
+          // read. Nothing gates on the stake until a function is shared as an MCP tool, so it needs
+          // no ordering guard against the upload yet — sharing it will need one, so that a stricter
+          // stake lands before the bundle it applies to, the way the user identity policy does.
           await this.update({
             description,
             userIdentity,
             executionMode,
+            defaultStake,
             // Derived from the exact code the upload above wrote. Landing with the row update
             // (not before the upload) means a warm server can never be told to expect a bundle
             // that is not on disk yet; invocations racing this publish carry the old hash and
@@ -281,9 +306,14 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     auth: Authenticator,
     {
       includeDeletedSpace,
+      dangerouslyBypassSpacePermissionFilter = false,
       ...options
     }: ResourceFindOptions<SandboxFunctionModel> & {
       includeDeletedSpace?: boolean;
+      // Reserved for resolution paths whose authorization is established before the fetch:
+      // fetchByIdForExecution and the tool workflow (an invocation row), and fetchInAppFolder
+      // (a validated frame share capability, enforced by its own query constraints).
+      dangerouslyBypassSpacePermissionFilter?: boolean;
     } = {}
   ): Promise<SandboxFunctionResource[]> {
     const { where, ...rest } = options;
@@ -326,14 +356,20 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     );
     const filesById = new Map(files.map((file) => [file.id, file]));
 
+    const spacesById = dangerouslyBypassSpacePermissionFilter
+      ? new Map(spaces.map((space) => [space.id, space]))
+      : null;
+
     return sandboxFunctions.flatMap((sandboxFunction) => {
-      const space = accessibleSpacesById.get(sandboxFunction.get().spaceId);
-      const file = filesById.get(sandboxFunction.get().fileId);
+      const blob = sandboxFunction.get();
+      const space =
+        accessibleSpacesById.get(blob.spaceId) ?? spacesById?.get(blob.spaceId);
+      const file = filesById.get(blob.fileId);
       if (!space || !file) {
         return [];
       }
 
-      return [new this(this.model, sandboxFunction.get(), space, file)];
+      return [new this(this.model, blob, space, file)];
     });
   }
 
@@ -357,6 +393,43 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     return sandboxFunction ?? null;
   }
 
+  /**
+   * Gets the function if a matching invocation exists.
+   * In the context of a temporal activity or a sandbox callback, we don't have the original
+   * caller's grant (e.g. a frame share token) in the auth, so the space permission filter is
+   * deliberately skipped. The invocation ties the pair together; callers are trusted because
+   * their (function, invocation) ids come from server-minted inputs — workflow args or verified
+   * sandbox JWT claims — never from user input.
+   */
+  static async fetchByIdForExecution(
+    auth: Authenticator,
+    {
+      sandboxFunctionId,
+      invocationId,
+    }: { sandboxFunctionId: string; invocationId: string }
+  ): Promise<SandboxFunctionResource | null> {
+    const sandboxFunctionModelId = getResourceIdFromSId(sandboxFunctionId);
+    if (sandboxFunctionModelId === null) {
+      return null;
+    }
+
+    const [sandboxFunction] = await this.baseFetch(auth, {
+      where: { id: sandboxFunctionModelId },
+      dangerouslyBypassSpacePermissionFilter: true,
+    });
+    if (!sandboxFunction) {
+      return null;
+    }
+
+    // We don't need the invocation itself, just its existence.
+    const invocation = await SandboxFunctionInvocationResource.fetchById(auth, {
+      sandboxFunction,
+      invocationId,
+      access: "system",
+    });
+    return invocation ? sandboxFunction : null;
+  }
+
   // Lives here rather than on SandboxFunctionMCPActionResource: that resource can only type-import
   // the invocation resource (the invocation resource value-imports it for cascade deletion), so it
   // cannot construct an invocation. Takes the action rather than its FK id so callers don't thread
@@ -375,13 +448,13 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       return null;
     }
 
-    const sandboxFunction = await this.fetchById(
-      auth,
-      this.modelIdToSId({
-        id: invocation.sandboxFunctionId,
-        workspaceId: invocation.workspaceId,
-      })
-    );
+    // The invocation row above is the execution side's proof of authorization: the tool workflow must
+    // resolve the function even when the invoker's original grant (e.g. a frame share token)
+    // cannot be reconstructed from the serialized auth.
+    const [sandboxFunction] = await this.baseFetch(auth, {
+      where: { id: invocation.sandboxFunctionId },
+      dangerouslyBypassSpacePermissionFilter: true,
+    });
     if (!sandboxFunction) {
       return null;
     }
@@ -446,6 +519,64 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     }
 
     return this.fetchBySpaceAndSlug(auth, space, slug);
+  }
+
+  /**
+   * Resolve a function through a frame share capability: returned iff it lives in the given
+   * pod's app folder, regardless of the caller's standing in the pod — the (podId, appPrefix)
+   * pair comes from a validated share token, and constraining the lookup to it IS the
+   * authorization. Accepts the same identifier forms as fetchByIdOrSlug; a slug form naming
+   * another pod misses, since the lookup only ever queries `podId`.
+   */
+  static async fetchInAppFolder(
+    auth: Authenticator,
+    {
+      podId,
+      appPrefix,
+      idOrSlug,
+    }: { podId: string; appPrefix: string; idOrSlug: string }
+  ): Promise<SandboxFunctionResource | null> {
+    const space = await SpaceResource.fetchById(auth, podId);
+    if (!space || !space.isProject()) {
+      return null;
+    }
+
+    let where:
+      | { id: ModelId; spaceId: ModelId }
+      | { spaceId: ModelId; slug: string };
+    if (isResourceSId("sandbox_function", idOrSlug)) {
+      // sId form, e.g. `sfn_x7GhK2p`.
+      const sandboxFunctionModelId = getResourceIdFromSId(idOrSlug);
+      if (sandboxFunctionModelId === null) {
+        return null;
+      }
+      where = { id: sandboxFunctionModelId, spaceId: space.id };
+    } else {
+      // Pod-qualified slug form, e.g. `spc_9fJq3Lm/tasklist__add-task`.
+      const [slugPodId, slug, ...rest] = idOrSlug.split("/");
+      if (
+        !slugPodId ||
+        !slug ||
+        rest.length > 0 ||
+        slugPodId !== podId ||
+        !isValidSandboxFunctionSlug(slug)
+      ) {
+        return null;
+      }
+      where = { spaceId: space.id, slug };
+    }
+
+    const [sandboxFunction] = await this.baseFetch(auth, {
+      where,
+      dangerouslyBypassSpacePermissionFilter: true,
+    });
+    if (!sandboxFunction) {
+      return null;
+    }
+
+    return appPrefixFromSlug(sandboxFunction.slug) === appPrefix
+      ? sandboxFunction
+      : null;
   }
 
   static async deleteAllForSpace(
@@ -579,6 +710,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       name: sandboxFunctionNameFromSlug(this.slug),
       description: this.description,
       executionMode: this.executionMode,
+      defaultStake: this.defaultStake,
     };
   }
 
@@ -590,6 +722,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       fileId: this.file.sId,
       userIdentity: this.userIdentity,
       executionMode: this.executionMode,
+      defaultStake: this.defaultStake,
       inputSchema: this.inputSchema,
       outputSchema: this.outputSchema,
     };

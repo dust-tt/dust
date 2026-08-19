@@ -62,7 +62,8 @@ export function useWorkspaceEgressPolicy({
 
   return {
     policy: data?.policy ?? EMPTY_EGRESS_POLICY,
-    isWorkspaceEgressPolicyLoading: isLoading,
+    requestedDomains: data?.requestedDomains ?? emptyArray(),
+    isWorkspaceEgressPolicyLoading: disabled ? false : isLoading,
     isWorkspaceEgressPolicyError: !!error,
     mutateWorkspaceEgressPolicy: mutate,
   };
@@ -398,7 +399,16 @@ export function useUpdateWorkspaceEgressPolicy({
       }
 
       const data: PutWorkspaceEgressPolicyResponseBody = await response.json();
-      await mutateWorkspaceEgressPolicy({ policy: data.policy }, false);
+      // Keep requestedDomains, or the other pending rows vanish until refetch.
+      await mutateWorkspaceEgressPolicy(
+        {
+          policy: data.policy,
+          requestedDomains: (data.policy.requestedDomains ?? []).map(
+            ({ domain: d, requestedAtMs }) => ({ domain: d, requestedAtMs })
+          ),
+        },
+        false
+      );
       sendNotification({
         type: "success",
         title: "Network policy updated",
@@ -422,4 +432,66 @@ export function useUpdateWorkspaceEgressPolicy({
     updateWorkspaceEgressPolicy,
     isUpdatingWorkspaceEgressPolicy: isUpdating,
   };
+}
+
+export function useDismissWorkspaceEgressRequest({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+  const [isDismissingRequest, setIsDismissing] = useState(false);
+  const { mutateWorkspaceEgressPolicy } = useWorkspaceEgressPolicy({
+    owner,
+    disabled: true,
+  });
+
+  const dismissWorkspaceEgressRequest = async (
+    domain: string
+  ): Promise<boolean> => {
+    setIsDismissing(true);
+    try {
+      const response = await clientFetch(
+        `${workspaceEgressPolicyUrl(owner.sId)}/requests/dismiss`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ domain }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await getErrorFromResponse(response);
+        sendNotification({
+          type: "error",
+          title: "Failed to reject domain request",
+          description: error.message,
+        });
+        return false;
+      }
+
+      const data: PutWorkspaceEgressPolicyResponseBody = await response.json();
+      await mutateWorkspaceEgressPolicy(
+        {
+          policy: data.policy,
+          requestedDomains: (data.policy.requestedDomains ?? []).map(
+            ({ domain: d, requestedAtMs }) => ({ domain: d, requestedAtMs })
+          ),
+        },
+        false
+      );
+      return true;
+    } catch {
+      sendNotification({
+        type: "error",
+        title: "Failed to reject domain request",
+        description: "An unexpected error occurred. Please try again.",
+      });
+      return false;
+    } finally {
+      setIsDismissing(false);
+    }
+  };
+
+  return { dismissWorkspaceEgressRequest, isDismissingRequest };
 }

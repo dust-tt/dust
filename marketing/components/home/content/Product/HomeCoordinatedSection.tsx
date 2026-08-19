@@ -10,13 +10,11 @@ export function HomeCoordinatedSection() {
       <div className="mx-auto flex w-full max-w-[1180px] flex-col items-center gap-12 px-6 lg:flex-row-reverse lg:items-center lg:gap-20">
         <div className="flex w-full flex-col gap-6 lg:w-1/2">
           <HomeReveal>
-            <HomeEyebrow label="Intelligent context layer" />
+            <HomeEyebrow label="See Dust in action" />
           </HomeReveal>
           <HomeReveal delay={80}>
             <H2 className="text-balance font-semibold leading-[1.08] tracking-[-0.03em] text-foreground">
-              Your company's knowledge,
-              <br />
-              deeply understood and actioned on
+              AI that uses your context to do real work
             </H2>
           </HomeReveal>
           <HomeReveal delay={160}>
@@ -24,9 +22,10 @@ export function HomeCoordinatedSection() {
               size="sm"
               className="max-w-[480px] leading-[1.6] text-muted-foreground"
             >
-              Any tool can pull from Slack or your CRM. Dust goes further – with
-              a semantic layer that synthesizes your company's knowledge so
-              agents don't just retrieve information – they understand it.
+              Most AI tools can retrieve a message from Slack or a record from
+              your CRM. Dust brings the relevant context together across Slack,
+              CRM, docs, and other company systems, so agents can answer with
+              the full picture and take action.
             </P>
           </HomeReveal>
         </div>

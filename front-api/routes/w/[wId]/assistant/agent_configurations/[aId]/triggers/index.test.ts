@@ -1,8 +1,10 @@
 import { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { faker } from "@faker-js/faker";
 import { honoApp } from "@front-api/app";
@@ -85,6 +87,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/:aId/triggers (spaceId
     );
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const openPod = await SpaceResource.makeNew(
+      auth,
       {
         name: `open-pod-${faker.string.alphanumeric(8)}`,
         kind: "project",
@@ -222,6 +225,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers (spaceI
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const trigger = await createScheduleTrigger(workspace, agent.sId, null);
     const openPod = await SpaceResource.makeNew(
+      auth,
       {
         name: `open-pod-${faker.string.alphanumeric(8)}`,
         kind: "project",
@@ -262,5 +266,214 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers (spaceI
     });
 
     expect(response.status).toBe(400);
+  });
+});
+
+describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/triggers (disabled_by_manager)", () => {
+  async function createAdminLockedTrigger(
+    workspace: { sId: string },
+    aId: string
+  ) {
+    const trigger = await createScheduleTrigger(workspace, aId, null);
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const resource = await TriggerResource.fetchById(adminAuth, trigger.sId);
+    const disableRes = await resource?.disable(
+      adminAuth,
+      "disabled_by_manager"
+    );
+    expect(disableRes?.isOk()).toBe(true);
+    return trigger;
+  }
+
+  it("rejects a non-admin editor re-enabling an admin-locked trigger", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "builder",
+    });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const trigger = await createAdminLockedTrigger(workspace, agent.sId);
+
+    const response = await patchTriggers(workspace, agent.sId, {
+      triggers: [{ ...trigger, sId: trigger.sId, status: "enabled" }],
+    });
+
+    expect(response.status).toBe(403);
+    const updated = await TriggerResource.fetchById(auth, trigger.sId);
+    expect(updated?.status).toBe("disabled_by_manager");
+  });
+
+  it("rejects a non-admin editor re-enabling a relocating trigger", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "builder",
+    });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const trigger = await createScheduleTrigger(workspace, agent.sId, null);
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const resource = await TriggerResource.fetchById(adminAuth, trigger.sId);
+    const disableRes = await resource?.disable(adminAuth, "relocating");
+    expect(disableRes?.isOk()).toBe(true);
+
+    const response = await patchTriggers(workspace, agent.sId, {
+      triggers: [{ ...trigger, sId: trigger.sId, status: "enabled" }],
+    });
+
+    expect(response.status).toBe(400);
+    const updated = await TriggerResource.fetchById(auth, trigger.sId);
+    expect(updated?.status).toBe("relocating");
+  });
+
+  it("rejects even an admin moving a trigger out of a system-owned status", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const trigger = await createScheduleTrigger(workspace, agent.sId, null);
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const resource = await TriggerResource.fetchById(adminAuth, trigger.sId);
+    const disableRes = await resource?.disable(adminAuth, "downgraded");
+    expect(disableRes?.isOk()).toBe(true);
+
+    const response = await patchTriggers(workspace, agent.sId, {
+      triggers: [{ ...trigger, sId: trigger.sId, status: "enabled" }],
+    });
+
+    expect(response.status).toBe(400);
+    const updated = await TriggerResource.fetchById(auth, trigger.sId);
+    expect(updated?.status).toBe("downgraded");
+  });
+
+  it("rejects even an admin moving a trigger into a system-owned status", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const trigger = await createScheduleTrigger(workspace, agent.sId, null);
+
+    const response = await patchTriggers(workspace, agent.sId, {
+      triggers: [{ ...trigger, sId: trigger.sId, status: "relocating" }],
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("lets an editor save other fields of a system-disabled trigger, status echoed unchanged", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "builder",
+    });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const trigger = await createScheduleTrigger(workspace, agent.sId, null);
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const resource = await TriggerResource.fetchById(adminAuth, trigger.sId);
+    const disableRes = await resource?.disable(adminAuth, "downgraded");
+    expect(disableRes?.isOk()).toBe(true);
+
+    const response = await patchTriggers(workspace, agent.sId, {
+      triggers: [
+        {
+          ...trigger,
+          sId: trigger.sId,
+          name: "renamed-downgraded-trigger",
+          status: "downgraded",
+        },
+      ],
+    });
+
+    expect(response.status).toBe(204);
+    const updated = await TriggerResource.fetchById(auth, trigger.sId);
+    expect(updated?.name).toBe("renamed-downgraded-trigger");
+    expect(updated?.status).toBe("downgraded");
+  });
+
+  it("keeps the update()/enable() asymmetry restore jobs rely on", async () => {
+    // update() refuses system-status transitions for everyone, while enable()
+    // allows them for admins: this is what lets enableAllForWorkspace restore
+    // downgraded/relocating triggers. Do not "unify" these paths.
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const trigger = await TriggerFactory.webhook(auth, {
+      agentConfigurationId: agent.sId,
+      status: "downgraded",
+    });
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const updateRes = await TriggerResource.update(adminAuth, trigger.sId, {
+      status: "enabled",
+    });
+    expect(updateRes.isErr()).toBe(true);
+
+    const enableRes = await trigger.enable(adminAuth);
+    expect(enableRes?.isOk()).toBe(true);
+    const restored = await TriggerResource.fetchById(adminAuth, trigger.sId);
+    expect(restored?.status).toBe("enabled");
+  });
+
+  it("lets a non-admin editor edit other fields of an admin-locked trigger", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "builder",
+    });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const trigger = await createAdminLockedTrigger(workspace, agent.sId);
+
+    const response = await patchTriggers(workspace, agent.sId, {
+      triggers: [
+        {
+          ...trigger,
+          sId: trigger.sId,
+          name: "renamed-trigger",
+          status: "disabled_by_manager",
+        },
+      ],
+    });
+
+    expect(response.status).toBe(204);
+    const updated = await TriggerResource.fetchById(auth, trigger.sId);
+    expect(updated?.name).toBe("renamed-trigger");
+    expect(updated?.status).toBe("disabled_by_manager");
   });
 });

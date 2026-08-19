@@ -10,7 +10,7 @@ import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import { useInfiniteDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
-import { Spinner } from "@dust-tt/sparkle";
+import { ArrowLeft, EmptyCTA, EmptyCTAButton, Spinner } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback, useMemo } from "react";
 
@@ -22,7 +22,8 @@ interface DataSourceNodeTableProps {
 
 export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
   const { owner } = useAgentBuilderContext();
-  const { navigationHistory, addNodeEntry } = useDataSourceBuilderContext();
+  const { navigationHistory, addNodeEntry, navigateTo } =
+    useDataSourceBuilderContext();
 
   const traversedNode = getLatestNodeFromNavigationHistory(navigationHistory);
   const dataSourceView =
@@ -81,6 +82,23 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
       <div className="flex justify-center p-4">
         <Spinner size="md" />
       </div>
+    );
+  }
+
+  if (isTopLevelInView && listItems.length === 0) {
+    return (
+      <EmptyCTA
+        title="No pages found"
+        message="This website doesn't have any pages to browse yet."
+        action={
+          <EmptyCTAButton
+            variant="primary"
+            icon={ArrowLeft}
+            label="Go back"
+            onClick={() => navigateTo(navigationHistory.length - 2)}
+          />
+        }
+      />
     );
   }
 

@@ -1,17 +1,6 @@
 import type { GCSMountTarget } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import { GCSSandboxMountAdapter } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import type { SandboxMountAdapter } from "@app/lib/api/file_system/sandbox/sandbox_mount_adapter";
-import type {
-  FileSystemMount,
-  SandboxOnlyMount,
-} from "@app/lib/api/file_system/types";
-import {
-  DustFileSystemError,
-  SCOPED_PREFIX_CONVERSATION,
-  SCOPED_PREFIX_POD,
-  SCOPED_PREFIX_USER,
-} from "@app/lib/api/file_system/types";
-import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import fileStorageConfig from "@app/lib/file_storage/config";
 import { getCachedPrivateUploadSignedUrl } from "@app/lib/file_storage/signed_url_cache";
@@ -20,7 +9,15 @@ import type {
   FileSystemDirectoryEntry,
   FileSystemEntry,
 } from "@app/types/api/file_system/types";
+import type { FileSystemMount, SandboxOnlyMount } from "@app/types/file_system";
+import {
+  DustFileSystemError,
+  SCOPED_PREFIX_CONVERSATION,
+  SCOPED_PREFIX_POD,
+  SCOPED_PREFIX_USER,
+} from "@app/types/file_system";
 import { stripMimeParameters } from "@app/types/files";
+import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -29,7 +26,10 @@ import { isString } from "@app/types/shared/utils/general";
 import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 
-import type { FileSystemBackend } from "./file_system_backend";
+import type {
+  FileSystemBackend,
+  FileSystemNodeIdentity,
+} from "./file_system_backend";
 
 // ---------------------------------------------------------------------------
 // Scoped-path helpers
@@ -390,7 +390,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     scopedPath: string,
     content: Buffer | string | Readable,
     contentType: string
-  ): Promise<Result<void, DustFileSystemError>> {
+  ): Promise<Result<FileSystemNodeIdentity, DustFileSystemError>> {
     const gcsPath = this.toGCSPath(scopedPath);
     if (!gcsPath) {
       return new Err(
@@ -414,7 +414,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
         );
       }
 
-      return new Ok(undefined);
+      return new Ok({ nodeId: null });
     } catch (err) {
       return new Err(
         new DustFileSystemError("internal", normalizeError(err).message)
@@ -424,7 +424,12 @@ export class GCSFileSystemBackend implements FileSystemBackend {
 
   async mkdir(
     scopedPath: string
-  ): Promise<Result<FileSystemDirectoryEntry, DustFileSystemError>> {
+  ): Promise<
+    Result<
+      { entry: FileSystemDirectoryEntry } & FileSystemNodeIdentity,
+      DustFileSystemError
+    >
+  > {
     const gcsPath = this.toGCSPath(scopedPath);
     if (!gcsPath) {
       return new Err(
@@ -454,11 +459,14 @@ export class GCSFileSystemBackend implements FileSystemBackend {
 
       const fileName = gcsPath.split("/").pop() ?? "";
       return new Ok({
-        isDirectory: true as const,
-        fileName,
-        path: scopedPath,
-        sizeBytes: 0,
-        lastModifiedMs: Date.now(),
+        entry: {
+          isDirectory: true as const,
+          fileName,
+          path: scopedPath,
+          sizeBytes: 0,
+          lastModifiedMs: Date.now(),
+        },
+        nodeId: null,
       });
     } catch (err) {
       return new Err(
@@ -594,6 +602,43 @@ export class GCSFileSystemBackend implements FileSystemBackend {
         new DustFileSystemError("internal", normalizeError(err).message)
       );
     }
+  }
+
+  async move({
+    src,
+    dest,
+  }: {
+    src: string;
+    dest: string;
+  }): Promise<Result<{ sourceDeletionFailed: boolean }, DustFileSystemError>> {
+    const destExists = await this.exists(dest);
+    if (destExists.isErr()) {
+      return destExists;
+    }
+    if (destExists.value) {
+      return new Err(
+        new DustFileSystemError(
+          "already_exists",
+          "File name already exists in the destination directory."
+        )
+      );
+    }
+
+    const copyResult = await this.copy({ src, dest });
+    if (copyResult.isErr()) {
+      return copyResult;
+    }
+
+    const deleteResult = await this.delete(src);
+    if (deleteResult.isErr()) {
+      logger.error(
+        { err: deleteResult.error, src, dest },
+        "GCS move left the source after copying the destination"
+      );
+      return new Ok({ sourceDeletionFailed: true });
+    }
+
+    return new Ok({ sourceDeletionFailed: false });
   }
 
   async getDownloadUrl(

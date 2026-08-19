@@ -377,7 +377,9 @@ fall back to a generic message for the rest. The ones worth branching on are \`i
 function's own request failed, \`sandbox_function_not_found\`, and \`not_supported\`.
 
 Pod functions in shared Frames are available to authenticated members of the Pod's workspace;
-anonymous viewers cannot call them.
+anonymous viewers cannot call them. When a function is declared \`"pod_member_required"\`, have the
+Frame gate the affordance on \`useUserIdentity\`'s \`isPodMember\` flag so non-members are not
+shown a button that can only fail; the flag is display-only and the policy is what enforces.
 
 #### Knowing who called a function
 
@@ -394,6 +396,12 @@ Declare the policy alongside the input and output schemas:
 - \`"workspace_user_required"\` refuses the call unless it comes from a current member of the Pod's
   workspace. Use it as soon as the function reads or writes anything that belongs to a person, or
   performs an action that should be attributable.
+- \`"pod_member_required"\` further requires the caller to belong to the Pod itself (its member or
+  editor group; workspace admins outside those groups are refused). Use it when the function
+  mutates the Pod's state and bystanders of an open Pod should only look.
+- \`"interactive_workspace_user_required"\` requires the call to come directly from a workspace
+  member's live Dust session, refusing agents, schedules, and API clients acting on the member's
+  behalf. Use it for consequential actions that a human must click themselves.
 
 \`\`\`ts
 import { z } from "zod";
@@ -408,7 +416,11 @@ export const schema = {
 \`\`\`
 
 Inside \`fetch\`, \`currentUser()\` from \`@dust/pod\` returns the caller as
-\`{ sId, firstName, lastName, fullName, image }\`, or \`null\` when the invocation has no user.
+\`{ sId, firstName, lastName, fullName, image, isPodMember, isPodEditor }\`, or \`null\` when the
+invocation has no user. \`isPodMember\` says whether the caller belongs to the Pod (member or
+editor group); \`isPodEditor\` whether they are an editor or a workspace admin. These are resolved
+by the platform per invocation, so they are trustworthy inputs for branching — e.g. a function
+open to the whole workspace can still reserve one code path for Pod members.
 Under \`"workspace_user_required"\` the platform has already rejected userless calls, so a
 non-null user is guaranteed; under \`"optional"\` you must handle \`null\` yourself.
 
@@ -457,11 +469,12 @@ to the caller, otherwise a guessed id reaches another user's data.
 
 Split capabilities across functions rather than branching inside one. A \`list-notes\` and a
 \`delete-note\` published separately can carry different policies and are each easy to reason about;
-one \`notes\` function taking an \`action\` field is not. If a capability must be restricted to a
-subset of members, keep that list in the database and check it against \`currentUser().sId\` —
-the platform only tells you the caller is a workspace member, not what they are allowed to do.`,
+one \`notes\` function taking an \`action\` field is not. If a capability must be restricted to an
+app-specific subset of users, keep that list in the database and check it against
+\`currentUser().sId\` — the platform tells you the caller's standing (workspace member, Pod
+member, Pod editor), not what your app allows them to do.`,
   mcpServers: [{ name: SANDBOX_FUNCTIONS_SERVER_NAME }],
-  version: 7,
+  version: 8,
   icon: "PuzzleIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);

@@ -1,13 +1,13 @@
 import { moveMountFileWithinScope } from "@app/lib/api/files/mount_file_ops";
-import {
-  getConversationFilesBasePath,
-  isResolveMountFilePathError,
-  resolveScopedMountFilePath,
-} from "@app/lib/api/files/mount_path";
 import { MoveMountFileRequestBodySchema } from "@app/lib/api/files/mount_schemas";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
+import {
+  getConversationFilesBasePath,
+  isResolveMountFilePathError,
+  resolveScopedMountFilePath,
+} from "@app/types/mount_path";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";

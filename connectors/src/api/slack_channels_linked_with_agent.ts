@@ -20,6 +20,10 @@ const PatchSlackChannelsLinkedWithAgentReqBodySchema = t.type({
   slack_channel_internal_ids: t.array(t.string),
   connector_id: t.string,
   auto_respond_without_mention: t.union([t.boolean, t.undefined]),
+  auto_respond_without_mention_skip_thread_replies: t.union([
+    t.boolean,
+    t.undefined,
+  ]),
 });
 
 type PatchSlackChannelsLinkedWithAgentReqBody = t.TypeOf<
@@ -58,6 +62,8 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
     agent_configuration_id: agentConfigurationId,
     slack_channel_internal_ids: slackChannelInternalIds,
     auto_respond_without_mention: autoRespondWithoutMention,
+    auto_respond_without_mention_skip_thread_replies:
+      autoRespondWithoutMentionSkipThreadReplies,
   } = bodyValidation.right;
 
   const slackChannelIds = slackChannelInternalIds.map((s) =>
@@ -111,6 +117,8 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
                 permission: "write",
                 private: !!remoteChannel.is_private,
                 autoRespondWithoutMention: autoRespondWithoutMention ?? false,
+                autoRespondWithoutMentionSkipThreadReplies:
+                  autoRespondWithoutMentionSkipThreadReplies ?? false,
               },
               {
                 transaction: t,
@@ -141,6 +149,8 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
           {
             agentConfigurationId,
             autoRespondWithoutMention: autoRespondWithoutMention ?? false,
+            autoRespondWithoutMentionSkipThreadReplies:
+              autoRespondWithoutMentionSkipThreadReplies ?? false,
           },
           { where: { connectorId, slackChannelId }, transaction: t }
         )
@@ -207,6 +217,7 @@ type GetSlackChannelsLinkedWithAgentResBody = WithConnectorsAPIErrorReponse<{
     slackChannelName: string;
     agentConfigurationId: string;
     autoRespondWithoutMention: boolean;
+    autoRespondWithoutMentionSkipThreadReplies: boolean;
   }[];
 }>;
 
@@ -243,6 +254,8 @@ const _getSlackChannelsLinkedWithAgentHandler = async (
 
       agentConfigurationId: c.agentConfigurationId!,
       autoRespondWithoutMention: c.autoRespondWithoutMention,
+      autoRespondWithoutMentionSkipThreadReplies:
+        c.autoRespondWithoutMentionSkipThreadReplies,
     })),
   });
 };

@@ -1,7 +1,7 @@
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 
 import type { CreatedWebhookSourceView } from "./seedWebhookSources";
-import type { CreatedAgent, SeedContext } from "./types";
+import type { CreatedAgent, CreatedTrigger, SeedContext } from "./types";
 
 export interface ScheduleTriggerAsset {
   name: string;
@@ -40,11 +40,12 @@ export async function seedTriggers(
   triggerAssets: TriggerAsset[],
   agents: Map<string, CreatedAgent>,
   options: SeedTriggersOptions = {}
-): Promise<void> {
+): Promise<Map<string, CreatedTrigger>> {
   const { auth, execute, logger } = ctx;
   const workspace = auth.getNonNullableWorkspace();
   const user = auth.getNonNullableUser();
   const { webhookSources } = options;
+  const createdTriggers = new Map<string, CreatedTrigger>();
 
   for (const asset of triggerAssets) {
     const agent = agents.get(asset.agentName);
@@ -80,6 +81,10 @@ export async function seedTriggers(
     );
     const existingTrigger = existing.find((t) => t.name === asset.name);
     if (existingTrigger) {
+      createdTriggers.set(asset.name, {
+        sId: existingTrigger.sId,
+        name: asset.name,
+      });
       logger.info(
         { name: asset.name, agentName: asset.agentName },
         "Trigger already exists, skipping"
@@ -99,11 +104,17 @@ export async function seedTriggers(
         configuration: asset.configuration,
         webhookSourceViewId,
         origin: "user",
+        executionMode: "user_pool",
       });
 
       if (result.isErr()) {
         throw result.error;
       }
+
+      createdTriggers.set(asset.name, {
+        sId: result.value.sId,
+        name: asset.name,
+      });
 
       logger.info(
         { name: asset.name, kind: asset.kind, agentName: asset.agentName },
@@ -116,4 +127,6 @@ export async function seedTriggers(
       );
     }
   }
+
+  return createdTriggers;
 }

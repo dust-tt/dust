@@ -42,5 +42,9 @@ export type AgentMessageConsumptionDetails = {
 
 export type AgentMessageConsumptionResponse = {
   billedCredits: number | null;
+  /** Credits billed by sub-agents spawned from this message. */
+  subAgentBilledCredits?: number;
+  /** Total credits billed by this message and its recursively spawned sub-agents. */
+  totalBilledCredits?: number;
   details: AgentMessageConsumptionDetails | null;
 };

@@ -5,7 +5,10 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import {
+  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
+} from "@app/types/assistant/models/anthropic";
 import { beforeEach, describe, expect, it } from "vitest";
 
 describe("getModelTierAccessErrorForAgentConfiguration", () => {
@@ -96,5 +99,26 @@ describe("getModelTierAccessErrorForAgentConfiguration", () => {
     });
 
     expect(error).toBeNull();
+  });
+
+  // A stream only ever resolves to a candidate within the member's cap, so
+  // checking the resolved model alone would let a member run a stream above it.
+  it.each([
+    ["auto_complex", "model_tier_not_enabled"],
+    ["auto", null],
+    ["auto_fast", null],
+  ] as const)("tier-checks the %s stream itself, not the model it resolved to", async (modelResolutionMethod, expectedCode) => {
+    const auth = await restrictedUserAuth();
+
+    const error = await getModelTierAccessErrorForAgentConfiguration(auth, {
+      agentName: "test-agent",
+      // Haiku 4.5 is cost_efficient at every effort: a plausible candidate for
+      // any stream, and always within a `balanced` member's cap.
+      model: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+      featureFlags: ["models_picker"],
+      modelResolutionMethod,
+    });
+
+    expect(error?.code ?? null).toBe(expectedCode);
   });
 });

@@ -1,20 +1,32 @@
+import { CHART_HEIGHT } from "@app/components/charts/constants";
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import { ConsumptionOverview } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
+import { ConsumptionSummary } from "@app/components/workspace/analytics/consumption/ConsumptionSummary";
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { consumptionDimensionFromQueryParam } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
 import { UsageFilterSummary } from "@app/components/workspace/analytics/UsageFilterSummary";
 import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
-import { toConsumptionScopeFilter } from "@app/components/workspace/analytics/usageFilter";
+import {
+  addUsageFilterFromAttributionRow,
+  removeUsageFilterFromAttributionRow,
+  setUsageFilterFromAttributionRow,
+  toConsumptionScopeFilter,
+} from "@app/components/workspace/analytics/usageFilter";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
-import { BarChart01, cn, Page, SafeSuspense, safeLazy } from "@dust-tt/sparkle";
+import {
+  cn,
+  LoadingBlock,
+  Page,
+  SafeSuspense,
+  safeLazy,
+} from "@dust-tt/sparkle";
 import { domMax, LazyMotion, m, useReducedMotion } from "framer-motion";
-
 import { useMemo, useState } from "react";
 
 const canReload = () => !isNavigationLocked();
@@ -28,7 +40,29 @@ const ConsumptionChart = safeLazy(
 );
 
 function ChartFallback() {
-  return <div className="h-64 animate-pulse rounded-lg bg-muted-background" />;
+  return (
+    <div aria-hidden="true" className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <LoadingBlock className="h-5 w-28" />
+        <div className="rounded-2xl border border-border-dark bg-background p-1">
+          <LoadingBlock className="h-8 w-36 rounded-xl" />
+        </div>
+      </div>
+      <div className="rounded-lg border border-border bg-background p-4">
+        <div className="border-b border-border pb-3">
+          <LoadingBlock className="h-6 w-36" />
+        </div>
+        <LoadingBlock
+          className="mt-3 w-full"
+          style={{ height: CHART_HEIGHT }}
+        />
+        <div className="mt-3 flex h-5 items-center gap-6">
+          <LoadingBlock className="h-4 w-32" />
+          <LoadingBlock className="h-4 w-36" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function AnalyticsConsumptionPage() {
@@ -51,10 +85,7 @@ export function AnalyticsConsumptionPage() {
   if (!isEnabled) {
     return (
       <Page.Vertical align="stretch" gap="xl">
-        <Page.Header
-          title={<Page.H variant="h3">Analytics</Page.H>}
-          icon={BarChart01}
-        />
+        <Page.Header title={<Page.H variant="h3">Analytics</Page.H>} />
         <div
           className={cn(
             "flex flex-col gap-2 rounded-xl border p-6",
@@ -73,67 +104,75 @@ export function AnalyticsConsumptionPage() {
     <Page.Vertical align="stretch" gap="xl">
       <Page.Header
         title={
-          <div className="flex w-full flex-row justify-between">
-            <Page.H variant="h3">Analytics</Page.H>
-            <ConsumptionPeriodSelector
-              period={period}
-              onPeriodChange={setPeriod}
-            />
-          </div>
-        }
-        icon={BarChart01}
-      />
-      <div className="flex flex-col gap-8 pb-8">
-        <ConsumptionOverview
-          workspaceId={owner.sId}
-          period={period}
-          filter={scopeFilter}
-        />
-        <LazyMotion features={domMax}>
-          <div className="flex flex-col gap-4">
-            <div className="sticky top-0 z-30 -mb-4 flex flex-col bg-background pb-4 pt-4">
-              <div className="flex items-center justify-between gap-4">
-                <h2 className="text-lg font-semibold text-foreground">
-                  Explore
-                </h2>
-                <UsageFilterPanel
-                  owner={owner}
-                  period={period}
-                  filter={filter}
-                  onFilterChange={setFilter}
-                />
-              </div>
-              <UsageFilterSummary filter={filter} onFilterChange={setFilter} />
-            </div>
-            <m.div
-              layout={!shouldReduceMotion}
-              transition={{ duration: shouldReduceMotion ? 0 : 0.18 }}
-              className="flex flex-col"
-            >
-              <SafeSuspense fallback={<ChartFallback />}>
-                <ConsumptionChart
-                  workspaceId={owner.sId}
-                  period={period}
-                  dimension={dimension}
-                  filter={scopeFilter}
-                />
-              </SafeSuspense>
-            </m.div>
-            <div className="flex flex-col gap-4">
-              <h3 className="text-base font-semibold text-foreground">
-                Attribution
-              </h3>
-              <ConsumptionAttributionTable
-                workspaceId={owner.sId}
+          <>
+            <div className="flex w-full flex-row justify-between">
+              <Page.H variant="h3">Analytics</Page.H>
+              <ConsumptionPeriodSelector
                 period={period}
-                filter={scopeFilter}
-                dimension={dimension}
-                onDimensionChange={handleDimensionChange}
+                onPeriodChange={setPeriod}
               />
             </div>
+            <ConsumptionOverview workspaceId={owner.sId} period={period} />
+          </>
+        }
+      />
+
+      <ConsumptionSummary workspaceId={owner.sId} period={period} />
+
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col bg-panel-background">
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-lg font-semibold text-foreground">Explore</h2>
+            <UsageFilterPanel
+              owner={owner}
+              period={period}
+              filter={filter}
+              onFilterChange={setFilter}
+            />
           </div>
+          <UsageFilterSummary filter={filter} onFilterChange={setFilter} />
+        </div>
+        <LazyMotion features={domMax}>
+          <m.div
+            layout={!shouldReduceMotion}
+            transition={{ duration: shouldReduceMotion ? 0 : 0.18 }}
+            className="flex flex-col"
+          >
+            <SafeSuspense fallback={<ChartFallback />}>
+              <ConsumptionChart
+                workspaceId={owner.sId}
+                period={period}
+                dimension={dimension}
+                filter={scopeFilter}
+              />
+            </SafeSuspense>
+          </m.div>
         </LazyMotion>
       </div>
+
+      <ConsumptionAttributionTable
+        workspaceId={owner.sId}
+        period={period}
+        filter={scopeFilter}
+        onAddFilter={(selectedRow) => {
+          setFilter((current) =>
+            addUsageFilterFromAttributionRow(current, dimension, selectedRow)
+          );
+        }}
+        onRemoveFilter={(selectedRow) => {
+          setFilter((current) =>
+            removeUsageFilterFromAttributionRow(current, dimension, selectedRow)
+          );
+        }}
+        dimension={dimension}
+        onDimensionChange={handleDimensionChange}
+        onViewAll={(nextDimension, selectedRow) => {
+          setFilter((current) =>
+            setUsageFilterFromAttributionRow(current, dimension, selectedRow)
+          );
+          handleDimensionChange(nextDimension);
+        }}
+      />
     </Page.Vertical>
   );
 }

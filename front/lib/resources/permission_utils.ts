@@ -1,69 +1,22 @@
-import { Authenticator } from "@app/lib/auth";
-import { GroupResource } from "@app/lib/resources/group_resource";
+import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import type { AccessControlList } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
-import assert from "assert";
 
 /**
- * Creates a space id to group ids mapping for efficient permission resolution.
- * This should be called once and reused for multiple permission checks.
+ * Whether the caller can read every one of `requestedSpaceIds` (a conjunctive check), using a
+ * pre-fetched `spaceId -> SpaceResource` map so callers resolve the spaces once and reuse them
+ * across many items.
  *
- * @param auth - Authenticator instance
- * @param allFetchedSpaces - All SpaceResource objects that were fetched
- * @returns Map from space id to group ids arrays for permission resolution
+ * Space access is served from `group_permissions` via `SpaceResource.canRead` (which also honors
+ * the `use_legacy_acls` kill switch). A requested space missing from the map — deleted, or belonging
+ * to another workspace — is treated as not readable.
  */
-export function createSpaceIdToGroupsMap(
+export function canReadRequestedSpaces(
   auth: Authenticator,
-  allFetchedSpaces: SpaceResource[]
-): Map<ModelId, string[]> {
-  const workspaceId = auth.getNonNullableWorkspace().id;
-  const spaceIdToGroupsMap = new Map<ModelId, string[]>();
-
-  for (const space of allFetchedSpaces) {
-    // Use `getAccessControlLists` to get up-to-date permission groups (this includes provisioned groups).
-    // TODO: Refactor to avoid calling `getAccessControlLists` but still get the right groups.
-    const permissions = space.getAccessControlLists(auth);
-    const groupIds = permissions.flatMap((permission) =>
-      permission.groups.map((group) =>
-        GroupResource.modelIdToSId({
-          id: group.id,
-          workspaceId,
-        })
-      )
-    );
-    spaceIdToGroupsMap.set(space.id, groupIds);
-  }
-
-  return spaceIdToGroupsMap;
-}
-
-/**
- * Creates AccessControlList objects from space ids using a pre-built space-to-groups mapping.
- * This is the optimized version that avoids rebuilding the map on each call.
- *
- * @param spaceIdToGroupsMap - Pre-built mapping from space ids to group IDs
- * @param requestedSpaceIds - Array of space ids that need permission resolution
- * @returns Array of AccessControlList objects for use with Authenticator permission methods
- */
-export function createAccessControlListFromSpacesWithMap(
-  spaceIdToGroupsMap: Map<ModelId, string[]>,
-  requestedSpaceIds: ModelId[],
-  workspaceId: ModelId
-): AccessControlList[] {
-  const resolvedGroupIds: string[][] = [];
-
-  for (const spaceId of requestedSpaceIds) {
-    const groupIds = spaceIdToGroupsMap.get(spaceId);
-
-    // This should never happen since conversations are pre-filtered to only include valid spaces.
-    assert(groupIds, `No group IDs found for space ID ${spaceId}`);
-
-    resolvedGroupIds.push(groupIds);
-  }
-
-  return Authenticator.createAccessControlListFromGroupIds(
-    resolvedGroupIds,
-    workspaceId
+  spaceById: Map<ModelId, SpaceResource>,
+  requestedSpaceIds: ModelId[]
+): boolean {
+  return requestedSpaceIds.every(
+    (spaceId) => spaceById.get(spaceId)?.canRead(auth) ?? false
   );
 }

@@ -274,7 +274,7 @@ describe("resolveModel", () => {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     await FeatureFlagFactory.basic(auth, "models_picker");
 
-    const getModelForStreamSpy = vi.spyOn(enabledModels, "getModelForStream");
+    const resolveStreamModelSpy = vi.spyOn(enabledModels, "resolveStreamModel");
 
     const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
       configuration: makeAgentConfiguration({
@@ -285,9 +285,12 @@ describe("resolveModel", () => {
     });
 
     // `auto` is a stream like `auto_fast` / `auto_complex`: it routes through
-    // getModelForStream and resolves to its first available candidate, which
+    // resolveStreamModel and resolves to its first available candidate, which
     // is Luna at `high` reasoning.
-    expect(getModelForStreamSpy).toHaveBeenCalledWith(auth, AUTO_MODEL_ID);
+    expect(resolveStreamModelSpy).toHaveBeenCalledWith(
+      expect.any(Array),
+      AUTO_MODEL_ID
+    );
     expect(modelResolutionMethod).toBe("auto");
     expect(resolvedModel.modelId).not.toBe(AUTO_MODEL_ID);
     expect(resolvedModel).toEqual({
@@ -302,7 +305,7 @@ describe("resolveModel", () => {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     await FeatureFlagFactory.basic(auth, "models_picker");
 
-    const getModelForStreamSpy = vi.spyOn(enabledModels, "getModelForStream");
+    const resolveStreamModelSpy = vi.spyOn(enabledModels, "resolveStreamModel");
 
     const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
       selection: {
@@ -316,7 +319,10 @@ describe("resolveModel", () => {
       featureFlags: ["models_picker"],
     });
 
-    expect(getModelForStreamSpy).toHaveBeenCalledWith(auth, AUTO_MODEL_ID);
+    expect(resolveStreamModelSpy).toHaveBeenCalledWith(
+      expect.any(Array),
+      AUTO_MODEL_ID
+    );
     expect(modelResolutionMethod).toBe("auto");
     expect(resolvedModel.modelId).not.toBe(AUTO_MODEL_ID);
     expect(resolvedModel).toEqual({
@@ -330,7 +336,7 @@ describe("resolveModel", () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const getModelForStreamSpy = vi.spyOn(enabledModels, "getModelForStream");
+    const resolveStreamModelSpy = vi.spyOn(enabledModels, "resolveStreamModel");
 
     const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
       configuration: makeAgentConfiguration({
@@ -340,7 +346,10 @@ describe("resolveModel", () => {
       featureFlags: [],
     });
 
-    expect(getModelForStreamSpy).toHaveBeenCalledWith(auth, AUTO_MODEL_ID);
+    expect(resolveStreamModelSpy).toHaveBeenCalledWith(
+      expect.any(Array),
+      AUTO_MODEL_ID
+    );
     expect(modelResolutionMethod).toBe("auto");
     expect(resolvedModel.modelId).not.toBe(AUTO_MODEL_ID);
     expect(resolvedModel).toEqual({

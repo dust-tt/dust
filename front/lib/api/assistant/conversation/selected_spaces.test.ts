@@ -126,7 +126,8 @@ describe("selected conversation Spaces", () => {
       workspaceId: workspace.id,
       kind: "regular_auto",
     });
-    return SpaceResource.makeNew(
+    const space = await SpaceResource.makeNew(
+      await Authenticator.internalAdminForWorkspace(workspace.sId),
       {
         name: "Open Space",
         kind: "regular",
@@ -134,6 +135,11 @@ describe("selected conversation Spaces", () => {
       },
       { members: [memberGroup, globalGroup] }
     );
+    // Membership on the open space comes from the global group's `reader` grant, which lands in the
+    // caller's grant snapshot only after a refresh (the caller is already in the global group, but
+    // the space's grants did not exist when their auth was built).
+    await auth.refresh();
+    return space;
   }
 
   async function conversation() {

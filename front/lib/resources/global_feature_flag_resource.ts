@@ -1,11 +1,31 @@
+import { defineCachedResourceList } from "@app/lib/api/resources/cached_resource_lookup";
 import type { Authenticator } from "@app/lib/auth";
 import { GlobalFeatureFlagModel } from "@app/lib/models/global_feature_flag";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { RequestCachedQuery } from "@app/types/shared/utils/request_context";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
+
+// Feature flags are a stable snapshot for the request. Mutations become
+// visible on the next request.
+const listAllQuery = new RequestCachedQuery<
+  "all",
+  GlobalFeatureFlagResource[]
+>();
+
+const GLOBAL_FEATURE_FLAG_CACHE_VERSION = 1;
+
+type CachedGlobalFeatureFlagData = {
+  id: ModelId;
+  name: WhitelistableFeature;
+  rolloutPercentage: number;
+  createdAt: number;
+  updatedAt: number;
+};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -22,11 +42,51 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
     super(GlobalFeatureFlagModel, blob);
   }
 
-  static async listAll(): Promise<GlobalFeatureFlagResource[]> {
-    const flags = await GlobalFeatureFlagModel.findAll();
+  private static async listAllFromDatabase(
+    _key: "all",
+    transaction?: Transaction
+  ): Promise<GlobalFeatureFlagResource[]> {
+    const flags = await GlobalFeatureFlagModel.findAll({ transaction });
 
     return flags.map(
-      (f) => new GlobalFeatureFlagResource(GlobalFeatureFlagModel, f.get())
+      (flag) =>
+        new GlobalFeatureFlagResource(GlobalFeatureFlagModel, flag.get())
+    );
+  }
+
+  private static readonly listAllCache = defineCachedResourceList<
+    "all",
+    CachedGlobalFeatureFlagData[],
+    GlobalFeatureFlagResource
+  >({
+    id: "global_feature_flags",
+    version: GLOBAL_FEATURE_FLAG_CACHE_VERSION,
+    key: (key) => key,
+    loadFromDatabase: GlobalFeatureFlagResource.listAllFromDatabase,
+    toSnapshot: (flags) =>
+      flags.map((flag) => ({
+        id: flag.id,
+        name: flag.name,
+        rolloutPercentage: flag.rolloutPercentage,
+        createdAt: flag.createdAt.getTime(),
+        updatedAt: flag.updatedAt.getTime(),
+      })),
+    fromSnapshot: (flags) =>
+      flags.map(
+        (flag) =>
+          new GlobalFeatureFlagResource(GlobalFeatureFlagModel, {
+            id: flag.id,
+            name: flag.name,
+            rolloutPercentage: flag.rolloutPercentage,
+            createdAt: new Date(flag.createdAt),
+            updatedAt: new Date(flag.updatedAt),
+          })
+      ),
+  });
+
+  static async listAll(): Promise<GlobalFeatureFlagResource[]> {
+    return listAllQuery.get("all", () =>
+      GlobalFeatureFlagResource.listAllCache.fetch("all")
     );
   }
 
@@ -45,6 +105,7 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
     } else {
       await GlobalFeatureFlagModel.upsert({ name, rolloutPercentage });
     }
+    await GlobalFeatureFlagResource.listAllCache.invalidate("all");
   }
 
   async delete(
@@ -55,7 +116,7 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
       where: { id: this.id },
       transaction,
     });
-
+    await GlobalFeatureFlagResource.listAllCache.invalidate("all", transaction);
     return new Ok(this.id);
   }
 

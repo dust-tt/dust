@@ -39,6 +39,7 @@ interface PodPageContentProps {
   mutatePodInfo: () => Promise<unknown>;
   clientSideMCPServerIds?: string[];
   frameTabs?: PodFrameTab[];
+  hasApps: boolean;
 }
 
 export function PodPageContent({
@@ -49,6 +50,7 @@ export function PodPageContent({
   mutatePodInfo,
   clientSideMCPServerIds,
   frameTabs = [],
+  hasApps,
 }: PodPageContentProps) {
   const owner = useWorkspace();
   const { user } = useAuth();
@@ -220,9 +222,15 @@ export function PodPageContent({
       <NavTabPillContent value="files">
         <PodFilesTab owner={owner} pod={podInfo} />
       </NavTabPillContent>
-      <NavTabPillContent value="apps">
-        <PodAppsTab owner={owner} pod={podInfo} />
-      </NavTabPillContent>
+      {hasApps && (
+        <NavTabPillContent value="apps">
+          <PodAppsTab
+            owner={owner}
+            pod={podInfo}
+            onNavigateToConversations={() => onTabChange("conversations")}
+          />
+        </NavTabPillContent>
+      )}
       {podInfo.isAdminControlled && (
         <NavTabPillContent value="connected_data">
           <PodConnectedDataTab owner={owner} pod={podInfo} />

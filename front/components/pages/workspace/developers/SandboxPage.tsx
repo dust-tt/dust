@@ -2,7 +2,7 @@ import { EnvironmentSection } from "@app/components/pages/workspace/developers/s
 import { NetworkSection } from "@app/components/pages/workspace/developers/sections/NetworkSection";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
-import { ContentMessage, Globe01, InfoCircle, Page } from "@dust-tt/sparkle";
+import { ContentMessage, InfoCircle, Page } from "@dust-tt/sparkle";
 
 export function SandboxPage() {
   const { isAdmin } = useAuth();
@@ -38,7 +38,6 @@ export function SandboxPage() {
     <Page.Vertical gap="xl" align="stretch">
       <Page.Header
         title="Computer"
-        icon={Globe01}
         description="Configure workspace-level network access and environment variables for the Computer."
       />
       {renderBody()}

@@ -1,9 +1,10 @@
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
+import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 
 // One row = one Activation Pod: a Pod (project space) provisioned by the
 // activation flow. Canonical record for a pod's owner.
@@ -17,6 +18,8 @@ export class ActivationPodModel extends WorkspaceAwareModel<ActivationPodModel> 
   declare userId: ForeignKey<UserModel["id"]>;
   // Whether the Pod uses the compact UI variant.
   declare isCompactUIView: CreationOptional<boolean>;
+
+  declare projectMetadata?: NonAttribute<ProjectMetadataModel>;
 }
 
 ActivationPodModel.init(
@@ -53,6 +56,13 @@ ActivationPodModel.belongsTo(SpaceModel, {
 });
 SpaceModel.hasOne(ActivationPodModel, {
   foreignKey: { name: "spaceId", allowNull: false },
+});
+
+ActivationPodModel.belongsTo(ProjectMetadataModel, {
+  foreignKey: { name: "spaceId", allowNull: false },
+  targetKey: "spaceId",
+  as: "projectMetadata",
+  constraints: false,
 });
 
 ActivationPodModel.belongsTo(UserModel, {

@@ -37,12 +37,11 @@ export async function getActivationPodInfo(
     return { podId: null };
   }
 
-  const [space] = await SpaceResource.fetchByModelIds(auth, [
-    activationPod.spaceId,
-  ]);
-
   return {
-    podId: space?.sId ?? null,
+    podId: SpaceResource.modelIdToSId({
+      id: activationPod.spaceId,
+      workspaceId: activationPod.workspaceId,
+    }),
   };
 }
 

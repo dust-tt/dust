@@ -1,6 +1,7 @@
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
 import { TriggerPodSelector } from "@app/components/agent_builder/triggers/TriggerPodSelector";
+import { TriggerStatusToggle } from "@app/components/agent_builder/triggers/TriggerStatusToggle";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/webhook/WebhookEditionFilters";
 import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
@@ -25,7 +26,6 @@ import {
   Label,
   LinkWrapper,
   Separator,
-  SliderToggle,
   TextArea,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -59,35 +59,6 @@ function WebhookEditionNameInput({ isEditor }: WebhookEditionNameInputProps) {
   );
 }
 
-interface WebhookEditionStatusToggleProps {
-  isEditor: boolean;
-}
-
-function WebhookEditionStatusToggle({
-  isEditor,
-}: WebhookEditionStatusToggleProps) {
-  const { control } = useFormContext<TriggerViewsSheetFormValues>();
-  const {
-    field: { value: status, onChange: setStatus },
-  } = useController({ control, name: "webhook.status" });
-
-  const isEnabled = status === "enabled";
-
-  return (
-    <div className="space-y-1">
-      <Label>Status</Label>
-      <div className="flex flex-row items-center gap-2">
-        <span className="w-16">{isEnabled ? "Enabled" : "Disabled"}</span>
-        <SliderToggle
-          disabled={!isEditor}
-          selected={isEnabled}
-          onClick={() => setStatus(isEnabled ? "disabled" : "enabled")}
-        />
-      </div>
-    </div>
-  );
-}
-
 interface WebhookEditionExecutionLimitProps {
   executionMode: TriggerExecutionMode;
 }
@@ -116,7 +87,7 @@ function WebhookEditionExecutionLimit({
         This trigger can send a limited number of messages per day. This
         prevents a single trigger from using up your workspace's message fair
         use quota. This trigger is currently running on your workspace's{" "}
-        {executionMode === "fair_use" ? "fair use" : "programmatic usage"}{" "}
+        {executionMode === "user_pool" ? "fair use" : "programmatic usage"}{" "}
         quota.
         <br /> (
         <LinkWrapper
@@ -315,7 +286,7 @@ export function WebhookEditionSheetContent({
       <div className="space-y-8">
         <div className="flex flex-row items-center justify-between gap-4">
           <WebhookEditionNameInput isEditor={isEditor} />
-          <WebhookEditionStatusToggle isEditor={isEditor} />
+          <TriggerStatusToggle name="webhook.status" isEditor={isEditor} />
         </div>
 
         <WebhookEditionEventSelector
@@ -342,7 +313,7 @@ export function WebhookEditionSheetContent({
         <Separator />
 
         <WebhookEditionExecutionLimit
-          executionMode={trigger?.executionMode ?? "fair_use"}
+          executionMode={trigger?.executionMode ?? "user_pool"}
         />
 
         <Separator />

@@ -45,15 +45,13 @@ import {
   UPDATE_SKILL_TOOL_NAME,
 } from "@app/lib/api/actions/servers/skill_authoring/metadata";
 import { useSkill } from "@app/lib/swr/skill_configurations";
-import { isString } from "@app/types/shared/utils/general";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-  Markdown,
-} from "@dust-tt/sparkle";
-import { useMemo } from "react";
+  isNumber,
+  isString,
+  removeNulls,
+} from "@app/types/shared/utils/general";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
+import { Markdown } from "@dust-tt/sparkle";
 
 function humanizeFieldName(name: string): string {
   return name
@@ -66,13 +64,19 @@ function formatDisplayValue(value: unknown): string | null {
   if (value === null) {
     return null;
   }
+  if (Array.isArray(value)) {
+    return value.map(String).join(", ");
+  }
   if (typeof value === "object") {
-    // Render objects/arrays as formatted JSON, same as GenericActionDetails.
+    // Render objects as formatted JSON, same as GenericActionDetails.
     // No truncation: the container is overflow-auto.
     return JSON.stringify(value, null, 2);
   }
   if (typeof value === "boolean") {
     return value ? "Yes" : "No";
+  }
+  if (isNumber(value)) {
+    return String(value);
   }
   if (!isString(value)) {
     return null;
@@ -82,11 +86,11 @@ function formatDisplayValue(value: unknown): string | null {
 }
 
 interface DisplayableInput {
+  key: string;
   label: string;
   value: string;
-  // Whether `value` was produced from an object/array input (as opposed to a
-  // string that merely looks like JSON), so it can be rendered as a
-  // collapsible JSON code block.
+  // Whether `value` was produced from an object input rather than a string
+  // that merely looks like JSON.
   isJson: boolean;
 }
 
@@ -97,7 +101,6 @@ interface ToolValidationDetailsProps {
   user: UserType;
   owner: LightWorkspaceType;
   conversationId?: string | null;
-  defaultExpanded?: boolean;
 }
 
 export function ToolValidationDetails({
@@ -105,7 +108,6 @@ export function ToolValidationDetails({
   user,
   owner,
   conversationId,
-  defaultExpanded = false,
 }: ToolValidationDetailsProps) {
   // For skill_authoring `update_skill`, the only identifier the agent passes is
   // the skill `sId`, which is meaningless to a human approving the call. Resolve
@@ -129,23 +131,26 @@ export function ToolValidationDetails({
     ? "Loading…"
     : (skill?.name ?? "Unknown skill");
 
-  const displayableInputs: DisplayableInput[] = useMemo(() => {
-    if (!blockedAction.inputs) {
-      return [];
-    }
-    return Object.entries(blockedAction.inputs)
-      .map(([key, value]) => {
-        if (isSkillAuthoringUpdate && key === "sId") {
-          return { label: "Skill", value: resolvedSkillName, isJson: false };
-        }
-        return {
-          label: humanizeFieldName(key),
-          value: formatDisplayValue(value),
-          isJson: value !== null && typeof value === "object",
-        };
-      })
-      .filter((entry): entry is DisplayableInput => entry.value !== null);
-  }, [blockedAction.inputs, isSkillAuthoringUpdate, resolvedSkillName]);
+  const displayableInputs: DisplayableInput[] = removeNulls(
+    Object.entries(blockedAction.inputs).map(([key, value]) => {
+      if (isSkillAuthoringUpdate && key === "sId") {
+        return { key, label: "Skill", value: resolvedSkillName, isJson: false };
+      }
+
+      const displayValue = formatDisplayValue(value);
+      if (displayValue === null) {
+        return null;
+      }
+
+      return {
+        key,
+        label: humanizeFieldName(key),
+        value: displayValue,
+        isJson:
+          value !== null && typeof value === "object" && !Array.isArray(value),
+      };
+    })
+  );
 
   if (
     blockedAction.metadata.mcpServerName === ASHBY_SERVER_NAME &&
@@ -260,37 +265,26 @@ export function ToolValidationDetails({
   }
 
   return (
-    <Collapsible defaultOpen={defaultExpanded}>
-      <CollapsibleTrigger>
-        <span className="my-2 font-medium">Details</span>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className="max-h-80 space-y-2 overflow-auto rounded-lg bg-muted p-3 text-sm">
-          {displayableInputs.map(({ label, value, isJson }) =>
-            isJson ? (
-              <Collapsible key={label}>
-                <CollapsibleTrigger>
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {label}
-                  </span>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <Markdown content={`\`\`\`json\n${value}\n\`\`\``} />
-                </CollapsibleContent>
-              </Collapsible>
-            ) : (
-              <div key={label} className="flex flex-col gap-0.5">
-                <span className="text-xs font-medium text-muted-foreground">
-                  {label}
-                </span>
-                <span className="whitespace-pre-wrap wrap-break-word">
-                  {value}
-                </span>
+    <dl className="divide-y divide-separator">
+      {displayableInputs.map(({ key, label, value, isJson }) => (
+        <div
+          key={key}
+          className="grid gap-1 py-3 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,8rem)_minmax(0,1fr)] sm:gap-4"
+        >
+          <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
+          <dd className="min-w-0 text-sm text-foreground">
+            {isJson ? (
+              <div className="max-w-full overflow-auto">
+                <Markdown content={`\`\`\`json\n${value}\n\`\`\``} />
               </div>
-            )
-          )}
+            ) : (
+              <span className="whitespace-pre-wrap wrap-break-word">
+                {value}
+              </span>
+            )}
+          </dd>
         </div>
-      </CollapsibleContent>
-    </Collapsible>
+      ))}
+    </dl>
   );
 }

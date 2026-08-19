@@ -1,8 +1,12 @@
+import type { GrantLevel } from "@app/lib/resources/group_permission_registry";
 import {
   assertValidGrant,
+  GroupPermissions,
   grantTypesForVerb,
   ROLE_REGISTRY,
+  verbsForGrantAtLevels,
 } from "@app/lib/resources/group_permission_registry";
+import type { GrantVerb } from "@app/types/group_permissions";
 import {
   GRANT_TYPES,
   GRANT_VERBS,
@@ -236,5 +240,202 @@ describe("ROLE_REGISTRY invariants", () => {
         expect(roleNames.has(grantType)).toBe(true);
       }
     }
+  });
+});
+
+describe("verbsForGrantAtLevels", () => {
+  it("matches a role against any supplied level", () => {
+    const levels = new Set<GrantLevel>(["instance", "type"]);
+
+    expect(verbsForGrantAtLevels("create", "agent", levels)).toEqual([
+      "create",
+    ]);
+    expect(verbsForGrantAtLevels("editor", "agent", levels)).toEqual([
+      "read",
+      "write",
+    ]);
+  });
+});
+
+describe("GroupPermissions.fromJSON", () => {
+  // read = 1 << 0, write = 1 << 1 (see VERB_BIT / GRANT_VERBS order).
+  it("reads the current resolved-mask shape", () => {
+    const perms = GroupPermissions.fromJSON({
+      grants: { agent: { 42: 0b11 } },
+    });
+    expect(perms.resolvedVerbsForResource("agent", 42)).toEqual([
+      "read",
+      "write",
+    ]);
+  });
+
+  it("reads the legacy per-group shape by OR-ing the group masks", () => {
+    // In-flight Temporal payloads serialized before group ids were folded away carry
+    // resourceId -> groupId -> mask; groups 7 and 9 union to read + write.
+    const perms = GroupPermissions.fromJSON({
+      grants: { agent: { 42: { 7: 0b01, 9: 0b10 } } },
+    });
+    expect(perms.resolvedVerbsForResource("agent", 42)).toEqual([
+      "read",
+      "write",
+    ]);
+  });
+
+  it("round-trips the current shape through toJSON", () => {
+    const json = { grants: { agent: { 42: 0b11 } } };
+    expect(GroupPermissions.fromJSON(json).toJSON()).toEqual(json);
+  });
+});
+
+describe("GroupPermissions wildcard grant", () => {
+  const WILDCARD = [
+    {
+      grantType: "*",
+      resourceType: "*",
+      resourceId: WHOLE_TYPE_RESOURCE_ID,
+    },
+  ] as const;
+
+  it("confers every verb the registry defines, at every level", () => {
+    const perms = GroupPermissions.fromGrants([...WILDCARD]);
+
+    // Instance-level roles: `space` declares no type-level role at all, so a wildcard would confer
+    // nothing there if it only expanded type-level verbs.
+    expect(perms.resolvedVerbsForResource("space", 12).sort()).toEqual([
+      "admin",
+      "read",
+      "write",
+    ]);
+    // Type-level capabilities alongside the instance ones.
+    expect(perms.resolvedVerbsForResource("agent", 42).sort()).toEqual([
+      "create",
+      "publish",
+      "read",
+      "write",
+    ]);
+    expect(perms.resolvedVerbsForResource("billing", 1)).toEqual(["admin"]);
+  });
+
+  it("confers them on instances it has never seen", () => {
+    const perms = GroupPermissions.fromGrants([...WILDCARD]);
+    expect(perms.resolvedVerbsForResource("space", 999999)).toContain("write");
+  });
+
+  it("confers only the instance-level roles on a concrete id", () => {
+    // `assertValidGrant` pins a wildcard to WHOLE_TYPE_RESOURCE_ID, so this row is not one the
+    // product writes; a stale one must not confer the type-level capabilities on that instance.
+    const perms = GroupPermissions.fromGrants([
+      { grantType: "*", resourceType: "agent", resourceId: 42 },
+    ]);
+    expect(perms.resolvedVerbsForResource("agent", 42).sort()).toEqual([
+      "read",
+      "write",
+    ]);
+  });
+
+  it("round-trips through toJSON / fromJSON", () => {
+    const perms = GroupPermissions.fromGrants([...WILDCARD]);
+    const restored = GroupPermissions.fromJSON(perms.toJSON());
+    expect(restored.toJSON()).toEqual(perms.toJSON());
+    expect(restored.resolvedVerbsForResource("space", 12)).toContain("admin");
+  });
+
+  it("enumerates as every instance, not as none", () => {
+    // A type-wide entry names no id, so it cannot come back as a list. Reporting "all" is what
+    // keeps the enumeration consistent with `resolvedVerbsForResource`, which folds -1 in.
+    expect(
+      GroupPermissions.fromGrants([...WILDCARD]).resourceIdsWithVerb(
+        "space",
+        "read"
+      )
+    ).toEqual({ kind: "all" });
+  });
+});
+
+describe("GroupPermissions.resourceIdsWithVerb", () => {
+  // read = 1 << 0, write = 1 << 1, admin = 1 << 2 (see VERB_BIT / GRANT_VERBS order).
+  it("returns the instance ids holding the verb", () => {
+    const perms = GroupPermissions.fromJSON({
+      grants: { space: { 12: 0b011, 34: 0b001 } },
+    });
+    expect(perms.resourceIdsWithVerb("space", "read")).toEqual({
+      kind: "ids",
+      resourceIds: [12, 34],
+    });
+    expect(perms.resourceIdsWithVerb("space", "write")).toEqual({
+      kind: "ids",
+      resourceIds: [12],
+    });
+  });
+
+  it("filters out ids that lack the verb", () => {
+    const perms = GroupPermissions.fromJSON({
+      grants: { space: { 12: 0b001, 34: 0b011 } },
+    });
+    expect(perms.resourceIdsWithVerb("space", "write")).toEqual({
+      kind: "ids",
+      resourceIds: [34],
+    });
+    expect(perms.resourceIdsWithVerb("space", "admin")).toEqual({
+      kind: "ids",
+      resourceIds: [],
+    });
+  });
+
+  it("reports the type-wide (-1) entry as every instance", () => {
+    const perms = GroupPermissions.fromJSON({
+      grants: { agent: { [WHOLE_TYPE_RESOURCE_ID]: 0b1000, 42: 0b011 } },
+    });
+    // `read` is held on 42 only; `create` comes from the type-wide entry, so it covers every agent.
+    expect(perms.resourceIdsWithVerb("agent", "read")).toEqual({
+      kind: "ids",
+      resourceIds: [42],
+    });
+    expect(perms.resourceIdsWithVerb("agent", "create")).toEqual({
+      kind: "all",
+    });
+  });
+
+  it("returns an empty list when the resource type has no grants", () => {
+    const perms = GroupPermissions.fromJSON({ grants: {} });
+    expect(perms.resourceIdsWithVerb("space", "read")).toEqual({
+      kind: "ids",
+      resourceIds: [],
+    });
+  });
+});
+
+describe("GRANT_VERBS bit-position stability", () => {
+  // Each verb is stored as bit `1 << its index in GRANT_VERBS` (see VERB_BIT), and those masks are
+  // serialized into in-flight Temporal payloads. So the positions must stay stable: only append new
+  // verbs at the end — never reorder or remove an existing one, and never exceed 31 (JS bitwise
+  // operators are 32-bit, so `1 << 31` flips the sign bit and corrupts masks). These are the
+  // invariants documented on `GRANT_VERBS`; this test enforces them instead of trusting the comment.
+
+  // The verbs and their frozen bit positions. Append new verbs AFTER this list; do not edit it.
+  // Typed as `GrantVerb[]` so removing a verb from the union also fails to compile here.
+  const FROZEN_VERB_ORDER: GrantVerb[] = [
+    "read",
+    "write",
+    "admin",
+    "create",
+    "publish",
+    "invite",
+    "use",
+    "make_discoverable",
+  ];
+
+  it("keeps every existing verb at its original index (append-only)", () => {
+    FROZEN_VERB_ORDER.forEach((verb, index) => {
+      expect(GRANT_VERBS[index]).toBe(verb);
+    });
+  });
+
+  it("stays within the 31-verb bitmask limit", () => {
+    expect(GRANT_VERBS.length).toBeLessThanOrEqual(31);
+  });
+
+  it("has no duplicate verbs", () => {
+    expect(new Set(GRANT_VERBS).size).toBe(GRANT_VERBS.length);
   });
 });

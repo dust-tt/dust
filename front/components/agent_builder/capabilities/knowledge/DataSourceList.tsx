@@ -12,17 +12,11 @@ import {
   pathToString,
   removeNodeFromTree,
 } from "@app/components/data_source_view/context/utils";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import { Checkbox, cn, Icon, Separator, Spinner } from "@dust-tt/sparkle";
 import type { ComponentType, ReactNode } from "react";
-import {
-  Fragment,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
+import { Fragment, useCallback, useContext, useMemo } from "react";
 
 export interface DataSourceListItem {
   id: string;
@@ -96,32 +90,11 @@ export function DataSourceList({
   const { field } = useSourcesFormController();
   const confirm = useContext(ConfirmContext);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-
   const handleLoadMore = useCallback(async () => {
     if (hasMore && !isLoading && onLoadMore) {
       await onLoadMore();
     }
   }, [hasMore, isLoading, onLoadMore]);
-
-  // Infinite scroll implementation
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container || !hasMore || isLoading || !onLoadMore) {
-      return;
-    }
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      // Trigger loading when we're within 100px of the bottom
-      if (scrollHeight - scrollTop - clientHeight < 100) {
-        void handleLoadMore();
-      }
-    };
-
-    container.addEventListener("scroll", handleScroll);
-    return () => container.removeEventListener("scroll", handleScroll);
-  }, [hasMore, isLoading, onLoadMore, handleLoadMore]);
 
   const shouldHideCheckbox = useCallback(
     (item: DataSourceListItem): boolean => {
@@ -344,7 +317,6 @@ export function DataSourceList({
 
   return (
     <div
-      ref={containerRef}
       className={cn("flex max-h-full flex-col overflow-auto pr-1", className)}
     >
       {showSelectAllHeader && selectableItems.length > 0 && (
@@ -378,11 +350,24 @@ export function DataSourceList({
           ? selectionState === "partial"
           : !hideCheckbox;
 
+        // Rows with no navigate target (e.g. a childless data source view, or a
+        // non-expandable leaf node) would otherwise be dead clicks — fall back to
+        // toggling selection, same as clicking the checkbox does.
+        const handleRowClick = () => {
+          if (item.onClick) {
+            item.onClick();
+            return;
+          }
+          if (shouldShowCheckbox) {
+            void handleSelectionChange(item, selectionState !== true);
+          }
+        };
+
         return (
           <Fragment key={item.id}>
             <div
               className="flex cursor-pointer items-center justify-between rounded-md p-3 hover:bg-muted/60"
-              onClick={() => item.onClick?.()}
+              onClick={handleRowClick}
             >
               <div className="flex min-w-0 flex-1 items-center gap-3">
                 {shouldShowCheckbox ? (
@@ -422,12 +407,17 @@ export function DataSourceList({
         );
       })}
 
-      {/* Loading indicator at the bottom */}
-      {isLoading && hasMore && (
-        <div className="flex justify-center py-4">
-          <Spinner size="sm" />
-        </div>
-      )}
+      <InfiniteScroll
+        nextPage={handleLoadMore}
+        hasMore={hasMore}
+        showLoader={isLoading && hasMore}
+        loader={
+          <div className="flex justify-center py-4">
+            <Spinner size="sm" />
+          </div>
+        }
+        options={{ rootMargin: "200px" }}
+      />
     </div>
   );
 }

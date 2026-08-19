@@ -1,21 +1,19 @@
-import { getDataSourceViewsUsageByModelIds } from "@app/lib/api/agent_data_sources";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import { softDeleteSpaceAndLaunchScrubWorkflow } from "@app/lib/api/spaces";
-import { AppResource } from "@app/lib/resources/app_resource";
+import {
+  getSpaceCategoriesWithUsage,
+  softDeleteSpaceAndLaunchScrubWorkflow,
+} from "@app/lib/api/spaces";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
 import type {
   GetSpaceResponseBody,
   PatchSpaceResponseBody,
-  SpaceCategoryInfo,
 } from "@app/types/api/spaces";
 import { PatchSpaceRequestBodySchema } from "@app/types/api/spaces";
 import { normalizeTabsOrder, sortPodFrameTabs } from "@app/types/pod_frame_tab";
@@ -264,42 +262,7 @@ app.get(
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 
-    const dataSourceViewsList = await DataSourceViewResource.listBySpace(
-      auth,
-      space
-    );
-    const appsList = await AppResource.listBySpace(auth, space);
-    const actions = await MCPServerViewResource.listBySpace(auth, space);
-    const actionsCount = actions.filter(
-      (a) => a.getServerDisplayMetadata().availability === "manual"
-    ).length;
-
-    const usages = await getDataSourceViewsUsageByModelIds({
-      auth,
-      dataSourceViewModelIds: dataSourceViewsList.map((dsv) => dsv.id),
-    });
-
-    const categories: { [key: string]: SpaceCategoryInfo } = {};
-    for (const category of DATA_SOURCE_VIEW_CATEGORIES) {
-      const dataSourceViewsInCategory = dataSourceViewsList.filter(
-        (view) => view.toJSON().category === category
-      );
-
-      const agents = uniqBy(
-        dataSourceViewsInCategory.flatMap(
-          (view) => usages[view.id]?.agents ?? []
-        ),
-        "sId"
-      );
-
-      categories[category] = {
-        count: dataSourceViewsInCategory.length,
-        usage: { count: agents.length, agents },
-      };
-    }
-
-    categories["apps"].count = appsList.length;
-    categories["actions"].count = actionsCount;
+    const categories = await getSpaceCategoriesWithUsage(auth, space);
 
     const shouldIncludeAllMembers =
       ctx.req.query("includeAllMembers") === "true";
@@ -446,7 +409,16 @@ app.patch(
     }
 
     if (name) {
-      await space.updateName(auth, name);
+      const nameRes = await space.updateName(auth, name);
+      if (nameRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: nameRes.error.message,
+          },
+        });
+      }
     }
     return ctx.json({ space: space.toJSON() });
   }

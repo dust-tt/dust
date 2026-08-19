@@ -21,10 +21,6 @@ export type AgentLoopQueue =
   | "programmatic"
   | "batch";
 
-// The legacy queue, not a routing target: everything lands here while routing is off, keeping
-// the historical name so in-flight workflows and the existing worker deployment are
-// unaffected. Slated for removal once routing is fully rolled out.
-export const QUEUE_NAME = `agent-loop-queue-v${QUEUE_VERSION}`;
 export const SCHEDULES_QUEUE_NAME = `agent-loop-schedules-queue-v${QUEUE_VERSION}`;
 export const INTERACTIVE_QUEUE_NAME = `agent-loop-interactive-queue-v${QUEUE_VERSION}`;
 export const PROGRAMMATIC_QUEUE_NAME = `agent-loop-programmatic-queue-v${QUEUE_VERSION}`;
@@ -100,6 +96,12 @@ export const RUN_MODEL_ACTIVITY_TIMEOUT_SAFETY_MARGIN_MS = 1 * 60 * 1000;
 
 export const TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
 export const MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
+
+// Heartbeat cadence for the whole model activity. Its setup phase (agent data loading, MCP
+// tools listing, conversation rendering) can stall past the heartbeat timeout, e.g. a hung MCP
+// server's tools/list call times out after 60s, exactly the heartbeat timeout. Aligned with the
+// worker's maxHeartbeatThrottleInterval.
+export const MODEL_ACTIVITY_HEARTBEAT_INTERVAL_MS = 20 * 1000;
 
 // Heartbeat cadence while tool result processing runs (file handling can take minutes): fire
 // comfortably within the heartbeat timeout.

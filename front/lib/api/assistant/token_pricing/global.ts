@@ -34,6 +34,22 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     cache_creation_input_tokens: 2.5,
     cache_read_input_tokens: 0.2,
   },
+  // Verified 2026-08-19: https://developers.openai.com/api/docs/models/gpt-5.6-terra
+  // Prompts above 272K input tokens cost 2x input and 1.5x output for the full request.
+  "gpt-5.6-terra-long-context": {
+    input: 2.0,
+    output: 12.0,
+    cache_creation_input_tokens: 2.5,
+    cache_read_input_tokens: 0.2,
+    long_context: {
+      // `computeTokensCostForUsageInMicroUsd` switches tiers inclusively.
+      prompt_token_threshold: 272_001,
+      input: 4.0,
+      output: 18.0,
+      cache_creation_input_tokens: 5.0,
+      cache_read_input_tokens: 0.4,
+    },
+  },
   // https://openai.com/api/pricing
   "gpt-5.6-luna": {
     input: 0.2,
@@ -313,12 +329,21 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 9.0,
     cache_read_input_tokens: 0.15,
   },
-  // https://ai.google.dev/gemini-api/docs/pricing (2026-07-25): output-only
-  // cut vs 3.5 Flash (input unchanged at $1.50, output $9.0 -> $7.5).
+  // https://ai.google.dev/gemini-api/docs/pricing (2026-07-25): promotional
+  // pricing through 2026-12-31; reverts to $1.50/$7.50/$0.15 on 2027-01-01 —
+  // update this then.
   "gemini-3.6-flash": {
-    input: 1.5,
-    output: 7.5,
-    cache_read_input_tokens: 0.15,
+    input: 0.75,
+    output: 3.75,
+    cache_read_input_tokens: 0.075,
+  },
+  // https://ai.google.dev/gemini-api/docs/pricing (2026-08-14): same rates as
+  // 3.6 Flash. Promotional pricing through 2026-12-31; reverts to
+  // $1.50/$7.50/$0.15 on 2027-01-01 — update this then.
+  "gemini-3.7-flash": {
+    input: 0.75,
+    output: 3.75,
+    cache_read_input_tokens: 0.075,
   },
   "gemini-2.5-flash": {
     input: 0.15,
@@ -413,6 +438,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 1.4,
     output: 4.4,
     cache_read_input_tokens: 0.26,
+  },
+  // Verified 2026-08-14: https://fireworks.ai/models/fireworks/inkling
+  "accounts/fireworks/models/inkling": {
+    input: 1.0,
+    output: 4.05,
+    cache_read_input_tokens: 0.17,
   },
   "grok-3-latest": {
     input: 2.0,

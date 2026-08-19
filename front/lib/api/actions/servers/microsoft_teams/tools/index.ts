@@ -731,6 +731,10 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
       );
     }
 
+    // The /content endpoint supports the following formats. Select text/vtt with either the
+    // $format query parameter or the Accept request header. The
+    // application/vnd.microsoft.graph.transcript+text format must be selected with the Accept
+    // request header.
     // See: https://learn.microsoft.com/en-us/graph/api/calltranscript-get?view=graph-rest-1.0&tabs=http#transcript-content-formats
     const formats = [
       "text/vtt", // With speaker-attributed content - Requires extra permission on the tenant.
@@ -742,9 +746,9 @@ const handlers: ToolHandlers<typeof MICROSOFT_TEAMS_TOOLS_METADATA> = {
           .api(
             `/me/onlineMeetings/${meetingId}/transcripts/${transcriptId}/content`
           )
-          .query({ $format: format })
+          .header("Accept", format)
           // The SDK infers the response type from Content-Type, preserving messages
-          // in JSON error bodies and returning successful text/vtt bodies as
+          // in JSON error bodies and returning successful transcript bodies as
           // ReadableStreams handled below.
           .get();
 

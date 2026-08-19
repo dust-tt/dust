@@ -60,6 +60,7 @@ describe("GroupSpaceMemberResource", () => {
     it("should return empty array when no member GroupSpace exists for the space", async () => {
       // Create a space without any member groups
       const emptySpace = await SpaceResource.makeNew(
+        auth,
         {
           name: "Empty Space",
           kind: "regular",

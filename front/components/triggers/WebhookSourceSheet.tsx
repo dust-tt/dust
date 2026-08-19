@@ -39,6 +39,11 @@ import type { LightWorkspaceType } from "@app/types/user";
 import type { MultiPageSheetPage, RegularButtonProps } from "@dust-tt/sparkle";
 import {
   Button,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   InfoCircle,
   Lock01,
   MultiPageSheet,
@@ -114,7 +119,26 @@ export function WebhookSourceSheet({
     onClose();
   }, [isDirty, confirm, onClose]);
 
-  return (
+  return mode?.type === "create" ? (
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          void handleOpenChange();
+        }
+      }}
+    >
+      {mode && (
+        <WebhookSourceSheetContent
+          mode={mode}
+          owner={owner}
+          setIsDirty={setIsDirty}
+          onClose={onClose}
+          onCancel={handleOpenChange}
+        />
+      )}
+    </Dialog>
+  ) : (
     <MultiPageSheet open={open} onOpenChange={handleOpenChange}>
       {debouncedOpen && mode !== null && (
         <WebhookSourceSheetContent
@@ -653,6 +677,57 @@ function WebhookSourceSheetContent({
       spaces,
     ]
   );
+
+  if (mode.type === "create") {
+    return (
+      <DialogContent size="lg" height="lg">
+        <DialogHeader>
+          <DialogTitle>
+            New {mode.provider ? WEBHOOK_PRESETS[mode.provider].name : "Custom"}{" "}
+            Trigger
+          </DialogTitle>
+        </DialogHeader>
+        <div className="overflow-y-auto px-5 py-4">
+          <FormProvider {...createForm}>
+            <div className="space-y-4">
+              <CreateWebhookSourceFormContent
+                form={createForm}
+                provider={mode.provider}
+                owner={owner}
+                onRemoteProviderDataChange={(data) => {
+                  setRemoteProviderData(data?.remoteMetadata ?? null);
+                  setConnectionId(data?.connectionId ?? null);
+                }}
+                onPresetReadyToSubmitChange={setIsPresetReadyToSubmit}
+              />
+            </div>
+          </FormProvider>
+        </div>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: onCancel,
+          }}
+          rightButtonProps={{
+            label: createForm.formState.isSubmitting ? "Saving..." : "Save",
+            variant: "primary",
+            disabled:
+              createForm.formState.isSubmitting || !isPresetReadyToSubmit,
+            onClick: () => {
+              void createForm.handleSubmit((data) =>
+                onCreateSubmit(
+                  data,
+                  connectionId ?? undefined,
+                  remoteProviderData ?? undefined
+                )
+              )();
+            },
+          }}
+        />
+      </DialogContent>
+    );
+  }
 
   return (
     <MultiPageSheetContent

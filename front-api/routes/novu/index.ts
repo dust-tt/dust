@@ -2,6 +2,7 @@ import { activationNewConversationWorkflow } from "@app/lib/notifications/workfl
 import { agentMessageFeedbackWorkflow } from "@app/lib/notifications/workflows/agent-message-feedback";
 import { agentSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/agent-suggestions-ready";
 import { balanceThresholdReachedWorkflow } from "@app/lib/notifications/workflows/balance-threshold-reached";
+import { consumptionExportReadyWorkflow } from "@app/lib/notifications/workflows/consumption-export-ready";
 import { conversationUnreadWorkflow } from "@app/lib/notifications/workflows/conversation-unread";
 import { manualActionRequiredWorkflow } from "@app/lib/notifications/workflows/manual-action-required";
 import { podAddedAsMemberWorkflow } from "@app/lib/notifications/workflows/pod-added-as-member";
@@ -13,7 +14,7 @@ import { upgradeRequestCreatedWorkflow } from "@app/lib/notifications/workflows/
 import { userAwuCapReachedWorkflow } from "@app/lib/notifications/workflows/user-awu-cap-reached";
 import logger from "@app/logger/logger";
 import { createHono } from "@front-api/lib/hono";
-import { skipRequestLog } from "@front-api/middlewares/request_logger";
+import { skipRequestLog } from "@front-api/middlewares/request_instrumentation";
 import type { ServeHandlerOptions } from "@novu/framework";
 import { Client, NovuRequestHandler } from "@novu/framework";
 
@@ -76,6 +77,7 @@ const options: ServeHandlerOptions = {
     upgradeRequestCreatedWorkflow,
     seatAutoUpgradedWorkflow,
     manualActionRequiredWorkflow,
+    consumptionExportReadyWorkflow,
   ],
 };
 

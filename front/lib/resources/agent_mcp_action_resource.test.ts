@@ -1,9 +1,13 @@
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/constants";
 import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolGeneratedFilePathType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
+import {
+  AgentMCPActionModel,
+  AgentMCPActionOutputItemModel,
+} from "@app/lib/models/agent/actions/mcp";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import {
   GCS_CONTENT_CACHE_TTL_MS,
@@ -12,12 +16,15 @@ import {
 } from "@app/lib/resources/agent_mcp_action/output_storage";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { getNamespace } from "@app/tests/utils/test_cls";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
@@ -32,42 +39,50 @@ import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 const gcsStore = new Map<string, Buffer>();
 let gcsSaveFailureMarker: string | null = null;
 
-vi.mock("@app/lib/file_storage", () => ({
-  getPrivateUploadBucket: vi.fn(() => ({
-    file: vi.fn((path: string) => ({
-      copy: vi.fn().mockResolvedValue(undefined),
-      save: vi.fn(async (data: Buffer) => {
-        if (
-          gcsSaveFailureMarker &&
-          data.toString("utf-8").includes(gcsSaveFailureMarker)
-        ) {
-          throw new Error("Simulated GCS write failure");
-        }
-        gcsStore.set(path, data);
-      }),
-      download: vi.fn(async () => {
-        const buf = gcsStore.get(path);
-        if (!buf) {
-          throw new Error(`GCS file not found: ${path}`);
-        }
-        return [buf];
-      }),
-    })),
-    delete: vi.fn(async (path: string, opts?: { ignoreNotFound?: boolean }) => {
-      if (!gcsStore.has(path) && !opts?.ignoreNotFound) {
-        throw new Error(`GCS file not found: ${path}`);
-      }
-      gcsStore.delete(path);
-    }),
-    deleteByPrefix: vi.fn(async (prefix: string) => {
-      for (const path of [...gcsStore.keys()]) {
-        if (path.startsWith(prefix)) {
+vi.mock("@app/lib/file_storage", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("@app/lib/file_storage")>();
+
+  return {
+    ...original,
+    getPrivateUploadBucket: vi.fn(() => ({
+      file: vi.fn((path: string) => ({
+        copy: vi.fn().mockResolvedValue(undefined),
+        save: vi.fn(async (data: Buffer) => {
+          if (
+            gcsSaveFailureMarker &&
+            data.toString("utf-8").includes(gcsSaveFailureMarker)
+          ) {
+            throw new Error("Simulated GCS write failure");
+          }
+          gcsStore.set(path, data);
+        }),
+        download: vi.fn(async () => {
+          const buf = gcsStore.get(path);
+          if (!buf) {
+            throw new Error(`GCS file not found: ${path}`);
+          }
+          return [buf];
+        }),
+      })),
+      delete: vi.fn(
+        async (path: string, opts?: { ignoreNotFound?: boolean }) => {
+          if (!gcsStore.has(path) && !opts?.ignoreNotFound) {
+            throw new Error(`GCS file not found: ${path}`);
+          }
           gcsStore.delete(path);
         }
-      }
-    }),
-  })),
-}));
+      ),
+      deleteByPrefix: vi.fn(async (prefix: string) => {
+        for (const path of [...gcsStore.keys()]) {
+          if (path.startsWith(prefix)) {
+            gcsStore.delete(path);
+          }
+        }
+      }),
+    })),
+  };
+});
 
 // Bypass Redis caching, pass through to the underlying function.
 vi.mock("@app/lib/utils/cache", async (importOriginal) => {
@@ -88,11 +103,13 @@ describe("listBlockedActionsForConversation", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
   let conversation: ConversationType;
+  let globalSpace: SpaceResource;
 
   beforeEach(async () => {
     const setup = await createResourceTest({});
     workspace = setup.workspace;
     auth = setup.authenticator;
+    globalSpace = setup.globalSpace;
 
     conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: "test-agent",
@@ -157,9 +174,24 @@ describe("listBlockedActionsForConversation", () => {
         parentId: userMessageRow.id,
       });
 
-    await createBlockedAction({
+    const remoteServer = await RemoteMCPServerFactory.create(workspace);
+    const mcpServerView = await MCPServerViewFactory.create(
+      workspace,
+      remoteServer.sId,
+      globalSpace
+    );
+    const { action } = await createBlockedAction({
       agentMessageModelId: agentMessageRow.agentMessageId!,
     });
+    await AgentMCPActionModel.update(
+      {
+        toolConfiguration: {
+          ...action.toolConfiguration,
+          mcpServerViewId: mcpServerView.sId,
+        },
+      },
+      { where: { id: action.id, workspaceId: workspace.id } }
+    );
 
     const conversationResource = await ConversationResource.fetchById(
       auth,
@@ -175,7 +207,8 @@ describe("listBlockedActionsForConversation", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].status).toBe("blocked_validation_required");
-    expect(result[0].metadata.agentName).toBe("agent");
+    expect(result[0].metadata.agentName).toBe("Test Agent");
+    expect(result[0].metadata.icon).toBe(DEFAULT_MCP_SERVER_ICON);
   });
 
   it("should only return blocked actions, not succeeded ones", async () => {
@@ -372,6 +405,45 @@ describe("listBlockedActionsForConversation", () => {
       action.sId
     );
     expect(reloadedAction?.status).toBe("blocked_validation_required");
+  });
+
+  it("does not rewind a final action through a stale sandbox parent resource", async () => {
+    const agentMessage = await AgentMessageModel.create({
+      conversationId: conversation.id,
+      workspaceId: workspace.id,
+      agentConfigurationId: "test-agent",
+      agentConfigurationVersion: 0,
+      status: "created",
+      skipToolsValidation: false,
+    });
+    const { action } = await createBlockedAction({
+      agentMessageModelId: agentMessage.id,
+    });
+    await action.updateStatus("running");
+
+    const staleParent = await AgentMCPActionResource.fetchById(
+      auth,
+      action.sId
+    );
+    const currentParent = await AgentMCPActionResource.fetchById(
+      auth,
+      action.sId
+    );
+    if (!staleParent || !currentParent) {
+      throw new Error("Expected both sandbox parent resources to exist.");
+    }
+    expect(staleParent.status).toBe("running");
+    expect(currentParent.status).toBe("running");
+    await currentParent.updateStatus("succeeded");
+
+    await expect(staleParent.blockForSandboxChild(auth)).rejects.toThrow(
+      "cannot transition from succeeded to blocked_child_action_input_required"
+    );
+    const reloadedParent = await AgentMCPActionResource.fetchById(
+      auth,
+      action.sId
+    );
+    expect(reloadedParent?.status).toBe("succeeded");
   });
 });
 

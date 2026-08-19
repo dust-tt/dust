@@ -4,23 +4,27 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentModelDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
 import type { Authenticator } from "@app/lib/auth";
+import { UserResource } from "@app/lib/resources/user_resource";
+import { removeNulls } from "@app/types/shared/utils/general";
 
-type AnalyticsAgentLabel = {
+export type AnalyticsAgentLabel = {
   name: string;
   pictureUrl: string | null;
+  modelId: string;
   modelDisplayName: string;
   description: string;
 };
 
 const PRIVATE_AGENT_DESCRIPTION = "Private agent: description unavailable";
 
-export const UNKNOWN_AGENT_LABEL: AnalyticsAgentLabel = {
-  name: "Unknown agent",
-  pictureUrl: null,
-  modelDisplayName: getAgentModelDisplayName(undefined),
-  description: "",
-};
+function privateAgentDescription(authorEmail: string | null | undefined) {
+  return authorEmail
+    ? `Private agent owned by ${authorEmail}`
+    : PRIVATE_AGENT_DESCRIPTION;
+}
 
+// Agent ids that no longer resolve to a configuration are absent from the
+// returned map; callers drop them instead of surfacing a placeholder row.
 export async function resolveAnalyticsAgentLabels(
   auth: Authenticator,
   agentIds: string[]
@@ -44,37 +48,54 @@ export async function resolveAnalyticsAgentLabels(
     fallbackLabels.map((label) => [label.sId, label])
   );
 
-  return new Map(
-    agentIds.map((agentId) => {
-      const agent = agentsById.get(agentId);
-      if (agent) {
-        return [
-          agentId,
-          {
-            name: agent.name,
-            pictureUrl: agent.pictureUrl,
-            modelDisplayName: getAgentModelDisplayName(agent.model),
-            description: agent.canRead
-              ? agent.description
-              : PRIVATE_AGENT_DESCRIPTION,
-          },
-        ];
-      }
-
-      const fallback = fallbackById.get(agentId);
-      if (fallback) {
-        return [
-          agentId,
-          {
-            name: fallback.name,
-            pictureUrl: fallback.pictureUrl,
-            modelDisplayName: getAgentModelDisplayName(fallback.model),
-            description: PRIVATE_AGENT_DESCRIPTION,
-          },
-        ];
-      }
-
-      return [agentId, UNKNOWN_AGENT_LABEL];
-    })
+  const authorModelIds = auth.isManager()
+    ? removeNulls([
+        ...agents
+          .filter((agent) => !agent.canRead)
+          .map((agent) => agent.versionAuthorId),
+        ...fallbackLabels.map((label) => label.authorModelId),
+      ])
+    : [];
+  const authors =
+    authorModelIds.length > 0
+      ? await UserResource.fetchByModelIds(authorModelIds)
+      : [];
+  const authorEmailByModelId = new Map(
+    authors.map((author) => [author.id, author.email])
   );
+
+  const labels = new Map<string, AnalyticsAgentLabel>();
+  for (const agentId of agentIds) {
+    const agent = agentsById.get(agentId);
+    if (agent) {
+      const authorEmail = agent.versionAuthorId
+        ? authorEmailByModelId.get(agent.versionAuthorId)
+        : null;
+      labels.set(agentId, {
+        name: agent.name,
+        pictureUrl: agent.pictureUrl,
+        modelId: agent.model.modelId,
+        modelDisplayName: getAgentModelDisplayName(agent.model),
+        description: agent.canRead
+          ? agent.description
+          : privateAgentDescription(authorEmail),
+      });
+      continue;
+    }
+
+    const fallback = fallbackById.get(agentId);
+    if (fallback) {
+      labels.set(agentId, {
+        name: fallback.name,
+        pictureUrl: fallback.pictureUrl,
+        modelId: fallback.model.modelId,
+        modelDisplayName: getAgentModelDisplayName(fallback.model),
+        description: privateAgentDescription(
+          authorEmailByModelId.get(fallback.authorModelId)
+        ),
+      });
+    }
+  }
+
+  return labels;
 }

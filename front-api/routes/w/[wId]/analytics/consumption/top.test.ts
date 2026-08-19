@@ -4,6 +4,10 @@ import {
   type GetConsumptionTopAgentsResponse,
 } from "@app/lib/api/analytics/consumption/top_agents";
 import {
+  fetchConsumptionTopApiKeys,
+  type GetConsumptionTopApiKeysResponse,
+} from "@app/lib/api/analytics/consumption/top_api_keys";
+import {
   fetchConsumptionTopGroups,
   type GetConsumptionTopGroupsResponse,
 } from "@app/lib/api/analytics/consumption/top_groups";
@@ -46,6 +50,13 @@ vi.mock(
   async (orig) => {
     const mod = await orig();
     return { ...mod, fetchConsumptionTopUsers: vi.fn() };
+  }
+);
+vi.mock(
+  import("@app/lib/api/analytics/consumption/top_api_keys"),
+  async (orig) => {
+    const mod = await orig();
+    return { ...mod, fetchConsumptionTopApiKeys: vi.fn() };
   }
 );
 vi.mock(
@@ -92,12 +103,18 @@ const PERIOD: ConsumptionPeriod = {
 const TOP_AGENTS: GetConsumptionTopAgentsResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  totalCount: 1,
+  hasMore: false,
   agents: [
     {
       agentId: "agent1",
       name: "@dust",
       pictureUrl: null,
+      description: "Answers questions about Dust",
+      modelId: "claude-4-sonnet",
+      modelDisplayName: "Claude 4 Sonnet",
       credits: 2230,
+      previousCredits: null,
       messageCount: 10,
       avgCreditsPerMessage: 223,
     },
@@ -107,12 +124,32 @@ const TOP_AGENTS: GetConsumptionTopAgentsResponse = {
 const TOP_USERS: GetConsumptionTopUsersResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  totalCount: 1,
+  hasMore: false,
   users: [
     {
       userId: "user1",
       name: "Jane Doe",
       pictureUrl: null,
       credits: 100,
+      previousCredits: null,
+      messageCount: 4,
+      avgCreditsPerMessage: 25,
+    },
+  ],
+};
+
+const TOP_API_KEYS: GetConsumptionTopApiKeysResponse = {
+  period: PERIOD,
+  totalCredits: 5000,
+  totalCount: 1,
+  hasMore: false,
+  apiKeys: [
+    {
+      apiKeyName: "Production key",
+      name: "Production key",
+      credits: 100,
+      previousCredits: null,
       messageCount: 4,
       avgCreditsPerMessage: 25,
     },
@@ -122,11 +159,14 @@ const TOP_USERS: GetConsumptionTopUsersResponse = {
 const TOP_MODELS: GetConsumptionTopModelsResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  totalCount: 1,
+  hasMore: false,
   models: [
     {
       modelId: "claude-4-sonnet",
       name: "Claude 4 Sonnet",
       credits: 400,
+      previousCredits: null,
       messageCount: 8,
       avgCreditsPerMessage: 50,
     },
@@ -136,11 +176,14 @@ const TOP_MODELS: GetConsumptionTopModelsResponse = {
 const TOP_SOURCES: GetConsumptionTopSourcesResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  totalCount: 1,
+  hasMore: false,
   sources: [
     {
       source: "web",
       name: "Conversation",
       credits: 300,
+      previousCredits: null,
       messageCount: 6,
       avgCreditsPerMessage: 50,
     },
@@ -150,11 +193,14 @@ const TOP_SOURCES: GetConsumptionTopSourcesResponse = {
 const TOP_GROUPS: GetConsumptionTopGroupsResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  totalCount: 1,
+  hasMore: false,
   groups: [
     {
       groupId: "group1",
       name: "Engineering",
       credits: 200,
+      previousCredits: null,
       messageCount: 4,
       avgCreditsPerMessage: 50,
     },
@@ -164,11 +210,15 @@ const TOP_GROUPS: GetConsumptionTopGroupsResponse = {
 const TOP_TOOLS: GetConsumptionTopToolsResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  totalCount: 1,
+  hasMore: false,
   tools: [
     {
       serverName: "web_search_browse",
       name: "Web Search & Browse",
+      icon: "Globe01Icon",
       credits: 60,
+      previousCredits: null,
       invocationCount: 12,
       avgCreditsPerInvocation: 5,
     },
@@ -178,11 +228,16 @@ const TOP_TOOLS: GetConsumptionTopToolsResponse = {
 const TOP_SKILLS: GetConsumptionTopSkillsResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  totalCount: 1,
+  hasMore: false,
   skills: [
     {
       skillId: "skl_1",
       name: "Research",
+      description: "Researches a topic in depth",
+      icon: "search",
       credits: 40,
+      previousCredits: null,
       invocationCount: 8,
       avgCreditsPerInvocation: 5,
     },
@@ -190,7 +245,7 @@ const TOP_SKILLS: GetConsumptionTopSkillsResponse = {
 };
 
 // One entry per ranking endpoint. Each owns its own typed mock plumbing so the
-// table stays type-safe across seven different response shapes.
+// table stays type-safe across eight different response shapes.
 const RANKINGS = [
   {
     path: "top-agents",
@@ -207,6 +262,15 @@ const RANKINGS = [
     arrangeOk: () =>
       vi.mocked(fetchConsumptionTopUsers).mockResolvedValue(new Ok(TOP_USERS)),
     lastCall: () => vi.mocked(fetchConsumptionTopUsers).mock.lastCall,
+  },
+  {
+    path: "top-api-keys",
+    body: TOP_API_KEYS,
+    arrangeOk: () =>
+      vi
+        .mocked(fetchConsumptionTopApiKeys)
+        .mockResolvedValue(new Ok(TOP_API_KEYS)),
+    lastCall: () => vi.mocked(fetchConsumptionTopApiKeys).mock.lastCall,
   },
   {
     path: "top-models",
@@ -292,8 +356,11 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
     // The period is resolved by the route, so only its shape is asserted here.
     expect(lastCall()?.[1]).toEqual({
       limit: 10,
+      offset: 0,
       period: { startDate: expect.any(String), endDate: expect.any(String) },
+      search: undefined,
       filter: undefined,
+      sortOrder: "desc",
     });
   });
 
@@ -305,14 +372,16 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
     expect(response.status).toBe(403);
   });
 
-  it("forwards the limit, the period and the filter", async () => {
+  it("forwards the page, the period, the search and the filter", async () => {
     vi.mocked(fetchConsumptionTopAgents).mockResolvedValue(new Ok(TOP_AGENTS));
     const { workspace } = await setupTest();
 
     const response = await postRankingRequest(workspace.sId, "top-agents", {
       limit: 5,
+      offset: 995,
       period: "days",
       days: 7,
+      search: "  Agent 080  ",
       filter: { sources: ["slack"] },
     });
 
@@ -321,8 +390,42 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
       expect.anything(),
       expect.objectContaining({
         limit: 5,
+        offset: 995,
+        search: "Agent 080",
         filter: { sources: ["slack"] },
       })
+    );
+  });
+
+  it("forwards search to the API key ranking", async () => {
+    vi.mocked(fetchConsumptionTopApiKeys).mockResolvedValue(
+      new Ok(TOP_API_KEYS)
+    );
+    const { workspace } = await setupTest();
+
+    const response = await postRankingRequest(workspace.sId, "top-api-keys", {
+      search: "  Production key  ",
+    });
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetchConsumptionTopApiKeys)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ search: "Production key" })
+    );
+  });
+
+  it("normalizes a null limit to the default", async () => {
+    vi.mocked(fetchConsumptionTopAgents).mockResolvedValue(new Ok(TOP_AGENTS));
+    const { workspace } = await setupTest();
+
+    const response = await postRankingRequest(workspace.sId, "top-agents", {
+      limit: null,
+    });
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetchConsumptionTopAgents)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ limit: 10 })
     );
   });
 

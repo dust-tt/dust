@@ -1,11 +1,17 @@
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import { normalizedConsumptionFilter } from "@app/lib/analytics/consumption_period";
+import {
+  DEFAULT_CONSUMPTION_PERIOD_DAYS,
+  normalizedConsumptionFilter,
+} from "@app/lib/analytics/consumption_period";
 import type { ConsumptionTopBody } from "@app/lib/api/analytics/consumption/schema";
-import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/api/analytics/consumption/schema";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type {
+  ConsumptionScopeFilter,
+  ConsumptionTopSortOrder,
+} from "@app/lib/api/analytics/consumption/scope";
 import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/consumption/top_agents";
+import type { GetConsumptionTopApiKeysResponse } from "@app/lib/api/analytics/consumption/top_api_keys";
 import type { GetConsumptionTopGroupsResponse } from "@app/lib/api/analytics/consumption/top_groups";
 import type { GetConsumptionTopModelsResponse } from "@app/lib/api/analytics/consumption/top_models";
 import type { GetConsumptionTopSkillsResponse } from "@app/lib/api/analytics/consumption/top_skills";
@@ -24,14 +30,20 @@ const CONSUMPTION_TOP_ENDPOINTS = {
   tool: "top-tools",
   skill: "top-skills",
   source: "top-sources",
+  api_key: "top-api-keys",
 } as const satisfies Record<ConsumptionDimension, string>;
 
 export type ConsumptionTopRow = {
   id: string;
   name: string;
   pictureUrl: string | null;
+  description: string | null;
+  icon: string | null;
+  modelId: string | null;
+  modelDisplayName: string | null;
   credits: number;
   avgCredits: number;
+  previousCredits: number | null;
 };
 
 type ConsumptionTopResponse =
@@ -41,7 +53,8 @@ type ConsumptionTopResponse =
   | GetConsumptionTopModelsResponse
   | GetConsumptionTopToolsResponse
   | GetConsumptionTopSkillsResponse
-  | GetConsumptionTopSourcesResponse;
+  | GetConsumptionTopSourcesResponse
+  | GetConsumptionTopApiKeysResponse;
 
 // Narrowed on the collection each response carries rather than on the requested
 // dimension, so a row shape that drifts from its endpoint is a type error here
@@ -52,8 +65,13 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.agentId,
       name: row.name,
       pictureUrl: row.pictureUrl,
+      description: row.description,
+      icon: null,
+      modelId: row.modelId,
+      modelDisplayName: row.modelDisplayName,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
     }));
   }
   if ("users" in data) {
@@ -61,8 +79,13 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.userId,
       name: row.name,
       pictureUrl: row.pictureUrl,
+      description: null,
+      icon: null,
+      modelId: null,
+      modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
     }));
   }
   if ("groups" in data) {
@@ -70,10 +93,13 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.groupId,
       name: row.name,
       pictureUrl: null,
-      modelMaker: null,
-      tier: null,
+      description: null,
+      icon: null,
+      modelId: null,
+      modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
     }));
   }
   if ("models" in data) {
@@ -81,8 +107,13 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.modelId,
       name: row.name,
       pictureUrl: null,
+      description: null,
+      icon: null,
+      modelId: null,
+      modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
     }));
   }
   if ("tools" in data) {
@@ -90,8 +121,13 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.serverName,
       name: row.name,
       pictureUrl: null,
+      description: null,
+      icon: row.icon,
+      modelId: null,
+      modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerInvocation,
+      previousCredits: row.previousCredits,
     }));
   }
   if ("skills" in data) {
@@ -99,8 +135,13 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.skillId,
       name: row.name,
       pictureUrl: null,
+      description: row.description,
+      icon: row.icon,
+      modelId: null,
+      modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerInvocation,
+      previousCredits: row.previousCredits,
     }));
   }
   if ("sources" in data) {
@@ -108,8 +149,27 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       id: row.source,
       name: row.name,
       pictureUrl: null,
+      description: null,
+      icon: null,
+      modelId: null,
+      modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
+    }));
+  }
+  if ("apiKeys" in data) {
+    return data.apiKeys.map((row) => ({
+      id: row.apiKeyName,
+      name: row.name,
+      pictureUrl: null,
+      description: null,
+      icon: null,
+      modelId: null,
+      modelDisplayName: null,
+      credits: row.credits,
+      avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
     }));
   }
   assertNeverAndIgnore(data);
@@ -121,14 +181,20 @@ export function useConsumptionTop({
   dimension,
   period,
   limit,
+  offset = 0,
+  search,
   filter,
+  sortOrder = "desc",
   disabled,
 }: {
   workspaceId: string;
   dimension: ConsumptionDimension;
   period: ConsumptionPeriodSelection;
   limit: number;
+  offset?: number;
+  search?: string;
   filter?: ConsumptionScopeFilter;
+  sortOrder?: ConsumptionTopSortOrder;
   disabled?: boolean;
 }) {
   const url = `/api/w/${workspaceId}/analytics/consumption/${CONSUMPTION_TOP_ENDPOINTS[dimension]}`;
@@ -138,9 +204,12 @@ export function useConsumptionTop({
       period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
     filter: normalizedConsumptionFilter(filter),
     limit,
+    offset,
+    search: search?.trim(),
+    sortOrder,
   };
 
-  const { data, error, isValidating } = useConsumptionQuery<
+  const { data, error, isLoading, isValidating } = useConsumptionQuery<
     ConsumptionTopBody,
     ConsumptionTopResponse
   >({ url, body, disabled });
@@ -155,7 +224,9 @@ export function useConsumptionTop({
     // Everything the workspace consumed over the period, so a row's share of it
     // is `credits / totalCredits`.
     totalCredits: data?.totalCredits ?? 0,
-    isTopLoading: !error && !data && !disabled,
+    totalCount: data?.totalCount ?? 0,
+    hasMore: data?.hasMore ?? false,
+    isTopLoading: !error && isLoading,
     isTopError: error,
     isTopValidating: isValidating,
   };

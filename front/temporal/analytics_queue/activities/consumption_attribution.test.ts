@@ -25,7 +25,9 @@ vi.mock(
 
 vi.mock(
   "@app/lib/api/assistant/agent_message_consumption_attribution/store",
-  () => ({ computeAndStoreAgentMessageConsumptionAttribution: vi.fn() })
+  () => ({
+    computeAndStoreAgentMessageConsumptionAttribution: vi.fn(),
+  })
 );
 
 vi.mock("@app/lib/api/assistant/streaming/events", () => ({
@@ -87,9 +89,6 @@ describe("storeAgentMessageConsumptionAnalyticsActivity", () => {
   });
 
   it("completes when indexing succeeds", async () => {
-    vi.mocked(
-      computeAndStoreAgentMessageConsumptionAttribution
-    ).mockResolvedValue(undefined);
     vi.mocked(indexAgentMessageConsumptionAnalytics).mockResolvedValue(
       new Ok(undefined)
     );
@@ -100,15 +99,11 @@ describe("storeAgentMessageConsumptionAnalyticsActivity", () => {
       })
     ).resolves.toBeUndefined();
 
-    expect(
-      computeAndStoreAgentMessageConsumptionAttribution
-    ).toHaveBeenCalledWith(expect.anything(), message);
-    expect(
-      vi.mocked(computeAndStoreAgentMessageConsumptionAttribution).mock
-        .invocationCallOrder[0]
-    ).toBeLessThan(
-      vi.mocked(indexAgentMessageConsumptionAnalytics).mock
-        .invocationCallOrder[0]
+    expect(indexAgentMessageConsumptionAnalytics).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        agentMessageId: message.agentMessageId,
+      }
     );
   });
 

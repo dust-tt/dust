@@ -1,5 +1,8 @@
 import config from "@app/lib/api/config";
-import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
+import {
+  handleDeleteDataSourceView,
+  handlePatchDataSourceView,
+} from "@app/lib/api/data_source_view";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import logger from "@app/logger/logger";
 import type {
@@ -263,34 +266,34 @@ app.delete(
   async (ctx) => {
     const auth = ctx.get("auth");
     const dataSourceView = ctx.get("dataSourceView");
-
-    if (!dataSourceView.canAdministrate(auth)) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message: "Only users that are `admins` can administrate spaces.",
-        },
-      });
-    }
-
     const force = ctx.req.query("force") === "true";
-    if (!force) {
-      const usageRes = await dataSourceView.getUsagesByAgents(auth);
-      if (usageRes.isErr() || usageRes.value.count > 0) {
-        return apiError(ctx, {
-          status_code: 401,
-          api_error: {
-            type: "data_source_error",
-            message: usageRes.isOk()
-              ? `The data source view is in use by ${usageRes.value.agents.map((a) => a.name).join(", ")} and cannot be deleted.`
-              : "The data source view is in use and cannot be deleted.",
-          },
-        });
+
+    const result = await handleDeleteDataSourceView(auth, dataSourceView, {
+      force,
+    });
+    if (result.isErr()) {
+      switch (result.error.code) {
+        case "unauthorized":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message: result.error.message,
+            },
+          });
+        case "in_use":
+          return apiError(ctx, {
+            status_code: 401,
+            api_error: {
+              type: "data_source_error",
+              message: result.error.message,
+            },
+          });
+        default:
+          assertNever(result.error.code);
       }
     }
 
-    await dataSourceView.delete(auth, { hardDelete: true });
     return ctx.body(null, 204);
   }
 );

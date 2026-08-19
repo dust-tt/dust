@@ -6,9 +6,16 @@ export const COMPLETED_AT_FIELD = "completed_at";
 
 export const AGENT_MESSAGE_ID_FIELD = "agent_message_id";
 
+export const CONVERSATION_ID_FIELD = "conversation_id";
+
+export const TRIGGER_ID_FIELD = "trigger_id";
+
+export const CARDINALITY_PRECISION_THRESHOLD = 40_000;
+
 export const CONSUMPTION_SCOPE_DIMENSIONS = [
   "agent",
   "user",
+  "api_key",
   "group",
   "model",
   "tool",
@@ -25,18 +32,36 @@ export const CONSUMPTION_DIMENSION_FIELDS: Record<
 > = {
   agent: "agent.id",
   user: "user.id",
+  api_key: "api_key_name",
   // Multi-valued: a member can belong to several groups at once.
   group: "user.group_ids",
   model: "model.model_id",
   tool: "tool.server_name",
   // Multi-valued: one tool call can be attributed to several skills at once.
   skill: "tool.attributed_skill_ids",
-  source: "context_origin",
+  source: "normalized_origin",
+};
+
+export type ConsumptionTopUnit = "message" | "invocation";
+
+export const CONSUMPTION_DIMENSION_UNIT: Record<
+  ConsumptionScopeDimension,
+  ConsumptionTopUnit
+> = {
+  agent: "message",
+  user: "message",
+  api_key: "message",
+  group: "message",
+  model: "message",
+  tool: "invocation",
+  skill: "invocation",
+  source: "message",
 };
 
 export const CONSUMPTION_SCOPE_FILTER_KEYS = [
   "agents",
   "users",
+  "api_keys",
   "groups",
   "models",
   "tools",
@@ -57,12 +82,18 @@ export const CONSUMPTION_DIMENSION_FILTER_KEYS: Record<
 > = {
   agent: "agents",
   user: "users",
+  api_key: "api_keys",
   group: "groups",
   model: "models",
   tool: "tools",
   skill: "skills",
   source: "sources",
 };
+
+export const CONSUMPTION_TOP_SORT_ORDER = ["asc", "desc"] as const;
+
+export type ConsumptionTopSortOrder =
+  (typeof CONSUMPTION_TOP_SORT_ORDER)[number];
 
 export const CONSUMPTION_METRICS = ["credit_micro"] as const;
 

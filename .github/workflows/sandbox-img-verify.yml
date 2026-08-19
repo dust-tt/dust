@@ -1,0 +1,42 @@
+name: Sandbox Image Verify
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        region: [ eu, us ]
+    steps:
+      - name: Configure E2B for ${{ matrix.region }}
+        run: |
+          if [ "${{ matrix.region }}" = "eu" ]; then
+            echo "E2B_API_KEY=${{ secrets.E2B_API_KEY }}" >> "$GITHUB_ENV"
+            echo "E2B_DOMAIN=e2b-juliett.dev" >> "$GITHUB_ENV"
+          else
+            echo "E2B_API_KEY=${{ secrets.E2B_US_API_KEY }}" >> "$GITHUB_ENV"
+            echo "E2B_DOMAIN=e2b.dev" >> "$GITHUB_ENV"
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          build-sdks: "true"
+
+      - name: Verify sandbox templates
+        working-directory: front
+        run: |
+          if ! npx tsx scripts/sandbox_image_verify.ts; then
+            echo "::error::Sandbox template verification failed (${{ matrix.region }}). Build the missing templates from main with the Sandbox Image Registry workflow before deploying."
+            exit 1
+          fi

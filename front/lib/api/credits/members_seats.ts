@@ -84,6 +84,9 @@ async function getMetronomeBilledSeatsByType(
           metronomeCustomerId,
           contractId,
           subscriptionId: sub.id,
+          // Display-only overview: fail fast instead of burning the shared
+          // Metronome rate-limit budget on retries (see buildSeatDataByUserId).
+          maxRetries: 1,
         });
         if (state.isErr()) {
           logger.warn(

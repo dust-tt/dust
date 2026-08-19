@@ -42,7 +42,7 @@ on:
       depot_region:
         description: "Depot region to use for building"
         required: true
-        default: "us"
+        default: "eu"
         type: choice
         options:
           - "us"
@@ -67,12 +67,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  ensure-sandbox-images:
+  verify-sandbox-images:
     if: inputs.component == 'front' || inputs.component == 'front-edge'
     permissions:
       contents: read
-      id-token: write
-    uses: ./.github/workflows/sandbox-img-registry.yml
+    uses: ./.github/workflows/sandbox-img-verify.yml
     secrets: inherit
 
   check-branch:
@@ -150,7 +149,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    needs: [prepare, notify-start, create-matrix]
+    needs: [prepare, notify-start, create-matrix, verify-sandbox-images]
+    if: ${{ !failure() && !cancelled() && (needs.verify-sandbox-images.result == 'success' || needs.verify-sandbox-images.result == 'skipped') }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -226,9 +226,9 @@ jobs:
         build,
         deploy-app,
         deploy-poke,
-        ensure-sandbox-images,
+        verify-sandbox-images,
       ]
-    if: ${{ !failure() && !cancelled() && (needs.ensure-sandbox-images.result == 'success' || needs.ensure-sandbox-images.result == 'skipped') }}
+    if: ${{ !failure() && !cancelled() && (needs.verify-sandbox-images.result == 'success' || needs.verify-sandbox-images.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

@@ -21,6 +21,7 @@ import {
   finalizeInterruptedAgentLoopActivity,
   finalizeSuccessfulAgentLoopActivity,
 } from "@app/temporal/agent_loop/activities/finalize";
+import { finalizeErroredSandboxChildToolActivity } from "@app/temporal/agent_loop/activities/finalize_sandbox_child_tool";
 import { publishDeferredEventsActivity } from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
@@ -28,11 +29,11 @@ import {
   BATCH_QUEUE_NAME,
   INTERACTIVE_QUEUE_NAME,
   PROGRAMMATIC_QUEUE_NAME,
-  QUEUE_NAME,
   SCHEDULES_QUEUE_NAME,
 } from "@app/temporal/agent_loop/config";
 import { instrumentationSinks } from "@app/temporal/agent_loop/sinks";
 import { getWorkflowConfig } from "@app/temporal/bundle_helper";
+import type { WorkerName } from "@app/temporal/worker_registry";
 import { isDevelopment } from "@app/types/shared/env";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -53,35 +54,40 @@ const SHUTDOWN_TOOL_ABORT_DELAY_MS =
 
 const MAX_CONCURRENT_ACTIVITY_TASK_EXECUTIONS = 40;
 
-export async function runAgentLoopWorker() {
+export async function runAgentLoopBatchWorker() {
   return runAgentLoopWorkerForQueue({
-    taskQueue: QUEUE_NAME,
-    maxConcurrentActivityTaskExecutions: 75,
+    workerName: "agent_loop_batch",
+    taskQueue: BATCH_QUEUE_NAME,
   });
 }
 
-export async function runAgentLoopBatchWorker() {
-  return runAgentLoopWorkerForQueue({ taskQueue: BATCH_QUEUE_NAME });
-}
-
 export async function runAgentLoopInteractiveWorker() {
-  return runAgentLoopWorkerForQueue({ taskQueue: INTERACTIVE_QUEUE_NAME });
+  return runAgentLoopWorkerForQueue({
+    workerName: "agent_loop_interactive",
+    taskQueue: INTERACTIVE_QUEUE_NAME,
+  });
 }
 
 export async function runAgentLoopProgrammaticWorker() {
-  return runAgentLoopWorkerForQueue({ taskQueue: PROGRAMMATIC_QUEUE_NAME });
+  return runAgentLoopWorkerForQueue({
+    workerName: "agent_loop_programmatic",
+    taskQueue: PROGRAMMATIC_QUEUE_NAME,
+  });
 }
 
 export async function runAgentLoopSchedulesWorker() {
-  return runAgentLoopWorkerForQueue({ taskQueue: SCHEDULES_QUEUE_NAME });
+  return runAgentLoopWorkerForQueue({
+    workerName: "agent_loop_schedules",
+    taskQueue: SCHEDULES_QUEUE_NAME,
+  });
 }
 
 async function runAgentLoopWorkerForQueue({
+  workerName,
   taskQueue,
-  maxConcurrentActivityTaskExecutions = MAX_CONCURRENT_ACTIVITY_TASK_EXECUTIONS,
 }: {
+  workerName: WorkerName;
   taskQueue: string;
-  maxConcurrentActivityTaskExecutions?: number;
 }) {
   const { connection, namespace } = await getTemporalAgentWorkerConnection();
 
@@ -92,9 +98,7 @@ async function runAgentLoopWorkerForQueue({
 
   const worker = await Worker.create({
     ...getWorkflowConfig({
-      // All agent-loop pools run the same workflow code and share the agent_loop bundle
-      // (build-temporal-bundles dedupes by workflows directory).
-      workerName: "agent_loop",
+      workerName,
       getWorkflowsPath: () => require.resolve("./workflows"),
     }),
     activities: {
@@ -107,6 +111,7 @@ async function runAgentLoopWorkerForQueue({
       finalizeCancelledAgentLoopActivity,
       finalizeInterruptedAgentLoopActivity,
       finalizeErroredAgentLoopActivity,
+      finalizeErroredSandboxChildToolActivity,
       checkCreditsActivity,
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,
@@ -119,7 +124,8 @@ async function runAgentLoopWorkerForQueue({
     // This also bounds the time until an activity may receive a cancellation signal.
     // See https://docs.temporal.io/encyclopedia/detecting-activity-failures#throttling
     maxHeartbeatThrottleInterval: "20 seconds",
-    maxConcurrentActivityTaskExecutions,
+    maxConcurrentActivityTaskExecutions:
+      MAX_CONCURRENT_ACTIVITY_TASK_EXECUTIONS,
     interceptors: {
       workflowModules: removeNulls([
         !isDevelopment() || process.env.USE_TEMPORAL_BUNDLES === "true"

@@ -1,3 +1,4 @@
+import { defineCachedResourceLookup } from "@app/lib/api/resources/cached_resource_lookup";
 import {
   listWorkOSOrganizationsWithDomain,
   removeWorkOSOrganizationDomain,
@@ -9,7 +10,10 @@ import {
   isValidConversationsRetentionDays,
 } from "@app/lib/conversations_retention";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
-import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
+import type {
+  ResourceLogJSON,
+  ResourceUpdateBlob,
+} from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type { ModelProviderIdType } from "@app/lib/resources/storage/models/workspace";
@@ -19,11 +23,6 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { GitHubConnectionStatus } from "@app/lib/skill_detection";
-import {
-  cacheWithRedis,
-  invalidateCacheAfterCommit,
-  invalidateCacheWithRedis,
-} from "@app/lib/utils/cache";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { terminateAllAgentLoopWorkflowsForConversation } from "@app/temporal/agent_loop/terminate";
@@ -33,7 +32,6 @@ import type {
   WorkspacePoolCreditState,
   WorkspaceProgrammaticCreditState,
 } from "@app/types/credits";
-import { WORKSPACE_CACHE_KEY_VERSION } from "@app/types/shared/cache_resource_registry";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -53,11 +51,13 @@ import type {
   Transaction,
 } from "sequelize";
 import { Op } from "sequelize";
+import { z } from "zod";
 
 const WORKSPACE_FULLY_BLOCKED_ERROR_MESSAGE =
   "Workspace is fully blocked. Use `workspace unblock` before managing conversation blocks.";
 const INVALID_WORKSPACE_KILL_SWITCH_METADATA_ERROR_PREFIX =
   "Invalid workspace kill switch metadata:";
+const WORKSPACE_CACHE_KEY_VERSION = 3;
 
 export type WorkspaceConversationKillSwitchValue = {
   conversationIds: string[];
@@ -131,8 +131,97 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     this.blob = blob;
   }
 
-  private static readonly workspaceCacheKeyResolver = (wId: string) =>
-    `workspace:v${WORKSPACE_CACHE_KEY_VERSION}:${wId}`;
+  private toCacheSnapshot(): CachedWorkspaceData {
+    return {
+      id: this.id,
+      sId: this.sId,
+      name: this.name,
+      description: this.description,
+      segmentation: this.segmentation,
+      ssoEnforced: this.ssoEnforced ?? false,
+      regionalModelsOnly: this.regionalModelsOnly,
+      workOSOrganizationId: this.workOSOrganizationId,
+      whiteListedProviders: this.whiteListedProviders,
+      defaultEmbeddingProvider: this.defaultEmbeddingProvider,
+      metadata: this.metadata,
+      sharingPolicy: this.sharingPolicy,
+      conversationsRetentionDays: this.conversationsRetentionDays,
+      metronomeCustomerId: this.metronomeCustomerId ?? null,
+      poolCreditState: this.poolCreditState,
+      programmaticCreditState: this.programmaticCreditState,
+      createdAt: this.createdAt.getTime(),
+      updatedAt: this.updatedAt.getTime(),
+    };
+  }
+
+  private static fromCacheSnapshot(
+    data: CachedWorkspaceData
+  ): WorkspaceResource {
+    const blob: Attributes<WorkspaceModel> = {
+      id: data.id,
+      sId: data.sId,
+      name: data.name,
+      description: data.description,
+      segmentation: data.segmentation,
+      ssoEnforced: data.ssoEnforced,
+      regionalModelsOnly: data.regionalModelsOnly,
+      workOSOrganizationId: data.workOSOrganizationId,
+      whiteListedProviders: data.whiteListedProviders,
+      defaultEmbeddingProvider: data.defaultEmbeddingProvider,
+      metadata: data.metadata,
+      sharingPolicy: data.sharingPolicy,
+      conversationsRetentionDays: data.conversationsRetentionDays,
+      metronomeCustomerId: data.metronomeCustomerId ?? null,
+      poolCreditState: data.poolCreditState,
+      programmaticCreditState: data.programmaticCreditState,
+      createdAt: new Date(data.createdAt),
+      updatedAt: new Date(data.updatedAt),
+    };
+    return new WorkspaceResource(WorkspaceModel, blob);
+  }
+
+  private static async fetchByIdFromDatabase(
+    workspaceId: string,
+    transaction?: Transaction
+  ): Promise<WorkspaceResource | null> {
+    const workspace = await WorkspaceModel.findOne({
+      where: { sId: workspaceId },
+      transaction,
+    });
+    return workspace
+      ? new WorkspaceResource(WorkspaceModel, workspace.get())
+      : null;
+  }
+
+  private static readonly byIdCache = defineCachedResourceLookup({
+    id: "workspace_by_sid",
+    version: WORKSPACE_CACHE_KEY_VERSION,
+    key: (workspaceId: string) => workspaceId,
+    readFromKeyFirst: {
+      cacheId: "_fetchByIdUncached",
+      key: (workspaceId: string) => `workspace:v2:${workspaceId}`,
+      keyPattern: "workspace:v2:*",
+      mirrorToCanonicalOnHit: false,
+    },
+    loadFromDatabase: WorkspaceResource.fetchByIdFromDatabase,
+    toSnapshot: (workspace) => workspace.toCacheSnapshot(),
+    fromSnapshot: WorkspaceResource.fromCacheSnapshot,
+  });
+
+  static readonly byIdCacheOperations =
+    WorkspaceResource.byIdCache.createCacheOperations({
+      label: "Workspace (by sId)",
+      inputSchema: z.object({ wId: z.string().min(1) }),
+      params: [
+        {
+          key: "wId",
+          label: "Workspace sId",
+          type: "string",
+          placeholder: "e.g. abc123",
+        },
+      ],
+      toLookupInput: ({ wId }) => wId,
+    });
 
   static isWorkspaceConversationKillSwitchValue(
     killSwitched: unknown
@@ -187,89 +276,12 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return whiteListedProviders;
   }
 
-  private static async _fetchByIdUncached(
-    wId: string
-  ): Promise<CachedWorkspaceData | null> {
-    const workspace = await WorkspaceModel.findOne({
-      where: { sId: wId },
-    });
-    if (!workspace) {
-      return null;
-    }
-
-    const whiteListedProviders =
-      await WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches(
-        workspace.whiteListedProviders
-      );
-
-    return {
-      id: workspace.id,
-      sId: workspace.sId,
-      name: workspace.name,
-      description: workspace.description,
-      segmentation: workspace.segmentation,
-      ssoEnforced: workspace.ssoEnforced ?? false,
-      regionalModelsOnly: workspace.regionalModelsOnly,
-      workOSOrganizationId: workspace.workOSOrganizationId,
-      whiteListedProviders: whiteListedProviders,
-      defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
-      metadata: workspace.metadata,
-      sharingPolicy: workspace.sharingPolicy,
-      conversationsRetentionDays: workspace.conversationsRetentionDays,
-      metronomeCustomerId: workspace.metronomeCustomerId ?? null,
-      poolCreditState: workspace.poolCreditState,
-      programmaticCreditState: workspace.programmaticCreditState,
-      createdAt: workspace.createdAt.getTime(),
-      updatedAt: workspace.updatedAt.getTime(),
-    };
-  }
-
-  // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
-  private static fetchByIdCached = cacheWithRedis(
-    WorkspaceResource._fetchByIdUncached,
-    WorkspaceResource.workspaceCacheKeyResolver,
-    { cacheNullValues: false }
-  );
-
-  private static invalidateWorkspaceCache = invalidateCacheWithRedis(
-    WorkspaceResource._fetchByIdUncached,
-    WorkspaceResource.workspaceCacheKeyResolver
-  );
-
-  /**
-   * Public cache invalidation — for use in scripts where the fire-and-forget
-   * invalidation in update() may not complete before process.exit().
-   */
-  static async invalidateCache(sId: string): Promise<void> {
-    await this.invalidateWorkspaceCache(sId);
-  }
-
-  private static fromCachedData(data: CachedWorkspaceData): WorkspaceResource {
-    const blob: Attributes<WorkspaceModel> = {
-      id: data.id,
-      sId: data.sId,
-      name: data.name,
-      description: data.description,
-      segmentation: data.segmentation,
-      ssoEnforced: data.ssoEnforced,
-      regionalModelsOnly: data.regionalModelsOnly,
-      workOSOrganizationId: data.workOSOrganizationId,
-      whiteListedProviders: data.whiteListedProviders,
-      defaultEmbeddingProvider: data.defaultEmbeddingProvider,
-      metadata: data.metadata,
-      sharingPolicy: data.sharingPolicy,
-      conversationsRetentionDays: data.conversationsRetentionDays,
-      metronomeCustomerId: data.metronomeCustomerId ?? null,
-      poolCreditState: data.poolCreditState,
-      programmaticCreditState: data.programmaticCreditState,
-      createdAt: new Date(data.createdAt),
-      updatedAt: new Date(data.updatedAt),
-    };
-    return new WorkspaceResource(WorkspaceModel, blob);
+  static async invalidateCache(workspaceId: string): Promise<void> {
+    await WorkspaceResource.byIdCache.invalidate(workspaceId);
   }
 
   protected override async update(
-    blob: Partial<Attributes<WorkspaceModel>>,
+    blob: ResourceUpdateBlob<WorkspaceModel>,
     transaction?: Transaction
   ): Promise<[affectedCount: number]> {
     // Dual write: keep sharingPolicy in sync when metadata.allowContentCreationFileSharing changes.
@@ -285,10 +297,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     }
 
     const result = await super.update(blob, transaction);
-    const sId = this.sId;
-    invalidateCacheAfterCommit(transaction, () =>
-      WorkspaceResource.invalidateWorkspaceCache(sId)
-    );
+    await WorkspaceResource.byIdCache.invalidate(this.sId, transaction);
     return result;
   }
 
@@ -298,7 +307,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     const workspace = await this.model.create(blob);
     const workspaceResource = new this(this.model, workspace.get());
 
-    await WorkspaceResource.invalidateWorkspaceCache(workspaceResource.sId);
+    await WorkspaceResource.byIdCache.invalidate(workspaceResource.sId);
 
     return workspaceResource;
   }
@@ -307,27 +316,17 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     wId: string,
     transaction?: Transaction
   ): Promise<WorkspaceResource | null> {
-    if (transaction) {
-      const workspace = await this.model.findOne({
-        where: { sId: wId },
-        transaction,
-      });
-      return workspace ? new this(this.model, workspace.get()) : null;
-    }
-
-    const cached = await this.fetchByIdCached(wId);
-    if (!cached) {
+    const workspace = await WorkspaceResource.byIdCache.fetch(wId, transaction);
+    if (!workspace) {
       return null;
     }
-
     const whiteListedProviders =
       await WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches(
-        cached.whiteListedProviders
+        workspace.whiteListedProviders
       );
-
-    return this.fromCachedData({
-      ...cached,
-      whiteListedProviders: whiteListedProviders,
+    return new WorkspaceResource(WorkspaceModel, {
+      ...workspace.blob,
+      whiteListedProviders,
     });
   }
 
@@ -998,10 +997,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
         where: { id: this.blob.id },
         transaction,
       });
-      const sId = this.sId;
-      invalidateCacheAfterCommit(transaction, () =>
-        WorkspaceResource.invalidateWorkspaceCache(sId)
-      );
+      await WorkspaceResource.byIdCache.invalidate(this.sId, transaction);
       return new Ok(deletedCount);
     } catch (error) {
       return new Err(normalizeError(error));
@@ -1016,7 +1012,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   static async updateByModelIdAndCheckExistence(
     id: ModelId,
-    updateValues: Partial<Attributes<WorkspaceModel>>
+    updateValues: ResourceUpdateBlob<WorkspaceModel>
   ): Promise<Result<void, Error>> {
     if (updateValues.conversationsRetentionDays !== undefined) {
       const retentionDays = updateValues.conversationsRetentionDays;

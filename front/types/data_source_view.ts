@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { DataSourceViewCategory } from "./api/public/spaces";
 import type { ContentNodeWithParent } from "./connectors/connectors_api";
 import type {
-  AgentsUsageType,
+  AgentsAndSkillsUsageType,
   ConnectorStatusDetails,
   DataSourceType,
 } from "./data_source";
@@ -28,7 +28,7 @@ export interface DataSourceViewType {
 
 export type DataSourceViewsWithDetails = DataSourceViewType & {
   dataSource: DataSourceType & ConnectorStatusDetails;
-  usage: AgentsUsageType;
+  usage: AgentsAndSkillsUsageType;
 };
 
 export type DataSourceViewContentNode = ContentNodeWithParent & {

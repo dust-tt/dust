@@ -1,4 +1,5 @@
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { ModelPickerHighlight } from "@app/components/assistant/conversation/input_bar/ModelPickerHighlight";
 import type { ModelPickerProps } from "@app/components/model_picker/ModelPicker";
 import { ModelPicker } from "@app/components/model_picker/ModelPicker";
 import { useContext } from "react";
@@ -9,6 +10,7 @@ type InputBarModelPickerProps = Omit<
   | "showLabel"
   | "setStickyModelOverride"
   | "stickyModelOverride"
+  | "trackingSurface"
 >;
 
 export function InputBarModelPicker({
@@ -23,25 +25,29 @@ export function InputBarModelPicker({
   onSelectionChange,
   commitApiRef,
 }: InputBarModelPickerProps) {
-  const { stickyModelOverride, setStickyModelOverride } =
+  const { stickyModelOverride, setStickyModelOverride, openModelPickerRef } =
     useContext(InputBarContext);
 
   return (
-    <ModelPicker
-      agentModel={agentModel}
-      agentId={agentId}
-      lastRequestedModel={lastRequestedModel}
-      owner={owner}
-      buttonVariant="ghost-secondary"
-      buttonSize={buttonSize}
-      showLabel={false}
-      side={side}
-      disabled={disabled}
-      selectionRef={selectionRef}
-      onSelectionChange={onSelectionChange}
-      stickyModelOverride={stickyModelOverride}
-      setStickyModelOverride={setStickyModelOverride}
-      commitApiRef={commitApiRef}
-    />
+    <ModelPickerHighlight>
+      <ModelPicker
+        agentModel={agentModel}
+        agentId={agentId}
+        lastRequestedModel={lastRequestedModel}
+        owner={owner}
+        buttonVariant="ghost-secondary"
+        buttonSize={buttonSize}
+        showLabel={false}
+        side={side}
+        disabled={disabled}
+        selectionRef={selectionRef}
+        onSelectionChange={onSelectionChange}
+        stickyModelOverride={stickyModelOverride}
+        setStickyModelOverride={setStickyModelOverride}
+        commitApiRef={commitApiRef}
+        openApiRef={openModelPickerRef}
+        trackingSurface="conversation_input_bar"
+      />
+    </ModelPickerHighlight>
   );
 }

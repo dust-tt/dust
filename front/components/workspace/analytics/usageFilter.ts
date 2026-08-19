@@ -1,11 +1,15 @@
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type {
+  ConsumptionScopeDimension,
+  ConsumptionScopeFilter,
+} from "@app/lib/api/analytics/consumption/scope";
 import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import type { ModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ConnectorProvider } from "@app/types/data_source";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { isConnectorProvider } from "@app/types/data_source";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const USAGE_FILTER_CATEGORIES = [
   "agent",
@@ -15,6 +19,7 @@ export const USAGE_FILTER_CATEGORIES = [
   "tool",
   "skill",
   "source",
+  "api_key",
 ] as const;
 
 export type UsageFilterCategory = (typeof USAGE_FILTER_CATEGORIES)[number];
@@ -28,6 +33,7 @@ export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =
     tool: "Tools",
     skill: "Skills",
     source: "Sources",
+    api_key: "API keys",
   };
 
 export const USAGE_FILTER_CATEGORY_SINGULAR_LABEL: Record<
@@ -41,6 +47,7 @@ export const USAGE_FILTER_CATEGORY_SINGULAR_LABEL: Record<
   tool: "Tool",
   skill: "Skill",
   source: "Source",
+  api_key: "API key",
 };
 
 export const USAGE_FILTER_AGENT_SCOPES = [
@@ -57,20 +64,9 @@ export const USAGE_FILTER_SCOPE_LABEL: Record<UsageFilterAgentScope, string> = {
   all: "All",
 };
 
-export const USAGE_MODEL_TIERS = ["fast", "standard", "complex"] as const;
-
-export type UsageModelTier = (typeof USAGE_MODEL_TIERS)[number];
-
-export const USAGE_MODEL_TIER_LABEL: Record<UsageModelTier, string> = {
-  fast: "Fast",
-  standard: "Standard",
-  complex: "Complex",
-};
-
 interface UsageFilterOptionBase {
   id: string;
   name: string;
-  documentCount: number;
   disabled: boolean;
 }
 
@@ -99,9 +95,9 @@ export interface UsageFilterModelOption extends UsageFilterOptionBase {
   kind: "model";
   lab?: ModelMakerIdType;
   // Undefined for a model outside the static tier table — it doesn't match
-  // any Fast/Standard/Complex quick filter, so it's absent from the main
+  // any Basic/Standard/Premium quick filter, so it's absent from the main
   // checklist but still reachable through the "More models" browse dropdown.
-  tier: UsageModelTier | undefined;
+  tier: ModelsTierName | undefined;
 }
 
 export interface UsageFilterToolOption extends UsageFilterOptionBase {
@@ -114,6 +110,10 @@ export interface UsageFilterSkillOption extends UsageFilterOptionBase {
   icon: string | null;
 }
 
+export interface UsageFilterApiKeyOption extends UsageFilterOptionBase {
+  kind: "api_key";
+}
+
 export type UsageFilterOption =
   | UsageFilterAgentOption
   | UsageFilterMemberOption
@@ -121,7 +121,8 @@ export type UsageFilterOption =
   | UsageFilterSourceOption
   | UsageFilterModelOption
   | UsageFilterToolOption
-  | UsageFilterSkillOption;
+  | UsageFilterSkillOption
+  | UsageFilterApiKeyOption;
 
 export interface UsageFilterGroup {
   id: string;
@@ -211,6 +212,107 @@ export function selectAllUsageFilterOptions<C extends UsageFilterCategory>(
   return { ...filter, [category]: [...current, ...additions] };
 }
 
+type AttributionFilterRow = {
+  id: string;
+  name: string;
+  pictureUrl: string | null;
+};
+
+function usageFilterOptionFromAttributionRow(
+  dimension: ConsumptionScopeDimension,
+  row: AttributionFilterRow
+): UsageFilterOption {
+  const baseOption = {
+    id: row.id,
+    name: row.name,
+    disabled: false,
+  };
+
+  switch (dimension) {
+    case "agent":
+      return { ...baseOption, kind: "agent", image: row.pictureUrl };
+    case "user":
+      return { ...baseOption, kind: "member", image: row.pictureUrl };
+    case "group":
+      return { ...baseOption, kind: "group" };
+    case "model":
+      return { ...baseOption, kind: "model", tier: undefined };
+    case "tool":
+      return { ...baseOption, kind: "tool", icon: null };
+    case "skill":
+      return { ...baseOption, kind: "skill", icon: null };
+    case "source":
+      return {
+        ...baseOption,
+        kind: "source",
+        connectorProvider: isConnectorProvider(row.id) ? row.id : undefined,
+      };
+    case "api_key":
+      return { ...baseOption, kind: "api_key" };
+    default:
+      return assertNever(dimension);
+  }
+}
+
+function addUsageFilterOption(
+  filter: UsageFilter,
+  option: UsageFilterOption
+): UsageFilter {
+  switch (option.kind) {
+    case "agent":
+      return selectAllUsageFilterOptions(filter, "agent", [option]);
+    case "member":
+      return selectAllUsageFilterOptions(filter, "member", [option]);
+    case "group":
+      return selectAllUsageFilterOptions(filter, "group", [option]);
+    case "model":
+      return selectAllUsageFilterOptions(filter, "model", [option]);
+    case "tool":
+      return selectAllUsageFilterOptions(filter, "tool", [option]);
+    case "skill":
+      return selectAllUsageFilterOptions(filter, "skill", [option]);
+    case "source":
+      return selectAllUsageFilterOptions(filter, "source", [option]);
+    case "api_key":
+      return selectAllUsageFilterOptions(filter, "api_key", [option]);
+    default:
+      return assertNever(option);
+  }
+}
+
+export function addUsageFilterFromAttributionRow(
+  filter: UsageFilter,
+  dimension: ConsumptionScopeDimension,
+  row: AttributionFilterRow
+): UsageFilter {
+  return addUsageFilterOption(
+    filter,
+    usageFilterOptionFromAttributionRow(dimension, row)
+  );
+}
+
+export function removeUsageFilterFromAttributionRow(
+  filter: UsageFilter,
+  dimension: ConsumptionScopeDimension,
+  row: AttributionFilterRow
+): UsageFilter {
+  const option = usageFilterOptionFromAttributionRow(dimension, row);
+  return removeUsageFilterOption(filter, option.kind, option.id);
+}
+
+// Maps an attribution row to the filter UI option shape, replacing that
+// dimension while preserving the other filters.
+export function setUsageFilterFromAttributionRow(
+  filter: UsageFilter,
+  dimension: ConsumptionScopeDimension,
+  row: AttributionFilterRow
+): UsageFilter {
+  return {
+    ...filter,
+    ...addUsageFilterFromAttributionRow({}, dimension, row),
+  };
+}
+
 // "member" maps to the "user" dimension; every other category maps directly
 // to its same-named consumption dimension.
 export function toConsumptionScopeFilter(
@@ -234,28 +336,4 @@ export function toConsumptionScopeFilter(
   }
 
   return scopeFilter;
-}
-
-// Maps the backend's reasoning-effort-aware pricing tier onto the filter
-// panel's simpler Fast/Standard/Complex bucket. Null propagates (a model
-// outside the static tier table, or a raw catalog entry with no config match)
-// as "no bucket", so it's excluded from every quick-filter tier rather than
-// landing in one arbitrarily.
-export function usageModelTierFromModelsTierName(
-  tier: ModelsTierName | null | undefined
-): UsageModelTier | undefined {
-  if (tier === null || tier === undefined) {
-    return undefined;
-  }
-  switch (tier) {
-    case "cost_efficient":
-      return "fast";
-    case "balanced":
-      return "standard";
-    case "premium":
-      return "complex";
-    default:
-      assertNeverAndIgnore(tier);
-      return undefined;
-  }
 }

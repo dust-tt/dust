@@ -37,6 +37,13 @@ export type PatchTriggersRequestBody = z.infer<
   typeof PatchTriggersRequestBodySchema
 >;
 
+export const PatchTriggerStatusRequestBodySchema = z.object({
+  status: z.enum(["enabled", "disabled"]),
+});
+export type PatchTriggerStatusRequestBody = z.infer<
+  typeof PatchTriggerStatusRequestBodySchema
+>;
+
 export const PostTriggersRequestBodySchema = z.object({
   triggers: z.array(TriggerSchema),
 });

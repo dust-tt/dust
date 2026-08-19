@@ -32,67 +32,33 @@ async function getAvailableFlags(frontPath: string): Promise<FlagInfo[]> {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export async function flagCommand(
-  nameArg: string | undefined,
-  flagNameArg: string | undefined,
-  options?: { disable?: boolean }
-): Promise<Result<void>> {
-  const skipRestore = !flagNameArg;
-  const envResult = await requireEnvironment(nameArg, "flag", {
-    skipRestoreTerminal: skipRestore,
+async function selectFlags(availableFlags: FlagInfo[], disable: boolean): Promise<string[]> {
+  const result = await p.multiselect({
+    message: `Select feature flags to ${disable ? "disable" : "enable"} (space to toggle, enter to confirm)`,
+    initialValues: [],
+    required: true,
+    options: availableFlags.map((f) => ({
+      value: f.name,
+      label: f.name,
+      hint: f.description,
+    })),
   });
-  if (!envResult.ok) return envResult;
 
-  const env = envResult.value;
-
-  // Check if environment is warm
-  const stateInfo = await getStateInfo(env);
-  if (stateInfo.state !== "warm") {
-    restoreTerminal();
-    return Err(
-      new CommandError(
-        `Environment '${env.name}' is not warm (current state: ${stateInfo.state}). Run 'dust-hive warm ${env.name}' first.`
-      )
-    );
+  if (p.isCancel(result)) {
+    return [];
   }
 
-  const worktreePath = getEnvironmentWorktreeDir(env.metadata);
-  const frontPath = path.join(worktreePath, "front");
+  return result as string[];
+}
 
-  // Resolve flag name — interactive select if not provided
-  let flagName = flagNameArg;
-  if (!flagName) {
-    const availableFlags = await getAvailableFlags(frontPath);
-
-    if (availableFlags.length === 0) {
-      restoreTerminal();
-      return Err(
-        new CommandError("Could not read feature flags from front/types/shared/feature_flags.ts")
-      );
-    }
-
-    const selected = await p.select({
-      message: "Select a feature flag",
-      options: availableFlags.map((f) => ({
-        value: f.name,
-        label: f.name,
-        hint: f.description,
-      })),
-    });
-
-    restoreTerminal();
-
-    if (p.isCancel(selected)) {
-      return Err(new CommandError("No flag selected"));
-    }
-
-    flagName = selected as string;
-  }
-
-  const disable = Boolean(options?.disable);
-  const action = disable ? "Disabling" : "Enabling";
-
-  logger.info(`${action} feature flag '${flagName}' on workspace ${WORKSPACE_ID}...`);
+async function toggleFlag(
+  frontPath: string,
+  flagName: string,
+  disable: boolean
+): Promise<Result<void>> {
+  logger.info(
+    `${disable ? "Disabling" : "Enabling"} feature flag '${flagName}' on workspace ${WORKSPACE_ID}...`
+  );
   console.log();
 
   const args = [
@@ -120,11 +86,94 @@ export async function flagCommand(
   const exitCode = await proc.exited;
 
   if (exitCode !== 0) {
-    return Err(new CommandError(`toggle_feature_flags.ts failed with exit code ${exitCode}`));
+    return Err(
+      new CommandError(
+        `toggle_feature_flags.ts failed for '${flagName}' with exit code ${exitCode}`
+      )
+    );
   }
 
   console.log();
   logger.success(`Feature flag '${flagName}' ${disable ? "disabled" : "enabled"} successfully`);
+
+  return Ok(undefined);
+}
+
+export async function flagCommand(
+  nameArg: string | undefined,
+  flagNameArgs: string[] | undefined,
+  options?: { disable?: boolean }
+): Promise<Result<void>> {
+  const requestedFlags = flagNameArgs ?? [];
+  const skipRestore = requestedFlags.length === 0;
+  const envResult = await requireEnvironment(nameArg, "flag", {
+    skipRestoreTerminal: skipRestore,
+  });
+  if (!envResult.ok) return envResult;
+
+  const env = envResult.value;
+
+  // Check if environment is warm
+  const stateInfo = await getStateInfo(env);
+  if (stateInfo.state !== "warm") {
+    restoreTerminal();
+    return Err(
+      new CommandError(
+        `Environment '${env.name}' is not warm (current state: ${stateInfo.state}). Run 'dust-hive warm ${env.name}' first.`
+      )
+    );
+  }
+
+  const worktreePath = getEnvironmentWorktreeDir(env.metadata);
+  const frontPath = path.join(worktreePath, "front");
+
+  const availableFlags = await getAvailableFlags(frontPath);
+  if (availableFlags.length === 0) {
+    restoreTerminal();
+    return Err(
+      new CommandError("Could not read feature flags from front/types/shared/feature_flags.ts")
+    );
+  }
+
+  const disable = Boolean(options?.disable);
+
+  // Resolve flag names — interactive multi-select if none provided
+  let flagNames: string[];
+  if (requestedFlags.length > 0) {
+    flagNames = requestedFlags;
+  } else {
+    const selected = await selectFlags(availableFlags, disable);
+    restoreTerminal();
+
+    if (selected.length === 0) {
+      return Err(new CommandError("No flag selected"));
+    }
+
+    flagNames = selected;
+  }
+
+  // Validate every flag before toggling any, so a typo cannot leave a partial toggle behind.
+  const availableNames = new Set(availableFlags.map((f) => f.name));
+  const unknownFlags = flagNames.filter((flagName) => !availableNames.has(flagName));
+  if (unknownFlags.length > 0) {
+    return Err(
+      new CommandError(
+        `Unknown feature flag(s): ${unknownFlags.join(", ")}. Run 'dust-hive flag ${env.name}' with no flag name to pick from the list.`
+      )
+    );
+  }
+
+  for (const flagName of flagNames) {
+    const toggleResult = await toggleFlag(frontPath, flagName, disable);
+    if (!toggleResult.ok) return toggleResult;
+  }
+
+  if (flagNames.length > 1) {
+    console.log();
+    logger.success(
+      `All ${flagNames.length} feature flags ${disable ? "disabled" : "enabled"} successfully`
+    );
+  }
 
   return Ok(undefined);
 }

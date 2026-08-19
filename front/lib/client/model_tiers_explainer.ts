@@ -1,14 +1,15 @@
 import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
 import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import {
+  getModelsTierDisplayName,
   MODELS_TIERS,
   STATIC_MODEL_TIERS,
 } from "@app/lib/api/assistant/token_pricing/tiers";
 import { getTierIndex } from "@app/lib/model_tiers/tier_order";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { isStaticModelId } from "@app/types/assistant/models/models";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
-import { formatAsDisplayName } from "@app/types/shared/utils/string_utils";
 
 export interface ModelTierExplainerEntry {
   displayName: string;
@@ -46,6 +47,7 @@ export function getModelTierExplainer(): ModelTierExplainerTier[] {
     for (const config of USED_MODEL_CONFIGS) {
       if (
         HIDDEN_PROVIDER_IDS.has(config.providerId) ||
+        isModelStreamId(config.modelId) ||
         !isStaticModelId(config.modelId)
       ) {
         continue;
@@ -70,7 +72,7 @@ export function getModelTierExplainer(): ModelTierExplainerTier[] {
 
     return {
       name: tier.name,
-      displayName: formatAsDisplayName(tier.name),
+      displayName: getModelsTierDisplayName(tier.name),
       description: tier.description,
       priceLevel: getTierIndex(tier.name) + 1,
       models,

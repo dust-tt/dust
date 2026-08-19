@@ -1,6 +1,5 @@
 import config from "@app/lib/api/config";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import type { DustFileSystemError } from "@app/lib/api/file_system/types";
 import {
   convertCanonicalFileToPdf,
   deleteCanonicalFile,
@@ -13,6 +12,7 @@ import {
   writeCanonicalFileContent,
 } from "@app/lib/api/files/file_system_ops";
 import { requestDustProjectIncrementalSyncForScopedPath } from "@app/lib/api/projects/request_incremental_sync";
+import type { DustFileSystemError } from "@app/types/file_system";
 import {
   DUST_FILE_ID_HEADER,
   getFileFormat,

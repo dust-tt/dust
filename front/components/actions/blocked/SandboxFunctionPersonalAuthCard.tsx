@@ -22,6 +22,7 @@ export function SandboxFunctionPersonalAuthCard({
 
   const { resolveAuthentication, isResolving } = useResolveAuthentication({
     owner: viewer.owner,
+    frameShareToken: viewer.frameShareToken,
   });
 
   const handleResolve = async (

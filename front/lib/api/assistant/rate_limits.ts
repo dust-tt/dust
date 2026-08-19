@@ -1,6 +1,6 @@
+import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import type { Authenticator } from "@app/lib/auth";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   expireRateLimiterKey,
@@ -21,8 +21,10 @@ export const MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR_WINDOW_SECONDS = 60 * 60;
 
 // Sidekick messages are free (unbilled) usage, so they bypass the credit/plan
 // caps. Cap them per actor to bound how much free usage a single user can
-// generate through the builder assistant.
+// generate through the builder assistant. Enterprise (and Dust internal)
+// accounts get a higher allowance.
 export const SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY = 100;
+export const SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_ENTERPRISE = 200;
 export const SIDEKICK_MESSAGE_RATE_LIMIT_PER_ACTOR_PER_DAY_WINDOW_SECONDS =
   24 * 60 * 60;
 
@@ -83,6 +85,16 @@ export const makeFairUseAwuCreditsRateLimitKeyForUser = (
   return `workspace:${owner.id}:user:${user.id}:fair_use_awu_credit_count:${maxAwuCreditsTimeframe}`;
 };
 
+export const PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK = 25;
+export const PREMIUM_MODEL_MESSAGE_RATE_LIMIT_WINDOW_SECONDS = 7 * 24 * 60 * 60;
+
+export const makePremiumModelMessageRateLimitKeyForUser = (
+  workspace: LightWorkspaceType,
+  user: UserType
+) => {
+  return `workspace:${workspace.id}:user:${user.id}:premium_model_message_count`;
+};
+
 // Fixed-window counter backing the admin-configured per-user spend cap. Always
 // bucketed on the Metronome contract billing cycle (the fixed-window counter
 // appends the cycle-boundary label). Distinct from the rolling plan-level
@@ -107,6 +119,24 @@ export const makeSpendLimitCycleWindowBounds = (
     label: `cycle-${cycleStart.getTime()}`,
     windowEndMs: cycleEnd.getTime(),
   };
+};
+
+// Fixed-window counter backing the admin-configured per-API-key spend cap.
+// Keyed by the key model id (the calling key is active, and key names are
+// unique among active keys, so id and name are 1:1 here). Bucketed on the
+// Metronome contract billing cycle via `makeSpendLimitCycleWindowBounds`, like
+// the per-user key above.
+export const makeApiKeySpendLimitAwuCreditsRateLimitKey = (keyId: number) => {
+  return `api_key:${keyId}:spend_limit_awu_credit_count`;
+};
+
+// Fixed-window counter backing the workspace programmatic monthly spend cap
+// (programmatic-only AWU usage). Workspace-scoped; bucketed on the Metronome
+// contract billing cycle via `makeSpendLimitCycleWindowBounds`.
+export const makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace = (
+  owner: LightWorkspaceType
+) => {
+  return `workspace:${owner.id}:programmatic_spend_limit_awu_credit_count`;
 };
 
 export const makeProgrammaticUsageRateLimitKeyForWorkspace = (
@@ -182,9 +212,7 @@ export async function getMessageUsageCount(auth: Authenticator): Promise<{
     return { count: 0, limit: -1 };
   }
 
-  const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
-    workspace.sId
-  );
+  const activeSeats = await countActiveSeatsForWorkspace(workspace.sId);
   const effectiveLimit = computeEffectiveMessageLimit({
     planCode: plan.code,
     maxMessages,

@@ -17,7 +17,7 @@ function extractBearerToken(authHeader: string | undefined): string | null {
 }
 
 // @hono/mcp reads ctx.get("auth") as MCP AuthInfo. Use a dedicated setter so we
-// do not clobber the Dust Authenticator that request_logger expects on "auth".
+// do not clobber the Dust Authenticator that requestInstrumentation expects on "auth".
 function setMcpTransportAuth(c: Context, authInfo: AuthInfo): void {
   c.set("auth", authInfo as never);
 }

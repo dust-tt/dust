@@ -69,10 +69,11 @@ function tokenUrl(index: number): string {
  * Per-target mount profile.
  *
  * - "workload": root-mounted with `allow_other` so the unprivileged sandbox
- *   users can access it; permissive file/dir modes; 60s kernel list cache
- *   (read-mostly workloads). All agent-facing mounts.
+ *   users can access it; permissive file/dir modes. All agent-facing mounts
+ *   are shared mutable filesystems, so namespace and metadata caching are
+ *   disabled: writes from another sandbox or Front must be visible immediately.
  * - "pod_sandbox_functions": same access model as "workload", but without
- *   kernel list caching so newly published functions are visible immediately.
+ *   caching so newly published or replaced functions are visible immediately.
  * - "pod_state_replica": mounted AS `dust-state` (via runuser) so the FUSE
  *   default — only the mounting user can access the fs — makes it invisible to
  *   every other uid, including the untrusted workload uid 1003 and root. No
@@ -432,8 +433,6 @@ export function buildMountCommand({
       if (target.readOnly) {
         mountOptions.push("ro");
       }
-      const kernelListCacheTtlSeconds =
-        target.mountProfile === "pod_sandbox_functions" ? 0 : 60;
 
       const flags = [
         ...commonFlags,
@@ -441,7 +440,12 @@ export function buildMountCommand({
         mountOptions.join(","),
         "--file-mode=666",
         "--dir-mode=777",
-        `--kernel-list-cache-ttl-secs=${kernelListCacheTtlSeconds}`,
+        // These mounts have multiple independent writers/readers. gcsfuse only invalidates the
+        // client that performed a mutation, so any cache here can hide writes from another
+        // sandbox or from Front.
+        "--kernel-list-cache-ttl-secs=0",
+        "--metadata-cache-ttl-secs=0",
+        "--metadata-cache-negative-ttl-secs=0",
       ];
 
       return rootCommand.stderrToStdout(
@@ -462,6 +466,8 @@ export function buildMountCommand({
         "--file-mode=600",
         "--dir-mode=700",
         "--kernel-list-cache-ttl-secs=0",
+        "--metadata-cache-ttl-secs=0",
+        "--metadata-cache-negative-ttl-secs=0",
       ];
 
       return rootCommand.stderrToStdout(

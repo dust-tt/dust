@@ -3,12 +3,14 @@ import { renderToolResultForModelAsText } from "@app/lib/api/assistant/conversat
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
+import { isToolSearchEnabledForModel } from "@app/lib/model_constructors/types/tool_search";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import {
   GPT_4_1_MINI_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -18,6 +20,17 @@ const HISTORICAL_TOKENIZATION_MODEL_CONFIGS = [
   GPT_4_1_MODEL_CONFIG,
   GPT_4_1_MINI_MODEL_CONFIG,
 ];
+
+function modelForToolFootprintAttribution(
+  model: ModelConfigurationType
+): ModelConfigurationType {
+  return {
+    ...model,
+    // The shared default is a context-window safety margin. Attribution needs the raw estimate.
+    // Preserve only explicit adjustments that compensate for a model-specific tokenizer mismatch.
+    tokenCountAdjustment: model.tokenCountAdjustment ?? 1,
+  };
+}
 
 /**
  * The two texts an MCP action contributes to the model's token budget: the tool call the model
@@ -71,8 +84,8 @@ export function toolCallFootprintTexts(
  * Measures, for each action, how many tokens the model spent emitting the tool call and how many
  * input tokens the execution contributes. Results stay aligned with `toolCalls`.
  *
- * Uses the exact tokenizer of the run's model through core, the same path conversation rendering
- * uses to size messages, so the counts closely match provider tokenization rather than a heuristic.
+ * Uses the run model's tokenizer through core, without conversation rendering's context-window
+ * safety padding.
  */
 export async function measureToolCallFootprints(
   auth: Authenticator,
@@ -98,6 +111,7 @@ export async function measureToolCallFootprints(
       new Error(`Cannot tokenize tool footprints: unknown model ${modelId}.`)
     );
   }
+  const attributionModel = modelForToolFootprintAttribution(model);
 
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,
@@ -106,7 +120,10 @@ export async function measureToolCallFootprints(
   const enabledSkillInputTextByActionId =
     await getEnabledSkillInputTextByActionId(
       auth,
-      toolCalls.map(({ action }) => action)
+      toolCalls.map(({ action }) => action),
+      {
+        toolSearchEnabled: isToolSearchEnabledForModel(model),
+      }
     );
 
   // Tokenize the calls and inputs as two homogeneous lists so each count maps back to its call by
@@ -120,12 +137,12 @@ export async function measureToolCallFootprints(
   const [callCountsRes, inputCountsRes] = await Promise.all([
     tokenCountForTexts(
       footprints.map((footprint) => footprint.callText),
-      model,
+      attributionModel,
       credentials
     ),
     tokenCountForTexts(
       footprints.map((footprint) => footprint.inputText),
-      model,
+      attributionModel,
       credentials
     ),
   ]);

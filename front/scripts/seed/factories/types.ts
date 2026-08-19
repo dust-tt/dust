@@ -96,6 +96,11 @@ export interface CreatedAgent {
   name: string;
 }
 
+export interface CreatedTrigger {
+  sId: string;
+  name: string;
+}
+
 export type SuggestionAsset = AgentSuggestionData & {
   agentName: string;
   analysis: string | null;

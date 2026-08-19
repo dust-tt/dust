@@ -3,10 +3,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
-import type {
-  SkillUsageType,
-  UsedBySkillType,
-} from "@app/types/assistant/skill_configuration";
+import type { UsedBySkillType } from "@app/types/assistant/skill_configuration";
+import type { AgentsAndSkillsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
 import { QueryTypes } from "sequelize";
 
@@ -14,7 +12,7 @@ import { QueryTypes } from "sequelize";
 // If it is a problem, let's add caching
 const DISABLE_QUERIES = false;
 
-export type MCPServersUsage = Record<string, SkillUsageType>;
+export type MCPServersUsage = Record<string, AgentsAndSkillsUsageType>;
 
 interface MCPServerUsageRow {
   internalMCPServerId: string | null;
@@ -69,7 +67,7 @@ async function buildVisibilityFilter(auth: Authenticator): Promise<{
 function rowToUsageEntry(
   row: MCPServerUsageRow,
   workspaceId: ModelId
-): { key: string; usage: SkillUsageType } {
+): { key: string; usage: AgentsAndSkillsUsageType } {
   const key =
     row.internalMCPServerId ||
     remoteMCPServerNameToSId({

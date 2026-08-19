@@ -55,6 +55,31 @@ function putPolicy(wId: string, spaceId: string, body: unknown) {
   );
 }
 
+function dismissRequest(wId: string, spaceId: string, domain: string) {
+  return honoApp.request(
+    `/api/w/${wId}/spaces/${spaceId}/sandbox/egress-policy/requests/dismiss`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ domain }),
+    }
+  );
+}
+
+function seedPolicyFile(
+  wId: string,
+  spaceId: string,
+  policy: {
+    allowedDomains: string[];
+    requestedDomains?: { domain: string; requestedAtMs: number }[];
+  }
+) {
+  fileStorageMock.setObject(
+    `w/${wId}/sandboxes/${spaceId}.json`,
+    JSON.stringify(policy)
+  );
+}
+
 describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
   beforeEach(() => {
     // The GCS global mock (registered in vite.setup.ts) is reset before each
@@ -70,7 +95,10 @@ describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
     const response = await getPolicy(workspace.sId, pod.sId);
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ policy: { allowedDomains: [] } });
+    expect(await response.json()).toEqual({
+      policy: { allowedDomains: [] },
+      requestedDomains: [],
+    });
   });
 
   it("persists domains and returns them on round-trip, normalized", async () => {
@@ -96,6 +124,7 @@ describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
     const getResponse = await getPolicy(workspace.sId, pod.sId);
     expect(await getResponse.json()).toEqual({
       policy: { allowedDomains: ["api.github.com", "*.github.com"] },
+      requestedDomains: [],
     });
 
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
@@ -145,6 +174,86 @@ describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
     expect(await response.json()).toMatchObject({
       error: { type: "feature_flag_not_found" },
     });
+  });
+
+  it("surfaces pending domain requests from the policy file", async () => {
+    const { workspace } = await setupTest();
+    const pod = await SpaceFactory.project(workspace);
+    seedPolicyFile(workspace.sId, pod.sId, {
+      allowedDomains: ["api.github.com"],
+      requestedDomains: [{ domain: "api.stripe.com", requestedAtMs: 1 }],
+    });
+
+    const response = await getPolicy(workspace.sId, pod.sId);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      policy: {
+        allowedDomains: ["api.github.com"],
+        requestedDomains: [{ domain: "api.stripe.com", requestedAtMs: 1 }],
+      },
+      requestedDomains: [{ domain: "api.stripe.com", requestedAtMs: 1 }],
+    });
+  });
+
+  it("dismisses a pending request without granting it", async () => {
+    const { workspace } = await setupTest();
+    const pod = await SpaceFactory.project(workspace);
+    seedPolicyFile(workspace.sId, pod.sId, {
+      allowedDomains: ["api.github.com"],
+      requestedDomains: [
+        { domain: "api.stripe.com", requestedAtMs: 1 },
+        { domain: "api.notion.com", requestedAtMs: 2 },
+      ],
+    });
+
+    const response = await dismissRequest(
+      workspace.sId,
+      pod.sId,
+      "api.stripe.com"
+    );
+
+    expect(response.status).toBe(200);
+    const getResponse = await getPolicy(workspace.sId, pod.sId);
+    expect(await getResponse.json()).toEqual({
+      policy: {
+        allowedDomains: ["api.github.com"],
+        requestedDomains: [{ domain: "api.notion.com", requestedAtMs: 2 }],
+      },
+      requestedDomains: [{ domain: "api.notion.com", requestedAtMs: 2 }],
+    });
+  });
+
+  it("resolves a request atomically when its domain is approved via PUT", async () => {
+    const { workspace } = await setupTest();
+    const pod = await SpaceFactory.project(workspace);
+    seedPolicyFile(workspace.sId, pod.sId, {
+      allowedDomains: [],
+      requestedDomains: [{ domain: "api.stripe.com", requestedAtMs: 1 }],
+    });
+
+    await putPolicy(workspace.sId, pod.sId, {
+      allowedDomains: ["api.stripe.com"],
+    });
+
+    const getResponse = await getPolicy(workspace.sId, pod.sId);
+    expect(await getResponse.json()).toEqual({
+      policy: { allowedDomains: ["api.stripe.com"] },
+      requestedDomains: [],
+    });
+  });
+
+  it("rejects a non-admin dismiss with a 403", async () => {
+    const { workspace } = await setupTest({ role: "user" });
+    const pod = await SpaceFactory.project(workspace);
+
+    const response = await dismissRequest(
+      workspace.sId,
+      pod.sId,
+      "api.stripe.com"
+    );
+
+    expect(response.status).toBe(403);
   });
 
   it("returns 400 for non-project spaces", async () => {

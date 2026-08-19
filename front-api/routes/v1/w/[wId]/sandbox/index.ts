@@ -1,7 +1,7 @@
 import { sandboxApp } from "@front-api/middlewares/ctx";
 
 import actions from "./actions";
-import sandboxFunctions from "./sandbox-functions";
+import filesystem from "./filesystem";
 
 // Mounted at /api/v1/w/:wId/sandbox. This sub-tree is mounted before
 // `publicWorkspaceApp` in `routes/v1/index.ts` so it does not inherit
@@ -10,6 +10,6 @@ import sandboxFunctions from "./sandbox-functions";
 const app = sandboxApp();
 
 app.route("/actions", actions);
-app.route("/sandbox-functions", sandboxFunctions);
+app.route("/filesystem", filesystem);
 
 export default app;

@@ -73,15 +73,42 @@ function selectRunUsagesNeedingEvidence({
   return usages.filter((usage) => {
     const dustRunId = dustRunIdByRunModelId.get(usage.runModelId);
     const runActions = (dustRunId && actionsByDustRunId.get(dustRunId)) || [];
+    const runActionById = new Map(
+      runActions.map((action) => [action.sId, action])
+    );
     const modelItemTypes = modelItemTypesByRunUsageModelId.get(
       usage.runUsageModelId
     );
-    const hasMissingActionItem = runActions.some(
-      (action) => !toolItemByActionModelId.has(action.id)
-    );
+    const hasUnexpectedMissingActionItem = runActions.some((action) => {
+      if (toolItemByActionModelId.has(action.id)) {
+        return false;
+      }
+
+      const childInfo = action.stepContext.sandboxChildActionInfo;
+      if (!isSandboxChildActionInfo(childInfo)) {
+        return true;
+      }
+
+      const parentAction = runActionById.get(childInfo.parentActionId);
+      if (!parentAction) {
+        return true;
+      }
+      const parentItem = toolItemByActionModelId.get(parentAction.id);
+
+      // A sandbox bash can create another child after an earlier attribution pass while its own
+      // tool item is still pending. The child is direct-charge-only, so adding its zero-footprint
+      // pending row cannot change the run's already-stored model-token partition. Require the
+      // durable parent relationship and the exact same producing run before accepting this gap.
+      return !(
+        parentItem?.completedAt === null &&
+        parentItem.runUsageId === usage.runUsageModelId &&
+        parentAction.stepContent.id === action.stepContent.id &&
+        parentAction.stepContent.dustRunId === dustRunId
+      );
+    });
     assert(
       !runUsageModelIdsWithEvidence.has(usage.runUsageModelId) ||
-        !hasMissingActionItem,
+        !hasUnexpectedMissingActionItem,
       "An attributed run usage is missing tool evidence"
     );
 
@@ -452,13 +479,18 @@ async function persistMessageConsumptionAttribution(
  * becomes terminal without another reported model run, that footprint is removed in place: the
  * result was produced, but never consumed.
  */
-export async function computeAndStoreAgentMessageConsumptionAttribution(
+export interface AgentMessageConsumptionAttributionComputation {
+  actions?: AgentMCPActionResource[];
+  consumptionUpdate?: { costCredits: number | null };
+}
+
+async function computeAndStoreAgentMessageConsumptionAttributionComputation(
   auth: Authenticator,
   {
     agentMessageId,
     conversationId,
   }: { agentMessageId: string; conversationId: string }
-): Promise<{ costCredits: number | null } | undefined> {
+): Promise<AgentMessageConsumptionAttributionComputation> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
 
   const creditContext =
@@ -470,7 +502,7 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
       { workspaceId, agentMessageId },
       "[ConsumptionAttribution] Agent message not found."
     );
-    return;
+    return {};
   }
 
   const {
@@ -484,12 +516,12 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
   // Attribution only explains what was billed, so it mirrors the billing status gate: an untracked
   // status has no charge to compose.
   if (!AGENT_MESSAGE_STATUSES_TO_TRACK.includes(status)) {
-    return;
+    return {};
   }
 
   const dustRunIds = [...new Set(runIds ?? [])];
   if (dustRunIds.length === 0) {
-    return;
+    return {};
   }
 
   const conversation = await ConversationResource.fetchById(
@@ -505,7 +537,7 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
       { workspaceId, agentMessageId, conversationId },
       "[ConsumptionAttribution] Conversation not found."
     );
-    return;
+    return {};
   }
 
   // Every usage is reached through this message's own runIds, so each one belongs to this message.
@@ -612,5 +644,37 @@ export async function computeAndStoreAgentMessageConsumptionAttribution(
     }
   );
 
-  return hasCompleteAllocation ? { costCredits: billedCredits } : undefined;
+  return {
+    actions,
+    consumptionUpdate: hasCompleteAllocation
+      ? { costCredits: billedCredits }
+      : undefined,
+  };
+}
+
+export async function computeAndStoreAgentMessageConsumptionAttribution(
+  auth: Authenticator,
+  message: { agentMessageId: string; conversationId: string }
+): Promise<{ costCredits: number | null } | undefined> {
+  const { consumptionUpdate } =
+    await computeAndStoreAgentMessageConsumptionAttributionComputation(
+      auth,
+      message
+    );
+
+  return consumptionUpdate;
+}
+
+/**
+ * Returns the action snapshot loaded for attribution so the immediately following analytics index
+ * can reuse it instead of querying the same rows again.
+ */
+export async function computeAndStoreAgentMessageConsumptionAttributionForAnalytics(
+  auth: Authenticator,
+  message: { agentMessageId: string; conversationId: string }
+): Promise<AgentMessageConsumptionAttributionComputation> {
+  return computeAndStoreAgentMessageConsumptionAttributionComputation(
+    auth,
+    message
+  );
 }

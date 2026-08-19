@@ -11,7 +11,6 @@ from __future__ import annotations
 import argparse
 import os
 import re
-import secrets
 import sys
 import zipfile
 from pathlib import Path
@@ -52,6 +51,9 @@ from pptx_typography import (
 
 from pptx_render_boxes import _annotate_boxes
 
+import pptx_grid
+import pptx_validate
+
 from pptx_audit import (
     BARE_MARGIN,
     BARE_RATE,
@@ -85,70 +87,20 @@ DEFAULT_MAX_SHAPES = 200
 
 
 USAGE = (
-    "pptx_inspect <file> [--qa N[,N,...]] [--slide N[,N,...]] [--layouts] [--text] "
-    "[--media] [--render] [--render-dir DIR] [--compare FILE] "
-    "[--max-shapes N] [--offset N]"
+    "pptx_inspect <file> [--qa N | --slide N | --layouts | --text | --media | "
+    "--render | --validate] [--grid [--grid-cols N]] [--compare FILE] "
+    "[--render-dir DIR] [--max-shapes N] [--offset N]"
 )
 
 HELP_TEXT = (
-    "pptx_inspect - Inspect .pptx deck structure\n"
-    "\n"
-    f"Usage: {USAGE}\n"
-    "\n"
-    "Arguments:\n"
-    "  file              Path to .pptx deck (required)\n"
-    "\n"
-    "Options:\n"
-    "  --qa N[,N,...]    QA gate - run after a round of edits. Takes one slide or a\n"
-    "                    pattern (e.g. 2,5,7-9); QA-ing several at once shares a\n"
-    "                    single render pass (the PDF is cached), so edit a batch of\n"
-    "                    slides then QA them together rather than one call each.\n"
-    "                    Prints each slide's #id-tagged text AND a boxed diagnostic\n"
-    "                    render (boxes labeled '#id', red wash where boxes overlap),\n"
-    "                    plus text checks read off the rendered PDF's word\n"
-    "                    positions: [!] (fix before delivery) for a confirmed\n"
-    "                    text-on-text overprint, [w] (review) when a box doesn't\n"
-    "                    contain its own text, and [i] (FYI) for softer advisories\n"
-    "                    - so tight-but-clear neighbours and box-only overlaps\n"
-    "                    don't false-alarm, and only [!] gates delivery.\n"
-    "                    The render is published to the conversation as a JPEG whose\n"
-    "                    path is printed per slide (a files__cat-readable image),\n"
-    "                    stamped with a READBACK CODE that appears only in the\n"
-    "                    pixels: open each render and quote its code to prove you\n"
-    "                    viewed it. The text checks are a structural pre-check, not\n"
-    "                    the visual pass - the readback is the gate.\n"
-    "  --slide N[,N,...] Show one or more slides' shapes (1-indexed; takes a\n"
-    "                    pattern like 2,5,7-9). Per shape: kind, position, size,\n"
-    "                    text, formatting, placeholder type, and a text-fit\n"
-    "                    estimate (holds~Nch@Spt / ~Nch/line@Spt), with a [!] TEXT\n"
-    "                    OVERSET flag when text won't fit. Inspect every slide you\n"
-    "                    plan to edit in one call rather than one call each.\n"
-    "  --layouts         List slide masters and their layouts with placeholder slots,\n"
-    "                    including each placeholder's resolved default typeface,\n"
-    "                    size, weight, color, and alignment (from layout / master /\n"
-    "                    theme inheritance).\n"
-    "  --text            Extract readable text per slide (preserves slide/shape boundaries).\n"
-    "  --media           List embedded media (images, audio, video) with file sizes.\n"
-    "  --render          Rasterize slide(s) to a plain JPEG (no overlay), published\n"
-    "                    to the conversation. Combine with --slide N[,N,...] to\n"
-    "                    render just those slides in one shared pass (the deck is\n"
-    "                    converted once, then cached); omit --slide for the whole\n"
-    "                    deck. For QA use --qa instead - it adds the boxes.\n"
-    "  --render-dir DIR  Base dir renders are published under, as\n"
-    "                    DIR/.pptx_render/<deck>/ (default: /files/conversation).\n"
-    "  --compare FILE    Compare <file> (your edited output) against FILE (the\n"
-    "                    source/template): slide count, embedded media, embedded\n"
-    "                    fonts, imagery/layout/density, and per-shape content-slot\n"
-    "                    fidelity (text written into the template's spacer\n"
-    "                    paragraphs). Ends with a [QA: PASS/FAIL] verdict.\n"
-    "  --max-shapes N    Maximum shapes to print in slide view (default 200).\n"
-    "  --offset N        Skip first N shapes in slide view (default 0).\n"
-    "\n"
-    "Output (slide view, one shape per line, paragraphs indented):\n"
-    "  <id>  <kind>  <left,top inWxinH>  [ph=<type>]  <summary>\n"
-    "    p[i]: <text>  [<font hints>]\n"
-    "Paragraphs are addressed by index p[i]; empty spacer paragraphs are shown\n"
-    "(trailing ones collapsed to a count); long text is ellipsized."
+    "pptx_inspect <file> [mode]; default overview. N = 5 | 2,5,8 | 2,5,7-9.\n"
+    "--qa N: post-edit gate, #id text + boxed render to open\n"
+    "--slide N: shapes, box, ph, type, fit, [!] OVERSET/HIDDEN\n"
+    "--layouts: placeholders + type; static = master text\n"
+    "--compare F: vs template F, ends [QA: PASS/FAIL]\n"
+    "--validate: package integrity, does it open at all\n"
+    "--grid: one image per grid; --grid-cols N: 2, max 4\n"
+    "--text --media --render --render-dir --max-shapes --offset"
 )
 
 
@@ -261,6 +213,14 @@ def count_shapes_by_kind(shapes: Iterable[BaseShape]) -> dict:
     return counts
 
 
+def shape_is_hidden(shape: BaseShape) -> bool:
+    """True when PowerPoint hides the shape from every render."""
+    for el in shape._element.iter():
+        if el.tag.endswith("}cNvPr"):
+            return el.get("hidden") in ("1", "true")
+    return False
+
+
 def describe_shape(
     shape: BaseShape,
     *,
@@ -325,6 +285,8 @@ def describe_shape(
                 parts.append(f"vanchor={va_name.lower()}")
             elif not ph:
                 parts.append("vanchor=top")
+    if shape_is_hidden(shape):
+        parts.append("[!] HIDDEN (never renders; clear hidden=\"1\" to use it)")
     for marker in _shape_warning_markers(
         shape, ph, ctx, cover_candidates, all_boxes
     ):
@@ -698,6 +660,22 @@ def _text_extent_boxes(file_path: str, slide: Slide) -> Dict[int, Tuple[int, int
     return out
 
 
+def _static_text_lines(shapes: Iterable[BaseShape], indent: str) -> List[str]:
+    """Master/layout text shapes every inheriting slide renders."""
+    lines: List[str] = []
+    for shape in shapes:
+        if shape.is_placeholder or not shape.has_text_frame:
+            continue
+        text = flatten_text(shape.text_frame.text).strip()
+        if not text:
+            continue
+        lines.append(
+            f"{indent}static  #{shape.shape_id}  {pad(format_box(shape), 24)}"
+            f'  "{ellipsize(text, 60)}"'
+        )
+    return lines
+
+
 def print_layouts(prs: PresentationType, file_path: str) -> str:
     lines = [f"[Masters: {len(prs.slide_masters)}]"]
     try:
@@ -712,12 +690,20 @@ def print_layouts(prs: PresentationType, file_path: str) -> str:
                 f"# Master {mi}: {master_name}  layouts: {
                     len(master.slide_layouts)}"
             )
+            master_static = _static_text_lines(master.shapes, "  ")
+            if master_static:
+                lines.append(
+                    "  [inherited text - renders on every slide using this "
+                    "master, editable only on the master itself:]"
+                )
+                lines.extend(master_static)
             for layout in master.slide_layouts:
                 placeholders = list(layout.placeholders)
                 lines.append(
                     f"- {pad(layout.name or '?', 28)
                          } placeholders: {len(placeholders)}"
                 )
+                lines.extend(_static_text_lines(layout.shapes, "    "))
 
                 layout_path = _layout_part_path(layout)
                 layout_xml = master_xml = theme_xml = None
@@ -739,6 +725,8 @@ def print_layouts(prs: PresentationType, file_path: str) -> str:
                     idx_str = str(idx) if idx is not None else "?"
                     box = format_box(ph)
                     head = f"    [{idx_str}] {pad(ph_name, 14)} {pad(box, 24)}"
+                    if shape_is_hidden(ph):
+                        head = f'{head}  [!] HIDDEN (never renders; clear hidden="1" to use it)'
                     if layout_xml is not None:
                         defaults = resolve_placeholder_defaults(
                             layout_xml,
@@ -810,7 +798,7 @@ def print_text(prs: PresentationType, slide_idx: Optional[int] = None) -> str:
     scope = (f"slide {slide_idx}" if slide_idx is not None
              else f"{len(prs.slides)} slides")
     head = f"[Text: {total_chars} chars | {scope} | each line is tagged with " \
-           "its shape #id - match against the --qa box labels for readback]"
+           "its shape #id - match against the --qa box labels]"
     if repeated:
         shown = ", ".join(
             f'"{ellipsize(t, 30)}" x{repeat_counts[t]}' for t in repeated[:6]
@@ -975,9 +963,11 @@ def print_compare(file_path: str, source_path: str) -> str:
                 f"{src_fid.total})"
             )
 
-        # Density: the template's max words/slide is a hard ceiling.
-        if out_fid.word_counts and src_fid.word_counts:
-            ceiling = max(src_fid.word_counts)
+        # Density: the template's max words/slide is a hard ceiling. A ceiling of
+        # zero means the template ships layouts with no copy on them, so it sets
+        # no budget and every filled slide would "exceed" it.
+        ceiling = max(src_fid.word_counts) if src_fid.word_counts else 0
+        if out_fid.word_counts and ceiling:
             out_max = max(out_fid.word_counts)
             over = [
                 (i + 1, w)
@@ -995,6 +985,11 @@ def print_compare(file_path: str, source_path: str) -> str:
                     f"    [!] {len(over)} slide(s) over template ceiling of "
                     f"{ceiling} words: {listing}"
                 )
+        elif out_fid.word_counts:
+            lines.append(
+                f"  density: max {max(out_fid.word_counts)} words/slide "
+                "(template sets no ceiling - its slides carry no copy)"
+            )
 
         # Per-slide structural issues, rolled up (informational - some may be
         # inherited from the template; the per-slide view judges each).
@@ -1039,6 +1034,17 @@ def print_compare(file_path: str, source_path: str) -> str:
                 f"    [i] slide {out_no} (from template slide {src_no}): "
                 f"kept {kept}, dropped {dropped} exemplar shape(s)"
             )
+
+    # Package integrity, baselined against the template so its own faults are
+    # not reported as yours. Fidelity says nothing about whether the file opens.
+    invalid, inherited = pptx_validate.check_against(file_path, source_path)
+    if invalid or inherited:
+        lines.append("")
+        lines.append("Package:")
+        lines.extend(f"  [!] {problem}" for problem in invalid)
+        if inherited:
+            lines.append(f"  [i] {inherited} problem(s) already in the template")
+        blockers += len(invalid)
 
     lines.append("")
     if blockers:
@@ -1284,15 +1290,10 @@ def _slide_findings_lines(
     return [f"[slide {idx}: no collisions in pre-check - open the render to QA]"]
 
 
-def _boxed_render(
-    file_path: str,
-    prs: PresentationType,
-    slide_idx: Optional[int],
-    render_dir: str = "/files/conversation",
-) -> str:
-    """Render slide(s) with the bounding-box overlay + pixel-metrics digest -
-    the diagnostic half of QA. Reached via --qa, not exposed on its own."""
-    total_slides = len(prs.slides)
+def _annotate_slide(
+    file_path: str, prs: PresentationType, slide_idx: int
+) -> Tuple[Path, List[str]]:
+    """Rasterize one slide with box overlay; returns image and digest."""
     out_dir, rendered = render.render_via_soffice(
         file_path,
         out_root=Path("/tmp/pptx_render"),
@@ -1303,34 +1304,32 @@ def _boxed_render(
     # word positions; reading them lets the collision check confirm overprints
     # against where glyphs actually landed rather than estimated box geometry.
     pdf_path = out_dir / f"{out_dir.name}.pdf"
-    digest: List[str] = []
-    annotated: List[Path] = []
-    for p in rendered:
-        m = re.search(r"-(\d+)\.", p.name)
-        idx = int(m.group(1)) if m else None
-        res = None
-        if idx is not None and 1 <= idx <= total_slides:
-            slide = prs.slides[idx - 1]
-            res = _annotate_boxes(
-                p, slide,
-                prs.slide_width or 0, prs.slide_height or 0,
-                effective_boxes=_text_extent_boxes(file_path, slide),
-                # A fresh per-render code, stamped into the pixels only: quoting
-                # it back is the proof the model actually opened the render.
-                readback_code=secrets.token_hex(2).upper(),
-            )
-        if res:
-            ap, findings = res
-            annotated.append(ap)
-            words = pdf_text.page_word_boxes(pdf_path, idx)
-            digest.extend(
-                _slide_findings_lines(prs.slides[idx - 1], idx, findings, words)
-            )
-        else:
-            annotated.append(p)
+    slide = prs.slides[slide_idx - 1]
+    raw = rendered[0]
+    res = _annotate_boxes(
+        raw, slide,
+        prs.slide_width or 0, prs.slide_height or 0,
+        effective_boxes=_text_extent_boxes(file_path, slide),
+    )
+    if not res:
+        return raw, []
+    annotated, findings = res
+    words = pdf_text.page_word_boxes(pdf_path, slide_idx)
+    return annotated, _slide_findings_lines(slide, slide_idx, findings, words)
+
+
+def _boxed_render(
+    file_path: str,
+    prs: PresentationType,
+    slide_idx: int,
+    render_dir: str = "/files/conversation",
+) -> str:
+    """Render one slide with the bounding-box overlay + pixel-metrics digest -
+    the diagnostic half of QA. Reached via --qa, not exposed on its own."""
+    annotated, digest = _annotate_slide(file_path, prs, slide_idx)
     basename = os.path.splitext(os.path.basename(file_path))[0]
     published = render_publish.publish_renders(
-        basename, annotated, render_dir, _VIEW_SUBDIR
+        basename, [annotated], render_dir, _VIEW_SUBDIR
     )
     plural = "" if len(published) == 1 else "s"
     lines = [f"[Rendered {len(published)} slide{plural}, bbox overlay:]"]
@@ -1339,12 +1338,12 @@ def _boxed_render(
     viewable = [scoped for _, scoped in published if scoped]
     if len(viewable) < len(published):
         # A render that is not on the conversation mount cannot be opened with
-        # files__cat, so the visual readback - the actual QA gate - is impossible.
+        # files__cat, so the visual check - the actual QA gate - is impossible.
         # Say so as a blocker instead of letting the pre-checks below read as a
         # pass.
         lines.append(
             "[!] some renders are NOT viewable (not on the conversation mount): "
-            "the visual readback cannot be performed, so QA is INCOMPLETE for "
+            "the visual check cannot be performed, so QA is INCOMPLETE for "
             "those slides. Run against a deck under /files/conversation."
         )
 
@@ -1360,13 +1359,36 @@ def _boxed_render(
         lines.extend(digest)
 
     if viewable:
-        lines.append(
-            "[Readback (required): open each render above with files__cat and "
-            "quote the READBACK CODE stamped across its top. The code is only in "
-            "the image - a slide whose code you cannot quote has not been read "
-            "back, and is not done.]"
-        )
+        lines.append("[Open each render above with files__cat: the gate is visual.]")
     return "\n".join(lines)
+
+
+def _publish_grids(
+    file_path: str,
+    cells: List[Tuple[Path, str]],
+    slide_nos: List[int],
+    render_dir: str,
+    grid_cols: int,
+) -> List[Tuple[Path, Optional[str], List[int]]]:
+    """Publish the grids; returns (path, scoped path, slides) each."""
+    basename = os.path.splitext(os.path.basename(file_path))[0]
+    # Drop missing renders here, not in the composer, so slide numbers stay aligned.
+    present = [(c, n) for c, n in zip(cells, slide_nos) if c[0].exists()]
+    grids = pptx_grid.compose_grids(
+        [c for c, _ in present],
+        Path("/tmp/pptx_render") / basename / "grids",
+        grid_cols,
+    )
+    published = render_publish.publish_renders(
+        basename, [path for path, _ in grids], render_dir, _VIEW_SUBDIR
+    )
+    grouped: List[Tuple[Path, Optional[str], List[int]]] = []
+    consumed = 0
+    for (dest, scoped), (_, labels) in zip(published, grids):
+        held = [n for _, n in present[consumed : consumed + len(labels)]]
+        grouped.append((dest, scoped, held))
+        consumed += len(labels)
+    return grouped
 
 
 def print_render(
@@ -1374,6 +1396,7 @@ def print_render(
     prs: PresentationType,
     slide_nos: Optional[List[int]],
     render_dir: str = "/files/conversation",
+    grid_cols: Optional[int] = None,
 ) -> str:
     """Plain rasterized slide(s) - no overlay - for a quick visual look. Pass a
     list of 1-based slide numbers (from a --slide N[,N,...] pattern) to rasterize
@@ -1403,6 +1426,23 @@ def print_render(
                 item_idx=idx,
             )
             rendered.extend(one)
+
+    rendered_nos = slide_nos or list(range(1, len(rendered) + 1))
+    if grid_cols:
+        grids = _publish_grids(
+            file_path,
+            [(p, f"slide {n}") for p, n in zip(rendered, rendered_nos)],
+            rendered_nos,
+            render_dir,
+            grid_cols,
+        )
+        lines = [
+            f"[Rendered {len(rendered)} slides into {len(grids)} grid(s), "
+            f"{grid_cols}/row @ 100 dpi:]"
+        ]
+        lines.extend(pptx_grid.grid_lines(grids))
+        return "\n".join(lines)
+
     basename = os.path.splitext(os.path.basename(file_path))[0]
     published = render_publish.publish_renders(
         basename, rendered, render_dir, _VIEW_SUBDIR
@@ -1413,11 +1453,56 @@ def print_render(
     return "\n".join(lines)
 
 
+def _print_qa_grids(
+    file_path: str,
+    prs: PresentationType,
+    slide_nos: List[int],
+    render_dir: str,
+    grid_cols: int,
+) -> str:
+    """QA a batch with the renders tiled into grids."""
+    cells: List[Tuple[Path, str]] = []
+    blocks: List[str] = []
+    for slide_idx in slide_nos:
+        annotated, digest = _annotate_slide(file_path, prs, slide_idx)
+        cells.append((annotated, f"slide {slide_idx}"))
+        block = f"[QA slide {slide_idx} - #id text:]\n\n" + print_text(
+            prs, slide_idx
+        )
+        if digest:
+            block += (
+                "\n\n[Structural pre-checks - NOT a visual pass; open the grid "
+                "to QA. [!] fix before delivery · [w] review · [i] FYI:]\n"
+                + "\n".join(digest)
+            )
+        blocks.append(block)
+
+    grids = _publish_grids(file_path, cells, slide_nos, render_dir, grid_cols)
+    lines = [
+        f"[{len(cells)} slides in {len(grids)} grid(s), {grid_cols}/row, "
+        "bbox overlay:]"
+    ]
+    lines.extend(pptx_grid.grid_lines(grids))
+    if any(scoped is None for _, scoped, _ in grids):
+        lines.append(
+            "[!] grids NOT viewable (not on the conversation mount): QA is "
+            "INCOMPLETE. Run against a deck under /files/conversation."
+        )
+    else:
+        lines.append(
+            "[Open each grid with files__cat: the gate is visual. Cells are "
+            f"1/{grid_cols} width - re-run --qa N on any you cannot read.]"
+        )
+    blocks.append("\n".join(lines))
+    return "\n\n".join(blocks)
+
+
 def print_qa(
     file_path: str,
     prs: PresentationType,
     slide_nos: List[int],
     render_dir: str = "/files/conversation",
+    grid_cols: Optional[int] = None,
 ) -> str:
     """QA gate - run after a round of edits. Accepts one slide or several (a
     pattern like `2,5,7-9`); for each, bundles the slide's authoritative text
@@ -1425,7 +1510,8 @@ def print_qa(
     checked together. QA-ing several slides at once shares a single soffice
     conversion (the PDF is cached after the first render), so batching the
     changed slides is much faster than one call per slide. Each slide's render is
-    published to the conversation (its scoped path is printed below the text)."""
+    published to the conversation (its scoped path is printed below the text);
+    with `grid_cols` the renders are tiled into grids instead."""
     total_slides = len(prs.slides)
     for slide_idx in slide_nos:
         if slide_idx < 1 or slide_idx > total_slides:
@@ -1433,6 +1519,10 @@ def print_qa(
                 f"slide index out of range: {slide_idx} "
                 f"(deck has {total_slides} slides)"
             )
+    if grid_cols:
+        return _print_qa_grids(
+            file_path, prs, slide_nos, render_dir, grid_cols
+        )
     blocks = [
         f"[QA slide {slide_idx} - #id text + render path:]\n\n"
         + print_text(prs, slide_idx)
@@ -1456,6 +1546,14 @@ def main() -> int:
     parser.add_argument("--media", action="store_true")
     parser.add_argument("--render", action="store_true")
     parser.add_argument("--qa", metavar="N[,N,...]")
+    parser.add_argument("--grid", action="store_true")
+    parser.add_argument(
+        "--grid-cols",
+        dest="grid_cols",
+        type=int,
+        default=pptx_grid.DEFAULT_GRID_COLS,
+        metavar="N",
+    )
     parser.add_argument(
         "--render-dir",
         dest="render_dir",
@@ -1463,6 +1561,7 @@ def main() -> int:
         default="/files/conversation",
     )
     parser.add_argument("--compare")
+    parser.add_argument("--validate", action="store_true")
     parser.add_argument("--max-shapes", type=int, default=DEFAULT_MAX_SHAPES)
     parser.add_argument("--offset", type=int, default=0)
     parser.add_argument("--help", "-h", action="store_true", dest="help_flag")
@@ -1487,6 +1586,12 @@ def main() -> int:
     if args.offset < 0:
         sys.stderr.write("Error: --offset must be >= 0\n")
         return 1
+    if not 1 <= args.grid_cols <= pptx_grid.MAX_GRID_COLS:
+        sys.stderr.write(
+            f"Error: --grid-cols must be 1..{pptx_grid.MAX_GRID_COLS}\n"
+        )
+        return 1
+    grid_cols = args.grid_cols if args.grid else None
     if args.compare is not None and not os.path.isfile(args.compare):
         sys.stderr.write(f"Error: --compare file not found: {args.compare}\n")
         return 1
@@ -1496,7 +1601,9 @@ def main() -> int:
         f"{format_size(os.path.getsize(args.file))}]"
     )
 
-    if args.media:
+    if args.validate:
+        body = pptx_validate.report(args.file, args.compare)
+    elif args.media:
         body = print_media(args.file)
     elif args.compare is not None:
         body = print_compare(args.file, args.compare)
@@ -1504,11 +1611,17 @@ def main() -> int:
         prs = Presentation(args.file)
         if args.qa is not None:
             body = print_qa(
-                args.file, prs, parse_slide_patterns(args.qa), args.render_dir
+                args.file,
+                prs,
+                parse_slide_patterns(args.qa),
+                args.render_dir,
+                grid_cols,
             )
         elif args.render:
             slide_nos = parse_slide_patterns(args.slide) if args.slide else None
-            body = print_render(args.file, prs, slide_nos, args.render_dir)
+            body = print_render(
+                args.file, prs, slide_nos, args.render_dir, grid_cols
+            )
         elif args.layouts:
             body = print_layouts(prs, args.file)
         elif args.text:

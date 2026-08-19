@@ -230,6 +230,25 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     return views ?? [];
   }
 
+  // Existence only, ignoring the caller's space access — lets a caller tell
+  // a view it cannot read (still there, just restricted) apart from one
+  // that's actually gone (deleted view, or a view whose webhook source was
+  // deleted — baseFetch already drops those unless includeDeleted is set).
+  static async existsByModelIds(
+    auth: Authenticator,
+    ids: ModelId[]
+  ): Promise<Set<ModelId>> {
+    const views = await this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: ids,
+        },
+      },
+    });
+
+    return new Set(views.map((view) => view.id));
+  }
+
   static async listByWorkspace(
     auth: Authenticator,
     options?: ResourceFindOptions<WebhookSourcesViewModel>
@@ -489,6 +508,10 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     });
   }
 
+  get name(): string {
+    return this.customName ?? this.webhookSource.name;
+  }
+
   static modelIdToSId({
     id,
     workspaceId,
@@ -523,7 +546,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     return {
       id: this.id,
       sId: this.sId,
-      customName: this.customName ?? this.webhookSource.name,
+      customName: this.name,
       description: this.description,
       icon: normalizeWebhookIcon(this.icon),
       provider: this.webhookSource.provider,
@@ -544,7 +567,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     return {
       id: this.id,
       sId: this.sId,
-      customName: this.customName ?? this.webhookSource.name,
+      customName: this.name,
       description: this.description,
       icon: normalizeWebhookIcon(this.icon),
       provider: this.webhookSource.provider,

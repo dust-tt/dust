@@ -4,8 +4,10 @@ import type {
   AgentConfigurationScope,
   GenericErrorContent,
 } from "@app/types/assistant/agent";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
 import type {
   ModelConfigurationType,
+  ModelResolutionMethodType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import { getMinimumReasoningEffort } from "@app/types/assistant/models/types";
@@ -37,12 +39,14 @@ export async function getModelTierAccessErrorForAgentConfiguration(
     reasoningEffort,
     featureFlags,
     agentScope,
+    modelResolutionMethod,
   }: {
     agentName: string;
     model: ModelConfigurationType;
     reasoningEffort?: ReasoningEffort;
     featureFlags: WhitelistableFeature[];
     agentScope?: AgentConfigurationScope;
+    modelResolutionMethod?: ModelResolutionMethodType | null;
   }
 ): Promise<GenericErrorContent | null> {
   if (!featureFlags.includes("models_picker")) {
@@ -58,13 +62,18 @@ export async function getModelTierAccessErrorForAgentConfiguration(
     return null;
   }
 
-  const effectiveReasoningEffort =
-    reasoningEffort ??
-    getMinimumReasoningEffort(model.supportedReasoningEfforts);
-  const tierName = ModelsTierResource.getTierForModel(
-    model.modelId,
-    effectiveReasoningEffort
-  );
+  // A stream only ever resolves to a candidate within the member's cap, so the
+  // resolved model can never reveal that the member was not allowed to run the
+  // stream in the first place. Tier-check the stream itself instead: it is
+  // tiered as the tier it is named after, at its only effort (`none`).
+  const tierName =
+    modelResolutionMethod && isModelStreamId(modelResolutionMethod)
+      ? ModelsTierResource.getTierForModel(modelResolutionMethod, "none")
+      : ModelsTierResource.getTierForModel(
+          model.modelId,
+          reasoningEffort ??
+            getMinimumReasoningEffort(model.supportedReasoningEfforts)
+        );
 
   if (!tierName) {
     return null;

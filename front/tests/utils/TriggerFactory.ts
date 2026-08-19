@@ -2,6 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type {
   ScheduleConfig,
+  TriggerExecutionMode,
   TriggerStatus,
   WebhookConfig,
 } from "@app/types/assistant/triggers";
@@ -16,6 +17,7 @@ interface WebhookTriggerOptions {
   webhookSourceViewId?: ModelId | null;
   customPrompt?: string | null;
   spaceId?: ModelId | null;
+  executionMode?: TriggerExecutionMode;
 }
 
 interface ScheduleTriggerOptions {
@@ -24,6 +26,7 @@ interface ScheduleTriggerOptions {
   status?: TriggerStatus;
   configuration: ScheduleConfig;
   customPrompt?: string | null;
+  executionMode?: TriggerExecutionMode;
 }
 
 export class TriggerFactory {
@@ -50,6 +53,7 @@ export class TriggerFactory {
       webhookSourceViewId: options.webhookSourceViewId ?? null,
       spaceId: options.spaceId ?? null,
       origin: "user",
+      executionMode: options.executionMode ?? "user_pool",
     });
 
     if (result.isErr()) {
@@ -81,6 +85,7 @@ export class TriggerFactory {
       configuration: options.configuration,
       webhookSourceViewId: null,
       origin: "user",
+      executionMode: options.executionMode ?? "user_pool",
     });
 
     if (result.isErr()) {

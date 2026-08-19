@@ -1,5 +1,4 @@
 import { findSkillEditorsWithoutSpaceAccess } from "@app/lib/api/skills/space_requirements";
-import type { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -28,7 +27,7 @@ const ParamsSchema = z.object({
 async function loadSkillAndEditorGroup(
   ctx: Context,
   sId: string
-): Promise<{ skill: SkillResource; editorGroup: GroupResource } | Response> {
+): Promise<SkillResource | Response> {
   const auth = ctx.get("auth");
 
   const skill = await SkillResource.fetchById(auth, sId);
@@ -53,7 +52,7 @@ async function loadSkillAndEditorGroup(
     });
   }
 
-  return { skill, editorGroup };
+  return skill;
 }
 
 // Mounted at /api/w/:wId/skills/:sId/editors.
@@ -64,13 +63,12 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { sId } = ctx.req.valid("param");
 
-  const loaded = await loadSkillAndEditorGroup(ctx, sId);
-  if (loaded instanceof Response) {
-    return loaded;
+  const skill = await loadSkillAndEditorGroup(ctx, sId);
+  if (skill instanceof Response) {
+    return skill;
   }
-  const { editorGroup } = loaded;
 
-  const members = await editorGroup.getActiveMembers(auth);
+  const members = (await skill.listEditors(auth)) ?? [];
   const memberUsers = members.map((m) => m.toJSON());
 
   // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
@@ -91,11 +89,10 @@ app.patch(
     const auth = ctx.get("auth");
     const { sId } = ctx.req.valid("param");
 
-    const loaded = await loadSkillAndEditorGroup(ctx, sId);
-    if (loaded instanceof Response) {
-      return loaded;
+    const skillRes = await loadSkillAndEditorGroup(ctx, sId);
+    if (skillRes instanceof Response) {
+      return skillRes;
     }
-    const { skill: skillRes, editorGroup } = loaded;
 
     if (!skillRes.canAdministrate(auth)) {
       return apiError(ctx, {
@@ -112,9 +109,6 @@ app.patch(
     const usersToAddResources = await UserResource.fetchByIds(addEditorIds);
     const usersToRemoveResources =
       await UserResource.fetchByIds(removeEditorIds);
-
-    const usersToAdd = usersToAddResources.map((u) => u.toJSON());
-    const usersToRemove = usersToRemoveResources.map((u) => u.toJSON());
 
     if (
       usersToAddResources.length !== addEditorIds.length ||
@@ -158,20 +152,8 @@ app.patch(
       });
     }
 
-    // Check authorization for modifying group members.
-    if (!editorGroup.canAdministrate(auth)) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message: "You are not authorized to modify the skill editors group.",
-        },
-      });
-    }
-
-    const addRes = await editorGroup.dangerouslyAddMembers(auth, {
-      users: usersToAdd,
-    });
+    // Through the resource: it keeps the per-user grants in sync with the group membership.
+    const addRes = await skillRes.addEditors(auth, usersToAddResources);
     if (addRes.isErr()) {
       switch (addRes.error.code) {
         case "unauthorized":
@@ -222,9 +204,10 @@ app.patch(
       }
     }
 
-    const removeRes = await editorGroup.dangerouslyRemoveMembers(auth, {
-      users: usersToRemove,
-    });
+    const removeRes = await skillRes.removeEditors(
+      auth,
+      usersToRemoveResources
+    );
     if (removeRes.isErr()) {
       switch (removeRes.error.code) {
         case "unauthorized":
@@ -266,7 +249,7 @@ app.patch(
       }
     }
 
-    const updatedMembers = await editorGroup.getActiveMembers(auth);
+    const updatedMembers = (await skillRes.listEditors(auth)) ?? [];
     const updatedEditors = updatedMembers.map((m) => m.toJSON());
 
     // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)

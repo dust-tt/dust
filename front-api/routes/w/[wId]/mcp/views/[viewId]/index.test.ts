@@ -71,6 +71,54 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     );
   });
 
+  it("should pin the authorized OAuth scope on all views of the same MCP server", async () => {
+    const { workspace, auth, globalSpace } = await setup("admin");
+
+    const server = await RemoteMCPServerFactory.create(workspace);
+    const systemView =
+      await MCPServerViewResource.getMCPServerViewForSystemSpace(
+        auth,
+        server.sId
+      );
+    expect(systemView).toBeDefined();
+
+    await MCPServerViewFactory.create(workspace, server.sId, globalSpace);
+
+    const oauthScope = "scope.read scope.write";
+    const response = await patchView(workspace.sId, systemView!.sId, {
+      oAuthUseCase: "personal_actions",
+      oauthScope,
+    });
+
+    expect(response.status).toBe(200);
+
+    const updatedViews = await MCPServerViewResource.listByMCPServer(
+      auth,
+      server.sId
+    );
+    expect(updatedViews.length).toBeGreaterThan(1);
+    for (const view of updatedViews) {
+      expect(view.oauthScope).toBe(oauthScope);
+    }
+
+    // A later update that carries no scope must leave the pin alone.
+    const useCaseOnlyResponse = await patchView(
+      workspace.sId,
+      systemView!.sId,
+      { oAuthUseCase: "platform_actions" }
+    );
+
+    expect(useCaseOnlyResponse.status).toBe(200);
+
+    const viewsAfterUseCaseOnly = await MCPServerViewResource.listByMCPServer(
+      auth,
+      server.sId
+    );
+    for (const view of viewsAfterUseCaseOnly) {
+      expect(view.oauthScope).toBe(oauthScope);
+    }
+  });
+
   it("should update settings for all views of the same MCP server when admin", async () => {
     const { workspace, auth, globalSpace } = await setup("admin");
 

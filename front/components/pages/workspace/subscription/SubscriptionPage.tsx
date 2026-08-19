@@ -657,11 +657,7 @@ export function SubscriptionPage() {
       )}
 
       <Page.Vertical gap="xl" align="stretch">
-        <Page.Header
-          title="Subscription"
-          icon={CreditCard01}
-          description="Manage your plan."
-        />
+        <Page.Header title="Subscription" description="Manage your plan." />
         <Page.Vertical align="stretch" gap="md">
           <Page.H variant="h5">Your plan </Page.H>
 

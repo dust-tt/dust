@@ -19,6 +19,7 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { RunFactory } from "@app/tests/utils/RunFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/analytics";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { describe, expect, it } from "vitest";
 
@@ -28,6 +29,7 @@ type SettledMessageOptions = {
   agentName?: string;
   agenticOriginMessageId?: string;
   depth?: number;
+  origin?: UserMessageOrigin;
   testContext?: ResourceTestContext;
 };
 
@@ -35,6 +37,7 @@ async function setupSettledMessage({
   agentName,
   agenticOriginMessageId,
   depth = 0,
+  origin,
   testContext,
 }: SettledMessageOptions = {}) {
   const resourceTestContext =
@@ -73,6 +76,7 @@ async function setupSettledMessage({
         conversationId: conversation.id,
         rank: 0,
         content: "Hello",
+        ...(origin ? { origin } : {}),
       });
   const { run, runUsageModelId } = await RunFactory.createWithUsage(auth, {
     inputTokens: 100,
@@ -113,10 +117,6 @@ async function setupSettledMessage({
       },
     }
   );
-  await RunResource.setUsageTypeForRuns(auth, {
-    runs: [run],
-    usageType: USAGE_TYPE_USER,
-  });
 
   return {
     agent,
@@ -291,6 +291,21 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       (llmDocument?.gross_credit_micro.total ?? 0) +
         (toolDocument?.gross_credit_micro.total ?? 0)
     ).toBe(billedMessageCreditMicro);
+  });
+
+  it("normalizes a programmatic origin onto the surface it belongs to", async () => {
+    const { context } = await setupLlmAndToolConsumptionScenario({
+      origin: "cli_programmatic",
+    });
+    const documents = await buildDocuments(context);
+
+    expect(documents).not.toHaveLength(0);
+    for (const document of documents ?? []) {
+      expect(document).toMatchObject({
+        context_origin: "cli_programmatic",
+        normalized_origin: "cli",
+      });
+    }
   });
 
   it("keeps agent ancestry on every document", async () => {

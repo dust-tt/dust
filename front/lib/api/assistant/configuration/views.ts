@@ -24,6 +24,11 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import { Op, Sequelize } from "sequelize";
 
+const HEAVY_AGENT_CONFIGURATION_ATTRIBUTES = [
+  "instructions",
+  "instructionsHtml",
+] as const;
+
 const sortStrategies: Record<SortStrategyType, SortStrategy> = {
   alphabetical: {
     dbOrder: [["name", "ASC"]],
@@ -79,12 +84,12 @@ async function fetchGlobalAgentConfigurationForView(
     agentPrefix,
     agentsGetView,
     variant,
-    omitInstructions,
+    omitHeavyAttributes,
   }: {
     agentPrefix?: string;
     agentsGetView: AgentsGetViewType;
     variant: AgentFetchVariant;
-    omitInstructions?: boolean;
+    omitHeavyAttributes?: boolean;
   }
 ) {
   const globalAgentIdsToFetch = determineGlobalAgentIdsToFetch(agentsGetView);
@@ -94,7 +99,7 @@ async function fetchGlobalAgentConfigurationForView(
     variant
   );
   // Global agents have `instructions` baked in; strip when not needed.
-  const normalizedGlobalAgents = omitInstructions
+  const normalizedGlobalAgents = omitHeavyAttributes
     ? allGlobalAgents.map((a) => ({ ...a, instructions: null }))
     : allGlobalAgents;
   const matchingGlobalAgents = normalizedGlobalAgents.filter(
@@ -129,7 +134,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     limit,
     owner,
     sort,
-    omitInstructions,
+    omitHeavyAttributes,
   }: {
     agentPrefix?: string;
     agentsGetView: Exclude<AgentsGetViewType, "global">;
@@ -137,7 +142,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     limit?: number;
     owner: WorkspaceType;
     sort?: SortStrategyType;
-    omitInstructions?: boolean;
+    omitHeavyAttributes?: boolean;
   }
 ): Promise<AgentConfigurationModel[]> {
   const sortStrategy = sort && sortStrategies[sort];
@@ -148,15 +153,18 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     ...(agentPrefix ? { name: { [Op.iLike]: `${agentPrefix}%` } } : {}),
   };
 
-  // `instructions` can be many KB per agent; skip it when not needed.
-  const excludeInstructionsAttributes = omitInstructions
-    ? { attributes: { exclude: ["instructions"] } }
-    : {};
+  const attributesToExclude = omitHeavyAttributes
+    ? HEAVY_AGENT_CONFIGURATION_ATTRIBUTES
+    : [];
+  const excludeAttributesFromSelect =
+    attributesToExclude.length > 0
+      ? { attributes: { exclude: [...new Set(attributesToExclude)] } }
+      : {};
 
   const baseAgentsSequelizeQuery = {
     limit,
     order: sortStrategy?.dbOrder,
-    ...excludeInstructionsAttributes,
+    ...excludeAttributesFromSelect,
   };
 
   const baseConditionsAndScopesIn = (scopes: string[]) => ({
@@ -171,12 +179,12 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
         where: baseWhereConditions,
       });
 
-    // Analytics reports on every agent, so admins get the private ones too.
-    // Everyone else sees what `all` returns.
+    // Analytics reports on every agent, so managers and admins get the private
+    // ones too. Everyone else sees what `all` returns.
     case "analytics":
       return AgentConfigurationModel.findAll({
         ...baseAgentsSequelizeQuery,
-        where: auth.isAdmin()
+        where: auth.isManager()
           ? baseWhereConditions
           : baseConditionsAndScopesIn(["workspace", "published", "visible"]),
       });
@@ -218,7 +226,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
         );
 
         return AgentConfigurationModel.findAll({
-          ...excludeInstructionsAttributes,
+          ...excludeAttributesFromSelect,
           where: {
             workspaceId: owner.id,
             id: {
@@ -299,7 +307,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     sort,
     variant,
     dangerouslySkipPermissionFiltering,
-    omitInstructions,
+    omitHeavyAttributes,
   }: {
     agentPrefix?: string;
     agentsGetView: Exclude<AgentsGetViewType, "global">;
@@ -307,7 +315,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     sort?: SortStrategyType;
     variant: AgentFetchVariant;
     dangerouslySkipPermissionFiltering?: boolean;
-    omitInstructions?: boolean;
+    omitHeavyAttributes?: boolean;
   }
 ) {
   const user = auth.user();
@@ -329,15 +337,15 @@ async function fetchWorkspaceAgentConfigurationsForView(
       limit,
       owner,
       sort,
-      omitInstructions,
+      omitHeavyAttributes,
     }
   );
 
-  // Analytics counts credits for agents built on spaces an admin cannot read,
-  // so the admin analytics view has to list them as well.
+  // Analytics counts credits for agents built on spaces a manager cannot read,
+  // so the manager analytics view has to list them as well.
   const skipPermissionFiltering =
     dangerouslySkipPermissionFiltering ||
-    (agentsGetView === "analytics" && auth.isAdmin());
+    (agentsGetView === "analytics" && auth.isManager());
 
   const allowedAgentModels = skipPermissionFiltering
     ? agentModels
@@ -349,9 +357,33 @@ async function fetchWorkspaceAgentConfigurationsForView(
   });
 }
 
-export async function getAgentConfigurationsForView<
-  V extends AgentFetchVariant,
->({
+type AgentConfigurationsForViewBaseArgs = {
+  auth: Authenticator;
+  agentsGetView: AgentsGetViewType;
+  agentPrefix?: string;
+  limit?: number;
+  sort?: SortStrategyType;
+  dangerouslySkipPermissionFiltering?: boolean;
+};
+
+type FullAgentConfigurationsForViewArgs = AgentConfigurationsForViewBaseArgs & {
+  variant: "full";
+  omitHeavyAttributes?: never;
+};
+
+type LightAgentConfigurationsForViewArgs =
+  AgentConfigurationsForViewBaseArgs & {
+    variant: Exclude<AgentFetchVariant, "full">;
+    omitHeavyAttributes?: boolean;
+  };
+
+export function getAgentConfigurationsForView(
+  args: FullAgentConfigurationsForViewArgs
+): Promise<AgentConfigurationType[]>;
+export function getAgentConfigurationsForView(
+  args: LightAgentConfigurationsForViewArgs
+): Promise<LightAgentConfigurationType[]>;
+export async function getAgentConfigurationsForView({
   auth,
   agentsGetView,
   agentPrefix,
@@ -359,19 +391,8 @@ export async function getAgentConfigurationsForView<
   limit,
   sort,
   dangerouslySkipPermissionFiltering,
-  omitInstructions,
-}: {
-  auth: Authenticator;
-  agentsGetView: AgentsGetViewType;
-  agentPrefix?: string;
-  variant: V;
-  limit?: number;
-  sort?: SortStrategyType;
-  dangerouslySkipPermissionFiltering?: boolean;
-  omitInstructions?: boolean;
-}): Promise<
-  V extends "full" ? AgentConfigurationType[] : LightAgentConfigurationType[]
-> {
+  omitHeavyAttributes,
+}: FullAgentConfigurationsForViewArgs | LightAgentConfigurationsForViewArgs) {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -402,14 +423,6 @@ export async function getAgentConfigurationsForView<
     throw new Error(`'${agentsGetView}' view is specific to a user.`);
   }
 
-  // `omitInstructions` is incompatible with the "full" variant since callers of
-  // "full" inherently want the instructions text.
-  if (omitInstructions && variant === "full") {
-    throw new Error(
-      "`omitInstructions` cannot be combined with variant 'full'."
-    );
-  }
-
   const applySortAndLimit = makeApplySortAndLimit(sort, limit);
 
   if (agentsGetView === "global") {
@@ -417,7 +430,7 @@ export async function getAgentConfigurationsForView<
       agentPrefix,
       agentsGetView,
       variant,
-      omitInstructions,
+      omitHeavyAttributes,
     });
 
     return applySortAndLimit(allGlobalAgents);
@@ -430,7 +443,7 @@ export async function getAgentConfigurationsForView<
       agentPrefix,
       agentsGetView,
       variant,
-      omitInstructions,
+      omitHeavyAttributes,
     }),
     fetchWorkspaceAgentConfigurationsForView(auth, owner, {
       agentPrefix,
@@ -439,7 +452,7 @@ export async function getAgentConfigurationsForView<
       sort,
       variant,
       dangerouslySkipPermissionFiltering,
-      omitInstructions,
+      omitHeavyAttributes,
     }),
   ]);
 

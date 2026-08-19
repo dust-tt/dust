@@ -5,7 +5,7 @@ import { useConversationConsumption } from "@app/hooks/conversations/useConversa
 import { formatCreditValue } from "@app/lib/client/credits";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Spinner } from "@dust-tt/sparkle";
+import { CoinsStacked01, Spinner } from "@dust-tt/sparkle";
 
 interface ConversationCreditUsagePanelProps {
   conversation: ConversationWithoutContentType;
@@ -22,12 +22,13 @@ export function ConversationCreditUsagePanel({
       conversationId: conversation.sId,
       workspaceId: owner.sId,
     });
+  const hasNoCreditUsage = !consumption || consumption.billedCredits <= 0;
 
   return (
     <div className="flex h-panel flex-col">
       <ConversationSidePanelHeader onClose={closePanel}>
         <span className="text-sm font-medium text-foreground">
-          Conversation credits
+          Conversation consumption
         </span>
       </ConversationSidePanelHeader>
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -38,14 +39,25 @@ export function ConversationCreditUsagePanel({
         ) : isConsumptionError ? (
           <div className="flex h-full items-center justify-center px-5 py-4">
             <p className="text-sm text-muted-foreground">
-              Conversation credit usage couldn’t be loaded.
+              Conversation consumption couldn’t be loaded.
             </p>
           </div>
-        ) : !consumption || consumption.billedCredits <= 0 ? (
-          <div className="flex h-full items-center justify-center px-5 py-4">
-            <p className="text-sm text-muted-foreground">
-              No credit usage for this conversation yet.
-            </p>
+        ) : hasNoCreditUsage ? (
+          <div className="flex h-full items-center justify-center">
+            <div className="flex w-full flex-col items-center justify-center gap-4 px-10">
+              <CoinsStacked01
+                aria-hidden="true"
+                className="h-6 w-6 text-faint"
+              />
+              <div className="flex w-full flex-col items-center gap-1">
+                <p className="text-center text-lg font-medium leading-6 text-foreground">
+                  No usage yet
+                </p>
+                <p className="text-center text-sm font-medium leading-5 text-muted-foreground">
+                  Updates once a message is fully processed.
+                </p>
+              </div>
+            </div>
           </div>
         ) : consumption.details ? (
           <ConversationCreditUsageBreakdown

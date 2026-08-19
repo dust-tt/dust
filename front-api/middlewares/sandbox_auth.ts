@@ -1,6 +1,7 @@
 import type { SandboxTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import {
   isSandboxExecTokenPayload,
+  isSandboxFileSystemTokenPayload,
   isSandboxFunctionInvocationTokenPayload,
   verifySandboxExecToken,
 } from "@app/lib/api/sandbox/access_tokens";
@@ -17,7 +18,7 @@ import { createMiddleware } from "hono/factory";
 
 import { apiError } from "./utils";
 
-type SandboxTokenKind = "action" | "function_invocation";
+type SandboxTokenKind = "action" | "filesystem" | "function_invocation";
 type SandboxAuthOptions = {
   allowedTokenKinds: SandboxTokenKind[];
 };
@@ -30,6 +31,9 @@ function getSandboxTokenKind(
   }
   if (isSandboxFunctionInvocationTokenPayload(claims)) {
     return "function_invocation";
+  }
+  if (isSandboxFileSystemTokenPayload(claims)) {
+    return "filesystem";
   }
   return null;
 }
