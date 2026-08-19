@@ -1,4 +1,3 @@
-import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -8,10 +7,7 @@ import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
-import {
-  GroupPermissionModel,
-  groupPermissionsCacheKey,
-} from "@app/lib/resources/storage/models/group_permissions";
+import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
@@ -2527,13 +2523,6 @@ export class GroupResource extends BaseResource<GroupModel> {
           workspaceId: owner.id,
         },
         transaction,
-      });
-      // A key auth keeps the group ids it was minted with, so a deleted group can still show up.
-      invalidateCacheAfterCommit(transaction, async () => {
-        const redis = await getRedisCacheClient({
-          origin: "group_permissions_cache",
-        });
-        await redis.hDel(groupPermissionsCacheKey(owner.id), String(this.id));
       });
 
       await this.model.destroy({

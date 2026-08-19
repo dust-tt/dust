@@ -8,17 +8,6 @@ import type {
 } from "@app/types/group_permissions";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
-// Bump to orphan hashes written under the previous field encoding.
-const CACHE_SCHEMA_VERSION = 1;
-
-// One hash field per groupId. Lives here because GroupResource clears it on group deletion and
-// cannot import GroupPermissionResource.
-export function groupPermissionsCacheKey(workspaceModelId: number): string {
-  return `group_permissions:v${CACHE_SCHEMA_VERSION}:ws:${workspaceModelId}`;
-}
-
-export const GROUP_PERMISSIONS_CACHE_KEY_PATTERN = `group_permissions:v${CACHE_SCHEMA_VERSION}:ws:*`;
-
 // Single table backing all Admin Governance permission grants (design doc §1A). See
 // `@app/types/group_permissions` for the vocabulary and `group_permission_registry` for validity.
 export class GroupPermissionModel extends WorkspaceAwareModel<GroupPermissionModel> {

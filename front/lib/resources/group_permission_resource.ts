@@ -5,11 +5,7 @@ import { assertValidGrant } from "@app/lib/resources/group_permission_registry";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
-import {
-  GROUP_PERMISSIONS_CACHE_KEY_PATTERN,
-  GroupPermissionModel,
-  groupPermissionsCacheKey,
-} from "@app/lib/resources/storage/models/group_permissions";
+import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
 import { defineCacheOperations } from "@app/lib/utils/cache_operations";
@@ -26,6 +22,8 @@ import type {
 import {
   capabilityKey,
   grantKey,
+  isGrantType,
+  isGroupPermissionResourceType,
   WHOLE_TYPE_RESOURCE_ID,
 } from "@app/types/group_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -56,7 +54,14 @@ export type GroupGrant = {
   resourceId: number;
 };
 
+// Bump to orphan hashes written under the previous field encoding.
+const CACHE_SCHEMA_VERSION = 1;
+
 type SerializedGrant = [GrantType, GroupPermissionResourceType, number];
+
+function cacheKey(workspaceModelId: ModelId): string {
+  return `group_permissions:v${CACHE_SCHEMA_VERSION}:ws:${workspaceModelId}`;
+}
 
 // One field per requested group, so a group with no grant caches as [] instead of missing forever.
 function encodeFields(
@@ -76,15 +81,28 @@ function encodeFields(
   ]);
 }
 
+// Skips anything that does not decode, so a malformed field denies access rather than granting it.
 function decodeField(groupId: ModelId, value: string): GroupGrant[] {
-  const serialized = JSON.parse(value) as SerializedGrant[];
+  const parsed: unknown = JSON.parse(value);
+  if (!Array.isArray(parsed)) {
+    return [];
+  }
 
-  return serialized.map(([grantType, resourceType, resourceId]) => ({
-    groupId,
-    grantType,
-    resourceType,
-    resourceId,
-  }));
+  const grants: GroupGrant[] = [];
+  for (const entry of parsed) {
+    if (!Array.isArray(entry)) {
+      continue;
+    }
+    const [grantType, resourceType, resourceId] = entry;
+    if (
+      isGrantType(grantType) &&
+      isGroupPermissionResourceType(resourceType) &&
+      typeof resourceId === "number"
+    ) {
+      grants.push({ groupId, grantType, resourceType, resourceId });
+    }
+  }
+  return grants;
 }
 
 /**
@@ -170,9 +188,8 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       },
     ],
     inputSchema: z.object({ workspaceModelId: z.coerce.number() }),
-    buildKey: ({ workspaceModelId }) =>
-      groupPermissionsCacheKey(workspaceModelId),
-    keyPattern: GROUP_PERMISSIONS_CACHE_KEY_PATTERN,
+    buildKey: ({ workspaceModelId }) => cacheKey(workspaceModelId),
+    keyPattern: `group_permissions:v${CACHE_SCHEMA_VERSION}:ws:*`,
   });
 
   constructor(
@@ -593,7 +610,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     const uniqueGroupModelIds = [...new Set(groupModelIds)];
 
     try {
-      const key = groupPermissionsCacheKey(workspaceModelId);
+      const key = cacheKey(workspaceModelId);
       const redis = await getRedisCacheClient({
         origin: "group_permissions_cache",
       });
@@ -625,7 +642,6 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         missingGroupModelIds
       );
 
-      // HSETNX: a mutation that committed while this query was in flight keeps its value.
       const multi = redis.multi();
       for (const [field, value] of encodeFields(missingGroupModelIds, loaded)) {
         multi.hSetNX(key, field, value);
@@ -651,7 +667,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   ): Promise<void> {
     const statsDClient = getStatsDClient();
     try {
-      const key = groupPermissionsCacheKey(workspaceModelId);
+      const key = cacheKey(workspaceModelId);
       const redis = await getRedisCacheClient({
         origin: "group_permissions_cache",
       });
@@ -708,7 +724,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         const redis = await getRedisCacheClient({
           origin: "group_permissions_cache",
         });
-        await redis.del(groupPermissionsCacheKey(workspaceModelId));
+        await redis.del(cacheKey(workspaceModelId));
       } catch (err) {
         logger.error(
           { panic: true, err: normalizeError(err), workspaceModelId },

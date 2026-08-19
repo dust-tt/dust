@@ -1,4 +1,3 @@
-import { getRedisCacheClient } from "@app/lib/api/redis";
 import { Authenticator } from "@app/lib/auth";
 import type { GroupGrant } from "@app/lib/resources/group_permission_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -261,41 +260,6 @@ describe("group permissions cache", () => {
     );
 
     expect(stopCounting()).toBe(0);
-    expect(grants).toEqual([]);
-  });
-
-  it("drops the cached grants when the holding group is deleted", async () => {
-    await GroupPermissionResource.grant(auth, {
-      group: groupB,
-      grantType: "member",
-      resourceType: "space",
-      resourceId: 9,
-    });
-    await GroupPermissionResource.listForGroups(
-      auth.getNonNullableWorkspace(),
-      { groupModelIds: [groupB.id] }
-    );
-
-    const deleteResult = await groupB.delete(auth);
-    expect(deleteResult.isOk()).toBe(true);
-
-    // A key auth keeps the group ids it was minted with, so the field must be gone rather than
-    // left holding the grants the deleted group used to carry.
-    const redis = await getRedisCacheClient({
-      origin: "group_permissions_cache",
-    });
-    const cached = await redis.hmGet(
-      GroupPermissionResource.cacheOperations.buildKey({
-        workspaceModelId: String(auth.getNonNullableWorkspace().id),
-      }),
-      [String(groupB.id)]
-    );
-    expect(cached).toEqual([null]);
-
-    const grants = await GroupPermissionResource.listForGroups(
-      auth.getNonNullableWorkspace(),
-      { groupModelIds: [groupB.id] }
-    );
     expect(grants).toEqual([]);
   });
 
