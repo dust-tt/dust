@@ -49,6 +49,7 @@
     "dd-trace": "^5.87.0",
     "esbuild": "^0.27.3",
     "next": "14.2.35",
+    "snowflake-sdk": "2.3.4",
     "undici": "^7.24.0"
   }
 }
