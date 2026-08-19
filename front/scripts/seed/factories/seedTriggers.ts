@@ -104,6 +104,7 @@ export async function seedTriggers(
         configuration: asset.configuration,
         webhookSourceViewId,
         origin: "user",
+        executionMode: "user_pool",
       });
 
       if (result.isErr()) {

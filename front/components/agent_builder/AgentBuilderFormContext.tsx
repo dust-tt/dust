@@ -6,7 +6,7 @@ import {
 import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration";
 import {
-  STORED_TRIGGER_EXECUTION_MODES,
+  TRIGGER_EXECUTION_MODES,
   TRIGGER_STATUSES,
 } from "@app/types/assistant/triggers";
 import { editorUserSchema } from "@app/types/editors";
@@ -85,7 +85,7 @@ const webhookTriggerSchema = z.object({
   webhookSourceViewId: z.string().nullable().optional(),
   editorName: z.string().optional(),
   executionPerDayLimitOverride: z.number().nullable(),
-  executionMode: z.enum(STORED_TRIGGER_EXECUTION_MODES).nullable(),
+  executionMode: z.enum(TRIGGER_EXECUTION_MODES),
   spaceId: z.string().nullable().optional(),
 });
 

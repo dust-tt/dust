@@ -1,9 +1,6 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
-import {
-  getTriggerExecutionMode,
-  TRIGGER_EXECUTION_MODES,
-} from "@app/types/assistant/triggers";
+import { TRIGGER_EXECUTION_MODES } from "@app/types/assistant/triggers";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const webhookSettingsPlugin = createPlugin({
@@ -45,14 +42,12 @@ export const webhookSettingsPlugin = createPlugin({
       {
         label: "User pool",
         value: "user_pool",
-        checked:
-          getTriggerExecutionMode(resource.executionMode) === "user_pool",
+        checked: resource.executionMode === "user_pool",
       },
       {
         label: "Workspace pool",
         value: "workspace_pool",
-        checked:
-          getTriggerExecutionMode(resource.executionMode) === "workspace_pool",
+        checked: resource.executionMode === "workspace_pool",
       },
     ];
 
@@ -88,7 +83,7 @@ export const webhookSettingsPlugin = createPlugin({
     // Update the trigger using the resource method
     const updateResult = await resource.updateWebhookSettings(
       executionPerDayLimitOverride,
-      executionMode ?? null
+      executionMode ?? resource.executionMode
     );
     if (updateResult.isErr()) {
       return new Err(updateResult.error);

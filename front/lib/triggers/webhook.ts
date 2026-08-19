@@ -27,10 +27,7 @@ import type {
   WebhookRequestTriggerStatus,
   WebhookTriggerType,
 } from "@app/types/assistant/triggers";
-import {
-  getTriggerExecutionMode,
-  isWebhookTrigger,
-} from "@app/types/assistant/triggers";
+import { isWebhookTrigger } from "@app/types/assistant/triggers";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -291,7 +288,6 @@ async function checkWorkspaceRateLimit({
 
   const plan = auth.subscription()?.plan;
   const owner = auth.getNonNullableWorkspace();
-  const executionMode = getTriggerExecutionMode(trigger.executionMode);
 
   // Credit-priced pool gate: applies to any execution mode. If the pool is
   // depleted, no downstream message can be posted, so reject early instead of
@@ -310,7 +306,7 @@ async function checkWorkspaceRateLimit({
     if (
       !block &&
       owner.metronomeCustomerId &&
-      executionMode === "workspace_pool" &&
+      trigger.executionMode === "workspace_pool" &&
       (await isProgrammaticApiBlocked(owner.sId))
     ) {
       block = {
@@ -327,7 +323,7 @@ async function checkWorkspaceRateLimit({
    * - workspace pool: check public API limits
    */
   if (!block) {
-    switch (executionMode) {
+    switch (trigger.executionMode) {
       case "user_pool": {
         const { rateLimited, message } =
           await checkWebhookRequestForRateLimit(auth);
@@ -351,7 +347,7 @@ async function checkWorkspaceRateLimit({
         break;
       }
       default:
-        assertNever(executionMode);
+        assertNever(trigger.executionMode);
     }
   }
 

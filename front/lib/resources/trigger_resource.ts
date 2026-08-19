@@ -23,7 +23,7 @@ import {
 } from "@app/temporal/triggers/schedule_client";
 import type {
   ScheduleConfig,
-  StoredTriggerExecutionMode,
+  TriggerExecutionMode,
   TriggerKind,
   TriggerStatus,
   TriggerType,
@@ -1053,7 +1053,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
    */
   async updateWebhookSettings(
     executionPerDayLimitOverride: number | null,
-    executionMode: StoredTriggerExecutionMode | null
+    executionMode: TriggerExecutionMode
   ): Promise<Result<undefined, Error>> {
     if (this.kind !== "webhook") {
       return new Err(
@@ -1097,6 +1097,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       naturalLanguageDescription: this.naturalLanguageDescription,
       createdAt: this.createdAt.getTime(),
       origin: this.origin,
+      executionMode: this.executionMode,
       spaceId: this.spaceId
         ? SpaceResource.modelIdToSId({
             id: this.spaceId,
@@ -1111,7 +1112,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         kind: "webhook" as const,
         configuration: this.configuration as WebhookConfig,
         executionPerDayLimitOverride: this.executionPerDayLimitOverride,
-        executionMode: this.executionMode,
         webhookSourceViewId: this.webhookSourceViewId
           ? makeSId("webhook_sources_view", {
               id: this.webhookSourceViewId,

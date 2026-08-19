@@ -5,7 +5,6 @@ import { TriggerStatusToggle } from "@app/components/agent_builder/triggers/Trig
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/webhook/WebhookEditionFilters";
 import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
-import { getTriggerExecutionMode } from "@app/types/assistant/triggers";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import type {
@@ -314,9 +313,7 @@ export function WebhookEditionSheetContent({
         <Separator />
 
         <WebhookEditionExecutionLimit
-          executionMode={getTriggerExecutionMode(
-            trigger?.executionMode ?? null
-          )}
+          executionMode={trigger?.executionMode ?? "user_pool"}
         />
 
         <Separator />
