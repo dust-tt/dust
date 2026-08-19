@@ -15,7 +15,6 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { estypes } from "@elastic/elasticsearch";
-import AdmZip from "adm-zip";
 
 const EXPORT_PAGE_SIZE = 10_000;
 
@@ -261,8 +260,10 @@ async function buildConsumptionLineExportRows(
   });
 }
 
-// Exports every raw consumption under zipped csv format
-export async function fetchConsumptionLinesExportZip(
+// Fetches and formats the consumption lines for one period (typically a bucket of a
+// larger export) as CSV rows, without a header — callers assemble the final file by
+// prepending the shared header.
+export async function fetchConsumptionExportBucketCsv(
   auth: Authenticator,
   {
     period,
@@ -271,7 +272,7 @@ export async function fetchConsumptionLinesExportZip(
     period: ConsumptionPeriod;
     filter?: ConsumptionScopeFilter;
   }
-): Promise<Result<Buffer, ElasticsearchError>> {
+): Promise<Result<string, ElasticsearchError>> {
   const query = buildConsumptionScopeQuery({
     auth,
     startDate: period.startDate,
@@ -286,11 +287,11 @@ export async function fetchConsumptionLinesExportZip(
 
   const rows = await buildConsumptionLineExportRows(auth, docsResult.value);
 
-  const zip = new AdmZip();
-  zip.addFile(
-    "lines.csv",
-    Buffer.from(rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, rows), "utf-8")
+  return new Ok(
+    rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, rows, { includeHeader: false })
   );
+}
 
-  return new Ok(zip.toBuffer());
+export function buildConsumptionLineExportCsvHeader(): string {
+  return rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, []);
 }

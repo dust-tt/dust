@@ -395,6 +395,22 @@ class FileStorageMock {
         }
         return Promise.resolve(undefined);
       }),
+      // Mirrors real GCS compose: concatenates each source's stored content, in order,
+      // into the destination object.
+      composeFiles: vi.fn((sourcePaths: string[], destinationPath: string) => {
+        const combined = sourcePaths
+          .map((path) => this._objectStore.get(path) ?? "")
+          .join("");
+        this._objectStore.set(destinationPath, combined);
+        this._saveFileCalls.push({
+          filePath: destinationPath,
+          content: combined,
+          contentType: destinationPath.endsWith(".csv")
+            ? "text/csv"
+            : undefined,
+        });
+        return Promise.resolve(undefined);
+      }),
       delete: vi.fn((filePath: string) => {
         this._objectStore.delete(filePath);
         return Promise.resolve(undefined);
