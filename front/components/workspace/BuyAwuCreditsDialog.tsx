@@ -14,11 +14,13 @@ import {
   awuCreditsToCurrency,
   currencyToAwuCredits,
 } from "@app/lib/metronome/amounts";
+import { oneYearAfter } from "@app/lib/metronome/constants";
 import {
   useAwuPurchaseStatus,
   useRedeemPoolTopupCoupon,
 } from "@app/lib/swr/credits";
 import { useValidateCoupon } from "@app/lib/swr/workspaces";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { CouponType } from "@app/types/coupon";
 import { CURRENCY_SYMBOLS } from "@app/types/currency";
 import {
@@ -499,6 +501,16 @@ export function BuyAwuCreditsDialog({
     currencyToAwuCredits(parsedAmount, currency) / (1 - discountPercent / 100)
   );
 
+  // Purchased credits expire one year after purchase (see `purchaseAwuCredits`).
+  const expirationDateFormatted = useMemo(
+    () =>
+      formatTimestampToFriendlyDate(
+        oneYearAfter(new Date()).getTime(),
+        "short"
+      ),
+    []
+  );
+
   const canPurchase =
     isValidAmount &&
     !amountExceedsMax &&
@@ -703,6 +715,11 @@ export function BuyAwuCreditsDialog({
                     </div>
                   </div>
                 )}
+
+              <p className="text-xs text-muted-foreground">
+                Credits are valid for 12 months: credits purchased today expire
+                on {expirationDateFormatted}.
+              </p>
 
               <div className="flex flex-col gap-3 border-t border-border pt-4">
                 <label className="flex cursor-pointer items-start gap-3">
