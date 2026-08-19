@@ -1,5 +1,6 @@
 import { createAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
+import { frontSequelize } from "@app/lib/resources/storage";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ModelIdType,
@@ -125,5 +126,29 @@ export class AgentConfigurationFactory {
       instructionsHtml: overrides.instructionsHtml ?? null,
       actions: [],
     };
+  }
+
+  /**
+   * Backdates an agent's creation, for features that treat a young agent differently from an old one.
+   *
+   * Sequelize suppresses explicitly-provided values for managed timestamp fields, so raw SQL is the
+   * only reliable way to do this — same reason as `ConversationFactory.setUpdatedAtForTest`.
+   */
+  static async setCreatedAtForTest(
+    auth: Authenticator,
+    agentId: string,
+    createdAt: Date
+  ): Promise<void> {
+    // biome-ignore lint/plugin/noRawSql: managed timestamps cannot be set through the model
+    await frontSequelize.query(
+      `UPDATE agent_configurations SET "createdAt" = :createdAt WHERE "sId" = :agentId AND "workspaceId" = :workspaceId`,
+      {
+        replacements: {
+          createdAt: createdAt.toISOString(),
+          agentId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
   }
 }
