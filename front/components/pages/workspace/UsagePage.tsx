@@ -193,7 +193,7 @@ function CreditPoolProgressBar({
         target === "off_target" ? "bg-warning-100" : "bg-highlight-100",
         "bg-gray-50",
       ]}
-      percentage={[
+      percentages={[
         clampedUsedPercentage,
         projectedRemainderPercentage,
         unusedPercentage,

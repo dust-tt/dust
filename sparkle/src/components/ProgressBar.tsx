@@ -36,17 +36,30 @@ const progressBarFillVariants = cva("h-full", {
   },
 });
 
-export interface ProgressBarProps
+interface ProgressBarBaseProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, "children">,
     VariantProps<typeof progressBarVariants> {
   fillClassName?: string | string[];
-  percentage: number | number[];
 }
+
+interface SingleProgressBarProps {
+  percentage: number;
+  percentages?: never;
+}
+
+interface SegmentedProgressBarProps {
+  percentage?: never;
+  percentages: number[];
+}
+
+export type ProgressBarProps = ProgressBarBaseProps &
+  (SingleProgressBarProps | SegmentedProgressBarProps);
 
 export const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
   (
     {
       percentage,
+      percentages,
       radius = "full",
       variant = "default",
       className,
@@ -55,9 +68,11 @@ export const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
     },
     ref
   ) => {
-    const isSegmented = Array.isArray(percentage);
-    const clampedPercentages = (isSegmented ? percentage : [percentage]).map(
-      (value) => Math.min(100, Math.max(0, value))
+    const isSegmented = percentages !== undefined;
+    const values =
+      percentages ?? (percentage === undefined ? [] : [percentage]);
+    const clampedPercentages = values.map((value) =>
+      Math.min(100, Math.max(0, value))
     );
     const valueNow = isSegmented
       ? Math.min(
