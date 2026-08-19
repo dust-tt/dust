@@ -4,14 +4,7 @@ import {
   resolveStableToolCallName,
   withPeriodicHeartbeat,
 } from "@app/temporal/agent_loop/lib/get_output_from_llm";
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const shutdownMock = vi.hoisted(() => ({ controller: new AbortController() }));
 
