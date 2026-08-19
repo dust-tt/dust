@@ -1,9 +1,7 @@
+import { Avatar } from "@sparkle/components/Avatar";
+import { Button } from "@sparkle/components/Button";
+import { Card } from "@sparkle/components/Card";
 import {
-  Avatar,
-  Button,
-  Card,
-  Check,
-  CheckDouble,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -11,11 +9,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+} from "@sparkle/components/Dialog";
+import {
+  Check,
+  CheckDouble,
   PieChart01,
   XClose,
-} from "@dust-tt/sparkle";
-import type React from "react";
-import { useState } from "react";
+} from "@sparkle/icons/v2-stroke";
+import React, { useState } from "react";
 
 export type ToolValidationDecision =
   | "approved"

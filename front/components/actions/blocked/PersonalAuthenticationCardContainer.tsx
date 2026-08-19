@@ -1,4 +1,3 @@
-import { PersonalAuthenticationCard as PersonalAuthenticationCardView } from "@app/components/actions/blocked/PersonalAuthenticationCard";
 import {
   areCredentialOverridesValid,
   PersonalAuthCredentialOverrides,
@@ -14,7 +13,10 @@ import {
 import type { OAuthProvider } from "@app/types/oauth/lib";
 import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { Key01 } from "@dust-tt/sparkle";
+import {
+  Key01,
+  PersonalAuthenticationCard as PersonalAuthenticationCardView,
+} from "@dust-tt/sparkle";
 import { useRef, useState } from "react";
 
 export type PersonalAuthResolutionOutcome = "completed" | "denied";

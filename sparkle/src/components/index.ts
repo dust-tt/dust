@@ -232,6 +232,10 @@ export { OptionCard } from "./OptionCard";
 export { Page } from "./Page";
 export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";
 export { Pagination } from "./Pagination";
+export {
+  PersonalAuthenticationCard,
+  type PersonalAuthenticationCardProps,
+} from "./PersonalAuthenticationCard";
 export { ColorPicker, IconPicker } from "./Picker";
 export {
   AnchoredPopover,
@@ -303,6 +307,12 @@ export {
   TooltipRoot,
   TooltipTrigger,
 } from "./Tooltip";
+export {
+  ToolValidationCard,
+  type ToolValidationCardProps,
+  type ToolValidationDecision,
+  type ToolValidationProgress,
+} from "./ToolValidationCard";
 export { Tree } from "./Tree";
 export {
   TruncatedContent,

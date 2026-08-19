@@ -1,5 +1,8 @@
-import { Avatar, Button, Card, Check, Key01, XClose } from "@dust-tt/sparkle";
-import type React from "react";
+import { Avatar } from "@sparkle/components/Avatar";
+import { Button } from "@sparkle/components/Button";
+import { Card } from "@sparkle/components/Card";
+import { Check, Key01, XClose } from "@sparkle/icons/v2-stroke";
+import React from "react";
 
 export interface PersonalAuthenticationCardProps {
   icon?: React.ComponentProps<typeof Avatar>["icon"];

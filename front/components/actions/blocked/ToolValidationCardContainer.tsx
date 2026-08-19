@@ -1,5 +1,3 @@
-import type { ToolValidationProgress } from "@app/components/actions/blocked/ToolValidationCard";
-import { ToolValidationCard as ToolValidationCardView } from "@app/components/actions/blocked/ToolValidationCard";
 import {
   getToolOverride,
   getToolValidationAlwaysAllowLabel,
@@ -11,6 +9,8 @@ import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type { ToolValidationProgress } from "@dust-tt/sparkle";
+import { ToolValidationCard as ToolValidationCardView } from "@dust-tt/sparkle";
 
 // Display data needed to render a tool validation card, for both agent-loop and sandbox-function
 // blocked tool executions.
