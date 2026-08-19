@@ -3,7 +3,10 @@ import type {
   AgentBuilderWebhookTriggerType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { triggerStatusSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT } from "@app/types/assistant/triggers";
+import {
+  DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT,
+  STORED_TRIGGER_EXECUTION_MODES,
+} from "@app/types/assistant/triggers";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { UserType } from "@app/types/user";
@@ -22,7 +25,7 @@ export const WebhookFormSchema = z.object({
   includePayload: z.boolean().default(false),
   naturalDescription: z.string().optional(),
   executionPerDayLimitOverride: z.number(),
-  executionMode: z.enum(["fair_use", "programmatic"]).default("fair_use"),
+  executionMode: z.enum(STORED_TRIGGER_EXECUTION_MODES).default("fair_use"),
   spaceId: z.string().nullable(),
 });
 

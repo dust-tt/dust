@@ -1,5 +1,6 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
+import type { LegacyTriggerExecutionMode } from "@app/types/assistant/triggers";
+import { getTriggerExecutionMode } from "@app/types/assistant/triggers";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const webhookSettingsPlugin = createPlugin({
@@ -41,12 +42,14 @@ export const webhookSettingsPlugin = createPlugin({
       {
         label: "Fair Use",
         value: "fair_use",
-        checked: resource.executionMode === "fair_use",
+        checked:
+          getTriggerExecutionMode(resource.executionMode) === "user_pool",
       },
       {
         label: "Programmatic",
         value: "programmatic",
-        checked: resource.executionMode === "programmatic",
+        checked:
+          getTriggerExecutionMode(resource.executionMode) === "workspace_pool",
       },
     ];
 
@@ -62,7 +65,7 @@ export const webhookSettingsPlugin = createPlugin({
 
     const executionPerDayLimitOverride = args.executionPerDayLimitOverride;
     const executionMode = args.executionMode[0] as
-      | TriggerExecutionMode
+      | LegacyTriggerExecutionMode
       | undefined;
 
     if (executionPerDayLimitOverride < 1) {

@@ -5,6 +5,7 @@ import { TriggerStatusToggle } from "@app/components/agent_builder/triggers/Trig
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/webhook/WebhookEditionFilters";
 import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
+import { getTriggerExecutionMode } from "@app/types/assistant/triggers";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import type {
@@ -87,7 +88,7 @@ function WebhookEditionExecutionLimit({
         This trigger can send a limited number of messages per day. This
         prevents a single trigger from using up your workspace's message fair
         use quota. This trigger is currently running on your workspace's{" "}
-        {executionMode === "fair_use" ? "fair use" : "programmatic usage"}{" "}
+        {executionMode === "user_pool" ? "fair use" : "programmatic usage"}{" "}
         quota.
         <br /> (
         <LinkWrapper
@@ -313,7 +314,9 @@ export function WebhookEditionSheetContent({
         <Separator />
 
         <WebhookEditionExecutionLimit
-          executionMode={trigger?.executionMode ?? "fair_use"}
+          executionMode={getTriggerExecutionMode(
+            trigger?.executionMode ?? null
+          )}
         />
 
         <Separator />
