@@ -860,22 +860,15 @@ export function UsagePage() {
     return null;
   }
 
-  const showRedesignedPoolSection =
-    isAwuPoolSummaryLoading ||
-    !!isAwuPoolSummaryError ||
-    hasPool ||
-    isReadOnly ||
-    isWorkspaceAdmin;
-  const showLegacyPoolSection =
-    !isAwuPoolSummaryLoading &&
-    (!!isAwuPoolSummaryError || hasPool || isReadOnly);
+  const showPoolSection =
+    isAwuPoolSummaryLoading || !!isAwuPoolSummaryError || hasPool;
   const topUpButton = isWorkspaceAdmin ? (
     <Button
       label="Top up"
       icon={ArrowUp}
       size="sm"
       variant="outline"
-      disabled={!isWorkspaceAdmin || isReadOnly || !usageSettings.topUpEnabled}
+      disabled={isReadOnly || !usageSettings.topUpEnabled}
       onClick={() => setShowBuyCreditDialog(true)}
     />
   ) : null;
@@ -1098,7 +1091,7 @@ export function UsagePage() {
           />
         )}
 
-        {isAnalyticsConsumptionEnabled && showRedesignedPoolSection && (
+        {isAnalyticsConsumptionEnabled && showPoolSection && (
           <Page.Vertical gap="none" align="stretch">
             <Page.H variant="h6">Credit Pool</Page.H>
             <div className="flex flex-col gap-2 pt-4">
@@ -1210,7 +1203,7 @@ export function UsagePage() {
           </Page.Vertical>
         )}
 
-        {!isAnalyticsConsumptionEnabled && showLegacyPoolSection && (
+        {!isAnalyticsConsumptionEnabled && showPoolSection && (
           <Page.Vertical gap="xs" align="stretch">
             <Page.H variant="h4">Workspace credit pool</Page.H>
 
