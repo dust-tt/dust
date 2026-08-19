@@ -1,6 +1,8 @@
+import { USAGE_TYPE_FREE, USAGE_TYPE_USER } from "@app/lib/metronome/constants";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { RunFactory } from "@app/tests/utils/RunFactory";
 import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { describe, expect, it } from "vitest";
 
@@ -23,7 +25,8 @@ describe("RunResource reasoning token usage", () => {
         reasoningTokens: 200,
         totalTokens: 1_300,
       },
-      GPT_5_MINI_MODEL_CONFIG.modelId
+      GPT_5_MINI_MODEL_CONFIG.modelId,
+      { usageType: USAGE_TYPE_USER }
     );
 
     const usages = await run.listRunUsages(auth);
@@ -52,7 +55,8 @@ describe("RunResource reasoning token usage", () => {
         totalOutputTokens: 100,
         totalTokens: 1_100,
       },
-      GPT_5_MINI_MODEL_CONFIG.modelId
+      GPT_5_MINI_MODEL_CONFIG.modelId,
+      { usageType: USAGE_TYPE_USER }
     );
 
     const usages = await run.listRunUsages(auth);
@@ -61,38 +65,72 @@ describe("RunResource reasoning token usage", () => {
   });
 });
 
-describe("RunResource.setUsageTypeForRuns", () => {
-  it("stamps the usage type on the run's usage rows", async () => {
-    const { authenticator: auth, workspace } = await createResourceTest({});
-    const run = await RunResource.makeNew({
-      appId: null,
-      dustRunId: generateRandomModelSId(),
-      runType: "deploy",
-      useWorkspaceCredentials: false,
-      workspaceId: workspace.id,
+describe("RunResource.setUsageTypeForRunsIfMissing", () => {
+  it("classifies legacy rows without overriding existing classifications", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const { run: legacyRun } = await RunFactory.createWithUsage(auth, {
+      usageType: null,
+    });
+    const { run: classifiedRun } = await RunFactory.createWithUsage(auth, {
+      usageType: USAGE_TYPE_USER,
     });
 
-    await run.recordTokenUsage(
-      auth,
-      {
-        inputTokens: 1_000,
-        totalOutputTokens: 100,
-        totalTokens: 1_100,
-      },
-      GPT_5_MINI_MODEL_CONFIG.modelId
-    );
-
-    await RunResource.setUsageTypeForRuns(auth, {
-      runs: [run],
-      usageType: "free",
+    await RunResource.setUsageTypeForRunsIfMissing(auth, {
+      runs: [legacyRun, classifiedRun],
+      usageType: USAGE_TYPE_FREE,
     });
 
     const usages = await RunResource.listRunUsagesForRuns(auth, {
-      runs: [run],
+      runs: [legacyRun, classifiedRun],
     });
 
-    expect(usages).toHaveLength(1);
-    expect(usages[0]?.usageType).toBe("free");
+    expect(
+      new Map(usages.map((usage) => [usage.runModelId, usage.usageType]))
+    ).toEqual(
+      new Map([
+        [legacyRun.id, USAGE_TYPE_FREE],
+        [classifiedRun.id, USAGE_TYPE_USER],
+      ])
+    );
+  });
+});
+
+describe("RunResource usage type immutability", () => {
+  it("preserves the creation-time classification when finalizing", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const { run, runUsageModelId } = await RunResource.makeNewWithPendingUsage(
+      {
+        appId: null,
+        dustRunId: generateRandomModelSId(),
+        runType: "deploy",
+        useWorkspaceCredentials: false,
+        workspaceId: workspace.id,
+      },
+      {
+        inferenceProvider: "openai-responses",
+        modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
+        providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
+        region: "global",
+        usageType: USAGE_TYPE_USER,
+      }
+    );
+
+    await run.finalizePendingRunUsage(auth, runUsageModelId, [
+      {
+        cachedTokens: null,
+        completionTokens: 30,
+        costMicroUsd: 10,
+        isBatch: false,
+        modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
+        promptTokens: 120,
+        providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
+        reasoningTokens: null,
+      },
+    ]);
+
+    expect(await run.listRunUsageAttempts(auth)).toMatchObject([
+      { usageState: "reported", usageType: USAGE_TYPE_USER },
+    ]);
   });
 });
 

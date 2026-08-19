@@ -97,12 +97,9 @@ export class RunUsageModel extends WorkspaceAwareModel<RunUsageModel> {
   declare costMicroUsd: number;
   declare isBatch: boolean;
 
-  // Billing usage type (free / user / programmatic). Internal/utility LLM
-  // operations are tagged free at creation (they are never billed); agent
-  // conversation runs are tagged by the usage queue from the triggering
-  // message's origin via getUsageType. Nullable: agent conversation rows are
-  // briefly null between creation and the usage queue, and legacy/app runs are
-  // never tagged.
+  // Immutable billing usage type (free / user / programmatic), set when the
+  // usage row is created. Nullable only for legacy rows written before every
+  // creation path supplied the classification.
   declare usageType: UsageType | null;
   // Pending and unavailable rows represent provider attempts for which usage has not been
   // reported. Null is accepted during the rolling deployment.

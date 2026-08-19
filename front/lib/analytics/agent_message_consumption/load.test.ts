@@ -8,7 +8,6 @@ import {
 import type { UsageType } from "@app/lib/metronome/types";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { RunResource } from "@app/lib/resources/run_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -157,6 +156,7 @@ async function setupSettledMessage({
     inputTokens: 100,
     outputTokens: 20,
     modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
+    usageType,
   });
   await AgentMessageModel.update(
     {
@@ -172,13 +172,6 @@ async function setupSettledMessage({
       },
     }
   );
-  if (usageType !== null) {
-    await RunResource.setUsageTypeForRuns(auth, {
-      runs: [run],
-      usageType,
-    });
-  }
-
   return {
     agent,
     agentMessage,
