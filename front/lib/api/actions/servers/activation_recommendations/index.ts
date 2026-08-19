@@ -279,10 +279,15 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
           )
         );
       }
+      if (!pod.canAdministrate(auth)) {
+        return new Err(
+          new MCPError("Not authorized to manage work areas for this pod.")
+        );
+      }
 
-      const rows = await ActivationWorkAreaResource.listByUserAndStatus(auth, {
+      const rows = await ActivationWorkAreaResource.listByActivationPods(auth, {
+        activationPods: [activationPod],
         status,
-        activationPodModelId: activationPod.id,
       });
 
       if (rows.length === 0) {
@@ -318,11 +323,16 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
         ? await ActivationPodResource.fetchBySpace(auth, pod)
         : null;
 
-      if (!activationPod) {
+      if (!pod || !activationPod) {
         return new Err(
           new MCPError(
             "Work areas can only be created inside an Activation Pod conversation."
           )
+        );
+      }
+      if (!pod.canAdministrate(auth)) {
+        return new Err(
+          new MCPError("Not authorized to manage work areas for this pod.")
         );
       }
 
@@ -359,11 +369,16 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
         return new Err(new MCPError(`Work area not found: ${workAreaId}.`));
       }
 
-      if (row.userId !== auth.getNonNullableUser().id) {
+      const [activationPod] = await ActivationPodResource.fetchByModelIds(
+        auth,
+        [row.podId]
+      );
+      const [space] = activationPod
+        ? await SpaceResource.fetchByModelIds(auth, [activationPod.spaceId])
+        : [];
+      if (!space || !space.canAdministrate(auth)) {
         return new Err(
-          new MCPError(
-            `Cannot update work area ${workAreaId}: not owned by the calling user.`
-          )
+          new MCPError("Not authorized to update this work area.")
         );
       }
 

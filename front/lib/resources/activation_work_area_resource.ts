@@ -9,12 +9,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import type {
-  Attributes,
-  ModelStatic,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
+import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ActivationWorkAreaResource
@@ -53,11 +48,9 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
     blob: { title: string; description: string; podId: ModelId }
   ): Promise<ActivationWorkAreaResource> {
     const workspace = auth.getNonNullableWorkspace();
-    const user = auth.getNonNullableUser();
 
     const row = await this.model.create({
       workspaceId: workspace.id,
-      userId: user.id,
       status: "suggested",
       title: blob.title,
       description: blob.description,
@@ -90,30 +83,30 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
     return new this(this.model, row.get());
   }
 
-  static async listByUserAndStatus(
+  static async listByActivationPods(
     auth: Authenticator,
     {
+      activationPods,
       status,
-      activationPodModelId,
     }: {
+      activationPods: ActivationPodResource[];
       status?: ActivationWorkAreaStatus;
-      activationPodModelId?: ModelId;
     }
   ): Promise<ActivationWorkAreaResource[]> {
-    const user = auth.getNonNullableUser();
-
-    const where: WhereOptions<ActivationWorkAreaModel> = {
-      userId: user.id,
-      workspaceId: auth.getNonNullableWorkspace().id,
-      ...(status !== undefined ? { status } : {}),
-      ...(activationPodModelId !== undefined
-        ? { podId: activationPodModelId }
-        : {}),
-    };
+    if (activationPods.length === 0) {
+      return [];
+    }
 
     const rows = await this.model.findAll({
-      where,
-      order: [["createdAt", "ASC"]],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        podId: activationPods.map((p) => p.id),
+        ...(status !== undefined ? { status } : {}),
+      },
+      order: [
+        ["podId", "ASC"],
+        ["createdAt", "ASC"],
+      ],
     });
 
     return rows.map((row) => new this(this.model, row.get()));

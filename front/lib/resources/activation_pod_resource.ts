@@ -131,6 +131,23 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
     return activationPod ?? null;
   }
 
+  static async fetchByModelIds(
+    auth: Authenticator,
+    activationPodModelIds: ModelId[]
+  ): Promise<ActivationPodResource[]> {
+    if (activationPodModelIds.length === 0) {
+      return [];
+    }
+    const activationPods = await this.model.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: activationPodModelIds,
+      },
+      include: this.unarchivedQuery.include,
+    });
+    return activationPods.map((pod) => new this(this.model, pod.get()));
+  }
+
   // Batch variant of fetchBySpace, avoiding one query per pod (e.g. when the
   // scheduler processes many pods at once).
   static async fetchBySpaceModelIds(
