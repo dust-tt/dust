@@ -1,6 +1,9 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import type { LegacyTriggerExecutionMode } from "@app/types/assistant/triggers";
-import { getTriggerExecutionMode } from "@app/types/assistant/triggers";
+import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
+import {
+  getTriggerExecutionMode,
+  TRIGGER_EXECUTION_MODES,
+} from "@app/types/assistant/triggers";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const webhookSettingsPlugin = createPlugin({
@@ -40,14 +43,14 @@ export const webhookSettingsPlugin = createPlugin({
       checked?: boolean;
     }[] = [
       {
-        label: "Fair Use",
-        value: "fair_use",
+        label: "User pool",
+        value: "user_pool",
         checked:
           getTriggerExecutionMode(resource.executionMode) === "user_pool",
       },
       {
-        label: "Programmatic",
-        value: "programmatic",
+        label: "Workspace pool",
+        value: "workspace_pool",
         checked:
           getTriggerExecutionMode(resource.executionMode) === "workspace_pool",
       },
@@ -65,7 +68,7 @@ export const webhookSettingsPlugin = createPlugin({
 
     const executionPerDayLimitOverride = args.executionPerDayLimitOverride;
     const executionMode = args.executionMode[0] as
-      | LegacyTriggerExecutionMode
+      | TriggerExecutionMode
       | undefined;
 
     if (executionPerDayLimitOverride < 1) {
@@ -74,13 +77,11 @@ export const webhookSettingsPlugin = createPlugin({
       );
     }
 
-    if (
-      executionMode &&
-      executionMode !== "fair_use" &&
-      executionMode !== "programmatic"
-    ) {
+    if (executionMode && !TRIGGER_EXECUTION_MODES.includes(executionMode)) {
       return new Err(
-        new Error('Execution mode must be "fair_use" or "programmatic"')
+        new Error(
+          `Execution mode must be one of ${TRIGGER_EXECUTION_MODES.join(", ")}`
+        )
       );
     }
 
