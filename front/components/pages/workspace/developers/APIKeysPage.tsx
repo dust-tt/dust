@@ -1,11 +1,18 @@
+import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
+import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { APIKeyCreationSheet } from "@app/components/workspace/api-keys/APIKeyCreationSheet";
 import { APIKeysList } from "@app/components/workspace/api-keys/APIKeysList";
 import { EditKeyCapDialog } from "@app/components/workspace/api-keys/EditKeyCapDialog";
 import { EditKeyCreditCapDialog } from "@app/components/workspace/api-keys/EditKeyCreditCapDialog";
 import { NewAPIKeyDialog } from "@app/components/workspace/api-keys/NewAPIKeyDialog";
 import type { KeyRole } from "@app/components/workspace/api-keys/utils";
+import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { formatCredits } from "@app/lib/client/credits";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useKeys } from "@app/lib/swr/apps";
@@ -22,9 +29,72 @@ import { useSWRConfig } from "swr";
 
 interface APIKeysProps {
   owner: WorkspaceType;
+  period: ConsumptionPeriodSelection;
 }
 
-export function APIKeys({ owner }: APIKeysProps) {
+const MAX_API_KEY_CONSUMPTION_ROWS = 100;
+
+interface APIKeysOverviewProps {
+  keys: KeyType[];
+  totalCredits: number;
+  consumingKeyCount: number;
+  isConsumptionLoading: boolean;
+  isConsumptionError: boolean;
+}
+
+function APIKeysOverview({
+  keys,
+  totalCredits,
+  consumingKeyCount,
+  isConsumptionLoading,
+  isConsumptionError,
+}: APIKeysOverviewProps) {
+  if (isConsumptionLoading) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="h-24 animate-pulse rounded-xl bg-muted-background" />
+        <div className="h-24 animate-pulse rounded-xl bg-muted-background" />
+      </div>
+    );
+  }
+
+  const activeKeyCount = keys.filter((key) => key.status === "active").length;
+  const cappedKeyCount = keys.filter(
+    (key) => key.status === "active" && key.creditState === "capped"
+  ).length;
+  const revokedKeyCount = keys.length - activeKeyCount;
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <SummaryCard
+        label="Credits"
+        value={isConsumptionError ? "—" : formatCredits(totalCredits)}
+        hint={
+          isConsumptionError
+            ? "Credit consumption is temporarily unavailable"
+            : consumingKeyCount > 0
+              ? `${consumingKeyCount.toLocaleString()} API ${
+                  consumingKeyCount === 1 ? "key" : "keys"
+                } used this period`
+              : "No API key consumption this period"
+        }
+      />
+      <SummaryCard
+        label="Keys active"
+        value={`${activeKeyCount.toLocaleString()} / ${keys.length.toLocaleString()}`}
+        hint={
+          cappedKeyCount > 0
+            ? `${cappedKeyCount.toLocaleString()} at the monthly cap`
+            : revokedKeyCount > 0
+              ? `${revokedKeyCount.toLocaleString()} revoked`
+              : null
+        }
+      />
+    </div>
+  );
+}
+
+export function APIKeys({ owner, period }: APIKeysProps) {
   const { mutate } = useSWRConfig();
   const { subscription } = useAuth();
   const showLegacyUsdMonthlyCap = !isCreditPricedPlan(subscription.plan);
@@ -36,6 +106,33 @@ export function APIKeys({ owner }: APIKeysProps) {
   const { groups, isGroupsError, isGroupsLoading } = useGroups({ owner });
   const isDataLoading = isKeysLoading || isGroupsLoading;
   const isDataError = Boolean(isKeysError || isGroupsError);
+
+  const apiKeyNames = useMemo(
+    () => [...new Set(keys.map((key) => key.name))].sort(),
+    [keys]
+  );
+  const consumptionFilter = useMemo<ConsumptionScopeFilter | undefined>(
+    () => (apiKeyNames.length > 0 ? { api_keys: apiKeyNames } : undefined),
+    [apiKeyNames]
+  );
+  const {
+    rows: consumptionRows,
+    totalCredits,
+    totalCount: consumingKeyCount,
+    hasMore: hasMoreConsumptionRows,
+    isTopLoading: isConsumptionLoading,
+    isTopError: consumptionError,
+  } = useConsumptionTop({
+    workspaceId: owner.sId,
+    dimension: "api_key",
+    period,
+    limit: Math.max(
+      1,
+      Math.min(apiKeyNames.length, MAX_API_KEY_CONSUMPTION_ROWS)
+    ),
+    filter: consumptionFilter,
+    disabled: isKeysLoading || apiKeyNames.length === 0,
+  });
 
   const groupsById = useMemo(() => {
     return groups.reduce<Record<ModelId, GroupType>>((acc, group) => {
@@ -204,11 +301,25 @@ export function APIKeys({ owner }: APIKeysProps) {
             showLegacyUsdMonthlyCap={showLegacyUsdMonthlyCap}
           />
         </Page.Horizontal>
+        {!isKeysError && (
+          <APIKeysOverview
+            keys={keys}
+            totalCredits={totalCredits}
+            consumingKeyCount={consumingKeyCount}
+            isConsumptionLoading={isKeysLoading || isConsumptionLoading}
+            isConsumptionError={Boolean(consumptionError)}
+          />
+        )}
         <APIKeysList
           keys={keys}
           groupsById={groupsById}
           isLoading={isDataLoading}
           isError={isDataError}
+          consumptionRows={consumptionRows}
+          totalCredits={totalCredits}
+          isConsumptionLoading={isConsumptionLoading}
+          isConsumptionError={Boolean(consumptionError)}
+          hasMoreConsumptionRows={hasMoreConsumptionRows}
           isRevoking={isRevoking}
           isGenerating={isGenerating}
           onRevoke={handleRevoke}
@@ -241,14 +352,30 @@ export function APIKeys({ owner }: APIKeysProps) {
 
 export function APIKeysPage() {
   const owner = useWorkspace();
+  const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
+    DEFAULT_CONSUMPTION_PERIOD
+  );
 
   return (
     <Page.Vertical gap="xl" align="stretch">
       <Page.Header
-        title="API Keys"
-        description="API Keys allow you to securely connect to Dust from other applications and work with your data programmatically."
+        title={
+          <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-start">
+            <div className="flex max-w-[700px] flex-col gap-1">
+              <Page.H variant="h3">API Keys</Page.H>
+              <Page.P variant="secondary">
+                Create and manage API keys, track what they consume, and control
+                their monthly spend.
+              </Page.P>
+            </div>
+            <ConsumptionPeriodSelector
+              period={period}
+              onPeriodChange={setPeriod}
+            />
+          </div>
+        }
       />
-      <APIKeys owner={owner} />
+      <APIKeys owner={owner} period={period} />
     </Page.Vertical>
   );
 }
