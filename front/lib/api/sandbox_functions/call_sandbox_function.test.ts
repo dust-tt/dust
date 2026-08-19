@@ -1,5 +1,6 @@
 import { callSandboxFunction } from "@app/lib/api/sandbox_functions/call_sandbox_function";
 import type { SandboxFunctionInvocationStreamEvent } from "@app/lib/api/sandbox_functions/events";
+import { SANDBOX_FUNCTION_DELIVERED_ERROR_MESSAGE_MAX_CHARS } from "@app/lib/api/sandbox_functions/result_envelope";
 import { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -172,6 +173,53 @@ describe("callSandboxFunction", () => {
       message: "boom",
       status: 503,
     });
+  });
+
+  it("bounds a stream-delivered error message to the delivery cap", async () => {
+    const { auth, fn, invocationId } = await setup();
+    const longMessage = "x".repeat(
+      SANDBOX_FUNCTION_DELIVERED_ERROR_MESSAGE_MAX_CHARS * 20
+    );
+    vi.mocked(getSandboxFunctionInvocationEvents).mockReturnValue(
+      eventStream({
+        type: "sandbox_function_invocation_error",
+        created: 0,
+        invocationId,
+        functionId: "sfn_x",
+        error: { code: "invocation_failed", message: longMessage },
+      })
+    );
+
+    const result = await callSandboxFunction(auth, fn, { name: "x" });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.code).toBe("invocation_failed");
+    expect(result.error.message).toHaveLength(
+      SANDBOX_FUNCTION_DELIVERED_ERROR_MESSAGE_MAX_CHARS
+    );
+    expect(result.error.message.endsWith("...")).toBe(true);
+  });
+
+  it("bounds the message of an invoke that fails before executing", async () => {
+    const { auth, fn } = await setup();
+    const longMessage = "y".repeat(
+      SANDBOX_FUNCTION_DELIVERED_ERROR_MESSAGE_MAX_CHARS * 20
+    );
+    vi.spyOn(fn, "invoke").mockResolvedValue(new Err(new Error(longMessage)));
+
+    const result = await callSandboxFunction(auth, fn, { name: "x" });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      return;
+    }
+    expect(result.error.code).toBe("invocation_failed");
+    expect(result.error.message).toHaveLength(
+      SANDBOX_FUNCTION_DELIVERED_ERROR_MESSAGE_MAX_CHARS
+    );
   });
 
   it("fails closed on a policy introduced by a newer application version", async () => {

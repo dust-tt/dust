@@ -1,6 +1,7 @@
 import {
   extractResultSpillPointer,
   normalizeSandboxFunctionResult,
+  SANDBOX_FUNCTION_DELIVERED_ERROR_MESSAGE_MAX_CHARS,
   SANDBOX_FUNCTION_RESULT_PROTOCOL_VERSION,
 } from "@app/lib/api/sandbox_functions/result_envelope";
 import { describe, expect, it } from "vitest";
@@ -249,6 +250,47 @@ describe("normalizeSandboxFunctionResult", () => {
       ok: false,
       error: { code: "threw", message: "boom" },
     });
+  });
+
+  it("bounds threw messages, which the function authors, to the delivered cap", () => {
+    const longMessage = "x".repeat(
+      SANDBOX_FUNCTION_DELIVERED_ERROR_MESSAGE_MAX_CHARS * 20
+    );
+
+    const normalized = normalizeSandboxFunctionResult({
+      protocolVersion: 3,
+      delivery: "stdout",
+      outcome: { ok: false, error: { code: "threw", message: longMessage } },
+    });
+    if (normalized.ok) {
+      throw new Error("expected an error outcome");
+    }
+    expect(normalized.error.code).toBe("threw");
+    expect(normalized.error.message).toHaveLength(
+      SANDBOX_FUNCTION_DELIVERED_ERROR_MESSAGE_MAX_CHARS
+    );
+    expect(normalized.error.message.endsWith("...")).toBe(true);
+
+    // The legacy arm carries the same function-authored message.
+    const legacy = normalizeSandboxFunctionResult({
+      ok: false,
+      error: { kind: "threw", message: longMessage },
+    });
+    if (legacy.ok) {
+      throw new Error("expected an error outcome");
+    }
+    expect(legacy.error.message).toHaveLength(
+      SANDBOX_FUNCTION_DELIVERED_ERROR_MESSAGE_MAX_CHARS
+    );
+
+    // Short threw messages pass through untouched.
+    expect(
+      normalizeSandboxFunctionResult({
+        protocolVersion: 3,
+        delivery: "stdout",
+        outcome: { ok: false, error: { code: "threw", message: "boom" } },
+      })
+    ).toEqual({ ok: false, error: { code: "threw", message: "boom" } });
   });
 
   it("fails malformed envelopes with the stable invalid-envelope message", () => {
