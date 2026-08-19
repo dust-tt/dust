@@ -146,16 +146,14 @@ describe("Authenticator.fromJSON", () => {
     const staleAuthJson = auth.toJSON();
 
     const pod = await SpaceFactory.project(workspace, user.id);
-    const editorGroup = pod.groups.find(
-      (group) => group.groupKind === "space_editors"
-    );
-    expect(editorGroup).toBeDefined();
+    const editorGroup = await pod.fetchManualEditorGroup(auth);
+    expect(editorGroup).not.toBeNull();
 
     const staleAuth = await Authenticator.fromJSON(staleAuthJson);
-    expect(staleAuth.hasGroupByModelId(editorGroup!.groupId)).toBe(false);
+    expect(staleAuth.hasGroupByModelId(editorGroup!.id)).toBe(false);
 
     const freshAuth =
       await Authenticator.fromJsonWithRefrehedGroups(staleAuthJson);
-    expect(freshAuth.hasGroupByModelId(editorGroup!.groupId)).toBe(true);
+    expect(freshAuth.hasGroupByModelId(editorGroup!.id)).toBe(true);
   });
 });

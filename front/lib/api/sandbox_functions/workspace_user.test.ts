@@ -28,16 +28,15 @@ async function makeWorkspaceMember(
 async function addToSpaceGroup(
   adminAuth: Authenticator,
   space: SpaceResource,
-  groupKind: "regular_auto" | "space_editors",
+  role: "member" | "editor",
   user: UserResource
 ): Promise<void> {
-  const [group] = await space.fetchGroupResources(adminAuth, {
-    groupReferences: space.groups.filter(
-      (reference) => reference.groupKind === groupKind
-    ),
-  });
+  const group =
+    role === "editor"
+      ? await space.fetchManualEditorGroup(adminAuth)
+      : await space.fetchManualMemberGroup(adminAuth);
   if (!group) {
-    throw new Error(`Expected the ${groupKind} group to exist.`);
+    throw new Error(`Expected the ${role} group to exist.`);
   }
   const addMemberResult = await group.dangerouslyAddMember(adminAuth, {
     user: user.toJSON(),
@@ -60,7 +59,7 @@ describe("authorizeSandboxFunctionInvocation with pod_member_required", () => {
   it("authorizes a member of the pod member group", async () => {
     const { workspace, adminAuth, space } = await setup();
     const member = await makeWorkspaceMember(workspace);
-    await addToSpaceGroup(adminAuth, space, "regular_auto", member);
+    await addToSpaceGroup(adminAuth, space, "member", member);
     const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
       member.sId,
       workspace.sId
@@ -77,7 +76,7 @@ describe("authorizeSandboxFunctionInvocation with pod_member_required", () => {
   it("authorizes a member of the pod editor group", async () => {
     const { workspace, adminAuth, space } = await setup();
     const editor = await makeWorkspaceMember(workspace);
-    await addToSpaceGroup(adminAuth, space, "space_editors", editor);
+    await addToSpaceGroup(adminAuth, space, "editor", editor);
     const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
       editor.sId,
       workspace.sId

@@ -956,7 +956,7 @@ describe("SpaceResource", () => {
           projectEditorGroup = await GroupResource.makeNew({
             name: "Project Editors Group",
             workspaceId: workspace.id,
-            kind: "space_editors",
+            kind: "regular_auto",
           });
 
           projectSpace = await SpaceResource.makeNew(
@@ -1192,7 +1192,7 @@ describe("SpaceResource", () => {
           projectEditorGroup = await GroupResource.makeNew({
             name: "Project Editors Group",
             workspaceId: workspace.id,
-            kind: "space_editors",
+            kind: "regular_auto",
           });
 
           projectSpace = await SpaceResource.makeNew(

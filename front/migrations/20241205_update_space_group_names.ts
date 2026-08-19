@@ -29,46 +29,24 @@ makeScript(
           const auth = await Authenticator.internalAdminForWorkspace(w.sId);
           const pods = await SpaceResource.listProjectSpaces(auth);
           for (const pod of pods) {
-            const regularGroupReferences = pod.groups.filter((group) =>
-              group.isRegularAuto()
-            );
-            const spaceEditorGroupReferences = pod.groups.filter(
-              (group) => group.groupKind === "space_editors"
-            );
-            const groups = await pod.fetchGroupResources(auth, {
-              groupReferences: [
-                ...regularGroupReferences,
-                ...spaceEditorGroupReferences,
-              ],
-            });
-            const regularGroups = groups.slice(
-              0,
-              regularGroupReferences.length
-            );
-            const spaceEditorGroups = groups.slice(
-              regularGroupReferences.length
-            );
-
-            if (regularGroupReferences.length === 1) {
-              const [group] = regularGroups;
-              const newName = `${pod.isProject() ? PROJECT_GROUP_PREFIX : SPACE_GROUP_PREFIX} ${pod.name}`;
-              if (execute) {
-                await group.updateName(auth, newName);
-              } else {
-                logger.info(
-                  `[Execute: ${execute}] Updating group ${group.id} to "${newName}"`
-                );
-              }
+            const memberGroup = await pod.fetchManualMemberGroup(auth);
+            const memberName = `${pod.isProject() ? PROJECT_GROUP_PREFIX : SPACE_GROUP_PREFIX} ${pod.name}`;
+            if (execute) {
+              await memberGroup.updateName(auth, memberName);
+            } else {
+              logger.info(
+                `[Execute: ${execute}] Updating group ${memberGroup.id} to "${memberName}"`
+              );
             }
 
-            if (spaceEditorGroupReferences.length === 1) {
-              const [group] = spaceEditorGroups;
-              const newName = `${PROJECT_EDITOR_GROUP_PREFIX} ${pod.name}`;
+            const editorGroup = await pod.fetchManualEditorGroup(auth);
+            if (editorGroup) {
+              const editorName = `${PROJECT_EDITOR_GROUP_PREFIX} ${pod.name}`;
               if (execute) {
-                await group.updateName(auth, newName);
+                await editorGroup.updateName(auth, editorName);
               } else {
                 logger.info(
-                  `[Execute: ${execute}] Updating group ${group.id} to "${newName}"`
+                  `[Execute: ${execute}] Updating group ${editorGroup.id} to "${editorName}"`
                 );
               }
             }

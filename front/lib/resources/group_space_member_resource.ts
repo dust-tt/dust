@@ -101,10 +101,6 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
         groupModel,
         "One and only one group must exist for member group space"
       );
-      assert(
-        groupModel.kind !== "space_editors",
-        "Editors groups cannot be member groups"
-      );
       if (filterOnManagementMode) {
         // Keep only regular groups in manual mode, provisioned groups in provisioned mode
         const filterOnKind: GroupKind =

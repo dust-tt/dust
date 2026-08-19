@@ -106,7 +106,7 @@ async function createProject(
       {
         name: editorGroupName,
         workspaceId: workspace.id,
-        kind: "space_editors",
+        kind: "regular_auto",
       },
       {
         memberIds: [creatorId],

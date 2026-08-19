@@ -40,7 +40,7 @@ app.get(
 
     const groupReferences = space.groups.filter((group) =>
       space.managementMode === "manual"
-        ? group.isRegularAuto() || group.groupKind === "space_editors"
+        ? group.isRegularAuto()
         : group.isProvisioned()
     );
     const groups = await space.fetchGroupResources(auth, { groupReferences });

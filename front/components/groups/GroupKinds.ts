@@ -25,7 +25,6 @@ export function getGroupKindChip(kind: GroupKind): {
     case "global":
     case "regular_auto":
     case "skill_editors":
-    case "space_editors":
     case "system":
       return { label: "Other", color: "primary" };
     default:
