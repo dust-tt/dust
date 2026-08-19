@@ -365,21 +365,16 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
     ) => {
       const row = await ActivationWorkAreaResource.fetchById(auth, workAreaId);
 
-      if (!row) {
-        return new Err(new MCPError(`Work area not found: ${workAreaId}.`));
-      }
-
-      const [activationPod] = await ActivationPodResource.fetchByModelIds(
-        auth,
-        [row.podId]
-      );
+      // fetchById only scopes to the workspace. Return the same not-found
+      // error for missing and unauthorized rows so we don't leak existence.
+      const [activationPod] = row
+        ? await ActivationPodResource.fetchByModelIds(auth, [row.podId])
+        : [];
       const [space] = activationPod
         ? await SpaceResource.fetchByModelIds(auth, [activationPod.spaceId])
         : [];
-      if (!space || !space.canAdministrate(auth)) {
-        return new Err(
-          new MCPError("Not authorized to update this work area.")
-        );
+      if (!row || !space || !space.canAdministrate(auth)) {
+        return new Err(new MCPError("Work area not found."));
       }
 
       const updateRes = await row.updateFields({
