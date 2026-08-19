@@ -72,10 +72,13 @@ describe("feature flag resource caches", () => {
     await FeatureFlagResource.enable(secondWorkspace, "deepseek_feature");
     await FeatureFlagResource.listForWorkspace(firstWorkspace);
     await FeatureFlagResource.listForWorkspace(secondWorkspace);
+    const redis = await getRedisCacheClient({ origin: "cache_with_redis" });
+    vi.mocked(redis.del).mockClear();
 
     await expect(
       FeatureFlagResource.disableForAllWorkspaces("deepseek_feature")
     ).resolves.toBe(2);
+    expect(redis.del).toHaveBeenCalledTimes(1);
     await expect(
       FeatureFlagResource.listForWorkspace(firstWorkspace)
     ).resolves.toEqual([]);

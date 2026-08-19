@@ -4,7 +4,6 @@ import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { isWhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -196,11 +195,8 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
-    await concurrentExecutor(
-      workspaceModelIds,
-      (workspaceModelId) =>
-        FeatureFlagResource.listForWorkspaceCache.invalidate(workspaceModelId),
-      { concurrency: 16 }
+    await FeatureFlagResource.listForWorkspaceCache.invalidateMany(
+      workspaceModelIds
     );
 
     return deleted;

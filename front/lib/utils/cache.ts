@@ -296,6 +296,7 @@ export function batchInvalidateCacheWithRedis<T, Args extends unknown[]>(
   _options?: {
     cacheId?: string;
     redisUri?: string;
+    readFromKeyFirst?: ReadFromKeyFirst<Args>;
   }
 ): (argsList: Args[]) => Promise<void> {
   return async function (argsList: Args[]): Promise<void> {
@@ -305,10 +306,21 @@ export function batchInvalidateCacheWithRedis<T, Args extends unknown[]>(
 
     const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
 
-    const keys = argsList.map((args) =>
-      getCacheKey(fn, resolver, args, _options?.cacheId)
-    );
-    await redisCli.del(keys);
+    const keys = new Set<string>();
+    for (const args of argsList) {
+      keys.add(getCacheKey(fn, resolver, args, _options?.cacheId));
+      if (_options?.readFromKeyFirst) {
+        keys.add(
+          getCacheKey(
+            fn,
+            _options.readFromKeyFirst.resolver,
+            args,
+            _options.readFromKeyFirst.cacheId
+          )
+        );
+      }
+    }
+    await redisCli.del([...keys]);
   };
 }
 

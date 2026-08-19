@@ -1,5 +1,6 @@
 import type { JsonSerializable } from "@app/lib/utils/cache";
 import {
+  batchInvalidateCacheWithRedis,
   buildCacheWithRedisKey,
   cacheWithRedis,
   invalidateCacheAfterCommit,
@@ -43,6 +44,10 @@ type CachedResourceLookupDefinition<Input, Snapshot, Resource> = {
 export type CachedResourceLookup<Input, Resource> = {
   fetch: (input: Input, transaction?: Transaction) => Promise<Resource | null>;
   invalidate: (input: Input, transaction?: Transaction) => Promise<void>;
+  invalidateMany: (
+    inputs: readonly Input[],
+    transaction?: Transaction
+  ) => Promise<void>;
 };
 
 type CachedResourceListDefinition<Input, Snapshot, Resource> = Omit<
@@ -58,6 +63,10 @@ type CachedResourceListDefinition<Input, Snapshot, Resource> = Omit<
 export type CachedResourceList<Input, Resource> = {
   fetch: (input: Input, transaction?: Transaction) => Promise<Resource[]>;
   invalidate: (input: Input, transaction?: Transaction) => Promise<void>;
+  invalidateMany: (
+    inputs: readonly Input[],
+    transaction?: Transaction
+  ) => Promise<void>;
 };
 
 type OperableCachedResourceLookup<Input, Resource> = CachedResourceLookup<
@@ -149,6 +158,14 @@ export function defineCachedResourceLookup<Input, Snapshot, Resource>({
       readFromKeyFirst: readFromKeyFirstOptions,
     }
   );
+  const invalidateSnapshots = batchInvalidateCacheWithRedis(
+    loadSnapshotFromDatabase,
+    versionedKey,
+    {
+      cacheId: id,
+      readFromKeyFirst: readFromKeyFirstOptions,
+    }
+  );
 
   return {
     fetch: async (input, transaction) => {
@@ -178,6 +195,16 @@ export function defineCachedResourceLookup<Input, Snapshot, Resource>({
         return;
       }
       await invalidateSnapshot(input);
+    },
+    invalidateMany: async (inputs, transaction) => {
+      const argsList = inputs.map((input): [Input] => [input]);
+      if (transaction) {
+        invalidateCacheAfterCommit(transaction, () =>
+          invalidateSnapshots(argsList)
+        );
+        return;
+      }
+      await invalidateSnapshots(argsList);
     },
     createCacheOperations: ({ label, params, inputSchema, toLookupInput }) =>
       defineCacheOperations({
@@ -215,6 +242,7 @@ export function defineCachedResourceList<Input, Snapshot, Resource>(
     fetch: async (input, transaction) =>
       (await lookup.fetch(input, transaction)) ?? [],
     invalidate: lookup.invalidate,
+    invalidateMany: lookup.invalidateMany,
     createCacheOperations: lookup.createCacheOperations,
   };
 }
