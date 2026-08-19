@@ -82,17 +82,11 @@ export const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
             className: undefined,
           },
         ];
-    const valueNow = isSegmented
-      ? totalValue > 0
-        ? 100
-        : 0
-      : normalizedValues[0]?.percentage;
-
     return (
       <div
         ref={ref}
         role="progressbar"
-        aria-valuenow={valueNow}
+        aria-valuenow={normalizedValues[0]?.percentage}
         aria-valuemin={0}
         aria-valuemax={100}
         className={cn(
