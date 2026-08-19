@@ -1149,62 +1149,71 @@ export function UsagePage() {
           />
         )}
 
-        {isAnalyticsConsumptionEnabled &&
-        !isOverviewError &&
-        (!consumptionOverview || !!creditUsage || hasPool) ? (
+        {isAnalyticsConsumptionEnabled ? (
           <Page.Vertical gap="none" align="stretch">
             <h2 className="heading-sm text-foreground">Credit Pool</h2>
             <div className="flex flex-col gap-2 pt-4">
-              {isOverviewLoading && (
+              {isOverviewError ? (
+                <ContentMessage
+                  title="Failed to load Workspace Credit Pool"
+                  icon={AlertCircle}
+                  variant="warning"
+                >
+                  An error occurred while loading your Workspace Credit Pool
+                  data. Please refresh the page or contact support if the issue
+                  persists.
+                </ContentMessage>
+              ) : isOverviewLoading ? (
                 <div className="flex justify-center py-8">
                   <Spinner />
                 </div>
-              )}
-              {!consumptionOverview && topUpButton && (
-                <div className="flex justify-end">{topUpButton}</div>
-              )}
-
-              {consumptionOverview !== null &&
-                (creditUsage !== null || hasPool) && (
-                  <>
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-baseline gap-1">
-                        <span className="heading-2xl text-foreground">
-                          {formatCredits(totalConsumedCredits)}
-                        </span>
-                        <span className="copy-sm text-muted-foreground">
-                          /{formatCredits(initialTotalCredits)} credits
-                        </span>
-                      </div>
-                      {creditUsage && (
-                        <Chip
-                          size="mini"
-                          color={
-                            creditUsageDisplayTarget === "on_target"
-                              ? "highlight"
-                              : "warning"
-                          }
-                          label={
-                            creditUsageDisplayTarget === "on_target"
-                              ? "On target"
-                              : "Off target"
-                          }
-                        />
-                      )}
+              ) : consumptionOverview !== null &&
+                (creditUsage !== null || hasPool) ? (
+                <>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-baseline gap-1">
+                      <span className="heading-2xl text-foreground">
+                        {formatCredits(totalConsumedCredits)}
+                      </span>
+                      <span className="copy-sm text-muted-foreground">
+                        /{formatCredits(initialTotalCredits)} credits
+                      </span>
                     </div>
-                    <CreditPoolProgressBar
-                      projectedPercentage={projectedPercentage}
-                      target={creditUsageDisplayTarget}
-                      usedPercentage={usedPercentage}
-                    />
-                    <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
-                      <span>{usedPercentage}% used</span>
-                      {resetAt && (
-                        <span>Resets {formatConsumptionDate(resetAt)}</span>
-                      )}
-                    </div>
-                    <div className="flex flex-col justify-between gap-4 border-t border-border pt-4 sm:flex-row sm:items-center">
-                      <div className="flex min-w-0 flex-col gap-1 text-sm text-foreground">
+                    {creditUsage && (
+                      <Chip
+                        size="mini"
+                        color={
+                          creditUsageDisplayTarget === "on_target"
+                            ? "highlight"
+                            : "warning"
+                        }
+                        label={
+                          creditUsageDisplayTarget === "on_target"
+                            ? "On target"
+                            : "Off target"
+                        }
+                      />
+                    )}
+                  </div>
+                  <CreditPoolProgressBar
+                    projectedPercentage={projectedPercentage}
+                    target={creditUsageDisplayTarget}
+                    usedPercentage={usedPercentage}
+                  />
+                  <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
+                    <span>{usedPercentage}% used</span>
+                    {resetAt && (
+                      <span>Resets {formatConsumptionDate(resetAt)}</span>
+                    )}
+                  </div>
+                </>
+              ) : null}
+              <div className="flex flex-col justify-between gap-4 border-t border-border pt-4 sm:flex-row sm:items-center">
+                <div className="flex min-w-0 flex-1 flex-col gap-1 text-sm text-foreground">
+                  {!isOverviewError &&
+                    consumptionOverview !== null &&
+                    (creditUsage !== null || hasPool) && (
+                      <>
                         {creditUsageDisplayTarget === "on_target" ? (
                           <span>
                             At your current rate, you have enough credits to
@@ -1225,11 +1234,11 @@ export function UsagePage() {
                             {formatCredits(overageCredits)} overage credits
                           </span>
                         )}
-                      </div>
-                      {topUpButton}
-                    </div>
-                  </>
-                )}
+                      </>
+                    )}
+                </div>
+                {topUpButton}
+              </div>
             </div>
           </Page.Vertical>
         ) : null}
