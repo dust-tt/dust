@@ -203,15 +203,15 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
         .string()
         .optional()
         .describe(
-          "The current Pod ID from the activation context. Use this for the current user's own work areas; otherwise pass targetUserIds."
+          "The current Pod ID from the activation context. Use this for the current user's own work areas; otherwise pass podIds."
         ),
-      targetUserIds: z
+      podIds: z
         .array(z.string())
         .min(1)
         .max(100)
         .optional()
         .describe(
-          "Stable IDs of active workspace members. Only workspace admins may use this during delegated work-area curation; otherwise pass podId."
+          "Pod IDs (space sIds) of workspace members' Learning Spaces. Only workspace admins may use this during delegated work-area curation; otherwise pass podId."
         ),
       status: z
         .enum(["suggested", "dismissed"])
@@ -230,8 +230,8 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
     name: "create_work_areas",
     description:
       "Create work-area maps in one call. For the current user, pass podId and " +
-      "one assignment without targetUserIds. During admin-led curation, omit " +
-      "podId and pass targetUserIds on every assignment; a shared assignment " +
+      "one assignment without podIds. During admin-led curation, omit " +
+      "podId and pass podIds on every assignment; a shared assignment " +
       "applies the same approved map to a cohort while storing independent rows.",
     schema: {
       podId: z
@@ -243,12 +243,12 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
       assignments: z
         .array(
           z.object({
-            targetUserIds: z
+            podIds: z
               .array(z.string())
               .min(1)
               .optional()
               .describe(
-                "Active workspace member IDs that share this exact approved map. Required for delegated admin curation and omitted for the current user's own Pod."
+                "Pod IDs (space sIds) of the Learning Spaces that share this exact approved map. Required for delegated admin curation and omitted for the current user's own Pod."
               ),
             workAreas: z
               .array(WORK_AREA_INPUT_SCHEMA)

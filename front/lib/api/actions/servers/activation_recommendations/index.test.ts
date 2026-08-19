@@ -112,7 +112,7 @@ describe("activation recommendations work-area tools", () => {
     const pod = await createActivationPodForCaller(authenticator, workspace);
     const targetUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, targetUser, { role: "user" });
-    await createActivationPodForCaller(
+    const targetPod = await createActivationPodForCaller(
       await Authenticator.fromUserIdAndWorkspaceId(
         targetUser.sId,
         workspace.sId
@@ -124,7 +124,7 @@ describe("activation recommendations work-area tools", () => {
       {
         assignments: [
           {
-            targetUserIds: [targetUser.sId],
+            podIds: [targetPod.sId],
             workAreas: [
               {
                 title: "Weekly pipeline review",
@@ -157,12 +157,19 @@ describe("activation recommendations work-area tools", () => {
     const pod = await createActivationPodForCaller(authenticator, workspace);
     const targetUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, targetUser, { role: "user" });
+    const targetPod = await createActivationPodForCaller(
+      await Authenticator.fromUserIdAndWorkspaceId(
+        targetUser.sId,
+        workspace.sId
+      ),
+      workspace
+    );
 
     const result = await getCreateWorkAreasTool().handler(
       {
         assignments: [
           {
-            targetUserIds: [targetUser.sId],
+            podIds: [targetPod.sId],
             workAreas: [
               {
                 title: "Weekly pipeline review",
@@ -182,18 +189,17 @@ describe("activation recommendations work-area tools", () => {
     }
   });
 
-  it("rejects delegated writes for a user outside the workspace", async () => {
+  it("rejects a pod not found in this workspace", async () => {
     const { workspace, authenticator } = await createResourceTest({
       role: "admin",
     });
     const pod = await createActivationPodForCaller(authenticator, workspace);
-    const targetUser = await UserFactory.basic();
 
     const result = await getCreateWorkAreasTool().handler(
       {
         assignments: [
           {
-            targetUserIds: [targetUser.sId],
+            podIds: ["nonexistent-pod-sid"],
             workAreas: [
               {
                 title: "Weekly pipeline review",
@@ -209,9 +215,7 @@ describe("activation recommendations work-area tools", () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain(
-        "is not an active member of this workspace"
-      );
+      expect(result.error.message).toContain("Pod(s) not found");
     }
   });
 
@@ -232,7 +236,7 @@ describe("activation recommendations work-area tools", () => {
     await MembershipFactory.associate(workspace, exceptionUser, {
       role: "user",
     });
-    await Promise.all([
+    const [firstCohortPod, secondCohortPod, exceptionPod] = await Promise.all([
       createActivationPodForCaller(
         await Authenticator.fromUserIdAndWorkspaceId(
           firstCohortUser.sId,
@@ -260,7 +264,7 @@ describe("activation recommendations work-area tools", () => {
       {
         assignments: [
           {
-            targetUserIds: [firstCohortUser.sId, secondCohortUser.sId],
+            podIds: [firstCohortPod.sId, secondCohortPod.sId],
             workAreas: [
               {
                 title: "Pipeline management",
@@ -269,7 +273,7 @@ describe("activation recommendations work-area tools", () => {
             ],
           },
           {
-            targetUserIds: [exceptionUser.sId],
+            podIds: [exceptionPod.sId],
             workAreas: [
               {
                 title: "Renewal planning",
@@ -300,19 +304,26 @@ describe("activation recommendations work-area tools", () => {
     expect(exceptionRows).toMatchObject([{ title: "Renewal planning" }]);
   });
 
-  it("rejects a user appearing in multiple bulk assignments", async () => {
+  it("rejects a pod appearing in multiple bulk assignments", async () => {
     const { workspace, authenticator } = await createResourceTest({
       role: "admin",
     });
     const pod = await createActivationPodForCaller(authenticator, workspace);
     const targetUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, targetUser, { role: "user" });
+    const targetPod = await createActivationPodForCaller(
+      await Authenticator.fromUserIdAndWorkspaceId(
+        targetUser.sId,
+        workspace.sId
+      ),
+      workspace
+    );
 
     const result = await getCreateWorkAreasTool().handler(
       {
         assignments: [
           {
-            targetUserIds: [targetUser.sId],
+            podIds: [targetPod.sId],
             workAreas: [
               {
                 title: "Pipeline management",
@@ -321,7 +332,7 @@ describe("activation recommendations work-area tools", () => {
             ],
           },
           {
-            targetUserIds: [targetUser.sId],
+            podIds: [targetPod.sId],
             workAreas: [
               {
                 title: "Renewal planning",
@@ -337,9 +348,7 @@ describe("activation recommendations work-area tools", () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain(
-        "Each target user may appear in only one"
-      );
+      expect(result.error.message).toContain("Each pod may appear in only one");
     }
   });
 
@@ -350,12 +359,19 @@ describe("activation recommendations work-area tools", () => {
     const pod = await createActivationPodForCaller(authenticator, workspace);
     const targetUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, targetUser, { role: "user" });
+    const targetPod = await createActivationPodForCaller(
+      await Authenticator.fromUserIdAndWorkspaceId(
+        targetUser.sId,
+        workspace.sId
+      ),
+      workspace
+    );
 
     const result = await getCreateWorkAreasTool().handler(
       {
         assignments: [
           {
-            targetUserIds: [targetUser.sId],
+            podIds: [targetPod.sId],
             workAreas: [
               {
                 title: "Pipeline management",
@@ -442,7 +458,7 @@ describe("activation recommendations work-area tools", () => {
 
     const result = await getListWorkAreasTool().handler(
       {
-        targetUserIds: [firstTarget.sId, secondTarget.sId],
+        podIds: [firstTargetPod.sId, secondTargetPod.sId],
       },
       createTestExtra(authenticator, pod.sId)
     );
