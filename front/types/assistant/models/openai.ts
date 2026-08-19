@@ -527,8 +527,9 @@ export const GPT_5_6_TERRA_LONG_CONTEXT_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 64,
   largeModel: true,
   description:
-    "OpenAI's GPT 5.6 Terra model with its full 1.05M context window. Requests above 272k input tokens use OpenAI's long-context pricing.",
-  shortDescription: "GPT 5.6 Terra with its full context window.",
+    "OpenAI's GPT 5.6 Terra model with extended context window (up to 1M tokens).",
+  shortDescription:
+    "GPT 5.6 Terra with extended context window (up to 1M tokens).",
   isLegacy: false,
   isLatest: false,
   generationTokensCount: 128_000,
