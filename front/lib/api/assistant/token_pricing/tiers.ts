@@ -155,10 +155,10 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     high: "balanced",
   },
   "gpt-5.6-terra-long-context": {
-    none: "balanced",
-    light: "balanced",
-    medium: "balanced",
-    high: "balanced",
+    none: "premium",
+    light: "premium",
+    medium: "premium",
+    high: "premium",
   },
   "gpt-5.6-luna": {
     none: "cost_efficient",
