@@ -7,6 +7,9 @@ type SliderToggleProps = {
   disabled?: boolean;
   selected?: boolean;
   icon?: ComponentType<{ className?: string }>;
+  // Mutes the active track color, e.g. to signal a setting that is on but
+  // restricted (paired with `icon`) rather than a plain active toggle.
+  faded?: boolean;
 };
 
 const baseClasses = cn(
@@ -29,6 +32,7 @@ const hoverDarkenClasses = cn(
 const stateClasses = {
   idle: cn("bg-slider-toggle-bg-idle", hoverDarkenClasses),
   selected: cn("bg-highlight-400", hoverDarkenClasses),
+  selectedFaded: cn("bg-highlight-400/50", hoverDarkenClasses),
   disabled: cn(
     "bg-primary-200",
     "hover:bg-primary-200",
@@ -43,9 +47,14 @@ export function SliderToggle({
   className = "",
   selected = false,
   icon: Icon,
+  faded = false,
 }: SliderToggleProps) {
   const combinedStateClasses = cn(
-    selected ? stateClasses.selected : stateClasses.idle,
+    selected
+      ? faded
+        ? stateClasses.selectedFaded
+        : stateClasses.selected
+      : stateClasses.idle,
     disabled ? stateClasses.disabled : ""
   );
 
