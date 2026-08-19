@@ -153,14 +153,10 @@ export function grantTypesForVerb(
 export function verbsForGrantAtLevels(
   grantType: ConcreteGrantType,
   resourceType: ConcreteResourceType,
-  levels: GrantLevel[]
+  levels: ReadonlySet<GrantLevel>
 ): GrantVerb[] {
   const role = ROLE_REGISTRY[resourceType]?.[grantType];
-  if (!role) {
-    return [];
-  }
-  const levelSet = new Set(levels);
-  if (!role.levels.some((level) => levelSet.has(level))) {
+  if (!role || !role.levels.some((level) => levels.has(level))) {
     return [];
   }
   return [...role.verbs];
@@ -169,12 +165,11 @@ export function verbsForGrantAtLevels(
 // Every verb valid at any of `levels` on `resourceType` — used to expand a "*" grant.
 function allVerbsForResourceAtLevels(
   resourceType: ConcreteResourceType,
-  levels: GrantLevel[]
+  levels: ReadonlySet<GrantLevel>
 ): GrantVerb[] {
-  const levelSet = new Set(levels);
   const verbs = new Set<GrantVerb>();
   for (const role of Object.values(ROLE_REGISTRY[resourceType] ?? {})) {
-    if (role.levels.some((level) => levelSet.has(level))) {
+    if (role.levels.some((level) => levels.has(level))) {
       for (const verb of role.verbs) {
         verbs.add(verb);
       }
@@ -188,9 +183,10 @@ export function allWorkspacePermissions(): WorkspacePermissions {
   const permissions = emptyWorkspacePermissions();
   for (const resourceType of GROUP_PERMISSION_RESOURCE_TYPES) {
     if (isConcreteResourceType(resourceType)) {
-      permissions[resourceType] = allVerbsForResourceAtLevels(resourceType, [
-        "type",
-      ]);
+      permissions[resourceType] = allVerbsForResourceAtLevels(
+        resourceType,
+        new Set<GrantLevel>(["type"])
+      );
     }
   }
   return permissions;
@@ -310,10 +306,11 @@ export class GroupPermissions {
 
     for (const { grantType, resourceType, resourceId } of grants) {
       // A whole-type grant applies both to the type itself and to all its instances.
-      const levels: GrantLevel[] =
+      const levels = new Set<GrantLevel>(
         resourceId === WHOLE_TYPE_RESOURCE_ID
           ? ["type", "instance"]
-          : ["instance"];
+          : ["instance"]
+      );
       const resourceTypes =
         resourceType === "*"
           ? GROUP_PERMISSION_RESOURCE_TYPES.filter(isConcreteResourceType)

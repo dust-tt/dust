@@ -1,3 +1,4 @@
+import type { GrantLevel } from "@app/lib/resources/group_permission_registry";
 import {
   assertValidGrant,
   GroupPermissions,
@@ -244,12 +245,15 @@ describe("ROLE_REGISTRY invariants", () => {
 
 describe("verbsForGrantAtLevels", () => {
   it("matches a role against any supplied level", () => {
-    expect(
-      verbsForGrantAtLevels("create", "agent", ["instance", "type"])
-    ).toEqual(["create"]);
-    expect(
-      verbsForGrantAtLevels("editor", "agent", ["type", "instance"])
-    ).toEqual(["read", "write"]);
+    const levels = new Set<GrantLevel>(["instance", "type"]);
+
+    expect(verbsForGrantAtLevels("create", "agent", levels)).toEqual([
+      "create",
+    ]);
+    expect(verbsForGrantAtLevels("editor", "agent", levels)).toEqual([
+      "read",
+      "write",
+    ]);
   });
 });
 
