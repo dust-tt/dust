@@ -122,6 +122,8 @@ export const PodMainPage = () => {
               setPodUiPreferences={setPodUiPreferences}
               mutatePodInfo={mutatePodInfo}
               clientSideMCPServerIds={clientSideMCPServerIds}
+              // The extension exposes no Apps tab trigger.
+              hasApps={false}
             />
           </GenerationContextProvider>
         </BlockedActionsProvider>
