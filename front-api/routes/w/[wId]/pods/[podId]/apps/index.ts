@@ -18,12 +18,24 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 import { withSpace } from "@front-api/middlewares/with_space";
 
 import importRoute from "./import";
 
 // Mounted under /api/w/:wId/pods/:podId/apps.
 const app = workspaceApp();
+
+// Pod Apps sit on top of Pod Functions, so both flags are required — same gate as the Apps tab.
+app.use(
+  "*",
+  withFeatureFlag("sandbox_functions", {
+    message: "Sandbox Functions are not enabled for this workspace.",
+  }),
+  withFeatureFlag("pod_applications", {
+    message: "Pod Apps are not enabled for this workspace.",
+  })
+);
 
 app.route("/import", importRoute);
 
