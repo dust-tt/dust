@@ -9,8 +9,8 @@ import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
+  StoredTriggerExecutionMode,
   TriggerConfigurationType,
-  TriggerExecutionMode,
   TriggerKind,
   TriggerOrigin,
   TriggerStatus,
@@ -39,7 +39,7 @@ export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
    */
   declare webhookSourceViewId: ForeignKey<WebhookSourcesViewModel["id"]> | null;
   declare executionPerDayLimitOverride: number | null;
-  declare executionMode: TriggerExecutionMode | null;
+  declare executionMode: StoredTriggerExecutionMode | null;
 
   /**
    * We use the sId, because it's static between an agent versions,
