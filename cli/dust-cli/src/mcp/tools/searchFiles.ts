@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { concurrentExecutor } from "../../utils/concurrentExecutor.js";
 import { normalizeError } from "../../utils/errors.js";
+import { resolveInSandbox } from "../../utils/sandbox.js";
 import type { McpTool } from "../types/tools.js";
 
 export class SearchFilesTool implements McpTool {
@@ -56,10 +57,24 @@ export class SearchFilesTool implements McpTool {
     limit = 100,
     sort_by_modified = false,
   }: z.infer<typeof this.inputSchema>) {
+    const directoryRes = resolveInSandbox(directory);
+    if (directoryRes.isErr()) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Error: ${directoryRes.error.message}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+    const searchDirectory = directoryRes.value;
+
     try {
       // Use glob for proper glob pattern support.
       const globOptions = {
-        cwd: directory,
+        cwd: searchDirectory,
         nocase: !case_sensitive,
         ignore: [
           "**/node_modules/**",
@@ -87,7 +102,7 @@ export class SearchFilesTool implements McpTool {
 
       // Get full paths and file stats if sorting by modification time.
       let fileResults = files.map((file) => {
-        const fullPath = path.resolve(directory, file);
+        const fullPath = path.resolve(searchDirectory, file);
         return { path: fullPath, relativePath: file };
       });
 
@@ -119,7 +134,7 @@ export class SearchFilesTool implements McpTool {
 
       const resultText = `Found ${
         files.length
-      } file(s) matching ${pattern} within ${directory}${
+      } file(s) matching ${pattern} within ${searchDirectory}${
         files.length > limit ? ` (showing first ${limit})` : ""
       }${
         sort_by_modified ? " (sorted by modification time)" : ""
