@@ -857,9 +857,6 @@ export function UsagePage() {
     return null;
   }
 
-  const isAwuPoolSummaryReady =
-    !isAwuPoolSummaryLoading && !isAwuPoolSummaryError;
-  const showPoolSection = !isAwuPoolSummaryReady || hasPool;
   const topUpButton = isWorkspaceAdmin ? (
     <Button
       label="Top up"
@@ -1089,7 +1086,8 @@ export function UsagePage() {
           />
         )}
 
-        {isAnalyticsConsumptionEnabled && showPoolSection && (
+        {isAnalyticsConsumptionEnabled &&
+        (isAwuPoolSummaryLoading || !!isAwuPoolSummaryError || hasPool) ? (
           <Page.Vertical gap="none" align="stretch">
             <Page.H variant="h6">Credit Pool</Page.H>
             <div className="flex flex-col gap-2 pt-4">
@@ -1110,7 +1108,7 @@ export function UsagePage() {
                   <Spinner />
                 </div>
               )}
-              {!isAwuPoolSummaryReady &&
+              {(isAwuPoolSummaryLoading || isAwuPoolSummaryError) &&
                 !consumptionOverview &&
                 topUpButton && (
                   <div className="flex justify-end">{topUpButton}</div>
@@ -1199,9 +1197,10 @@ export function UsagePage() {
                 )}
             </div>
           </Page.Vertical>
-        )}
+        ) : null}
 
-        {!isAnalyticsConsumptionEnabled && showPoolSection && (
+        {!isAnalyticsConsumptionEnabled &&
+        (isAwuPoolSummaryLoading || !!isAwuPoolSummaryError || hasPool) ? (
           <Page.Vertical gap="xs" align="stretch">
             <Page.H variant="h4">Workspace credit pool</Page.H>
 
@@ -1223,7 +1222,7 @@ export function UsagePage() {
               </div>
             )}
 
-            {isAwuPoolSummaryReady && (
+            {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
               <>
                 <div className="flex items-baseline gap-1">
                   <span className="heading-mono-4xl text-foreground">
@@ -1267,7 +1266,7 @@ export function UsagePage() {
               </>
             )}
           </Page.Vertical>
-        )}
+        ) : null}
 
         <Tabs defaultValue="members">
           <TabsList className="mb-4">
