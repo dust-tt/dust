@@ -187,7 +187,11 @@ function AgentBreakdown({ agent }: AgentBreakdownProps) {
     <section className="space-y-4">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <div className="flex min-w-0 items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 items-center gap-1">
+            <CollapsibleTrigger
+              aria-label={`${isOpen ? "Collapse" : "Expand"} credit details for ${agent.name}`}
+              className="size-11 shrink-0 justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-ring"
+            />
             <Avatar
               name={agent.name}
               visual={agent.pictureUrl ?? undefined}
@@ -197,15 +201,9 @@ function AgentBreakdown({ agent }: AgentBreakdownProps) {
               {agent.name}
             </h3>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
-            <span className="text-base text-muted-foreground">
-              {formatCreditValue(agent.billedCredits)}
-            </span>
-            <CollapsibleTrigger
-              aria-label={`${isOpen ? "Collapse" : "Expand"} credit details for ${agent.name}`}
-              className="size-11 shrink-0 justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </div>
+          <span className="shrink-0 text-base text-muted-foreground">
+            {formatCreditValue(agent.billedCredits)}
+          </span>
         </div>
         <CollapsibleContent className="pt-4">
           <ToolBreakdownCards
