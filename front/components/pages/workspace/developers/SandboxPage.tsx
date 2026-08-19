@@ -1,7 +1,6 @@
 import { EnvironmentSection } from "@app/components/pages/workspace/developers/sections/EnvironmentSection";
 import { NetworkSection } from "@app/components/pages/workspace/developers/sections/NetworkSection";
 import { AgentRequestedDomainsSetting } from "@app/components/sandbox/AgentRequestedDomainsSetting";
-import { MultiPodEnvVarsSection } from "@app/components/sandbox/MultiPodEnvVarsSection";
 import { MultiPodNetworkSection } from "@app/components/sandbox/MultiPodNetworkSection";
 import type { SandboxScopeSelection } from "@app/components/sandbox/SandboxScopeSelector";
 import { SandboxScopeSelector } from "@app/components/sandbox/SandboxScopeSelector";
@@ -37,51 +36,44 @@ export function SandboxPage() {
 
   const scopeCount = (selection.includeWorkspace ? 1 : 0) + selectedPods.length;
 
-  const workspaceView = (
-    <>
-      <NetworkSection />
-      <EnvironmentSection targetablePods={podOptions} />
-    </>
-  );
+  // Only Pods read their own policy files; workspace-only leaves this null so
+  // the multi-pod read is skipped and only the workspace baseline is shown.
+  const podSelection =
+    selectedPods.length > 0
+      ? { kind: "pods" as const, podIds: selectedPods.map((pod) => pod.sId) }
+      : null;
 
-  const renderScopedContent = () => {
-    if (scopeCount === 0) {
-      return (
+  // Network is scope-aware (Workspace and/or Pods), so the scope selector lives
+  // with it. Environment variables stay workspace-scoped for now (with the
+  // per-row override-in-Pods action).
+  const renderNetwork = () => (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-4">
+        <div className="heading-xl text-foreground">Network</div>
+        <div className="shrink-0">
+          <SandboxScopeSelector
+            pods={pods}
+            selection={selection}
+            onChange={setSelection}
+            isLoading={isPodsLoading}
+          />
+        </div>
+      </div>
+      {scopeCount === 0 ? (
         <ContentMessage variant="info" icon={InfoCircle} size="lg">
-          Select the Workspace or one or more Pods to view and edit Computer
-          settings.
+          Select the Workspace or one or more Pods to view and edit network
+          access.
         </ContentMessage>
-      );
-    }
-
-    // The workspace on its own uses the single-scope editor; any Pod in the
-    // selection switches to the multi-scope editor.
-    if (selection.includeWorkspace && selectedPods.length === 0) {
-      return workspaceView;
-    }
-
-    const podSelection = {
-      kind: "pods" as const,
-      podIds: selectedPods.map((pod) => pod.sId),
-    };
-    return (
-      <>
+      ) : (
         <MultiPodNetworkSection
           owner={owner}
           includeWorkspace={selection.includeWorkspace}
           selection={podSelection}
           selectedPods={selectedPods}
         />
-        <MultiPodEnvVarsSection
-          owner={owner}
-          includeWorkspace={selection.includeWorkspace}
-          selection={podSelection}
-          selectedPods={selectedPods}
-          allPods={podOptions}
-        />
-      </>
-    );
-  };
+      )}
+    </div>
+  );
 
   const renderBody = () => {
     if (!isAdmin) {
@@ -102,33 +94,10 @@ export function SandboxPage() {
     return (
       <>
         <AgentRequestedDomainsSetting />
-        {canAdministratePods ? (
-          <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex min-w-0 flex-col">
-                <div className="heading-xl text-foreground">
-                  Scope-specific settings
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Network access and environment variables for the selected
-                  scopes. Edits apply to each selected scope; Workspace settings
-                  are inherited by all Pods.
-                </div>
-              </div>
-              <div className="shrink-0">
-                <SandboxScopeSelector
-                  pods={pods}
-                  selection={selection}
-                  onChange={setSelection}
-                  isLoading={isPodsLoading}
-                />
-              </div>
-            </div>
-            {renderScopedContent()}
-          </div>
-        ) : (
-          workspaceView
-        )}
+        {canAdministratePods ? renderNetwork() : <NetworkSection />}
+        <EnvironmentSection
+          targetablePods={canAdministratePods ? podOptions : undefined}
+        />
       </>
     );
   };

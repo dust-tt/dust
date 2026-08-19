@@ -33,7 +33,9 @@ import { useMemo, useState } from "react";
 
 interface MultiPodNetworkSectionProps {
   owner: LightWorkspaceType;
-  selection: SandboxPodSelection;
+  // null when no Pods are selected (workspace-only): the pod policies aren't
+  // read and only the workspace baseline is shown.
+  selection: SandboxPodSelection | null;
   // The pods `selection` resolves to, for names and counts.
   selectedPods: PodType[];
   // When true, the workspace baseline is one of the scopes being edited.
