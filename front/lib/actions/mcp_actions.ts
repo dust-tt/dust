@@ -13,6 +13,7 @@ import {
   DEFAULT_MCP_REQUEST_TIMEOUT_MS,
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
+  MCP_LIST_TOOLS_TIMEOUT_MS,
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
 import type {
@@ -1322,7 +1323,9 @@ async function listToolsForClientSideMCPServer(
 
   // Fetch all tools, handling pagination if supported by the MCP server.
   do {
-    const { tools, nextCursor } = await mcpClient.listTools();
+    const { tools, nextCursor } = await mcpClient.listTools(undefined, {
+      timeout: MCP_LIST_TOOLS_TIMEOUT_MS,
+    });
 
     nextPageCursor = nextCursor;
     const dustMetaByTool = new Map(
@@ -1364,7 +1367,9 @@ export async function listToolsForServerSideMCPServer(
 
   // Fetch all tools, handling pagination if supported by the MCP server.
   do {
-    const { tools, nextCursor } = await mcpClient.listTools();
+    const { tools, nextCursor } = await mcpClient.listTools(undefined, {
+      timeout: MCP_LIST_TOOLS_TIMEOUT_MS,
+    });
     nextPageCursor = nextCursor;
     allToolsRaw = [
       ...allToolsRaw,
