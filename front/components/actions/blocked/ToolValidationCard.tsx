@@ -15,6 +15,13 @@ import {
   Card,
   Check,
   Checkbox,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
   Label,
   PieChart01,
   XClose,
@@ -72,6 +79,66 @@ interface ToolValidationCardProps {
   onValidate: (approved: MCPValidationOutputType) => Promise<boolean>;
 }
 
+interface ToolValidationDetailsDialogProps {
+  validationRequest: ToolValidationRequest;
+  approvalTitle: string;
+  displayLabel: string;
+  icon: React.ComponentProps<typeof Avatar>["icon"];
+  currentUser: UserType;
+  owner: LightWorkspaceType;
+  conversationId?: string | null;
+  isSubmitting: boolean;
+}
+
+function ToolValidationDetailsDialog({
+  validationRequest,
+  approvalTitle,
+  displayLabel,
+  icon,
+  currentUser,
+  owner,
+  conversationId,
+  isSubmitting,
+}: ToolValidationDetailsDialogProps) {
+  const toolOverride = getToolOverride(validationRequest.metadata);
+
+  return (
+    <Dialog defaultOpen={toolOverride?.detailsOpen ?? false}>
+      <DialogTrigger asChild>
+        <Button
+          label="Review details"
+          variant="ghost"
+          size="sm"
+          className="min-h-11 sm:min-h-0"
+          disabled={isSubmitting}
+        />
+      </DialogTrigger>
+      <DialogContent
+        size="lg"
+        className="gap-4 p-5"
+        preventAutoFocusOnClose={false}
+      >
+        <DialogHeader className="gap-1 p-0">
+          <DialogTitle visual={<Avatar icon={icon} size="sm" />}>
+            {approvalTitle}
+          </DialogTitle>
+          <DialogDescription className="pl-11">
+            {displayLabel}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogContainer className="p-0">
+          <ToolValidationDetails
+            blockedAction={validationRequest}
+            user={currentUser}
+            owner={owner}
+            conversationId={conversationId}
+          />
+        </DialogContainer>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function ToolValidationCard({
   validationRequest,
   approvalProgress,
@@ -85,9 +152,11 @@ export function ToolValidationCard({
   onValidate,
 }: ToolValidationCardProps) {
   const [neverAskAgain, setNeverAskAgain] = useState(false);
+  const toolOverride = getToolOverride(validationRequest.metadata);
   const [submittingDecision, setSubmittingDecision] = useState<
     "approved" | "rejected" | null
   >(null);
+  const isSubmitting = isValidating || submittingDecision !== null;
 
   const canCurrentUserRespond = canCurrentUserRespondToParentUserMessage({
     parentUserId: validationRequest.userId,
@@ -112,11 +181,15 @@ export function ToolValidationCard({
     }
   };
 
-  const toolOverride = getToolOverride(validationRequest.metadata);
-  const isSubmitting = isValidating || submittingDecision !== null;
   const {
     metadata: { agentName, mcpServerName },
   } = validationRequest;
+  const approvalTitle = `Allow ${agentName} to use ${asDisplayName(mcpServerName)}?`;
+  const displayLabel =
+    validationRequest.metadata.displayLabel ??
+    asDisplayName(validationRequest.metadata.toolName);
+  const hasDetails =
+    canCurrentUserRespond && Object.keys(validationRequest.inputs).length > 0;
 
   return (
     <Card
@@ -129,28 +202,30 @@ export function ToolValidationCard({
         <div className="flex min-w-0 items-center gap-3">
           <Avatar icon={icon ?? PieChart01} size="sm" />
           <div className="heading-base min-w-0 wrap-break-word">
-            {`Allow ${agentName} to use ${asDisplayName(mcpServerName)}?`}
+            {approvalTitle}
           </div>
         </div>
-        {approvalProgress && <ApprovalProgress {...approvalProgress} />}
+        <div className="flex shrink-0 items-center gap-2">
+          {approvalProgress && <ApprovalProgress {...approvalProgress} />}
+          {hasDetails && (
+            <ToolValidationDetailsDialog
+              validationRequest={validationRequest}
+              approvalTitle={approvalTitle}
+              displayLabel={displayLabel}
+              icon={icon ?? PieChart01}
+              currentUser={currentUser}
+              owner={owner}
+              conversationId={conversationId}
+              isSubmitting={isSubmitting}
+            />
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-4 px-5 py-4">
-        <div className="text-base">
-          {validationRequest.metadata.displayLabel ??
-            asDisplayName(validationRequest.metadata.toolName)}
-        </div>
+        <div className="text-base">{displayLabel}</div>
         {canCurrentUserRespond ? (
           <>
-            {Object.keys(validationRequest.inputs).length > 0 && (
-              <ToolValidationDetails
-                blockedAction={validationRequest}
-                user={currentUser}
-                owner={owner}
-                conversationId={conversationId}
-                defaultExpanded={toolOverride?.detailsExpanded}
-              />
-            )}
             {errorMessage && (
               <div className="text-sm font-medium text-warning-800">
                 {errorMessage}
@@ -170,8 +245,7 @@ export function ToolValidationCard({
 
       {canCurrentUserRespond && (
         <div className="flex flex-col gap-3 px-4 pb-3 pt-2 sm:flex-row sm:items-center">
-          {(validationRequest.stake === "low" ||
-            validationRequest.stake === "medium") && (
+          {["low", "medium"].includes(validationRequest.stake ?? "") && (
             <Label
               htmlFor={`never-ask-again-${validationRequest.actionId}`}
               className="flex min-h-11 cursor-pointer items-center gap-2 px-1 sm:min-h-0"
