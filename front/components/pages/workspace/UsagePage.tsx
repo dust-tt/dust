@@ -162,13 +162,13 @@ function memberFromUpgradeRequest(
 }
 
 interface CreditPoolProgressBarProps {
-  elapsedPercentage: number;
+  projectedPercentage: number;
   target: "on_target" | "off_target" | null;
   usedPercentage: number;
 }
 
 function CreditPoolProgressBar({
-  elapsedPercentage,
+  projectedPercentage,
   target,
   usedPercentage,
 }: CreditPoolProgressBarProps) {
@@ -185,7 +185,7 @@ function CreditPoolProgressBar({
         className={`absolute inset-y-0 left-0 ${
           target === "off_target" ? "bg-warning-100" : "bg-highlight-100"
         }`}
-        style={{ width: `${elapsedPercentage}%` }}
+        style={{ width: `${projectedPercentage}%` }}
       />
       <div
         className={`absolute inset-y-0 left-0 ${
@@ -883,9 +883,13 @@ export function UsagePage() {
         )
       : 0);
 
-  const elapsedPercentage = consumptionOverview
+  const cycleElapsedPercentage = consumptionOverview
     ? cycleElapsedPercent(consumptionOverview.period)
-    : usedPercentage;
+    : 0;
+  const projectedPercentage =
+    cycleElapsedPercentage > 0
+      ? Math.min((usedPercentage / cycleElapsedPercentage) * 100, 100)
+      : usedPercentage;
 
   const resetAt =
     creditUsage?.status.resetAt ??
@@ -1170,7 +1174,7 @@ export function UsagePage() {
                       )}
                     </div>
                     <CreditPoolProgressBar
-                      elapsedPercentage={elapsedPercentage}
+                      projectedPercentage={projectedPercentage}
                       target={creditUsageDisplayTarget}
                       usedPercentage={usedPercentage}
                     />
