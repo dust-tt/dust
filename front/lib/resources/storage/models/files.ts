@@ -10,6 +10,7 @@ import {
   literal,
   Op,
 } from "@app/lib/resources/storage/data_types";
+import { FileSystemNodeModel } from "@app/lib/resources/storage/models/file_system_node";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
@@ -36,6 +37,9 @@ export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare mountFilePath: string | null;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
+  // The file system node holding this file's live source. For a Frame this is
+  // the published entry file. The id survives every move and rename.
+  declare fileSystemNodeId: ForeignKey<FileSystemNodeModel["id"]> | null;
 
   declare user: NonAttribute<UserModel>;
 }
@@ -112,6 +116,13 @@ FileModel.init(
         unique: true,
         where: { mountFilePath: { [Op.ne]: null } },
       },
+      // Leads with the node id: deleting a node scans files by this column
+      // alone, without a workspace in hand.
+      {
+        fields: ["fileSystemNodeId"],
+        concurrently: true,
+        where: { fileSystemNodeId: { [Op.ne]: null } },
+      },
     ],
   }
 );
@@ -120,6 +131,17 @@ UserModel.hasMany(FileModel, {
   onDelete: "RESTRICT",
 });
 FileModel.belongsTo(UserModel);
+// RESTRICT: removing a node while a file still points at it fails. Deleting the
+// file record is a decision with consequences of its own (shares, grants,
+// published bundles), so the caller must deal with the file first rather than
+// have the binding silently disappear.
+FileSystemNodeModel.hasMany(FileModel, {
+  foreignKey: { name: "fileSystemNodeId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+FileModel.belongsTo(FileSystemNodeModel, {
+  foreignKey: { name: "fileSystemNodeId", allowNull: true },
+});
 
 /**
  * Shared files logic.
