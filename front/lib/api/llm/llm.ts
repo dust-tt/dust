@@ -271,6 +271,8 @@ export abstract class LLM<
           continue;
         }
 
+        const { tokenUsage, ...rest } = buffer.currentOutput;
+
         // Logging before it gets stopped and retried downstream
         if (currentEvent.type === "error") {
           // Temporary: track LLM error metric
@@ -298,18 +300,45 @@ export abstract class LLM<
           // Temporary: track LLM success metric
           getStatsDClient().increment("llm_success.count", 1, metricTags);
 
-          logger.info(
-            {
-              llmEventType: "success",
-              router: this.router,
-              modelId: this.modelId,
-              inferenceProvider: this.metadata.inferenceProvider,
-              region: this.metadata.region,
-              context: this.context,
-              traceId: this.traceId,
-            },
-            "LLM Success"
-          );
+          const logContext = {
+            router: this.router,
+            modelId: this.modelId,
+            inferenceProvider: this.metadata.inferenceProvider,
+            region: this.metadata.region,
+            context: this.context,
+            traceId: this.traceId,
+          };
+
+          if (tokenUsage) {
+            logger.info(
+              { llmEventType: "success", ...logContext },
+              "LLM Success"
+            );
+          } else {
+            getStatsDClient().increment(
+              "llm_success_without_usage.count",
+              1,
+              metricTags
+            );
+            this.generation.updateTrace({
+              tags: ["success_without_usage:true"],
+            });
+            this.generation.update({
+              level: "WARNING",
+              statusMessage:
+                "LLM completed successfully without reporting token usage.",
+            });
+            logger.warn(
+              {
+                llmEventType: "success_without_usage",
+                ...logContext,
+                outputContentLength: rest.content?.length ?? 0,
+                reasoningLength: rest.reasoning?.length ?? 0,
+                toolCallCount: rest.toolCalls?.length ?? 0,
+              },
+              "LLM Success without usage"
+            );
+          }
         }
 
         const durationMs = Date.now() - startTime;
@@ -317,8 +346,6 @@ export abstract class LLM<
         buffer
           .writeToGCS({ durationMs, startTime, timeToFirstEventMs })
           .catch(() => {});
-
-        const { tokenUsage, ...rest } = buffer.currentOutput;
 
         this.generation.update({
           output: { ...rest },

@@ -1,6 +1,7 @@
 import { getBatchLLM, getStreamLLM } from "@app/lib/api/llm";
 import { LLMRunLifecycle } from "@app/lib/api/llm/run_lifecycle";
 import { createLLMTraceId } from "@app/lib/api/llm/traces/buffer";
+import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { DustOpenAIGptFiveDotFiveEuropeOpenAIResponsesBatch } from "@app/lib/llms/batch/endpoints/openai_gpt_five_dot_five_eu_openai_responses";
 import { DustNoopNoopGlobalNoopStream } from "@app/lib/llms/stream/endpoints/noop_noop_global_noop";
@@ -9,12 +10,18 @@ import { DustOpenAIGptFiveDotFiveGlobalOpenAIResponsesStream } from "@app/lib/ll
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { getStatsDClient } from "@app/lib/utils/statsd";
+import logger from "@app/logger/logger";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import {
   GPT_5_6_LUNA_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 class ThrowingNoopStream extends DustNoopNoopGlobalNoopStream {
   override async *streamRaw(): AsyncGenerator<string> {
@@ -64,10 +71,12 @@ function makeStreamParameters(content = "hello"): LLMStreamParameters {
 
 function makeNoopLLM(
   auth: Awaited<ReturnType<typeof createResourceTest>>["authenticator"],
-  endpoint: typeof DustNoopNoopGlobalNoopStream = DustNoopNoopGlobalNoopStream
+  endpoint: typeof DustNoopNoopGlobalNoopStream = DustNoopNoopGlobalNoopStream,
+  context?: LLMTraceContext
 ) {
   const llm = getStreamLLM(auth, {
     credentials: {},
+    context,
     modelInfo: { endpoint, temperature: 0 },
   });
   if (!llm) {
@@ -233,6 +242,36 @@ describe("endpoint billing metadata", () => {
 });
 
 describe("non-batch LLM run persistence", () => {
+  it("signals a successful stream that reports no usage", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const warn = vi.spyOn(logger, "warn").mockImplementation(() => {});
+    const increment = vi
+      .spyOn(getStatsDClient(), "increment")
+      .mockImplementation(() => {});
+    const llm = makeNoopLLM(auth, DustNoopNoopGlobalNoopStream, {
+      operationType: "agent_conversation",
+      conversationId: generateRandomModelSId(),
+      workspaceId: auth.getNonNullableWorkspace().sId,
+    });
+
+    for await (const _event of llm.stream(makeStreamParameters())) {
+      // Consume the stream fully so it reaches its terminal success event.
+    }
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        llmEventType: "success_without_usage",
+        traceId: llm.getTraceId(),
+      }),
+      "LLM Success without usage"
+    );
+    expect(increment).toHaveBeenCalledWith(
+      "llm_success_without_usage.count",
+      1,
+      expect.any(Array)
+    );
+  });
+
   it("finalizes usage from the provider stream", async () => {
     const { authenticator: auth } = await createResourceTest({});
     const llm = makeNoopLLM(auth, TokenUsageNoopStream);
