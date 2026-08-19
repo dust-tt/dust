@@ -36,9 +36,13 @@ vi.mock("@app/lib/metronome/user_block", () => ({
   setUserCreditState: mockSetUserCreditState,
 }));
 
-vi.mock("@app/lib/utils/cache", () => ({
-  invalidateCacheAfterCommit: mockInvalidateCacheAfterCommit,
-}));
+vi.mock("@app/lib/utils/cache", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/lib/utils/cache")>();
+  return {
+    ...actual,
+    invalidateCacheAfterCommit: mockInvalidateCacheAfterCommit,
+  };
+});
 
 vi.mock("@app/logger/logger", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },

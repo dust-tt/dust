@@ -2184,6 +2184,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   // where the space's groups are listed inline and membership decides. Remove the fallback (and the
   // switch) once the table is trusted.
   private hasSpacePermission(auth: Authenticator, verb: GrantVerb): boolean {
+    auth.shadowComparePermission(
+      verb,
+      this.legacyAcls(),
+      this.getAccessControlLists(auth),
+      {}
+    );
+
     if (isLegacyAclsEnabled()) {
       return auth.hasPermissionForAcls(verb, this.legacyAcls());
     }
