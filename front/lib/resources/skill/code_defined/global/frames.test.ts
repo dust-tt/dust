@@ -24,7 +24,7 @@ const FILES_FIRST_MARKER =
 
 // Markers unique to each Pod-only section.
 const POD_APP_MARKER = "### Frames In A Pod";
-const POD_APP_UPDATE_MARKER = "#### Changing An Existing Pod App";
+const POD_APP_UPDATE_MARKER = "#### Changing An Existing Pod Frame";
 const POD_STORAGE_MARKER = "### Where The Frame's Data Lives";
 
 const FILES_EDIT_TOOL = getPrefixedToolName(

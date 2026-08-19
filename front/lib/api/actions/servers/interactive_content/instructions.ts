@@ -162,11 +162,11 @@ ${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
 
 From then on, edit the source at its Pod path and publish it again. Anything the Frame imports relatively must live under its folder, which is the bundling root.
 
-#### Changing An Existing Pod App
+#### Changing An Existing Pod Frame
 
-A Pod app you are asked to change was usually built in an earlier conversation, so you know neither its source path nor its file id, and publishing needs both. Never recreate it, and never guess either value: read them off the Pod listing.
+A Pod frame you are asked to change was usually built in an earlier conversation, so you know neither its source path nor its file id, and publishing needs both. Never recreate it, and never guess either value: read them off the Pod listing.
 
-1. List the Pod file system with \`${FILES_LIST_TOOL}\` (\`scope: { type: "pod" }\`). Every Frame is listed as its Pod path followed by \`[id: fil_...]\`, which is its \`file_id\`. Pick the entry whose folder matches the app the user named.
+1. List the Pod file system with \`${FILES_LIST_TOOL}\` (\`scope: { type: "pod" }\`). Every Frame is listed as its Pod path followed by \`[id: fil_...]\`, which is its \`file_id\`. Find the frame you're after.
 2. Edit that source in place as described under "Updating Existing Files" below.
 3. Publish with \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\`, passing the \`path\` and \`file_id\` exactly as listed in step 1.
 `;
