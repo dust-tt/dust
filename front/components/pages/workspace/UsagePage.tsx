@@ -1168,7 +1168,7 @@ export function UsagePage() {
                     <LoadingBlock className="h-5 w-16 rounded-full" />
                   </div>
                   <LoadingBlock className="h-2 w-full rounded-xs" />
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="mt-2 flex items-center justify-between gap-4">
                     <LoadingBlock className="h-5 w-12" />
                     <LoadingBlock className="h-5 w-20" />
                   </div>
@@ -1216,7 +1216,7 @@ export function UsagePage() {
                     target={creditUsageDisplayTarget}
                     usedPercentage={usedPercentage}
                   />
-                  <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
+                  <div className="mt-2 flex items-center justify-between gap-4 text-sm text-muted-foreground">
                     <span>{usedPercentage}% used</span>
                     {resetAt && (
                       <span>Resets {formatConsumptionDate(resetAt)}</span>
