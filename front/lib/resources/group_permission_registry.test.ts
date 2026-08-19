@@ -3,6 +3,7 @@ import {
   GroupPermissions,
   grantTypesForVerb,
   ROLE_REGISTRY,
+  verbsForGrantAtLevels,
 } from "@app/lib/resources/group_permission_registry";
 import type { GrantVerb } from "@app/types/group_permissions";
 import {
@@ -238,6 +239,17 @@ describe("ROLE_REGISTRY invariants", () => {
         expect(roleNames.has(grantType)).toBe(true);
       }
     }
+  });
+});
+
+describe("verbsForGrantAtLevels", () => {
+  it("matches a role against any supplied level", () => {
+    expect(
+      verbsForGrantAtLevels("create", "agent", ["instance", "type"])
+    ).toEqual(["create"]);
+    expect(
+      verbsForGrantAtLevels("editor", "agent", ["type", "instance"])
+    ).toEqual(["read", "write"]);
   });
 });
 
