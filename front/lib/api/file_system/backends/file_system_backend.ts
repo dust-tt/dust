@@ -14,13 +14,9 @@ import type { Readable } from "stream";
 export type { FileSystemEntry } from "@app/types/api/file_system/types";
 
 /**
- * Identity of the node a write or mkdir touched. `nodeId` is the stable id that
- * survives every move and rename, so it is what a feature stores when it must
- * find the same file or directory again later. The GCS backend stores plain
- * objects with no node table and reports null.
- *
- * Server-side only: numeric ids never go to a client (SEC2), so this stays out
- * of the wire entry types on purpose.
+ * Identity of the node a write or mkdir touched. `nodeId` is the stable id that survives every move
+ * and rename, so it is what a feature stores when it must find the same file or directory again
+ * later. The GCS backend stores plain objects with no node table and reports null.
  */
 export type FileSystemNodeIdentity = { nodeId: number | null };
 
