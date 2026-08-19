@@ -5,7 +5,6 @@ import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useResolveAuthentication } from "@app/lib/swr/tool_actions";
 import type { OAuthProvider } from "@app/types/oauth/lib";
-import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 interface MCPServerPersonalAuthenticationRequiredProps {
@@ -58,10 +57,6 @@ export function MCPServerPersonalAuthenticationRequired({
     <PersonalAuthenticationCard
       triggeringUser={triggeringUser}
       currentUser={user}
-      actionLabel={
-        blockedAction.metadata.displayLabel ??
-        asDisplayName(blockedAction.metadata.toolName)
-      }
       mcpServerId={mcpServerId}
       owner={owner}
       provider={provider}

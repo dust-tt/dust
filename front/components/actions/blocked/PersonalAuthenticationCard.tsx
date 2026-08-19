@@ -23,7 +23,6 @@ interface PersonalAuthenticationCardProps {
   // The viewer looking at the card. Passed in rather than read from `AuthContext` because shared
   // frames render this card outside of any AuthProvider.
   currentUser: UserType;
-  actionLabel: string;
   mcpServerId: string;
   owner: LightWorkspaceType;
   provider: OAuthProvider;
@@ -36,7 +35,6 @@ interface PersonalAuthenticationCardProps {
 export function PersonalAuthenticationCard({
   triggeringUser,
   currentUser,
-  actionLabel,
   mcpServerId,
   owner,
   provider,
@@ -58,7 +56,7 @@ export function PersonalAuthenticationCard({
     Record<string, string>
   >({});
 
-  // Tracks whether the user abandoned (skipped) this action while a connection
+  // Tracks whether the user declined this action while a connection
   // attempt is still in flight, so the post-await "completed" branch does not
   // resolve an action that has already been denied.
   const cancelledRef = useRef<boolean>(false);
@@ -108,7 +106,7 @@ export function PersonalAuthenticationCard({
         return;
       }
 
-      // The user skipped while the connection attempt was still in flight: the
+      // The user declined while the connection attempt was still in flight: the
       // action was already denied, so do not resolve it as completed.
       if (cancelledRef.current) {
         return;
@@ -127,7 +125,7 @@ export function PersonalAuthenticationCard({
     }
   };
 
-  const onSkipClick = async () => {
+  const onDeclineClick = async () => {
     // Signal any in-flight connection attempt to abandon its completed branch.
     cancelledRef.current = true;
     setConnectionError(null);
@@ -135,11 +133,7 @@ export function PersonalAuthenticationCard({
     await onResolve("denied");
   };
 
-  const title = isConnected
-    ? "Connected successfully"
-    : `Connect your ${serverDisplayName ? `${serverDisplayName} ` : ""}account?`;
-  const sentenceActionLabel =
-    actionLabel.charAt(0).toLowerCase() + actionLabel.slice(1);
+  const title = isConnected ? "Connected successfully" : "Connect account";
 
   return (
     <Card
@@ -159,13 +153,11 @@ export function PersonalAuthenticationCard({
           </div>
         ) : (
           <>
-            <div className="flex flex-col gap-1">
-              <div className="text-base wrap-break-word text-muted-foreground">
-                Will be used for: {sentenceActionLabel}
-              </div>
-              <div className="text-sm wrap-break-word text-muted-foreground">
-                {`This connection will be used for ${serverDisplayName ?? "this service"} from now on.`}
-              </div>
+            <div className="text-base wrap-break-word">
+              {`Dust needs access to ${serverDisplayName ?? "this service"} to complete this action.`}
+            </div>
+            <div className="text-sm wrap-break-word text-muted-foreground">
+              {`Once connected, ${serverDisplayName ?? "this service"} will remain connected for future requests.`}
             </div>
             {canCurrentUserRespond ? (
               <>
@@ -205,16 +197,16 @@ export function PersonalAuthenticationCard({
         <div className="flex justify-end gap-2 px-4 pb-3 pt-2">
           <Button
             variant="outline"
-            label="Skip"
+            label="Decline"
             icon={XClose}
             // Not gated on `isConnecting`: the user must always be able to abandon
             // a connection attempt, even if it is (or appears) stuck.
             disabled={isResolving}
-            onClick={() => void onSkipClick()}
+            onClick={() => void onDeclineClick()}
           />
           <Button
             variant="highlight"
-            label={connectionError ? "Retry" : "Connect"}
+            label={`Connect ${serverDisplayName ?? "account"}`}
             icon={Check}
             disabled={
               isConnecting ||
