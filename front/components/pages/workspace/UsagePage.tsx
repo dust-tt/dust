@@ -857,8 +857,9 @@ export function UsagePage() {
     return null;
   }
 
-  const showPoolSection =
-    isAwuPoolSummaryLoading || !!isAwuPoolSummaryError || hasPool;
+  const isAwuPoolSummaryReady =
+    !isAwuPoolSummaryLoading && !isAwuPoolSummaryError;
+  const showPoolSection = !isAwuPoolSummaryReady || hasPool;
   const topUpButton = isWorkspaceAdmin ? (
     <Button
       label="Top up"
@@ -1109,7 +1110,7 @@ export function UsagePage() {
                   <Spinner />
                 </div>
               )}
-              {(isAwuPoolSummaryLoading || isAwuPoolSummaryError) &&
+              {!isAwuPoolSummaryReady &&
                 !consumptionOverview &&
                 topUpButton && (
                   <div className="flex justify-end">{topUpButton}</div>
@@ -1222,7 +1223,7 @@ export function UsagePage() {
               </div>
             )}
 
-            {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
+            {isAwuPoolSummaryReady && (
               <>
                 <div className="flex items-baseline gap-1">
                   <span className="heading-mono-4xl text-foreground">
