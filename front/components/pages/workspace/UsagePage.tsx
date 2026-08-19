@@ -1269,11 +1269,12 @@ export function UsagePage() {
         ) : null}
 
         {!isAnalyticsConsumptionEnabled &&
-        (isAwuPoolSummaryLoading || !!isAwuPoolSummaryError || hasPool) ? (
+        !isAwuPoolSummaryLoading &&
+        (!!isAwuPoolSummaryError || hasPool || isReadOnly) ? (
           <Page.Vertical gap="xs" align="stretch">
             <Page.H variant="h4">Workspace credit pool</Page.H>
 
-            {isAwuPoolSummaryError ? (
+            {isAwuPoolSummaryError && (
               <ContentMessage
                 title="Failed to load Workspace Credits Pool"
                 icon={AlertCircle}
@@ -1283,11 +1284,15 @@ export function UsagePage() {
                 data. Please refresh the page or contact support if the issue
                 persists.
               </ContentMessage>
-            ) : isAwuPoolSummaryLoading ? (
+            )}
+
+            {isAwuPoolSummaryLoading && (
               <div className="flex justify-center py-8">
                 <Spinner />
               </div>
-            ) : (
+            )}
+
+            {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
               <>
                 <div className="flex items-baseline gap-1">
                   <span className="heading-mono-4xl text-foreground">
