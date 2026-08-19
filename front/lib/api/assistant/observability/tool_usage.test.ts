@@ -25,7 +25,7 @@ describe("resolveServerDisplayNames", () => {
     ]);
 
     expect(names.get("image_generation")).toBe("Create Images");
-    expect(names.get(server.cachedName)).toBe("Customer Records");
+    expect(names.get(server.cachedName)).toBe("Customer records");
     expect(names.get(server.sId)).toBe("Customer records");
     expect(error).not.toHaveBeenCalled();
   });

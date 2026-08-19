@@ -151,7 +151,7 @@ describe("getAgentMessageConsumption", () => {
         agentWorkCredits: 3,
         tools: [
           expect.objectContaining({
-            label: "Test Tool",
+            label: "Test tool",
             callCount: 2,
             attributedCredits: 7,
             directCredits: 4,
