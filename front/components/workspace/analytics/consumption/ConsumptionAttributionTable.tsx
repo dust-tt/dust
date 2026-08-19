@@ -47,7 +47,11 @@ import {
   Tooltip,
   XCircle,
 } from "@dust-tt/sparkle";
-import type { ColumnDef, PaginationState } from "@tanstack/react-table";
+import type {
+  ColumnDef,
+  PaginationState,
+  SortingState,
+} from "@tanstack/react-table";
 import type { Transition, Variants } from "framer-motion";
 import {
   AnimatePresence,
@@ -70,6 +74,11 @@ import {
 const SEARCH_DEBOUNCE_DELAY_MS = 300;
 const ATTRIBUTION_PAGE_SIZE = 25;
 const ATTRIBUTION_MAX_ROW_COUNT = 1_000;
+const DEFAULT_ATTRIBUTION_SORTING: SortingState = [
+  { id: "credits", desc: true },
+];
+
+const ATTRIBUTION_SERVER_SORTABLE_COLUMN_ID = "credits";
 
 type AttributionTransitionDirection = -1 | 0 | 1;
 
@@ -422,7 +431,26 @@ function AttributionRows({
     pageIndex: 0,
     pageSize: ATTRIBUTION_PAGE_SIZE,
   });
+  const [sorting, setSorting] = useState<SortingState>(
+    DEFAULT_ATTRIBUTION_SORTING
+  );
   const shouldReduceMotion = useReducedMotion();
+
+  // A new sort order invalidates the current page's offset into it, so jump
+  // back to the first page whenever it changes.
+  const handleSortingChange: typeof setSorting = (updater) => {
+    setSorting(updater);
+    setPagination((current) => ({ ...current, pageIndex: 0 }));
+  };
+
+  const activeSort = sorting[0];
+  // Ranking is always by credits: only forward asc/desc when that's actually
+  // the sorted column, so sorting by anything else keeps fetching pages in
+  // the default credits-desc order and reorders them locally instead.
+  const sortOrder =
+    activeSort?.id === ATTRIBUTION_SERVER_SORTABLE_COLUMN_ID && !activeSort.desc
+      ? "asc"
+      : "desc";
 
   const {
     rows,
@@ -439,6 +467,7 @@ function AttributionRows({
     offset: pagination.pageIndex * pagination.pageSize,
     search,
     filter,
+    sortOrder,
   });
   const cappedRowCount = Math.min(totalCount, ATTRIBUTION_MAX_ROW_COUNT);
 
@@ -522,6 +551,8 @@ function AttributionRows({
             skeletonRowCount={skeletonRowCount}
             hasAvatar={hasAvatar}
             isAvatarRounded={dimension === "user"}
+            sorting={sorting}
+            onSortingChange={handleSortingChange}
           />
         </div>
         {paginationControls}
@@ -553,6 +584,8 @@ function AttributionRows({
               filter={filter}
               onViewAll={onViewAll}
               expandedRowId={expandedRowId}
+              sorting={sorting}
+              onSortingChange={handleSortingChange}
             />
           </div>
         )}

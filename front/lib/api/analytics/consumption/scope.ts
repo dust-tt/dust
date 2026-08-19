@@ -90,6 +90,11 @@ export const CONSUMPTION_DIMENSION_FILTER_KEYS: Record<
   source: "sources",
 };
 
+export const CONSUMPTION_TOP_SORT_ORDER = ["asc", "desc"] as const;
+
+export type ConsumptionTopSortOrder =
+  (typeof CONSUMPTION_TOP_SORT_ORDER)[number];
+
 export const CONSUMPTION_METRICS = ["credit_micro"] as const;
 
 export type ConsumptionMetric = (typeof CONSUMPTION_METRICS)[number];
