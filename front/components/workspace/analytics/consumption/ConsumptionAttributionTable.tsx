@@ -78,12 +78,6 @@ const DEFAULT_ATTRIBUTION_SORTING: SortingState = [
   { id: "credits", desc: true },
 ];
 
-// Only the credits column is ranked server-side (see
-// fetchConsumptionTopGroups): Elasticsearch's terms aggregation can only
-// order by a genuine metric, not a ratio like avgCredits or vs-prev growth,
-// which would need a bucket_script — terms cannot order by a pipeline
-// aggregation. Sorting by any other column still reorders whatever page is
-// currently loaded, not the full dataset.
 const ATTRIBUTION_SERVER_SORTABLE_COLUMN_ID = "credits";
 
 type AttributionTransitionDirection = -1 | 0 | 1;

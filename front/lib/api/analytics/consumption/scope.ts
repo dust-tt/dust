@@ -90,15 +90,6 @@ export const CONSUMPTION_DIMENSION_FILTER_KEYS: Record<
   source: "sources",
 };
 
-// Ranking always ranks by gross credits — the only metric Elasticsearch's
-// terms aggregation can order by directly here. A ratio (avg per unit,
-// period-over-period growth) would need a bucket_script to rank by, and a
-// terms aggregation cannot order its buckets by a pipeline aggregation
-// (confirmed against a live cluster: "is a pipeline aggregation and cannot
-// be used to sort the buckets"). Ranking by those would need a
-// scripted_metric computing the ratio itself as a genuine metric instead —
-// real complexity (custom painless script, no existing precedent in this
-// codebase) left for a dedicated follow-up.
 export const CONSUMPTION_TOP_SORT_ORDER = ["asc", "desc"] as const;
 
 export type ConsumptionTopSortOrder =
