@@ -45,6 +45,9 @@ interface SpendCountersInlineProps {
   metronomeConsumedAwuCredits: number | null;
 }
 
+const formatCreditsOrDash = (value: number | null): string =>
+  value !== null ? formatCredits(value) : "—";
+
 // The three spend figures for a cap dimension shown together to spot
 // divergence: ES = Elasticsearch-derived, RL = Redis rate-limiter counter (the
 // value enforcement reads), MT = Metronome-derived. Mirrors the
@@ -54,12 +57,11 @@ function SpendCountersInline({
   rateLimiterAwuCredits,
   metronomeConsumedAwuCredits,
 }: SpendCountersInlineProps) {
-  const fmt = (value: number | null) =>
-    value !== null ? formatCredits(value) : "—";
   return (
     <span className="text-xs text-muted-foreground">
-      ES {fmt(esConsumedAwuCredits)} / RL {fmt(rateLimiterAwuCredits)} / MT{" "}
-      {fmt(metronomeConsumedAwuCredits)}
+      ES {formatCreditsOrDash(esConsumedAwuCredits)} / RL{" "}
+      {formatCreditsOrDash(rateLimiterAwuCredits)} / MT{" "}
+      {formatCreditsOrDash(metronomeConsumedAwuCredits)}
     </span>
   );
 }

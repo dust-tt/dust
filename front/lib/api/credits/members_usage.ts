@@ -516,18 +516,20 @@ export async function getEsConsumedAwuCreditsForApiKey(
  * programmatic usage is identified with `getProgrammaticUsageFilterClause`
  * (auth_method=api_key / no or programmatic context_origin) — the same split the
  * analytics dashboards use. Used to lazily seed / resync the programmatic
- * spend-cap counter. Returns 0 when there is no usage or the analytics read
- * fails.
+ * spend-cap counter. Returns the consumption, or `null` when it can't be
+ * determined (no billing cycle, or the analytics read failed) — callers must
+ * treat `null` as "unknown", never as 0, so a transient ES outage doesn't erase
+ * a live counter on resync.
  */
 export async function getEsConsumedProgrammaticAwuCredits(
   auth: Authenticator,
   { cycle }: { cycle?: BillingCycle }
-): Promise<number> {
+): Promise<number | null> {
   const workspace = auth.getNonNullableWorkspace();
 
   const resolvedCycle = cycle ?? (await resolveMetronomeCycle(workspace));
   if (!resolvedCycle) {
-    return 0;
+    return null;
   }
   const { cycleStart, cycleEnd } = resolvedCycle;
 
@@ -561,7 +563,7 @@ export async function getEsConsumedProgrammaticAwuCredits(
       { err: result.error, workspaceId: workspace.sId },
       "[MembersUsage] Failed to read programmatic consumed credits from analytics index"
     );
-    return 0;
+    return null;
   }
 
   return Math.max(
@@ -1179,6 +1181,15 @@ export async function resyncProgrammaticSpendLimitCounterFromEsUsage(
   );
 
   const consumed = await getEsConsumedProgrammaticAwuCredits(auth, { cycle });
+  if (consumed === null) {
+    // The Elasticsearch read failed: skip the SET so a transient outage can't
+    // overwrite a valid live counter with 0 and disable the backup cap.
+    return new Err(
+      new Error(
+        "Failed to read programmatic consumption from Elasticsearch; skipped resync to avoid erasing the counter."
+      )
+    );
+  }
   const setResult = await setFixedWindowCount({
     key: makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace(
       workspace
