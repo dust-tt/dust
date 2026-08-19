@@ -16,8 +16,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   addFixedWindowCount,
-  getFixedWindowCount,
-  seedFixedWindowCountIfAbsent,
+  readFixedWindowCountWithLazySeed,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type {
@@ -350,28 +349,13 @@ async function readApiKeySpendLimitCountWithLazySeed(
     bounds,
   }: { apiKeyName: string; redisKey: string; bounds: FixedWindowBounds }
 ): Promise<number | null> {
-  const countResult = await getFixedWindowCount({ key: redisKey, bounds });
-  if (countResult.isErr()) {
-    return null;
-  }
-  if (countResult.value > 0) {
-    return countResult.value;
-  }
-
-  const consumed = Math.max(
-    0,
-    Math.round(await getEsConsumedAwuCreditsForApiKey(auth, { apiKeyName }))
-  );
-  if (consumed <= 0) {
-    return 0;
-  }
-  const seedResult = await seedFixedWindowCountIfAbsent({
+  return readFixedWindowCountWithLazySeed({
     key: redisKey,
     bounds,
-    value: consumed,
     logger,
+    fetchSeedValue: () =>
+      getEsConsumedAwuCreditsForApiKey(auth, { apiKeyName }),
   });
-  return seedResult.isOk() ? seedResult.value : consumed;
 }
 
 /**

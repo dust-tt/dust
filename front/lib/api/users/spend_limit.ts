@@ -35,8 +35,7 @@ import { revertOnSyncFailure } from "@app/lib/spend_limits/revert_on_sync_failur
 import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   addFixedWindowCount,
-  getFixedWindowCount,
-  seedFixedWindowCountIfAbsent,
+  readFixedWindowCountWithLazySeed,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type {
@@ -528,28 +527,12 @@ async function readSpendLimitCountWithLazySeed(
     cycle?: BillingCycle;
   }
 ): Promise<number | null> {
-  const countResult = await getFixedWindowCount({ key, bounds });
-  if (countResult.isErr()) {
-    return null;
-  }
-  if (countResult.value > 0) {
-    return countResult.value;
-  }
-
-  const consumed = Math.max(
-    0,
-    Math.round(await getEsConsumedAwuCreditsForUser(auth, { user, cycle }))
-  );
-  if (consumed <= 0) {
-    return 0;
-  }
-  const seedResult = await seedFixedWindowCountIfAbsent({
+  return readFixedWindowCountWithLazySeed({
     key,
     bounds,
-    value: consumed,
     logger,
+    fetchSeedValue: () => getEsConsumedAwuCreditsForUser(auth, { user, cycle }),
   });
-  return seedResult.isOk() ? seedResult.value : consumed;
 }
 
 /**
