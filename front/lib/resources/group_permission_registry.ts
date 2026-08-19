@@ -178,6 +178,22 @@ function allVerbsForResourceAtLevel(
   return [...verbs];
 }
 
+// The verbs a "*" grant confers on `resourceType`. At WHOLE_TYPE_RESOURCE_ID the wildcard stands
+// for the type and for every instance of it, so the instance-level roles count alongside the
+// type-level ones; on a concrete id only the instance-level roles apply.
+function allVerbsForWildcard(
+  resourceType: ConcreteResourceType,
+  level: GrantLevel
+): GrantVerb[] {
+  const verbs = new Set(allVerbsForResourceAtLevel(resourceType, "instance"));
+  if (level === "type") {
+    for (const verb of allVerbsForResourceAtLevel(resourceType, "type")) {
+      verbs.add(verb);
+    }
+  }
+  return [...verbs];
+}
+
 // Every type-level verb on every resource type — an admin's implicit full access.
 export function allWorkspacePermissions(): WorkspacePermissions {
   const permissions = emptyWorkspacePermissions();
@@ -216,7 +232,7 @@ function maskToVerbs(mask: number): GrantVerb[] {
 // full resource and to keep the reference type-only.
 type GrantRow = Pick<
   GroupPermissionResource,
-  "groupId" | "grantType" | "resourceType" | "resourceId"
+  "grantType" | "resourceType" | "resourceId"
 >;
 
 // JSON-serializable form of GroupPermissions, embedded in a serialized Authenticator so it can be
@@ -313,7 +329,7 @@ export class GroupPermissions {
         }
         const verbs =
           grantType === "*"
-            ? allVerbsForResourceAtLevel(rt, level)
+            ? allVerbsForWildcard(rt, level)
             : verbsForGrantAtLevel(grantType, rt, level);
         add(rt, resourceId, verbsToMask(verbs));
       }

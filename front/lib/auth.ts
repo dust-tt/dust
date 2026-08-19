@@ -974,6 +974,11 @@ export class Authenticator {
       : [];
     const keyGroupModelIds = allGroups.map((g) => g.id);
 
+    // `resolvePermissions` reads the key's grants from the key itself, so it only holds for the
+    // key's own workspace and its own groups: `requestedGroupIds` replaces those groups (the Slack
+    // bot acting as a user), and the target workspace below may not be the key's.
+    const permissionsKey = requestedGroupIds ? undefined : key;
+
     let permissions: GroupPermissions;
     let keyPermissions: GroupPermissions;
     if (isKeyWorkspace) {
@@ -982,6 +987,7 @@ export class Authenticator {
       permissions = await this.resolvePermissions({
         workspace,
         groupModelIds: workspaceGroupModelIds,
+        key: permissionsKey,
       });
       keyPermissions = permissions;
     } else {
@@ -993,6 +999,7 @@ export class Authenticator {
         this.resolvePermissions({
           workspace: keyWorkspace,
           groupModelIds: keyGroupModelIds,
+          key: permissionsKey,
         }),
       ]);
     }
@@ -1297,12 +1304,24 @@ export class Authenticator {
   static async resolvePermissions({
     workspace,
     groupModelIds,
+    key,
   }: {
     workspace?: WorkspaceResource | null;
     groupModelIds: ModelId[];
+    key?: Pick<KeyAuthType, "isSystem"> | null;
   }): Promise<GroupPermissions> {
     if (!workspace) {
       return GroupPermissions.empty();
+    }
+
+    if (key?.isSystem) {
+      return GroupPermissions.fromGrants([
+        {
+          grantType: "*",
+          resourceType: "*",
+          resourceId: WHOLE_TYPE_RESOURCE_ID,
+        },
+      ]);
     }
 
     const lightWorkspace = renderLightWorkspaceType({ workspace });

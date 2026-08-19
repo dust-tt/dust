@@ -271,6 +271,71 @@ describe("GroupPermissions.fromJSON", () => {
   });
 });
 
+describe("GroupPermissions wildcard grant", () => {
+  const WILDCARD = [
+    {
+      grantType: "*",
+      resourceType: "*",
+      resourceId: WHOLE_TYPE_RESOURCE_ID,
+    },
+  ] as const;
+
+  it("confers every verb the registry defines, at every level", () => {
+    const perms = GroupPermissions.fromGrants([...WILDCARD]);
+
+    // Instance-level roles: `space` declares no type-level role at all, so a wildcard would confer
+    // nothing there if it only expanded type-level verbs.
+    expect(perms.resolvedVerbsForResource("space", 12).sort()).toEqual([
+      "admin",
+      "read",
+      "write",
+    ]);
+    // Type-level capabilities alongside the instance ones.
+    expect(perms.resolvedVerbsForResource("agent", 42).sort()).toEqual([
+      "create",
+      "publish",
+      "read",
+      "write",
+    ]);
+    expect(perms.resolvedVerbsForResource("billing", 1)).toEqual(["admin"]);
+  });
+
+  it("confers them on instances it has never seen", () => {
+    const perms = GroupPermissions.fromGrants([...WILDCARD]);
+    expect(perms.resolvedVerbsForResource("space", 999999)).toContain("write");
+  });
+
+  it("confers only the instance-level roles on a concrete id", () => {
+    // `assertValidGrant` pins a wildcard to WHOLE_TYPE_RESOURCE_ID, so this row is not one the
+    // product writes; a stale one must not confer the type-level capabilities on that instance.
+    const perms = GroupPermissions.fromGrants([
+      { grantType: "*", resourceType: "agent", resourceId: 42 },
+    ]);
+    expect(perms.resolvedVerbsForResource("agent", 42).sort()).toEqual([
+      "read",
+      "write",
+    ]);
+  });
+
+  it("round-trips through toJSON / fromJSON", () => {
+    const perms = GroupPermissions.fromGrants([...WILDCARD]);
+    const restored = GroupPermissions.fromJSON(perms.toJSON());
+    expect(restored.toJSON()).toEqual(perms.toJSON());
+    expect(restored.resolvedVerbsForResource("space", 12)).toContain("admin");
+  });
+
+  it("names no concrete instance", () => {
+    // Documented behaviour of the type-wide (-1) entry: it confers the verb on every id and so
+    // enumerating instances returns nothing.
+    expect(
+      GroupPermissions.fromGrants([...WILDCARD]).resourceIdsWithVerb(
+        "space",
+        "read"
+      )
+    ).toEqual([]);
+  });
+});
+
 describe("GroupPermissions.resourceIdsWithVerb", () => {
   // read = 1 << 0, write = 1 << 1, admin = 1 << 2 (see VERB_BIT / GRANT_VERBS order).
   it("returns the instance ids holding the verb", () => {
