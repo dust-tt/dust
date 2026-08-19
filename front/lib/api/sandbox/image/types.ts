@@ -137,6 +137,8 @@ export interface NetworkPolicy {
 export const PROXY_ONLY_NETWORK_POLICY: NetworkPolicy = {
   mode: "deny_all",
   allowlist: [
+    // Dust API — the database filesystem daemon runs as root
+    "dust.tt",
     // GCS — gcsfuse mounts run as root
     "storage.googleapis.com",
     // Datadog EU — sandbox telemetry runs as root
