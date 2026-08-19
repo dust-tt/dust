@@ -5,6 +5,19 @@ import { z } from "zod";
 export const ACTIVATION_RECOMMENDATIONS_SERVER_NAME =
   "activation_recommendations" as const;
 
+const WORK_AREA_INPUT_SCHEMA = z.object({
+  title: z
+    .string()
+    .max(255)
+    .describe(
+      "Short name of the work area (e.g. 'Weekly pipeline reporting')."
+    ),
+  description: z
+    .string()
+    .max(512)
+    .describe("One sentence describing what the work area covers."),
+});
+
 export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
   {
     name: "create_recommendation",
@@ -180,16 +193,26 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
     },
   },
   {
+    name: "list_activation_pods",
+    description:
+      "List Activation Pods the caller can administrate. Use the returned podIds with " +
+      "list_work_areas and create_work_areas.",
+    schema: {},
+    stake: "never_ask",
+    toolCostCategory: "basic",
+    freeUsage: true,
+    displayLabels: {
+      running: "Fetching Activation Pods",
+      done: "Activation Pods fetched",
+    },
+  },
+  {
     name: "list_work_areas",
     description:
-      "List work areas for the current Activation Pod. Returns each work area's id, " +
-      "title, description, and status.",
+      "List work areas for one or more Activation Pods. Pass pod IDs from " +
+      "list_activation_pods. Requires editor access to each pod.",
     schema: {
-      podId: z
-        .string()
-        .describe(
-          "The current Pod ID from the activation context. Always pass it to scope results to this Pod."
-        ),
+      podIds: z.array(z.string()).min(1).max(100).describe("Pod IDs to query."),
       status: z
         .enum(["suggested", "dismissed"])
         .optional()
@@ -206,27 +229,32 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
   {
     name: "create_work_areas",
     description:
-      "Create one or more work areas for the current Activation Pod. Each is created " +
-      "with status 'suggested'. Returns the created work areas with their ids.",
+      "Create work areas for one or more Activation Pods. Each assignment " +
+      "applies the same list independently to every listed pod. Pass pod IDs " +
+      "from list_activation_pods. Requires editor access to each pod. A pod " +
+      "may appear in only one assignment.",
     schema: {
-      workAreas: z
+      assignments: z
         .array(
           z.object({
-            title: z
-              .string()
-              .max(255)
+            podIds: z
+              .array(z.string())
+              .min(1)
+              .describe("Pod IDs (space sIds) that share this work-area list."),
+            workAreas: z
+              .array(WORK_AREA_INPUT_SCHEMA)
+              .min(1)
+              .max(10)
               .describe(
-                "Short name of the work area (e.g. 'Weekly pipeline reporting')."
+                "Work areas to create independently on every pod in this assignment."
               ),
-            description: z
-              .string()
-              .max(512)
-              .describe("One sentence describing what the work area covers."),
           })
         )
         .min(1)
-        .max(10)
-        .describe("The work areas to create."),
+        .max(100)
+        .describe(
+          "Work-area lists to create. A pod may appear in only one assignment."
+        ),
     },
     stake: "never_ask",
     toolCostCategory: "basic",
@@ -238,7 +266,8 @@ export const ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA = [
   },
   {
     name: "update_work_area",
-    description: "Update a single work area's status, title, or description.",
+    description:
+      "Update a work area's status, title, or description. Requires editor access to its pod.",
     schema: {
       workAreaId: z.string().describe("The id of the work area to update."),
       status: z

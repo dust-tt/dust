@@ -97,6 +97,32 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
     return new this(this.model, row.get());
   }
 
+  static async makeNewMany(
+    auth: Authenticator,
+    items: {
+      activationPod: ActivationPodResource;
+      title: string;
+      description: string;
+    }[]
+  ): Promise<ActivationWorkAreaResource[]> {
+    if (items.length === 0) {
+      return [];
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const rows = await this.model.bulkCreate(
+      items.map(({ activationPod, title, description }) => ({
+        workspaceId: workspace.id,
+        status: "suggested" as const,
+        title,
+        description,
+        podId: activationPod.id,
+      }))
+    );
+
+    return rows.map((row) => new this(this.model, row.get()));
+  }
+
   static async fetchById(
     auth: Authenticator,
     sId: string

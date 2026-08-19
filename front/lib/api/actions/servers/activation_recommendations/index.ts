@@ -21,13 +21,91 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 type ToolExecutionMode = "auto" | "requires_approval" | "not_connected";
+
+async function resolveActivationPods(
+  auth: Authenticator,
+  podIds: string[]
+): Promise<
+  Result<
+    { activationPod: ActivationPodResource; space: SpaceResource }[],
+    MCPError
+  >
+> {
+  const spaces = await SpaceResource.fetchByIds(auth, podIds);
+  const foundIds = new Set(spaces.map((s) => s.sId));
+  const missingPodIds = podIds.filter((id) => !foundIds.has(id));
+  if (missingPodIds.length > 0) {
+    return new Err(
+      new MCPError(`Pod(s) not found: ${missingPodIds.join(", ")}.`)
+    );
+  }
+
+  const unauthorizedSpaces = spaces.filter((s) => !s.canAdministrate(auth));
+  if (unauthorizedSpaces.length > 0) {
+    return new Err(
+      new MCPError(
+        `Not authorized to manage work areas for pod(s): ${unauthorizedSpaces
+          .map((s) => s.sId)
+          .join(", ")}.`
+      )
+    );
+  }
+
+  const activationPods = await ActivationPodResource.fetchBySpaceModelIds(
+    auth,
+    spaces.map((s) => s.id)
+  );
+  const activationPodBySpaceModelId = new Map(
+    activationPods.map((p) => [p.spaceId, p])
+  );
+  const nonPodSpaces = spaces.filter(
+    (s) => !activationPodBySpaceModelId.has(s.id)
+  );
+  if (nonPodSpaces.length > 0) {
+    return new Err(
+      new MCPError(
+        `Space(s) are not Activation Pods: ${nonPodSpaces.map((s) => s.sId).join(", ")}.`
+      )
+    );
+  }
+
+  return new Ok(
+    spaces.flatMap((space) => {
+      const activationPod = activationPodBySpaceModelId.get(space.id);
+      return activationPod ? [{ space, activationPod }] : [];
+    })
+  );
+}
+
+async function listManagedActivationPods(
+  auth: Authenticator
+): Promise<{ activationPod: ActivationPodResource; space: SpaceResource }[]> {
+  const activationPods = await ActivationPodResource.listForWorkspace(auth);
+  if (activationPods.length === 0) {
+    return [];
+  }
+
+  const spaces = await SpaceResource.fetchByModelIds(
+    auth,
+    activationPods.map((p) => p.spaceId)
+  );
+  const spaceByModelId = new Map(spaces.map((s) => [s.id, s]));
+
+  return activationPods.flatMap((activationPod) => {
+    const space = spaceByModelId.get(activationPod.spaceId);
+    if (!space || !space.canAdministrate(auth)) {
+      return [];
+    }
+    return [{ activationPod, space }];
+  });
+}
 
 function connectionTypeForOAuthUseCase(
   oAuthUseCase: MCPOAuthUseCase
@@ -254,107 +332,97 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
       ]);
     },
 
-    list_work_areas: async ({ podId, status }, { auth, runContext }) => {
-      const podSpaceId = isAgentLoopRunContext(runContext)
-        ? runContext.conversation.spaceId
-        : null;
-      const pod = podSpaceId
-        ? await SpaceResource.fetchById(auth, podSpaceId)
-        : null;
-      const activationPod = pod
-        ? await ActivationPodResource.fetchBySpace(auth, pod)
-        : null;
-
-      if (!pod || !activationPod) {
-        return new Err(
-          new MCPError(
-            "Work areas are only available inside an Activation Pod conversation."
-          )
-        );
-      }
-      if (pod.sId !== podId) {
-        return new Err(
-          new MCPError(
-            "podId must match the current Activation Pod conversation."
-          )
-        );
-      }
-      if (!pod.canAdministrate(auth)) {
-        return new Err(
-          new MCPError("Not authorized to manage work areas for this pod.")
-        );
-      }
-
-      const rows = await ActivationWorkAreaResource.listByActivationPods(auth, {
-        activationPods: [activationPod],
-        status,
-      });
-
-      if (rows.length === 0) {
+    list_activation_pods: async (_params, { auth }) => {
+      const pods = await listManagedActivationPods(auth);
+      if (pods.length === 0) {
         return new Ok([
           {
             type: "text" as const,
-            text: "No work areas found.",
+            text: "No Activation Pods you can manage.",
           },
         ]);
       }
 
-      const lines = rows.map((r, i) => {
-        const workArea = r.toJSON();
-        return `${i + 1}. [${workArea.status}] ${workArea.sId} — "${workArea.title}": ${workArea.description}`;
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            pods.map(({ space }) => ({
+              podId: space.sId,
+              name: space.name,
+            }))
+          ),
+        },
+      ]);
+    },
+
+    list_work_areas: async ({ podIds, status }, { auth }) => {
+      const resolved = await resolveActivationPods(auth, podIds);
+      if (resolved.isErr()) {
+        return resolved;
+      }
+
+      const rows = await ActivationWorkAreaResource.listByActivationPods(auth, {
+        activationPods: resolved.value.map((p) => p.activationPod),
+        status,
       });
 
       return new Ok([
         {
           type: "text" as const,
-          text: `Work areas (${rows.length}):\n${lines.join("\n")}`,
+          text: JSON.stringify(
+            resolved.value.map(({ activationPod, space }) => ({
+              podId: space.sId,
+              workAreas: rows
+                .filter((row) => row.podId === activationPod.id)
+                .map((row) => row.toJSON()),
+            }))
+          ),
         },
       ]);
     },
 
-    create_work_areas: async ({ workAreas }, { auth, runContext }) => {
-      const podSpaceId = isAgentLoopRunContext(runContext)
-        ? runContext.conversation.spaceId
-        : null;
-      const pod = podSpaceId
-        ? await SpaceResource.fetchById(auth, podSpaceId)
-        : null;
-      const activationPod = pod
-        ? await ActivationPodResource.fetchBySpace(auth, pod)
-        : null;
-
-      if (!pod || !activationPod) {
+    create_work_areas: async ({ assignments }, { auth }) => {
+      const allPodIds = assignments.flatMap((a) => a.podIds);
+      const uniquePodIds = [...new Set(allPodIds)];
+      if (uniquePodIds.length !== allPodIds.length) {
         return new Err(
-          new MCPError(
-            "Work areas can only be created inside an Activation Pod conversation."
-          )
-        );
-      }
-      if (!pod.canAdministrate(auth)) {
-        return new Err(
-          new MCPError("Not authorized to manage work areas for this pod.")
+          new MCPError("Each pod may appear in only one work-area assignment.")
         );
       }
 
-      const created = await concurrentExecutor(
-        workAreas,
-        (item) =>
-          ActivationWorkAreaResource.makeNew(auth, {
-            title: item.title,
-            description: item.description,
-            podId: activationPod.id,
-          }),
-        { concurrency: 8 }
+      const resolved = await resolveActivationPods(auth, uniquePodIds);
+      if (resolved.isErr()) {
+        return resolved;
+      }
+
+      const activationPodBySId = new Map(
+        resolved.value.map(({ space, activationPod }) => [
+          space.sId,
+          activationPod,
+        ])
       );
 
-      const lines = created.map(
-        (r) => `${r.sId} — "${r.title}" (status: suggested)`
+      const items = assignments.flatMap((assignment) =>
+        assignment.podIds.flatMap((podId) => {
+          const activationPod = activationPodBySId.get(podId);
+          if (!activationPod) {
+            return [];
+          }
+          return assignment.workAreas.map((workArea) => ({
+            activationPod,
+            title: workArea.title,
+            description: workArea.description,
+          }));
+        })
       );
+
+      const created = await ActivationWorkAreaResource.makeNewMany(auth, items);
 
       return new Ok([
         {
           type: "text" as const,
-          text: `Created ${created.length} work areas:\n${lines.join("\n")}`,
+          text: `Saved ${created.length} work areas across ${uniquePodIds.length} pod(s).`,
         },
       ]);
     },
@@ -474,14 +542,18 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
     },
   };
 
+export const TOOLS = buildTools(
+  ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA,
+  handlers
+);
+
 function createServer(
   auth: Authenticator,
   toolContext?: ToolContext
 ): McpServer {
   const server = makeInternalMCPServer(ACTIVATION_RECOMMENDATIONS_SERVER_NAME);
 
-  const tools = buildTools(ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA, handlers);
-  for (const tool of tools) {
+  for (const tool of TOOLS) {
     registerTool(auth, toolContext, server, tool, {
       monitoringName: ACTIVATION_RECOMMENDATIONS_SERVER_NAME,
     });
