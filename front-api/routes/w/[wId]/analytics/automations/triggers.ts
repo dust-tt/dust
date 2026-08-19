@@ -9,6 +9,7 @@ import { toConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/sch
 import { CARDINALITY_PRECISION_THRESHOLD } from "@app/lib/api/analytics/consumption/scope";
 import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
 import logger from "@app/logger/logger";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
@@ -30,10 +31,21 @@ const CSV_HEADERS = [
   "credits",
 ] as const;
 
+function kindToLabel(kind: AutomationTriggerRow["kind"]): string {
+  switch (kind) {
+    case "schedule":
+      return "Schedule";
+    case "webhook":
+      return "Webhook";
+    default:
+      return assertNever(kind);
+  }
+}
+
 function toCsvRow(trigger: AutomationTriggerRow) {
   return {
     name: trigger.name,
-    type: trigger.kind === "schedule" ? "Schedule" : "Webhook",
+    type: kindToLabel(trigger.kind),
     status: trigger.status,
     agent: trigger.agent.name,
     editor: trigger.editor.name,
@@ -85,19 +97,23 @@ app.post(
       });
     }
 
-    if (format === "json") {
-      return ctx.json(result.value);
+    switch (format) {
+      case "json":
+        return ctx.json(result.value);
+      case "csv": {
+        const exportDate = new Date().toISOString().slice(0, 10);
+        ctx.header("Content-Type", "text/csv");
+        ctx.header(
+          "Content-Disposition",
+          `attachment; filename="dust_automations_${exportDate}.csv"`
+        );
+        return ctx.body(
+          rowsToCsv(CSV_HEADERS, result.value.triggers.map(toCsvRow))
+        );
+      }
+      default:
+        return assertNever(format);
     }
-
-    const exportDate = new Date().toISOString().slice(0, 10);
-    ctx.header("Content-Type", "text/csv");
-    ctx.header(
-      "Content-Disposition",
-      `attachment; filename="dust_automations_${exportDate}.csv"`
-    );
-    return ctx.body(
-      rowsToCsv(CSV_HEADERS, result.value.triggers.map(toCsvRow))
-    );
   }
 );
 
