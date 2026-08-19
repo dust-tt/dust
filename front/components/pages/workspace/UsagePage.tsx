@@ -161,6 +161,42 @@ function memberFromUpgradeRequest(
   };
 }
 
+interface CreditPoolProgressBarProps {
+  elapsedPercentage: number;
+  target: "on_target" | "off_target" | null;
+  usedPercentage: number;
+}
+
+function CreditPoolProgressBar({
+  elapsedPercentage,
+  target,
+  usedPercentage,
+}: CreditPoolProgressBarProps) {
+  return (
+    <div
+      className="relative h-2 w-full overflow-hidden rounded-sm bg-muted-foreground/15"
+      role="progressbar"
+      aria-label="Workspace credit usage"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={usedPercentage}
+    >
+      <div
+        className={`absolute inset-y-0 left-0 ${
+          target === "off_target" ? "bg-warning-100" : "bg-highlight-100"
+        }`}
+        style={{ width: `${elapsedPercentage}%` }}
+      />
+      <div
+        className={`absolute inset-y-0 left-0 ${
+          target === "off_target" ? "bg-warning-500" : "bg-highlight-500"
+        }`}
+        style={{ width: `${usedPercentage}%` }}
+      />
+    </div>
+  );
+}
+
 const DEFAULT_PAGE_SIZE = 25;
 
 export function UsagePage() {
@@ -1133,31 +1169,11 @@ export function UsagePage() {
                         />
                       )}
                     </div>
-                    <div
-                      className="relative h-2 w-full overflow-hidden rounded-sm bg-muted-foreground/15"
-                      role="progressbar"
-                      aria-label="Workspace credit usage"
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-valuenow={usedPercentage}
-                    >
-                      <div
-                        className={`absolute inset-y-0 left-0 ${
-                          creditUsageDisplayTarget === "off_target"
-                            ? "bg-warning-100"
-                            : "bg-highlight-100"
-                        }`}
-                        style={{ width: `${elapsedPercentage}%` }}
-                      />
-                      <div
-                        className={`absolute inset-y-0 left-0 ${
-                          creditUsageDisplayTarget === "off_target"
-                            ? "bg-warning-500"
-                            : "bg-highlight-500"
-                        }`}
-                        style={{ width: `${usedPercentage}%` }}
-                      />
-                    </div>
+                    <CreditPoolProgressBar
+                      elapsedPercentage={elapsedPercentage}
+                      target={creditUsageDisplayTarget}
+                      usedPercentage={usedPercentage}
+                    />
                     <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
                       <span>{usedPercentage}% used</span>
                       {resetAt && (
