@@ -896,9 +896,10 @@ export function UsagePage() {
     creditUsage &&
     (creditUsage.status.target === "on_target" ? "on_target" : "off_target");
 
-  const totalConsumedCredits =
-    consumptionOverview?.totalCredits ??
-    (isReadOnly ? periodSpendCredits : poolConsumedCredits);
+  const totalConsumedCredits = isAnalyticsConsumptionEnabled
+    ? (consumptionOverview?.totalCredits ??
+      (isReadOnly ? periodSpendCredits : poolConsumedCredits))
+    : poolConsumedCredits;
 
   const initialTotalCredits = creditUsage?.capCredits ?? totalActiveCredits;
   const hasPool = totalActiveCredits > 0;
