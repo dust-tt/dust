@@ -15,13 +15,26 @@ import type { KeyType } from "@app/types/key";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
-import { BookOpen01, Button, Page, Spinner } from "@dust-tt/sparkle";
+import {
+  BookOpen01,
+  Button,
+  DataTableLoadingSkeleton,
+  Page,
+} from "@dust-tt/sparkle";
 import get from "lodash/get";
 import { useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
 interface APIKeysProps {
   owner: WorkspaceType;
+}
+
+function APIKeysLoading() {
+  return (
+    <div className="rounded-xl border border-border bg-panel-background p-4">
+      <DataTableLoadingSkeleton showSelectionColumn={false} showTrailingCell />
+    </div>
+  );
 }
 
 export function APIKeys({ owner }: APIKeysProps) {
@@ -32,8 +45,8 @@ export function APIKeys({ owner }: APIKeysProps) {
   const [isNewApiKeyCreatedOpen, setIsNewApiKeyCreatedOpen] = useState(false);
   const [editCapKey, setEditCapKey] = useState<KeyType | null>(null);
 
-  const { isValidating, keys } = useKeys(owner);
-  const { groups, isGroupsLoading } = useGroups({ owner });
+  const { isKeysError, isKeysLoading, keys } = useKeys(owner);
+  const { groups, isGroupsError, isGroupsLoading } = useGroups({ owner });
 
   const groupsById = useMemo(() => {
     return groups.reduce<Record<ModelId, GroupType>>((acc, group) => {
@@ -170,9 +183,16 @@ export function APIKeys({ owner }: APIKeysProps) {
       }
     });
 
-  // Show a loading spinner while API keys or groups are being fetched.
-  if (isValidating || isGroupsLoading) {
-    return <Spinner />;
+  if (isKeysLoading || isGroupsLoading) {
+    return <APIKeysLoading />;
+  }
+
+  if (isKeysError || isGroupsError) {
+    return (
+      <div className="rounded-xl border border-border bg-panel-background p-4 text-sm text-muted-foreground">
+        Failed to load API keys.
+      </div>
+    );
   }
 
   return (
@@ -190,13 +210,13 @@ export function APIKeys({ owner }: APIKeysProps) {
       <Page.Horizontal align="stretch">
         <div className="w-full" />
         <Button
-          label="Read the API reference"
+          label="API reference"
           size="sm"
           variant="outline"
           icon={BookOpen01}
-          onClick={() => {
-            window.open("https://docs.dust.tt/reference", "_blank");
-          }}
+          href="https://docs.dust.tt/reference"
+          target="_blank"
+          rel="noreferrer"
         />
         <NewAPIKeyDialog
           groups={groups}
