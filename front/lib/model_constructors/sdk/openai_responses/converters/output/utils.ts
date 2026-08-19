@@ -491,6 +491,9 @@ export async function* rawOutputToEvents(
     } catch (err) {
       // Everything leaving the endpoint is an event: map any SDK error to a
       // unified error event and terminate rather than throwing.
+      if (usage !== null) {
+        yield converters.usageToTokenUsageEvent(metadata, usage);
+      }
       yield converters.streamErrorToErrorEvent(metadata, err);
       return;
     }
@@ -547,12 +550,24 @@ export async function* rawOutputToEvents(
         stopReason = event.response.status ?? null;
         break;
       case "response.failed":
+        if (event.response.usage) {
+          yield converters.usageToTokenUsageEvent(
+            metadata,
+            event.response.usage
+          );
+        }
         yield converters.streamErrorToErrorEvent(
           metadata,
           event.response.error
         );
         return;
       case "response.incomplete":
+        if (event.response.usage) {
+          yield converters.usageToTokenUsageEvent(
+            metadata,
+            event.response.usage
+          );
+        }
         yield buildErrorEvent({
           metadata,
           type: "stop_error",

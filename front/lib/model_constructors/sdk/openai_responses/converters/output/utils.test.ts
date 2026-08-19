@@ -5,7 +5,12 @@ import {
   rawOutputToEvents,
   usageToTokenUsageEvent,
 } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
+import {
+  collectStreamEvents,
+  expectStreamEventContract,
+} from "@app/lib/model_constructors/test/stream_event_contract";
 import type {
+  Response as OpenAIResponse,
   ResponseOutputItem,
   ResponseStreamEvent,
   ResponseUsage,
@@ -18,6 +23,27 @@ const metadata = {
   model: "gpt-5.4",
   region: "global",
 } as const;
+
+function makeResponse(overrides: Partial<OpenAIResponse> = {}): OpenAIResponse {
+  return {
+    id: "resp_123",
+    created_at: 0,
+    output_text: "",
+    error: null,
+    incomplete_details: null,
+    instructions: null,
+    metadata: null,
+    model: "gpt-5.4",
+    object: "response",
+    output: [],
+    parallel_tool_calls: false,
+    temperature: 1,
+    tool_choice: "auto",
+    tools: [],
+    top_p: 1,
+    ...overrides,
+  };
+}
 
 describe("outputItemToEvents", () => {
   it("preserves an id-bearing reasoning item with no visible summary", () => {
@@ -132,6 +158,68 @@ describe("usageToTokenUsageEvent", () => {
 });
 
 describe("rawOutputToEvents", () => {
+  const usage: ResponseUsage = {
+    input_tokens: 100,
+    input_tokens_details: { cached_tokens: 0, cache_write_tokens: 0 },
+    output_tokens: 20,
+    output_tokens_details: { reasoning_tokens: 5 },
+    total_tokens: 120,
+  };
+
+  it("defers an output refusal until completed response usage is emitted", async () => {
+    const rawEvents: ResponseStreamEvent[] = [
+      {
+        type: "response.output_item.done",
+        output_index: 0,
+        sequence_number: 0,
+        item: {
+          type: "message",
+          id: "msg_123",
+          role: "assistant",
+          status: "completed",
+          content: [{ type: "refusal", refusal: "Request refused" }],
+        },
+      },
+      {
+        type: "response.completed",
+        sequence_number: 1,
+        response: makeResponse({ status: "completed", usage }),
+      },
+    ];
+
+    const events = await collectStreamEvents(
+      rawOutputToEvents(createAsyncGenerator(rawEvents), metadata, converters)
+    );
+
+    expectStreamEventContract(events, {
+      terminalType: "error",
+      usageExpected: true,
+    });
+  });
+
+  it("preserves usage carried by an incomplete response", async () => {
+    const rawEvents: ResponseStreamEvent[] = [
+      {
+        type: "response.incomplete",
+        sequence_number: 0,
+        response: makeResponse({
+          status: "incomplete",
+          incomplete_details: { reason: "max_output_tokens" },
+          usage,
+        }),
+      },
+    ];
+
+    const events = await collectStreamEvents(
+      rawOutputToEvents(createAsyncGenerator(rawEvents), metadata, converters)
+    );
+
+    expectStreamEventContract(events, {
+      terminalType: "error",
+      usageExpected: true,
+    });
+  });
+
   it("preserves interleaved reasoning and function-call item order", async () => {
     const rawEvents: ResponseStreamEvent[] = [
       {

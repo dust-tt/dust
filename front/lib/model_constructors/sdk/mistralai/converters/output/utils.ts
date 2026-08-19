@@ -271,6 +271,9 @@ export async function* rawOutputToEvents(
     try {
       result = await stream.next();
     } catch (err) {
+      if (usage) {
+        yield usageToTokenUsageEvent(metadata, usage);
+      }
       yield streamErrorToErrorEvent(metadata, err);
       return;
     }
@@ -322,14 +325,14 @@ export async function* rawOutputToEvents(
           type: "stop_error",
           message: "The maximum response length was reached.",
         });
-        return;
+        break;
       case CompletionResponseStreamChoiceFinishReason.Error:
         yield buildErrorEvent({
           metadata,
           type: "server_error",
           message: "Mistral reported an error during completion.",
         });
-        return;
+        break;
       // Stop / ToolCalls: flush any pending text/reasoning before success.
       default:
         for (const e of flushAccumulated(acc, metadata, aggregated)) {
@@ -339,7 +342,9 @@ export async function* rawOutputToEvents(
     }
   }
 
-  yield usageToTokenUsageEvent(metadata, usage);
+  if (usage) {
+    yield usageToTokenUsageEvent(metadata, usage);
+  }
   yield {
     type: "success",
     content: { aggregated, ...(stopReason ? { stopReason } : {}) },

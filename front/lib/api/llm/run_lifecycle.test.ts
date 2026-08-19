@@ -8,6 +8,7 @@ import { DustNoopNoopGlobalNoopStream } from "@app/lib/llms/stream/endpoints/noo
 import { DustOpenAIGptFiveDotFiveEuropeOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_five_eu_openai_responses";
 import { DustOpenAIGptFiveDotFiveGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_five_global_openai_responses";
 import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
+import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { getStatsDClient } from "@app/lib/utils/statsd";
@@ -35,6 +36,35 @@ class TokenUsageNoopStream extends DustNoopNoopGlobalNoopStream {
   ): AsyncGenerator<ModelResponseEvent> {
     for await (const event of super.rawStreamOutputToEvents(raw)) {
       if (event.type === "success") {
+        yield {
+          type: "token_usage",
+          content: {
+            longCacheCreated: 0,
+            shortCacheCreated: 0,
+            cacheCreated: 0,
+            cacheHit: 10,
+            standardInput: 90,
+            totalOutput: 25,
+          },
+          metadata: event.metadata,
+        };
+      }
+      yield event;
+    }
+  }
+}
+
+class ErrorThenTokenUsageNoopStream extends DustNoopNoopGlobalNoopStream {
+  override async *rawStreamOutputToEvents(
+    raw: AsyncGenerator<string>
+  ): AsyncGenerator<ModelResponseEvent> {
+    for await (const event of super.rawStreamOutputToEvents(raw)) {
+      if (event.type === "success") {
+        yield buildErrorEvent({
+          metadata: event.metadata,
+          type: "stop_error",
+          message: "The maximum response length was reached.",
+        });
         yield {
           type: "token_usage",
           content: {
@@ -270,6 +300,37 @@ describe("non-batch LLM run persistence", () => {
       1,
       expect.any(Array)
     );
+  });
+
+  it("logs whether a failed stream reported usage and partial output", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const error = vi.spyOn(logger, "error").mockImplementation(() => {});
+    const llm = makeNoopLLM(auth, ErrorThenTokenUsageNoopStream, {
+      operationType: "agent_conversation",
+      conversationId: generateRandomModelSId(),
+      workspaceId: auth.getNonNullableWorkspace().sId,
+    });
+
+    for await (const _event of llm.stream(makeStreamParameters())) {
+      // Consume the stream fully so the terminal error is traced.
+    }
+
+    expect(error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        llmEventType: "error",
+        traceId: llm.getTraceId(),
+        hasUsage: true,
+        hasPartialOutput: true,
+      }),
+      "LLM Error"
+    );
+
+    const run = await RunResource.fetchByDustRunId(auth, {
+      dustRunId: llm.getTraceId(),
+    });
+    expect(await run?.listRunUsageAttempts(auth)).toMatchObject([
+      { usageState: "reported" },
+    ]);
   });
 
   it("finalizes usage from the provider stream", async () => {

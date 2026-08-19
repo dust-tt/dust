@@ -193,6 +193,9 @@ export async function* rawOutputToEvents(
     try {
       result = await stream.next();
     } catch (err) {
+      if (usage) {
+        yield usageToTokenUsageEvent(metadata, usage);
+      }
       yield streamErrorToErrorEvent(metadata, err);
       return;
     }
@@ -302,14 +305,14 @@ export async function* rawOutputToEvents(
           type: "stop_error",
           message: "The maximum response length was reached.",
         });
-        return;
+        break;
       case "content_filter":
         yield buildErrorEvent({
           metadata,
           type: "refusal_error",
           message: "The response was filtered by the content policy.",
         });
-        return;
+        break;
       case "function_call":
         // Legacy function calls are surfaced through tool_calls deltas.
         break;
@@ -320,7 +323,9 @@ export async function* rawOutputToEvents(
     }
   }
 
-  yield usageToTokenUsageEvent(metadata, usage);
+  if (usage) {
+    yield usageToTokenUsageEvent(metadata, usage);
+  }
   yield {
     type: "success",
     content: { aggregated, ...(stopReason ? { stopReason } : {}) },

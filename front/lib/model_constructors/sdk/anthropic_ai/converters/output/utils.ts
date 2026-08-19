@@ -987,6 +987,13 @@ export async function* rawOutputToEvents(
       }
       // Everything leaving the endpoint is an event: map any other SDK error to
       // a unified error event and terminate the stream rather than throwing.
+      if (tokenUsage !== null) {
+        yield converters.messageDeltaUsageToTokenUsageEvent(
+          metadata,
+          tokenUsage,
+          cacheCreation
+        );
+      }
       yield converters.streamErrorToErrorEvent(metadata, err);
       return;
     }

@@ -442,6 +442,9 @@ export async function* rawOutputToEvents(
     try {
       result = await stream.next();
     } catch (err) {
+      if (usage) {
+        yield converters.usageToTokenUsageEvent(metadata, usage);
+      }
       yield converters.streamErrorToErrorEvent(metadata, err);
       return;
     }
@@ -484,9 +487,8 @@ export async function* rawOutputToEvents(
         candidate.finishReason
       );
       if (errorEvent) {
-        // Terminal failure: surface the error and stop without a success event.
         yield errorEvent;
-        return;
+        continue;
       }
       // Successful finish: flush any pending text/reasoning before the success.
       for (const event of flushAccumulated(
@@ -500,7 +502,9 @@ export async function* rawOutputToEvents(
     }
   }
 
-  yield converters.usageToTokenUsageEvent(metadata, usage);
+  if (usage) {
+    yield converters.usageToTokenUsageEvent(metadata, usage);
+  }
   // Gemini 3 returns a single turn-level thought signature (emitted on a
   // trailing part with the STOP finish reason). The final text has no message
   // slot to carry it and the turn may not include any reasoning, so carry it on
