@@ -1,5 +1,12 @@
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
-import { cn, Markdown } from "@dust-tt/sparkle";
+import type { UiView } from "@app/components/assistant/conversation/types";
+import {
+  AnimatedText,
+  ChevronRight,
+  cn,
+  Icon,
+  Markdown,
+} from "@dust-tt/sparkle";
 import { memo, useEffect, useRef, useState } from "react";
 
 import styles from "./ThinkingStep.module.css";
@@ -32,6 +39,7 @@ interface ThinkingStepProps {
   isStreaming: boolean;
   isMessageDone: boolean;
   isLast: boolean;
+  uiView: UiView;
 }
 
 export const ThinkingStep = memo(function ThinkingStep({
@@ -39,16 +47,24 @@ export const ThinkingStep = memo(function ThinkingStep({
   isStreaming,
   isMessageDone,
   isLast,
+  uiView,
 }: ThinkingStepProps) {
+  // Compact UI view: thinking always stays collapsed until the user clicks to expand it.
+  const forceCollapsed = uiView === "compact";
+
   // if it's currently streaming, default to open (we don't auto collapse until message is done)
   // if it's not streaming, default to collapse to avoid glitchy effects (since most of thinking steps need to be collapsed)
-  const [isExpanded, setIsExpanded] = useState(!isMessageDone);
-  const [needsTruncation, setNeedsTruncation] = useState(isMessageDone);
+  const [isExpanded, setIsExpanded] = useState(
+    !isMessageDone && !forceCollapsed
+  );
+  const [needsTruncation, setNeedsTruncation] = useState(
+    isMessageDone || forceCollapsed
+  );
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = contentRef.current;
-    if (!el || isStreaming) {
+    if (!el || isStreaming || forceCollapsed) {
       return;
     }
 
@@ -58,7 +74,7 @@ export const ThinkingStep = memo(function ThinkingStep({
       setNeedsTruncation(overflows);
       setIsExpanded(!overflows);
     }
-  }, [isStreaming, isMessageDone]);
+  }, [isStreaming, isMessageDone, forceCollapsed]);
 
   const markdown = content ? (
     <Markdown
@@ -73,7 +89,7 @@ export const ThinkingStep = memo(function ThinkingStep({
     />
   ) : null;
 
-  if (isStreaming) {
+  if (isStreaming && !forceCollapsed) {
     return (
       <TimelineRow
         icon={content ? "circle" : null}
@@ -95,25 +111,54 @@ export const ThinkingStep = memo(function ThinkingStep({
       }
     : undefined;
 
+  const handleKeyDown = needsTruncation
+    ? (e: React.KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          setIsExpanded((prev) => !prev);
+        }
+      }
+    : undefined;
+
+  // Compact UI view: thinking is collapsed automatically
+  const isCompactCollapsed = forceCollapsed && !isExpanded;
+
   return (
     <div
       className={cn(needsTruncation && "cursor-pointer")}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      role={needsTruncation ? "button" : undefined}
+      tabIndex={needsTruncation ? 0 : undefined}
+      aria-expanded={needsTruncation ? isExpanded : undefined}
     >
-      <TimelineRow icon="circle" isLast={isLast}>
-        <div
-          className={cn(
-            "relative min-w-0 flex-1",
-            styles.root,
-            (!needsTruncation || isExpanded) && styles.expanded
-          )}
+      {isCompactCollapsed ? (
+        <TimelineRow
+          icon={isStreaming && !content ? null : "circle"}
+          spinner={isStreaming && !content}
+          isLast={isLast}
         >
-          <div ref={contentRef} className={styles.content}>
-            {markdown}
+          <span className="flex items-center gap-1 text-sm text-muted-foreground">
+            {isStreaming ? <AnimatedText>Thinking…</AnimatedText> : "Thinking…"}
+            <Icon size="xs" visual={ChevronRight} className="shrink-0" />
+          </span>
+        </TimelineRow>
+      ) : (
+        <TimelineRow icon="circle" isLast={isLast}>
+          <div
+            className={cn(
+              "relative min-w-0 flex-1",
+              styles.root,
+              (!needsTruncation || isExpanded) && styles.expanded
+            )}
+          >
+            <div ref={contentRef} className={styles.content}>
+              {markdown}
+            </div>
+            {needsTruncation && <div className={styles.fade} aria-hidden />}
           </div>
-          {needsTruncation && <div className={styles.fade} aria-hidden />}
-        </div>
-      </TimelineRow>
+        </TimelineRow>
+      )}
     </div>
   );
 });

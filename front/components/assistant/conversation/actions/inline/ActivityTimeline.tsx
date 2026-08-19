@@ -4,6 +4,7 @@ import {
   getActionStepIcon,
   getCollapseAnimationStyle,
 } from "@app/components/assistant/conversation/actions/inline/utils";
+import type { UiView } from "@app/components/assistant/conversation/types";
 import type { InlineActivityStep } from "@app/types/assistant/conversation";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ChevronRight, cn, Icon } from "@dust-tt/sparkle";
@@ -29,6 +30,7 @@ interface ActivityTimelineProps {
   };
   renderContentStep?: (content: string) => React.ReactNode;
   extraBelowCollapse?: React.ReactNode;
+  uiView?: UiView;
 }
 
 export function ActivityTimeline({
@@ -42,8 +44,11 @@ export function ActivityTimeline({
   terminalRow,
   renderContentStep,
   extraBelowCollapse,
+  uiView = "standard",
 }: ActivityTimelineProps) {
-  const [isCollapsed, setIsCollapsed] = useState(isDone);
+  const [isCollapsed, setIsCollapsed] = useState(
+    isDone || uiView === "compact"
+  );
 
   const showActiveCoT = !isDone && activeCotContent.length > 0;
   const hasRunningRows = runningToolRows.length > 0;
@@ -90,6 +95,7 @@ export function ActivityTimeline({
                       isStreaming={false}
                       isMessageDone={isDone}
                       isLast={isLast}
+                      uiView={uiView}
                     />
                   );
                 case "content":
@@ -137,6 +143,7 @@ export function ActivityTimeline({
                 isStreaming
                 isMessageDone={false}
                 isLast={!hasRunningRows && !showTrailingSpinner}
+                uiView={uiView}
               />
             )}
 

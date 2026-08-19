@@ -1441,6 +1441,7 @@ function AgentMessageContent({
           onOpenDetails={onOpenDetails}
           owner={owner}
           isLastMessage={isLastMessage}
+          uiView={uiView}
         />
         {blockedActionElement}
         <AgentMessageInteractiveContentGeneratedFiles

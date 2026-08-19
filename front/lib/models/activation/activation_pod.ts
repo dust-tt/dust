@@ -15,8 +15,6 @@ export class ActivationPodModel extends WorkspaceAwareModel<ActivationPodModel> 
   declare spaceId: ForeignKey<SpaceModel["id"]>;
   // The user for whom we created the activation pod.
   declare userId: ForeignKey<UserModel["id"]>;
-  // Whether the Pod uses the compact UI variant.
-  declare isCompactUIView: CreationOptional<boolean>;
 }
 
 ActivationPodModel.init(
@@ -30,11 +28,6 @@ ActivationPodModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    isCompactUIView: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
     },
   },
   {
