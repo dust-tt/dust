@@ -1,3 +1,7 @@
+import type {
+  ToolHandlerExtra,
+  ToolHandlerResult,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { Authenticator } from "@app/lib/auth";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ActivationWorkAreaResource } from "@app/lib/resources/activation_work_area_resource";
@@ -6,9 +10,15 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import assert from "assert";
 import { describe, expect, it } from "vitest";
 
 import { TOOLS } from ".";
+
+const WORK_AREA = {
+  title: "Pipeline management",
+  description: "Keep active opportunities moving toward close.",
+};
 
 function getTool(
   name:
@@ -18,17 +28,23 @@ function getTool(
     | "update_work_area"
 ) {
   const tool = TOOLS.find((candidate) => candidate.name === name);
-  if (!tool) {
-    throw new Error(`${name} tool not found`);
-  }
+  assert(tool);
   return tool;
 }
 
-function createTestExtra(auth: Authenticator) {
+function createTestExtra(auth: Authenticator): ToolHandlerExtra {
   return {
-    signal: new AbortController().signal,
     auth,
-  } as Parameters<(typeof TOOLS)[0]["handler"]>[1];
+    requestId: "activation-work-area-test",
+    // These focused handlers do not read the run context.
+    // @ts-expect-error A registered MCP handler always receives one in production.
+    runContext: undefined,
+    sendNotification: async () => {},
+    sendRequest: async () => {
+      throw new Error("Unexpected MCP request");
+    },
+    signal: new AbortController().signal,
+  };
 }
 
 async function createActivationPod(
@@ -43,72 +59,93 @@ async function createActivationPod(
   return pod;
 }
 
+async function createUserActivationPod(
+  workspace: ReturnType<Authenticator["getNonNullableWorkspace"]>
+) {
+  const user = await UserFactory.basic();
+  await MembershipFactory.associate(workspace, user, { role: "user" });
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    user.sId,
+    workspace.sId
+  );
+  const pod = await createActivationPod(auth, workspace);
+  return { auth, pod };
+}
+
+function getText(result: ToolHandlerResult): string {
+  assert(result.isOk());
+  const [content] = result.value;
+  assert(content?.type === "text");
+  return content.text;
+}
+
 describe("activation recommendations work-area tools", () => {
-  it("creates and lists work areas for a pod the caller can administrate", async () => {
-    const { workspace, authenticator } = await createResourceTest({
+  it("lets an editor manage their pod but not another user's pod", async () => {
+    const { workspace, authenticator: auth } = await createResourceTest({
       role: "user",
     });
-    const pod = await createActivationPod(authenticator, workspace);
+    const ownPod = await createActivationPod(auth, workspace);
+    const { pod: otherPod } = await createUserActivationPod(workspace);
+    const extra = createTestExtra(auth);
+
+    const listedPods = JSON.parse(
+      getText(await getTool("list_activation_pods").handler({}, extra))
+    );
+    expect(listedPods).toEqual([{ podId: ownPod.sId, name: ownPod.name }]);
 
     const createResult = await getTool("create_work_areas").handler(
       {
-        assignments: [
-          {
-            podIds: [pod.sId],
-            workAreas: [
-              {
-                title: "Weekly planning",
-                description: "Plan and prioritize the week's recurring work.",
-              },
-            ],
-          },
-        ],
+        assignments: [{ podIds: [ownPod.sId], workAreas: [WORK_AREA] }],
       },
-      createTestExtra(authenticator)
+      extra
     );
-    expect(createResult.isOk()).toBe(true);
+    expect(getText(createResult)).toBe("Saved 1 work areas across 1 pod(s).");
 
-    const listResult = await getTool("list_work_areas").handler(
-      { podIds: [pod.sId] },
-      createTestExtra(authenticator)
+    const listedWorkAreas = JSON.parse(
+      getText(
+        await getTool("list_work_areas").handler(
+          { podIds: [ownPod.sId] },
+          extra
+        )
+      )
     );
-    expect(listResult.isOk()).toBe(true);
-    if (listResult.isOk()) {
-      const [content] = listResult.value;
-      expect(content.type).toBe("text");
-      if (content.type === "text") {
-        const payload = JSON.parse(content.text);
-        expect(payload).toEqual([
-          expect.objectContaining({
-            podId: pod.sId,
-            workAreas: [expect.objectContaining({ title: "Weekly planning" })],
-          }),
-        ]);
-      }
-    }
+    expect(listedWorkAreas).toEqual([
+      expect.objectContaining({
+        podId: ownPod.sId,
+        workAreas: [expect.objectContaining(WORK_AREA)],
+      }),
+    ]);
+
+    const unauthorized = await getTool("create_work_areas").handler(
+      {
+        assignments: [{ podIds: [otherPod.sId], workAreas: [WORK_AREA] }],
+      },
+      extra
+    );
+    assert(unauthorized.isErr());
+    expect(unauthorized.error.message).toContain(
+      "Not authorized to manage work areas"
+    );
   });
 
-  it("lets a workspace admin create and list work areas on other members' pods", async () => {
-    const { workspace, authenticator } = await createResourceTest({
+  it("lets a workspace admin manage multiple members' pods", async () => {
+    const { workspace, authenticator: auth } = await createResourceTest({
       role: "admin",
     });
-    const firstUser = await UserFactory.basic();
-    const secondUser = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, firstUser, { role: "user" });
-    await MembershipFactory.associate(workspace, secondUser, { role: "user" });
-    const firstPod = await createActivationPod(
-      await Authenticator.fromUserIdAndWorkspaceId(
-        firstUser.sId,
-        workspace.sId
-      ),
-      workspace
+    const [{ pod: firstPod }, { pod: secondPod }] = await Promise.all([
+      createUserActivationPod(workspace),
+      createUserActivationPod(workspace),
+    ]);
+    const extra = createTestExtra(auth);
+
+    const listedPods = JSON.parse(
+      getText(await getTool("list_activation_pods").handler({}, extra))
     );
-    const secondPod = await createActivationPod(
-      await Authenticator.fromUserIdAndWorkspaceId(
-        secondUser.sId,
-        workspace.sId
-      ),
-      workspace
+    expect(listedPods).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ podId: firstPod.sId }),
+        expect.objectContaining({ podId: secondPod.sId }),
+      ])
     );
 
     const createResult = await getTool("create_work_areas").handler(
@@ -116,183 +153,46 @@ describe("activation recommendations work-area tools", () => {
         assignments: [
           {
             podIds: [firstPod.sId, secondPod.sId],
-            workAreas: [
-              {
-                title: "Pipeline management",
-                description: "Keep active opportunities moving toward close.",
-              },
-            ],
+            workAreas: [WORK_AREA],
           },
         ],
       },
-      createTestExtra(authenticator)
+      extra
     );
-    expect(createResult.isOk()).toBe(true);
+    expect(getText(createResult)).toBe("Saved 2 work areas across 2 pod(s).");
 
-    const listResult = await getTool("list_work_areas").handler(
-      { podIds: [firstPod.sId, secondPod.sId] },
-      createTestExtra(authenticator)
+    const listedWorkAreas = JSON.parse(
+      getText(
+        await getTool("list_work_areas").handler(
+          { podIds: [firstPod.sId, secondPod.sId] },
+          extra
+        )
+      )
     );
-    expect(listResult.isOk()).toBe(true);
-    if (listResult.isOk()) {
-      const [content] = listResult.value;
-      expect(content.type).toBe("text");
-      if (content.type === "text") {
-        const payload = JSON.parse(content.text);
-        expect(payload).toEqual(
-          expect.arrayContaining([
-            expect.objectContaining({
-              podId: firstPod.sId,
-              workAreas: [
-                expect.objectContaining({ title: "Pipeline management" }),
-              ],
-            }),
-            expect.objectContaining({
-              podId: secondPod.sId,
-              workAreas: [
-                expect.objectContaining({ title: "Pipeline management" }),
-              ],
-            }),
-          ])
-        );
-      }
-    }
-  });
-
-  it("rejects a caller who cannot administrate the pod", async () => {
-    const { workspace, authenticator } = await createResourceTest({
-      role: "user",
-    });
-    const targetUser = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, targetUser, { role: "user" });
-    const targetPod = await createActivationPod(
-      await Authenticator.fromUserIdAndWorkspaceId(
-        targetUser.sId,
-        workspace.sId
-      ),
-      workspace
+    expect(listedWorkAreas).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          podId: firstPod.sId,
+          workAreas: [expect.objectContaining(WORK_AREA)],
+        }),
+        expect.objectContaining({
+          podId: secondPod.sId,
+          workAreas: [expect.objectContaining(WORK_AREA)],
+        }),
+      ])
     );
-
-    const result = await getTool("create_work_areas").handler(
-      {
-        assignments: [
-          {
-            podIds: [targetPod.sId],
-            workAreas: [
-              {
-                title: "Weekly pipeline review",
-                description:
-                  "Review pipeline movement and unblock active deals.",
-              },
-            ],
-          },
-        ],
-      },
-      createTestExtra(authenticator)
-    );
-
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.message).toContain(
-        "Not authorized to manage work areas"
-      );
-    }
-  });
-
-  it("lists only Activation Pods the caller can administrate", async () => {
-    const { workspace, authenticator } = await createResourceTest({
-      role: "user",
-    });
-    const ownPod = await createActivationPod(authenticator, workspace);
-    const otherUser = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
-    const otherPod = await createActivationPod(
-      await Authenticator.fromUserIdAndWorkspaceId(
-        otherUser.sId,
-        workspace.sId
-      ),
-      workspace
-    );
-
-    const result = await getTool("list_activation_pods").handler(
-      {},
-      createTestExtra(authenticator)
-    );
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      const [content] = result.value;
-      expect(content.type).toBe("text");
-      if (content.type === "text") {
-        const payload = JSON.parse(content.text);
-        expect(payload).toEqual([
-          expect.objectContaining({
-            podId: ownPod.sId,
-            name: ownPod.name,
-          }),
-        ]);
-        expect(payload).not.toEqual(
-          expect.arrayContaining([
-            expect.objectContaining({ podId: otherPod.sId }),
-          ])
-        );
-      }
-    }
-  });
-
-  it("lets a workspace admin list other members' Activation Pods", async () => {
-    const { workspace, authenticator } = await createResourceTest({
-      role: "admin",
-    });
-    const targetUser = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, targetUser, { role: "user" });
-    const targetPod = await createActivationPod(
-      await Authenticator.fromUserIdAndWorkspaceId(
-        targetUser.sId,
-        workspace.sId
-      ),
-      workspace
-    );
-
-    const result = await getTool("list_activation_pods").handler(
-      {},
-      createTestExtra(authenticator)
-    );
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      const [content] = result.value;
-      expect(content.type).toBe("text");
-      if (content.type === "text") {
-        const payload = JSON.parse(content.text);
-        expect(payload).toEqual(
-          expect.arrayContaining([
-            expect.objectContaining({
-              podId: targetPod.sId,
-              name: targetPod.name,
-            }),
-          ])
-        );
-      }
-    }
   });
 
   it("rejects a pod appearing in multiple assignments", async () => {
-    const { workspace, authenticator } = await createResourceTest({
+    const { workspace, authenticator: auth } = await createResourceTest({
       role: "user",
     });
-    const pod = await createActivationPod(authenticator, workspace);
+    const pod = await createActivationPod(auth, workspace);
 
     const result = await getTool("create_work_areas").handler(
       {
         assignments: [
-          {
-            podIds: [pod.sId],
-            workAreas: [
-              {
-                title: "Pipeline management",
-                description: "Keep active opportunities moving toward close.",
-              },
-            ],
-          },
+          { podIds: [pod.sId], workAreas: [WORK_AREA] },
           {
             podIds: [pod.sId],
             workAreas: [
@@ -305,52 +205,43 @@ describe("activation recommendations work-area tools", () => {
           },
         ],
       },
-      createTestExtra(authenticator)
+      createTestExtra(auth)
     );
 
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.message).toContain("Each pod may appear in only one");
-    }
+    assert(result.isErr());
+    expect(result.error.message).toContain("Each pod may appear in only one");
   });
 
-  it("returns the same not-found error for missing and unauthorized work areas", async () => {
-    const { workspace, authenticator } = await createResourceTest({
+  it("returns the same not-found error for missing and unauthorized updates", async () => {
+    const { workspace, authenticator: auth } = await createResourceTest({
       role: "user",
     });
-    const targetUser = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, targetUser, { role: "user" });
-    const targetAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      targetUser.sId,
-      workspace.sId
-    );
-    const targetPod = await createActivationPod(targetAuth, workspace);
+    const { auth: targetAuth, pod: targetPod } =
+      await createUserActivationPod(workspace);
     const targetActivationPod = await ActivationPodResource.fetchBySpace(
       targetAuth,
       targetPod
     );
-    expect(targetActivationPod).not.toBeNull();
+    assert(targetActivationPod);
 
     const workArea = await ActivationWorkAreaResource.makeNew(targetAuth, {
-      title: "Other user's area",
-      description: "Should not leak existence.",
-      podId: targetActivationPod!.id,
+      ...WORK_AREA,
+      podId: targetActivationPod.id,
     });
+    const extra = createTestExtra(auth);
 
     const missing = await getTool("update_work_area").handler(
       { workAreaId: "awa_does_not_exist", status: "dismissed" },
-      createTestExtra(authenticator)
+      extra
     );
     const unauthorized = await getTool("update_work_area").handler(
       { workAreaId: workArea.sId, status: "dismissed" },
-      createTestExtra(authenticator)
+      extra
     );
 
-    expect(missing.isErr()).toBe(true);
-    expect(unauthorized.isErr()).toBe(true);
-    if (missing.isErr() && unauthorized.isErr()) {
-      expect(missing.error.message).toBe("Work area not found.");
-      expect(unauthorized.error.message).toBe(missing.error.message);
-    }
+    assert(missing.isErr());
+    assert(unauthorized.isErr());
+    expect(missing.error.message).toBe("Work area not found.");
+    expect(unauthorized.error.message).toBe(missing.error.message);
   });
 });
