@@ -897,9 +897,10 @@ export function UsagePage() {
     creditUsage &&
     (creditUsage.status.target === "on_target" ? "on_target" : "off_target");
 
-  const totalConsumedCredits =
-    consumptionOverview?.totalCredits ??
-    (isReadOnly ? periodSpendCredits : poolConsumedCredits);
+  const totalConsumedCredits = isAnalyticsConsumptionEnabled
+    ? (consumptionOverview?.totalCredits ??
+      (isReadOnly ? periodSpendCredits : poolConsumedCredits))
+    : poolConsumedCredits;
 
   const initialTotalCredits = creditUsage?.capCredits ?? totalActiveCredits;
   const hasPool = totalActiveCredits > 0;
@@ -1269,7 +1270,8 @@ export function UsagePage() {
         ) : null}
 
         {!isAnalyticsConsumptionEnabled &&
-        (isAwuPoolSummaryLoading || !!isAwuPoolSummaryError || hasPool) ? (
+        !isAwuPoolSummaryLoading &&
+        (isAwuPoolSummaryError || hasPool || isReadOnly) ? (
           <Page.Vertical gap="xs" align="stretch">
             <Page.H variant="h4">Workspace credit pool</Page.H>
 
